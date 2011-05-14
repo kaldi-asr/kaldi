@@ -25,9 +25,10 @@
   You first need to install Subversion (SVN).  Currently, Kaldi can
    be downloaded by typing into a shell:
   \verbatim
-    svn co https://merlin.fit.vutbr.cz/svn/UBM-ASR/branches/v1.0 kaldi-v1.0
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi
   \endverbatim
-  This will check out version 1.0 of Kaldi into a directory called "kaldi-v1.0".
+  This will check out the entire current repository (we currently have just the
+  trunk there; soon we will add version numbers).
   If you want to get updates and bug fixes you can go to the "kaldi" directory
   (or any subdirectory) and type:
   \verbatim
