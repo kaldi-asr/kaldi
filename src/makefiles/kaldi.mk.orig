@@ -1,0 +1,391 @@
+# For options to this file, see comments at the top of ./Makefile
+
+# TODO: set HAVE_POSIX_MEMALIGN.
+
+##########################################################################################
+#  Work out the top-level source directory.
+##########################################################################################
+
+# was: SRCDIR = /home/dpovey/UBM-ASR/branches/clean/src/
+# get the absolute pathname of the "src" directory which is the top-level one.
+# this is set by hand in makefiles in experimental directories so put this
+# statement in an ifndef.
+ifndef SRCDIR
+  ifeq ($(shell basename $(PWD)),src)  # If PWD ends in src/,  we are in the src-dir.
+     SRCDIR = $(PWD)
+  else                               # else the src-dir is one level up
+     SRCDIR = $(shell dirname $(PWD))
+  endif
+endif
+
+ifeq ($(OPT),64bit)
+  CROSS_COMPILE=x86_64-linux-
+endif
+
+ifeq ($(OPT),quiet)
+  EXTRA_CXXFLAGS=-Wno-sign-compare
+endif
+
+
+##########################################################################################
+#  Set up some OpenFst-related flags.
+##########################################################################################
+
+OPENFST_CXXFLAGS ?= -I$(SRCDIR)/../openfst-1.2/include
+OPENFST_LDLIBS ?= $(SRCDIR)/../openfst-1.2/lib/libfst.a -ldl
+
+
+##########################################################################################
+#  Set defaults for a bunch of variables that specify where the various math libraries
+#  that we can use, are located.  These are never all used simultaneously.  The important
+#  ones are {ATLAS,CLAPACK,MKL}_{STATIC,DYNAMIC}; depending on options, one of these
+#  will be added to LDLIBS.  This depends on the user-supplied (but defaulted) options
+#  MATHLIB={ATLAS,CLAPACK,MKL} and MATHLINK={STATIC,DYNAMIC}.
+##########################################################################################
+
+
+# (1) ATLAS stuff.
+
+# These include directories are supplied with our code in case the system does not have them.
+ATLAS_INCLUDE = $(SRCDIR)/external/atlas_include/
+ifeq ($(CROSS_COMPILE),x86_64-linux-)
+  ATLAS_LIBDIR ?= /usr/local/lib64
+  # Note that below,  ATLAS_LIBDIR is not expanded yet so you can still change it. 
+  # Maybe the below should be liblapack_atlas.a
+  ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a  -lg2c
+  ## ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a
+  ATLAS_DYNAMIC = -llapack -lcblas -latlas -lf77blas
+else
+  ATLAS_LIBDIR ?= /usr/local/lib
+  # Note that below,  ATLAS_LIBDIR is not expanded yet so you can still change it. 
+  # Maybe the below should be liblapack_atlas.a
+  ## ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack-3.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a  $(ATLAS_LIBDIR)/libf77blas.a -lg2c
+  ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a  $(ATLAS_LIBDIR)/libf77blas.a
+  ATLAS_DYNAMIC = -llapack -lcblas -latlas -lf77blas
+endif
+
+# (2) CLAPACK stuff.  Note, in the linux case this also depends on
+#  ATLAS for an implementation of BLAS.
+# Note that libcblaswr.a from CLAPACK is just C wrappers for Fortran 
+# routines that
+# we need to obtain separately.
+
+CLAPACK_INCLUDE = $(SRCDIR)/external/CLAPACK-3.1.1.1/INCLUDE/
+CLAPACK_LIBDIR = $(SRCDIR)/external/CLAPACK-3.1.1.1/
+ifeq ($(CROSS_COMPILE),x86_64-linux-)
+  CLAPACK_STATIC = $(CLAPACK_LIBDIR)/lapack_LINUX.a $(CLAPACK_LIBDIR)/libcblaswr.a  $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a -lg2c
+  #empty flag means not supported.  i have to figure out a reasonable default.
+  #may fill it in later.
+  CLAPACK_DYNAMIC = 
+else
+  CLAPACK_STATIC = $(CLAPACK_LIBDIR)/lapack_LINUX.a $(CLAPACK_LIBDIR)/libcblaswr.a  $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a  $(ATLAS_LIBDIR)/libf77blas.a  -lg2c
+  #empty flag means not supported.  i have to figure out a reasonable default.
+  #may fill it in later.
+  CLAPACK_DYNAMIC = 
+endif
+
+# (3) MKL stuff.   This is not finished.
+
+# MKL block.
+# Haven't got an MKL setup for other than Windowsyet so not doing this.
+# Dan has this on his machine as he bought a license.
+MKL_INCLUDE = $(SRCDIR)/external/mkl/
+ #
+
+
+
+##########################################################################################
+#  Work out the platform variable $(PLATFORM).    Default is linux.
+##########################################################################################
+
+
+
+PLATFORM = Linux
+ifeq ($(shell uname), Darwin)
+   PLATFORM = Darwin
+else
+  # don't do uname -o on mac as it crashes...
+  ifeq ($(shell uname -o), Cygwin)
+    PLATFORM = Cygwin
+  endif
+endif
+
+ifeq ($(shell uname -v | cut -f 1 -d ' ' | cut -f 2 -d '-'), Ubuntu)
+  PLATFORM = Ubuntu
+endif
+
+ARCH = i686
+ifeq ($(shell uname -m), x86_64)
+	ARCH = x86_64
+endif
+##########################################################################################
+# Set what math packages to use by default on different platforms, and also some
+# platform-dependent overrides of some variables above.
+##########################################################################################
+
+ifeq ($(PLATFORM), Darwin)
+  CLAPACK_DYNAMIC = -framework Accelerate
+  CLAPACK_INCLUDE = 
+  # default library types etc.
+  ifndef MATHLIB
+    MATHLIB = CLAPACK
+  endif
+  ifndef MATHLINK
+    MATHLINK = DYNAMIC
+  endif
+endif
+
+ifeq ($(PLATFORM), Cygwin)
+
+  KALDI_LDFLAGS1 = -g -enable-auto-import # something to do with recent versions of gcc
+  #Overrides of variables above.
+  # Do apt-cyg install liblapack0 to install this stuff.
+  CLAPACK_DYNAMIC = -L/usr/lib/lapack -enable-auto-import  -lcyglapack-0 -lcygblas-0
+  CLAPACK_STATIC = -L/bin /usr/lib/liblapack.a  /usr/lib/libblas.a -enable-auto-import  -lgfortran-3 
+  # Options (1,2,3): comment out the later ones if you want an earlier option.
+
+
+  #   # OPTION (3)
+  #   # Got a file lib.tar.gz from: http://matrixprogramming.com/MatrixMultiply/lib.tar.gz
+  #   # which is compiled ATLAS, and un-tarred it in my homedir.
+  ATLAS_LIBDIR = ~/lib/windows/
+  ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack_atlas.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a 
+
+  # default libraries etc.  May be overridden by make MATHLIB=ATLAS or whatever.
+  ifndef MATHLIB
+    MATHLIB = CLAPACK
+  endif
+  ifndef MATHLINK
+    MATHLINK = DYNAMIC
+  endif
+endif
+
+
+ifeq ($(PLATFORM), Linux)
+  ifneq ($(OPT),intel)
+     HAVE_EXECINFO_H = yes  # EXECINFO_H is supported by gcc on linux.
+     HAVE_CXXABI_H = yes  # Believe this is also available on all Linux/gcc platforms.
+  endif
+  ifeq ($(ARCH), i686)
+  # all defaults currently.
+   # will add: -lg2c # don't know what this related to now.  must figure it out.
+
+  # default libraries etc.  May be overridden by make MATHLIB=ATLAS or whatever.
+     ifndef MATHLIB
+      MATHLIB = CLAPACK
+    endif
+    ifndef MATHLINK
+      MATHLINK = STATIC
+    endif
+  else
+    ifndef MATHLIB
+      MATHLIB = ATLAS
+    endif
+    ifndef MATHLINK
+      MATHLINK = STATIC
+    endif
+#    ATLAS_LIBDIR = $(SRCDIR)/external/atlas_lib_x86_64
+#    ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a
+  endif
+endif
+
+ifeq ($(PLATFORM), Ubuntu)
+  ATLAS_LIBDIR	=/usr/lib/sse2
+
+  ATLAS_STATIC = $(ATLAS_LIBDIR)/liblapack_atlas.a $(ATLAS_LIBDIR)/libcblas.a $(ATLAS_LIBDIR)/libatlas.a  $(ATLAS_LIBDIR)/libf77blas.a
+
+  # default libraries etc.  May be overridden by make MATHLIB=CLAPACK or whatever.
+  ifndef MATHLIB
+    MATHLIB = ATLAS
+  endif
+  ifndef MATHLINK
+    MATHLINK = STATIC
+  endif
+endif
+
+
+################################################################################
+# compiler binary overrides
+################################################################################
+#CROSS_COMPILE ?= x86_64-linux-
+
+
+ifeq ($(OPT),intel)
+  CC  	= icpc
+  CXX 	= icpc
+else
+  CC  	 = $(CROSS_COMPILE)g++  
+  CXX 	 = $(CROSS_COMPILE)g++
+  AR     := $(CROSS_COMPILE)ar
+  AS     := $(CROSS_COMPILE)as
+  RANLIB := $(CROSS_COMPILE)ranlib
+  KALDI_CXXFLAGS1 = -msse
+endif
+
+
+################################################################################
+# Set up defaults of other options
+################################################################################
+
+# Defaults.  Note, if user types e.g. make KALDI_DOUBLEPRECISION=1 on makefile args, this will override these settings.
+
+KALDI_DOUBLEPRECISION ?= 0
+
+DEBUGLEVEL ?= 3
+
+
+################################################################################
+# Work out $(KALDI_CXXFLAGS) based on various supplied options.
+################################################################################
+
+
+# These options are used on all builds.
+
+KALDI_CXXFLAGS2 = -Wall -I$(SRCDIR) # -ansi
+
+# Note on speed at different debug-levels.
+# Compiled faster-decode-gmm with different debug levels (only actually
+# recompiled stuff in bin/).
+# DEBUGLEVEL=3: 29.69 seconds
+# DEBUGLEVEL=2: 11.75 seconds
+# DEBUGLEVEL=1: 11.68 seconds
+# DEBUGLEVEL=0: 10.26 seconds
+# So the biggest difference is between 3 and 2.
+
+ifeq ($(DEBUGLEVEL), 3)
+     KALDI_CXXFLAGS3 = -g -O0 -DKALDI_PARANOID
+endif
+ifeq ($(DEBUGLEVEL), 2)
+      KALDI_CXXFLAGS3 = -g -O1
+endif
+ifeq ($(DEBUGLEVEL), 1)
+      KALDI_CXXFLAGS3 = -g -O2
+endif
+ifeq ($(DEBUGLEVEL), 0)
+      KALDI_CXXFLAGS3 =  -O3 -DNDEBUG
+endif
+
+
+KALDI_CXXFLAGS4 = -DKALDI_DOUBLEPRECISION=$(KALDI_DOUBLEPRECISION) -msse2 
+
+
+ifneq ($(PLATFORM), Darwin)
+  # Do not precede this #define -DHAVE_POSIX_MEMALIGN with KALDI_ so
+  # it can later be automatically derived from autoconf.
+  KALDI_CXXFLAGS5 = -DHAVE_POSIX_MEMALIGN
+endif
+
+ifdef HAVE_EXECINFO_H
+     KALDI_LDFLAGS2 = -rdynamic
+     ifdef HAVE_CXXABI_H
+        KALDI_CXXFLAGS6 = -DHAVE_EXECINFO_H=1 -rdynamic  -DHAVE_CXXABI_H
+     else 
+        KALDI_CXXFLAGS6 = -DHAVE_EXECINFO_H=1 -rdynamic
+     endif
+else
+     KALDI_CXXFLAGS6 = 
+endif
+
+
+# define -DHAVE_ATLAS, -DHAVE_CLAPACK or -DHAVE_MKL
+MATH_CXXFLAGS = -DHAVE_$(MATHLIB)  
+
+ifeq ($(MATHLINK),STATIC)
+  ifeq ($(MATHLIB), ATLAS)
+    MATH_LDLIBS =  $(ATLAS_STATIC)
+  endif
+  ifeq ($(MATHLIB), CLAPACK)
+    MATH_LDLIBS =  $(CLAPACK_STATIC)
+  endif
+  ifeq ($(MATHLIB), MKL)
+    MATH_LDLIBS =  $(MKL_STATIC)
+  endif
+endif
+
+ifeq ($(MATHLINK),DYNAMIC)
+  ifeq ($(MATHLIB), ATLAS)
+    MATH_LDLIBS =  $(ATLAS_DYNAMIC)
+  endif
+  ifeq ($(MATHLIB), CLAPACK)
+    MATH_LDLIBS =  $(CLAPACK_DYNAMIC)
+  endif
+  ifeq ($(MATHLIB), MKL)
+    MATH_LDLIBS =  $(MKL_DYNAMIC)
+  endif
+endif
+
+
+
+ifeq ($(MATH_LDLIBS)x, x)
+   ifneq ($(MATHLIB),NONE)
+     $(error MATHLIB must be set to ATLAS, CLAPACK or MKL and MATHLINK to STATIC or DYNAMIC)
+   endif
+endif
+
+ifneq ($($(MATHLIB)_INCLUDE), )
+  MATH_INCLUDE = -I $($(MATHLIB)_INCLUDE)
+else
+  $(warning, no include directory specified for math libraries.)
+endif
+
+
+################################################################################
+# Set up the built-in variables $(CXXFLAGS), $(LDFLAGS) and $(CXXFLAGS)
+################################################################################
+
+#  Note, $(EXTRA_CXXFLAGS) and $(EXTRA_LDFLAGS) are a way for the user to supply
+#  extra stuff on the command line.  Being (nearly) last, they override other stuff.
+
+KALDI_CXXFLAGS = $(KALDI_CXXFLAGS1) $(KALDI_CXXFLAGS2) $(KALDI_CXXFLAGS3) $(KALDI_CXXFLAGS4) $(KALDI_CXXFLAGS5) $(KALDI_CXXFLAGS6)
+
+CXXFLAGS = $(KALDI_CXXFLAGS)  $(MATH_CXXFLAGS) $(MATH_INCLUDE) $(OPENFST_CXXFLAGS) $(EXTRA_CXXFLAGS) 
+
+LDFLAGS = $(KALDI_LDFLAGS1) $(KALDI_LDFLAGS2) $(EXTRA_LDFLAGS)
+
+LDLIBS = $(OPENFST_LDLIBS) $(MATH_LDLIBS) $(EXTRA_LDLIBS) -lm
+
+
+################################################################################
+# Create kaldi.mk.effective which is a simplified version of the Makefile that
+# has the same effect.
+# This is for easy debugging purposes.  note, @ suppresses echo.
+################################################################################
+
+MF = $(SRCDIR)/kaldi.mk.effective
+
+effective: 
+	@echo >$(MF)
+	@echo \# PLATFORM is $(PLATFORM) >> $(MF)
+	@echo \# DEBUGLEVEL is $(DEBUGLEVEL) >> $(MF)
+	@echo \# SRCDIR is $(SRCDIR) >> $(MF)
+	@echo CXXFLAGS = $(CXXFLAGS) >> $(MF)
+	@echo LDFLAGS = $(LDFLAGS) >> $(MF)
+	@echo LDLIBS = $(LDLIBS) >> $(MF)
+	@echo CC = $(CC) >> $(MF)
+	@echo CXX = $(CXX) >> $(MF)
+	@echo AR = $(AR) >> $(MF)
+	@echo AS = $(AS) >> $(MF)
+	@echo RANLIB = $(RANLIB) >> $(MF)
+	@echo >>$(MF)
+	cat $(MF)
+
+
+
+
+# The following lines are textually included in the subdirectories' makefiles and define
+# what to do when you say "make valgrind".  Note that $(TESTFILES) is not defined right now,
+# but Make does not expand variables when they are seen but when the rule is used.
+# valgrind target runs valgrind on the test programs and fails if valgrind complains.	
+# The point of this rule is to run valgrind, but only when the test programs have changed,
+# since it takes a while.
+
+valgrind: .valgrind
+
+.valgrind:
+	echo -n > valgrind.out
+	for x in $(TESTFILES); do echo $$x>>valgrind.out; valgrind ./$$x >/dev/null 2>> valgrind.out; done
+	! ( grep 'ERROR SUMMARY' valgrind.out | grep -v '0 errors' )
+	! ( grep 'definitely lost' valgrind.out | grep -v -w 0 )
+	rm valgrind.out
+	touch .valgrind
+

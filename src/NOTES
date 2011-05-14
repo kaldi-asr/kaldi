@@ -1,0 +1,27 @@
+
+Example of debug command with valgrind:
+in matrix/
+ valgrind  ./matrix-lib-test
+
+# or if there are errors the following options may be useful:
+ valgrind  --leak-check=full --db-attach=yes ./matrix-lib-test
+
+The easiest way to run valgrind, however, is "make valgrind" which automatically
+runs all the tests.  It will fail if valgrind is not happy.  Then you should
+manually run valgrind on whichever one failed (which you can figure out by
+looking at valgrind.out in the last directory, and looking for the last
+filename *-test that was printed).
+
+
+
+----
+notes on potential install problems:
+if you get errors like:
+.../matrix/kaldi-matrix.cc:43: undefined reference to `clapack_sgetrf'
+then you may be linking with a version of the library liblapack.a that
+does not have this type of symbol: on UToronto's machines that library did
+not export that symbol but there was a newer one called liblapack-3.a that
+did.
+
+If you get errors about not being able to find files in various system directories,
+try typing 'make depend'.

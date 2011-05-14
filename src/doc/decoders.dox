@@ -1,0 +1,382 @@
+// doc/decoders.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation  Mirko Hannemann
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page decoders Decoders used in the Kaldi toolkit
+
+ In the Kaldi toolkit there is no single "canonical" decoder, or a fixed
+ interface that decoders must satisfy.  There are currently three decoders
+ available: SimpleDecoder, FasterDecoder, and KaldiDecoder.  By "decoder" we mean
+ the internal code of the decoder; there are command-line programs that
+ wrap these decoders so that they can decode particular types of model
+ (e.g. GMMs), or with particular special conditions (e.g.  multi-class fMLLR).
+ Examples of command-line programs that decode are gmm-decode-simple,
+ gmm-decode-faster, gmm-decode-kaldi, and gmm-decode-faster-fmllr.  We have
+ avoided creating a single command-line program that can do every possible kind
+ of decoding, as this could quickly become hard to modify and debug.
+
+ \section decodable_interface The Decodable interface
+
+ In order to minimize the interaction between the decoder and the acoustic modeling 
+ code, we have created a base class (DecodableInterface) which mediates between
+ the decoder and the acoustic modeling code.  The DecodableInterface object can 
+ be viewed as a wrapper for the pair (acoustic model, feature file).  This might
+ seem a slightly unnatural object.  However, there is a good reason for its existence.
+ The interaction between the acoustic model and the features can be quite
+ complex (think about adaptation with multiple transforms), and by taking
+ this out of the decoder we substantially simplify what the decoder has to know.
+ The DecodableInterface object can be thought of as a matrix of size (number of frames)
+ by (number of nonzero input labels on the graph).
+
+ The basic operation of a decoder is to "decode this object of type DecodableInterface".
+
+ The DecodableInterface object has only three functions:
+\verbatim
+  virtual BaseFloat LogLikelihood(int32 frame, int32 index);
+  virtual bool IsLastFrame(int32 frame);
+  virtual int32 NumIndices();
+\endverbatim
+ The function \ref DecodableInterface::LogLikelihood() "LogLikelihood()" returns
+ the log-likelihood for this frame and index; the index would normally be the
+ (one-based) transition-id, see \ref transition_model_identifiers.  The frame is
+ a zero-based quantity.  The most normal DecodableInterface object will just look
+ up the appropriate feature vector (using the index "frame"), work out the pdf-id
+ corresponding to that transition-id, and return the corresponding acoustic log-likelihood.
+ Acoustic probability scales are also applied by the DecodableInterface object,
+ but they are not part of its generic interface because the interface represents
+ the minimum that the decoder "needs to know", and it does not need to know
+ about the probability scales.
+
+ In order to make all the core decoding code applicable to data that is
+ obtained in real time, we don't put a NumFames() function in the interface,
+ but just an \ref DecodableInterface::IsLastFrame() "IsLastFrame()" function 
+ that roughly means "are we done yet?".  
+
+
+
+
+ \section decoders_simple SimpleDecoder: the simplest possible decoder
+
+ As an illustration of a "prototypical" decoder, consider the class SimpleDecoder.
+ This very simple decoder has been included mostly for reference and for debugging
+ more highly optimized decoders.  
+
+ \subsection decoders_simple_itf Interface of SimpleDecoder
+
+ The constructor of SimpleDecoder takes the FST to decode with, and a decoding beam:
+\verbatim
+  SimpleDecoder(const fst::Fst<fst::StdArc> &fst, BaseFloat beam);
+\endverbatim
+Decoding an utterance is accomplished by the following function:
+\verbatim
+  void Decode(DecodableInterface &decodable);
+\endverbatim
+Here is an example code fragment where we construct a Decodable object and decode it:
+\verbatim
+  DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
+                                         acoustic_scale);
+  decoder.Decode(gmm_decodable);
+\endverbatim
+The type DecodableAmDiagGmmScaled is a very simple object that, given
+a transition-id, works out from trans_model (type: TransitionModel) the appropriate
+pdf-id, gets the corresponding row from the features (type: Matrix<BaseFloat>),
+works out the likelihood from am_gmm (type: AmDiagGmm), and scales it by 
+acoustic_scale (type: float).
+
+After calling this, we can get the traceback with the following call:
+\verbatim
+  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out);
+\endverbatim
+It returns a boolean success value.  If we call this function with
+is_final==true, it only considers tokens that are at a final state; the normal
+procedure is to first call it with is_final==true, and if this returns false (no
+tokens reached a final state), call it with is_final==false as a backup strategy.
+On success, this function puts its output into the FST object "fst_out".  It creates a
+linear acceptor whose input and output labels are whatever labels were on the FST
+(typically transition-ids and words, respectively), and whose weights contain the
+acoustic, language model and transition weights.
+
+ \subsection decoders_simple_workings How SimpleDecoder works
+ 
+ This decoder stores tracebacks at the token level that are garbage collected.
+ The token is of type SimpleDecoder::Token, which has the following member
+ variables:
+\verbatim
+  class Token {
+   public:
+    Arc arc_;
+    Token *prev_;
+    int32 ref_count_;
+    Weight weight_;
+    ...
+\endverbatim
+ The member of type Arc (this is a typedef to fst::StdArc) is a
+ copy of the arc in the original FST, except it has the acoustic
+ likelihood contribution added in.  It contains the input and output
+ labels, the weight and the next state (in the FST).  The "prev_"
+ member is the traceback; the "ref_count_" is used in the garbage
+ collection algorithm; the "Weight" is a typedef to fst::StdArc::Weight
+ but essentially it just stores a floating-point value which represents
+ the accumulated cost up to this point.
+
+ Class SimpleDecoder contains just four data members, declared as follows:
+\verbatim
+  unordered_map<StateId, Token*> cur_toks_;
+  unordered_map<StateId, Token*> prev_toks_;
+  const fst::Fst<fst::StdArc> &fst_;
+  BaseFloat beam_;
+\endverbatim
+ The last two of these (the FST and the beam) are constant during decoding.  
+ The members "cur_toks_" and "prev_toks_" store the currently active tokens
+ for the current and previous frame respectively.  The central loop of
+ the \ref SimpleDecoder::Decode() "Decode()" function is as follows:
+\verbatim
+for(int32 frame = 0; !decodable.IsLastFrame(frame-1); frame++) {
+  ClearToks(prev_toks_);
+  std::swap(cur_toks_, prev_toks_);
+  ProcessEmitting(decodable, frame);
+  ProcessNonemitting();
+  PruneToks(cur_toks_, beam_);
+}
+\endverbatim
+These statements are all self-explanatory except for ProcessEmitting() and
+ProcessNonemitting().  The ProcessEmitting() function propagates tokens from
+prev_toks_ (i.e. the previous frame) to cur_toks_ (i.e. the current frame).
+It only considers emitting arcs (i.e. arcs with nonzero input label).  
+For each token (say "tok") in prev_toks_, it looks at the state associated with the
+token (in tok->arc_.nextstate), and for each arc out of that state that
+is emitting, it creates a new token with a traceback to "tok" and with an "arc_" field
+coped from that arc, except with the associated weight updated to include
+the acoustic contribution.   The "weight_" field, representing the accumulated
+cost up to this point, will be the sum (the product, in the semiring interpretation) 
+of tok->weight_ and the weight of the recently added arc.  Each time we attempt to
+add a new token to "cur_toks_", we have to make sure there is no existing token
+associated with the same FST state.  If there is, we keep only the best.
+
+The function ProcessNonemitting() deals only with cur_toks_ and not with prev_toks_;
+it propagates nonemitting arcs, i.e. arcs with zero/\<eps\> as the input label/symbol.
+The newly created tokens will point back to other tokens in cur_toks_.  The weights
+on the arcs will just be the weights from the FST.  ProcessNonemitting() may have to
+process chains of epsilons.   It uses a queue to store states that need to be processed.
+
+After decoding, the function GetOutput(), discussed above, will trace back from the
+most likely token at the final state (taking into account its final probability,
+if is_final==true), and produce a linear FST with one arc for each arc in the traceback
+sequence.  There may be more of these than the number of frames, since there are
+separate tokens created for nonemitting arcs.  
+
+ \section decoders_faster FasterDecoder: a more optimized decoder
+
+ The decoder FasterDecoder has almost exactly the same interface as
+ SimpleDecoder.  The only important new configuration value is "max-active",
+ which controls the maximum number of states that can be active at one time.
+ Apart from enforcing the max-active states, the only major difference is a
+ data-structure related one.  We replace the type std::unordered_map<StateId,
+ Token*> with a new type HashList<StateId, Token*>, where HashList is our own
+ templated type created for this purpose.  HashList stores a singly-linked-list
+ structure whose elements are also accessible via a hash table, and it offers the
+ capability to free up the hash table for a new list structure while giving
+ sequential access to the old list structure.  This is so that we can use the
+ hash table to access what in SimpleDecoder was cur_toks_, while still having
+ access to what in SimpleDecoder was prev_toks_, in the form of a list.
+
+ The main pruning step FasterDecoder takes place in ProcessEmitting.
+ Conceptually what is happening is that we take the tokens in what in
+ SimpleDecoder was prev_toks_, and just before ProcessEmitting we prune using the
+ beam and specified maximum number of active states (whichever is tighter).  The
+ way this is actually implemented is that we call a function \ref
+ FasterDecoder::GetCutoff() "GetCutoff()", which returns a weight cutoff value
+ "weight_cutoff" that corresponds to the tighter of these two criteria; this
+ cutoff value applies to the tokens in prev_toks_.  Then when we go through
+ prev_toks_ (this variable does not exist in FasterDecoder, but conceptually), we
+ only process those tokens better than the cutoff.
+
+ The code in FasterDecoder as it relates to cutoffs is a little more complicated
+ than just having the one pruning step.  The basic observation is this: it's pointless
+ to create a very large number of tokens if you are only going to ignore most of them
+ later.  So the situation in ProcessEmitting is: we have "weight_cutoff" but
+ wouldn't it be nice if we knew what the value of "weight_cutoff" on the next
+ frame was going to be?  Call this "next_weight_cutoff".  Then, whenever we process
+ arcs that have the current frame's acoustic likelihoods, we could just avoid
+ creating the token if the likelihood is worse than "next_weight_cutoff".  In order
+ to know the next weight cutoff we have to know two things.  We have to know the
+ best token's weight on the next frame, and we have to know the effective beam
+ width on the next frame.  The effective beam width may differ from "beam" if the
+ "max_active" constraint is limiting, and we use the heuristic that the effective
+ beam width does not change very much from frame to frame.  
+ We attempt to estimate the best token's
+ weight on the next frame by propagating the currently best token (later on,
+ if we find even better tokens on the next frame we will update this estimate).  We
+ get a rough upper bound on the effective beam width on the next frame by using the
+ variable "adaptive_beam".  This is always set to the smaller of "beam" (the
+ specified maximum beam width), or the effective beam width as determined by
+ max_active, plus beam_delta (default value: 0.5).  When we say it is a "rough upper bound"
+ we mean that it will usually be greater than or equal to the effective beam
+ width on the next frame.  
+ The pruning value we use when creating new tokens equals our current estimate of
+ the next frame's best token, plus "adaptive_beam".  With finite "beam_delta", it
+ is possible for the pruning to be stricter than dictated by the "beam" and
+ "max_active" parameters alone, although at the value 0.5 we do not believe this
+ happens very often.
+ 
+
+ \section decoders_kaldi KaldiDecoder: an even more optimized decoder
+ 
+The class KaldiDecoder should provide a fast and general purpose decoder.
+It is templated on the type of the DecodableInterface to work with
+any acoustic model and is templated on the type of FST,
+to work with any type of semi-ring.
+The design of the KaldiDecoder was partly inspired by a very fast, FST-based
+decoder written by Ondrej Glembek, but was rewritten to be flexible and
+extendible for other types of recognition networks, acoustic models and
+semi-rings. In spite of the generalizations, the goal is to not sacrify 
+much of the original speed.
+
+ \subsection decoders_kaldi_itf Interface of KaldiDecoder
+
+The constructor of KaldiDecoder takes just KaldiDecoderOptions as argument:
+\verbatim
+ template<class Decodable, class Fst>
+ KaldiDecoder<Decodable, Fst>::KaldiDecoder(KaldiDecoderOptions opts);
+\endverbatim
+KaldiDecoderOptions is a structure that registers decoder options like pruning
+beamwidth to the command-line parser and passes their values to the decoder.
+The type of FST (and arc-type) that is used as recognition network and 
+the type of DecodableInterface are passed as template options.
+
+Decoding an utterance is accomplished by the following function:
+\verbatim
+ fst::VectorFst<fst::StdArc>* Decode(const Fst &fst, Decodable &decodable);
+\endverbatim
+We do not only pass the features of the utterance (in Decodable),
+but also the recognition network as the parameter "fst".
+Each utterance can be decoded by a different network.
+KaldiDecoder requires non-reordered graphs - i.e. it is expected, that each arc
+leaving a state has the same transition-id (pdf-id) assigned to it.
+Since in this case all leaving arcs evaluate a common acoustic pdf,
+the evaluation of the acoustic model can be done state based and all at once,
+which in the case of the previous decoder lead to a significant speed-up.
+
+The Decode function returns the traceback as an FST object.
+To save memory during decoding, not the whole traceback is saved -
+new arcs are only added for each encountered word.
+If successfull (otherwise NULL), the FST is a linear acceptor
+whose output labels are the (word) labels that were on the FST
+and whose weights contain the acoustic, language model and transition weights -
+accumulated since the last word label.
+Normally only tokens reaching a final state are considered.
+However, if no token reached a final state, a warning is uttered and
+the path of the best active token in the last frame is returned instead.
+
+ \subsection decoders_kaldi_workings How KaldiDecoder works
+
+The most important data members of class KaldiDecoder are:
+\verbatim
+ StateOrder<StateId> *state_order_;
+ WordLinkStore wl_store_;
+ TokenStore tokens_, tokens_next_;
+ TokenSet<StateId> *active_tokens_;
+\endverbatim
+
+The function of "active_tokens_" very much corresponds 
+to "prev_toks_" and "cur_toks_" in SimpleDecoder -
+it holds the active tokens during decoding.
+Here, TokenSet contains two unordered set of Tokens
+- one for consecutive access for the current frame
+- and another allowing random access (by node number) for the next frame
+
+Token is almost the same data structure as WordLink,
+which is used to store the traceback.
+The WordLinks are handled by WordLinkStore, which implements an own allocator
+and garbage collection. In the same way, tokens are handled by TokenStore.
+We use three different Stores, since it might speed up due to caching.
+
+StateOrder is a multi-functional data structure:
+It is used to dynamically determine the topological order of network states,
+which might not be known in advance, if we build the recognition network
+dynamically, and which is necessary when evaluating chains of non-emitting arcs.
+After determining the topological state order,
+StateOrder is used as a topologically sorted priority queue of states.
+
+The central part of the \ref KaldiDecoder::Decode() "Decode()" function
+is as follows:
+\verbatim
+ InitDecoding(fst, decodable);
+ frame_index_ = -1;
+ do {
+   frame_index_++;
+   ProcessNonEmitting();
+   EvaluateAndPrune();
+   ProcessEmitting();
+ } while (!(p_decodable_->IsLastFrame(frame_index_)));
+ FinalizeDecoding();
+\endverbatim
+
+\ref KaldiDecoder::InitDecoding() "InitDecoding()" initializes data structures
+used for decoding and inserts a first token (in the start state).
+It contains all tokens in non-emitting nodes to be forwarded in the next frame,
+that resulted from forwarding the active tokens from the last frame.
+From the start state, we explore the network to find all non-emitting nodes
+and store them on them queue (see below VisitNode).
+
+\ref KaldiDecoder::ProcessNonEmitting() "ProcessNonEmitting()" works analog
+to SimpleDecoder - it forwards tokens through 
+non-emitting arcs, but it considers the order given by the priority queue
+in "state_order_", so that no arc will be processed twice.
+
+\ref KaldiDecoder::EvaluateAndPrune() "EvaluateAndPrune()" evaluates the scores
+of the acoustic model for all pdf-ids in the active tokens for this frame.
+As already mentioned, since all outgoing arcs share the same pdf-id,
+it can be evaluated once per state and the score is added
+to all tokens, before forwarding them in the next step.
+"EvaluateAndPrune()" takes also care of pruning: the best active token before and
+after the acoustic evaluation is found, and the new "beam_threshold_"
+(best token score plus beamwidth) is computed, on whose basis the following
+functions ("ProcessEmitting" and "ProcessNonEmitting") prune new tokens.
+The number of active tokens is also pruned by "max_active_tokens",
+which may result in a tighter "beam_threshold_" (adaptive beam).
+
+\ref KaldiDecoder::ProcessEmitting() "ProcessEmitting()" works analog
+to SimpleDecoder - it forwards tokens through 
+emitting arcs, using the already computed acoustic scores.
+On the fly each newly discovered node is explored using the function
+\ref KaldiDecoder::VisitNode() "VisitNode()"
+by recursively following the arcs (depth first).
+"VisitNode()" finds the topological state order for evaluating 
+the non-emitting arcs and at the same time builds the priority queue.
+A second version of this function, \ref KaldiDecoder::VerifyNode() "VerifyNode()",
+has the same functionality, but at the same checks that the recognition network
+has the properties required by the decoder (e.g. no epsilon loops).
+After exploration, new tokens are dispatched -
+Tokens to be forwarded on non-emitting arcs are put to the priority queue,
+all other are put on member list of "active_tokens_".
+
+If the last frame has been processed, \ref KaldiDecoder::FinalizeDecoding()
+"FinalizeDecoding()" forwards the tokens through non-emitting arcs, using 
+slightly modified versions of "ProcessNonEmitting()" and "ProcessEmitting()"
+and at the same time the final state weights are evaluated.
+The path of the best successfull token is back-tracked
+and returned as output FST.
+
+*/
+
+
+}

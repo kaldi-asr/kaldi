@@ -1,0 +1,19 @@
+
+These instructions are valid for UNIX-like systems (tested on 
+various Linux distributions; Darwin; Cygwin).  For native Windows
+compilation, see ../windows/INSTALL.
+
+You must first have completed the installation steps in ../tools/INSTALL
+(compiling OpenFst; getting ATLAS and CLAPACK headers).
+
+The installation instructions are:
+./configure
+make depend
+make
+
+Note that "make" takes a long time; you can speed it up by running make
+in parallel, for instance "make -j 4"
+
+For more information, see documentation at http://merlin.fit.vutbr.cz/kaldi/
+and click on "The build process (how Kaldi is compiled)".
+

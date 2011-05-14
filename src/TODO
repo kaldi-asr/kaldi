@@ -1,0 +1,54 @@
+ Help needed:
+  - Proofread documentation and make suggestions for 
+    changes/clarification.
+  - Try to run the scripts and compile on various platforms, and
+    report problems.
+
+ TODO items (mainly for Dan to do):
+
+  Add fMLLR scripts for SGMM, and also use deeper trees.
+  Document configure script.
+  Remove cpplint.py from distribution.
+  Remove feat/test_data/ (or Karel to get other data?).
+  Remove non-Kaldi code from decoder/
+  Rename to branches/kaldi-1.0
+  Remove data from feat/test, and corresponding test?
+
+  Add code to average over multiple models while aligning...
+
+ documentation:
+  add something on dir structure
+  add something on doxygen
+
+  -restore table_examples to mainpage.dox when done.
+  -Include some examples of advanced usage of tables.
+
+  [? + make sub-directories for different language-models/lexicons in scripts]
+
+   - See if I can still do the reversed decoding if possible, and
+     maybe rationalize the graph creation.
+
+   - Implement lattice generation 
+
+--
+Minor:
+
+ RE reversing FSTs:  need to reverse Arpa.  
+   programs to: convert Arpa->exclusive counts;
+   exclusive counts-> inclusive counts; reverse inclusive counts;
+   inclusive counts-> exclusive counts; exclusive counts->Arpa.
+
+
+in future (maybe)
+ make sure calls like fopen, strtoll, strtod (check for more) use reentrancy 
+ structures.  (also rand_r, snprintf vs spritnf...?) (?)
+
+ Make sure, when we get the SGMM stuff working, that results are fully
+  reproducible (last year's code does not
+  seem to have been reproducible, due I imagine to rand() issues.) 
+ 
+ Add the stuff RE symmetric SGMMS, from the old to the new  SGMM code. [?]
+
+
+--------
+

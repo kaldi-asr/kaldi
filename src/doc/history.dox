@@ -1,0 +1,79 @@
+// doc/history.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+/**
+ \page history History of the Kaldi project
+
+ Kaldi began its existence in the 2009 Johns Hopkins University workshop cumbersomely
+ titled "Low Development Cost, High Quality Speech Recognition for New Languages and
+ Domains" (see \ref history_ack).  The focus of that project was 
+ Subspace Gaussian Mixture Model (SGMM) based
+ modeling and some investigations into lexicon learning.  The software which is now
+ Kaldi began to be developed there, but the recipe we developed at that time was
+ still dependent on HTK.  A list of participants in that workshop, official and 
+ unofficial, is (alphabetically by last name):
+
+ Pinar Akyazi, Mohit Agarwal, Lukas Burget, Arnab Ghoshal, Ondrej Glembek, Nagendra Goel,
+ Martin Karafiat, Feng Kai, Daniel Povey, Ariya Rastrow, Richard C. Rose, Petr Schwarz,
+ Samuel Thomas.
+
+ Some of the participants of that workshop agreed to meet again in the summer of
+ 2010 in Brno, Czech Republic (hosted by the Brno University of Technology).  The
+ aim of that workshop was to create a recipe based on the work done in 2009 that
+ was clean and releasable, and to create a general-purpose speech toolkit as a
+ byproduct.  The problem we were trying to solve was that our previous recipe was
+ based on disparate scripts involving both HTK and our own early "Kaldi" code,
+ and was not easy to encapsulate.  We also felt that a well-engineered, modern,
+ general-purpose speech toolkit with an open license would be an asset to the
+ speech-recognition community.  During August of 2010 the following group of
+ people met in Brno to work on this (again alphabetically):
+
+ Pinar Akyazi, Lukas Burget, Gilles Boullianne, Ondrej Glembek, Arnab Ghoshal,
+ Nagendra Goel, Mirko Hannemann, Petr Motlicek, Daniel Povey, Yanmin Qian, Petr
+ Schwarz, Jan Silowsky, Georg Stemmer, and Karel Vesely.
+
+ We also had some remote help around this time and shortly afterward, from
+ Sandeep Boda, Sandeep Reddy and Haihua Xu (who helped with coding, code cleanup
+ and documentation); we were visited by Michael Riley (who helped us to understand
+ OpenFst and gave some lectures on FSTs), and were helped by Honza Cernocky
+ (organization), Renata Kohlova (administration), and Tomas Kasparek (system
+ administration).  It is possible that this list of contributors contains
+ oversights; any important omissions are unlikey to be intentional.
+
+ A lot of code was written during the summer of 2010 but we still did not have a
+ complete working system.  Some of the participants of the 2010 workshop
+ continued working to complete the toolkit and get a working set of training scripts.  
+ Release is scheduled for early April, 2010.
+
+ \section history_ack Acknowledgements
+
+ The JHU 2009 workshop was supported by National Science Foundation Grant Number
+ IIS-0833652, with supplemental funding from Google Research, DARPA's GALE
+ program and the Johns Hopkins University Human Language Technology Center of
+ Excellence.  BUT researchers were partially supported during this time by Czech
+ Ministry of Trade and Commerce project no. FR-TI1/034, Grant Agency of Czech
+ Republic project no. 102/08/0707, and Czech Ministry of Education project
+ no. MSM0021630528.  Arnab Ghoshal was partially supported by the European
+ Community's Seventh Framework Programme under grant agreement number 213850
+ (SCALE).
+
+
+
+*/

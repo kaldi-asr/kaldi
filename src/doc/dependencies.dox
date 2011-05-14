@@ -1,0 +1,58 @@
+// doc/dependencies.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+
+  \page dependencies Other software you may need to run Kaldi
+
+
+    - Subversion (svn): this is needed to download Kaldi and other software
+      that it depends on.
+    - wget is required for the installation of some non-Kaldi components described below
+    - automake (and aclocal): required to install IRSTLM which some of our scripts use
+      (see below).
+    - doxygen: this is the program we use to generate html documentation from 
+      the C++ source (which has been marked up according to doxygen requirements).
+      If you will be changing the source significantly, this might be useful.
+    - The example scripts require standard UNIX utilities such as bash, 
+      perl, awk, grep, and make (cygwin can supply these on Windows).  
+      The toolkit itself does not require or directly interact with any of these,
+      and given appropriate scripts would work in any type of shell.
+    - The following tools and libraries come with installation instructions in 
+      the tools/ directory:
+      - OpenFst:  we compile against this so this is needed.
+      - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 
+        it is not tightly integrated with Kaldi; we can convert any Arpa format
+        language model to an FST.
+      - sph2pipe: this is for converting sph format files into other formats such
+        as wav.  It's needed for the example scripts that use LDC data.
+      - sclite: this is for scoring and is not necessary as we have our own, simple
+        scoring program (compute-wer.cc).
+      - dot: this is required by doxygen, to compile html documentation from the
+        C++ source (if you want to do this yourself).  It is also used to
+        interpret the output of fstdraw which can sometimes be useful when debugging FSTs. 
+      - ATLAS, the linear algebra library.  This is only needed for the headers; in 
+        typical setups we expect that ATLAS will be on your system.  However, if it not
+        already on your system you can compile ATLAS as long as your machine does not 
+        have CPU throttling enabled.
+      - CLAPACK, the linear algebra library (we download the headers).
+        This is useful only on systems where you don't have ATLAS and are
+        instead compiling with CLAPACK.
+
+*/

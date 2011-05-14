@@ -1,0 +1,60 @@
+// doc/mainpage.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+// This file is intended to be parsed by Doxygen to generate part of the html
+// documentation for Kaldi.  This documentation will be accessible in
+// ../html/index.html (after generating it by typing "doxygen" from the directory
+// one level up from here).  Of course this assumes that doxygen is installed on
+// your system.
+
+
+// This next comment generates the main page which is just a series of links to
+// major sub-pages.
+
+/**
+  \mainpage Kaldi
+
+   - \ref about 
+   - \ref install 
+   - \ref build_setup 
+   - \ref style 
+   - \ref dependencies
+   - \ref contact 
+   - \ref history 
+   - \ref matrix 
+   - \ref matrixwrap 
+   - \ref io 
+   - \ref error 
+   - \ref parse_options 
+   - \ref util
+   - \ref clustering
+   - \ref hmm
+   - \ref tree_internals
+   - \ref tree_externals
+   - \ref graph 
+   - \ref graph_recipe_test
+   - \ref graph_recipe_train
+   - \ref fst_algo 
+   - \ref decoders 
+   - \ref feat
+   - \ref model
+   - \ref transform
+   - \ref feat
+
+*/

@@ -1,0 +1,24 @@
+
+# PREPARE THE TESTING DATA
+# the testing utterance is uncopyrighted recording
+# which is generally used at Brno University of 
+# Technology for teaching purposes...
+
+#1) convert 16kHz,lin16 wav to KALDI ASCII vector format
+cat prepare_wav_in_ascii.m | matlab
+
+#2) perform reference feature extraction by HTK
+# we used HCopy from HTK V3.4
+HCopy -C hcopy1.conf test.wav test.wav.fea_htk.1
+
+HCopy -C hcopy2.conf test.wav test.wav.fea_htk.2
+
+HCopy -C hcopy3.conf test.wav test.wav.fea_htk.3
+
+HCopy -C hcopy4.conf test.wav test.wav.fea_htk.4
+
+HCopy -C hcopy5.conf test.wav test.wav.fea_htk.5
+
+HCopy -C hcopy6.conf test.wav test.wav.fea_htk.6
+
+HCopy -C plp1.conf test.wav test.wav.plp_htk.1

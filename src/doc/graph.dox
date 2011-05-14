@@ -1,0 +1,121 @@
+// doc/graph.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page graph Decoding graph construction in Kaldi
+
+  Firstly, we cannot hope to introduce finite state transducers and how they
+  are used in speech recognition.  For that, see 
+  <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition 
+  with Weighted Finite-State Transducers" </a> by Mohri, Pereira and 
+  Riley (in Springer Handbook on SpeechProcessing and Speech Communication, 2008). 
+  The general approach we use is as described there, but some of the details, 
+  particularly with respect to how
+  we handle disambiguation symbols and how we deal with weight-pushing, differ.
+
+  \section graph_overview Overview of graph creation
+
+  The overall picture for decoding-graph creation is that we 
+  are constructing the graph  HCLG = H o C o L o G.  Here
+
+   - G is an acceptor (i.e. its input and output symbols are the same) 
+      that encodes the grammar or language model.
+   - L is the lexicon; its output symbols are words and its input
+     symbols are phones.
+   - C represents the context-dependency: its output symbols are phones
+     and its input symbols represent context-dependent phones, i.e. windows 
+     of N phones; see \ref tree_window.
+   - H contains the HMM definitions; its output symbols represent context-dependent
+     phones and its input symbols are transitions-ids, which encode the pdf-id and
+     other information (see \ref transition_model_identifiers)
+
+  This is the standard recipe.  However, there are a lot of details to be
+  filled in.  We want to ensure that the output is determinized and minimized,
+  and in order for HCLG to be determinizable we have to insert disambiguation 
+  symbols.  For details on the disambiguation symbols, see below 
+  \ref graph_disambig.  
+
+  We also want to ensure the HCLG is stochastic, as far as possible; in the
+ conventional recipes, this is done (if at all) with the "push-weights"
+ operation.  Our approach to ensuring stochasticity is different, and is based
+ on ensuring that no graph creation step "takes away" stochasticity; see \ref
+  fst_algo_stochastic for details.
+
+  If we were to summarize our approach on one line (and one line can't
+  capture all the details, obviously), the line would probably as follows,
+  where asl=="add-self-loops" and rds=="remove-disambiguation-symbols",
+  and H' is H without the self-loops:
+
+  HCLG = asl(min(rds(det(H' o min(det(C o min(det(L o G))))))))
+
+  Weight-pushing is not part of the recipe; instead we aim to ensure that
+  no stage of graph creation will stop the result from being stochastic,
+  as long as G was stochastic.  Of course, G will typically not be quite
+  stochastic, because of the way Arpa language models with backoff are represented in FSTs,
+  but at least our approach ensures that the non-stochasticity "stays
+  put" and does not get worse than it was at the start; this approach avoids 
+  the danger of the "push-weights" operation failing or making things worse.
+
+  \section graph_disambig Disambiguation symbols
+
+ Disambiguation symbols are the symbols \#1, \#2, \#3  and so on that
+ are inserted at the end of phonemene sequences in the lexicon.  When
+ a phoneme sequence is a prefix of another phoneme sequence in the lexicon,
+ or appears in more than one word, it needs to have one of 
+ these symbols added after it.  These symbols are needed to ensure that
+ the product L o G is determinizable.  We also insert disambiguation symbols
+ in two more places.  We have a symbol \#0 on the backoff arcs in the
+ language model G; this ensures that G is determinizable after removing epsilons
+ (since our determinization algorithm does remove epsilons).  We also
+ have a symbol #-1 in place of epsilons that appear on the left of context FST C,
+ at the beginning of the utterance (before we start outputting symbols).
+ This is necessary to fix a rather subtle problem that happens when we have
+ words with an empty phonetic representation (e.g. the beginning and
+ end of sentence symbols \<s\> and \</s\>).  
+
+ We give the outline of how we would formally prove that the
+ intermediate stages of graph compilation (e.g. LG, CLG, HCLG) are determinizable;
+ this is important in ensuring that our recipe never fails.  By determinizable,
+ we mean determinizable after epsilon removal.  The general setup is:
+ first, we stipulate that G must be determinizable.  This is why we need the \#0
+ symbols (G is actually deterministic, hence determinizable).  Then we want L to 
+ be such that for any determinizable G, L o G is determinizable.  [The same
+ goes for C, with L o G on the right instead of G].  There are a lot of details
+ of the theory still to be fleshed out, but I believe it is sufficient for L to have two 
+ properties:
+    - \f$ L^{-1} \f$ must be functional
+      - equivalently: any input-sequence on L must induce a unique output-sequence 
+      - equivalently: for any linear acceptor A, A o L is a linear transducer or empty.
+    - L has the twins property, i.e. there are no two states reachable 
+      with the same input-symbol sequence, that each have a cycle with the
+      same input sequence but different weight or output sequence.
+
+ The same applies of course to the C transducer.  We believe that the transducers
+ as our scripts and programs currently create them have these properties.
+
+  \section graph_disambig Disambiguation symbols
+
+
+
+*/
+
+
+}

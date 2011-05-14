@@ -1,0 +1,8 @@
+
+This directory contains some of the source for the Doxygen documentation (the
+code itself, and its comments, is the rest of the source).  Doxygen will create
+the actual documentation in ../html/ (e.g. open ../html/index.html in a browser).
+To run doxygen, type "doxygen" from one directory above this.  If this does
+not work, search for "Kaldi main page" online and you will hopefully get a 
+version of the documentation.
+

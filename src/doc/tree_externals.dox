@@ -1,0 +1,294 @@
+// doc/tree_externals.dox
+
+// util/common-utils.h
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/**
+ \page tree_externals How decision trees are used in Kaldi
+
+  \section tree_intro Introduction
+
+  This page gives an overview of how phonetic decision trees are built and used
+  in Kaldi and how this interacts with training and graph-building.  For a
+  description of the internals, of the tree-building code, see \ref
+  tree_internals; for more details on the graph-building approach, see \ref
+  graph.
+
+ \section tree_window Phonetic context windows
+
+Here we explain how we describe phonetic context in our code.
+A particular tree will have two integer values that describe the
+width and "central position" of the context window.  The table
+below summarizes these values:
+
+<table border="1">
+<tr>
+<td>Name in code</td> <td> Name in command-line arguments</td> <td> Value (triphone) </td> <td> Value (monophone) </td>
+</tr>
+<tr>
+<td> N </td> <td> --context-width=? </td> <td> 3 </td> <td> 1 </td>
+</tr>
+<tr>
+<td> P </td> <td> --central-position=? </td> <td> 1 </td> <td> 0 </td>
+</tr>
+</table>
+
+N is the width of the context window and P is the identity of the designated
+"central phone".  Normally P is exactly in the middle of the window 
+(hence the name "central-position"); for example, with N=3, we would normally
+have P=1, but you are free to choose any value from 0 to N-1; for instance, P=2 and
+N=3 means two phones of left context and no right context at all.
+In the code, when we talk about the "central phone" we always mean the P'th
+phone which may or may not actually be the central phone of the context window.
+
+A vector of integers representing a typical triphone context window might be:
+\code 
+// probably not valid C++ 
+vector<int32> ctx_window = { 12, 15, 21 };
+\endcode
+Assuming N=3 and P=1, this would represent phone 15 with 
+a right context of 21 and a left context of 12.  The way we handle end
+effects is using zero (which is not a valid phone because it's reserved in
+OpenFst for the epsilon meaning "no symbol"), so for instance:
+\code 
+vector<int32> ctx_window = { 12, 15, 0 };
+\endcode
+means phone 15 with a left-context of 12 and no right-context because it's the
+end of the utterance.  At the end of utterance in particular, the use of zero
+this way may be a little unexpected because the last "phone" is actually the
+subsequential symbol "$" (see \ref graph_c), but for the convenience 
+of the decision-tree code we don't
+put the subsequential symbol in these context windows, we put zero.  Note
+that if we had N=3 and P=2, the above context window would be invalid because
+its P'th element would be zero which is not a real phone; also of course,
+if we had a tree with N=1, neither of the windows above would be valid because they 
+are the wrong size.  In the monophone case, we would have a window like:
+\code 
+vector<int32> ctx_window = { 15 };
+\endcode
+so monophone systems are just treated as a special case of context-dependent
+systems, with a window size N of 1 and a tree that doesn't do anything very 
+interesting.
+
+
+
+\section tree_building The tree building process
+
+In this section we give an overview of the tree-building process in Kaldi.
+
+Even a monophone system has a decision tree, but a trivial one; see the functions
+MonophoneContextDependency() and MonophoneContextDependencyShared() which return
+such trivial trees.  These are called by the command-line program \ref
+gmm-init-mono.cc "gmm-init-mono"; its main input is the HmmTopology object and it
+outputs the tree, normally written as an object of type ContextDependency to a
+file called "tree", and also the model file (the model file contains a
+TransitionModel object and an AmDiagGmm object).  If the program gmm-init-mono
+receives an option called --shared-phones, it will share the pdfs between
+specified sets of phones; otherwise it makes all the phones separate.
+
+After training a monophone system starting from a flat start, we take 
+the monophone alignments
+and use the function AccumulateTreeStats() (called from \ref acc-tree-stats.cc 
+"acc-tree-stats") to accumulate statistics for training the tree.  This program is
+not limited to reading in monophone alignments; it works from context-dependent
+alignments too so we can build trees based on e.g. triphone alignments.
+The statistics for tree building are written to disk as the type \ref BuildTreeStatsType 
+(see \ref treei_stats).  
+The function AccumulateTreeStats() takes the values N and P, as explained in the
+previous section; the command-line programs will set these by default to 3 and
+1 respectively, but this can be overridden using the --context-width
+and --central-position options.  The program \ref acc-tree-stats.cc 
+"acc-tree-stats" takes a list of context-independent phones (e.g. silence), but this is
+not required even if there are context-independent phones; it is just
+a mechanism to reduce the size of the statistics.  
+For context-independent hones, the program will accumulate the
+corresponding statistics without the keys corresponding to the left and right phones defined
+(c.f. \ref treei_event_map).
+
+When the statistics have been
+accumulated we use the program \ref build-tree.cc "build-tree" to 
+build the tree.  This outputs the tree.  
+The program \ref build-tree.cc "build-tree" requires three things:
+  - The statistics (of type BuildTreeStatsType)
+  - The questions config (of type Questions)
+  - The roots file (see below)
+
+The statistics would typically come from the program acc-tree-stats;
+the questions configuration class would be output by the compile-questions
+program, which takes in a topology list of phonetic questions (in our
+scripts, these are automatically obtained from tree-building statistics
+by the program cluster-phones.  The roots file specifies sets of phones
+that are shared roots in the decision-tree clustering process, and says
+for each phone set the following two things:
+  - "shared" or "not-shared" says whether or not there should be separate  
+    roots for each of the \ref pdf_class "pdf-classes", or if the roots
+    should be shared.  If we are going to be splitting (the "split" option
+    below) we enforce that the roots should be shared.
+  - "split" or "not-split" says whether or not the decision tree splitting
+    should actually be done for the roots in question (for silence, we
+    typically don't split).
+
+Below is an example of a roots file; this assumes that phone 1 is silence
+and all the other phones have separate roots.
+\verbatim
+not-shared not-split 1
+shared split 2
+shared split 3
+...
+shared split 28
+\endverbatim
+Sharing roots is most useful when we have things like position and 
+stress-dependent phones; in this case each "real" phone would correspond
+to a set of integer phone ids.  In that case we share the roots for all
+versions of a particular underlying phone.
+
+We do the initial phases of Gaussian mixing up using the alignments from
+the previous (e.g. monophone) build; the alignments are converted from one
+tree to another using the program \ref convert-alignments.cc "convert-alignments".
+
+\section pdf_id PDF identifiers
+
+ The PDF identifier (pdf-id) is a number, starting from zero, that is used as an index
+ for the probability distribution function (p.d.f.).  Each p.d.f. in the system has its own
+ pdf-id, and these are contiguous (typically there are several thousand of these in an LVCSR
+ system).  They are originally assigned when the tree is first built.  Depending
+ how the tree is built, it may or may not be possible to say, for each pdf-id, which phone
+ it corresponds to.  
+
+\section tree_ctxdep Context dependency objects
+
+ The ContextDependencyInterface object is a virtual base-class for the
+ tree that specifies how it interacts with the graph-building code.  This
+ interface contains only four functions: 
+    - \ref ContextDependencyInterface::ContextWidth() "ContextWidth()" returns
+        the value of N (context-width) that the tree requires.
+    - \ref ContextDependencyInterface::CentralPosition() "CentralPosition()" returns
+        the value of P (central-position) that the tree requires.
+    - \ref ContextDependencyInterface::NumPdfs() "NumPdfs()" returns the number
+       of pdfs defined by the tree; these are numbered from zero to NumPdfs()-1.
+    - \ref ContextDependencyInterface::Compute() "Compute()" is the function
+        that computes the \ref pdf_id "pdf-id"  for a particular context
+        (and \ref pdf_class "pdf-class").
+
+  The \ref ContextDependencyInterface::Compute() Compute() function is declared as follows:
+\code
+class ContextDependencyInterface {
+...
+ virtual bool Compute(const std::vector<int32> &phoneseq, int32 pdf_class,
+                      int32 *pdf_id) const;
+}
+\endcode
+It returns true if it was able to compute the pdf-id for this context and
+\ref pdf_class "pdf-class".  A return value of false will indicate some kind
+of error or mismatch.  An example of using this function is:
+\code
+ContextDependencyInterface *ctx_dep = ... ;
+vector<int32> ctx_window = { 12, 15, 21 }; // not valid C++
+int32 pdf_class = 1; // probably central state of 3-state HMM.
+int32 pdf_id;
+if(!ctx_dep->Compute(ctx_window, pdf_class, &pdf_id))
+  KALDI_ERR << "Something went wrong!"
+else
+  KALDI_LOG << "Got pdf-id, it is " << pdf_id;
+\endcode
+
+The only class that currently inherits from ContextDependencyInterface
+is the class ContextDependency, which has marginally richer interface; 
+the only important addition is the function \ref ContextDependency::GetPdfInfo 
+"GetPdfInfo" which is used by the TransitionModel class to work out which
+phones a particular pdf can possibly correspond to (this function could
+be emulated given only the interface of ContextDependencyInterface, by
+enumerating all contexts).
+
+The ContextDependency object is actually a fairly thin wrapper for the
+EventMap object; see \ref tree_internals.  We wanted to hide
+the actual implementation of the tree as much as possible to make it
+easy to refactor the code later if needed. 
+
+\section tree_ilabel The ilabel_info object
+
+The final graph (HCLG in the standard notation, see \ref graph) has symbols
+on its input side that represent context-dependent phones (as well as
+disambiguation symbols and possibly epsilon symbols).  In the graph, as always,
+these are represented by integer labels.  We use an object that, in code
+and in filenames, is generally called ilabel_info.  The ilabel_info object
+has a strong connection to the ContextFst objects, see \ref graph_context.
+As with many other Kaldi types, ilabel_info is a generic (STL) type but 
+we use a consistent variable name 
+to make it identifiable.  It is of the following type:
+\code
+ std::vector<std::vector<int32> > ilabel_info;
+\endcode
+It is a vector, indexed by the FST input label, that gives for each
+input label the corresponding phonetic context window (see above,
+\ref tree_window).  For example, suppose symbol 1500 is phone
+30 with a right-context of 12 and a left-context of 4, we would
+have
+\code 
+ // not valid C++
+ ilabel_info[1500] == { 4, 1500, 12 };
+\endcode
+In the monophone case, we would have things like:
+\code
+ ilabel_info[30] == { 28 };
+\endcode
+There are special cases to deal with disambiguation symbols (see 
+\ref graph_disambig or the 
+Springer Handbook paper referenced above for an explanation of what these
+are).  If an ilabel_info entry corresponds to a disambiguation symbol,
+we put in it the negative of the symbol-table entry of the disambiguation
+symbol (note that this is not the same as the number of the printed form
+of the disambiguation symbol as in #0, #1, #2 etc., it is the number 
+corresponding to it in a symbol-table file, which in our current scripts is 
+called phones_disambig.txt).  For example,
+\code
+ ilabel_info[5] == { -42 };
+\endcode
+would mean that symbol number 5 on HCLG corresponds to the disambiguation
+symbol whose integer id is 42.  We negate these for scripting convenience,
+so the programs that interpret the ilabel_info object don't need to be
+given a list of disambiguation symbols in order to be able to distinguish them from
+real phones in the monophone case.  There are two additional special cases:
+we have
+\code 
+ ilabel_info[0] == { }; // epsilon
+ ilabel_info[1] == { 0 }; // disambig symbol #-1;
+ // we use symbol 1, but don't consider this hardwired.
+\endcode
+The first of these is the normal epsilon symbol, and we give it an empty vector
+as its ilabel_info entry.  This symbol would not normally appear on the left of
+CLG.  The second is a special disambiguation symbol that in
+printed form is called "#-1".  We use it where epsilons are used on the input of
+the C transducer in the normal (Springer Handbook) recipe; it is needed to
+ensure determinizability of CLG in the presence of words with empty
+phonetic representations.
+
+The program \ref fstmakecontextsyms.cc "fstmakecontextsyms" is able to create
+a symbol-table that corresponds to the printed form of the ilabel_info object;
+this is mainly of use for debugging and diagnostics.
+
+As you can see, the ilabel_info object is not very pleasant as it relates to
+disambiguation symbols, but there are not many parts of the code that interact
+closely with it: only the \ref ContextFst class (and related things; see \ref
+context_fst_group), the program fstmakecontextsyms.cc, and some functions listed
+in \ref hmm_group_graph).  The ContextDependency object, in particular, only sees
+valid sequences of length N that represent phone context windows.
+
+*/
+
+}
