@@ -459,7 +459,7 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories 
 # with spaces.
 
-INPUT                  = base matrix util feat tree gmm sgmm fstext hmm optimization \
+INPUT       = doc base matrix util feat tree gmm sgmm fstext hmm optimization \
 	    transform lm decoder bin fstbin gmmbin fgmmbin sgmmbin featbin
 
 # If the value of the INPUT tag contains directories, you can use the 
