@@ -87,6 +87,13 @@ fi
 convert-ali  $srcmodel $dir/0.mdl $dir/tree ark:$dir/0.ali \
   ark:$dir/cur.ali 2>$dir/convert.log 
 
+rm $dir/0.ali
+
+# Make training graphs
+echo "Compiling training graphs"
+compile-train-graphs $dir/tree $dir/1.mdl  data/L.fst ark:data/train.tra \
+   "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1 
+
 iter=0
 while [ $iter -lt $numiters ]; do
    echo "Pass $iter ... "
@@ -94,7 +101,7 @@ while [ $iter -lt $numiters ]; do
       echo "Aligning data"
       echo "Aligning data"
       sgmm-align-compiled $spkvecs_opt $scale_opts "$gselect_opt" --beam=8 \
-          --retry-beam=40 $dir/$iter.mdl "$srcgraphs" "$feats" \
+          --retry-beam=40 $dir/$iter.mdl "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
       	ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
    fi
    if [ $iter -gt 0 ]; then
