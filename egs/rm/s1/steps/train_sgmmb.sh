@@ -95,7 +95,8 @@ if [ ! -f $dir/gselect.gz ]; then
  sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;
 fi
 
-cp $dir/0.ali $dir/cur.ali || exit 1;
+convert-ali  $srcmodel $dir/0.mdl $dir/tree ark:$dir/0.ali \
+  ark:$dir/cur.ali 2>$dir/convert.log 
 
 iter=0
 while [ $iter -lt $numiters ]; do
