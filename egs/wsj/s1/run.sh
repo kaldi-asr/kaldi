@@ -84,12 +84,14 @@ cat data/lexicon.txt | awk '{print $1}' | sort | uniq  | \
 
 cd data_prep
 
-#TODO: remove following system-specific comments.
-#On BUT system, do:
-./run.sh /mnt/matylda2/data/WSJ?/??-{?,??}.?
 
-# On Geoff Hinton's system we can do:
-#  ./run.sh  /ais/gobi2/speech/WSJ/*/??-{?,??}.?
+# On BUT system, do:
+# The following command needs a list of directory names from
+# the LDC's WSJ disks.  These will end in e.g. 11-1.1.
+# examples:
+# /ais/gobi2/speech/WSJ/*/??-{?,??}.?
+# /mnt/matylda2/data/WSJ?/??-{?,??}.?
+./run.sh [list-of-directory-names]
 
 
 cd ..

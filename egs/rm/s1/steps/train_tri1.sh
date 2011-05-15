@@ -58,7 +58,7 @@ scripts/int2sym.pl data/phones.txt < $dir/questions.txt > $dir/questions_syms.tx
 compile-questions $dir/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
 
 # Have to make silence root not-shared because we will not split it.
-scripts/make_roots.pl --separate data/phones.txt `cat data/silphones.csl` shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+scripts/make_roots.pl --separate data/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
 
 build-tree --verbose=1 --max-leaves=$numleaves \

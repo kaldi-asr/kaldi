@@ -37,9 +37,9 @@ subset[3]=2500
 for x in 0 1 2 3; do
     echo "Pass $x"
     feats="ark:scripts/subset_scp.pl ${subset[$x]} data/train.scp | add-deltas --print-args=false scp:- ark:- |"
-    fgmm-acc-stats --diag-gmm-nbest=15 --binary=false --verbose=2 $dir/$x.ubm "$feats" $dir/$x.acc \
+    fgmm-global-acc-stats --diag-gmm-nbest=15 --binary=false --verbose=2 $dir/$x.ubm "$feats" $dir/$x.acc \
 	2> $dir/acc.$x.log  || exit 1;
-    fgmm-est --verbose=2 $dir/$x.ubm $dir/$x.acc \
+    fgmm-global-est --verbose=2 $dir/$x.ubm $dir/$x.acc \
 	$dir/$[$x+1].ubm 2> $dir/update.$x.log || exit 1;
     rm $dir/$x.acc $dir/$x.ubm
 done

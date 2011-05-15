@@ -6,6 +6,7 @@
 
  TODO items (mainly for Dan to do):
 
+  Add separate min-count at root of tree for regression-tree fMLLR/MLLR
   Add fMLLR scripts for SGMM, and also use deeper trees.
   Document configure script.
   Remove cpplint.py from distribution.

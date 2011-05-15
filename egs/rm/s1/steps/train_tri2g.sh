@@ -82,7 +82,7 @@ done
 
 
 # just a single element. :-separated integer list of context-independent
-scripts/make_roots.pl --separate data/phones.txt `cat data/silphones.csl` shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+scripts/make_roots.pl --separate data/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
 # script below tells it not to cluster, but here we avoid accumulating
 # CD-stats for silence.
 
@@ -106,7 +106,7 @@ cluster-phones $dir/treeacc $dir/phones.list $dir/questions.txt 2> $dir/question
 scripts/int2sym.pl data/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
 compile-questions $dir/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
 
-scripts/make_roots.pl --separate data/phones.txt `cat data/silphones.csl` shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+scripts/make_roots.pl --separate data/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
 build-tree --verbose=1 --max-leaves=$numleaves \
     $dir/treeacc $dir/roots.txt \

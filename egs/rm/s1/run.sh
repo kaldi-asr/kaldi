@@ -38,7 +38,6 @@ cd data_prep
 ./run.sh /path/to/RM
 cd ..
 
-
 mkdir -p data
 ( cd data; cp ../data_prep/{train,test*}.{spk2utt,utt2spk} . ; cp ../data_prep/spk2gender.map . )
 
@@ -50,14 +49,14 @@ steps/prepare_graphs.sh
 # data to (e.g. make it a link to a file on some reasonably large file system).
 # If it doesn't exist, the scripts below will make the directory "exp".
 
-# tempdir should be set to some place to put training mfcc's
+# mfcc should be set to some place to put training mfcc's
 # where you have space.
-#e.g.: tempdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
+#e.g.: mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
 mfccdir=/path/to/mfccdir
 steps/make_mfcc_train.sh $mfccdir
 steps/make_mfcc_test.sh $mfccdir
 
-steps/train_mono.sh    
+steps/train_mono.sh
 steps/decode_mono.sh  &
 steps/train_tri1.sh
 steps/decode_tri1.sh  &

@@ -34,8 +34,6 @@ scripts/mkgraph.sh $tree $model $graphdir
 for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
   # Comment the two lines below to make this per-utterance.
-  # This would only work if $srcdir was also per-utterance [otherwise
-  # you'd have to mess with the script a bit].
   spk2utt_opt=--spk2utt=ark:data/test_${test}.spk2utt
   utt2spk_opt=--utt2spk=ark:data/test_${test}.utt2spk
 

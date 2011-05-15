@@ -33,8 +33,9 @@ ubm=exp/ubma/4.ubm
 realign_iters="5 10 15"; 
 spkvec_iters="5 8 12 17 22"
 silphonelist=`cat data/silphones.csl`
-numsubstates=1500 # Initial #-substates.
-totsubstates=5000 # Target #-substates.
+numleaves=2500
+numsubstates=2500 # Initial #-substates.
+totsubstates=7500 # Target #-substates.
 maxiterinc=15 # Last iter to increase #substates on.
 incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
 gselect_opt="--gselect=ark:gunzip -c $dir/gselect.gz|"
@@ -52,9 +53,7 @@ if [ ! -f $ubm ]; then
   echo "No UBM in $ubm"
 fi
 
-sgmm-init --spk-space-dim=39 $srcdir/final.mdl $ubm $dir/0.mdl 2> $dir/sgmm_init.log || exit 1;
-
-cp $srcdir/tree $dir
+cp $srcdir/topo $dir
 
 echo "aligning all training data"
 if [ ! -f $dir/0.ali ]; then
@@ -62,8 +61,33 @@ if [ ! -f $dir/0.ali ]; then
         "$feats" ark,t:$dir/0.ali 2> $dir/align.0.log || exit 1;
 fi
 
+# We rebuild the tree because we want a larger #states than for a normal
+# GMM system (the optimum #states for SGMMs tends to be a bit higher).
+
+if [ ! -f $dir/treeacc ]; then
+  acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" ark:$dir/0.ali \
+    $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
+fi
+
+cat data/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
+cluster-phones $dir/treeacc $dir/phones.list $dir/questions.txt 2> $dir/questions.log || exit 1;
+scripts/int2sym.pl data/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
+compile-questions $dir/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
+scripts/make_roots.pl --separate data/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+
+build-tree --verbose=1 --max-leaves=$numleaves \
+    $dir/treeacc $dir/roots.txt \
+    $dir/questions.qst $dir/topo $dir/tree  2> $dir/train_tree.log || exit 1;
+
+# the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
+
+gmm-init-model  --write-occs=$dir/0.occs  \
+    $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
+
+sgmm-init --spk-space-dim=39 $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
+
 if [ ! -f $dir/0.mdl ]; then
-   echo "you must run init_sgmm.sh before train_sgmm1.sh"
+   echo "you must run init_sgmm.sh before train_sgmmb.sh"
    exit 1
 fi
 
