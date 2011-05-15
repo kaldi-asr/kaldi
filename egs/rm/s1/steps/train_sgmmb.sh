@@ -102,7 +102,7 @@ rm $dir/0.ali
 
 # Make training graphs
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/1.mdl  data/L.fst ark:data/train.tra \
+compile-train-graphs $dir/tree $dir/0.mdl  data/L.fst ark:data/train.tra \
    "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1 
 
 
