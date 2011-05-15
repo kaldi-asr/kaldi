@@ -22,8 +22,7 @@
   \page dependencies Other software you may need to run Kaldi
 
 
-    - Subversion (svn): this is needed to download Kaldi and other software
-      that it depends on.
+    - Subversion (svn): this is needed to download Kaldi and other software that it depends on.
     - wget is required for the installation of some non-Kaldi components described below
     - automake (and aclocal): required to install IRSTLM which some of our scripts use
       (see below).

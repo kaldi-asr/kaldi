@@ -100,14 +100,21 @@ namespace kaldi {
  for such things as model estimation (e.g. see MlEstimateAmDiagGmm), or transform
  estimation (there are various pieces of code that do this; see \ref transforms.
 
- \section Subspace Gaussian Mixture Models (SGMMs)
+ \section model_sgmm Subspace Gaussian Mixture Models (SGMMs)
 
- Arnab to work on this section.
+ Subspace Gaussian Mixture Models (SGMMs) are implemented by class
+ AmSgmm.  This class essentially implements the approach described in
+ ``The Subspace Gaussian Mixture Model – a Structured Model for Speech 
+ Recognition'', by D. Povey, Lukas Burget et. al Computer Speech and Language, 
+ 2011.
+ The class AmSgmm represents a whole collection of pdf's; there
+ is no class that represents a single pdf of the SGMM (as there is for
+ GMMs).  Estimation of SGMMs is done (at the C++ level) by class
+ \ref MleAmSgmm.  
 
-
+ For example scripts that demonstrate how to
+ build an SGMM based system, see for example egs/rm/s1/steps/train_ubma.sh,
+ egs/rm/s1/steps/train_sgmma.sh, and egs/rm/s1/steps/decode_sgmma.sh.
 
 
 */
-
-
-}
