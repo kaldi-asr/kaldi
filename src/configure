@@ -7,8 +7,6 @@
 # remove the options -g -O0 -DKALDI_PARANOID, or edit the 
 # -DKALDI_DOUBLE_PRECISION option (to be 1 not 0),
 
-echo "Configuring ..."
-
 function failure {
     echo "***configure failed: $* ***"
     exit 1;
@@ -32,19 +30,25 @@ ATLASROOT=../tools/ATLAS/
 while [ $# -gt 0 ];
 do
     case "$1" in
-	--atlas-root=*) 
-	ATLASROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
-	--fst-root=*)
-	FSTROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
-	--mkl-root=*)
-	MKLROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
-	--mkl-libdir=*)
-	MKLLIBDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --help)
+    echo 'Usage: ./configure [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+     [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--mathlib=ATLAS|MKL|CLAPACK]';
+    exit 0 ;;
+    --atlas-root=*) 
+    ATLASROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --fst-root=*)
+    FSTROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --mkl-root=*)
+    MKLROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --mkl-libdir=*)
+    MKLLIBDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
 	--with-math-lib=*)
 	MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
-        *)  echo "Unknown argument: $1, exiting"; exit 1 ;;
-    esac
+    *)  echo "Unknown argument: $1, exiting"; exit 1 ;;
+   esac
 done
+
+echo "Configuring ..."
 
 if [ ! -f makefiles/kaldi.mk.common ]; then
     failure makefiles/kaldi.mk.common not found
@@ -57,11 +61,11 @@ fi
 echo "Using OpenFST library in $FSTROOT"
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
     failure "Could not find file $FSTROOT/include/fst/fst.h:
-	you may not have installed OpenFst.  See ../tools/INSTALL"
+    you may not have installed OpenFst.  See ../tools/INSTALL"
 fi
 if ! cmp ../tools/minimize.h $FSTROOT/include/fst/minimize.h ; then
     echo "**Warning: ../tools/minimize.h and $FSTROOT/include/fst/minimize.h differ: 
-	patch not applied?  FST tools may not work.  See ../tools/INSTALL"
+    patch not applied?  FST tools may not work.  See ../tools/INSTALL"
 fi
 
 # back up the old one in case we modified it
@@ -81,7 +85,7 @@ echo "Doing OS specific configurations ..."
 if [ "`uname`" == "Darwin"  ]; then
     echo "On Darwin: checking for Accelerate framework ..."
     if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
-	failure "Need the Accelerate.framework to compile on Darwin."
+    failure "Need the Accelerate.framework to compile on Darwin."
     fi
     if [ ! -f $FSTROOT/lib/libfst.a ]; then
         failure "Static OpenFST library not found:  See ../tools/INSTALL"
@@ -89,14 +93,14 @@ if [ "`uname`" == "Darwin"  ]; then
     # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
     osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | sed -e 's?\.[^.]*$??'`
     if [ $osx_ver == "10.5" ]; then
-	echo "Configuring for OS X version $osx_ver ..."
-	check_exists makefiles/darwin_10_5.mk
-    	cat makefiles/darwin_10_5.mk >> kaldi.mk 
+    echo "Configuring for OS X version $osx_ver ..."
+    check_exists makefiles/darwin_10_5.mk
+        cat makefiles/darwin_10_5.mk >> kaldi.mk 
     elif [ $osx_ver == "10.6" ]; then
-	check_exists makefiles/darwin_10_6.mk
-    	cat makefiles/darwin_10_6.mk >> kaldi.mk 
+    check_exists makefiles/darwin_10_6.mk
+        cat makefiles/darwin_10_6.mk >> kaldi.mk 
     else 
-	failure "OS X version '$osx_ver' not supported"
+    failure "OS X version '$osx_ver' not supported"
     fi
     echo "Configuration succeeded for platform Darwin."
     exit 0
@@ -105,7 +109,7 @@ fi
 if [ "`uname -o`" == "Cygwin"  ]; then
     echo "On Cygwin: checking for linear algebra libraries ..."
     if [ ! -f ../tools/CLAPACK_include/clapack.h ]; then
-    	failure could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7
+        failure could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7
     fi
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure  please first install package liblapack0
@@ -118,22 +122,22 @@ fi
 echo "Checking for linear algebra header files ..."
 if [ $MATHLIB == "ATLAS" ]; then
     if [ ! -f $ATLASROOT/include/cblas.h ] || [ ! -f $ATLASROOT/include/clapack.h ] ; then
-    	failure "Could not find required header files cblas.h or clapack.h in ATLAS dir '$ATLASROOT/include'"
+        failure "Could not find required header files cblas.h or clapack.h in ATLAS dir '$ATLASROOT/include'"
     fi
     echo "Using ATLAS as the linear algebra library."
 elif [ $MATHLIB == "MKL" ]; then
     if [ -z $MKLROOT ]; then
-	failure "Must specify the location of MKL with --mkl-root option"
+    failure "Must specify the location of MKL with --mkl-root option"
     elif [ ! -f $MKLROOT/include/mkl.h ]; then
-	failure "Could not find mkl.h in '$MKLROOT/include'"
+    failure "Could not find mkl.h in '$MKLROOT/include'"
     fi
     echo "Using Intel MKL as the linear algebra library."
 elif [ $MATHLIB == "CLAPACK" ]; then
     if [ -z $CLAPACKROOT ]; then
-	failure "Must specify the location of CLAPACK with --clapack-root option"
+        failure "Must specify the location of CLAPACK with --clapack-root option"
     fi
     if [ ! -f ../tools/CLAPACK_include/clapack.h ]; then
-    	failure could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7
+        failure could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7
     fi
     # Also check for cblas.h and f2c.h
 
@@ -155,34 +159,34 @@ function linux_atlas_failure { # function we use when we couldn't find
 if [ "`uname`" == "Linux"  ]; then
 
     if [ ! -f $FSTROOT/lib/libfst.a ]; then
-    	failure "Static OpenFST library not found:  See ../tools/INSTALL"
+        failure "Static OpenFST library not found:  See ../tools/INSTALL"
     fi
 
     if [ $MATHLIB == "MKL" ]; then
         if [ "`arch`" != "x86_64" ]; then
-	    failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64). 
-		See makefiles/linux_64_mkl.mk to manually configure for other platforms."
-	fi
-	echo MKLROOT = $MKLROOT >> kaldi.mk
-	if [ ! -z $MKLLIBDIR ]; then 
-	    echo MKLLIB = $MKLLIBDIR >> kaldi.mk
-	fi
+        failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64). 
+        See makefiles/linux_64_mkl.mk to manually configure for other platforms."
+    fi
+    echo MKLROOT = $MKLROOT >> kaldi.mk
+    if [ ! -z $MKLLIBDIR ]; then 
+        echo MKLLIB = $MKLLIBDIR >> kaldi.mk
+    fi
         if [ ! -f makefiles/linux_x86_64_mkl.mk ]; then 
-	    failure "makefiles/linux_x86_64_mkl.mk not found."
-	fi
-   	cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
-   	echo "Configured for Linux with MKL libs from $MKLROOT"
-   	exit 0;
+        failure "makefiles/linux_x86_64_mkl.mk not found."
+    fi
+       cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
+       echo "Configured for Linux with MKL libs from $MKLROOT"
+       exit 0;
     fi
 
     if [ $MATHLIB == "CLAPACK" ]; then
-	if [ ! -f makefiles/linux_clapack.mk ]; then
-	    failure "makefiles/linux_clapack.mk not found."
-	fi
-	cat makefiles/linux_clapack.mk >> kaldi.mk
-	echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
-	exit 0
-# TODO(arnab): enable CLAPACK options for Linux
+    if [ ! -f makefiles/linux_clapack.mk ]; then
+        failure "makefiles/linux_clapack.mk not found."
+    fi
+    cat makefiles/linux_clapack.mk >> kaldi.mk
+    echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
+    exit 0
+    # TODO(arnab): enable CLAPACK options for Linux
 
     fi
 
@@ -196,17 +200,17 @@ if [ "`uname`" == "Linux"  ]; then
    # against just these two libraries worked.  
 
     if [ -z $ATLASLIBDIR ]; then
-        if [ -f /usr/local/lib/libatlas.a ]; then
-     	    ATLASLIBDIR=/usr/local/lib
-   	elif [ -f /usr/lib/sse2/libatlas.a ]; then   
-     	    ATLASLIBDIR=/usr/lib/sse2
-   	elif [ -f /usr/lib/libatlas.a ]; then
-     	    ATLASLIBDIR=/usr/lib
-   	else
-     	    failure  Could not find libatlas.a in any of the obvious places.
-   	fi
+       if [ -f /usr/local/lib/libatlas.a ]; then
+             ATLASLIBDIR=/usr/local/lib
+       elif [ -f /usr/lib/sse2/libatlas.a ]; then   
+             ATLASLIBDIR=/usr/lib/sse2
+       elif [ -f /usr/lib/libatlas.a ]; then
+             ATLASLIBDIR=/usr/lib
+       else
+             failure  Could not find libatlas.a in any of the obvious places.
+       fi
     elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
-	failure "Could not find libatlas.a in '$ATLASLIBDIR'"
+    failure "Could not find libatlas.a in '$ATLASLIBDIR'"
     fi
 
    echo "Looking for ATLAS libs in $ATLASLIBDIR"

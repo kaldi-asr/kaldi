@@ -99,7 +99,7 @@ The code above is mostly self-explanatory.  In a normal Kaldi program, the seque
   - You register the command-line options with the ParseOptions object
      (options structures have their own Register functions that do the same
      for all the variables they contain).
-  - You do "po.Read(argc, argv);" [This will exit the pgoram if invalid options were given]
+  - You do "po.Read(argc, argv);" [This will exit the program if invalid options were given]
   - You check that the number of positional options \c po.NumArgs() is in
     the valid range for your program.
   - You obtain the positional arguments with \c po.GetArg(1) and so on; for
@@ -126,7 +126,7 @@ object itself.  These include the following:
       \c --print-args=false will turn this off.
    - \c --help This boolean argument, if true will cause the program to print out a usage
         message (like other boolean arguments, just \c --help counts as true).  You 
-        can usually the usage message by omitting all command-line arguments, because most
+        can usually get the usage message just by omitting all command-line arguments, because most
         programs require positional arguments.
    - \c --verbose This controls the verbose level, so that messages logged with KALDI_VLOG
         will get printed out.  More is higher (e.g. --verbose=2 is typical).

@@ -32,7 +32,7 @@
  UNIX-like systems, and is described in windows/INSTALL (tested with
  Windows 7 and Microsoft Visual Studio 10.0).  We use scripts to
  create the Visual Studio 10.0 solution file.  There are two options for
- math library: either you can use Cygwin to compile ATLAS, or you
+ the math library on Windows: either you can use Cygwin to compile ATLAS, or you
  can use the Intel MKL library.  Detailed instructions are provided.
 
  \section build_setup_configure How our configure script works (for UNIX variants)

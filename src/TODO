@@ -4,8 +4,9 @@
   - Try to run the scripts and compile on various platforms, and
     report problems.
 
- TODO items (mainly for Dan to do):
+ TODO items (mainly for Dan to do, some for Arnab):
 
+  Check the clapack configuration in the configure script.
   Add separate min-count at root of tree for regression-tree fMLLR/MLLR
   Add fMLLR scripts for SGMM, and also use deeper trees.
   Document configure script.
