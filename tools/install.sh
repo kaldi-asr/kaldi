@@ -8,6 +8,17 @@ if ! which wget >&/dev/null; then
    exit 1;
 fi
 
+if ! which automake >&/dev/null; then
+   echo "Warning: automake not installed (IRSTLM installation will not work)"
+   sleep 1
+fi
+
+if ! which libtoolize >&/dev/null; then
+   echo "Warning: libtoolize not installed (IRSTLM installation probably will not work)"
+   sleep 1
+fi
+
+
 echo "****(1) Installing sph2pipe"
 
 (
@@ -89,10 +100,9 @@ fi
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
     # regenerate-makefiles.sh if this does not work. 
-
-    ./regenerate-makefiles.sh ;
-     echo "*** Running regenerate-makefiles.sh again (seems to be necessary)***";
-    ./regenerate-makefiles.sh  || exit 1;
+    # We try regenerate-makefiles.sh twice as we have found that
+    # under some circumstances this makes it work.
+    ./regenerate-makefiles.sh || ./regenerate-makefiles.sh || exit 1;
 
    ./configure --prefix=`pwd` || exit 1
 
@@ -117,10 +127,10 @@ fi
   wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
 
   if [ ! -e sctk-2.4.0-20091110-0958.tar.bz2 ]; then
-      echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
-      exit 1
+    echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
+    exit 1
   else
-      bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
+    bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
     gzip -f sctk-2.4.0-20091110-0958.tar || exit 1
 
     tar -xvzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
