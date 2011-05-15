@@ -1,4 +1,5 @@
 
+
 Example of debug command with valgrind:
 in matrix/
  valgrind  ./matrix-lib-test
@@ -13,15 +14,15 @@ looking at valgrind.out in the last directory, and looking for the last
 filename *-test that was printed).
 
 
+---
+ For emacs users:
+  ensure proper indentation it may be helpful to copy
+     http://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
+  to your home directory as ".google-c-style.el", and add to your .emacs file the lines:
+\verbatim
+  (load-file "~/.google-c-style.el")
+  (add-hook 'c-mode-common-hook 'google-set-c-style)
+  (add-hook 'c-mode-common-hook 'google-make-newline-indent)
+\endverbatim
 
-----
-notes on potential install problems:
-if you get errors like:
-.../matrix/kaldi-matrix.cc:43: undefined reference to `clapack_sgetrf'
-then you may be linking with a version of the library liblapack.a that
-does not have this type of symbol: on UToronto's machines that library did
-not export that symbol but there was a newer one called liblapack-3.a that
-did.
-
-If you get errors about not being able to find files in various system directories,
-try typing 'make depend'.
+--

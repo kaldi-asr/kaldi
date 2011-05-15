@@ -113,6 +113,7 @@ BaseFloat ClusterBottomUp(const std::vector<Clusterable*> &points,
 /// of compartments, such that only points in the same compartment are
 /// clustered together. The compartment and pair of points with the smallest
 /// merge cost are clustered.
+/// The clusters in "clusters_out" are newly allocated and owned by the caller.
 BaseFloat ClusterBottomUpCompartmentalized(
     const std::vector< std::vector<Clusterable*> > &points, BaseFloat thresh,
     int32 min_clust, std::vector< std::vector<Clusterable*> > *clusters_out,

@@ -434,9 +434,8 @@ class CompartmentalizedBottomUpClusterer {
                     vector< vector<int32> > *assignments_out);
   ~CompartmentalizedBottomUpClusterer() {
     for (vector< vector<Clusterable*> >::iterator itr = clusters_.begin(),
-         end = clusters_.end(); itr != end; ++itr) {
+         end = clusters_.end(); itr != end; ++itr)
       DeletePointers(&(*itr));
-    }
   }
 
  private:
@@ -568,7 +567,7 @@ bool CompartmentalizedBottomUpClusterer::CanMerge(int32 comp, int32 i, int32 j,
 }
 
 BaseFloat CompartmentalizedBottomUpClusterer::MergeClusters(int32 comp, int32 i,
-                                                       int32 j) {
+                                                            int32 j) {
   KALDI_ASSERT(comp < ncompartments_ && i < npoints_[comp] && j < i);
   clusters_[comp][i]->Add(*(clusters_[comp][j]));
   delete clusters_[comp][j];

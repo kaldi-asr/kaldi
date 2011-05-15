@@ -77,7 +77,7 @@ void TableEventMap::Write(std::ostream &os, bool binary) {
     EventMap::Write(os, binary, table_[t]);
   }
   WriteMarker(os, binary, ")");
-  if(!binary) os << '\n';
+  if (!binary) os << '\n';
   if (os.fail()) {
     KALDI_ERR << "TableEventMap::Write(), could not write to stream.";
   }
@@ -174,8 +174,9 @@ std::string EventTypeToString(const EventType &evec) {
 
 size_t EventMapVectorHash::operator ()(const EventType &vec) {
   EventType::const_iterator iter = vec.begin(), end = vec.end();
-  size_t ans = 0; const size_t kPrime1=47087, kPrime2=1321;
-  for (; iter!= end; ++iter) {
+  size_t ans = 0;
+  const size_t kPrime1=47087, kPrime2=1321;
+  for (; iter != end; ++iter) {
 #ifdef KALDI_PARANOID // Check names are distinct and increasing.
     EventType::const_iterator iter2=iter; iter2++;
     if (iter2 != end) { assert(iter->first < iter2->first); }

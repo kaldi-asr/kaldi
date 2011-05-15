@@ -355,6 +355,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
       tmp_vars.CopyRowFromVec(tmp_vec, gauss_index);
       gauss_index++;
     }
+    DeletePointers(&(gauss_clusters_out[clust_index]));
   }
   tmp_gmm.Resize(opts.intermediate_numcomps, dim);
   tmp_weights.Scale(1.0/tmp_weights.Sum());

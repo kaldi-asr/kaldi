@@ -24,8 +24,6 @@
 
     - Subversion (svn): this is needed to download Kaldi and other software that it depends on.
     - wget is required for the installation of some non-Kaldi components described below
-    - automake (and aclocal): required to install IRSTLM which some of our scripts use
-      (see below).
     - doxygen: this is the program we use to generate html documentation from 
       the C++ source (which has been marked up according to doxygen requirements).
       If you will be changing the source significantly, this might be useful.
@@ -39,6 +37,8 @@
       - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 
         it is not tightly integrated with Kaldi; we can convert any Arpa format
         language model to an FST.
+        - The IRSTLM build process requires automake, aclocal, and libtoolize
+          (the corresponding packages are automake and libtool).
       - sph2pipe: this is for converting sph format files into other formats such
         as wav.  It's needed for the example scripts that use LDC data.
       - sclite: this is for scoring and is not necessary as we have our own, simple
