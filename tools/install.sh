@@ -90,7 +90,9 @@ fi
     # You may have to mess with the version by editing
     # regenerate-makefiles.sh if this does not work. 
 
-    ./regenerate-makefiles.sh || exit 1
+    ./regenerate-makefiles.sh ;
+     echo "*** Running regenerate-makefiles.sh again (seems to be necessary)***";
+    ./regenerate-makefiles.sh  || exit 1;
 
    ./configure --prefix=`pwd` || exit 1
 
