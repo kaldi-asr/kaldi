@@ -138,7 +138,7 @@ while [ $x -lt $numiters ]; do
    echo pass $x
    if echo $lvtln_iters | grep -w $x >/dev/null; then
    ( ali-to-post ark:$dir/cur.ali  ark:- | \
-     weight-silence-post 0.0 $silphonelist $srcmodel ark:- ark:- | \
+     weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
      gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- | \
      gmm-est-lvtln-trans --verbose=1 $spk2utt_opt $dir/$x.mdl $dir/0.lvtln \
       "$srcfeats" ark:- ark:$dir/tmp.trans ark,t:$dir/$x.warp ) 2>$dir/lvtln.$x.log || exit 1

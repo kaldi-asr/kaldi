@@ -209,6 +209,8 @@ class ContextFst : public Fst<Arc> {
   typedef typename Arc::StateId StateId;
   typedef CacheState<Arc> State;
 
+
+  /// See \ref graph_context for more details.
   ContextFst(Label subsequential_symbol,  // epsilon not allowed.
              const std::vector<LabelT>& phones,  // symbols on output side of fst.
              const std::vector<LabelT>& disambig_syms,  // symbols on output side of fst.
@@ -227,7 +229,7 @@ class ContextFst : public Fst<Arc> {
 
   StateId NumStates() const { return impl_->NumStates(); }
 
-  // This function is used in ContextFstMatcher.
+  // This function is used in ContextMatcher.
   // Semantically this is not really const, as it causes states to be
   // added to the state table in impl_, and the input vocabulary to be
   // expanded, but C++ lets us make this const, and compose.h
@@ -350,7 +352,7 @@ void ContextFst<A, I>::InitStateIterator(StateIteratorData<A> *data) const {
 // on the left, with an arbitrary FST on the right.  It does so by, rather than
 // using arc iterators (which would force a call to Expand in ContextFstImpl, which
 // would expand all the states), uses the CreateArc function of ContextFst.  This
-// function is specific to the ContextFst type.  ContextFstMatcher queries the
+// function is specific to the ContextFst type.  ContextMatcher queries the
 // type of the FST using FstType(), and verifies that the left hand FST is a context
 // FST, and then uses a static cast to ContextFst.  [We can't make it a template
 // argument, as the template for ComposeFstOptions is only templated on a single FST
@@ -458,7 +460,6 @@ class ContextMatcher : public MatcherBase<Arc> {  // CAREFUL: templated on arc, 
    The fst ifst2 must have the subsequential loop (if not a left-context-only
    system)
 */
-
 template<class Arc, class LabelT>
 void ComposeContextFst(const ContextFst<Arc, LabelT> &ifst1, const Fst<Arc> &ifst2,
                        MutableFst<Arc> *ofst,

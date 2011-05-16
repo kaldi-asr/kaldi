@@ -604,7 +604,7 @@ class KaldiDecoder {
 
   /**
    * @brief recursive depth first search visitor
-   * @param s:state
+   * @param s the FST state
    * @return outputs true, if the state has emitting links
    */
   int VisitNode(StateId s);
@@ -612,7 +612,7 @@ class KaldiDecoder {
   /**
    * @brief recursive depth first search visitor,
    *   checks, that FST has all required properties
-   * @param s:state
+   * @param s the FST state
    * @return outputs true, if the state has emitting links
    */
   int VerifyNode(StateId s);

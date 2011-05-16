@@ -23,8 +23,9 @@ exit 1;
 
 # (1) To get the CMU dictionary, do:
 svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/
-# got this at revision 10742 in my current test.  can add -r 10742 for strict
-# compatibility.
+# got this at revision 10966 in the last tests done before releasing v1.0.
+# can add -r 10966 for strict compatibility.
+
 
 #(2) Dictionary preparation:
 
@@ -65,7 +66,7 @@ scripts/silphones.pl data/phones.txt "$silphones" data/silphones.csl data/nonsil
 
 ndisambig=`scripts/add_lex_disambig.pl data/lexicon.txt data/lexicon_disambig.txt`
 echo $ndisambig > data/lex_ndisambig
-# Next, create a phones.txt file that includes the disambig symbols.
+# Next, create a phones.txt file that includes the disambiguation symbols.
 # the --include-zero includes the #0 symbol we pass through from the grammar.
 scripts/add_disambig.pl --include-zero data/phones.txt $ndisambig > data/phones_disambig.txt
 
@@ -85,7 +86,6 @@ cat data/lexicon.txt | awk '{print $1}' | sort | uniq  | \
 cd data_prep
 
 
-# On BUT system, do:
 # The following command needs a list of directory names from
 # the LDC's WSJ disks.  These will end in e.g. 11-1.1.
 # examples:
@@ -111,11 +111,6 @@ for x in eval_nov92 dev_nov93 eval_nov93; do
   cp data_prep/$x.utt2spk data/$x.utt2spk
   cp data_prep/$x.txt data/$x.txt
 done
-
-for x in train eval_nov92 dev_nov93 eval_nov93; do  
- cat data/$x.txt | scripts/sym2int.pl --ignore-first-field data/words.txt  > data/$x.tra
-done
-
 
 # Get the right paths on our system by sourcing the following shell file
 # (edit it if it's not right for your setup). 
@@ -168,7 +163,8 @@ fsttablecompose data/L_disambig.fst data/G_bg.fst | fstdeterminizestar >/dev/nul
 # (this turns on optimization).
 
 # Set "dir" to someplace you can write to.
-dir=/mnt/matylda6/jhu09/qpovey/kaldi_wsj2_mfcc_e
+#e.g.: dir=/mnt/matylda6/jhu09/qpovey/kaldi_wsj_mfcc_f
+dir=[some directory to put MFCCs]
 steps/make_mfcc_train.sh $dir
 steps/make_mfcc_test.sh $dir
 
@@ -177,18 +173,18 @@ steps/make_mfcc_test.sh $dir
 
 steps/train_mono.sh || exit 1;
 
-(scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp ) &
-
-steps/train_tri1.sh || exit 1;
-
 # add --no-queue --num-jobs 4 after "scripts/decode.sh" below, if you don't have
 # qsub on your system.  The number of jobs to use depends on how many CPUs and
 # how much memory you have, on the local machine.  If you do have qsub on your
 # system, you will probably have to edit steps/decode.sh anyway to change the
 # queue options... or if you have a different queueing system, you'd have to
 # modify the script to use that.
- 
+
+(scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
+ scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp ) &
+
+steps/train_tri1.sh || exit 1;
+
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri1/tree exp/tri1/final.mdl exp/graph_tri1_tg_pruned || exit 1;
  scripts/decode.sh exp/decode_tri1_tgpr_eval92 exp/graph_tri1_tg_pruned/HCLG.fst steps/decode_tri1.sh data/eval_nov92.scp ) &
 
@@ -196,14 +192,10 @@ steps/train_tri2a.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_tg_pruned || exit 1;
  scripts/decode.sh exp/decode_tri2a_tgpr_eval92 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri2a_tgpr_eval93 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2a_tgpr_eval93 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/eval_nov93.scp )&
 
- scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval92 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov92.scp 
- scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval92 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov92.scp 
-
-
-) &
-
+( scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval92 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov92.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval92 exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov92.scp )&
 
 steps/train_tri3a.sh || exit 1;
 

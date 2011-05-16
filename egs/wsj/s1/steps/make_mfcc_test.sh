@@ -24,7 +24,7 @@ fi
 if [ -f path.sh ]; then . path.sh; fi
 
 for test in eval_nov92 dev_nov93 eval_nov93; do
-  rm data/${test}.scp
+  rm data/${test}.scp 2>/dev/null
   scpin=data_prep/${test}_wav.scp
   dir=exp/make_mfcc
   mkdir -p $dir

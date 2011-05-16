@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-namespace kaldi {
+namespace fst {
 
 /**
    \page graph Decoding graph construction in Kaldi
@@ -111,7 +111,50 @@ namespace kaldi {
  The same applies of course to the C transducer.  We believe that the transducers
  as our scripts and programs currently create them have these properties.
 
-  \section graph_disambig Disambiguation symbols
+  \section graph_context The ContextFst object
+
+ The \ref ContextFst object (C) is a dynamically created
+ FST object that represents a transducer from context-dependent phones to
+ context-independent phones.  The purpose of this object is to avoid us having
+ to enumerate all possible phones in context, which could be difficult when 
+ the context width (N) or the number of phones is larger than normal.  The
+ constructor ContextFst::ContextFst requires the context-width (N) and
+ central-position (P) which are further explained in \ref tree_window; their
+ normal values corresponding to a triphone system are 3 and 1, respectively.
+ It also requires the integer id of a special symbol, the "subsequential
+ symbol" (referred to as '$' in the reference given above), which the FST outputs
+ N-P-1 times after all phones are seen (this ensures that the context FST
+ is output-deterministic).  In addition to this it requires lists of the 
+ integer id's of the phones and the disambiguation symbols.  The vocabulary
+ on the output side of the ContextFst consists of the set of phones and
+ disambiguation symbols plus the subsequential symbol.  The vocabulary on the
+ input side is dynamically generated and (apart from epsilon, which is not used),
+ corresponds to phones in context,
+ disambiguation symbols, and a special symbol that we write as #-1 that takes the
+ place of epsilon in the "traditional recipe", but which we treat as any other
+ disambiguation symbol (it is necessary to ensure determinizability in the sense
+ we prefer, i.e. with epsilon removal).  The subsequential symbol '$' has nothing corresponding
+ to it on the input side (this is also the case in the traditional recipe).  
+ The symbol id's corresponding to the disambiguation
+ symbols on the input side are not necessarily the same integer identifiers as used on the output 
+ side for the corresponding symbols.  
+ The ContextFst object has a function ILabelInfo()
+ which returns a reference to an object of type std::vector<std::vector<int32> > which
+ enables the user to work out the "meaning" of each symbol on the input side.  The
+ correct interpretation of this object is described further in \ref tree_ilabel. 
+
+ There is a special "Matcher" object called ContextMatcher which is intended to be
+ used in composition algorithms involving the ContextFst (for explanation of what
+ a matcher is, see the OpenFst documentation).  The ContextMatcher makes use of
+ the ContextFst object more efficient, by avoiding the allocation of more states than
+ necessary (the issue is that with the normal matcher, every time we want any arc
+ out of a state, we would have to allocate the destination states of all other
+ arcs out of that
+ state).  There is an associated function, ComposeContextFst(), which performs
+ FST composition in the case where the left hand argument to composition is of type
+ ContxtFst; it uses this matcher.  There is also a function ComposeContext(), which
+ is similar but creates the ContextFst object itself.
+
 
 
 

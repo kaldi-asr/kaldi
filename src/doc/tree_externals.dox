@@ -227,7 +227,7 @@ on its input side that represent context-dependent phones (as well as
 disambiguation symbols and possibly epsilon symbols).  In the graph, as always,
 these are represented by integer labels.  We use an object that, in code
 and in filenames, is generally called ilabel_info.  The ilabel_info object
-has a strong connection to the ContextFst objects, see \ref graph_context.
+has a strong connection to the \ref fst::ContextFst "ContextFst" objects, see \ref graph_context.
 As with many other Kaldi types, ilabel_info is a generic (STL) type but 
 we use a consistent variable name 
 to make it identifiable.  It is of the following type:
