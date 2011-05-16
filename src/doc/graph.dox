@@ -144,10 +144,11 @@ namespace fst {
  correct interpretation of this object is described further in \ref tree_ilabel. 
 
  There is a special "Matcher" object called ContextMatcher which is intended to be
- used in composition algorithms involving the ContextFst (for explanation of what
- a matcher is, see the OpenFst documentation).  The ContextMatcher makes use of
+ used in composition algorithms involving the ContextFst (a Matcher is something that OpenFst's
+ composition algorithm uses for arc lookup; for more explanation, see
+ the OpenFst documentation; ).  The ContextMatcher makes the use of
  the ContextFst object more efficient, by avoiding the allocation of more states than
- necessary (the issue is that with the normal matcher, every time we want any arc
+ is necessary (the issue is that with the normal matcher, every time we want any arc
  out of a state, we would have to allocate the destination states of all other
  arcs out of that
  state).  There is an associated function, ComposeContextFst(), which performs
@@ -165,7 +166,7 @@ namespace fst {
  statistical language models, when represented as FSTs, generally "add up to more than one"
  because some words are counted twice (directly, and via backoff arcs).
 
- We decided to avoid ever pushing weights, but instead handle the whole issue in a different
+ We decided to avoid ever pushing weights, so instead we handle the whole issue in a different
  way.  Firstly, a definition: we call a "stochastic" FST one whose weights sum to one, and
  the reader can assume that we are talking about the log semiring here, not the tropical one, 
  so that "sum to one" really means sum, and not "take the max".
@@ -175,14 +176,16 @@ namespace fst {
  det(LG) is stochastic, then min(det(LG)) will be stochastic, and so on and so forth.
  This means that each individual operation must, in the appropriate sense, "preserve
  stochasticity".  Now, it would be quite possible to do this in a very trivial but not-very-useful
- way: for instance, just try the push-weights algorithm and if it seems to be failing because,
- say, the original G fst summed up to more than one, then throw up our hands in horror and
+ way: for instance, we could just try the push-weights algorithm and if it seems to be failing because,
+ say, the original G fst summed up to more than one, then we throw up our hands in horror and
  announce failure.  This would not be very helpful. 
 
  We want to preserve stochasticity in
  a stronger sense, which is to say: first measure, for G, the min and max over all its states,
  of the sum of the (arc probabilities plus final-prob) out of those states.   This is what our
- program "fstisstochastic" does.  We want to preserve stochasticity in the following sense: that this
+ program "fstisstochastic" does.  If G is stochastic, both of these numbers would be one 
+ (you would actually see zeros from the program, because actually we operate in log space; this is
+ what "log semiring" means).  We want to preserve stochasticity in the following sense: that this
  min and max never "get worse"; that is, they never get farther away from one.  In fact, this
  is what naturally happens when we have algorithms that preserve stochasticity in a "local"
  way.  There are various algorithms that we need to preserve stochasticity, including:
@@ -190,6 +193,8 @@ namespace fst {
    - Determinization
    - Epsilon removal
    - Composition (with particular FSTs on the left)
+ There are also one or two minor algorithms that need to preserve stochasticity, 
+ like adding a subsequential-symbol loop.
  Minimization naturally preserves stochasticity, as long as we don't do any weight pushing
  as part of it (we use our program "fstminimizeencoded" which does minimization without
  weight pushing).  Determinization preserves stochasticity
@@ -197,8 +202,9 @@ namespace fst {
  the log semiring; this is why we use our program fstdeterminizestar with the option 
  --determinize-in-log=true).  Regarding epsilon removal: firstly, we have
  our own version of epsilon removal "RemoveEpsLocal()" (fstrmepslocal), which doesn't guarantee
- to remove all epsilons but does guarantee to never "blow up".  This algorithm is unusual in that,
- to to what we need it to do and preserve stochasticity, it needs to "keep track of" two semirings 
+ to remove all epsilons but does guarantee to never "blow up".  This algorithm is unusual among
+ FST algorithms in that, to to what we need it to do and preserve stochasticity, it needs to 
+ "keep track of" two semirings 
  at the same time.  That is, if it is to preserve equivalence in the tropical semiring and 
  stochasticity in the log semiring, which is what we need in practice,
  it actually has to "know about" both semirings simultaneously.  This seems to be an edge case
@@ -223,8 +229,8 @@ namespace fst {
  how much it "deviates from stochasticity" (using the program fstisstochastic), and during
  subsequent graph creation stages (except for the very last one) we verify that the 
  non-stochasticity does not "get worse" than it was at the beginning.  
-
  
+
 */
 
 }
