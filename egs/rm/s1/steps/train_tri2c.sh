@@ -33,14 +33,12 @@ after_deltas=false
 per_spk=true
 
 numiters=30    # Number of iterations of training
-maxiterinc=20 # Last iter to increase #Gauss on.
-numiters_et=15 # Before this, update et.
+maxiterinc=15 # Last iter to increase #Gauss on.
 numleaves=1500
-numgauss=$numleaves
+numgauss=$[$numleaves*2]; # Initially mix up to avg. 2 Gauss/state.
 totgauss=7000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-realign_iters="10 15 20 25";
-
+realign_iters="10 15 20";
 silphonelist=`cat data/silphones.csl`
 
 if [ $per_spk == "true" ]; then
@@ -64,12 +62,12 @@ else
   feats="ark:apply-cmvn --norm-vars=$norm_vars $utt2spk_opt ark:$dir/cmvn.ark scp:data/train.scp ark:- | add-deltas --print-args=false ark:- ark:- |"
 fi
 
-
 echo "aligning all training data"
 gmm-align-compiled  $scale_opts --beam=8 --retry-beam=40  $srcmodel \
   "$srcgraphs" "$srcfeats" ark,t:$dir/0.ali 2> $dir/align.0.log || exit 1;
 
-acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" ark:$dir/0.ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
+acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" \
+   ark:$dir/0.ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
 
 
 cat data/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
@@ -100,7 +98,8 @@ rm $dir/0.ali
 
 # Make training graphs
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/1.mdl  data/L.fst ark:data/train.tra ark:$dir/graphs.fsts \
+compile-train-graphs $dir/tree $dir/1.mdl  data/L.fst ark:data/train.tra \
+    "ark:|gzip -c >$dir/graphs.fsts.gz" \
     2>$dir/compile_graphs.log || exit 1 
 
 x=1
@@ -108,7 +107,8 @@ while [ $x -lt $numiters ]; do
    echo pass $x
    if echo $realign_iters | grep -w $x >/dev/null; then
      echo "Aligning data"
-     gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl ark:$dir/graphs.fsts "$feats" \
+     gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
+             "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
              ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
    fi
    gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
