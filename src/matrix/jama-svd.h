@@ -271,6 +271,8 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
   int pp = p-1;
   int iter = 0;
   Real eps(pow(2.0, sizeof(Real) == 4 ? -23.0 : -52.0));
+  Real tiny(pow(2.0, sizeof(Real) == 4 ? -966.0 : -120.0));
+  
   while (p > 0) {
     int k = 0;
     int kase = 0;
@@ -294,7 +296,8 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
       if (k == -1) {
         break;
       }
-      if (std::abs(e(k)) <= eps*(std::abs(s(k)) + std::abs(s(k+1)))) {
+      if (std::abs(e(k)) <=
+          tiny + eps*(std::abs(s(k)) + std::abs(s(k+1)))) {
         e(k) = 0.0;
         break;
       }

@@ -1368,12 +1368,12 @@ void MatrixBase<Real>::DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U, 
   // "N"== no eigenvectors wanted.
   LapackGesvd(s, U, Vt);
 #else
-  if(num_rows_ > 1 && num_cols_ > 1 && (*this)(0, 0) == (*this)(1, 1)
+  /*  if(num_rows_ > 1 && num_cols_ > 1 && (*this)(0, 0) == (*this)(1, 1)
      && Max() == Min() && (*this)(0, 0) != 0.0) { // special case that JamaSvd sometimes crashes on.
     KALDI_WARN << "Jama SVD crashes on this type of matrix, perturbing it to prevent crash.";
     for(int32 i = 0; i < NumRows(); i++)
       (*this)(i, i)  *= 1.00001;
-  }
+      }*/
   bool ans = JamaSvd(s, U, Vt);
   if (Vt != NULL) Vt->Transpose();  // possibly to do: change this and also the transpose inside the JamaSvd routine.  note, Vt is square.
   if (!ans) {
