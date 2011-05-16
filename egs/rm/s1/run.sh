@@ -76,7 +76,7 @@ steps/decode_tri2a.sh  &
 # 2i = triple-deltas + HLDA
 # 2j = triple-deltas + LDA + MLLT
 # 2k = LDA + ET (equiv to LDA+MLLT+ET)
-
+# 2l = splice-9-frames + LDA + MLLT + SAT (i.e. train with CMLLR)
 
 # To train and test SGMM systems:
 
