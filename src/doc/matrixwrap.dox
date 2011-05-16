@@ -74,21 +74,32 @@ namespace kaldi {
   ATLAS is a well known implementation of BLAS plus a subset of LAPACK.  The
   general idea of ATLAS is to tune to the particular processor setup, so the
   compilation process is quite complex and can take a while.  For this reason,
-  it can be quite tricky to compile ATLAS (you can't even do it unless you 
+  it can be quite tricky to compile ATLAS.  On UNIX-based systems, you can't even do it unless you 
   are root or are friendly with your system administrator, because to compile
-  it you need to turn off CPU throttling).  ATLAS generally performs better 
+  it you need to turn off CPU throttling; and on Windows, ATLAS does not compile
+  "natively", only in Cygwin.  Sometimes it can be a better bet to find libraries that
+  have been compiled by someone else for your particular platform, but we can't offer
+  much advice on how to do this.  ATLAS generally performs better 
   than the "reference BLAS" available from Netlib.   ATLAS only includes
   a few LAPACK routines.  These include matrix inversion and Cholesky factorization,
-  but not SVD.  For this reason we have implemented a couple more of the LAPCK
+  but not SVD.  For this reason we have implemented a couple more of the LAPACK
   routines (SVD and eigenvalue decomposition); see 
   the next section.
   
   ATLAS conforms to the BLAS interface, but its interface for the subset of
   LAPACK routines that it provides is not the same as Netlib's (it's more
-  C-like).  For this reason, there are quite a number of \#ifdef's in our code
-  to switch between ATLAS and CLAPACK calling styles. 
+  C-like and less FORTRAN-ish).  For this reason, there are quite a number of \#ifdef's in our code
+  to switch between the calling styles, depending whether we are
+  linking with ATLAS or CLAPACK.
   
-  \subsection matrixwrap_atlas_install Installing ATLAS (on Linux)
+  \subsection matrixwrap_atlas_install_windows Installing ATLAS (on Windows)
+
+  For instructions on how to install ATLAS on Windows (and note that these
+  instructions require Cygwin), see the file windows/INSTALL.atlas
+  in our source distribution.
+
+  \subsection matrixwrap_atlas_install_linux Installing ATLAS (on Linux)
+
   If your system does not have ATLAS installed, or there are no pre-built binaries
   available, you will need to install ATLAS from source. The detailed installation
   instructions can be found at: http://math-atlas.sourceforge.net/atlas_install/. 
@@ -100,6 +111,7 @@ namespace kaldi {
 	cd ATLAS3.8.0
 	mkdir build
 	cd build       # ATLAS will not let you build in the same directory as the source
+    # The next line may have to be modified...
 	../configure --prefix=/usr/local -b 64 -D c -DPentiumCPS=3000
 	make build
 	make install
