@@ -163,5 +163,17 @@ bool ComposeTransforms(const Matrix<BaseFloat> &a, const Matrix<BaseFloat> &b,
   }
 }
 
+void ApplyAffineTransform(const MatrixBase<BaseFloat> &xform,
+                          VectorBase<BaseFloat> *vec) {
+  int32 dim = xform.NumRows();
+  KALDI_ASSERT(dim > 0 && xform.NumCols() == dim+1 && vec->Dim() == dim);
+  Vector<BaseFloat> tmp(dim+1);
+  SubVector<BaseFloat> tmp_part(tmp, 0, dim);
+  tmp_part.CopyFromVec(*vec);
+  tmp(dim) = 1.0;
+  // next line is: vec = 1.0 * xform * tmp + 0.0 * vec
+  vec->AddMatVec(1.0, xform, kNoTrans, tmp, 0.0);
+}
+
 }  // namespace kaldi
 

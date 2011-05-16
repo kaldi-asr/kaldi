@@ -157,10 +157,12 @@ class AmSgmm {
 
   /// This needs to be called with each new frame of data, prior to
   /// accumulation or likelihood evaluation: it computes various
-  /// pre-computed quantities.
+  /// pre-computed quantities. The 'logdet_s' term is the log determinant
+  /// of FMLLR transform, or 0.0 if no FMLLR is used.
   void ComputePerFrameVars(const VectorBase<BaseFloat>& data,
                            const std::vector<int32> &gselect,
                            const SgmmPerSpkDerivedVars &spk_vars,
+                           BaseFloat logdet_s,
                            SgmmPerFrameDerivedVars *per_frame_vars) const;
 
   /// Computes the per-speaker derived vars; assumes vars->v_s is already

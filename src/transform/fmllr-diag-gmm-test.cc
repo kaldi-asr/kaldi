@@ -70,7 +70,7 @@ void UnitTestFmllrDiagGmm() {
         stats.AccumulateForGmm(gmm, row, 1.0);
       } else {
         Vector<BaseFloat> xformed_row(row);
-        ApplyFmllrTransform(cur_xform, &xformed_row);
+        ApplyAffineTransform(cur_xform, &xformed_row);
         Vector<BaseFloat> posteriors(gmm.NumGauss());
         gmm.ComponentPosteriors(xformed_row, &posteriors);
         stats.AccumulateFromPosteriors(gmm, row, posteriors);
@@ -128,7 +128,7 @@ void UnitTestFmllrDiagGmmDiagonal() {
         stats.AccumulateForGmm(gmm, row, 1.0);
       } else {
         Vector<BaseFloat> xformed_row(row);
-        ApplyFmllrTransform(cur_xform, &xformed_row);
+        ApplyAffineTransform(cur_xform, &xformed_row);
         Vector<BaseFloat> posteriors(gmm.NumGauss());
         gmm.ComponentPosteriors(xformed_row, &posteriors);
         stats.AccumulateFromPosteriors(gmm, row, posteriors);
@@ -188,7 +188,7 @@ void UnitTestFmllrDiagGmmOffset() {
         stats.AccumulateForGmm(gmm, row, 1.0);
       } else {
         Vector<BaseFloat> xformed_row(row);
-        ApplyFmllrTransform(cur_xform, &xformed_row);
+        ApplyAffineTransform(cur_xform, &xformed_row);
         Vector<BaseFloat> posteriors(gmm.NumGauss());
         gmm.ComponentPosteriors(xformed_row, &posteriors);
         stats.AccumulateFromPosteriors(gmm, row, posteriors);

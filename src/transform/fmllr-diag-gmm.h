@@ -164,12 +164,6 @@ BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
                             MatrixBase<BaseFloat> *grad_out);
 
 
-/// This is only really useful when dealing with a global fMLLR transform
-/// (see fmllr-diag-gmm-global.h)
-void ApplyFmllrTransform(const MatrixBase<BaseFloat> &xform,
-                         VectorBase<BaseFloat> *feats);
-
-
 /// This function applies a feature-level transform to stats (useful for
 /// certain techniques based on fMLLR).  Assumes the stats are of the
 /// standard diagonal sort.

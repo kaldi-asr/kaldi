@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
           else am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &this_gselect);
-          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, &per_frame_vars);
+          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, 0.0, &per_frame_vars);
 
           gpost[i].gselect = this_gselect;
           gpost[i].tids.resize(posterior[i].size());

@@ -38,7 +38,7 @@ void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
 
   for (size_t i = 0; i < gpost.size(); i++) {
     am_sgmm.ComputePerFrameVars(feats.Row(i),
-                                gpost[i].gselect, spk_vars,
+                                gpost[i].gselect, spk_vars, 0.0,
                                 &per_frame_vars);
 
     for (size_t j = 0; j < gpost[i].tids.size(); j++) {

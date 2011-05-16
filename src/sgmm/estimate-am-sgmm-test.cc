@@ -45,7 +45,7 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   for (int32 i = 0; i < feats.NumRows(); ++i) {
     std::vector<int32> gselect;
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
-    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, &frame_vars);
+    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
     loglike += accs.Accumulate(sgmm, frame_vars, empty_spk, 0, 1.0, flags);
   }
   accs.CommitStatsForSpk(sgmm, empty_spk);
@@ -58,7 +58,7 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   std::vector<int32> gselect;
 
   sgmm1->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
-  sgmm1->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
+  sgmm1->ComputePerFrameVars(feats.Row(0), gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike1 = sgmm1->LogLikelihood(frame_vars, 0);
   delete sgmm1;
 
@@ -75,7 +75,7 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   updater.Update(*accs1, sgmm2, flags);
 
   sgmm2->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
-  sgmm2->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
+  sgmm2->ComputePerFrameVars(feats.Row(0), gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike2 = sgmm2->LogLikelihood(frame_vars, 0);
   kaldi::AssertEqual(loglike1, loglike2, 1e-4);
   delete accs1;
@@ -91,7 +91,7 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   sgmm3->CopyFromSgmm(sgmm, false);
   updater.Update(*accs2, sgmm3, flags);
   sgmm3->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
-  sgmm3->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
+  sgmm3->ComputePerFrameVars(feats.Row(0), gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike3 = sgmm3->LogLikelihood(frame_vars, 0);
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
   delete accs2;

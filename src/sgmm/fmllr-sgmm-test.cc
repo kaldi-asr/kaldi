@@ -71,7 +71,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   std::vector<int32> gselect;
   for (int32 i = 0; i < feats.NumRows(); ++i) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
-    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, &frame_vars);
+    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
     loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
   }
 
@@ -79,12 +79,13 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
 //  update_opts.fmllr_min_count = 100;
   kaldi::Matrix<BaseFloat> xform_mat(dim, dim+1);
   xform_mat.SetUnit();
-  accs.Update(sgmm, fmllr_globals, update_opts, &xform_mat);
+  BaseFloat frames, impr;
+  accs.Update(sgmm, fmllr_globals, update_opts, &xform_mat, &frames, &impr);
 
   Vector<BaseFloat> xformed_feat(dim);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, &frame_vars);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike1 = sgmm.LogLikelihood(frame_vars, 0);
 
   // First, non-binary write
@@ -95,10 +96,10 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   kaldi::Input ki1("tmpf", &binary_in);
   accs1->Read(ki1.Stream(), binary_in, false);
   xform_mat.SetUnit();
-  accs1->Update(sgmm, fmllr_globals, update_opts, &xform_mat);
+  accs1->Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, &frame_vars);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike2 = sgmm.LogLikelihood(frame_vars, 0);
   std::cout << "LL1 = " << loglike1 << ", LL2 = " << loglike2 << std::endl;
   kaldi::AssertEqual(loglike1, loglike2, 1e-6);
@@ -111,10 +112,10 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   kaldi::Input ki2("tmpfb", &binary_in);
   accs2->Read(ki2.Stream(), binary_in, false);
   xform_mat.SetUnit();
-  accs2->Update(sgmm, fmllr_globals, update_opts, &xform_mat);
+  accs2->Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, &frame_vars);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike3 = sgmm.LogLikelihood(frame_vars, 0);
   std::cout << "LL1 = " << loglike1 << ", LL3 = " << loglike3 << std::endl;
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
@@ -146,7 +147,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   std::vector<int32> gselect;
   for (int32 i = 0; i < feats.NumRows(); ++i) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
-    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, &frame_vars);
+    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
     loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
   }
 
@@ -158,7 +159,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
 //  update_opts.fmllr_min_count = 100;
   kaldi::Matrix<BaseFloat> xform_mat(dim, dim+1);
   xform_mat.SetUnit();
-  accs.Update(sgmm, fmllr_globals, update_opts, &xform_mat);
+  accs.Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
 }
 
 void TestSgmmFmllr() {

@@ -155,16 +155,18 @@ int main(int argc, char *argv[]) {
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
           else am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &this_gselect);
-          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, &per_frame_vars);
+          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, 0.0,
+                                      &per_frame_vars);
 
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,  // transition identifier.
                 pdf_id = trans_model.TransitionIdToPdf(tid);
             BaseFloat weight = posterior[i][j].second;
             trans_model.Accumulate(weight, tid, &transition_accs);
-            tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars, spk_vars.v_s,
-                                                       pdf_id, weight, acc_flags)
-                * weight;
+            tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
+                                                       spk_vars.v_s, pdf_id,
+                                                       weight, acc_flags)
+                                                       * weight;
             tot_weight += weight;
           }
         }

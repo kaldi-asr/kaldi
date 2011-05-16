@@ -281,47 +281,11 @@ void AmSgmm::CopyFromSgmm(const AmSgmm &other,
   KALDI_LOG << "Done.";
 }
 
-/*
-void AmSgmm::NewFrame(const VectorBase<BaseFloat>& data,
-                             const AmSgmmConfig &config,
-                             SgmmPerFrameDerivedVars *per_frame_vars) const {
-  if (n_.empty())
-    KALDI_ERR << "ComputeNormalizers() must be called first.";
-  if (per_frame_vars->NeedsResizing(config.full_gmm_nbest, FeatureDim(),
-      PhoneSpaceDim())) {
-    KALDI_WARN << "Mismatched sizes for per-frame vars. Resizing.";
-    per_frame_vars->Resize(config.full_gmm_nbest, FeatureDim(),
-        PhoneSpaceDim());
-  }
-
-  per_frame_vars->xt.CopyFromVec(data);
-  GaussianSelection(config, per_frame_vars);
-  std::vector<int32> &gselect = per_frame_vars->gauss_selection;
-
-  // Per-frame precomputed quantities calculation
-  if (!config.adapt_before_ubm && o_s_valid_) {
-    for (int32 ki = 0, last = gselect.size(); ki < last; ++ki) {
-      int32 i = gselect[ki];
-      per_frame_vars->xti.Row(ki).CopyFromVec(per_frame_vars->xt);
-      per_frame_vars->xti.Row(ki).AddVec(-1.0, o_s_.Row(i));
-    }
-  }
-  Vector<BaseFloat> SigmaInv_xt(FeatureDim());
-  for (int32 ki = 0, last = gselect.size(); ki < last; ++ki) {
-    int32 i = gselect[ki];
-    SigmaInv_xt.AddSpVec(1.0F, SigmaInv_[i], per_frame_vars->xti.Row(ki), 0.0F);
-    // Eq (35): z_{i}(t) = M_{i}^{T} \Sigma_{i}^{-1} x_{i}(t)
-    per_frame_vars->zti.Row(ki).AddMatVec(1.0, M_[i], kTrans, SigmaInv_xt, 0.0);
-    // Eq.(36): n_{i}(t) = -0.5 x_{i}^{T} \Sigma_{i}^{-1} x_{i}(t)
-    per_frame_vars->nti(ki) = -0.5 * VecVec(per_frame_vars->xti.Row(ki),
-                                            SigmaInv_xt);
-  }
-  }*/
-
 
 void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
                                  const std::vector<int32> &gselect,
                                  const SgmmPerSpkDerivedVars &spk_vars,
+                                 BaseFloat logdet_s,
                                  SgmmPerFrameDerivedVars *per_frame_vars) const {
   KALDI_ASSERT( !n_.empty() && "ComputeNormalizers() must be called.");
 
@@ -347,7 +311,7 @@ void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
     per_frame_vars->zti.Row(ki).AddMatVec(1.0, M_[i], kTrans, SigmaInv_xt, 0.0);
     // Eq.(36): n_{i}(t) = -0.5 x_{i}^{T} \Sigma_{i}^{-1} x_{i}(t)
     per_frame_vars->nti(ki) = -0.5 * VecVec(per_frame_vars->xti.Row(ki),
-                                            SigmaInv_xt);
+                                            SigmaInv_xt) + logdet_s;
   }
 }
 

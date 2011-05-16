@@ -44,7 +44,7 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   sgmm.GaussianSelection(config, feat, &gselect);
   SgmmPerSpkDerivedVars empty;
   SgmmPerFrameDerivedVars per_frame;
-  sgmm.ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm.ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike = sgmm.LogLikelihood(per_frame, 0);
 
   // First, non-binary write
@@ -58,7 +58,7 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   sgmm1->Read(ki1.Stream(), binary_in);
   sgmm1->Check(true);
   sgmm1->GaussianSelection(config, feat, &gselect);
-  sgmm1->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm1->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
 
   BaseFloat loglike1 = sgmm1->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike1, 1e-4);
@@ -74,7 +74,7 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   sgmm2->Read(ki2.Stream(), binary_in);
   sgmm2->Check(true);
   sgmm2->GaussianSelection(config, feat, &gselect);
-  sgmm2->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm2->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike2 = sgmm2->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete sgmm2;
@@ -83,7 +83,7 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   sgmm3->CopyFromSgmm(sgmm, false);
   sgmm3->ComputeNormalizers();
   sgmm3->GaussianSelection(config, feat, &gselect);
-  sgmm3->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm3->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike3 = sgmm3->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike3, 1e-4);
   delete sgmm3;
@@ -113,11 +113,11 @@ void TestSgmmSubstates(const AmSgmm &sgmm) {
 
   SgmmPerSpkDerivedVars empty;
   SgmmPerFrameDerivedVars per_frame;
-  sgmm.ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm.ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike = sgmm.LogLikelihood(per_frame, 0);
 
   sgmm1->GaussianSelection(config, feat, &gselect);
-  sgmm1->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm1->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike1 = sgmm1->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike1, 1e-2);
 
@@ -142,7 +142,7 @@ void TestSgmmIncreaseDim(const AmSgmm &sgmm) {
   sgmm.GaussianSelection(config, feat, &gselect);
   SgmmPerSpkDerivedVars empty;
   SgmmPerFrameDerivedVars per_frame;
-  sgmm.ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm.ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike = sgmm.LogLikelihood(per_frame, 0);
 
   kaldi::Matrix<BaseFloat> norm_xform;
@@ -156,14 +156,14 @@ void TestSgmmIncreaseDim(const AmSgmm &sgmm) {
 
 
   sgmm1->GaussianSelection(config, feat, &gselect);
-  sgmm1->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm1->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike1 = sgmm1->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike1, 1e-4);
 
   sgmm1->IncreaseSpkSpaceDim(target_spk_dim, norm_xform);
   sgmm1->Check(true);
   sgmm1->GaussianSelection(config, feat, &gselect);
-  sgmm1->ComputePerFrameVars(feat, gselect, empty, &per_frame);
+  sgmm1->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
   BaseFloat loglike2 = sgmm1->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete sgmm1;

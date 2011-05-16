@@ -1,6 +1,6 @@
 // decoder/decodable-am-sgmm.h
 
-// Copyright 2009-2011  Arnab Ghoshal  Microsoft Corporation  Lukas Burget
+// Copyright 2009-2011  Arnab Ghoshal,  Microsoft Corporation,  Lukas Burget
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,13 +76,13 @@ class DecodableAmSgmm : public DecodableInterface {
     BaseFloat log_like;  ///< Cache value
     int32 hit_time;     ///< Frame for which this value is relevant
   };
-  std::vector<LikelihoodCacheRecord> log_like_cache_;
 
- private:
   /// Cached per-frame quantities used in SGMM likelihood computation.
+  std::vector<LikelihoodCacheRecord> log_like_cache_;
   std::vector<int32> gselect_;
   SgmmPerFrameDerivedVars per_frame_vars_;
 
+ private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmm);
 };
 
@@ -110,6 +110,41 @@ class DecodableAmSgmmScaled : public DecodableAmSgmm {
   BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmmScaled);
 };
+
+class DecodableAmSgmmFmllr : public DecodableAmSgmm {
+ public:
+  DecodableAmSgmmFmllr(const SgmmGselectConfig &opts,
+                       const AmSgmm &am,
+                       const SgmmPerSpkDerivedVars &spk,  // may be empty
+                       const TransitionModel &tm,
+                       const Matrix<BaseFloat> &feats,
+                       const std::vector<std::vector<int32> > &gselect_all,
+                       // gselect_all may be empty
+                       BaseFloat log_prune,
+                       BaseFloat scale,
+                       const MatrixBase<BaseFloat> &fmllr)
+      : DecodableAmSgmm(opts, am, spk, tm, feats, gselect_all, log_prune),
+        fmllr_mat_(fmllr), xformed_feat_(am.FeatureDim()), scale_(scale) {
+    int32 dim = am.FeatureDim();
+    logdet_ = fmllr_mat_.Range(0, dim, 0, dim).LogDet();
+  }
+
+  // Note, frames are numbered from zero but transition-ids from one.
+  virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
+    return LogLikelihoodZeroBased(frame, trans_model_.TransitionIdToPdf(tid))
+            * scale_;
+  }
+
+ protected:
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+
+ private:
+  Matrix<BaseFloat> fmllr_mat_;
+  Vector<BaseFloat> xformed_feat_;
+  BaseFloat scale_, logdet_;
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmmFmllr);
+};
+
 
 }  // namespace kaldi
 

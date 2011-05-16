@@ -377,19 +377,6 @@ BaseFloat ComputeFmllrMatrixDiagGmmGradient(const MatrixBase<BaseFloat> &in_xfor
   return obj_improvement;
 }
 
-
-void ApplyFmllrTransform(const MatrixBase<BaseFloat> &xform,
-                         VectorBase<BaseFloat> *feats) {
-  int32 dim = xform.NumRows();
-  KALDI_ASSERT(dim > 0 && xform.NumCols() == dim+1 && feats->Dim() == dim);
-  Vector<BaseFloat> tmp_feats(dim+1);
-  SubVector<BaseFloat> tmp_feats_part(tmp_feats, 0, dim);
-  tmp_feats_part.CopyFromVec(*feats);
-  tmp_feats(dim) = 1.0;
-  // next line is: feats = 1.0 * xform * tmp_feats + 0.0 * feats
-  feats->AddMatVec(1.0, xform, kNoTrans, tmp_feats, 0.0);
-}
-
 void ApplyFeatureTransformToStats(const MatrixBase<BaseFloat> &xform,
                                   AffineXformStats *stats) {
   KALDI_ASSERT(stats != NULL && stats->Dim() != 0);

@@ -138,7 +138,8 @@ int main(int argc, char *argv[]) {
 
         for (size_t i = 0; i < gpost.size(); i++) {
           const std::vector<int32> &gselect = gpost[i].gselect;
-          am_sgmm.ComputePerFrameVars(mat.Row(i), gselect, spk_vars, &per_frame_vars);
+          am_sgmm.ComputePerFrameVars(mat.Row(i), gselect, spk_vars, 0.0,
+                                      &per_frame_vars);
 
           for (size_t j = 0; j < gpost[i].tids.size(); j++) {
             int32 tid = gpost[i].tids[j],  // transition identifier.

@@ -53,6 +53,11 @@ bool ComposeTransforms(const Matrix<BaseFloat> &a, const Matrix<BaseFloat> &b,
                        bool b_is_affine,
                        Matrix<BaseFloat> *c);
 
+/// Applies the affine transform 'xform' to the vector 'vec' and overwrites the
+/// contents of 'vec'.
+void ApplyAffineTransform(const MatrixBase<BaseFloat> &xform,
+                          VectorBase<BaseFloat> *vec);
+
 
 
 }  // namespace kaldi

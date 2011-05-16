@@ -5,7 +5,8 @@ include ../kaldi.mk
 
 BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali sgmm-sum-accs \
            sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect  sgmm-acc-stats \
-           sgmm-est-spkvecs sgmm-post-to-gpost sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost
+           sgmm-est-spkvecs sgmm-post-to-gpost sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost \
+	   sgmm-est-fmllr-gpost sgmm-decode-faster-fmllr
 
 
 OBJFILES =
@@ -16,7 +17,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../sgmm/kaldi-sgmm.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../sgmm/kaldi-sgmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 

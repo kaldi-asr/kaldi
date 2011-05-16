@@ -44,7 +44,7 @@ static void ProcessUtterance(const ExponentialTransform &et,
   for (size_t i = 0; i < gpost.size(); i++) {
     SubVector<BaseFloat> feat(feats, i);
     Vector<BaseFloat> t_data(feat);  // transformed feature.
-    ApplyFmllrTransform(xform, &t_data);
+    ApplyAffineTransform(xform, &t_data);
 
     for (size_t j = 0; j < gpost[i].size(); j++) {
       int32 pdf_id = trans_model.TransitionIdToPdf(gpost[i][j].first);

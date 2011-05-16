@@ -276,7 +276,7 @@ int main(int argc, char *argv[]) {
         fmllr.GetXformMatrix(0, &fmllr_matrix);
         for (int32 i = 0; i < xformed_features.NumRows(); i++) {
           SubVector<BaseFloat> row(xformed_features, i);
-          ApplyFmllrTransform(fmllr_matrix, &row);
+          ApplyAffineTransform(fmllr_matrix, &row);
         }
         kaldi::DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model,
                                                       xformed_features,

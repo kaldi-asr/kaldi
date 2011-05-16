@@ -346,11 +346,12 @@ static BaseFloat CalcFmllrStepSize(const AffineXformStats &stats,
 }
 
 
-void FmllrSgmmAccs::Update(const AmSgmm &sgmm,
+bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
                            const SgmmFmllrGlobalParams &globals,
                            const SgmmFmllrConfig &opts,
-                           Matrix<BaseFloat> *out_xform) const {
-  BaseFloat auxf_improv, logdet;
+                           Matrix<BaseFloat> *out_xform,
+                           BaseFloat *frame_count, BaseFloat *auxf_out) const {
+  BaseFloat auxf_improv = 0.0, logdet = 0.0;
   KALDI_ASSERT(out_xform->NumRows() == dim_ && out_xform->NumCols() == dim_+1);
   BaseFloat mincount = (globals.HasBasis() ?
       std::min(opts.fmllr_min_count_basis, opts.fmllr_min_count_full) :
@@ -364,6 +365,7 @@ void FmllrSgmmAccs::Update(const AmSgmm &sgmm,
 
   // initialization just to get rid of compile errors.
   BaseFloat auxf_old = 0, auxf_new = 0;
+  if (frame_count != NULL) *frame_count = stats_.beta_;
 
   // If occupancy is greater than the min count, update the transform
   if (stats_.beta_ >= mincount) {
@@ -461,6 +463,7 @@ void FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       }
     }
     auxf_improv /= (stats_.beta_ + 1.0e-10);
+    if (auxf_out != NULL) *auxf_out = auxf_improv;
 
     KALDI_LOG << "Auxiliary function improvement for FMLLR = " << auxf_improv
         << " per frame over " << stats_.beta_ << " frames. Log-determinant = "
@@ -469,10 +472,14 @@ void FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       KALDI_LOG << "FMLLR bases present " << std::string(using_subspace?
           "and used." : "but not used.");
     }
+    return true;
   } else {
     KALDI_WARN << "Not updating FMLLR because count is " << stats_.beta_
         << " < " << (mincount);
+    if (auxf_out != NULL) *auxf_out = 0.0;
+    return false;
   }  // Do not use the transform if it does not have enough counts
+  KALDI_ASSERT(false);  // Should never be reached.
 }
 
 void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,

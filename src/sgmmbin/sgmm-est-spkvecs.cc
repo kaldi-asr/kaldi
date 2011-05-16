@@ -44,7 +44,7 @@ void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
       this_gselect = gselect[i];
     else
       am_sgmm.GaussianSelection(gselect_opts, feats.Row(i), &this_gselect);
-    am_sgmm.ComputePerFrameVars(feats.Row(i), this_gselect, spk_vars, &per_frame_vars);
+    am_sgmm.ComputePerFrameVars(feats.Row(i), this_gselect, spk_vars, 0.0, &per_frame_vars);
 
     for (size_t j = 0; j < post[i].size(); j++) {
       int32 pdf_id = trans_model.TransitionIdToPdf(post[i][j].first);

@@ -148,10 +148,12 @@ class FmllrSgmmAccs {
 
   /// Computes the FMLLR transform from the accumulated stats, using the
   /// pre-transforms in fmllr_globals. Expects the transform matrix out_xform
-  /// to be initialized to the correct size.
-  void Update(const AmSgmm &model,
+  /// to be initialized to the correct size. Returns true if the transform was
+  /// updated (i.e. had enough counts).
+  bool Update(const AmSgmm &model,
               const SgmmFmllrGlobalParams &fmllr_globals,
-              const SgmmFmllrConfig &opts, Matrix<BaseFloat> *out_xform) const;
+              const SgmmFmllrConfig &opts, Matrix<BaseFloat> *out_xform,
+              BaseFloat *frame_count, BaseFloat *auxf_improv) const;
 
   /// Accessors
   int32 Dim() const { return dim_; }

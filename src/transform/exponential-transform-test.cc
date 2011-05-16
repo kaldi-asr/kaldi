@@ -140,7 +140,7 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
         for (int32 i = 0; i < npoints; i++) {
           SubVector<BaseFloat> row(rand_points, i+(npoints*k));
             Vector<BaseFloat> xformed_row(row);
-            ApplyFmllrTransform(cur_xform, &xformed_row);
+            ApplyAffineTransform(cur_xform, &xformed_row);
             Vector<BaseFloat> posteriors(gmm.NumGauss());
             like_tot += gmm.ComponentPosteriors(xformed_row, &posteriors);
             if (update_b && j%2 == 1)

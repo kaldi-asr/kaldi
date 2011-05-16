@@ -157,9 +157,11 @@ int main(int argc, char *argv[]) {
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
           else am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &this_gselect);
-          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, &per_frame_vars);
-          tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars, spk_vars.v_s,
-                                                     pdf_id, 1.0, acc_flags);
+          am_sgmm.ComputePerFrameVars(mat.Row(i), this_gselect, spk_vars, 0.0,
+                                      &per_frame_vars);
+          tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
+                                                     spk_vars.v_s, pdf_id, 1.0,
+                                                     acc_flags);
         }
 
         sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
