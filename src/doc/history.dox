@@ -52,9 +52,10 @@
  We also had some remote help around this time and shortly afterward, from
  Sandeep Boda, Sandeep Reddy and Haihua Xu (who helped with coding, code cleanup
  and documentation); we were visited by Michael Riley (who helped us to understand
- OpenFst and gave some lectures on FSTs), and were helped by Honza Cernocky
- (organization), Renata Kohlova (administration), and Tomas Kasparek (system
- administration).   It is possible that this list of contributors contains
+ OpenFst and gave some lectures on FSTs), and would like to acknowledge the help of
+ Honza Cernocky (for allowing us to have the workshop and helping to organize it),
+ Renata Kohlova (administration), and Tomas Kasparek (system administration).  
+ It is possible that this list of contributors contains
  oversights; any important omissions are unlikey to be intentional.
 
  A lot of code was written during the summer of 2010 but we still did not have a
