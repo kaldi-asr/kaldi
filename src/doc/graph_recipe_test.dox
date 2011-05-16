@@ -292,7 +292,7 @@ inside Kaldi processes, not at the script level.
  all symbols we need to flush out the last triphone (e.g. a/b/\<eps\>, where
  \<eps\> represents undefined context).  The natural way to do this would be to
  have a transition with a/b/\<eps\> on its input and \<eps\> on its output, from
- the state b/a to a final state (e.g. a/\<eps\> or a special final state).  But this is 
+ the state a/b to a final state (e.g. b/\<eps\> or a special final state).  But this is 
  inefficient for composition, because if it was not the end of the utterance
  we would have to explore such transitions before finding them pruned away.
  Instead we use $ as the end-of-utterance symbol, and make sure it appears once

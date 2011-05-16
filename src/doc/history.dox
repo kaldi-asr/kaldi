@@ -56,7 +56,7 @@
  Honza Cernocky (for allowing us to have the workshop and helping to organize it),
  Renata Kohlova (administration), and Tomas Kasparek (system administration).  
  It is possible that this list of contributors contains
- oversights; any important omissions are unlikey to be intentional.
+ oversights; any important omissions are unlikely to be intentional.
 
  A lot of code was written during the summer of 2010 but we still did not have a
  complete working system.  Some of the participants of the 2010 workshop
@@ -76,12 +76,12 @@
  (SCALE).
 
  We would like to acknowledge the support of Geoffrey Zweig and Alex Acero
- at Microsoft Research, as well as the generosity of Rico (Henrique) Malvar in
+ at Microsoft Research, as well as the generosity of Henrique (Rico) Malvar in
  allowing the use of his FFT code.  Thanks are also due to Patrick Nguyen
- for his help in organizing the JHU'09 workshop and with the Wall Street 
+ for his help in organizing the JHU'09 workshop and with the Wall Street
  Journal recipe.  We would also like to acknowledge the help
  of faculty and staff at Johns Hopkins University's Center for Language and
  Speech Processing during the JHU'09 workshop: particularly Desiree Cleves,
- Sanjeev Khudanpur and the late Fred Jelinek.  
+ Sanjeev Khudanpur and the late Fred Jelinek.
 
 */
