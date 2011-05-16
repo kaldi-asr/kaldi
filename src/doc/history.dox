@@ -54,13 +54,13 @@
  and documentation); we were visited by Michael Riley (who helped us to understand
  OpenFst and gave some lectures on FSTs), and were helped by Honza Cernocky
  (organization), Renata Kohlova (administration), and Tomas Kasparek (system
- administration).  It is possible that this list of contributors contains
+ administration).   It is possible that this list of contributors contains
  oversights; any important omissions are unlikey to be intentional.
 
  A lot of code was written during the summer of 2010 but we still did not have a
  complete working system.  Some of the participants of the 2010 workshop
  continued working to complete the toolkit and get a working set of training scripts.  
- Release is scheduled for early April, 2010.
+ The code was released May 14th, 2010.
 
  \section history_ack Acknowledgements
 
@@ -74,6 +74,9 @@
  Community's Seventh Framework Programme under grant agreement number 213850
  (SCALE).
 
+ We would like to acknowledge the support of Geoffrey Zweig and Alex Acero
+ at Microsoft Research, as well as the generosity of Rico (Henrique) Malvar in
+ allowing the use of his FFT code.
 
 
 */
