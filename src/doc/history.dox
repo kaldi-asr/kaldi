@@ -76,7 +76,11 @@
 
  We would like to acknowledge the support of Geoffrey Zweig and Alex Acero
  at Microsoft Research, as well as the generosity of Rico (Henrique) Malvar in
- allowing the use of his FFT code.
-
+ allowing the use of his FFT code.  We would also like to acknowledge the help
+ of faculty and staff at Johns Hopkins University's Center for Language and
+ Speech Processing during the JHU'09 workshop; particularly Desiree Cleves,
+ Sanjeev Khudanpur and the late Fred Jelinek.  Thanks also to Patrick Nguyen
+ for his help in organizing the JHU workshop and with with Wall Street 
+ Journal recipe.
 
 */
