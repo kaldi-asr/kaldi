@@ -270,8 +270,18 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
 
   int pp = p-1;
   int iter = 0;
+  // note: -52.0 is from Jama code; the -23 is the extension
+  // to float, because mantissa length in (double, float)
+  // is (52, 23) bits respectively.
   Real eps(pow(2.0, sizeof(Real) == 4 ? -23.0 : -52.0));
-  Real tiny(pow(2.0, sizeof(Real) == 4 ? -966.0 : -120.0));
+  // Note: the -966 was taken from Jama code, but the -120 is a guess
+  // of how to extend this to float... the exponent in double goes
+  // from -1022 .. 1023, and in float from -126..127.  I'm not sure
+  // what the significance of 966 is, so -120 just represents a number
+  // that's a bit less negative than -126.  If we get convergence
+  // failure in float only, this may mean that we have to make the
+  // -120 value less negative.
+  Real tiny(pow(2.0, sizeof(Real) == 4 ? -120.0: -966.0 ));
   
   while (p > 0) {
     int k = 0;
@@ -312,7 +322,7 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
         }
         Real t( (ks != p ? std::abs(e(ks)) : 0.) +
                 (ks != k+1 ? std::abs(e(ks-1)) : 0.));
-        if (std::abs(s(ks)) <= eps*t)  {
+        if (std::abs(s(ks)) <= tiny + eps*t)  {
           s(ks) = 0.0;
           break;
         }
