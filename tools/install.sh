@@ -22,6 +22,7 @@ fi
 echo "****(1) Installing sph2pipe"
 
 (
+  rm sph2pipe_v2.5.tar.gz 2>/dev/null
   wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
 
   if [ ! -e sph2pipe_v2.5.tar.gz ]; then
@@ -123,7 +124,7 @@ fi
   # This can be helpful helpful for scoring but the default scoring scripts do not
   # use it (they use our own Kaldi-based scorer).
   echo "**** (5) install sclite (optional; useful for detailed scoring output but the default scripts don't use it)"
-
+  rm sctk-2.4.0-20091110-0958.tar.bz2  2>/dev/null
   wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
 
   if [ ! -e sctk-2.4.0-20091110-0958.tar.bz2 ]; then
@@ -160,6 +161,7 @@ fi
 (
   echo "****(6) Install openfst"
 
+  rm openfst-1.2.7.tar.gz 2>/dev/null
   wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
 
   if [ ! -e openfst-1.2.7.tar.gz ]; then
