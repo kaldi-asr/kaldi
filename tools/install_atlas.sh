@@ -26,10 +26,11 @@ cd ATLAS
 mkdir build # you should probably have a name that reflects OS, CPU, etc... but this is fine
 cd build
 
-../configure --prefix=`pwd`
-make
-make check
+../configure --prefix=`pwd` || exit 1;
+make || exit 1;
+make check || exit 1;
 # make time
-mkdir install
-make install DESTDIR=`pwd`/install
+mkdir install || exit 1;
+make install DESTDIR=`pwd`/install || exit 1;
+
 
