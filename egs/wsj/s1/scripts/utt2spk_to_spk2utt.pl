@@ -14,7 +14,9 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
+# converts an utt2spk file to a spk2utt file.
+# Takes input from the stdin or from a file argument;
+# output goes to the standard out.l
 
 while(<>){ 
     @A = split(" ", $_);

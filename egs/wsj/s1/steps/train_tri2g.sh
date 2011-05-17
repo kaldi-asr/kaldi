@@ -238,10 +238,6 @@ done
       2>$dir/est_alimdl.log  || exit 1;
 rm $dir/$x.acc2
 
-# The following files contains information that may be useful for display purposes
-for x in 0 $lvtln_iters; do
- cat $dir/$x.?.warp | scripts/process_warps.pl data/spk2gender.map > $dir/warps.$x
-done
 
 if [ $compute_vtlnmdl == "true" ]; then
    iter=`echo 0 $lvtln_iters | awk '{print $NF}'` # last iter we re-estimated LVTLN

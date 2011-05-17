@@ -12,7 +12,7 @@ exp/decode_tri2a/wer:Average WER is 6.731937 (942 / 13993)   # 1nd triphone buil
 exp/decode_tri2a_fmllr/wer:Average WER is 5.517044 (772 / 13993)  # + fMLLR
 exp/decode_tri2a_fmllr_utt/wer:Average WER is 6.681912 (935 / 13993) # (fmllr per utterance)
 exp/decode_tri2b/wer:Average WER is 4.973916 (696 / 13993)   # Exponential transform
-exp/decode_tri2c/wer:Average WER is 6.467519 (905 / 13993)   # Cepstral mean subtraction
+exp/decode_tri2c/wer:Average WER is 6.238834 (873 / 13993)   # Cepstral mean subtraction (per-spk)
 exp/decode_tri2d/wer:Average WER is 6.639034 (929 / 13993)   # MLLT (= global STC)
 exp/decode_tri2e/wer:Average WER is 7.217895 (1010 / 13993)  # splice-9-frames + LDA features
 exp/decode_tri2f/wer:Average WER is 6.324591 (885 / 13993)   # splice-9-frames + LDA + MLLT

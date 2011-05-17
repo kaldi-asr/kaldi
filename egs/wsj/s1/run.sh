@@ -216,7 +216,7 @@ scripts/decode.sh exp/decode_tri3a_tgpr_uttdfmllr_eval92 exp/graph_tri3a_tg_prun
 
 #### Now alternative experiments... ###
 
-# ET
+# Exponential Transform (ET)
 steps/train_tri2b.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2b/tree exp/tri2b/final.mdl exp/graph_tri2b_tg_pruned || exit 1;
  scripts/decode.sh exp/decode_tri2b_tgpr_utt_eval92 exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b.sh data/eval_nov92.scp 
@@ -225,15 +225,27 @@ steps/train_tri2b.sh
  scripts/decode.sh --per-spk exp/decode_tri2b_tgpr_fmllr_eval92 exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b_fmllr.sh data/eval_nov92.scp 
 ) &
 
+# Cepstral Mean Normalization (CMN)
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2c/tree exp/tri2c/final.mdl exp/graph_tri2c_tg_pruned || exit 1;
+ scripts/decode.sh exp/decode_tri2c_tgpr_utt_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov92.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2c_tgpr_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_tri2c_tgpr_eval93 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov93.scp )&
+
+
 # MLLT/STC
 steps/train_tri2d.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2d/tree exp/tri2d/final.mdl exp/graph_tri2d_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2d_tgpr_eval92 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/eval_nov92.scp  )&
+ scripts/decode.sh exp/decode_tri2d_tgpr_eval92 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_tri2d_tgpr_eval93 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/eval_nov93.scp 
+ )&
 
 # Splice+LDA
 steps/train_tri2e.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2e/tree exp/tri2e/final.mdl exp/graph_tri2e_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2e_tgpr_eval92 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/eval_nov92.scp  )&
+ scripts/decode.sh exp/decode_tri2e_tgpr_eval92 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_tri2e_tgpr_eval93 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/eval_nov93.scp 
+ )&
 
 # Splice+LDA+MLLT
 steps/train_tri2f.sh
