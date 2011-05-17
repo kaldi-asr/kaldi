@@ -287,6 +287,11 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
     int k = 0;
     int kase = 0;
 
+    if (iter == 500 || iter == 750) {
+      KALDI_WARN << "Svd taking a long time: making convergence criterion less exact.";
+      eps = pow(0.8, eps);
+      tiny = pow(0.8, tiny);
+    }
     if (iter > 1000) {
       KALDI_WARN << "Svd not converging on matrix of size " << m << " by " <<n;
       return false;

@@ -46,7 +46,7 @@ void AccCmvnStats(const VectorBase<BaseFloat> &feats, BaseFloat weight, MatrixBa
 void AccCmvnStats(const MatrixBase<BaseFloat> &feats,
                   const VectorBase<BaseFloat> *weights,
                   MatrixBase<double> *stats) {
-  int32 num_frames = feats.NumCols();
+  int32 num_frames = feats.NumRows();
   if (weights != NULL) {
     KALDI_ASSERT(weights->Dim() == num_frames);
   }
