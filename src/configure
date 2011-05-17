@@ -201,7 +201,7 @@ if [ "`uname`" == "Linux"  ]; then
 
     if [ -z $ATLASLIBDIR ]; then
        if [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.a ]; then
-            ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib/libatlas.a
+            ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
        elif [ -f /usr/local/lib/libatlas.a ]; then
              ATLASLIBDIR=/usr/local/lib
        elif [ -f /usr/lib/sse2/libatlas.a ]; then   
