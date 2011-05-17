@@ -82,7 +82,7 @@ namespace kaldi {
     
   \subsection model_diag_am GMM-based acoustic model
 
- Class AmDiagGmm represents a collection of DiagGmm objects, indexed by pdf-id.
+ Class AmDiagGmm represents a collection of DiagGmm objects, indexed by \ref pdf_id "pdf-id".
  This class does not represent a HMM-GMM, just a collection of GMMs.  Putting it 
  together with the HMM structure is the responsibility of other code, principally
  the topology and transition-modeling code and the code responsible for compiling
@@ -92,13 +92,13 @@ namespace kaldi {
  This is simply a convenience to avoid having to write too many separate files to disk,
  since normally we update the Gaussians and the transitions at the same time.
  The idea is that with other model types we would create a file with
- a TransitionModel and then SomeOtherModelType.  This way, programs that need
+ a TransitionModel and then [an object some other model type].  This way, programs that need
  to read only the transition model (e.g. for graph creation) can read the
  file without needing to know the type of the model.
 
  Class AmDiagGmm is a fairly simple object and does not take the responsibility
  for such things as model estimation (e.g. see MlEstimateAmDiagGmm), or transform
- estimation (there are various pieces of code that do this; see \ref transforms.
+ estimation (there are various pieces of code that do this; see \ref transform.
 
  \subsection model_full_gmm Full-covariance GMMs
 
@@ -123,7 +123,7 @@ namespace kaldi {
  \ref MleAmSgmm.  
 
  For example scripts that demonstrate how to
- build an SGMM based system, see for example egs/rm/s1/steps/train_ubma.sh,
+ build an SGMM based system, see egs/rm/s1/steps/train_ubma.sh,
  egs/rm/s1/steps/train_sgmma.sh, and egs/rm/s1/steps/decode_sgmma.sh.
 
 
