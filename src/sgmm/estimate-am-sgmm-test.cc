@@ -95,6 +95,8 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   BaseFloat loglike3 = sgmm3->LogLikelihood(frame_vars, 0);
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
   delete accs2;
+  delete sgmm2;
+  delete sgmm3;
 }
 
 void UnitTestEstimateSgmm() {
