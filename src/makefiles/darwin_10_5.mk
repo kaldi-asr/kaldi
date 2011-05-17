@@ -5,9 +5,9 @@ CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0  \
     -Wno-sign-compare -Winit-self \
     -I../../tools/openfst/include \
     -DHAVE_EXECINFO_H -DHAVE_CXXABI_H \
-    -g -O0 -DKALDI_PARANOID
+    -gdwarf-2 -O0 -DKALDI_PARANOID
 
-LDFLAGS = -g
+LDFLAGS = -gdwarf-2
 LDLIBS = ../../tools/openfst/lib/libfst.a -ldl -lm -framework Accelerate
 CXX = g++-4
 CC = g++-4

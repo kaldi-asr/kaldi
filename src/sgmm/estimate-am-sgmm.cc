@@ -617,10 +617,11 @@ void MleAmSgmmUpdater::PreComputeStats(const MleAmSgmmAccs &accs,
 }
 
 // Compute H^{(sm)}, the "smoothing" matrices.
-void MleAmSgmmUpdater::ComputeSmoothingTerms(
-    const MleAmSgmmAccs &accs, const AmSgmm &model,
-    const vector< SpMatrix<double> > &H, SpMatrix<double> *H_sm,
-    Vector<double> *y_sm) const {
+void MleAmSgmmUpdater::ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
+                                             const AmSgmm &model,
+                                             const vector<SpMatrix<double> > &H,
+                                             SpMatrix<double> *H_sm,
+                                             Vector<double> *y_sm) const {
   KALDI_ASSERT(H_sm != NULL);
   H_sm->Resize(accs.phn_space_dim_);
   if (y_sm != NULL) y_sm->Resize(accs.phn_space_dim_);
@@ -667,10 +668,11 @@ void MleAmSgmmUpdater::ComputeSmoothingTerms(
   }
 }
 
-double MleAmSgmmUpdater::UpdatePhoneVectors(
-    const MleAmSgmmAccs &accs, AmSgmm *model,
-    const std::vector< SpMatrix<double> > &H,
-    const SpMatrix<double> &H_sm, const Vector<double> &y_sm) {
+double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
+                                            AmSgmm *model,
+                                            const vector< SpMatrix<double> > &H,
+                                            const SpMatrix<double> &H_sm,
+                                            const Vector<double> &y_sm) {
   KALDI_LOG << "Updating phone vectors";
 
   double count = 0.0, totimpr = 0.0, likeimpr = 0.0;  // sum over all states
@@ -687,7 +689,8 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(
 
       // need weights for this ...
       // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
-      w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans, Vector<double>(model->v_[j].Row(m)), 0.0);
+      w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
+                     Vector<double>(model->v_[j].Row(m)), 0.0);
       w_jm.ApplySoftMax();
       g_jm.CopyFromVec(accs.y_[j].Row(m));
 
@@ -715,7 +718,7 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(
 
       // if (gamma_jm == 0) continue;
       // no, we still want to update even with zero count.
-#ifdef PARANOID
+#ifdef KALDI_PARANOID
       if (update_options_.tau_vec > 0)
         KALDI_ASSERT(H_jm_dash.IsPosDef());
 #endif
@@ -737,9 +740,10 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(
              - 0.5 * VecSpVec(model->v_[j].Row(m), H_jm_flt, model->v_[j].Row(m)));
       model->v_[j].Row(m).CopyFromVec(vhat_jm);
       if (j < 3 && m < 2) {
-        KALDI_LOG << "Objf impr for j = " << (j) << " m = " << (m)
-                  << " is " << (objf_impr_with_prior / (gamma_jm + 1.0e-20))
-                  << " (with ad-hoc prior) " << (objf_impr_noprior / (gamma_jm + 1.0e-20))
+        KALDI_LOG << "Objf impr for j = " << (j) << " m = " << (m) << " is "
+                  << (objf_impr_with_prior / (gamma_jm + 1.0e-20))
+                  << " (with ad-hoc prior) "
+                  << (objf_impr_noprior / (gamma_jm + 1.0e-20))
                   << " (no prior) over " << (gamma_jm) << " frames";
       }
       state_totimpr += objf_impr_with_prior;
@@ -750,17 +754,17 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(
     totimpr += state_totimpr;
     likeimpr += state_likeimpr;
     if (j < 10) {
-      KALDI_LOG << "Objf impr for state j = " << (j) << "  is " << (state_totimpr
-                                                                    / (state_count + 1.0e-20)) << " (with ad-hoc prior) "
+      KALDI_LOG << "Objf impr for state j = " << (j) << "  is "
+                << (state_totimpr / (state_count + 1.0e-20))
+                << " (with ad-hoc prior) "
                 << (state_likeimpr / (state_count + 1.0e-20))
                 << " (no prior) over " << (state_count) << " frames";
     }
   }
 
-  KALDI_LOG << "**Overall objf impr for v is " << (totimpr / (count
-                                                              + 1.0e-20)) << "(with ad-hoc prior) " << (likeimpr
-                                                                                                        / (count + 1.0e-20)) << " (no prior) over " << (count)
-            << " frames";
+  KALDI_LOG << "**Overall objf impr for v is " << (totimpr / (count + 1.0e-20))
+            << "(with ad-hoc prior) " << (likeimpr / (count + 1.0e-20))
+            << " (no prior) over " << (count) << " frames";
   // Choosing to return actual likelihood impr here.
   return likeimpr / (count + 1.0e-20);
 }
@@ -817,15 +821,15 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
   Matrix<double> TransInv(Trans);
   TransInv.Invert();  // T in above...
 
-#ifdef PARANOID
+#ifdef KALDI_PARANOID
   {  
     SpMatrix<double> H_sm_tmp(accs.phn_space_dim_);
-    H_sm_tmp.AddMatMat(1.0, TransInv, kTrans, H_sm_proj, 0.0);
+    H_sm_tmp.AddMat2Sp(1.0, TransInv, kTrans, H_sm, 0.0);
     KALDI_ASSERT(H_sm_tmp.IsDiagonal(0.1));
   }
   {
     SpMatrix<double> Sigma_tmp(accs.phn_space_dim_);
-    Sigma_tmp.AddMatMat(1.0, Trans, kNoTrans, Sigma, 0.0);
+    Sigma_tmp.AddMat2Sp(1.0, Trans, kNoTrans, Sigma, 0.0);
     KALDI_ASSERT(Sigma_tmp.IsUnit(0.1));
   }
 #endif

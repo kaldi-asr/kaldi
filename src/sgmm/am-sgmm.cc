@@ -695,7 +695,7 @@ void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
   SubMatrix<BaseFloat> Apre(*xform, 0, dim, 0, dim);
   Apre.AddMatMat(1.0, U, kTrans, tmpLInvFull, kNoTrans, 0.0);
 
-#ifdef PARANOID
+#ifdef KALDI_PARANOID
   {  
     SpMatrix<BaseFloat> tmp(dim);
     tmp.AddMat2Sp(1.0, Apre, kNoTrans, within_class_covar, 0.0);
@@ -929,7 +929,7 @@ void ComputeFeatureNormalizer(const FullGmm &gmm, Matrix<BaseFloat> *xform) {
   // T := L U, eq (23)
   xform->AddMatMat(1.0, chol_full, kNoTrans, U, kNoTrans, 0.0);
 
-#ifdef PARANOID
+#ifdef KALDI_PARANOID
   Matrix<BaseFloat> inv_xform(*xform);
   inv_xform.InvertDouble();
   {  // Check that T*within_class_covar*T' = I.

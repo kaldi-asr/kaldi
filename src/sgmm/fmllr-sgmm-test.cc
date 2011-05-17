@@ -45,6 +45,7 @@ void ApplyFmllrXform(const kaldi::VectorBase<BaseFloat> &in,
 // and ASCII mode, as well as Check().
 void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
                          const kaldi::Matrix<BaseFloat> &feats) {
+  KALDI_LOG << "Test IO start.";
   using namespace kaldi;
   int32 dim = sgmm.FeatureDim();
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -60,9 +61,14 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
                             &fmllr_globals.mean_scatter_);
+  if (fmllr_globals.mean_scatter_.Min() == 0.0) {
+    KALDI_WARN << "Global covariances low rank!";
+    KALDI_WARN << "Diag-scatter = " << fmllr_globals.mean_scatter_;
+    return;
+  }
+
 //  std::cout << "Pre-Xform = " << fmllr_globals.pre_xform_;
 //  std::cout << "Inv-Xform = " << fmllr_globals.inv_xform_;
-//  std::cout << "Diag-scatter = " << fmllr_globals.mean_scatter_;
 
   FmllrSgmmAccs accs;
   accs.Init(sgmm.FeatureDim(), sgmm.NumGauss());
@@ -88,9 +94,10 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike1 = sgmm.LogLikelihood(frame_vars, 0);
 
-  // First, non-binary write
-  accs.Write(kaldi::Output("tmpf", false).Stream(), false);
   bool binary_in;
+  // First, non-binary write
+  KALDI_LOG << "Test ASCII IO.";
+  accs.Write(kaldi::Output("tmpf", false).Stream(), false);
   FmllrSgmmAccs *accs1 = new FmllrSgmmAccs();
   // Non-binary read
   kaldi::Input ki1("tmpf", &binary_in);
@@ -106,6 +113,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   delete accs1;
 
   // Next, binary write
+  KALDI_LOG << "Test Binary IO.";
   accs.Write(kaldi::Output("tmpfb", true).Stream(), true);
   FmllrSgmmAccs *accs2 = new FmllrSgmmAccs();
   // Binary read
@@ -120,10 +128,12 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   std::cout << "LL1 = " << loglike1 << ", LL3 = " << loglike3 << std::endl;
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
   delete accs2;
+  KALDI_LOG << "Test IO end.";
 }
 
 void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
                          const kaldi::Matrix<BaseFloat> &feats) {
+  KALDI_LOG << "Test Subspace start.";
   using namespace kaldi;
   int32 dim = sgmm.FeatureDim();
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -139,6 +149,11 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
                             &fmllr_globals.mean_scatter_);
+  if (fmllr_globals.mean_scatter_.Min() == 0.0) {
+    KALDI_WARN << "Global covariances low rank!";
+    KALDI_WARN << "Diag-scatter = " << fmllr_globals.mean_scatter_;
+    return;
+  }
 
   FmllrSgmmAccs accs;
   accs.Init(sgmm.FeatureDim(), sgmm.NumGauss());
@@ -160,9 +175,11 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   kaldi::Matrix<BaseFloat> xform_mat(dim, dim+1);
   xform_mat.SetUnit();
   accs.Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
+  KALDI_LOG << "Test Subspace end.";
 }
 
 void TestSgmmFmllr() {
+  srand(time(NULL));
   int32 dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random number of mixtures
   kaldi::FullGmm full_gmm;

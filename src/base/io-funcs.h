@@ -121,7 +121,7 @@ namespace kaldi {
 
 
 // WriteBasicType is the name of the write function
-// for bool, integer types, and floating-point tupes.
+// for bool, integer types, and floating-point types.
 // They all throw on error.
 template<class T> void WriteBasicType(std::ostream &os, bool binary, T t);
 
@@ -153,7 +153,7 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *f);
 
 // Template that covers integers.
 template<class T>  void WriteBasicType(std::ostream &os,
-                                               bool binary, T t) {
+                                       bool binary, T t) {
   // Compile time assertion that this is not called with a wrong type.
   KALDI_ASSERT_IS_INTEGER_TYPE(T);
   if (binary) {

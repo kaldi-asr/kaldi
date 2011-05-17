@@ -362,6 +362,11 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
   if (globals.IsEmpty())
     KALDI_ERR << "Must set up pre-transforms before estimating FMLLR.";
 
+  KALDI_VLOG(3) << "Mincount = " << mincount << "; Basis: "
+                << std::string(globals.HasBasis()? "yes; " : "no; ")
+                << "Using subspace: " << std::string(using_subspace? "yes; "
+                    : "no; ");
+
 
   // initialization just to get rid of compile errors.
   BaseFloat auxf_old = 0, auxf_new = 0;
@@ -395,6 +400,7 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       Matrix<BaseFloat> hess_xformed_grad(dim_, dim_ + 1, kSetZero);
       ApplyHessianXformToGradient(globals, pre_xformed_grad,
                                   &hess_xformed_grad);
+//      std::cout << "Hess-X Grad = " << hess_xformed_grad << std::endl;
 
       // Update the actual FMLLR transform matrices
       Matrix<BaseFloat> hess_xformed_delta(dim_, dim_ + 1, kUndefined);
@@ -415,6 +421,8 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
         hess_xformed_delta.Scale(1 / stats_.beta_);  // Eq. (B.19)
       }
 
+//      std::cout << "Hess-X Delta = " << hess_xformed_delta << std::endl;
+
       // Transform Delta with the Hessian
       Matrix<BaseFloat> pre_xformed_delta(dim_, dim_ + 1, kSetZero);
       ApplyInvHessianXformToChange(globals, hess_xformed_delta,
@@ -424,7 +432,7 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       Matrix<BaseFloat> delta(dim_, dim_ + 1, kSetZero);
       ApplyInvPreXformToChange(globals, pre_xformed_delta, &delta);
 
-#ifdef PARANOID
+#ifdef KALDI_PARANOID
       // Check whether co-ordinate transformation is correct.
       {  
         BaseFloat tr1 = TraceMatMat(delta, grad, kTrans);
@@ -432,16 +440,13 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
                                     kTrans);
         BaseFloat tr3 = TraceMatMat(hess_xformed_delta, hess_xformed_grad,
                                     kTrans);
-        AssertEqual(tr1, tr2, 1e-9);
-        AssertEqual(tr2, tr3, 1e-9);
+        AssertEqual(tr1, tr2, 1e-6);
+        AssertEqual(tr2, tr3, 1e-6);
       }
 #endif
 
       // Calculate the optimal step size
       SubMatrix<BaseFloat> A(*out_xform, 0, dim_, 0, dim_);
-//      ostr.clear();
-//      A.Write(ostr, false);
-//      std::cout << "Dim = " << dim_ << "\nMat = " << ostr.str() << std::endl;
       BaseFloat step_size = CalcFmllrStepSize(stats_, sgmm, delta, A, G,
                                               opts.fmllr_iters);
 
@@ -474,6 +479,9 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
     }
     return true;
   } else {
+    KALDI_ASSERT(stats_.beta_ < mincount);
+//    std::cerr.precision(10);
+//    std::cerr.setf(std::ios::fixed,std::ios::floatfield);
     KALDI_WARN << "Not updating FMLLR because count is " << stats_.beta_
         << " < " << (mincount);
     if (auxf_out != NULL) *auxf_out = 0.0;
