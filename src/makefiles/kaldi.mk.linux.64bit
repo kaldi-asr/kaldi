@@ -1,7 +1,7 @@
 # This version is specialized for 64-bit cross-compilation on BUT machines.
 # The configure script will not pick it up automatically.
 # To use it: from .., do:
-# cat makefiles/kaldi.mk.common kaldi.mk.linux.64bit > kaldi.mk
+# cat makefiles/kaldi.mk.common makefiles/kaldi.mk.linux.64bit > kaldi.mk
 
 
 CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0 \
