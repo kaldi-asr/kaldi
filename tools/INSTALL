@@ -1,6 +1,9 @@
 This INSTALL file has manual instructions.    The script ./install.sh
 will attempt to execute these instructions automatically.
 
+[note: ./install_atlas.sh is a backup plan in case you don't have ATLAS
+ installed on your system; ignore it unless you get errors from
+ ../src/configure.]
 
 See below install instructions for:
 (1) sph2pipe (needed to run the example scripts but not for compilation)

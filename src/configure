@@ -200,14 +200,16 @@ if [ "`uname`" == "Linux"  ]; then
    # against just these two libraries worked.  
 
     if [ -z $ATLASLIBDIR ]; then
-       if [ -f /usr/local/lib/libatlas.a ]; then
+       if [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.a ]; then
+            ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib/libatlas.a
+       elif [ -f /usr/local/lib/libatlas.a ]; then
              ATLASLIBDIR=/usr/local/lib
        elif [ -f /usr/lib/sse2/libatlas.a ]; then   
              ATLASLIBDIR=/usr/lib/sse2
        elif [ -f /usr/lib/libatlas.a ]; then
              ATLASLIBDIR=/usr/lib
        else
-             failure  Could not find libatlas.a in any of the obvious places.
+            failure  Could not find libatlas.a in any of the obvious places... try going to ../tools and running install_atlas.sh
        fi
     elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
     failure "Could not find libatlas.a in '$ATLASLIBDIR'"
