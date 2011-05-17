@@ -30,7 +30,7 @@ cd build
 make || exit 1;
 make check || exit 1;
 # make time
-mkdir install || exit 1;
+mkdir install
 make install DESTDIR=`pwd`/install || exit 1;
 
 
