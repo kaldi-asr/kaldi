@@ -14,8 +14,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
-. path.sh
+                                                                      
 
 reorder=true # Dan-style, make false for Mirko+Lukas's decoder.
 
@@ -55,10 +54,8 @@ loopscale=0.1
 tscale=1.0
 
 
-
-
 if [ "$nopath" != "1" ]; then
-  export PATH=$PATH:../src/fstbin/:../src/bin:../openfst-1.2/src/bin/
+  . path.sh
 fi
 
 mkdir -p $dir

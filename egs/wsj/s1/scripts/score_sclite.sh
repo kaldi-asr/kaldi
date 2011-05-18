@@ -17,29 +17,36 @@
 
 # Does the sclite version of scoring in decode directories.
 
-if [ $# != 1 ]; then
-   echo "Usage: scripts/score_sclite.sh <decode-dir>"
+if [ $# != 2 ]; then
+   echo "Usage: scripts/score_sclite.sh <decode-dir> <ref>"
    exit 1;
 fi
 
-sclite=../tools/sctk-2.4.0/bin/sclite
+sclite=../../../tools/sctk-2.4.0/bin/sclite
 
 if [ ! -f $sclite  ]; then
-   echo "The sclite program is not there.  Follow the INSTALL instructions in ../tools";
+   echo "The sclite program is not there.  Follow the INSTALL instructions in ../../../tools";
    exit 1;
 fi
 
 dir=$1
+ref=$2
+
+if [ ! -f "$ref" ]; then
+   echo "Reference file $ref is not there"
+   exit 1
+fi
+
 
 scoredir=$dir/scoring
 mkdir $scoredir
 
-cat $dir/test?*.tra  | \
+cat $dir/*.tra  | \
   scripts/int2sym.pl --ignore-first-field data/words.txt | \
   sed 's:<s>::' | sed 's:</s>::' | sed 's:<UNK>::g' | \
   scripts/transcript2hyp.pl > $scoredir/hyp
 
-cat data/test_trans.txt | scripts/transcript2hyp.pl | sed 's:<NOISE>::g' | \
+cat $ref | scripts/transcript2hyp.pl | sed 's:<NOISE>::g' | \
   sed 's:<SPOKEN_NOISE>::g' > $scoredir/ref
 
 $sclite -r $scoredir/ref trn -h $scoredir/hyp trn -i wsj -o all -o dtl

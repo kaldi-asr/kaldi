@@ -1,0 +1,79 @@
+
+Note on baselines:
+--
+ Baseline 1:
+ "Robust Decision Tree State Tying for Continuous Speech Recognition",
+  Wolfgang Reichl and Wu Chou, IEEE Trans. Speech and Audio Processing (2000),
+ give the following numbers for gender-independent systems:
+
+ Trained on SI-84, tested on Nov'92 (20k open):  bigram 14.4%, trigram 12.8%.
+
+ Trained on SI-284, 20k open, tested on Nov'92 and '93:
+   bigram: Nov'92, 11.9%;  nov'93, 15.4% [c.f. us (tri3a_bg_eval92, 11.82; tri3a_bg_eval93, 15.00)]
+  trigram: Nov'92, 9.8%;  nov'93, 13.4%
+--
+ Baseline 2:
+ "Large Vocabulary Continuous Speech Recognition using HTK", by P. C. Woodland et. al,
+ ICASSP 1994.
+
+ Table 2: gender dependent xwrd system, SI-284 training, 20k test:
+ bigram: Nov'92, 11.08%;  Nov'93,14.45%  [c.f. us (tri3a_bg_eval92, 11.82; tri3a_bg_eval93, 15.00)]
+ trigram: Nov'92, 9.46%, Nov'93, 12.74%
+
+--
+
+exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
+exp/decode_tri1_tgpr_eval92/wer:%WER 13.30 [ 750 / 5641, 133 ins, 74 del, 543 sub ]
+exp/decode_tri2a_bg_eval92/wer:%WER 14.25 [ 804 / 5641, 146 ins, 87 del, 571 sub ]
+exp/decode_tri2a_bg_eval93/wer:%WER 20.97 [ 721 / 3439, 62 ins, 122 del, 537 sub ]
+exp/decode_tri2a_tgpr_eval92/wer:%WER 12.52 [ 706 / 5641, 127 ins, 60 del, 519 sub ]
+exp/decode_tri2a_tgpr_eval93/wer:%WER 18.29 [ 629 / 3439, 47 ins, 104 del, 478 sub ]
+exp/decode_tri2a_tgpr_fmllr_eval92/wer:%WER 11.42 [ 644 / 5641, 116 ins, 60 del, 468 sub ]
+exp/decode_tri2a_tgpr_fmllr_utt_eval92/wer:%WER 12.48 [ 704 / 5641, 128 ins, 56 del, 520 sub ]
+exp/decode_tri2b_tgpr_eval92/wer:%WER 11.31 [ 638 / 5641, 128 ins, 58 del, 452 sub ]
+exp/decode_tri2b_tgpr_eval93/wer:%WER 16.14 [ 555 / 3439, 59 ins, 89 del, 407 sub ]
+exp/decode_tri2b_tgpr_fmllr_eval92/wer:%WER 10.25 [ 578 / 5641, 111 ins, 53 del, 414 sub ]
+exp/decode_tri2b_tgpr_fmllr_eval93/wer:%WER 14.13 [ 486 / 3439, 46 ins, 84 del, 356 sub ]
+exp/decode_tri2b_tgpr_utt_eval92/wer:%WER 11.26 [ 635 / 5641, 122 ins, 62 del, 451 sub ]
+exp/decode_tri2b_tgpr_utt_eval93/wer:%WER 15.93 [ 548 / 3439, 56 ins, 91 del, 401 sub ]
+exp/decode_tri2b_tgpr_utt_fmllr_eval92/wer:%WER 11.19 [ 631 / 5641, 122 ins, 61 del, 448 sub ]
+exp/decode_tri2b_tgpr_utt_fmllr_eval93/wer:%WER 15.85 [ 545 / 3439, 54 ins, 93 del, 398 sub ]
+exp/decode_tri2c_tgpr_eval92/wer:%WER 12.71 [ 717 / 5641, 137 ins, 72 del, 508 sub ]
+exp/decode_tri2c_tgpr_eval93/wer:%WER 17.01 [ 585 / 3439, 61 ins, 85 del, 439 sub ]
+exp/decode_tri2c_tgpr_utt_eval92/wer:%WER 12.96 [ 731 / 5641, 148 ins, 67 del, 516 sub ]
+exp/decode_tri2d_tgpr_eval92/wer:%WER 13.03 [ 735 / 5641, 138 ins, 74 del, 523 sub ]
+exp/decode_tri2d_tgpr_eval93/wer:%WER 19.40 [ 667 / 3439, 48 ins, 130 del, 489 sub ]
+exp/decode_tri2e_tgpr_eval92/wer:%WER 14.29 [ 806 / 5641, 155 ins, 79 del, 572 sub ]
+exp/decode_tri2e_tgpr_eval93/wer:%WER 19.08 [ 656 / 3439, 71 ins, 120 del, 465 sub ]
+exp/decode_tri2f_tgpr_eval92/wer:%WER 12.23 [ 690 / 5641, 138 ins, 57 del, 495 sub ]
+exp/decode_tri2f_tgpr_eval93/wer:%WER 17.74 [ 610 / 3439, 68 ins, 85 del, 457 sub ]
+exp/decode_tri2g_tgpr_diag_eval92/wer:%WER 10.65 [ 601 / 5641, 111 ins, 55 del, 435 sub ]
+exp/decode_tri2g_tgpr_diag_eval93/wer:%WER 16.49 [ 567 / 3439, 77 ins, 72 del, 418 sub ]
+exp/decode_tri2g_tgpr_eval92/wer:%WER 11.08 [ 625 / 5641, 119 ins, 57 del, 449 sub ]
+exp/decode_tri2g_tgpr_eval93/wer:%WER 16.40 [ 564 / 3439, 72 ins, 68 del, 424 sub ]
+exp/decode_tri2g_tgpr_utt_diag_eval92/wer:%WER 11.10 [ 626 / 5641, 119 ins, 60 del, 447 sub ]
+exp/decode_tri2g_tgpr_utt_diag_eval93/wer:%WER 16.08 [ 553 / 3439, 75 ins, 68 del, 410 sub ]
+exp/decode_tri2g_tgpr_utt_eval92/wer:%WER 11.19 [ 631 / 5641, 117 ins, 59 del, 455 sub ]
+exp/decode_tri2g_tgpr_utt_eval93/wer:%WER 16.17 [ 556 / 3439, 76 ins, 67 del, 413 sub ]
+exp/decode_tri2g_tgpr_utt_vtln_diag_eval92/wer:%WER 10.88 [ 614 / 5641, 115 ins, 58 del, 441 sub ]
+exp/decode_tri2g_tgpr_utt_vtln_diag_eval93/wer:%WER 17.82 [ 613 / 3439, 73 ins, 99 del, 441 sub ]
+exp/decode_tri2g_tgpr_vtln_diag_eval92/wer:%WER 10.88 [ 614 / 5641, 117 ins, 59 del, 438 sub ]
+exp/decode_tri2g_tgpr_vtln_diag_eval93/wer:%WER 15.91 [ 547 / 3439, 73 ins, 68 del, 406 sub ]
+exp/decode_tri2h_tgpr_eval92/wer:%WER 13.40 [ 756 / 5641, 163 ins, 54 del, 539 sub ]
+exp/decode_tri2h_tgpr_eval93/wer:%WER 20.24 [ 696 / 3439, 69 ins, 109 del, 518 sub ]
+exp/decode_tri2i_tgpr_eval92/wer:%WER 12.39 [ 699 / 5641, 130 ins, 72 del, 497 sub ]
+exp/decode_tri2i_tgpr_eval93/wer:%WER 18.35 [ 631 / 3439, 58 ins, 102 del, 471 sub ]
+exp/decode_tri2j_tgpr_eval92/wer:%WER 12.82 [ 723 / 5641, 127 ins, 70 del, 526 sub ]
+exp/decode_tri2j_tgpr_eval93/wer:%WER 18.26 [ 628 / 3439, 59 ins, 99 del, 470 sub ]
+exp/decode_tri3a_bg_eval92/wer:%WER 11.82 [ 667 / 5641, 132 ins, 63 del, 472 sub ]
+exp/decode_tri3a_bg_eval93/wer:%WER 15.00 [ 516 / 3439, 62 ins, 75 del, 379 sub ]
+exp/decode_tri3a_tgpr_dfmllr_eval92/wer:%WER 10.51 [ 593 / 5641, 111 ins, 51 del, 431 sub ]
+exp/decode_tri3a_tgpr_dfmllr_eval93/wer:%WER 12.68 [ 436 / 3439, 52 ins, 52 del, 332 sub ]
+exp/decode_tri3a_tgpr_eval92/wer:%WER 10.67 [ 602 / 5641, 131 ins, 43 del, 428 sub ]
+exp/decode_tri3a_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 55 ins, 68 del, 353 sub ]
+exp/decode_tri3a_tgpr_fmllr_eval92/wer:%WER 9.54 [ 538 / 5641, 114 ins, 47 del, 377 sub ]
+exp/decode_tri3a_tgpr_fmllr_eval93/wer:%WER 12.13 [ 417 / 3439, 52 ins, 59 del, 306 sub ]
+exp/decode_tri3a_tgpr_uttdfmllr_eval92/wer:%WER 10.58 [ 597 / 5641, 118 ins, 49 del, 430 sub ]
+exp/decode_tri3a_tgpr_uttdfmllr_eval93/wer:%WER 13.29 [ 457 / 3439, 49 ins, 57 del, 351 sub ]
+exp/decode_tri3a_tgpr_uttfmllr_eval92/wer:%WER 10.44 [ 589 / 5641, 122 ins, 47 del, 420 sub ]
+exp/decode_tri3a_tgpr_uttfmllr_eval93/wer:%WER 13.93 [ 479 / 3439, 56 ins, 69 del, 354 sub ]

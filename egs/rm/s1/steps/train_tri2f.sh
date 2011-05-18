@@ -110,7 +110,6 @@ while [ $x -lt $numiters ]; do
      compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
      cur_lda=$dir/$x.mat
 
-
      feats="ark:splice-feats scp:data/train.scp ark:- | transform-feats $cur_lda ark:- ark:-|"
      # Subset of features used to train MLLT transforms.
      featsub="ark:scripts/subset_scp.pl 800 data/train.scp | splice-feats scp:- ark:- | transform-feats $cur_lda ark:- ark:-|"

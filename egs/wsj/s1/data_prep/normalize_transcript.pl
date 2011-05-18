@@ -32,6 +32,8 @@ while(<STDIN>) {
     foreach $w (split (" ",$trans)) {
         $w =~ tr:a-z:A-Z:; # Upcase everything to match the CMU dictionary. .
         $w =~ s:\\::g;      # Remove backslashes.  We don't need the quoting.
+        $w =~ s:^\%PERCENT$:PERCENT:; # Normalization for Nov'93 test transcripts.
+        $w =~ s:^\.POINT$:POINT:; # Normalization for Nov'93 test transcripts.
         if($w =~ m:^\[\<\w+\]$:  || # E.g. [<door_slam], this means a door slammed in the preceding word. Delete.
            $w =~ m:^\[\w+\>\]$:  ||  # E.g. [door_slam>], this means a door slammed in the next word.  Delete.
            $w =~ m:\[\w+/\]$: ||  # E.g. [phone_ring/], which indicates the start of this phenomenon.

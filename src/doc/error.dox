@@ -74,9 +74,8 @@ namespace kaldi {
  KALDI_ASSERT(ApproxEqual(delta, objf_change) && "Probable coding error in optimization");
 \endcode
 
- If compiled normally asserts will get checked, but not if compiled with NDEBUG
- (with the current \ref build_setup "build setup", the NDEBUG string will be defined
- if compiled with make DEBUGLEVEL=0).  For inner-loop assertions that use a lot of CPU,
+ If compiled normally asserts will get checked, but not if compiled with NDEBUG defined.
+ For inner-loop assertions that use a lot of CPU,
  we use the following pattern:
 \code
 #ifdef KALDI_PARANOID

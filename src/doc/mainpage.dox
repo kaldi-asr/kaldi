@@ -31,7 +31,7 @@
   \mainpage Kaldi
 
    (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
-
+   <p>
    - \ref about 
    - \ref install 
    - \ref build_setup 

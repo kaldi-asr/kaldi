@@ -24,8 +24,8 @@
 
  @section about_what What is Kaldi?
 
-  Kaldi is a toolkit for speech recognition written in C++ and (to be) released
-  under the open source Apache license.  Kaldi is intended for use by speech
+  Kaldi is a toolkit for speech recognition written in C++ and licensed under
+  the  Apache License v2.0.  Kaldi is intended for use by speech
   recognition researchers.  For more detailed history and list of contributors see
   \ref history.
 
