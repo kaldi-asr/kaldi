@@ -1041,7 +1041,9 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
       if (!archive_output_.Close()) close_success = false;
     if (script_output_.IsOpen())
       if (!script_output_.Close()) close_success = false;
-    return close_success && (state_ != kWriteError);
+    bool ans = close_success && (state_ != kWriteError);
+    state_ = kUninitialized;
+    return ans;
   }
 
   TableWriterBothImpl(): state_(kUninitialized) {}

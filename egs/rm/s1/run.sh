@@ -59,10 +59,12 @@ steps/make_mfcc_test.sh $mfccdir
 steps/train_mono.sh
 steps/decode_mono.sh  &
 steps/train_tri1.sh
-steps/decode_tri1.sh  &
+(steps/decode_tri1.sh ; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ) &
 
 steps/train_tri2a.sh
-steps/decode_tri2a.sh  &
+(steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh )&
+
+
 
 # Then do the same for 2b, 2c, and so on
 # 2a = basic triphone (all features double-deltas unless stated).
@@ -78,17 +80,29 @@ steps/decode_tri2a.sh  &
 # 2k = LDA + ET (equiv to LDA+MLLT+ET)
 # 2l = splice-9-frames + LDA + MLLT + SAT (i.e. train with CMLLR)
 
+for group in "b c d e" "f g h i" "j k l"; do 
+  for x in $group; do
+    steps/train_tri2$x.sh &
+  done
+  wait;
+  for x in $group; do
+    for y in steps/decode_tri2$x*.sh; do
+     $y
+    done
+  done
+done
+
+
 # To train and test SGMM systems:
 
 steps/train_ubma.sh
 
 # train and test unadapted system
-steps/train_sgmma.sh
-steps/decode_sgmma.sh
+(steps/train_sgmma.sh; steps/decode_sgmma.sh)&
 
 # train and test system with speaker vectors.
-steps/train_sgmmb.sh
-steps/decode_sgmmb.sh
+(steps/train_sgmmb.sh; steps/decode_sgmmb.sh)&
+
 
 
 

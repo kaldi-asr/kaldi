@@ -16,34 +16,40 @@
 # to be run from ..
 
 if [ -f path.sh ]; then . path.sh; fi
-dir=exp/decode_tri2l
+dir=exp/decode_tri2b_utt
 mkdir -p $dir
-model=exp/tri2l/final.mdl
-alignmodel=exp/tri2l/final.alimdl
-tree=exp/tri2l/tree
-graphdir=exp/graph_tri2l 
-transform=exp/tri2l/final.mat
+model=exp/tri2b/final.mdl
+alignmodel=exp/tri2b/final.alimdl
+et=exp/tri2b/final.et
+defaultmat=exp/tri2b/default.mat
+tree=exp/tri2b/tree
+graphdir=exp/graph_tri2b
 silphones=`cat data/silphones.csl`
-mincount=500
 
+# already made the graph.
 scripts/mkgraph.sh $tree $model $graphdir
 
 for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
-  spk2utt_opt=--spk2utt=ark:data/test_${test}.spk2utt
-  utt2spk_opt=--utt2spk=ark:data/test_${test}.utt2spk
+  defaultfeats="ark:add-deltas scp:data/test_${test}.scp ark:- | transform-feats $defaultmat ark:- ark:-|"
+  sifeats="ark:add-deltas scp:data/test_${test}.scp ark:- |"
 
-  sifeats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $transform ark:- ark:-|"
+  # First do SI decoding with alignment model.
+  # Use smaller beam for this, as less critical.
+  gmm-decode-faster --beam=15.0 --acoustic-scale=0.083333 --word-symbol-table=data/words.txt $alignmodel $graphdir/HCLG.fst "$defaultfeats" ark,t:$dir/test_${test}_pre.tra ark,t:$dir/test_${test}_pre.ali  2> $dir/predecode_${test}.log
 
-  # Use smaller beam for 1st pass.
-  gmm-decode-faster --beam=17.0 --acoustic-scale=0.083333 --word-symbol-table=data/words.txt $alignmodel $graphdir/HCLG.fst "$sifeats" ark,t:$dir/test_${test}.pre_tra ark,t:$dir/test_${test}.pre_ali  2> $dir/predecode_${test}.log
-
- ( ali-to-post ark:$dir/test_${test}.pre_ali ark:- | \
-    weight-silence-post 0.0 $silphones $model ark:- ark:- | \
-    gmm-est-fmllr --fmllr-min-count=$mincount $spk2utt_opt $model \
-    "$sifeats" ark,o:- ark:$dir/${test}.fmllr ) 2>$dir/fmllr_${test}.log
+  ## Comment the two lines below to make this per-utterance.
+  #spk2utt_opt=--spk2utt=ark:data/test_${test}.spk2utt
+  #utt2spk_opt=--utt2spk=ark:data/test_${test}.utt2spk
   
-  feats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $transform ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/${test}.fmllr ark:- ark:- |"
+ ( ali-to-post ark:$dir/test_${test}_pre.ali ark:- | \
+    weight-silence-post 0.0 $silphones $alignmodel ark:- ark:- | \
+    gmm-post-to-gpost $alignmodel "$defaultfeats" ark:- ark:- | \
+    gmm-est-et $spk2utt_opt --normalize-type=mean-and-var --verbose=1  $model $et \
+      "$sifeats" ark:- ark:$dir/et_${test}.trans ark,t:$dir/et_${test}.warp ) \
+     2>$dir/et_${test}.log || exit 1;
+
+  feats="ark:add-deltas scp:data/test_${test}.scp ark:- | transform-feats $utt2spk_opt ark:$dir/et_${test}.trans ark:- ark:- |"
 
   gmm-decode-faster --beam=20.0 --acoustic-scale=0.083333 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 

@@ -10,6 +10,8 @@
      should create a Makefile that doesn't depend on external variables (Dan)
   Add separate min-count at root of tree for regression-tree fMLLR/MLLR
   Add fMLLR scripts for SGMM.
+  Add documentation for regression-tree fMLLR (etc.) and possibly expand
+   documentation for acoustic modeling code.
 
  TODO items (Dan):
   Remove cpplint.py from distribution.

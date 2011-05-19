@@ -4,6 +4,51 @@
 # Note: these results will vary somewhat from OS to OS, because
 # some algorithms call rand().
 
+First, comparing with published results
+
+feb89 oct89 feb91 sep92   avg
+  2.77 4.02 3.30 6.29 4.10  % from my ICASSP'99 paper on Frame Discrimination (ML baseline)
+  3.20 4.10 2.86 6.06 4.06  % from decode_tri2c (which is triphone + CMN)
+
+exp/decode_mono/wer:Average WER is 14.234421 (1784 / 12533) 
+exp/decode_tri1/wer:Average WER is 4.420330 (554 / 12533)   # First triphone pass
+exp/decode_tri1_fmllr/wer:Average WER is 4.707572 (590 / 12533)  # + fMLLR
+exp/decode_tri1_regtree_fmllr/wer:Average WER is 4.707572 (590 / 12533)  # + regression-tree
+exp/decode_tri2a/wer:Average WER is 4.476183 (561 / 12533)  # Second triphone pass
+exp/decode_tri2a_fmllr/wer:Average WER is 3.718184 (466 / 12533)  # + fMLLR
+exp/decode_tri2a_fmllr_utt/wer:Average WER is 4.452246 (558 / 12533)  # [ fMLLR per utterance ]
+exp/decode_tri2b/wer:Average WER is 3.103806 (389 / 12533)  # Exponential transform
+exp/decode_tri2c/wer:Average WER is 3.789994 (475 / 12533)  # Cepstral mean subtraction (per-spk)
+exp/decode_tri2d/wer:Average WER is 4.188941 (525 / 12533)  # MLLT (= global STC)
+exp/decode_tri2e/wer:Average WER is 4.923003 (617 / 12533)  # splice-9-frames + LDA features
+exp/decode_tri2f/wer:Average WER is 3.782015 (474 / 12533)  # splice-9-frames + LDA + MLLT
+exp/decode_tri2g/wer:Average WER is 3.670310 (460 / 12533)  # Linear VTLN (LVTLN); includes mean-only fMLLR
+exp/decode_tri2g_diag/wer:Average WER is 3.550626 (445 / 12533) # +change mean-only to diagonal fMLLR
+exp/decode_tri2g_vtln/wer:Average WER is 3.534668 (443 / 12533) # More conventional VTLN (+mean-only fMLLR)
+exp/decode_tri2g_vtln_diag/wer:Average WER is 3.438921 (431 / 12533) #+change mean-only to diagonal fMLLR
+exp/decode_tri2g_vtln_nofmllr/wer:Average WER is 4.069257 (510 / 12533) # more conventional VTLN, no fMLLR
+exp/decode_tri2h/wer:Average WER is 4.252773 (533 / 12533) # Splice-9-frames + HLDA
+exp/decode_tri2i/wer:Average WER is 4.077236 (511 / 12533) # Triple-deltas + HLDA
+exp/decode_tri2j/wer:Average WER is 3.694247 (463 / 12533) # Triple-deltas + LDA + MLLT
+exp/decode_tri2k/wer:Average WER is 2.768691 (347 / 12533) # LDA + exponential transform
+exp/decode_tri2k_fmllr/wer:Average WER is 2.481449 (311 / 12533) # + fMLLR
+exp/decode_tri2l/wer:Average WER is 2.688901 (337 / 12533)   # Splice-9-frames + LDA + MLLT + SAT (fMLLR in test)
+exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tri2l but per-utt in test. ]
+
+
+
+
+exp/decode_tri2a/wer:Average WER is 4.476183 (561 / 12533) 
+exp/decode_tri2b/wer:Average WER is 3.103806 (389 / 12533) 
+exp/decode_tri2c/wer:Average WER is 3.789994 (475 / 12533) 
+exp/decode_tri2d/wer:Average WER is 4.188941 (525 / 12533) 
+exp/decode_tri2e/wer:Average WER is 4.923003 (617 / 12533) 
+exp/decode_tri2f/wer:Average WER is 3.782015 (474 / 12533) 
+exp/decode_tri2g/wer:Average WER is 3.670310 (460 / 12533) 
+exp/decode_tri2g_diag/wer:Average WER is 3.550626 (445 / 12533) 
+
+---
+
 exp/decode_mono/wer:Average WER is 14.234421 (1784 / 12533) 
 exp/decode_tri1/wer:Average WER is 4.707572 (590 / 12533)      # 1st triphone build
 exp/decode_tri1_fmllr/wer:Average WER is 4.188941 (525 / 12533)  # + fMLLR
@@ -11,7 +56,8 @@ exp/decode_tri1_regtree_fmllr/wer:Average WER is 3.981489 (499 / 12533)  # +regr
 exp/decode_tri2a/wer:Average WER is 4.595867 (576 / 12533)  # 2nd triphone build.
 exp/decode_tri2a_fmllr/wer:Average WER is 3.670310 (460 / 12533)  # + fMLLR
 exp/decode_tri2a_fmllr_utt/wer:Average WER is 4.555972 (571 / 12533)  # (fmllr per utterance)
-exp/decode_tri2b/wer:Average WER is 3.327216 (417 / 12533)        # Exponential transform
+exp/decode_tri2b/wer:Average WER is 3.327216 (417 / 12533)    # Exponential transform
+exp/decode_tri2b_utt/wer:Average WER is 3.351153 (420 / 12533)  # [per-utt]
 exp/decode_tri2c/wer:Average WER is 4.165004 (522 / 12533)    # Cepstral mean subtraction (per-spk)
 exp/decode_tri2d/wer:Average WER is 4.587888 (575 / 12533)    # MLLT (= global STC)
 exp/decode_tri2e/wer:Average WER is 5.042687 (632 / 12533)    # splice-9-frames + LDA features
@@ -20,11 +66,12 @@ exp/decode_tri2g/wer:Average WER is 3.678289 (461 / 12533)    # Linear VTLN (LVT
 exp/decode_tri2g_diag/wer:Average WER is 3.558605 (446 / 12533) # +change mean-only to diagonal fMLLR
 exp/decode_tri2g_vtln/wer:Average WER is 3.590521 (450 / 12533) # More conventional VTLN (+mean-only fMLLR)
 exp/decode_tri2g_vtln_diag/wer:Average WER is 3.566584 (447 / 12533)  #+change mean-only to diagonal fMLLR
+exp/decode_tri2g_vtln_diag_utt/wer:Average WER is 3.949573 (495 / 12533)  # [per-utt]
 exp/decode_tri2g_vtln_nofmllr/wer:Average WER is 4.125110 (517 / 12533) # more conventional VTLN, no fMLLR
 exp/decode_tri2h/wer:Average WER is 4.611825 (578 / 12533)  # Splice-9-frames + HLDA
 exp/decode_tri2i/wer:Average WER is 4.324583 (542 / 12533)  # Triple-deltas + HLDA
 exp/decode_tri2j/wer:Average WER is 3.957552 (496 / 12533)  # Triple-deltas + LDA + MLLT
-exp/decode_tri2k/wer:Average WER is 3.087848 (387 / 12533)  # LDA + exponential transform
+exp/decode_tri2k/wer:Average WER is 3.087848 (387 / 12533)  # LDA + exponential transform (ET)
 exp/decode_tri2k_fmllr/wer:Average WER is 2.736775 (343 / 12533)  # + fMLLR
 exp/decode_tri2k_regtree_fmllr/wer:Average WER is 2.800606 (351 / 12533)  # + regtree-fMLLR
 exp/decode_tri2k_utt/wer:Average WER is 3.295300 (413 / 12533)  # as decode_tri2k but est. ET per-utt in test
@@ -33,5 +80,3 @@ exp/decode_tri2l_utt/wer:Average WER is 5.106519 (640 / 12533) # as decode_tri2l
 
 exp/decode_sgmma/wer:Average WER is 3.151680 (395 / 12533)  # SGMM, no speaker adaptation
 exp/decode_sgmmb/wer:Average WER is 2.680922 (336 / 12533)  # SGMM, speaker vectors only
-
-

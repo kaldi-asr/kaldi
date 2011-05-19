@@ -28,10 +28,10 @@ srcgraphs="ark:gunzip -c $srcdir/graphs.fsts.gz|"
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 numiters=30    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
-numleaves=1500
+numleaves=1800
 numgauss=$[$numleaves*2]; # Initially mix up to avg. 2 Gauss/state.
                           # Then slowly mix up to final amount.
-totgauss=7000 # Target #Gaussians
+totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 realign_iters="10 15 20";   # Because last model was reasonable, don't 
   # realign too soon (i.e., on 5th iter).

@@ -34,9 +34,9 @@ per_spk=true
 
 numiters=30    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
-numleaves=1500
+numleaves=1800
 numgauss=$[$numleaves*2]; # Initially mix up to avg. 2 Gauss/state.
-totgauss=7000 # Target #Gaussians
+totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 realign_iters="10 15 20";
 silphonelist=`cat data/silphones.csl`

@@ -29,9 +29,9 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 numiters=30    # Number of iterations of training
 maxiterinc=20 # Last iter to increase #Gauss on.
-numleaves=1500
+numleaves=1800
 numgauss=$numleaves
-totgauss=7000 # Target #Gaussians
+totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 silphonelist=`cat data/silphones.csl`
 realign_iters="10 15 20 25";  
