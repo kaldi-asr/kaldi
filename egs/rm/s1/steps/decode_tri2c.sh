@@ -57,6 +57,6 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 done
 wait
 
-cat $dir/wer_* | \
+grep WER $dir/wer_* | \
   awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
    > $dir/wer

@@ -39,7 +39,7 @@ done
 
 wait
 
-cat $dir/wer_* | \
-  awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
+grep WER $dir/wer_* | \
+  awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", (100.0*n)/d, n, d); }' \
    > $dir/wer
 
