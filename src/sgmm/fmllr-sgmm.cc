@@ -58,6 +58,8 @@ static void ApplyHessianXformToGradient(const SgmmFmllrGlobalParams &globals,
                                         Matrix<BaseFloat> *gradient_out) {
   int32 dim = gradient_in.NumRows();
   const Vector<BaseFloat> &D = globals.mean_scatter_;
+  if (D.Min() <= 0.0)
+    KALDI_ERR << "Cannot estimate FMLLR: mean scatter has 0 eigenvalues.";
   for (int32 r = 0; r < dim; ++r) {
     for (int32 c = 0; c < r; ++c) {
       // Eq. (B.15)
@@ -78,6 +80,8 @@ static void ApplyInvHessianXformToChange(const SgmmFmllrGlobalParams &globals,
                                          Matrix<BaseFloat> *delta_out) {
   int32 dim = delta_in.NumRows();
   const Vector<BaseFloat> &D = globals.mean_scatter_;
+  if (D.Min() <= 0.0)
+    KALDI_ERR << "Cannot estimate FMLLR: mean scatter has 0 eigenvalues.";
   for (int32 r = 0; r < dim; ++r) {
     for (int32 c = 0; c < r; ++c) {
       // Eq. (B.21)

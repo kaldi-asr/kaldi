@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est-spkvecs-gpost.cc
+// sgmmbin/sgmm-est-fmllr-gpost.cc
 
 // Copyright 2009-2011  Arnab Ghoshal,  Microsoft Corporation
 

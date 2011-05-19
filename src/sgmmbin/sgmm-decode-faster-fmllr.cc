@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-decode-faster.cc
+// sgmmbin/sgmm-decode-faster-fmllr.cc
 
 // Copyright 2009-2011  Arnab Ghoshal,  Microsoft Corporation
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using SGMM-based model.\n"
-        "Usage:  sgmm-decode-faster [options] <model-in> <fst-in> "
+        "Usage:  sgmm-decode-faster-fmllr [options] <model-in> <fst-in> "
         "<features-rspecifier> <fmllr-rspecifier> <words-wspecifier> "
         "[alignments-wspecifier]\n";
     ParseOptions po(usage);
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
                 "rspecifier for utterance to speaker map.");
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 5) {
       po.PrintUsage();
       exit(1);
     }
