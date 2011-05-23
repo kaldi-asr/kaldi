@@ -34,26 +34,11 @@
 namespace kaldi {
 
 class Nnet {
-  //////////////////////////////////////
-  // Typedefs
-  typedef std::vector<Component*> NnetType;
-  
- //////////////////////////////////////////////////////////////
- // Disable copy construction and assignment
- private:
-  Nnet(Nnet&); 
-  Nnet& operator=(Nnet&);
-   
- //////////////////////////////////////////////////////////////
- // Constructor & Destructor
  public:
-  Nnet() 
-  { }
+  Nnet() { }
+  
+  ~Nnet(); 
 
-  ~Nnet(); //{ } later...
-
- //////////////////////////////////////////////////////////////
- // Public interface
  public:
   /// Perform forward pass through the network
   void Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out); 
@@ -106,27 +91,25 @@ class Nnet {
   void L2Penalty(BaseFloat l2);
   void L1Penalty(BaseFloat l1);
 
- //////////////////////////////////////////////////////////////
- // Private interface
  private:
   /// Creates a component by reading from stream, return NULL if no more components
   static Component* ComponentFactory(std::istream& in, bool binary, Nnet* nnet);
   /// Dumps individual component to stream
   static void ComponentDumper(std::ostream& out, bool binary, const Component& comp);
 
- private:
+  typedef std::vector<Component*> NnetType;
+  
   NnetType nnet_;     ///< vector of all Component*, represents layers
 
   std::vector<Matrix<BaseFloat> > propagate_buf_; ///< buffers for forward pass
   std::vector<Matrix<BaseFloat> > backpropagate_buf_; ///< buffers for backward pass
 
   BaseFloat learn_rate_; ///< global learning rate
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(Nnet);
 };
   
 
-//////////////////////////////////////////////////////////////////////////
-// INLINE FUNCTIONS 
-// Nnet::
 inline Nnet::~Nnet() {
   //delete all the components
   NnetType::iterator it;

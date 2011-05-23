@@ -44,16 +44,9 @@ class Nnet;
  * The data buffers are not included 
  * and will be managed from outside.
  */ 
-class Component 
-{
- //////////////////////////////////////////////////////////////
- // Disable copy construction and assignment
- private:
-  Component(Component&); 
-  Component& operator=(Component&);
- 
- //////////////////////////////////////////////////////////////
- // Polymorphic Component RTTI
+class Component {
+
+  // Polymorphic Component RTTI
  public: 
   /// Types of the net components
   typedef enum {
@@ -88,18 +81,10 @@ class Component
   /// Convert marker to component type
   static ComponentType MarkerToType(const std::string& s);
 
-
- //////////////////////////////////////////////////////////////
- // Constructor & Destructor
- public: 
   Component(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet) 
-    : input_dim_(input_dim), output_dim_(output_dim), nnet_(nnet) 
-  { } 
-  virtual ~Component()
-  { }
+      : input_dim_(input_dim), output_dim_(output_dim), nnet_(nnet) { }
+  virtual ~Component() { }
    
- //////////////////////////////////////////////////////////////
- // Public interface
  public:
   /// Get Type Identification of the component
   virtual ComponentType GetType() const = 0;  
@@ -120,7 +105,8 @@ class Component
   /// Perform forward pass propagateion Input->Output
   void Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out); 
   /// Perform backward pass propagateion ErrorInput->ErrorOutput
-  void Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err); 
+  void Backpropagate(const Matrix<BaseFloat>& in_err,
+                     Matrix<BaseFloat>* out_err); 
 
   /// Read component from stream
   static Component* Read(std::istream& is, bool binary, Nnet* nnet);
@@ -128,30 +114,30 @@ class Component
   void Write(std::ostream& os, bool binary) const;
 
 
- ///////////////////////////////////////////////////////////////
- // abstract interface for propagation/backpropagation 
+  // abstract interface for propagation/backpropagation 
  protected:
   /// Forward pass transformation (to be implemented by descendents...)
-  virtual void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) = 0;
+  virtual void PropagateFnc(const Matrix<BaseFloat>& in,
+                            Matrix<BaseFloat>* out) = 0;
   /// Backward pass transformation (to be implemented by descendents...)
-  virtual void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) = 0;
+  virtual void BackpropagateFnc(const Matrix<BaseFloat>& in_err,
+                                Matrix<BaseFloat>* out_err) = 0;
 
   /// Reads the component content
-  virtual void ReadData(std::istream& is, bool binary)  
-  { } 
+  virtual void ReadData(std::istream& is, bool binary) { }
+
   /// Writes the component content
-  virtual void WriteData(std::ostream& os, bool binary) const  
-  { } 
+  virtual void WriteData(std::ostream& os, bool binary) const { }
 
 
- ///////////////////////////////////////////////////////////////
- // data members
+  // data members
  protected:
   MatrixIndexT input_dim_;  ///< Size of input vectors
   MatrixIndexT output_dim_; ///< Size of output vectors
   
   Nnet* nnet_; ///< Pointer to the whole network
-
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
 };
 
 
@@ -162,27 +148,20 @@ class Component
  * (learnrate,momenutm,L2,L1)
  */
 class UpdatableComponent : public Component {
- //////////////////////////////////////////////////////////////
- // Constructor & Destructor
  public: 
   UpdatableComponent(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet)
     : Component(input_dim,output_dim,nnet),
-      learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0)
-  { } 
-  virtual ~UpdatableComponent()
-  { }
+      learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0) { }
+  virtual ~UpdatableComponent() { }
 
-
- //////////////////////////////////////////////////////////////
- // Public interface
- public: 
   /// Check if contains trainable parameters 
   bool IsUpdatable() const { 
     return true; 
   }
 
   /// Compute gradient and update parameters
-  virtual void Update(const Matrix<BaseFloat>& input, const Matrix<BaseFloat>& err) = 0;  
+  virtual void Update(const Matrix<BaseFloat>& input,
+                      const Matrix<BaseFloat>& err) = 0;
 
   /// Sets the learning rate of gradient descent
   void LearnRate(BaseFloat lrate) { 
@@ -230,10 +209,8 @@ class UpdatableComponent : public Component {
 
 
 
-//////////////////////////////////////////////////////////////////////////
-// INLINE FUNCTIONS 
-// Component::
-inline void Component::Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
+inline void Component::Propagate(const Matrix<BaseFloat>& in,
+                                 Matrix<BaseFloat>* out) {
   if(input_dim_ != in.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << input_dim_ << " data:" << in.NumCols();
   }
@@ -246,7 +223,8 @@ inline void Component::Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>*
 }
 
 
-inline void Component::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
+inline void Component::Backpropagate(const Matrix<BaseFloat>& in_err,
+                                     Matrix<BaseFloat>* out_err) {
   if(output_dim_ != in_err.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << output_dim_ 
               << " data:" << in_err.NumCols();
@@ -258,12 +236,6 @@ inline void Component::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<Bas
 
   BackpropagateFnc(in_err, out_err);
 }
-
-//////////////////////////////////////////////////////////////////////////
-// INLINE FUNCTIONS 
-// UpdatableComponent::
-
-// nothing for now!  
 
 
 

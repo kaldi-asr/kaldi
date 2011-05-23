@@ -70,7 +70,21 @@ namespace kaldi {
     A.AddMatMat(alpha, B, kNoTrans, C, kTrans, beta);
   \endcode
   Here, kNoTrans and kTrans are enumeration values that indicate whether or
-  not the matrix argument is transposed.
+  not the matrix argument is transposed.  An examples that illustrates this 
+  and some other issues is:
+ \code
+   Matrix<float> M(5, 10), N(5, 10), P(5, 5);
+   // initialize M and N somehow...
+   // next line: P := 1.0 * M * N^T + 0.0 * P.
+   P.AddMatMat(1.0, M, kNoTrans, N, kTrans, 0.0);
+   // tr(M N^T)
+   float f = TraceMatMat(M, N, kTrans),
+         g = P.Trace();
+   KALDI_ASSERT(f == g);  // we use this macro for asserts in Kaldi 
+   // code (prints stack trace and throws exception).
+ \endcode
+
+
   Note that in the BLAS tradition, there is no operation that does just, say,
   \f$ A =  B C \f$; you have to use a special case of the example we just
   gave (e.g. with alpha=1 and beta=0).

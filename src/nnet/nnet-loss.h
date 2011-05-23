@@ -25,22 +25,22 @@ namespace kaldi {
 
 class Xent {
  public:
-  Xent()
-   : frames_(0), correct_(0), loss_(0.0)
-  { }
-  ~Xent()
-  { }
+  Xent() : frames_(0), correct_(0), loss_(0.0) { }
+  ~Xent() { }
 
   /// Evaluate cross entropy from hard labels
-  void Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff);
+  void Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target,
+            Matrix<BaseFloat>* diff);
   /// Evaluate cross entropy from soft labels
-  void Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target, Matrix<BaseFloat>* diff);
+  void Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target,
+            Matrix<BaseFloat>* diff);
   
   /// Generate string with error report
   std::string Report();
 
  private:
-  int32 Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target);
+  int32 Correct(const Matrix<BaseFloat>& net_out,
+                const std::vector<int32>& target);
 
  private:
   int32 frames_;
@@ -50,14 +50,12 @@ class Xent {
 
 class Mse {
  public:
-  Mse()
-   : frames_(0), loss_(0.0)
-  { }
-  ~Mse()
-  { }
+  Mse() : frames_(0), loss_(0.0) { }
+  ~Mse() { }
 
   /// Evaluate mean square error from target values
-  void Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff);
+  void Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target,
+            Matrix<BaseFloat>* diff);
   
   /// Generate string with error report
   std::string Report();
