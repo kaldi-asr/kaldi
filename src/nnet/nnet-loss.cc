@@ -39,7 +39,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& targe
   for(int32 r=0; r<net_out.NumRows(); r++) {
     for(int32 c=0; c<net_out.NumCols(); c++) {
       val = -target(r,c)*log(net_out(r,c));
-      if(isinf(val)) val = 1e10;
+      if(KALDI_ISINF(val)) val = 1e10;
       loss_ += val;
     }
   }
@@ -78,7 +78,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
   for(int32 r=0; r<net_out.NumRows(); r++) {
     KALDI_ASSERT(target.at(r) <= net_out.NumCols());
     val = -log(net_out(r,target.at(r)-1));
-    if(isinf(val)) val = 1e10;
+    if(KALDI_ISINF(val)) val = 1e10;
     loss_ += val;
   }
 
