@@ -1,6 +1,6 @@
 // gmm/estimate-diag-gmm.h
 
-// Copyright 2009-2011  Arnab Ghoshal, Georg Stemmer,  Microsoft Corporation,  Jan Silovsky
+// Copyright 2009-2011  Arnab Ghoshal (Saarland University), Georg Stemmer,  Microsoft Corporation,  Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

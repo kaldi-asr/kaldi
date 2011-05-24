@@ -1,6 +1,6 @@
 // matrix/kaldi-vector.cc
 
-// Copyright 2009-2011  Microsoft Corporation  Lukas Burget,  Arnab Ghoshal
+// Copyright 2009-2011  Microsoft Corporation  Lukas Burget,  Arnab Ghoshal (Saarland University)
 //                 Go Vivace Inc.  Ariya Rastrow  Petr Schwarz  Yanmin Qian
 //                 Jan Silovsky
 

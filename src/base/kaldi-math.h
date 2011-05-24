@@ -1,7 +1,7 @@
 // base/kaldi-math.h
 
 // Copyright 2009-2011 Ondrej Glembek  Microsoft Corporation  Yanmin Qian  Jan Silovsky
-//                Arnab Ghoshal
+//                Arnab Ghoshal (Saarland University)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

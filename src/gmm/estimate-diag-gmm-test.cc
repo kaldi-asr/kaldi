@@ -1,6 +1,6 @@
 // gmm/estimate-diag-gmm-test.cc
 
-// Copyright 2009-2011 Georg Stemmer, Jan Silovsky, Arnab Ghoshal,
+// Copyright 2009-2011 Georg Stemmer, Jan Silovsky, Arnab Ghoshal (Saarland University),
 //   Microsoft Corporation,  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");

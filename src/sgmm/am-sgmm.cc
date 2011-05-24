@@ -1,6 +1,6 @@
 // sgmm/am-sgmm.cc
 
-// Copyright 2009-2011  Microsoft Corporation, Lukas Burget, Arnab Ghoshal, Ondrej Glembek,
+// Copyright 2009-2011  Microsoft Corporation, Lukas Burget, Arnab Ghoshal (Saarland University), Ondrej Glembek,
 //                 Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");

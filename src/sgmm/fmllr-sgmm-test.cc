@@ -1,6 +1,6 @@
 // sgmm/estimate-am-sgmm-test.cc
 
-// Copyright 2009-2011  Arnab Ghoshal
+// Copyright 2009-2011  Arnab Ghoshal (Saarland University)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

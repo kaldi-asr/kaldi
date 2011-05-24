@@ -1,6 +1,6 @@
 // base/kaldi-types.h
 
-// Copyright 2009-2011  Microsoft Corporation  Arnab Ghoshal  Jan Silovsky  Yanmin Qian
+// Copyright 2009-2011  Microsoft Corporation  Arnab Ghoshal (Saarland University)  Jan Silovsky  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

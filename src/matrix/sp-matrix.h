@@ -1,5 +1,5 @@
 // matrix/sp-matrix.h
-// Copyright 2009-2011   Ondrej Glembek  Microsoft Corporation  Lukas Burget  Arnab Ghoshal
+// Copyright 2009-2011   Ondrej Glembek  Microsoft Corporation  Lukas Burget  Arnab Ghoshal (Saarland University)
 // Ariya Rastrow  Yanmin Qian  Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");

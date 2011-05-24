@@ -1,6 +1,6 @@
 // matrix/kaldi-vector.h
 
-// Copyright 2009-2011   Ondrej Glembek,  Microsoft Corporation,  Lukas Burget,  Arnab Ghoshal
+// Copyright 2009-2011   Ondrej Glembek,  Microsoft Corporation,  Lukas Burget,  Arnab Ghoshal (Saarland University)
 //                  Ariya Rastrow,  Petr Schwarz,  Yanmin Qian,  Karel Vesely
 //                  Go Vivace Inc.
 

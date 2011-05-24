@@ -1,7 +1,7 @@
 // matrix/kaldi-matrix.cc
 
 // Copyright 2009-2011    Lukas Burget,  Ondrej Glembek,  Go Vivace Inc.,
-//                   Microsoft Corporation,  Arnab Ghoshal,  Yanmin Qian,
+//                   Microsoft Corporation,  Arnab Ghoshal (Saarland University),  Yanmin Qian,
 //                   Petr Schwarz,  Jan Silovsky
 
 

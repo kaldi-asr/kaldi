@@ -1,6 +1,6 @@
 // base/kaldi-utils.h
 
-// Copyright 2009-2011  Ondrej Glembek,  Microsoft Corporation,  Arnab Ghoshal,  Karel Vesely
+// Copyright 2009-2011  Ondrej Glembek,  Microsoft Corporation,  Arnab Ghoshal (Saarland University),  Karel Vesely
 //                 Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
