@@ -32,9 +32,16 @@
 
    (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
    <p>
-   <em> If you are coming to ICASSP in Prague, please consider attending our presentation
-      at 1:45 on Friday, room 3.3 of the conference center (3rd floor). </em>
-   <p>
+   R.E. the presentation at the ICASSP meeting in Prague: the slides are 
+    <a href=Kaldi.pptx> here (intro)</a>, 
+    <a href=KaldiMatrix.pptx> here (matrix library)</a>, 
+    <a href=KaldiModels.pptx> here (models)</a>, and
+    <a href=KaldiScripts.pptx> here (scripts)</a>.  We will provide a link
+ when the recorded lectures come online.  If you were at the
+ presentation and you notice that your glasses don't work quite like they
+ used to, please contact Dan Povey: you have left with the wrong glasses.
+  <p>
+  <p>
    - \ref about 
    - \ref install 
    - \ref build_setup 

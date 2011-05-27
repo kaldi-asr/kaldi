@@ -77,7 +77,7 @@ cat links/13-34.1/wsj1/doc/indices/h1_p0.ndx | \
 # links/13-34.1/wsj1/doc/indices/h1_p0.ndx
 
 # Finding the transcript files:
-for x in $*; do find $x -iname '*.dot'; done > dot_files.flist
+for x in $*; do find -L $x -iname '*.dot'; done > dot_files.flist
 
 # Convert the transcripts into our format (no normalization yet)
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do

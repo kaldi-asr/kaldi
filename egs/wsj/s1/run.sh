@@ -175,11 +175,11 @@ steps/make_mfcc_test.sh $dir
 steps/train_mono.sh || exit 1;
 
 # add --no-queue --num-jobs 4 after "scripts/decode.sh" below, if you don't have
-# qsub on your system.  The number of jobs to use depends on how many CPUs and
-# how much memory you have, on the local machine.  If you do have qsub on your
-# system, you will probably have to edit steps/decode.sh anyway to change the
-# queue options... or if you have a different queueing system, you'd have to
-# modify the script to use that.
+# qsub (i.e. Sun Grid Engine) on your system.  The number of jobs to use depends
+# on how many CPUs and how much memory you have, on the local machine.  If you do
+# have qsub on your system, you will probably have to edit steps/decode.sh anyway
+# to change the queue options... or if you have a different queueing system,
+# you'd have to modify the script to use that.
 
 (scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
  scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp ) &
