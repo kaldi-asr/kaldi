@@ -787,7 +787,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
     }
     std::sort(script_.begin(), script_.end());
     for (size_t i = 0; i+1 < script_.size(); i++) {
-      if (script_[i].first.compare(script_[i+1].first) != -1) {
+      if (script_[i].first.compare(script_[i+1].first) >= 0) {
         // script[i] not < script[i+1] in lexical order...
         KALDI_WARN << "Script file " << PrintableRxfilename(script_rxfilename_)
                    << " contains duplicate key " << script_[i].first;
@@ -1239,7 +1239,7 @@ class RandomAccessTableReaderScriptImpl:
     if (!opts_.sorted)
       std::sort(script_.begin(), script_.end());
     for (size_t i = 0; i+1 < script_.size(); i++) {
-      if (script_[i].first.compare(script_[i+1].first) != -1) {
+      if (script_[i].first.compare(script_[i+1].first) >= 0) {
         // script[i] not < script[i+1] in lexical order...
         bool same = (script_[i].first == script_[i+1].first);
         KALDI_WARN << "Script file " << PrintableRxfilename(script_rxfilename_)
@@ -1687,7 +1687,7 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
         ReadNextObject();
         if (state_ != kHaveObject)
           return false;  // eof or read error.
-        if (cur_key_.compare(last_key_) != 1) {
+        if (cur_key_.compare(last_key_) <= 0) {
           KALDI_ERR << "RandomAccessTableReader: you provided the \"s\" option "
                     << " (sorted order), but keys are out of order or duplicated: "
                     << last_key_ << " is followed by " << cur_key_;
@@ -1815,7 +1815,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
     // ReadNextObject().
     bool looped = false;
     while (state_ == kNoObject &&
-          (seen_pairs_.empty() || key.compare(seen_pairs_.back().first) == 1)) {
+          (seen_pairs_.empty() || key.compare(seen_pairs_.back().first) > 0)) {
       looped = true;
       // Read this as:
       //  while ( the stream is potentially good for reading &&
@@ -1825,7 +1825,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
       ReadNextObject();
       if (state_ == kHaveObject) {  // Successfully read object.
         if (!seen_pairs_.empty() && // This is just a check.
-           cur_key_.compare(seen_pairs_.back().first) != 1) {
+           cur_key_.compare(seen_pairs_.back().first) <= 0) {
           // read the expression above as: !( cur_key_ > previous_key).
           // it means we are not in sorted order [the user specified that we
           // are, or we would not be using this implementation].

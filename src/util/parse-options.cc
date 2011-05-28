@@ -1,6 +1,7 @@
 // util/parse-options.cc
 
-// Copyright 2009-2011  Karel Vesely  Microsoft Corporation  Arnab Ghoshal (Saarland University)
+// Copyright 2009-2011  Karel Vesely,  Microsoft Corporation,
+//                      Arnab Ghoshal (Saarland University)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -404,10 +405,12 @@ bool ParseOptions::ToBool(std::string str) {
   std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 
   // allow "" as a valid option for "true", so that --x is the same as --x = true
-  if (!str.compare("true") || !str.compare("t") || !str.compare("1") || !str.compare("")) {
+  if ((str.compare("true") == 0) || (str.compare("t") == 0)
+      || (str.compare("1") == 0) || (str.compare("") == 0)) {
     return true;
   }
-  if (!str.compare("false") || !str.compare("f") || !str.compare("0")) {
+  if ((str.compare("false") == 0) || (str.compare("f") == 0)
+      || (str.compare("0") == 0)) {
     return false;
   }
   std::cerr << "Invalid format for boolean argument [expected true or false]: "<<str<<'\n';

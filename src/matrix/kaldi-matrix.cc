@@ -1123,7 +1123,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     std::string str;
     is >> str;  // get a token
     if (is.fail()) { specific_error << ": Expected \"[\", got EOF"; goto bad; }
-    if (!str.compare("DM") || !str.compare("FM")) {  // Back compatibility.
+    if ((str.compare("DM") == 0) || (str.compare("FM") == 0)) {  // Back compatibility.
       is >> str;  // get #rows
       is >> str;  // get #cols
       is >> str;  // get "["

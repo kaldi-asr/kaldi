@@ -846,7 +846,7 @@ int main() {
   UnitTestReadScriptFile();
   UnitTestClassifyWspecifier();
   UnitTestClassifyRspecifier();
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 10; i++) {
     bool b = (i == 0);
     UnitTestTableSequentialBool(b);
     UnitTestTableSequentialInt32(b);
