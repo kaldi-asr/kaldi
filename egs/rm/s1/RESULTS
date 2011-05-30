@@ -31,10 +31,16 @@ exp/decode_tri2h/wer:Average WER is 4.252773 (533 / 12533) # Splice-9-frames + H
 exp/decode_tri2i/wer:Average WER is 4.077236 (511 / 12533) # Triple-deltas + HLDA
 exp/decode_tri2j/wer:Average WER is 3.694247 (463 / 12533) # Triple-deltas + LDA + MLLT
 exp/decode_tri2k/wer:Average WER is 2.768691 (347 / 12533) # LDA + exponential transform
+exp/decode_tri2k_utt/wer:Average WER is 3.024017 (379 / 12533)  # per-utterance adaptation.
 exp/decode_tri2k_fmllr/wer:Average WER is 2.481449 (311 / 12533) # + fMLLR
 exp/decode_tri2l/wer:Average WER is 2.688901 (337 / 12533)   # Splice-9-frames + LDA + MLLT + SAT (fMLLR in test)
 exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tri2l but per-utt in test. ]
 
+
+exp/decode_sgmma/wer:Average WER is 3.151680 (395 / 12533) 
+exp/decode_sgmma_fmllr/wer:Average WER is 2.768691 (347 / 12533) 
+exp/decode_sgmmb/wer:Average WER is 2.680922 (336 / 12533) 
+exp/decode_sgmmb_fmllr/wer:Average WER is 2.537302 (318 / 12533) 
 
 
 

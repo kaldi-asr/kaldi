@@ -109,7 +109,7 @@ dim=`grep -w MEAN $mmf | head -1 | awk '{print $2}'` # probably 39.
 
 convert_states.pl $dim < states2.txt > kaldi.am_gmm
 
-gmm-init-trans kaldi.topo kaldi.am_gmm kaldi.tree kaldi.mdl
+gmm-init-trans kaldi.topo kaldi.am_gmm kaldi.tree kaldi.mdl || exit 1;
 
 # clean up:
 

@@ -29,17 +29,6 @@ $N = 3;
 $P = 1;
 print "ContextDependency $N $P\n";
 $np = $maxphone+1; 
-print "ToLength TE 1 $np\n" ; # printing out to-length map.. 1==split-on-central-position;
-# $np is size of array in table-event-map.
-print " ( ";
-for($p = 0; $p < $np; $p++) {
-    if(defined $len{$p}) {
-        print "CE $len{$p} ";
-    } else {
-        print "NULL ";
-    }
-}
-print ")\n";
 # printing out to-pdf map.. 1==split-on-central-position;
 # $np is size of array in table-event-map.
 print "ToPdf TE 1 $np (\n"; 

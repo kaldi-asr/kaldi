@@ -161,7 +161,8 @@ void ContextDependency::Read (std::istream &is, bool binary) {
     EventMap *to_num_pdf_classes = EventMap::Read(is, binary);
     if (to_num_pdf_classes) delete to_num_pdf_classes;
     ReadMarker(is, binary, &marker);
-  } else if (marker == "ToPdf") {
+  }
+  if (marker == "ToPdf") {
     to_pdf = EventMap::Read(is , binary);
   } else {
     KALDI_ERR << "Got unexpected marker " << marker

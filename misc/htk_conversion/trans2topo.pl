@@ -19,18 +19,18 @@ while(<>) {
                 if($A[1] != 1.0) {
                     print STDERR "Warning: phone $phone seems not to be normal topology: result may not be correct.\n";
                 }
-            } elsif($n < $numstates) { # last line is all zeros, ignore it.
+            } else {
                 $nm2 = $n-2; # Kaldi-numbered state, 2 less than HTK one.
-                print " <State> $nm2 <PdfClass> $nm2\n";
+                if($n < $numstates) {
+                  print " <State> $nm2 <PdfClass> $nm2\n";
+                } else {
+                  print " <State> $nm2\n";
+                }
                 # The next few lines are just a sanity check-- that we have the "normal" topology.
                 for($p = 0; $p < $numstates; $p++) {
                     if($A[$p] != 0) {
                         $deststate = $p-1; # in kaldi numbering.
-                        if($deststate == $numstates-2) { # final-state, in kaldi format.
-                            print "  <Final> $A[$p] ";
-                        } else {
-                            print "  <Transition> $deststate $A[$p]\n";
-                        }
+                        print "  <Transition> $deststate $A[$p]\n";
                     }
                 }
                 print " </State>\n";
