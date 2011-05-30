@@ -179,7 +179,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
 }
 
 void TestSgmmFmllr() {
-  srand(time(NULL));
+  // srand(time(NULL));
   int32 dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random number of mixtures
   kaldi::FullGmm full_gmm;
