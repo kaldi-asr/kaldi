@@ -113,6 +113,10 @@ for x in eval_nov92 dev_nov93 eval_nov93; do
   cp data_prep/${x}_wav.scp data/
 done
 
+cat data/train.txt | scripts/sym2int.pl --ignore-first-field data/words.txt  > data/train.tra
+
+
+
 # Get the right paths on our system by sourcing the following shell file
 # (edit it if it's not right for your setup). 
 . path.sh
