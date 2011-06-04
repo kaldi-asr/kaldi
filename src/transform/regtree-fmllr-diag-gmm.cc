@@ -301,11 +301,15 @@ void RegtreeFmllrDiagGmmAccs::Read(std::istream &in, bool binary, bool add) {
   ExpectMarker(in, binary, "<DIMENSION>");
   ReadBasicType(in, binary, &dim_);
   KALDI_ASSERT(num_baseclasses_ > 0 && dim_ > 0);
+  baseclass_stats_.resize(num_baseclasses_);
   ExpectMarker(in, binary, "<STATS>");
   vector<AffineXformStats*>::iterator itr = baseclass_stats_.begin(),
       end = baseclass_stats_.end();
-  for ( ; itr != end; ++itr)
+  for ( ; itr != end; ++itr) {
+    *itr = new AffineXformStats();
+    (*itr)->Init(dim_, dim_);
     (*itr)->Read(in, binary, add);
+  }
   ExpectMarker(in, binary, "</FMLLRACCS>");
 }
 

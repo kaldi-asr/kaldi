@@ -34,8 +34,11 @@ class AmDiagGmm {
   AmDiagGmm() : dim_(0) { }
   ~AmDiagGmm();
 
+  /// Initializes with a single "prototype" GMM.
   void Init(const DiagGmm &proto, int32 num_pdfs);
+  /// Adds a GMM to the model, and increments the total number of PDFs.
   void AddPdf(const DiagGmm& gmm);
+  /// Copies the parameters from another model. Allocates necessary memory.
   void CopyFromAmDiagGmm(const AmDiagGmm &other);
 
   void SplitPdf(int32 idx, int32 target_components, float perturb_factor);
@@ -56,6 +59,10 @@ class AmDiagGmm {
   void MergeByCount(const Vector<BaseFloat> &state_occs,
                     int32 target_components,
                     BaseFloat power);
+
+  /// Sets the gconsts for all the PDFs. Returns the total number of Gaussians
+  /// over all PDFs that are "invalid" e.g. due to zero weights or variances.
+  int32 ComputeGconsts();
 
   BaseFloat LogLikelihood(const int32 pdf_index,
                           const VectorBase<BaseFloat> &data) const;

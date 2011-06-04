@@ -87,6 +87,17 @@ void AmDiagGmm::CopyFromAmDiagGmm(const AmDiagGmm &other) {
   }
 }
 
+int32 AmDiagGmm::ComputeGconsts() {
+  int32 num_bad = 0;
+  for (std::vector<DiagGmm*>::iterator itr = densities_.begin(),
+      end = densities_.end(); itr != end; ++itr) {
+    num_bad += (*itr)->ComputeGconsts();
+  }
+  if (num_bad > 0)
+    KALDI_WARN << "Found " << num_bad << " Gaussian components.";
+  return num_bad;
+}
+
 struct CountStats {
   CountStats(int32 p, int32 n, BaseFloat occ)
       : pdf_index(p), num_components(n), occupancy(occ) {}

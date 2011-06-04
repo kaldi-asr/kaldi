@@ -33,6 +33,7 @@ void RegtreeMllrDiagGmm::Init(size_t num_xforms, size_t dim) {
     xform_matrices_.clear();
     dim_ = 0;  // non-zero dimension is meaningless with empty transform
     num_xforms_ = 0;
+    bclass2xforms_.clear();
   } else {
     KALDI_ASSERT(dim != 0);  // if not empty, dim = 0 is meaningless
     dim_ = dim;
@@ -56,7 +57,7 @@ void RegtreeMllrDiagGmm::SetUnit() {
 }
 
 void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
-                                 AmDiagGmm *am) {
+                                        AmDiagGmm *am) {
   KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) == 
                regtree.NumBaseclasses());
   Vector<BaseFloat> extended_mean(dim_+1), xformed_mean(dim_);
@@ -78,6 +79,7 @@ void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
       }  // end iterating over Gaussians in baseclass
     }  // else keep the means untransformed
   }  // end iterating over all baseclasses
+  am->ComputeGconsts();
 }
 
 void RegtreeMllrDiagGmm::GetTransformedMean(const RegressionTree &regtree,
@@ -267,12 +269,11 @@ void RegtreeMllrDiagGmmAccs::AccumulateForGaussian(
 }
 
 void RegtreeMllrDiagGmmAccs::Write(std::ostream &out, bool binary) const {
-  int32 dim = static_cast<int32>(dim_);
   WriteMarker(out, binary, "<MLLRACCS>");
   WriteMarker(out, binary, "<NUMBASECLASSES>");
   WriteBasicType(out, binary, num_baseclasses_);
   WriteMarker(out, binary, "<DIMENSION>");
-  WriteBasicType(out, binary, dim);
+  WriteBasicType(out, binary, dim_);
   WriteMarker(out, binary, "<STATS>");
   vector<AffineXformStats*>::const_iterator itr = baseclass_stats_.begin(),
                                             end = baseclass_stats_.end();
@@ -282,19 +283,21 @@ void RegtreeMllrDiagGmmAccs::Write(std::ostream &out, bool binary) const {
 }
 
 void RegtreeMllrDiagGmmAccs::Read(std::istream &in, bool binary, bool add) {
-  int32 dim;
   ExpectMarker(in, binary, "<MLLRACCS>");
   ExpectMarker(in, binary, "<NUMBASECLASSES>");
   ReadBasicType(in, binary, &num_baseclasses_);
   ExpectMarker(in, binary, "<DIMENSION>");
-  ReadBasicType(in, binary, &dim);
-  KALDI_ASSERT(dim > 0);
-  dim_ = static_cast<size_t>(dim);
+  ReadBasicType(in, binary, &dim_);
+  KALDI_ASSERT(num_baseclasses_ > 0 && dim_ > 0);
+  baseclass_stats_.resize(num_baseclasses_);
   ExpectMarker(in, binary, "<STATS>");
   vector<AffineXformStats*>::iterator itr = baseclass_stats_.begin(),
                                       end = baseclass_stats_.end();
-  for ( ; itr != end; ++itr)
+  for ( ; itr != end; ++itr) {
+    *itr = new AffineXformStats();
+    (*itr)->Init(dim_, dim_);
     (*itr)->Read(in, binary, add);
+  }
   ExpectMarker(in, binary, "</MLLRACCS>");
 }
 
@@ -354,20 +357,24 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
                                             *(regclass_stats[rclass_index]));
         KALDI_LOG << "MLLR: regclass " << (rclass_index)
                   << ": Objective function impr per frame is "
-                  << ((obj_new - obj_old)/regclass_stats[rclass_index]->beta_);
+                  << ((obj_new - obj_old)/regclass_stats[rclass_index]->beta_)
+                  << " over " << regclass_stats[rclass_index]->beta_
+                  << " frames.";
         tot_t += regclass_stats[rclass_index]->beta_;
         tot_auxf_impr += obj_new - obj_old;
       }
     } else {
-      out_mllr->Init(0, 0);  // cannot use this transform object
+      out_mllr->Init(1, dim_);  // Use a unit transform at the root.
     }
     DeletePointers(&regclass_stats);
     // end of estimation using regression tree
   } else {  // estimate 1 transform per baseclass (if enough count)
     out_mllr->Init(num_baseclasses_, dim_);
+    vector<int32> base2xforms(num_baseclasses_, -1);
     for (size_t bclass_index = 0; bclass_index < num_baseclasses_;
          ++bclass_index) {
       if (baseclass_stats_[bclass_index]->beta_ > opts.min_count) {
+        base2xforms[bclass_index] = bclass_index;
         xform_mat.SetUnit();
         BaseFloat obj_old = MllrAuxFunction(xform_mat,
                                             *(baseclass_stats_[bclass_index]));
@@ -388,6 +395,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
         tot_t += baseclass_stats_[bclass_index]->beta_;
       }
     }  // end looping over all baseclasses
+    out_mllr->set_bclass2xforms(base2xforms);
   }  // end of estimating one transform per baseclass
   if (auxf_impr != NULL) *auxf_impr = tot_auxf_impr;
   if (t != NULL) *t = tot_t;

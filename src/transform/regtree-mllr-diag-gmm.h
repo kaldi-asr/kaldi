@@ -42,9 +42,6 @@ struct RegtreeMllrOptions {
                  "Minimum count to estimate an MLLR transform.");
     po->Register("mllr-use-regtree", &use_regtree,
                  "Use a regression-class tree for MLLR.");
-    // Disabling this option until needed.
-    // po->Register("fmllr-use-gradient-descent", &use_gradient_descent,
-    //"Use a gradient descent algorithm for estimating transforms.");
   }
 };
 
@@ -142,8 +139,8 @@ class RegtreeMllrDiagGmmAccs {
  private:
   /// Per-baseclass stats; used for accumulation
   std::vector<AffineXformStats*> baseclass_stats_;
-  size_t num_baseclasses_;    ///< Number of baseclasses
-  size_t dim_;    ///< Dimension of feature vectors
+  int32 num_baseclasses_;    ///< Number of baseclasses
+  int32 dim_;    ///< Dimension of feature vectors
 
   /// Returns the MLLR objective function for a given transform and baseclass.
   BaseFloat MllrObjFunction(const Matrix<BaseFloat> &xform,
