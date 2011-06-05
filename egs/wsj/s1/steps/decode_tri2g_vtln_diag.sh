@@ -27,6 +27,7 @@
 # $decode_dir/${job_number}.utt2spk and $decode_dir/${job_number}.spk2utt exist,
 # this script will assume you want to do per-speaker (not per-utterance) adaptation.
 
+
 if [ $# != 3 ]; then
    echo "Usage: scripts/decode_tri2g.sh <graph> <decode-dir> <job-number>"
    exit 1;
@@ -36,6 +37,7 @@ fi
 
 acwt=0.0625
 beam=13.0
+mincount=100 # for fMLLR
 prebeam=12.0 # first-pass decoding beam...
 max_active=7000
 alimodel=exp/tri2g/final.alimdl # first-pass model...
@@ -87,7 +89,7 @@ feats="ark:compute-mfcc-feats $utt2spk_opt --vtln-low=100 --vtln-high=-600 --vtl
 
 ( ali-to-post ark:$dir/$job.pre_ali ark:- | \
    weight-silence-post 0.0 $silphones $alimodel ark:- ark:- | \
-   gmm-est-fmllr --fmllr-update-type=diag $spk2utt_opt $model "$feats" ark,o:- ark:$dir/$job.trans ) 2>$dir/fmllr${job}.log  || exit 1;
+   gmm-est-fmllr --fmllr-min-count=$mincount --fmllr-update-type=diag $spk2utt_opt $model "$feats" ark,o:- ark:$dir/$job.trans ) 2>$dir/fmllr${job}.log  || exit 1;
 
 feats="ark:compute-mfcc-feats $utt2spk_opt --vtln-low=100 --vtln-high=-600 --vtln-map=ark:$dir/$job.factor --config=conf/mfcc.conf scp:$dir/${job}_wav.scp ark:- | add-deltas ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- |"
 

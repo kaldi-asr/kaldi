@@ -350,3 +350,4 @@ steps/train_tri2l.sh
 # For an e.g. of scoring with sclite: do e.g.
 # scripts/score_sclite.sh exp/decode_tri2a_tgpr_eval92 data/eval_nov92.txt
 # cat exp/decode_tri2a_tgpr_eval92/scoring/hyp.sys
+

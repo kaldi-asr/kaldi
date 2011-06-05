@@ -29,6 +29,7 @@ lvtln=exp/tri2g/final.lvtln
 tree=exp/tri2g/tree
 graphdir=exp/graph_tri2g
 silphones=`cat data/silphones.csl`
+mincount=100 # for diagonal fMLLR
 
 # Doesn't matter which model we use when making the graph
 # (only the transitions and structure are used).
@@ -59,7 +60,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 
  ( ali-to-post ark:$dir/test_${test}_pre.ali ark:- | \
     weight-silence-post 0.0 $silphones $alignmodel ark:- ark:- | \
-    gmm-est-fmllr --fmllr-update-type=diag $spk2utt_opt $vtlnmodel "$feats" ark,o:- ark:$dir/${test}.trans ) 2>$dir/fmllr_${test}.log  || exit 1;
+    gmm-est-fmllr --fmllr-update-type=diag --fmllr-min-count=$mincount $spk2utt_opt $vtlnmodel "$feats" ark,o:- ark:$dir/${test}.trans ) 2>$dir/fmllr_${test}.log  || exit 1;
 
   feats="ark:compute-mfcc-feats $utt2spk_opt --vtln-low=100 --vtln-high=-600 --vtln-map=ark:$dir/${test}.factor --config=conf/mfcc.conf scp:data_prep/test_${test}_wav.scp ark:- | add-deltas ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/${test}.trans ark:- ark:- |"
 

@@ -21,7 +21,44 @@ Note on baselines:
  trigram: Nov'92, 9.46%, Nov'93, 12.74%
 
 --
+Note: the systems "mono", "tri1" and "tri2*" are trained on subsets of the SI-84 data
+(2k utts for mono, 3k for tri1 and tri2*, out of 7138 utts in total).
+The "tri3*" systems are trained on all the SI-284 data.
+--
+LM:       |   Pruned trigram     |    Bigram          |
+Test set: | Eval92   |   Eval93  | Eval92   |  Eval93 |
+system: 
+ mono         31.4
+ tri1         13.3
+ tri2a        12.5       18.3      14.3       21.0    |  tri2a is delta+delta-deltas.
+  +fmllr[spk] 11.4
+        [utt] 12.5                                    
+ tri3a        10.7       13.8      11.9       15.0    | tri3a is as tri2a but all SI-284 data.
+ +fmllr[spk]  9.5        12.1
+   [diagonal] 10.5       12.7
+ +fmllr[utt]  10.4       13.9
+   [diagonal] 10.6       13.3
+ tri2b[spk]   11.3       16.1                         | tri2b is exponential transform
+  +fmllr[spk] 10.3       14.1
+  [utt]       11.3       15.9                         | [estimating ET per utt.]
+  +fmllr[utt] 11.2       15.9                         | [estimating ET and fMLLR per utt]
+ tri2c        12.7       17.0                         | as tri2a plus cepstral mean subtraction.
+ tri2d        13.0       19.4                         | as tri2a plus STC/MLLT (worse).
+ tri2e        14.3       19.1                         | as tri2a but splice+LDA features (worse).
+ tri2f        12.2       17.7                         | as tri2e plus STC/MLLT (better than tri2a).
+ tri2g[spk]   11.1       16.4                         | as tri2a but linear-VTLN [per-spk]
+ tri2g[utt]   11.2       16.2                         | per-utt.
+ +diag[spk]   10.7       16.5                         |  + diagonal, not just mean-only fMLLR
+ +diag[utt]   11.1       16.1                         |  [all per-utt]
+ +vtln,diag   10.9       15.9                         | actual VTLN, plus diag-FMLLR
+  [utt]       10.9       16.2                         |  [all per-utt]
+ tri2h        13.4       20.2                         | [ splice-9-frames + HLDA... worse than tri2a]
+ tri2i        12.4       18.4                         | [ triple-deltas + HLDA... same as tri2a]
+ tri2j        12.8       18.3                         | [ triple-deltas+LDA+MLLT... slightly worse than tri2a]
 
+# TODO: tri2k, and tri3*?, and SGMM stuff. 
+
+# Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
 exp/decode_tri1_tgpr_eval92/wer:%WER 13.30 [ 750 / 5641, 133 ins, 74 del, 543 sub ]
 exp/decode_tri2a_bg_eval92/wer:%WER 14.25 [ 804 / 5641, 146 ins, 87 del, 571 sub ]
@@ -56,7 +93,7 @@ exp/decode_tri2g_tgpr_utt_diag_eval93/wer:%WER 16.08 [ 553 / 3439, 75 ins, 68 de
 exp/decode_tri2g_tgpr_utt_eval92/wer:%WER 11.19 [ 631 / 5641, 117 ins, 59 del, 455 sub ]
 exp/decode_tri2g_tgpr_utt_eval93/wer:%WER 16.17 [ 556 / 3439, 76 ins, 67 del, 413 sub ]
 exp/decode_tri2g_tgpr_utt_vtln_diag_eval92/wer:%WER 10.88 [ 614 / 5641, 115 ins, 58 del, 441 sub ]
-exp/decode_tri2g_tgpr_utt_vtln_diag_eval93/wer:%WER 17.82 [ 613 / 3439, 73 ins, 99 del, 441 sub ]
+exp/decode_tri2g_tgpr_utt_vtln_diag_eval93/wer:%WER 16.14 [ 555 / 3439, 77 ins, 67 del, 411 sub ]
 exp/decode_tri2g_tgpr_vtln_diag_eval92/wer:%WER 10.88 [ 614 / 5641, 117 ins, 59 del, 438 sub ]
 exp/decode_tri2g_tgpr_vtln_diag_eval93/wer:%WER 15.91 [ 547 / 3439, 73 ins, 68 del, 406 sub ]
 exp/decode_tri2h_tgpr_eval92/wer:%WER 13.40 [ 756 / 5641, 163 ins, 54 del, 539 sub ]
