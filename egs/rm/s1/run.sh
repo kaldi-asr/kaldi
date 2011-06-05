@@ -97,7 +97,16 @@ done
 
 steps/train_ubma.sh
 
-# train and test unadapted system
+# note: if the SGMM decoding is too slow, aside from playing
+# with decoder beams and max-leaves, you can set e.g.
+# --full-gmm-nbest=5 to the sgmm-gselect program (default is 15, 
+# so max possible speedup with this setting is 3x).  For best WER,
+# this should have the
+# same value in training and test ("matched training"), but
+# you can get the speed improvements by just doing it in test.
+# You can take this all the way down to 1 for fastest speed, although
+# this will degrade results.
+
 (steps/train_sgmma.sh; steps/decode_sgmma.sh)&
 
 # train and test system with speaker vectors.
