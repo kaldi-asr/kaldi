@@ -25,7 +25,7 @@
 # this script will assume you want to do per-speaker (not per-utterance) adaptation.
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_tri2k.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: scripts/decode_tri2k_fmllr.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 
@@ -33,6 +33,7 @@ fi
 
 acwt=0.0625
 beam=13.0
+mincount=300 # for fMLLR
 prebeam=12.0 # first-pass decoding beam...
 max_active=7000
 alimodel=exp/tri2k/final.alimdl # first-pass model...
@@ -79,7 +80,18 @@ gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acw
 
 feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $ldamat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- |"
 
-# Final decoding
-echo running on `hostname` > $dir/decode$job.log
-gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode$job.log 
+# Intermediate decoding
+echo running on `hostname` > $dir/pre2decode$job.log
+gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.pre2_tra ark,t:$dir/$job.pre2_ali  2>>$dir/pre2decode$job.log 
 
+# Estimate fMLLR transforms.
+(ali-to-post ark:$dir/$job.pre2_ali ark:- | \
+  weight-silence-post 0.0 $silphones $model ark:- ark:- | \
+  gmm-est-fmllr $spk2utt_opt --fmllr-min-count=$mincount $model "$feats" ark,o:- \
+     ark:$dir/$job.fmllr ) 2>$dir/fmllr${job}.log
+
+feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $ldamat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr ark:- ark:- |"
+
+# Final
+echo running final decoding pass on `hostname` > $dir/decode$job.log
+gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode$job.log 

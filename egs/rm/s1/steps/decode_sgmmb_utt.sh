@@ -54,7 +54,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
        ark:$dir/test_${test}.vecs ) 2>$dir/vecs_${test}.log
   
 
-  sgmm-decode-faster $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
+  sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 
  # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \

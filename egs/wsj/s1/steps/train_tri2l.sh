@@ -227,18 +227,19 @@ done
   ln -s $x.mdl final.mdl; 
   ln -s `basename $cur_lda` final.mat )
 
-defaultfeats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $cur_lda ark:- ark:-|"
+defaultfeats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $dir/final.mat ark:- ark:-|"
+feats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $dir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/cur?.trans|\" ark:- ark:- |"
 
 # Accumulate stats for "alignment model" which is as the model but with
 # the unadapted, default features (shares Gaussian-level alignments).
-( ali-to-post "ark:cat $dir/cur?.ali.gz|" ark:-  | \
-  gmm-acc-stats-twofeats $dir/$x.mdl "$feats" "$defaultfeats" ark:- $dir/$x.acc2 ) 2>$dir/acc_alimdl.log || exit 1;
+( ali-to-post "ark:gunzip -c $dir/cur?.ali.gz|" ark:-  | \
+  gmm-acc-stats-twofeats $dir/final.mdl "$feats" "$defaultfeats" ark:- $dir/$x.acc2 ) 2>$dir/acc_alimdl.log || exit 1;
   # Update model.
   gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false \
     $dir/$x.mdl $dir/$x.acc2 $dir/$x.alimdl \
     2>$dir/est_alimdl.log  || exit 1;
  rm $dir/$x.acc2
  
-( cd $dir; rm final.{mdl,alimdl,mat} 2>/dev/null; 
-  ln -s $x.mdl final.mdl; ln -s $x.alimdl final.alimdl
-  ln -s `basename $cur_lda` final.mat )
+( cd $dir; rm final.alimdl 2>/dev/null; 
+  ln -s $x.alimdl final.alimdl )
+

@@ -55,6 +55,11 @@ system:
  tri2h        13.4       20.2                         | [ splice-9-frames + HLDA... worse than tri2a]
  tri2i        12.4       18.4                         | [ triple-deltas + HLDA... same as tri2a]
  tri2j        12.8       18.3                         | [ triple-deltas+LDA+MLLT... slightly worse than tri2a]
+ tri2k        11.1       15.1                         | [ splice-9-frames + LDA + ET ]
+  [utt]       11.1       15.0                         |  [adaptation per utterance] 
+ [spk,+fmllr] 10.1       14.0                         |  [per speaker, plus fMLLR]
+ tri2l        9.6        13.7                         | train with SAT; test with fMLLR
+  [utt]       12.0       16.8                         |  [adaptation per utterance]
 
 # TODO: tri2k, and tri3*?, and SGMM stuff. 
 
@@ -102,6 +107,16 @@ exp/decode_tri2i_tgpr_eval92/wer:%WER 12.39 [ 699 / 5641, 130 ins, 72 del, 497 s
 exp/decode_tri2i_tgpr_eval93/wer:%WER 18.35 [ 631 / 3439, 58 ins, 102 del, 471 sub ]
 exp/decode_tri2j_tgpr_eval92/wer:%WER 12.82 [ 723 / 5641, 127 ins, 70 del, 526 sub ]
 exp/decode_tri2j_tgpr_eval93/wer:%WER 18.26 [ 628 / 3439, 59 ins, 99 del, 470 sub ]
+exp/decode_tri2k_tgpr_eval92/wer:%WER 11.06 [ 624 / 5641, 133 ins, 42 del, 449 sub ]
+exp/decode_tri2k_tgpr_eval93/wer:%WER 15.09 [ 519 / 3439, 72 ins, 72 del, 375 sub ]
+exp/decode_tri2k_tgpr_fmllr_eval92/wer:%WER 10.07 [ 568 / 5641, 120 ins, 48 del, 400 sub ]
+exp/decode_tri2k_tgpr_fmllr_eval93/wer:%WER 14.02 [ 482 / 3439, 77 ins, 67 del, 338 sub ]
+exp/decode_tri2k_tgpr_utt_eval92/wer:%WER 11.13 [ 628 / 5641, 135 ins, 44 del, 449 sub ]
+exp/decode_tri2k_tgpr_utt_eval93/wer:%WER 14.95 [ 514 / 3439, 70 ins, 74 del, 370 sub ]
+exp/decode_tri2l_tgpr_eval92/wer:%WER 9.64 [ 544 / 5641, 121 ins, 44 del, 379 sub ]
+exp/decode_tri2l_tgpr_utt_eval92/wer:%WER 12.00 [ 677 / 5641, 141 ins, 60 del, 476 sub ]
+exp/decode_tri2l_tgpr_utt_eval93/wer:%WER 16.75 [ 576 / 3439, 59 ins, 93 del, 424 sub ]
+
 exp/decode_tri3a_bg_eval92/wer:%WER 11.82 [ 667 / 5641, 132 ins, 63 del, 472 sub ]
 exp/decode_tri3a_bg_eval93/wer:%WER 15.00 [ 516 / 3439, 62 ins, 75 del, 379 sub ]
 exp/decode_tri3a_tgpr_dfmllr_eval92/wer:%WER 10.51 [ 593 / 5641, 111 ins, 51 del, 431 sub ]
