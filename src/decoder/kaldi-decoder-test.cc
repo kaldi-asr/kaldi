@@ -18,7 +18,7 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "gmm/am-diag-gmm.h"
-#include "decodable-am-diag-gmm.h"
+#include "./decodable-am-diag-gmm.h"
 #include "decoder/kaldi-decoder.h"
 #include "itf/decodable-itf.h"
 
@@ -26,13 +26,12 @@ typedef fst::ConstFst<fst::StdArc> FstType;
 // typedef fst::VectorFst<fst::StdArc> FstType;
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   int retval = 0;
 
   const char *fea_file = "./test_utterance_4.plp";
   const char *am_file = "./am_diag_gmm";
-  const char *rec_net = "./reconet_right.fst";
+  const char *rec_net = "./reconet_left.fst";
 
 // const char *fea_file = "/mnt/matylda4/burget/UBM-ASR/branches/clean/src/decoder/tmp/fea/en_6179_059223_059708_B0.plp";
 // const char *am_file = "/mnt/matylda4/burget/UBM-ASR/branches/clean/src/decoder/tmp/MMF.Kaldi";
@@ -59,7 +58,8 @@ int main(int argc, char *argv[])
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage: kaldi-decoder-test [options] model-in fst-in feature-file words-list\n";
+        "Usage: kaldi-decoder-test [options] "
+          "model-in fst-in feature-file words-list\n";
 
     kaldi::ParseOptions po(usage);
     options.Register(&po, true);  // true == include obscure settings.
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     // if (po.NumArgs() != 4) {
     //  po.PrintUsage();
     //  exit(1);
-    //}
+    // }
 
     // std::string model_in_filename = po.GetArg(1),
     //    fst_in_filename = po.GetArg(2),
@@ -80,9 +80,9 @@ int main(int argc, char *argv[])
         decoder(options);
 
     decoder.SetMaxActiveTokens(16000);
-    decoder.SetBeamPruning(200.0);  //200.0
-    decoder.SetLmScale(1.0);  //13.0
-    decoder.SetWordPenalty(0.0);  //-5.0
+    decoder.SetBeamPruning(200.0);  // 200.0
+    decoder.SetLmScale(1.0);  // 13.0
+    decoder.SetWordPenalty(0.0);  // -5.0
 
     fst::VectorFst<fst::StdArc>* word_links =
         decoder.Decode(recognition_net, &decodable);
@@ -91,11 +91,10 @@ int main(int argc, char *argv[])
     std::string word;
     while ((s != fst::kNoStateId) &&
           (word_links->Final(s) == fst::StdArc::Weight::Zero())) {
-	  for (fst::ArcIterator<fst::Fst<fst::StdArc> > aiter(*word_links, s);
-           !aiter.Done(); aiter.Next())	{
-
+          for (fst::ArcIterator<fst::Fst<fst::StdArc> > aiter(*word_links, s);
+            !aiter.Done(); aiter.Next()) {
         // look at first emitting arc -> arc.ilabel
-	    const fst::StdArc &arc = aiter.Value();
+        const fst::StdArc &arc = aiter.Value();
         word = recognition_net.OutputSymbols()->Find(arc.olabel);
         // not possible without having symbol lists
 
@@ -103,13 +102,13 @@ int main(int argc, char *argv[])
         //       << arc.olabel << "( " << word << " )/" << arc.weight << '\n';
         std::cerr << word << " " << arc.weight << '\n';
         s = arc.nextstate;  // move forward ...
-      } // for: links loop
-      if (word_links->Final(s) != fst::StdArc::Weight::Zero()) break;  // finished
-    } // while: state loop
+      }  // for: links loop
+      if (word_links->Final(s) != fst::StdArc::Weight::Zero()) break;
+    }  // while: state loop
     delete(readfst);
     delete(word_links);
   }
-  catch (std::exception& rExc) {
+  catch(const std::exception& rExc) {
     std::cerr << "Exception thrown" << '\n';
     std::cerr << rExc.what() << '\n';
     retval = -1;
