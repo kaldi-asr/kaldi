@@ -120,26 +120,25 @@ while [ $iter -lt $numiters ]; do
       weight-silence-post 0.01 $silphonelist $dir/$iter.mdl ark:- ark:- | \
       sgmm-est-spkvecs $spk2utt_opt $spkvecs_opt "$gselect_opt" \
         --rand-prune=$randprune $dir/$iter.mdl \
-       "$feats" ark:- ark:$dir/cur.vecs  2>$dir/spkvecs.$iter.log ) || exit 1;
+       "$feats" ark:- ark:$dir/cur.vecs ) 2>$dir/spkvecs.$iter.log || exit 1;
       spkvecs_opt="--spk-vecs=ark:$dir/cur.vecs"
    fi  
    if [ $iter -eq 0 ]; then
      flags=vwcS
-   elif [ $[$iter%2] -eq 1 -a $iter -gt 4 ]; then # even iters after 4...
+   elif [ $[$iter%2] -eq 1 -a $iter -gt 4 ]; then # even iters after 4 (i.e. starting from 6)...
      flags=vNwcS
    else
      flags=vMwcS
    fi
-   if [ ! -f $dir/$[$iter+1].mdl ]; then
-     sgmm-acc-stats $spkvecs_opt $utt2spk_opt --update-flags=$flags "$gselect_opt" --rand-prune=$randprune --binary=false $dir/$iter.mdl "$feats" "ark:ali-to-post ark:$dir/cur.ali ark:-|" $dir/$iter.acc 2> $dir/acc.$iter.log  || exit 1;
-     sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$iter+1].occs $dir/$iter.mdl $dir/$iter.acc $dir/$[$iter+1].mdl 2> $dir/update.$iter.log || exit 1;
+   sgmm-acc-stats $spkvecs_opt $utt2spk_opt --update-flags=$flags "$gselect_opt" --rand-prune=$randprune --binary=false $dir/$iter.mdl "$feats" "ark:ali-to-post ark:$dir/cur.ali ark:-|" $dir/$iter.acc 2> $dir/acc.$iter.log  || exit 1;
+   sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$iter+1].occs $dir/$iter.mdl $dir/$iter.acc $dir/$[$iter+1].mdl 2> $dir/update.$iter.log || exit 1;
+
+   rm $dir/$iter.mdl $dir/$iter.acc
+   rm $dir/$iter.occs 
+   if [ $iter -lt $maxiterinc ]; then
+     numsubstates=$[$numsubstates+$incsubstates]
    fi
-  	rm $dir/$iter.mdl $dir/$iter.acc
-  	rm $dir/$iter.occs 
-    if [ $iter -lt $maxiterinc ]; then
-       numsubstates=$[$numsubstates+$incsubstates]
-    fi
-    iter=$[$iter+1];
+   iter=$[$iter+1];
 done
 
 

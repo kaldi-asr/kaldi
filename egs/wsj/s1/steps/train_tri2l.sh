@@ -45,7 +45,6 @@ cp $srcdir/train.scp $dir
 cp $srcdir/train.tra $dir
 
 scripts/filter_scp.pl $dir/train.scp data/train.utt2spk > $dir/train.utt2spk
-scripts/utt2spk_to_spk2utt.pl $dir/train.utt2spk > $dir/train.spk2utt
 
 scripts/split_scp.pl --utt2spk=$dir/train.utt2spk $dir/train{,1,2,3}.scp
 scripts/split_scp.pl --utt2spk=$dir/train.utt2spk $dir/train{,1,2,3}.tra
@@ -136,7 +135,7 @@ rm $dir/treeacc $dir/1.occs
 for n in 1 2 3; do
   convert-ali  $srcmodel $dir/1.mdl $dir/tree \
       "ark:gunzip -c $dir/0.$n.ali.gz|" \
-      "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log 
+      "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log || exit 1;
 done
 rm $dir/0.?.ali.gz
 

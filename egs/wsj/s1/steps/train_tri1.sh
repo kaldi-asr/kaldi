@@ -129,7 +129,7 @@ rm $dir/treeacc $dir/1.occs
 for n in 1 2 3; do
   convert-ali  $srcmodel $dir/1.mdl $dir/tree \
        "ark:gunzip -c $dir/0.$n.ali.gz|" \
-       "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log 
+       "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log || exit 1;
 done
 
 rm $dir/0.?.ali.gz
@@ -173,3 +173,4 @@ done
 
 rm $dir/final.mdl 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
+ln -s $x.occs $dir/final.occs

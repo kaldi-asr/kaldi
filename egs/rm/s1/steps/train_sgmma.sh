@@ -99,7 +99,6 @@ while [ $iter -lt $numiters ]; do
    echo "Pass $iter ... "
    if echo $realign_iters | grep -w $iter >/dev/null; then
       echo "Aligning data"
-      echo "Aligning data"
       sgmm-align-compiled $spkvecs_opt $scale_opts "$gselect_opt" --beam=8 \
           --retry-beam=40 $dir/$iter.mdl "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
       	ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
@@ -109,12 +108,10 @@ while [ $iter -lt $numiters ]; do
    else
      flags=vwcS
    fi
-   if [ ! -f $dir/$[$iter+1].mdl ]; then
-     sgmm-acc-stats-ali --update-flags=$flags "$gselect_opt" --rand-prune=$randprune --binary=false $dir/$iter.mdl "$feats" ark:$dir/cur.ali $dir/$iter.acc 2> $dir/acc.$iter.log  || exit 1;
-     sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$iter+1].occs $dir/$iter.mdl $dir/$iter.acc $dir/$[$iter+1].mdl 2> $dir/update.$iter.log || exit 1;
-   fi
-   rm $dir/$iter.mdl $dir/$iter.acc
-   rm $dir/$iter.occs 
+   sgmm-acc-stats-ali --update-flags=$flags "$gselect_opt" --rand-prune=$randprune --binary=false $dir/$iter.mdl "$feats" ark:$dir/cur.ali $dir/$iter.acc 2> $dir/acc.$iter.log  || exit 1;
+   sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$iter+1].occs $dir/$iter.mdl $dir/$iter.acc $dir/$[$iter+1].mdl 2> $dir/update.$iter.log || exit 1;
+
+   rm $dir/$iter.mdl $dir/$iter.acc $dir/$iter.occs 
    if [ $iter -lt $maxiterinc ]; then
      numsubstates=$[$numsubstates+$incsubstates]
    fi

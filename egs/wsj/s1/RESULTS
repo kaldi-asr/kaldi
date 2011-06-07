@@ -60,6 +60,9 @@ system:
  [spk,+fmllr] 10.1       14.0                         |  [per speaker, plus fMLLR]
  tri2l        9.6        13.7                         | train with SAT; test with fMLLR
   [utt]       12.0       16.8                         |  [adaptation per utterance]
+ tri3k        9.1        11.6                         | [ splice-9-frames + LDA + ET; SI-284 ]
+ [utt]        9.1        11.8                         | [adaptation per utterance]
+ [spk;+fmllr] 8.4        11.2                         | [per-speaker adaptation; +fMLLR]
 
 # TODO: tri2k, and tri3*?, and SGMM stuff. 
 
@@ -129,3 +132,11 @@ exp/decode_tri3a_tgpr_uttdfmllr_eval92/wer:%WER 10.58 [ 597 / 5641, 118 ins, 49 
 exp/decode_tri3a_tgpr_uttdfmllr_eval93/wer:%WER 13.29 [ 457 / 3439, 49 ins, 57 del, 351 sub ]
 exp/decode_tri3a_tgpr_uttfmllr_eval92/wer:%WER 10.44 [ 589 / 5641, 122 ins, 47 del, 420 sub ]
 exp/decode_tri3a_tgpr_uttfmllr_eval93/wer:%WER 13.93 [ 479 / 3439, 56 ins, 69 del, 354 sub ]
+
+exp/decode_tri3k_tgpr_eval92/wer:%WER 9.06 [ 511 / 5641, 127 ins, 31 del, 353 sub ]
+exp/decode_tri3k_tgpr_eval93/wer:%WER 11.63 [ 400 / 3439, 58 ins, 51 del, 291 sub ]
+exp/decode_tri3k_tgpr_fmllr_eval92/wer:%WER 8.44 [ 476 / 5641, 117 ins, 25 del, 334 sub ]
+exp/decode_tri3k_tgpr_fmllr_eval93/wer:%WER 11.17 [ 384 / 3439, 66 ins, 44 del, 274 sub ]
+exp/decode_tri3k_tgpr_utt_eval92/wer:%WER 9.11 [ 514 / 5641, 120 ins, 32 del, 362 sub ]
+exp/decode_tri3k_tgpr_utt_eval93/wer:%WER 11.75 [ 404 / 3439, 59 ins, 50 del, 295 sub ]
+

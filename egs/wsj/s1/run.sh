@@ -331,6 +331,16 @@ steps/train_tri2k.sh
  done
  )&
 
+# the same on all the data..
+steps/train_tri2k.sh
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2k/tree exp/tri2k/final.mdl exp/graph_tri2k_tg_pruned || exit 1;
+ for year in 92 93; do
+  scripts/decode.sh exp/decode_tri2k_tgpr_utt_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/eval_nov$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/eval_nov$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_fmllr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k_fmllr.sh data/eval_nov$year.scp 
+ done
+ )&
+
 # LDA+MLLT+SAT
 steps/train_tri2l.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2l/tree exp/tri2l/final.mdl exp/graph_tri2l_tg_pruned || exit 1;

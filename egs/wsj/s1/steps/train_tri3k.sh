@@ -38,7 +38,7 @@ maxiterinc=10 # By this iter, we have all the Gaussians.
 realign_iters="10 15"; 
 
 numleaves=4200 
-numgauss=20000 # Initial num-gauss.  Initializing states using tri2c model,
+numgauss=20000 # Initial num-gauss.  Initializing states using tri2k model,
                # so can have a reasonably large number.
 totgauss=40000 # Total num-gauss
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
@@ -50,6 +50,7 @@ mkdir -p $dir
 # Use all the SI-284 data. 
 
 cp data/train.{scp,tra,utt2spk} $dir
+cp $srcdir/tree $dir
 
 
 # Split up the scp and related files to 3 parts; create spk2utt files.
@@ -65,7 +66,8 @@ done
 # origfeats is feats with just LDA, no exponential trnsform.
 # defaultfeats is for the "default" speaker-- used with alignment model.
 origfeats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $ldamat ark:- ark:- |"
-defaultfeats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $defaultmat ark:- ark:- |"
+# add s,cs to defaultfeats, as the program gmm-acc-stats-twofeats does random access on them.
+defaultfeats="ark,s,cs:splice-feats scp:$dir/train.scp ark:- | transform-feats $defaultmat ark:- ark:- |"
 feats="ark:splice-feats scp:$dir/train.scp ark:- | transform-feats $ldamat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/?.trans|\" ark:- ark:- |"
 for n in 1 2 3; do
    featspart[$n]="ark,s,cs:splice-feats scp:$dir/train${n}.scp ark:- | transform-feats $ldamat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train$n.utt2spk ark:$dir/$n.trans ark:- ark:- |"
@@ -142,7 +144,7 @@ rm $dir/treeacc $dir/1.occs
 for n in 1 2 3; do
   convert-ali  $srcmodel $dir/1.mdl $dir/tree \
       "ark:gunzip -c $dir/0.$n.ali.gz|" \
-      "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log 
+      "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log || exit 1;
 
 done
 
@@ -182,7 +184,7 @@ while [ $x -lt $numiters ]; do
    done
    wait
    [ -f $dir/.error ] &&  echo accumulation error && exit 1
-   gmm-sum-accs $dir/$x.acc $dir/$x.?.acc || exit 1;
+   gmm-sum-accs $dir/$x.acc $dir/$x.?.acc 2>$dir/sum_accs.$x.log || exit 1;
    rm $dir/$x.?.acc
    gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
    rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs 2>/dev/null
@@ -200,6 +202,6 @@ done
       2>$dir/est_alimdl.log  || exit 1;
 rm $dir/$x.acc2
 
-( cd $dir; rm final.{mdl,alimdl,et} 2>/dev/null; 
-  ln -s $x.mdl final.mdl; ln -s $x.alimdl final.alimdl;
-  ln -s `pwd`/$et $dir/final.et )
+( cd $dir; rm final.{mdl,alimdl} 2>/dev/null; 
+  ln -s $x.mdl final.mdl; ln -s $x.alimdl final.alimdl )
+ ln -s `pwd`/$et $dir/final.et 

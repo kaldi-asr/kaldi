@@ -15,36 +15,37 @@
 # limitations under the License.
 
 
-# tri2a is another epoch of triphone training, starting from the system in tri1.
+# sgmm2a is speaker-independent SGMM building, starting from the system in tri1.
 # The data subset (3500 utterances from si-84) is the same as in tri1, which
-# means we can re-use its graphs.  Starting with a smallish number of Gaussians
-# so we can use this same setup when training transforms and it will be
-# reasonably efficient.
-# See tri3a for a full-size (si-284) system that builds from this.
+# means we can re-use its graphs.  
+
 
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/tri2a
+dir=exp/sgmm2a
 srcdir=exp/tri1
+ubm=exp/ubm2a/final.ubm
 srcmodel=$srcdir/final.mdl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
-numiters=35
-maxiterinc=20 # By this iter, we have all the Gaussians.
-realign_iters="10 20 30"; 
-numleaves=2000
-numgauss=2000 # initial num-gauss smallish so that transform-training
-              # code (when we modify this script) is a bit faster.
-totgauss=10000 # Total num-gauss
-incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
+numiters=35 # Total number of iterations.
+realign_iters="5 15 25"; # realign a bit earlier than we did in tri2a, 
+    # since SGMM system quite different
+    # from normal triphone system.
+maxiterinc=20 # By this iter, we have all the substates.
+numleaves=3000 # was 2k for GMM system: incresaing it for SGMM system.
+numsubstates=3000 # initial #-substates
+totsubstates=8000 # a little less than #Gauss for baseline GMM system (10k)
+incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
 
 silphonelist=`cat data/silphones.csl`
+randprune=0.1
 
 mkdir -p $dir
 cp $srcdir/train.scp $dir
 cp $srcdir/train.tra $dir
 
-# Make graph + align on 3 cpus.  
+# Do the expensive, parallelizable stuff on 3 cpus.
 scripts/split_scp.pl $dir/train.scp  $dir/train{1,2,3}.scp
 scripts/split_scp.pl $dir/train.tra  $dir/train{1,2,3}.tra
 
@@ -54,6 +55,11 @@ feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
 for n in 1 2 3; do
    featspart[$n]="ark:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
 done
+
+if [ ! -f $ubm ]; then
+  echo "No UBM in $ubm";
+  exit 1
+fi
 
 cp $srcdir/topo $dir
 
@@ -72,21 +78,9 @@ done
 wait;
 [ -f $dir/.error ] &&  echo align error RE old system && exit 1
 
-( 
- # Put a few graphs in human-readable form
- # for easier debugging.
-  mkdir -p $dir/graph_egs
-  n=5
-  head -$n $dir/train.tra | awk '{printf("%s '$dir'/graph_egs/%s.fst\n", $1, $1); }' > $dir/some_graphs.scp
-  compile-train-graphs $srcdir/tree $srcmodel  data/L.fst "ark:head -$n $dir/train.tra|" \
-    "scp:$dir/some_graphs.scp"  2>$dir/compile_some_graphs.log || exit 1 
-  for filename in `cat $dir/some_graphs.scp | awk '{print $2;}'`; do
-     fstprint --osymbols=data/words.txt $filename > $filename.txt
-  done
-)
 
-
-acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" "ark:gunzip -c $dir/0.?.ali.gz|" $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
+acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" \
+  "ark:gunzip -c $dir/0.?.ali.gz|" $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
 
 
 # The next few commands are involved with making the questions
@@ -107,27 +101,37 @@ compile-questions $dir/topo $dir/questions_all.txt $dir/questions.qst 2>$dir/com
 scripts/make_roots.sh > $dir/roots_syms.txt
 scripts/sym2int.pl --ignore-oov data/phones.txt  < $dir/roots_syms.txt > $dir/roots.txt
 
-
 build-tree --verbose=1 --max-leaves=$numleaves \
-    $dir/treeacc $dir/roots.txt \
-    $dir/questions.qst $dir/topo $dir/tree  2> $dir/train_tree.log || exit 1;
+  $dir/treeacc $dir/roots.txt \
+  $dir/questions.qst $dir/topo $dir/tree  2> $dir/train_tree.log || exit 1;
 
-gmm-init-model  --write-occs=$dir/1.occs  \
-    $dir/tree $dir/treeacc $dir/topo $dir/1.mdl 2> $dir/init_model.log || exit 1;
+# the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
 
-gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
-    2>$dir/mixup.log || exit 1;
+gmm-init-model  --write-occs=$dir/0.occs  \
+    $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
 
+sgmm-init $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
-rm $dir/treeacc $dir/1.occs
+rm $dir/0.gmm
 
-
-# Convert alignments generated from previous model, to use as initial alignments.
+rm $dir/treeacc
 
 for n in 1 2 3; do
-  convert-ali  $srcmodel $dir/1.mdl $dir/tree \
+  sgmm-gselect $dir/0.mdl "${featspart[$n]}" ark,t:- 2>$dir/gselect$n.log | \
+   gzip -c > $dir/gselect${n}.gz || touch $dir/.error &
+done
+wait
+[ -f $dir/.error ] && echo "Error in gselect phase" && exit 1;
+
+
+# Convert alignments generated from previous model, to use as 
+# initial alignments.
+
+for n in 1 2 3; do
+  convert-ali $srcmodel $dir/0.mdl $dir/tree \
       "ark:gunzip -c $dir/0.$n.ali.gz|" \
-      "ark:|gzip -c > $dir/cur$n.ali.gz" 2>$dir/convert.$n.log || exit 1;
+      "ark:|gzip -c > $dir/cur$n.ali.gz" \
+     2>$dir/convert.$n.log || exit 1; # don't parallelize: mostly I/O.
 done
 rm $dir/0.?.ali.gz
 
@@ -136,22 +140,22 @@ echo "Compiling training graphs"
 
 rm -f $dir/.error
 for n in 1 2 3; do
-  compile-train-graphs $dir/tree $dir/1.mdl  data/L.fst ark:$dir/train${n}.tra \
+  compile-train-graphs $dir/tree $dir/0.mdl  data/L.fst ark:$dir/train${n}.tra \
      "ark:|gzip -c > $dir/graphs${n}.fsts.gz" \
      2>$dir/compile_graphs.${n}.log || touch $dir/.error &
 done
-
 wait
 [ -f $dir/.error ] &&  echo compile-graphs error && exit 1
 
-x=1
+x=0
 while [ $x -lt $numiters ]; do
    echo "Pass $x"
    if echo $realign_iters | grep -w $x >/dev/null; then
      echo "Aligning data"
      rm -f $dir/.error
      for n in 1 2 3; do
-       gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
+       sgmm-align-compiled "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+           $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
            "ark:gunzip -c $dir/graphs${n}.fsts.gz|" "${featspart[$n]}" \
            "ark:|gzip -c >$dir/cur${n}.ali.gz" 2> $dir/align.$x.$n.log \
              || touch $dir/.error &
@@ -159,15 +163,27 @@ while [ $x -lt $numiters ]; do
      wait 
      [ -f $dir/.error ] && echo error aligning data && exit 1
    fi
-   gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" \
-     "ark:gunzip -c $dir/cur?.ali.gz|" $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
-   gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
-   rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs 2>/dev/null
-   if [ $x -le $maxiterinc ]; then 
-      numgauss=$[$numgauss+$incgauss];
+   if [ $x -gt 0 ]; then
+     flags=vMwcS
+   else
+     flags=vwcS
+   fi
+   for n in 1 2 3; do
+     sgmm-acc-stats-ali --update-flags=$flags "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+       --rand-prune=$randprune --binary=true $dir/$x.mdl "${featspart[$n]}" \
+      "ark:gunzip -c $dir/cur$n.ali.gz|" $dir/$x.$n.acc 2> $dir/acc.$x.$n.log \
+        || touch $dir/.error &
+   done
+   wait;
+   [ -f $dir/.error ] && echo error accumulating stats on iter $x && exit 1  
+   sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$x+1].occs \
+       $dir/$x.mdl "sgmm-sum-accs - $dir/$x.?.acc|" $dir/$[$x+1].mdl  2> $dir/update.$x.log || exit 1;
+   rm $dir/$x.mdl $dir/$x.?.acc $dir/$x.occs 2>/dev/null
+   if [ $x -lt $maxiterinc ]; then 
+     numsubstates=$[$numsubstates+$incsubstates]
    fi
    x=$[$x+1];
 done
 
-rm $dir/final.mdl 2>/dev/null
-ln -s $x.mdl $dir/final.mdl
+( cd $dir; rm final.mdl final.occs 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
+
