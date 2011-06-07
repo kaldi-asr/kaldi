@@ -154,7 +154,7 @@ namespace kaldi {
     wl_store_.LinkToken(token, 0);  // create an initial backtrack wordlink
 
     // explore non-emitting states
-    if (VerifyNode(source) >= kBlack) {
+    if (VisitNode(source) >= kBlack) {
       active_tokens_.Enqueue(token->state);
       DEBUG_OUT2("to queue")
     } else {
@@ -182,6 +182,7 @@ namespace kaldi {
     //int color = active_tokens_.GetKey(s);
     //if (color > kWhite) return color;  // state was already explored
     DEBUG_CMD(assert(active_tokens_.GetKey(s) == kWhite))
+    DEBUG_OUT2("visit node:" << s)
         
     // an unexplored state: go through recursively through all arcs
     for (ArcIterator aiter(*reconet_, s); !aiter.Done(); aiter.Next()) {
@@ -217,6 +218,7 @@ namespace kaldi {
     // checks, that recogn. network has all properties required by KaldiDecoder
 
     int color = active_tokens_.GetKey(s);
+    DEBUG_OUT2("visit node:" << s << ":" << color)
     if (color > kWhite) {
       // if there is a loop in the FST that was reached by a non-emitting link
       if (color == kGray) KALDI_ERR << "transducer contains epsilon loop!";
@@ -252,18 +254,17 @@ namespace kaldi {
       }
     }
 
-    if ((!emitting_links) && (!nonemitting_links)
-        && (reconet_->Final(s) == Weight::Zero()))
+    bool is_final = (reconet_->Final(s) != Weight::Zero());
+    if ((!emitting_links) && (!nonemitting_links) && (!is_final))
       KALDI_ERR << "dead node: no outgoing links";
     // assign color and topological number for explored states
-    if (nonemitting_links) {
+    if (nonemitting_links || is_final) {
       active_tokens_.Finish(s);
       DEBUG_OUT2("finished:" << s << "; toporder: " << active_tokens_.GetKey(s))
       return kBlack;
     } else {
       active_tokens_.Brown(s);
       DEBUG_OUT2("finished:" << s)
-      // if (!emitting_links) return kRed;  // final state
       return kBrown;
     }
   }
@@ -346,8 +347,7 @@ namespace kaldi {
 
       if (color == kWhite) {  // unexplored state?
         // the assumption is, that in ProcessEmitting all states are kWhite
-        DEBUG_OUT2("visit node:" << arc.nextstate)
-        color = VerifyNode(arc.nextstate);
+        color = VisitNode(arc.nextstate);
       }
 
       // dispatch new token to the right queue
@@ -395,7 +395,7 @@ namespace kaldi {
     // Weight w = Times(token->weight, fw.Value() * options_.lm_scale);
     Weight w = Times(token->weight, fw);
     // path score Times (plus in log-domain) final weight
-    DEBUG_OUT2("final state reached: path weight:" << w)
+    DEBUG_OUT2("final state reached: " << token->state << " path weight:" << w)
     DEBUG_OUT3("final WordLink:" << token->previous->unique)
 
     // get best token in final state
@@ -471,7 +471,7 @@ namespace kaldi {
                << best_active_score_ << " pruning threshold:"
                << beam_threshold_ )
     active_tokens_.QueueReset();  // the emitting states remain still kBrown!
-    // active_tokens_.AssertQueueEmpty();
+    //DEBUG_CMD(active_tokens_.AssertQueueEmpty())
 
     // evaluate acoustic models and again find best score on active_tokens_
     best_active_score_ = Weight::Zero();
@@ -604,7 +604,7 @@ namespace kaldi {
 
         // compute new score and if better than old, remember token:
         if (active_tokens_.GetKey(arc.nextstate) >= kBlack) {
-          PassTokenThroughArc(token, arc);  // propagate non-emitting
+          PassTokenThroughArc(token, arc);  // propagate non-emitting or final
         } else {  // delete emitting
           // active_tokens_.Untouch(arc.nextstate);
         }
@@ -631,6 +631,7 @@ namespace kaldi {
       Token *token = active_tokens_.PopNext();  // remove state
       active_tokens_.HashRemove(token);
       DEBUG_CMD(assert(active_tokens_.GetKey(token->state) < kBlack))
+      DEBUG_OUT2("pop queue: " << token->state << " weight:" << token->weight)
 
       // compute the best token so far
       Weight before_w = best_token.weight;
