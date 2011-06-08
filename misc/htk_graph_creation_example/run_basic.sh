@@ -59,8 +59,8 @@ else
   # This is the branch that's actually getting run.
 
   fstpredeterminize disambig.ctx < CLG.fst >CLGpredet.fst
-  $rootdir/src/bin/make-h-transducer --transition-scale=$tscale --disambig-syms-right=disambig.ctx \
-      --disambig-syms-left=disambig.tids \
+  $rootdir/src/bin/make-h-transducer --transition-scale=$tscale \
+      --disambig-syms-out=disambig.tids \
       --symbol-type=transition-ids ilabels kaldi.tree kaldi.mdl > H.fst
 
   # Note: fsttablecompose 1G, fstdeterminizestar 1.6G, fstrmsymbols 530M,

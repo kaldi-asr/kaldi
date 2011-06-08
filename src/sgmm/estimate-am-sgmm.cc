@@ -180,9 +180,9 @@ void MleAmSgmmAccs::Read(std::istream &in_stream, bool binary,
 void MleAmSgmmAccs::Check(const AmSgmm &model,
                           bool show_properties) const {
   if (show_properties) {
-    KALDI_LOG << "SgmmPdfModel: J = " << (num_states_) << ", D = " <<
-        (feature_dim_) << ", S = " << (phn_space_dim_) << ", T = " <<
-        (spk_space_dim_);
+    KALDI_LOG << "SgmmPdfModel: J = " << num_states_ << ", D = " <<
+        feature_dim_ << ", S = " << phn_space_dim_ << ", T = " <<
+        spk_space_dim_ << ", I = " << num_gaussians_;
   }
   KALDI_ASSERT(num_states_ == model.NumStates() && num_states_ > 0);
   KALDI_ASSERT(num_gaussians_ == model.NumGauss() && num_gaussians_ > 0);
@@ -808,7 +808,9 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
   Matrix<double> U(accs.phn_space_dim_, accs.phn_space_dim_);
   Vector<double> eigs(accs.phn_space_dim_);
   H_sm_proj.SymPosSemiDefEig(&eigs, &U, 1.0);  // 1.0 means no checking +ve def -> faster
-  H_sm_proj.PrintEigs("H_sm_proj (Significance of dims in vector space)");
+  KALDI_LOG << "Note on the next diagnostic: the first number is generally not that meaningful "
+            << "as it relates to the static offset";
+  H_sm_proj.PrintEigs("H_sm_proj (Significance of dims in vector space.. note)");
 
   // Transform on vectors is U^T L^{-1}.
   // Why?  Because transform on H_sm is T =U^T L^T

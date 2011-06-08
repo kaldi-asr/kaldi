@@ -74,7 +74,7 @@ struct MleAmSgmmOptions {
     cov_diag_ratio = 2.0;  // set to very large to get diagonal-cov models.
     max_cond = 1.0e+05;
     epsilon = 1.0e-40;
-    max_cond_H_sm = 100;
+    max_cond_H_sm = 1.0e+05; // only real significance in normal situation is for diagnostics.
     fixup_Hk_sm = true;
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors

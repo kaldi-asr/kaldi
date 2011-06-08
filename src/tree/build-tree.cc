@@ -189,9 +189,11 @@ EventMap *BuildTree(Questions &qopts,
     cluster_thresh = smallest_split;
   }
 
-  BaseFloat impr_normalized = impr / SumNormalizer(stats);
+  BaseFloat normalizer = SumNormalizer(stats), impr_normalized = impr / normalizer;
 
-  KALDI_VLOG(1) <<  "After decision tree split, num-leaves = "<< num_leaves << ", like-impr = " << impr << ", normalized " << impr_normalized << "\n";
+  KALDI_VLOG(1) <<  "After decision tree split, num-leaves = "<< num_leaves
+                << ", like-impr = " << impr_normalized << " per frame over "
+                << normalizer << " frames.";
 
   if (cluster_thresh != 0.0) {   // Cluster the tree.
     BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree_split);

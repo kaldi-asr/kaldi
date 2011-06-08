@@ -351,15 +351,23 @@ steps/train_tri2l.sh
  )&
 
 
+# Deltas + SGMM
+steps/train_sgmm2a.sh || exit 1;
 
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2a/tree exp/sgmm2a/final.mdl exp/graph_sgmm2a_tg_pruned || exit 1;
+ scripts/decode.sh exp/decode_sgmm2a_tgpr_eval92 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_sgmm2a_tgpr_eval93 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/eval_nov93.scp )&
 
+# + speaker vectors
+steps/train_sgmm2b.sh || exit 1;
 
-# Note on WERs at different stages of decoding:
-#exp/decode_mono_tg_pruned/wer:%WER 31.82 [ 1795 / 5641, 109 ins, 412 del, 1274 sub ]
-#exp/decode_tri1_tg_pruned/wer:%WER 13.61 [ 768 / 5641, 134 ins, 76 del, 558 sub ]
-#exp/decode_tri2a_tg_pruned/wer:%WER 12.94 [ 730 / 5641, 131 ins, 62 del, 537 sub ]
-#exp/decode_tri3a_tg_pruned/wer:%WER 10.88 [ 614 / 5641, 126 ins, 47 del, 441 sub ]
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2b/tree exp/sgmm2b/final.mdl exp/graph_sgmm2b_tg_pruned || exit 1;
+ scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval92 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov92.scp 
+ scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov93.scp
+ scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval92 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov93.scp )&
 
+# see RESULTS for results...
 
 # For an e.g. of scoring with sclite: do e.g.
 # scripts/score_sclite.sh exp/decode_tri2a_tgpr_eval92 data/eval_nov92.txt

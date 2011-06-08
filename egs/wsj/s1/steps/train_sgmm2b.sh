@@ -217,3 +217,22 @@ done
 
 ( cd $dir; rm final.mdl final.occs 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
 
+# Create "alignment model"
+flags=MwcS
+for n in 1 2 3; do
+ ( ali-to-post "ark:gunzip -c $dir/cur$n.ali.gz|" ark:- | \
+   sgmm-post-to-gpost ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
+                "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+                 $dir/$x.mdl "${featspart[$n]}" ark,s,cs:- ark:- | \
+  sgmm-acc-stats-gpost --update-flags=$flags  $dir/$x.mdl "${featspart[$n]}" \
+            ark,s,cs:- $dir/$x.$n.aliacc ) 2> $dir/acc_ali.$x.$n.log || touch $dir/.error &
+done
+wait;
+[ -f $dir/.error ] && echo error accumulating stats for alignment model && exit 1  
+
+sgmm-est --update-flags=$flags --remove-speaker-space=true $dir/$x.mdl \
+    "sgmm-sum-accs - $dir/$x.?.aliacc|" $dir/$x.alimdl 2>$dir/update_ali.$x.log || exit 1;
+rm $dir/$x.?.aliacc
+
+( cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl; )
+

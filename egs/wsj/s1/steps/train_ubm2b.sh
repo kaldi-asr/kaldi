@@ -16,17 +16,14 @@
 
 
 # Train UBM from a trained HMM/GMM system.
-# The amount of data (subset) we are using here is about twice
-# that for the RM setup, so we increase the #Gauss a bit from 400 
-# to 600.
 
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/ubm2a
+dir=exp/ubm2b
 mkdir -p $dir
 srcdir=exp/tri1
 
-init-ubm --intermediate-numcomps=2000 --ubm-numcomps=600 --verbose=2 \
+init-ubm --intermediate-numcomps=2000 --ubm-numcomps=400 --verbose=2 \
     --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
     $dir/0.ubm 2> $dir/cluster.log
 

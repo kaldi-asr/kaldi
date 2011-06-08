@@ -105,13 +105,11 @@ int main(int argc, char *argv[]) {
                 << " frames.";
     }
 
+    sgmm_accs.Check(am_sgmm, true); // Will check consistency and print some diagnostics.
+
     {  // Update SGMM.
-//      BaseFloat objf_impr, count;
       kaldi::MleAmSgmmUpdater sgmm_updater(sgmm_opts);
       sgmm_updater.Update(sgmm_accs, &am_sgmm, acc_flags);
-//      KALDI_LOG << "GMM update: average " << (objf_impr/count)
-//                << " objective function improvement per frame over "
-//                <<  (count) <<  " frames.";
     }
 
     if (split_substates != 0 || !occs_out_filename.empty()) {  // get state occs
@@ -150,7 +148,8 @@ int main(int argc, char *argv[]) {
       trans_model.Write(os.Stream(), binary_write);
       am_sgmm.Write(os.Stream(), binary_write, kSgmmWriteAll);
     }
-
+    
+    
     KALDI_LOG << "Written model to " << model_out_filename;
     return 0;
   } catch(const std::exception& e) {
