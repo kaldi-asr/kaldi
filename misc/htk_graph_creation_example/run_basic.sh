@@ -1,3 +1,5 @@
+# **THIS SCRIPT IS NOT WORKING YET-- wait a few hours**
+
 # This is a fairly simple recipe for model conversion and graph creation.
 # The topology is not linear so we can't do any of that factoring stuff.
 
@@ -5,6 +7,7 @@ rootdir=../..
 D=`dirname "$rootdir"`
 B=`basename "$rootdir"`
 rootdir="`cd \"$D\" 2>/dev/null && pwd || echo \"$D\"`/$B"
+export PATH=$PATH:$rootdir/tools/openfst/bin/:$rootdir/src/fstbin/:$rootdir/src/lm/:$rootdir/egs/wsj/s1/scripts/
 
 workdir=convert_basic
 
@@ -15,15 +18,45 @@ export LC_ALL=C
 (echo "<s>    sil";  echo "</s>    sil"; ) |
 cat /homes/eva/q/qthomas/Workshop/Interp/callhome_gigaword_switchboard_web_64k/dict_callhome_gigaword_switchboard_web - \
  > lexicon.txt
-echo "<eps> 0" > words.txt
-cat lexicon.txt | awk '{print $1}' | sort | uniq | awk '{printf("%s %d\n", $1, NR);}' >> words.txt
+
+
+# Make the words symbol-table; add the disambiguation symbol #0 (we use this in place of epsilon
+# in the grammar FST).
+cat lexicon.txt | awk '{print $1}' | sort | uniq  | \
+ awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
+  > words.txt
 
 # Make lexicon fst.
 
-$rootdir/rm_recipe_2/scripts/make_lexicon_fst.pl lexicon.txt 0.5 sil  | fstcompile --isymbols=phones.txt --osymbols=words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > L.fst
+sdir=$rootdir/egs/wsj/s1/scripts/
 
+make_lexicon_fst.pl lexicon.txt 0.5 sil  | fstcompile --isymbols=phones.txt --osymbols=words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > L.fst
 
-$rootdir/src/lm/arpa2fst /homes/eva/q/qthomas/Workshop/Interp/callhome_gigaword_switchboard_web_64k/lm_callhome_gigaword_switchboard_web_2gram.arpa | fstprint | fstcompile --isymbols=words.txt --osymbols=words.txt --keep_isymbols=false --keep_osymbols=false > G.fst
+ndisambig=`add_lex_disambig.pl lexicon.txt exicon_disambig.txt`
+echo $ndisambig > lex_ndisambig
+# Next, create a phones.txt file that includes the disambiguation symbols.
+# the --include-zero includes the #0 symbol we pass through from the grammar.
+add_disambig.pl --include-zero phones.txt $ndisambig > phones_disambig.txt
+
+phone_disambig_symbol=`grep \#0 data/phones_disambig.txt | awk '{print $2}'`
+word_disambig_symbol=`grep \#0 data/words.txt | awk '{print $2}'`
+
+make_lexicon_fst.pl lexicon_disambig.txt 0.5 SIL  | \
+   fstcompile --isymbols=phones_disambig.txt --osymbols=words.txt \
+   --keep_isymbols=false --keep_osymbols=false |   \
+   fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
+   fstarcsort --sort_type=olabel > L_disambig.fst
+
+# Now make the LM FST.
+cat /homes/eva/q/qthomas/Workshop/Interp/callhome_gigaword_switchboard_web_64k/lm_callhome_gigaword_switchboard_web_2gram.arpa | \
+    grep -v '<s> <s>' | \
+    grep -v '</s> <s>' | \
+    grep -v '</s> </s>' | \
+  arpa2fst - | fstprint | \
+  eps2disambig.pl | fstcompile --isymbols=words.txt --osymbols=words.txt \
+     --keep_isymbols=false --keep_osymbols=false > G.fst
+# For diagnostics...
+fstisstochastic G.fst
 
 # Randomly generating string, as follows, for test:
 # fstrandgen --select=log_prob  G.fst | fstprint --isymbols=words.txt --osymbols=words.txt
