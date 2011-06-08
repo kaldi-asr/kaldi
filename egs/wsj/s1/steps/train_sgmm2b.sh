@@ -185,6 +185,7 @@ while [ $x -lt $numiters ]; do
            || touch $dir/.error &
         spkvecs_opt[$n]="--spk-vecs=ark:$dir/cur$n.vecs"
      done
+     wait;
      [ -f $dir/.error ] && echo error computing speaker vectors && exit 1    
    fi  
 
