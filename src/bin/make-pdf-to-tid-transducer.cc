@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Make transducer from pdfs to transition-ids\n"
-        "Usage:   make-pdf-to-tid-transducer <gmm/transition-model> [fst-out]\n"
+        "Usage:   make-pdf-to-tid-transducer model-filename [fst-out]\n"
         "e.g.: \n"
         " make-pdf-to-tid-transducer 1.mdl > pdf2tid.fst\n";
     ParseOptions po(usage);
