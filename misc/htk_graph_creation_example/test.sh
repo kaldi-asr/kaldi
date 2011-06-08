@@ -19,7 +19,7 @@ export PATH=$PATH:$rootdir/tools/openfst/bin/:$rootdir/src/fstbin/:$rootdir/src/
 cd $dir
 
 mkdir -p test
-fstrandgen --select=log_prob CLG2.fst   > test/fst.test
+fstrandgen --select=log_prob CLG.fst   > test/fst.test
 cat test/fst.test | fstprint --isymbols=context_syms.txt --osymbols=words.txt > test/fst.txt
 cat test/fst.txt | awk ' { print $3; } ' | sed 's:<eps>:sil:g' | perl -ane 'if(m:(.+)/(.+)/(.+):) {  if($2 eq "sil") { print "$2\n"; } else { print "$1-$2+$3\n"; } } ' > test/xword.seq
 
