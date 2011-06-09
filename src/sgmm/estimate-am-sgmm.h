@@ -48,7 +48,7 @@ struct MleAmSgmmOptions {
   BaseFloat max_cond_H_sm;
   /// Fix for the smoothing approach, necessary if max_cond_H_sm != inf
   /// note: only has an effect if tau_vec != 0.
-  bool fixup_Hk_sm;
+  bool fixup_H_sm;
 
   bool renormalize_V;
   bool renormalize_N;
@@ -75,7 +75,7 @@ struct MleAmSgmmOptions {
     max_cond = 1.0e+05;
     epsilon = 1.0e-40;
     max_cond_H_sm = 1.0e+05; // only real significance in normal situation is for diagnostics.
-    fixup_Hk_sm = true;
+    fixup_H_sm = true;
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors
     // on disk.
@@ -328,6 +328,20 @@ class MleSgmmSpeakerAccs {
   /// small constant to randomly prune tiny posteriors
   BaseFloat rand_prune_;
 };
+
+/// Class for misc functions that need access to SGMM private variables.
+class AmSgmmFunctions {
+ public:
+  /// Computes matrix of approximated K-L divergences, 
+  /// of size [#states x #states], as described in
+  /// "State-Level Data Borrowing for Low-Resource Speech Recognition based on
+  ///  Subspace GMMs", by Yanmin Qian et. al, Interspeech 2011.
+  /// Model must have one substate per state.
+  static void ComputeDistances(const AmSgmm& model,
+                               const Vector<BaseFloat> &state_occs,
+                               MatrixBase<BaseFloat> *dists);
+};
+
 
 }  // namespace kaldi
 

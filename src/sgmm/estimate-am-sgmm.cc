@@ -656,7 +656,7 @@ void MleAmSgmmUpdater::ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
     int32 tmp = H_sm->LimitCondDouble(update_options_.max_cond_H_sm);
     if (tmp > 0) {
       KALDI_WARN << "Limited " << tmp << " eigenvalues of H_sm.";
-      if (update_options_.fixup_Hk_sm && y_sm != NULL) {
+      if (update_options_.fixup_H_sm && y_sm != NULL) {
         Vector<double> avgVec(accs.phn_space_dim_);
         SpMatrix<double> HInv(H_sm_old);
         HInv.Invert();
@@ -1652,10 +1652,43 @@ void MleSgmmSpeakerAccs::Update(BaseFloat min_count,
   if (count_out) *count_out = tot_gamma;
 }
 
+void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
+                                       const Vector<BaseFloat> &state_occs,
+                                       MatrixBase<BaseFloat> *dists) {
+  int32 num_states = model.NumStates(),
+      phn_space_dim = model.PhoneSpaceDim(),
+      num_gauss = model.NumGauss();
+  KALDI_ASSERT(dists != NULL && dists->NumRows() == num_states
+               && dists->NumCols() == num_states);
+  Vector<double> prior(state_occs);
+  KALDI_ASSERT(prior.Sum() != 0.0);
+  prior.Scale(1.0 / prior.Sum()); // Normalize.
+  SpMatrix<float> H(phn_space_dim); // The same as H_sm in some other code.
+  for(int32 i = 0; i < num_gauss; ++i) {
+    SpMatrix<float> Hi(phn_space_dim);
+    Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
+    H.AddSp(prior(i), Hi);
+  }
+  bool warned = false;
+  for(int32 j1 = 0; j1 < num_states; ++j1) {
+    if(model.NumSubstates(j1) != 1 && !warned) {
+      KALDI_WARN << "ComputeDistances() can only give meaningful output if you have one substate per state.";
+      warned = true;
+    }
+    for(int32 j2 = 0; j2 <= j1; ++j2) {
+      Vector<BaseFloat> v_diff(model.v_[j1].Row(0));
+      v_diff.AddVec(-1.0, model.v_[j2].Row(0));
+      (*dists)(j1, j2) = (*dists)(j2, j1) = VecSpVec(v_diff, H, v_diff);
+    }
+  }
+}
+
+
 MleAmSgmmAccs::~MleAmSgmmAccs() {
   if (gamma_s_.Sum() != 0.0)
     KALDI_ERR << "In destructor of MleAmSgmmAccs: detected that you forgot to "
         "call CommitStatsForSpk()";
 }
+
 
 }  // namespace kaldi

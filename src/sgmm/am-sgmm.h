@@ -302,6 +302,7 @@ class AmSgmm {
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmSgmm);
   friend class MleAmSgmmUpdater;
   friend class MleSgmmSpeakerAccs;
+  friend class AmSgmmFunctions; // misc functions that need access.
 };
 
 template<typename Real>

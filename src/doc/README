@@ -6,3 +6,25 @@ To run doxygen, type "doxygen" from one directory above this.  If this does
 not work, search for "Kaldi main page" online and you will hopefully get a 
 version of the documentation.
 
+(from Dan:) The commands below show how I compile the documentation and
+copy it to the homepage at sourceforge.  (We also maintain a version 
+at http://merlin.fit.vutbr.cz/kaldi but this will eventually be 
+discontinued).
+
+# cd to src/
+doxygen
+cp ~/sourceforge/kaldi/trunk/src/doc/*.pptx ~/sourceforge/kaldi/trunk/src/html/; 
+
+echo 'for x in ~/sourceforge/kaldi/trunk/src/html/*
+    do cp -r $x /var/www/html/kaldi; done' | ssh merlin bash
+
+tar -czf html.tar.gz html
+scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
+
+#may have to do this:
+ssh danielpovey,kaldi@shell.sourceforge.net create
+
+# Running the shell command on sourceforge, from svatava:
+echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
+     tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
+   | ssh danielpovey,kaldi@shell.sourceforge.net bash
