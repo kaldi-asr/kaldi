@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
   const char *fea_file = "./test_utterance_4.plp";
   const char *am_file = "./am_diag_gmm";
-  const char *rec_net = "./reconet_left.fst";
+  const char *rec_net = "./reconet_right.fst";
 
 // const char *fea_file = "/mnt/matylda4/burget/UBM-ASR/branches/clean/src/decoder/tmp/fea/en_6179_059223_059708_B0.plp";
 // const char *am_file = "/mnt/matylda4/burget/UBM-ASR/branches/clean/src/decoder/tmp/MMF.Kaldi";
