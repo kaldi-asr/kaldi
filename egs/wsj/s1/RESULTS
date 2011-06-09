@@ -60,6 +60,9 @@ system:
  [spk,+fmllr] 10.1       14.0                         |  [per speaker, plus fMLLR]
  tri2l        9.6        13.7                         | train with SAT; test with fMLLR
   [utt]       12.0       16.8                         |  [adaptation per utterance]
+ sgmm2a       10.4       16.4                         |  [sgmm, unadapted, on delta features]
+ sgmm2b       10.2       13.8                         |  [sgmm, spk-vector adaptation only]
+   [utt]      10.2       14.0                         |  [adapt per utt]
  tri3k        9.1        11.6                         | [ splice-9-frames + LDA + ET; SI-284 ]
  [utt]        9.1        11.8                         | [adaptation per utterance]
  [spk;+fmllr] 8.4        11.2                         | [per-speaker adaptation; +fMLLR]
@@ -140,3 +143,63 @@ exp/decode_tri3k_tgpr_fmllr_eval93/wer:%WER 11.17 [ 384 / 3439, 66 ins, 44 del, 
 exp/decode_tri3k_tgpr_utt_eval92/wer:%WER 9.11 [ 514 / 5641, 120 ins, 32 del, 362 sub ]
 exp/decode_tri3k_tgpr_utt_eval93/wer:%WER 11.75 [ 404 / 3439, 59 ins, 50 del, 295 sub ]
 
+exp/decode_sgmm2a_tgpr_eval92/wer:%WER 10.44 [ 589 / 5641, 129 ins, 38 del, 422 sub ]
+exp/decode_sgmm2a_tgpr_eval93/wer:%WER 16.40 [ 564 / 3439, 68 ins, 92 del, 404 sub ]
+
+exp/decode_sgmm2b_tgpr_eval92/wer:%WER 10.19 [ 575 / 5641, 133 ins, 41 del, 401 sub ]
+exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 59 ins, 65 del, 352 sub ]
+exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 38 del, 398 sub ]
+exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 354 sub ]
+
+
+
+===========
+# Some notes on tuning the SGMM systems on half the SI-84 data (sgmm2a and sgmm2b).
+# We ended up with 400 UBM components, and acwt 1/11 (unadapted) and 1/12 (adapted..
+# actually I never tried 1/11 adapted but 1/12 was much better than 1/10).
+
+#baseline:
+#exp/decode_tri2a_tgpr_eval92/wer:%WER 12.52 [ 706 / 5641, 127 ins, 60 del, 519 sub ]
+#exp/decode_tri2a_tgpr_eval93/wer:%WER 18.29 [ 629 / 3439, 47 ins, 104 del, 478 sub ]
+
+# 2a, 600 comps, with acwt=1/16:
+#exp/decode_sgmm2a_tgpr_eval92/wer:%WER 11.58 [ 653 / 5641, 116 ins, 59 del, 478 sub ]
+#exp/decode_sgmm2a_tgpr_eval93/wer:%WER 19.08 [ 656 / 3439, 52 ins, 141 del, 463 sub ]
+
+# 2a, 600 comps, changed acwt to 1/12:
+# exp/decode_sgmm2a_tgpr_eval92/wer:%WER 11.12 [ 627 / 5641, 125 ins, 50 del, 452 sub ]
+# exp/decode_sgmm2a_tgpr_eval93/wer:%WER 17.74 [ 610 / 3439, 62 ins, 102 del, 446 sub ]
+
+# 2a, 600 comps, Changed acwt to 1/10:
+# exp/decode_sgmm2a_tgpr_eval92/wer:%WER 10.74 [ 606 / 5641, 134 ins, 38 del, 434 sub ]
+# exp/decode_sgmm2a_tgpr_eval93/wer:%WER 17.80 [ 612 / 3439, 82 ins, 89 del, 441 sub ]
+
+# 2a, 600 comps, Acwt at 1/11:
+# exp/decode_sgmm2a_tgpr_eval92/wer:%WER 10.85 [ 612 / 5641, 124 ins, 46 del, 442 sub ]
+# exp/decode_sgmm2a_tgpr_eval93/wer:%WER 17.91 [ 616 / 3439, 70 ins, 98 del, 448 sub ]
+
+# 2a, 400 comps, with acwt at 1/11 [better than 2a; this is reducing UBM-numcomps from 600 to 400.]
+#svatava:s1: grep WER exp/decode_sgmm2a_tgpr_eval9*/wer
+#exp/decode_sgmm2a_tgpr_eval92/wer:%WER 10.44 [ 589 / 5641, 129 ins, 38 del, 422 sub ]
+#exp/decode_sgmm2a_tgpr_eval93/wer:%WER 16.40 [ 564 / 3439, 68 ins, 92 del, 404 sub ]
+
+
+# 2b, 600 comps, acwt=1/10
+#grep WER exp/decode_sgmm2b*/wer
+#exp/decode_sgmm2b_tgpr_eval92/wer:%WER 11.10 [ 626 / 5641, 155 ins, 40 del, 431 sub ]
+#exp/decode_sgmm2b_tgpr_eval93/wer:%WER 14.54 [ 500 / 3439, 73 ins, 56 del, 371 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.69 [ 603 / 5641, 149 ins, 34 del, 420 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 14.89 [ 512 / 3439, 85 ins, 53 del, 374 sub ]
+
+# 2b, 600 comps, with acwt=1/12
+#exp/decode_sgmm2b_tgpr_eval92/wer:%WER 10.76 [ 607 / 5641, 130 ins, 42 del, 435 sub ]
+#exp/decode_sgmm2b_tgpr_eval93/wer:%WER 14.07 [ 484 / 3439, 61 ins, 68 del, 355 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.30 [ 581 / 5641, 129 ins, 36 del, 416 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 14.28 [ 491 / 3439, 65 ins, 67 del, 359 sub ]
+
+# 2b, 400 comps, with acwt=1/12
+#svatava:s1: grep WER exp/decode_sgmm2b_tgpr_*/wer
+#exp/decode_sgmm2b_tgpr_eval92/wer:%WER 10.19 [ 575 / 5641, 133 ins, 41 del, 401 sub ]
+#exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 59 ins, 65 del, 352 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 38 del, 398 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 354 sub ]

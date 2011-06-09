@@ -29,7 +29,7 @@ fi
 
 . path.sh || exit 1;
 
-acwt=0.1
+acwt=0.09090909
 beam=13.0
 max_active=7000
 model=exp/sgmm2a/final.mdl
