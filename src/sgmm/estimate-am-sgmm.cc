@@ -340,7 +340,6 @@ void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
 }
 
 void MleAmSgmmAccs::ZeroAccumulators(SgmmUpdateFlagsType flags) {
-  // TODO(arnab): check the flags.
   if (flags & kSgmmPhoneVectors) {
     for (int32 i = 0, end = y_.size(); i < end; ++i)
       y_[i].SetZero();
@@ -376,15 +375,14 @@ MleAmSgmmAccs::Accumulate(const AmSgmm &model,
                           const VectorBase<BaseFloat> &v_s,  // may be empty
                           int32 j, BaseFloat weight,
                           SgmmUpdateFlagsType flags) {
-  // TODO(arnab): check the flags for compatibility, etc.
   // Calculate Gaussian posteriors and collect statistics
   Matrix<BaseFloat> posteriors;
   BaseFloat log_like = model.ComponentPosteriors(frame_vars, j, &posteriors);
   posteriors.Scale(weight);
   BaseFloat count = AccumulateFromPosteriors(model, frame_vars, posteriors,
                                              v_s, j, flags);
-  total_like_ += count * log_like;  // Note: total_frames_ was added to in
-  // AccumulateFromPosteriors.
+  // Note: total_frames_ is incremented in AccumulateFromPosteriors().
+  total_like_ += count * log_like;
   return log_like;
 }
 

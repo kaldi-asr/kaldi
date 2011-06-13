@@ -15,6 +15,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <vector>
+
 #include "matrix/matrix-lib.h"
 #include "gmm/model-test-common.h"
 
@@ -84,23 +87,20 @@ void RandFullGaussFeatures(int32 num_samples,
 
 void InitRandDiagGmm(int32 dim, int32 num_comp, DiagGmm *gmm) {
   Vector<BaseFloat> weights(num_comp);
-  Matrix<BaseFloat> means(num_comp, dim), vars(num_comp, dim);
+  Matrix<BaseFloat> means(num_comp, dim), inv_vars(num_comp, dim);
 
-  BaseFloat tot_weight = 0.0;
   for (int32 m = 0; m < num_comp; m++) {
-    weights(m) = RandUniform() + 1e-2;
+    weights(m) = exp(RandGauss());
     for (int32 d= 0; d < dim; d++) {
-      means(m, d) = RandGauss();
-      vars(m, d) = exp(RandGauss()) + 1e-2;
+      means(m, d) = RandGauss() / (1 + d);
+      inv_vars(m, d) = exp(RandGauss() / (1 + d)) + 1e-2;
     }
-    tot_weight += weights(m);
   }
-  weights.Scale(1/tot_weight);
-  vars.InvertElements();
+  weights.Scale(1.0 / weights.Sum());
 
   gmm->Resize(num_comp, dim);
   gmm->SetWeights(weights);
-  gmm->SetInvVarsAndMeans(vars, means);
+  gmm->SetInvVarsAndMeans(inv_vars, means);
   gmm->ComputeGconsts();
 }
 

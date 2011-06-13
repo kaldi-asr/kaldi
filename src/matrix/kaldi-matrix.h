@@ -183,8 +183,11 @@ class MatrixBase {
   /// Returns minimum element of matrix.
   Real Min() const;
 
-  /// dot-product, element by element
+  /// Element by element multiplication with a given matrix.
   void MulElements(const MatrixBase<Real>& a);
+
+  /// Divide each element by the corresponding element of a given matrix.
+  void DivElements(const MatrixBase<Real>& a);
 
   /// Multiply each element with a scalar value.
   void Scale(Real alpha);

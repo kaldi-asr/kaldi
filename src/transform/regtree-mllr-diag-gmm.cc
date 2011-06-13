@@ -25,10 +25,10 @@ using std::vector;
 namespace kaldi {
 
 RegtreeMllrDiagGmm::~RegtreeMllrDiagGmm() {
-  DeletePointers(&xformed_mean_cache_);
+  DeletePointers(&xformed_mean_invvars_);
 }
 
-void RegtreeMllrDiagGmm::Init(size_t num_xforms, size_t dim) {
+void RegtreeMllrDiagGmm::Init(int32 num_xforms, int32 dim) {
   if (num_xforms == 0) {  // empty transform
     xform_matrices_.clear();
     dim_ = 0;  // non-zero dimension is meaningless with empty transform
@@ -58,7 +58,7 @@ void RegtreeMllrDiagGmm::SetUnit() {
 
 void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
                                         AmDiagGmm *am) {
-  KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) == 
+  KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) ==
                regtree.NumBaseclasses());
   Vector<BaseFloat> extended_mean(dim_+1), xformed_mean(dim_);
   for (int32 bclass_index = 0, num_bclasses = regtree.NumBaseclasses();
@@ -82,54 +82,94 @@ void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
   am->ComputeGconsts();
 }
 
-void RegtreeMllrDiagGmm::GetTransformedMean(const RegressionTree &regtree,
-                                     const AmDiagGmm &am,
-                                     size_t pdf_index, size_t gauss_index,
-                                     VectorBase<BaseFloat> *out) {
-  KALDI_ASSERT(static_cast<int32>(out->Dim()) == dim_);
-  KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) == 
+
+const Matrix<BaseFloat>& RegtreeMllrDiagGmm::GetXformedMeanInvVars(
+    const RegressionTree &regtree, const AmDiagGmm &am, int32 pdf_index) {
+  KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) ==
                regtree.NumBaseclasses());
-  if (xformed_mean_cache_.size() == 0)
+  if (xformed_mean_invvars_.size() == 0)
     InitCache(am);
-  if (is_cached_[pdf_index][gauss_index]) {  // found in cache
-    KALDI_ASSERT(xformed_mean_cache_[pdf_index] != NULL);
-    out->CopyRowFromMat(*xformed_mean_cache_[pdf_index], gauss_index);
-    return;
-  } else {  // transform the mean and cache the vector
+  if (is_cached_[pdf_index]) {  // found in cache
+    KALDI_ASSERT(xformed_mean_invvars_[pdf_index] != NULL);
+    KALDI_VLOG(3) << "For PDF index " << pdf_index << ": transformed means "
+                  << "found in cache.";
+    return *xformed_mean_invvars_[pdf_index];
+  } else {  // transform the means and cache them
+    KALDI_ASSERT(xformed_mean_invvars_[pdf_index] == NULL);
+    KALDI_VLOG(3) << "For PDF index " << pdf_index << ": transforming means.";
+    int32 num_gauss = am.GetPdf(pdf_index).NumGauss();
+    xformed_mean_invvars_[pdf_index] = new Matrix<BaseFloat>(num_gauss, dim_);
+    Matrix<BaseFloat>& xf_means(*xformed_mean_invvars_[pdf_index]);
     Vector<BaseFloat> extended_mean(dim_+1);
-    int32 bclass_index = regtree.Gauss2BaseclassId(pdf_index, gauss_index);
-    int32 xform_index = bclass2xforms_[bclass_index];
-    if (xform_index > -1) {  // use a transform
-      KALDI_ASSERT(xform_index < num_xforms_);
-      SubVector<BaseFloat> tmp_mean(extended_mean.Range(0, dim_));
-      am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
-      extended_mean(dim_) = 1.0;
-      out->AddMatVec(1.0, xform_matrices_[xform_index], kNoTrans,
-                     extended_mean, 0.0);
-    } else {  // Copy untransformed mean
-      am.GetGaussianMean(pdf_index, gauss_index, out);
+    extended_mean(dim_) = 1.0;
+
+    for (int32 gauss_index = 0; gauss_index < num_gauss; ++gauss_index) {
+      int32 bclass_index = regtree.Gauss2BaseclassId(pdf_index, gauss_index);
+      int32 xform_index = bclass2xforms_[bclass_index];
+      if (xform_index > -1) {  // use a transform
+        KALDI_ASSERT(xform_index < num_xforms_);
+        SubVector<BaseFloat> tmp_mean(extended_mean.Range(0, dim_));
+        am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
+        SubVector<BaseFloat> out_row(xf_means.Row(gauss_index));
+        out_row.AddMatVec(1.0, xform_matrices_[xform_index], kNoTrans,
+                          extended_mean, 0.0);
+        out_row.MulElements(am.GetPdf(pdf_index).inv_vars().Row(gauss_index));
+      } else {  // Copy untransformed mean
+        SubVector<BaseFloat> out_row(xf_means.Row(gauss_index));
+        am.GetGaussianMean(pdf_index, gauss_index, &out_row);
+        out_row.MulElements(am.GetPdf(pdf_index).inv_vars().Row(gauss_index));
+      }
     }
 
-    // cache the mean vector
-    if (xformed_mean_cache_[pdf_index] == NULL) {
-      xformed_mean_cache_[pdf_index] = new Matrix<BaseFloat>(
-          am.GetPdf(pdf_index).NumGauss(), dim_);
-    }
-    xformed_mean_cache_[pdf_index]->CopyRowFromVec(*out, gauss_index);
-    is_cached_[pdf_index][gauss_index] = true;
-    return;
+    is_cached_[pdf_index] = true;
+    return *xformed_mean_invvars_[pdf_index];
   }
 }
 
-void RegtreeMllrDiagGmm::InitCache(const AmDiagGmm &am) {
-  if (xformed_mean_cache_.size() != 0)
-    DeletePointers(&xformed_mean_cache_);
-  xformed_mean_cache_.resize(am.NumPdfs());
-  is_cached_.resize(am.NumPdfs());
-  for (size_t pdf_index = 0, num_pdfs = am.NumPdfs(); pdf_index < num_pdfs;
-       ++pdf_index) {
-    is_cached_[pdf_index].resize(am.GetPdf(pdf_index).NumGauss(), false);
+static void ComputeGconsts(const VectorBase<BaseFloat> &weights,
+                           const MatrixBase<BaseFloat> &means_invvars,
+                           const MatrixBase<BaseFloat> &inv_vars,
+                           VectorBase<BaseFloat> *gconsts_out) {
+  int32 num_gauss = weights.Dim();
+  int32 dim = means_invvars.NumCols();
+  KALDI_ASSERT(means_invvars.NumRows() == num_gauss
+      && inv_vars.NumRows() == num_gauss && inv_vars.NumCols() == dim);
+  KALDI_ASSERT(gconsts_out->Dim() == num_gauss);
+
+  BaseFloat offset = -0.5 * M_LOG_2PI * dim;  // constant term in gconst.
+  int32 num_bad = 0;
+
+  for (int32 gauss = 0; gauss < num_gauss; gauss++) {
+    KALDI_ASSERT(weights(gauss) >= 0);  // Cannot have negative weights.
+    BaseFloat gc = log(weights(gauss)) + offset;  // May be -inf if weights == 0
+    for (int32 d = 0; d < dim; d++) {
+      gc += 0.5 * log(inv_vars(gauss, d)) - 0.5 * means_invvars(gauss, d)
+        * means_invvars(gauss, d) / inv_vars(gauss, d);
+    }
+
+    if (KALDI_ISNAN(gc)) {  // negative infinity is OK but NaN is not acceptable
+      KALDI_ERR << "At component "  << gauss
+                << ", not a number in gconst computation";
+    }
+    if (KALDI_ISINF(gc)) {
+      num_bad++;
+      // If positive infinity, make it negative infinity.
+      // Want to make sure the answer becomes -inf in the end, not NaN.
+      if (gc > 0) gc = -gc;
+    }
+    (*gconsts_out)(gauss) = gc;
   }
+  if (num_bad > 0)
+    KALDI_WARN << num_bad << " unusable components found while computing "
+               << "gconsts.";
+}
+
+
+void RegtreeMllrDiagGmm::InitCache(const AmDiagGmm &am) {
+  if (xformed_mean_invvars_.size() != 0)
+    DeletePointers(&xformed_mean_invvars_);
+  xformed_mean_invvars_.resize(am.NumPdfs());
+  is_cached_.resize(am.NumPdfs(), false);
 }
 
 void RegtreeMllrDiagGmm::Write(std::ostream &out, bool binary) const {
@@ -177,7 +217,7 @@ void RegtreeMllrDiagGmm::Read(std::istream &in, bool binary) {
 
 // ************************************************************************
 
-void RegtreeMllrDiagGmmAccs::Init(size_t num_bclass, size_t dim) {
+void RegtreeMllrDiagGmmAccs::Init(int32 num_bclass, int32 dim) {
   if (num_bclass == 0) {  // empty stats
     DeletePointers(&baseclass_stats_);
     baseclass_stats_.clear();
@@ -205,9 +245,9 @@ void RegtreeMllrDiagGmmAccs::SetZero() {
 
 BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, size_t pdf_index, BaseFloat weight) {
+    const VectorBase<BaseFloat>& data, int32 pdf_index, BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
-  size_t num_comp = static_cast<int32>(pdf.NumGauss());
+  int32 num_comp = static_cast<int32>(pdf.NumGauss());
   Vector<BaseFloat> posterior(num_comp);
   BaseFloat loglike = pdf.ComponentPosteriors(data, &posterior);
   posterior.Scale(weight);
@@ -218,7 +258,7 @@ BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
   Vector<double> extended_mean(dim_+1);
   SpMatrix<double> mean_scatter(dim_+1);
 
-  for (size_t m = 0; m < num_comp; m++) {
+  for (int32 m = 0; m < num_comp; m++) {
     unsigned bclass = regtree.Gauss2BaseclassId(pdf_index, m);
     inv_var_x.CopyFromVec(pdf.inv_vars().Row(m));
     inv_var_x.MulElements(data_d);
@@ -234,7 +274,7 @@ BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
     baseclass_stats_[bclass]->K_.AddVecVec(posterior_d(m), inv_var_x,
                                            extended_mean);
     vector< SpMatrix<double> > &G = baseclass_stats_[bclass]->G_;
-    for (size_t d = 0; d < dim_; d++)
+    for (int32 d = 0; d < dim_; d++)
       G[d].AddSp((posterior_d(m) * pdf.inv_vars()(m, d)), mean_scatter);
   }
   return loglike;
@@ -242,7 +282,7 @@ BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
 
 void RegtreeMllrDiagGmmAccs::AccumulateForGaussian(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, size_t pdf_index, size_t gauss_index,
+    const VectorBase<BaseFloat>& data, int32 pdf_index, int32 gauss_index,
     BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
   Vector<double> data_d(data);
@@ -264,7 +304,7 @@ void RegtreeMllrDiagGmmAccs::AccumulateForGaussian(
   baseclass_stats_[bclass]->beta_ += weight_d;
   baseclass_stats_[bclass]->K_.AddVecVec(weight_d, inv_var_x, extended_mean);
   vector< SpMatrix<double> > &G = baseclass_stats_[bclass]->G_;
-  for (size_t d = 0; d < dim_; d++)
+  for (int32 d = 0; d < dim_; d++)
     G[d].AddSp((weight_d * pdf.inv_vars()(gauss_index, d)), mean_scatter);
 }
 
@@ -304,11 +344,23 @@ void RegtreeMllrDiagGmmAccs::Read(std::istream &in, bool binary, bool add) {
 static void ComputeMllrMatrix(const Matrix<double> &K,
                               const vector< SpMatrix<double> > &G,
                               Matrix<BaseFloat> *out) {
-  size_t dim = G.size();
+  int32 dim = G.size();
   Matrix<double> tmp_out(dim, dim+1);
-  for (size_t d = 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
+    if (G[d].Cond() > 1.0e+9) {
+      KALDI_WARN << "Dim " << d << ": Badly conditioned stats. Setting MLLR "
+                 << "transform to unit.";
+      tmp_out.SetUnit();
+      break;
+    }
     SpMatrix<double> inv_g(G[d]);
+//    KALDI_LOG << "Dim " << d << ": G: max = " << inv_g.Max() << ", min = "
+//              << inv_g.Min() << ", log det = " << inv_g.LogDet(NULL)
+//              << ", cond = " << inv_g.Cond();
     inv_g.Invert();
+//    KALDI_LOG << "Inv G: max = " << inv_g.Max() << ", min = " << inv_g.Min()
+//              << ", log det = " << inv_g.LogDet(NULL) << ", cond = "
+//              << inv_g.Cond();
     tmp_out.Row(d).AddSpVec(1.0, inv_g, K.Row(d), 0.0);
   }
   out->CopyFromMat(tmp_out, kNoTrans);
@@ -316,12 +368,12 @@ static void ComputeMllrMatrix(const Matrix<double> &K,
 
 static BaseFloat MllrAuxFunction(const Matrix<BaseFloat> &xform,
                                  const AffineXformStats& stats) {
-  size_t dim = stats.G_.size();
+  int32 dim = stats.G_.size();
   Matrix<double> xform_d(xform);
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform_d, 0, dim, 0, dim);
   double obj = TraceMatMat(xform_d, stats.K_, kTrans);
-  for (size_t d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; ++d) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
   }
@@ -344,7 +396,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
     // If update_xforms == true, none should be negative, else all should be -1
     if (update_xforms) {
       out_mllr->Init(regclass_stats.size(), dim_);
-      for (size_t rclass_index = 0, num_rclass = regclass_stats.size();
+      for (int32 rclass_index = 0, num_rclass = regclass_stats.size();
            rclass_index < num_rclass; ++rclass_index) {
         KALDI_ASSERT(regclass_stats[rclass_index]->beta_ >= opts.min_count);
         xform_mat.SetUnit();
@@ -360,6 +412,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
                   << ((obj_new - obj_old)/regclass_stats[rclass_index]->beta_)
                   << " over " << regclass_stats[rclass_index]->beta_
                   << " frames.";
+        AssertGeq(obj_new, obj_old, 1e-5);
         tot_t += regclass_stats[rclass_index]->beta_;
         tot_auxf_impr += obj_new - obj_old;
       }
@@ -371,7 +424,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
   } else {  // estimate 1 transform per baseclass (if enough count)
     out_mllr->Init(num_baseclasses_, dim_);
     vector<int32> base2xforms(num_baseclasses_, -1);
-    for (size_t bclass_index = 0; bclass_index < num_baseclasses_;
+    for (int32 bclass_index = 0; bclass_index < num_baseclasses_;
          ++bclass_index) {
       if (baseclass_stats_[bclass_index]->beta_ > opts.min_count) {
         base2xforms[bclass_index] = bclass_index;
@@ -384,8 +437,9 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
         BaseFloat obj_new = MllrAuxFunction(xform_mat,
                                             *(baseclass_stats_[bclass_index]));
         KALDI_LOG << "MLLR: base-class " << (bclass_index)
-                  << ": Objective function impr per frame is "
+                  << ": Auxiliary function impr per frame is "
                   << ((obj_new-obj_old)/baseclass_stats_[bclass_index]->beta_);
+        AssertGeq(obj_new, obj_old, 1e-5);
         tot_t += baseclass_stats_[bclass_index]->beta_;
         tot_auxf_impr += obj_new - obj_old;
       } else {

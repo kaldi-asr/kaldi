@@ -26,6 +26,7 @@
 #include "itf/decodable-itf.h"
 #include "transform/regression-tree.h"
 #include "transform/regtree-fmllr-diag-gmm.h"
+#include "transform/regtree-mllr-diag-gmm.h"
 
 namespace kaldi {
 
@@ -162,6 +163,41 @@ class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
   bool valid_logdets_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmRegtreeFmllr);
+};
+
+class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
+ public:
+  DecodableAmDiagGmmRegtreeMllr(const AmDiagGmm &am,
+                                const TransitionModel &tm,
+                                const Matrix<BaseFloat> &feats,
+                                RegtreeMllrDiagGmm &mllr_xform,
+                                const RegressionTree &regtree,
+                                BaseFloat scale)
+      : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm), scale_(scale),
+        mllr_xform_(mllr_xform), regtree_(regtree) {}
+
+  // Note, frames are numbered from zero but transition-ids (tid) from one.
+  virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
+    return scale_*LogLikelihoodZeroBased(frame,
+                                         trans_model_.TransitionIdToPdf(tid));
+  }
+
+  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+
+  // Indices are one-based!  This is for compatibility with OpenFst.
+  virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+
+ protected:
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+
+ private:
+  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
+  BaseFloat scale_;
+  RegtreeMllrDiagGmm &mllr_xform_;
+  const RegressionTree &regtree_;
+  Vector<BaseFloat> data_squared_;  ///< Cache for fast likelihood calculation
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmRegtreeMllr);
 };
 
 }  // namespace kaldi

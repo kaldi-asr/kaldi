@@ -197,7 +197,7 @@ class SpMatrix : public PackedMatrix<Real> {
   // was LogPDDeterminant()
   Real LogPosDefDet() const;
 
-  Real LogDet(Real *det_sign) const;
+  Real LogDet(Real *det_sign = NULL) const;
 
   // rank-one update, this <-- this + alpha V V'
   void AddVec2(const Real alpha, const VectorBase<Real>& v);

@@ -35,10 +35,10 @@ void AffineXformStats::Init(int32 dim, int32 num_gs) {
     dim_ = 0;
   } else {
     beta_ = 0.0;
-    K_.Resize(dim, dim + 1);
+    K_.Resize(dim, dim + 1, kSetZero);
     G_.resize(num_gs);
     for (int32 i = 0; i < num_gs; i++)
-      G_[i].Resize(dim + 1);
+      G_[i].Resize(dim + 1, kSetZero);
     dim_ = dim;
   }
 }

@@ -882,12 +882,26 @@ void Matrix<Real>::Destroy() {
 
 template<typename Real>
 void MatrixBase<Real>::MulElements(const MatrixBase<Real>& a) {
+  KALDI_ASSERT(a.NumRows() == num_rows_ && a.NumCols() == num_cols_);
   MatrixIndexT i;
   MatrixIndexT j;
 
   for (i = 0; i < num_rows_; ++i) {
     for (j = 0; j < num_cols_; ++j) {
       (*this)(i, j) *= a(i, j);
+    }
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::DivElements(const MatrixBase<Real>& a) {
+  KALDI_ASSERT(a.NumRows() == num_rows_ && a.NumCols() == num_cols_);
+  MatrixIndexT i;
+  MatrixIndexT j;
+
+  for (i = 0; i < num_rows_; ++i) {
+    for (j = 0; j < num_cols_; ++j) {
+      (*this)(i, j) /= a(i, j);
     }
   }
 }
