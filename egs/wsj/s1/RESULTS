@@ -152,7 +152,6 @@ exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 38 del, 
 exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 354 sub ]
 
 
-
 ===========
 # Some notes on tuning the SGMM systems on half the SI-84 data (sgmm2a and sgmm2b).
 # We ended up with 400 UBM components, and acwt 1/11 (unadapted) and 1/12 (adapted..
@@ -203,3 +202,16 @@ exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 3
 #exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 59 ins, 65 del, 352 sub ]
 #exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 38 del, 398 sub ]
 #exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 354 sub ]
+
+#svatava:s1: grep WER exp/decode_sgmm2b*/wer
+#exp/decode_sgmm2b_tgpr_eval92/wer:%WER 10.19 [ 575 / 5641, 133 ins, 41 del, 401 sub ]
+#exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 59 ins, 65 del, 352 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 38 del, 398 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 354 sub ]
+
+# sgmm2b, 300 gauss not 400:
+#svatava:s1: grep WER exp/decode_sgmm2b_tgpr_*/wer
+#exp/decode_sgmm2b_tgpr_eval92/wer:%WER 10.32 [ 582 / 5641, 132 ins, 41 del, 409 sub ]
+#exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.96 [ 480 / 3439, 62 ins, 66 del, 352 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.34 [ 583 / 5641, 135 ins, 39 del, 409 sub ]
+#exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.78 [ 474 / 3439, 64 ins, 64 del, 346 sub ]

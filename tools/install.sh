@@ -29,7 +29,7 @@ echo "****(1) Installing sph2pipe"
     echo "****download of sph2pipe_v2.5.tar.gz failed."
     exit 1
 else
-    tar -xvzf sph2pipe_v2.5.tar.gz || exit 1
+    tar -xovzf sph2pipe_v2.5.tar.gz || exit 1
     cd sph2pipe_v2.5
     gcc -o sph2pipe *.c -lm  || exit 1
     cd ..
@@ -51,7 +51,7 @@ fi
       echo "****download atlas3.8.3.tar.gz failed."
       exit 1
   else
-    tar -xvzf atlas3.8.3.tar.gz ATLAS/include || exit 1
+    tar -xovzf atlas3.8.3.tar.gz ATLAS/include || exit 1
   fi
 )
 ok_atlas=$?
@@ -134,7 +134,7 @@ fi
     bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
     gzip -f sctk-2.4.0-20091110-0958.tar || exit 1
 
-    tar -xvzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
+    tar -xovzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
     cd sctk-2.4.0
     make config || exit 1
     make all || exit 1
@@ -168,7 +168,7 @@ fi
     echo "****download openfst-1.2.7.tar.gz failed."
     exit 1
   else
-    tar -xvzf openfst-1.2.7.tar.gz   || exit 1
+    tar -xovzf openfst-1.2.7.tar.gz   || exit 1
     cp partition.h minimize.h openfst-1.2.7/src/include/fst
     #ignore errors in the following; it's for robustness in case
     # someone follows these instructions after the installation of openfst.

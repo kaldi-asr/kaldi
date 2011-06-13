@@ -25,7 +25,7 @@ See below install instructions for:
 Install instructions for sph2pipe_v2.5.tar.gz
 
 wget ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
-tar -xvzf sph2pipe_v2.5.tar.gz 
+tar -xovzf sph2pipe_v2.5.tar.gz 
 cd sph2pipe_v2.5
 gcc -o sph2pipe *.c -lm 
 cd ..
@@ -44,7 +44,7 @@ to configure, if it's not already the default (g++ -v will tell you).
 
 
 wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
-tar -xvzf openfst-1.2.7.tar.gz   
+tar -xovzf openfst-1.2.7.tar.gz   
 cp partition.h minimize.h openfst-1.2.7/src/include/fst
 #ignore errors in the following; it's for robustness in case
 # someone follows these instructions after the installation of openfst.
@@ -140,7 +140,7 @@ This was obtained as follows:
 bunzip2 sctk-2.4.0-20091110-0958.tar.bz2
 gzip sctk-2.4.0-20091110-0958.tar
 
-tar -xvzf sctk-2.4.0-20091110-0958.tar.gz 
+tar -xovzf sctk-2.4.0-20091110-0958.tar.gz 
 cd sctk-2.4.0
 make config
 make all
@@ -152,7 +152,7 @@ make doc
 
 (6) Atlas
 wget http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz
-tar -xvzf atlas3.8.3.tar.gz ATLAS/include
+tar -xovzf atlas3.8.3.tar.gz ATLAS/include
 # don't do any more installation at this point, we just need this for headers
 # (except for native Windows compilation, for which see ../windows/INSTALL.atlas)
 
