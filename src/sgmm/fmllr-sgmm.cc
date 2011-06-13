@@ -140,7 +140,7 @@ void SgmmFmllrGlobalParams::Read(std::istream &in, bool binary) {
 }
 
 
-void FmllrSgmmAccs::Init(size_t dim, size_t num_gaussians) {
+void FmllrSgmmAccs::Init(int32 dim, int32 num_gaussians) {
   if (dim == 0) {  // empty stats
     dim_ = 0;  // non-zero dimension is meaningless in empty stats
     stats_.Init(0, 0);  // clear the stats
@@ -182,8 +182,8 @@ FmllrSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
   SpMatrix<double> scatter(dim_+1, kSetZero);
   scatter.AddVec2(1.0, extended_data);
 
-  for (size_t ki = 0; ki < gselect.size(); ++ki) {
-    size_t i = gselect[ki];
+  for (int32 ki = 0, ki_max = gselect.size(); ki < ki_max; ++ki) {
+    int32 i = gselect[ki];
 
     for (int32 m = 0; m < model.NumSubstates(pdf_index); ++m) {
       // posterior gamma_{jkmi}(t)                             eq.(39)
@@ -286,7 +286,7 @@ static BaseFloat CalcFmllrStepSize(const AffineXformStats &stats,
                                    const MatrixBase<BaseFloat> &A,
                                    const Matrix<BaseFloat> &G,
                                    int32 max_iters) {
-  size_t dim = sgmm.FeatureDim();
+  int32 dim = sgmm.FeatureDim();
   Matrix<double> Delta_d(Delta);
   Matrix<double> G_d(G);
   SubMatrix<double> Delta_C(Delta_d, 0, dim, 0, dim);
@@ -297,7 +297,7 @@ static BaseFloat CalcFmllrStepSize(const AffineXformStats &stats,
   // Eq. (B.29): n = \sum_i tr(\Delta \Sigma_{i}^{-1} \Delta S_{i})
   BaseFloat n = 0;
   SpMatrix<double> inv_covar;
-  for (size_t i = 0, num_gauss = sgmm.NumGauss(); i < num_gauss; ++i) {
+  for (int32 i = 0, num_gauss = sgmm.NumGauss(); i < num_gauss; ++i) {
     sgmm.GetInvCovars(i, &inv_covar);
     n += TraceMatSpMatSp(Delta_d, kTrans, inv_covar, Delta_d, kNoTrans,
                          stats.G_[i]);
@@ -371,6 +371,16 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
                 << "Using subspace: " << std::string(using_subspace? "yes; "
                     : "no; ");
 
+  int32 num_bases = 0;
+  if (using_subspace) {
+    KALDI_ASSERT(globals.fmllr_bases_.size() != 0);
+    int32 max_bases = globals.fmllr_bases_.size();
+    num_bases = (opts.bases_occ_scale <= 0.0)? max_bases :
+        std::min(max_bases, static_cast<int32>(std::floor(opts.bases_occ_scale
+                                                          * stats_.beta_)));
+    KALDI_VLOG(3) << "Have " << stats_.beta_ << " frames for speaker: Using "
+                  << num_bases << " fMLLR bases.";
+  }
 
   // initialization just to get rid of compile errors.
   BaseFloat auxf_old = 0, auxf_new = 0;
@@ -411,10 +421,9 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       if (using_subspace) {
         // Note that in this case we can simply store the speaker-specific
         // coefficients for each of the basis matrices. The current
-        // implementation stores the computed transform to simply the code!
+        // implementation stores the computed transform to simplify the code!
         hess_xformed_delta.SetZero();
-        KALDI_ASSERT(globals.fmllr_bases_.size() != 0);
-        for (size_t b = 0; b < globals.fmllr_bases_.size(); ++b) {  // Eq (B.20)
+        for (int32 b = 0; b < num_bases; ++b) {  // Eq (B.20)
           hess_xformed_delta.AddMat(TraceMatMat(globals.fmllr_bases_[b],
                                                 hess_xformed_grad, kTrans),
                                     globals.fmllr_bases_[b], kNoTrans);

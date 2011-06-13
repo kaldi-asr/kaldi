@@ -57,7 +57,6 @@ void TestMllrAccsIO(const kaldi::AmDiagGmm &am_gmm,
   ut::InitRandDiagGmm(dim, num_comp2, &gmm2);
   kaldi::Vector<BaseFloat> data(dim);
   gmm2.Generate(&data);
-  BaseFloat loglike0 = am_gmm.LogLikelihood(0, data);
   BaseFloat loglike1 = am1.LogLikelihood(0, data);
 //  KALDI_LOG << "LL0 = " << loglike0 << "; LL1 = " << loglike1;
 
@@ -111,8 +110,8 @@ void TestXformMean(const kaldi::AmDiagGmm &am_gmm,
 
   kaldi::DiagGmm tmp_pdf;
   tmp_pdf.CopyFromDiagGmm(am_gmm.GetPdf(0));
-  kaldi::Matrix<BaseFloat> tmp_means(mllr.GetXformedMeanInvVars(regtree, am_gmm, 0));
-  tmp_means.DivElements(tmp_pdf.inv_vars());
+  kaldi::Matrix<BaseFloat> tmp_means(am_gmm.GetPdf(0).NumGauss(), am_gmm.Dim());
+  mllr.GetTransformedMeans(regtree, am_gmm, 0, &tmp_means);
   tmp_pdf.SetInvVarsAndMeans(tmp_pdf.inv_vars(), tmp_means);
   tmp_pdf.ComputeGconsts();
 
@@ -127,8 +126,8 @@ void TestXformMean(const kaldi::AmDiagGmm &am_gmm,
 //  KALDI_LOG << "LL0 = " << loglike0 << "; LL = " << loglike;
   kaldi::AssertEqual(loglike0, loglike, 1e-6);
 
-  kaldi::Matrix<BaseFloat> tmp_means2(mllr.GetXformedMeanInvVars(regtree, am_gmm, 0));
-  tmp_means2.DivElements(tmp_pdf.inv_vars());
+  kaldi::Matrix<BaseFloat> tmp_means2(am_gmm.GetPdf(0).NumGauss(), am_gmm.Dim());
+  mllr.GetTransformedMeans(regtree, am_gmm, 0, &tmp_means2);
   tmp_pdf.SetInvVarsAndMeans(tmp_pdf.inv_vars(), tmp_means2);
   tmp_pdf.ComputeGconsts();
 

@@ -24,10 +24,6 @@ using std::vector;
 
 namespace kaldi {
 
-RegtreeMllrDiagGmm::~RegtreeMllrDiagGmm() {
-  DeletePointers(&xformed_mean_invvars_);
-}
-
 void RegtreeMllrDiagGmm::Init(int32 num_xforms, int32 dim) {
   if (num_xforms == 0) {  // empty transform
     xform_matrices_.clear();
@@ -83,94 +79,35 @@ void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
 }
 
 
-const Matrix<BaseFloat>& RegtreeMllrDiagGmm::GetXformedMeanInvVars(
-    const RegressionTree &regtree, const AmDiagGmm &am, int32 pdf_index) {
+void RegtreeMllrDiagGmm::GetTransformedMeans(const RegressionTree &regtree,
+                                             const AmDiagGmm &am,
+                                             int32 pdf_index,
+                                             MatrixBase<BaseFloat>* out) const {
   KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) ==
                regtree.NumBaseclasses());
-  if (xformed_mean_invvars_.size() == 0)
-    InitCache(am);
-  if (is_cached_[pdf_index]) {  // found in cache
-    KALDI_ASSERT(xformed_mean_invvars_[pdf_index] != NULL);
-    KALDI_VLOG(3) << "For PDF index " << pdf_index << ": transformed means "
-                  << "found in cache.";
-    return *xformed_mean_invvars_[pdf_index];
-  } else {  // transform the means and cache them
-    KALDI_ASSERT(xformed_mean_invvars_[pdf_index] == NULL);
-    KALDI_VLOG(3) << "For PDF index " << pdf_index << ": transforming means.";
-    int32 num_gauss = am.GetPdf(pdf_index).NumGauss();
-    xformed_mean_invvars_[pdf_index] = new Matrix<BaseFloat>(num_gauss, dim_);
-    Matrix<BaseFloat>& xf_means(*xformed_mean_invvars_[pdf_index]);
-    Vector<BaseFloat> extended_mean(dim_+1);
-    extended_mean(dim_) = 1.0;
+  int32 num_gauss = am.GetPdf(pdf_index).NumGauss();
+  KALDI_ASSERT(out->NumRows() == num_gauss && out->NumCols() == dim_);
 
-    for (int32 gauss_index = 0; gauss_index < num_gauss; ++gauss_index) {
-      int32 bclass_index = regtree.Gauss2BaseclassId(pdf_index, gauss_index);
-      int32 xform_index = bclass2xforms_[bclass_index];
-      if (xform_index > -1) {  // use a transform
-        KALDI_ASSERT(xform_index < num_xforms_);
-        SubVector<BaseFloat> tmp_mean(extended_mean.Range(0, dim_));
-        am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
-        SubVector<BaseFloat> out_row(xf_means.Row(gauss_index));
-        out_row.AddMatVec(1.0, xform_matrices_[xform_index], kNoTrans,
-                          extended_mean, 0.0);
-        out_row.MulElements(am.GetPdf(pdf_index).inv_vars().Row(gauss_index));
-      } else {  // Copy untransformed mean
-        SubVector<BaseFloat> out_row(xf_means.Row(gauss_index));
-        am.GetGaussianMean(pdf_index, gauss_index, &out_row);
-        out_row.MulElements(am.GetPdf(pdf_index).inv_vars().Row(gauss_index));
-      }
+  Vector<BaseFloat> extended_mean(dim_+1);
+  extended_mean(dim_) = 1.0;
+
+  for (int32 gauss_index = 0; gauss_index < num_gauss; ++gauss_index) {
+    int32 bclass_index = regtree.Gauss2BaseclassId(pdf_index, gauss_index);
+    int32 xform_index = bclass2xforms_[bclass_index];
+    if (xform_index > -1) {  // use a transform
+      KALDI_ASSERT(xform_index < num_xforms_);
+      SubVector<BaseFloat> tmp_mean(extended_mean.Range(0, dim_));
+      am.GetGaussianMean(pdf_index, gauss_index, &tmp_mean);
+      SubVector<BaseFloat> out_row(out->Row(gauss_index));
+      out_row.AddMatVec(1.0, xform_matrices_[xform_index], kNoTrans,
+                        extended_mean, 0.0);
+    } else {  // Copy untransformed mean
+      SubVector<BaseFloat> out_row(out->Row(gauss_index));
+      am.GetGaussianMean(pdf_index, gauss_index, &out_row);
     }
-
-    is_cached_[pdf_index] = true;
-    return *xformed_mean_invvars_[pdf_index];
   }
 }
 
-static void ComputeGconsts(const VectorBase<BaseFloat> &weights,
-                           const MatrixBase<BaseFloat> &means_invvars,
-                           const MatrixBase<BaseFloat> &inv_vars,
-                           VectorBase<BaseFloat> *gconsts_out) {
-  int32 num_gauss = weights.Dim();
-  int32 dim = means_invvars.NumCols();
-  KALDI_ASSERT(means_invvars.NumRows() == num_gauss
-      && inv_vars.NumRows() == num_gauss && inv_vars.NumCols() == dim);
-  KALDI_ASSERT(gconsts_out->Dim() == num_gauss);
-
-  BaseFloat offset = -0.5 * M_LOG_2PI * dim;  // constant term in gconst.
-  int32 num_bad = 0;
-
-  for (int32 gauss = 0; gauss < num_gauss; gauss++) {
-    KALDI_ASSERT(weights(gauss) >= 0);  // Cannot have negative weights.
-    BaseFloat gc = log(weights(gauss)) + offset;  // May be -inf if weights == 0
-    for (int32 d = 0; d < dim; d++) {
-      gc += 0.5 * log(inv_vars(gauss, d)) - 0.5 * means_invvars(gauss, d)
-        * means_invvars(gauss, d) / inv_vars(gauss, d);
-    }
-
-    if (KALDI_ISNAN(gc)) {  // negative infinity is OK but NaN is not acceptable
-      KALDI_ERR << "At component "  << gauss
-                << ", not a number in gconst computation";
-    }
-    if (KALDI_ISINF(gc)) {
-      num_bad++;
-      // If positive infinity, make it negative infinity.
-      // Want to make sure the answer becomes -inf in the end, not NaN.
-      if (gc > 0) gc = -gc;
-    }
-    (*gconsts_out)(gauss) = gc;
-  }
-  if (num_bad > 0)
-    KALDI_WARN << num_bad << " unusable components found while computing "
-               << "gconsts.";
-}
-
-
-void RegtreeMllrDiagGmm::InitCache(const AmDiagGmm &am) {
-  if (xformed_mean_invvars_.size() != 0)
-    DeletePointers(&xformed_mean_invvars_);
-  xformed_mean_invvars_.resize(am.NumPdfs());
-  is_cached_.resize(am.NumPdfs(), false);
-}
 
 void RegtreeMllrDiagGmm::Write(std::ostream &out, bool binary) const {
   WriteMarker(out, binary, "<MLLRXFORM>");

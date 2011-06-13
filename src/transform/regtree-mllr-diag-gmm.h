@@ -32,8 +32,10 @@ namespace kaldi {
 ///  Configuration variables for FMLLR transforms
 struct RegtreeMllrOptions {
   BaseFloat min_count;  ///< Minimum occupancy for computing a transform
-  bool use_regtree;     ///< If 'true', find transforms to generate using regression tree.
-                        ///< If 'false', generate transforms for each baseclass.
+
+  /// If 'true', find transforms to generate using regression tree.
+  /// If 'false', generate transforms for each baseclass.
+  bool use_regtree;
 
   RegtreeMllrOptions(): min_count(1000.0), use_regtree(true) { }
 
@@ -49,7 +51,6 @@ struct RegtreeMllrOptions {
 class RegtreeMllrDiagGmm {
  public:
   RegtreeMllrDiagGmm() {}
-  ~RegtreeMllrDiagGmm();
 
   /// Allocates memory for transform matrix & bias vector
   void Init(int32 num_xforms, int32 dim);
@@ -60,15 +61,9 @@ class RegtreeMllrDiagGmm {
   /// Apply the transform(s) to all the Gaussian means in the model
   void TransformModel(const RegressionTree &regtree, AmDiagGmm *am);
 
-  /// Get all the transformed means times inverse variances for a given
-  /// pdf. This is for on-demand transformation, and it caches the
-  /// transformed means times the inverse variances.
-  const Matrix<BaseFloat>& GetXformedMeanInvVars(const RegressionTree &regtree,
-                                                 const AmDiagGmm &am,
-                                                 int32 pdf_index);
-
-  /// Initializes the mean cache
-  void InitCache(const AmDiagGmm &am);
+  /// Get all the transformed means for a given pdf.
+  void GetTransformedMeans(const RegressionTree &regtree, const AmDiagGmm &am,
+                           int32 pdf_index, MatrixBase<BaseFloat>* out) const;
 
   void Write(std::ostream &out_stream, bool binary) const;
   void Read(std::istream &in_stream, bool binary);
@@ -89,12 +84,6 @@ class RegtreeMllrDiagGmm {
   /// For each baseclass index of which transform to use; -1 => no xform
   std::vector<int32> bclass2xforms_;
   int32 dim_;  ///< Dimension of feature vectors
-
-  /// Cache of transformed means time inverse variances for each state.
-  std::vector< Matrix<BaseFloat>* > xformed_mean_invvars_;
-  /// Boolean variable per state to indicate whether the transformed means for
-  /// that state are cahced.
-  std::vector<bool> is_cached_;
 
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(RegtreeMllrDiagGmm);
@@ -159,11 +148,12 @@ class RegtreeMllrDiagGmmAccs {
   KALDI_DISALLOW_COPY_AND_ASSIGN(RegtreeMllrDiagGmmAccs);
 };
 
-typedef TableWriter< KaldiObjectHolder<RegtreeMllrDiagGmm> >  RegtreeMllrDiagGmmWriter;
+typedef TableWriter< KaldiObjectHolder<RegtreeMllrDiagGmm> >
+            RegtreeMllrDiagGmmWriter;
 typedef RandomAccessTableReader< KaldiObjectHolder<RegtreeMllrDiagGmm> >
             RandomAccessRegtreeMllrDiagGmmReader;
-typedef SequentialTableReader< KaldiObjectHolder<RegtreeMllrDiagGmm> >  RegtreeMllrDiagGmmSeqReader;  
-
+typedef SequentialTableReader< KaldiObjectHolder<RegtreeMllrDiagGmm> >
+            RegtreeMllrDiagGmmSeqReader;
 
 }  // namespace kaldi
 

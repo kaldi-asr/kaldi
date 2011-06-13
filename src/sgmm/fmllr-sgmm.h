@@ -44,6 +44,8 @@ struct SgmmFmllrConfig {
   /// regular FMLLR estimation.
   BaseFloat fmllr_min_count_full;
   int32 num_fmllr_bases;  ///< Number of FMLLR basis matrices.
+  /// Scale per-speaker count to determine number of CMLLR bases.
+  BaseFloat bases_occ_scale;
 
   SgmmFmllrConfig() {
     fmllr_iters = 5;
@@ -52,6 +54,7 @@ struct SgmmFmllrConfig {
     fmllr_min_count = 1000.0;
     fmllr_min_count_full = 5000.0;
     num_fmllr_bases = 40;
+    bases_occ_scale = 0.2;
   }
 
   void Register(ParseOptions *po);
@@ -71,6 +74,8 @@ inline void SgmmFmllrConfig::Register(ParseOptions *po) {
       "Minimum occupancy count to stop using basis matrices for FMLLR.");
   po->Register("num-fmllr-subspaces", &num_fmllr_bases, module+
       "Number of FMLLR basis matrices.");
+  po->Register("bases-occ-scale", &bases_occ_scale, module+
+      "Scale per-speaker count to determine number of CMLLR bases.");
 }
 
 
@@ -113,7 +118,7 @@ class FmllrSgmmAccs {
   FmllrSgmmAccs() : dim_(-1) {}
   ~FmllrSgmmAccs() {}
 
-  void Init(size_t dim, size_t num_gaussians);
+  void Init(int32 dim, int32 num_gaussians);
   void SetZero() { stats_.SetZero(); }
 
   void Write(std::ostream &out_stream, bool binary) const;

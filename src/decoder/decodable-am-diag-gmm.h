@@ -170,11 +170,12 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
   DecodableAmDiagGmmRegtreeMllr(const AmDiagGmm &am,
                                 const TransitionModel &tm,
                                 const Matrix<BaseFloat> &feats,
-                                RegtreeMllrDiagGmm &mllr_xform,
+                                const RegtreeMllrDiagGmm &mllr_xform,
                                 const RegressionTree &regtree,
                                 BaseFloat scale)
       : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm), scale_(scale),
-        mllr_xform_(mllr_xform), regtree_(regtree) {}
+        mllr_xform_(mllr_xform), regtree_(regtree) { InitCache(); }
+  ~DecodableAmDiagGmmRegtreeMllr();
 
   // Note, frames are numbered from zero but transition-ids (tid) from one.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
@@ -191,11 +192,29 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
  private:
+  /// Initializes the mean & gconst caches
+  void InitCache();
+  /// Get the transformed means times inverse variances for a given pdf, and
+  /// cache them. The 'state_index' is 0-based.
+  const Matrix<BaseFloat>& GetXformedMeanInvVars(int32 state_index);
+  /// Get the cached (while computing transformed means) gconsts for
+  /// likelihood calculation. The 'state_index' is 0-based.
+  const Vector<BaseFloat>& GetXformedGconsts(int32 state_index);
+
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
-  RegtreeMllrDiagGmm &mllr_xform_;
+  const RegtreeMllrDiagGmm &mllr_xform_;
   const RegressionTree &regtree_;
-  Vector<BaseFloat> data_squared_;  ///< Cache for fast likelihood calculation
+
+  /// Cache of transformed means time inverse variances for each state.
+  std::vector< Matrix<BaseFloat>* > xformed_mean_invvars_;
+  /// Cache of transformed gconsts for each state.
+  std::vector< Vector<BaseFloat>* > xformed_gconsts_;
+  /// Boolean variable per state to indicate whether the transformed means for
+  /// that state are cahced.
+  std::vector<bool> is_cached_;
+
+  Vector<BaseFloat> data_squared_;  ///< Cached for fast likelihood calculation
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmRegtreeMllr);
 };
