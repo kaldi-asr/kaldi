@@ -45,4 +45,4 @@ exp/decode_sgmma_fmllr/wer:Average WER is 2.768691 (347 / 12533)
 # sgmmb is SGMM with speaker vectors.
 exp/decode_sgmmb/wer:Average WER is 2.680922 (336 / 12533) 
 exp/decode_sgmmb_utt/wer:Average WER is 2.728796 (342 / 12533) 
-exp/decode_sgmmb_fmllr/wer:Average WER is 2.537302 (318 / 12533) 
+exp/decode_sgmmb_fmllr/wer:Average WER is 2.553259 (320 / 12533) 

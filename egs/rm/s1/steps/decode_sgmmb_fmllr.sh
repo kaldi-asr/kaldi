@@ -54,40 +54,34 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   spk2utt_opt="--spk2utt=ark:data/test_${test}.spk2utt"
   utt2spk_opt="--utt2spk=ark:data/test_${test}.utt2spk"
 
-  if [ ! -f $dir/${test}_gselect.gz ]; then
-    sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect.log | \
-      gzip -c > $dir/${test}_gselect.gz || exit 1;
-  fi
+  sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect.log | \
+    gzip -c > $dir/${test}_gselect.gz || exit 1;
+
   gselect_opt="--gselect=ark:gunzip -c $dir/${test}_gselect.gz|"
 
   # Use smaller beam first time.
-  if [ ! -f dir/test_${test}.pass1.ali ]; then
-    sgmm-decode-faster "$gselect_opt" --beam=15.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $alimodel $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass1.tra ark,t:$dir/test_${test}.pass1.ali  2> $dir/pass1_${test}.log
-  fi
+  sgmm-decode-faster "$gselect_opt" --beam=15.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $alimodel $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass1.tra ark,t:$dir/test_${test}.pass1.ali  2> $dir/pass1_${test}.log
 
-  if [ ! -f $dir/test_${test}.vecs ]; then
-    ( ali-to-post ark:$dir/test_${test}.pass1.ali ark:- | \
-      weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
-      sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
-      sgmm-est-spkvecs-gpost "$spk2utt_opt" $model "$feats" ark,s,cs:- \
-	ark:$dir/test_${test}.vecs ) 2>$dir/vecs_${test}.log
-  fi
+  ( ali-to-post ark:$dir/test_${test}.pass1.ali ark:- | \
+    weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
+    sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
+    sgmm-est-spkvecs-gpost "$spk2utt_opt" $model "$feats" ark,s,cs:- \
+    ark:$dir/test_${test}.vecs ) 2>$dir/vecs_${test}.log
 
-  if [ ! -f $dir/test_${test}.pass2.ali ]; then
-    sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass2.tra ark,t:$dir/test_${test}.pass2.ali  2> $dir/pass2_${test}.log
-  fi
 
-  if [ ! -f $dir/test_${test}.fmllr_xforms ]; then
-    ( ali-to-post ark:$dir/test_${test}.pass2.ali ark:- | \
-      weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
-      sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
-      sgmm-est-fmllr-gpost "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
-	ark:$dir/test_${test}.fmllr_xforms ) 2>$dir/est_fmllr_${test}.log
-  fi
+   sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass2.tra ark,t:$dir/test_${test}.pass2.ali  2> $dir/pass2_${test}.log
 
-  if [ ! -f $dir/test_${test}.tra ]; then
-    sgmm-decode-faster-fmllr "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $fmllr_model $graphdir/HCLG.fst "$feats" ark:$dir/test_${test}.fmllr_xforms ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
-  fi
+
+  ( ali-to-post ark:$dir/test_${test}.pass2.ali ark:- | \
+    weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
+    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/test_${test}.vecs \
+      "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
+    ark:$dir/test_${test}.fmllr_xforms ) 2>$dir/est_fmllr_${test}.log
+
+
+   sgmm-decode-faster-fmllr "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $fmllr_model $graphdir/HCLG.fst "$feats" ark:$dir/test_${test}.fmllr_xforms ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
+
 
   # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
