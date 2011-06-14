@@ -28,28 +28,19 @@ int main(int argc, char *argv[])
     const char *usage =
         "Create MFCC feature files.\n"
         " Usage:  extract-segments [options...] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
-        " (segments-file has lines like: spkabc_seg1 spkabc_recording1 1.10 2.36) \n"
+        " (segments-file has lines like: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
+        " or: spkabc_seg1 spkabc_recording1 1.10 2.36\n"
+        " [if channel not provided as last element, expects mono.] ";
+        
 
     // construct all the global objects
     ParseOptions po(usage);
-    MfccOptions mfcc_opts;
-    bool subtract_mean = false;
-    BaseFloat vtln_warp = 1.0;
-    std::string vtln_map_rspecifier;
-    std::string utt2spk_rspecifier;
-    int32 channel = -1;
-    // Define defaults for gobal options
-    std::string output_format = "kaldi";
+
+    BaseFloat min_segment_length = 0.1; // Minimum segment length in seconds.
 
     // Register the options
-    po.Register("output-format", &output_format, "Format of the output files [kaldi, htk]");
-    po.Register("subtract-mean", &subtract_mean, "Subtract mean of each feature file [CMS]; not recommended to do it this way. ");
-    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor (only applicable if vtln-map not specified)");
-    po.Register("vtln-map", &vtln_map_rspecifier, "Map from utterance or speaker-id to vtln warp factor (rspecifier)");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Utterance to speaker-id map (if doing VTLN and you have warps per speaker)");
-    po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
-    // Register the option struct
-    mfcc_opts.Register(&po);
+    po.Register("min-segment-length", &min_segment_length, "Minimum segment length in seconds (will reject shorter segments)");
+
 
     // OPTION PARSING ..........................................................
     //
@@ -57,131 +48,95 @@ int main(int argc, char *argv[])
     // parse options (+filling the registered variables)
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-    if (GetVerboseLevel() > 1) {
-      po.PrintConfig(std::cerr);
-    }
-
     std::string wav_rspecifier = po.GetArg(1);
+    std::string segments_rxfilename = po.GetArg(2);
+    std::string wav_wspecifier = po.GetArg(3);
 
-    std::string output_wspecifier = po.GetArg(2);
+    RandomAccessTableReader<WaveHolder> reader(wav_rspecifier);
+    TableWriter<WaveHolder> writer(wav_wspecifier);
+    Input ki(segments_rxfilename); // no binary argment: never binary.
 
-    Mfcc mfcc(mfcc_opts);
-
-    SequentialTableReader<WaveHolder> reader(wav_rspecifier);
-    BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
-    TableWriter<HtkMatrixHolder> htk_writer;
-
-    RandomAccessTokenReader utt2spk_reader;  // relates to VTLN.
-    if (utt2spk_rspecifier != "") {
-      KALDI_ASSERT(vtln_map_rspecifier != "" && "the utt2spk option is only "
-                   "needed if the vtln-map option is used.");
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Error opening utt2spk object.";
-    }
-    RandomAccessBaseFloatReader vtln_map_reader;  // relates to VTLN.
-    if (vtln_map_rspecifier != "") {
-      if (!vtln_map_reader.Open(vtln_map_rspecifier))
-        KALDI_ERR << "Error opening vtln-map object.";
-    }
-
-    if (output_format == "kaldi") {
-      if (!kaldi_writer.Open(output_wspecifier))
-        KALDI_ERR << "Could not initialize output with wspecifier "
-                  << output_wspecifier;
-    } else if (output_format == "htk") {
-      if (!htk_writer.Open(output_wspecifier))
-        KALDI_ERR << "Could not initialize output with wspecifier "
-                  << output_wspecifier;
-    } else {
-      KALDI_ERR << "Invalid output_format string " << output_format;
-    }
-
-    for (; !reader.Done(); reader.Next()) {
-      std::string utt = reader.Key();
-      const WaveData &wave_data = reader.Value();
-      int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
-      {  // This block works out the channel (0=left, 1=right...)
-        KALDI_ASSERT(num_chan > 0);  // should have been caught in
-        // reading code if no channels.
-        if (channel == -1) {
-          this_chan = 0;
-          if (num_chan != 1)
-            KALDI_WARN << "Channel not specified but you have data with "
-                       << num_chan  << " channels; defaulting to zero";
-        } else {
-          if (this_chan >= num_chan) {
-            KALDI_WARN << "File with id " << utt << " has "
-                       << num_chan << " channels but you specified channel "
-                       << channel << ", producing no output.";
-            continue;
-          }
-        }
-      }
-      BaseFloat vtln_warp_local;  // Work out VTLN warp factor.
-      if (vtln_map_rspecifier != "") {
-        std::string utt_or_spk;
-        if (utt2spk_rspecifier != "") {
-          if (!utt2spk_reader.HasKey(utt)) {
-            KALDI_WARN << "No utt2spk entry for utterance-id " << utt;
-            continue;
-          }
-          utt_or_spk = utt2spk_reader.Value(utt);
-        } else utt_or_spk = utt;
-        if (!vtln_map_reader.HasKey(utt_or_spk)) {
-          KALDI_WARN << "No vtln-map entry for utterance-id (or speaker-id) "
-                     << utt_or_spk;
-          continue;
-        }
-        vtln_warp_local = vtln_map_reader.Value(utt_or_spk);
-      } else {
-        vtln_warp_local = vtln_warp;
-      }
-      if (mfcc_opts.frame_opts.samp_freq != wave_data.SampFreq())
-        KALDI_ERR << "Sample frequency mismatch: you specified "
-                  << mfcc_opts.frame_opts.samp_freq << " but data has "
-                  << wave_data.SampFreq() << " (use --sample-frequency option)";
-
-      SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
-      Matrix<BaseFloat> features;
-      try {
-        mfcc.Compute(waveform, vtln_warp_local, &features, NULL);
-      } catch (...) {
-        KALDI_WARN << "Failed to compute features for utterance "
-                   << utt;
+    int32 num_lines = 0, num_success = 0;
+    
+    std::string line;
+    while(std::getline(ki.Stream(), line)) {
+      num_lines++;
+      std::vector<std::string> split_line;
+      SplitStringToVector(line, " \t\r", &split_line, true);
+      if (split_line.size() != 4 && split_line.size() != 5)
+        KALDI_ERR << "Invalid line in segments file: " << line;
+      std::string segment = split_line[0], recording = split_line[1],
+          start_str = split_line[2], end_str = split_line[3];
+      double start, end;
+      if(!ConvertStringToReal(start_str, &start) || !ConvertStringToReal(end_str, &end))
+        KALDI_ERR << "Invalid line in segments file [bad start/end]" << line;
+      if(start < 0 || end < 0 || start >= end) {
+        KALDI_WARN << "Invalid line in segments file [empty or invalid segment] "
+                   << line;
         continue;
       }
-      if (subtract_mean) {
-        Vector<BaseFloat> mean(features.NumCols());
-        mean.AddRowSumMat(features);
-        mean.Scale(1.0 / features.NumRows());
-        for (int32 i = 0; i < features.NumRows(); i++)
-          features.Row(i).AddVec(-1.0, mean);
+      int32 channel = -1; // means unspecified.
+      if(split_line.size() == 5) {
+        if(!ConvertStringToInteger(split_line[4], &channel) || channel < 0)
+          KALDI_ERR << "Invalid line in segments file [bad channel] " << line;
       }
-      if (output_format == "kaldi") {
-        if (!kaldi_writer.Write(utt, features))
-          KALDI_ERR << "Write error writing Kaldi features.";
+      if(!reader.HasKey(recording)) {
+        KALDI_WARN << "Could not find recording " << recording
+                   << ", skipping segment " << segment;
+        continue;
+      }
+      const WaveData &wave = reader.Value(recording);
+      const Matrix<BaseFloat> &wave_data = wave.Data();
+      BaseFloat samp_freq = wave.SampFreq();
+      int32 start_samp = start * samp_freq,
+          end_samp = end * samp_freq,
+          num_samp = wave_data.NumCols(),
+          num_chan = wave_data.NumRows();
+      if(start_samp < 0 || start_samp >= num_samp) {
+        KALDI_WARN << "Start sample out of range " << start_samp << " [length:] "
+                   << num_samp << ", skipping segment " << segment;
+        continue;
+      }
+      if(end_samp > num_samp) {
+        if(end_samp > num_samp + static_cast<int32>(0.5 * samp_freq))
+          KALDI_WARN << "End sample too far out of range " << end_samp
+                     << " [length:] " << num_samp << ", skipping segment "
+                     << segment;
+        continue;
+        end_samp = num_samp; // for small differences, just truncate.
+      }
+      if(end_samp <= start_samp +
+         static_cast<int32>(min_segment_length * samp_freq)) {
+        KALDI_WARN << "Segment " << segment << " too short, skipping it.\n";
+        continue;
+      }
+      if(channel == -1) {
+        if(num_chan == 1) channel = 0;
+        else {
+          KALDI_ERR << "If your data has multiple channels, you must specify the"
+              " channel in the segments file.  Processing segment " << segment;
+        }
       } else {
-        std::pair<Matrix<BaseFloat>, HtkHeader> p;
-        p.first.CopyFromMat(features);
-        HtkHeader header = {
-          features.NumRows(),
-          100000,  //10ms shift
-          sizeof(float)*features.NumCols(),
-          006 | // MFCC
-          (mfcc_opts.use_energy ? 0100 : 020000) // energy; otherwise c0
-        };
-        p.second = header;
-        if (!htk_writer.Write(utt, p))
-          KALDI_ERR << "Write error writing HTK features.";
+        if(channel >= num_chan) {
+          KALDI_WARN << "Invalid channel " << channel << " >= " << num_chan
+                     << ", processing segment " << segment;
+          continue;
+        }
       }
-      std::cerr << "Processed features for key " << utt << '\n';
+
+      SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1, start_samp, end_samp-start_samp);
+      WaveData segment_wave(samp_freq, segment_matrix);
+      if(!writer.Write(segment, segment_wave))
+        KALDI_ERR << "Failed to write segment: processling line " << line;
+      num_success++;
     }
-    std::cerr << "Successfully exited ... :)" << '\n';
+    KALDI_LOG << "Successfully processed " << num_success << " lines out of "
+              << num_lines << " in the segments file. ";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

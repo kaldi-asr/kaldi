@@ -35,14 +35,25 @@ beam=13.0
 max_active=7000
 silphones=`cat data/silphones.csl`
 model=exp/sgmm2b/final.mdl
+occs=exp/sgmm2b/final.occs
 alimodel=exp/sgmm2b/final.alimdl
+fmllr_model=exp/sgmm2b/final_fmllr.mdl
 graph=$1
 dir=$2
 job=$3
 scp=$dir/$job.scp
 feats="ark:add-deltas --print-args=false scp:$scp ark:- |"
 
-filenames="$scp $model $graph data/words.txt"
+if [ ! -f $fmllr_model ]; then
+  if [ ! -f $model ]; then
+    echo "Cannot find $model. Maybe training didn't finish?"
+    exit 1;
+  fi
+  sgmm-comp-prexform $model $occs $fmllr_model
+fi
+
+
+filenames="$scp $alimodel $fmllr_model $model $graph data/words.txt"
 for file in $filenames; do
   if [ ! -f $file ] ; then
     echo "No such file $file";
@@ -78,10 +89,26 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
   sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
      ark:$dir/${job}.vecs ) 2>$dir/vecs${job}.log || exit 1;
 
-sgmm-decode-faster "$gselect_opt" --beam=$beam --max-active=$max_active \
+# second pass of decoding: have spk-vecs but not fMLLR
+sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
    $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs \
    --acoustic-scale=$acwt \
    --word-symbol-table=data/words.txt $model $graph "$feats" \
-   ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>$dir/decode${job}.log  || exit 1;
+   ark,t:$dir/$job.pre2_tra ark,t:$dir/$job.pre2_ali  2>$dir/pre2decode${job}.log  || exit 1;
 
+
+# Estimate fMLLR transforms.
+
+( ali-to-post ark:$dir/$job.pre2_ali ark:- | \
+    weight-silence-post 0.01 $silphones $model ark:- ark:- | \
+    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/${job}.vecs "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
+	ark:$dir/$job.fmllr ) 2>$dir/est_fmllr${job}.log
+
+feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr ark:- ark:- |"
+
+sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs \
+     --beam=$beam --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
+     $fmllr_model $graph "$feats" \
+    ark,t:$dir/${job}.tra ark,t:$dir/${job}.ali  2> $dir/decode${job}.log
 

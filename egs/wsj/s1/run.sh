@@ -365,7 +365,11 @@ steps/train_sgmm2b.sh || exit 1;
  scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval92 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov92.scp 
  scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov93.scp
  scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval92 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov93.scp )&
+ scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov93.scp 
+ scripts/decode.sh --per-spk  exp/decode_sgmm2b_fmllr_tgpr_eval92 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b_fmllr.sh data/eval_nov92.scp 
+ scripts/decode.sh --per-spk  exp/decode_sgmm2b_fmllr_tgpr_eval93 exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b_fmllr.sh data/eval_nov93.scp )&
+
+
 
 # see RESULTS for results...
 

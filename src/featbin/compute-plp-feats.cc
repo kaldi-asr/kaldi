@@ -61,10 +61,6 @@ int main(int argc, char *argv[])
       exit(1);
     }
 
-    if (GetVerboseLevel() > 1) {
-      po.PrintConfig(std::cerr);
-    }
-
     std::string wav_rspecifier = po.GetArg(1);
 
     std::string output_wspecifier = po.GetArg(2);
@@ -100,7 +96,9 @@ int main(int argc, char *argv[])
       KALDI_ERR << "Invalid output_format string " << output_format;
     }
 
+    int32 num_utts = 0, num_success = 0;
     for (; !reader.Done(); reader.Next()) {
+      num_utts++;
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
       int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
@@ -178,9 +176,13 @@ int main(int argc, char *argv[])
         if (!htk_writer.Write(utt, p))
           KALDI_ERR << "Write error writing HTK features.";
       }
-      std::cerr << "Processed features for key " << utt << '\n';
+      if(num_utts % 10 == 0)
+        KALDI_LOG << "Processed " << num_utts << " utterances\n";
+      KALDI_VLOG(2) << "Processed features for key " << utt << '\n';
+      num_success++;
     }
-    std::cerr << "Successfully exited ... :)" << '\n';
+    KALDI_LOG << " Succeeded for " << num_success << " out of " << num_utts
+              << " utterances.\n";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
