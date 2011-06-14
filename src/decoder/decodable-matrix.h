@@ -26,14 +26,15 @@
 
 namespace kaldi {
 
-class DecodableMatrixScaled: public DecodableInterface {
+
+class DecodableMatrixScaledMapped: public DecodableInterface {
  public:
-  DecodableMatrixScaled(const TransitionModel &tm,
-                     const Matrix<BaseFloat> &likes,
-                     BaseFloat scale): trans_model_(tm), likes_(likes),
-                                       scale_(scale) {
+  DecodableMatrixScaledMapped(const TransitionModel &tm,
+                              const Matrix<BaseFloat> &likes,
+                              BaseFloat scale): trans_model_(tm), likes_(likes),
+                                                scale_(scale) {
     if (likes.NumCols() != tm.NumPdfs())
-      KALDI_ERR << "DecodableMatrixScaled: mismatch, matrix has "
+      KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
                 << likes.NumCols() << " rows but transition-model has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
@@ -57,8 +58,37 @@ class DecodableMatrixScaled: public DecodableInterface {
   const TransitionModel &trans_model_;  // for tid to pdf mapping
   const Matrix<BaseFloat> &likes_;
   BaseFloat scale_;
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMatrixScaledMapped);
+};
+
+
+class DecodableMatrixScaled: public DecodableInterface {
+ public:
+  DecodableMatrixScaled(const Matrix<BaseFloat> &likes,
+                        BaseFloat scale): likes_(likes),
+                                          scale_(scale) { }
+  
+  virtual int32 NumFrames() { return likes_.NumRows(); }
+  
+  virtual bool IsLastFrame(int32 frame) {
+    KALDI_ASSERT(frame < NumFrames());
+    return (frame == NumFrames() - 1);
+  }
+  
+  // Note, frames are numbered from zero.
+  virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
+    return scale_ * likes_(frame, tid);
+  }
+
+  // Indices are one-based!  This is for compatibility with OpenFst.
+  virtual int32 NumIndices() { return likes_.NumCols(); }
+
+ private:
+  const Matrix<BaseFloat> &likes_;
+  BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMatrixScaled);
 };
+
 
 }  // namespace kaldi
 

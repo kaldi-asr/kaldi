@@ -35,8 +35,9 @@ int main(int argc, char *argv[])
     using fst::StdArc;
 
     const char *usage =
-        "Decode, reading log-likelihoods (of transition-ids or whatever symbol is on the graph) as matrices\n"
-        "Usage:   decode-faster [options] fst-in loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Decode, reading log-likelihoods as matrices\n"
+        " (model is needed only for the integer mappings in its transition-model)\n"
+        "Usage:   decode-faster [options] model-in fst-in loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool binary = false;
     BaseFloat acoustic_scale = 0.1;
@@ -46,19 +47,28 @@ int main(int argc, char *argv[])
     decoder_opts.Register(&po, true);  // true == include obscure settings.
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string  fst_in_filename = po.GetArg(1),
-        loglikes_rspecifier = po.GetArg(2),
-        words_wspecifier = po.GetArg(3),
-        alignment_wspecifier = po.GetOptArg(4);
+    std::string model_in_filename = po.GetArg(1),
+        fst_in_filename = po.GetArg(2),
+        loglikes_rspecifier = po.GetArg(3),
+        words_wspecifier = po.GetArg(4),
+        alignment_wspecifier = po.GetOptArg(5);
+
+    TransitionModel trans_model;
+    {
+      bool binary;
+      Input is(model_in_filename, &binary);
+      trans_model.Read(is.Stream(), binary);
+    }
 
     Int32VectorWriter words_writer(words_wspecifier);
 
@@ -109,7 +119,7 @@ int main(int argc, char *argv[])
         continue;
       }
 
-      DecodableMatrixScaled decodable(loglikes, acoustic_scale);
+      DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
       decoder.Decode(&decodable);
 
       std::cerr << "Length of file is "<<loglikes.NumRows()<<'\n';
