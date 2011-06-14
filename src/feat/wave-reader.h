@@ -59,7 +59,9 @@ class WaveData {
   /// "is" should be opened in binary mode.
   void Read(std::istream &is);
 
-
+  /// Write() will throw on error.   os should be opened in binary mode.
+  void Write(std::ostream &os) const; 
+  
   // Write function not written yet but should be doable.
 
   // This function returns the wave data-- it's in a matrix
@@ -81,6 +83,10 @@ class WaveData {
   static uint32 ReadUint32(std::istream &is);
   static uint16 ReadUint16(std::istream &is);
   static void Read4ByteTag(std::istream &is, char *dest);
+
+  static void WriteUint32(std::ostream &os, int32 i);
+  static void WriteUint16(std::ostream &os, int16 i);
+  
 };
 
 
@@ -93,9 +99,16 @@ class WaveHolder {
   typedef WaveData T;
 
   static bool Write(std::ostream &os, bool binary, const T &t) {
-    KALDI_ERR << "WaveHolder good for reading but not writing "
-        "(WaveData does not yet support writing).";
-    return false;
+    // We don't write the binary-mode header here [always binary].
+    KALDI_ASSERT(binary==true && "Wave data can only be written in binary mode.");
+    try {
+      t.Write(os);  // throws exception on failure.
+      return true;
+    } catch (const std::exception &e) {
+      KALDI_WARN << "Exception caught in WaveHolder object (writing).";
+	  if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      return false;  // write failure.
+    }
   }
   void Copy(const T &t) { t_.CopyFrom(t); }
 
@@ -113,12 +126,12 @@ class WaveHolder {
 
   WaveHolder() { }
 
-  bool Read(std::istream &is) {
+  bool Read(std::istream &is) { // We don't look for the binary-mode header here [always binary]
     try {
       t_.Read(is);  // throws exception on failure.
       return true;
     } catch (const std::exception &e) {
-      KALDI_WARN << "Exception caught in WaveHolder object.";
+      KALDI_WARN << "Exception caught in WaveHolder object (reading).";
 	  if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // write failure.
     }

@@ -67,6 +67,30 @@ void WaveData::Read4ByteTag(std::istream &is, char *dest) {
     KALDI_ERR << "WaveData: expected 4-byte chunk-name, got read errror";
 }
 
+// static
+void WaveData::WriteUint32(std::ostream &os, int32 i) {
+  char buf[4];
+  *(reinterpret_cast<uint32*>(buf)) = i;
+#ifdef __BIG_ENDIAN__
+  KALDI_SWAP4(result);
+#endif
+  os.write(buf, 4);
+  if(os.fail())
+    KALDI_ERR << "WaveData: error writing to stream.";
+}
+
+void WaveData::WriteUint16(std::ostream &os, int16 i) {
+  char buf[4];
+  *(reinterpret_cast<uint16*>(buf)) = i;
+#ifdef __BIG_ENDIAN__
+  KALDI_SWAP2(result);
+#endif
+  os.write(buf, 2);
+  if(os.fail())
+    KALDI_ERR << "WaveData: error writing to stream.";
+}
+
+
 
 void WaveData::Read(std::istream &is) {
   data_.Resize(0, 0);  // clear the data.
@@ -191,6 +215,58 @@ void WaveData::Read(std::istream &is) {
       }
     }
   }
+}
+
+
+// Write 16-bit PCM.
+
+// note: the WAVE chunk contains 2 subchunks.
+//
+// subchunk2size = data.NumRows() * data.NumCols() * 2.
+
+
+void WaveData::Write(std::ostream &os) const {
+  os << "RIFF";
+  if(data_.NumRows() == 0)
+    KALDI_ERR << "Error: attempting to write empty WAVE file";
+  
+  int32 num_chan = data_.NumRows(),
+      num_samp = data_.NumCols(),
+      bytes_per_samp = 2;
+
+  int32 subchunk2size = (num_chan * num_samp * bytes_per_samp);
+  int32 chunk_size = 36 + subchunk2size;
+  WriteUint32(os, chunk_size);
+  os << "WAVE";
+  os << "fmt ";
+  WriteUint32(os, 16);
+  WriteUint16(os, 1);
+  WriteUint16(os, num_chan);
+  KALDI_ASSERT(samp_freq_ > 0);
+  WriteUint32(os, static_cast<int32>(samp_freq_));
+  WriteUint32(os, static_cast<int32>(samp_freq_) * num_chan * bytes_per_samp);
+  WriteUint16(os, num_chan * bytes_per_samp);
+  WriteUint16(os, 8 * bytes_per_samp);
+  os << "data";
+  WriteUint32(os, subchunk2size);
+
+  const BaseFloat *data_ptr = data_.Data();
+  int32 stride = data_.Stride();
+      
+  for(int32 i = 0; i < num_samp; i++) {
+    for(int32 j = 0; j < num_chan; j++) {
+      int32 elem = static_cast<int32>(data_ptr[j*stride + i]);
+      int16 elem_16(elem);
+      if(static_cast<int32>(elem_16) != elem)
+        KALDI_ERR << "Wave file is out of range for 16-bit.";
+#ifdef __BIG_ENDIAN__
+      KALDI_SWAP2(elem_16);
+#endif
+      os.write(reinterpret_cast<char*>(&elem_16), 2);
+    }
+  }
+  if(os.fail())
+    KALDI_ERR << "Error writing wave data to stream.";
 }
 
 
