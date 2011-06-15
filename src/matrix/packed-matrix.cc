@@ -259,7 +259,7 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
 
   std::ostringstream specific_error;
   MatrixIndexT pos_at_start = is.tellg();
-  int peekval = PeekMarker(is, binary);
+  int peekval = Peek(is, binary);
   const char *my_marker =  (sizeof(Real) == 4 ? "FP" : "DP");
   char other_marker_start = (sizeof(Real) == 4 ? 'D' : 'F');
   int32 size;

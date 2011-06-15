@@ -56,7 +56,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   int32 dim_out, dim_in;
   std::string token;
 
-  int first_char = PeekMarker(is,binary);
+  int first_char = Peek(is,binary);
   if(first_char == EOF) return NULL;
 
   ReadMarker(is,binary,&token); 

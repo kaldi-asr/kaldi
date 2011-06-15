@@ -126,7 +126,7 @@ void UnitTestIoNew(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
       std::string  marker1_in, marker2_in;
-      assert(PeekMarker(infile, binary_in) == (int)*marker1);
+      assert(Peek(infile, binary_in) == (int)*marker1);
       ReadMarker(infile, binary_in, &marker1_in);
       assert(marker1_in == (std::string)marker1);
       ReadMarker(infile, binary_in, &marker2_in);
@@ -147,7 +147,7 @@ void UnitTestIoNew(bool binary) {
       float d2_in;  // wrong type.
       ReadBasicType(infile, binary_in, &d2_in);
       AssertEqual(d2_in, d2);
-      assert(PeekMarker(infile, binary_in) == -1);
+      assert(Peek(infile, binary_in) == -1);
     }
   }
 }
@@ -234,7 +234,7 @@ void UnitTestIoPipe(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
       std::string  marker1_in, marker2_in;
-      assert(PeekMarker(infile, binary_in) == (int)*marker1);
+      assert(Peek(infile, binary_in) == (int)*marker1);
       ReadMarker(infile, binary_in, &marker1_in);
       assert(marker1_in == (std::string)marker1);
       ReadMarker(infile, binary_in, &marker2_in);
@@ -255,7 +255,7 @@ void UnitTestIoPipe(bool binary) {
       float d2_in;  // wrong type.
       ReadBasicType(infile, binary_in, &d2_in);
       AssertEqual(d2_in, d2);
-      assert(PeekMarker(infile, binary_in) == -1);
+      assert(Peek(infile, binary_in) == -1);
     }
   }
 }

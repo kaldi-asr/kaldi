@@ -758,7 +758,7 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
   MatrixIndexT pos_at_start = is.tellg();
 
   if (binary) {
-    int peekval = PeekMarker(is, binary);
+    int peekval = Peek(is, binary);
     const char *my_marker =  (sizeof(Real) == 4 ? "FV" : "DV");
     char other_marker_start = (sizeof(Real) == 4 ? 'D' : 'F');
     if (peekval == other_marker_start) {  // need to instantiate the other type to read it.

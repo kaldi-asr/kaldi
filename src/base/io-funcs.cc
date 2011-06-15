@@ -1,6 +1,6 @@
 // base/io-funcs.cc
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
 #include "base/io-funcs.h"
 #include "base/kaldi-math.h"
 
@@ -23,7 +24,8 @@ template<>
 void WriteBasicType<bool>(std::ostream &os, bool binary, bool b) {
   os << (b ? "T":"F");
   if (!binary) os << " ";
-  if (os.fail()) throw std::runtime_error("Write failure in WriteBasicType<bool>");
+  if (os.fail())
+    KALDI_ERR << "Write failure in WriteBasicType<bool>";
 }
 
 template<>
@@ -73,22 +75,25 @@ void ReadBasicType<float>(std::istream &is, bool binary, float *f) {
   assert(f != NULL);
 #endif
   if (binary) {
+    double d;
     int c = is.peek();
-    if (c == sizeof(float)) {
+    if (c == sizeof(*f)) {
       is.get();
       is.read(reinterpret_cast<char*>(f), sizeof(*f));
-    } else if (c == sizeof(double)) {
-      double d;
+    } else if (c == sizeof(d)) {
       ReadBasicType(is, binary, &d);
       *f = d;
     } else {
-      KALDI_ERR << "ReadBasicType: expected float, saw " <<is.peek()
-                <<", at file position "<<is.tellg();
+      KALDI_ERR << "ReadBasicType: expected float, saw " << is.peek()
+                << ", at file position " << is.tellg();
     }
   } else {
     is >> *f;
   }
-  if (is.fail())  KALDI_ERR << "ReadBasicType: failed to read, at file position "<<is.tellg();  // exception.
+  if (is.fail()) {
+    KALDI_ERR << "ReadBasicType: failed to read, at file position "
+              << is.tellg();
+  }
 }
 
 template<>
@@ -97,12 +102,12 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
   assert(d != NULL);
 #endif
   if (binary) {
+    float f;
     int c = is.peek();
-    if (c == sizeof(double)) {
+    if (c == sizeof(*d)) {
       is.get();
       is.read(reinterpret_cast<char*>(d), sizeof(*d));
-    } else if (c == sizeof(float)) {
-      float f;
+    } else if (c == sizeof(f)) {
       ReadBasicType(is, binary, &f);
       *d = f;
     } else {
@@ -112,7 +117,10 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
   } else {
     is >> *d;
   }
-  if (is.fail())  KALDI_ERR << "ReadBasicType: failed to read, at file position " << is.tellg();  // exception.
+  if (is.fail()) {
+    KALDI_ERR << "ReadBasicType: failed to read, at file position "
+              << is.tellg();
+  }
 }
 
 void CheckMarker(const char *marker) {
@@ -134,7 +142,7 @@ void WriteMarker(std::ostream &os, bool binary, const char *marker) {
   }
 }
 
-int PeekMarker(std::istream &is, bool binary) {
+int Peek(std::istream &is, bool binary) {
   if (!binary) is >> std::ws;  // eat up whitespace.
   return is.peek();
 }
@@ -160,6 +168,19 @@ void ReadMarker(std::istream &is, bool binary, std::string *str) {
 }
 
 
+void PeekMarker(std::istream &is, bool binary, std::string *str) {
+  assert(str != NULL);
+  if (!binary) is >> std::ws;  // consume whitespace.
+  std::streampos beg = is.tellg();
+  is >> *str;
+  if (is.fail()) {
+    KALDI_ERR << "PeekMarker, failed to read marker at file position "
+              << is.tellg();
+  }
+  is.seekg(beg);
+}
+
+
 void ExpectMarker(std::istream &is, bool binary, const char *marker) {
   int pos_at_start = is.tellg();
   assert(marker != NULL);
@@ -169,18 +190,17 @@ void ExpectMarker(std::istream &is, bool binary, const char *marker) {
   is >> str;
   is.get();  // consume the space.
   if (is.fail()) {
-    KALDI_ERR<< "ExpectMarker, failed to read marker [started at file position "
-             <<pos_at_start<<"], expected "<<marker;
+    KALDI_ERR << "Failed to read marker [started at file position "
+              << pos_at_start << "], expected " << marker;
   }
   if (strcmp(str.c_str(), marker) != 0) {
-    KALDI_ERR << "ExpectMarker, expected marker \""<<marker
-              <<"\", got instead \""<<str<<"\".";
+    KALDI_ERR << "Expected marker \"" << marker << "\", got instead \""
+              << str <<"\".";
   }
 }
+
 void ExpectMarker(std::istream &is, bool binary, const std::string &marker) {
   ExpectMarker(is, binary, marker.c_str());
 }
-
-
 
 }  // end namespace kaldi

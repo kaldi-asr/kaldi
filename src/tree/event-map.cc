@@ -31,7 +31,7 @@ void EventMap::Write(std::ostream &os, bool binary, EventMap *emap) {
 }
 
 EventMap *EventMap::Read(std::istream &is, bool binary) {
-  char c = PeekMarker(is, binary);
+  char c = Peek(is, binary);
   if (c == 'N') {
     ExpectMarker(is, binary, "NULL");
     return NULL;
