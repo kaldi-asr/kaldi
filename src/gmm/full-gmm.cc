@@ -1,6 +1,7 @@
 // gmm/full-gmm.cc
 
-// Copyright 2009-2011  Jan Silovsky, Arnab Ghoshal (Saarland University), Microsoft Corporation,  Georg Stemmer
+// Copyright 2009-2011  Jan Silovsky;  Saarland University;
+//                      Microsoft Corporation;  Georg Stemmer
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

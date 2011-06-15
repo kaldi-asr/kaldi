@@ -1,7 +1,7 @@
 // itf/decodable-itf.h
 
-// Copyright 2009-2011    Microsoft Corporation,  Arnab Ghoshal (Saarland University),  Mirko Hannemann
-//                   Go Vivace Inc.
+// Copyright 2009-2011  Microsoft Corporation;  Saarland University;
+//                      Mirko Hannemann;  Go Vivace Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

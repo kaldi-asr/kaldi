@@ -1,6 +1,7 @@
 // matrix/packed-matrix-inl.h
-// Copyright 2009-2011  Ondrej Glembek  Microsoft Corporation  Lukas Burget  Arnab Ghoshal (Saarland University)
-//   Yanmin Qian  Jan Silovsky
+
+// Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University;  Yanmin Qian;   Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

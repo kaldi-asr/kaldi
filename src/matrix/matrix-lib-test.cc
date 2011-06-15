@@ -1,6 +1,8 @@
 // matrix/matrix-lib-test.cc
-// Copyright 2009-2011   Microsoft Corporation  Mohit Agarwal  Lukas Burget  Ondrej Glembek
-//   Arnab Ghoshal (Saarland University)  Go Vivace Inc.  Yanmin Qian  Jan Silovsky
+
+// Copyright 2009-2011   Microsoft Corporation;  Mohit Agarwal;  Lukas Burget;
+//                       Ondrej Glembek;  Saarland University;  Go Vivace Inc.;
+//                       Yanmin Qian;   Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

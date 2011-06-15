@@ -1,4 +1,5 @@
 // gmmbin/gmm-transform-means.cc
+
 // Copyright 2009-2011  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");

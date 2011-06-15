@@ -1,6 +1,6 @@
 // decoder/decodable-am-sgmm.cc
 
-// Copyright 2009-2011  Arnab Ghoshal (Saarland University),  Lukas Burget
+// Copyright 2009-2011  Saarland University;  Lukas Burget
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

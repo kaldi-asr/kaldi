@@ -1,7 +1,7 @@
 // matrix/matrix-functions.h
 
-// Copyright 2009-2011 Microsoft Corporation Go Vivace Inc.  Jan Silovsky  Yanmin Qian
-//   1991 Henrique (Rico) Malvar (*)
+// Copyright 2009-2011  Microsoft Corporation;  Go Vivace Inc.;  Jan Silovsky;
+//                      Yanmin Qian;   1991 Henrique (Rico) Malvar (*)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

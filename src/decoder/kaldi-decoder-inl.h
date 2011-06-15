@@ -1,6 +1,6 @@
 // decoder/kaldi-decoder-inl.h
 
-// Copyright 2011  Mirko Hannemann, Lukas Burget
+// Copyright 2011  Mirko Hannemann;  Lukas Burget
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

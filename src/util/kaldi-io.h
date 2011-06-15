@@ -1,6 +1,6 @@
 // util/kaldi-io.h
 
-// Copyright 2009-2011 Microsoft Corporation  Jan Silovsky
+// Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

@@ -1,6 +1,6 @@
 // transform/regtree-fmllr-diag-gmm-test.cc
 
-// Copyright 2009-2011 Georg Stemmer  Arnab Ghoshal (Saarland University)
+// Copyright 2009-2011  Georg Stemmer;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

@@ -1,6 +1,7 @@
 // gmm/model-test-common.cc
 
-// Copyright 2009-2011  Microsoft Corporation, Jan Silovsky, Arnab Ghoshal (Saarland University)
+// Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky;
+//                      Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

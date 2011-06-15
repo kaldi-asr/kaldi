@@ -1,6 +1,6 @@
 // feat/feature-plp.h
 
-// Copyright 2009-2011  Petr Motlicek, Karel Vesely
+// Copyright 2009-2011  Petr Motlicek;  Karel Vesely
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

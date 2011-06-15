@@ -1,6 +1,7 @@
 // matrix/tp-matrix.cc
-// Copyright 2009-2011  Ondrej Glembek  Lukas Burget  Microsoft Corporation
-//                  Arnab Ghoshal (Saarland University)  Yanmin Qian
+
+// Copyright 2009-2011  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation
+//                      Saarland University;  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

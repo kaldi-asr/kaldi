@@ -1,6 +1,6 @@
 // tree/build-tree-utils.cc
 
-// Copyright 2009-2011  Microsoft Corporation  Haihua Xu
+// Copyright 2009-2011  Microsoft Corporation;  Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

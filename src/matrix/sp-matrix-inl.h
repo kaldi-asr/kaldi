@@ -1,6 +1,6 @@
 // matrix/sp-matrix-inl.h
-// Copyright 2009-2011  Ondrej Glembek  Microsoft Corporation
 
+// Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
 #ifndef KALDI_MATRIX_SP_MATRIX_INL_H_
 #define KALDI_MATRIX_SP_MATRIX_INL_H_
 

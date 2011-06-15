@@ -1,6 +1,6 @@
 // util/stl-utils-test.cc
 
-// Copyright 2009-2011     Microsoft Corporation  Arnab Ghoshal (Saarland University)
+// Copyright 2009-2011     Microsoft Corporation;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

@@ -1,8 +1,8 @@
 // matrix/kaldi-vector.cc
 
-// Copyright 2009-2011  Microsoft Corporation  Lukas Burget,  Arnab Ghoshal (Saarland University)
-//                 Go Vivace Inc.  Ariya Rastrow  Petr Schwarz  Yanmin Qian
-//                 Jan Silovsky
+// Copyright 2009-2011   Microsoft Corporation;  Lukas Burget;
+//                      Saarland University;   Go Vivace Inc.;  Ariya Rastrow;
+//                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
