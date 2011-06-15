@@ -153,5 +153,5 @@ cat links/11-13.1/wsj0/doc/spkrinfo.txt \
     links/13-34.1/wsj1/doc/train/spkrinfo.txt \
    ./wsj0-train-spkrinfo.txt  | \
    perl -ane 'tr/A-Z/a-z/;print;' | grep -v ';' | \
-   awk '{print $1, $2}' > spk2gender.map
+   awk '{print $1, $2}' | grep -v -- -- > spk2gender.map
 
