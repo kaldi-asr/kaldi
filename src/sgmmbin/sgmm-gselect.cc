@@ -31,6 +31,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     kaldi::SgmmGselectConfig sgmm_opts;
+    std::string preselect_rspecifier;
+    po.Register("preselect", &preselect_rspecifier, "Rspecifier for sets of Gaussians to "
+                "limit gselect to (e.g. for gender dependent systems)");
     sgmm_opts.Register(&po);
     po.Read(argc, argv);
 
@@ -60,16 +63,34 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorVectorWriter gselect_writer(gselect_wspecifier);
+    RandomAccessInt32VectorReader preselect_reader;
+    if(preselect_rspecifier != "")
+      if(!preselect_reader.Open(preselect_rspecifier))
+        KALDI_ERR << "Error opening preselect table.";
 
-    int32 num_done = 0;
+    int32 num_done = 0, num_err = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {
       int32 tot_t_this_file = 0; double tot_like_this_file = 0;
       std::string utt = feature_reader.Key();
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       std::vector<std::vector<int32> > gselect_vec(mat.NumRows());
       tot_t_this_file += mat.NumRows();
-      for (int32 i = 0; i < mat.NumRows(); i++)
-        tot_like_this_file += am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &(gselect_vec[i]));
+      if(preselect_rspecifier != "") { // e.g. gender dependent.        
+        if(!preselect_reader.HasKey(utt)) {
+          KALDI_WARN << "No preselect information for utterance " << utt;
+          num_err++;
+          continue;
+        }
+        const std::vector<int32> &preselect = preselect_reader.Value(utt);
+        KALDI_ASSERT(!preselect.empty());
+        for (int32 i = 0; i < mat.NumRows(); i++)
+          tot_like_this_file +=
+              am_sgmm.GaussianSelectionPreselect(sgmm_opts, mat.Row(i),
+                                                 preselect, &(gselect_vec[i]));
+      } else {
+        for (int32 i = 0; i < mat.NumRows(); i++)
+          tot_like_this_file += am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &(gselect_vec[i]));
+      }
       gselect_writer.Write(utt, gselect_vec);
       if (num_done % 10 == 0)
         KALDI_LOG << "For " << num_done << "'th file, average UBM likelihood over "
@@ -80,8 +101,10 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
 
-    KALDI_LOG << "Done " << num_done << " files, average UBM log-likelihood "
+    KALDI_LOG << "Done " << num_done << " files ( " << num_err
+              << " with errors, average UBM log-likelihood is "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
+
 
     if (num_done != 0) return 0;
     else return 1;

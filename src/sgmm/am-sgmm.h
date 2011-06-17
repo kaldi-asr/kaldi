@@ -149,12 +149,21 @@ class AmSgmm {
   /// Used to copy models (useful in update)
   void CopyFromSgmm(const AmSgmm &other, bool copy_normalizers);
 
-  /// Returns frame log-likelihood given selected Gaussians
-  /// from full UBM.
+  /// Computes the top-scoring Gaussian indices (used for pruning of later
+  /// stages of computation). Returns frame log-likelihood given selected
+  /// Gaussians from full UBM.
   BaseFloat GaussianSelection(const SgmmGselectConfig &config,
                               const VectorBase<BaseFloat> &data,
                               std::vector<int32> *gselect) const;
 
+  /// As GaussianSelection, but limiting it to a provided list of
+  /// preselected Gaussians (e.g. for gender dependency).
+  /// The list "preselect" must be sorted and uniq.
+  BaseFloat GaussianSelectionPreselect(const SgmmGselectConfig &config,
+                                       const VectorBase<BaseFloat> &data,
+                                       const std::vector<int32> &preselect,
+                                       std::vector<int32> *gselect) const;
+  
   /// This needs to be called with each new frame of data, prior to
   /// accumulation or likelihood evaluation: it computes various
   /// pre-computed quantities. The 'logdet_s' term is the log determinant

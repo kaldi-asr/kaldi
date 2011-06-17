@@ -25,6 +25,7 @@ if [ -f path.sh ]; then . path.sh; fi
 
 dir=exp/tri3a
 srcdir=exp/tri2a
+srcdir=exp/tri3a
 srcmodel=$srcdir/final.mdl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 

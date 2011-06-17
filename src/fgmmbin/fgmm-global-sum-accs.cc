@@ -1,5 +1,4 @@
 // fgmmbin/fgmm-global-sum-accs.cc
-
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");

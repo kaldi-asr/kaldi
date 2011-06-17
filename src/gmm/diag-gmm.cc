@@ -412,6 +412,47 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->AddMatVec(-0.5, inv_vars_, kNoTrans, data_sq, 1.0);
 }
 
+
+void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
+                                      const std::vector<int32> &indices,
+                                      Vector<BaseFloat> *loglikes) const {
+  KALDI_ASSERT(IsSortedAndUniq(indices) && !indices.empty()
+               && indices.back() < NumGauss());
+  
+  if (static_cast<int32>(data.Dim()) != Dim()) {
+    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
+        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
+  }
+  Vector<BaseFloat> data_sq(data);
+  data_sq.ApplyPow(2.0);
+  
+  int32 num_indices = static_cast<int32>(indices.size());
+  loglikes->Resize(num_indices, kUndefined);
+  if(indices.back() - indices.front() == num_indices) {
+    // A special (but common) case when the indices form a contiguous range.
+    int32 start_idx = indices.front();
+    loglikes->CopyFromVec(SubVector<BaseFloat>(gconsts_, start_idx, num_indices));
+    // loglikes +=  means * inv(vars) * data.
+    SubMatrix<BaseFloat> means_invvars_sub(means_invvars_, start_idx, num_indices,
+                                           0, Dim());
+    loglikes->AddMatVec(1.0, means_invvars_sub, kNoTrans, data, 1.0);
+    SubMatrix<BaseFloat> inv_vars_sub(inv_vars_, start_idx, num_indices,
+                                      0, Dim());
+    // loglikes += -0.5 * inv(vars) * data_sq.
+    loglikes->AddMatVec(-0.5, inv_vars_sub, kNoTrans, data_sq, 1.0);
+  } else {
+    for(int32 i = 0; i < indices.size(); i++) {
+      int32 idx = indices[i]; // The Gaussian index.
+      BaseFloat this_loglike =
+          gconsts_(idx) + VecVec(means_invvars_.Row(idx), data)
+          - 0.5*VecVec(inv_vars_.Row(idx), data_sq);
+      (*loglikes)(i) = this_loglike;
+    }
+  }
+}
+
+
+
 // Gets likelihood of data given this. Also provides per-Gaussian posteriors.
 BaseFloat DiagGmm::ComponentPosteriors(const VectorBase<BaseFloat> &data,
                                        Vector<BaseFloat> *posterior) const {

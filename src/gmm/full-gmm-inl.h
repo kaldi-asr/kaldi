@@ -62,6 +62,22 @@ void FullGmm::SetInvCovarsAndMeans(
 }
 
 template<class Real>
+void FullGmm::SetInvCovarsAndMeansInvCovars(
+    const std::vector<SpMatrix<Real> >& invcovars,
+    const Matrix<Real>& means_invcovars) {
+  KALDI_ASSERT(means_invcovars_.NumRows() == means_invcovars.NumRows()
+               && means_invcovars_.NumCols() == means_invcovars.NumCols()
+               && inv_covars_.size() == invcovars.size());
+
+  size_t num_comp = NumGauss();
+  for (size_t i = 0; i < num_comp; ++i) {
+    inv_covars_[i].CopyFromSp(invcovars[i]);
+    means_invcovars_.CopyFromMat(means_invcovars);
+  }
+  valid_gconsts_ = false;
+}
+
+template<class Real>
 void FullGmm::SetInvCovars(const std::vector<SpMatrix<Real> >& v) {
   KALDI_ASSERT(inv_covars_.size() == v.size());
   size_t num_comp = NumGauss();

@@ -1009,6 +1009,63 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
   return loglikes_tmp.LogSumExp();
 }
 
+BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
+                                             const VectorBase<BaseFloat> &data,
+                                             const std::vector<int32> &preselect,
+                                             std::vector<int32> *gselect) const {
+  KALDI_ASSERT(IsSortedAndUniq(preselect) && !preselect.empty()); 
+  KALDI_ASSERT(diag_ubm_.NumGauss() != 0 &&
+               diag_ubm_.NumGauss() == full_ubm_.NumGauss() &&
+               diag_ubm_.Dim() == data.Dim());
+
+  int32 num_preselect = preselect.size();  
+
+  KALDI_ASSERT(config.diag_gmm_nbest > 0 && config.full_gmm_nbest > 0 &&
+               config.full_gmm_nbest < num_preselect);
+
+
+  std::vector<std::pair<BaseFloat, int32> > pruned_pairs;
+  if (config.diag_gmm_nbest < num_preselect) {
+    Vector<BaseFloat> loglikes(num_preselect);
+    diag_ubm_.LogLikelihoodsPreselect(data, preselect, &loglikes);
+    Vector<BaseFloat> loglikes_copy(loglikes);
+    BaseFloat *ptr = loglikes_copy.Data();
+    std::nth_element(ptr, ptr+num_preselect-config.diag_gmm_nbest, ptr+num_preselect);
+    BaseFloat thresh = ptr[num_preselect-config.diag_gmm_nbest];
+    for (int32 p = 0; p < num_preselect; p++) {
+      if (loglikes(p) >= thresh) { // met threshold for diagonal phase.
+        int32 g = preselect[p];
+        pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
+                                              g));
+      }
+    }
+  } else {
+    for (int32 p = 0; p < num_preselect; p++) {
+      int32 g = preselect[p];
+      pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
+                                            g));
+    }
+  }
+  KALDI_ASSERT(!pruned_pairs.empty());
+  if (pruned_pairs.size() > static_cast<size_t>(config.full_gmm_nbest)) {
+    std::nth_element(pruned_pairs.begin(),
+                     pruned_pairs.end() - config.full_gmm_nbest,
+                     pruned_pairs.end());
+    pruned_pairs.erase(pruned_pairs.begin(),
+                       pruned_pairs.end() - config.full_gmm_nbest);
+  }
+  Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
+  KALDI_ASSERT(gselect != NULL);
+  gselect->resize(pruned_pairs.size());
+  for (size_t i = 0; i < pruned_pairs.size(); i++) {
+    loglikes_tmp(i) = pruned_pairs[i].first;
+    (*gselect)[i] = pruned_pairs[i].second;
+  }
+  return loglikes_tmp.LogSumExp();
+}
+
+
+
 void SgmmGauPost::Write(std::ostream &os, bool binary) const {
   WriteMarker(os, binary, "<SgmmGauPost>");
   int32 T = this->size();

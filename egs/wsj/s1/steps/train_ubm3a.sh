@@ -19,14 +19,13 @@
 
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/ubm2b
+dir=exp/ubm3a
 mkdir -p $dir
 srcdir=exp/tri1
 
-init-ubm --intermediate-numcomps=2000 --ubm-numcomps=300 --verbose=2 \
+init-ubm --intermediate-numcomps=2000 --ubm-numcomps=600 --verbose=2 \
     --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
     $dir/0.ubm 2> $dir/cluster.log
-
 
 # Use same subset as for training tri1.
 head -7138 data/train.scp | scripts/subset_scp.pl 3500  - > $dir/train.scp

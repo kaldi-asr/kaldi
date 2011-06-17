@@ -32,11 +32,6 @@ init-ubm --intermediate-numcomps=2000 --ubm-numcomps=400 --verbose=2 \
 head -7138 data/train.scp | scripts/subset_scp.pl 3500  - > $dir/train.scp
 scripts/split_scp.pl $dir/train.scp  $dir/train{1,2,3}.scp
 
-subset[0]=2000
-subset[1]=3000
-subset[2]=4000
-subset[3]=5000
-
 rm -f $dir/.error
 
 for x in 0 1 2 3; do

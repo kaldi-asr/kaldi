@@ -98,6 +98,12 @@ class FullGmm {
   template<class Real>
   void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> >& invcovars,
                             const Matrix<Real>& means);
+
+  /// Use this if setting both, in the class's native format.
+  template<class Real>
+  void SetInvCovarsAndMeansInvCovars(const std::vector<SpMatrix<Real> >& invcovars,
+                                     const Matrix<Real>& means_invcovars);
+
   /// Set the (inverse) covariances and recompute means_invcovars_
   template<class Real>
   void SetInvCovars(const std::vector<SpMatrix<Real> >& v);
