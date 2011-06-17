@@ -82,7 +82,7 @@ done
 cat $RMROOT/rm1_audio2/2_5_1/rm1/doc/al_spkrs.txt \
  $RMROOT/rm2_audio/3-1.2/rm2/doc/al_spkrs.txt | \
  perl -ane 'tr/A-Z/a-z/;print;' | grep -v ';' | \
-     awk '{print $1, $2}' > spk2gender.map
+     awk '{print $1, $2}' | sort | uniq > spk2gender.map
 
 ../scripts/make_rm_lm.pl $RMROOT/rm1_audio1/rm1/doc/wp_gram.txt  > G.txt 
 

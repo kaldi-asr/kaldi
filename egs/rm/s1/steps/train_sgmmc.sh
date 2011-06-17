@@ -18,10 +18,10 @@
 if [ -f path.sh ]; then . path.sh; fi
 
 # To be run from ..
-# You must run init_sgmma.sh first, as well as train_tri1.sh
-# We rely on the UBM exp/sgmma/4.ubm being there
+# You must run init_sgmmb.sh first.
+# We rely on the initial model exp/sgmmb/final.ubm being there
 
-dir=exp/sgmmb
+dir=exp/sgmmc
 srcdir=exp/tri1
 srcmodel=$srcdir/final.mdl
 srcgraphs="ark:gunzip -c $srcdir/graphs.fsts.gz|"
@@ -29,7 +29,8 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 numiters=25   # Total number of iterations
 
-ubm=exp/ubma/4.ubm
+ubm=exp/ubmb/final.ubm
+preselectmap=exp/ubmb/preselect.map
 realign_iters="5 10 15"; 
 spkvec_iters="5 8 12 17 22"
 silphonelist=`cat data/silphones.csl`
@@ -48,6 +49,11 @@ mkdir -p $dir
 utt2spk_opt="--utt2spk=ark:data/train.utt2spk"
 spk2utt_opt="--spk2utt=ark:data/train.spk2utt"
 feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
+
+scripts/compose_maps.pl data/train.utt2spk data/spk2gender.map | \
+ scripts/compose_maps.pl - $preselectmap | \
+ gzip -c > $dir/preselect.gz
+
 
 if [ ! -f $ubm ]; then
   echo "No UBM in $ubm"
@@ -87,12 +93,13 @@ gmm-init-model  --write-occs=$dir/0.occs  \
 sgmm-init --spk-space-dim=39 $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
 if [ ! -f $dir/0.mdl ]; then
-   echo "you must run train_ubma.sh before train_sgmmb.sh"
+   echo "you must run train_ubmb.sh before train_sgmmc.sh"
    exit 1
 fi
 
 if [ ! -f $dir/gselect.gz ]; then
- sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;
+   sgmm-gselect "--preselect=ark:gunzip -c $dir/preselect.gz|" \
+     $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;
 fi
 
 convert-ali  $srcmodel $dir/0.mdl $dir/tree ark:$dir/0.ali \
@@ -104,7 +111,6 @@ rm $dir/0.ali
 echo "Compiling training graphs"
 compile-train-graphs $dir/tree $dir/0.mdl  data/L.fst ark:data/train.tra \
    "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1 
-
 
 iter=0
 while [ $iter -lt $numiters ]; do
