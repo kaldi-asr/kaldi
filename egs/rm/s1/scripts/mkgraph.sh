@@ -78,12 +78,12 @@ fsttablecompose $dir/ilabel_map.fst $dir/CLG.fst  | fstdeterminizestar --use-log
 
 cat $dir/CLG2.fst |  fstisstochastic  || echo "warning: CLG2 is not stochastic."
 
-make-h-transducer --disambig-syms-out=$dir/disambig_tstate.list \
+make-h-transducer --disambig-syms-out=$dir/disambig_tid.list \
   --transition-scale=$tscale $dir/ilabels.remapped $tree $model > $dir/Ha.fst
 
 
 fsttablecompose $dir/Ha.fst $dir/CLG2.fst | fstdeterminizestar --use-log=true \
- | fstrmsymbols $dir/disambig_tstate.list | fstrmepslocal | fstminimizeencoded > $dir/HCLGa.fst
+ | fstrmsymbols $dir/disambig_tid.list | fstrmepslocal | fstminimizeencoded > $dir/HCLGa.fst
 
 fstisstochastic $dir/HCLGa.fst || echo "HCLGa is not stochastic"
 

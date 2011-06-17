@@ -19,6 +19,15 @@
 # The script's argument is a directory which has three subdirectories:
 # rm1_audio1  rm1_audio2  rm2_audio
 
+# Note: when creating your own data preparation scripts, it's a good idea
+# to make sure that the speaker id (if present) is a prefix of the utterance
+# id, that the output scp file is sorted on utterance id, and that the 
+# transcription file is exactly the same length as the scp file and is also
+# sorted on utterance id (missing transcriptions should be removed from the
+# scp file using e.g. ../scripts/filter_scp.pl)
+# You get get some guidance how to deal with channels and segments (not
+# an issue in RM) from ../scripts/make_mfcc_train_segs.sh.
+
 if [ $# != 1 ]; then
    echo "Usage: ./run.sh /path/to/RM"
    exit 1; 
