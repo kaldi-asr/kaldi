@@ -110,7 +110,10 @@ steps/train_ubma.sh
 (steps/train_sgmma.sh; steps/decode_sgmma.sh)&
 
 # train and test system with speaker vectors.
-(steps/train_sgmmb.sh; steps/decode_sgmmb.sh; steps/decode_sgmmb_fmllr.sh )&
+(steps/train_sgmmb.sh; steps/decode_sgmmb.sh; steps/decode_sgmmb_fmllr.sh; steps/decode_sgmmb_utt.sh )&
+
+# + gender dependency.
+(steps/train_sgmmc.sh; steps/decode_sgmmc.sh; steps/decode_sgmmc_fmllr.sh )&
 
 
 

@@ -126,7 +126,8 @@ while [ $iter -lt $numiters ]; do
       weight-silence-post 0.01 $silphonelist $dir/$iter.mdl ark:- ark:- | \
       sgmm-est-spkvecs $spk2utt_opt $spkvecs_opt "$gselect_opt" \
         --rand-prune=$randprune $dir/$iter.mdl \
-       "$feats" ark:- ark:$dir/cur.vecs ) 2>$dir/spkvecs.$iter.log || exit 1;
+       "$feats" ark:- ark:$dir/tmp.vecs ) 2>$dir/spkvecs.$iter.log || exit 1;
+      mv $dir/tmp.vecs $dir/cur.vecs
       spkvecs_opt="--spk-vecs=ark:$dir/cur.vecs"
    fi  
    if [ $iter -eq 0 ]; then
