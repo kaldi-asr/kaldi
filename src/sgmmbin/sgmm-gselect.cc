@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
 
-    KALDI_LOG << "Done " << num_done << " files ( " << num_err
+    KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors, average UBM log-likelihood is "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
 

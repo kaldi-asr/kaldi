@@ -428,7 +428,7 @@ void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
   
   int32 num_indices = static_cast<int32>(indices.size());
   loglikes->Resize(num_indices, kUndefined);
-  if(indices.back() - indices.front() == num_indices) {
+  if(indices.back() + 1 - indices.front() == num_indices) {
     // A special (but common) case when the indices form a contiguous range.
     int32 start_idx = indices.front();
     loglikes->CopyFromVec(SubVector<BaseFloat>(gconsts_, start_idx, num_indices));
@@ -441,7 +441,7 @@ void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
     // loglikes += -0.5 * inv(vars) * data_sq.
     loglikes->AddMatVec(-0.5, inv_vars_sub, kNoTrans, data_sq, 1.0);
   } else {
-    for(int32 i = 0; i < indices.size(); i++) {
+    for(int32 i = 0; i < num_indices; i++) {
       int32 idx = indices[i]; // The Gaussian index.
       BaseFloat this_loglike =
           gconsts_(idx) + VecVec(means_invvars_.Row(idx), data)

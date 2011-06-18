@@ -191,11 +191,12 @@ while [ $x -lt $numiters ]; do
         sgmm-est-spkvecs --spk2utt=ark:$dir/train$n.spk2utt ${spkvecs_opt[$n]} \
          "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
           --rand-prune=$randprune $dir/$x.mdl \
-         "${featspart[$n]}" ark:- ark:$dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
+         "${featspart[$n]}" ark:- ark:$dir/tmp$n.vecs && mv $dir/tmp$n.vecs $dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
            || touch $dir/.error &
         spkvecs_opt[$n]="--spk-vecs=ark:$dir/cur$n.vecs"
      done
      wait;
+
      [ -f $dir/.error ] && echo error computing speaker vectors && exit 1    
    fi  
 

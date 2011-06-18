@@ -67,7 +67,9 @@ system:
  tri3k        9.1        11.6                         | [ splice-9-frames + LDA + ET; SI-284 ]
  [utt]        9.1        11.8                         | [adaptation per utterance]
  [spk;+fmllr] 8.4        11.2                         | [per-speaker adaptation; +fMLLR]
-
+ sgmm3b       7.7        10.3                         | [ SGMM with speaker vectors, on SI-284]
+ [utt]        7.6        9.9                          |  [per-utterance adaptation]
+ [spk;+fmllr] 7.4        9.9                          | [per-speaker adaptation, with fMLLR]
 
 # Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
@@ -153,6 +155,13 @@ exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.99 [ 481 / 3439, 61 ins, 66 del, 3
 exp/decode_sgmm2b_fmllr_tgpr_eval92/wer:%WER 10.12 [ 571 / 5641, 131 ins, 40 del, 400 sub ]
 exp/decode_sgmm2b_fmllr_tgpr_eval93/wer:%WER 13.29 [ 457 / 3439, 55 ins, 68 del, 334 sub ]
 
+exp/decode_sgmm3b_fmllr_tgpr_eval92/wer:%WER 7.36 [ 415 / 5641, 110 ins, 14 del, 291 sub ]
+exp/decode_sgmm3b_fmllr_tgpr_eval93/wer:%WER 9.94 [ 342 / 3439, 56 ins, 49 del, 237 sub ]
+exp/decode_sgmm3b_tgpr_eval92/wer:%WER 7.68 [ 433 / 5641, 117 ins, 15 del, 301 sub ]
+exp/decode_sgmm3b_tgpr_eval93/wer:%WER 10.32 [ 355 / 3439, 58 ins, 55 del, 242 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval92/wer:%WER 7.59 [ 428 / 5641, 111 ins, 17 del, 300 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval93/wer:%WER 9.94 [ 342 / 3439, 52 ins, 52 del, 238 sub ]
+
 
 ===========
 # Some notes on tuning the SGMM systems on half the SI-84 data (sgmm2a and sgmm2b).
@@ -218,3 +227,5 @@ exp/decode_sgmm2b_fmllr_tgpr_eval93/wer:%WER 13.29 [ 457 / 3439, 55 ins, 68 del,
 #exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.96 [ 480 / 3439, 62 ins, 66 del, 352 sub ]
 #exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.34 [ 583 / 5641, 135 ins, 39 del, 409 sub ]
 #exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.78 [ 474 / 3439, 64 ins, 64 del, 346 sub ]
+
+ 
