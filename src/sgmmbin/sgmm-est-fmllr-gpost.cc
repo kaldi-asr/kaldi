@@ -35,16 +35,16 @@ void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
                             const SgmmPerSpkDerivedVars &spk_vars,
                             BaseFloat logdet,
                             FmllrSgmmAccs *spk_stats) {
-  kaldi::SgmmPerFrameDerivedVars per_frame_vars;
+//  kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
   for (size_t i = 0; i < gpost.size(); i++) {
-    am_sgmm.ComputePerFrameVars(feats.Row(i), gpost[i].gselect, spk_vars,
-                                logdet, &per_frame_vars);
+//    am_sgmm.ComputePerFrameVars(feats.Row(i), gpost[i].gselect, spk_vars,
+//                                logdet, &per_frame_vars);
 
     for (size_t j = 0; j < gpost[i].tids.size(); j++) {
       int32 pdf_id = trans_model.TransitionIdToPdf(gpost[i].tids[j]);
       spk_stats->AccumulateFromPosteriors(am_sgmm, spk_vars, feats.Row(i),
-                                          per_frame_vars.gselect,
+                                          gpost[i].gselect,
                                           gpost[i].posteriors[j], pdf_id);
     }
   }
@@ -66,16 +66,16 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     string spk2utt_rspecifier, spkvecs_rspecifier, fmllr_rspecifier;
     BaseFloat min_count = 100;
-    BaseFloat rand_prune = 1.0e-05;
     SgmmFmllrConfig fmllr_opts;
 
     po.Register("spk2utt", &spk2utt_rspecifier,
-        "File to read speaker to utterance-list map from.");
+                "File to read speaker to utterance-list map from.");
     po.Register("spkvec-min-count", &min_count,
-        "Minimum count needed to estimate speaker vectors");
-    po.Register("rand-prune", &rand_prune, "Pruning threshold for posteriors");
-    po.Register("spk-vecs", &spkvecs_rspecifier, "Speaker vectors to use during aligment (rspecifier)");
-    po.Register("input-fmllr", &fmllr_rspecifier, "Initial FMLLR transform per speaker (rspecifier)");
+                "Minimum count needed to estimate speaker vectors");
+    po.Register("spk-vecs", &spkvecs_rspecifier,
+                "Speaker vectors to use during aligment (rspecifier)");
+    po.Register("input-fmllr", &fmllr_rspecifier,
+                "Initial FMLLR transform per speaker (rspecifier)");
     fmllr_opts.Register(&po);
     po.Read(argc, argv);
 

@@ -16,8 +16,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include <algorithm>
+#include <string>
+#include <utility>
 #include <vector>
 using std::vector;
 
@@ -155,7 +156,7 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
   if (write_params & kSgmmNormalizers) {
     WriteMarker(out_stream, binary, "<n>");
     if (n_.empty())
-      KALDI_WARN << "Asked to write normalizers but they are not present; not writing them.";
+      KALDI_WARN << "Not writing normalizers since they are not present.";
     else
       for (int32 j = 0; j < num_states; ++j)
         n_[j].Write(out_stream, binary);
@@ -287,7 +288,7 @@ void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
                                  const SgmmPerSpkDerivedVars &spk_vars,
                                  BaseFloat logdet_s,
                                  SgmmPerFrameDerivedVars *per_frame_vars) const {
-  KALDI_ASSERT( !n_.empty() && "ComputeNormalizers() must be called.");
+  KALDI_ASSERT(!n_.empty() && "ComputeNormalizers() must be called.");
 
   if (per_frame_vars->NeedsResizing(gselect.size(),
                                     FeatureDim(),
@@ -334,7 +335,6 @@ BaseFloat AmSgmm::LogLikelihood(const SgmmPerFrameDerivedVars &per_frame_vars,
     logp_xi.AddMatVec(1.0, v_[j], kNoTrans, per_frame_vars.zti.Row(ki), 0.0);
     logp_xi.AddVec(1.0, n_[j].Row(i));  // for all substates, add n_{jim}
     logp_xi.Add(per_frame_vars.nti(ki));  // for all substates, add n_{i}(t)
-
   }
   // Eq. (38): log p(x(t)|j) = log \sum_{m, i} p(x(t), m, i|j)
   return logp_x.LogSumExp(log_prune);
@@ -600,11 +600,11 @@ void AmSgmm::ComputeNormalizers() {
         {  // Mainly diagnostic code.  Not necessary.
           BaseFloat tmp = n_[j](i, m);
           if (!KALDI_ISFINITE(tmp)) {  // NaN or inf
-            KALDI_LOG << "Warning: normalizer for j = " << (j) << ", m = " << (m)
-                << ", i = " << (i) << " is infinite or NaN " << (tmp) << "= "
-                << (logc) << "+" << (log_w_jm(i)) << "+" << (-0.5 *
-                    log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
-                << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
+            KALDI_LOG << "Warning: normalizer for j = " << j << ", m = " << m
+                      << ", i = " << i << " is infinite or NaN " << tmp << "= "
+                      << (logc) << "+" << (log_w_jm(i)) << "+" << (-0.5 *
+                          log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
+                      << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
             n_[j](i, m) = -1.0e+40;  // future work(arnab): get rid of magic number
           }
         }
@@ -696,7 +696,7 @@ void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
   Apre.AddMatMat(1.0, U, kTrans, tmpLInvFull, kNoTrans, 0.0);
 
 #ifdef KALDI_PARANOID
-  {  
+  {
     SpMatrix<BaseFloat> tmp(dim);
     tmp.AddMat2Sp(1.0, Apre, kNoTrans, within_class_covar, 0.0);
     KALDI_ASSERT(tmp.IsUnit(0.01));
@@ -959,7 +959,9 @@ void AmSgmm::ComputePerSpkDerivedVars(SgmmPerSpkDerivedVars *vars) const {
       // Eqn. (32): o_i^{(s)} = N_i v^{(s)}
       vars->o_s.Row(i).AddMatVec(1.0, N_[i], kNoTrans, vars->v_s, 0.0);
     }
-  } else vars->o_s.Resize(0, 0);
+  } else {
+    vars->o_s.Resize(0, 0);
+  }
 }
 
 
@@ -973,7 +975,7 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
                config.full_gmm_nbest < config.diag_gmm_nbest);
   int32 num_gauss = diag_ubm_.NumGauss();
 
-  std::vector<std::pair<BaseFloat, int32> > pruned_pairs;
+  std::vector< std::pair<BaseFloat, int32> > pruned_pairs;
   if (config.diag_gmm_nbest < num_gauss) {
     Vector<BaseFloat> loglikes(num_gauss);
     diag_ubm_.LogLikelihoods(data, &loglikes);
@@ -982,9 +984,9 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
     std::nth_element(ptr, ptr+num_gauss-config.diag_gmm_nbest, ptr+num_gauss);
     BaseFloat thresh = ptr[num_gauss-config.diag_gmm_nbest];
     for (int32 g = 0; g < num_gauss; g++)
-      if (loglikes(g) >= thresh) // met threshold for diagonal phase.
-        pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
-                                              g));
+      if (loglikes(g) >= thresh)  // met threshold for diagonal phase.
+        pruned_pairs.push_back(std::make_pair(
+                               full_ubm_.ComponentLogLikelihood(data, g), g));
   } else {
     Vector<BaseFloat> loglikes(num_gauss);
     full_ubm_.LogLikelihoods(data, &loglikes);
@@ -1087,7 +1089,7 @@ void SgmmGauPost::Read(std::istream &is, bool binary) {
   ExpectMarker(is, binary, "<SgmmGauPost>");
   int32 T;
   ReadBasicType(is, binary, &T);
-  KALDI_ASSERT(T>=0);
+  KALDI_ASSERT(T >= 0);
   this->resize(T);
   for (int32 t = 0; t < T; t++) {
     ExpectMarker(is, binary, "<gselect>");
@@ -1101,6 +1103,39 @@ void SgmmGauPost::Read(std::istream &is, bool binary) {
   }
   ExpectMarker(is, binary, "</SgmmGauPost>");
 }
+
+
+void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
+                                       const Vector<BaseFloat> &state_occs,
+                                       MatrixBase<BaseFloat> *dists) {
+  int32 num_states = model.NumStates(),
+      phn_space_dim = model.PhoneSpaceDim(),
+      num_gauss = model.NumGauss();
+  KALDI_ASSERT(dists != NULL && dists->NumRows() == num_states
+               && dists->NumCols() == num_states);
+  Vector<double> prior(state_occs);
+  KALDI_ASSERT(prior.Sum() != 0.0);
+  prior.Scale(1.0 / prior.Sum()); // Normalize.
+  SpMatrix<float> H(phn_space_dim); // The same as H_sm in some other code.
+  for(int32 i = 0; i < num_gauss; ++i) {
+    SpMatrix<float> Hi(phn_space_dim);
+    Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
+    H.AddSp(prior(i), Hi);
+  }
+  bool warned = false;
+  for(int32 j1 = 0; j1 < num_states; ++j1) {
+    if(model.NumSubstates(j1) != 1 && !warned) {
+      KALDI_WARN << "ComputeDistances() can only give meaningful output if you have one substate per state.";
+      warned = true;
+    }
+    for(int32 j2 = 0; j2 <= j1; ++j2) {
+      Vector<BaseFloat> v_diff(model.v_[j1].Row(0));
+      v_diff.AddVec(-1.0, model.v_[j2].Row(0));
+      (*dists)(j1, j2) = (*dists)(j2, j1) = VecSpVec(v_diff, H, v_diff);
+    }
+  }
+}
+
 
 
 }  // namespace kaldi

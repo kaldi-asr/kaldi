@@ -54,7 +54,7 @@ void ParseOptions::Register(const std::string& name, int32* i,
     KALDI_WARN << "Registering option twice, ignoring second time: " << name;
   int_map_[idx] = i;
   std::ostringstream ss;
-  ss << doc << " (uint, default = " << *i << ")";
+  ss << doc << " (int, default = " << *i << ")";
   doc_map_[idx] = DocInfo(name, ss.str());
 }
 

@@ -47,10 +47,10 @@ struct SgmmGselectConfig {
   }
 
   void Register(ParseOptions *po) {
-    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of "
-                 "highest-scoring full-covariance Gaussians selected per frame.");
-    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of "
-                 "highest-scoring diagonal-covariance Gaussians selected per frame.");
+    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
+        " full-covariance Gaussians selected per frame.");
+    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
+        " diagonal-covariance Gaussians selected per frame.");
   }
 };
 
@@ -122,7 +122,10 @@ struct SgmmPerFrameDerivedVars {
 
 struct SgmmPerSpkDerivedVars {
   // To set this up, call ComputePerSpkDerivedVars from the sgmm object.
-  void Clear() { v_s.Resize(0); o_s.Resize(0, 0); }
+  void Clear() {
+    v_s.Resize(0);
+    o_s.Resize(0, 0);
+  }
   Vector<BaseFloat> v_s;  ///< Speaker adaptation vector v_^{(s)}. Dim is [T]
   Matrix<BaseFloat> o_s;  ///< Per-speaker offsets o_{i}. Dimension is [I][D]
 };
@@ -135,11 +138,12 @@ class AmSgmm {
  public:
   AmSgmm() {}
   void Read(std::istream &rIn, bool binary);
-  void Write(std::ostream &out, bool binary, SgmmWriteFlagsType write_params) const;
+  void Write(std::ostream &out, bool binary,
+             SgmmWriteFlagsType write_params) const;
 
   /// Checks the various components for correct sizes. With wrong sizes,
   /// assertion failure occurs. When the argument is set to true, dimensions of
-  /// the various components are printed. 
+  /// the various components are printed.
   void Check(bool show_properties = true);
 
   /// Initializes the SGMM parameters from a full-covariance UBM.
@@ -163,7 +167,7 @@ class AmSgmm {
                                        const VectorBase<BaseFloat> &data,
                                        const std::vector<int32> &preselect,
                                        std::vector<int32> *gselect) const;
-  
+
   /// This needs to be called with each new frame of data, prior to
   /// accumulation or likelihood evaluation: it computes various
   /// pre-computed quantities. The 'logdet_s' term is the log determinant
@@ -310,7 +314,7 @@ class AmSgmm {
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmSgmm);
   friend class MleAmSgmmUpdater;
   friend class MleSgmmSpeakerAccs;
-  friend class AmSgmmFunctions; // misc functions that need access.
+  friend class AmSgmmFunctions;  // misc functions that need access.
 };
 
 template<typename Real>
@@ -359,8 +363,9 @@ void ComputeFeatureNormalizer(const FullGmm &gmm, Matrix<BaseFloat> *xform);
 
 /// This is the entry for a single time.
 struct SgmmGauPostElement {
-  std::vector<int32> gselect;  // include gselect info here, since "posteriors" is
-  // relative to this set of selected Gaussians.
+  // Need gselect info here, since "posteriors" is  relative to this set of
+  // selected Gaussians.
+  std::vector<int32> gselect;
   std::vector<int32> tids;  // transition-ids for each entry in "posteriors"
   std::vector<Matrix<BaseFloat> > posteriors;
 };
@@ -371,8 +376,8 @@ class SgmmGauPost: public std::vector<SgmmGauPostElement> {
  public:
   // Add the standard Kaldi Read and Write routines so
   // we can use KaldiObjectHolder with this type.
-  explicit SgmmGauPost(size_t i): std::vector<SgmmGauPostElement>(i) { }
-  SgmmGauPost() { }
+  explicit SgmmGauPost(size_t i) : std::vector<SgmmGauPostElement>(i) {}
+  SgmmGauPost() {}
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 };
@@ -381,6 +386,19 @@ typedef KaldiObjectHolder<SgmmGauPost> SgmmGauPostHolder;
 typedef RandomAccessTableReader<SgmmGauPostHolder> RandomAccessSgmmGauPostReader;
 typedef SequentialTableReader<SgmmGauPostHolder> SequentialSgmmGauPostReader;
 typedef TableWriter<SgmmGauPostHolder> SgmmGauPostWriter;
+
+/// Class for misc functions that need access to SGMM private variables.
+class AmSgmmFunctions {
+ public:
+  /// Computes matrix of approximated K-L divergences,
+  /// of size [#states x #states], as described in
+  /// "State-Level Data Borrowing for Low-Resource Speech Recognition based on
+  ///  Subspace GMMs", by Yanmin Qian et. al, Interspeech 2011.
+  /// Model must have one substate per state.
+  static void ComputeDistances(const AmSgmm& model,
+                               const Vector<BaseFloat> &state_occs,
+                               MatrixBase<BaseFloat> *dists);
+};
 
 }  // namespace kaldi
 

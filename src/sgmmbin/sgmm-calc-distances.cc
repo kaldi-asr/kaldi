@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #include "util/common-utils.h"
-#include "sgmm/estimate-am-sgmm.h"
+#include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
 
 

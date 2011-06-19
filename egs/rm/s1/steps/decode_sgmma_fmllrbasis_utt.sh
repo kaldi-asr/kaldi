@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2010-2011  Microsoft Corporation,  Arnab Ghoshal
+# Copyright 2010-2011  Arnab Ghoshal,  Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,23 +21,21 @@
 # (3) decode again using the fMLLR transforms
 
 if [ -f path.sh ]; then . path.sh; fi
-dir=exp/decode_sgmma_fmllr
+dir=exp/decode_sgmma_fmllrbasis_utt
 tree=exp/sgmma/tree
-model=exp/sgmma/final_fmllr.mdl
-imodel=exp/sgmma/final.mdl
+model=exp/sgmma/final_fmllrbasis.mdl
 occs=exp/sgmma/final.occs
 graphdir=exp/graph_sgmma
 silphonelist=`cat data/silphones.csl`
 
-mincount=1000  # min occupancy to extimate fMLLR transform
-iters=10       # number of iters of fMLLR estimation
+mincount=100  # min occupancy to extimate fMLLR transform
+iters=10      # number of iters of fMLLR estimation
+scale=0.2     # Scale occupancies to determine number of fMLLR bases to use
+nbases=200    # Use at most these many fMLLR bases 
 
 if [ ! -f $model ]; then
-    if [ ! -f $imodel ]; then
-	echo "Cannot find $imodel. Maybe training didn't finish?"
-	exit 1;
-    fi
-    sgmm-comp-prexform $imodel $occs $model
+  echo "Cannot find $model. Maybe the fMLLR bases weren't estiamted?"
+  exit 1;
 fi
 
 mkdir -p $dir
@@ -47,8 +45,6 @@ scripts/mkgraph.sh $tree $model $graphdir
 for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
   feats="ark:add-deltas --print-args=false scp:data/test_${test}.scp ark:- |"
-  spk2utt_opt="--spk2utt=ark:data/test_${test}.spk2utt"
-  utt2spk_opt="--utt2spk=ark:data/test_${test}.utt2spk"
 
   sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect.log | \
      gzip -c > $dir/${test}_gselect.gz || exit 1;
@@ -59,17 +55,18 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 
   # Estimate the fMLLR transforms.
   ( ali-to-post ark:$dir/test_${test}.pre_ali ark:- | \
-    weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
+    weight-silence-post 0.0 $silphonelist $model ark:- ark:- | \
     sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
-    sgmm-est-fmllr-gpost --fmllr-iters=$iters --fmllr-min-count=$mincount \
-      "$spk2utt_opt" $model "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
+    sgmm-est-fmllr-gpost --fmllr-iters=$iters --fmllr-bases-occ-scale=$scale \
+      --fmllr-min-count-bases=$mincount --fmllr-num-bases=$nbases --verbose=3 \
+      $model "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
       2>$dir/est_fmllr_${test}.log
 
   adapt_feats="ark:add-deltas --print-args=false scp:data/test_${test}.scp ark:- | transform-feats $utt2spk_opt ark:$dir/test_${test}.fmllr ark:- ark:- |"
 
   # Now decode with fMLLR-adapted features. Gaussian selection is also done 
   # with the adapted features. This causes a small improvement in WER on RM. 
-  sgmm-decode-faster $utt2spk_opt --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$adapt_feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali 2> $dir/decode_${test}.log
+  sgmm-decode-faster --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$adapt_feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali 2> $dir/decode_${test}.log
 
   # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
@@ -82,3 +79,4 @@ wait
 grep WER $dir/wer_* | \
   awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
    > $dir/wer
+

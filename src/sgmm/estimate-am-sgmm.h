@@ -96,20 +96,20 @@ struct MleAmSgmmOptions {
                  "Covariance floor (fraction of average covariance).");
     po->Register("cov-diag-ratio", &cov_diag_ratio, module+
                  "Minumum occ/dim ratio below which use diagonal covariances.");
-    po->Register("max-cond", &max_cond, module+
-                 "Maximum condition number beyond which matrices are not updated.");
+    po->Register("max-cond", &max_cond, module+"Maximum condition number beyond"
+                 " which matrices are not updated.");
     po->Register("weight-projections-iters", &weight_projections_iters, module+
                  "Number for iterations for weight projection estimation.");
-    po->Register("renormalize-v", &renormalize_V, module+
-                 "If true, renormalize the phonetic-subspace vectors to have meaningful sizes.");
-    po->Register("renormalize-n", &renormalize_N, module+
-                 "If true, renormalize the speaker subspace to have meaningful sizes.");
-    po->Register("compress-m-dim", &compress_m_dim,
-                 "If nonzero, limit the M matrices to a subspace of this dimension.");
-    po->Register("compress-n-dim", &compress_n_dim,
-                 "If nonzero, limit the N matrices to a subspace of this dimension.");
-    po->Register("compress-vars-dim", &compress_vars_dim,
-                 "If nonzero, limit the SigmaInv matrices to a subspace of this dimension.");
+    po->Register("renormalize-v", &renormalize_V, module+"If true, renormalize "
+                 "the phonetic-subspace vectors to have meaningful sizes.");
+    po->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
+                 "the speaker subspace to have meaningful sizes.");
+    po->Register("compress-m-dim", &compress_m_dim, module+"If nonzero, limit "
+                 "the M matrices to a subspace of this dimension.");
+    po->Register("compress-n-dim", &compress_n_dim, module+"If nonzero, limit "
+                 "the N matrices to a subspace of this dimension.");
+    po->Register("compress-vars-dim", &compress_vars_dim, module+"If nonzero, "
+                 "limit the SigmaInv matrices to a subspace of this dimension.");
   }
 };
 
@@ -328,20 +328,6 @@ class MleSgmmSpeakerAccs {
   /// small constant to randomly prune tiny posteriors
   BaseFloat rand_prune_;
 };
-
-/// Class for misc functions that need access to SGMM private variables.
-class AmSgmmFunctions {
- public:
-  /// Computes matrix of approximated K-L divergences, 
-  /// of size [#states x #states], as described in
-  /// "State-Level Data Borrowing for Low-Resource Speech Recognition based on
-  ///  Subspace GMMs", by Yanmin Qian et. al, Interspeech 2011.
-  /// Model must have one substate per state.
-  static void ComputeDistances(const AmSgmm& model,
-                               const Vector<BaseFloat> &state_occs,
-                               MatrixBase<BaseFloat> *dists);
-};
-
 
 }  // namespace kaldi
 

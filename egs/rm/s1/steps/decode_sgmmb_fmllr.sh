@@ -36,6 +36,9 @@ alimodel=exp/sgmmb/final.alimdl
 graphdir=exp/graph_sgmmb
 silphonelist=`cat data/silphones.csl`
 
+mincount=1000  # min occupancy to extimate fMLLR transform
+iters=10       # number of iters of fMLLR estimation
+
 if [ ! -f $fmllr_model ]; then
     if [ ! -f $model ]; then
 	echo "Cannot find $model. Maybe training didn't finish?"
@@ -55,33 +58,36 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   utt2spk_opt="--utt2spk=ark:data/test_${test}.utt2spk"
 
   sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect.log | \
-    gzip -c > $dir/${test}_gselect.gz || exit 1;
-
+     gzip -c > $dir/${test}_gselect.gz || exit 1;
   gselect_opt="--gselect=ark:gunzip -c $dir/${test}_gselect.gz|"
 
-  # Use smaller beam first time.
+  # Use smaller beam for the first pass decoding.
   sgmm-decode-faster "$gselect_opt" --beam=15.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $alimodel $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass1.tra ark,t:$dir/test_${test}.pass1.ali  2> $dir/pass1_${test}.log
 
+  # Estimate the speaker vectors
   ( ali-to-post ark:$dir/test_${test}.pass1.ali ark:- | \
     weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
     sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
     sgmm-est-spkvecs-gpost "$spk2utt_opt" $model "$feats" ark,s,cs:- \
     ark:$dir/test_${test}.vecs ) 2>$dir/vecs_${test}.log
 
+  # Second-pass decoding with the speaker vectors.
+  sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass2.tra ark,t:$dir/test_${test}.pass2.ali  2> $dir/pass2_${test}.log
 
-   sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.pass2.tra ark,t:$dir/test_${test}.pass2.ali  2> $dir/pass2_${test}.log
-
-
+  # Estimate the fMLLR transforms.
   ( ali-to-post ark:$dir/test_${test}.pass2.ali ark:- | \
     weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
     sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
-    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/test_${test}.vecs \
-      "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
-    ark:$dir/test_${test}.fmllr_xforms ) 2>$dir/est_fmllr_${test}.log
+    sgmm-est-fmllr-gpost --fmllr-iters=$iters --fmllr-min-count=$mincount \
+      --spk-vecs=ark:$dir/test_${test}.vecs "$spk2utt_opt" $fmllr_model \
+      "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
+      2>$dir/est_fmllr_${test}.log
 
+  adapt_feats="ark:add-deltas --print-args=false scp:data/test_${test}.scp ark:- | transform-feats $utt2spk_opt ark:$dir/test_${test}.fmllr ark:- ark:- |"
 
-   sgmm-decode-faster-fmllr "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $fmllr_model $graphdir/HCLG.fst "$feats" ark:$dir/test_${test}.fmllr_xforms ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
-
+  # Now decode with fMLLR-adapted features. Gaussian selection is also done 
+  # with the adapted features. This causes a small improvement in WER on RM. 
+  sgmm-decode-faster $utt2spk_opt --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt --spk-vecs=ark:$dir/test_${test}.vecs $fmllr_model $graphdir/HCLG.fst "$adapt_feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 
   # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \

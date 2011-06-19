@@ -20,6 +20,7 @@
 #ifndef KALDI_SGMM_FMLLR_SGMM_H_
 #define KALDI_SGMM_FMLLR_SGMM_H_
 
+#include <string>
 #include <vector>
 
 #include "base/kaldi-common.h"
@@ -44,7 +45,9 @@ struct SgmmFmllrConfig {
   /// Minimum occupancy count to stop using FMLLR bases and switch to
   /// regular FMLLR estimation.
   BaseFloat fmllr_min_count_full;
-  int32 num_fmllr_bases;  ///< Number of FMLLR basis matrices.
+  /// Number of basis matrices to use for FMLLR estimation. Can only *reduce*
+  /// the number of bases present. Overridden by the 'bases_occ_scale' option.
+  int32 num_fmllr_bases;
   /// Scale per-speaker count to determine number of CMLLR bases.
   BaseFloat bases_occ_scale;
 
@@ -54,7 +57,7 @@ struct SgmmFmllrConfig {
     fmllr_min_count_basis = 100.0;
     fmllr_min_count = 1000.0;
     fmllr_min_count_full = 5000.0;
-    num_fmllr_bases = 40;
+    num_fmllr_bases = 50;
     bases_occ_scale = 0.2;
   }
 
@@ -64,19 +67,19 @@ struct SgmmFmllrConfig {
 inline void SgmmFmllrConfig::Register(ParseOptions *po) {
   std::string module = "SgmmFmllrConfig: ";
   po->Register("fmllr-iters", &fmllr_iters, module+
-        "Number of iterations in FMLLR estimation.");
-  po->Register("step-iters", &step_iters, module+
-        "Number of iterations to find optimal FMLLR step size.");
-  po->Register("fmllr-min-count-subspace", &fmllr_min_count_basis, module+
-      "Minimum occupancy count to estimate FMLLR using basis matrices.");
+               "Number of iterations in FMLLR estimation.");
+  po->Register("fmllr-step-iters", &step_iters, module+
+               "Number of iterations to find optimal FMLLR step size.");
+  po->Register("fmllr-min-count-bases", &fmllr_min_count_basis, module+
+               "Minimum occupancy count to estimate FMLLR using basis matrices.");
   po->Register("fmllr-min-count", &fmllr_min_count, module+
-      "Minimum occupancy count to estimate FMLLR without basis matrices.");
+               "Minimum occupancy count to estimate FMLLR (without bases).");
   po->Register("fmllr-min-count-full", &fmllr_min_count_full, module+
       "Minimum occupancy count to stop using basis matrices for FMLLR.");
-  po->Register("num-fmllr-subspaces", &num_fmllr_bases, module+
-      "Number of FMLLR basis matrices.");
-  po->Register("bases-occ-scale", &bases_occ_scale, module+
-      "Scale per-speaker count to determine number of CMLLR bases.");
+  po->Register("fmllr-num-bases", &num_fmllr_bases, module+
+               "Number of FMLLR basis matrices.");
+  po->Register("fmllr-bases-occ-scale", &bases_occ_scale, module+
+               "Scale per-speaker count to determine number of CMLLR bases.");
 }
 
 
@@ -173,9 +176,14 @@ class FmllrSgmmAccs {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FmllrSgmmAccs);
 };
 
+/// Computes the fMLLR basis matrices given the scatter of the vectorized
+/// gradients (eq: B.10). The result is stored in 'fmllr_globals'.
+/// The actual number of bases may be less than 'num_fmllr_bases' depending
+/// on the feature dimension and number of eigenvalues greater than 'min_eig'.
 void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
-                               int32 num_fmllr_subspaces, int32 feat_dim,
-                               SgmmFmllrGlobalParams *fmllr_globals);
+                               int32 num_fmllr_bases, int32 feat_dim,
+                               SgmmFmllrGlobalParams *fmllr_globals,
+                               double min_eig = 0.0);
 
 }  // namespace kaldi
 

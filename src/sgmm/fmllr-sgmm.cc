@@ -161,11 +161,7 @@ BaseFloat FmllrSgmmAccs::Accumulate(const AmSgmm &model,
   BaseFloat log_like = model.ComponentPosteriors(frame_vars, pdf_index,
                                                  &posteriors);
   posteriors.Scale(weight);
-  AccumulateFromPosteriors(model,
-                           spk,
-                           data,
-                           frame_vars.gselect,
-                           posteriors,
+  AccumulateFromPosteriors(model, spk, data, frame_vars.gselect, posteriors,
                            pdf_index);
   return log_like;
 }
@@ -206,6 +202,10 @@ FmllrSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
 
 void FmllrSgmmAccs::AccumulateForFmllrSubspace(const AmSgmm &sgmm,
     const SgmmFmllrGlobalParams &globals, SpMatrix<double> *grad_scatter) {
+  if (stats_.beta_ <= 0.0) {
+    KALDI_WARN << "Not committing any stats since no stats accumulated.";
+    return;
+  }
   int32 dim = sgmm.FeatureDim();
   Matrix<BaseFloat> xform(dim, dim + 1, kUndefined);
   xform.SetUnit();
@@ -219,7 +219,7 @@ void FmllrSgmmAccs::AccumulateForFmllrSubspace(const AmSgmm &sgmm,
   grad_vec.CopyRowsFromMat(hess_xformed_grad);
   grad_vec.Scale(1 / std::sqrt(stats_.beta_));
   grad_scatter->AddVec2(1.0, grad_vec);
-  KALDI_LOG << "Frame counts for when committing FMLLR subspace stats are "
+  KALDI_LOG << "Frame counts for when committing fMLLR subspace stats are "
             << stats_.beta_;
 }
 
@@ -337,11 +337,11 @@ static BaseFloat CalcFmllrStepSize(const AffineXformStats &stats,
       obj_step_new = stats.beta_ * logdet + step_size * m -
           0.5 * step_size * step_size * n;
 
-      // Facing numeric precision issues. Compute in double?
       if (obj_step_new - obj_step_old < -0.001) {
-        KALDI_LOG << "Objective function decreased (" << (obj_step_old) << "->"
-            << (obj_step_new) << "). Halving step size change (" << (step_size)
-            << " -> " << (step_size - step_size_change / 2) << ")\n";
+        KALDI_WARN << "Objective function decreased (" << obj_step_old << "->"
+                   << obj_step_new << "). Halving step size change ("
+                   << step_size << " -> " << (step_size - (step_size_change/2))
+                   << ")";
         step_size_change /= 2;
         step_size -= step_size_change;  // take away half of our step
       }  // Facing numeric precision issues. Compute in double?
@@ -367,7 +367,7 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
   if (globals.IsEmpty())
     KALDI_ERR << "Must set up pre-transforms before estimating FMLLR.";
 
-  KALDI_VLOG(3) << "Mincount = " << mincount << "; Basis: "
+  KALDI_VLOG(1) << "Mincount = " << mincount << "; Basis: "
                 << std::string(globals.HasBasis()? "yes; " : "no; ")
                 << "Using subspace: " << std::string(using_subspace? "yes; "
                     : "no; ");
@@ -375,11 +375,12 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
   int32 num_bases = 0;
   if (using_subspace) {
     KALDI_ASSERT(globals.fmllr_bases_.size() != 0);
-    int32 max_bases = globals.fmllr_bases_.size();
+    int32 max_bases = std::min(static_cast<int32>(globals.fmllr_bases_.size()),
+                               opts.num_fmllr_bases);
     num_bases = (opts.bases_occ_scale <= 0.0)? max_bases :
         std::min(max_bases, static_cast<int32>(std::floor(opts.bases_occ_scale
                                                           * stats_.beta_)));
-    KALDI_VLOG(3) << "Have " << stats_.beta_ << " frames for speaker: Using "
+    KALDI_VLOG(1) << "Have " << stats_.beta_ << " frames for speaker: Using "
                   << num_bases << " fMLLR bases.";
   }
 
@@ -395,13 +396,13 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
       auxf_new = this->FmllrObjGradient(sgmm, *out_xform, &grad, &G);
 
       // For diagnostic purposes
-      KALDI_VLOG(3) << "Iter " << iter << ": Objective function = "
+      KALDI_VLOG(3) << "Iter " << iter << ": Auxiliary function = "
           << (auxf_new / stats_.beta_) << " per frame over " << stats_.beta_
           << " frames";
 
       if (iter > 0) {
         // For diagnostic purposes
-        KALDI_VLOG(3) << "Iter " << iter << ": Objective function improvement: "
+        KALDI_VLOG(2) << "Iter " << iter << ": Auxiliary function improvement: "
             << ((auxf_new - auxf_old) / stats_.beta_) << " per frame over "
             << (stats_.beta_) << " frames";
         auxf_improv += auxf_new - auxf_old;
@@ -448,14 +449,14 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
 
 #ifdef KALDI_PARANOID
       // Check whether co-ordinate transformation is correct.
-      {  
+      {
         BaseFloat tr1 = TraceMatMat(delta, grad, kTrans);
         BaseFloat tr2 = TraceMatMat(pre_xformed_delta, pre_xformed_grad,
                                     kTrans);
         BaseFloat tr3 = TraceMatMat(hess_xformed_delta, hess_xformed_grad,
                                     kTrans);
-        AssertEqual(tr1, tr2, 1e-6);
-        AssertEqual(tr2, tr3, 1e-6);
+        AssertEqual(tr1, tr2, 1e-5);
+        AssertEqual(tr2, tr3, 1e-5);
       }
 #endif
 
@@ -475,7 +476,7 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
         // SubMatrix A points to the memory location of out_xform, and so will
         // contain the updated value
 
-        KALDI_VLOG(3) << "Iter " << iter << ": Objective function improvement: "
+        KALDI_VLOG(2) << "Iter " << iter << ": Auxiliary function improvement: "
             << ((auxf_new - auxf_old) / stats_.beta_) << " per frame over "
             << (stats_.beta_) << " frames";
         auxf_improv += auxf_new - auxf_old;
@@ -487,10 +488,6 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
     KALDI_LOG << "Auxiliary function improvement for FMLLR = " << auxf_improv
         << " per frame over " << stats_.beta_ << " frames. Log-determinant = "
         << logdet;
-    if (globals.HasBasis()) {
-      KALDI_LOG << "FMLLR bases present " << std::string(using_subspace?
-          "and used." : "but not used.");
-    }
     return true;
   } else {
     KALDI_ASSERT(stats_.beta_ < mincount);
@@ -505,11 +502,12 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
 }
 
 void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
-                               int32 num_fmllr_subspaces, int32 feat_dim,
-                               SgmmFmllrGlobalParams *globals) {
-  if (num_fmllr_subspaces >  feat_dim * (feat_dim + 1)) {
-    num_fmllr_subspaces = feat_dim * (feat_dim + 1);
-    KALDI_WARN << "Limiting subspace dimension to be the same as transform "
+                               int32 num_fmllr_bases, int32 feat_dim,
+                               SgmmFmllrGlobalParams *globals, double min_eig) {
+  KALDI_ASSERT(num_fmllr_bases > 0 && feat_dim > 0);
+  if (num_fmllr_bases >  feat_dim * (feat_dim + 1)) {
+    num_fmllr_bases = feat_dim * (feat_dim + 1);
+    KALDI_WARN << "Limiting number of fMLLR bases to be the same as transform "
                << "dimension.";
   }
 
@@ -522,16 +520,27 @@ void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
   try {
     Scatter.Svd(&s, &U, NULL);
     SortSvd(&s, &U);  // in case was not exactly sorted.
-    KALDI_LOG << "Eigenvalues (max 200) of CMLLR scatter are: "
-        << (SubVector<double>(s, 0, std::min(200, s.Dim())));
+    KALDI_VLOG(1) << "Eigenvalues (max 200) of CMLLR scatter are: "
+                  << (SubVector<double>(s, 0, std::min(200, s.Dim())));
+
+
+//    for (int32 b = 2; b < num_fmllr_bases; b++) {
+//      if (s(b) < min_eig) {
+//        num_fmllr_bases = b;
+//        KALDI_WARN << "Limiting number of fMLLR bases to " << num_fmllr_bases
+//                   << " because of small eigenvalues.";
+//        break;
+//      }
+//    }
 
     U.Transpose();  // Now the rows of U correspond to the basis vectors.
-    fmllr_bases.resize(num_fmllr_subspaces);
-    for (int32 b = 0; b < num_fmllr_subspaces; b++) {
+    fmllr_bases.resize(num_fmllr_bases);
+    for (int32 b = 0; b < num_fmllr_bases; b++) {
       fmllr_bases[b].Resize(feat_dim, feat_dim + 1, kSetZero);
       fmllr_bases[b].CopyRowsFromVec(U.Row(b));
     }
-  } catch (const std::exception& e) {
+    KALDI_LOG << "Estimated " << num_fmllr_bases << " fMLLR basis matrices.";
+  } catch(const std::exception& e) {
     KALDI_WARN << "Not estimating FMLLR bases because of a thrown exception:\n"
                << e.what();
     fmllr_bases.resize(0);
