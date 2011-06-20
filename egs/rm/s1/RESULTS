@@ -40,13 +40,20 @@ exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tr
 
 # sgmma is SGMM without speaker vectors.
 exp/decode_sgmma/wer:Average WER is 3.151680 (395 / 12533) 
-exp/decode_sgmma_fmllr/wer:Average WER is 2.768691 (347 / 12533) 
+exp/decode_sgmma_fmllr/wer:Average WER is 2.728796 (342 / 12533) 
+exp/decode_sgmma_fmllr_utt/wer:Average WER is 3.087848 (387 / 12533) 
+exp/decode_sgmma_fmllrbasis_utt/wer:Average WER is 2.896354 (363 / 12533) 
 
 # sgmmb is SGMM with speaker vectors.
 exp/decode_sgmmb/wer:Average WER is 2.617091 (328 / 12533) 
 exp/decode_sgmmb_utt/wer:Average WER is 2.696880 (338 / 12533) 
 exp/decode_sgmmb_fmllr/wer:Average WER is 2.505386 (314 / 12533) 
 
+# note: when changing (phn,spk) dimensions from (40,39) -> (30,30),
+# WER in decode_sgmmb/ went from 2.62 to 2.92
+# when changing from (40,39) -> (50,39)  [40->50 on iter 3],
+# WER in decode_sgmmb/ went from 2.62 to 2.66 [and test likelihood
+# got worse].
 
 # sgmmc is as sgmmb but with gender-dependent UBM, with 250
 # Gaussians per gender instead of 400 Gaussians.  Note: use

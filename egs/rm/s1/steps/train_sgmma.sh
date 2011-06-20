@@ -37,7 +37,7 @@ totsubstates=7500 # Target #-substates.
 maxiterinc=15 # Last iter to increase #substates on.
 
 incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
-gselect_opt="--gselect=ark:gunzip -c $dir/gselect.gz|"
+gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.gz|"
 randprune=0.1
 mkdir -p $dir
 

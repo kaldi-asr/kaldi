@@ -107,7 +107,9 @@ steps/train_ubma.sh
 # You can take this all the way down to 1 for fastest speed, although
 # this will degrade results.
 
-(steps/train_sgmma.sh; steps/decode_sgmma.sh)&
+(steps/train_sgmma.sh; steps/decode_sgmma.sh; steps/decode_sgmma_fmllr.sh;
+ steps/decode_sgmma_fmllr_utt.sh; steps/train_sgmma_fmllrbasis.sh; 
+ steps/decode_sgmma_fmllrbasis_utt.sh )&
 
 # train and test system with speaker vectors.
 (steps/train_sgmmb.sh; steps/decode_sgmmb.sh; steps/decode_sgmmb_fmllr.sh; steps/decode_sgmmb_utt.sh )&

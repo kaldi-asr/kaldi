@@ -1,1 +1,2 @@
-export PATH=$PATH:../../../src/bin:../../../tools/openfst/bin:../../../src/fstbin/:../../../src/gmmbin/:../../../src/featbin/:../../../src/fgmmbin:../../../src/sgmmbin
+root=../../..
+export PATH=${root}/src/bin:${root}/tools/openfst/bin:${root}/src/fstbin/:${root}/src/gmmbin/:${root}/src/featbin/:${root}/src/fgmmbin:${root}/src/sgmmbin:$PATH

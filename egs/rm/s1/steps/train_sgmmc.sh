@@ -39,7 +39,7 @@ numsubstates=2500 # Initial #-substates.
 totsubstates=7500 # Target #-substates.
 maxiterinc=15 # Last iter to increase #substates on.
 incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
-gselect_opt="--gselect=ark:gunzip -c $dir/gselect.gz|"
+gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.gz|"
 # Initially don't have speaker vectors, but change this after
 # we estimate them.
 spkvecs_opt=
@@ -98,7 +98,7 @@ if [ ! -f $dir/0.mdl ]; then
 fi
 
 if [ ! -f $dir/gselect.gz ]; then
-   sgmm-gselect "--preselect=ark:gunzip -c $dir/preselect.gz|" \
+   sgmm-gselect "--preselect=ark,s,cs:gunzip -c $dir/preselect.gz|" \
      $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;
 fi
 
