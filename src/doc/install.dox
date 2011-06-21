@@ -25,17 +25,18 @@
   You first need to install Subversion (SVN).  Currently, Kaldi can
    be downloaded by typing into a shell:
   \verbatim
-    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/trunk kaldi-trunk
   \endverbatim
-  This will check out the entire current repository (we currently have just the
-  trunk there; soon we will add version numbers).
-  If you want to get updates and bug fixes you can go to the "kaldi" directory
-  (or any subdirectory) and type:
+  Note that we previously advised to check out the top-level directory 
+ kaldi/.  We will add version numbers soon so downloading it like this
+ this will be a bad idea,
+ because eventually you would type "svn update" and would get all the versions
+  of Kaldi downloaded to your machine.
+  If you want to get updates and bug fixes you can go to some checked-out
+ directory, and type
   \verbatim
     svn update
   \endverbatim
- Most likely, for significant changes we will create a new version number;
- the policy will be announced in this documentation when it is decided.
  If "svn update" prints out scary looking messages about conflicts (caused by
  you changing parts of files that were later modified centerally),
  you may have to resolve the conflicts; for that, we recommend that you

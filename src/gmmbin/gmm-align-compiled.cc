@@ -90,8 +90,10 @@ int main(int argc, char *argv[])
 
     for (; !fst_reader.Done(); fst_reader.Next()) {
       std::string key = fst_reader.Key();
-      if (!feature_reader.HasKey(key)) num_no_feat++;
-      else {
+      if (!feature_reader.HasKey(key)) {
+        num_no_feat++;
+        KALDI_WARN << "No features for utterance " << utt;
+      } else {
         const Matrix<BaseFloat> &features = feature_reader.Value(key);
         VectorFst<StdArc> decode_fst(fst_reader.Value());
         fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
