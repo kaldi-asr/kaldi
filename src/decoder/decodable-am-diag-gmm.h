@@ -175,7 +175,8 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
                                 const RegressionTree &regtree,
                                 BaseFloat scale)
       : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm), scale_(scale),
-        mllr_xform_(mllr_xform), regtree_(regtree) { InitCache(); }
+        mllr_xform_(mllr_xform), regtree_(regtree),
+        data_squared_(feats.NumCols()) { InitCache(); }
   ~DecodableAmDiagGmmRegtreeMllr();
 
   // Note, frames are numbered from zero but transition-ids (tid) from one.

@@ -147,7 +147,7 @@ void RegtreeMllrDiagGmm::Read(std::istream &in, bool binary) {
                  && xform_itr->NumRows() == dim_);
   }
 
-  ExpectMarker(in, binary, "<BCLASS2XFORMS");
+  ExpectMarker(in, binary, "<BCLASS2XFORMS>");
   ReadIntegerVector(in, binary, &bclass2xforms_);
   ExpectMarker(in, binary, "</MLLRXFORM>");
 }

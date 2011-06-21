@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Compute MLLR transforms per-utterance (default) or per-speaker for "
         "the supplied set of speakers (spk2utt option).  Note: writes RegtreeMllrDiagGmm objects\n"
-        "Usage: gmm-estimate-regtree-fmllr  [options] <model-in> <feature-rspecifier> "
+        "Usage: gmm-estimate-regtree-mllr  [options] <model-in> <feature-rspecifier> "
         "<posteriors-rspecifier> <regression-tree> <transforms-wspecifier>\n";
 
     ParseOptions po(usage);
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
         }  // end looping over all utterances of the current speaker
         BaseFloat objf_impr, t;
         mllr_accs.Update(regtree, opts, &mllr_xforms, &objf_impr, &t);
-        KALDI_LOG << "fMLLR objf improvement for speaker " << spk << " is "
+        KALDI_LOG << "MLLR objf improvement for speaker " << spk << " is "
                   << (objf_impr/(t+1.0e-10)) << " per frame over " << t
                   << " frames.";
         tot_objf_impr += objf_impr;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
             << "Avg like per frame so far is " << (tot_like / tot_t) << '\n';
         BaseFloat objf_impr, t;
         mllr_accs.Update(regtree, opts, &mllr_xforms, &objf_impr, &t);
-        KALDI_LOG << "fMLLR objf improvement for utterance " << key << " is "
+        KALDI_LOG << "MLLR objf improvement for utterance " << key << " is "
                   << (objf_impr/(t+1.0e-10)) << " per frame over " << t
                   << " frames.";
         tot_objf_impr += objf_impr;
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Total objf improvement from fMLLR is " << (tot_objf_impr/tot_t_objf)
+    KALDI_LOG << "Total objf improvement from MLLR is " << (tot_objf_impr/tot_t_objf)
               << " per frame over " << tot_t_objf << " frames.";
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
         << " with no posteriors, " << num_other_error << " with other errors.";

@@ -152,6 +152,7 @@ void DecodableAmDiagGmmRegtreeMllr::InitCache() {
   xformed_mean_invvars_.resize(num_pdfs);
   xformed_gconsts_.resize(num_pdfs);
   is_cached_.resize(num_pdfs, false);
+  ResetLogLikeCache();
 }
 
 
@@ -237,7 +238,7 @@ const Vector<BaseFloat>& DecodableAmDiagGmmRegtreeMllr::GetXformedGconsts(
 
 BaseFloat DecodableAmDiagGmmRegtreeMllr::LogLikelihoodZeroBased(int32 frame,
                                                                 int32 state) {
-  KALDI_ERR << "Function not completely implemented yet.";
+//  KALDI_ERR << "Function not completely implemented yet.";
   KALDI_ASSERT(frame < NumFrames() && frame >= 0);
   KALDI_ASSERT(state < NumIndices() && state >= 0);
 
