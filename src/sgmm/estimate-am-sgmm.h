@@ -234,13 +234,15 @@ class MleAmSgmmUpdater {
   std::vector< SpMatrix<double> > S_means_;
   Vector<double> gamma_j_;  ///< State occupancies
 
-  /** Compute the Q_{i} (Eq. 64), S_{i}^{(means)} (Eq. 74), and H_{i}^{spk}
-   * (Eq. 82) stats needed to update the phonetic subspace, covariances, and
-   * speaker vectors respectively.
-   */
-  void PreComputeStats(const MleAmSgmmAccs &accs,
-                       const AmSgmm &model, SgmmUpdateFlagsType flags);
+  ///  Compute the Q_i quantities (Eq. 64).
+  void ComputeQ(const MleAmSgmmAccs &accs,
+                const AmSgmm &model);
 
+  /// Compute the S_i^{(means)} quantities (Eq. 74).
+  void ComputeSMeans(const MleAmSgmmAccs &accs,
+                     const AmSgmm &model);
+  
+  
   void ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
                              const AmSgmm &model,
                              const std::vector< SpMatrix<double> > &H,

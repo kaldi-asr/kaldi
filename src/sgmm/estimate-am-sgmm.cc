@@ -499,7 +499,9 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
                          kSgmmWeightProjections | kSgmmCovarianceMatrix | kSgmmSubstateWeights |
                          kSgmmSpeakerProjections)) != 0);
 
-  PreComputeStats(accs, *model, flags);
+
+  if (flags & kSgmmPhoneProjections)
+    ComputeQ(accs, *model);
 
   // quantities used in both vector and weights updates...
   vector< SpMatrix<double> > H;
@@ -532,6 +534,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
     }
   }
   if (flags & kSgmmCovarianceMatrix) {
+    ComputeSMeans(accs, *model);
     if (update_options_.compress_vars_dim == 0)    
       tot_impr += UpdateVars(accs, model);
     else
@@ -561,56 +564,49 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   model->ComputeNormalizers();  // So that the model is ready to use.
 }
 
-// Compute the Q_{i} (Eq. 64), S_{i}^{(means)} (Eq. 74), and H_{i}^{spk}
-// (Eq. 82) stats needed to update the phonetic subspace, covariances, and
-// speaker vectors respectively.
-void MleAmSgmmUpdater::PreComputeStats(const MleAmSgmmAccs &accs,
-                                       const AmSgmm &model,
-                                       SgmmUpdateFlagsType flags) {
-  if (flags & kSgmmPhoneProjections) {
-    Q_.resize(accs.num_gaussians_);
-    for (int32 i = 0; i < accs.num_gaussians_; ++i) {
-      Q_[i].Resize(accs.phn_space_dim_);
-      for (int32 j = 0; j < accs.num_states_; ++j) {
-        for (int32 m = 0; m < model.NumSubstates(j); ++m) {
-          if (accs.gamma_[j](m, i) > 0.0) {
-            Q_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)),
-                          model.v_[j].Row(m));
-          }
+// Compute the Q_{i} (Eq. 64)
+void MleAmSgmmUpdater::ComputeQ(const MleAmSgmmAccs &accs,
+                                const AmSgmm &model) {
+  Q_.resize(accs.num_gaussians_);
+  for (int32 i = 0; i < accs.num_gaussians_; ++i) {
+    Q_[i].Resize(accs.phn_space_dim_);
+    for (int32 j = 0; j < accs.num_states_; ++j) {
+      for (int32 m = 0; m < model.NumSubstates(j); ++m) {
+        if (accs.gamma_[j](m, i) > 0.0) {
+          Q_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)),
+                        model.v_[j].Row(m));
         }
       }
     }
-  } else {
-    Q_.clear();
   }
+}
 
-  if (flags & kSgmmCovarianceMatrix) {
-    S_means_.resize(accs.num_gaussians_);
-    Matrix<double> YM_MY(accs.feature_dim_, accs.feature_dim_);
-    Vector<BaseFloat> mu_jmi(accs.feature_dim_);
-    for (int32 i = 0; i < accs.num_gaussians_; ++i) {
-      // YM_MY = - (Y_{i} M_{i}^T)
-      YM_MY.AddMatMat(-1.0, accs.Y_[i], kNoTrans,
-                      Matrix<double>(model.M_[i]), kTrans, 0.0);
-      // Add its own transpose: YM_MY = - (Y_{i} M_{i}^T + M_{i} Y_{i}^T)
-      {
-        Matrix<double> M(YM_MY, kTrans);
-        YM_MY.AddMat(1.0, M);
-      }
-      S_means_[i].Resize(accs.feature_dim_, kUndefined);
-      S_means_[i].CopyFromMat(YM_MY);  // Sigma_{i} = -(YM' + MY')
-
-      for (int32 j = 0; j < accs.num_states_; ++j) {
-        for (int32 m = 0; m < model.NumSubstates(j); ++m) {
-          // Sigma_{i} += gamma_{jmi} * mu_{jmi}*mu_{jmi}^T
-          mu_jmi.AddMatVec(1.0, model.M_[i], kNoTrans, model.v_[j].Row(m), 0.0);
-          S_means_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)), mu_jmi);
-        }
-      }
-      KALDI_ASSERT(1.0 / S_means_[i](0, 0) != 0.0);
+// Compute the S_i^{(means)} quantities (Eq. 74).
+void MleAmSgmmUpdater::ComputeSMeans(const MleAmSgmmAccs &accs,
+                                     const AmSgmm &model) {
+  S_means_.resize(accs.num_gaussians_);
+  Matrix<double> YM_MY(accs.feature_dim_, accs.feature_dim_);
+  Vector<BaseFloat> mu_jmi(accs.feature_dim_);
+  for (int32 i = 0; i < accs.num_gaussians_; ++i) {
+    // YM_MY = - (Y_{i} M_{i}^T)
+    YM_MY.AddMatMat(-1.0, accs.Y_[i], kNoTrans,
+                    Matrix<double>(model.M_[i]), kTrans, 0.0);
+    // Add its own transpose: YM_MY = - (Y_{i} M_{i}^T + M_{i} Y_{i}^T)
+    {
+      Matrix<double> M(YM_MY, kTrans);
+      YM_MY.AddMat(1.0, M);
     }
-  } else {
-    S_means_.clear();
+    S_means_[i].Resize(accs.feature_dim_, kUndefined);
+    S_means_[i].CopyFromMat(YM_MY);  // Sigma_{i} = -(YM' + MY')
+
+    for (int32 j = 0; j < accs.num_states_; ++j) {
+      for (int32 m = 0; m < model.NumSubstates(j); ++m) {
+        // Sigma_{i} += gamma_{jmi} * mu_{jmi}*mu_{jmi}^T
+        mu_jmi.AddMatVec(1.0, model.M_[i], kNoTrans, model.v_[j].Row(m), 0.0);
+        S_means_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)), mu_jmi);
+      }
+    }
+    KALDI_ASSERT(1.0 / S_means_[i](0, 0) != 0.0);
   }
 }
 
