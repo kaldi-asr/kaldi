@@ -502,6 +502,8 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
 
   if (flags & kSgmmPhoneProjections)
     ComputeQ(accs, *model);
+  if (flags & kSgmmCovarianceMatrix)
+    ComputeSMeans(accs, *model);
 
   // quantities used in both vector and weights updates...
   vector< SpMatrix<double> > H;
@@ -534,7 +536,6 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
     }
   }
   if (flags & kSgmmCovarianceMatrix) {
-    ComputeSMeans(accs, *model);
     if (update_options_.compress_vars_dim == 0)    
       tot_impr += UpdateVars(accs, model);
     else
