@@ -1,4 +1,4 @@
-// gmmbin/gmm-init-et.cc
+// gmmbin/gmm-et-apply-c.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -28,41 +28,45 @@ int main(int argc, char *argv[])
     using kaldi::int32;
 
     const char *usage =
-        "Initialize exponential tranform\n"
-        "Usage:  gmm-init-et [options] <et-object-out>\n"
-        "e.g.: \n"
-        " gmm-init-et --dim=39  1.et\n";
+        "Given the matrix Cpart which represents an MLLT/STC transform, "
+        "let C = Cpart extended with zeros (and one as the new diagonal element); "
+        "update the A and B matrices with A := C A C^{-1} and B := C B \n"
+        "Usage:  gmm-et-apply-c [options] <et-object-in> <c-matrix-in> <et-object-out>\n"
+        "e.g.:\n"
+        " gmm-et-apply-c 1.et C.mat 2.et\n";
 
     bool binary = true;
-    int32 dim = 13;
-    int32 seed = 0;
-    std::string normalize_type = "offset";
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("dim", &dim, "Feature dimension");
-    po.Register("seed", &seed, "Seed for random initialization of A matrix.");
-    po.Register("normalize-type", &normalize_type, "Normalization type: \"offset\"|\"diag\"|\"none\"");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 1) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-    EtNormalizeType norm_type;
-    if (normalize_type == "offset" || normalize_type == "mean") norm_type = kEtNormalizeMean;
-    else if (normalize_type == "diag" || normalize_type == "mean-and-var") norm_type = kEtNormalizeMeanAndVar;
-    else if (normalize_type == "none") norm_type = kEtNormalizeNone;
-    else
-      KALDI_EXIT << "Invalid option --normalize-type=" << normalize_type;
+    std::string et_rxfilename = po.GetArg(1),
+        cpart_rxfilename = po.GetArg(2),
+        et_wxfilename = po.GetArg(3);
 
-    std::string et_wxfilename = po.GetArg(1);
-
-    ExponentialTransform et(dim, norm_type, seed);
+    ExponentialTransform et;
+    {
+      bool binary_in;
+      Input ki(et_rxfilename, &binary_in);
+      et.Read(ki.Stream(), binary_in);
+    }
+    Matrix<BaseFloat> Cpart;
+    {
+      bool binary_in;
+      Input ki(cpart_rxfilename, &binary_in);
+      Cpart.Read(ki.Stream(), binary_in);
+    }
+    et.ApplyC(Cpart);
     Output ko(et_wxfilename, binary);
     et.Write(ko.Stream(), binary);
+    KALDI_LOG << "Applied C transform and wrote ET object.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

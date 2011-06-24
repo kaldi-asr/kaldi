@@ -28,10 +28,10 @@
 /*
   cd ~/tmpdir
   while true; do
-    fstrand  | fstarcsort --sort_type = olabel > 1.fst; fstrand | fstarcsort > 2.fst
+    fstrand  | fstarcsort --sort_type=olabel > 1.fst; fstrand | fstarcsort > 2.fst
     fstcompose 1.fst 2.fst > 3a.fst
     fsttablecompose 1.fst 2.fst > 3b.fst
-    fstequivalent --random = true 3a.fst 3b.fst || echo "Test failed"
+    fstequivalent --random=true 3a.fst 3b.fst || echo "Test failed"
     echo -n "."
   done
 

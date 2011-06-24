@@ -99,6 +99,12 @@ class ExponentialTransform {
                  MatrixBase<BaseFloat> *Ds) const;  // Computes the D_s matrix,
   // given W_s and  the value of t.
 
+  // takes "Cpart" which is a d x d STC/MLLT matrix, and applies
+  // it to the transform by doing A <-- C A C^{-1}, B <-- C B,
+  // where C is Cpart extended with an extra row and column with values
+  // equal to those in the unit matrix.
+  void ApplyC(const MatrixBase<BaseFloat> &Cpart);
+
   friend class ExponentialTransformAccsA;
   friend class ExponentialTransformAccsB;
  protected:
@@ -134,13 +140,13 @@ class ExponentialTransformAccsB {
                                 const MatrixBase<BaseFloat> &Ds);
 
 
-
-  // The Update function does the MLLT update for B.  It sets "M"
-  // to the transform that we would have to apply to the model means.
+  // The Update function does the MLLT update for B.  It sets "Cpart"
+  // (the first d x d block of C) to the transform that we would have
+  // to apply to the model means.
   void Update(ExponentialTransform *et,
               BaseFloat *objf_impr,
               BaseFloat *count,
-              MatrixBase<BaseFloat> *M);
+              MatrixBase<BaseFloat> *Cpart);
 
   void Write(std::ostream &os, bool binary) const;
 

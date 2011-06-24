@@ -30,11 +30,11 @@
 // should  return 1, not stochastic, and print 1 1
 // (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic
 // should return 0, stochastic; it prints "0 -1.78e-07" for me
-// (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log = false
+// (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log=false
 // should return 1, not stochastic in tropical; it prints "0 0.693147" for me
-// (echo "0 0 0 0 0 "; echo "0 1 0 0 0 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log = false
+// (echo "0 0 0 0 0 "; echo "0 1 0 0 0 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log=false
 // should return 0, stochastic in tropical; it prints "0 0" for me
-// (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log = false --delta = 1
+// (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log=false --delta=1
 // returns 0 even though not stochastic because we gave it an absurdly large delta.
 
 int main(int argc, char *argv[])

@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         "This can be treated as the \"default\" value of the exponential transform.\n"
         "Usage:  gmm-et-get-b [options] <et-object-in> <matrix-out>\n"
         "e.g.: \n"
-        " gmm-et-get-b --dim = 39 1.et B.mat\n";
+        " gmm-et-get-b 1.et B.mat\n";
 
     bool binary = true;
 

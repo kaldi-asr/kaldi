@@ -133,7 +133,7 @@ static bool MustBeQuoted(const std::string &str, ShellType st) {
   // returns true if we need to escape it before putting it into
   // a shell (mainly thinking of bash shell, but should work for others)
   // This is for the convenience of the user so command-lines that are
-  // printed out by ParseOptions::Read (with --print-args = true) are
+  // printed out by ParseOptions::Read (with --print-args=true) are
   // paste-able into the shell and will run.
   // If you use a different type of shell, it might be necessary to
   // change this function.
@@ -404,7 +404,7 @@ bool ParseOptions::SetOption(const std::string& key, const std::string& value) {
 bool ParseOptions::ToBool(std::string str) {
   std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 
-  // allow "" as a valid option for "true", so that --x is the same as --x = true
+  // allow "" as a valid option for "true", so that --x is the same as --x=true
   if ((str.compare("true") == 0) || (str.compare("t") == 0)
       || (str.compare("1") == 0) || (str.compare("") == 0)) {
     return true;

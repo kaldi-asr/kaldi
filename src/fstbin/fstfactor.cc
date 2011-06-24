@@ -30,8 +30,8 @@
   while true; do
     fstrand  > 1.fst
     cat 1.fst |  fstfactor - 2.fst - > 3.fst # just checking pipes work.
-    fstarcsort --sort_type = olabel 2.fst | fsttablecompose - 3.fst  > 1b.fst
-    fstequivalent --random = true 1.fst 1b.fst || echo "Test failed"
+    fstarcsort --sort_type=olabel 2.fst | fsttablecompose - 3.fst  > 1b.fst
+    fstequivalent --random=true 1.fst 1b.fst || echo "Test failed"
     echo -n "."
   done
 

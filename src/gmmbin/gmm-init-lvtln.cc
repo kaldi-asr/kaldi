@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         "Initialize lvtln transforms\n"
         "Usage:  gmm-init-lvtln [options] <lvtln-out>\n"
         "e.g.: \n"
-        " gmm-init-lvtln --dim = 13 --num-classes = 21 --default-class = 10 1.lvtln\n";
+        " gmm-init-lvtln --dim=13 --num-classes=21 --default-class=10 1.lvtln\n";
 
     bool binary = true;
     int32 dim = 13;

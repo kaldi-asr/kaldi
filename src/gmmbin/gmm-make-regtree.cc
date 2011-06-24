@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Build regression class tree.\n"
         "Usage: gmm-make-regtree [options] <model-file> <regtree-out>\n"
-        "E.g.: gmm-make-regtree --silphones = 1:2:3 --state-occs = 1.occs 1.mdl 1.regtree\n"
+        "E.g.: gmm-make-regtree --silphones=1:2:3 --state-occs=1.occs 1.mdl 1.regtree\n"
         " [Note: state-occs come from --write-occs option of gmm-est]\n";
 
     std::string occs_in_filename;

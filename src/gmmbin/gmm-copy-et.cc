@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         "Copy exponential transform object (possibly changing normalization type)\n"
         "Usage:  gmm-copy-et [options] <et-object-in> <et-object-out>\n"
         "e.g.: \n"
-        " gmm-copy-et --normalize-type = mean-and-var  1.et 2.et\n";
+        " gmm-copy-et --normalize-type=mean-and-var  1.et 2.et\n";
 
     bool binary = true;
     std::string normalize_type = "";

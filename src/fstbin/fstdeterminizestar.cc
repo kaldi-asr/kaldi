@@ -40,7 +40,7 @@
   while true; do
     fstrand > 1.fst
     fstpredeterminize out.lst 1.fst | fstdeterminizestar | fstrmsymbols out.lst > 2.fst
-    fstequivalent --random = true 1.fst 2.fst || echo "Test failed"
+    fstequivalent --random=true 1.fst 2.fst || echo "Test failed"
     echo -n "."
   done
 

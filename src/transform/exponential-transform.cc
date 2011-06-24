@@ -277,7 +277,7 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
     // here, the notation ^- means taking off the last row and column to make
     // it dimension d x d.
     // Defining D == C - I (the delta in C, versus I), we can rewrite this as
-    // following using c_i = d_i + e_i (with e_i the unit vector in dimention i):
+    // following using c_i = d_i + e_i (with e_i the unit vector in dimension i):
     //   D_{1:d}^T J -0.5  \sum_{i = 1}^d d_i^T G_i d_i + beta logdet(C^--)     (2)
     // where J = K - S, and
     // s_i = g_{ii},
@@ -297,7 +297,7 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
     //             -tr(J^T A A)
     //  [note that if b is negative we can legitimately panic].
     // so the solution is: t = a / b.
-    // the t we compute is actually a *change* in t ( any previously
+    // the t we compute is actually a *change* in t (any previously
     // estimated t is already treated as a feature-space transform and
     // has been put into the stats).
 
@@ -380,6 +380,23 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
                 << " frames.";
 }
 
+void
+ExponentialTransform::ApplyC(const MatrixBase<BaseFloat> &Cpart) {
+  int32 dim = A_.NumRows() - 1;
+  KALDI_ASSERT(dim > 0 && Cpart.NumRows() == dim && Cpart.NumCols() == dim);
+  
+  Matrix<BaseFloat> C(dim+1, dim+1);
+  C.SetUnit();
+  C.Range(0, dim, 0, dim).CopyFromMat(Cpart);
+  Matrix<BaseFloat> tmp(dim+1, dim+1);
+  tmp.AddMatMat(1.0, C, kNoTrans, B_, kNoTrans, 0.0);
+  B_.CopyFromMat(tmp); // B <-- C B
+  tmp.AddMatMat(1.0, C, kNoTrans, A_, kNoTrans, 0.0);
+  C.Invert();
+  A_.AddMatMat(1.0, tmp, kNoTrans, C, kNoTrans, 0.0); // A <-- C A C^{-1}
+}  
+
+
 void ExponentialTransformAccsA::Init(int32 dim) {
   beta_ = 0.0;
   beta_t_ = 0.0;
@@ -456,7 +473,7 @@ AccumulateFromPosteriors(const DiagGmm &gmm,
 void ExponentialTransformAccsB::Update(ExponentialTransform *et,
                                        BaseFloat *objf_impr_out,
                                        BaseFloat *count_out,
-                                       MatrixBase<BaseFloat> *M) {
+                                       MatrixBase<BaseFloat> *Cpart) {
   int32 dim = G_.size();
   KALDI_ASSERT(beta_ > 2*dim);
   KALDI_ASSERT(dim > 0 && et->Dim() == dim);
@@ -510,9 +527,9 @@ void ExponentialTransformAccsB::Update(ExponentialTransform *et,
   if (count_out)
     *count_out = beta_;
 
-  KALDI_ASSERT(M != NULL && M->NumRows() == dim
-               && M->NumCols() == dim);
-  M->CopyFromMat(transform);  // this is what we would apply to the
+  KALDI_ASSERT(Cpart != NULL && Cpart->NumRows() == dim
+               && Cpart->NumCols() == dim);
+  Cpart->CopyFromMat(transform);  // this is what we would apply to the
   // means.
 
   // HERE: actually apply to A and B.
@@ -522,20 +539,20 @@ void ExponentialTransformAccsB::Update(ExponentialTransform *et,
   //  This way we will have exp(tA') B' = (I + t M A M^{-1} + .. ) M B
   //      = M ( I + t A + .. ) B.
   // To do this we need to extend M with one more row 0 0 ... 0 1.
-  Matrix<BaseFloat> Mfull(dim+1, dim+1);
-  SubMatrix<BaseFloat> Mfull_part(Mfull, 0, dim, 0, dim);
-  Mfull_part.CopyFromMat(transform);
-  Mfull(dim, dim) = 1.0;
-  Matrix<BaseFloat> Mfull_inv(Mfull);
-  Mfull_inv.Invert();
+  Matrix<BaseFloat> Cfull(dim+1, dim+1);
+  SubMatrix<BaseFloat> Cfull_part(Cfull, 0, dim, 0, dim);
+  Cfull_part.CopyFromMat(transform);
+  Cfull(dim, dim) = 1.0;
+  Matrix<BaseFloat> Cfull_inv(Cfull);
+  Cfull_inv.Invert();
   Matrix<BaseFloat> tmp(dim+1, dim+1), new_A(dim+1, dim+1), new_B(dim+1, dim+1);
   // tmp <- A M^{-1}
-  tmp.AddMatMat(1.0, et->A_, kNoTrans, Mfull_inv, kNoTrans, 0.0);
+  tmp.AddMatMat(1.0, et->A_, kNoTrans, Cfull_inv, kNoTrans, 0.0);
   // new_A <-- M tmp
-  new_A.AddMatMat(1.0, Mfull, kNoTrans, tmp, kNoTrans, 0.0);
+  new_A.AddMatMat(1.0, Cfull, kNoTrans, tmp, kNoTrans, 0.0);
   et->A_.CopyFromMat(new_A);
   // new_B <-- M B
-  new_B.AddMatMat(1.0, Mfull, kNoTrans, et->B_, kNoTrans, 0.0);
+  new_B.AddMatMat(1.0, Cfull, kNoTrans, et->B_, kNoTrans, 0.0);
   et->B_.CopyFromMat(new_B);
 
 }
@@ -663,7 +680,8 @@ void ExponentialTransform::ComputeDs(const MatrixBase<BaseFloat> &Ws,
                                      BaseFloat t,
                                      MatrixBase<BaseFloat> *Ds) const {
   int32 dim = A_.NumRows() - 1;
-  Matrix<BaseFloat> mtA(dim+1, dim+1), expmtA(dim+1, dim+1), invB(dim+1, dim+1), tmp(dim, dim+1);
+  Matrix<BaseFloat> mtA(dim+1, dim+1), expmtA(dim+1, dim+1), invB(dim+1, dim+1),
+      tmp(dim, dim+1);
   mtA.CopyFromMat(A_);
   mtA.Scale(-t);
   MatrixExponential<BaseFloat> mexp;
@@ -683,6 +701,7 @@ void ExponentialTransform::ComputeDs(const MatrixBase<BaseFloat> &Ws,
         "exponential-transform object.";
   }
 }
+
 
 void ExponentialTransform::GetDefaultTransform(Matrix<BaseFloat> *transform) const {
   KALDI_ASSERT(transform != NULL);

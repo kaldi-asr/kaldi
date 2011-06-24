@@ -31,7 +31,7 @@
   ( echo "0 1 1 1"; echo "1 2 2 2"; echo "2 3 3 3"; echo "3 0" ) | fstcompile | fstcomposecontext ilabels.sym > tmp.fst
   ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3" ) > phones.txt
   fstmakecontextsyms phones.txt ilabels.sym > context.txt
-  fstprint --isymbols = context.txt --osymbols = phones.txt tmp.fst
+  fstprint --isymbols=context.txt --osymbols=phones.txt tmp.fst
 #  0	1	<eps>/<eps>/a	a
 #  1	2	<eps>/a/b	b
 #  2	3	a/b/c	c
@@ -42,10 +42,10 @@
   ( echo 4; echo 5) > disambig.list
   ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3" ) > phones.txt
   ( echo "0 1 1 1"; echo "1 2 2 2"; echo " 2 3 4 4"; echo "3 4 3 3"; echo "4 5 5 5"; echo "5 0" ) | fstcompile > in.fst
-  fstcomposecontext --disambig-syms = disambig.list ilabels.sym in.fst tmp.fst
-  fstmakecontextsyms --disambig-syms = disambig.list phones.txt ilabels.sym > context.txt
+  fstcomposecontext --disambig-syms=disambig.list ilabels.sym in.fst tmp.fst
+  fstmakecontextsyms --disambig-syms=disambig.list phones.txt ilabels.sym > context.txt
   cp phones.txt phones_disambig.txt;  ( echo "#0 4"; echo "#1 5" ) >> phones_disambig.txt
-  fstprint --isymbols = context.txt --osymbols = phones_disambig.txt tmp.fst
+  fstprint --isymbols=context.txt --osymbols=phones_disambig.txt tmp.fst
 
 #  0	1	<eps>/<eps>/a	a
 #  1	2	<eps>/a/b	b
@@ -74,10 +74,10 @@ int main(int argc, char *argv[])
         # vector<vector<int32> >, which specifies what the labels mean in
         # terms of windows of symbols.
         fstcomposecontext  ilabels.sym  [ in.fst [ out.fst ] ]
-         --disambig-syms = disambig.list
-         --context-size = 3
-         --central-position = 1
-         --binary = false
+         --disambig-syms=disambig.list
+         --context-size=3
+         --central-position=1
+         --binary=false
     */
 
     const char *usage =

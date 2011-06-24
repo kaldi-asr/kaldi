@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
       std::string key = fst_reader.Key();
       if (!feature_reader.HasKey(key)) {
         num_no_feat++;
-        KALDI_WARN << "No features for utterance " << utt;
+        KALDI_WARN << "No features for utterance " << key;
       } else {
         const Matrix<BaseFloat> &features = feature_reader.Value(key);
         VectorFst<StdArc> decode_fst(fst_reader.Value());

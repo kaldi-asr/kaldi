@@ -28,11 +28,11 @@
     pushd ~/tmpdir
     (echo "<eps> 0"; echo "a 1"; echo "b 2" ) > phones.txt
     ( echo 3; echo 4 ) > disambig.list
-    fstmakecontextfst --disambig-syms = disambig.list phones.txt 5 ilabels.sym > C.fst
-    fstmakecontextsyms --disambig-syms = disambig.list phones.txt ilabels.sym > context_syms.txt
+    fstmakecontextfst --disambig-syms=disambig.list phones.txt 5 ilabels.sym > C.fst
+    fstmakecontextsyms --disambig-syms=disambig.list phones.txt ilabels.sym > context_syms.txt
     cp phones.txt phones_disambig.txt;
      ( echo "#0 3"; echo "#1 4"; echo "$ 5" ) >> phones_disambig.txt
-    fstrandgen C.fst | fstprint --isymbols = context_syms.txt --osymbols = phones_disambig.txt
+    fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones_disambig.txt
 
     Example output:
     0   1   <eps>   a

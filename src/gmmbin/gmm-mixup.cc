@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
         "Does GMM mixing up (and Gaussian merging)\n"
         "Usage:  gmm-mixup [options] <model-in> <state-occs-in> <model-out>\n"
         "e.g. of mixing up:\n"
-        " gmm-mixup --mix-up = 4000 1.mdl 1.occs 2.mdl\n"
+        " gmm-mixup --mix-up=4000 1.mdl 1.occs 2.mdl\n"
         "e.g. of merging:\n"
-        " gmm-mixup --merge = 2000 1.mdl 1.occs 2.mdl\n"
+        " gmm-mixup --merge=2000 1.mdl 1.occs 2.mdl\n"
         "e.g. of changing to binary model format:\n"
         " gmm-mixup 1.mdl dontcare 2.mdl\n";
 
