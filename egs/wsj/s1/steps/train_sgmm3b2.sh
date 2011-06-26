@@ -14,7 +14,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
+# 3b2 is with dim=50
 # sgmm3b is as sgmm2b (SGMM with speaker vectors), but using all
 # the training data. 
 # Instead of starting from sgmm2b we start from tri3a.  This means we can
@@ -24,7 +24,7 @@
 
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/sgmm3b
+dir=exp/sgmm3b2
 srcdir=exp/tri3a # more convenient as has graphs and alignments for this data already.
 ubm=exp/ubm3a/final.ubm # 600 UBM comps
 srcmodel=$srcdir/final.mdl
@@ -40,6 +40,8 @@ numleaves=6000 # was 4.2k for GMM system: incresaing it for SGMM system.
 numsubstates=6000 # initial #-substates
 totsubstates=35000 # a little less than #Gauss for baseline GMM system (40k)
 incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
+phn_dim=50
+phn_dim_iter=3 # iter to increase phn dim.
 
 silphonelist=`cat data/silphones.csl`
 randprune=0.1
@@ -76,7 +78,6 @@ cp $srcdir/topo $dir
 # use the same data-subset as last time). 
 # Note: a small number of utterances don't have graphs at this stage because of differences
 # in how the data splitting is done when we switch to using speaker information.
-
 
 echo "Aligning all training data"
 
@@ -134,7 +135,6 @@ done
 wait
 [ -f $dir/.error ] && echo "Error in gselect phase" && exit 1;
 
-
 # Convert alignments generated from previous model, to use as 
 # initial alignments.
 
@@ -157,6 +157,7 @@ for n in 1 2 3; do
 done
 wait
 [ -f $dir/.error ] &&  echo compile-graphs error && exit 1
+
 
 x=0
 while [ $x -lt $numiters ]; do
@@ -183,7 +184,7 @@ while [ $x -lt $numiters ]; do
         sgmm-est-spkvecs --spk2utt=ark:$dir/train$n.spk2utt ${spkvecs_opt[$n]} \
          "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
           --rand-prune=$randprune $dir/$x.mdl \
-         "${featspart[$n]}" ark,s,cs:- ark:$dir/tmp$n.vecs && mv $dir/tmp$n.vecs $dir/cur$n.vecs ) \
+         "${featspart[$n]}" ark:- ark:$dir/tmp$n.vecs && mv $dir/tmp$n.vecs $dir/cur$n.vecs ) \
                    2>$dir/spkvecs.$x.$n.log \
            || touch $dir/.error &
         spkvecs_opt[$n]="--spk-vecs=ark:$dir/cur$n.vecs"
@@ -209,8 +210,14 @@ while [ $x -lt $numiters ]; do
    done
    wait;
    [ -f $dir/.error ] && echo error accumulating stats on iter $x && exit 1  
-   sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$x+1].occs \
-       $dir/$x.mdl "sgmm-sum-accs - $dir/$x.?.acc|" $dir/$[$x+1].mdl  2> $dir/update.$x.log || exit 1;
+   if [ $x == $phn_dim_iter ]; then 
+     phn_dim_opt=--increase-phn-dim=$phn_dim
+   else
+     phn_dim_opt=
+   fi
+   sgmm-est $phn_dim_opt --update-flags=$flags --split-substates=$numsubstates \
+      --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.?.acc|" \
+      $dir/$[$x+1].mdl  2> $dir/update.$x.log || exit 1;
    rm $dir/$x.mdl $dir/$x.?.acc $dir/$x.occs 2>/dev/null
    if [ $x -lt $maxiterinc ]; then 
      numsubstates=$[$numsubstates+$incsubstates]
