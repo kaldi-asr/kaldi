@@ -32,8 +32,11 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     kaldi::SgmmGselectConfig sgmm_opts;
     std::string preselect_rspecifier;
+    std::string likelihood_wspecifier;
     po.Register("preselect", &preselect_rspecifier, "Rspecifier for sets of Gaussians to "
                 "limit gselect to (e.g. for gender dependent systems)");
+    po.Register("write-likes", &likelihood_wspecifier, "Wspecifier for likelihoods per "
+                "utterance");
     sgmm_opts.Register(&po);
     po.Read(argc, argv);
 
@@ -63,6 +66,10 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorVectorWriter gselect_writer(gselect_wspecifier);
+    BaseFloatWriter likelihood_writer;
+    if(likelihood_wspecifier != "" &&
+       !likelihood_writer.Open(likelihood_wspecifier))
+      KALDI_ERR << "Error initializing writer to write likelihoods";
     RandomAccessInt32VectorReader preselect_reader;
     if(preselect_rspecifier != "")
       if(!preselect_reader.Open(preselect_rspecifier))
@@ -98,6 +105,9 @@ int main(int argc, char *argv[]) {
                   << (tot_like_this_file/tot_t_this_file);
       tot_t += tot_t_this_file;
       tot_like += tot_like_this_file;
+
+      if(likelihood_wspecifier != "")
+        likelihood_writer.Write(utt, (tot_like_this_file/tot_t_this_file));
       num_done++;
     }
 
