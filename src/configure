@@ -153,8 +153,114 @@ function linux_atlas_failure { # function we use when we couldn't find
    echo "** $* ***"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
    echo "** you may be able to proceed (replace [somewhere] with a directory)"
+   echo "** or try going to ../tools and running install_atlas.sh, and running"
+   echo "** this script (configure) again."
    exit 1;
 } 
+
+function linux_configure_static {
+  if [ -z $ATLASLIBDIR ]; then
+    if [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.a ]; then
+       ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
+    elif [ -f /usr/local/lib/libatlas.a ]; then
+       ATLASLIBDIR=/usr/local/lib
+    elif [ -f /usr/lib/sse2/libatlas.a ]; then   
+        ATLASLIBDIR=/usr/lib/sse2
+    elif [ -f /usr/lib/libatlas.a ]; then
+        ATLASLIBDIR=/usr/lib
+    else
+        echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
+        return 1;
+    fi
+  elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
+    echo "Could not find libatlas.a in '$ATLASLIBDIR'"
+    return 1;
+  fi
+
+  echo "Looking for ATLAS libs in $ATLASLIBDIR"
+  ATLASLIBS=
+  # The Lapack part of ATLAS seems to appear under various different names.. but it
+  # should always have symbols like ATL_cgetrf defined, so we test for this,
+  # for all the names we have encountered. 
+  for libname in liblapack liblapack_atlas  libclapack; do
+    if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
+      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
+         ATLASLIBS=$ATLASLIBDIR/${libname}.a          
+         echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
+      fi
+    fi
+  done
+  if [ "$ATLASLIBS" == "" ]; then  
+    echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
+    return ;
+  fi
+   
+  for x in libcblas.a libatlas.a libf77blas.a; do
+    if [ ! -f $ATLASLIBDIR/$x ]; then
+      echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
+      return 1;
+    fi
+    ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
+  done    
+
+  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
+  cat makefiles/kaldi.mk.linux >> kaldi.mk
+  echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  exit 0;
+}
+
+function linux_configure_dynamic {
+  if [ -z $ATLASLIBDIR ]; then
+    if [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.so ]; then
+       ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
+    elif [ -f /usr/local/lib/libatlas.so ]; then
+       ATLASLIBDIR=/usr/local/lib
+    elif [ -f /usr/lib/sse2/libatlas.so ]; then   
+        ATLASLIBDIR=/usr/lib/sse2
+    elif [ -f /usr/lib/libatlas.so ]; then
+        ATLASLIBDIR=/usr/lib
+    else
+        echo "Could not find libatlas.so in any of the obvious places... will try dynamic libraries."
+        return 1;
+    fi
+  elif [ ! -f $ATLASLIBDIR/libatlas.so ]; then
+    echo "Could not find libatlas.so in '$ATLASLIBDIR'"
+    return 1;
+  fi
+
+  echo "Looking for ATLAS libs in $ATLASLIBDIR"
+  ATLASLIBS=
+  # The Lapack part of ATLAS seems to appear under various different names.. but it
+  # should always have symbols like ATL_cgetrf defined, so we test for this,
+  # for all the names we have encountered. 
+  for libname in lapack lapack_atlas  clapack; do
+    if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
+      if nm  $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
+         ATLASLIBS="-L$ATLASLIBDIR -l${libname}"
+         echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
+      fi
+    fi
+  done
+  if [ "$ATLASLIBS" == "" ]; then  
+    echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
+    return 1;
+  fi
+   
+  for x in cblas atlas f77blas; do
+    if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
+      echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
+      return 1;
+    fi
+    ATLASLIBS="$ATLASLIBS -l$x"
+  done
+
+
+  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
+  cat makefiles/kaldi.mk.linux >> kaldi.mk
+  echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  exit 0;
+}
+
 
 if [ "`uname`" == "Linux"  ]; then
 
@@ -180,17 +286,17 @@ if [ "`uname`" == "Linux"  ]; then
     fi
 
     if [ $MATHLIB == "CLAPACK" ]; then
-    if [ ! -f makefiles/linux_clapack.mk ]; then
+      if [ ! -f makefiles/linux_clapack.mk ]; then
         failure "makefiles/linux_clapack.mk not found."
-    fi
-    cat makefiles/linux_clapack.mk >> kaldi.mk
-    echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
-    exit 0
-    # TODO(arnab): enable CLAPACK options for Linux
-
+      fi
+      cat makefiles/linux_clapack.mk >> kaldi.mk
+      echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
+      exit 0
+      # TODO(arnab): enable CLAPACK options for Linux
     fi
 
    # We're using ATLAS, but first try to find where the libraries are located.
+   # First we look for the static libraries.
    # We're looking for four libraries, all in the same directory, named libcblas.a,
    # libatlas.a, libf77blas.a, and a library that's variously named liblapack.a, libclapack.a,
    # or liblapack_atlas.a, but which exports the symbol ATL_cgetrf.   
@@ -199,50 +305,8 @@ if [ "`uname`" == "Linux"  ]; then
    # a directory called /usr/lib/atlas containing {liblapack.a,libblas.a}, and linking
    # against just these two libraries worked.  
 
-    if [ -z $ATLASLIBDIR ]; then
-       if [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.a ]; then
-            ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
-       elif [ -f /usr/local/lib/libatlas.a ]; then
-             ATLASLIBDIR=/usr/local/lib
-       elif [ -f /usr/lib/sse2/libatlas.a ]; then   
-             ATLASLIBDIR=/usr/lib/sse2
-       elif [ -f /usr/lib/libatlas.a ]; then
-             ATLASLIBDIR=/usr/lib
-       else
-            failure  Could not find libatlas.a in any of the obvious places... try going to ../tools and running install_atlas.sh
-       fi
-    elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
-    failure "Could not find libatlas.a in '$ATLASLIBDIR'"
-    fi
-
-   echo "Looking for ATLAS libs in $ATLASLIBDIR"
-   ATLASLIBS=
-   # The Lapack part of ATLAS seems to appear undef various different names.. but it
-   # should always have symbols like ATL_cgetrf defined, so we test for this,
-   # for all the names we have encountered. 
-   for libname in liblapack liblapack_atlas  libclapack; do
-      if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
-        if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
-           ATLASLIBS=$ATLASLIBDIR/${libname}.a          
-           echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
-        fi
-      fi
-   done
-   if [ "$ATLASLIBS" == "" ]; then  
-      failure Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
-   fi
-   
-   for x in libcblas.a libatlas.a libf77blas.a; do
-      if [ ! -f $ATLASLIBDIR/$x ]; then
-        linux_atlas_failure Could not find library $x in directory $ATLASLIBDIR
-      fi
-      ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
-   done    
-
-   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
-   cat makefiles/kaldi.mk.linux >> kaldi.mk
-   echo "Configured for Linux with ATLASLIBS =$ATLASLIBS"
-   exit 0;
+   linux_configure_static || linux_configure_dynamic || \
+      linux_atlas_failure "Failed to configure ATLAS lbiraries";
 fi
 
 
