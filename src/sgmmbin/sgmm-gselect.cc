@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
       tot_like += tot_like_this_file;
 
       if(likelihood_wspecifier != "")
-        likelihood_writer.Write(utt, (tot_like_this_file/tot_t_this_file));
+        likelihood_writer.Write(utt, tot_like_this_file);
       num_done++;
     }
 
