@@ -121,6 +121,10 @@ BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
 BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xform,
                                             const AffineXformStats& stats,
                                             MatrixBase<BaseFloat> *out_xform);
+// Simpler implementation I am testing.
+BaseFloat ComputeFmllrMatrixDiagGmmDiagonal2(const MatrixBase<BaseFloat> &in_xform,
+                                             const AffineXformStats& stats,
+                                             MatrixBase<BaseFloat> *out_xform);
 
 /// This does offset-only fMLLR, i.e. it only estimates an offset.
 BaseFloat ComputeFmllrMatrixDiagGmmOffset(const MatrixBase<BaseFloat> &in_xform,

@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
         gpost_writer.Write(key, gpost);
       }
     }
-    std::cerr << "Num frames " << tot_t
+    KALDI_LOG << "Num frames " << tot_t
               << ", avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << '\n';
 
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
               << " with no posteriors, " << num_other_error
               << " with other errors.";
 
-    std::cerr << "Done converting post to gpost\n";
+    KALDI_LOG << "Done converting post to gpost\n";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

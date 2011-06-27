@@ -100,6 +100,7 @@ void UnitTestFmllrDiagGmm() {
   // mean that something is wrong.
 }
 
+
 // This is a test for the diagonal update and also of ApplyModelTransformToStats().
 void UnitTestFmllrDiagGmmDiagonal() {
   using namespace kaldi;

@@ -77,8 +77,10 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
 
   // Now update the G_ stats.  We add our (already-transformed)
   // speaker-specific G stats, times t^2.
-  for (int32 i = 0; i < dim; i++)
+  for (int32 i = 0; i < dim; i++) {
     G_[i].AddSp(t*t, accs.G_[i]);
+    G_[i](i,i) += t*t * accs.K_(i,i);
+  }
 
   // Update the total beta, and the total beta*t (which is needed
   // for a logdet-related term).

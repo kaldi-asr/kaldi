@@ -482,8 +482,8 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
         auxf_improv += auxf_new - auxf_old;
       }
     }
-    auxf_improv /= (stats_.beta_ + 1.0e-10);
     if (auxf_out != NULL) *auxf_out = auxf_improv;
+    auxf_improv /= (stats_.beta_ + 1.0e-10);
 
     KALDI_LOG << "Auxiliary function improvement for FMLLR = " << auxf_improv
         << " per frame over " << stats_.beta_ << " frames. Log-determinant = "

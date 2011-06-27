@@ -305,8 +305,9 @@ if [ "`uname`" == "Linux"  ]; then
    # a directory called /usr/lib/atlas containing {liblapack.a,libblas.a}, and linking
    # against just these two libraries worked.  
 
-   linux_configure_static || linux_configure_dynamic || \
-      linux_atlas_failure "Failed to configure ATLAS lbiraries";
+   linux_configure_static || \
+   linux_configure_dynamic || \
+     linux_atlas_failure "Failed to configure ATLAS lbiraries";
 fi
 
 

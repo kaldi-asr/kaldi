@@ -14,11 +14,9 @@
    documentation for acoustic modeling code.
 
  TODO items (Dan):
-  Remove cpplint.py from distribution.
-  Remove feat/test_data/ (or Karel to get other data?).
+  Remove unused ET stuff.  
   Remove non-Kaldi code from decoder/
   Rename to branches/kaldi-1.0
-  Remove data from feat/test, and corresponding test?
 
   Add code to average over multiple models while aligning...
 

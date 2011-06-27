@@ -205,73 +205,74 @@ BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xfor
                                             MatrixBase<BaseFloat> *out_xform) {
   // The "Diagonal" here means a diagonal fMLLR matrix, i.e. like W = [ A;  b] where
   // A is diagonal.
-  // This routine follows the same basic pattern as for the full case, except we
-  // deal with smaller (2x2) matrices and simplify expressions in some of hte
-  // possible places; we also remove the iterations as they are no longer
-  // necessary.
+  // We re-derived the math (see exponential transform paper) to get a simpler
+  // update rule.
+
+  /*
+  Write out_xform as D, which is a d x d+1 matrix (where d is the feature dimension).
+  We are solving for s == d_{i,i}, and o == d_{i,d}  [assuming zero-based indexing];
+      s is a scale, o is an offset.
+  The stats are K (dimension d x d+1) and G_i for i=0..d-1 (dimension: d+1 x d+1),
+    and the count beta.
+
+ The auxf for the i'th row of the transform is (assuming zero-based indexing):
+
+  s k_{i,i}  +  o k_{i,d}
+  - \frac{1}{2} s^2 g_{i,i,i} - \frac{1}{2} o^2 g_{i,d,d} - s o g_{i,d,i}
+   + \beta \log |s|
+
+   Suppose we know s, we can solve for o:
+      o = (k_{i,d} - s g_{i,d,i}) / g_{i,d,d}
+   Substituting this expression for o into the auxf (and ignoring
+   terms that don't vary with s), we have the auxf:
+
+ \frac{1}{2} s^2 ( g_{i,d,i}^2 / g_{i,d,d}  -  g_{i,i,i} )
+    +  s ( k_{i,i} - g_{i,d,i} k_{i,d} / g_{i,d,d} )
+    + \beta \log |s|
+
+  Differentiating w.r.t. s and assuming s is positive, we have
+    a s + b + c/s = 0
+ where
+   a = (  g_{i,d,i}^2 / g_{i,d,d}  -  g_{i,i,i} ),
+   b = ( k_{i,i} - g_{i,d,i} k_{i,d} / g_{i,d,d} )
+   c = beta
+ Multiplying by s, we have the equation
+   a s^2 + b s + c = 0, where we assume s > 0.
+ We solve it with:
+  s = (-b - \sqrt{b^2 - 4ac}) / 2a
+ [take the negative root because we know a is negative, and this gives
+  the more positive solution for s; the other one would be negative].
+ We then solve for o with the equation above, i.e.:
+     o = (k_{i,d} - s g_{i,d,i}) / g_{i,d,d})
+  */
 
   size_t dim = stats.G_.size();
-
-  // Compute the inverse matrices of second-order statistics,
-  // restricted to just two dimensions.
-  vector< SpMatrix<double> > inv_g(dim);
-  for (size_t d = 0; d < dim; ++d) {
-    inv_g[d].Resize(2);
-    inv_g[d](0, 0) = stats.G_[d](d, d);
-    inv_g[d](1, 0) = stats.G_[d](dim, d);
-    inv_g[d](1, 1) = stats.G_[d](dim, dim);
-    inv_g[d].Invert();
+  double beta = stats.beta_;
+  out_xform->CopyFromMat(in_xform);
+  if(beta == 0.0) {
+    KALDI_WARN << "Computing diagonal fMLLR matrix: no stats [using original transform]";
+    return 0.0;
   }
-
-  Matrix<double> xform(in_xform);
-  KALDI_ASSERT(dim < 2 || xform(1, 0) == 0.0);  // make sure was previously diagonal.
-  BaseFloat obj_improvement = FmllrAuxFuncDiagGmm(xform, stats);
-  double obj_old = obj_improvement, obj_new = 0;
-
-
-  for (size_t d = 0; d < dim; ++d) {
-    // The extended cofactor vector for the current row
-    Vector<double> cofact_row(2);
-    cofact_row(0) = 1.0;
-    Vector<double> k_row(2);
-    k_row(0) = stats.K_(d, d);
-    k_row(1) = stats.K_(d, dim);
-
-    Vector<double> cofact_row_invg(2);
-    cofact_row_invg.AddSpVec(1.0, inv_g[d], cofact_row, 0.0);
-
-    // Solve the quadratic equation for step size
-    double e1 = VecVec(cofact_row_invg, cofact_row);
-    double e2 = VecVec(cofact_row_invg, k_row);
-    double discr = std::sqrt(e2 * e2 + 4 * e1 * stats.beta_);
-    double alpha1 = (-e2 + discr) / (2 * e1);
-    double alpha2 = (-e2 - discr) / (2 * e1);
-    double auxf1 = stats.beta_ * std::log(std::abs(alpha1 * e1 + e2)) -
-        0.5 * alpha1 * alpha1 * e1;
-    double auxf2 = stats.beta_ * std::log(std::abs(alpha2 * e1 + e2)) -
-        0.5 * alpha2 * alpha2 * e1;
-    double alpha = (auxf1 > auxf2) ? alpha1 : alpha2;
-
-    // Update transform row: w_d = (\alpha cofact_d + k_d) G_d^{-1}
-    cofact_row.Scale(alpha);
-    cofact_row.AddVec(1.0, k_row);
-    Vector<double> new_row(2);
-    new_row.AddSpVec(1.0, inv_g[d], cofact_row, 0.0);
-    xform(d, d) = new_row(0);
-    xform(d, dim) = new_row(1);
-
-    // Use the current update only if it does not decrease the likelihood
-    obj_new = FmllrAuxFuncDiagGmm(xform, stats);
-    if (obj_new < obj_old - 1.0e-05*fabs(obj_old))
-      KALDI_WARN << "After update: << Dim ="
-                 << (d) << "; Obj fn decreased (" << (obj_old)
-                 << " --> " << (obj_new) << ")";
-    obj_old = obj_new;
-  }  // end of looping over rows
-  out_xform->CopyFromMat(xform, kNoTrans);
-  obj_improvement = FmllrAuxFuncDiagGmm(*out_xform, stats) - obj_improvement;
-  KALDI_VLOG(2) << "fMLLR objective function improvement = " << (obj_improvement);
-  return obj_improvement;
+  BaseFloat old_obj = FmllrAuxFuncDiagGmm(*out_xform, stats);
+  KALDI_ASSERT(out_xform->Range(0, dim, 0, dim).IsDiagonal()); // orig transform
+  // must be diagonal.
+  for(int32 i = 0; i < dim; i++) {
+    double k_ii = stats.K_(i,i), k_id = stats.K_(i,dim),
+        g_iii = stats.G_[i](i,i), g_idd = stats.G_[i](dim,dim),
+        g_idi = stats.G_[i](dim,i);
+    double a = g_idi*g_idi/g_idd - g_iii,
+        b = k_ii - g_idi*k_id/g_idd,
+        c = beta;
+    double s = (-b - std::sqrt(b*b - 4*a*c)) / (2*a);
+    KALDI_ASSERT(s > 0.0);
+    double o = (k_id - s*g_idi) / g_idd;
+    (*out_xform)(i,i) = s;
+    (*out_xform)(i,dim) = o;
+  }
+  BaseFloat new_obj = FmllrAuxFuncDiagGmm(*out_xform, stats);
+  KALDI_VLOG(2) << "fMLLR objective function improvement = "
+                << (new_obj - old_obj);
+  return new_obj - old_obj;
 }
 
 BaseFloat ComputeFmllrMatrixDiagGmmOffset(const MatrixBase<BaseFloat> &in_xform,
