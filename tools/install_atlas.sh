@@ -16,6 +16,14 @@
 # probably -lclapack -lcblas -latalas -lf77blas, or something like that...
 # let us know what worked.)
 
+# note: to get this install process to work you have to make
+# sure CPU throttling is disabled.  To do this, on some systems
+# you can edit
+# /etc/sysconfig/cpuspeed  
+# to set GOVERNOR=performance
+# You may under some circumstances have to specify -b 32 to the configure
+# script (e.g. if you are compiling Kaldi in 32-bit on a 64-bit CPU).
+
 if [ ! -f atlas3.8.3.tar.gz ]; then
   wget -T 10 -t 3 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || exit 1;
 fi

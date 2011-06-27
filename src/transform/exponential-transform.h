@@ -206,7 +206,9 @@ class ExponentialTransformAccsA {
   std::vector<SpMatrix<double> > G_;  // Like the G stats of
   // fMLLR, taken after the B transform.  Summed over speakers and
   // weighted by t^2.
-  Matrix<double> F_;  // local gradient w.r.t. the first d rows of A.
+  Matrix<double> Ahat_;  // local gradient w.r.t. the first d rows of A.
+                         // note, \hat{A} in the paper has an extra row;
+                         // this is never used.
 };
 
 

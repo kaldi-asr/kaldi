@@ -73,7 +73,7 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
   SubMatrix<double> df_dtA_top_part(df_dtA, 0, dim, 0, dim+1);
 
   // Add to the summed gradient w.r.t the top rows of A.
-  F_.AddMat(t, df_dtA_top_part);
+  Ahat_.AddMat(t, df_dtA_top_part);
 
   // Now update the G_ stats.  We add our (already-transformed)
   // speaker-specific G stats, times t^2.
@@ -95,13 +95,13 @@ ExponentialTransformAccsA::Update(const ExponentialTransformUpdateAOptions &opts
                                   BaseFloat *count_out) {
 
   // some checking here.
-  int32 dim = F_.NumRows();
-  KALDI_ASSERT(dim == F_.NumCols()-1);
+  int32 dim = Ahat_.NumRows();
+  KALDI_ASSERT(dim == Ahat_.NumCols()-1);
 
   /// First, just a quadratic update.  Report objf impr.
   /// Then renormalization of A (also produces change in B).
 
-  Matrix<double> grad(F_);  // derivative of f w.r.t. 1st dim rows of A.
+  Matrix<double> grad(Ahat_);  // derivative of f w.r.t. 1st dim rows of A.
   // Must add in log-det term.
   Matrix<double> unit(dim, dim+1);
   unit.SetUnit();
@@ -274,7 +274,7 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
     // The auxf is:
     //   C_{1:d}^T K -0.5 \sum_{i = 1}^d c_i^T G_i c_i + beta logdet(C^--)      (1)
     // where C_{1:d} is the first d rows of C;
-    // here, the notation ^- means taking off the last row and column to make
+    // here, the notation ^-- means taking off the last row and column to make
     // it dimension d x d.
     // Defining D == C - I (the delta in C, versus I), we can rewrite this as
     // following using c_i = d_i + e_i (with e_i the unit vector in dimension i):
@@ -283,7 +283,7 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
     // s_i = g_{ii},
     // where s_i is the i'th row of S and g_{ii} is the i'th row of G_i.
     // Now, logdet(C^--) is just equal to t tr(A^--), and we can use
-    // a 2n'd order Taylor-series approximation to D as:
+    // a 2'nd order Taylor-series approximation to D as:
     //  D \simeq t A + t^2 A A .
     // Keeping only up to 2nd order terms in (2), we have:
     //  t tr(J^T A_{1:d}) + 0.5 t^2 tr(J^T (A A)_{1:d})
@@ -292,9 +292,9 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
     // using that logdet(exp(tA)^--) is tr(tA^--) = t tr(A^--).
     // Making this a quadratic function in t, we have
     // f(t) = a t -0.5 b t^2,
-    // where  a = tr(J^T A) + beta tr(A)
+    // where  a = tr(J^T A_{1:d}) + beta tr(A)
     //        b = \sum_{i = 1}^d a_i^T G_i a_i
-    //             -tr(J^T A A)
+    //             -tr(J^T (A A)_{1:d})
     //  [note that if b is negative we can legitimately panic].
     // so the solution is: t = a / b.
     // the t we compute is actually a *change* in t (any previously
@@ -318,18 +318,18 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
 
       BaseFloat a = TraceMatMat(Jplus, A_, kTrans) + beta*(A_.Trace());
 
-      BaseFloat b1 = 0.0, b2 = -TraceMatMatMat(Jplus, kTrans, A_, kNoTrans, A_, kNoTrans);
+      BaseFloat b1 = 0.0, b2 = TraceMatMatMat(Jplus, kTrans, A_, kNoTrans, A_, kNoTrans);
       for (int32 i = 0; i < dim; i++) {
         Vector<double> a_row_i(A_.Row(i));
         b1 += VecSpVec(a_row_i, accs.G_[i], a_row_i);
       }
-      if (b2 < -0.8 * b1)  {
+      if (b2 > 0.8 * b1)  {
         KALDI_WARN << "Unexpected quantities in optimizing t: b2 = " << b2
                    << ", b1 = " << b1;
-        b2 = -0.8 * b1;  // at least ensures update has correct sign.
+        b2 = 0.8 * b1;  // at least ensures update has correct sign.
       }
-      BaseFloat delta_t = a / (b1 + b2);
-      BaseFloat delta_objf_approx = (a*delta_t) - 0.5*delta_t*delta_t*(b1+b2);
+      BaseFloat delta_t = a / (b1 - b2);
+      BaseFloat delta_objf_approx = (a*delta_t) - 0.5*delta_t*delta_t*(b1 - b2);
 
       Matrix<BaseFloat> tA(A_), expA(dim+1, dim+1);
       tA.Scale(delta_t);
@@ -403,7 +403,7 @@ void ExponentialTransformAccsA::Init(int32 dim) {
   G_.resize(dim);
   for (int32 i = 0; i < dim; i++)
     G_[i].Resize(dim+1);
-  F_.Resize(dim, dim+1);
+  Ahat_.Resize(dim, dim+1);
 }
 
 void ExponentialTransformAccsB::Init(int32 dim) {
@@ -632,8 +632,8 @@ void ExponentialTransformAccsA::Write(std::ostream &os, bool binary) const {
   WriteMarker(os, binary, "<G>");
   for (int32 i = 0; i < dim; i++)
     G_[i].Write(os, binary);
-  WriteMarker(os, binary, "<F>");
-  F_.Write(os, binary);
+  WriteMarker(os, binary, "<Ahat>");
+  Ahat_.Write(os, binary);
   WriteMarker(os, binary, "</ExponentialTransformAccsA>");
 }
 
@@ -662,8 +662,8 @@ void ExponentialTransformAccsA::Read(std::istream &os, bool binary, bool add) {
   ExpectMarker(os, binary, "<G>");
   for (size_t i = 0; i < G_.size(); i++)
     G_[i].Read(os, binary, add);
-  ExpectMarker(os, binary, "<F>");
-  F_.Read(os, binary, add);
+  ExpectMarker(os, binary, "<Ahat>"); 
+  Ahat_.Read(os, binary, add);
   ExpectMarker(os, binary, "</ExponentialTransformAccsA>");
 }
 
