@@ -17,7 +17,8 @@ exp/decode_tri1_regtree_fmllr/wer:Average WER is 4.707572 (590 / 12533)  # + reg
 exp/decode_tri2a/wer:Average WER is 4.476183 (561 / 12533)  # Second triphone pass
 exp/decode_tri2a_fmllr/wer:Average WER is 3.718184 (466 / 12533)  # + fMLLR
 exp/decode_tri2a_fmllr_utt/wer:Average WER is 4.452246 (558 / 12533)  # [ fMLLR per utterance ]
-exp/decode_tri2b/wer:Average WER is 3.103806 (389 / 12533)  # Exponential transform
+exp/decode_tri2b/wer:Average WER is 2.992101 (375 / 12533)  # Exponential transform
+exp/decode_tri2b_utt/wer:Average WER is 3.247427 (407 / 12533)  # [adapt per-utt]
 exp/decode_tri2c/wer:Average WER is 3.789994 (475 / 12533)  # Cepstral mean subtraction (per-spk)
 exp/decode_tri2d/wer:Average WER is 4.188941 (525 / 12533)  # MLLT (= global STC)
 exp/decode_tri2e/wer:Average WER is 4.923003 (617 / 12533)  # splice-9-frames + LDA features
@@ -31,9 +32,10 @@ exp/decode_tri2g_vtln_nofmllr/wer:Average WER is 4.069257 (510 / 12533) # more c
 exp/decode_tri2h/wer:Average WER is 4.252773 (533 / 12533) # Splice-9-frames + HLDA
 exp/decode_tri2i/wer:Average WER is 4.077236 (511 / 12533) # Triple-deltas + HLDA
 exp/decode_tri2j/wer:Average WER is 3.694247 (463 / 12533) # Triple-deltas + LDA + MLLT
-exp/decode_tri2k/wer:Average WER is 2.768691 (347 / 12533) # LDA + exponential transform
-exp/decode_tri2k_utt/wer:Average WER is 3.024017 (379 / 12533)  # per-utterance adaptation.
-exp/decode_tri2k_fmllr/wer:Average WER is 2.481449 (311 / 12533) # + fMLLR
+exp/decode_tri2k/wer:Average WER is 2.856459 (358 / 12533) # LDA + exponential transform
+exp/decode_tri2k_utt/wer:Average WER is 3.071890 (385 / 12533) # per-utterance adaptation.
+exp/decode_tri2k_fmllr/wer:Average WER is 2.585175 (324 / 12533) # +fMLLR (per-spk)
+exp/decode_tri2k_regtree_fmllr/wer:Average WER is 2.561238 (321 / 12533)  # +regression tree
 exp/decode_tri2l/wer:Average WER is 2.688901 (337 / 12533)   # Splice-9-frames + LDA + MLLT + SAT (fMLLR in test)
 exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tri2l but per-utt in test. ]
 
@@ -49,6 +51,10 @@ exp/decode_sgmmb/wer:Average WER is 2.617091 (328 / 12533)
 exp/decode_sgmmb_utt/wer:Average WER is 2.696880 (338 / 12533) 
 exp/decode_sgmmb_fmllr/wer:Average WER is 2.505386 (314 / 12533) 
 
+# sgmmc is like sgmmb but with gender dependency [doesn't help here]
+exp/decode_sgmmc/wer:Average WER is 2.784649 (349 / 12533) 
+exp/decode_sgmmc_fmllr/wer:Average WER is 2.688901 (337 / 12533) 
+
 # note: when changing (phn,spk) dimensions from (40,39) -> (30,30),
 # WER in decode_sgmmb/ went from 2.62 to 2.92
 # when changing from (40,39) -> (50,39)  [40->50 on iter 3],
@@ -60,3 +66,43 @@ exp/decode_sgmmb_fmllr/wer:Average WER is 2.505386 (314 / 12533)
 # gender info in test.
 exp/decode_sgmmc/wer:Average WER is 2.784649 (349 / 12533) 
 exp/decode_sgmmc_fmllr/wer:Average WER is 2.688901 (337 / 12533) 
+
+
+# notes on timing of training with ATLAS vs. MKL:
+# all below are with -O0.
+# tested time taken with "time steps/train_tri2a.sh"
+#  [on svatava]: with "default" compile (which is 32-bit+ATLAS)
+#   real    14m19.458s
+#   user    15m38.695s
+# 64-bit+ATLAS:
+#
+# 64-bit+MKL:
+# real    12m45.664s
+# user    13m53.770s
+# + removed -O0 -DKALDI_PARANOID:
+# [made almost no difference to training]:
+# real    12m31.829s
+# user    13m48.967s
+# sys 0m28.146s
+
+# 64-bit but ATLAS instead of MKL
+# [and with default options, which includes: -O0 -DKALI_PARANOID].
+#real    10m50.088s
+#user    12m6.914s
+#sys 0m17.419s
+# Did this again:
+#real    10m17.891s
+#user    11m28.695s
+#sys     0m14.087s
+
+# But when I tested "fmllr-diag-gmm-test", all after removing
+# the options -O0 -DKALDI_PARANOID, the ordering of timing was
+# different:
+# 64-bit+ATLAS was 0.361s
+# 64-bit+MKL was 0.307s
+# 32-bit+ATLAS was 0.571s
+
+# Testing /homes/eva/q/qpovey/sourceforge/kaldi/trunk/src/gmm/am-diag-gmm-test:
+# 64-bit+ATLAS was 0.171s
+# 32-bit+ATLAS was 0.205s
+# 64-bit+MKL was 0.291s

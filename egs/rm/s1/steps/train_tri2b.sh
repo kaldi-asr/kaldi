@@ -148,14 +148,16 @@ while [ $x -lt $numiters ]; do
        gmm-et-est-a --verbose=1 $dir/$x.et $dir/$x1.et $dir/$x.et_acc_a 2> $dir/update_a.$x.log || exit 1;
        rm $dir/$x.et_acc_a
      else
-     ( ali-to-post ark:$dir/cur.ali ark:- | \
-       weight-silence-post 0.0 $silphonelist $dir/$x1.mdl ark:- ark:- | \
-       gmm-post-to-gpost $dir/$x1.mdl "$feats" ark:- ark:- | \
-       gmm-et-acc-b $spk2utt_opt --verbose=1 $dir/$x1.mdl $dir/$x.et "$origfeats" ark,s,cs:- ark:$dir/$x.trans ark:$dir/$x.warp $dir/$x.et_acc_b ) 2> $dir/acc_b.$x.log || exit 1;
-       gmm-et-est-b --verbose=1 $dir/$x.et $dir/$x1.et $dir/$x.mat $dir/$x.et_acc_b 2> $dir/update_b.$x.log || exit 1;
-       rm $dir/$x.et_acc_b
-       # Careful!: gmm-transform-means here changes $x1.mdl in-place. 
-       gmm-transform-means $dir/$x.mat $dir/$x1.mdl $dir/$x1.mdl 2> $dir/transform_means.$x.log
+       ( ali-to-post ark:$dir/cur.ali ark:- | \
+        weight-silence-post 0.0 $silphonelist $dir/$x1.mdl ark:- ark:- | \
+        gmm-acc-mllt $dir/$x1.mdl "$feats" ark:- $dir/$x.mllt_acc ) 2> $dir/acc_b.$x.log || exit 1;
+       est-mllt $dir/$x.mat $dir/$x.mllt_acc 2> $dir/update_b.$x.log || exit 1;
+       gmm-et-apply-c $dir/$x.et $dir/$x.mat $dir/$x1.et 2>>$dir/update_b.$x.log || exit 1;
+       gmm-transform-means $dir/$x.mat $dir/$x1.mdl $dir/$x1.mdl 2>> $dir/update_b.$x.log || exit 1;
+       # Modify current transforms by premultiplying by C.
+       compose-transforms $dir/$x.mat ark:$dir/$x.trans ark:$dir/tmp.trans 2>> $dir/update_b.$x.log || exit 1;
+       mv $dir/tmp.trans $dir/$x.trans
+       rm $dir/$x.mat
      fi   
    fi
    if [ $x -le $maxiterinc ]; then
