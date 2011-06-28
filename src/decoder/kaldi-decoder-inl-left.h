@@ -116,8 +116,9 @@ namespace kaldi {
     // scoring
     assert(options_.lm_scale > 0.0);
     // assert(options_.word_penalty <= 0.0);  // does it have to be >0 or <0?
-    DEBUG_OUT2("BeamWidth:" << options_.beamwidth << " LmScale:"
-              << options_.lm_scale << " WordPenalty: " << options_.word_penalty)
+    DEBUG_OUT2("BeamWidth:" << options_.beamwidth << "/" << options_.beamwidth2
+        << " LmScale:" << options_.lm_scale << " WordPenalty: " 
+        << options_.word_penalty)
 
     // filling Queue will be done by VisitNode
     link_store_.Clear();
@@ -125,7 +126,7 @@ namespace kaldi {
     final_token_.weight = Weight::Zero();
     final_token_.arcs = NULL;
     frame_index_ = 0;
-    beam_threshold_ = options_.beamwidth;
+    beam_threshold_ = Weight::Zero(); //do not prune at immediate start
 
     KALDI_LOG << "START DECODING";
     // init decoding queue with source state and initial token
@@ -172,7 +173,7 @@ namespace kaldi {
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
                 << arc.ilabel << ":" << arc.olabel << "/" << arc.weight)
 
-      Token *next_token = active_tokens_.HashCheck(arc.nextstate, arc.ilabel);
+      Token *next_token = active_tokens_.HashCheck(arc.nextstate, arc.ilabel, p_decodable_);
       // gets token and state color from hash
       // checks also that label for arc.nextstate is always the same
       // unexplored emitting links are pushed to front of queue
@@ -207,7 +208,7 @@ namespace kaldi {
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
                 << arc.ilabel << ":" << arc.olabel << "/" << arc.weight)
 
-      Token *next_token = active_tokens_.HashCheck(arc.nextstate, arc.ilabel);
+      Token *next_token = active_tokens_.HashCheck(arc.nextstate, arc.ilabel, p_decodable_);
       // gets token and state color from hash
       // checks also that label for arc.nextstate is always the same
       // unexplored emitting links are pushed to front of queue

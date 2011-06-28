@@ -62,8 +62,9 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
     return (frame == NumFrames() - 1);
   }
 
+  virtual bool ComparePdfId(int32 ind1, int32 ind2) { return ind1 == ind2; }
+  
   void ResetLogLikeCache();
-
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
@@ -99,6 +100,11 @@ class DecodableAmDiagGmm : public DecodableAmDiagGmmUnmapped {
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
+    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
+    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
+    return index1 == index2;
+  }
 
  private:
   const TransitionModel &trans_model_;  // for tid to pdf mapping
@@ -121,6 +127,11 @@ class DecodableAmDiagGmmScaled : public DecodableAmDiagGmmUnmapped {
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
+    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
+    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
+    return index1 == index2;
+  }
 
  private:
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
@@ -149,6 +160,11 @@ class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
+    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
+    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
+    return index1 == index2;
+  }
 
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
@@ -189,6 +205,11 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
+    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
+    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
+    return index1 == index2;
+  }
 
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);

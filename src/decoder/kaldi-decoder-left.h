@@ -450,7 +450,7 @@ class KaldiDecoder {
     // finished non-emitting: ilabel == 0
     // finished emitting: ilabel > 0
     // queued: ilabel < 0
-    inline Token *HashCheck(StateId state, Label ilabel) {
+    inline Token *HashCheck(StateId state, Label ilabel, Decodable *decodable) {
       // retrieves token for state or creates a new one if necessary
       if (hash_.size() <= state) {
         DEBUG_OUT1("resize hash:" << state + 1 + kDecoderBlock)
@@ -461,7 +461,9 @@ class KaldiDecoder {
         DEBUG_OUT2("hashed:"<<hash_[state]->state<<":"<<hash_[state]->ilabel)
         DEBUG_CMD(assert(hash_[state]->state == state))
         // check that all incoming arcs have the same model!
-        DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
+        DEBUG_CMD(if (ilabel > 0)
+          assert(decodable->ComparePdfId(hash_[state]->ilabel, ilabel)))
+        //DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
         DEBUG_CMD(if (ilabel <= 0) assert(hash_[state]->ilabel == 0))
         // this also checks that transducer doesn't contain epsilon loop!
         // it implies that: assert(hash_[state]->ilabel != fst::kNoLabel)
