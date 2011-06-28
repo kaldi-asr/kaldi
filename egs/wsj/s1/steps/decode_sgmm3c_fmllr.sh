@@ -23,7 +23,7 @@
 
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_sgmm3b.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: scripts/decode_sgmm3c_fmllr.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 
@@ -34,15 +34,27 @@ prebeam=12.0
 beam=13.0
 max_active=7000
 silphones=`cat data/silphones.csl`
-model=exp/sgmm3b/final.mdl
-alimodel=exp/sgmm3b/final.alimdl
+model=exp/sgmm3c/final.mdl
+occs=exp/sgmm3c/final.occs
+alimodel=exp/sgmm3c/final.alimdl
+preselectmap=exp/ubm3b/preselect.map
+fmllr_model=exp/sgmm3c/final_fmllr.mdl
 graph=$1
 dir=$2
 job=$3
 scp=$dir/$job.scp
 feats="ark:add-deltas --print-args=false scp:$scp ark:- |"
 
-filenames="$scp $model $graph data/words.txt"
+if [ ! -f $fmllr_model ]; then
+  if [ ! -f $model ]; then
+    echo "Cannot find $model. Maybe training didn't finish?"
+    exit 1;
+  fi
+  sgmm-comp-prexform $model $occs $fmllr_model
+fi
+
+
+filenames="$scp $alimodel $fmllr_model $model $graph data/words.txt"
 for file in $filenames; do
   if [ ! -f $file ] ; then
     echo "No such file $file";
@@ -59,10 +71,17 @@ if [ -f $dir/$job.spk2utt ]; then
   utt2spk_opt=--utt2spk=ark:$dir/$job.utt2spk
 fi
 
+cat data/eval*.utt2spk | \
+ scripts/compose_maps.pl - data/spk2gender.map | \
+ scripts/compose_maps.pl - $preselectmap | \
+ scripts/filter_scp.pl $scp - | \
+   gzip -c > $dir/preselect.$job.gz
+
 echo running on `hostname` > $dir/decode${job}.log
 
 
-sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect${job}.log | \
+sgmm-gselect "--preselect=ark:gunzip -c $dir/preselect.$job.gz|" \
+     $model "$feats" ark,t:- 2>$dir/gselect${job}.log | \
      gzip -c > $dir/gselect${job}.gz || exit 1;
 gselect_opt="--gselect=ark:gunzip -c $dir/gselect${job}.gz|"
 
@@ -76,17 +95,33 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
   sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
   sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
-     ark,t:$dir/${job}.vecs1 ) 2>$dir/vecs1.${job}.log || exit 1;
+     ark:$dir/${job}.vecs1 ) 2>$dir/vecs1${job}.log || exit 1;
 
 ( ali-to-post ark:$dir/${job}.pre_ali ark:- | \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
   sgmm-est-spkvecs --spk-vecs=ark,t:$dir/${job}.vecs1 $spk2utt_opt $model \
    "$feats" ark,s,cs:- ark:$dir/${job}.vecs2 ) 2>$dir/vecs2.${job}.log || exit 1;
 
-sgmm-decode-faster "$gselect_opt" --beam=$beam --max-active=$max_active \
+# second pass of decoding: have spk-vecs but not fMLLR
+sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
    $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs2 \
    --acoustic-scale=$acwt \
    --word-symbol-table=data/words.txt $model $graph "$feats" \
-   ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>$dir/decode${job}.log  || exit 1;
+   ark,t:$dir/$job.pre2_tra ark,t:$dir/$job.pre2_ali  2>$dir/pre2decode${job}.log  || exit 1;
 
+
+# Estimate fMLLR transforms.
+
+( ali-to-post ark:$dir/$job.pre2_ali ark:- | \
+    weight-silence-post 0.01 $silphones $model ark:- ark:- | \
+    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/${job}.vecs2 "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
+	ark:$dir/$job.fmllr ) 2>$dir/est_fmllr${job}.log
+
+feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr ark:- ark:- |"
+
+sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs2 \
+     --beam=$beam --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
+     $fmllr_model $graph "$feats" \
+    ark,t:$dir/${job}.tra ark,t:$dir/${job}.ali  2> $dir/decode${job}.log
 

@@ -76,10 +76,15 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
   sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
   sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
-     ark:$dir/${job}.vecs ) 2>$dir/vecs${job}.log || exit 1;
+     ark:$dir/${job}.vecs1 ) 2>$dir/vecs1${job}.log || exit 1;
+
+( ali-to-post ark:$dir/${job}.pre_ali ark:- | \
+  weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
+  sgmm-est-spkvecs --spk-vecs=ark,t:$dir/${job}.vecs1 $spk2utt_opt $model \
+   "$feats" ark,s,cs:- ark:$dir/${job}.vecs2 ) 2>$dir/vecs2.${job}.log || exit 1;
 
 sgmm-decode-faster "$gselect_opt" --beam=$beam --max-active=$max_active \
-   $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs \
+   $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs2 \
    --acoustic-scale=$acwt \
    --word-symbol-table=data/words.txt $model $graph "$feats" \
    ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>$dir/decode${job}.log  || exit 1;

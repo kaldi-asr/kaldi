@@ -16,8 +16,8 @@
 
 
 # sgmm3c is as sgmm3b (SGMM with speaker vectors, on SI-284 i.e. all the training
-# data), but using gender-dependent UBM (change from 600 UBM components to
-# 400 x 2 = 800 UBM components, 400 per gender).
+# data, and phn-dim=50), but using gender-dependent UBM (change from 600 UBM 
+# components to 400 x 2 = 800 UBM components, 400 per gender).
 
 if [ -f path.sh ]; then . path.sh; fi
 
@@ -34,10 +34,12 @@ realign_iters="5 15 25"; # realign a bit earlier than we did in tri2a,
     # from normal triphone system.
 spkvec_iters="5 8 12 17 22 32"
 maxiterinc=20 # By this iter, we have all the substates.
-numleaves=6000 # was 4.2k for GMM system: incresaing it for SGMM system.
+numleaves=6000 # was 4.2k for GMM system: increasing it for SGMM system.
 numsubstates=6000 # initial #-substates
 totsubstates=35000 # a little less than #Gauss for baseline GMM system (40k)
 incsubstates=$[($totsubstates-$numsubstates)/$maxiterinc] # per-iter increment for #substates
+phn_dim=50
+phn_dim_iter=3 # iter to increase phn dim.
 
 silphonelist=`cat data/silphones.csl`
 randprune=0.1
@@ -174,7 +176,7 @@ while [ $x -lt $numiters ]; do
      rm -f $dir/.error
      for n in 1 2 3; do
        sgmm-align-compiled ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-            "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+            "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
            $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
            "ark:gunzip -c $dir/graphs${n}.fsts.gz|" "${featspart[$n]}" \
            "ark:|gzip -c >$dir/cur${n}.ali.gz" 2> $dir/align.$x.$n.log \
@@ -189,9 +191,9 @@ while [ $x -lt $numiters ]; do
       ( ali-to-post "ark:gunzip -c $dir/cur${n}.ali.gz|" ark:- | \
         weight-silence-post 0.01 $silphonelist $dir/$x.mdl ark:- ark:- | \
         sgmm-est-spkvecs --spk2utt=ark:$dir/train$n.spk2utt ${spkvecs_opt[$n]} \
-         "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+         "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
           --rand-prune=$randprune $dir/$x.mdl \
-         "${featspart[$n]}" ark:- ark:$dir/tmp$n.vecs && mv $dir/tmp$n.vecs $dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
+         "${featspart[$n]}" ark,s,cs:- ark:$dir/tmp$n.vecs && mv $dir/tmp$n.vecs $dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
            || touch $dir/.error &
         spkvecs_opt[$n]="--spk-vecs=ark:$dir/cur$n.vecs"
      done
@@ -210,15 +212,22 @@ while [ $x -lt $numiters ]; do
 
    for n in 1 2 3; do
      sgmm-acc-stats-ali ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-       --update-flags=$flags "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+       --update-flags=$flags "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
        --rand-prune=$randprune --binary=true $dir/$x.mdl "${featspart[$n]}" \
       "ark:gunzip -c $dir/cur$n.ali.gz|" $dir/$x.$n.acc 2> $dir/acc.$x.$n.log \
         || touch $dir/.error &
    done
    wait;
    [ -f $dir/.error ] && echo error accumulating stats on iter $x && exit 1  
-   sgmm-est --update-flags=$flags --split-substates=$numsubstates --write-occs=$dir/$[$x+1].occs \
-       $dir/$x.mdl "sgmm-sum-accs - $dir/$x.?.acc|" $dir/$[$x+1].mdl  2> $dir/update.$x.log || exit 1;
+   if [ $x == $phn_dim_iter ]; then 
+     phn_dim_opt=--increase-phn-dim=$phn_dim
+   else
+     phn_dim_opt=
+   fi
+   sgmm-est $phn_dim_opt --update-flags=$flags --split-substates=$numsubstates \
+      --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
+      "sgmm-sum-accs - $dir/$x.?.acc|" $dir/$[$x+1].mdl \
+       2> $dir/update.$x.log || exit 1;
    rm $dir/$x.mdl $dir/$x.?.acc $dir/$x.occs 2>/dev/null
    if [ $x -lt $maxiterinc ]; then 
      numsubstates=$[$numsubstates+$incsubstates]
@@ -233,7 +242,7 @@ flags=MwcS
 for n in 1 2 3; do
  ( ali-to-post "ark:gunzip -c $dir/cur$n.ali.gz|" ark:- | \
    sgmm-post-to-gpost ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-                "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+                "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
                  $dir/$x.mdl "${featspart[$n]}" ark,s,cs:- ark:- | \
   sgmm-acc-stats-gpost --update-flags=$flags  $dir/$x.mdl "${featspart[$n]}" \
             ark,s,cs:- $dir/$x.$n.aliacc ) 2> $dir/acc_ali.$x.$n.log || touch $dir/.error &

@@ -87,11 +87,16 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
   sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
   sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
-     ark:$dir/${job}.vecs ) 2>$dir/vecs${job}.log || exit 1;
+     ark:$dir/${job}.vecs1 ) 2>$dir/vecs1.${job}.log || exit 1;
+
+( ali-to-post ark:$dir/${job}.pre_ali ark:- | \
+  weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
+  sgmm-est-spkvecs --spk-vecs=ark,t:$dir/${job}.vecs1 $spk2utt_opt $model \
+   "$feats" ark,s,cs:- ark:$dir/${job}.vecs2 ) 2>$dir/vecs2.${job}.log || exit 1;
 
 # second pass of decoding: have spk-vecs but not fMLLR
 sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
-   $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs \
+   $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs2 \
    --acoustic-scale=$acwt \
    --word-symbol-table=data/words.txt $model $graph "$feats" \
    ark,t:$dir/$job.pre2_tra ark,t:$dir/$job.pre2_ali  2>$dir/pre2decode${job}.log  || exit 1;
@@ -102,12 +107,12 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
 ( ali-to-post ark:$dir/$job.pre2_ali ark:- | \
     weight-silence-post 0.01 $silphones $model ark:- ark:- | \
     sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
-    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/${job}.vecs "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
+    sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/${job}.vecs2 "$spk2utt_opt" $fmllr_model "$feats" ark,s,cs:- \
 	ark:$dir/$job.fmllr ) 2>$dir/est_fmllr${job}.log
 
 feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr ark:- ark:- |"
 
-sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs \
+sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/${job}.vecs2 \
      --beam=$beam --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
      $fmllr_model $graph "$feats" \
     ark,t:$dir/${job}.tra ark,t:$dir/${job}.ali  2> $dir/decode${job}.log

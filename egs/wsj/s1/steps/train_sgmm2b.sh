@@ -164,7 +164,7 @@ while [ $x -lt $numiters ]; do
      rm -f $dir/.error
      for n in 1 2 3; do
        sgmm-align-compiled ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-            "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+            "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
            $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
            "ark:gunzip -c $dir/graphs${n}.fsts.gz|" "${featspart[$n]}" \
            "ark:|gzip -c >$dir/cur${n}.ali.gz" 2> $dir/align.$x.$n.log \
@@ -179,9 +179,10 @@ while [ $x -lt $numiters ]; do
       ( ali-to-post "ark:gunzip -c $dir/cur${n}.ali.gz|" ark:- | \
         weight-silence-post 0.01 $silphonelist $dir/$x.mdl ark:- ark:- | \
         sgmm-est-spkvecs --spk2utt=ark:$dir/train$n.spk2utt ${spkvecs_opt[$n]} \
-         "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+         "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
           --rand-prune=$randprune $dir/$x.mdl \
-         "${featspart[$n]}" ark:- ark:$dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
+         "${featspart[$n]}" ark:- ark:$dir/tmp$n.vecs && \
+          mv $dir/tmp$n.vecs $dir/cur$n.vecs ) 2>$dir/spkvecs.$x.$n.log \
            || touch $dir/.error &
         spkvecs_opt[$n]="--spk-vecs=ark:$dir/cur$n.vecs"
      done
@@ -199,7 +200,7 @@ while [ $x -lt $numiters ]; do
 
    for n in 1 2 3; do
      sgmm-acc-stats-ali ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-       --update-flags=$flags "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+       --update-flags=$flags "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
        --rand-prune=$randprune --binary=true $dir/$x.mdl "${featspart[$n]}" \
       "ark:gunzip -c $dir/cur$n.ali.gz|" $dir/$x.$n.acc 2> $dir/acc.$x.$n.log \
         || touch $dir/.error &
@@ -222,7 +223,7 @@ flags=MwcS
 for n in 1 2 3; do
  ( ali-to-post "ark:gunzip -c $dir/cur$n.ali.gz|" ark:- | \
    sgmm-post-to-gpost ${spkvecs_opt[$n]} --utt2spk=ark:$dir/train$n.utt2spk \
-                "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+                "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
                  $dir/$x.mdl "${featspart[$n]}" ark,s,cs:- ark:- | \
   sgmm-acc-stats-gpost --update-flags=$flags  $dir/$x.mdl "${featspart[$n]}" \
             ark,s,cs:- $dir/$x.$n.aliacc ) 2> $dir/acc_ali.$x.$n.log || touch $dir/.error &

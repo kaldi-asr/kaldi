@@ -25,7 +25,7 @@ srcdir=exp/tri1
 
 init-ubm --intermediate-numcomps=2000 --ubm-numcomps=400 --verbose=2 \
     --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
-    $dir/0m.ubm 2> $dir/cluster.log
+    $dir/0.m.ubm 2> $dir/cluster.log
 
 cp $dir/0.m.ubm $dir/0.f.ubm
 

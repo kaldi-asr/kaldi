@@ -74,7 +74,7 @@ gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acw
 (ali-to-post ark:$dir/$job.pre_ali ark:- | \
   weight-silence-post 0.0 $silphones $alimodel ark:- ark:- | \
   gmm-post-to-gpost $alimodel "$defaultfeats" ark,o:- ark:- | \
-  gmm-est-et $spk2utt_opt $model $et "$sifeats" ark,o:- \
+  gmm-est-et --normalize-type=mean-and-var $spk2utt_opt $model $et "$sifeats" ark,o:- \
      ark:$dir/$job.trans ark,t:$dir/$job.warp ) 2>$dir/et${job}.log
 
 feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $ldamat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- |"

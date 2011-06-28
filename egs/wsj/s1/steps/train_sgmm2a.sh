@@ -154,7 +154,7 @@ while [ $x -lt $numiters ]; do
      echo "Aligning data"
      rm -f $dir/.error
      for n in 1 2 3; do
-       sgmm-align-compiled "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+       sgmm-align-compiled "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
            $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
            "ark:gunzip -c $dir/graphs${n}.fsts.gz|" "${featspart[$n]}" \
            "ark:|gzip -c >$dir/cur${n}.ali.gz" 2> $dir/align.$x.$n.log \
@@ -169,7 +169,7 @@ while [ $x -lt $numiters ]; do
      flags=vwcS
    fi
    for n in 1 2 3; do
-     sgmm-acc-stats-ali --update-flags=$flags "--gselect=ark:gunzip -c $dir/gselect$n.gz|" \
+     sgmm-acc-stats-ali --update-flags=$flags "--gselect=ark,s,cs:gunzip -c $dir/gselect$n.gz|" \
        --rand-prune=$randprune --binary=true $dir/$x.mdl "${featspart[$n]}" \
       "ark:gunzip -c $dir/cur$n.ali.gz|" $dir/$x.$n.acc 2> $dir/acc.$x.$n.log \
         || touch $dir/.error &

@@ -209,20 +209,21 @@ while [ $x -lt $numiters ]; do
        for n in 1 2 3; do
        ( ali-to-post "ark:gunzip -c $dir/cur${n}.ali.gz|" ark:- | \
          weight-silence-post 0.0 $silphonelist $dir/$x1.mdl ark:- ark:- | \
-         gmm-post-to-gpost $dir/$x1.mdl "${featspart[$n]}" ark:- ark:- | \
-         gmm-et-acc-b --spk2utt=ark:$dir/train$n.spk2utt --verbose=1 $dir/$x1.mdl $dir/$x.et \
-          "${origfeatspart[$n]}" ark,s,cs:- ark:$dir/$x.$n.trans ark:$dir/$x.$n.warp $dir/$x.$n.et_acc_b ) \
-          2> $dir/acc_b.$x.$n.log || touch $dir/.error &
+         gmm-acc-mllt $dir/$x1.mdl "${featspart[$n]}" ark,s,cs:- $dir/$x.$n.mllt_acc ) \
+          2> $dir/acc_b.$x.$n.log || touch $dir/.error & 
        done
        wait 
-       [ -f $dir/.error ] && echo error computing stats to accumulate B && exit 1
-       gmm-et-est-b --verbose=1 $dir/$x.et $dir/$x1.et $dir/$x.mat $dir/$x.?.et_acc_b \
-          2> $dir/update_b.$x.log || exit 1;
-       rm $dir/$x.?.et_acc_b
-       # Careful!: gmm-transform-means here changes $x1.mdl in-place. 
-       # It's important that the very next thing we do after this is to re-estimate 
-       # the ET transforms: any existing transforms would be invalid.
-       gmm-transform-means $dir/$x.mat $dir/$x1.mdl $dir/$x1.mdl 2> $dir/transform_means.$x.log
+       [ -f $dir/.error ] && echo error computing stats for estimating B && exit 1
+       est-mllt $dir/$x.mat $dir/$x.{1,2,3}.mllt_acc 2>$dir/update_b.$x.log || exit 1;
+       rm $dir/$x.{1,2,3}.mllt_acc
+       gmm-et-apply-c $dir/$x.et $dir/$x.mat $dir/$x1.et 2>>$dir/update_b.$x.log || exit 1;
+       gmm-transform-means $dir/$x.mat $dir/$x1.mdl $dir/$x1.mdl 2>> $dir/update_b.$x.log || exit 1;
+       # Modify current transforms by premultiplying by C.
+       for n in 1 2 3; do
+         compose-transforms $dir/$x.mat ark:$dir/$x.$n.trans ark:$dir/tmp.trans 2>> $dir/update_b.$x.log || exit 1;
+         mv $dir/tmp.trans $dir/$x.$n.trans
+       done
+       rm $dir/$x.mat
      fi   
    fi
 

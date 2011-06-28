@@ -150,6 +150,8 @@ fi
 # disks.  I put it in the repository.
 
 cat links/11-13.1/wsj0/doc/spkrinfo.txt \
+    links/13-32.1/wsj1/doc/evl_spok/spkrinfo.txt \
+    links/13-34.1/wsj1/doc/dev_spok/spkrinfo.txt \
     links/13-34.1/wsj1/doc/train/spkrinfo.txt \
    ./wsj0-train-spkrinfo.txt  | \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
