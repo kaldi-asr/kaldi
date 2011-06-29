@@ -41,3 +41,4 @@ wait;
 
 cat $root_out/train_raw_mfcc{1,2,3,4}.scp > data/train.scp
 
+echo Succeeded "(probably)"

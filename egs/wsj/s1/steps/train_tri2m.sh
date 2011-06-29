@@ -14,24 +14,22 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
-# tri2g is as tri2a but using "linear VTLN" (a VTLN
-# substitute); at the end, it converts in one pass to actual VTLN
-# features (we use this as an alternative to LVTLN).
-# See tri3g for a full-size (si-284) system that builds from this.
+# tri2m is as tri2g ("linear VTLN", and training normal VTLN at the end),
+# except basing it on LDA+MLLT features, not deltas.
 
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/tri2g
-srcdir=exp/tri1
+dir=exp/tri2m
+srcdir=exp/tri2f
 srcmodel=$srcdir/final.mdl
+mat=$srcdir/final.mat
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 # This block of parameters relates to LVTLN.
 compute_vtlnmdl=true # If true, at the end compute a model with actual feature-space
                      # VTLN features.  You can decode with this as an alternative to
                      # final.mdl which takes the LVTLN features.
-dim=39 # the dim of our features.
+dim=40 # the dim of our features.
 lvtln_iters="2 4 6 8 12"; # Recompute LVTLN transforms on these iters.
 numfiles=40 # Number of feature files for computing LVTLN transforms.
 numclass=31; # Can't really change this without changing the script below
@@ -68,11 +66,11 @@ done
 
 # also see featspart below, used for sub-parts of the features;
 # try to keep them in sync.
-feats="ark,s,cs:add-deltas --print-args=false scp:$dir/train.scp ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/cur?.trans|\" ark:- ark:- |"
-srcfeats="ark,s,cs:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
+feats="ark,s,cs:splice-feats --print-args=false scp:$dir/train.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/cur?.trans|\" ark:- ark:- |"
+srcfeats="ark,s,cs:splice-feats --print-args=false scp:$dir/train.scp ark:- | transform-feats $mat ark:- ark:- |"
 for n in 1 2 3; do
-   featspart[$n]="ark,s,cs:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk ark:$dir/cur$n.trans ark:- ark:- |"
-   srcfeatspart[$n]="ark,s,cs:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
+   featspart[$n]="ark,s,cs:splice-feats --print-args=false scp:$dir/train${n}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk ark:$dir/cur$n.trans ark:- ark:- |"
+   srcfeatspart[$n]="ark,s,cs:splice-feats --print-args=false scp:$dir/train${n}.scp ark:- | transform-feats $mat ark:- ark:- |"
 done
 
 cp $srcdir/topo $dir
@@ -84,13 +82,13 @@ gmm-init-lvtln --dim=$dim --num-classes=$numclass --default-class=$defaultclass 
 
 # Small subset of features for initializing the LVTLN.
 
-featsub="ark:scripts/subset_scp.pl $numfiles $dir/train.scp | add-deltas scp:- ark:- |"
+featsub="ark:scripts/subset_scp.pl $numfiles $dir/train.scp | splice-feats scp:- ark:- | transform-feats $mat ark:- ark:- |"
 
 echo "Initializing lvtln transforms."
 c=0
 while [ $c -lt $numclass ]; do 
   warp=`perl -e 'print 0.85 + 0.01*$ARGV[0];' $c` 
-  featsub_warp="ark:scripts/subset_scp.pl $numfiles $dir/train_wav.scp | compute-mfcc-feats  --vtln-low=100 --vtln-high=-600 --vtln-warp=$warp --config=conf/mfcc.conf scp:- ark:- | add-deltas ark:- ark:- |"
+  featsub_warp="ark:scripts/subset_scp.pl $numfiles $dir/train_wav.scp | compute-mfcc-feats  --vtln-low=100 --vtln-high=-600 --vtln-warp=$warp --config=conf/mfcc.conf scp:- ark:- | splice-feats ark:- ark:- | transform-feats $mat ark:- ark:- |"
   gmm-train-lvtln-special --normalize-var=true $c $dir/0.lvtln $dir/0.lvtln \
     "$featsub" "$featsub_warp" 2> $dir/train_special.$c.log || exit 1;
   c=$[$c+1]
@@ -256,7 +254,7 @@ if [ $compute_vtlnmdl == "true" ]; then
    #  LVTLN also globally normalized the variance of each warp factor, so this seems
    #  appropriate). 
    for n in 1 2 3; do
-     vtlnfeats="ark:add-deltas ark:$dir/tmp$n.ark ark:- |"
+     vtlnfeats="ark:splice-feats ark:$dir/tmp$n.ark ark:- | transform-feats $mat ark:- ark:- |"
      ( ali-to-post "ark:gunzip -c $dir/cur$n.ali.gz|" ark:-  | \
       weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
       gmm-est-fmllr --fmllr-update-type=diag --spk2utt=ark:$dir/train$n.spk2utt \
@@ -267,7 +265,7 @@ if [ $compute_vtlnmdl == "true" ]; then
    [ -f $dir/.error ] && echo error computing fMLLR transforms after VTLN && exit 1
 
    # all the features, with diagonal fMLLR
-   vtlnfeats="ark:cat $dir/tmp?.ark | add-deltas ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/vtln?.trans|\" ark:- ark:- |"
+   vtlnfeats="ark:cat $dir/tmp?.ark | splice-feats ark:- ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $dir/vtln?.trans|\" ark:- ark:- |"
 
   ( ali-to-post "ark:gunzip -c $dir/cur?.ali.gz|" ark:-  | \
     gmm-acc-stats-twofeats $dir/$x.mdl "$feats" "$vtlnfeats" ark,s,cs:- $dir/$x.acc3 ) 2>$dir/acc_vtlnmdl.log || exit 1;

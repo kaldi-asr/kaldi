@@ -65,7 +65,6 @@ steps/train_tri2a.sh
 (steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh )&
 
 
-
 # Then do the same for 2b, 2c, and so on
 # 2a = basic triphone (all features double-deltas unless stated).
 # 2b = exponential transform
@@ -79,8 +78,9 @@ steps/train_tri2a.sh
 # 2j = triple-deltas + LDA + MLLT
 # 2k = LDA + ET (equiv to LDA+MLLT+ET)
 # 2l = splice-9-frames + LDA + MLLT + SAT (i.e. train with CMLLR)
+# 2m = splice-9-frames + LDA + MLLT + LVTLN [depends on 2f]
 
-for group in "b c d e" "f g h i" "j k l"; do 
+for group in "b c d e" "f g h i" "j k l m"; do 
   for x in $group; do
     steps/train_tri2$x.sh &
   done
@@ -115,7 +115,7 @@ steps/train_ubma.sh
 (steps/train_sgmmb.sh; steps/decode_sgmmb.sh; steps/decode_sgmmb_fmllr.sh; steps/decode_sgmmb_utt.sh )&
 
 # + gender dependency.
-(steps/train_sgmmc.sh; steps/decode_sgmmc.sh; steps/decode_sgmmc_fmllr.sh )&
+(steps/train_ubmb.sh; steps/train_sgmmc.sh; steps/decode_sgmmc.sh; steps/decode_sgmmc_fmllr.sh )&
 
 
 

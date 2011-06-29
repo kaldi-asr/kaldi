@@ -49,12 +49,12 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   ( ali-to-post ark:$dir/test_${test}.pre_ali ark:- | \
     weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
     sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
-    sgmm-est-spkvecs-gpost "$spk2utt_opt" $model "$feats" ark,s,cs:- \
+    sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
        ark:$dir/test_${test}.vecs1 ) 2>$dir/vecs1_${test}.log
 
   ( ali-to-post ark:$dir/test_${test}.pre_ali ark:- | \
     weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
-    sgmm-est-spkvecs --spk-vecs=ark:$dir/test_${test}.vecs1 "$spk2utt_opt" \
+    sgmm-est-spkvecs --spk-vecs=ark:$dir/test_${test}.vecs1 $spk2utt_opt \
       $model "$feats" ark,s,cs:- ark:$dir/test_${test}.vecs2 ) 2>$dir/vecs2_${test}.log
   
 

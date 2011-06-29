@@ -54,8 +54,8 @@ compute-cmvn-stats $spk2utt_opt "$srcfeats" ark:$dir/cmvn.ark 2>$dir/cmvn.log
 feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- | apply-cmvn $utt2spk_opt ark:$dir/cmvn.ark ark:- ark:- |"
 
 for n in 1 2 3; do
-   srcfeatspart[$n]="ark:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
-   featspart[$n]="ark:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- | apply-cmvn $utt2spk_opt ark:$dir/cmvn.ark ark:- ark:- |"
+   srcfeatspart[$n]="ark,s,cs:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
+   featspart[$n]="ark,s,cs:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- | apply-cmvn $utt2spk_opt ark:$dir/cmvn.ark ark:- ark:- |"
 done
 
 cp $srcdir/topo $dir

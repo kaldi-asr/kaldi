@@ -43,7 +43,7 @@ BaseFloat DecodableAmDiagGmmUnmapped::LogLikelihoodZeroBased(
   // check if everything is in order
   if (pdf.Dim() != data.Dim()) {
     KALDI_ERR << "Dim mismatch: data dim = "  << data.Dim()
-        << "vs. model dim = " << pdf.Dim();
+        << " vs. model dim = " << pdf.Dim();
   }
   if (!pdf.valid_gconsts()) {
     KALDI_ERR << "State "  << (state)  << ": Must call ComputeGconsts() "
@@ -96,7 +96,7 @@ BaseFloat DecodableAmDiagGmmRegtreeFmllr::LogLikelihoodZeroBased(int32 frame,
   // check if everything is in order
   if (pdf.Dim() != data.Dim()) {
     KALDI_ERR << "Dim mismatch: data dim = "  << data.Dim()
-        << "vs. model dim = " << pdf.Dim();
+        << " vs. model dim = " << pdf.Dim();
   }
   if (!pdf.valid_gconsts()) {
     KALDI_ERR << "State "  << (state)  << ": Must call ComputeGconsts() "
@@ -252,7 +252,7 @@ BaseFloat DecodableAmDiagGmmRegtreeMllr::LogLikelihoodZeroBased(int32 frame,
   // check if everything is in order
   if (pdf.Dim() != data.Dim()) {
     KALDI_ERR << "Dim mismatch: data dim = "  << data.Dim()
-        << "vs. model dim = " << pdf.Dim();
+        << " vs. model dim = " << pdf.Dim();
   }
 
   if (frame != previous_frame_) {  // cache the squared stats.
