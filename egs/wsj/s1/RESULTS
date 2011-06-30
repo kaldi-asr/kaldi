@@ -33,6 +33,8 @@ system:
  tri2a        12.5       18.3      14.3       21.0    |  tri2a is delta+delta-deltas.
   +fmllr[spk] 11.4       15.5
         [utt] 12.5       18.4                         
+ +dfmllr[spk] 12.7       17.2                         | [diagonal-only fMLLR]
+        [utt] 12.6       17.3
  tri3a        10.7       13.8      11.9       15.0    | tri3a is as tri2a but all SI-284 data.
  +fmllr[spk]  9.5        12.1
    [diagonal] 10.5       12.7
@@ -50,6 +52,7 @@ system:
  tri2g[spk]   11.1       16.4                         | as tri2a but linear-VTLN [per-spk]
  tri2g[utt]   11.2       16.2                         | per-utt.
  +diag[spk]   10.7       16.5                         |  + diagonal, not just mean-only fMLLR
+   [+fMLLR]   10.3       15.4                         |    [ est. fMLLR after VTLN+diag transform]
  +diag[utt]   11.1       16.1                         |  [all per-utt]
  +vtln,diag   10.9       15.9                         | actual VTLN, plus diag-FMLLR
   [utt]       10.9       16.1                         |  [all per-utt]
@@ -64,6 +67,7 @@ system:
  tri2m        10.8       15.0                         | [LDA + MLLT + Linear VTLN]
   [utt]       10.6       14.4                         |  [per-utt, not per-spk]
   [diag]      10.7       14.6                         |  [diagonal, not just offset, CMLLR component]
+   [+fMLLR]   10.1       13.7                         |    [ est. fMLLR after VTLN+diag transform]
   [diag;utt]  10.8       14.5                         |   [per-utterance]
   [vtln;diag] 10.7       14.9                         |  [feature-level VTLN; diagonal CMLLR]
    [utt]      10.6       14.4                         |   [per-utterance]
@@ -102,6 +106,8 @@ exp/decode_tri2f_tgpr_eval92/wer:%WER 12.23 [ 690 / 5641, 138 ins, 57 del, 495 s
 exp/decode_tri2f_tgpr_eval93/wer:%WER 17.74 [ 610 / 3439, 68 ins, 85 del, 457 sub ]
 exp/decode_tri2g_tgpr_diag_eval92/wer:%WER 10.65 [ 601 / 5641, 111 ins, 55 del, 435 sub ]
 exp/decode_tri2g_tgpr_diag_eval93/wer:%WER 16.49 [ 567 / 3439, 77 ins, 72 del, 418 sub ]
+exp/decode_tri2g_tgpr_diag_fmllr_eval92/wer:%WER 10.25 [ 578 / 5641, 115 ins, 60 del, 403 sub ]
+exp/decode_tri2g_tgpr_diag_fmllr_eval93/wer:%WER 15.38 [ 529 / 3439, 70 ins, 71 del, 388 sub ]
 exp/decode_tri2g_tgpr_eval92/wer:%WER 11.08 [ 625 / 5641, 119 ins, 57 del, 449 sub ]
 exp/decode_tri2g_tgpr_eval93/wer:%WER 16.40 [ 564 / 3439, 72 ins, 68 del, 424 sub ]
 exp/decode_tri2g_tgpr_utt_diag_eval92/wer:%WER 11.10 [ 626 / 5641, 119 ins, 60 del, 447 sub ]
@@ -130,6 +136,8 @@ exp/decode_tri2l_tgpr_utt_eval92/wer:%WER 12.00 [ 677 / 5641, 141 ins, 60 del, 4
 exp/decode_tri2l_tgpr_utt_eval93/wer:%WER 16.75 [ 576 / 3439, 59 ins, 93 del, 424 sub ]
 exp/decode_tri2m_tgpr_diag_eval92/wer:%WER 10.67 [ 602 / 5641, 125 ins, 52 del, 425 sub ]
 exp/decode_tri2m_tgpr_diag_eval93/wer:%WER 14.57 [ 501 / 3439, 67 ins, 64 del, 370 sub ]
+exp/decode_tri2m_tgpr_diag_fmllr_eval92/wer:%WER 10.12 [ 571 / 5641, 127 ins, 48 del, 396 sub ]
+exp/decode_tri2m_tgpr_diag_fmllr_eval93/wer:%WER 13.67 [ 470 / 3439, 69 ins, 64 del, 337 sub ]
 exp/decode_tri2m_tgpr_eval92/wer:%WER 10.81 [ 610 / 5641, 126 ins, 51 del, 433 sub ]
 exp/decode_tri2m_tgpr_eval93/wer:%WER 15.00 [ 516 / 3439, 66 ins, 66 del, 384 sub ]
 exp/decode_tri2m_tgpr_utt_diag_eval92/wer:%WER 10.83 [ 611 / 5641, 118 ins, 55 del, 438 sub ]
@@ -167,6 +175,10 @@ exp/decode_tri2a_tgpr_eval92/wer:%WER 12.52 [ 706 / 5641, 127 ins, 60 del, 519 s
 exp/decode_tri2a_tgpr_eval93/wer:%WER 18.29 [ 629 / 3439, 47 ins, 104 del, 478 sub ]
 exp/decode_tri2a_tgpr_fmllr_eval92/wer:%WER 11.42 [ 644 / 5641, 116 ins, 60 del, 468 sub ]
 exp/decode_tri2a_tgpr_fmllr_utt_eval92/wer:%WER 12.48 [ 704 / 5641, 128 ins, 56 del, 520 sub ]
+exp/decode_tri2a_tgpr_dfmllr_eval92/wer:%WER 12.78 [ 721 / 5641, 131 ins, 59 del, 531 sub ]
+exp/decode_tri2a_tgpr_dfmllr_eval93/wer:%WER 17.16 [ 590 / 3439, 53 ins, 86 del, 451 sub ]
+exp/decode_tri2a_tgpr_dfmllr_utt_eval92/wer:%WER 12.59 [ 710 / 5641, 124 ins, 57 del, 529 sub ]
+exp/decode_tri2a_tgpr_dfmllr_utt_eval93/wer:%WER 17.27 [ 594 / 3439, 52 ins, 86 del, 456 sub ]
 exp/decode_tri2b_tgpr_eval92/wer:%WER 11.24 [ 634 / 5641, 120 ins, 55 del, 459 sub ]
 exp/decode_tri2b_tgpr_eval93/wer:%WER 15.70 [ 540 / 3439, 50 ins, 89 del, 401 sub ]
 exp/decode_tri2b_tgpr_fmllr_eval92/wer:%WER 10.46 [ 590 / 5641, 115 ins, 54 del, 421 sub ]

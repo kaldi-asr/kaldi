@@ -24,8 +24,10 @@
 # $decode_dir/${job_number}.utt2spk and $decode_dir/${job_number}.spk2utt exist,
 # this script will assume you want to do per-speaker (not per-utterance) adaptation.
 
+# Does another pass of fMLLR after the LVTLN+diag transform
+
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_tri2b_fmllr.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: scripts/decode_tri2m_diag_fmllr.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 
@@ -33,20 +35,20 @@ fi
 
 acwt=0.0625
 beam=13.0
+mincount=300 # for fMLLR
 prebeam=12.0 # first-pass decoding beam...
 max_active=7000
-mincount=500
-alimodel=exp/tri2b/final.alimdl # first-pass model...
-model=exp/tri2b/final.mdl
-et=exp/tri2b/final.et
-defaultmat=exp/tri2b/default.mat
+alimodel=exp/tri2m/final.alimdl # first-pass model...
+model=exp/tri2m/final.mdl
+lvtln=exp/tri2m/0.lvtln
+mat=exp/tri2f/final.mat
+#####################
 silphones=`cat data/silphones.csl`
 graph=$1
 dir=$2
 job=$3
 scp=$dir/$job.scp
-sifeats="ark:add-deltas --print-args=false scp:$scp ark:- |"
-defaultfeats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $defaultmat ark:- ark:- |"
+sifeats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $mat ark:- ark:- |"
 if [ -f $dir/$job.spk2utt ]; then
   if [ ! -f $dir/$job.utt2spk ]; then
      echo "spk2utt but not utt2spk file present!"
@@ -68,28 +70,30 @@ echo running on `hostname` > $dir/predecode${job}.log
 
 # First-pass decoding 
 
-gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $alimodel $graph "$defaultfeats" ark,t:$dir/$job.pre_tra ark,t:$dir/$job.pre_ali  2>>$dir/predecode${job}.log  || exit 1
+gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $alimodel $graph "$sifeats" ark,t:$dir/$job.pre1.tra ark,t:$dir/$job.pre1.ali  2>>$dir/predecode1.${job}.log 
 
 # Estimate transforms
-( ali-to-post ark:$dir/$job.pre_ali ark:- | \
+ali-to-post ark:$dir/$job.pre1.ali ark:- | \
   weight-silence-post 0.0 $silphones $alimodel ark:- ark:- | \
-  gmm-post-to-gpost $alimodel "$defaultfeats" ark,o:- ark:- | \
-  gmm-est-et $spk2utt_opt $model $et "$sifeats" ark,o:- \
-     ark:$dir/$job.trans ark,t:$dir/$job.warp ) 2>$dir/et${job}.log || exit 1
+  gmm-post-to-gpost $alimodel "$sifeats" ark,o:- ark:- | \
+  gmm-est-lvtln-trans --norm-type=diag $spk2utt_opt $model $lvtln "$sifeats" ark,o:- \
+     ark:$dir/$job.lvtln_trans ark,t:$dir/$job.warp 2>$dir/lvtln${job}.log
 
-feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- |"
+feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.lvtln_trans ark:- ark:- |"
 
-# Intermediate decoding
-echo running on `hostname` > $dir/pre2decode$job.log
-gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.pre2_tra ark,t:$dir/$job.pre2_ali  2>>$dir/pre2decode$job.log  || exit 1
+# Second-pass decoding
+echo running on `hostname` > $dir/decode$job.log
+gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.pre2.tra ark,t:$dir/$job.pre2.ali  2>>$dir/predecode2.$job.log 
 
-# Estimate fMLLR transforms
-( ali-to-post ark:$dir/$job.pre2_ali ark:- | \
+# Estimate transforms
+( ali-to-post ark:$dir/$job.pre2.ali ark:- | \
   weight-silence-post 0.0 $silphones $alimodel ark:- ark:- | \
-  gmm-est-fmllr --fmllr-min-count=$mincount $spk2utt_opt $model "$feats" ark,o:- \
-     ark:$dir/$job.trans2 ) 2>$dir/fmllr${job}.log || exit 1
+  gmm-est-fmllr $spk2utt_opt --fmllr-min-count=$mincount $model "$feats" \
+     ark:- ark,t:$dir/$job.fmllr_trans  2>$dir/fmllr${job}.log ) || exit 1;
 
-feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.trans2 ark:- ark:- |"
+feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.lvtln_trans ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr_trans ark:- ark:- |"
 
+# Final decoding
 echo running on `hostname` > $dir/decode$job.log
 gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode$job.log 
+

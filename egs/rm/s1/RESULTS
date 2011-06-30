@@ -20,7 +20,12 @@ exp/decode_tri1_regtree_fmllr/wer:Average WER is 3.789994 (475 / 12533) # + regr
 exp/decode_tri2a/wer:Average WER is 3.973510 (498 / 12533)  # Second triphone pass
 exp/decode_tri2a_fmllr/wer:Average WER is 3.590521 (450 / 12533) # + fMLLR
 exp/decode_tri2a_fmllr_utt/wer:Average WER is 3.933615 (493 / 12533)  # [ fMLLR per utterance ]
+exp/decode_tri2a_dfmllr/wer:Average WER is 3.861805 (484 / 12533)  # + diagonal fMLLR
+exp/decode_tri2a_dfmllr_utt/wer:Average WER is 3.933615 (493 / 12533)  # [ diagonal fMLLR per utterance]
+exp/decode_tri2a_dfmllr_fmllr/wer:Average WER is 3.622437 (454 / 12533)  # diagonal fMLLR, then estimate fMLLR and re-decode
+
 exp/decode_tri2b/wer:Average WER is 3.303279 (414 / 12533) # Exponential transform
+exp/decode_tri2b_fmllr/wer:Average WER is 3.047953 (382 / 12533) # +fMLLR
 exp/decode_tri2b_utt/wer:Average WER is 3.335195 (418 / 12533) # [adapt per-utt]
 exp/decode_tri2c/wer:Average WER is 3.957552 (496 / 12533) # Cepstral mean subtraction (per-spk)
 exp/decode_tri2d/wer:Average WER is 4.316604 (541 / 12533) # MLLT (= global STC)
@@ -28,6 +33,8 @@ exp/decode_tri2e/wer:Average WER is 4.659698 (584 / 12533) # splice-9-frames + L
 exp/decode_tri2f/wer:Average WER is 3.885742 (487 / 12533) # splice-9-frames + LDA + MLLT
 exp/decode_tri2g/wer:Average WER is 3.303279 (414 / 12533) # Linear VTLN
 exp/decode_tri2g_diag/wer:Average WER is 3.135722 (393 / 12533) # Linear VTLN; diagonal adapt in test
+exp/decode_tri2g_diag_fmllr/wer:Average WER is 3.063911 (384 / 12533) # as above but then est. fMLLR (another decoding pass)
+exp/decode_tri2g_diag_utt/wer:Average WER is 3.399027 (426 / 12533) 
 exp/decode_tri2g_vtln/wer:Average WER is 3.239448 (406 / 12533) # Use warp factors -> feature-level VTLN + offset estimation
 exp/decode_tri2g_vtln_diag/wer:Average WER is 3.127743 (392 / 12533)  # feature-level VTLN  + diag fMLLR
 exp/decode_tri2g_vtln_diag_utt/wer:Average WER is 3.407006 (427 / 12533)  # as above, per utt.
@@ -89,6 +96,8 @@ exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tr
 
 exp/decode_tri2m/wer:Average WER is 3.223490 (404 / 12533)  # Splice + LDA + MLLT + Linear VTLN
 exp/decode_tri2m_diag/wer:Average WER is 3.119764 (391 / 12533) # diagonal not offset CMLLR component
+exp/decode_tri2m_diag_fmllr/wer:Average WER is 2.784649 (349 / 12533)  # diagonal CMLLR component; then est. CMLLR and re-decode again.
+exp/decode_tri2m_diag_utt/wer:Average WER is 3.279343 (411 / 12533)  # [per-utterance]
 exp/decode_tri2m_vtln/wer:Average WER is 4.747467 (595 / 12533) # feature-level VTLN computation
 exp/decode_tri2m_vtln_diag/wer:Average WER is 3.087848 (387 / 12533) # diagonal, not offset, adapt
 exp/decode_tri2m_vtln_diag_utt/wer:Average WER is 4.340541 (544 / 12533) # per-utterance, diag adapt.

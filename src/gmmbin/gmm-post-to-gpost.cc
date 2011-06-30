@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         "Usage:  gmm-post-to-gpost [options] <model-in> <feature-rspecifier> <posteriors-rspecifier> "
         "<gpost-wspecifier>\n"
         "e.g.: \n"
-        " gmm-post-to-gpost 1.mdl 1.ali scp:train.scp ark:1.post ark:1.gpost\n";
+        " gmm-post-to-gpost 1.mdl scp:train.scp ark:1.post ark:1.gpost\n";
 
     ParseOptions po(usage);
     bool binary = false;
