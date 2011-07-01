@@ -35,6 +35,8 @@ system:
         [utt] 12.5       18.4                         
  +dfmllr[spk] 12.7       17.2                         | [diagonal-only fMLLR]
         [utt] 12.6       17.3
++dfmllr+fmllr[spk]
+              11.5       15.7                         | diagonal-only fMLLR then regular fMLLR
  tri3a        10.7       13.8      11.9       15.0    | tri3a is as tri2a but all SI-284 data.
  +fmllr[spk]  9.5        12.1
    [diagonal] 10.5       12.7
@@ -78,9 +80,9 @@ system:
  tri3k        8.9        12.3                         | [ splice-9-frames + LDA + ET; SI-284 ]
  [utt]        8.9        12.3                         | [adaptation per utterance]
  [spk;+fmllr] 8.3        11.3                         | [per-speaker adaptation; +fMLLR]
- sgmm3b       8.0        10.2                         | [ SGMM with speaker vectors, on SI-284]
- [utt]        7.9        10.4                         |  [per-utterance adaptation]
- [spk;+fmllr] 7.9        10.2                         | [per-speaker adaptation, with fMLLR]
+ sgmm3b       7.8        10.4                         | [ SGMM with speaker vectors, on SI-284]
+ [utt]        7.8        10.4                         |  [per-utterance adaptation]
+ [spk;+fmllr] 7.8        10.2                         | [per-speaker adaptation, with fMLLR]
  sgmm3c       7.7        9.9                          | [ as sgmm3b but gender-dep. UBM]
  [utt]        7.7        10.1                         |  [per-utterance adaptation]
  [fmllr]      7.7        9.7                          |  [per-spk, with fMLLR]
