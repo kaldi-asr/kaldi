@@ -60,7 +60,7 @@ exp/decode_sgmma_fmllrbasis_utt/wer:Average WER is 3.191574 (400 / 12533)
 # sgmmb is SGMM with speaker vectors.
 exp/decode_sgmmb/wer:Average WER is 2.760712 (346 / 12533) 
 exp/decode_sgmmb_utt/wer:Average WER is 2.808585 (352 / 12533) 
-exp/decode_sgmmb_fmllr/wer:Average WER is 2.553259 (320 / 12533) 
+exp/decode_sgmmb/wer:Average WER is 2.760712 (346 / 12533) 
 
 
 # sgmmc is like sgmmb but with gender dependency [doesn't help here]
@@ -69,55 +69,9 @@ exp/decode_sgmmc_fmllr/wer:Average WER is 2.601133 (326 / 12533)
 
 
 
-exp/decode_tri2a/wer:Average WER is 4.476183 (561 / 12533)  
-exp/decode_tri2a_fmllr/wer:Average WER is 3.718184 (466 / 12533)  
-exp/decode_tri2a_fmllr_utt/wer:Average WER is 4.452246 (558 / 12533) 
-exp/decode_tri2b/wer:Average WER is 2.992101 (375 / 12533)  
-exp/decode_tri2b_utt/wer:Average WER is 3.247427 (407 / 12533)  
-exp/decode_tri2c/wer:Average WER is 3.789994 (475 / 12533)  
-exp/decode_tri2d/wer:Average WER is 4.188941 (525 / 12533)  
-exp/decode_tri2e/wer:Average WER is 4.923003 (617 / 12533)  
-exp/decode_tri2f/wer:Average WER is 3.782015 (474 / 12533)  
-exp/decode_tri2g/wer:Average WER is 3.670310 (460 / 12533)  
-exp/decode_tri2g_diag/wer:Average WER is 3.550626 (445 / 12533) # +change mean-only to diagonal fMLLR
-exp/decode_tri2g_vtln/wer:Average WER is 3.534668 (443 / 12533) # More conventional VTLN (+mean-only fMLLR)
-exp/decode_tri2g_vtln_diag/wer:Average WER is 3.438921 (431 / 12533) #+change mean-only to diagonal fMLLR
-exp/decode_tri2g_vtln_diag_utt/wer:Average WER is 3.614458 (453 / 12533)  #[per-utt]
-exp/decode_tri2g_vtln_nofmllr/wer:Average WER is 4.069257 (510 / 12533) # more conventional VTLN, no fMLLR
-exp/decode_tri2h/wer:Average WER is 4.252773 (533 / 12533) # Splice-9-frames + HLDA
-exp/decode_tri2i/wer:Average WER is 4.077236 (511 / 12533) # Triple-deltas + HLDA
-exp/decode_tri2j/wer:Average WER is 3.694247 (463 / 12533) # Triple-deltas + LDA + MLLT
-exp/decode_tri2k/wer:Average WER is 2.856459 (358 / 12533) # LDA + exponential transform
-exp/decode_tri2k_utt/wer:Average WER is 3.071890 (385 / 12533) # per-utterance adaptation.
-exp/decode_tri2k_fmllr/wer:Average WER is 2.585175 (324 / 12533) # +fMLLR (per-spk)
-exp/decode_tri2k_regtree_fmllr/wer:Average WER is 2.561238 (321 / 12533)  # +regression tree
-exp/decode_tri2l/wer:Average WER is 2.688901 (337 / 12533)   # Splice-9-frames + LDA + MLLT + SAT (fMLLR in test)
-exp/decode_tri2l_utt/wer:Average WER is 5.066624 (635 / 12533)  # [ as decode_tri2l but per-utt in test. ]
 
-exp/decode_tri2m/wer:Average WER is 3.223490 (404 / 12533)  # Splice + LDA + MLLT + Linear VTLN
-exp/decode_tri2m_diag/wer:Average WER is 3.119764 (391 / 12533) # diagonal not offset CMLLR component
-exp/decode_tri2m_diag_fmllr/wer:Average WER is 2.784649 (349 / 12533)  # diagonal CMLLR component; then est. CMLLR and re-decode again.
-exp/decode_tri2m_diag_utt/wer:Average WER is 3.279343 (411 / 12533)  # [per-utterance]
-exp/decode_tri2m_vtln/wer:Average WER is 4.747467 (595 / 12533) # feature-level VTLN computation
-exp/decode_tri2m_vtln_diag/wer:Average WER is 3.087848 (387 / 12533) # diagonal, not offset, adapt
-exp/decode_tri2m_vtln_diag_utt/wer:Average WER is 4.340541 (544 / 12533) # per-utterance, diag adapt.
-
-
-# sgmma is SGMM without speaker vectors.
-exp/decode_sgmma/wer:Average WER is 3.151680 (395 / 12533) 
-exp/decode_sgmma_fmllr/wer:Average WER is 2.728796 (342 / 12533) 
-exp/decode_sgmma_fmllr_utt/wer:Average WER is 3.087848 (387 / 12533) 
-exp/decode_sgmma_fmllrbasis_utt/wer:Average WER is 2.896354 (363 / 12533) 
-
-# sgmmb is SGMM with speaker vectors.
-exp/decode_sgmmb/wer:Average WER is 2.617091 (328 / 12533) 
-exp/decode_sgmmb_utt/wer:Average WER is 2.696880 (338 / 12533) 
-exp/decode_sgmmb_fmllr/wer:Average WER is 2.505386 (314 / 12533) 
-
-# sgmmc is like sgmmb but with gender dependency [doesn't help here]
-exp/decode_sgmmc/wer:Average WER is 2.784649 (349 / 12533) 
-exp/decode_sgmmc_fmllr/wer:Average WER is 2.688901 (337 / 12533) 
-
+#### Note: stuff below this line may be out of date / not computed
+# with most recent version of toolkit.
 # note: when changing (phn,spk) dimensions from (40,39) -> (30,30),
 # WER in decode_sgmmb/ went from 2.62 to 2.92
 # when changing from (40,39) -> (50,39)  [40->50 on iter 3],

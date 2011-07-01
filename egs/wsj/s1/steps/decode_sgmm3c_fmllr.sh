@@ -99,7 +99,7 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
 
 ( ali-to-post ark:$dir/${job}.pre_ali ark:- | \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
-  sgmm-est-spkvecs --spk-vecs=ark,t:$dir/${job}.vecs1 $spk2utt_opt $model \
+  sgmm-est-spkvecs "$gselect_opt" --spk-vecs=ark,t:$dir/${job}.vecs1 $spk2utt_opt $model \
    "$feats" ark,s,cs:- ark:$dir/${job}.vecs2 ) 2>$dir/vecs2.${job}.log || exit 1;
 
 # second pass of decoding: have spk-vecs but not fMLLR
@@ -114,7 +114,7 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
 
 ( ali-to-post ark:$dir/$job.pre2_ali ark:- | \
     weight-silence-post 0.01 $silphones $model ark:- ark:- | \
-    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-post-to-gpost --spk-vecs=ark:$dir/${job}.vecs2 $utt2spk_opt "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
     sgmm-est-fmllr-gpost --spk-vecs=ark:$dir/${job}.vecs2 $spk2utt_opt $fmllr_model "$feats" ark,s,cs:- \
 	ark:$dir/$job.fmllr ) 2>$dir/est_fmllr${job}.log
 

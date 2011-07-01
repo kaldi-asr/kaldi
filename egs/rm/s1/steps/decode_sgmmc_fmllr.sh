@@ -78,7 +78,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 
   ( ali-to-post ark:$dir/test_${test}.pass1.ali ark:- | \
     weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
-    sgmm-est-spkvecs --spk-vecs=ark:$dir/test_${test}.vecs1 h$spk2utt_opt \
+    sgmm-est-spkvecs "$gselect_opt" --spk-vecs=ark:$dir/test_${test}.vecs1 $spk2utt_opt \
       $model "$feats" ark,s,cs:- ark:$dir/test_${test}.vecs2 ) 2>$dir/vecs2_${test}.log
 
   # Second-pass decoding with the speaker vectors.
@@ -87,7 +87,8 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   # Estimate the fMLLR transforms.
   ( ali-to-post ark:$dir/test_${test}.pass2.ali ark:- | \
     weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
-    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-post-to-gpost --spk-vecs=ark:$dir/test_${test}.vecs2 $utt2spk_opt \
+                     "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
     sgmm-est-fmllr-gpost --fmllr-iters=$iters --fmllr-min-count=$mincount \
       --spk-vecs=ark:$dir/test_${test}.vecs2 "$spk2utt_opt" $fmllr_model \
       "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
@@ -97,7 +98,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 
   # Now decode with fMLLR-adapted features. Gaussian selection is also done 
   # with the adapted features. This causes a small improvement in WER on RM. 
-  sgmm-decode-faster $utt2spk_opt --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt --spk-vecs=ark:$dir/test_${test}.vecs2 $fmllr_model $graphdir/HCLG.fst "$adapt_feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
+  sgmm-decode-faster "$gselect_opt" $utt2spk_opt --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt --spk-vecs=ark:$dir/test_${test}.vecs2 $fmllr_model $graphdir/HCLG.fst "$adapt_feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 
   # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \

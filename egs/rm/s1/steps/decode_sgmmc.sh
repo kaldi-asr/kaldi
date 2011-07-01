@@ -60,7 +60,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   
   ( ali-to-post ark:$dir/test_${test}.pre_ali ark:- | \
     weight-silence-post 0.01 $silphonelist $alimodel ark:- ark:- | \
-    sgmm-est-spkvecs --spk-vecs=ark:$dir/test_${test}.vecs1 $spk2utt_opt \
+    sgmm-est-spkvecs "$gselect_opt" --spk-vecs=ark:$dir/test_${test}.vecs1 $spk2utt_opt \
       $model "$feats" ark,s,cs:- ark:$dir/test_${test}.vecs2 ) 2>$dir/vecs2_${test}.log
 
   sgmm-decode-faster "$gselect_opt" $utt2spk_opt --spk-vecs=ark:$dir/test_${test}.vecs2 --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log

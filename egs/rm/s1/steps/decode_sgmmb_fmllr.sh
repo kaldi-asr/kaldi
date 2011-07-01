@@ -82,7 +82,8 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   # Estimate the fMLLR transforms.
   ( ali-to-post ark:$dir/test_${test}.pass2.ali ark:- | \
     weight-silence-post 0.01 $silphonelist $model ark:- ark:- | \
-    sgmm-post-to-gpost "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
+    sgmm-post-to-gpost --spk-vecs=ark:$dir/test_${test}.vecs2 $utt2spk_opt \
+                      "$gselect_opt" $model "$feats" ark,s,cs:- ark:- | \
     sgmm-est-fmllr-gpost --fmllr-iters=$iters --fmllr-min-count=$mincount \
       --spk-vecs=ark:$dir/test_${test}.vecs2 "$spk2utt_opt" $fmllr_model \
       "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
