@@ -74,9 +74,9 @@ system:
   [vtln;diag] 10.7       14.9                         |  [feature-level VTLN; diagonal CMLLR]
    [utt]      10.6       14.4                         |   [per-utterance]
  sgmm2a       10.4       16.4                         |  [sgmm, unadapted, on delta features]
- sgmm2b       10.1       14.1                         |  [sgmm, spk-vector adaptation only]
-   [utt]      10.2       13.7                         |  [adapt per utt]
- [spk,+fmllr] 9.9        13.4                         |  [per-spk, plus fMLLR]
+ sgmm2b       10.0       13.8                         |  [sgmm, spk-vector adaptation only]
+   [utt]      10.0       13.9                         |  [adapt per utt]
+ [spk,+fmllr] 9.9        13.5                         |  [per-spk, plus fMLLR]
  tri3k        8.9        12.3                         | [ splice-9-frames + LDA + ET; SI-284 ]
  [utt]        8.9        12.3                         | [adaptation per utterance]
  [spk;+fmllr] 8.3        11.3                         | [per-speaker adaptation; +fMLLR]
@@ -150,6 +150,8 @@ exp/decode_tri2m_tgpr_utt_vtln_diag_eval92/wer:%WER 10.64 [ 600 / 5641, 123 ins,
 exp/decode_tri2m_tgpr_utt_vtln_diag_eval93/wer:%WER 14.39 [ 495 / 3439, 60 ins, 70 del, 365 sub ]
 exp/decode_tri2m_tgpr_vtln_diag_eval92/wer:%WER 10.74 [ 606 / 5641, 125 ins, 52 del, 429 sub ]
 exp/decode_tri2m_tgpr_vtln_diag_eval93/wer:%WER 14.89 [ 512 / 3439, 68 ins, 67 del, 377 sub ]
+
+
 exp/decode_tri3a_tgpr_dfmllr_eval92/wer:%WER 10.51 [ 593 / 5641, 111 ins, 51 del, 431 sub ]
 exp/decode_tri3a_tgpr_dfmllr_eval93/wer:%WER 12.68 [ 436 / 3439, 52 ins, 52 del, 332 sub ]
 exp/decode_tri3a_tgpr_eval92/wer:%WER 10.67 [ 602 / 5641, 131 ins, 43 del, 428 sub ]
@@ -164,6 +166,15 @@ exp/decode_tri3a_tgpr_uttfmllr_eval93/wer:%WER 13.93 [ 479 / 3439, 56 ins, 69 de
 exp/decode_sgmm2a_tgpr_eval92/wer:%WER 10.44 [ 589 / 5641, 129 ins, 38 del, 422 sub ]
 exp/decode_sgmm2a_tgpr_eval93/wer:%WER 16.40 [ 564 / 3439, 68 ins, 92 del, 404 sub ]
 
+exp/decode_sgmm2b_fmllr_tgpr_eval92/wer:%WER 9.89 [ 558 / 5641, 131 ins, 43 del, 384 sub ]
+exp/decode_sgmm2b_fmllr_tgpr_eval93/wer:%WER 13.49 [ 464 / 3439, 56 ins, 67 del, 341 sub ]
+exp/decode_sgmm2b_tgpr_eval92/wer:%WER 9.98 [ 563 / 5641, 131 ins, 43 del, 389 sub ]
+exp/decode_sgmm2b_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 61 ins, 67 del, 348 sub ]
+exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 9.96 [ 562 / 5641, 131 ins, 40 del, 391 sub ]
+exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.90 [ 478 / 3439, 59 ins, 68 del, 351 sub ]
+
+
+svatava:s1: 
 
 
 # [old:]
@@ -255,7 +266,6 @@ exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.72 [ 472 / 3439, 60 ins, 68 del, 3
 exp/decode_sgmm2b_fmllr_tgpr_eval92/wer:%WER 9.93 [ 560 / 5641, 130 ins, 42 del, 388 sub ]
 exp/decode_sgmm2b_fmllr_tgpr_eval93/wer:%WER 13.49 [ 464 / 3439, 54 ins, 72 del, 338 sub ]
 
-
 exp/decode_sgmm3b_fmllr_tgpr_eval92/wer:%WER 7.36 [ 415 / 5641, 110 ins, 14 del, 291 sub ]
 exp/decode_sgmm3b_fmllr_tgpr_eval93/wer:%WER 9.94 [ 342 / 3439, 56 ins, 49 del, 237 sub ]
 exp/decode_sgmm3b_tgpr_eval92/wer:%WER 7.68 [ 433 / 5641, 117 ins, 15 del, 301 sub ]
@@ -329,4 +339,3 @@ exp/decode_sgmm3b_tgpr_utt_eval93/wer:%WER 9.94 [ 342 / 3439, 52 ins, 52 del, 23
 #exp/decode_sgmm2b_tgpr_utt_eval92/wer:%WER 10.34 [ 583 / 5641, 135 ins, 39 del, 409 sub ]
 #exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.78 [ 474 / 3439, 64 ins, 64 del, 346 sub ]
 
- 
