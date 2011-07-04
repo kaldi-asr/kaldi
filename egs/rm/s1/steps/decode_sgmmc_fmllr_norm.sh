@@ -27,12 +27,14 @@
 # (5) decode with the final model using both the speaker vectors and fMLLR
 
 if [ -f path.sh ]; then . path.sh; fi
-dir=exp/decode_sgmmc_fmllr
+dir=exp/decode_sgmmc_fmllr_norm
 tree=exp/sgmmc/tree
-model=exp/sgmmc/final.mdl
 occs=exp/sgmmc/final.occs
-fmllr_model=exp/sgmmc/final_fmllr.mdl
-alimodel=exp/sgmmc/final.alimdl
+modelin=exp/sgmmc/final.mdl
+alimodelin=exp/sgmmc/final.alimdl
+model=exp/sgmmc/final.mdl.norm
+alimodel=exp/sgmmc/final.alimdl.norm
+fmllr_model=exp/sgmmc/final_fmllr.mdl.norm
 graphdir=exp/graph_sgmmc
 silphonelist=`cat data/silphones.csl`
 preselectmap=exp/ubmb/preselect.map
@@ -40,15 +42,14 @@ preselectmap=exp/ubmb/preselect.map
 mincount=1000  # min occupancy to extimate fMLLR transform
 iters=10       # number of iters of fMLLR estimation
 
-if [ ! -f $fmllr_model -o $model -nt $fmllr_model ]; then
-    if [ ! -f $model ]; then
-	echo "Cannot find $model. Maybe training didn't finish?"
-	exit 1;
-    fi
-    sgmm-comp-prexform $model $occs $fmllr_model
-fi
 
 mkdir -p $dir
+
+sgmm-normalize $modelin ark:$preselectmap $model 2>$dir/normalize.log
+sgmm-normalize $alimodelin ark:$preselectmap $alimodel 2>>$dir/normalize.log
+
+sgmm-comp-prexform $model $occs $fmllr_model 2>$dir/prexform.log
+
 
 scripts/mkgraph.sh $tree $model $graphdir
 

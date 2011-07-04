@@ -59,13 +59,16 @@ exp/decode_sgmma_fmllrbasis_utt/wer:Average WER is 3.191574 (400 / 12533)
 
 # sgmmb is SGMM with speaker vectors.
 exp/decode_sgmmb/wer:Average WER is 2.760712 (346 / 12533) 
+exp/decode_sgmmb_fmllr/wer:Average WER is 2.585175 (324 / 12533) 
 exp/decode_sgmmb_utt/wer:Average WER is 2.808585 (352 / 12533) 
-exp/decode_sgmmb/wer:Average WER is 2.760712 (346 / 12533) 
 
+# sgmmc is like sgmmb but with gender dependency
+exp/decode_sgmmc/wer:Average WER is 2.696880 (338 / 12533) 
+exp/decode_sgmmc_fmllr/wer:Average WER is 2.457512 (308 / 12533) 
+ # "norm" is normalizing weights per gender..
+ exp/decode_sgmmc_norm/wer:Average WER is 2.696880 (338 / 12533) 
+ exp/decode_sgmmc_fmllr_norm/wer:Average WER is 2.425596 (304 / 12533) 
 
-# sgmmc is like sgmmb but with gender dependency [doesn't help here]
-exp/decode_sgmmc/wer:Average WER is 2.776670 (348 / 12533) 
-exp/decode_sgmmc_fmllr/wer:Average WER is 2.601133 (326 / 12533) 
 
 
 

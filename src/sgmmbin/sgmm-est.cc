@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     const char *usage =
         "Estimate SGMM model parameters from accumulated stats.\n"
-        "Usage: sgmm-estimate [options] <model-in> <stats-in> <model-out>\n";
+        "Usage: sgmm-est [options] <model-in> <stats-in> <model-out>\n";
 
     bool binary_write = false;
     std::string update_flags_str = "vMNwcS";

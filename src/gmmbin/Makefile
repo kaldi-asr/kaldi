@@ -9,7 +9,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-acc-stats gmm-init-lvtln gmm-est-lvtln-trans gmm-train-lvtln-special \
            gmm-acc-mllt gmm-mixup gmm-init-model \
            gmm-acc-hlda gmm-est-hlda gmm-transform-means gmm-init-et gmm-est-et \
-           gmm-et-acc-a gmm-et-est-a gmm-et-acc-b gmm-copy-et gmm-et-est-b gmm-et-get-b \
+           gmm-et-acc-a gmm-et-est-a gmm-copy-et gmm-et-get-b \
            gmm-make-regtree gmm-decode-faster-regtree-fmllr gmm-post-to-gpost \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
            gmm-est-regtree-mllr gmm-decode-kaldi gmm-compute-likes \

@@ -418,6 +418,8 @@ steps/train_sgmm3c.sh || exit 1;
   scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/eval_nov${year}.scp 
   scripts/decode.sh exp/decode_sgmm3c_tgpr_utt_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/eval_nov${year}.scp 
   scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_norm.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr_norm.sh data/eval_nov${year}.scp
  done
 )&
 

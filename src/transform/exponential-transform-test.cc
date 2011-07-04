@@ -18,6 +18,7 @@
 #include "util/common-utils.h"
 #include "gmm/diag-gmm.h"
 #include "transform/exponential-transform.h"
+#include "transform/mllt.h"
 
 namespace kaldi {
 
@@ -102,7 +103,7 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
     double objf_change_tot = 0.0;
     like_tot = 0.0;
     ExponentialTransformAccsA accs_a(dim);
-    ExponentialTransformAccsB accs_b(dim);
+    MlltAccs accs_b(dim);
     for (int32 k = 0; k < nblocks; k++) {
       Matrix<BaseFloat> &cur_xform(cur_xforms[k]);
       FmllrOptions opts;
@@ -146,8 +147,7 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
             if (update_b && j%2 == 1)
               accs_b.AccumulateFromPosteriors(gmm,
                                               xformed_row,
-                                              posteriors,
-                                              cur_Ds[k]);
+                                              posteriors);
         }
       }
     }
@@ -161,16 +161,17 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
     }
     if (update_b && j%2 == 1) {
       BaseFloat count, objf_impr;
-      Matrix<BaseFloat> M(dim, dim);  // to transform GMM means.
-      accs_b.Update(&et, &objf_impr, &count, &M);
-      TestIo(accs_b);
+      Matrix<BaseFloat> C(dim, dim);  // to transform GMM means.
+      C.SetUnit();
+      accs_b.Update(&C, &objf_impr, &count);
+      et.ApplyC(C);
       TestIo(et);
       KALDI_LOG << "Count is " << count << " and objf impr is " << objf_impr << " updating B";
       // update the GMM means:
       Matrix<BaseFloat> means;
       gmm.GetMeans(&means);
       Matrix<BaseFloat> new_means(means.NumRows(), means.NumCols());
-      new_means.AddMatMat(1.0, means, kNoTrans, M, kTrans, 0.0);
+      new_means.AddMatMat(1.0, means, kNoTrans, C, kTrans, 0.0);
       gmm.SetMeans(new_means);
       gmm.ComputeGconsts();
     }

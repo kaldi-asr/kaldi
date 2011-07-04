@@ -215,6 +215,12 @@ class AmSgmm {
   /// for each Gaussian component and all substates. Eq. (31)
   void ComputeNormalizers();
 
+
+  /// Computes the normalizers, while normalizing the weights to one
+  /// among each of the sets in "normalize_sets": these sets should
+  /// be disjoint and their union should be all the indices 0 ... I-1.
+  void ComputeNormalizersNormalized(const std::vector<std::vector<int32> > &normalize_sets);
+  
   /// Computes the LDA-like pre-transform and its inverse as well as the
   /// eigenvalues of the scatter of the means used in FMLLR estimation.
   void ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,

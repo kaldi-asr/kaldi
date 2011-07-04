@@ -16,8 +16,9 @@
 
 
 # Train gender-dependent UBM from a trained HMM/GMM system.
-# Instead of 400 UBM Gaussians, use 250 UBM Gaussians per gender, for
-# a total of 500.
+# We're aiming for 500 UBM Gaussians total.
+# Because RM is unbalanced (55 female, 109 male), we train 200
+# UBM Gaussians for female and 300 for male.
 
 if [ -f path.sh ]; then . path.sh; fi
 
@@ -25,13 +26,19 @@ dir=exp/ubmb
 mkdir -p $dir
 srcdir=exp/tri1
 
-if [ ! -f $dir/0.m.ubm ]; then
- init-ubm --intermediate-numcomps=2000 --ubm-numcomps=250 --verbose=2 \
-    --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
-    $dir/0.m.ubm 2> $dir/cluster.log || exit 1;
-fi
+rm -f $dir/.error
 
-cp $dir/0.m.ubm $dir/0.f.ubm
+init-ubm --intermediate-numcomps=2000 --ubm-numcomps=300 --verbose=2 \
+   --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
+   $dir/0.m.ubm 2> $dir/cluster.log || touch $dir/.error &
+
+init-ubm --intermediate-numcomps=2000 --ubm-numcomps=200 --verbose=2 \
+   --fullcov-ubm=true $srcdir/final.mdl $srcdir/final.occs \
+   $dir/0.f.ubm 2> $dir/cluster.log || touch $dir/.error &
+
+wait;
+[ -f $dir/.error ] && echo "Error clustering UBM Gaussians" && exit 1;
+
 cp data/train.scp $dir/train.scp
 
 scripts/compose_maps.pl data/train.utt2spk data/spk2gender.map | grep -w m | \

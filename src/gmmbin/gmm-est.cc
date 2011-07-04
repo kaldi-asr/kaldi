@@ -30,8 +30,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Accumulate stats for GMM training.\n"
-        "Usage:  gmm-estimate [options] <model-in> <stats-in> <model-out>\n"
-        "e.g.: gmm-estimate 1.mdl 1.acc 2.mdl\n";
+        "Usage:  gmm-est [options] <model-in> <stats-in> <model-out>\n"
+        "e.g.: gmm-est 1.mdl 1.acc 2.mdl\n";
 
     bool binary_write = false;
     TransitionUpdateConfig tcfg;

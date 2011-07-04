@@ -618,6 +618,94 @@ void AmSgmm::ComputeNormalizers() {
   KALDI_LOG << "Done computing normalizers";
 }
 
+
+void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> > &normalize_sets) {
+  { // Check sets in normalize_sets are disjoint and cover all Gaussians.
+    std::set<int32> all;
+    for(int32 i = 0; i < normalize_sets.size(); i++)
+      for(int32 j = 0; static_cast<size_t>(j) < normalize_sets[i].size(); j++) {
+        int32 n = normalize_sets[i][j];
+        KALDI_ASSERT(all.count(n) == 0 && n >= 0 && n < NumGauss());
+        all.insert(n);
+      }
+    KALDI_ASSERT(all.size() == NumGauss());
+  }
+  
+  
+  KALDI_LOG << "Computing normalizers [normalized]";
+  BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
+  Vector<BaseFloat> mu_jmi(FeatureDim());
+  Vector<BaseFloat> SigmaInv_mu(FeatureDim());
+  Vector<BaseFloat> log_det_Sigma(NumGauss());
+
+  for (int32 i = 0; i < NumGauss(); i++) {
+    try {
+      log_det_Sigma(i) = - SigmaInv_[i].LogPosDefDet();
+    } catch(...) {
+      KALDI_WARN << "Covariance is not positive definite, setting to unit";
+      SigmaInv_[i].SetUnit();
+      log_det_Sigma(i) = 0.0;
+    }
+  }
+
+  double entropy_count = 0, entropy_sum = 0;
+
+  n_.resize(NumStates());
+  for (int32 j = 0; j < NumStates(); ++j) {
+    Vector<BaseFloat> log_w_jm(NumGauss());
+
+    n_[j].Resize(NumGauss(), NumSubstates(j));
+    for (int32 m = 0; m < NumSubstates(j); m++) {
+      BaseFloat logc = log(c_[j](m));
+
+      // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
+      log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
+      log_w_jm.Add((-1.0) * log_w_jm.LogSumExp());
+
+      for(int32 n = 0; n < normalize_sets.size(); n++) {
+        const std::vector<int32> &this_set(normalize_sets[n]);
+        double sum = 0.0;
+        for(int32 p = 0; p < this_set.size(); p++)
+          sum += exp(log_w_jm(this_set[p]));
+        double offset = -log(sum); // add "offset", to normalize weights.
+        for(int32 p = 0; p < this_set.size(); p++)
+          log_w_jm(this_set[p]) += offset;
+      }
+
+      for (int32 i = 0; i < NumGauss(); ++i) {
+        // mu_jmi = M_{i} * v_{jm}
+        mu_jmi.AddMatVec(1.0, M_[i], kNoTrans, v_[j].Row(m), 0.0);
+
+        // mu_{jmi} * \Sigma_{i}^{-1} * mu_{jmi}
+        SigmaInv_mu.AddSpVec(1.0, SigmaInv_[i], mu_jmi, 0.0);
+        BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi, SigmaInv_mu);
+
+        // Suggestion: Both mu_jmi and SigmaInv_mu could
+        // have been computed at once  for i ,
+        // if M[i] was concatenated to single matrix over i indeces
+
+        // eq.(31)
+        n_[j](i, m) = logc + log_w_jm(i) - 0.5 * (log_det_Sigma(i) + DLog2pi
+            + mu_SigmaInv_mu);
+        {  // Mainly diagnostic code.  Not necessary.
+          BaseFloat tmp = n_[j](i, m);
+          if (!KALDI_ISFINITE(tmp)) {  // NaN or inf
+            KALDI_LOG << "Warning: normalizer for j = " << j << ", m = " << m
+                      << ", i = " << i << " is infinite or NaN " << tmp << "= "
+                      << (logc) << "+" << (log_w_jm(i)) << "+" << (-0.5 *
+                          log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
+                      << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
+            n_[j](i, m) = -1.0e+40;  // future work(arnab): get rid of magic number
+          }
+        }
+      }
+    }
+  }
+
+  KALDI_LOG << "Done computing normalizers (normalized over subsets)";
+}
+
+
 void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
     Matrix<BaseFloat> *xform, Matrix<BaseFloat> *inv_xform,
     Vector<BaseFloat> *diag_mean_scatter) const {

@@ -119,45 +119,6 @@ class ExponentialTransform {
 
 };
 
-// This is an MLLT type of update.
-class ExponentialTransformAccsB {
- public:
-  ExponentialTransformAccsB() { } // typically only used prior to Read().
-
-  ExponentialTransformAccsB(int32 dim) { Init(dim); }
-
-  void Init(int32 dim);
-
-  // AccumulateFromPosteriors is as in the base class, except we
-  // supply the transform D_s (expected to be a diagonal or mean-only
-  // transform), which is treated as a model-space transform here.
-  // Here, "t_data" is the data transformed by the transform W_s.
-  // Be careful-- this is different from the accumulation for A, in which
-  // the fMLLR stats are accumulated given the original data.
-  void AccumulateFromPosteriors(const DiagGmm &gmm,
-                                const VectorBase<BaseFloat> &t_data,
-                                const VectorBase<BaseFloat> &posteriors,
-                                const MatrixBase<BaseFloat> &Ds);
-
-
-  // The Update function does the MLLT update for B.  It sets "Cpart"
-  // (the first d x d block of C) to the transform that we would have
-  // to apply to the model means.
-  void Update(ExponentialTransform *et,
-              BaseFloat *objf_impr,
-              BaseFloat *count,
-              MatrixBase<BaseFloat> *Cpart);
-
-  void Write(std::ostream &os, bool binary) const;
-
-  void Read(std::istream &is, bool binary, bool add = false);
-
- private:
-  double beta_;
-  std::vector<SpMatrix<double> > G_;
-
-};
-
 
 
 struct ExponentialTransformUpdateAOptions {

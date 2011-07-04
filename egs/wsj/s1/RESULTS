@@ -82,10 +82,12 @@ system:
  [spk;+fmllr] 8.3        11.3                         | [per-speaker adaptation; +fMLLR]
  sgmm3b       7.8        10.4                         | [ SGMM with speaker vectors, on SI-284]
  [utt]        7.8        10.4                         |  [per-utterance adaptation]
- [spk;+fmllr] 7.8        10.2                         | [per-speaker adaptation, with fMLLR]
- sgmm3c       7.7        9.9                          | [ as sgmm3b but gender-dep. UBM]
- [utt]        7.7        10.1                         |  [per-utterance adaptation]
- [fmllr]      7.7        9.7                          |  [per-spk, with fMLLR]
+ [spk;+fmllr] 7.8        10.0                         | [per-speaker adaptation, with fMLLR]
+ sgmm3c       7.5        9.5                          | [ as sgmm3b but gender-dep. UBM]
+  [+norm]     7.5        9.6                          |   [normalizing weights per gender]
+ [utt]        7.7        9.6                          |  [per-utterance adaptation]
+ [fmllr]      7.6        9.2                          |  [per-spk, with fMLLR]
+  [+norm]     7.5        9.3                          |   [normalizing weights per gender]
 
 # Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
@@ -266,14 +268,27 @@ exp/decode_sgmm2b_tgpr_utt_eval93/wer:%WER 13.72 [ 472 / 3439, 60 ins, 68 del, 3
 exp/decode_sgmm2b_fmllr_tgpr_eval92/wer:%WER 9.93 [ 560 / 5641, 130 ins, 42 del, 388 sub ]
 exp/decode_sgmm2b_fmllr_tgpr_eval93/wer:%WER 13.49 [ 464 / 3439, 54 ins, 72 del, 338 sub ]
 
-exp/decode_sgmm3b_fmllr_tgpr_eval92/wer:%WER 7.36 [ 415 / 5641, 110 ins, 14 del, 291 sub ]
-exp/decode_sgmm3b_fmllr_tgpr_eval93/wer:%WER 9.94 [ 342 / 3439, 56 ins, 49 del, 237 sub ]
-exp/decode_sgmm3b_tgpr_eval92/wer:%WER 7.68 [ 433 / 5641, 117 ins, 15 del, 301 sub ]
-exp/decode_sgmm3b_tgpr_eval93/wer:%WER 10.32 [ 355 / 3439, 58 ins, 55 del, 242 sub ]
-exp/decode_sgmm3b_tgpr_utt_eval92/wer:%WER 7.59 [ 428 / 5641, 111 ins, 17 del, 300 sub ]
-exp/decode_sgmm3b_tgpr_utt_eval93/wer:%WER 9.94 [ 342 / 3439, 52 ins, 52 del, 238 sub ]
+exp/decode_sgmm3b_fmllr_tgpr_eval92/wer:%WER 7.73 [ 436 / 5641, 118 ins, 15 del, 303 sub ]
+exp/decode_sgmm3b_fmllr_tgpr_eval93/wer:%WER 10.00 [ 344 / 3439, 57 ins, 47 del, 240 sub ]
+exp/decode_sgmm3b_tgpr_eval92/wer:%WER 7.78 [ 439 / 5641, 118 ins, 15 del, 306 sub ]
+exp/decode_sgmm3b_tgpr_eval93/wer:%WER 10.35 [ 356 / 3439, 58 ins, 47 del, 251 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval92/wer:%WER 7.80 [ 440 / 5641, 119 ins, 13 del, 308 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval93/wer:%WER 10.38 [ 357 / 3439, 55 ins, 50 del, 252 sub ]
+
+exp/decode_sgmm3c_fmllr_tgpr_eval92/wer:%WER 7.55 [ 426 / 5641, 111 ins, 14 del, 301 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_eval93/wer:%WER 9.16 [ 315 / 3439, 54 ins, 41 del, 220 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_norm_eval92/wer:%WER 7.46 [ 421 / 5641, 111 ins, 13 del, 297 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_norm_eval93/wer:%WER 9.25 [ 318 / 3439, 54 ins, 41 del, 223 sub ]
+exp/decode_sgmm3c_tgpr_eval92/wer:%WER 7.52 [ 424 / 5641, 113 ins, 13 del, 298 sub ]
+exp/decode_sgmm3c_tgpr_eval93/wer:%WER 9.51 [ 327 / 3439, 55 ins, 42 del, 230 sub ]
+exp/decode_sgmm3c_tgpr_norm_eval92/wer:%WER 7.48 [ 422 / 5641, 111 ins, 14 del, 297 sub ]
+exp/decode_sgmm3c_tgpr_norm_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 43 del, 233 sub ]
+exp/decode_sgmm3c_tgpr_utt_eval92/wer:%WER 7.69 [ 434 / 5641, 110 ins, 17 del, 307 sub ]
+exp/decode_sgmm3c_tgpr_utt_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 46 del, 230 sub ]
 
 
+################
+# Results below this point may be out of date.
 ===========
 # Some notes on tuning the SGMM systems on half the SI-84 data (sgmm2a and sgmm2b).
 # We ended up with 400 UBM components, and acwt 1/11 (unadapted) and 1/12 (adapted..
