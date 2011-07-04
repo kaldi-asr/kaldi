@@ -4,6 +4,7 @@
 # already installed on your system... i.e. only after you have tried to
 # do ./configure in ../src and it has failed.
 
+
 # This script tries to install ATLAS-- the install script is supposed to be
 # pretty system independent, but try to run it on the same machine type as the
 # one you intend to use the library on-- it may produce binaries that use
@@ -34,7 +35,16 @@ cd ATLAS
 mkdir build # you should probably have a name that reflects OS, CPU, etc... but this is fine
 cd build
 
-../configure --prefix=`pwd` || exit 1;
+
+# sometimes the -b 32 option can be helpful to "configure"
+# when it's on a 64-bit CPU but a 32-bit OS.  It won't hurt
+# if it's not a 64-bit CPU.
+x=`uname -a | awk '{print $(NF-1)}'`
+if [ "$x" == "i686" -o "$x" == "x86" ]; then
+  opt="-b 32"
+fi
+
+../configure $opt --prefix=`pwd` || exit 1;
 make || exit 1;
 make check || exit 1;
 # make time
