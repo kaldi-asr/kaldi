@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
     VectorFst<StdArc> *decode_fst = NULL;
     {
-      std::ifstream is(fst_in_filename.c_str());
+      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
       if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
