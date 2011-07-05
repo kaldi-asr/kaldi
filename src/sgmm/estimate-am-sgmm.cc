@@ -520,7 +520,13 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   BaseFloat tot_impr = 0.0;
 
   if (flags & kSgmmPhoneVectors) {
-    tot_impr += UpdatePhoneVectors(accs, model, H, H_sm, y_sm);
+    if(update_options_.check_v) {
+      KALDI_ASSERT(update_options_.tau_vec == 0 &&
+                   "You cannot combine the check-v and tau-vec options.");
+      tot_impr += UpdatePhoneVectorsChecked(accs, model, H);
+    } else {
+      tot_impr += UpdatePhoneVectors(accs, model, H, H_sm, y_sm);
+    }
   }
   if (flags & kSgmmPhoneProjections) {
     if (update_options_.compress_m_dim == 0)
@@ -762,6 +768,123 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
             << " (no prior) over " << (count) << " frames";
   // Choosing to return actual likelihood impr here.
   return likeimpr / (count + 1.0e-20);
+}
+
+
+/*
+  Math for UpdatePhoneVectorsChecked:
+   
+  Auxf is:
+      v_{jm}^T y_jm -0.5 v_{jm}^T X_{jm} v_{jm}
+     + sum_i gamma_{jmi} \log w_{jmi} ,
+  where X_{jm} = \sum_i \gamma_{jmi} \H_i  [this is one term in H_{jm} in the
+     CSL paper].
+  
+  A local quadratic approximation to this is computable with the formulas in the
+  CSL paper.  
+  
+
+*/
+
+double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
+                                                   AmSgmm *model,
+                                                   const vector< SpMatrix<double> > &H) {
+  KALDI_LOG << "Updating phone vectors (and checking auxiliary function)";
+
+  double tot_count = 0.0, tot_objf_impr = 0.0, tot_auxf_impr = 0.0;  // sum over all states
+
+  for (int32 j = 0; j < accs.num_states_; ++j) {
+
+    for (int32 m = 0; m < model->NumSubstates(j); ++m) {
+      double gamma_jm = accs.gamma_[j].Row(m).Sum();
+
+      SpMatrix<double> X_jm(accs.phn_space_dim_);  // = \sum_i \gamma_{jmi} H_i
+
+      for (int32 i = 0; i < accs.num_gaussians_; ++i) {
+        double gamma_jmi = accs.gamma_[j](m, i);
+        if (gamma_jmi != 0.0)
+          X_jm.AddSp(gamma_jmi, H[i]); 
+      }
+
+      Vector<double> v_jm_orig(model->v_[j].Row(m)),
+          v_jm(v_jm_orig);
+
+      double exact_objf_start = 0.0, exact_objf = 0.0, auxf_impr = 0.0;
+      int32 backtrack_iter, max_backtrack = 10;
+      for(backtrack_iter = 0; backtrack_iter < max_backtrack; backtrack_iter++) {
+        // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
+        Vector<double> w_jm(accs.num_gaussians_);
+        w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
+                       v_jm, 0.0);
+        w_jm.Add(-w_jm.LogSumExp()); // it is now log w_jm
+
+        exact_objf = VecVec(w_jm, accs.gamma_[j].Row(m))
+            + VecVec(v_jm, accs.y_[j].Row(m))
+            -0.5 * VecSpVec(v_jm, X_jm, v_jm);
+
+        if(backtrack_iter == 0.0)
+          exact_objf_start = exact_objf;
+        else {
+          if(exact_objf >= exact_objf_start) { 
+            break; // terminate backtracking.
+          } else {
+            KALDI_LOG << "Backtracking computation of v_jm for j = " << j
+                      << " and m = " << m << " because objf changed by "
+                      << (exact_objf-exact_objf_start) << " [vs. predicted:] "
+                      << auxf_impr;
+            v_jm.AddVec(1.0, v_jm_orig);
+            v_jm.Scale(0.5);
+          }
+        }
+
+        if(backtrack_iter == 0) { // computing updated value.
+          w_jm.ApplyExp(); // it is now w_jm
+          SpMatrix<double> H_jm(X_jm);
+          Vector<double> g_jm(accs.y_[j].Row(m));
+          for (int32 i = 0; i < accs.num_gaussians_; ++i) {
+            double gamma_jmi = accs.gamma_[j](m, i);
+            double quadratic_term = std::max(gamma_jmi, gamma_jm * w_jm(i));
+            double scalar = gamma_jmi - gamma_jm * w_jm(i) + quadratic_term
+                * VecVec(model->w_.Row(i), model->v_[j].Row(m));
+            g_jm.AddVec(scalar, model->w_.Row(i));
+            if (quadratic_term > 1.0e-10) {
+              H_jm.AddVec2(static_cast<BaseFloat>(quadratic_term), model->w_.Row(i));
+            }
+          }
+          auxf_impr =
+              SolveQuadraticProblem(H_jm,
+                                    g_jm,
+                                    &v_jm,
+                                    static_cast<double>(update_options_.max_cond),
+                                    static_cast<double>(update_options_.epsilon),
+                                    "v", true);
+        }
+      }
+      double objf_impr = exact_objf - exact_objf_start;
+      tot_count += gamma_jm;
+      tot_objf_impr += objf_impr;
+      tot_auxf_impr += auxf_impr;
+      if(backtrack_iter == max_backtrack)
+        KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]\n";
+      else {
+        model->v_[j].Row(m).CopyFromVec(v_jm);
+      }
+
+      if (j < 3 && m < 2) {
+        KALDI_LOG << "Objf impr for j = " << (j) << " m = " << (m) << " is "
+                  << objf_impr << " vs. quadratic auxf impr (before backtrack) "
+                  << auxf_impr;
+      }
+    }
+  }
+
+  KALDI_LOG << "**Overall objf impr for v is "
+            << (tot_objf_impr / (tot_count + 1.0e-20))
+            << " (auxf impr before backtracking:) "
+            << (tot_auxf_impr / (tot_count + 1.0e-20))
+            << " over " << tot_count << " frames";
+  // Choosing to return actual likelihood impr here.
+  return tot_objf_impr / (tot_count + 1.0e-20);
 }
 
 void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,

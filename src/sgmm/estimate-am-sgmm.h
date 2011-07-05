@@ -49,6 +49,10 @@ struct MleAmSgmmOptions {
   /// Fix for the smoothing approach, necessary if max_cond_H_sm != inf
   /// note: only has an effect if tau_vec != 0.
   bool fixup_H_sm;
+  /// Set check_v to true if you want to use the "checking" version of the update
+  /// for the v's, in which it checks the "real" objective function value and
+  /// backtracks if necessary;
+  bool check_v;
 
   bool renormalize_V;
   bool renormalize_N;
@@ -76,6 +80,7 @@ struct MleAmSgmmOptions {
     epsilon = 1.0e-40;
     max_cond_H_sm = 1.0e+05; // only real significance in normal situation is for diagnostics.
     fixup_H_sm = true;
+    check_v = false; // for back-compat.
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors
     // on disk.
@@ -102,6 +107,9 @@ struct MleAmSgmmOptions {
                  "Number for iterations for weight projection estimation.");
     po->Register("renormalize-v", &renormalize_V, module+"If true, renormalize "
                  "the phonetic-subspace vectors to have meaningful sizes.");
+    po->Register("check-v", &check_v, module+"If true, check real auxf "
+                 "improvement in update of v and backtrack if needed "
+                 "(not compatible with smoothing v)");
     po->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
                  "the speaker subspace to have meaningful sizes.");
     po->Register("compress-m-dim", &compress_m_dim, module+"If nonzero, limit "
@@ -242,18 +250,28 @@ class MleAmSgmmUpdater {
   void ComputeSMeans(const MleAmSgmmAccs &accs,
                      const AmSgmm &model);
   
-  
   void ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
                              const AmSgmm &model,
                              const std::vector< SpMatrix<double> > &H,
                              SpMatrix<double> *H_sm,
                              Vector<double> *y_sm) const;
 
+  // UpdatePhoneVectors function that allows smoothing terms (but
+  // no checking of proper auxiliary function RE weights)
   double UpdatePhoneVectors(const MleAmSgmmAccs &accs,
-                               AmSgmm *model,
-                               const std::vector<SpMatrix<double> > &H,
-                               const SpMatrix<double> &H_sm,
-                               const Vector<double> &y_sm);
+                            AmSgmm *model,
+                            const std::vector<SpMatrix<double> > &H,
+                            const SpMatrix<double> &H_sm,
+                            const Vector<double> &y_sm);
+
+  
+
+  // UpdatePhoneVectors function that does not support smoothing
+  // terms, but allows checking of objective-function improvement,
+  // and backtracking.
+  double UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
+                                   AmSgmm *model,
+                                   const std::vector<SpMatrix<double> > &H);
 
   double UpdateM(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateMCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
