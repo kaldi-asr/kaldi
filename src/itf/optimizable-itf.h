@@ -40,6 +40,8 @@ class OptimizableInterface {
   /// computes the function value for a parameter params
   /// and returns it
   virtual Real ComputeValue(const Vector<Real> &params) = 0;
+
+  virtual ~OptimizableInterface() {}
 };
 /// @} end of "Interfaces"
 } // end namespace kaldi

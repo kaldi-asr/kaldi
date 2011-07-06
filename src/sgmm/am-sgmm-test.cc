@@ -127,7 +127,7 @@ void TestSgmmSubstates(const AmSgmm &sgmm) {
 
 void TestSgmmIncreaseDim(const AmSgmm &sgmm) {
   using namespace kaldi;
-  int32 target_phn_dim = 1.5 * sgmm.PhoneSpaceDim();
+  int32 target_phn_dim = static_cast<int32>(1.5 * sgmm.PhoneSpaceDim());
   int32 target_spk_dim = sgmm.PhoneSpaceDim() - 1;
 
   int32 dim = sgmm.FeatureDim();

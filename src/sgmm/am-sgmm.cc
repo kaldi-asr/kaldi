@@ -648,7 +648,7 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
     }
   }
 
-  double entropy_count = 0, entropy_sum = 0;
+//  double entropy_count = 0, entropy_sum = 0;
 
   n_.resize(NumStates());
   for (int32 j = 0; j < NumStates(); ++j) {

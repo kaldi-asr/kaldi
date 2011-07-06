@@ -27,7 +27,7 @@ bool Rprop(const RpropOptions<Real> &opts,
   bool converged = false;
   Real last_value;
   Real cur_value;
-  int mul_factor = opts.maximizing?1.0:-1.0;
+  Real mul_factor = opts.maximizing? 1.0 : -1.0;
   size_t dim = param->Dim();
 
   // current gradient

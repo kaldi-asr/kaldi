@@ -80,10 +80,10 @@ void UnitTestRand() {
       assert(RandPoisson(0.0) == 0);
       std::cout << "Test RandPoisson\n";
       float lambda = RandUniform() * 3.0;  // between 0 and 3.
-      int sum = RandPoisson(lambda) - lambda;  // expected value is zero.
+      double sum = RandPoisson(lambda) - lambda;  // expected value is zero.
       for (int j = 0; ; j++) {
         sum += RandPoisson(lambda) - lambda;
-        if (std::abs((double)sum) < 0.5*sqrt((double)j)) break;
+        if (std::abs(sum) < 0.5*sqrt((double)j)) break;
       }
     }
 

@@ -275,12 +275,12 @@ void UnitTestIoStandard() {
 
   {
     std::cout << "Should see: foo\n";
-    Output out("", NULL);
+    Output out("", false);
     out.Stream() << "foo\n";
   }
   {
     std::cout << "Should see: bar\n";
-    Output out("-", NULL);
+    Output out("-", false);
     out.Stream() << "bar\n";
   }
 }

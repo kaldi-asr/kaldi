@@ -9,6 +9,7 @@
 
 function failure {
     echo "***configure failed: $* ***"
+    if [ -f kaldi.mk ]; then rm kaldi.mk; fi
     exit 1;
 } 
 
@@ -42,8 +43,8 @@ do
     MKLROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
     --mkl-libdir=*)
     MKLLIBDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
-	--with-math-lib=*)
-	MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --mathlib=*)
+    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
     *)  echo "Unknown argument: $1, exiting"; exit 1 ;;
    esac
 done
@@ -269,7 +270,7 @@ if [ "`uname`" == "Linux"  ]; then
     fi
 
     if [ $MATHLIB == "MKL" ]; then
-        if [ "`arch`" != "x86_64" ]; then
+        if [ "`uname -m`" != "x86_64" ]; then
         failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64). 
         See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
