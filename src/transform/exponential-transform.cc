@@ -44,29 +44,29 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
   // Next stage is to compute derivative w.r.t exp(tA)
   int32 dim = accs.Dim();
 
-  Matrix<double> tA(dim+1, dim+1), exptA(dim+1, dim+1);
+  Matrix<double> tA(dim+1, dim+1), X(dim+1, dim+1);
   tA.CopyFromMat(et.A_);
   tA.Scale(t);
 
   MatrixExponential<double> mexp;
-  mexp.Compute(tA, &exptA);  // compute exp(tA)
+  mexp.Compute(tA, &X);  // compute X == exp(tA)
 
-  // Now, with C = exp(tA), compute df/dC.
+  // Now, with X = exp(tA), compute df/dX.
 
-  Matrix<double> df_dC(dim+1, dim+1);  // last row of this will be zero.
-  SubMatrix<double> top_part(df_dC, 0, dim, 0, dim+1);  // part to which we copy K.
+  Matrix<double> df_dX(dim+1, dim+1);  // last row of this will be zero.
+  SubMatrix<double> top_part(df_dX, 0, dim, 0, dim+1);  // part to which we copy K.
   top_part.CopyFromMat(accs.K_);
 
   for (int32 i = 0; i < dim; i++) {
-    SubVector<double> row(exptA, i);
-    // (i'th row of df_dC) -= G[i] * (i'th row of [C == exp(tA)])
-    df_dC.Row(i).AddSpVec(-1.0, accs.G_[i], row, 1.0);
+    SubVector<double> row(X, i);
+    // (i'th row of df_dX) -= G[i] * (i'th row of [X == exp(tA)])
+    df_dX.Row(i).AddSpVec(-1.0, accs.G_[i], row, 1.0);
   }
 
   Matrix<double> df_dtA(dim+1, dim+1);  // last row of this does not matter.
 
   // propagate the gradient back through the matrix exponential.
-  mexp.Backprop(df_dC, &df_dtA);
+  mexp.Backprop(df_dX, &df_dtA);
 
   // now we have gradient w.r.t. A.
   // Keep just the part we need.
