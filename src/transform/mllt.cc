@@ -65,7 +65,7 @@ void MlltAccs::Update(double beta,
                       const std::vector<SpMatrix<double> > &G,
                       MatrixBase<BaseFloat> *M_ptr,
                       BaseFloat *objf_impr_out,
-                      BaseFloat *count_out)  {
+                      BaseFloat *count_out) {
   int32 dim = G.size();
   KALDI_ASSERT(dim != 0 && M_ptr != NULL
                && M_ptr->NumRows() == dim

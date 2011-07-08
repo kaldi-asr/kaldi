@@ -67,10 +67,11 @@ fi
   mkdir CLAPACK_include
   cd CLAPACK_include
 
-  for x in  clapack.h    f2c.h; do 
+  for x in  clapack.h f2c.h cblas.h; do 
     wget -T 10 -t 3 http://www.netlib.org/clapack/$x; 
   done
-
+  cp ../ATLAS/include/cblas.h . || exit 1
+  
   if [ ! -e clapack.h ] || [ ! -e f2c.h ]; then
     echo "****download clapack.h or f2c.h failed."
     cd ..

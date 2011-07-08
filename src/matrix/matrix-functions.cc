@@ -610,54 +610,54 @@ template void ComputeDctMatrix(Matrix<double> *M);
 template<class Real>
 void MatrixExponential<Real>::Clear() {
   N_ = 0;
-  A_scaled_.Resize(0, 0);
+  P_.Resize(0, 0);
   B_.clear();
   powers_.clear();
 }
 
 template<class Real>
-void MatrixExponential<Real>::Compute(const MatrixBase<Real> &A,
-                                      MatrixBase<Real> *B) {
-  // does *B = exp(A)
-  KALDI_ASSERT(A.NumRows() == A.NumCols());
+void MatrixExponential<Real>::Compute(const MatrixBase<Real> &M,
+                                      MatrixBase<Real> *X) {
+  // does *X = exp(M)
+  KALDI_ASSERT(M.NumRows() == M.NumCols());
   Clear();
 
-  N_ = ComputeN(A);
-  MatrixIndexT dim = A.NumRows();
-  A_scaled_.Resize(dim, dim);
-  A_scaled_.CopyFromMat(A);
-  A_scaled_.Scale(std::pow(0.5, N_));
+  N_ = ComputeN(M);
+  MatrixIndexT dim = M.NumRows();
+  P_.Resize(dim, dim);
+  P_.CopyFromMat(M);
+  P_.Scale(std::pow(0.5, N_));
   // would need to keep this code in sync with ComputeN().
   B_.resize(N_+1);
   B_[0].Resize(dim, dim);
-  ComputeTaylor(A_scaled_, &(B_[0]));  // set B_[0] = exp(A_scaled_)
+  ComputeTaylor(P_, &(B_[0]));  // set B_[0] = exp(P_)
   for (MatrixIndexT i = 1; i <= N_; i++) {
     // implement the recursion B_[k] = 2 B_[k-1] + B_[k-1]^2.
     B_[i].Resize(dim, dim);  // zeros it.
     B_[i].AddMat(2.0, B_[i-1], kNoTrans);
     B_[i].AddMatMat(1.0, B_[i-1], kNoTrans, B_[i-1], kNoTrans, 1.0);
   }
-  KALDI_ASSERT(B->NumRows() == dim && B->NumCols() == dim);
-  (*B).CopyFromMat(B_[N_]);  // last one plus the unit matrix is the answer.
+  KALDI_ASSERT(X->NumRows() == dim && X->NumCols() == dim);
+  (*X).CopyFromMat(B_[N_]);  // last one plus the unit matrix is the answer.
   // add in the unit matrix.
   for (MatrixIndexT i = 0; i < dim; i++)
-    (*B)(i, i) += 1.0;
+    (*X)(i, i) += 1.0;
 };
 
 template<class Real>
-void MatrixExponential<Real>::Compute(const SpMatrix<Real> &A,
-                                      SpMatrix<Real> *B) {
-  Matrix<Real> Afull(A), Bfull(A.NumRows(), A.NumCols());
-  Compute(Afull, &Bfull);
-  B->CopyFromMat(Bfull);
+void MatrixExponential<Real>::Compute(const SpMatrix<Real> &M,
+                                      SpMatrix<Real> *X) {
+  Matrix<Real> Mfull(M), Xfull(M.NumRows(), M.NumCols());
+  Compute(Mfull, &Xfull);
+  X->CopyFromMat(Xfull);
 }
 
 
 template<class Real>
-MatrixIndexT MatrixExponential<Real>::ComputeN(const MatrixBase<Real> &A) {
+MatrixIndexT MatrixExponential<Real>::ComputeN(const MatrixBase<Real> &M) {
   // Computes the power of two we want to use.  Aim to get
   // AScaled.FrobeniusNorm() < 1/10.
-  Real norm = A.FrobeniusNorm();
+  Real norm = M.FrobeniusNorm();
   Real max_norm = 0.1;
   if (norm > 1000) {
     KALDI_WARN << "Trying to compute exponent of very high-norm matrix: norm = "
@@ -669,28 +669,28 @@ MatrixIndexT MatrixExponential<Real>::ComputeN(const MatrixBase<Real> &A) {
 }
 
 template<class Real>
-void MatrixExponential<Real>::ComputeTaylor(const MatrixBase<Real> &A, MatrixBase<Real> *E) {
-  KALDI_ASSERT(A.FrobeniusNorm() < 1.001);  // should actually be << 1
+void MatrixExponential<Real>::ComputeTaylor(const MatrixBase<Real> &P, MatrixBase<Real> *B0) {
+  KALDI_ASSERT(P.FrobeniusNorm() < 1.001);  // should actually be << 1
   // for this to work fast enough.
-  KALDI_ASSERT(A.NumRows() == A.NumCols());
-  MatrixIndexT dim = A.NumRows();
-  KALDI_ASSERT(E->NumRows() == dim && E->NumCols() == dim);
-  E->SetZero();
+  KALDI_ASSERT(P.NumRows() == P.NumCols());
+  MatrixIndexT dim = P.NumRows();
+  KALDI_ASSERT(B0->NumRows() == dim && B0->NumCols() == dim);
+  B0->SetZero();
   MatrixIndexT n = 1, n_factorial = 1, max_iter = 10000;
-  Matrix<Real> An(A),  // An = A^n
-      Ecur(dim, dim),
-      tmp(dim, dim);  // use Ecur to test whether E changed.
-  std::vector<Matrix<Real>* > powers_tmp;  // list of stored powers of A, starting
+  Matrix<Real> Pn(P),  // Pn = P^n
+      B0cur(dim, dim),
+      tmp(dim, dim);  // use B0cur to test whether B0 changed.
+  std::vector<Matrix<Real>* > powers_tmp;  // list of stored powers of P, starting
   // from 2 and up to 1 before the last one we used.
   while (n < max_iter) {  // have an arbitrary very large limit on #iters
-    Ecur.AddMat(1.0 / n_factorial, An);
-    if (Ecur.Equal(*E)) // was no change [already very small]
+    B0cur.AddMat(1.0 / n_factorial, Pn);
+    if (B0cur.Equal(*B0)) // was no change [already very small]
       break;
-    E->CopyFromMat(Ecur);  // Keep E in sync with Ecur.
-    tmp.AddMatMat(1.0, A, kNoTrans, An, kNoTrans, 0.0);  // tmp = A * A^n
+    B0->CopyFromMat(B0cur);  // Keep B0 in sync with B0cur.
+    tmp.AddMatMat(1.0, P, kNoTrans, Pn, kNoTrans, 0.0);  // tmp = P * P^n
     n++;
     n_factorial *= n;
-    An.CopyFromMat(tmp);  // copy back to A^n
+    Pn.CopyFromMat(tmp);  // copy back to P^n
     powers_tmp.push_back(new Matrix<Real>(tmp));
   }
   if (n == max_iter)
@@ -705,12 +705,12 @@ void MatrixExponential<Real>::ComputeTaylor(const MatrixBase<Real> &A, MatrixBas
 }
 
 template<class Real>
-void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &dE,
-                                       MatrixBase<Real> *dA) const {
-  MatrixIndexT dim = A_scaled_.NumRows();
-  KALDI_ASSERT(dE.NumRows() == dim && dE.NumCols() == dim
-               && dA->NumRows() == dim && dA->NumCols() == dim);
-  Matrix<Real> dB(dE);
+void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &hX,
+                                       MatrixBase<Real> *hM) const {
+  MatrixIndexT dim = P_.NumRows();
+  KALDI_ASSERT(hX.NumRows() == dim && hX.NumCols() == dim
+               && hM->NumRows() == dim && hM->NumCols() == dim);
+  Matrix<Real> dB(hX);
   // dB represents the gradient df/dB_[i] for the current
   // value of i, which decreases from N_ to zero (currently it's N_)
   for (MatrixIndexT i = N_-1;
@@ -732,83 +732,80 @@ void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &dE,
     prev_dB.AddMatMat(1.0, dB, kNoTrans, B_[i], kTrans, 1.0);
     dB.CopyFromMat(prev_dB);
   }
-  // currently dB is the gradient df/dB_[0], which is exp(A_scaled_) - I.
-  // we have to backprop this and we get df/dA_scaled_.
-  BackpropTaylor(dB, dA);  // at this point, dA is temporarily used to store
-  // df/dA_scaled_.
-  dA->Scale(std::pow(0.5, N_));  // Since A_Scaled = A * std::pow(0.5, N_).
+  // currently dB is the gradient df/dB_[0], which is exp(P_) - I.
+  // we have to backprop this and we get df/dP_.
+  BackpropTaylor(dB, hM);  // at this point, hM is temporarily used to store
+  // df/dP_.
+  hM->Scale(std::pow(0.5, N_));  // Since A_Scaled = A * std::pow(0.5, N_).
 }
 
 
 template<class Real>
-void MatrixExponential<Real>::Backprop(const SpMatrix<Real> &dE,
-                                       SpMatrix<Real> *dA) const {
-  Matrix<Real> dEfull(dE), dAfull(dE.NumRows(), dE.NumCols());
-  Backprop(dEfull, &dAfull);
-  dA->CopyFromMat(dAfull);
+void MatrixExponential<Real>::Backprop(const SpMatrix<Real> &hX,
+                                       SpMatrix<Real> *hM) const {
+  Matrix<Real> hXfull(hX), hMfull(hX.NumRows(), hX.NumCols());
+  Backprop(hXfull, &hMfull);
+  hM->CopyFromMat(hMfull);
 }
 
 
 template<class Real>
-void MatrixExponential<Real>::BackpropTaylor(const MatrixBase<Real> &dE,
-                                             MatrixBase<Real> *dA) const {
+void MatrixExponential<Real>::BackpropTaylor(const MatrixBase<Real> &hB0,
+                                             MatrixBase<Real> *hP) const {
   // Backprop through the Taylor-series computation.
   // the original computation was:
-  // E = \sum_{i = 1}^n (1/i!) A^i
-  // Note that A here is actually the same as A_scaled_ which is a scaled version
-  // of the original A.  But inside this routine we just call it A.
-  // Also you can see that E is actually the exponential minus I, since we start
+  //  X = \sum_{i = 1}^n (1/i!) P^i
+  // Also you can see that X is actually the exponential minus I, since we start
   //   the series from 1; this doesn't affect the derivatives.
-  // The variable dE represents df/dE, where f is a scalar function.
-  // In the math we will use K for df/dE (instead of dE), to avoid confusion.
-  // Note that there is no transpose in our notation for derivative: K(i, j) is
+  // The variable \hat{B}_0 (hB0) represents df/dX, where f is a scalar function.
+  // Note that there is no transpose in our notation for derivative: hB0(i, j) is
   // d/df of E(i, j).
-  // Imagine that f is \tr(K^T E) (since this varies linearly with E in the same
-  // way that the real f does).  We want d/dA (K^T E)
-  // = d/dA  \sum_{i = 1}^n (1/i!) K^T A^i
-  // Taking each individual term A in this expression and treating the others as constants,
+  // Imagine that f is \tr(hB0^T B0) (since this varies linearly with B0 in the same
+  // way that the real f does).  We want d/dP (hB0^T B0); call this hP (for \hat{P}).
+  //   hP = d/dP  \sum_{i = 1}^n (1/i!) hB0^T P^i
+  // Taking each individual term P in this expression and treating the others as constants,
   // and noting that whenever we have something like tr(A B), then B^T is the derivative
   // of this expression w.r.t. A (in our notation),
-  // df/dA = K + (1/2!) (K A^T + A^T K) + (1/3!) (K A^T A^T + A^T K A^T + A^T A^T K)
+  //  hP = hB0 + (1/2!) (hB0 P^T + P^T hB0) + (1/3!) (hB0 P^T P^T + P^T hB0 P^T + P^T P^T hB0)
   //          + (1/4!) ....   (1)
   // We can compute this with the following recursion by which we get each of the terms
   // in this series in turn:
-  //  X <-- K
+  //  hP_1 <-- hB0
+  //  hP <-- hP_1
   //  for n = 2 .. infinity:  # we only carry this on for as many terms as we used
   //                          # in the original expansion
-  //     X <-- (1/n) X A^T + (1/n!) (A^T)^(n-1) K
+  //     hP_n <-- (1/n) hP_{n-1} P^T + (1/n!) (P^T)^(n-1) hP_{n-1}
+  //     hP <-- hP + hP_n
 
-  const Matrix<Real> &A(A_scaled_);
-  MatrixIndexT dim = A.NumRows();
-  KALDI_ASSERT(A.NumCols() == dim && dE.NumRows() == dim && dE.NumCols() == dim
-               && dA->NumRows() == dim && dA->NumCols() == dim);
-  dA->SetZero();
-  Matrix<Real> X(dE),  // dE is K in the math, this is X <-- K
-      Xtmp(dim, dim);
-  dA->AddMat(1.0, X);  // first term in (1):  df/dA += K
+  const Matrix<Real> &P(P_);
+  MatrixIndexT dim = P.NumRows();
+  KALDI_ASSERT(P.NumCols() == dim && hB0.NumRows() == dim && hB0.NumCols() == dim
+               && hP->NumRows() == dim && hP->NumCols() == dim);
+  hP->SetZero();
+  Matrix<Real> hPn1(hB0), 
+      hPn(dim, dim);
+  hP->AddMat(1.0, hPn1);  // first term in (1):  df/dP += K
 
-  MatrixIndexT n = 2, nfact = 2;  // Now do n = 2 in comment above (this is special case,
+  MatrixIndexT n = 2, nfact = 2;
+  // Now do n = 2 in comment above (this is special case,
   // since we did not store the 1st power in powers_).
-  Xtmp.AddMatMat(1.0/n, X, kNoTrans, A, kTrans, 0.0);  // Xtmp <-- (1/n) X A^T
-  Xtmp.AddMatMat(1.0/nfact, A, kTrans, dE, kNoTrans, 1.0);  // Xtmp += (1/n!) A^T^(n-1) K [note, dE is K]
-  X.Swap(&Xtmp);
-  dA->AddMat(1.0, X);  // add in second term in (1)
+  hPn.AddMatMat(1.0/n, hPn1, kNoTrans, P, kTrans, 0.0);  // hP_n <-- (1/n) hP_{n-1} P^T
+  hPn.AddMatMat(1.0/nfact, P, kTrans, hB0, kNoTrans, 1.0);  // hP_n += (1/n!) P^T^(n-1) hB0
+  hP->AddMat(1.0, hPn);  // add in second term in (1)
+  hPn.Swap(&hPn1);
 
   for (MatrixIndexT i = 0;
       i < static_cast<MatrixIndexT>(powers_.size()); i++) {
     n++;
     nfact *= n;
-    // i corresponds to (n-1)-2, and powers_[i] contains the n-1'th power of A.
-    // next line: Xtmp <-- (1/n) X A^T
-    Xtmp.AddMatMat(1.0/n, X, kNoTrans, A, kTrans, 0.0);
-    // next line: Xtmp += (1/n!) A^T^(n-1) K [note, dE is K]
-    Xtmp.AddMatMat(1.0/nfact, powers_[i], kTrans, dE, kNoTrans, 1.0);
-    X.Swap(&Xtmp);
-    dA->AddMat(1.0, X);  // add in n'th term in (1)
+    // i corresponds to (n-1)-2, and powers_[i] contains the n-1'th power of P.
+    // next line: hP_n <-- (1/n) hP_{n-1} P^T
+    hPn.AddMatMat(1.0/n, hPn1, kNoTrans, P, kTrans, 0.0);
+    // next line: hP_n += (1/n!) P^T^(n-1) hB0
+    hPn.AddMatMat(1.0/nfact, powers_[i], kTrans, hB0, kNoTrans, 1.0);
+    hP->AddMat(1.0, hPn);  // add in n'th term in (1)
+    hPn.Swap(&hPn1);
   }
-
-  // Then we want df/dA (which is the output variable
-  // named dA).
 }
 
 template class MatrixExponential<float>;

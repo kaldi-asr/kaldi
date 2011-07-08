@@ -120,49 +120,50 @@ class MatrixExponential {
  public:
   MatrixExponential() { }
 
-  void Compute(const MatrixBase<Real> &A, MatrixBase<Real> *E);  // does *E = exp(A)
+  void Compute(const MatrixBase<Real> &M, MatrixBase<Real> *X);  // does *X = exp(M)
 
   // Version for symmetric matrices (it just copies to full matrix).
-  void Compute(const SpMatrix<Real> &A, SpMatrix<Real> *E);  // does *E = exp(A)
+  void Compute(const SpMatrix<Real> &M, SpMatrix<Real> *X);  // does *X = exp(M)
 
-  void Backprop(const MatrixBase<Real> &dE, MatrixBase<Real> *dA) const;  // Propagates
+  void Backprop(const MatrixBase<Real> &hX, MatrixBase<Real> *hM) const;  // Propagates
   // the gradient of a scalar function f backwards through this operation, i.e.:
-  // if the parameter dE represents df/dE (with no transpose, so element i, j of dE
-  // is the derivative of f w.r.t. E(i, j)), it sets dA to df/dA, again with no
+  // if the parameter dX represents df/dX (with no transpose, so element i, j of dX
+  // is the derivative of f w.r.t. E(i, j)), it sets dM to df/dM, again with no
   // transpose (of course, only the part thereof that comes through the effect of
   // A on B).  This applies to the values of A and E that were called most recently
   // with Compute().
 
   // Version for symmetric matrices (it just copies to full matrix).
-  void Backprop(const SpMatrix<Real> &dE, SpMatrix<Real> *dA) const;
+  void Backprop(const SpMatrix<Real> &hX, SpMatrix<Real> *hM) const;
   
  private:
   void Clear();
 
-  static MatrixIndexT ComputeN(const MatrixBase<Real> &A);
+  static MatrixIndexT ComputeN(const MatrixBase<Real> &M);
 
-
-  // This is intended for matrices A with small norms: compute E = exp(A) - I.
+  // This is intended for matrices P with small norms: compute B_0 = exp(P) - I.
   // Keeps adding terms in the Taylor series till there is no further
-  // change in the result.  Stores some of the powers of A in powers_.
-  void ComputeTaylor(const MatrixBase<Real> &A, MatrixBase<Real> *E);
+  // change in the result.  Stores some of the powers of A in powers_,
+  // and the number of terms K as K_.
+  void ComputeTaylor(const MatrixBase<Real> &P, MatrixBase<Real> *B0);
 
   // Backprop through the Taylor-series computation above.
-  void BackpropTaylor(const MatrixBase<Real> &dE,
-                      MatrixBase<Real> *dA) const;
+  // note: hX is \hat{X} in the math; hM is \hat{M} in the math.
+  void BackpropTaylor(const MatrixBase<Real> &hX,
+                      MatrixBase<Real> *hM) const;
 
-  Matrix<Real> A_scaled_;  // Equals A * 2^(-N_)
-  std::vector<Matrix<Real> > B_;  // B_[0] = exp(A_scaled_) - I,
+  Matrix<Real> P_;  // Equals M * 2^(-N_)
+  std::vector<Matrix<Real> > B_;  // B_[0] = exp(P_) - I,
                                  //  B_[k] = 2 B_[k-1] + B_[k-1]^2   [k > 0],
-                                 //  ( = exp(A_scaled_)^k - I )
+                                 //  ( = exp(P_)^k - I )
                                  // goes from 0..N_ [size N_+1].
 
-  std::vector<Matrix<Real> > powers_;  // powers (>1) of A_scaled_ stored here,
+  std::vector<Matrix<Real> > powers_;  // powers (>1) of P_ stored here,
   // up to all but the last one used in the Taylor expansion (this is the
   // last one we need in the backprop).  The index is the power minus 2.
 
-  MatrixIndexT N_;  // Power N_ >=0 such that A_scaled_ = A * 2^(-N_),
-  // we choose it so that A_scaled_ has a sufficiently small norm
+  MatrixIndexT N_;  // Power N_ >=0 such that P_ = A * 2^(-N_),
+  // we choose it so that P_ has a sufficiently small norm
   // that the Taylor series will converge fast.
 };
 
