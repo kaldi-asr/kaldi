@@ -27,15 +27,16 @@
 # (5) decode with the final model using both the speaker vectors and fMLLR
 
 if [ -f path.sh ]; then . path.sh; fi
-dir=exp/decode_sgmmd_fmllr
-tree=exp/sgmmd/tree
-model=exp/sgmmd/final.mdl
-occs=exp/sgmmd/final.occs
-fmllr_model=exp/sgmmd/final_fmllr.mdl
-alimodel=exp/sgmmd/final.alimdl
-graphdir=exp/graph_sgmmd
+dir=exp/decode_sgmme_fmllr
+tree=exp/sgmme/tree
+model=exp/sgmme/final.mdl
+occs=exp/sgmme/final.occs
+fmllr_model=exp/sgmme/final_fmllr.mdl
+alimodel=exp/sgmme/final.alimdl
+graphdir=exp/graph_sgmme
 silphonelist=`cat data/silphones.csl`
-mat=exp/sgmmd/final.mat
+mat=exp/tri2k/lda.mat
+# also will use the transforms from exp/decode_tri2k
 
 mincount=1000  # min occupancy to extimate fMLLR transform
 iters=10       # number of iters of fMLLR estimation
@@ -54,9 +55,10 @@ scripts/mkgraph.sh $tree $model $graphdir
 
 for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
-  feats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $mat ark:- ark:- |"
+  trans=exp/decode_tri2k/et_${test}.trans
   spk2utt_opt="--spk2utt=ark:data/test_${test}.spk2utt"
   utt2spk_opt="--utt2spk=ark:data/test_${test}.utt2spk"
+  feats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark:$trans ark:- ark:- |"
 
   sgmm-gselect $model "$feats" ark,t:- 2>$dir/gselect.log | \
      gzip -c > $dir/${test}_gselect.gz || exit 1;
@@ -90,7 +92,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
       "$feats" ark,s,cs:- ark:$dir/test_${test}.fmllr ) \
       2>$dir/est_fmllr_${test}.log
 
-  adapt_feats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/test_${test}.fmllr ark:- ark:- |"
+  adapt_feats="ark:splice-feats scp:data/test_${test}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark:$trans ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/test_${test}.fmllr ark:- ark:- |"
 
   # Now decode with fMLLR-adapted features. Gaussian selection is also done 
   # with the adapted features. This causes a small improvement in WER on RM. 

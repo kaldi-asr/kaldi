@@ -32,10 +32,10 @@ silphonelist=`cat data/silphones.csl`
 mincount=1000  # min occupancy to extimate fMLLR transform
 iters=10       # number of iters of fMLLR estimation
 
-if [ ! -f $model ]; then
+if [ ! -f $model -o $imodel -nt $model ]; then
     if [ ! -f $imodel ]; then
-	echo "Cannot find $imodel. Maybe training didn't finish?"
-	exit 1;
+      echo "Cannot find $imodel. Maybe training didn't finish?"
+      exit 1;
     fi
     sgmm-comp-prexform $imodel $occs $model
 fi

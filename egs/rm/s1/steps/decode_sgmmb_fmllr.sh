@@ -39,7 +39,7 @@ silphonelist=`cat data/silphones.csl`
 mincount=1000  # min occupancy to extimate fMLLR transform
 iters=10       # number of iters of fMLLR estimation
 
-if [ ! -f $fmllr_model ]; then
+if [ ! -f $fmllr_model -o $model -nt $fmllr_model ]; then
     if [ ! -f $model ]; then
 	echo "Cannot find $model. Maybe training didn't finish?"
 	exit 1;

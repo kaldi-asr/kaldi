@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # To be run from ..
-# You must run init_sgmma.sh first, as well as train_tri1.sh
+# You must run train_ubma.sh first, as well as train_tri1.sh
 # We rely on the UBM exp/sgmma/4.ubm being there
 
 if [ -f path.sh ]; then . path.sh; fi

@@ -45,7 +45,7 @@ exp/decode_tri2i/wer:Average WER is 3.981489 (499 / 12533) # Triple-deltas + HLD
 exp/decode_tri2j/wer:Average WER is 3.853826 (483 / 12533) # Triple-deltas + LDA + MLLT
 
 
-exp/decode_tri2k/wer:Average WER is 3.071890 (385 / 12533) # LDA + exponential transform
+exp/decode_tri2k/wer:Average WER is 3.071890 (385 / 12533) # LDA + exponential transform (ET)
 exp/decode_tri2k_utt/wer:Average WER is 3.039974 (381 / 12533)  # per-utterance adaptation
 exp/decode_tri2k_fmllr/wer:Average WER is 2.641028 (331 / 12533) # fMLLR (per-spk)
 exp/decode_tri2k_regtree_fmllr/wer:Average WER is 2.688901 (337 / 12533)  # +regression-tree
@@ -75,8 +75,9 @@ exp/decode_sgmmc_fmllr/wer:Average WER is 2.457512 (308 / 12533)
 exp/decode_sgmmd/wer:Average WER is 2.449533 (307 / 12533) 
 exp/decode_sgmmd_fmllr/wer:Average WER is 2.305912 (289 / 12533) 
 
-
-
+# sgmme is like sgmmb but with LDA+ET features.
+exp/decode_sgmme/wer:Average WER is 2.321870 (291 / 12533) 
+exp/decode_sgmme_fmllr/wer:Average WER is 2.154313 (270 / 12533) 
 
 #### Note: stuff below this line may be out of date / not computed
 # with most recent version of toolkit.

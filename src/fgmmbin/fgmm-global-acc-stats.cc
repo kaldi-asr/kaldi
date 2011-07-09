@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
       kaldi::Output ko(accs_wxfilename, binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs to " << accs_wxfilename;
+    KALDI_LOG << "Written accs to " << accs_wxfilename;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

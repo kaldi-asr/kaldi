@@ -17,21 +17,22 @@
 
 if [ -f path.sh ]; then . path.sh; fi
 
-# This is SGMM with speaker vectors (as sgmmb) but on top of LDA+STC features.
+# This is SGMM with speaker vectors (as sgmmb) but on top of LDA+ET features.
 # To be run from ..
-# You must run train_ubm.sh first, as well as train_tri2f.sh
+# You must run train_ubmd.sh first, as well as train_tri2k.sh
 # We rely on the UBM exp/sgmmc/4.ubm being there
 
-dir=exp/sgmmd
-srcdir=exp/tri2f
-mat=$srcdir/final.mat
+dir=exp/sgmme
+srcdir=exp/tri2k
+mat=$srcdir/lda.mat
+trans=$srcdir/final.trans
 srcmodel=$srcdir/final.mdl
 srcgraphs="ark:gunzip -c $srcdir/graphs.fsts.gz|"
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 numiters=25   # Total number of iterations
 
-ubm=exp/ubmc/4.ubm
+ubm=exp/ubmd/4.ubm
 realign_iters="5 10 15"; 
 spkvec_iters="5 8 12 17 22"
 silphonelist=`cat data/silphones.csl`
@@ -49,7 +50,7 @@ mkdir -p $dir
 
 utt2spk_opt="--utt2spk=ark:data/train.utt2spk"
 spk2utt_opt="--spk2utt=ark:data/train.spk2utt"
-feats="ark:splice-feats scp:data/train.scp ark:- | transform-feats $mat ark:- ark:- |"
+feats="ark:splice-feats scp:data/train.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt ark,s,cs:$trans ark:- ark:- |"
 
 if [ ! -f $ubm ]; then
   echo "No UBM in $ubm"
