@@ -396,6 +396,18 @@ steps/train_sgmm2b.sh || exit 1;
  done
 )&
 
+# as sgmm2b, but with LDA+STC.
+# Note: increased acwt from 12 to 13.
+steps/train_sgmm2d.sh || exit 1;
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2d/tree exp/sgmm2d/final.mdl exp/graph_sgmm2d_tg_pruned || exit 1;
+ for year in 92 93; do
+  scripts/decode.sh --per-spk exp/decode_sgmm2d_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
+  scripts/decode.sh exp/decode_sgmm2d_tgpr_utt_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm2d_fmllr_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d_fmllr.sh data/eval_nov${year}.scp 
+ done
+)&
+
 
 # [on all the data]
 steps/train_ubm3a.sh || exit 1;

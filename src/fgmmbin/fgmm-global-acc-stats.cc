@@ -107,13 +107,13 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Processed " << num_done << " files, average likelihood per "
               << "frame = " << (tot_like/tot_frames) << " over " << tot_frames
-              << "frames.\n";
+              << "frames.";
 
     {
       kaldi::Output ko(accs_wxfilename, binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs to " << accs_wxfilename << '\n';
+    std::cerr << "Written accs to " << accs_wxfilename;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

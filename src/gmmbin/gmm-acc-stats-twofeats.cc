@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     for (; !feature1_reader.Done(); feature1_reader.Next()) {
       std::string key = feature1_reader.Key();
       if (!feature2_reader.HasKey(key)) {
-        KALDI_WARN << "For utterance " << key << ", second features not present.\n";
+        KALDI_WARN << "For utterance " << key << ", second features not present.";
         num_no2ndfeats ++;
       } else if (!posteriors_reader.HasKey(key)) {
         num_no_posterior++;
@@ -125,17 +125,18 @@ int main(int argc, char *argv[])
             tot_weight_this_file += weight;
           }
         }
-        std::cerr << "Average like for this file is "
+        KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/tot_weight_this_file) << " over "
-                  << tot_weight_this_file <<" frames.\n";
+                  << tot_weight_this_file <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight_this_file;
         if (num_done % 10 == 0)
-          std::cerr << "Avg like per frame so far is " << (tot_like/tot_t) << '\n';
+          KALDI_LOG << "Avg like per frame so far is " << (tot_like/tot_t);
       }
     }
-    std::cerr << "Num frames "<<tot_t<<", avg like per frame (Gaussian only) = "<<(tot_like/tot_t)<<'\n';
-
+    KALDI_LOG << "Num frames "<<tot_t<<", avg like per frame (Gaussian only) = "
+              <<(tot_like/tot_t);
+    
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_no2ndfeats
               << " with no second features, " << num_other_error
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
       transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

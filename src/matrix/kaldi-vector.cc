@@ -372,6 +372,32 @@ void VectorBase<float>::CopyRowFromMat(const MatrixBase<double> &mat, MatrixInde
 template
 void VectorBase<double>::CopyRowFromMat(const MatrixBase<float> &mat, MatrixIndexT row);
 
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::CopyRowFromSp(const SpMatrix<OtherReal> &sp, MatrixIndexT row) {
+  KALDI_ASSERT(row < sp.NumRows());
+  KALDI_ASSERT(dim_ == sp.NumCols());
+  
+  const OtherReal *sp_data = sp.Data();
+
+  sp_data += (row*(row+1)) / 2; // takes us to beginning of this row.
+  MatrixIndexT i;
+  for (i = 0; i < row; ++i) // copy consecutive elements.
+    data_[i] = static_cast<Real>(*(sp_data++));
+  for(; i < dim_; ++i, sp_data += i) 
+    data_[i] = static_cast<Real>(*sp_data);
+}
+
+template
+void VectorBase<float>::CopyRowFromSp(const SpMatrix<double> &mat, MatrixIndexT row);
+template
+void VectorBase<double>::CopyRowFromSp(const SpMatrix<float> &mat, MatrixIndexT row);
+template
+void VectorBase<float>::CopyRowFromSp(const SpMatrix<float> &mat, MatrixIndexT row);
+template
+void VectorBase<double>::CopyRowFromSp(const SpMatrix<double> &mat, MatrixIndexT row);
+
+
 // takes elements to a power.  Throws exception if could not (but only for power != 1 ad power != 2).
 template<typename Real>
 void VectorBase<Real>::ApplyPow(Real power) {

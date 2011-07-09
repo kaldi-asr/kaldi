@@ -77,9 +77,12 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
 
   // Now update the G_ stats.  We add our (already-transformed)
   // speaker-specific G stats, times t^2.
+  Matrix<double> S(dim, dim+1);
   for (int32 i = 0; i < dim; i++) {
     G_[i].AddSp(t*t, accs.G_[i]);
-    G_[i](i,i) += t*t * accs.K_(i,i);
+    S.Row(i).CopyRowFromSp(accs.G_[i], i); // s_i = g_ii
+    if(accs.G_[i](i,i) - accs.K_(i,i) > 0)
+      G_[i](i,i) += accs.G_[i](i,i) - accs.K_(i,i);
   }
 
   // Update the total beta, and the total beta*t (which is needed
@@ -89,7 +92,7 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
 }
 
 
-  // Updates the matrix A (also changes B as a side effect).
+// Updates the matrix A (also changes B as a side effect).
 void
 ExponentialTransformAccsA::Update(const ExponentialTransformUpdateAOptions &opts,
                                   ExponentialTransform *et,
@@ -103,33 +106,29 @@ ExponentialTransformAccsA::Update(const ExponentialTransformUpdateAOptions &opts
   /// First, just a quadratic update.  Report objf impr.
   /// Then renormalization of A (also produces change in B).
 
-  Matrix<double> grad(Ahat_);  // derivative of f w.r.t. 1st dim rows of A.
+  Matrix<double> Z(Ahat_);  // derivative of f w.r.t. 1st dim rows of A.
+  // Note: Z doesn't include last row, as in the math.
+  
   // Must add in log-det term.
   Matrix<double> unit(dim, dim+1);
   unit.SetUnit();
-  grad.AddMat(beta_t_, unit);  // add \sum_s beta_s t_s times unity--
+  Z.AddMat(beta_t_, unit);  // add \sum_s beta_s t_s times unity--
   // this is the log-det term (since logdet (exp(tA)) is t tr(A)).
   double objf_impr = 0.0;
+
   for (int32 i = 0; i < dim; i++) {
-    // Auxf is grad(i) . delta -0.5 * delta^T G_i delta, where
-    // delta is change in row i.
-    double objf_before = 0.0;
     SpMatrix<double> Ginv(G_[i]);
     Ginv.Invert();
-    Vector<double> delta(dim+1);  // change in i'th row of A.
-    // delta <-- learning_rate .G_i^{-1} . grad_i, if grad_i is i'th row of gradient matrix.
-    delta.AddSpVec(opts.learning_rate, Ginv, grad.Row(i), 0.0);
-    double objf_after = VecVec(delta, grad.Row(i))
-        -0.5 * VecSpVec(delta, G_[i], delta);
-    objf_impr += objf_after - objf_before;
-    // Commit the change.
-    Vector<BaseFloat> delta_bf(delta);
-    et->A_.Row(i).AddVec(1.0, delta_bf);
+    Vector<double> d(dim+1);  // change in i'th row of A.
+    d.AddSpVec(opts.learning_rate, Ginv, Z.Row(i), 0.0);
+    double this_objf_impr = 0.5 * VecVec(d, Z.Row(i)); // only valid if learning_rate == 1.0
+    objf_impr += this_objf_impr;
+    et->A_.Row(i).AddVec(1.0, Vector<BaseFloat>(d));
   }
   KALDI_ASSERT(objf_impr >= 0.0);
   KALDI_LOG << "Updating matrix A: objf impr is " << (objf_impr/beta_)
             << " per frame over " << beta_ << " frames.";
-
+  
   if (objf_impr_out) *objf_impr_out = objf_impr;
   if (count_out) *count_out = beta_;
 
@@ -308,7 +307,7 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
       for (int32 i = 0; i < dim; i++)
         for (int32 j = 0; j < dim+1; j++)
           S(i, j) = accs.G_[i](i, j);
-      Matrix<BaseFloat> Jplus(dim+1, dim+1);  // J with extra row.
+      Matrix<BaseFloat> Jplus(dim+1, dim+1);  // J with extra zero row.
       {
         SubMatrix<BaseFloat> J(Jplus, 0, dim, 0, dim+1);
         J.AddMat(-1.0, S);

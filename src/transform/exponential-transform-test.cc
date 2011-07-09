@@ -97,7 +97,7 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
   Matrix<BaseFloat> no_xform(cur_xforms[0]);
 
   double last_like_tot, orig_like_tot = 0.0;
-  int32 niters = 5;
+  int32 niters = 10;
   double like_tot;
   for (int32 j = 0; j < niters; j++) {
     double objf_change_tot = 0.0;

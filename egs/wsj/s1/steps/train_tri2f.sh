@@ -198,4 +198,5 @@ done
 
 ( cd $dir; rm final.{mdl,mat} 2>/dev/null; 
   ln -s $x.mdl final.mdl; 
+  ln -s $x.occs final.occs;
   ln -s `basename $cur_lda` final.mat )

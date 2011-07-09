@@ -23,24 +23,25 @@
 
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_sgmm2b.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: scripts/decode_sgmm2d.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 
 . path.sh || exit 1;
 
-acwt=0.08333
+acwt=0.0769 # 1/13
 prebeam=12.0
 beam=13.0
 max_active=7000
 silphones=`cat data/silphones.csl`
-model=exp/sgmm2b/final.mdl
-alimodel=exp/sgmm2b/final.alimdl
+model=exp/sgmm2d/final.mdl
+mat=exp/sgmm2d/final.mat
+alimodel=exp/sgmm2d/final.alimdl
 graph=$1
 dir=$2
 job=$3
 scp=$dir/$job.scp
-feats="ark:add-deltas --print-args=false scp:$scp ark:- |"
+feats="ark:splice-feats --print-args=false scp:$scp ark:- | transform-feats $mat ark:- ark:- |"
 
 filenames="$scp $model $graph data/words.txt"
 for file in $filenames; do
@@ -76,7 +77,7 @@ sgmm-decode-faster "$gselect_opt" --beam=$prebeam --max-active=$max_active \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \
   sgmm-post-to-gpost "$gselect_opt" $alimodel "$feats" ark,s,cs:- ark:- | \
   sgmm-est-spkvecs-gpost $spk2utt_opt $model "$feats" ark,s,cs:- \
-     ark:$dir/${job}.vecs1 ) 2>$dir/vecs1.${job}.log || exit 1;
+     ark:$dir/${job}.vecs1 ) 2>$dir/vecs1${job}.log || exit 1;
 
 ( ali-to-post ark:$dir/${job}.pre_ali ark:- | \
   weight-silence-post 0.01 $silphones $alimodel ark:- ark:- | \

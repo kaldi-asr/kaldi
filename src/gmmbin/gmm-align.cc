@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
                                                acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
-        std::cerr << "Length of file is "<<features.NumRows()<<'\n';
+        KALDI_LOG << "Length of file is "<<features.NumRows();
 
         VectorFst<StdArc> decoded;  // linear FST.
         bool ans = decoder.GetOutput(true,  // consider only final states.
@@ -164,10 +164,11 @@ int main(int argc, char *argv[])
           assert(words == transcript);
           alignment_writer.Write(key, alignment);
           num_success ++;
-          std::cerr << "Log-like per frame for this file is " << (like / features.NumRows()) << "\n";
+          KALDI_LOG << "Log-like per frame for this file is "
+                    << (like / features.NumRows());
         } else {
           KALDI_WARN << "Did not successfully decode file " << key << ", len = "
-                     << (features.NumRows()) << "\n";
+                     << (features.NumRows());
           num_other_error++;
         }
       }

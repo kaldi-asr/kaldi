@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
       }
       if(end_samp <= start_samp +
          static_cast<int32>(min_segment_length * samp_freq)) {
-        KALDI_WARN << "Segment " << segment << " too short, skipping it.\n";
+        KALDI_WARN << "Segment " << segment << " too short, skipping it.";
         continue;
       }
       if(channel == -1) {

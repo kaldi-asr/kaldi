@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
           vecs_writer.Write(spk, spk_vec);
         }
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from speaker vector is "
-                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.\n";
+                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.";
         tot_impr += impr;
         tot_t += spk_tot_t;
       }  // end looping over speakers
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
           vecs_writer.Write(utt, spk_vec);
         }
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from speaker vectors is "
-                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.\n";
+                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.";
         tot_impr += impr;
         tot_t += utt_tot_t;
       }

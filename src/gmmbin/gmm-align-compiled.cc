@@ -152,10 +152,11 @@ int main(int argc, char *argv[])
           tot_like += like;
           alignment_writer.Write(key, alignment);
           num_success ++;
-          std::cerr << "Log-like per frame for this file is " << (like / features.NumRows()) << "\n";
+          KALDI_LOG << "Log-like per frame for this file is "
+                    << (like / features.NumRows());
         } else {
           KALDI_WARN << "Did not successfully decode file " << key << ", len = "
-                     << (features.NumRows()) << "\n";
+                     << (features.NumRows());
           num_other_error++;
         }
       }

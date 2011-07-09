@@ -14,6 +14,10 @@
    documentation for acoustic modeling code.
 
  TODO items (Dan):
+  Look into how better to estimate vectors in training time
+    (I think WERs degraded when I fixed a script bug that
+    was having the effect of re-estimating spk-vecs from
+    zero each time).
   Remove non-Kaldi code from decoder/
   Rename to branches/kaldi-1.0
 

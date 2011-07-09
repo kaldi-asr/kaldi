@@ -18,7 +18,7 @@
 # To be run from ..
 
 # This (train_tri2f) is training with splice-9-frames+LDA features,
-# plus MLLT.
+# plus STC/MLLT.
 
 if [ -f path.sh ]; then . path.sh; fi
 dir=exp/tri2f
@@ -115,15 +115,15 @@ while [ $x -lt $numiters ]; do
      featsub="ark:scripts/subset_scp.pl 800 data/train.scp | splice-feats scp:- ark:- | transform-feats $cur_lda ark:- ark:-|"
    else # do GMM update.
      gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
-     gmm-est --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
+     gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
    fi
-   rm $dir/$x.mdl $dir/$x.acc 2>/dev/null
+   rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs 2>/dev/null
    if [ $x -le $maxiterinc ]; then 
       numgauss=$[$numgauss+$incgauss];
    fi
    x=$[$x+1]
 done
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl;
+( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs
   ln -s `basename $cur_lda` final.mat )
 

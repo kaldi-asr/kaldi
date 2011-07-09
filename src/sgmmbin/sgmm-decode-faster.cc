@@ -223,25 +223,25 @@ int main(int argc, char *argv[]) {
         }
         BaseFloat like = -weight.Value();
         tot_like += like;
-        std::cerr << "Log-like per frame for utterance " << utt << " is "
-                  << (like / features.NumRows()) << "\n";
+        KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+                  << (like / features.NumRows());
 
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << utt
-                   << ", len = " << features.NumRows() << "\n";
+                   << ", len = " << features.NumRows();
       }
     }
 
     KALDI_LOG << "Average log-likelihood per frame = " << (tot_like/frame_count)
-              << " over " << frame_count << " frames.\n";
+              << " over " << frame_count << " frames.";
 
     double elapsed = timer.Elapsed();
-    std::cerr << "Time taken [excluding initialization] "<< elapsed
+    KALDI_LOG << "Time taken [excluding initialization] "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count) << '\n';
-    std::cerr << "Succeeded for " << num_success << " utterances, failed for "
-              << num_fail << '\n';
+              << (elapsed*100.0/frame_count);
+    KALDI_LOG << "Succeeded for " << num_success << " utterances, failed for "
+              << num_fail;
 
     delete decode_fst;
     if (num_success != 0)

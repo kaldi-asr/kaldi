@@ -511,6 +511,17 @@ template<class Real> static void UnitTestRow() {
       AssertEqual(M(i, k), V(k));
     }
 
+    {
+      SpMatrix<Real> S(dimN);
+      InitRand(S);
+      Vector<Real> v1(dimN), v2(dimN);
+      Matrix<Real> M(S);
+      int32 dim2 = rand() % dimN;
+      v1.CopyRowFromSp(S, dim2);
+      v2.CopyRowFromMat(M, dim2);
+      AssertEqual(v1, v2);
+    }
+    
     MatrixIndexT j = rand() % dimN;  // Col to get.
     Vector<Real> W(dimM);
     W.CopyColFromMat(M, j);  // get row.

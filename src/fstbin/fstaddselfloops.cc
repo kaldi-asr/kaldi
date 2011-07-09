@@ -69,7 +69,8 @@ int main(int argc, char *argv[])
 
     VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
     if (!fst) {
-      std::cerr << "fstaddselfloops: could not read input fst from " << fst_in_filename << '\n';
+      std::cerr << "fstsaddselfloops: could not read input fst from "
+                << fst_in_filename << '\n';
       return 1;
     }
 

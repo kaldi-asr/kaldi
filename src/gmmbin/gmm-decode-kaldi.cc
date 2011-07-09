@@ -147,19 +147,19 @@ int main(int argc, char *argv[])
         }
         BaseFloat like = -weight.Value();
         tot_like += like;
-        std::cerr << "Log-like per frame for utterance " << key <<"[index "
-                  << key << "] is " << (like / features.NumRows()) << "\n";
+        KALDI_LOG << "Log-like per frame for utterance " << key <<"[index "
+                  << key << "] is " << (like / features.NumRows());
         delete word_links;
       }
     }
 
-    std::cerr << "Average log-likelihood per frame is " << (tot_like/frame_count)
-              << " over " << frame_count << " frames.\n";
+    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
+              << " over " << frame_count << " frames.";
 
     double elapsed = timer.Elapsed();
-    std::cerr << "Time taken "<< elapsed
+    KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count) << '\n';
+              << (elapsed*100.0/frame_count);
 
     if (word_syms) delete word_syms;
     delete decode_fst;

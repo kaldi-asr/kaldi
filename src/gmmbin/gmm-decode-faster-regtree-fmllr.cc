@@ -79,7 +79,7 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
                      int32 num_frames,
                      BaseFloat *total_like) {
   decoder->Decode(decodable);
-  KALDI_LOG << "Length of file is " << num_frames << '\n';
+  KALDI_LOG << "Length of file is " << num_frames;
 
   VectorFst<StdArc> decoded;  // linear FST.
   bool saw_endstate = decoder->GetOutput(true /*only final states*/, &decoded);
@@ -114,13 +114,12 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
     }
 
     BaseFloat like = -weight.Value();
-    KALDI_LOG << "Log-like per frame = " << (like/num_frames)
-        << "\n";
+    KALDI_LOG << "Log-like per frame = " << (like/num_frames);
     (*total_like) += like;
     return true;
   } else {
     KALDI_WARN << "Did not successfully decode utterance, length = "
-        << num_frames << "\n";
+               << num_frames;
     return false;
   }
 }
@@ -304,15 +303,15 @@ int main(int argc, char *argv[]) {
       }
     }  // end looping over all utterances
 
-    std::cerr << "Average log-likelihood per frame is " << (tot_like
-        / frame_count) << " over " << frame_count << " frames.\n";
+    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like
+                                                            / frame_count) << " over " << frame_count << " frames.";
 
     double elapsed = timer.Elapsed();
-    std::cerr << "Time taken [excluding initialization] " << elapsed
-        << "s: real-time factor assuming 100 frames/sec is " << (elapsed
-        * 100.0 / frame_count) << '\n';
-    std::cerr << "Succeeded for " << num_success << " utterances, failed for "
-        << num_fail << '\n';
+    KALDI_LOG << "Time taken [excluding initialization] " << elapsed
+              << "s: real-time factor assuming 100 frames/sec is "
+              << (elapsed * 100.0 / frame_count);
+    KALDI_LOG << "Succeeded for " << num_success << " utterances, failed for "
+              << num_fail;
 
     delete decode_fst;
     if (num_success != 0)

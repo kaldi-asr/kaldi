@@ -117,6 +117,9 @@ steps/train_ubma.sh
 # + gender dependency.
 (steps/train_ubmb.sh; steps/train_sgmmc.sh; steps/decode_sgmmc.sh; steps/decode_sgmmc_fmllr.sh )&
 
+# as sgmmb but with LDA+STC features.
+(steps/train_ubmc.sh; steps/train_sgmmd.sh; steps/decode_sgmmd.sh; steps/decode_sgmmd_fmllr.sh )&
+
 
 
 

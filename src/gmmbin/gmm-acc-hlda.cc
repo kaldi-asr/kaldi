@@ -126,17 +126,17 @@ int main(int argc, char *argv[])
         }
         KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/tot_weight) << " over "
-                  << tot_weight <<" frames.\n";
+                  << tot_weight <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
         if (num_done % 10 == 0)
           KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t) << '\n';
+                    << (tot_like/tot_t);
       }
     }
     KALDI_LOG << "Num frames " << tot_t
               << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << '\n';
+              << (tot_like/tot_t);
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_other_error
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
       Output ko(accs_wxfilename, binary);
       hlda_accs.Write(ko.Stream(), binary);
     }
-    KALDI_LOG << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

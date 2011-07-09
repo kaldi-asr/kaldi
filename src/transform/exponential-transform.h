@@ -24,12 +24,12 @@
 
 namespace kaldi {
 
-// We define an exponential transform is a transform of the form
+// We define an exponential transform as a transform of the form
 // W_s = D_s exp(t_s A) B, which takes x^+ -> x (where ^+ is adding a one);
-// only t_s and D_s are speaker-specific.  t roughly represents the vtln warp
-// factor (although it can be positive or negative and is continuous), and
+// only t_s and D_s are speaker-specific. It is roughly analogous to th elog
+// of the vtln warp factor.  
 // D_s is either a diagonal or an offset-only fMLLR matrix (or just
-// [ I ; 0 ], so no mean even), depending on options.
+// the "default" transform [ I ; 0 ]), depending on options.
 // "exp" here is matrix exponential, defined by exp(A) = I + A + 1/2! A A + 1/3! A A A + ...
 // note that the last row of A is 0 0 0 ...  and the last row of B is
 // 0 0 0 ... 0 1.  The "globally trained" things are A and B.
@@ -42,8 +42,9 @@ enum EtNormalizeType {
   kEtNormalizeNone
 };
 
+// Note: Revision 121 corresponds to the submitted version of the ASRU paper.
+// There has been a correction to the update for A since then.
 class ExponentialTransformAccsA;
-class ExponentialTransformAccsB;
 
 
 // Class ExponentialTransform holds just the globally shared parts of the exponential
@@ -106,7 +107,7 @@ class ExponentialTransform {
   void ApplyC(const MatrixBase<BaseFloat> &Cpart);
 
   friend class ExponentialTransformAccsA;
-  friend class ExponentialTransformAccsB;
+  friend class ExponentialTransformAccsANew;
  protected:
   Matrix<BaseFloat> A_;  // d+1 by d+1 matrix; last row 0 0 0 .. 0 0.
   Matrix<BaseFloat> B_;  // d+1 by d+1 matrix; last row 0 0 0 .. 0 1.
@@ -167,9 +168,11 @@ class ExponentialTransformAccsA {
   std::vector<SpMatrix<double> > G_;  // Like the G stats of
   // fMLLR, taken after the B transform.  Summed over speakers and
   // weighted by t^2.
+
   Matrix<double> Ahat_;  // local gradient w.r.t. the first d rows of A.
                          // note, \hat{A} in the paper has an extra row;
                          // this is never used.
+
 };
 
 

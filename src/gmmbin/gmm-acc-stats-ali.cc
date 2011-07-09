@@ -97,19 +97,19 @@ int main(int argc, char *argv[])
           trans_model.Accumulate(1.0, tid, &transition_accs);
           tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, 1.0);
         }
-        std::cerr << "Average like for this file is "
+        KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/alignment.size()) << " over "
-                  << alignment.size() <<" frames.\n";
+                  << alignment.size() <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
         if (num_done % 10 == 0)
-          std::cerr << "Avg like per frame so far is "
-                    << (tot_like/tot_t) << '\n';
+          KALDI_LOG << "Avg like per frame so far is "
+                    << (tot_like/tot_t);
       }
     }
-    std::cerr << "Num frames " << tot_t
+    KALDI_LOG << "Num frames " << tot_t
               << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << '\n';
+              << (tot_like/tot_t);
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error

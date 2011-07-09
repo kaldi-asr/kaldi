@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
       fgmm.Write(os.Stream(), binary_write);
     }
 
-    KALDI_LOG << "Written model to " << model_out_filename << '\n';
+    KALDI_LOG << "Written model to " << model_out_filename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;
