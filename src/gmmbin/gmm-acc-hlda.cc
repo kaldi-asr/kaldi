@@ -134,14 +134,14 @@ int main(int argc, char *argv[])
                     << (tot_like/tot_t);
       }
     }
-    KALDI_LOG << "Num frames " << tot_t
-              << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t);
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_other_error
               << " with other errors.";
 
+    KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
+              << (tot_like/tot_t) << " over " << tot_t << " frames.";
+    
     {
       Output ko(accs_wxfilename, binary);
       hlda_accs.Write(ko.Stream(), binary);

@@ -167,19 +167,18 @@ int main(int argc, char *argv[]) {
 
         sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
 
-        std::cerr << "Average like for this file is "
-                  << (tot_like_this_file/alignment.size()) << " over "
-                  << alignment.size() <<" frames.\n";
+        KALDI_VLOG(2) << "Average like for this file is "
+                      << (tot_like_this_file/alignment.size()) << " over "
+                      << alignment.size() <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
         if (num_done % 10 == 0)
-          std::cerr << "Avg like per frame so far is "
-                    << (tot_like/tot_t) << '\n';
+          KALDI_LOG << "Avg like per frame so far is "
+                    << (tot_like/tot_t);
       }
     }
-    std::cerr << "Num frames " << tot_t
-              << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << '\n';
+    KALDI_LOG << "Overall like per frame (Gaussian only) = "
+              << (tot_like/tot_t) << " over " << tot_t << " frames.";
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error
@@ -190,7 +189,7 @@ int main(int argc, char *argv[]) {
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

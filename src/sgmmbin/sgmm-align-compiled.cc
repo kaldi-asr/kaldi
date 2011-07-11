@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
             && gselect_reader.Value(utt).size() == features.NumRows();
         if (!gselect_rspecifier.empty() && !have_gselect)
           KALDI_WARN << "No Gaussian-selection info available for utterance "
-                     << utt << " (or wrong size)\n";
+                     << utt << " (or wrong size)";
         std::vector<std::vector<int32> > empty_gselect;
         const std::vector<std::vector<int32> > *gselect =
             (have_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
@@ -202,19 +202,20 @@ int main(int argc, char *argv[]) {
           tot_like += like;
           alignment_writer.Write(utt, alignment);
           num_success ++;
-          std::cerr << "Log-like per frame for this file is " << (like / features.NumRows()) << "\n";
+          KALDI_LOG << "Log-like per frame for this file is "
+                    << (like / features.NumRows());
         } else {
           KALDI_WARN << "Did not successfully decode file " << utt << ", len = "
-                     << (features.NumRows()) << "\n";
+                     << (features.NumRows());
           num_other_error++;
         }
       }
     }
 
-    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
-              << " over " << frame_count<< " frames.";
-    KALDI_LOG << "Succeeded for " << num_success << ", could not find features for "
+    KALDI_LOG << "Done " << num_success << ", could not find features for "
               << num_no_feat << ", other errors on " << num_other_error;
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
+              << " over " << frame_count << " frames.";
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

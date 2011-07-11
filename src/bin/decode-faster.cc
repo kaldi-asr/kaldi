@@ -112,8 +112,6 @@ int main(int argc, char *argv[])
       DecodableMatrixScaled decodable(loglikes, acoustic_scale);
       decoder.Decode(&decodable);
 
-      KALDI_LOG << "Length of file is "<<loglikes.NumRows()<<'\n';
-
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
                                             &decoded);
@@ -147,7 +145,8 @@ int main(int argc, char *argv[])
         BaseFloat like = -weight.Value();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
-                  << (like / loglikes.NumRows());
+                  << (like / loglikes.NumRows()) << " over "
+                  << loglikes.NumRows() << " frames.";
 
       } else {
         num_fail++;
@@ -156,15 +155,14 @@ int main(int argc, char *argv[])
       }
     }
 
-    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              <<frame_count<<" frames.";
-
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken [excluding initialization] "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed*100.0/frame_count);
-    KALDI_LOG << "Succeeded for " << num_success << " utterances, failed for "
+    KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
+              << " over " << frame_count << " frames.";
 
     delete decode_fst;
     if (num_success != 0) return 0;

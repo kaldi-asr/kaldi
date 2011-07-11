@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
           vecs_writer.Write(utt, spk_vec);
         }
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from speaker vectors is "
-                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.\n";
+                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.";
         tot_impr += impr;
         tot_t += utt_tot_t;
       }
@@ -214,8 +214,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_gpost
               << " with no gposts, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", auxf impr per frame is "
-              << (tot_impr / tot_t);
+    KALDI_LOG << "Overall auxf impr per frame is " << (tot_impr / tot_t)
+              << " over " << tot_t << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

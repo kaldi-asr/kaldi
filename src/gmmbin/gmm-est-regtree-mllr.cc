@@ -125,12 +125,13 @@ int main(int argc, char *argv[]) {
             }
           }
           KALDI_VLOG(2) << "Average like for this file is " << (file_like/file_t)
-                        << " over " << file_t << " frames.\n";
+                        << " over " << file_t << " frames.";
           tot_like += file_like;
           tot_t += file_t;
           num_done++;
-          if (num_done % 10 == 0) KALDI_VLOG(1)
-              << "Avg like per frame so far is " << (tot_like / tot_t) << '\n';
+          if (num_done % 10 == 0)
+            KALDI_VLOG(1) << "Avg like per frame so far is "
+                          << (tot_like / tot_t);
         }  // end looping over all utterances of the current speaker
         BaseFloat objf_impr, t;
         mllr_accs.Update(regtree, opts, &mllr_xforms, &objf_impr, &t);
@@ -175,11 +176,11 @@ int main(int argc, char *argv[]) {
           }
         }
         KALDI_VLOG(2) << "Average like for this file is " << (file_like/file_t)
-                      << " over " << file_t << " frames.\n";
+                      << " over " << file_t << " frames.";
         tot_like += file_like;
         tot_t += file_t;
-        if (num_done % 10 == 0) KALDI_VLOG(1)
-            << "Avg like per frame so far is " << (tot_like / tot_t) << '\n';
+        if (num_done % 10 == 0)
+          KALDI_VLOG(1) << "Avg like per frame so far is " << (tot_like / tot_t);
         BaseFloat objf_impr, t;
         mllr_accs.Update(regtree, opts, &mllr_xforms, &objf_impr, &t);
         KALDI_LOG << "MLLR objf improvement for utterance " << key << " is "
@@ -190,13 +191,13 @@ int main(int argc, char *argv[]) {
         mllr_writer.Write(feature_reader.Key(), mllr_xforms);
       }
     }
-
-    KALDI_LOG << "Total objf improvement from MLLR is " << (tot_objf_impr/tot_t_objf)
-              << " per frame over " << tot_t_objf << " frames.";
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
-        << " with no posteriors, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", avg acoustic like per frame = "
-        << (tot_like / tot_t) << '\n';
+              << " with no posteriors, " << num_other_error
+              << " with other errors.";
+    KALDI_LOG << "Overall objf improvement from MLLR is " << (tot_objf_impr/tot_t_objf)
+              << " per frame " << " over " << tot_t_objf << " frames.";
+    KALDI_LOG << "Overall acoustic likelihood was " << (tot_like/tot_t)
+              << " over " << tot_t << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

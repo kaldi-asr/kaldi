@@ -310,7 +310,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Time taken [excluding initialization] " << elapsed
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed * 100.0 / frame_count);
-    KALDI_LOG << "Succeeded for " << num_success << " utterances, failed for "
+    KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
 
     delete decode_fst;

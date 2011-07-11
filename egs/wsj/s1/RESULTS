@@ -81,6 +81,10 @@ system:
  sgmm2d       10.0       13.4                         |  [sgmm, spk-vectors, on LDA+STC features]
    [utt]      10.2       13.3                         |  [adapt per utt]
  [spk,+fmllr] 9.8        12.9                         |  [per-spk, plus fMLLR]
+ sgmm2e       9.2        12.4                         | [LDA+ET, and SGMM+spk-vecs]
+ [utt]        9.3        12.5                         |  [adapt per utt]
+ [spk,+fmllr] 9.0        12.3                         |  [per-spk, plus fMLLR]
+
  tri3k        9.0        11.9                         | [ splice-9-frames + LDA + ET; SI-284 ]
  [utt]        9.1        11.8                         | [adaptation per utterance]
  [spk;+fmllr] 8.4        11.7                         | [per-speaker adaptation; +fMLLR]
@@ -202,7 +206,14 @@ exp/decode_sgmm2d_tgpr_eval93/wer:%WER 13.38 [ 460 / 3439, 57 ins, 59 del, 344 s
 exp/decode_sgmm2d_tgpr_utt_eval92/wer:%WER 10.16 [ 573 / 5641, 137 ins, 45 del, 391 sub ]
 exp/decode_sgmm2d_tgpr_utt_eval93/wer:%WER 13.26 [ 456 / 3439, 61 ins, 63 del, 332 sub ]
 
-
+# sgmm2e is as sgmm2b (SGMM with spk vecs, on half of SI-84), but with
+# baseline features as LDA+ET.  Acwt is 1/13 in test.
+exp/decode_sgmm2e_fmllr_tgpr_eval92/wer:%WER 9.04 [ 510 / 5641, 122 ins, 34 del, 354 sub ]
+exp/decode_sgmm2e_fmllr_tgpr_eval93/wer:%WER 12.33 [ 424 / 3439, 60 ins, 61 del, 303 sub ]
+exp/decode_sgmm2e_tgpr_eval92/wer:%WER 9.20 [ 519 / 5641, 123 ins, 39 del, 357 sub ]
+exp/decode_sgmm2e_tgpr_eval93/wer:%WER 12.39 [ 426 / 3439, 62 ins, 59 del, 305 sub ]
+exp/decode_sgmm2e_tgpr_utt_eval92/wer:%WER 9.34 [ 527 / 5641, 126 ins, 39 del, 362 sub ]
+exp/decode_sgmm2e_tgpr_utt_eval93/wer:%WER 12.47 [ 429 / 3439, 61 ins, 60 del, 308 sub ]
 
 # [old:]
 

@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
         tot_objf_impr += objf_impr;
         tot_count += spk_count;
         KALDI_LOG << "Objf impr for speaker " << spk << " is " << (objf_impr/spk_count)
-                  << " over " << spk_count << " frames.\n";
+                  << " over " << spk_count << " frames.";
         xform_writer.Write(spk, xform);
 
         if (warps_wspecifier != "") warps_writer.Write(spk, t);
@@ -206,8 +206,9 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files, " << num_no_gpost
               << " with no posteriors, " << num_other_error
               << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_count << ", avg objf impr per frame = "
-              << (tot_objf_impr / tot_count);
+    KALDI_LOG << "Overall objf impr per frame = "
+              << (tot_objf_impr / tot_count) << " over " << tot_count
+              << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

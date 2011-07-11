@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      KALDI_LOG << "Length of file is "<<features.NumRows();
+      KALDI_LOG << "Length of file is " << features.NumRows();
 
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
@@ -186,15 +186,14 @@ int main(int argc, char *argv[])
       }
     }
 
-    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              <<frame_count<<" frames.";
-
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken [excluding initialization] "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed*100.0/frame_count);
-    KALDI_LOG << "Succeeded for " << num_success << " utterances, failed for "
+    KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
+              << frame_count<<" frames.";
 
     delete decode_fst;
     if (num_success != 0) return 0;

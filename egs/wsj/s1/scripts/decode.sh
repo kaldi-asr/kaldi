@@ -14,8 +14,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
-# usage: scripts/decode.sh [--per-spk] [--qsub-opts opts] [--no-queue] [--num-jobs n] <decode_dir> <graph> <decode_script> <test-scp> 
+# usage: scripts/decode.sh [--per-spk] [--qsub-opts opts] [--no-queue] [--num-jobs n] <decode_dir> <graph> <decode_script> <test-scp>  [extra args to script]
 
 # Decode the testing data.   By default, uses "qsub"; if you don't have this on
 # your system, you may want to use options "--no-queue --num-jobs 4" e.g. if you have a 4 core
@@ -75,8 +74,8 @@ for n in 1 2 3 4; do
    fi
 done
 
-if [ $# != 4 ]; then
-   echo "Usage: scripts/decode.sh [--per-spk] [--qsub-opts opts] [--no-queue] [--num-jobs n] <decode_dir> <graph> <decode_script> <test-scp>"
+if [ $# -lt 4 ]; then
+   echo "Usage: scripts/decode.sh [--per-spk] [--qsub-opts opts] [--no-queue] [--num-jobs n] <decode_dir> <graph> <decode_script> <test-scp> [extra args to script]"
    exit 1;
 fi
 
@@ -87,6 +86,10 @@ mkdir -p $dir || exit 1
 graph=$2
 script=$3 # decoding script
 scp=$4 # .scp file with e.g. mfccs
+shift;shift;shift;shift;
+# Remaining args will be supplied to decoding script.
+extra_args=$* 
+
 
 if [ "$perspk" == "true" ]; then
   utt2spk=`echo $scp | sed 's:\.scp:.utt2spk:'`
@@ -155,7 +158,7 @@ while [ $n -le $num_jobs ]; do
      scriptfile=$dir/decode$n.sh
     ( echo '#!/bin/bash' 
       echo "cd ${PWD}"
-      echo "$script $graph $dir $n" ) > $scriptfile
+      echo "$script $graph $dir $n $extra_args" ) > $scriptfile
      # -sync y causes the qsub to wait till the job is done. 
      # Then the wait statement below waits for all the jobs to finish.
      cmd=" qsub $qsub_opts -sync y  -q ${queue} -o $dir/qlog/log.$n -e $dir/qlog/err.$n  $scriptfile "
@@ -164,7 +167,7 @@ while [ $n -le $num_jobs ]; do
      sleep 1; # Wait a bit for the file system to sync up...
      ( $cmd || ( cp $dir/decode${n}.log{,.first_try}; echo "Retrying command for part $n"; $cmd ) ) &
   else
-    $script $graph $dir $n &
+    $script $graph $dir $n $extra_args &
   fi
   n=$[$n+1]
 done

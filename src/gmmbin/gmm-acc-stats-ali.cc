@@ -107,20 +107,19 @@ int main(int argc, char *argv[])
                     << (tot_like/tot_t);
       }
     }
-    KALDI_LOG << "Num frames " << tot_t
-              << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t);
-
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error
               << " with other errors.";
 
+    KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
+              << (tot_like/tot_t) << " over " << tot_t << " frames.";
+    
     {
       Output ko(accs_wxfilename, binary);
       transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

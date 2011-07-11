@@ -196,12 +196,12 @@ int main(int argc, char *argv[]) {
       spk_stats.AccumulateForFmllrSubspace(am_sgmm, fmllr_globals, &fmllr_grad_scatter);
     }  // end looping over all speakers
 
-    KALDI_LOG << "Processed " << num_done << " files, " << num_no_alignment
+    KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error
               << " with other errors.";
 
-    KALDI_LOG << "Total frames = " << tot_t << ", average likelihood per "
-              << "frame = " << (tot_like/tot_t);
+    KALDI_LOG << "Overall likelihood per frame frame = " << (tot_like/tot_t)
+              << " over " << tot_t << " frames.";
 
     {
       Output ko(accs_wxfilename, binary_write);

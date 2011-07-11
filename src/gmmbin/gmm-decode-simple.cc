@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      std::cerr << "Length of file is "<<features.NumRows()<<'\n';
+      KALDI_LOG << "Length of file is " << features.NumRows();
 
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
@@ -169,25 +169,24 @@ int main(int argc, char *argv[])
         }
         BaseFloat like = -weight.Value();
         tot_like += like;
-        std::cerr << "Log-like per frame for utterance " << key << " is "
-                  << (like / features.NumRows()) << "\n";
+        KALDI_LOG << "Log-like per frame for utterance " << key << " is "
+                  << (like / features.NumRows());
 
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << key
-                   << ", len = " << features.NumRows() << "\n";
+                   << ", len = " << features.NumRows();
       }
     }
 
-    std::cerr << "Average log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              <<frame_count<<" frames.\n";
-
     double elapsed = timer.Elapsed();
-    std::cerr << "Time taken "<< elapsed
+    KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count) << '\n';
-    std::cerr << "Succeeded for " << num_success << " utterances, failed for "
-              << num_fail << '\n';
+              << (elapsed*100.0/frame_count);
+    KALDI_LOG << "Done " << num_success << " utterances, failed for "
+              << num_fail;
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
+              << frame_count<<" frames.";
 
     delete decode_fst;
     if (num_success != 0) return 0;

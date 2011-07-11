@@ -159,10 +159,10 @@ int main(int argc, char *argv[]) {
 
         tot_t += tot_weight;
         if (num_done % 10 == 0)
-          std::cerr << "Accumulated SGMM stats over " << tot_t << " frames.\n";
+          KALDI_LOG << "Accumulated SGMM stats over " << tot_t << " frames.";
       }
     }
-    KALDI_LOG << "Total number of frames is " << tot_t;
+    KALDI_LOG << "Overall number of frames is " << tot_t;
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_other_error
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

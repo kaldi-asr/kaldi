@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
       feat_writer.Write(utt, feat_out);
     }
     if (logdet_type != Unknown && logdet_type != DimIncrease)
-      KALDI_LOG << "Average " << (logdet_type == PseudoLogdet ? "[pseudo-]":"")
+      KALDI_LOG << "Overall average " << (logdet_type == PseudoLogdet ? "[pseudo-]":"")
                 << "logdet is " << (tot_logdet/tot_t) << " over " << tot_t
                 << " frames.";
     KALDI_LOG << "Applied transform to " << num_done << " utterances; " << num_error

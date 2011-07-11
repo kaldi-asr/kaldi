@@ -396,8 +396,9 @@ steps/train_sgmm2b.sh || exit 1;
  done
 )&
 
-# as sgmm2b, but with LDA+STC.
+# as sgmm2b, but with LDA+STC.  Depends on tri2f.
 # Note: increased acwt from 12 to 13.
+steps/train_ubm2c.sh || exit 1;
 steps/train_sgmm2d.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2d/tree exp/sgmm2d/final.mdl exp/graph_sgmm2d_tg_pruned || exit 1;
@@ -405,6 +406,19 @@ steps/train_sgmm2d.sh || exit 1;
   scripts/decode.sh --per-spk exp/decode_sgmm2d_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
   scripts/decode.sh exp/decode_sgmm2d_tgpr_utt_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
   scripts/decode.sh --per-spk  exp/decode_sgmm2d_fmllr_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d_fmllr.sh data/eval_nov${year}.scp 
+ done
+)&
+
+# Note: sgmm2e depends on tri2k
+steps/train_ubm2d.sh || exit 1;
+steps/train_sgmm2e.sh || exit 1;
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2e/tree exp/sgmm2e/final.mdl exp/graph_sgmm2e_tg_pruned || exit 1;
+ for year in 92 93; do
+  scripts/decode.sh --per-spk exp/decode_sgmm2e_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+p
+#  scripts/decode.sh exp/decode_sgmm2e_tgpr_utt_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp 
+#  scripts/decode.sh --per-spk  exp/decode_sgmm2e_fmllr_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e_fmllr.sh data/eval_nov${year}.scp 
  done
 )&
 

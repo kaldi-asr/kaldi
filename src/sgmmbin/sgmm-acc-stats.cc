@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
             && gselect_reader.Value(utt).size() == mat.NumRows();
         if (!gselect_rspecifier.empty() && !have_gselect)
           KALDI_WARN << "No Gaussian-selection info available for utterance "
-                     << utt << " (or wrong size)\n";
+                     << utt << " (or wrong size)";
         std::vector<std::vector<int32> > empty_gselect;
         const std::vector<std::vector<int32> > *gselect =
             (have_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
@@ -173,20 +173,19 @@ int main(int argc, char *argv[]) {
         }
 
         sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
-
-        std::cerr << "Average like for this file is "
-                  << (tot_like_this_file/tot_weight) << " over "
-                  << tot_weight <<" frames.\n";
+        
+        KALDI_VLOG(2) << "Average like for this file is "
+                      << (tot_like_this_file/tot_weight) << " over "
+                      << tot_weight <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
         if (num_done % 10 == 0)
-          std::cerr << "Avg like per frame so far is "
-                    << (tot_like/tot_t) << '\n';
+          KALDI_LOG << "Avg like per frame so far is "
+                    << (tot_like/tot_t);
       }
     }
-    std::cerr << "Num frames " << tot_t
-              << ", avg like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << '\n';
+    KALDI_LOG << "Overall like per frame (Gaussian only) = "
+              << (tot_like/tot_t) << " over " << tot_t << " frames.";
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_other_error
@@ -197,7 +196,7 @@ int main(int argc, char *argv[]) {
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }
-    std::cerr << "Written accs.\n";
+    KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

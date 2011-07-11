@@ -177,11 +177,11 @@ int main(int argc, char *argv[])
           KALDI_ERR << "Write error writing HTK features.";
       }
       if(num_utts % 10 == 0)
-        KALDI_LOG << "Processed " << num_utts << " utterances\n";
-      KALDI_VLOG(2) << "Processed features for key " << utt << '\n';
+        KALDI_LOG << "Processed " << num_utts << " utterances";
+      KALDI_VLOG(2) << "Processed features for key " << utt;
       num_success++;
     }
-    KALDI_LOG << " Succeeded for " << num_success << " out of " << num_utts
+    KALDI_LOG << " Done " << num_success << " out of " << num_utts
               << " utterances.";
     return 0;
   } catch(const std::exception& e) {

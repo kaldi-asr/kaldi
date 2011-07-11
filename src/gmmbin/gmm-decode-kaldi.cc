@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                                              acoustic_scale);
       fst::VectorFst<fst::StdArc> *word_links = decoder.Decode(*decode_fst, &gmm_decodable);
 
-      std::cerr << "Length of file is "<<features.NumRows()<<'\n';
+      KALDI_LOG << "Length of file is " << features.NumRows();
       if (word_links == NULL) {
         KALDI_WARN << "Could not decode file " << key;
       } else {
@@ -152,15 +152,14 @@ int main(int argc, char *argv[])
         delete word_links;
       }
     }
-
-    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
-              << " over " << frame_count << " frames.";
-
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed*100.0/frame_count);
 
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
+              << " over " << frame_count << " frames.";
+    
     if (word_syms) delete word_syms;
     delete decode_fst;
     return 0;

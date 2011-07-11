@@ -82,7 +82,9 @@ int main(int argc, char *argv[])
 
 
     if ( (a_is_rspecifier || b_is_rspecifier) !=  c_is_wspecifier)
-      KALDI_ERR << "Formats of the input and output rspecifiers/rxfilenames do not match (if either a or b is an rspecifier, then the output must be a wspecifier.\n";
+      KALDI_ERR << "Formats of the input and output rspecifiers/rxfilenames do "
+          "not match (if either a or b is an rspecifier, then the output must "
+          "be a wspecifier.";
 
 
     if (a_is_rspecifier || b_is_rspecifier) {

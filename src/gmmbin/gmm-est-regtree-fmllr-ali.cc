@@ -167,11 +167,11 @@ int main(int argc, char *argv[]) {
               feats.Row(i), pdf_id, 1.0);
         }
         KALDI_VLOG(2) << "Average like for this file is " << (file_like
-            / alignment.size()) << " over " << alignment.size() << " frames.\n";
+            / alignment.size()) << " over " << alignment.size() << " frames.";
         tot_like += file_like;
         tot_t += alignment.size();
         if (num_done % 10 == 0) KALDI_VLOG(1)
-            << "Avg like per frame so far is " << (tot_like / tot_t) << '\n';
+            << "Avg like per frame so far is " << (tot_like / tot_t);
         BaseFloat objf_impr, t;
         fmllr_accs.Update(regtree, opts, &fmllr_xforms, &objf_impr, &t);
         KALDI_LOG << "fMLLR objf improvement for utterance " << key << " is "
@@ -183,12 +183,14 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Total objf improvement from fMLLR is " << (tot_objf_impr/tot_t_objf)
+    KALDI_LOG << "Overall objf improvement from fMLLR is "
+              << (tot_objf_impr/tot_t_objf)
               << " per frame over " << tot_t_objf << " frames.";
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
-        << " with no alignments, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", avg acoustic like per frame = "
-        << (tot_like / tot_t) << '\n';
+              << " with no alignments, " << num_other_error
+              << " with other errors.";
+    KALDI_LOG << "Overall acoustic like per frame = " << (tot_like / tot_t)
+              << " over " << tot_t << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

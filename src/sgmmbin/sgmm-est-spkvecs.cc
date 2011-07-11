@@ -244,10 +244,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    KALDI_LOG << "Overall auxf impr per frame is "
+              << (tot_impr / tot_t) << " over " << tot_t << " frames.";
     KALDI_LOG << "Done " << num_done << " files, " << num_no_post
               << " with no posts, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", auxf impr per frame is "
-              << (tot_impr / tot_t);
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

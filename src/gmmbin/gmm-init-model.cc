@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
       Input is(stats_filename, &binary_in);
       ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
     }
-    std::cerr << "Number of separate statistics is " << stats.size() << '\n';
+    KALDI_LOG << "Number of separate statistics is " << stats.size();
 
     HmmTopology topo;
     {
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
       trans_model.Write(os.Stream(), binary);
       am_gmm.Write(os.Stream(), binary);
     }
-    std::cerr << "Wrote tree and model.\n";
+    KALDI_LOG << "Wrote tree and model.";
 
     DeleteBuildTreeStats(&stats);
   } catch(const std::exception& e) {

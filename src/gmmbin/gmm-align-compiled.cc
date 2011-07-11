@@ -126,8 +126,6 @@ int main(int argc, char *argv[])
                                                acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
-        std::cerr << "Length of file is "<<features.NumRows()<<'\n';
-
         VectorFst<StdArc> decoded;  // linear FST.
         bool ans = decoder.GetOutput(true,  // consider only final states.
                                      &decoded);
@@ -153,7 +151,8 @@ int main(int argc, char *argv[])
           alignment_writer.Write(key, alignment);
           num_success ++;
           KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows());
+                    << (like / features.NumRows()) << " over "
+                    << features.NumRows() << " frames.";
         } else {
           KALDI_WARN << "Did not successfully decode file " << key << ", len = "
                      << (features.NumRows());
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
     }
     KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count<< " frames.";
-    KALDI_LOG << "Succeeded for " << num_success << ", could not find features for "
+    KALDI_LOG << "Done " << num_success << ", could not find features for "
               << num_no_feat << ", other errors on " << num_other_error;
     if (num_success != 0) return 0;
     else return 1;

@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
                       << " files is " << (tot_like/tot_frames);
       }
     }
-    KALDI_LOG << "Processed " << num_done << " files, average likelihood per "
+    KALDI_LOG << "Done " << num_done << " files, average likelihood per "
               << "frame = " << (tot_like/tot_frames) << " over " << tot_frames
               << "frames.";
 

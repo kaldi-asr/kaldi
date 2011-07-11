@@ -98,10 +98,10 @@ int main(int argc, char *argv[])
       }
       num_done++;
       if (num_done % 100 == 0)
-        KALDI_LOG << "Processed " << num_done << " utterances.";
+        KALDI_LOG << "Done " << num_done << " utterances.";
     }
 
-    KALDI_LOG << "Succeeded for " << num_done << " files, failed for "
+    KALDI_LOG << "Done " << num_done << " files, failed for "
               << num_fail;
 
     Output ko(acc_wxfilename, binary);

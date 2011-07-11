@@ -277,4 +277,5 @@ done
 
 ( cd $dir; rm final.{mdl,alimdl,et} 2>/dev/null; 
   ln -s $x.mdl final.mdl; ln -s $x.alimdl final.alimdl;
+  ln -s $x.occs final.occs;
   ln -s $numiters_et.et final.et )

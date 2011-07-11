@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
             class_writer.Write(spk, class_idx);
         }
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from LVTLN is "
-                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.\n";
+                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.";
         tot_lvtln_impr += impr;
         tot_t += spk_tot_t;
       }  // end looping over speakers
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
         }
 
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from LVTLN is "
-                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.\n";
+                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.";
         tot_lvtln_impr += impr;
         tot_t += utt_tot_t;
       }
@@ -221,8 +221,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_gpost
               << " with no gposts, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", LVTLN auxf impr per frame is "
-              << (tot_lvtln_impr / tot_t);
+    KALDI_LOG << "Overall LVTLN auxf impr per frame is "
+              << (tot_lvtln_impr / tot_t) << " over " << tot_t << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

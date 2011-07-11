@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
           transform_writer.Write(spk, transform);
         }
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from fMLLR is "
-                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.\n";
+                  << (impr/spk_tot_t) << ", over " << spk_tot_t << " frames.";
         tot_impr += impr;
         tot_t += spk_tot_t;
       }  // end looping over speakers
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
           transform_writer.Write(utt, transform);
         }
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from fMLLR is "
-                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.\n";
+                  << (impr/utt_tot_t) << ", over " << utt_tot_t << " frames.";
         tot_impr += impr;
         tot_t += utt_tot_t;
       }
@@ -179,8 +179,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_post
               << " with no posts, " << num_other_error << " with other errors.";
-    KALDI_LOG << "Num frames " << tot_t << ", fMLLR auxf impr per frame is "
-              << (tot_impr / tot_t);
+    KALDI_LOG << "Overall fMLLR auxf impr per frame is "
+              << (tot_impr / tot_t) << " over " << tot_t << " frames.";
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
