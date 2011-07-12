@@ -1,0 +1,32 @@
+// doc/tools.dox
+
+namespace kaldi  {
+
+	/**
+		\page tools Kaldi Tools
+			<table border="1" width="100%">
+				<tr>
+					<td width="20%" align="center"><h3>Tools</h3></td><td align="center"><h3>Description</h3></td>
+				</tr>
+				<tr>
+					<td>\ref bin/acc-lda.cc "acc-lda"</td><td>Description</td>
+				</tr>
+				<tr>
+					<td>\ref bin/acc-tree-stats.cc "acc-tree-stats"</td><td>Description</td>
+				</tr>
+				<tr>
+					<td>Tool</td><td>Description</td>
+				</tr>
+				<tr>
+					<td>Tool</td><td>Description</td>
+				</tr>
+				<tr>
+					<td>Tool</td><td>Description</td>
+				</tr>
+				<tr>
+					<td>Tool</td><td>Description</td>
+				</tr>
+			</table>
+	*/
+
+}
