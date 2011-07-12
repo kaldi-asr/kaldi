@@ -191,7 +191,7 @@ while [ $x -lt $numiters ]; do
           2> $dir/trans.$x.$n.log || touch $dir/.error &
      done
      wait 
-     [ -f $dir/.error ] && echo error aligning data && exit 1
+     [ -f $dir/.error ] && echo error computing ET transforms && exit 1
 
      # Remove previous transforms, if present. 
      if [ $x -gt 1 ]; then rm $dir/$[$x-1].?.trans; fi

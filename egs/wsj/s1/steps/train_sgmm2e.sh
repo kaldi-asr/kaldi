@@ -239,4 +239,4 @@ rm $dir/$x.?.aliacc
 
 ( cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl; )
 
-cp $mat $dir/final.mat
+
