@@ -23,7 +23,6 @@
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
-#include "optimization/optimization-common.h"
 #include "gmm/am-diag-gmm.h"
 #include "transform/transform-common.h"
 #include "transform/regression-tree.h"

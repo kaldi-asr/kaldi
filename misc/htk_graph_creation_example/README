@@ -1,3 +1,7 @@
+This script is not being maintained and is not guaranteed to work.
+Its inputs are specific to the BUT system.
+
+
 
 This directory contains some scripts that convert HTK models into Kaldi format
 and build decoding graphs.  They take as input a CallHome English setup that's

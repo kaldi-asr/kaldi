@@ -17,7 +17,7 @@
 
  TODO items (Dan):
  [add ,s,cs on sgmm3e feats]
- remove back-compat options for gmm-est-et etc. (mean-and-var, etc.)
+
   Look into how better to estimate vectors in training time
     (I think WERs degraded when I fixed a script bug that
     was having the effect of re-estimating spk-vecs from
