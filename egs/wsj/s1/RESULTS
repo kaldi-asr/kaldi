@@ -126,7 +126,8 @@ exp/decode_tri2e_tgpr_eval92/wer:%WER 14.29 [ 806 / 5641, 155 ins, 79 del, 572 s
 exp/decode_tri2e_tgpr_eval93/wer:%WER 19.08 [ 656 / 3439, 71 ins, 120 del, 465 sub ]
 exp/decode_tri2f_tgpr_eval92/wer:%WER 12.23 [ 690 / 5641, 138 ins, 57 del, 495 sub ]
 exp/decode_tri2f_tgpr_eval93/wer:%WER 17.74 [ 610 / 3439, 68 ins, 85 del, 457 sub ]
-# with acwt 1/17:
+# with acwt 1/17.  note: better here, but wasn't for tri2k, so leaving it at
+# 1/16 for these types of features.
 exp/decode_tri2f_tgpr_eval92/wer:%WER 12.16 [ 686 / 5641, 128 ins, 59 del, 499 sub ]
 exp/decode_tri2f_tgpr_eval93/wer:%WER 17.56 [ 604 / 3439, 61 ins, 92 del, 451 sub ]
 
@@ -157,6 +158,10 @@ exp/decode_tri2k_tgpr_fmllr_eval92/wer:%WER 9.98 [ 563 / 5641, 113 ins, 52 del, 
 exp/decode_tri2k_tgpr_fmllr_eval93/wer:%WER 13.70 [ 471 / 3439, 71 ins, 60 del, 340 sub ]
 exp/decode_tri2k_tgpr_utt_eval92/wer:%WER 10.41 [ 587 / 5641, 112 ins, 50 del, 425 sub ]
 exp/decode_tri2k_tgpr_utt_eval93/wer:%WER 14.63 [ 503 / 3439, 67 ins, 65 del, 371 sub ]
+
+exp/decode_tri2k_tgpr_utt_eval92.acwt17/wer:%WER 10.44 [ 589 / 5641, 109 ins, 51 del, 429 sub ]
+exp/decode_tri2k_tgpr_utt_eval93.acwt17/wer:%WER 14.77 [ 508 / 3439, 64 ins, 72 del, 372 sub ]
+
 
 exp/decode_tri2l_tgpr_eval92/wer:%WER 9.64 [ 544 / 5641, 121 ins, 44 del, 379 sub ]
 exp/decode_tri2l_tgpr_eval93/wer:%WER 13.72 [ 472 / 3439, 68 ins, 66 del, 338 sub ]

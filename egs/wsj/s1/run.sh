@@ -416,9 +416,8 @@ steps/train_sgmm2e.sh || exit 1;
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2e/tree exp/sgmm2e/final.mdl exp/graph_sgmm2e_tg_pruned || exit 1;
  for year in 92 93; do
   scripts/decode.sh --per-spk exp/decode_sgmm2e_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
-p
-#  scripts/decode.sh exp/decode_sgmm2e_tgpr_utt_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp 
-#  scripts/decode.sh --per-spk  exp/decode_sgmm2e_fmllr_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh exp/decode_sgmm2e_tgpr_utt_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm2e_fmllr_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e_fmllr.sh data/eval_nov${year}.scp 
  done
 )&
 

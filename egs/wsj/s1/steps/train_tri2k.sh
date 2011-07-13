@@ -27,7 +27,7 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 # The 3 following settings relate to ET.
 dim=40 # the dim of our features.
-normtype=mean
+normtype=offset # et option; could be offset [recommended], or none
 numiters_et=15 # Before this, update et.
 
 numiters=35

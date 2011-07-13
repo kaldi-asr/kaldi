@@ -52,8 +52,8 @@ int main(int argc, char *argv[])
     }
 
     EtNormalizeType norm_type;
-    if (normalize_type == "offset" || normalize_type == "mean") norm_type = kEtNormalizeMean;
-    else if (normalize_type == "diag" || normalize_type == "mean-and-var") norm_type = kEtNormalizeMeanAndVar;
+    if (normalize_type == "offset") norm_type = kEtNormalizeOffset;
+    else if (normalize_type == "diag") norm_type = kEtNormalizeDiag;
     else if (normalize_type == "none") norm_type = kEtNormalizeNone;
     else
       KALDI_EXIT << "Invalid option --normalize-type=" << normalize_type;

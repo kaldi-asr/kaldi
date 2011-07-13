@@ -34,7 +34,7 @@ spk2utt_opt=--spk2utt=ark:$dir/spk2utt
 # the utt2spk opt is used by programs that use all the data so give
 # it the original utt2spk file.
 utt2spk_opt=--utt2spk=ark:data/train.utt2spk
-normtype=mean # et option; could be mean, or none
+normtype=offset # et option; could be offset [recommended], or none
 
 numiters=30    # Number of iterations of training
 maxiterinc=20 # Last iter to increase #Gauss on.

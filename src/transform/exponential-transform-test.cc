@@ -186,8 +186,8 @@ void UnitTestExponentialTransformUpdate(EtNormalizeType norm_type,
                 << like_tot;
     last_like_tot = like_tot;
   }
-  int32 num_params = nblocks*( 1 + (norm_type== kEtNormalizeMeanAndVar ? 2*dim :
-                                    norm_type == kEtNormalizeMean ? dim : 0))
+  int32 num_params = nblocks*( 1 + (norm_type== kEtNormalizeDiag ? 2*dim :
+                                    norm_type == kEtNormalizeOffset ? dim : 0))
       + (update_a ? dim*(dim+1) : 0)
       + (update_b ? dim*dim : 0);
 
@@ -212,10 +212,10 @@ int main() {
   for (int i = 0; i < (long_test ? 5 : 1); i++) {
     for (int j = 0; j < 2; j++) {
       for (int k = 0; k < 2; k++) {
-        UnitTestExponentialTransformUpdate(kEtNormalizeMean, j != 0, k != 0);
+        UnitTestExponentialTransformUpdate(kEtNormalizeOffset, j != 0, k != 0);
         if ((j != 0 && k != 0) || long_test) {  // trying only a subset of these tests as it's taking
           // too long
-          UnitTestExponentialTransformUpdate(kEtNormalizeMeanAndVar, j != 0, k != 0);
+          UnitTestExponentialTransformUpdate(kEtNormalizeDiag, j != 0, k != 0);
           UnitTestExponentialTransformUpdate(kEtNormalizeNone, j != 0, k != 0);
         }
       }

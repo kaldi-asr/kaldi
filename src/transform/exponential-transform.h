@@ -37,8 +37,8 @@ namespace kaldi {
 
 
 enum EtNormalizeType {
-  kEtNormalizeMean,
-  kEtNormalizeMeanAndVar,
+  kEtNormalizeOffset,
+  kEtNormalizeDiag,
   kEtNormalizeNone
 };
 
@@ -65,8 +65,8 @@ class ExponentialTransform {
   // are of dimension dim+1
 
   // SetNormalizeType sets the normalization type to this.  But it only allows
-  // you to increase the normalization type, i.e. None->Mean or MeanAndVar,
-  // or Mean->MeanAndVar.
+  // you to increase the normalization type, i.e. None->Offset or Diag
+  // or Offset->Diag
   void SetNormalizeType(EtNormalizeType norm_type);
 
   // ComputeTransform does not attempt to work out the objective function change,
@@ -82,9 +82,10 @@ class ExponentialTransform {
   int32 Dim() const { return A_.NumRows() - 1; }  // returns feature dim.
 
   // Ds is the first term in
-  // fmllr_mat = W_s = D_s exp(t_s A) B, which is a diagonal-only fMLLR (or possibly
+  // fmllr_mat = W_s = D_s exp(t_s A) B, which is a diagonal-only
+  // fMLLR (or possibly
   // just mean-offset or [ I; 0 ], depending on whether norm_type_ is
-  // {MeanAndVar, Mean, None}.
+  // {Diag, Offset, None}.
 
   void Write(std::ostream &os, bool binary) const;
 

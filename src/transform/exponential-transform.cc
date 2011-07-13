@@ -245,12 +245,12 @@ ComputeTransform(const FmllrDiagGmmAccs &accs_in,
       Ds_new.SetUnit();
 
       BaseFloat objf_impr;
-      if (norm_type_ == kEtNormalizeMean) {
+      if (norm_type_ == kEtNormalizeOffset) {
         objf_impr = ComputeFmllrMatrixDiagGmmOffset(Ds_new,
                                                     accs,
                                                     &Ds_new);
       } else {
-        KALDI_ASSERT(norm_type_ == kEtNormalizeMeanAndVar);
+        KALDI_ASSERT(norm_type_ == kEtNormalizeDiag);
         objf_impr = ComputeFmllrMatrixDiagGmmDiagonal(Ds_new,
                                                       accs,
                                                       &Ds_new);
@@ -483,8 +483,8 @@ void ExponentialTransformAccsA::Read(std::istream &os, bool binary, bool add) {
 
 
 void ExponentialTransform::SetNormalizeType(EtNormalizeType norm_type) {
-  if ((norm_type_ == kEtNormalizeMeanAndVar && norm_type != kEtNormalizeMeanAndVar)
-     ||( norm_type_ == kEtNormalizeMean && norm_type == kEtNormalizeNone))
+  if ((norm_type_ == kEtNormalizeDiag && norm_type != kEtNormalizeDiag)
+     ||( norm_type_ == kEtNormalizeOffset && norm_type == kEtNormalizeNone))
     KALDI_ERR << "SetNormalizeType: trying to reduce the amount of normalization "
               << "(may not be consistent with transform estimation). ";
   norm_type_ = norm_type;

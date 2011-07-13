@@ -47,7 +47,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  ( ali-to-post ark:$dir/test_${test}_pass1.ali ark:- | \
     weight-silence-post 0.0 $silphones $alignmodel ark:- ark:- | \
     gmm-post-to-gpost $alignmodel "$defaultfeats" ark:- ark:- | \
-    gmm-est-et $spk2utt_opt --normalize-type=mean-and-var --verbose=1  $model $et \
+    gmm-est-et $spk2utt_opt --normalize-type=diag --verbose=1  $model $et \
       "$basefeats" ark:- ark:$dir/et_${test}.trans ark,t:$dir/et_${test}.warp ) \
      2>$dir/et_${test}.log || exit 1;
 
