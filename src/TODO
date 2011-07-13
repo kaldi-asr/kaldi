@@ -4,6 +4,8 @@
   - Try to run the scripts and compile on various platforms, and
     report problems.
 
+
+
  TODO items (Arnab):
   Check the clapack configuration in the configure script... not clear
      what the purpose of CLAPACK_ROOT is.  I think the configure script
@@ -14,6 +16,7 @@
    documentation for acoustic modeling code.
 
  TODO items (Dan):
+ [add ,s,cs on sgmm3e feats]
  remove back-compat options for gmm-est-et etc. (mean-and-var, etc.)
   Look into how better to estimate vectors in training time
     (I think WERs degraded when I fixed a script bug that

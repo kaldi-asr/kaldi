@@ -61,9 +61,9 @@ done
 
 # also see featspart below, used for sub-parts of the features;
 # try to keep them in sync.
-feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
+feats="ark,s,cs:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
 for n in 1 2 3; do
-   featspart[$n]="ark:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
+   featspart[$n]="ark,s,cs:add-deltas --print-args=false scp:$dir/train${n}.scp ark:- |"
 done
 
 if [ ! -f $ubm ]; then

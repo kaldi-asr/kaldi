@@ -60,9 +60,9 @@ done
 
 # also see featspart below, used for sub-parts of the features;
 # try to keep them in sync.
-feats="ark:splice-feats --print-args=false scp:$dir/train.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $srcdir/14.*.trans|\" ark:- ark:- |"
+feats="ark,s,cs:splice-feats --print-args=false scp:$dir/train.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train.utt2spk \"ark:cat $srcdir/14.*.trans|\" ark:- ark:- |"
 for n in 1 2 3; do
-   featspart[$n]="ark:splice-feats --print-args=false scp:$dir/train${n}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train$n.utt2spk ark:$srcdir/14.$n.trans ark: ark:- |"
+   featspart[$n]="ark,s,cs:splice-feats --print-args=false scp:$dir/train${n}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats --utt2spk=ark:$dir/train$n.utt2spk ark:$srcdir/14.$n.trans ark: ark:- |"
 done
 
 if [ ! -f $ubm ]; then
