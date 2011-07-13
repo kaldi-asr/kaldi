@@ -49,7 +49,7 @@ mkdir -p $dir
 
 utt2spk_opt="--utt2spk=ark:data/train.utt2spk"
 spk2utt_opt="--spk2utt=ark:data/train.spk2utt"
-feats="ark:splice-feats scp:data/train.scp ark:- | transform-feats $mat ark:- ark:- |"
+feats="ark,s,cs:splice-feats scp:data/train.scp ark:- | transform-feats $mat ark:- ark:- |"
 
 if [ ! -f $ubm ]; then
   echo "No UBM in $ubm"

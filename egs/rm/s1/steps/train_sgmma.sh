@@ -41,7 +41,7 @@ gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.gz|"
 randprune=0.1
 mkdir -p $dir
 
-feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
+feats="ark,s,cs:add-deltas --print-args=false scp:data/train.scp ark:- |"
 
 cp $srcdir/topo $dir
 

@@ -48,7 +48,7 @@ mkdir -p $dir
 
 utt2spk_opt="--utt2spk=ark:data/train.utt2spk"
 spk2utt_opt="--spk2utt=ark:data/train.spk2utt"
-feats="ark:add-deltas --print-args=false scp:data/train.scp ark:- |"
+feats="ark,s,cs:add-deltas --print-args=false scp:data/train.scp ark:- |"
 
 scripts/compose_maps.pl data/train.utt2spk data/spk2gender.map | \
  scripts/compose_maps.pl - $preselectmap | \
