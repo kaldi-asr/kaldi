@@ -57,9 +57,9 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
   for(it=target.begin(); it!=target.end(); ++it) {
     if(max < *it) max = *it;
   }
-  if(max > net_out.NumCols()) {
+  if(max >= net_out.NumCols()) {
     KALDI_ERR << "Network has " << net_out.NumCols() 
-              << " outputs while having " << max << " labels";
+              << " outputs while having " << max+1 << " labels";
   }
 
   //compute derivative wrt. activations of last layer of neurons
@@ -67,7 +67,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
   diff->CopyFromMat(net_out);
   for(int32 r=0; r<(int32)target.size(); r++) {
     KALDI_ASSERT(target.at(r) <= diff->NumCols());
-    (*diff)(r,target.at(r)-1) -= 1.0;
+    (*diff)(r,target.at(r)) -= 1.0;
   }
 
   //we'll not produce per-frame classification accuracy for soft labels
@@ -77,7 +77,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     KALDI_ASSERT(target.at(r) <= net_out.NumCols());
-    val = -log(net_out(r,target.at(r)-1));
+    val = -log(net_out(r,target.at(r)));
     if(KALDI_ISINF(val)) val = 1e10;
     loss_ += val;
   }
@@ -109,7 +109,7 @@ int32 Xent::Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& 
         max_id = c;
       }
     }
-    if(target.at(r)-1 == max_id) {
+    if(target.at(r) == max_id) {
       correct++;
     }
   }
