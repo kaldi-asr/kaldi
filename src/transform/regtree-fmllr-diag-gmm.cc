@@ -21,7 +21,6 @@
 using std::vector;
 
 #include "itf/optimizable-itf.h"
-#include "optimization/kaldi-rprop.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "transform/regtree-fmllr-diag-gmm.h"
 

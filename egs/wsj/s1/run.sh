@@ -449,6 +449,19 @@ steps/train_sgmm3c.sh || exit 1;
 )&
 
 
+# [ with ET features]
+steps/train_ubm3d.sh || exit 1;
+steps/train_sgmm3e.sh || exit 1;
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3e/tree exp/sgmm3e/final.mdl exp/graph_sgmm3e_tg_pruned || exit 1;
+for year in 92 93; do
+  scripts/decode.sh --per-spk exp/decode_sgmm3e_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh exp/decode_sgmm3e_tgpr_utt_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh --per-spk  exp/decode_sgmm3e_fmllr_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e_fmllr.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+done
+)&
+
+
 
 # see RESULTS for results...
 

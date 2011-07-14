@@ -220,6 +220,52 @@ exp/decode_sgmm2e_tgpr_eval93/wer:%WER 12.39 [ 426 / 3439, 62 ins, 59 del, 305 s
 exp/decode_sgmm2e_tgpr_utt_eval92/wer:%WER 9.34 [ 527 / 5641, 126 ins, 39 del, 362 sub ]
 exp/decode_sgmm2e_tgpr_utt_eval93/wer:%WER 12.47 [ 429 / 3439, 61 ins, 60 del, 308 sub ]
 
+
+exp/decode_tri3a_bg_eval92/wer:%WER 11.82 [ 667 / 5641, 132 ins, 63 del, 472 sub ]
+exp/decode_tri3a_bg_eval93/wer:%WER 15.00 [ 516 / 3439, 62 ins, 75 del, 379 sub ]
+exp/decode_tri3a_tgpr_dfmllr_eval92/wer:%WER 10.51 [ 593 / 5641, 111 ins, 51 del, 431 sub ]
+exp/decode_tri3a_tgpr_dfmllr_eval93/wer:%WER 12.68 [ 436 / 3439, 52 ins, 52 del, 332 sub ]
+exp/decode_tri3a_tgpr_eval92/wer:%WER 10.67 [ 602 / 5641, 131 ins, 43 del, 428 sub ]
+exp/decode_tri3a_tgpr_eval93/wer:%WER 13.84 [ 476 / 3439, 55 ins, 68 del, 353 sub ]
+exp/decode_tri3a_tgpr_fmllr_eval92/wer:%WER 9.54 [ 538 / 5641, 114 ins, 47 del, 377 sub ]
+exp/decode_tri3a_tgpr_fmllr_eval93/wer:%WER 12.13 [ 417 / 3439, 52 ins, 59 del, 306 sub ]
+exp/decode_tri3a_tgpr_uttdfmllr_eval92/wer:%WER 10.58 [ 597 / 5641, 118 ins, 49 del, 430 sub ]
+exp/decode_tri3a_tgpr_uttdfmllr_eval93/wer:%WER 13.29 [ 457 / 3439, 49 ins, 57 del, 351 sub ]
+exp/decode_tri3a_tgpr_uttfmllr_eval92/wer:%WER 10.44 [ 589 / 5641, 122 ins, 47 del, 420 sub ]
+exp/decode_tri3a_tgpr_uttfmllr_eval93/wer:%WER 13.93 [ 479 / 3439, 56 ins, 69 del, 354 sub ]
+
+exp/decode_tri3k_tgpr_eval92/wer:%WER 9.02 [ 509 / 5641, 125 ins, 27 del, 357 sub ]
+exp/decode_tri3k_tgpr_eval93/wer:%WER 11.92 [ 410 / 3439, 65 ins, 47 del, 298 sub ]
+exp/decode_tri3k_tgpr_fmllr_eval92/wer:%WER 8.39 [ 473 / 5641, 117 ins, 27 del, 329 sub ]
+exp/decode_tri3k_tgpr_fmllr_eval93/wer:%WER 11.66 [ 401 / 3439, 68 ins, 45 del, 288 sub ]
+exp/decode_tri3k_tgpr_utt_eval92/wer:%WER 9.08 [ 512 / 5641, 125 ins, 31 del, 356 sub ]
+exp/decode_tri3k_tgpr_utt_eval93/wer:%WER 11.75 [ 404 / 3439, 57 ins, 51 del, 296 sub ]
+
+
+exp/decode_sgmm3b_fmllr_tgpr_eval92/wer:%WER 7.73 [ 436 / 5641, 118 ins, 15 del, 303 sub ]
+exp/decode_sgmm3b_fmllr_tgpr_eval93/wer:%WER 10.00 [ 344 / 3439, 57 ins, 47 del, 240 sub ]
+exp/decode_sgmm3b_tgpr_eval92/wer:%WER 7.78 [ 439 / 5641, 118 ins, 15 del, 306 sub ]
+exp/decode_sgmm3b_tgpr_eval93/wer:%WER 10.35 [ 356 / 3439, 58 ins, 47 del, 251 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval92/wer:%WER 7.80 [ 440 / 5641, 119 ins, 13 del, 308 sub ]
+exp/decode_sgmm3b_tgpr_utt_eval93/wer:%WER 10.38 [ 357 / 3439, 55 ins, 50 del, 252 sub ]
+
+exp/decode_sgmm3c_fmllr_tgpr_eval92/wer:%WER 7.55 [ 426 / 5641, 111 ins, 14 del, 301 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_eval93/wer:%WER 9.16 [ 315 / 3439, 54 ins, 41 del, 220 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_norm_eval92/wer:%WER 7.46 [ 421 / 5641, 111 ins, 13 del, 297 sub ]
+exp/decode_sgmm3c_fmllr_tgpr_norm_eval93/wer:%WER 9.25 [ 318 / 3439, 54 ins, 41 del, 223 sub ]
+exp/decode_sgmm3c_tgpr_eval92/wer:%WER 7.52 [ 424 / 5641, 113 ins, 13 del, 298 sub ]
+exp/decode_sgmm3c_tgpr_eval93/wer:%WER 9.51 [ 327 / 3439, 55 ins, 42 del, 230 sub ]
+exp/decode_sgmm3c_tgpr_norm_eval92/wer:%WER 7.48 [ 422 / 5641, 111 ins, 14 del, 297 sub ]
+exp/decode_sgmm3c_tgpr_norm_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 43 del, 233 sub ]
+exp/decode_sgmm3c_tgpr_utt_eval92/wer:%WER 7.69 [ 434 / 5641, 110 ins, 17 del, 307 sub ]
+exp/decode_sgmm3c_tgpr_utt_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 46 del, 230 sub ]
+exp/decode_sgmm3e_tgpr_eval92/wer:%WER 7.50 [ 423 / 5641, 114 ins, 15 del, 294 sub ]
+exp/decode_sgmm3e_tgpr_eval93/wer:%WER 9.92 [ 341 / 3439, 58 ins, 43 del, 240 sub ]
+
+exp/decode_sgmm3e_tgpr_eval92/wer:%WER 7.50 [ 423 / 5641, 114 ins, 15 del, 294 sub ]
+exp/decode_sgmm3e_tgpr_eval93/wer:%WER 9.92 [ 341 / 3439, 58 ins, 43 del, 240 sub ]
+
+
 # [old:]
 
 
