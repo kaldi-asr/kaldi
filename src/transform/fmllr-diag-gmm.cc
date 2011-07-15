@@ -365,7 +365,6 @@ BaseFloat ComputeFmllrMatrixDiagGmmGradient(const MatrixBase<BaseFloat> &in_xfor
 
   // initalize options for the RProp algorithm. future work(arnab): pass these.
   RpropOptions<BaseFloat> opt_opts;
-  opt_opts.verbose = false;
   opt_opts.maximizing = true;
   opt_opts.max_iter = num_iters;
   opt_opts.conv_check_interval = 100;
