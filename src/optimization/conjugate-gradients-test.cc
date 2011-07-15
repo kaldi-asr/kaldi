@@ -51,7 +51,6 @@ void UnitTestConjugateGradients() {
   for (size_t p = 0; p < 50; p++) {
     QuadraticConjugateGradient qc;
     NCGOptions opts;
-    opts.verbose = 0;
     opts.min_iter = 10;
     Vector<BaseFloat> param(qc.dim);
     param.SetRandn();

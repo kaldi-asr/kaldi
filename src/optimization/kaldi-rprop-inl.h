@@ -55,9 +55,9 @@ param->Scale(1.0/1e5);
   while ((iter < opts.max_iter)&&(!converged)) {
     last_value = cur_value;
 
-    if (opts.verbose && (iter % opts.conv_check_interval == 0)) {
-      std::cerr << "Iteration " << iter << " : Value: "
-                << cur_value << '\n';
+    if (iter % opts.conv_check_interval == 0) {
+      KALDI_VLOG(2) << "Iteration " << iter << " : Value: "
+                    << cur_value << '\n';
     }
 
     // compute current gradient

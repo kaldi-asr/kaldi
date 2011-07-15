@@ -51,7 +51,6 @@ void UnitTestRprop() {
   for (size_t p = 0; p < 10; p++) {
     QuadraticRprop qc;
     RpropOptions<BaseFloat> opts;
-    opts.verbose = false;
     opts.maximizing = false;
     opts.epsilon = 1e-8;
     opts.max_iter = 10000;

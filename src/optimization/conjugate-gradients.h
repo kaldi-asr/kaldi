@@ -38,11 +38,10 @@ struct NCGOptions {
   size_t secant_iter_max;  // Maximum number of secant method iterations
   size_t n;  // number of iterations after which to re-start CG to
              // improve convergence
-  size_t verbose;  // Display progress information
   double tolerance;
   NCGOptions(): maximizing(true), max_iter(20000), min_iter(10000),
                 epsilon(1e-6), rho_zero(1.0), secant_iter_max(5),
-                n(100), verbose(0), tolerance(1e-7) { }
+                n(100), tolerance(1e-7) { }
 };
 
 template<class Real>
@@ -77,15 +76,15 @@ bool NonlinearConjugateGradients(const NCGOptions &opts,
 
   while ((i < opts.min_iter) || ((i < opts.max_iter) &&
                                  (delta_new > opts.epsilon*opts.epsilon*delta_zero))) {
-    if (opts.verbose == 2) std::cerr << "iteration " << i << "  Value: "
-                                << optimizable->ComputeValue(x) <<"\n";
+    KALDI_VLOG(2) << "iteration " << i << "  Value: "
+                  << optimizable->ComputeValue(x) <<"\n";
     j = 0;
     delta_d = VecVec(dD_, dD_);
     alpha = -1.0*opts.rho_zero;
     x_tmp.CopyFromVec(x);
     x_tmp.AddVec(opts.rho_zero, d);
     optimizable->ComputeGradient(x_tmp, &grad_tmp);
-    if (opts.verbose== 2) std::cerr << "Gradients: " << grad_tmp << "\n";
+    KALDI_VLOG(2) << "Gradients: " << grad_tmp << "\n";
     grad_tmpD_.CopyFromVec(grad_tmp);
     nu_prev = -1.0*rmul*VecVec(grad_tmpD_, dD_);
     do {
@@ -97,12 +96,11 @@ bool NonlinearConjugateGradients(const NCGOptions &opts,
       x.AddVec(alpha, d);
       nu_prev = nu;
       j++;
-      if (opts.verbose== 2) std::cerr << "Secant " << j << " Value:" <<
-                            optimizable->ComputeValue(x) << "\n";
+      KALDI_VLOG(2) << "Secant " << j << " Value:" <<
+          optimizable->ComputeValue(x) << "\n";
     } while ((j<opts.secant_iter_max) && (alpha*alpha*delta_d >
-                                opts.epsilon*opts.epsilon));
-    if (opts.verbose== 2) std::cerr << "Number of Secant Iterations: "
-                                << j << "\n";
+                                          opts.epsilon*opts.epsilon));
+    KALDI_VLOG(2) << "Number of Secant Iterations: " << j << "\n";
     optimizable->ComputeGradient(x, &r);
     r.Scale(rmul);
     rD_.CopyFromVec(r);
@@ -125,9 +123,8 @@ bool NonlinearConjugateGradients(const NCGOptions &opts,
     i++;
   }
   param->CopyFromVec(x);
-  if (opts.verbose == 1) {
-    std::cerr << i << " iterations\n";
-  }
+  KALDI_VLOG(1) << i << " iterations\n";
+
   if (i < opts.max_iter) {
     return true;
   } else {

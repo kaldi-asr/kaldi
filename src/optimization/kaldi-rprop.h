@@ -64,16 +64,12 @@ struct RpropOptions {
   /// initial stepsize
   Real gamma_init;
 
-  /// display progress information
-  bool verbose;
-
   /// reasonable defaults
   /// as they can be found in the literature
   RpropOptions(): maximizing(true), max_iter(1500),
                   conv_check_interval(100),
                   epsilon(1e-10), eta_inc(1.2), eta_dec(0.5),
-                  gamma_max(50), gamma_min(1e-10), gamma_init(0.1),
-                  verbose(false) { }
+                  gamma_max(50), gamma_min(1e-10), gamma_init(0.1) { }
 };
 
 /// Resilient Propagation Algorithm (Rprop)
