@@ -15,7 +15,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-#exit 1 # Don't run this... it's to be run line by line from the shell.
+exit 1 # Don't run this... it's to be run line by line from the shell.
 
 # This script file cannot be run as-is; some paths in it need to be changed
 # before you can run it.
@@ -62,10 +62,14 @@ steps/make_mfcc_test.sh $mfccdir
 steps/train_mono.sh
 steps/decode_mono.sh  &
 
-
-
 # Now we train the MLP,
-# it will have CMVN normalized MFCCs as input and phoneme-state posteriors as output
-steps/train_nnet.sh
-#steps/decode_nnet.sh #TODO
+# it will have CMVN normalized MFCCs as input and HMM transitions as targets
+steps/train_nnet_trans.sh
+steps/decode_nnet_trans.sh &
+
+# Now we train another MLP,
+# it will have CMVN normalized MFCCs as input and PDFs as targets
+steps/train_nnet_pdf.sh
+steps/decode_nnet_pdf.sh &
+
 

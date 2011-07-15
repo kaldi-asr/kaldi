@@ -1,0 +1,3 @@
+decode_mono: Average WER is 14.234421 (1784 / 12533) 
+decode_nnet_pdf: Average WER is 20.553738 (2576 / 12533) 
+decode_nnet_trans: Average WER is 21.311737 (2671 / 12533) 

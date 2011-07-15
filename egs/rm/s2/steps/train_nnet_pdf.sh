@@ -1,9 +1,24 @@
 #!/bin/bash
+# Copyright 2010-2011 Microsoft Corporation  Karel Vesely
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
 
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/nnet
+dir=$PWD/exp/nnet_pdf
 mkdir -p $dir/{log,nnet}
 
 #use following features and alignments
@@ -13,7 +28,9 @@ tail -n 200 $dir/train.scp > $dir/train.scp.cv
 feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
 feats_tr="ark:add-deltas --print-args=false scp:$dir/train.scp.tr ark:- |"
 feats_cv="ark:add-deltas --print-args=false scp:$dir/train.scp.cv ark:- |"
-labels="ark:$dir/cur.ali"
+#convert ali to pdf
+ali-to-pdf exp/mono/final.mdl ark:$dir/cur.ali t,ark:$dir/cur.pdf
+labels="ark:$dir/cur.pdf"
 
 #compute per utterance CMVN
 cmvn="ark:$dir/cmvn.ark"
@@ -21,10 +38,9 @@ compute-cmvn-stats "$feats" $cmvn
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cmvn ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn ark:- ark:- |"
 
-
 #initialize the nnet
 mlp_init=$dir/nnet.init
-scripts/gen_mlp_init.py --dim=39:512:300 --gauss --negbias > $mlp_init
+scripts/gen_mlp_init.py --dim=39:512:146 --gauss --negbias > $mlp_init
 
 #global config for trainig
 max_iters=20
@@ -88,5 +104,7 @@ if [ $mlp_best != $mlp_init ]; then
 fi
 mlp_final=$dir/${mlp_base}_final_iter${iter:-0}_acc${acc}
 cp $mlp_best $mlp_final
+ln -s $mlp_final $dir/${mlp_base}_final
+
 echo final network $mlp_final
 
