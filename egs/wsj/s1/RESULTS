@@ -90,12 +90,16 @@ system:
  [spk;+fmllr] 8.4        11.7                         | [per-speaker adaptation; +fMLLR]
  sgmm3b       7.8        10.4                         | [ SGMM with speaker vectors, on SI-284]
  [utt]        7.8        10.4                         |  [per-utterance adaptation]
- [spk;+fmllr] 7.8        10.0                         | [per-speaker adaptation, with fMLLR]
+ [spk;+fmllr] 7.8        10.0                         | [per-speaker adaptation, with fMLLR] 
  sgmm3c       7.5        9.5                          | [ as sgmm3b but gender-dep. UBM]
   [+norm]     7.5        9.6                          |   [normalizing weights per gender]
  [utt]        7.7        9.6                          |  [per-utterance adaptation]
  [fmllr]      7.6        9.2                          |  [per-spk, with fMLLR]
   [+norm]     7.5        9.3                          |   [normalizing weights per gender]
+ sgmm3e       7.5        9.9                          | [as sgmm3b but add ET features]
+  [utt]       7.8        10.0                         | [utterance adaptation]
+ [spk;+fmllr] 7.4        9.8                          | [per-spk; +fMLLR]
+
 
 # Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
@@ -259,11 +263,15 @@ exp/decode_sgmm3c_tgpr_norm_eval92/wer:%WER 7.48 [ 422 / 5641, 111 ins, 14 del, 
 exp/decode_sgmm3c_tgpr_norm_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 43 del, 233 sub ]
 exp/decode_sgmm3c_tgpr_utt_eval92/wer:%WER 7.69 [ 434 / 5641, 110 ins, 17 del, 307 sub ]
 exp/decode_sgmm3c_tgpr_utt_eval93/wer:%WER 9.62 [ 331 / 3439, 55 ins, 46 del, 230 sub ]
-exp/decode_sgmm3e_tgpr_eval92/wer:%WER 7.50 [ 423 / 5641, 114 ins, 15 del, 294 sub ]
-exp/decode_sgmm3e_tgpr_eval93/wer:%WER 9.92 [ 341 / 3439, 58 ins, 43 del, 240 sub ]
 
+
+exp/decode_sgmm3e_fmllr_tgpr_eval92/wer:%WER 7.41 [ 418 / 5641, 114 ins, 15 del, 289 sub ]
+exp/decode_sgmm3e_fmllr_tgpr_eval93/wer:%WER 9.80 [ 337 / 3439, 57 ins, 41 del, 239 sub ]
 exp/decode_sgmm3e_tgpr_eval92/wer:%WER 7.50 [ 423 / 5641, 114 ins, 15 del, 294 sub ]
 exp/decode_sgmm3e_tgpr_eval93/wer:%WER 9.92 [ 341 / 3439, 58 ins, 43 del, 240 sub ]
+exp/decode_sgmm3e_tgpr_utt_eval92/wer:%WER 7.75 [ 437 / 5641, 113 ins, 19 del, 305 sub ]
+exp/decode_sgmm3e_tgpr_utt_eval93/wer:%WER 10.00 [ 344 / 3439, 57 ins, 46 del, 241 sub ]
+
 
 
 # [old:]
