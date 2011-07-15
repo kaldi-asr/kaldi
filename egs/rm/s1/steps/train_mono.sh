@@ -42,7 +42,7 @@ silphones=`cat data/silphones.csl | sed 's/:/ /g'`
 nonsilphones=`cat data/nonsilphones.csl | sed 's/:/ /g'`
 cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphones:" | sed "s:SILENCEPHONES:$silphones:" > $dir/topo
 
-gmm-init-mono '--train-feats=ark:head -10 data/train.scp | add-deltas scp:- ark:- |' $dir/topo 39  $dir/0.mdl $dir/tree 2> $dir/init.out || exit 1;
+gmm-init-mono '--train-feats=ark:head -10 data/train.scp | add-deltas scp:- ark:- |' $dir/topo 39  $dir/0.mdl $dir/tree 2> $dir/init.log || exit 1;
 
 
 echo "Compiling training graphs"

@@ -31,7 +31,7 @@ silphones=`cat data/silphones.csl`
 regtree=$dir/regtree
 maxleaves=8 # max # of regression-tree leaves.
 mincount=5000 # mincount before we add new transform.
-gmm-make-regtree --sil-phones=$silphones --state-occs=$occs --max-leaves=$maxleaves $model $regtree 2>$dir/make_regtree.out
+gmm-make-regtree --sil-phones=$silphones --state-occs=$occs --max-leaves=$maxleaves $model $regtree 2>$dir/make_regtree.log
 
 scripts/mkgraph.sh $tree $model $graphdir
 
