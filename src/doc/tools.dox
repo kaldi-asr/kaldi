@@ -25,10 +25,6 @@
 // This next comment generates the tools page which describes the
 // binary executables
 
-/**
-
-// doc/tools.dox
-
 namespace kaldi  {
 
 	/**
@@ -38,19 +34,40 @@ namespace kaldi  {
 					<td width="20%" align="center"><h3>Tools</h3></td><td align="center"><h3>Description</h3></td>
 				</tr>
 				<tr>
-					<td>\ref bin/acc-lda.cc "acc-lda"</td><td>Description</td>
+					<td>\ref bin/acc-lda.cc "acc-lda"</td><td>Accumulate LDA statistics based on pdf-ids. <br /> Usage:  lda-acc [options] <transition-gmm/model> <features-rspecifier> <posteriors-rspecifier> <lda-acc-out> <br /> Typical usage: ali-to-post ark:1.ali ark:- | lda-acc 1.mdl "ark:splice-feats scp:train.scp|"  ark:- ldaacc.1</td>
 				</tr>
 				<tr>
-					<td>\ref bin/acc-tree-stats.cc "acc-tree-stats"</td><td>Description</td>
+					<td>\ref bin/acc-tree-stats.cc "acc-tree-stats"</td><td>Accumulate stats for GMM training. <br /> Usage:  acc-tree-stats [options] model-in features-rspecifier alignments-rspecifier [tree-accs-out] <br /> e.g.: acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc</td>
 				</tr>
 				<tr>
-					<td>Tool</td><td>Description</td>
+					<td>\ref bin/add-self-loops.cc "add-self-loops"</td><td>Add self-loops and transition probabilities to transducer, expanding to transition-ids. <br /> Usage:   add-self-loops [options] transition-gmm/acoustic-model [fst-in] [fst-out] <br /> e.g.: add-self-loops --self-loop-scale = 0.1 1.mdl < HCLG_noloops.fst > HCLG_full.fst</td>
 				</tr>
 				<tr>
-					<td>Tool</td><td>Description</td>
+					<td>\ref bin/align-equal.cc "align-equal"</td><td>Write equally spaced alignments of utterances (to get training started) <br /> Usage:  align-equal <tree-in> <model-in> <lexicon-fst-in> <features-rspecifier> <transcriptions-rspecifier> <alignments-wspecifier> <br /> e.g.: align-equal 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:equal.ali</td>
 				</tr>
 				<tr>
-					<td>Tool</td><td>Description</td>
+					<td>\ref bin/align-equal-compiled.cc "align-equal-compiled"</td><td>Write an equally spaced alignment (for getting training started) <br /> Usage:  align-equal-compiled <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier> <br /> e.g.: align-equal-compiled 1.mdl 1.fsts scp:train.scp ark:equal.ali</td>
+				</tr>
+				<tr>
+					<td>\ref bin/ali-to-pdf.cc "ali-to-pdf"</td><td>Converts alignments (containing transition-ids) to pdf-ids, zero-based. <br /> Usage:  ali-to-pdf  [options] <model> <alignments-rspecifier> <pdfs-wspecifier> <br /> e.g.: ali-to-pdf 1.mdl ark:1.ali ark, t:-</td>
+				</tr>
+				<tr>
+					<td>\ref bin/ali-to-post.cc "ali-to-post"</td><td>Converts alignments to probabilistic posteriors <br /> Usage:  ali-to-post  [options] <alignments-rspecifier> <posterior-wspecifier> <br /> e.g.: ali-to-post ark:1.ali ark:- | "program that consumes posteriors" </td>
+				</tr>
+				<tr>
+					<td>\ref featbin/extract-segments.cc "extract-segments"</td><td>This tool extracts specified segments from a wav file , and the extracted segments can be used for generating segment wise mfcc features by using create_mfcc_feats tool.  Segment-info-file must be given as one of the inputs, and it should have lines like  "spkabc_seg1 spkabc_recording1 1.10 2.36". </td>
+				</tr>
+				<tr>
+					<td>\ref featbin/copy-feats.cc "copy-feats"</td><td>This tool is useful for creating a copy of kaldi feature file. It can also be used for converting htk feature file to Kaldi feature file.</td>
+				</tr>
+				<tr>
+					<td>\ref gmmbin/gmm-decode-simple.cc "gmm-decode-simple"</td><td></td>
+				</tr>
+				<tr>
+					<td>\ref gmmbin/gmm-decode-faster.cc "gmm-decode-faster"</td><td></td>
+				</tr>
+				<tr>
+					<td>\ref gmmbin/gmm-decode-kaldi.cc "gmm-decode-kaldi"</td><td></td>
 				</tr>
 				<tr>
 					<td>Tool</td><td>Description</td>

@@ -23,7 +23,8 @@
 #include "decoder/training-graph-compiler.h"
 
 
-
+/** @brief Write equally spaced alignments of utterances (to get training started).
+*/
 int main(int argc, char *argv[])
 {
   try {

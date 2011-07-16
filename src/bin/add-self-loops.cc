@@ -23,7 +23,8 @@
 #include "fstext/fstext-utils.h"
 #include "fstext/context-fst.h"
 
-
+/** @brief Add self-loops and transition probabilities to transducer, expanding to transition-ids.
+*/
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;

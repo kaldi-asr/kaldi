@@ -1,6 +1,6 @@
 // bin/acc-tree-stats.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation, GoVivace Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,12 @@
 #include "hmm/transition-model.h"
 #include "hmm/tree-accu.h"
 
-
+/** @brief Accumulate tree statistics for decision tree training. The
+program reads in a feature archive, and the corresponding alignments,
+and generats the sufficient statistics for the decision tree
+creation. Context width and central phone position are used to
+identify the contexts.Transition model is used as an input to identify
+the PDF's and the phones.  */
 int main(int argc, char *argv[])
 {
   using namespace kaldi;

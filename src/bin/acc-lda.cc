@@ -1,6 +1,6 @@
 // bin/acc-lda.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation, Go-Vivace Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,10 @@
 #include "hmm/transition-model.h"
 #include "transform/lda-estimate.h"
 
+/** @brief Accumulate LDA statistics based on pdf-ids. Inputs are the
+source models, that serve as the input (and may potentially contain
+the current transformation), the un-transformed features and state
+posterior probabilities */
 int main(int argc, char *argv[])
 {
   using namespace kaldi;

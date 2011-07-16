@@ -15,7 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
+/** @brief Converts alignments (containing transition-ids) to pdf-ids, zero-based.
+*/
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"

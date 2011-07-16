@@ -1,6 +1,6 @@
 // bin/ali-to-post.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation, Go-Vivace Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 
-
-
+/** @brief Convert alignments to viterbi style posteriors. The aligned
+    symbol gets a weight of 1.0 */
 int main(int argc, char *argv[])
 {
   using namespace kaldi;
