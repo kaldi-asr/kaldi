@@ -32,33 +32,34 @@ namespace fst {
 // More precisely, it is equivalent to the lexicographic semiring on
 // (a_+b_), (a_-b_)
 
-class LatticeWeight {
+template<class FloatType>
+class LatticeWeightTpl {
  public:
-  typedef typename kaldi::BaseFloat T; // normally float.
-  typedef LatticeWeight ReverseWeight;
+  typedef FloatType T; // normally float.
+  typedef LatticeWeightTpl ReverseWeight;
   
-  LatticeWeight() { }
+  LatticeWeightTpl() { }
 
-  LatticeWeight(T a, T b): a_(a), b_(b) {}
+  LatticeWeightTpl(T a, T b): a_(a), b_(b) {}
 
-  LatticeWeight(const LatticeWeight &other): a_(other.a_), b_(other.b_) { }
+  LatticeWeightTpl(const LatticeWeightTpl &other): a_(other.a_), b_(other.b_) { }
 
-  LatticeWeight &operator=(const LatticeWeight &w) {
+  LatticeWeightTpl &operator=(const LatticeWeightTpl &w) {
     a_ = w.a_;
     b_ = w.b_;
     return *this;
   }
 
-  static const LatticeWeight Zero() {
-    return LatticeWeight(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
+  static const LatticeWeightTpl Zero() {
+    return LatticeWeightTpl(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
   }
 
-  static const LatticeWeight One() {
-    return LatticeWeight(0.0, 0.0);
+  static const LatticeWeightTpl One() {
+    return LatticeWeightTpl(0.0, 0.0);
   }
   
   static const string &Type() {
-    static const string type = "lattice";
+    static const string type = (sizeof(T) == 4 ? "lattice" : "lattice_dbl") ;
     return type;
   }
 
@@ -78,15 +79,15 @@ class LatticeWeight {
     return true;
   }
   
-  LatticeWeight Quantize(float delta = kDelta) const {
+  LatticeWeightTpl Quantize(float delta = kDelta) const {
     if(a_+b_ == FloatLimits<T>::kNegInfinity) {
-      return LatticeWeight(FloatLimits<T>::kNegInfinity,FloatLimits<T>::kNegInfinity);
+      return LatticeWeightTpl(FloatLimits<T>::kNegInfinity,FloatLimits<T>::kNegInfinity);
     } else if(a_+b_ == FloatLimits<T>::kPosInfinity) {
-      return LatticeWeight(FloatLimits<T>::kPosInfinity,FloatLimits<T>::kPosInfinity);
+      return LatticeWeightTpl(FloatLimits<T>::kPosInfinity,FloatLimits<T>::kPosInfinity);
     } else if(a_+b_ != a_+b_) { // NaN
-      return LatticeWeight(a_+b_, a_+b_);
+      return LatticeWeightTpl(a_+b_, a_+b_);
     } else {
-      return LatticeWeight(floor(a_/delta + 0.5F)*delta, floor(b_/delta + 0.5F) * delta);
+      return LatticeWeightTpl(floor(a_/delta + 0.5F)*delta, floor(b_/delta + 0.5F) * delta);
     }
   }
 
@@ -95,13 +96,9 @@ class LatticeWeight {
   istream &Read(istream &strm) {
     // Always read/write as float, even if T is double,
     // so we can use OpenFst-style read/write and still maintain
-    // compatibility when compiling with different BaseFloats.
-    float a,b;
-    ReadType(strm, &a);
-    ReadType(strm, &b);
-    a_ = static_cast<T>(a);
-    b_ = static_cast<T>(b);
-    WriteType(strm, a);
+    // compatibility when compiling with different FloatTypes
+    ReadType(strm, &a_);
+    ReadType(strm, &b_);
     return strm;
   }
 
@@ -109,9 +106,8 @@ class LatticeWeight {
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
   ostream &Write(ostream &strm) const {
-    float a(a_), b(b_);
-    WriteType(strm, a);
-    WriteType(strm, b);
+    WriteType(strm, a_);
+    WriteType(strm, b_);
     return strm;
   }
 
@@ -133,20 +129,24 @@ class LatticeWeight {
   T b_;
 };
 
-inline bool operator==(const LatticeWeight &w1,
-                       const LatticeWeight &w2 ) {
+
+template<class FloatType>
+inline bool operator==(const LatticeWeightTpl<FloatType> &w1,
+                       const LatticeWeightTpl<FloatType> &w2 ) {
   return (w1.a_ == w2.a_ && w1.b_ == w2.b_);
 }
 
 
-// We define a Compare function LatticeWeight even though it's
+// We define a Compare function LatticeWeightTpl even though it's
 // not required by the semiring standard-- it's just more efficient
 // to do it this way rather than using the NaturalLess template.
 
 /// Compare returns -1 if w1 < w2, +1 if w1 > w2, and 0 if w1 == w2.
-inline int Compare (const  LatticeWeight &w1,
-                    const LatticeWeight &w2) {
-  LatticeWeight::T f1 = w1.a_ + w1.b_,
+
+template<class FloatType>
+inline int Compare (const  LatticeWeightTpl<FloatType> &w1,
+                    const LatticeWeightTpl<FloatType> &w2) {
+  FloatType f1 = w1.a_ + w1.b_,
       f2 = w2.a_ + w2.b_;
   if(f1 < f2) { return 1; } // having smaller cost means you're larger
   // in the semiring [higher probability]
@@ -159,43 +159,50 @@ inline int Compare (const  LatticeWeight &w1,
 }
 
 
-inline LatticeWeight Plus(const LatticeWeight &w1,
-                          const LatticeWeight &w2) {
+template<class FloatType>
+inline LatticeWeightTpl<FloatType> Plus(const LatticeWeightTpl<FloatType> &w1,
+                             const LatticeWeightTpl<FloatType> &w2) {
   return (Compare(w1,w2) >= 0 ? w1 : w2); //
 }
 
-inline LatticeWeight Times(const LatticeWeight &w1,
-                           const LatticeWeight &w2) {
-  return LatticeWeight(w1.a_+w2.a_, w1.b_+w2.b_);  
+
+template<class FloatType>
+inline LatticeWeightTpl<FloatType> Times(const LatticeWeightTpl<FloatType> &w1,
+                              const LatticeWeightTpl<FloatType> &w2) {
+  return LatticeWeightTpl<FloatType>(w1.a_+w2.a_, w1.b_+w2.b_);  
 }
 
 // divide w1 by w2 (on left/right/any doesn't matter as
 // commutative).
-inline LatticeWeight Divide(const LatticeWeight &w1,
-                            const LatticeWeight &w2,
-                            DivideType typ = DIVIDE_ANY) {
-  typedef LatticeWeight::T T;
-  T a = w1.a - w2.a, b = w1.a - w2.a;
+template<class FloatType>
+inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
+                               const LatticeWeightTpl<FloatType> &w2,
+                               DivideType typ = DIVIDE_ANY) {
+  typedef FloatType T;
+  T a = w1.a_ - w2.a_, b = w1.b_ - w2.b_;
   if(a!=a || b!=b || a == FloatLimits<T>::kNegInfinity
      || b == FloatLimits<T>::kNegInfinity) {
-    KALDI_WARN << "LatticeWeight::Divide, NaN or invalid number produced. "
-               << "[dividing by zero?]  Returning zero.";
-    return LatticeWeight::Zero();
+    std::cerr << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
+              << "[dividing by zero?]  Returning zero.";
+    return LatticeWeightTpl<T>::Zero();
   }
   if(a == FloatLimits<T>::kPosInfinity ||
      b == FloatLimits<T>::kPosInfinity)
-    return LatticeWeight::Zero(); // problems if only one is infinite.
-  return LatticeWeight(a, b);
+    return LatticeWeightTpl<T>::Zero(); // problems if only one is infinite.
+  return LatticeWeightTpl<T>(a, b);
 }
 
-inline bool ApproxEqual(const LatticeWeight &w1,
-                        const LatticeWeight &w2,
+
+template<class FloatType>
+inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
+                        const LatticeWeightTpl<FloatType> &w2,
                         float delta = kDelta) {
   return (fabs(w1.a_ - w2.a_) <= delta && fabs(w1.b_ - w2.b_) <= delta);
 }
 
-inline ostream &operator <<(ostream &strm, LatticeWeight &w1) {
-  typedef LatticeWeight::T T;
+template <class FloatType>
+inline ostream &operator <<(ostream &strm, LatticeWeightTpl<FloatType> &w1) {
+  typedef FloatType T;
   if(w1.a_ == FloatLimits<T>::kPosInfinity)
     strm << "Infinity";
   else if (w1.a_ == FloatLimits<T>::kNegInfinity
@@ -215,19 +222,27 @@ inline ostream &operator <<(ostream &strm, LatticeWeight &w1) {
   return strm;
 }
 
-inline istream &operator >>(istream &strm, LatticeWeight &w1) {
-  // TODO...  
+template <class FloatType>
+inline istream &operator >>(istream &strm, LatticeWeightTpl<FloatType> &w1) {
+  // TODO...
+  return strm;
 }
 
 
 
 // CompactLattice will be an acceptor (accepting the words/output-symbols),
 // with the weights and input-symbol-seqs on the arcs.
+// There must be a total order on W.  We assume for the sake of efficiency
+// that there is a function
+// Compare(W w1, W w2) that returns -1 if w1 < w2, +1 if w1 > w2, and
+// zero if w1 == w2, and Plus for type W returns (Compare(w1,w2) >= 0 ? w1 : w2).
 
-class CompactLatticeWeight {
+template<class WeightType, class IntType>
+class CompactLatticeWeightTpl {
  public:
-  LatticeWeight w_;
-  vector<int32> s_; // watch out: fst::int32 and kaldi::int32 are not always compatible.
+  typedef WeightType W;
+  W w_;
+  vector<IntType> s_; 
 
   // Plus is like LexicographicWeight on the pair (w_, s_), but where we
   // use standard lexicographic order on s_ [this is not the same as
@@ -236,48 +251,52 @@ class CompactLatticeWeight {
   // Times, Divide obvious... (support both left & right division..)
   // CommonDivisor would need to be coded separately.
 
-  CompactLatticeWeight() { }
+  CompactLatticeWeightTpl() { }
 
-  CompactLatticeWeight(const LatticeWeight &w, const std::vector<int32> &s):
+  CompactLatticeWeightTpl(const WeightType &w, const std::vector<IntType> &s):
       w_(w), s_(s) { }
 
-  CompactLatticeWeight(const LatticeWeight &w, const std::vector<int32> &s):
-      w_(w), s_(s) { }
-
-  // Note: LatticeWeight::T is kaldi::BaseFloat which is normally float.
-  CompactLatticeWeight(LatticeWeight::T a, LatticeWeight::T b,
-                       const std::vector<int32> &s):
-      w_(a,b), s_(s) { }
-  
-  CompactLatticeWeight &operator=(const CompactLatticeWeight &w):
-      w_(w.w_), s(w.s_) { }
-
-  static const CompactLatticeWeight Zero() {
-    return CompactLatticeWeight(LatticeWeight::Zero(), std::vector<int32>());
+  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType,IntType> &w) {
+    w_ = w.w_;
+    s_ = w.s_;
+    return *this;
   }
 
-  static const CompactLatticeWeight One() {
-    return CompactLatticeWeight(LatticeWeight::One(), std::vector<int32>());
+  static const CompactLatticeWeightTpl<WeightType,IntType> Zero() {
+    return CompactLatticeWeightTpl<WeightType,IntType>(
+        WeightType::Zero(), std::vector<IntType>());
   }
 
+  static const CompactLatticeWeightTpl<WeightType,IntType> One() {
+    return CompactLatticeWeightTpl<WeightType,IntType>(
+        WeightType::One(), std::vector<IntType>());
+  }
+
+  inline static string GetIntSizeString() {
+    char buf[2];
+    buf[0] = '0' + sizeof(IntType);
+    buf[1] = '\0';
+    return buf;
+  }
   static const string &Type() {
-    static const string type = "compactlattice";
+    static const string type = "compact" + WeightType::Type()
+        + GetIntSizeString();
     return type;
   }
-
+  
   bool Member() const {
     // a semiring has only one zero, this is the important property
     // we're trying to maintain here.  So force s_ to be empty if
     // w_ == zero.
     if(!w_.Member()) return false;
-    if(w_ == LatticeWeight::Zero())
+    if(w_ == WeightType::Zero())
       return s_.empty();
     else
       return true;
   }
 
-  CompactLatticeWeight Quantize(float delta = kDelta) const {
-    return CompactLatticeWeight(w_.Quantize(delta), s_);
+  CompactLatticeWeightTpl Quantize(float delta = kDelta) const {
+    return CompactLatticeWeightTpl(w_.Quantize(delta), s_);
   }
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
@@ -285,13 +304,17 @@ class CompactLatticeWeight {
   istream &Read(istream &strm) {
     w_.Read(strm);
     if(strm.fail()){ return strm; }
-    int32 sz;
+    IntType sz;
     ReadType(strm, &sz);
     if(strm.fail()){ return strm; }
-    KALDI_ASSERT(sz>=0);
-    v_.resize(sz);
-    for(int32 i = 0; i < sz; i++) {
-      ReadType(strm, &(v_[i]));
+    if(sz < 0) {
+      std::cerr << "Negative string size!  Read failure.";
+      strm.clear(std::ios::badbit);
+      return strm;
+    }
+    s_.resize(sz);
+    for(IntType i = 0; i < sz; i++) {
+      ReadType(strm, &(s_[i]));
     }
     return strm;
   }
@@ -301,14 +324,15 @@ class CompactLatticeWeight {
   ostream &Write(ostream &strm) const {
     w_.Write(strm);
     if(strm.fail()){ return strm; }
-    int32 sz = static_cast<int32>(v_.size());
-    for(int32 i = 0; i < sz; i++)
-      WriteType(strm, &(v_[i]));
+    IntType sz = static_cast<IntType>(s_.size());
+    for(IntType i = 0; i < sz; i++)
+      WriteType(strm, &(s_[i]));
   }        
 };
 
-inline bool operator==(const CompactLatticeWeight &w1,
-                       const CompactLatticeWeight &w2 ) {
+template<class WeightType, class IntType>
+inline bool operator==(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
+                       const CompactLatticeWeightTpl<WeightType,IntType> &w2 ) {
   return (w1.w_ == w2.w_ && w1.s_ == w2.s_);
 }
 
@@ -324,53 +348,93 @@ inline bool operator==(const CompactLatticeWeight &w1,
 // make sure all the semiring axioms are satisfied otherwise OpenFst might
 // break.
 
-inline int Compare(const CompactLatticeWeight &w1,
-                   const CompactLatticeWeight &w2) {
+template<class WeightType, class IntType>
+inline int Compare(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
+                   const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
   int c1 = Compare(w1.w_, w2.w_);
   if(c1 != 0) return c1;
   int l1 = w1.v_.length(), l2 = w2.v_.length();
   if(l1 < l2) return -1;
   else if(l1 > l2) return 1;
   for(int i = 0; i < l1; i++) {
-    if(l1[i] < l2[i]) return -1;
-    else if(l1[i] > l2[i]) return 1;
+    if(w1.v_[i] < w2.v_[i]) return -1;
+    else if(w1.v_[i] > w2.v_[i]) return 1;
   }
   return 0;
 }
 
 
-inline CompactLatticeWeight Plus(const CompactLatticeWeight &w1,
-                                 const CompactLatticeWeight &w2) {
+template<class WeightType, class IntType>
+inline CompactLatticeWeightTpl<WeightType,IntType> Plus(
+    const CompactLatticeWeightTpl<WeightType,IntType> &w1,
+    const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
   return (Compare(w1,w2) >= 0 ? w1 : w2); 
 }
 
-inline CompactLatticeWeight Times(const CompactLatticeWeight &w1,
-                                  const CompactLatticeWeight &w2) {
-  typedef LatticeWeight::T T;
-  if(w1.w_.a_ == FloatLimits<T>::kPosInfinity
-     || w2.w_.a_ == FloatLimits<T>::kPosInfinity) // if either w1 or w2 are zero...
-    return CompactLatticeWeight::Zero(); // special case to ensure zero is unique
-  std::vector<int32> v;
-  v.reserve(w1.v_.size() + w2.v_.size());
-  std::vector<int32>::iterator iter = v.begin();
-  iter = std::copy(w1.v_.begin(), w1.v_.end(), iter); // returns end of first range.
-  std::copy(w2.v_.begin(), s2.v_.end(), iter);
-  return CompactLatticeWeight(Times(w1.w_, w2.w_), v);
+template<class WeightType, class IntType>
+inline CompactLatticeWeightTpl<WeightType,IntType> Times(
+    const CompactLatticeWeightTpl<WeightType,IntType> &w1,
+    const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
+  typedef WeightType T;
+  WeightType w = Times(w1.w_, w2.w_);
+  if(w.IsZero()) {
+    return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
+    // special case to ensure zero is unique
+  } else {
+    std::vector<IntType> v;
+    v.resize(w1.v_.size() + w2.v_.size());
+    typename std::vector<IntType>::iterator iter = v.begin();
+    iter = std::copy(w1.v_.begin(), w1.v_.end(), iter); // returns end of first range.
+    std::copy(w2.v_.begin(), w2.v_.end(), iter);
+    return CompactLatticeWeightTpl<WeightType,IntType>(w, v);
+  }
 }
 
-inline CompactLatticeWeight Divide(const CompactLatticeWeight &w1,
-                                   const CompactLatticeWeight &w2,
-                                   DivideType div) {
-  
-  
+template<class WeightType, class IntType>
+inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
+                                                          const CompactLatticeWeightTpl<WeightType,IntType> &w2,
+                                                          DivideType div) {
+  if(w1 == WeightType::Zero()) { return CompactLatticeWeightTpl<WeightType,IntType>::Zero(); }
+  WeightType w = Divide(w1.w_, w2.w_);
+
+  const std::vector<IntType> v1 = w1.v_, v2 = w2.v_;
+  if(v2.size() > v1.size()) {
+    std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, length mismatch.\n";
+    exit(1);
+  }
+  typename std::vector<IntType>::const_iterator v1b = v1.begin(),
+      v1e = v1.end(), v2b = v2.begin(), v2e = v2.end();
+  if(div == DIVIDE_LEFT) {
+    if(!std::equal(v2b, v2e, v1b)) { // v2 must be identical to first part of v1.
+      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
+      exit(1);
+    }
+    return CompactLatticeWeightTpl<WeightType,IntType>(
+        w, std::vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
+  } else if(div == DIVIDE_RIGHT) {
+    if(!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
+      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
+      exit(1);
+    }
+    return CompactLatticeWeightTpl<WeightType,IntType>(
+        w, std::vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
+
+  } else {
+    std::cerr << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY.\n";
+    exit(1);
+  }
+  return CompactLatticeWeightTpl<WeightType,IntType>::Zero(); // keep compiler happy.
 }
 
-
+} // end namespace fst
 
 namespace kaldi {
 // will import some things above...
 
+typedef fst::LatticeWeightTpl<BaseFloat> LatticeWeight;
 
+// careful: kaldi::int32 is not always the same C type as fst::int32
+typedef fst::CompactLatticeWeightTpl<LatticeWeight, int32> CompactLatticeWeight;
 
 
 
