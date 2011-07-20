@@ -86,9 +86,9 @@ class SimpleDecoder {
     } else {
       Weight best_weight = Weight::Zero();
       for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter) {
-        Weight this_weight = Times(iter->second->arc_.weight, fst_.Final(iter->first));
+           iter != cur_toks_.end();
+           ++iter) {
+        Weight this_weight = Times(iter->second->weight_, fst_.Final(iter->first));
         if (this_weight != Weight::Zero() &&
            this_weight.Value() < best_weight.Value()) {
           best_weight = this_weight;
@@ -167,7 +167,7 @@ class SimpleDecoder {
         Arc arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
           arc.weight = Times(arc.weight,
-                             Weight(- decodable->LogLikelihood(frame, arc.ilabel)));
+                             Weight(-decodable->LogLikelihood(frame, arc.ilabel)));
           Token *new_tok = new Token(arc, tok);
           unordered_map<StateId, Token*>::iterator find_iter
               = cur_toks_.find(arc.nextstate);

@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
                                             &decoded);
-
+ 
       if (saw_endstate || decoder.GetOutput(false,
                                            &decoded)) {
         num_success++;
