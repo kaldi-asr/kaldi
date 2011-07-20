@@ -57,7 +57,7 @@ class SimpleDecoder {
     ClearToks(cur_toks_);
     ClearToks(prev_toks_);
     StateId start_state = fst_.Start();
-    assert(start_state != fst::kNoStateId);
+    KALDI_ASSERT(start_state != fst::kNoStateId);
     Arc dummy_arc(0, 0, Weight::One(), start_state);
     cur_toks_[start_state] = new Token(dummy_arc, NULL);
     ProcessNonemitting();
@@ -66,7 +66,7 @@ class SimpleDecoder {
       std::swap(cur_toks_, prev_toks_);
       ProcessEmitting(decodable, frame);
       ProcessNonemitting();
-      PruneToks(cur_toks_, beam_);
+      PruneToks(beam_, &cur_toks_);
     }
   }
 
@@ -101,7 +101,7 @@ class SimpleDecoder {
     std::vector<Arc> arcs_reverse;  // arcs in reverse order.
     for (Token *tok = best_tok; tok != NULL; tok = tok->prev_)
       arcs_reverse.push_back(tok->arc_);
-    assert(arcs_reverse.back().nextstate == fst_.Start());
+    KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
     arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
 
     StateId cur_state = fst_out->AddState();
@@ -127,8 +127,8 @@ class SimpleDecoder {
     Arc arc_;
     Token *prev_;
     int32 ref_count_;
-    Weight weight_;
-    Token(Arc &arc, Token *prev): arc_(arc), prev_(prev), ref_count_(1) {
+    Weight weight_; // accumulated weight up to this point.
+    Token(const Arc &arc, Token *prev): arc_(arc), prev_(prev), ref_count_(1) {
       if (prev) {
         prev->ref_count_++;
         weight_ = Times(prev->weight_, arc.weight);
@@ -142,7 +142,7 @@ class SimpleDecoder {
     }
 
     ~Token() {
-      assert(ref_count_ == 1);
+      KALDI_ASSERT(ref_count_ == 1);
       if (prev_ != NULL) TokenDelete(prev_);
     }
     static void TokenDelete(Token *tok) {
@@ -160,7 +160,7 @@ class SimpleDecoder {
         ++iter) {
       StateId state = iter->first;
       Token *tok = iter->second;
-      assert(state == tok->arc_.nextstate);
+      KALDI_ASSERT(state == tok->arc_.nextstate);
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
           !aiter.Done();
           aiter.Next()) {
@@ -203,12 +203,12 @@ class SimpleDecoder {
       StateId state = queue_.back();
       queue_.pop_back();
       Token *tok = cur_toks_[state];
-      assert(tok != NULL && state == tok->arc_.nextstate);
+      KALDI_ASSERT(tok != NULL && state == tok->arc_.nextstate);
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
           !aiter.Done();
           aiter.Next()) {
-        Arc arc = aiter.Value();
-        if (arc.ilabel == 0) {  // propagate emitting only...
+        const Arc &arc = aiter.Value();
+        if (arc.ilabel == 0) {  // propagate nonemitting only...
           Token *new_tok = new Token(arc, tok);
           if (new_tok->arc_.weight.Value() > cutoff) {
             Token::TokenDelete(new_tok);
@@ -246,22 +246,23 @@ class SimpleDecoder {
     toks.clear();
   }
 
-  static void PruneToks(unordered_map<StateId, Token*> &toks, BaseFloat beam) {
-    if (toks.empty()) {
+
+  static void PruneToks(BaseFloat beam, unordered_map<StateId, Token*> *toks) {
+    if (toks->empty()) {
       KALDI_VLOG(2) <<  "No tokens to prune.\n";
       return;
     }
     BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
-    for (unordered_map<StateId, Token*>::iterator iter = toks.begin();
-        iter != toks.end(); ++iter) {
+    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
+        iter != toks->end(); ++iter) {
       best_weight =
           std::min(best_weight,
                    static_cast<BaseFloat>(iter->second->weight_.Value()));
     }
     std::vector<StateId> retained;
     BaseFloat cutoff = best_weight + beam;
-    for (unordered_map<StateId, Token*>::iterator iter = toks.begin();
-        iter != toks.end(); ++iter) {
+    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
+        iter != toks->end(); ++iter) {
       if (iter->second->weight_.Value() < cutoff)
         retained.push_back(iter->first);
       else
@@ -269,10 +270,10 @@ class SimpleDecoder {
     }
     unordered_map<StateId, Token*> tmp;
     for (size_t i = 0; i < retained.size(); i++) {
-      tmp[retained[i]] = toks[retained[i]];
+      tmp[retained[i]] = (*toks)[retained[i]];
     }
     KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
-    std::swap(tmp, toks);
+    std::swap(tmp, *toks);
   }
 };
 

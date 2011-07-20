@@ -189,22 +189,24 @@ inline float LogSub(float x, float y) {
 
 // return (a == b)
 static inline bool ApproxEqual(float a, float b, float tol = 0.001) {
-  return( std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
+  // a==b handles infinities.
+  return( a==b || std::abs(a-b) <= tol*(std::abs(a)+std::abs(b))); 
 }
 
-// assert(a == b)
+// assert (a == b)
 static inline void AssertEqual(float a, float b, float tol = 0.001) {
-  assert(std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
+  // a==b handles infinities.
+  KALDI_ASSERT(a==b || std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
 }
 
 // assert (a>=b)
 static inline void AssertGeq(float a, float b, float tol = 0.001) {
-  assert(a-b >= -tol * (std::abs(a)+std::abs(b)));
+  KALDI_ASSERT(a-b >= -tol * (std::abs(a)+std::abs(b)));
 }
 
 // assert (a<=b)
 static inline void AssertLeq(float a, float b, float tol = 0.001) {
-  assert(a-b <= -tol * (std::abs(a)+std::abs(b)));
+  KALDI_ASSERT(a-b <= -tol * (std::abs(a)+std::abs(b)));
 }
 
 // RoundUpToNearestPowerOfTwo does the obvious thing. It crashes if n <= 0.
@@ -220,7 +222,7 @@ template<class I> I  Gcd(I m, I n) {
   }
   // could use compile-time assertion
   // but involves messing with complex template stuff.
-  assert(std::numeric_limits<I>::is_integer);
+  KALDI_ASSERT(std::numeric_limits<I>::is_integer);
   while (1) {
     m %= n;
     if (m == 0) return (n > 0 ? n : -n);
@@ -235,8 +237,8 @@ template<class I> void Factorize(I m, std::vector<I> *factors) {
   // algorithm, which is mainly intended for use in the
   // mixed-radix FFT computation (where we assume most factors
   // are small).
-  assert(factors != NULL);
-  assert(m >= 1);  // Doesn't work for zero or negative numbers.
+  KALDI_ASSERT(factors != NULL);
+  KALDI_ASSERT(m >= 1);  // Doesn't work for zero or negative numbers.
   factors->clear();
   I small_factors[10] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29 };
 
