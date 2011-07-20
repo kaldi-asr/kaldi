@@ -319,9 +319,8 @@ class LatticeSimpleDecoder {
         // See if we need to excise this link...
         Token *next_tok = link->next_tok;
         BaseFloat link_delta = next_tok->delta +
-            (next_tok->tot_cost -
-             (tok->tot_cost + link->acoustic_cost +
-              link->graph_cost));
+            ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
+             - next_tok->tot_cost);
         if(link_delta > config_.lattice_beam) { // excise link
           ForwardLink *next_link = link->next;
           if(prev_link != NULL) prev_link->next = next_link;
@@ -330,8 +329,8 @@ class LatticeSimpleDecoder {
           link = next_link; // advance link but leave prev_link the same.
           *links_pruned = true;
         } else { // keep the link and update the tok_delta if needed.
-          if(link_delta < 0.0) { // this is just a precaution.
-            std::cerr << "Negative delta: " << link_delta; // TODO: REMOVE THIS!
+          if(link_delta < -1.0e-05) { // this is just a precaution.
+            std::cerr << "Negative delta: " << link_delta << "\n"; // TODO: REMOVE THIS!
             link_delta = 0.0;
           }
           if(link_delta < tok_delta)
