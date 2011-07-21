@@ -79,17 +79,27 @@ class LatticeSimpleDecoder {
     active_toks_.resize(1);
     active_toks_[0].tok_head = active_toks_[0].tok_tail =
         cur_toks_[start_state] = new Token(0.0, 0.0, NULL, NULL, NULL);
+    num_toks_++;
     ProcessNonemitting(0);
     // We use 1-based indexing for frames in this decoder (if you view it in
     // terms of features), but note that the decodable object uses zero-based
     // numbering, which we have to correct for when we call it.
+    CheckLists();
     for (int32 frame = 1; !decodable->IsLastFrame(frame); frame++) {
       active_toks_.resize(frame+1);
       prev_toks_.clear();
       std::swap(cur_toks_, prev_toks_);
+      CheckLists();
       ProcessEmitting(decodable, frame);
+      CheckLists();
+      // Important to call PruneCurrentTokens before ProcessNonemitting, or
+      // we would get dangling forward pointers.  Anyway, ProcessNonemitting uses
+      // the beam.
+      CheckLists();
+      PruneCurrentTokens(config_.beam, &cur_toks_);
+      CheckLists();
       ProcessNonemitting(frame);
-      PruneCurrentTokens(config_.beam, frame, &cur_toks_);
+      CheckLists();
       if(frame % config_.prune_interval == 0 ||
          decodable->IsLastFrame(frame-1))
         PruneActiveTokens(frame);
@@ -210,8 +220,10 @@ class LatticeSimpleDecoder {
   struct TokenList {
     Token *tok_head;
     Token *tok_tail;
-    bool ever_pruned;
-    TokenList(): tok_head(NULL), tok_tail(NULL), ever_pruned(false) {}
+    bool must_prune_forward_links;
+    bool must_prune_tokens;
+    TokenList(): tok_head(NULL), tok_tail(NULL), must_prune_forward_links(true),
+                 must_prune_tokens(true) { }
   };
   
 
@@ -265,14 +277,12 @@ class LatticeSimpleDecoder {
         // for the token-pruning algorithm (PruneActiveTokens).
         tok->next->prev = tok->prev;
         // note: tok->next != NULL since tok != tok_tail
-        if(tok->prev != NULL) 
-          tok->prev->next = tok->next;
-        else
-          tok_head = tok->next;
+        if(tok->prev != NULL) tok->prev->next = tok->next;
+        else tok_head = tok->next;
         // At this point the token is excised; now we put it at tail
         // of list.
         tok->prev = tok_tail;
-        tok->prev->next = tok;
+        tok_tail->next = tok;
         tok->next = NULL;
         tok_tail = tok;
       }
@@ -288,11 +298,37 @@ class LatticeSimpleDecoder {
         *&tok_tail = active_toks_[frame].tok_tail;
     tok->DeleteForwardLinks();
     if(tok->next != NULL) tok->next->prev = tok->prev;
-    else tok_tail = tok->prev;
+    else { KALDI_ASSERT(tok_tail == tok);  tok_tail = tok->prev; }
     if(tok->prev != NULL) tok->prev->next = tok->next;
-    else tok_head = tok->next;
+    else { KALDI_ASSERT(tok_head == tok); tok_head = tok->next; }
     delete tok;
     num_toks_--;
+  }
+
+  void CheckLists() {
+    for(size_t frame = 0; frame < active_toks_.size(); frame++) {
+      for(Token *tok = active_toks_[frame].tok_head;
+          tok != NULL;
+          tok = tok->next) {
+        if(tok->prev){ KALDI_ASSERT(tok->prev->next == tok); }
+        else { KALDI_ASSERT(tok == active_toks_[frame].tok_head); }
+        if(tok->next){ KALDI_ASSERT(tok->next->prev == tok); }
+        else { KALDI_ASSERT(tok == active_toks_[frame].tok_tail); }
+        for(ForwardLink *link = tok->links;
+            link != NULL;
+            link = link->next) {
+          Token *next_tok = link->next_tok;
+          if(next_tok->prev){ KALDI_ASSERT(next_tok->prev->next == next_tok); }
+          else {
+            size_t next_frame = frame + (link->ilabel == 0 ? 0 : 1);
+            if(next_tok->prev){ KALDI_ASSERT(next_tok->prev->next == next_tok); }
+            else{ KALDI_ASSERT(next_tok == active_toks_[next_frame].tok_head); }
+            if(next_tok->next){ KALDI_ASSERT(next_tok->next->prev == next_tok); }
+            else { KALDI_ASSERT(next_tok == active_toks_[next_frame].tok_tail); }
+          }                              
+        }
+      }
+    }
   }
 
   void PruneForwardLinks(int32 frame, bool *deltas_changed, bool *links_pruned) {
@@ -329,7 +365,7 @@ class LatticeSimpleDecoder {
           link = next_link; // advance link but leave prev_link the same.
           *links_pruned = true;
         } else { // keep the link and update the tok_delta if needed.
-          if(link_delta < -1.0e-05) { // this is just a precaution.
+          if(link_delta < -1.0e-04) { // this is just a precaution.
             std::cerr << "Negative delta: " << link_delta << "\n"; // TODO: REMOVE THIS!
             link_delta = 0.0;
           }
@@ -339,7 +375,7 @@ class LatticeSimpleDecoder {
           link = link->next;
         }
       }
-      if(!ApproxEqual(tok->delta, tok_delta))
+      if(!ApproxEqual(tok->delta, tok_delta, 0.1))
         *deltas_changed = true;
       tok->delta = tok_delta; // will be +infinity or less than lattice_beam_.
     }
@@ -353,10 +389,12 @@ class LatticeSimpleDecoder {
     Token *&tok_head = active_toks_[frame].tok_head,
         *&tok_tail = active_toks_[frame].tok_tail;
     if(tok_head == NULL)
-      KALDI_WARN << "No tokens alive [doing pruning]\n";    
-    for (Token *tok = tok_head;
+      KALDI_WARN << "No tokens alive [doing pruning]\n";
+    Token *tok, *next_tok;
+    for (tok = tok_head;
          tok != NULL;
-         tok = tok->next) {
+         tok = next_tok) {
+      next_tok = tok->next;
       if(tok->links == NULL) { // Token has no forward links so unreachable from
         // end of graph; excise tok from list and delete tok.
         if(tok->prev) tok->prev->next = tok->next;
@@ -364,6 +402,7 @@ class LatticeSimpleDecoder {
         if(tok->next) tok->next->prev = tok->prev;
         else tok_tail = tok->prev;
         delete tok;
+        num_toks_--;
       }
     }
   }
@@ -373,18 +412,32 @@ class LatticeSimpleDecoder {
   // don't yet have forward pointers), but we do all previous frames, unless we
   // know that we can safely ignore them becaus the frame after them was unchanged.
   void PruneActiveTokens(int32 cur_frame) {
+    CheckLists();
     int32 num_toks_begin = num_toks_;
-    bool next_deltas_changed = true, next_links_pruned = false;
     for (int32 frame = cur_frame-1; frame >= 0; frame--) {
-      bool deltas_changed, links_pruned;
-      if(!active_toks_[frame].ever_pruned || next_deltas_changed) {
+      std::cerr << "frame = " << frame << "\n";
+      CheckLists();
+      // Reason why we need to prune forward links in this situation:
+      // (1) we have never pruned them
+      // (2) we never pruned the forward links on the next frame, which
+      //     
+      if(active_toks_[frame].must_prune_forward_links) {
+        std::cerr << "Pruning forward links, ntok = " << num_toks_ << "\n";
+        bool deltas_changed, links_pruned;
         PruneForwardLinks(frame, &deltas_changed, &links_pruned);
-        active_toks_[frame].ever_pruned = true;
+        if(deltas_changed && frame > 0)
+          active_toks_[frame-1].must_prune_forward_links = true;
+        if(links_pruned)
+          active_toks_[frame].must_prune_tokens = true;
+        active_toks_[frame].must_prune_forward_links = false;
       }
-      if(next_links_pruned)
+      CheckLists();
+      if(frame+1 < cur_frame &&
+         active_toks_[frame+1].must_prune_tokens) {
         PruneTokensForFrame(frame+1);
-      next_links_pruned = links_pruned;
-      next_deltas_changed = deltas_changed;
+        active_toks_[frame+1].must_prune_tokens = false;
+        std::cerr << "Pruning tokens for frame+1\n";
+      }
     }
     KALDI_VLOG(1) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
@@ -393,6 +446,7 @@ class LatticeSimpleDecoder {
   void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
     // Processes emitting arcs for one frame.  Propagates from
     // prev_toks_ to cur_toks_.
+    BaseFloat cutoff = std::numeric_limits<BaseFloat>::infinity();
     for (unordered_map<StateId, Token*>::iterator iter = prev_toks_.begin();
          iter != prev_toks_.end();
          ++iter) {
@@ -407,6 +461,9 @@ class LatticeSimpleDecoder {
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;
+          if(tot_cost > cutoff) continue;
+          else if(tot_cost + config_.beam < cutoff)
+            cutoff = tot_cost + config_.beam;
           // AddToken adds the next_tok to cur_toks_ (if not already present).
           Token *next_tok = AddToken(arc.nextstate, frame, tot_cost, true, NULL);
           
@@ -505,7 +562,10 @@ class LatticeSimpleDecoder {
     KALDI_ASSERT(num_toks_ == 0);
   }
 
-  void PruneCurrentTokens(BaseFloat beam, int32 frame, unordered_map<StateId, Token*> *toks) {
+  // PruneCurrentTokens deletes the tokens from the "toks" map, but not
+  // from the active_toks_ list, which could cause dangling forward pointers
+  // (will delete it during regular pruning operation).
+  void PruneCurrentTokens(BaseFloat beam, unordered_map<StateId, Token*> *toks) {
     if (toks->empty()) {
       KALDI_VLOG(2) <<  "No tokens to prune.\n";
       return;
@@ -523,8 +583,6 @@ class LatticeSimpleDecoder {
         iter != toks->end(); ++iter) {
       if (iter->second->tot_cost < cutoff)
         retained.push_back(iter->first);
-      else
-        DeleteToken(frame, iter->second); // remove from active_toks_.
     }
     unordered_map<StateId, Token*> tmp;
     for (size_t i = 0; i < retained.size(); i++) {

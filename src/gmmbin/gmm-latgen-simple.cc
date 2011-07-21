@@ -178,7 +178,6 @@ int main(int argc, char *argv[])
                    << ", len = " << features.NumRows();
       }
     }
-
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
@@ -196,5 +195,3 @@ int main(int argc, char *argv[])
     return -1;
   }
 }
-
-

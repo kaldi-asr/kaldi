@@ -190,13 +190,17 @@ inline float LogSub(float x, float y) {
 // return (a == b)
 static inline bool ApproxEqual(float a, float b, float tol = 0.001) {
   // a==b handles infinities.
-  return( a==b || std::abs(a-b) <= tol*(std::abs(a)+std::abs(b))); 
+  if(a==b) return true;
+  float diff = std::abs(a-b);
+  if (diff == std::numeric_limits<float>::infinity()
+      || diff!=diff) return false; // diff is +inf or nan.
+  return (diff <= tol*(std::abs(a)+std::abs(b))); 
 }
 
 // assert (a == b)
 static inline void AssertEqual(float a, float b, float tol = 0.001) {
   // a==b handles infinities.
-  KALDI_ASSERT(a==b || std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
+  KALDI_ASSERT(ApproxEqual(a, b, tol));
 }
 
 // assert (a>=b)

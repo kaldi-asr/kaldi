@@ -188,10 +188,32 @@ void UnitTestFactorize() {
   UnitTestFactorizeTpl<unsigned short>();
 }
 
+void UnitTestApproxEqual() {
+  KALDI_ASSERT(ApproxEqual(1.0, 1.00001));
+  KALDI_ASSERT(ApproxEqual(1.0, 1.00001, 0.001));
+  KALDI_ASSERT(!ApproxEqual(1.0, 1.1));
+  KALDI_ASSERT(!ApproxEqual(1.0, 1.01, 0.001));
+  KALDI_ASSERT(!ApproxEqual(1.0, 0.0));
+  KALDI_ASSERT(ApproxEqual(0.0, 0.0));
+  KALDI_ASSERT(!ApproxEqual(0.0, 0.00001));
+  KALDI_ASSERT(!ApproxEqual(std::numeric_limits<float>::infinity(),
+                            -std::numeric_limits<float>::infinity()));
+  KALDI_ASSERT(ApproxEqual(std::numeric_limits<float>::infinity(),
+                           std::numeric_limits<float>::infinity()));
+  KALDI_ASSERT(ApproxEqual(-std::numeric_limits<float>::infinity(),
+                           -std::numeric_limits<float>::infinity()));
+  KALDI_ASSERT(!ApproxEqual(-std::numeric_limits<float>::infinity(),
+                            0));
+  KALDI_ASSERT(!ApproxEqual(-std::numeric_limits<float>::infinity(),
+                            1));
+               
+}
+
 }  // end namespace kaldi.
 
 int main() {
   using namespace kaldi;
+  UnitTestApproxEqual();
   UnitTestGcd();
   UnitTestFactorize();
   UnitTestDefines();

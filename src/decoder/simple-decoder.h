@@ -155,6 +155,7 @@ class SimpleDecoder {
   void ProcessEmitting(DecodableInterface *decodable, int frame) {
     // Processes emitting arcs for one frame.  Propagates from
     // prev_toks_ to cur_toks_.
+    BaseFloat cutoff = std::numeric_limits<BaseFloat>::infinity();
     for (unordered_map<StateId, Token*>::iterator iter = prev_toks_.begin();
         iter != prev_toks_.end();
         ++iter) {
@@ -168,6 +169,9 @@ class SimpleDecoder {
         if (arc.ilabel != 0) {  // propagate..
           arc.weight = Times(arc.weight,
                              Weight(-decodable->LogLikelihood(frame, arc.ilabel)));
+          if(arc.weight.Value() > cutoff) continue;
+          if(arc.weight.Value() + beam_  < cutoff)
+            cutoff = arc.weight.Value() + beam_;
           Token *new_tok = new Token(arc, tok);
           unordered_map<StateId, Token*>::iterator find_iter
               = cur_toks_.find(arc.nextstate);
