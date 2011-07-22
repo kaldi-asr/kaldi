@@ -87,6 +87,12 @@ template<class I, class T> class HashList {
   /// first one that was added.  [but we don't guarantee this behavior].
   inline void Insert(I key, T val);
 
+  /// Insert inserts another element with same key into the hashtable/stored list.
+  /// By calling this, the user asserts that one element with that key is already present.
+  /// We insert it that way, that all elements with the same key follow each other.
+  /// Find() will return the first one of the elements with the same key.
+  inline void InsertMore(I key, T val);
+
   /// SetSize tells the object how many hash buckets to allocate (should typically be
   /// at least twice the number of objects we expect to go in the structure, for fastest
   /// performance).  It must be called while the hash is empty (e.g. after Clear() or

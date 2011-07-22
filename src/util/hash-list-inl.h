@@ -137,6 +137,30 @@ void HashList<I, T>::Insert(I key, T val) {
   }
 }
 
+template<class I, class T>
+void HashList<I, T>::InsertMore(I key, T val) {
+  size_t index = (static_cast<size_t>(key) % hash_size_);
+  HashBucket &bucket = buckets_[index];
+  Elem *elem = New();
+  elem->key = key;
+  elem->val = val;
+
+  assert(bucket.last_elem != NULL); // we assume there is already one element
+  if (bucket.last_elem->key == key) { // standard behavior: add as last element
+    elem->tail = bucket.last_elem->tail;
+    bucket.last_elem->tail = elem;
+    bucket.last_elem = elem;
+    return;
+  } 
+  Elem *e = (bucket.prev_bucket == static_cast<size_t>(-1) ?
+             list_head_ : buckets_[bucket.prev_bucket].last_elem->tail);
+  // find place to insert in linked list 
+  while(e != bucket.last_elem->tail && e->key != key) e = e->tail;
+  assert(e->key == key); // not found? - should not happen
+  elem->tail = e->tail;
+  e->tail = elem;
+}
+
 
 } // end namespace kaldi
 
