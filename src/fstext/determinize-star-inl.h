@@ -41,7 +41,7 @@ template<class Label, class StringId> class StringRepository {
   // We treat sequences of length zero and one separately, for efficiency.
 
  public:
-  class VectorKey {  // Hash function object.
+  class VectorKey { // Hash function object.
    public:
     size_t operator()(const vector<Label>* vec) const {
       assert(vec != NULL);
@@ -268,8 +268,8 @@ template<class Arc> class DeterminizerStar {
   }
 
 
-  // Initializer.  After initializing the object you will typically call Determinize() and
-  // then one of the Output functions.
+  // Initializer.  After initializing the object you will typically call one of
+  // the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL):
       ifst_(ifst.Copy()), delta_(delta),
       equal_(delta),
@@ -592,7 +592,7 @@ template<class Arc> class DeterminizerStar {
   // Does this by creating a big vector of pairs <Label, Element> and then sorting them
   // using a lexicographical ordering, and calling ProcessTransition for each range
   // with the same ilabel.
-  // Side effects on repisitory, and (via ProcessTransition) on Q_, hash_,
+  // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
 
   void ProcessTransitions(const vector<Element> &closed_subset, OutputStateId state) {
@@ -610,7 +610,8 @@ template<class Arc> class DeterminizerStar {
             Element &next_elem(this_pr.second);
             next_elem.state = arc.nextstate;
             next_elem.weight = Times(elem.weight, arc.weight);
-            if (arc.olabel == 0) // output epsilon-- this is simple case so handle seprately for efficiency
+            if (arc.olabel == 0) // output epsilon-- this is simple case so
+                                 // handle separately for efficiency
               next_elem.string = elem.string;
             else {
               vector<Label> seq;
@@ -774,7 +775,7 @@ template<class Arc> class DeterminizerStar {
 
   std::vector<std::vector<TempArc> > output_arcs_;  // essentially an FST in our format.
 
-  Fst<Arc> *ifst_;
+  const Fst<Arc> *ifst_;
   float delta_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
@@ -796,7 +797,7 @@ void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst, float delta, bool *d
 
 template<class Arc>
 void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta, bool *debug_ptr) {
-  ofst->SetOutputSymbols(ifst.OutputSymbols());
+  ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
   DeterminizerStar<Arc> det(ifst, delta, debug_ptr);
   det.Output(ofst);
