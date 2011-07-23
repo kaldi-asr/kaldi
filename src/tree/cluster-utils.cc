@@ -287,8 +287,8 @@ void BottomUpClusterer::Renumber() {
     assert(mapping[ii] != static_cast<uint16>(-1));
     new_assignments[i] = mapping[ii];
   }
-  std::swap(*clusters_, new_clusters);
-  std::swap(*assignments_, new_assignments);
+  clusters_->swap(new_clusters);
+  assignments_->swap(new_assignments);
 }
 
 void BottomUpClusterer::InitializeAssignments() {
@@ -484,8 +484,8 @@ BaseFloat CompartmentalizedBottomUpClusterer::Cluster(
   }
   for (int32 comp = 0; comp < ncompartments_; ++comp)
     Renumber(comp);
-  if (clusters_out != NULL) std::swap(clusters_, *clusters_out);
-  if (assignments_out != NULL) std::swap(assignments_, *assignments_out);
+  if (clusters_out != NULL) clusters_out->swap(clusters_); 
+  if (assignments_out != NULL) assignments_out->swap(assignments_);
   return total_obj_change;
 }
 
@@ -530,8 +530,8 @@ void CompartmentalizedBottomUpClusterer::Renumber(int32 comp) {
     KALDI_ASSERT(mapping[ii] != static_cast<uint16>(-1));
     new_assignments[i] = mapping[ii];
   }
-  std::swap(clusters_[comp], new_clusters);
-  std::swap(assignments_[comp], new_assignments);
+  clusters_[comp].swap(new_clusters);
+  assignments_[comp].swap(new_assignments);
 }
 
 void CompartmentalizedBottomUpClusterer::InitializeAssignments() {

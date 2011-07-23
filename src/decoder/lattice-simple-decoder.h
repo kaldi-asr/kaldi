@@ -88,7 +88,7 @@ class LatticeSimpleDecoder {
     for (int32 frame = 1; !decodable->IsLastFrame(frame); frame++) {
       active_toks_.resize(frame+1);
       prev_toks_.clear();
-      std::swap(cur_toks_, prev_toks_);
+      cur_toks_.swap(prev_toks_);
       CheckLists();
       ProcessEmitting(decodable, frame);
       CheckLists();
@@ -589,7 +589,7 @@ class LatticeSimpleDecoder {
       tmp[retained[i]] = (*toks)[retained[i]];
     }
     KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
-    std::swap(tmp, *toks);
+    tmp.swap(*toks);
   }
 };
 

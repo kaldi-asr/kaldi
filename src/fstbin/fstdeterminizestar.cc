@@ -98,10 +98,11 @@ int main(int argc, char *argv[])
 
     VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
     if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from " << fst_in_filename << '\n';
+      std::cerr << "fstdeterminizestar: could not read input fst from "
+                << fst_in_filename << '\n';
       return 1;
     }
-
+    
     if (use_log) {
       DeterminizeStarInLog(fst, delta, &debug_location);
     } else {

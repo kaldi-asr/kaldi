@@ -63,7 +63,7 @@ class SimpleDecoder {
     ProcessNonemitting();
     for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
       ClearToks(prev_toks_);
-      std::swap(cur_toks_, prev_toks_);
+      cur_toks_.swap(prev_toks_);
       ProcessEmitting(decodable, frame);
       ProcessNonemitting();
       PruneToks(beam_, &cur_toks_);
@@ -277,7 +277,7 @@ class SimpleDecoder {
       tmp[retained[i]] = (*toks)[retained[i]];
     }
     KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
-    std::swap(tmp, *toks);
+    tmp.swap(*toks);
   }
 };
 

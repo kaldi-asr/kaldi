@@ -82,7 +82,7 @@ class ComposeTrimmer {
     typedef typename std::map<StateId, ComposedStateId>::iterator IterType;
     assert(s1>=0 && s2>=0);
     StateId s1_idx = s1, s2_idx = s2;
-    if (! opts_.index_first_fst) s1_idx.swap(s2_idx);
+    if (! opts_.index_first_fst) std::swap(s1_idx, s2_idx);
 
     if (static_cast<StateId>(hash_.size()) <= s1_idx) {
       hash_.resize(s1_idx+1, 0);
