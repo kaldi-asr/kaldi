@@ -94,7 +94,7 @@ template<class Arc> static void TestFactor() {
   Push<Arc, REWEIGHT_TO_INITIAL>(fst, &fst_pushed, kPushLabels);
 
   VectorFst<Arc> fst_factored;
-  std::vector<std::vector<typename Arc::Label> > symbols;
+  vector<vector<typename Arc::Label> > symbols;
 
   Factor(fst, &fst_factored, &symbols);
 
@@ -103,7 +103,7 @@ template<class Arc> static void TestFactor() {
     assert(symbols[i].size() == 0 || *(std::min(symbols[i].begin(), symbols[i].end())) > 0);
 
   VectorFst<Arc> fst_factored_pushed;
-  std::vector<std::vector<typename Arc::Label> > symbols_pushed;
+  vector<vector<typename Arc::Label> > symbols_pushed;
   Factor(fst_pushed, &fst_factored_pushed, &symbols_pushed);
 
   std::cout << "Unfactored has "<<fst.NumStates()<<" states, factored has "<<fst_factored.NumStates()<<", and pushed+factored has "<<fst_factored_pushed.NumStates()<<'\n';
@@ -134,7 +134,7 @@ template<class Arc> static void TestFactor() {
     // the factors.  Do this by inserting factors using ExpandInputSequences and making sure it gets
     // rid of them all.
     Label max_label = *(std::max_element(all_syms.begin(), all_syms.end()));
-    std::vector<std::vector<Label> > new_labels(max_label+1);
+    vector<vector<Label> > new_labels(max_label+1);
     for (Label l = 1; l < static_cast<Label>(new_labels.size()); l++) {
       int n = rand() % 5;
       for (int i = 0; i < n; i++) new_labels[l].push_back(rand() % 100);
@@ -142,7 +142,7 @@ template<class Arc> static void TestFactor() {
     VectorFst<Arc> fst_expanded(fst);
     ExpandInputSequences(new_labels, &fst_expanded);
 
-    std::vector<std::vector<Label> > factors;
+    vector<vector<Label> > factors;
     VectorFst<Arc> fst_reduced;
     Factor(fst_expanded, &fst_reduced, &factors);
     assert(fst_reduced.NumStates() <= fst.NumStates());  // Checking that it found all the factors.
@@ -160,8 +160,8 @@ template<class Arc> static void TestFactor() {
       } while (symbols_reverse_map.count(new_i) == 1);
       symbols_reverse_map[new_i] = i;
     }
-    std::vector<std::vector<Label> > symbols_new;
-    std::vector<Label> symbol_map(symbols.size());  // from old->new.
+    vector<vector<Label> > symbols_new;
+    vector<Label> symbol_map(symbols.size());  // from old->new.
     typename std::map<Label, Label>::iterator iter = symbols_reverse_map.begin();
     for (; iter != symbols_reverse_map.end(); iter++) {
       Label new_label = iter->first, old_label = iter->second;

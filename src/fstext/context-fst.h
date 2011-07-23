@@ -87,17 +87,17 @@ class ContextFstImpl : public CacheImpl<Arc> {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
 
-  typedef unordered_map<std::vector<LabelT>,
+  typedef unordered_map<vector<LabelT>,
                         StateId, kaldi::VectorHasher<LabelT> > VectorToStateType;
-  typedef unordered_map<std::vector<LabelT>,
+  typedef unordered_map<vector<LabelT>,
                         Label, kaldi::VectorHasher<LabelT> > VectorToLabelType;
 
   typedef typename VectorToStateType::const_iterator VectorToStateIter;
   typedef typename VectorToLabelType::const_iterator VectorToLabelIter;
 
   ContextFstImpl(Label subsequential_symbol,  // epsilon not allowed.
-                 const std::vector<LabelT>& phones,  // on output side of ifst.
-                 const std::vector<LabelT>& disambig_syms,  // on output side of ifst.
+                 const vector<LabelT>& phones,  // on output side of ifst.
+                 const vector<LabelT>& disambig_syms,  // on output side of ifst.
                  int32 N,  // size of ctx window
                  int32 P);
 
@@ -105,7 +105,7 @@ class ContextFstImpl : public CacheImpl<Arc> {
 
   ~ContextFstImpl() { }
 
-  const std::vector<std::vector<LabelT> > &ILabelInfo() { return ilabel_info_; }
+  const vector<vector<LabelT> > &ILabelInfo() { return ilabel_info_; }
 
   StateId Start();
 
@@ -135,11 +135,11 @@ class ContextFstImpl : public CacheImpl<Arc> {
 
  private:
   //! Finds state-id corresponding to this vector of phones.  Inserts it if necessary.
-  StateId FindState(const std::vector<LabelT> &seq);
+  StateId FindState(const vector<LabelT> &seq);
 
   //! Finds the label index corresponding to this context-window of phones.
   //! Inserts it if necessary.
-  Label FindLabel(const std::vector<LabelT> &label_info);
+  Label FindLabel(const vector<LabelT> &label_info);
 
   // Ask whether symbol on output side is disambiguation symbol.
   bool IsDisambigSymbol(Label lab) {  return (disambig_syms_.count(lab) != 0); }
@@ -150,15 +150,15 @@ class ContextFstImpl : public CacheImpl<Arc> {
   inline void CreateDisambigArc(StateId s, Label olabel, Arc *oarc);  // called from CreateArc.
 
   inline bool CreatePhoneOrEpsArc(StateId src, StateId dst, Label olabel,
-                                  const std::vector<LabelT> &phone_seq, Arc *oarc);
+                                  const vector<LabelT> &phone_seq, Arc *oarc);
 
-  // maps from std::vector<LabelT> to StateId.
+  // maps from vector<LabelT> to StateId.
   VectorToStateType state_map_;
-  std::vector<std::vector<LabelT> > state_seqs_;
+  vector<vector<LabelT> > state_seqs_;
 
-  // maps from std::vector<LabelT> to Label
+  // maps from vector<LabelT> to Label
   VectorToLabelType ilabel_map_;
-  std::vector<std::vector<LabelT> > ilabel_info_;
+  vector<vector<LabelT> > ilabel_info_;
 
   // Stuff we were provided at input (but changed to more convenient form):
   kaldi::ConstIntegerSet<Label> phone_syms_;
@@ -212,8 +212,8 @@ class ContextFst : public Fst<Arc> {
 
   /// See \ref graph_context for more details.
   ContextFst(Label subsequential_symbol,  // epsilon not allowed.
-             const std::vector<LabelT>& phones,  // symbols on output side of fst.
-             const std::vector<LabelT>& disambig_syms,  // symbols on output side of fst.
+             const vector<LabelT>& phones,  // symbols on output side of fst.
+             const vector<LabelT>& disambig_syms,  // symbols on output side of fst.
              int32 N,  // Size of context window
              int32 P):  // Pos of "central" phone in ctx window, from 0..N-1.
       impl_ (new ContextFstImpl<Arc, LabelT>(subsequential_symbol, phones, disambig_syms, N, P))
@@ -260,7 +260,7 @@ class ContextFst : public Fst<Arc> {
   }
 
   // Careful: the output of ILabelInfo depends on what has been visited.
-  const std::vector<std::vector<LabelT> > &ILabelInfo() { return impl_->ILabelInfo(); }
+  const vector<vector<LabelT> > &ILabelInfo() { return impl_->ILabelInfo(); }
 
   virtual const string& Type() const { return impl_->Type(); }
 
@@ -294,18 +294,18 @@ class ContextFst : public Fst<Arc> {
 /// be "int".
 template<class I>
 void WriteILabelInfo(std::ostream &os, bool binary,
-                     const std::vector<std::vector<I> > &info);
+                     const vector<vector<I> > &info);
 
 /// Useful utility function for reading these vectors from disk.
 /// writes as int32 (see WriteILabelInfo above).
 template<class I>
 void ReadILabelInfo(std::istream &is, bool binary,
-                    std::vector<std::vector<I> > *info);
+                    vector<vector<I> > *info);
 
 
 /// The following function is mainly of use for printing and debugging.
 template<class I>
-SymbolTable *CreateILabelInfoSymbolTable(const std::vector<std::vector<I> > &info,
+SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
                                          const SymbolTable &phones_symtab,
                                          std::string separator,
                                          std::string disambig_prefix);  // e.g. separator = "/", disambig_prefix = "#"
@@ -477,11 +477,11 @@ void ComposeContextFst(const ContextFst<Arc, LabelT> &ifst1, const Fst<Arc> &ifs
    information to ilabels_out.  "ifst" is mutable because we need to add the
    subsequential loop.
  */
-inline void ComposeContext(std::vector<int32> &disambig_syms,
+inline void ComposeContext(vector<int32> &disambig_syms,
                            int N, int P,
                            VectorFst<StdArc> *ifst,
                            VectorFst<StdArc> *ofst,
-                           std::vector<vector<int32> > *ilabels_out);
+                           vector<vector<int32> > *ilabels_out);
 
 
 /**

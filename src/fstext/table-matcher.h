@@ -85,7 +85,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
 
   virtual ~TableMatcherImpl() {
     assert(RefCount() == 0);
-    std::vector<ArcId>* const empty = ((std::vector<ArcId>*)(NULL)) + 1;  // special marker.
+    vector<ArcId>* const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
     for (size_t i = 0; i < tables_.size(); i++) {
       if (tables_[i] != NULL && tables_[i] != empty)
         delete tables_[i];
@@ -106,12 +106,12 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
     if (match_type_ == MATCH_NONE)
       LOG(FATAL) << "TableMatcher: bad match type";
     s_ = s;
-    std::vector<ArcId>* const empty = ((std::vector<ArcId>*)(NULL)) + 1;  // special marker.
+    vector<ArcId>* const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
     if (static_cast<size_t>(s) >= tables_.size()) {
       assert(s>=0);
       tables_.resize(s+1, NULL);
     }
-    std::vector<ArcId>* &this_table_ = tables_[s];  // note: ref to ptr.
+    vector<ArcId>* &this_table_ = tables_[s];  // note: ref to ptr.
     if (this_table_ == empty) {
       backoff_matcher_.SetState(s);
       return;
@@ -136,7 +136,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
         return;  // table would be too sparse.
       }
       // OK, now we are creating the table.
-      this_table_ = new std::vector<ArcId> (highest_label+1, kNoStateId);
+      this_table_ = new vector<ArcId> (highest_label+1, kNoStateId);
       ArcId pos = 0;
       for (aiter.Seek(0); !aiter.Done(); aiter.Next(), pos++) {
         Label label = (match_type_ == MATCH_OUTPUT ?
@@ -244,7 +244,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
   Arc loop_;
   ArcIterator<FST> *aiter_;
   StateId s_;
-  std::vector<std::vector<ArcId> *> tables_;
+  vector<vector<ArcId> *> tables_;
   TableMatcherOptions opts_;
   BackoffMatcher backoff_matcher_;
 

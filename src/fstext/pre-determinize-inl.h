@@ -251,13 +251,13 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
   return false;  // doesn't have banned symbol.
 }
 
-template<class T> void CopySetToVector(const std::set<T> s, std::vector<T> *v) {
+template<class T> void CopySetToVector(const std::set<T> s, vector<T> *v) {
   // adds members of s to v, in sorted order from lowest to highest
   // (because the set was in sorted order).
   assert(v != NULL);
   v->resize(s.size());
   typename std::set<T>::const_iterator siter = s.begin();
-  typename std::vector<T>::iterator viter = v->begin();
+  typename vector<T>::iterator viter = v->begin();
   for (;  siter != s.end(); ++siter, ++viter) {
     assert(viter != v->end());
     *viter = *siter;
@@ -266,7 +266,7 @@ template<class T> void CopySetToVector(const std::set<T> s, std::vector<T> *v) {
 
 // Warning.  This function calls 'new'.
 template<class T>
-std::vector<T>* InsertMember(const std::vector<T> m, std::vector<std::vector<T>*> *S) {
+vector<T>* InsertMember(const vector<T> m, vector<vector<T>*> *S) {
   assert(m.size() > 0);
   T idx = m[0];
   assert(idx>=(T)0 && idx < (T)S->size());
@@ -276,7 +276,7 @@ std::vector<T>* InsertMember(const std::vector<T> m, std::vector<std::vector<T>*
     // It could either be a programming error or a deeper conceptual bug.
     return NULL;  // nothing was inserted.
   } else {
-    vector<T>* ret = (*S)[idx] = new std::vector<T>(m);  // New copy of m.
+    vector<T>* ret = (*S)[idx] = new vector<T>(m);  // New copy of m.
     return ret;  // was inserted.
   }
 }
@@ -287,9 +287,9 @@ std::vector<T>* InsertMember(const std::vector<T> m, std::vector<std::vector<T>*
 // not problematic.  We assume that the fst is sorted on input label (so epsilon arcs first)
 // The algorithm is described in section (C) above.  We use the same variable for S and T.
 template<class Arc> void Closure(MutableFst<Arc> *fst, std::set<typename Arc::StateId> *S,
-                                 const std::vector<bool> &pVec) {
+                                 const vector<bool> &pVec) {
   typedef typename Arc::StateId StateId;
-  std::vector<StateId> Q;
+  vector<StateId> Q;
   CopySetToVector(*S, &Q);
   while (Q.size() != 0) {
     StateId s = Q.back();
@@ -355,10 +355,10 @@ void PreDeterminize(MutableFst<Arc> *fst,
     KALDI_VLOG(2) <<  "PreDeterminize: n_states = "<<(n_states)<<", max_state ="<<(max_state);
   }
 
-  std::vector<bool> p_vec(max_state+1, false);  // compute this next.
+  vector<bool> p_vec(max_state+1, false);  // compute this next.
   {  // D(ii): computing the array p. ["problematic states, i.e. states with >1 input transition,
     // counting being the initial state as an input transition"].
-    std::vector<bool> seen_vec(max_state+1, false);  // rather than counting incoming transitions we just have a bool that says we saw at least one.
+    vector<bool> seen_vec(max_state+1, false);  // rather than counting incoming transitions we just have a bool that says we saw at least one.
 
     seen_vec[fst->Start()] = true;
     for (StateIterator<MutableFst<Arc> > siter(*fst); ! siter.Done(); siter.Next()) {
@@ -380,8 +380,8 @@ void PreDeterminize(MutableFst<Arc> *fst,
   // WARNING: we should be sure to clean up this memory before exiting.  Do not return
   // or throw an exception from this function, later than this point, without cleaning up!
   // Note that the vectors are shared between Q and S (they "belong to" S.
-  std::vector<std::vector<StateId>* > S(max_state+1, (std::vector<StateId>*)(void*)0);
-  std::vector<pair<std::vector<StateId>*, size_t> > Q;
+  vector<vector<StateId>* > S(max_state+1, (vector<StateId>*)(void*)0);
+  vector<pair<vector<StateId>*, size_t> > Q;
 
   // D(iv): initialize S and Q.
   {
@@ -397,12 +397,12 @@ void PreDeterminize(MutableFst<Arc> *fst,
       closure_s.insert(s);  // insert "seed" state.
       pre_determinize_helpers::Closure(fst, &closure_s, p_vec);  // follow epsilons to non-problematic states.
       // Closure in this case whis will usually not add anything, for typical topologies in speech
-      std::vector<StateId> closure_s_vec;
+      vector<StateId> closure_s_vec;
       pre_determinize_helpers::CopySetToVector(closure_s, &closure_s_vec);
       assert(closure_s_vec.size() != 0);
-      std::vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_s_vec, &S);
+      vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_s_vec, &S);
       if (ptr != NULL) {  // was inserted.
-        Q.push_back(pair<std::vector<StateId>*, size_t>(ptr, 0));
+        Q.push_back(pair<vector<StateId>*, size_t>(ptr, 0));
       } else {
         assert(!"Error: PreDeterminize failed in initialization\n");  // conceptual bug or programming error.
         exit(1);
@@ -410,7 +410,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
     }
   }
 
-  std::vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
+  vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
 
 
   size_t num_extra_det_states = 0;
@@ -419,7 +419,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
   while (Q.size() != 0) {
 
     // (D)(v)(a)
-    pair<std::vector<StateId>*, size_t> cur_pair(Q.back());
+    pair<vector<StateId>*, size_t> cur_pair(Q.back());
     Q.pop_back();
     const vector<StateId> &A(*cur_pair.first);
     size_t n =cur_pair.second;  // next special symbol to add.
@@ -448,7 +448,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
         for (ArcIterator<MutableFst<Arc> > aiter(*fst, s); ! aiter.Done(); aiter.Next(), ++arc_id) {
           const Arc &arc = aiter.Value();
 
-          std::pair<std::pair<StateId, ArcId>, StateId>
+          pair<pair<StateId, ArcId>, StateId>
               this_pair(pair<StateId, ArcId>(s, arc_id), arc.nextstate);
           bool inserted = (arc_hash[arc.ilabel].insert(this_pair)).second;
           assert(inserted);  // Otherwise we had a duplicate.
@@ -501,11 +501,11 @@ void PreDeterminize(MutableFst<Arc> *fst,
           }
           if (V_t.size() != 0) {
             pre_determinize_helpers::Closure(fst, &V_t, p_vec);  // follow epsilons to non-problematic states.
-            std::vector<StateId> closure_V_t_vec;
+            vector<StateId> closure_V_t_vec;
             pre_determinize_helpers::CopySetToVector(V_t, &closure_V_t_vec);
-            std::vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_V_t_vec, &S);
+            vector<StateId> *ptr = pre_determinize_helpers::InsertMember(closure_V_t_vec, &S);
             if (ptr != NULL) {  // was inserted.
-              Q.push_back(pair<std::vector<StateId>*, size_t>(ptr, k));
+              Q.push_back(pair<vector<StateId>*, size_t>(ptr, k));
             }
           }
         }
@@ -695,7 +695,7 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   assert(fst != NULL);
   StateId num_states = fst->NumStates();
   StateId num_final = 0;
-  std::vector<StateId> final_states;
+  vector<StateId> final_states;
   for (StateId s = 0;s < num_states;s++) {
     if (fst->Final(s) != Weight::Zero()) {
       num_final++;

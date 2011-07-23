@@ -66,7 +66,7 @@ void DfsReorder(const Fst<StdArc> &fst, MutableFst<StdArc> *ofst) {
   DfsVisit(fst, &dfs_order_visitor);
   assert(order.size() > 0);
   StateId max_state = *(std::max_element(order.begin(), order.end()));
-  std::vector<StateId> new_number(max_state+1, kNoStateId);
+  vector<StateId> new_number(max_state+1, kNoStateId);
   for (size_t i = 0; i < order.size(); i++)
     new_number[order[i]] = i;
   for (size_t i = 0; i < order.size(); i++) ofst->AddState();

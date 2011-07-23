@@ -71,7 +71,7 @@ struct MakeStochasticOptions {
 template<class Arc>
 void MakeStochasticFst(const MakeStochasticOptions &opts,
                        MutableFst<Arc> *fst,
-                       std::vector<float> *leftover_probs,
+                       vector<float> *leftover_probs,
                        int *num_symbols_added);
 
 
@@ -124,7 +124,7 @@ inline bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
 */
 template<class Arc>
 void ReverseMakeStochasticFst(const MakeStochasticOptions &opts,
-                              const std::vector<float> &leftover_probs,
+                              const vector<float> &leftover_probs,
                               MutableFst<Arc> *fst,
                               int *num_syms_removed);
 

@@ -320,7 +320,7 @@ class CompactLatticeWeightTpl {
 
   CompactLatticeWeightTpl() { }
 
-  CompactLatticeWeightTpl(const WeightType &w, const std::vector<IntType> &s):
+  CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
       w_(w), s_(s) { }
 
   CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType,IntType> &w) {
@@ -331,12 +331,12 @@ class CompactLatticeWeightTpl {
 
   static const CompactLatticeWeightTpl<WeightType,IntType> Zero() {
     return CompactLatticeWeightTpl<WeightType,IntType>(
-        WeightType::Zero(), std::vector<IntType>());
+        WeightType::Zero(), vector<IntType>());
   }
 
   static const CompactLatticeWeightTpl<WeightType,IntType> One() {
     return CompactLatticeWeightTpl<WeightType,IntType>(
-        WeightType::One(), std::vector<IntType>());
+        WeightType::One(), vector<IntType>());
   }
 
   inline static string GetIntSizeString() {
@@ -465,9 +465,9 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Times(
     return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
     // special case to ensure zero is unique
   } else {
-    std::vector<IntType> v;
+    vector<IntType> v;
     v.resize(w1.s_.size() + w2.s_.size());
-    typename std::vector<IntType>::iterator iter = v.begin();
+    typename vector<IntType>::iterator iter = v.begin();
     iter = std::copy(w1.s_.begin(), w1.s_.end(), iter); // returns end of first range.
     std::copy(w2.s_.begin(), w2.s_.end(), iter);
     return CompactLatticeWeightTpl<WeightType,IntType>(w, v);
@@ -491,12 +491,12 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWe
   }
   WeightType w = Divide(w1.w_, w2.w_);
 
-  const std::vector<IntType> v1 = w1.s_, v2 = w2.s_;
+  const vector<IntType> v1 = w1.s_, v2 = w2.s_;
   if(v2.size() > v1.size()) {
     std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, length mismatch.\n";
     exit(1);
   }
-  typename std::vector<IntType>::const_iterator v1b = v1.begin(),
+  typename vector<IntType>::const_iterator v1b = v1.begin(),
       v1e = v1.end(), v2b = v2.begin(), v2e = v2.end();
   if(div == DIVIDE_LEFT) {
     if(!std::equal(v2b, v2e, v1b)) { // v2 must be identical to first part of v1.
@@ -504,14 +504,14 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWe
       exit(1);
     }
     return CompactLatticeWeightTpl<WeightType,IntType>(
-        w, std::vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
+        w, vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
   } else if(div == DIVIDE_RIGHT) {
     if(!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
       std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
       exit(1);
     }
     return CompactLatticeWeightTpl<WeightType,IntType>(
-        w, std::vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
+        w, vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
 
   } else {
     std::cerr << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY.\n";
@@ -588,13 +588,13 @@ class CompactLatticeWeightCommonDivisorTpl {
   
   Weight operator()(const Weight &w1, const Weight &w2) const {
     // First find longest common prefix of the strings.
-    typename std::vector<IntType>::const_iterator s1b = w1.s_.begin(),
+    typename vector<IntType>::const_iterator s1b = w1.s_.begin(),
         s1e = w1.s_.end(), s2b = w2.s_.begin(), s2e = w2.s_.end();
     while(s1b < s1e && s2b < s2e && *s1b == *s2b) {
       s1b++;
       s2b++;
     }
-    return Weight(Plus(w1.w_, w2.w_), std::vector<IntType>(w1.s_.begin(), s1b));
+    return Weight(Plus(w1.w_, w2.w_), vector<IntType>(w1.s_.begin(), s1b));
   }
 };
 

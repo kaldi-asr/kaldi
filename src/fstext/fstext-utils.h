@@ -46,14 +46,14 @@ typename Arc::Label HighestNumberedInputSymbol(const Fst<Arc> &fst);
 template<class Arc, class I>
 void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,
-                     std::vector<I> *symbols);
+                     vector<I> *symbols);
 
 /// GetInputSymbols gets the list of symbols on the output of fst
 /// (including epsilon, if include_eps == true)
 template<class Arc, class I>
 void GetOutputSymbols(const Fst<Arc> &fst,
                       bool include_eps,
-                      std::vector<I> *symbols);
+                      vector<I> *symbols);
 
 /// ClearSymbols sets all the symbols on the input and/or
 /// output side of the FST to zero, as specified.
@@ -66,7 +66,7 @@ void ClearSymbols(bool clear_input,
 template<class I>
 void GetSymbols(const SymbolTable &symtab,
                 bool include_eps,
-                std::vector<I> *syms_out);
+                vector<I> *syms_out);
 
 
 
@@ -122,14 +122,14 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
 
 template<class Arc, class I>
 bool GetLinearSymbolSequence(const Fst<Arc> &fst,
-                             std::vector<I> *isymbols_out,
-                             std::vector<I> *osymbols_out,
+                             vector<I> *isymbols_out,
+                             vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out);
 
 
 // Creates unweighted linear acceptor from symbol sequence.
 template<class Arc, class I>
-void MakeLinearAcceptor(const std::vector<I> &labels, MutableFst<Arc> *ofst);
+void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst);
 
 
 
@@ -137,7 +137,7 @@ void MakeLinearAcceptor(const std::vector<I> &labels, MutableFst<Arc> *ofst);
 // at each position.  Epsilon is treated like a normal symbol here.
 // Each position in "labels" must have at least one alternative.
 template<class Arc, class I>
-void MakeLinearAcceptorWithAlternatives(const std::vector<std::vector<I> > &labels,
+void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
                                         MutableFst<Arc> *ofst);
 
 
@@ -167,14 +167,14 @@ void SafeDeterminizeMinimizeWrapperInLog(VectorFst<StdArc> *ifst, VectorFst<StdA
 /// RemoveSomeInputSymbols removes any symbol that appears in "to_remove", from
 /// the input side of the FST, replacing them with epsilon.
 template<class Arc, class I>
-void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
+void RemoveSomeInputSymbols(const vector<I> &to_remove,
                             MutableFst<Arc> *fst);
 
 // MapInputSymbols will replace any input symbol i that is between 0 and
 // symbol_map.size()-1, with symbol_map[i].  It removes the input symbol
 // table of the FST.
 template<class Arc, class I>
-void MapInputSymbols(const std::vector<I> &symbol_map,
+void MapInputSymbols(const vector<I> &symbol_map,
                      MutableFst<Arc> *fst);
 
 
@@ -270,7 +270,7 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 /// less well optimized and would have a lot of final-states.
 
 template<class Arc>
-VectorFst<Arc>* MakeLoopFst(const std::vector<const ExpandedFst<Arc> *> &fsts);
+VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts);
 
 
 /// ApplyProbabilityScale is applicable to FSTs in the log or tropical semiring.

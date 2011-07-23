@@ -54,12 +54,12 @@ namespace fst {
 
 template<typename L>
 bool ContextExpandLeaves(const kaldi::ContextDependencyInterface &ctx_dep,
-                         const std::vector<L> &phones,
-                         const std::vector<L> &disambig_syms,
-                         const std::vector<std::vector<L> > &symbol_map_in,
-                         std::vector<std::vector<L> > *symbol_map_out,
-                         std::vector<L> *aug_to_leaf_out,
-                         std::vector<L> *aug_to_phone_out);
+                         const vector<L> &phones,
+                         const vector<L> &disambig_syms,
+                         const vector<vector<L> > &symbol_map_in,
+                         vector<vector<L> > *symbol_map_out,
+                         vector<L> *aug_to_leaf_out,
+                         vector<L> *aug_to_phone_out);
 
 
 

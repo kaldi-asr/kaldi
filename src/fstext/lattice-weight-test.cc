@@ -46,10 +46,10 @@ LatticeWeight RandomLatticeWeight() {
 CompactLatticeWeight RandomCompactLatticeWeight() {
   LatticeWeight w = RandomLatticeWeight();
   if(w == LatticeWeight::Zero()) {
-    return CompactLatticeWeight(w, std::vector<int32>());
+    return CompactLatticeWeight(w, vector<int32>());
   } else {
     int32 len = rand() % 4;
-    std::vector<int32> str;
+    vector<int32> str;
     for(int32 i = 0; i < len; i++)
       str.push_back(rand() % 10 + 1);
     return CompactLatticeWeight(w, str);

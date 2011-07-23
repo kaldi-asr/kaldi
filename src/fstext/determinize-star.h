@@ -31,7 +31,7 @@ namespace fst {
 ///  @{
 
 
-// For example of usage, see TestDeterminizeStar.cc
+// For example of usage, see test-determinize-lattice.cc
 
 /*
    DeterminizeStar implements determinization with epsilon removal, which we

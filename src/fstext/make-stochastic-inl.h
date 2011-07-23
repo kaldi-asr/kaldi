@@ -89,7 +89,7 @@ namespace fst {
 template<class Arc>
 void MakeStochasticFst(const MakeStochasticOptions &opts,
                        MutableFst<Arc> *fst,
-                       std::vector<float> *leftover_probs,
+                       vector<float> *leftover_probs,
                        int *num_symbols_added) {
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -113,7 +113,7 @@ void MakeStochasticFst(const MakeStochasticOptions &opts,
   std::map<int, Label> label_map;  // maps from quantized weights to labels.
 
   //(B)(i) initialize the map m.
-  std::vector<StateId> m;  // We will resize this as necessary.
+  vector<StateId> m;  // We will resize this as necessary.
   // If the StateId's are non-consecutive there might be
   // an efficiency problem.
 
@@ -308,7 +308,7 @@ bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
 
 template<class Arc>
 void ReverseMakeStochasticFst(const MakeStochasticOptions &opts,
-                              const std::vector<float> &leftover_probs,
+                              const vector<float> &leftover_probs,
                               MutableFst<Arc> *fst,
                               int *num_syms_removed) {
   typedef typename Arc::Label Label;
@@ -320,7 +320,7 @@ void ReverseMakeStochasticFst(const MakeStochasticOptions &opts,
 
   int leftover_probs_size = leftover_probs.size();
 
-  std::vector<bool> already_removed;  // for keeping track of "num_syms_removed".
+  vector<bool> already_removed;  // for keeping track of "num_syms_removed".
   if (num_syms_removed != NULL)
     already_removed.resize(leftover_probs_size, false);
 

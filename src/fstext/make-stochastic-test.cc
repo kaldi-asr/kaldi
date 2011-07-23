@@ -57,7 +57,7 @@ template<class Arc, class ArcCast> void TestMakeStochastic(bool cast_is_log,  //
 #endif
   MakeStochasticOptions opts;
   opts.delta = delta;
-  std::vector<float> leftover_probs;
+  vector<float> leftover_probs;
   int num_syms_added;
   MakeStochasticFst(opts, tmp_fst,
                     &leftover_probs,

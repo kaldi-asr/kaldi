@@ -419,7 +419,7 @@ template<class Arc, class inttype> void TestStringRepository() {
   }
 
   for (int i = 0;i < N;i++) {
-    std::vector<Label> tmpv;
+    vector<Label> tmpv;
     tmpv.push_back(10);  // just put in garbage.
     sr.SeqOfId(ids[i], &tmpv);
     assert(tmpv == strings[i]);

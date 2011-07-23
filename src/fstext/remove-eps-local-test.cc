@@ -115,7 +115,7 @@ static void TestRemoveEpsLocalSpecial() {
   VectorFst<LogArc> *logfst = RandFst<LogArc>();
 
   MakeStochasticOptions opts;
-  std::vector<float> garbage;
+  vector<float> garbage;
   MakeStochasticFst(opts, logfst, &garbage, NULL);
 #ifndef _MSC_VER
   assert(IsStochasticFst(*logfst, kDelta*10));

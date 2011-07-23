@@ -55,7 +55,7 @@ namespace fst {
 
 template<class Arc, class I>
 void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
-            std::vector<std::vector<I> > *symbols);
+            vector<vector<I> > *symbols);
 
 
 /// This is a more standard interface of Factor that outputs
@@ -72,7 +72,7 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst1,
 /// in case you did have a symbol table there it would no longer be valid.  It
 /// leaves any weight and output symbols on the first arc of the chain.
 template<class Arc, class I>
-void ExpandInputSequences(const std::vector<std::vector<I> > &sequences,
+void ExpandInputSequences(const vector<vector<I> > &sequences,
                           MutableFst<Arc> *fst);
 
 
@@ -87,7 +87,7 @@ void ExpandInputSequences(const std::vector<std::vector<I> > &sequences,
 /// same as calling "ExpandInputSequences".  Use TableCompose (see table-matcher.h)
 /// for efficiency.
 template<class Arc, class I>
-void CreateFactorFst(const std::vector<std::vector<I> > &sequences,  
+void CreateFactorFst(const vector<vector<I> > &sequences,  
                      MutableFst<Arc> *fst);
 
 
@@ -97,7 +97,7 @@ void CreateFactorFst(const std::vector<std::vector<I> > &sequences,
 /// map to the input symbols of something we compose with it on the right.
 /// Must have symbol_map[0] == 0.
 template<class Arc, class I>
-void CreateMapFst(const std::vector<I> &symbol_map,
+void CreateMapFst(const vector<I> &symbol_map,
                   MutableFst<Arc> *fst);
 
 
@@ -119,7 +119,7 @@ typedef unsigned char StatePropertiesType;
 template<class Arc>
 void GetStateProperties(const Fst<Arc> &fst,
                         typename Arc::StateId max_state,
-                        std::vector<StatePropertiesType> *props);
+                        vector<StatePropertiesType> *props);
 
 
 
@@ -129,7 +129,7 @@ class DfsOrderVisitor {
   // c.f. dfs-visit.h.  Used in factor-fst-impl.h
   typedef typename Arc::StateId StateId;
  public:
-  DfsOrderVisitor(std::vector<StateId> *order): order_(order) { order->clear(); }
+  DfsOrderVisitor(vector<StateId> *order): order_(order) { order->clear(); }
   void InitVisit(const Fst<Arc> &fst) {}
   bool InitState(StateId s, StateId) { order_->push_back(s); return true; }
   bool TreeArc(StateId, const Arc&) { return true; }
@@ -138,7 +138,7 @@ class DfsOrderVisitor {
   void FinishState(StateId, StateId, const Arc *) { }
   void FinishVisit() { }
  private:
-  std::vector<StateId> *order_;
+  vector<StateId> *order_;
 };
 
 

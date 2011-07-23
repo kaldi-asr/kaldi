@@ -34,7 +34,7 @@ namespace fst {
 template<class Arc>
 void GetStateProperties(const Fst<Arc> &fst,
                         typename Arc::StateId max_state,
-                        std::vector<StatePropertiesType> *props) {
+                        vector<StatePropertiesType> *props) {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   assert(props != NULL);
@@ -65,7 +65,7 @@ void GetStateProperties(const Fst<Arc> &fst,
 
 template<class Arc, class I>
 void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
-               std::vector<std::vector<I> > *symbols_out) {
+               vector<vector<I> > *symbols_out) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
@@ -78,10 +78,10 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
   DfsVisit(fst, &dfs_order_visitor);
   assert(order.size() > 0);
   StateId max_state = *(std::max_element(order.begin(), order.end()));
-  std::vector<StatePropertiesType> state_properties;
+  vector<StatePropertiesType> state_properties;
   GetStateProperties(fst, max_state, &state_properties);
 
-  std::vector<bool> remove(max_state+1);  // if true, will remove this state.
+  vector<bool> remove(max_state+1);  // if true, will remove this state.
 
   // Now identify states that will be removed (made the middle of a chain).
   // The basic rule is that if the FstStateProperties equals
@@ -94,16 +94,16 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
   for (StateId i = 0; i <= max_state; i++)
     remove[i] = (state_properties[i] == (kStateArcsIn|kStateArcsOut)
                  || state_properties[i] == (kStateArcsIn|kStateArcsOut|kStateIlabelsOut));
-  std::vector<StateId> state_mapping(max_state+1, kNoStateId);
+  vector<StateId> state_mapping(max_state+1, kNoStateId);
 
-  typedef std::tr1::unordered_map<std::vector<Label>, Label, kaldi::VectorHasher<Label> > SymbolMapType;
+  typedef std::tr1::unordered_map<vector<Label>, Label, kaldi::VectorHasher<Label> > SymbolMapType;
   SymbolMapType symbol_mapping;
   Label symbol_counter = 0;
   {
-    std::vector<Label> eps;
+    vector<Label> eps;
     symbol_mapping[eps] = symbol_counter++;
   }
-  std::vector<Label> this_sym;  // a temporary used inside the loop.
+  vector<Label> this_sym;  // a temporary used inside the loop.
   for (size_t i = 0; i < order.size(); i++) {
     StateId state = order[i];
     if (!remove[state]) {  // Process this state...
@@ -150,13 +150,13 @@ template<class Arc>
 void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst1,
             MutableFst<Arc> *ofst2) {
   typedef typename Arc::Label Label;
-  std::vector<std::vector<Label> > symbols;
+  vector<vector<Label> > symbols;
   Factor(fst, ofst2, &symbols);
   CreateFactorFst(symbols, ofst1);
 }
 
 template<class Arc, class I>
-void ExpandInputSequences(const std::vector<std::vector<I> > &sequences,
+void ExpandInputSequences(const vector<vector<I> > &sequences,
                           MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   typedef typename Arc::StateId StateId;
@@ -232,7 +232,7 @@ public:
         kNoEpsilons|kNoIEpsilons|kILabelSorted|kNotILabelSorted;
     return props & ~to_remove;
   }
-  RemoveSomeInputSymbolsMapper(const std::vector<I> &to_remove):
+  RemoveSomeInputSymbolsMapper(const vector<I> &to_remove):
       to_remove_set_(to_remove) {
     KALDI_ASSERT_IS_INTEGER_TYPE(I);
          assert(to_remove_set_.count(0) == 0);  // makes no sense to remove epsilon.
@@ -243,7 +243,7 @@ private:
 
 
 template<class Arc, class I>
-void CreateFactorFst(const std::vector<std::vector<I> > &sequences,
+void CreateFactorFst(const vector<vector<I> > &sequences,
                      MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   typedef typename Arc::StateId StateId;
@@ -278,7 +278,7 @@ void CreateFactorFst(const std::vector<std::vector<I> > &sequences,
 
 
 template<class Arc, class I>
-void CreateMapFst(const std::vector<I> &symbol_map,
+void CreateMapFst(const vector<I> &symbol_map,
                   MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   typedef typename Arc::StateId StateId;

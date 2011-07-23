@@ -30,8 +30,8 @@ void TestMakeLinearAcceptor() {
   typedef typename Arc::Weight Weight;
 
   int len = rand() % 10;
-  std::vector<I> vec;
-  std::vector<I> vec_nozeros;
+  vector<I> vec;
+  vector<I> vec_nozeros;
   for (int i = 0; i < len; i++) {
     int j = rand() % len;
     vec.push_back(j);
@@ -41,8 +41,8 @@ void TestMakeLinearAcceptor() {
 
   VectorFst<Arc> vfst;
   MakeLinearAcceptor(vec, &vfst);
-  std::vector<I> vec2;
-  std::vector<I> vec3;
+  vector<I> vec2;
+  vector<I> vec3;
   Weight w;
   GetLinearSymbolSequence(vfst, &vec2, &vec3, &w);
   assert(w == Weight::One());
@@ -53,10 +53,10 @@ void TestMakeLinearAcceptor() {
   if (!include_eps) vec = vec_nozeros;
   kaldi::SortAndUniq(&vec);
 
-  std::vector<I> vec4;
+  vector<I> vec4;
   GetInputSymbols(vfst, include_eps, &vec4);
   assert(vec4 == vec);
-  std::vector<I> vec5;
+  vector<I> vec5;
   GetInputSymbols(vfst, include_eps, &vec5);
 }
 
@@ -65,7 +65,7 @@ template<class Arc>  void TestDeterminizeStarInLog() {
   VectorFst<Arc> *fst = RandFst<Arc>();
   VectorFst<Arc> fst_copy(fst);
   typename Arc::Label next_sym = 1 + HighestNumberedInputSymbol(*fst);
-  std::vector<typename Arc::Label> syms;
+  vector<typename Arc::Label> syms;
   PreDeterminize(fst, NULL, "#", next_sym, &syms);
 
 
@@ -223,7 +223,7 @@ static void TestOptimizeStochastic() {
   VectorFst<LogArc> *logfst = RandFst<LogArc>();
 
   MakeStochasticOptions opts;
-  std::vector<float> garbage;
+  vector<float> garbage;
   MakeStochasticFst(opts, logfst, &garbage, NULL);
 #if !defined(_MSC_VER)
   assert(IsStochasticFst(*logfst, kDelta*10));
@@ -421,7 +421,7 @@ template<class Arc>  void TestMakeSymbolsSameClass() {
 // MakeLoopFstCompare is as MakeLoopFst but implmented differently [ less efficiently
 // but more clearly], so we can check for equivalence.
 template<class Arc>
-VectorFst<Arc>* MakeLoopFstCompare(const std::vector<const ExpandedFst<Arc> *> &fsts) {
+VectorFst<Arc>* MakeLoopFstCompare(const vector<const ExpandedFst<Arc> *> &fsts) {
   VectorFst<Arc>* ans = new VectorFst<Arc>;
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -448,7 +448,7 @@ VectorFst<Arc>* MakeLoopFstCompare(const std::vector<const ExpandedFst<Arc> *> &
 template<class Arc>  void TestMakeLoopFst() {
 
   int num_fsts = rand() % 10;
-  std::vector<const ExpandedFst<Arc>* > fsts(num_fsts, (const ExpandedFst<Arc>*)NULL);
+  vector<const ExpandedFst<Arc>* > fsts(num_fsts, (const ExpandedFst<Arc>*)NULL);
   for (int i = 0; i < num_fsts; i++) {
     if (rand() % 2 == 0) {  // put an fst there.
       VectorFst<Arc> *fst = RandFst<Arc>();
@@ -505,7 +505,7 @@ void TestEqualAlign() {
     VectorFst<Arc> fst_path;
     if (EqualAlign(*fst, length, rand(), &fst_path)) {
       std::cout << "EqualAlign succeeded\n";
-      std::vector<int32> isymbol_seq, osymbol_seq;
+      vector<int32> isymbol_seq, osymbol_seq;
       typename Arc::Weight weight;
       GetLinearSymbolSequence(fst_path, &isymbol_seq, &osymbol_seq, &weight);
       assert(isymbol_seq.size() == length);

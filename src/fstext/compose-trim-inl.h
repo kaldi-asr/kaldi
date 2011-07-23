@@ -61,7 +61,7 @@ class ComposeTrimmer {
     StateId s1;  // state in fst1_
     StateId s2;  // state in fst2_
     // There is no filter-state as we do not use a filter.
-    std::vector<ComposedArc> arcs;
+    vector<ComposedArc> arcs;
     ComposedState(StateId s1_in, StateId s2_in): is_final(false), is_coaccessible(false),
                                                  s1(s1_in), s2(s2_in)  {}
   };
@@ -82,7 +82,7 @@ class ComposeTrimmer {
     typedef typename std::map<StateId, ComposedStateId>::iterator IterType;
     assert(s1>=0 && s2>=0);
     StateId s1_idx = s1, s2_idx = s2;
-    if (! opts_.index_first_fst) std::swap(s1_idx, s2_idx);
+    if (! opts_.index_first_fst) s1_idx.swap(s2_idx);
 
     if (static_cast<StateId>(hash_.size()) <= s1_idx) {
       hash_.resize(s1_idx+1, 0);
@@ -187,29 +187,29 @@ class ComposeTrimmer {
 
   void FindCoaccessible() {
     // Marks co-accessible states.
-    std::vector<std::vector<ComposedStateId> > input_trans(states_.size());  // indexed by ComposedStateId.
+    vector<vector<ComposedStateId> > input_trans(states_.size());  // indexed by ComposedStateId.
     // input_trans[s] is a list of all composed states with a transition to s.  Duplicates removed.
     // set up input_trans.
     {
       size_t sz = states_.size(), s;
       for (s = 0;s < sz;s++) {
-        std::vector<ComposedArc> &arcs = states_[s]->arcs;
-        typename std::vector<ComposedArc>::iterator iter = arcs.begin(), end = arcs.end();
+        vector<ComposedArc> &arcs = states_[s]->arcs;
+        typename vector<ComposedArc>::iterator iter = arcs.begin(), end = arcs.end();
         for (; iter != end; ++iter) {
           input_trans[iter->nextstate].push_back(s);
         }
       }
       // Now de-duplicate list of input arcs.
       for (s = 0;s < sz;s++) {
-        std::vector<ComposedStateId> &ids = input_trans[s];
+        vector<ComposedStateId> &ids = input_trans[s];
         std::sort(ids.begin(), ids.end());
-        typename std::vector<ComposedStateId>::iterator iter
+        typename vector<ComposedStateId>::iterator iter
             = std::unique(ids.begin(), ids.end());
         ids.erase(iter, ids.end());
       }
     }
 
-    std::vector<ComposedStateId> StateQueue;
+    vector<ComposedStateId> StateQueue;
 
     {  // Initialize queue to final states.
       ComposedStateId sz = states_.size();
@@ -223,8 +223,8 @@ class ComposeTrimmer {
     while (StateQueue.size() != 0) {  // Main loop.
       ComposedStateId s = StateQueue.back();
       StateQueue.pop_back();
-      std::vector<ComposedStateId> &vec = input_trans[s];
-      typename std::vector<ComposedStateId>::iterator iter = vec.begin(), end = vec.end();
+      vector<ComposedStateId> &vec = input_trans[s];
+      typename vector<ComposedStateId>::iterator iter = vec.begin(), end = vec.end();
       for (; iter != end ; ++iter) {
         ComposedStateId prev_s = *iter;
         if (! states_[prev_s]->is_coaccessible) {
@@ -247,15 +247,15 @@ class ComposeTrimmer {
     }
   }
 
-  void AllocateStates(const std::vector<std::pair<StateId, ComposedStateId> > &pairs,
-                      std::vector<StateId> &mapping) {
+  void AllocateStates(const vector<pair<StateId, ComposedStateId> > &pairs,
+                      vector<StateId> &mapping) {
     // called
     // For each unique state-id s1 that appears as a "first" elment of "pairs", assign
     // a new integer s1' to it and put the mapping s1 -> s1' in "mapping".
     // For each one, allocates a new state in ofst_.
     // Also sets initial state.
     assert(mapping.size() == 0);
-    typename std::vector<std::pair<StateId, ComposedStateId> >::const_iterator iter = pairs.begin(), end = pairs.end();
+    typename vector<pair<StateId, ComposedStateId> >::const_iterator iter = pairs.begin(), end = pairs.end();
     for (; iter != end; ++iter) {
       StateId s1 = iter->first;
       if (static_cast<StateId>(mapping.size()) <= s1) mapping.resize(s1+1, kNoStateId);
@@ -322,11 +322,11 @@ class ComposeTrimmer {
   };
 
 
-  void ProcessOutputState(StateId s1, const std::vector<ComposedStateId> &composed_states,
-                          const std::vector<StateId> &mapping, std::vector<Arc> &temp_space) {
+  void ProcessOutputState(StateId s1, const vector<ComposedStateId> &composed_states,
+                          const vector<StateId> &mapping, vector<Arc> &temp_space) {
     // composed_states is the subset of (co-accessible) composed states that
     // share this "original" state.
-    std::vector<Arc> &all_arcs(temp_space);
+    vector<Arc> &all_arcs(temp_space);
     all_arcs.clear();  // memory will still be there.
 
     bool was_final = false;
@@ -334,7 +334,7 @@ class ComposeTrimmer {
       ComposedStateId s = composed_states[idx];
       ComposedState &state = *states_[s];
       if (state.is_final)  was_final = true;
-      typename std::vector<ComposedArc>::iterator aiter = state.arcs.begin(), aend = state.arcs.end();
+      typename vector<ComposedArc>::iterator aiter = state.arcs.begin(), aend = state.arcs.end();
       for (; aiter!= aend; ++aiter) {
         ComposedArc &carc = *aiter;
         Arc &arc = carc.output_arc;  // arc in the fst we are outputting a subset of.
@@ -354,14 +354,14 @@ class ComposeTrimmer {
         std::sort(all_arcs.begin(), all_arcs.end(), ArcSortCompareOlabelFirst());
       else
         std::sort(all_arcs.begin(), all_arcs.end(), ArcSortCompareIlabelFirst());
-      typename std::vector<Arc>::iterator iter
+      typename vector<Arc>::iterator iter
           = std::unique(all_arcs.begin(), all_arcs.end(), ArcEqual());
       all_arcs.erase(iter, all_arcs.end());  // remove duplicates.
     }
 
     StateId s1_dash = mapping[s1];
 
-    typename std::vector<Arc>::iterator iter = all_arcs.begin(), end = all_arcs.end();
+    typename vector<Arc>::iterator iter = all_arcs.begin(), end = all_arcs.end();
     for (; iter!= end; ++iter) {
       assert(s1_dash != kNoStateId);
       Arc &arc = *iter;
@@ -379,7 +379,7 @@ class ComposeTrimmer {
 
     {  // First free up memory that is not needed, namely in hash_.
       for (size_t i = 0;i < hash_.size();i++) if (hash_[i]) delete hash_[i];
-      { std::vector<std::map<StateId, ComposedStateId>* > tmp; std::swap(tmp, hash_); }
+      { vector<std::map<StateId, ComposedStateId>* > tmp; tmp.swap(hash_); }
     }
 
     if (! opts_.output_first_fst)
@@ -399,26 +399,26 @@ class ComposeTrimmer {
     // state-id in fst1_.  This helps us avoid using too much storage.
     // To do this we first construct a set of pairs of (state-1, composed-state).
     size_t sz = states_.size();
-    std::vector<std::pair<StateId, ComposedStateId> > pairs(sz);
+    vector<pair<StateId, ComposedStateId> > pairs(sz);
     size_t idx = 0;
     for (size_t i = 0;i < sz;i++) {
       if (states_[i]->is_coaccessible)
-        pairs[idx++] = std::pair<StateId, ComposedStateId>(states_[i]->s1, (ComposedStateId) i);
+        pairs[idx++] = pair<StateId, ComposedStateId>(states_[i]->s1, (ComposedStateId) i);
     }
     if (idx == 0) { return; }  // No states are coaccessible -> return.  Output is empty.
     pairs.resize(idx);
     std::sort(pairs.begin(), pairs.end());  // gets them in order by s1.
     // Now find contiguous regions by s1.
 
-    std::vector<StateId> mapping;
+    vector<StateId> mapping;
     AllocateStates(pairs, mapping);
     // now mapping is from s1 to "new s1"
 
-    typename std::vector<std::pair<StateId, ComposedStateId> >::iterator iter = pairs.begin(), end = pairs.end();
-    std::vector<Arc> temp_space;
+    typename vector<pair<StateId, ComposedStateId> >::iterator iter = pairs.begin(), end = pairs.end();
+    vector<Arc> temp_space;
     while (iter != end) {  // Note, we are only iterating over coaccessible states.
       StateId s1 = iter->first;
-      std::vector<ComposedStateId> composed_states;
+      vector<ComposedStateId> composed_states;
       while (iter != end && iter->first == s1) {
         composed_states.push_back(iter->second);
         ++iter;
@@ -478,9 +478,9 @@ class ComposeTrimmer {
 
 
  private:
-  std::vector<std::map<StateId, ComposedStateId>* > hash_;  // hash_[state1][state2] = composed_state.
-  std::vector<ComposedState*> states_;
-  std::vector<ComposedStateId> Q_;
+  vector<std::map<StateId, ComposedStateId>* > hash_;  // hash_[state1][state2] = composed_state.
+  vector<ComposedState*> states_;
+  vector<ComposedStateId> Q_;
   const Fst<A> *fst1_;  // pointer not owned.
   const Fst<A> *fst2_;  // pointer not owned.
   MutableFst<A> *ofst_;  // Trimmed version of fst1_;  Pointer not owned.

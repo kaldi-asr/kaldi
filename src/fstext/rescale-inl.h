@@ -37,9 +37,9 @@ ComputeTotalWeight(ExpandedFst<Arc> &fst, typename Arc::Weight max_weight, float
 
   // Should probably use Weight instead of float here, but would
   // involve some painful comparators.
-  std::vector<float> cur_tot(num_states, zero);
-  std::vector<float> cur_delta(num_states, zero);
-  std::vector<bool> queued(num_states, false);
+  vector<float> cur_tot(num_states, zero);
+  vector<float> cur_delta(num_states, zero);
+  vector<bool> queued(num_states, false);
 
   std::queue<StateId> q;  // FIFO queue.
 
