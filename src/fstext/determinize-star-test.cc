@@ -152,6 +152,19 @@ template<class Arc>  void TestDeterminize() {
   delete fst_copy_orig;
 }
 
+// Don't call this-- the test will fail due to the FST being non-functional.
+template<class Arc>  void TestDeterminize2() {
+  for(int i = 0; i < 10; i++) {
+    RandFstOptions opts;
+    opts.acyclic = true;
+    VectorFst<Arc>* ifst = RandFst<Arc>(opts);
+    VectorFst<Arc> ofst;
+    Determinize(*ifst, &ofst);
+    assert(RandEquivalent(*ifst, ofst, 5, 0.01, rand(), 100));
+    delete ifst;
+  }
+}
+
 template<class Arc>  void TestPush() {
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -452,7 +465,9 @@ int main() {
     // Not for use with char, but this helps reveal some kinds of bugs.
     fst::TestStringRepository<fst::StdArc, unsigned char>();
     fst::TestStringRepository<fst::StdArc, char>();
-    fst::TestDeterminize<fst::StdArc>();
+    for(int i = 0; i < 2; i++) 
+      fst::TestDeterminize<fst::StdArc>();
+    //fst::TestDeterminize2<fst::StdArc>();
     fst::TestPush<fst::StdArc>();
     fst::TestMinimize<fst::StdArc>();
   }

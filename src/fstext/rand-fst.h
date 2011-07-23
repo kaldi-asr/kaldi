@@ -35,12 +35,14 @@ struct RandFstOptions {
   size_t n_arcs;
   size_t n_final;
   bool allow_empty;
+  bool acyclic;
   RandFstOptions() {  // Initializes the options randomly.
     n_syms = 2 + rand() % 5;
     n_states = 3 + rand() % 10;
     n_arcs = 5 + rand() % 30;
     n_final = 1 + rand()%3;
     allow_empty = true;
+    acyclic = false;
   }
 };
 
@@ -71,17 +73,25 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
   // Create arcs.
   for (size_t i = 0;i < (size_t)opts.n_arcs;i++) {
     Arc a;
-    a.nextstate = all_states[rand() % opts.n_states];
+    StateId start_state;
+    if(!opts.acyclic) { // no restriction on arcs.
+      start_state = all_states[rand() % opts.n_states];
+      a.nextstate = all_states[rand() % opts.n_states];
+    } else {
+      start_state = all_states[rand() % (opts.n_states-1)];
+      a.nextstate = start_state + 1 + (rand() % (opts.n_states-start_state-1));
+    }
     a.ilabel = rand() % opts.n_syms;
     a.olabel = rand() % opts.n_syms;  // same input+output vocab.
     a.weight = (Weight) (0.333*(rand() % 4));
-    StateId start_state = all_states[rand() % opts.n_states];
+    
     fst->AddArc(start_state, a);
   }
 
   // Trim resulting FST.
   Connect(fst);
-
+  if(opts.acyclic)
+    assert(fst->Properties(kAcyclic, true) & kAcyclic);
   if (fst->Start() == kNoStateId && !opts.allow_empty) {
     goto start;
   }
