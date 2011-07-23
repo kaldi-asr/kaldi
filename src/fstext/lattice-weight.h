@@ -438,8 +438,10 @@ inline int Compare (const CompactLatticeWeightTpl<WeightType,IntType> &w1,
   int c1 = Compare(w1.w_, w2.w_);
   if(c1 != 0) return c1;
   int l1 = w1.s_.size(), l2 = w2.s_.size();
-  if(l1 < l2) return -1;
-  else if(l1 > l2) return 1;
+  // Use opposite order on the string lengths, so that if the costs are the same,
+  // the shorter string wins.  
+  if(l1 > l2) return -1;
+  else if(l1 < l2) return 1;
   for(int i = 0; i < l1; i++) {
     if(w1.s_[i] < w2.s_[i]) return -1;
     else if(w1.s_[i] > w2.s_[i]) return 1;

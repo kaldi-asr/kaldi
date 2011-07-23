@@ -358,7 +358,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   }
   
   ~LatticeDeterminizer() {
-    FreeMostMemory();
+    FreeMostMemory(); // rest is deleted by destructors.
   }
  private:
   
@@ -570,8 +570,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     repository_.ConvertToVector(b_str, &b_vec);
     // First compare their lengths.
     int a_len = a_vec.size(), b_len = b_vec.size();
-    if(a_len < b_len) return -1;
-    else if(a_len > b_len) return 1;
+    // use opposite order on the string lengths (c.f. Compare in
+    // lattice-weight.h)
+    if(a_len > b_len) return -1;
+    else if(a_len < b_len) return 1;
     for(int i = 0; i < a_len; i++) {
       if(a_vec[i] < b_vec[i]) return -1;
       else if(a_vec[i] > b_vec[i]) return 1;

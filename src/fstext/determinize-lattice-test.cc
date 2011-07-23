@@ -126,4 +126,5 @@ int main() {
     TestLatticeStringRepository();
     TestDeterminizeLattice<StdArc>();
   }
+  std::cout << "Tests succeeded\n";
 }
