@@ -110,7 +110,6 @@ int main(int argc, char *argv[])
       DeterminizeStar(*fst, &det_fst, delta, &debug_location);
       *fst = det_fst;  // will do shallow copy and then det_fst goes out of scope anyway.
     }
-
     if (! fst->Write(fst_out_filename) ) {
       std::cerr << "fstdeterminizestar: error writing the output to "<<fst_out_filename << '\n';
       return 1;

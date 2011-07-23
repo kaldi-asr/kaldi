@@ -375,7 +375,7 @@ class LatticeSimpleDecoder {
           link = link->next;
         }
       }
-      if(!ApproxEqual(tok->delta, tok_delta, 0.1))
+      if(!ApproxEqual(tok->delta, tok_delta))
         *deltas_changed = true;
       tok->delta = tok_delta; // will be +infinity or less than lattice_beam_.
     }
