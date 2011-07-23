@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-init.cc
+// sgmmbin/sgmm-comp-prexform.cc
 
 // Copyright 2009-2011  Saarland University
 // Author:  Arnab Ghoshal

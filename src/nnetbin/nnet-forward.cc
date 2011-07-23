@@ -1,4 +1,4 @@
-// nnet/nnet-train-xent-hardlab-perutt.cc
+// nnetbin/nnet-forward.cc
 
 // Copyright 2011  Karel Vesely
 

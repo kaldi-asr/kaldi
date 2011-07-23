@@ -1,4 +1,4 @@
-// nnet/nnet-component.h
+// nnet/nnet-component.cc
 
 // Copyright 2011  Karel Vesely
 

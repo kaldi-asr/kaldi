@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-sum-accs.cc
+// sgmmbin/sgmm-est-fmllrbasis.cc
 
 // Copyright 2009-2011  Saarland University
 // Author:  Arnab Ghoshal

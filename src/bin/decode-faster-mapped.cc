@@ -1,4 +1,4 @@
-// bin/decode-faster.cc
+// bin/decode-faster-mapped.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 

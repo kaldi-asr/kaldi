@@ -1,4 +1,4 @@
-// decoder/kaldi-decoder-inl.h
+// decoder/kaldi-decoder-inl-left.h
 
 // Copyright 2009-2011  Mirko Hannemann;  Lukas Burget
 

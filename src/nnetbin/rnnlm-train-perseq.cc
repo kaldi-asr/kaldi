@@ -1,4 +1,4 @@
-// rnnlm/rnnlm-train-xent-hardlab-perutt.cc
+// nnetbin/rnnlm-train-perseq.cc
 
 // Copyright 2011  Karel Vesely
 

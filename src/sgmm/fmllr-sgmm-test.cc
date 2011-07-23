@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm-test.cc
+// sgmm/fmllr-sgmm-test.cc
 
 // Copyright 2009-2011  Saarland University
 // Author:  Arnab Ghoshal
