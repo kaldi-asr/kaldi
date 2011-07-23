@@ -275,7 +275,11 @@ template<class Arc> class DeterminizerStar {
       // Free up memory.  Do this inside the loop as ofst is also allocating memory
       if (destroy) { vector<TempArc> temp; temp.swap(this_vec); }
     }
-    if (destroy) { vector<vector<TempArc> > temp; temp.swap(output_arcs_); }
+    if (destroy) {
+      vector<vector<TempArc> > temp;
+      temp.swap(output_arcs_);
+      repository_.Destroy();
+    }
   }
 
 
