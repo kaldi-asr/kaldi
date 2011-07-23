@@ -157,7 +157,6 @@ template<class Arc> class DeterminizerStar {
   // Output to Gallic acceptor (so the strings go on weights, and there is a 1-1 correspondence
   // between our states and the states in ofst.  If destroy == true, release memory as we go
   // (but we cannot output again).
-
   void Output(MutableFst<GallicArc<Arc> >  *ofst, bool destroy = true) {
     typedef GallicWeight<Label, Weight> ThisGallicWeight;
     typedef typename Arc::StateId StateId;
@@ -325,7 +324,8 @@ template<class Arc> class DeterminizerStar {
     StringId string;
     Weight weight;
     bool operator != (const Element &other) const  {
-      return (state != other.state || string != other.string || weight != other.weight);
+      return (state != other.state || string != other.string ||
+              weight != other.weight);
     }
   };
 
@@ -338,15 +338,6 @@ template<class Arc> class DeterminizerStar {
     Weight weight;
   };
 
-  // Comparator function (operator < that compares state id's).  Helps us
-  // sort on state id so that we can combine elements with the same state.
-
-  class ElementStateComparator {
-   public:
-    inline bool operator ()(const Element &e1, const Element &e2) const {  // operator <
-      return e1.state < e2.state;
-    }
-  };
 
   // Hashing function used in hash of subsets.
   // A subset is a pointer to vector<Element>.
@@ -425,14 +416,16 @@ template<class Arc> class DeterminizerStar {
                       vector<Element> *output_subset) {
     // input_subset must have only one example of each StateId.
 
-    std::set<Element, ElementStateComparator> cur_subset;
-    typedef typename std::set<Element, ElementStateComparator>::iterator SetIter;
+    std::map<InputStateId, Element> cur_subset;
+    typedef typename std::map<InputStateId, Element>::iterator MapIter;
     {
-      SetIter iter = cur_subset.end();
-      for (size_t i = 0;i < input_subset.size();i++)
-        iter = cur_subset.insert(iter, input_subset[i]);
-      // By providing iterator where we inserted last one, we make insertion more efficient since
-      // input subset was already in sorted order.
+      MapIter iter = cur_subset.end();
+      for (size_t i = 0;i < input_subset.size();i++) {
+        std::pair<const InputStateId, Element> pr(input_subset[i].state, input_subset[i]);
+        iter = cur_subset.insert(iter, pr);
+        // By providing iterator where we inserted last one, we make insertion more efficient since
+        // input subset was already in sorted order.
+      }
     }
     // find whether input fst is known to be sorted in input label.
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
@@ -449,9 +442,9 @@ template<class Arc> class DeterminizerStar {
       // both the new (optimal) and old (less-optimal) Element will still be in
       // "queue".  The next if-statement stops us from wasting compute by
       // processing the old Element.
-      if(replaced_elems && *(cur_subset.find(elem)) != elem)
+      if(replaced_elems && cur_subset[elem.state] != elem)
         continue;
-
+      
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (sorted && arc.ilabel != 0) break;  // Break from the loop: due to sorting there will be no
@@ -470,16 +463,21 @@ template<class Arc> class DeterminizerStar {
               seq.push_back(arc.olabel);
             next_elem.string = repository_.IdOfSeq(seq);
           }
-          pair<SetIter, bool> pr = cur_subset.insert(next_elem);
-          if (pr.second) {  // was no such StateId: add to queue.
+          typename std::map<InputStateId, Element>::iterator
+              iter = cur_subset.find(next_elem.state);
+          if(iter == cur_subset.end()) {
+            // was no such StateId: insert and add to queue.
+            cur_subset[next_elem.state] = next_elem;
             queue.push_back(next_elem);
-          } else {  // was not inserted because one already there.  Add weights.
-            assert(pr.first->string == next_elem.string && "DeterminizerStar: FST was not functional -> not determinizable");
-            Weight weight = Plus(pr.first->weight, next_elem.weight);
-            if (! ApproxEqual(weight, pr.first->weight, delta_)) {  // add extra part of weight to queue.
+          } else {  // one is already there.  Add weights.
+            assert(iter->second.string == next_elem.string &&
+                   "DeterminizerStar: FST was not functional -> not determinizable");
+            Weight weight = Plus(iter->second.weight, next_elem.weight);
+            if (! ApproxEqual(weight, iter->second.weight, delta_)) {  // add extra part of weight to queue.
               queue.push_back(next_elem);
               replaced_elems = true;
             }
+            iter->second.weight = weight; // Update weight in map.
           }
         }
       }
@@ -489,8 +487,8 @@ template<class Arc> class DeterminizerStar {
       // sorted order is automatic.
       output_subset->clear();
       output_subset->reserve(cur_subset.size());
-      SetIter iter = cur_subset.begin(), end = cur_subset.end();
-      for (; iter != end; ++iter)   output_subset->push_back(*iter);
+      MapIter iter = cur_subset.begin(), end = cur_subset.end();
+      for (; iter != end; ++iter) output_subset->push_back(iter->second);
     }
   }
 
@@ -827,7 +825,6 @@ template<class Arc> class DeterminizerStar {
 
 template<class Arc>
 void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst, float delta, bool *debug_ptr) {
-  assert(ofst != &ifst);
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
   DeterminizerStar<Arc> det(ifst, delta, debug_ptr);

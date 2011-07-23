@@ -23,7 +23,7 @@
 #include <map>
 #include <set>
 #include <vector>
-
+#include "fstext/lattice-weight.h"
 
 namespace fst {
 
@@ -100,8 +100,9 @@ namespace fst {
     first one has an epsilon on the input side.  The debug_ptr argument is an
     optional pointer to a bool that, if it becomes true while the algorithm is
     executing, the algorithm will print a traceback and terminate (used in
-    fstdeterminizestar.cc debug non-terminating determinization). */
-template<class Weight, class IntType = int32>
+    fstdeterminizestar.cc debug non-terminating determinization).
+    More efficient if ifst is arc-sorted on input label. */
+template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
                         MutableFst<ArcTpl<Weight> > *ofst,
                         float delta = kDelta, bool *debug_ptr = NULL);
@@ -109,12 +110,15 @@ void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
 
 /*  This is a version of DeterminizeLattice with a slightly more "natural" output format,
     where the output sequences are encoded using the CompactLatticeArcTpl template
-    (i.e. the sequences of output symbols are represented directly as strings) */
-template<class Weight, class IntType = int32>
+    (i.e. the sequences of output symbols are represented directly as strings)
+    More efficient if ifst is arc-sorted on input label. */
+template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
                         MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
                         float delta = kDelta,
                         bool *debug_ptr = NULL);
+
+
 
 /// @} end "addtogroup fst_extensions"
 

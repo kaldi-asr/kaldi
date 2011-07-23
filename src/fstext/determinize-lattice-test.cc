@@ -15,7 +15,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-//#include "fstext/determinize-lattice.h"
+#include "fstext/determinize-lattice.h"
 #include "fstext/pre-determinize.h"
 #include "fstext/trivial-factor-weight.h"
 #include "fstext/fst-test-utils.h"
@@ -70,11 +70,37 @@ void TestLatticeStringRepository() {
 }
 
 
+template<class Arc> void TestDeterminizeLattice() {
+  for(int i = 0; i < 100; i++) {
+    VectorFst<Arc> *fst = RandFst<Arc>();
+    if(fst->Properties(kAcyclic, true) == 0) {// has cycles so might not
+      // be determinizable... skip over it.
+      std::cout << "FST may not be determinizable by DeterminizeLattice so skipping over it.\n";
+    } else { // Try to determnize it.
+      std::cout << "FST before determinizing is:\n";
+      {
+        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+        fstprinter.Print(&std::cout, "standard output");
+      }
+      VectorFst<Arc> ofst;
+      DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst);
+      std::cout << "FST after determinizing is:\n";
+      {
+        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+        fstprinter.Print(&std::cout, "standard output");
+      }
+    }
+  }
+
+}
+
+
 } // end namespace fst
 
 int main() {
   using namespace fst;
   for (int i = 0;i < 5;i++) {  // We would need more iterations to check
     TestLatticeStringRepository();
+    TestDeterminizeLattice<StdArc>();
   }
 }

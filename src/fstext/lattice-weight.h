@@ -447,6 +447,17 @@ inline int Compare (const CompactLatticeWeightTpl<WeightType,IntType> &w1,
   return 0;
 }
 
+// Make sure Compare is defined for TropicalWeight, so everything works
+// if we substitute LatticeWeight for TropicalWeight.
+inline int Compare(const TropicalWeight &w1,
+                   const TropicalWeight &w2) {
+  float f1 = w1.Value(), f2 = w2.Value();
+  if(f1 == f2) return 0;
+  else if(f1 > f2) return -1;
+  else return 1;
+}
+                   
+
 
 template<class WeightType, class IntType>
 inline CompactLatticeWeightTpl<WeightType,IntType> Plus(
