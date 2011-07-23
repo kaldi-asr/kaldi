@@ -435,6 +435,7 @@ template<class Arc> class DeterminizerStar {
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
     vector<Element> queue(input_subset);  // queue of things to be processed.
+    bool replaced_elems = false; // relates to an optimization, see below.
     while (queue.size() != 0) {
       Element elem = queue.back();
       queue.pop_back();
@@ -445,7 +446,7 @@ template<class Arc> class DeterminizerStar {
       // both the new (optimal) and old (less-optimal) Element will still be in
       // "queue".  The next if-statement stops us from wasting compute by
       // processing the old Element.
-      if(*(cur_subset.find(elem)) != elem)
+      if(replaced_elems && *(cur_subset.find(elem)) != elem)
         continue;
 
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
@@ -474,6 +475,7 @@ template<class Arc> class DeterminizerStar {
             Weight weight = Plus(pr.first->weight, next_elem.weight);
             if (! ApproxEqual(weight, pr.first->weight, delta_)) {  // add extra part of weight to queue.
               queue.push_back(next_elem);
+              replaced_elems = true;
             }
           }
         }
