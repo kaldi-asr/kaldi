@@ -25,7 +25,6 @@
 namespace fst {
 
 
-
 void TestLatticeStringRepository() {
   typedef int32 IntType;
 
@@ -70,28 +69,52 @@ void TestLatticeStringRepository() {
 }
 
 
+// test that determinization proceeds correctly on general
+// FSTs (not guaranteed determinzable, but we use the
+// max-states option to stop it getting out of control).
 template<class Arc> void TestDeterminizeLattice() {
+  int max_states = 100; // don't allow more det-states than this.
   for(int i = 0; i < 100; i++) {
     VectorFst<Arc> *fst = RandFst<Arc>();
-    if(fst->Properties(kAcyclic, true) == 0) {// has cycles so might not
-      // be determinizable... skip over it.
-      std::cout << "FST may not be determinizable by DeterminizeLattice so skipping over it.\n";
-    } else { // Try to determnize it.
-      std::cout << "FST before determinizing is:\n";
+    std::cout << "FST before lattice-determinizing is:\n";
+    {
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+      fstprinter.Print(&std::cout, "standard output");
+    }
+    VectorFst<Arc> ofst;
+    try {
+      DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst, kDelta, NULL, max_states);
+      std::cout << "FST after lattice-determinizing is:\n";
       {
-        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+        FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
         fstprinter.Print(&std::cout, "standard output");
       }
-      VectorFst<Arc> ofst;
-      DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst);
-      std::cout << "FST after determinizing is:\n";
-      {
-        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-        fstprinter.Print(&std::cout, "standard output");
-      }
+    } catch (...) {
+      std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
     }
   }
+}
 
+// test that determinization proceeds correctly on acyclic FSTs
+// (guaranteed determinizable in this sense).
+template<class Arc> void TestDeterminizeLattice2() {
+  RandFstOptions opts;
+  opts.acyclic = true;
+  for(int i = 0; i < 100; i++) {
+    VectorFst<Arc> *fst = RandFst<Arc>(opts);
+    std::cout << "FST before lattice-determinizing is:\n";
+    {
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+      fstprinter.Print(&std::cout, "standard output");
+    }
+    VectorFst<Arc> ofst;
+    DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst);
+    std::cout << "FST after lattice-determinizing is:\n";
+    {
+      FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
+      fstprinter.Print(&std::cout, "standard output");
+    }
+  }
 }
 
 

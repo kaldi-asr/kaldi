@@ -465,8 +465,7 @@ int main() {
     // Not for use with char, but this helps reveal some kinds of bugs.
     fst::TestStringRepository<fst::StdArc, unsigned char>();
     fst::TestStringRepository<fst::StdArc, char>();
-    for(int i = 0; i < 2; i++) 
-      fst::TestDeterminize<fst::StdArc>();
+    fst::TestDeterminize<fst::StdArc>();
     //fst::TestDeterminize2<fst::StdArc>();
     fst::TestPush<fst::StdArc>();
     fst::TestMinimize<fst::StdArc>();

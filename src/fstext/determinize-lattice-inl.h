@@ -265,7 +265,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       vector<TempArc> &this_vec(output_arcs_[this_state]);
 
       typename vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
-      for (;iter != end; ++iter) {
+      for (; iter != end; ++iter) {
         const TempArc &temp_arc(*iter);
         vector<Label> seq;
         repository_.ConvertToVector(temp_arc.string, &seq);
@@ -326,8 +326,9 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // one of the Output functions.  Note: ifst.Copy() will generally do a
   // shallow copy.  We do it like this for memory safety, rather than
   // keeping a reference or pointer to ifst_.
-  LatticeDeterminizer(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL):
-      ifst_(ifst.Copy()), delta_(delta),
+  LatticeDeterminizer(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL,
+                      int max_states = -1):
+      ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
       equal_(delta),
       minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
     Initialize();
@@ -351,7 +352,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     { InitialSubsetHash tmp; tmp.swap(initial_hash_); }
     { vector<vector<Element>* > output_states_tmp;
       output_states_tmp.swap(output_states_); }
-    { vector<char> tmp;  tmp.swap(osymbol_or_final_); }
+    { vector<char> tmp;  tmp.swap(isymbol_or_final_); }
     { vector<OutputStateId> tmp; tmp.swap(queue_); }
     { vector<pair<Label, Element> > tmp; tmp.swap(all_elems_tmp_); }
   }
@@ -479,7 +480,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     typename vector<Element>::iterator cur_in = subset->begin(),
         cur_out = subset->begin(), end = subset->end();
     while(cur_in != end) {
-      if(IsOsymbolOrFinal(cur_in->state)) {  // keep it...
+      if(IsIsymbolOrFinal(cur_in->state)) {  // keep it...
         *cur_out = *cur_in;
         cur_out++;
       }
@@ -517,6 +518,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       const Element &elem = iter->second;
       *remaining_weight = elem.weight;
       *common_prefix = elem.string;
+      if(elem.weight == Weight::Zero())
+        std::cerr << "Zero weight!\n"; // TEMP
       return elem.state;
     }
     // else no matching subset-- have to work it out.
@@ -535,6 +538,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // normalized subset.
     
     OutputStateId ans = MinimalToStateId(subset);
+    *remaining_weight = elem.weight;
+    *common_prefix = elem.string;
+    if(elem.weight == Weight::Zero())
+      std::cerr << "Zero weight!\n"; // TEMP
+    
     // Before returning "ans", add the initial subset to the hash,
     // so that we can bypass the epsilon-closure etc., next time
     // we process the same initial subset.
@@ -600,6 +608,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
     std::vector<Element> queue(*subset);
     bool replaced_elems = false; // relates to an optimization, see below.
+    int counter = 0; // stops infinite loops here for non-lattice-determinizable input;
+    // useful in testing.
     while (queue.size() != 0) {
       Element elem = queue.back();
       queue.pop_back();
@@ -613,8 +623,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       // processing the old Element.
       if(replaced_elems && cur_subset[elem.state] != elem)
         continue;
-
-      
+      if(max_states_ > 0 && counter++ > max_states_) {
+        std::cerr << "Lattice determinization aborted since looped more than "
+                  << max_states_ << " times during epsilon closure.\n";
+        throw std::runtime_error("looped more than max-states times in lattice determinization");
+      }
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (sorted && arc.ilabel != 0) break;  // Break from the loop: due to sorting there will be no
@@ -675,8 +688,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // minimal_subset may be empty if the graphs is not connected/trimmed, I think,
     // do don't check that it's nonempty.
     bool is_final = false;
-    StringId final_string = 0;  // = 0 to keep compiler happy.
-    Weight final_weight;
+    StringId final_string = NULL;  // = NULL to keep compiler happy.
+    Weight final_weight = Weight::Zero();
     typename vector<Element>::const_iterator iter = minimal_subset.begin(), end = minimal_subset.end();
     for (; iter != end; ++iter) {
       const Element &elem = *iter;
@@ -710,6 +723,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                        Weight *tot_weight,
                        StringId *common_str) {
     if(elems->empty()) { // just set common_str, tot_weight
+      std::cerr << "[empty subset]\n"; // TEMP 
       // to defaults and return...
       *common_str = repository_.EmptyString();
       *tot_weight = Weight::Zero();
@@ -876,6 +890,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
         cur++;
       }
       // We now have a subset for this ilabel.
+      assert(!this_subset.empty()); // temp.
       ProcessTransition(output_state, ilabel, &this_subset);
     }
     all_elems.clear(); // as it's a class variable-- want it to stay
@@ -952,30 +967,30 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     exit(1);
   }
 
-  bool IsOsymbolOrFinal(InputStateId state) { // returns true if this state
+  bool IsIsymbolOrFinal(InputStateId state) { // returns true if this state
     // of the input FST either is final or has an osymbol on an arc out of it.
-    // Uses the vector osymbol_or_final_ as a cache for this info.
+    // Uses the vector isymbol_or_final_ as a cache for this info.
     assert(state >= 0);
-    if(osymbol_or_final_.size() <= state)
-      osymbol_or_final_.resize(state+1, static_cast<char>(OSF_UNKNOWN));
-    if(osymbol_or_final_[state] == static_cast<char>(OSF_NO))
+    if(isymbol_or_final_.size() <= state)
+      isymbol_or_final_.resize(state+1, static_cast<char>(OSF_UNKNOWN));
+    if(isymbol_or_final_[state] == static_cast<char>(OSF_NO))
       return false;
-    else if(osymbol_or_final_[state] == static_cast<char>(OSF_YES))
+    else if(isymbol_or_final_[state] == static_cast<char>(OSF_YES))
       return true;
     // else work it out...
+    isymbol_or_final_[state] = static_cast<char>(OSF_NO);
     if(ifst_->Final(state) != Weight::Zero())
-      osymbol_or_final_[state] = static_cast<char>(OSF_YES);
+      isymbol_or_final_[state] = static_cast<char>(OSF_YES);
     for (ArcIterator<Fst<Arc> > aiter(*ifst_, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
-      if(arc.olabel != 0 && arc.weight != Weight::Zero()) {
-        osymbol_or_final_[state] = static_cast<char>(OSF_YES);
+      if(arc.ilabel != 0 && arc.weight != Weight::Zero()) {
+        isymbol_or_final_[state] = static_cast<char>(OSF_YES);
         return true;
       }
     }
-    osymbol_or_final_[state] = static_cast<char>(OSF_NO);
-    return false;
+    return IsIsymbolOrFinal(state); // will only recurse once.
   }
   
   void Initialize() {    
@@ -1029,6 +1044,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       queue_.pop_back();
       ProcessState(out_state);
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
+      if(max_states_ > 0 && output_arcs_.size() > max_states_) {
+        std::cerr << "Lattice determinization aborted since passed " << max_states_
+                  << " states.\n";
+        throw std::runtime_error("max-states reached in lattice determinization");
+      }
     }
   }
 
@@ -1043,6 +1063,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
   const Fst<Arc> *ifst_;
   float delta_;
+  int max_states_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   MinimalSubsetHash minimal_hash_;  // hash from Subset to OutputStateId.  Subset is "minimal
@@ -1064,11 +1085,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 
   vector<pair<Label, Element> > all_elems_tmp_; // temporary vector used in ProcessTransitions.
   
-  enum OsymbolOrFinal { OSF_UNKNOWN = 0, OSF_NO = 1, OSF_YES = 2 };
+  enum IsymbolOrFinal { OSF_UNKNOWN = 0, OSF_NO = 1, OSF_YES = 2 };
   
-  vector<char> osymbol_or_final_; // A kind of cache; it says whether
+  vector<char> isymbol_or_final_; // A kind of cache; it says whether
   // each state is (emitting or final) where emitting means it has at least one
-  // non-epsilon output arc.  Only accessed by IsOsymbolOrFinal()
+  // non-epsilon output arc.  Only accessed by IsIsymbolOrFinal()
   
   LatticeStringRepository<IntType> repository_;  // defines a compact and fast way of
   // storing sequences of labels.
@@ -1080,11 +1101,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
                         MutableFst<ArcTpl<Weight> > *ofst,
-                        float delta = kDelta,
-                        bool *debug_ptr = NULL) {
+                        float delta, bool *debug_ptr, int max_states) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr);
+  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr, max_states);
   det.Output(ofst);
 }
 
@@ -1094,11 +1114,10 @@ void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
 template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
                         MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > >*ofst,
-                        float delta = kDelta,
-                        bool *debug_ptr = NULL) {
+                        float delta, bool *debug_ptr, int max_states) {                        
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr);
+  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr, max_states);
   det.Output(ofst);
 }
 

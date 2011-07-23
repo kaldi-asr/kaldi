@@ -101,22 +101,31 @@ namespace fst {
     optional pointer to a bool that, if it becomes true while the algorithm is
     executing, the algorithm will print a traceback and terminate (used in
     fstdeterminizestar.cc debug non-terminating determinization).
-    More efficient if ifst is arc-sorted on input label. */
+    More efficient if ifst is arc-sorted on input label.
+    If the #states gets more than max_states, it will throw std::runtime_error (otherwise
+    this code does not use exceptions).  This is mainly useful for debug.
+*/
 template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
                         MutableFst<ArcTpl<Weight> > *ofst,
-                        float delta = kDelta, bool *debug_ptr = NULL);
+                        float delta = kDelta,
+                        bool *debug_ptr = NULL,
+                        int max_states = -1);
 
 
 /*  This is a version of DeterminizeLattice with a slightly more "natural" output format,
     where the output sequences are encoded using the CompactLatticeArcTpl template
     (i.e. the sequences of output symbols are represented directly as strings)
-    More efficient if ifst is arc-sorted on input label. */
+    More efficient if ifst is arc-sorted on input label.
+    If the #states gets more than max_states, it will throw std::runtime_error (otherwise
+    this code does not use exceptions).  This is mainly useful for debug.
+*/
 template<class Weight, class IntType>
 void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
                         MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
                         float delta = kDelta,
-                        bool *debug_ptr = NULL);
+                        bool *debug_ptr = NULL,
+                        int max_states = -1);
 
 
 
