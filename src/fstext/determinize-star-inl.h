@@ -41,7 +41,7 @@ template<class Label, class StringId> class StringRepository {
   // We treat sequences of length zero and one separately, for efficiency.
 
  public:
-  class VectorKey { // Hash function object.
+  class VectorKey {  // Hash function object.
    public:
     size_t operator()(const vector<Label>* vec) const {
       assert(vec != NULL);
@@ -67,12 +67,12 @@ template<class Label, class StringId> class StringRepository {
       return l + single_symbol_start;
     } else {
       // l is out of the allowed range so we have to treat it as a sequence of length one.  Should be v. rare.
-      vector<Label> v; v.push_back(l);
+      std::vector<Label> v; v.push_back(l);
       return IdOfSeqInternal(v);
     }
   }
 
-  StringId IdOfSeq(const vector<Label> &v) {  // also works for sizes 0 and 1.
+  StringId IdOfSeq(const std::vector<Label> &v) {  // also works for sizes 0 and 1.
     size_t sz = v.size();
     if (sz == 0) return no_symbol;
     else if (v.size() == 1) return IdOfLabel(v[0]);
@@ -82,7 +82,7 @@ template<class Label, class StringId> class StringRepository {
   inline bool IsEmptyString(StringId id) {
     return id == no_symbol;
   }
-  void SeqOfId(StringId id, vector<Label> *v) {
+  void SeqOfId(StringId id, std::vector<Label> *v) {
     if (id == no_symbol) v->clear();
     else if (id>=single_symbol_start) {
       v->resize(1); (*v)[0] = id - single_symbol_start;
@@ -94,11 +94,11 @@ template<class Label, class StringId> class StringRepository {
   StringId RemovePrefix(StringId id, size_t prefix_len) {
     if (prefix_len == 0) return id;
     else {
-      vector<Label> v;
+      std::vector<Label> v;
       SeqOfId(id, &v);
       size_t sz = v.size();
       assert(sz >= prefix_len);
-      vector<Label> v_noprefix(sz - prefix_len);
+      std::vector<Label> v_noprefix(sz - prefix_len);
       for (size_t i = 0;i < sz-prefix_len;i++) v_noprefix[i] = v[i+prefix_len];
       return IdOfSeq(v_noprefix);
     }
@@ -112,28 +112,22 @@ template<class Label, class StringId> class StringRepository {
     single_symbol_start =  (numeric_limits<StringId>::max() / 2) + 1;
     single_symbol_range =  numeric_limits<StringId>::max() - single_symbol_start;
   }
-  void Destroy() {
-    for (typename vector<vector<Label>* >::iterator iter = vec_.begin(); iter != vec_.end(); ++iter)
-      delete *iter;
-    vector<vector<Label>* > tmp_vec;
-    tmp_vec.swap(vec_);    
-    MapType tmp_map;
-    tmp_map.swap(map_);
-  }
   ~StringRepository() {
-    Destroy();
+    map_.clear();
+    for (typename std::vector<vector<Label>* >::iterator iter = vec_.begin(); iter != vec_.end(); ++iter)
+      delete *iter;
   }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StringRepository);
 
-  StringId IdOfSeqInternal(const vector<Label> &v) {
+  StringId IdOfSeqInternal(const std::vector<Label> &v) {
     typename MapType::iterator iter = map_.find(&v);
     if (iter != map_.end()) {
       return iter->second;
     } else {  // must add it to map.
       StringId this_id = (StringId) vec_.size();
-      vector<Label> *v_new = new vector<Label> (v);
+      std::vector<Label> *v_new = new std::vector<Label> (v);
       vec_.push_back(v_new);
       map_[v_new] = this_id;
       assert(this_id < string_end);  // or we used up the labels.
@@ -141,7 +135,7 @@ template<class Label, class StringId> class StringRepository {
     }
   }
 
-  vector<vector<Label>* > vec_;
+  std::vector<vector<Label>* > vec_;
   MapType map_;
 
   static const StringId string_start = (StringId) 0;  // This must not change.  It's assumed.
@@ -161,8 +155,6 @@ template<class Arc> class DeterminizerStar {
   void Output(MutableFst<GallicArc<Arc> >  *ofst, bool destroy = true) {
     typedef GallicWeight<Label, Weight> ThisGallicWeight;
     typedef typename Arc::StateId StateId;
-    if(destroy)
-      FreeMostMemory();
     StateId nStates = static_cast<StateId>(output_arcs_.size());
     ofst->DeleteStates();
     ofst->SetStart(kNoStateId);
@@ -176,13 +168,13 @@ template<class Arc> class DeterminizerStar {
     ofst->SetStart(0);
     // now process transitions.
     for (StateId this_state = 0; this_state < nStates; this_state++) {
-      vector<TempArc> &this_vec(output_arcs_[this_state]);
-      typename vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
+      std::vector<TempArc> &this_vec(output_arcs_[this_state]);
+      typename std::vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
 
       for (;iter != end; ++iter) {
         const TempArc &temp_arc(*iter);
         GallicArc<Arc> new_arc;
-        vector<Label> seq;
+        std::vector<Label> seq;
         repository_.SeqOfId(temp_arc.ostring, &seq);
         StringWeight<Label, STRING_LEFT> string_weight;
         for (size_t i = 0;i < seq.size();i++) string_weight.PushBack(seq[i]);
@@ -199,9 +191,9 @@ template<class Arc> class DeterminizerStar {
         }
       }
       // Free up memory.  Do this inside the loop as ofst is also allocating memory
-      if (destroy) { vector<TempArc> temp; temp.swap(this_vec); }
+      if (destroy) { std::vector<TempArc> temp; std::swap(temp, this_vec); }
     }
-    if (destroy) { vector<vector<TempArc> > temp; temp.swap(output_arcs_); }
+    if (destroy) { std::vector<std::vector<TempArc> > temp; std::swap(temp, output_arcs_); }
   }
 
   // Output to standard FST.  We will create extra states to handle sequences of symbols
@@ -211,11 +203,9 @@ template<class Arc> class DeterminizerStar {
   void  Output(MutableFst<Arc> *ofst, bool destroy = true) {
     // Outputs to standard fst.
     OutputStateId nStates = static_cast<OutputStateId>(output_arcs_.size());
-    if(destroy)
-      FreeMostMemory();
     ofst->DeleteStates();
+    ofst->SetStart(kNoStateId);
     if (nStates == 0) {
-      ofst->SetStart(kNoStateId);
       return;
     }
     // Add basic states-- but will add extra ones to account for strings on output.
@@ -225,12 +215,12 @@ template<class Arc> class DeterminizerStar {
     }
     ofst->SetStart(0);
     for (OutputStateId this_state = 0; this_state < nStates; this_state++) {
-      vector<TempArc> &this_vec(output_arcs_[this_state]);
+      std::vector<TempArc> &this_vec(output_arcs_[this_state]);
 
-      typename vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
+      typename std::vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
       for (;iter != end; ++iter) {
         const TempArc &temp_arc(*iter);
-        vector<Label> seq;
+        std::vector<Label> seq;
         repository_.SeqOfId(temp_arc.ostring, &seq);
 
         if (temp_arc.nextstate == kNoStateId) {  // Really a final weight.
@@ -263,7 +253,6 @@ template<class Arc> class DeterminizerStar {
             ofst->AddArc(cur_state, arc);
             cur_state = next_state;
           }
-          // Add the final arc in the sequence.
           Arc arc;
           arc.nextstate = temp_arc.nextstate;
           arc.weight = (seq.size() <= 1 ? temp_arc.weight : Weight::One());
@@ -273,14 +262,14 @@ template<class Arc> class DeterminizerStar {
         }
       }
       // Free up memory.  Do this inside the loop as ofst is also allocating memory
-      if (destroy) { vector<TempArc> temp; temp.swap(this_vec); }
+      if (destroy) { std::vector<TempArc> temp; std::swap(temp, this_vec); }
     }
-    if (destroy) { vector<vector<TempArc> > temp; temp.swap(output_arcs_); }
+    if (destroy) { std::vector<std::vector<TempArc> > temp; std::swap(temp, output_arcs_); }
   }
 
 
-  // Initializer.  After initializing the object you will typically call one of
-  // the Output functions.
+  // Initializer.  After initializing the object you will typically call Determinize() and
+  // then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL):
       ifst_(ifst.Copy()), delta_(delta),
       equal_(delta),
@@ -288,23 +277,11 @@ template<class Arc> class DeterminizerStar {
     Determinize(debug_ptr);
   }
 
-  // frees all except output_arcs_, which contains the important info
-  // we need to output.
-  void FreeMostMemory() {
-    if(ifst_) {
-      delete ifst_;
-      ifst_ = NULL;
-    }
+  ~DeterminizerStar() {
+    delete ifst_;
     for (typename SubsetHash::iterator iter = hash_.begin();
         iter != hash_.end(); ++iter)
       delete iter->first;
-    SubsetHash tmp;
-    tmp.swap(hash_); 
-    repository_.Destroy();
-  }
-  
-  ~DeterminizerStar() {
-    FreeMostMemory();
   }
  private:
   typedef typename Arc::Label Label;
@@ -448,7 +425,7 @@ template<class Arc> class DeterminizerStar {
           if (arc.olabel == 0)
             next_elem.string = elem.string;
           else {
-            vector<Label> seq;
+            std::vector<Label> seq;
             repository_.SeqOfId(elem.string, &seq);
             if (arc.olabel != 0)
               seq.push_back(arc.olabel);
@@ -522,7 +499,7 @@ template<class Arc> class DeterminizerStar {
     // a transition to the dest. state (possibly affecting Q_ and hash_, if state did not
     // exist).
 
-    typedef typename vector<Element>::iterator IterType;
+    typedef typename std::vector<Element>::iterator IterType;
     {  // This block makes the subset have one unique Element per state, adding the weights.
       IterType cur_in = subset->begin(), cur_out = cur_in, end = subset->end();
       size_t num_out = 0;
@@ -547,12 +524,12 @@ template<class Arc> class DeterminizerStar {
     Weight tot_weight;
     {  // This block computes common_str and tot_weight (essentially: the common divisor)
       // and removes them from the elements.
-      vector<Label> seq;
+      std::vector<Label> seq;
 
       IterType begin = subset->begin(), iter, end = subset->end();
       {  // This block computes "seq", which is the common prefix, and "common_str",
         // which is the StringId version of "seq".
-        vector<Label> tmp_seq;
+        std::vector<Label> tmp_seq;
         for (iter = begin; iter!= end; ++iter) {
           if (iter == begin) {
             repository_.SeqOfId(iter->string, &seq);
@@ -615,11 +592,11 @@ template<class Arc> class DeterminizerStar {
   // Does this by creating a big vector of pairs <Label, Element> and then sorting them
   // using a lexicographical ordering, and calling ProcessTransition for each range
   // with the same ilabel.
-  // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
+  // Side effects on repisitory, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
 
   void ProcessTransitions(const vector<Element> &closed_subset, OutputStateId state) {
-    vector<pair<Label, Element> > all_elems;
+    std::vector<pair<Label, Element> > all_elems;
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
       typename vector<Element>::const_iterator iter = closed_subset.begin(), end = closed_subset.end();
@@ -633,8 +610,7 @@ template<class Arc> class DeterminizerStar {
             Element &next_elem(this_pr.second);
             next_elem.state = arc.nextstate;
             next_elem.weight = Times(elem.weight, arc.weight);
-            if (arc.olabel == 0) // output epsilon-- this is simple case so
-                                 // handle separately for efficiency
+            if (arc.olabel == 0) // output epsilon-- this is simple case so handle seprately for efficiency
               next_elem.string = elem.string;
             else {
               vector<Label> seq;
@@ -650,9 +626,9 @@ template<class Arc> class DeterminizerStar {
     PairComparator pc;
     std::sort(all_elems.begin(), all_elems.end(), pc);
     // now sorted first on input label, then on state.
-    typedef typename vector<pair<Label, Element> >::const_iterator PairIter;
+    typedef typename std::vector<std::pair<Label, Element> >::const_iterator PairIter;
     PairIter cur = all_elems.begin(), end = all_elems.end();
-    vector<Element> this_subset;
+    std::vector<Element> this_subset;
     while (cur != end) {
       // Process ranges that share the same input symbol.
       Label ilabel = cur->first;
@@ -678,8 +654,8 @@ template<class Arc> class DeterminizerStar {
       vector<Element> *new_subset = new vector<Element>(subset);
       OutputStateId new_state_id = (OutputStateId) output_arcs_.size();
       hash_[new_subset] = new_state_id;
-      output_arcs_.push_back(vector<TempArc>());
-      Q_.push_back(pair<vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+      output_arcs_.push_back(std::vector<TempArc>());
+      Q_.push_back(std::pair<vector<Element>*, OutputStateId>(new_subset,  new_state_id));
       return new_state_id;
     } else {
       return iter->second;  // the OutputStateId.
@@ -722,7 +698,7 @@ template<class Arc> class DeterminizerStar {
     size_t max_state = output_arcs_.size() - 2;  // don't take the last
     // one as we might be halfway into constructing it.
 
-    vector<OutputStateId> predecessor(max_state+1, kNoStateId);
+    std::vector<OutputStateId> predecessor(max_state+1, kNoStateId);
     for (size_t i = 0; i < max_state; i++) {
       for (size_t j = 0; j < output_arcs_[i].size(); j++) {
         OutputStateId nextstate = output_arcs_[i][j].nextstate;
@@ -733,13 +709,13 @@ template<class Arc> class DeterminizerStar {
           predecessor[nextstate] = i;
       }
     }
-    vector<pair<Label, StringId> > traceback;
+    std::vector<std::pair<Label, StringId> > traceback;
     // traceback is a pair of (ilabel, olabel-seq).
     OutputStateId cur_state = max_state;  // a recently constructed state.
 
     while (cur_state != 0 && cur_state != kNoStateId) {
       OutputStateId last_state = predecessor[cur_state];
-      pair<Label, StringId> p;
+      std::pair<Label, StringId> p;
       size_t i;
       for (i = 0; i < output_arcs_[last_state].size(); i++) {
         if (output_arcs_[last_state][i].nextstate == cur_state) {
@@ -758,7 +734,7 @@ template<class Arc> class DeterminizerStar {
     KALDI_WARN << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
     for (ssize_t i = traceback.size() - 1; i >= 0; i--) {
       std::cerr << traceback[i].first << ' ' << "( ";
-      vector<Label> seq;
+      std::vector<Label> seq;
       repository_.SeqOfId(traceback[i].second, &seq);
       for (size_t j = 0; j < seq.size(); j++)
         std::cerr << seq[j] << ' ';
@@ -796,9 +772,9 @@ template<class Arc> class DeterminizerStar {
   DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   vector<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
-  vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.
+  std::vector<std::vector<TempArc> > output_arcs_;  // essentially an FST in our format.
 
-  const Fst<Arc> *ifst_;
+  Fst<Arc> *ifst_;
   float delta_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
@@ -820,7 +796,7 @@ void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst, float delta, bool *d
 
 template<class Arc>
 void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta, bool *debug_ptr) {
-  ofst->SetOutputSymbols(ifst.InputSymbols());
+  ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
   DeterminizerStar<Arc> det(ifst, delta, debug_ptr);
   det.Output(ofst);
