@@ -92,6 +92,7 @@ template<class Arc> void TestDeterminizeLattice() {
     } catch (...) {
       std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
     }
+    delete fst;
   }
 }
 
@@ -114,6 +115,7 @@ template<class Arc> void TestDeterminizeLattice2() {
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
     }
+    delete fst;
   }
 }
 
@@ -122,9 +124,10 @@ template<class Arc> void TestDeterminizeLattice2() {
 
 int main() {
   using namespace fst;
-  for (int i = 0;i < 5;i++) {  // We would need more iterations to check
-    TestLatticeStringRepository();
-    TestDeterminizeLattice<StdArc>();
-  }
+  //for (int i = 0;i < 5;i++) {  // We would need more iterations to check
+  TestLatticeStringRepository();
+  TestDeterminizeLattice<StdArc>();
+    TestDeterminizeLattice2<StdArc>();
+    //}
   std::cout << "Tests succeeded\n";
 }

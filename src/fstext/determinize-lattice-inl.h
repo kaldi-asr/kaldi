@@ -201,6 +201,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // weight stores the original output-symbol strings).  If destroy == true,
   // release memory as we go (but we cannot output again).
   void Output(MutableFst<CompactArc>  *ofst, bool destroy = true) {
+    assert(determinized_);
     typedef typename Arc::StateId StateId;
     StateId nStates = static_cast<StateId>(output_arcs_.size());
     if(destroy)
@@ -326,13 +327,12 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // one of the Output functions.  Note: ifst.Copy() will generally do a
   // shallow copy.  We do it like this for memory safety, rather than
   // keeping a reference or pointer to ifst_.
-  LatticeDeterminizer(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL,
+  LatticeDeterminizer(const Fst<Arc> &ifst, float delta = kDelta, 
                       int max_states = -1):
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
-      equal_(delta),
+      equal_(delta), determinized_(false),
       minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
     Initialize();
-    Determinize(debug_ptr);
   }
 
   // frees all except output_arcs_, which contains the important info
@@ -358,7 +358,26 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   }
   
   ~LatticeDeterminizer() {
+    std::cout << "In destructor\n"; // TEMP
     FreeMostMemory(); // rest is deleted by destructors.
+  }
+  void Determinize(bool *debug_ptr) {
+    assert(!determinized_);
+    // This determinizes the input fst but leaves it in the "special format"
+    // in "output_arcs_".  Must be called after Initialize().  To get the
+    // output, call one of the Output routines.
+    while (!queue_.empty()) {
+      OutputStateId out_state = queue_.back();
+      queue_.pop_back();
+      ProcessState(out_state);
+      if (debug_ptr && *debug_ptr) Debug();  // will exit.
+      if(max_states_ > 0 && output_arcs_.size() > max_states_) {
+        std::cerr << "Lattice determinization aborted since passed " << max_states_
+                  << " states.\n";
+        throw std::runtime_error("max-states reached in lattice determinization");
+      }
+    }
+    determinized_ = true;
   }
  private:
   
@@ -1037,23 +1056,6 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     }     
   }
   
-  void Determinize(bool *debug_ptr) {
-    // This determinizes the input fst but leaves it in the "special format"
-    // in "output_arcs_".  Must be called after Initialize().  To get the
-    // output, call one of the Output routines.
-    while (!queue_.empty()) {
-      OutputStateId out_state = queue_.back();
-      queue_.pop_back();
-      ProcessState(out_state);
-      if (debug_ptr && *debug_ptr) Debug();  // will exit.
-      if(max_states_ > 0 && output_arcs_.size() > max_states_) {
-        std::cerr << "Lattice determinization aborted since passed " << max_states_
-                  << " states.\n";
-        throw std::runtime_error("max-states reached in lattice determinization");
-      }
-    }
-  }
-
   DISALLOW_COPY_AND_ASSIGN(LatticeDeterminizer);
 
 
@@ -1068,6 +1070,8 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   int max_states_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
+  bool determinized_; // set to true when user called Determinize(); used to make
+  // sure this object is used correctly.
   MinimalSubsetHash minimal_hash_;  // hash from Subset to OutputStateId.  Subset is "minimal
                                     // representation" (only include final and states and states with
                                     // nonzero ilabel on arc out of them.  Owns the pointers
@@ -1106,7 +1110,8 @@ void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
                         float delta, bool *debug_ptr, int max_states) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr, max_states);
+  LatticeDeterminizer<Weight, IntType> det(ifst, delta, max_states);
+  det.Determinize(debug_ptr);
   det.Output(ofst);
 }
 
@@ -1119,7 +1124,8 @@ void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
                         float delta, bool *debug_ptr, int max_states) {                        
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, debug_ptr, max_states);
+  LatticeDeterminizer<Weight, IntType> det(ifst, delta, max_states);
+  det.Determinize(debug_ptr);
   det.Output(ofst);
 }
 
