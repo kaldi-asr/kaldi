@@ -207,6 +207,45 @@ class LatticeWeightTpl {
 };
 
 
+/* ScaleTupleWeight is a function defined for LatticeWeightTpl and
+   CompactLatticeWeightTpl that mutliplies the pair (a_, b_) by a 2x2 
+   matrix.  Used, for example, in applying acoustic scaling.
+ */
+template<class FloatType, class ScaleFloatType>
+inline LatticeWeightTpl<FloatType> ScaleTupleWeight(
+    const LatticeWeightTpl<FloatType> &w,
+    const vector<vector<ScaleFloatType> > &scale) {
+  // Without the next special case we'd get NaNs from infinity * 0
+  if(w.a_ == FloatLimits<FloatType>::kPosInfinity)    
+    return LatticeWeightTpl<FloatType>::Zero();
+  return LatticeWeightTpl<FloatType>(scale[0][0] * w.a_ + scale[0][1] * w.b_,
+                                     scale[1][0] * w.a_ + scale[1][1] * w.b_);
+}
+                                        
+/* For testing purposes and in case it's ever useful, we define a similar
+   function to apply to LexicographicWeight and the like, templated on
+   TropicalWeight<float> etc.; we use PairWeight which is the base class of
+   LexicographicWeight.
+*/
+template<class FloatType, class ScaleFloatType>
+inline PairWeight<TropicalWeightTpl<FloatType>,
+                  TropicalWeightTpl<FloatType> > ScaleTupleWeight(
+                      const PairWeight<TropicalWeightTpl<FloatType>,
+                                       TropicalWeightTpl<FloatType> > &w,
+                      const vector<vector<ScaleFloatType> > &scale) {
+  typedef TropicalWeightTpl<FloatType> BaseType;
+  typedef PairWeight<BaseType, BaseType> PairType;
+  const BaseType zero = BaseType::Zero();
+  // Without the next special case we'd get NaNs from infinity * 0
+  if(w.Value1() == zero || w.Value2() == zero)
+    return PairType(zero, zero);
+  FloatType f1 = w.Value1().Value(), f2 = w.Value2().Value();
+  return PairType(BaseType(scale[0][0] * f1 + scale[0][1] * f2),
+                  BaseType(scale[1][0] * f1 + scale[1][1] * f2));
+}
+                                        
+
+
 template<class FloatType>
 inline bool operator==(const LatticeWeightTpl<FloatType> &w1,
                        const LatticeWeightTpl<FloatType> &w2 ) {
@@ -281,7 +320,7 @@ template<class FloatType>
 inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
                         const LatticeWeightTpl<FloatType> &w2,
                         float delta = kDelta) {
-  if(w1.a_ == w2.a_ && w2.b_ == w2.b_) return true;  // handles Zero().
+  if(w1.a_ == w2.a_ && w1.b_ == w2.b_) return true;  // handles Zero().
   return (fabs(w1.a_ - w2.a_) <= delta && fabs(w1.b_ - w2.b_) <= delta);
 }
 
@@ -613,8 +652,6 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
   return strm;
 }
 
-// NEXT: define common divisor for CompactLatticeWeightTpl
-// Uses Plus on the weights to get the common divisor.
 template<class BaseWeightType, class IntType>
 class CompactLatticeWeightCommonDivisorTpl {
  public:
@@ -632,7 +669,20 @@ class CompactLatticeWeightCommonDivisorTpl {
   }
 };
 
-
+/** Scales the pair (a,b) of floating-point weights inside a
+    CompactLatticeWeight by premultiplying it (viewed as a vector)
+    by a 2x2 matrix "scale".
+    Assumes there is a ScaleTupleWeight function that applies to "Weight";
+    this currently only works if Weight equals LatticeWeightTpl<FloatType>
+    for some FloatType.
+*/
+template<class Weight, class IntType, class ScaleFloatType>
+inline CompactLatticeWeightTpl<Weight, IntType> ScaleTupleWeight(
+    const CompactLatticeWeightTpl<Weight, IntType> &w,
+    const vector<vector<ScaleFloatType> > &scale) {
+  return CompactLatticeWeightTpl<Weight, IntType>(
+      ScaleTupleWeight(w.weight_, scale), w.string_);
+}
 
 
 } // end namespace fst

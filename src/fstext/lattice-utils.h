@@ -55,6 +55,32 @@ void ConvertLatticeFromCompact(
     MutableFst<ArcTpl<Weight> > *ofst,
     bool invert);
 
+
+/** Returns a default 2x2 matrix scaling factor for LatticeWeight */
+inline vector<vector<double> > DefaultLatticeScale() {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = ans[1][1] = 1.0;
+  return ans;
+}
+
+
+/** Scales the pairs of weights in LatticeWeight or CompactLatticeWeight by
+    viewing the pair (a, b) as a 2-vector and pre-multiplying by the 2x2 matrix
+    in "scale".  E.g. typically scale would equal
+     [ 1   0;
+       0  acwt ]
+    if we want to scale the acoustics by "acwt".
+ */
+template<class Weight, class ScaleFloat>
+void ScaleLattice(
+    const vector<vector<ScaleFloat> > &scale,
+    MutableFst<ArcTpl<Weight> > *fst);
+
+
+
+
 } // end namespace fst
 
 #include "fstext/lattice-utils-inl.h"

@@ -44,7 +44,7 @@ void ConvertLatticeToCompact(
   for(StateId s = 0; s < num_states; s++) {
     Weight final_weight = ifst.Final(s);
     if (final_weight != Weight::Zero()) {
-      CompactWeight final_compact_weight(final_weight, std::vector<Int>());
+      CompactWeight final_compact_weight(final_weight, vector<Int>());
       ofst->SetFinal(s, final_compact_weight);
     }
     for (ArcIterator<ExpandedFst<Arc> > iter(ifst, s);
@@ -54,7 +54,7 @@ void ConvertLatticeToCompact(
       if (arc.weight != Weight::Zero()) {
         if (invert)
           std::swap(arc.ilabel, arc.olabel);
-        std::vector<Int> str;
+        vector<Int> str;
         if (arc.olabel != 0) str.push_back(arc.olabel);
         CompactArc compact_arc(arc.ilabel, arc.ilabel,
                                CompactWeight(arc.weight, str),
@@ -132,6 +132,29 @@ void ConvertLatticeFromCompact(
   }    
 }
 
+template<class Weight, class ScaleFloat>
+void ScaleLattice(
+    const vector<vector<ScaleFloat> > &scale,
+    MutableFst<ArcTpl<Weight> > *fst) {
+  assert(scale.size() == 2 && scale[0].size() == 2 && scale[1].size() == 2);
+  typedef ArcTpl<Weight> Arc;
+  typedef MutableFst<Arc> Fst;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+  StateId num_states = fst->NumStates();
+  for (StateId s = 0; s < num_states; s++) {
+    for (MutableArcIterator<Fst> aiter(fst, s);
+         !aiter.Done();
+         aiter.Next()) {
+      Arc arc = aiter.Value();
+      arc.weight = ScaleTupleWeight(arc.weight, scale);
+      aiter.SetValue(arc);
+    }
+    Weight final_weight = fst->Final(s);
+    if(final_weight != Weight::Zero())
+      fst->SetFinal(s, ScaleTupleWeight(final_weight, scale));
+  }
+}
 
 
 }
