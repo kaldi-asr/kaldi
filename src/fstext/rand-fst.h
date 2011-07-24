@@ -48,6 +48,7 @@ struct RandFstOptions {
 
 
 /// Returns a random FST.  Useful for randomized algorithm testing.
+/// Only works if weight can be constructed from float.
 template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions() ) {
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -67,7 +68,7 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
   // Set final states.
   for (size_t j = 0;j < (size_t)opts.n_final;j++) {
     StateId id = all_states[rand() % opts.n_states];
-    Weight weight = (Weight)(0.33*(rand() % 5) );
+    Weight weight = (Weight)(0.33*(rand() % 5));
     fst->SetFinal(id, weight);
   }
   // Create arcs.
@@ -84,6 +85,59 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
     a.ilabel = rand() % opts.n_syms;
     a.olabel = rand() % opts.n_syms;  // same input+output vocab.
     a.weight = (Weight) (0.333*(rand() % 4));
+    
+    fst->AddArc(start_state, a);
+  }
+
+  // Trim resulting FST.
+  Connect(fst);
+  if(opts.acyclic)
+    assert(fst->Properties(kAcyclic, true) & kAcyclic);
+  if (fst->Start() == kNoStateId && !opts.allow_empty) {
+    goto start;
+  }
+  return fst;
+}
+
+
+/// Returns a random FST.  Useful for randomized algorithm testing.
+/// Only works if weight can be constructed from a pair of floats
+template<class Arc> VectorFst<Arc>* RandPairFst(RandFstOptions opts = RandFstOptions() ) {
+  typedef typename Arc::Label Label;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+
+  VectorFst<Arc> *fst = new VectorFst<Arc>();
+
+ start:
+
+  // Create states.
+  vector<StateId> all_states;
+  for (size_t i = 0;i < (size_t)opts.n_states;i++) {
+    StateId this_state = fst->AddState();
+    if (i == 0) fst->SetStart(i);
+    all_states.push_back(this_state);
+  }
+  // Set final states.
+  for (size_t j = 0;j < (size_t)opts.n_final;j++) {
+    StateId id = all_states[rand() % opts.n_states];
+    Weight weight (0.33*(rand() % 5), 0.33*(rand() % 5));
+    fst->SetFinal(id, weight);
+  }
+  // Create arcs.
+  for (size_t i = 0;i < (size_t)opts.n_arcs;i++) {
+    Arc a;
+    StateId start_state;
+    if(!opts.acyclic) { // no restriction on arcs.
+      start_state = all_states[rand() % opts.n_states];
+      a.nextstate = all_states[rand() % opts.n_states];
+    } else {
+      start_state = all_states[rand() % (opts.n_states-1)];
+      a.nextstate = start_state + 1 + (rand() % (opts.n_states-start_state-1));
+    }
+    a.ilabel = rand() % opts.n_syms;
+    a.olabel = rand() % opts.n_syms;  // same input+output vocab.
+    a.weight = Weight (0.333*(rand() % 4), 0.333*(rand() % 4));
     
     fst->AddArc(start_state, a);
   }

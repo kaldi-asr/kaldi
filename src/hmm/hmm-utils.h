@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #ifndef KALDI_HMM_HMM_UTILS_H_
-#define KALDI_hmm_HMM_UTILS_H_
+#define KALDI_HMM_HMM_UTILS_H_
 
 #include "hmm/hmm-topology.h"
 #include "hmm/transition-model.h"

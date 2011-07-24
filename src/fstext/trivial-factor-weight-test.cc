@@ -138,7 +138,7 @@ template<class Arc>  void TestFactor() {
     }
 
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, STRING_LEFT>());
-
+    
     {
       std::cout <<" printing after converting back to regular FST\n";
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);

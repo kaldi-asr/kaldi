@@ -17,7 +17,6 @@
 
 #ifndef KALDI_FSTEXT_DETERMINIZE_LATTICE_INL_H_
 #define KALDI_FSTEXT_DETERMINIZE_LATTICE_INL_H_
-#include "base/kaldi-error.h"
 // Do not include this file directly.  It is included by determinize-lattice.h
 
 #ifdef _MSC_VER
@@ -933,12 +932,14 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // fstdeterminizestar).  It prints out some traceback
     // info and exits.
 
-    KALDI_WARN << "Debug function called (probably SIGUSR1 caught).\n";
+    std::cerr << "Debug function called (probably SIGUSR1 caught).\n";
     // free up memory from the hash as we need a little memory
     { MinimalSubsetHash hash_tmp; hash_tmp.swap(minimal_hash_); }
 
-    if (output_arcs_.size() <= 2)
-      KALDI_ERR << "Nothing to trace back";
+    if (output_arcs_.size() <= 2) {
+      std::cerr << "Nothing to trace back";
+      exit(1);
+    }
     size_t max_state = output_arcs_.size() - 2;  // don't take the last
     // one as we might be halfway into constructing it.
 
@@ -972,10 +973,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       assert(i != output_arcs_[last_state].size());  // or fell off loop.
       cur_state = last_state;
     }
-    if (cur_state == kNoStateId)
-      KALDI_WARN << "Traceback did not reach start state (possibly debug-code error)";
+    if (cur_state == kNoStateId) 
+      std::cerr << "Traceback did not reach start state (possibly debug-code error)";
 
-    KALDI_WARN << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
+    std::cerr << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
     for (ssize_t i = traceback.size() - 1; i >= 0; i--) {
       std::cerr << traceback[i].first << ' ' << "( ";
       vector<Label> seq;

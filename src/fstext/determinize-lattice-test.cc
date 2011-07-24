@@ -16,14 +16,9 @@
 // limitations under the License.
 
 #include "fstext/determinize-lattice.h"
-#include "fstext/pre-determinize.h"
-#include "fstext/trivial-factor-weight.h"
 #include "fstext/fst-test-utils.h"
 
-
-
 namespace fst {
-
 
 void TestLatticeStringRepository() {
   typedef int32 IntType;

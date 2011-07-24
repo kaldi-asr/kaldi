@@ -80,7 +80,8 @@ template<class Arc, class LabelT>
 ContextFstImpl<Arc, LabelT>::ContextFstImpl(const ContextFstImpl &other):
     phone_syms_(other.phone_syms_),
     disambig_syms_(other.disambig_syms_) {
-  KALDI_ERR << "ContextFst copying not yet supported [not hard, but would have to test.]";
+  std::cerr << "ContextFst copying not yet supported [not hard, but would have to test.]";
+  exit(1);
 }
 
 
@@ -212,7 +213,7 @@ bool ContextFstImpl<Arc, LabelT>::CreatePhoneOrEpsArc(StateId src,
   // returns false if it could not create an arc due to the decision-tree returning false
   // [this only happens if opts_.behavior_on_failure == ContextFstOptions::kNoArc].
 
-  KALDI_ASSERT(phone_seq[P_] != subsequential_symbol_);  // would be coding error.
+  assert(phone_seq[P_] != subsequential_symbol_);  // would be coding error.
 
   if (phone_seq[P_] == 0) {  // this can happen at the beginning of the graph.
     // we don't output a real phone.  Epsilon arc (but sometimes we need to
@@ -276,8 +277,9 @@ bool ContextFstImpl<Arc, LabelT>::CreateArc(StateId s,
     // the output arcs, just 0.
     return CreatePhoneOrEpsArc(s, nextstate, olabel, phoneseq, oarc);
   } else {
-    KALDI_ERR << "ContextFst: CreateArc, invalid olabel supplied [confusion about phone list or disambig symbols?]: "<<(olabel);
-  }
+    std::cerr << "ContextFst: CreateArc, invalid olabel supplied [confusion about phone list or disambig symbols?]: "<<(olabel);
+    exit(1);
+ }
   return false;  // won't get here.  suppress compiler error.
 }
 
@@ -410,38 +412,47 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
   assert(s == 0);
   int num_disambig_seen = 0;  // not counting #-1
   for (size_t i = 1; i < info.size(); i++) {
-    if (info[i].size() == 0)
-      KALDI_ERR << "CreateILabelInfoSymbolTable: invalid ilabel-info";
+    if (info[i].size() == 0) {
+      std::cerr << "CreateILabelInfoSymbolTable: invalid ilabel-info";
+      exit(1);
+    }
     if (info[i].size() == 1 &&
        info[i][0] <= 0) {
       if (info[i][0] == 0) {  // special symbol at start that we want to call #-1.
         std::string sym = disambig_prefix + "-1";
         s = ans->AddSymbol(disambig_prefix + "-1");
-        if (s != i)
-          KALDI_ERR << "Disambig symbol "<< sym << " already in vocab\n";  // should never happen.
+        if (s != i) {
+          std::cerr << "Disambig symbol "<< sym << " already in vocab\n";  // should never happen.
+          exit(1);
+        }
       } else {
         char buf[100];
         snprintf(buf, 100, "%d", num_disambig_seen);
         num_disambig_seen++;
         std::string sym = disambig_prefix + buf;
         s = ans->AddSymbol(sym);
-        if (s != i)
-          KALDI_ERR << "Disambig symbol "<< sym <<" already in vocab\n";  // should never happen.
+        if (s != i) {
+          std::cerr << "Disambig symbol "<< sym <<" already in vocab\n";  // should never happen.
+          exit(1);
+        }
       }
     } else {
       // is a phone-context-window.
       std::string newsym;
       for (size_t j = 0; j < info[i].size(); j++) {
         std::string phonesym = phones_symtab.Find(info[i][j]);
-        if (phonesym == "")
-          KALDI_ERR << "CreateILabelInfoSymbolTable: symbol "
+        if (phonesym == "") {
+          std::cerr << "CreateILabelInfoSymbolTable: symbol "
                     << info[i][j] << " not in phone symbol-table.";
+          exit(1);
+        }
         if (j != 0) newsym += separator;
         newsym += phonesym;
       }
       int64 s = ans->AddSymbol(newsym);
       if (s != static_cast<int64>(i)) {
-        KALDI_ERR << "CreateILabelInfoSymbolTable: some problem with duplicate symbols.";
+        std::cerr << "CreateILabelInfoSymbolTable: some problem with duplicate symbols.";
+        exit(1);
       }
     }
   }

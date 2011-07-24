@@ -17,7 +17,7 @@
 
 
 #ifndef KALDI_UTIL_KALDI_HOLDER_INL_H_
-#define KALDI_UTIL_KALDI_HOLDER_INLH_
+#define KALDI_UTIL_KALDI_HOLDER_INL_H_
 
 #include <algorithm>
 #include "util/kaldi-io.h"

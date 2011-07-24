@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_LAT_KALDI_LATTICE_H_
-#define KALDI_LAT_KALDI_LATTICE_H_
+#ifndef KALDI_FSTEXT_LATTICE_WEIGHT_H_
+#define KALDI_FSTEXT_LATTICE_WEIGHT_H_
 
 #include "fst/fstlib.h"
 #include "base/kaldi-common.h"
@@ -60,6 +60,10 @@ class LatticeWeightTpl {
     return *this;
   }
 
+  LatticeWeightTpl<FloatType> Reverse() const {
+    return *this;
+  }
+  
   static const LatticeWeightTpl Zero() {
     return LatticeWeightTpl(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
   }
@@ -100,7 +104,11 @@ class LatticeWeightTpl {
       return LatticeWeightTpl(floor(a_/delta + 0.5F)*delta, floor(b_/delta + 0.5F) * delta);
     }
   }
-
+  static uint64 Properties() {
+    return kLeftSemiring | kRightSemiring | kCommutative |
+        kPath | kIdempotent;
+  }
+  
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
   istream &Read(istream &strm) {
@@ -308,11 +316,12 @@ template<class WeightType, class IntType>
 class CompactLatticeWeightTpl {
  public:
   typedef WeightType W;
-  W w_;
-  vector<IntType> s_; 
-
-  // Plus is like LexicographicWeight on the pair (w_, s_), but where we
-  // use standard lexicographic order on s_ [this is not the same as
+  W weight_;
+  vector<IntType> string_; 
+  typedef CompactLatticeWeightTpl<WeightType, IntType> ReverseWeight;
+  
+  // Plus is like LexicographicWeight on the pair (weight_, string_), but where we
+  // use standard lexicographic order on string_ [this is not the same as
   // NaturalLess on the StringWeight equivalent, which does not define a
   // total order].
   // Times, Divide obvious... (support both left & right division..)
@@ -321,11 +330,11 @@ class CompactLatticeWeightTpl {
   CompactLatticeWeightTpl() { }
 
   CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
-      w_(w), s_(s) { }
+      weight_(w), string_(s) { }
 
   CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType,IntType> &w) {
-    w_ = w.w_;
-    s_ = w.s_;
+    weight_ = w.weight_;
+    string_ = w.string_;
     return *this;
   }
 
@@ -350,26 +359,38 @@ class CompactLatticeWeightTpl {
         + GetIntSizeString();
     return type;
   }
+
+  CompactLatticeWeightTpl<WeightType, IntType> Reverse() const {
+    size_t s = string_.size();
+    std::vector<IntType> v(s);
+    for(size_t i = 0; i < s; i++)
+      v[i] = string_[s-i-1];
+    return CompactLatticeWeightTpl<WeightType, IntType>(weight_, v);
+  }
   
   bool Member() const {
     // a semiring has only one zero, this is the important property
-    // we're trying to maintain here.  So force s_ to be empty if
+    // we're trying to maintain here.  So force string_ to be empty if
     // w_ == zero.
-    if(!w_.Member()) return false;
-    if(w_ == WeightType::Zero())
-      return s_.empty();
+    if(!weight_.Member()) return false;
+    if(weight_ == WeightType::Zero())
+      return string_.empty();
     else
       return true;
   }
 
   CompactLatticeWeightTpl Quantize(float delta = kDelta) const {
-    return CompactLatticeWeightTpl(w_.Quantize(delta), s_);
+    return CompactLatticeWeightTpl(weight_.Quantize(delta), string_);
+  }
+
+  static uint64 Properties() {
+    return kLeftSemiring | kRightSemiring | kPath | kIdempotent;
   }
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
   istream &Read(istream &strm) {
-    w_.Read(strm);
+    weight_.Read(strm);
     if(strm.fail()){ return strm; }
     int32 sz;
     ReadType(strm, &sz);
@@ -379,9 +400,9 @@ class CompactLatticeWeightTpl {
       strm.clear(std::ios::badbit);
       return strm;
     }
-    s_.resize(sz);
+    string_.resize(sz);
     for(int32 i = 0; i < sz; i++) {
-      ReadType(strm, &(s_[i]));
+      ReadType(strm, &(string_[i]));
     }
     return strm;
   }
@@ -389,12 +410,12 @@ class CompactLatticeWeightTpl {
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
   // not Kaldi-style, I/O.
   ostream &Write(ostream &strm) const {
-    w_.Write(strm);
+    weight_.Write(strm);
     if(strm.fail()){ return strm; }
-    int32 sz = static_cast<int32>(s_.size());
+    int32 sz = static_cast<int32>(string_.size());
     WriteType(strm, sz);
     for(int32 i = 0; i < sz; i++)
-      WriteType(strm, s_[i]);
+      WriteType(strm, string_[i]);
     return strm;
   }        
 };
@@ -402,20 +423,20 @@ class CompactLatticeWeightTpl {
 template<class WeightType, class IntType>
 inline bool operator==(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
                        const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
-  return (w1.w_ == w2.w_ && w1.s_ == w2.s_);
+  return (w1.weight_ == w2.weight_ && w1.string_ == w2.string_);
 }
 
 template<class WeightType, class IntType>
 inline bool operator!=(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
                        const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
-  return (w1.w_ != w2.w_ || w1.s_ != w2.s_);
+  return (w1.weight_ != w2.weight_ || w1.string_ != w2.string_);
 }
 
 template<class WeightType, class IntType>
 inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
                         const CompactLatticeWeightTpl<WeightType,IntType> &w2,
                         float delta = kDelta) {
-  return (ApproxEqual(w1.w_, w2.w_, delta) && w1.s_ == w2.s_);
+  return (ApproxEqual(w1.weight_, w2.weight_, delta) && w1.string_ == w2.string_);
 }
 
 
@@ -435,16 +456,16 @@ inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
 template<class WeightType, class IntType>
 inline int Compare (const CompactLatticeWeightTpl<WeightType,IntType> &w1,
                     const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
-  int c1 = Compare(w1.w_, w2.w_);
+  int c1 = Compare(w1.weight_, w2.weight_);
   if(c1 != 0) return c1;
-  int l1 = w1.s_.size(), l2 = w2.s_.size();
+  int l1 = w1.string_.size(), l2 = w2.string_.size();
   // Use opposite order on the string lengths, so that if the costs are the same,
   // the shorter string wins.  
   if(l1 > l2) return -1;
   else if(l1 < l2) return 1;
   for(int i = 0; i < l1; i++) {
-    if(w1.s_[i] < w2.s_[i]) return -1;
-    else if(w1.s_[i] > w2.s_[i]) return 1;
+    if(w1.string_[i] < w2.string_[i]) return -1;
+    else if(w1.string_[i] > w2.string_[i]) return 1;
   }
   return 0;
 }
@@ -473,16 +494,16 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Times(
     const CompactLatticeWeightTpl<WeightType,IntType> &w1,
     const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
   typedef WeightType T;
-  WeightType w = Times(w1.w_, w2.w_);
+  WeightType w = Times(w1.weight_, w2.weight_);
   if(w == WeightType::Zero()) {
     return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
     // special case to ensure zero is unique
   } else {
     vector<IntType> v;
-    v.resize(w1.s_.size() + w2.s_.size());
+    v.resize(w1.string_.size() + w2.string_.size());
     typename vector<IntType>::iterator iter = v.begin();
-    iter = std::copy(w1.s_.begin(), w1.s_.end(), iter); // returns end of first range.
-    std::copy(w2.s_.begin(), w2.s_.end(), iter);
+    iter = std::copy(w1.string_.begin(), w1.string_.end(), iter); // returns end of first range.
+    std::copy(w2.string_.begin(), w2.string_.end(), iter);
     return CompactLatticeWeightTpl<WeightType,IntType>(w, v);
   }
 }
@@ -491,20 +512,20 @@ template<class WeightType, class IntType>
 inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
                                                           const CompactLatticeWeightTpl<WeightType,IntType> &w2,
                                                           DivideType div) {
-  if(w1.w_ == WeightType::Zero()) {
-    if(w2.w_ != WeightType::Zero()) {
+  if(w1.weight_ == WeightType::Zero()) {
+    if(w2.weight_ != WeightType::Zero()) {
       return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
     } else {
       std::cerr << "Division by zero [0/0] in CompactLatticeWeightTpl\n";
       exit(1);
     }
-  } else if(w2.w_ == WeightType::Zero()) {
+  } else if(w2.weight_ == WeightType::Zero()) {
     std::cerr << "Error: division by zero in CompactLatticeWeightTpl::Divide()";
     exit(1);
   }
-  WeightType w = Divide(w1.w_, w2.w_);
+  WeightType w = Divide(w1.weight_, w2.weight_);
 
-  const vector<IntType> v1 = w1.s_, v2 = w2.s_;
+  const vector<IntType> v1 = w1.string_, v2 = w2.string_;
   if(v2.size() > v1.size()) {
     std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, length mismatch.\n";
     exit(1);
@@ -535,12 +556,12 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWe
 
 template <class WeightType, class IntType>
 inline ostream &operator <<(ostream &strm, CompactLatticeWeightTpl<WeightType, IntType> &w) {
-  strm << w.w_;
+  strm << w.weight_;
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   strm << FLAGS_fst_weight_separator[0]; // comma by default.
-  for(size_t i = 0; i < w.s_.size(); i++) {
-    strm << w.s_[i];
-    if(i+1 < w.s_.size())
+  for(size_t i = 0; i < w.string_.size(); i++) {
+    strm << w.string_[i];
+    if(i+1 < w.string_.size())
       strm << kStringSeparator; // '_'; defined in string-weight.h in OpenFst code.
   }
   return strm;
@@ -565,7 +586,7 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
   // get parts of str before and after the separator (default: ',');
   std::string s1(s, 0, pos), s2(s, pos+1);
   std::istringstream strm1(s1);
-  strm1 >> w.w_;
+  strm1 >> w.weight_;
   if(strm1.fail() || !strm1.eof()) {
     std::cerr << "Error reading CompactLatticeWeightTpl: error with weight part "
               << s1;
@@ -573,7 +594,7 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
     return strm;
   }
   // read string part.
-  w.s_.clear();
+  w.string_.clear();
   const char *c = s2.c_str();
   while(*c != '\0') {
     if(*c == kStringSeparator) // '_'
@@ -587,7 +608,7 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
       return strm;
     }
     c = c2;
-    w.s_.push_back(static_cast<IntType>(i));
+    w.string_.push_back(static_cast<IntType>(i));
   }
   return strm;
 }
@@ -601,13 +622,13 @@ class CompactLatticeWeightCommonDivisorTpl {
   
   Weight operator()(const Weight &w1, const Weight &w2) const {
     // First find longest common prefix of the strings.
-    typename vector<IntType>::const_iterator s1b = w1.s_.begin(),
-        s1e = w1.s_.end(), s2b = w2.s_.begin(), s2e = w2.s_.end();
+    typename vector<IntType>::const_iterator s1b = w1.string_.begin(),
+        s1e = w1.string_.end(), s2b = w2.string_.begin(), s2e = w2.string_.end();
     while(s1b < s1e && s2b < s2e && *s1b == *s2b) {
       s1b++;
       s2b++;
     }
-    return Weight(Plus(w1.w_, w2.w_), vector<IntType>(w1.s_.begin(), s1b));
+    return Weight(Plus(w1.weight_, w2.weight_), vector<IntType>(w1.string_.begin(), s1b));
   }
 };
 

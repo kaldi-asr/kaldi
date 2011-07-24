@@ -73,6 +73,8 @@ void LatticeWeightTest() {
     KALDI_ASSERT(Times(l3, LatticeWeight::One()) == l3); // x * 1 = x
     KALDI_ASSERT(Times(l3, LatticeWeight::Zero()) == LatticeWeight::Zero()); // x * 0 = 0
 
+    KALDI_ASSERT(l3.Reverse().Reverse() == l3);
+    
     KALDI_ASSERT(Compare(l1, Plus(l1, l2)) != 1); // so do not have l1 > l1 + l2
     LatticeWeight l5 = RandomLatticeWeight(), l6 = RandomLatticeWeight();
     KALDI_ASSERT(Times(Plus(l1, l2), Plus(l5, l6)) ==

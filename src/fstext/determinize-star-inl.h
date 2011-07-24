@@ -17,7 +17,6 @@
 
 #ifndef KALDI_FSTEXT_DETERMINIZE_STAR_INL_H_
 #define KALDI_FSTEXT_DETERMINIZE_STAR_INL_H_
-#include "base/kaldi-error.h"
 // Do not include this file directly.  It is included by determinize-star.h
 
 #ifdef _MSC_VER
@@ -728,12 +727,14 @@ template<class Arc> class DeterminizerStar {
     // fstdeterminizestar).  It prints out some traceback
     // info and exits.
 
-    KALDI_WARN << "Debug function called (probably SIGUSR1 caught).\n";
+    std::cerr << "Debug function called (probably SIGUSR1 caught).\n";
     // free up memory from the hash as we need a little memory
     { SubsetHash hash_tmp; std::swap(hash_tmp, hash_); }
 
-    if (output_arcs_.size() <= 2)
-      KALDI_ERR << "Nothing to trace back";
+    if (output_arcs_.size() <= 2) {
+      std::cerr << "Nothing to trace back";
+      exit(1);
+    }
     size_t max_state = output_arcs_.size() - 2;  // don't take the last
     // one as we might be halfway into constructing it.
 
@@ -768,9 +769,9 @@ template<class Arc> class DeterminizerStar {
       cur_state = last_state;
     }
     if (cur_state == kNoStateId)
-      KALDI_WARN << "Traceback did not reach start state (possibly debug-code error)";
+      std::cerr << "Traceback did not reach start state (possibly debug-code error)";
 
-    KALDI_WARN << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
+    std::cerr << "Traceback below (or on standard error) in format ilabel (olabel olabel) ilabel (olabel) ...\n";
     for (ssize_t i = traceback.size() - 1; i >= 0; i--) {
       std::cerr << traceback[i].first << ' ' << "( ";
       vector<Label> seq;
