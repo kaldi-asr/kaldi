@@ -36,6 +36,7 @@ struct RandFstOptions {
   size_t n_final;
   bool allow_empty;
   bool acyclic;
+  float weight_multiplier;
   RandFstOptions() {  // Initializes the options randomly.
     n_syms = 2 + rand() % 5;
     n_states = 3 + rand() % 10;
@@ -43,6 +44,7 @@ struct RandFstOptions {
     n_final = 1 + rand()%3;
     allow_empty = true;
     acyclic = false;
+    weight_multiplier = 0.25;
   }
 };
 
@@ -68,7 +70,7 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
   // Set final states.
   for (size_t j = 0;j < (size_t)opts.n_final;j++) {
     StateId id = all_states[rand() % opts.n_states];
-    Weight weight = (Weight)(0.33*(rand() % 5));
+    Weight weight = (Weight)(opts.weight_multiplier*(rand() % 5));
     fst->SetFinal(id, weight);
   }
   // Create arcs.
@@ -84,7 +86,7 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
     }
     a.ilabel = rand() % opts.n_syms;
     a.olabel = rand() % opts.n_syms;  // same input+output vocab.
-    a.weight = (Weight) (0.333*(rand() % 4));
+    a.weight = (Weight) (opts.weight_multiplier*(rand() % 4));
     
     fst->AddArc(start_state, a);
   }
@@ -121,7 +123,7 @@ template<class Arc> VectorFst<Arc>* RandPairFst(RandFstOptions opts = RandFstOpt
   // Set final states.
   for (size_t j = 0;j < (size_t)opts.n_final;j++) {
     StateId id = all_states[rand() % opts.n_states];
-    Weight weight (0.33*(rand() % 5), 0.33*(rand() % 5));
+    Weight weight (opts.weight_multiplier*(rand() % 5), opts.weight_multiplier*(rand() % 5));
     fst->SetFinal(id, weight);
   }
   // Create arcs.
@@ -137,7 +139,7 @@ template<class Arc> VectorFst<Arc>* RandPairFst(RandFstOptions opts = RandFstOpt
     }
     a.ilabel = rand() % opts.n_syms;
     a.olabel = rand() % opts.n_syms;  // same input+output vocab.
-    a.weight = Weight (0.333*(rand() % 4), 0.333*(rand() % 4));
+    a.weight = Weight (opts.weight_multiplier*(rand() % 4), opts.weight_multiplier*(rand() % 4));
     
     fst->AddArc(start_state, a);
   }

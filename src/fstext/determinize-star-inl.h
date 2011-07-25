@@ -157,6 +157,8 @@ template<class Arc> class DeterminizerStar {
   // between our states and the states in ofst.  If destroy == true, release memory as we go
   // (but we cannot output again).
   void Output(MutableFst<GallicArc<Arc> >  *ofst, bool destroy = true) {
+    assert(determinized_);
+    if(destroy) determinized_ = false;
     typedef GallicWeight<Label, Weight> ThisGallicWeight;
     typedef typename Arc::StateId StateId;
     if(destroy)
@@ -207,6 +209,8 @@ template<class Arc> class DeterminizerStar {
   // (but we cannot output again).
 
   void  Output(MutableFst<Arc> *ofst, bool destroy = true) {
+    assert(determinized_);
+    if(destroy) determinized_ = false;
     // Outputs to standard fst.
     OutputStateId nStates = static_cast<OutputStateId>(output_arcs_.size());
     if(destroy)
@@ -283,13 +287,43 @@ template<class Arc> class DeterminizerStar {
 
   // Initializer.  After initializing the object you will typically call one of
   // the Output functions.
-  DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta, bool *debug_ptr = NULL):
-      ifst_(ifst.Copy()), delta_(delta),
-      equal_(delta),
-      hash_(ifst.Properties(kExpanded, false) ? down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20, hasher_, equal_) {
-    Determinize(debug_ptr);
+  DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta, int max_states = -1):
+      ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
+      determinized_(false), equal_(delta),
+      hash_(ifst.Properties(kExpanded, false) ? down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20, hasher_, equal_) { }
+
+  void Determinize(bool *debug_ptr) {
+    assert(!determinized_);
+    // This determinizes the input fst but leaves it in the "special format"
+    // in "output_arcs_".
+    InputStateId start_id = ifst_->Start();
+    if (start_id == kNoStateId) { determinized_ = true; return; } // Nothing to do.
+    else {  // Insert start state into hash and queue.
+      Element elem;
+      elem.state = start_id;
+      elem.weight = Weight::One();
+      elem.string = repository_.IdOfEmpty();  // Id of empty sequence.
+      vector<Element> vec;
+      vec.push_back(elem);
+      OutputStateId cur_id = SubsetToStateId(vec);
+      assert(cur_id == 0 && "Do not call Determinize twice.");
+    }
+    while (!Q_.empty()) {
+      pair<vector<Element>*, OutputStateId> cur_pair = Q_.back();
+      Q_.pop_back();
+      ProcessSubset(cur_pair);
+      if (debug_ptr && *debug_ptr) Debug();  // will exit.
+      if(max_states_ > 0 && output_arcs_.size() > max_states_) {
+        std::cerr << "Determinization aborted since passed " << max_states_
+                  << " states.\n";
+        throw std::runtime_error("max-states reached in determinization");
+      }
+    }
+    determinized_ = true;
   }
 
+
+  
   // frees all except output_arcs_, which contains the important info
   // we need to output.
   void FreeMostMemory() {
@@ -428,9 +462,10 @@ template<class Arc> class DeterminizerStar {
     }
     // find whether input fst is known to be sorted in input label.
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-
+    
     vector<Element> queue(input_subset);  // queue of things to be processed.
     bool replaced_elems = false; // relates to an optimization, see below.
+    int counter = 0; // relates to max-states option, used for test.
     while (queue.size() != 0) {
       Element elem = queue.back();
       queue.pop_back();
@@ -443,7 +478,11 @@ template<class Arc> class DeterminizerStar {
       // processing the old Element.
       if(replaced_elems && cur_subset[elem.state] != elem)
         continue;
-      
+      if(max_states_ > 0 && counter++ > max_states_) {
+        std::cerr << "Determinization aborted since looped more than "
+                  << max_states_ << " times during epsilon closure.\n";
+        throw std::runtime_error("looped more than max-states times in determinization");
+      }      
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (sorted && arc.ilabel != 0) break;  // Break from the loop: due to sorting there will be no
@@ -469,8 +508,10 @@ template<class Arc> class DeterminizerStar {
             cur_subset[next_elem.state] = next_elem;
             queue.push_back(next_elem);
           } else {  // one is already there.  Add weights.
-            assert(iter->second.string == next_elem.string &&
-                   "DeterminizerStar: FST was not functional -> not determinizable");
+            if (iter->second.string != next_elem.string) {
+              std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+              throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+            }
             Weight weight = Plus(iter->second.weight, next_elem.weight);
             if (! ApproxEqual(weight, iter->second.weight, delta_)) {  // add extra part of weight to queue.
               queue.push_back(next_elem);
@@ -511,7 +552,10 @@ template<class Arc> class DeterminizerStar {
           final_weight = Times(elem.weight, this_final_weight);
           is_final = true;
         } else {  // already have one.
-          assert(final_string == elem.string && "Error: DeterminizerStar: Fst is not functional");
+          if (final_string != elem.string) {
+            std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+            throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+          }            
           final_weight = Plus(final_weight, Times(elem.weight, this_final_weight));
         }
       }
@@ -547,7 +591,10 @@ template<class Arc> class DeterminizerStar {
         if (cur_in != cur_out) *cur_out = *cur_in;
         cur_in++;
         while (cur_in != end && cur_in->state == cur_out->state) {  // merge elements.
-          assert(cur_in->string == cur_out->string && "DeterminizerStar: FST is not functional\n");
+          if (cur_in->string != cur_out->string) {
+            std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+            throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+          }            
           cur_out->weight = Plus(cur_out->weight, cur_in->weight);
           cur_in++;
         }
@@ -785,30 +832,6 @@ template<class Arc> class DeterminizerStar {
   }
 
 
-  void Determinize(bool *debug_ptr) {
-    // This determinizes the input fst but leaves it in the "special format"
-    // in "output_arcs_".
-    InputStateId start_id = ifst_->Start();
-    if (start_id == kNoStateId) return;  // Nothing to do.
-    else {  // Insert start state into hash and queue.
-      Element elem;
-      elem.state = start_id;
-      elem.weight = Weight::One();
-      elem.string = repository_.IdOfEmpty();  // Id of empty sequence.
-      vector<Element> vec;
-      vec.push_back(elem);
-      OutputStateId cur_id = SubsetToStateId(vec);
-      assert(cur_id == 0 && "Do not call Determinize twice.");
-    }
-    while (!Q_.empty()) {
-      pair<vector<Element>*, OutputStateId> cur_pair = Q_.back();
-      Q_.pop_back();
-      ProcessSubset(cur_pair);
-      if (debug_ptr && *debug_ptr) Debug();  // will exit.
-    }
-  }
-
-
   DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   vector<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
@@ -816,6 +839,8 @@ template<class Arc> class DeterminizerStar {
 
   const Fst<Arc> *ifst_;
   float delta_;
+  int max_states_;
+  bool determinized_; // used to check usage.
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
@@ -825,19 +850,23 @@ template<class Arc> class DeterminizerStar {
 
 
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst, float delta, bool *debug_ptr) {
+void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+                     float delta, bool *debug_ptr, int max_states) {
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, debug_ptr);
+  DeterminizerStar<Arc> det(ifst, delta, max_states);
+  det.Determinize(debug_ptr);
   det.Output(ofst);
 }
 
 
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta, bool *debug_ptr) {
+void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta,
+                     bool *debug_ptr, int max_states) {
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, debug_ptr);
+  DeterminizerStar<Arc> det(ifst, delta, max_states);
+  det.Determinize(debug_ptr);
   det.Output(ofst);
 }
 

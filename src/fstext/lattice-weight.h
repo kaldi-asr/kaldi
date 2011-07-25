@@ -47,6 +47,14 @@ class LatticeWeightTpl {
  public:
   typedef FloatType T; // normally float.
   typedef LatticeWeightTpl ReverseWeight;
+
+  inline T Value1() const { return a_; }
+
+  inline T Value2() const { return b_; }
+
+  inline void SetValue1(T f) { a_ = f; }
+
+  inline void SetValue2(T f) { b_ = f; }
   
   LatticeWeightTpl() { }
 
@@ -285,7 +293,7 @@ inline int Compare (const LatticeWeightTpl<FloatType> &w1,
 template<class FloatType>
 inline LatticeWeightTpl<FloatType> Plus(const LatticeWeightTpl<FloatType> &w1,
                              const LatticeWeightTpl<FloatType> &w2) {
-  return (Compare(w1,w2) >= 0 ? w1 : w2); //
+  return (Compare(w1, w2) >= 0 ? w1 : w2);
 }
 
 
@@ -456,7 +464,17 @@ class CompactLatticeWeightTpl {
     for(int32 i = 0; i < sz; i++)
       WriteType(strm, string_[i]);
     return strm;
-  }        
+  }
+  size_t Hash() const {
+    size_t ans = weight_.Hash();
+    // any weird numbers here are largish primes
+    size_t sz = string_.size(), mult = 6967;
+    for(size_t i = 0; i < sz; i++) {
+      ans += string_[i] * mult;
+      mult *= 7499;
+    }
+    return ans;
+  }
 };
 
 template<class WeightType, class IntType>
@@ -566,7 +584,7 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWe
 
   const vector<IntType> v1 = w1.string_, v2 = w2.string_;
   if(v2.size() > v1.size()) {
-    std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, length mismatch.\n";
+    std::cerr << "Error in Divide (CompactLatticeWeightTpl): cannot divide, length mismatch.\n";
     exit(1);
   }
   typename vector<IntType>::const_iterator v1b = v1.begin(),

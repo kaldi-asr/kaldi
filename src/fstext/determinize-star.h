@@ -23,7 +23,7 @@
 #include <map>
 #include <set>
 #include <vector>
-
+#include <stdexcept> // this algorithm uses exceptions
 
 namespace fst {
 
@@ -79,19 +79,28 @@ namespace fst {
     first one has an epsilon on the input side.  The debug_ptr argument is an
     optional pointer to a bool that, if it becomes true while the algorithm is
     executing, the algorithm will print a traceback and terminate (used in
-    fstdeterminizestar.cc debug non-terminating determinization). */
+    fstdeterminizestar.cc debug non-terminating determinization).
+    If max_states is positive, it will stop determinization and throw an
+    exception as soon as the max-states is reached.  This can be useful in test.
+*/
 template<class Arc>
 void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
-                     float delta = kDelta, bool *debug_ptr = NULL);
+                     float delta = kDelta,
+                     bool *debug_ptr = NULL,
+                     int max_states = -1);
 
 
 
 /*  This is a version of DeterminizeStar with a slightly more "natural" output format,
     where the output sequences are encoded using the GallicArc (i.e. the output symbols
-    are strings. */
+    are strings.
+    If max_states is positive, it will stop determinization and throw an
+    exception as soon as the max-states is reached.  This can be useful in test.
+*/
 template<class Arc>
 void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst,
-                     float delta = kDelta, bool *debug_ptr = NULL);
+                     float delta = kDelta, bool *debug_ptr = NULL,
+                     int max_states = -1);
 
 
 /// @} end "addtogroup fst_extensions"

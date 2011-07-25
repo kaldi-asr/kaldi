@@ -313,6 +313,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
 
+    if (word_syms) delete word_syms;
     delete decode_fst;
     if (num_success != 0)
       return 0;

@@ -41,14 +41,14 @@ static const EventKeyType kPdfClass = -1;  // The "name" to which we assign the
 
 /* ContextDependency is quite a generic decision tree.
 
-   It does not actually do very much-- all the magic is in the VectorEventMap object.
+   It does not actually do very much-- all the magic is in the EventMap object.
    All this class does is to encode the phone context as a sequence of events, and
-   pass this to the VectorEventMap object to turn into what it will interpret as a
+   pass this to the EventMap object to turn into what it will interpret as a
    vector of pdfs.
 
    Different versions of the ContextDependency class that are written in the future may
    have slightly different interfaces and pass more stuff in as events, to the
-   VectorEventMap object.
+   EventMap object.
 
    In order to separate the process of training decision trees from the process
    of actually using them, we do not put any training code into the ContextDependency class.
@@ -147,9 +147,9 @@ MonophoneContextDependencyShared(const std::vector<std::vector<int32> > phone_cl
 
 // Important note:
 // Statistics for training decision trees will be of type:
-// std::vector<std::pair<EventMapVector, Clusterable*> >
+// std::vector<std::pair<EventType, Clusterable*> >
 // We don't make this a typedef as it doesn't add clarity.
-// they will be sorted and unique on the EventMapVector type, which
+// they will be sorted and unique on the EventType member, which
 // itself is sorted and unique on the name (see event-map.h).
 
 // See build-tree.h for functions relating to actually building the decision trees.

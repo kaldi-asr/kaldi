@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include "fstext/determinize-lattice.h"
+#include "fstext/lattice-utils.h"
 #include "fstext/fst-test-utils.h"
 
 namespace fst {
@@ -68,22 +69,60 @@ void TestLatticeStringRepository() {
 // FSTs (not guaranteed determinzable, but we use the
 // max-states option to stop it getting out of control).
 template<class Arc> void TestDeterminizeLattice() {
+  typedef typename Arc::Weight Weight;
+  typedef int32 Int;
+  typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
+  
   int max_states = 100; // don't allow more det-states than this.
   for(int i = 0; i < 100; i++) {
+    RandFstOptions opts;
+    opts.n_states = 4;
+    opts.n_arcs = 10;
+    opts.n_final = 2;
+    opts.allow_empty = false;
+    opts.weight_multiplier = 0.5; // impt for the randomly generated weights
+    // to be exactly representable in float,
+    // or this test fails because numerical differences can cause symmetry in 
+    // weights to be broken, which causes the wrong path to be chosen as far
+    // as the string part is concerned.
+    
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
     }
-    VectorFst<Arc> ofst;
+    VectorFst<Arc> det_fst;
     try {
-      DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst, kDelta, NULL, max_states);
+      DeterminizeLattice<TropicalWeight, int32>(*fst, &det_fst, kDelta, NULL, max_states);
       std::cout << "FST after lattice-determinizing is:\n";
       {
-        FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
+        FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
         fstprinter.Print(&std::cout, "standard output");
       }
+      assert(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
+      // OK, now determinize it a different way and check equivalence.
+      // [note: it's not normal determinization, it's taking the best path
+      // for any input-symbol sequence....
+      VectorFst<CompactArc> compact_fst, compact_det_fst;
+      ConvertLatticeToCompact<Weight, Int>(*fst, &compact_fst, false);
+      std::cout << "Compact FST is:\n";
+      {
+        FstPrinter<CompactArc> fstprinter(compact_fst, NULL, NULL, NULL, false, true);
+        fstprinter.Print(&std::cout, "standard output");
+      }
+      if(rand() % 2 == 1)
+        ConvertLatticeToCompact<Weight, Int>(det_fst, &compact_det_fst, false);
+      else 
+        DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, kDelta, NULL, max_states);
+      
+      std::cout << "Compact version of determinized FST is:\n";
+      {
+        FstPrinter<CompactArc> fstprinter(compact_det_fst, NULL, NULL, NULL, false, true);
+        fstprinter.Print(&std::cout, "standard output");
+      }
+      
+      assert(RandEquivalent(compact_det_fst, compact_fst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length, max*/));
     } catch (...) {
       std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
     }
@@ -119,10 +158,8 @@ template<class Arc> void TestDeterminizeLattice2() {
 
 int main() {
   using namespace fst;
-  //for (int i = 0;i < 5;i++) {  // We would need more iterations to check
   TestLatticeStringRepository();
   TestDeterminizeLattice<StdArc>();
-    TestDeterminizeLattice2<StdArc>();
-    //}
+  TestDeterminizeLattice2<StdArc>();
   std::cout << "Tests succeeded\n";
 }

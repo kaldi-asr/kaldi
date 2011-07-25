@@ -274,7 +274,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           // Make a sequence of states going to a final state, with the strings
           // as labels.  Put the weight on the first arc.
           OutputStateId cur_state = this_state;
-          for (size_t i = 0;i < seq.size();i++) {
+          for (size_t i = 0; i < seq.size(); i++) {
             OutputStateId next_state = ofst->AddState();
             Arc arc;
             arc.nextstate = next_state;
@@ -357,7 +357,6 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   }
   
   ~LatticeDeterminizer() {
-    std::cout << "In destructor\n"; // TEMP
     FreeMostMemory(); // rest is deleted by destructors.
   }
   void Determinize(bool *debug_ptr) {
@@ -713,7 +712,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     typename vector<Element>::const_iterator iter = minimal_subset.begin(), end = minimal_subset.end();
     for (; iter != end; ++iter) {
       const Element &elem = *iter;
-      Weight this_final_weight = ifst_->Final(elem.state);
+      Weight this_final_weight = Times(elem.weight, ifst_->Final(elem.state));
       StringId this_final_string = elem.string;
       if(this_final_weight != Weight::Zero() &&
          (!is_final || Compare(this_final_weight, this_final_string,

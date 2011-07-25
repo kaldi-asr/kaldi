@@ -194,7 +194,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
 
       ArcIterator<Fst<Arc> > iter(fst, cur_state);  // get the only arc.
       const Arc &arc = iter.Value();
-      tot_weight = Times(arc.weight.Value(), tot_weight);
+      tot_weight = Times(arc.weight, tot_weight);
       if (arc.ilabel != 0) ilabel_seq.push_back(arc.ilabel);
       if (arc.olabel != 0) olabel_seq.push_back(arc.olabel);
       cur_state = arc.nextstate;
@@ -286,7 +286,7 @@ void SafeDeterminizeMinimizeWrapper(MutableFst<Arc> *ifst, VectorFst<Arc> *ofst,
 
 
 inline
-void DeterminizeStarInLog(VectorFst<StdArc> *fst, float delta, bool *debug_ptr) {
+void DeterminizeStarInLog(VectorFst<StdArc> *fst, float delta, bool *debug_ptr, int max_states) {
   // DeterminizeStarInLog determinizes 'fst' in the log semiring, using
   // the DeterminizeStar algorithm (which also removes epsilons).
 
@@ -296,7 +296,7 @@ void DeterminizeStarInLog(VectorFst<StdArc> *fst, float delta, bool *debug_ptr) 
   VectorFst<StdArc> tmp;
   *fst = tmp;  // make fst empty to free up memory. [actually may make no difference..]
   VectorFst<LogArc> *fst_det_log = new VectorFst<LogArc>;
-  DeterminizeStar(*fst_log, fst_det_log, delta, debug_ptr);
+  DeterminizeStar(*fst_log, fst_det_log, delta, debug_ptr, max_states);
   Cast(*fst_det_log, fst);
   delete fst_log;
   delete fst_det_log;

@@ -29,4 +29,6 @@
 #include "table-matcher.h"
 #include "trivial-factor-weight.h"
 #include "lattice-weight.h"
+#include "lattice-utils.h"
+#include "determinize-lattice.h"
 #endif

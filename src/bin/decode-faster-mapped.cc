@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count << " frames.";
 
+    if (word_syms) delete word_syms;
     delete decode_fst;
     if (num_success != 0) return 0;
     else return 1;

@@ -135,19 +135,21 @@ int main(int argc, char *argv[])
 
       KALDI_LOG << "Length of file is " << features.NumRows();
 
-      VectorFst<StdArc> decoded;  // linear FST.
-      bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
-                                            &decoded);
+      VectorFst<LatticeArc> lattice;
 
-      if (saw_endstate || decoder.GetOutput(false,
-                                           &decoded)) {
-        num_success++;
-        if (!saw_endstate) {
-          KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
-        }
+      if (!decoder.ReachedFinal()) {
+        KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
+      }
+
+      VectorFst<LatticeArc> decoded;
+      if (!decoder.GetTraceback(&decoded)) {
+        num_fail++;
+        KALDI_WARN << "Did not successfully decode utterance " << key
+                   << ", len = " << features.NumRows();
+      } else {
         std::vector<int32> alignment;
         std::vector<int32> words;
-        StdArc::Weight weight;
+        LatticeWeight weight;
         frame_count += features.NumRows();
 
         GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
@@ -167,17 +169,14 @@ int main(int argc, char *argv[])
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -(weight.Value1() + weight.Value2());
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows());
-
-      } else {
-        num_fail++;
-        KALDI_WARN << "Did not successfully decode utterance " << key
-                   << ", len = " << features.NumRows();
+        
       }
     }
+      
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
@@ -188,6 +187,7 @@ int main(int argc, char *argv[])
               << frame_count<<" frames.";
 
     delete decode_fst;
+    if (word_syms) delete word_syms;
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

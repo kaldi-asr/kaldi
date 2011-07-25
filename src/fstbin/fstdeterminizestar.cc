@@ -71,10 +71,12 @@ int main(int argc, char *argv[])
         "Usage:  fstdeterminizestar [in.fst [out.fst] ]\n";
 
     float delta = kDelta;
+    int max_states = -1;
     bool use_log = false;
     ParseOptions po(usage);
     po.Register("use-log", &use_log, "Determinize in log semiring.");
     po.Register("delta", &delta, "Delta value used to determine equivalence of weights.");
+    po.Register("max-states", &max_states, "Maximum number of states in determinized FST before it will abort.");
     po.Read(argc, argv);
 
     if (po.NumArgs() > 2) {
@@ -102,13 +104,13 @@ int main(int argc, char *argv[])
                 << fst_in_filename << '\n';
       return 1;
     }
-    
+
+    ArcSort(fst, ILabelCompare<StdArc>());  // helps DeterminizeStar to be faster.      
     if (use_log) {
-      DeterminizeStarInLog(fst, delta, &debug_location);
+      DeterminizeStarInLog(fst, delta, &debug_location, max_states);
     } else {
-      ArcSort(fst, ILabelCompare<StdArc>());  // helps DeterminizeStar to be faster.
       VectorFst<StdArc> det_fst;
-      DeterminizeStar(*fst, &det_fst, delta, &debug_location);
+      DeterminizeStar(*fst, &det_fst, delta, &debug_location, max_states);
       *fst = det_fst;  // will do shallow copy and then det_fst goes out of scope anyway.
     }
     if (! fst->Write(fst_out_filename) ) {
