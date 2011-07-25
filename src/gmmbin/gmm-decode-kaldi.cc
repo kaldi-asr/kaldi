@@ -22,7 +22,8 @@
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/kaldi-decoder.h"
+#include "decoder/kaldi-decoder-left.h"
+// you can either use left or right: without or with reorder option
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 

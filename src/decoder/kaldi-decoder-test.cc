@@ -19,7 +19,7 @@
 #include "matrix/matrix-lib.h"
 #include "gmm/am-diag-gmm.h"
 #include "./decodable-am-diag-gmm.h"
-#include "decoder/kaldi-decoder.h"
+#include "decoder/kaldi-decoder-left.h"
 #include "itf/decodable-itf.h"
 
 typedef fst::ConstFst<fst::StdArc> FstType;

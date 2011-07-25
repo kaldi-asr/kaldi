@@ -69,6 +69,8 @@ struct NBestDecoderOptions {
 
 class NBestDecoder {
  public:
+  // better use Fst<LatticeArc> or fst<CompactLatticeArc>, as declared in lat/kaldi-lattice.h
+  // the lattice should store information sufficient to get the graph scores and acoustic scores separately
   typedef fst::StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
@@ -664,6 +666,8 @@ class NBestDecoder {
               DEBUG_OUT2("insert/queue to: " << arc.nextstate)
               toks_.Insert(arc.nextstate, new_tok);
               queue_.push_back(arc.nextstate);
+              // !!we might push back a state several times!!
+              // make the queue an unordered_set and do queue_.insert
             } else {
               DEBUG_OUT2("combine: " << arc.nextstate)
               token_store_.CombineN(e_found, new_tok);

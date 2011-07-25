@@ -50,6 +50,7 @@ class DecodableInterface {
 
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() = 0;
+  
   virtual ~DecodableInterface() {}
 };
 /// @}

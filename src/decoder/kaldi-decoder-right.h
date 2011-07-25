@@ -652,6 +652,6 @@ class KaldiDecoder {
 
 };  // namespace kaldi
 
-#include "decoder/kaldi-decoder-inl.h"
+#include "decoder/kaldi-decoder-right-inl.h"
 
 #endif
