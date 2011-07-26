@@ -49,24 +49,28 @@ int main(int argc, char *argv[])
     using fst::StdArc;
 
     const char *usage =
-        "Decode features using GMM-based model.\n"
-        "Usage:   faster-decode-gmm [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Generate lattices using GMM-based model.\n"
+        "Usage: gmm-latgen-simple [options] model-in fst-in features-rspecifier lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
     ParseOptions po(usage);
     Timer timer;
     bool time_reversed = false;
+    bool determinize = true;
+    bool write_partial_lattices = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeSimpleDecoderConfig config;
     
     std::string word_syms_filename;
     config.Register(&po);
-    po.Register("time-reversed", &time_reversed, "If true, decode backwards in time [requires reversed graph.]\n");
+    po.Register("time-reversed", &time_reversed, "If true, decode backwards in time [requires reversed graph.]");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
+    po.Register("determinize", &determinize, "If true, do lattice determinization and output as CompactLattice");
+    po.Register("write-partial-lattices", &write_partial_lattices, "If true, write lattice even if end state was not reached.");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
     }
@@ -74,9 +78,10 @@ int main(int argc, char *argv[])
     std::string model_in_filename = po.GetArg(1),
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
-        words_wspecifier = po.GetArg(4),
-        alignment_wspecifier = po.GetOptArg(5);
-
+        lattice_wspecifier = po.GetArg(4),
+        words_wspecifier = po.GetArg(5),
+        alignment_wspecifier = po.GetOptArg(6);
+    
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
@@ -97,12 +102,23 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    Int32VectorWriter words_writer(words_wspecifier);
+    CompactLatticeWriter compact_lattice_writer;
+    LatticeWriter lattice_writer;
+    if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
+           : lattice_writer.Open(lattice_wspecifier)))
+      KALDI_EXIT << "Could not open table for writing lattices: "
+                 << lattice_wspecifier;
+
+    Int32VectorWriter words_writer;
+    if (words_wspecifier != "") 
+      if (!words_writer.Open(words_wspecifier))
+        KALDI_EXIT << "Failed to open words output.";
 
     Int32VectorWriter alignment_writer;
     if (alignment_wspecifier != "")
       if (!alignment_writer.Open(alignment_wspecifier))
-        KALDI_ERR << "Failed to open alignments output.";
+        KALDI_EXIT << "Failed to open alignments output.";
+
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") {
@@ -131,49 +147,86 @@ int main(int argc, char *argv[])
 
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
-      decoder.Decode(&gmm_decodable);
 
-      KALDI_LOG << "Length of file is " << features.NumRows();
+      KALDI_LOG << "Length of file is " << features.NumRows();      
 
-      VectorFst<LatticeArc> lattice;
+      if (!decoder.Decode(&gmm_decodable)) {
+        KALDI_WARN << "Failed to decode file " << key;
+        num_fail++;
+        continue;
+      }
+      
+      { // First do some stuff with word-level traceback...
+        if (!decoder.ReachedFinal()) {
+          KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback or word-sequence.";
+        }
+        VectorFst<LatticeArc> decoded;
+        if (!decoder.GetTraceback(&decoded)) {
+          num_fail++;
+          KALDI_WARN << "Did not successfully decode utterance " << key
+                     << ", len = " << features.NumRows();
+        } else {
+          std::vector<int32> alignment;
+          std::vector<int32> words;
+          LatticeWeight weight;
+          frame_count += features.NumRows();
+          
+          GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+          
+          if (time_reversed) { ReverseVector(&alignment);  ReverseVector(&words); } 
 
-      if (!decoder.ReachedFinal()) {
-        KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
+          if (words_writer.IsOpen())
+            words_writer.Write(key, words);
+          if (alignment_writer.IsOpen())
+            alignment_writer.Write(key, alignment);
+          if (word_syms != NULL) {
+            std::cerr << key << ' ';
+            for (size_t i = 0; i < words.size(); i++) {
+              std::string s = word_syms->Find(words[i]);
+              if (s == "")
+                KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+              std::cerr << s << ' ';
+            }
+            std::cerr << '\n';
+          }
+          BaseFloat like = -(weight.Value1() + weight.Value2());
+          tot_like += like;
+          KALDI_LOG << "Log-like per frame for utterance " << key << " is "
+                    << (like / features.NumRows());
+        }
       }
 
-      VectorFst<LatticeArc> decoded;
-      if (!decoder.GetTraceback(&decoded)) {
-        num_fail++;
-        KALDI_WARN << "Did not successfully decode utterance " << key
-                   << ", len = " << features.NumRows();
-      } else {
-        std::vector<int32> alignment;
-        std::vector<int32> words;
-        LatticeWeight weight;
-        frame_count += features.NumRows();
-
-        GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-
-        if (time_reversed) { ReverseVector(&alignment);  ReverseVector(&words); } 
-
-        words_writer.Write(key, words);
-        if (alignment_writer.IsOpen())
-          alignment_writer.Write(key, alignment);
-        if (word_syms != NULL) {
-          std::cerr << key << ' ';
-          for (size_t i = 0; i < words.size(); i++) {
-            std::string s = word_syms->Find(words[i]);
-            if (s == "")
-              KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
-            std::cerr << s << ' ';
-          }
-          std::cerr << '\n';
+      // Now write the lattice.
+      if (!decoder.ReachedFinal()) {
+        if (!write_partial_lattices) {
+          KALDI_WARN << "Not outputting lattice for utterance " << key
+                     << " since no final-state reached and "
+                     << "--write-partial-lattices=false.\n";
+          num_fail++;
+          continue;
+        } else {
+          KALDI_WARN << "Outputting partial lattice for utterance " << key
+                     << " since no final-state reached\n";
         }
-        BaseFloat like = -(weight.Value1() + weight.Value2());
-        tot_like += like;
-        KALDI_LOG << "Log-like per frame for utterance " << key << " is "
-                  << (like / features.NumRows());
-        
+      }
+      if (determinize) {
+        CompactLattice fst;
+        if (!decoder.GetLattice(&fst)) {
+          KALDI_WARN << "Unexpected problem getting lattice for utterance "
+                     << key;
+          num_fail++;
+          continue;
+        }
+        compact_lattice_writer.Write(key, fst);
+      } else {
+        Lattice fst;
+        if (!decoder.GetRawLattice(&fst)) {
+          KALDI_WARN << "Unexpected problem getting lattice for utterance "
+                     << key;
+          num_fail++;          
+          continue;
+        }
+        lattice_writer.Write(key, fst);
       }
     }
       

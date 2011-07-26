@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:   faster-decode-gmm [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Usage:   gmm-decode-simple [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     Timer timer;
     bool time_reversed = false;

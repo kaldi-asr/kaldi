@@ -31,8 +31,7 @@ int main(int argc, char *argv[])
     const char *usage =
         "Compute WER by comparing different transcriptions\n"
         "Takes two transcription files, in kaldi integer format\n"
-        "Usage:\n"
-        "  compute-wer [options] <ref-rspecifier> <hyp-rspecifier>\n";
+        "Usage: compute-wer [options] <ref-rspecifier> <hyp-rspecifier>\n";
     ParseOptions po(usage);
 
     std::string mode = "strict";

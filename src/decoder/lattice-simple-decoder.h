@@ -75,7 +75,7 @@ class LatticeSimpleDecoder {
     ClearActiveTokens();
   }
 
-  void Decode(DecodableInterface *decodable) {
+  bool Decode(DecodableInterface *decodable) {
     // clean up from last time:
     cur_toks_.clear();
     prev_toks_.clear();
@@ -115,11 +115,15 @@ class LatticeSimpleDecoder {
       else if (frame % config_.prune_interval == 0)
         PruneActiveTokens(frame, config_.lattice_beam * 0.1); // use larger delta.        
     }
+    // Returns true if we have any kind of traceback available (not necessarily
+    // to the end state; query ReachedFinal() for that).
+    return !final_costs_.empty();
   }
 
-  // says whether a final-state was active on the last frame.  If it was not, the
-  // lattice (or traceback) will end with states that are not final-states.
+  /// says whether a final-state was active on the last frame.  If it was not, the
+  /// lattice (or traceback) will end with states that are not final-states.
   bool ReachedFinal() { return final_active_; }
+
 
   // Outputs an FST corresponding to the single best path
   // through the lattice.
@@ -189,21 +193,17 @@ class LatticeSimpleDecoder {
     return (cur_state != 0);
   }
 
-  // Outputs an FST corresponding to the raw, state-level
-  // tracebacks.
+  // Outputs an FST corresponding to the lattice-determinized
+  // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
     fst::VectorFst<LatticeArc> raw_fst;
     if(!GetRawLattice(&raw_fst)) return false;
+    Invert(&raw_fst); // make it so word labels are on the input.
     DeterminizeLattice(raw_fst, ofst);
     return true;
   }
   
   
-  // Produces a lattice, in the regular
-  bool GetOutput(fst::MutableFst<fst::StdArc> *fst_out) {
-    KALDI_LOG << "GetOutput not implemented yet\n";
-    return false;
-  }
   /*
   bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {  
     // GetOutput gets the decoding output.  If is_final == true, it limits itself to final states;

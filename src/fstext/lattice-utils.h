@@ -44,7 +44,7 @@ template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
-    bool invert = false);
+    bool invert = true);
 
 /**
    Convert lattice from a CompactLattice FST to a normal FST.  This is a bit like
@@ -58,7 +58,7 @@ template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
     MutableFst<ArcTpl<Weight> > *ofst,
-    bool invert = false);
+    bool invert = true);
 
 
 /**

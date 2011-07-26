@@ -609,9 +609,9 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // at input, subset must have only one example of each StateId.  [will still
     // be so at output].  This function follows input-epsilons, and augments the
     // subset accordingly.
-
-    std::map<InputStateId, Element> cur_subset;
-    typedef typename std::map<InputStateId, Element>::iterator MapIter;    
+    
+    unordered_map<InputStateId, Element> cur_subset;
+    typedef typename unordered_map<InputStateId, Element>::iterator MapIter;    
 
     {
       MapIter iter = cur_subset.end();
@@ -625,13 +625,16 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // find whether input fst is known to be sorted on input label. 
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
-    std::vector<Element> queue(*subset);
+    std::deque<Element> queue;
+    for (typename vector<Element>::const_iterator iter = subset->begin();
+         iter != subset->end();
+         ++iter) queue.push_back(*iter);
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // stops infinite loops here for non-lattice-determinizable input;
     // useful in testing.
     while (queue.size() != 0) {
-      Element elem = queue.back();
-      queue.pop_back();
+      Element elem = queue.front();
+      queue.pop_front();
 
       // The next if-statement is a kind of optimization.  It's to prevent us
       // unnecessarily repeating the processing of a state.  "cur_subset" always
@@ -662,7 +665,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           else
             next_elem.string = repository_.Successor(elem.string, arc.olabel);
           
-          typename std::map<InputStateId, Element>::iterator
+          typename unordered_map<InputStateId, Element>::iterator
               iter = cur_subset.find(next_elem.state);
           if(iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.

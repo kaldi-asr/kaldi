@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
     const char *usage =
         "Decode, reading log-likelihoods as matrices\n"
         " (model is needed only for the integer mappings in its transition-model)\n"
-        "Usage:   decode-faster [options] model-in fst-in loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Usage:   decode-faster-mapped [options] model-in fst-in "
+        "loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool binary = false;
     BaseFloat acoustic_scale = 0.1;

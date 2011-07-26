@@ -32,9 +32,9 @@ int main(int argc, char *argv[])
     const char *usage =
         "Accumulate stats for GMM training, computing posteriors with one set of features\n"
         "but accumulating statistics with another.\n"
-        "Usage:  gmm-acc-stats [options] <model-in> <feature1-rspecifier> <feature2-rspecifier> <posteriors-rspecifier> <stats-out>\n"
+        "Usage:  gmm-acc-stats-twofeats [options] <model-in> <feature1-rspecifier> <feature2-rspecifier> <posteriors-rspecifier> <stats-out>\n"
         "e.g.: \n"
-        " gmm-acc-stats 1.mdl 1.ali scp:train.scp scp:train_new.scp ark:1.ali 1.acc\n";
+        " gmm-acc-stats-twofeats 1.mdl 1.ali scp:train.scp scp:train_new.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
     bool binary = false;

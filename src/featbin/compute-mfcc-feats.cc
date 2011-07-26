@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     using namespace kaldi;
     const char *usage =
         "Create MFCC feature files.\n"
-        " Usage:  compute-mfcc-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
+        "Usage:  compute-mfcc-feats [options...] <wav-rspecifier> <feats-wspecifier>\n";
 
     // construct all the global objects
     ParseOptions po(usage);

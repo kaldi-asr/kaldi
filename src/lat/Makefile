@@ -9,7 +9,6 @@ TESTFILES = kaldi-lattice-test
 
 OBJFILES = kaldi-lattice.o
 
-
 LIBFILE = kaldi-lat.a
 
 all:  $(LIBFILE) $(TESTFILES)

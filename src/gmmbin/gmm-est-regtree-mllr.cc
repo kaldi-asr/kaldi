@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Compute MLLR transforms per-utterance (default) or per-speaker for "
         "the supplied set of speakers (spk2utt option).  Note: writes RegtreeMllrDiagGmm objects\n"
-        "Usage: gmm-estimate-regtree-mllr  [options] <model-in> <feature-rspecifier> "
+        "Usage: gmm-est-regtree-mllr  [options] <model-in> <feature-rspecifier> "
         "<posteriors-rspecifier> <regression-tree> <transforms-wspecifier>\n";
 
     ParseOptions po(usage);

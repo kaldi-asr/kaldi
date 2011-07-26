@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     using namespace kaldi;
     const char *usage =
         "Create MFCC feature files.\n"
-        " Usage:  extract-segments [options...] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
+        "Usage:  extract-segments [options...] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
         " (segments-file has lines like: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
         " or: spkabc_seg1 spkabc_recording1 1.10 2.36\n"
         " [if channel not provided as last element, expects mono.] ";

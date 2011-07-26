@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
   try {
     const char *usage =
         "Accumulate LDA statistics based on pdf-ids.\n"
-        "Usage:  lda-acc [options] <transition-gmm/model> <features-rspecifier> <posteriors-rspecifier> <lda-acc-out>\n"
+        "Usage:  acc-lda [options] <transition-gmm/model> <features-rspecifier> <posteriors-rspecifier> <lda-acc-out>\n"
         "Typical usage:\n"
         " ali-to-post ark:1.ali ark:- | lda-acc 1.mdl \"ark:splice-feats scp:train.scp|\"  ark:- ldaacc.1\n";
 
