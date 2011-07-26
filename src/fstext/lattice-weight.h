@@ -642,14 +642,11 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
   std::string s;
   strm >> s;
   if (strm.fail()) {
-    std::cerr << "Error reading CompactLatticeWeightTpl\n";
     return strm;
   }
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   size_t pos = s.find_last_of(FLAGS_fst_weight_separator); // normally ","  
   if (pos == std::string::npos) {
-    std::cerr << "Error reading CompactLatticeWeightTpl: no instance of "
-              << FLAGS_fst_weight_separator << " in " << s << '\n';
     strm.clear(std::ios::badbit);    
     return strm;
   }
@@ -660,8 +657,6 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
   strm1 >> weight;
   w.SetWeight(weight);
   if (strm1.fail() || !strm1.eof()) {
-    std::cerr << "Error reading CompactLatticeWeightTpl: error with weight part "
-              << s1;
     strm.clear(std::ios::badbit);
     return strm;
   }
@@ -674,8 +669,6 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
     char *c2;
     long int i = strtol(c, &c2, 10);
     if (c2 == c || static_cast<long int>(static_cast<IntType>(i)) != i) {
-      std::cerr << "Error reading CompactLatticeWeightTpl: error with string part "
-                << s2;
       strm.clear(std::ios::badbit);
       return strm;
     }

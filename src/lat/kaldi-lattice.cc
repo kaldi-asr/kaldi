@@ -110,7 +110,7 @@ class LatticeReader {
     Lattice *fst = new Lattice();
     CompactLattice *cfst = new CompactLattice();
     string line;
-    size_t nline;
+    size_t nline = 0;
     string separator = FLAGS_fst_field_separator + "\r\n"; // add \r as
     while (std::getline(is, line)) {
       nline++;

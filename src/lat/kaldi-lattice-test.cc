@@ -22,6 +22,7 @@
 
 namespace kaldi {
 
+
 CompactLattice *RandCompactLattice() {
   Lattice *fst = fst::RandPairFst<LatticeArc>();
   CompactLattice *cfst = new CompactLattice;
@@ -35,8 +36,8 @@ Lattice *RandLattice() {
   return fst;
 }
 
-void TestLatticeTable() {
-  CompactLatticeWriter writer("ark:tmpf");
+void TestCompactLatticeTable(bool binary) {
+  CompactLatticeWriter writer(binary ? "ark:tmpf" : "ark,t:tmpf");
   int N = 10;
   std::vector<CompactLattice*> lat_vec(N);
   for (int i = 0; i < N; i++) {
@@ -62,9 +63,9 @@ void TestLatticeTable() {
   }
 }
 
-
-void TestLatticeTable2() { // text mode.
-  CompactLatticeWriter writer("ark,t:tmpf");
+// Write as CompactLattice, read as Lattice.
+void TestCompactLatticeTableCross(bool binary) {
+  CompactLatticeWriter writer(binary ? "ark:tmpf" : "ark,t:tmpf");
   int N = 10;
   std::vector<CompactLattice*> lat_vec(N);
   for (int i = 0; i < N; i++) {
@@ -78,26 +79,92 @@ void TestLatticeTable2() { // text mode.
   }
   writer.Close();
 
-  RandomAccessCompactLatticeReader reader("ark:tmpf");
-  CompactLatticeWriter writer2("ark,t:-");
+  RandomAccessLatticeReader reader("ark:tmpf");  
+  for (int i = 0; i < N; i++) {
+    char buf[2];
+    buf[0] = '0' + i;
+    buf[1] = '\0';
+    std::string key = "key" + std::string(buf);
+    const Lattice &fst = reader.Value(key);
+    CompactLattice fst2;
+    ConvertLattice(fst, &fst2);
+    KALDI_ASSERT(fst::Equal(fst2, *(lat_vec[i])));
+    delete lat_vec[i];
+  }
+}
+
+// Lattice, binary.
+void TestLatticeTable(bool binary) {
+  LatticeWriter writer(binary ? "ark:tmpf" : "ark,t:tmpf");
+  int N = 10;
+  std::vector<Lattice*> lat_vec(N);
+  for (int i = 0; i < N; i++) {
+    char buf[2];
+    buf[0] = '0' + i;
+    buf[1] = '\0';
+    std::string key = "key" + std::string(buf);
+    Lattice *fst = RandLattice();
+    lat_vec[i] = fst;
+    writer.Write(key, *fst);
+  }
+  writer.Close();
+
+  RandomAccessLatticeReader reader("ark:tmpf");  
+  for (int i = 0; i < N; i++) {
+    char buf[2];
+    buf[0] = '0' + i;
+    buf[1] = '\0';
+    std::string key = "key" + std::string(buf);
+    const Lattice &fst = reader.Value(key);
+    KALDI_ASSERT(fst::Equal(fst, *(lat_vec[i])));
+    delete lat_vec[i];
+  }
+}
+
+
+// Write as Lattice, read as CompactLattice.
+void TestLatticeTableCross(bool binary) {
+  LatticeWriter writer(binary ? "ark:tmpf" : "ark,t:tmpf");
+  int N = 10;
+  std::vector<Lattice*> lat_vec(N);
+  for (int i = 0; i < N; i++) {
+    char buf[2];
+    buf[0] = '0' + i;
+    buf[1] = '\0';
+    std::string key = "key" + std::string(buf);
+    Lattice *fst = RandLattice();
+    lat_vec[i] = fst;
+    writer.Write(key, *fst);
+  }
+  writer.Close();
+
+  RandomAccessCompactLatticeReader reader("ark:tmpf");  
   for (int i = 0; i < N; i++) {
     char buf[2];
     buf[0] = '0' + i;
     buf[1] = '\0';
     std::string key = "key" + std::string(buf);
     const CompactLattice &fst = reader.Value(key);
-    writer2.Write(key, fst);
-    //KALDI_ASSERT(fst::Equal(fst, *(lat_vec[i])));
+    Lattice fst2;
+    ConvertLattice(fst, &fst2);
+    KALDI_ASSERT(fst::Equal(fst2, *(lat_vec[i])));
     delete lat_vec[i];
   }
 }
+
+
 
 } // end namespace kaldi
 
 int main() {
   using namespace kaldi;
-  TestLatticeTable();
-  TestLatticeTable2();
+  for (int i = 0; i < 2; i++) {
+    bool binary = (i%2 == 0);
+    TestCompactLatticeTable(binary);
+    TestCompactLatticeTableCross(binary);
+    TestLatticeTable(binary);
+    TestLatticeTableCross(binary);
+  }
   std::cout << "Test OK\n";
 }
 
