@@ -23,7 +23,7 @@
 namespace fst {
 
 template<class Weight, class Int>
-void ConvertLatticeToCompact(
+void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
     bool invert) {
@@ -36,12 +36,12 @@ void ConvertLatticeToCompact(
   // The states will be numbered exactly the same as the original FST.
   // Add the states to the new FST.
   StateId num_states = ifst.NumStates();
-  for(StateId s = 0; s < num_states; s++) {
+  for (StateId s = 0; s < num_states; s++) {
     StateId news = ofst->AddState();
     assert(news == s);
   }
   ofst->SetStart(ifst.Start());
-  for(StateId s = 0; s < num_states; s++) {
+  for (StateId s = 0; s < num_states; s++) {
     Weight final_weight = ifst.Final(s);
     if (final_weight != Weight::Zero()) {
       CompactWeight final_compact_weight(final_weight, vector<Int>());
@@ -67,7 +67,7 @@ void ConvertLatticeToCompact(
 
 
 template<class Weight, class Int>
-void ConvertLatticeFromCompact(
+void ConvertLattice(
     const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
     MutableFst<ArcTpl<Weight> > *ofst,
     bool invert) {
@@ -81,56 +81,98 @@ void ConvertLatticeFromCompact(
   // the original ones, and add chains of states as necessary
   // to encode the string-valued weights.
   StateId num_states = ifst.NumStates();
-  for(StateId s = 0; s < num_states; s++) {
+  for (StateId s = 0; s < num_states; s++) {
     StateId news = ofst->AddState();
     assert(news == s);
   }
   ofst->SetStart(ifst.Start());
-  for(StateId s = 0; s < num_states; s++) {
+  for (StateId s = 0; s < num_states; s++) {
     CompactWeight final_weight = ifst.Final(s);
     if (final_weight != CompactWeight::Zero()) {
       StateId cur_state = s;
-      size_t string_length = final_weight.string_.size();
-      for(size_t n = 0; n < string_length; n++) {
+      size_t string_length = final_weight.String().size();
+      for (size_t n = 0; n < string_length; n++) {
         StateId next_state = ofst->AddState();
         Label ilabel = 0;
-        Arc arc(ilabel, final_weight.string_[n],
-                (n == 0 ? final_weight.weight_ : Weight::One()),
+        Arc arc(ilabel, final_weight.String()[n],
+                (n == 0 ? final_weight.Weight() : Weight::One()),
                 next_state);
         if (invert) std::swap(arc.ilabel, arc.olabel);
         ofst->AddArc(cur_state, arc);
         cur_state = next_state;
       }
       ofst->SetFinal(cur_state,
-                     string_length > 0 ? Weight::One() : final_weight.weight_);
+                     string_length > 0 ? Weight::One() : final_weight.Weight());
     }
     for (ArcIterator<ExpandedFst<CompactArc> > iter(ifst, s);
          !iter.Done();
          iter.Next()) {
       const CompactArc &arc = iter.Value();
-      size_t string_length = arc.weight.string_.size();
+      size_t string_length = arc.weight.String().size();
       StateId cur_state = s;
       // for all but the last element in the string--
       // add a temporary state.
-      for(size_t n = 0 ; n+1 < string_length; n++) {
+      for (size_t n = 0 ; n+1 < string_length; n++) {
         StateId next_state = ofst->AddState();
         Label ilabel = (n == 0 ? arc.ilabel : 0),
-            olabel = static_cast<Label>(arc.weight.string_[n]);
-        Weight weight = (n == 0 ? arc.weight.weight_ : Weight::One());
+            olabel = static_cast<Label>(arc.weight.String()[n]);
+        Weight weight = (n == 0 ? arc.weight.Weight() : Weight::One());
         Arc new_arc(ilabel, olabel, weight, next_state);
-        if(invert) std::swap(new_arc.ilabel, new_arc.olabel);
+        if (invert) std::swap(new_arc.ilabel, new_arc.olabel);
         ofst->AddArc(cur_state, new_arc);
         cur_state = next_state;
       }
       Label ilabel = (string_length <= 1 ? arc.ilabel : 0),
-          olabel = (string_length > 0 ? arc.weight.string_[string_length-1] : 0);
-      Weight weight = (string_length <= 1 ? arc.weight.weight_ : Weight::One());
+          olabel = (string_length > 0 ? arc.weight.String()[string_length-1] : 0);
+      Weight weight = (string_length <= 1 ? arc.weight.Weight() : Weight::One());
       Arc new_arc(ilabel, olabel, weight, arc.nextstate);
-      if(invert) std::swap(new_arc.ilabel, new_arc.olabel);      
+      if (invert) std::swap(new_arc.ilabel, new_arc.olabel);      
       ofst->AddArc(cur_state, new_arc);
     }
   }    
 }
+
+template<class WeightIn, class WeightOut>
+void ConvertLattice(
+    const ExpandedFst<ArcTpl<WeightIn> > &ifst,
+    MutableFst<ArcTpl<WeightOut> > *ofst) {
+  typedef ArcTpl<WeightIn> ArcIn;
+  typedef ArcTpl<WeightOut> ArcOut;
+  typedef typename ArcIn::StateId StateId;
+  typedef typename ArcOut::Label Label;
+  ofst->DeleteStates();
+  // The states will be numbered exactly the same as the original FST.
+  // Add the states to the new FST.
+  StateId num_states = ifst.NumStates();
+  for (StateId s = 0; s < num_states; s++) {
+    StateId news = ofst->AddState();
+    assert(news == s);
+  }
+  ofst->SetStart(ifst.Start());
+  for (StateId s = 0; s < num_states; s++) {
+    WeightIn final_iweight = ifst.Final(s);
+    if (final_iweight != WeightIn::Zero()) {
+      WeightOut final_oweight;
+      ConvertLatticeWeight(final_iweight, &final_oweight);
+      ofst->SetFinal(s, final_oweight);
+    }
+    for (ArcIterator<ExpandedFst<ArcIn> > iter(ifst, s);
+         !iter.Done();
+         iter.Next()) {
+      ArcIn arc = iter.Value();
+      if (arc.weight != WeightIn::Zero()) {
+        ArcOut oarc;
+        ConvertLatticeWeight(arc.weight, &oarc.weight);
+        oarc.ilabel = arc.ilabel;
+        oarc.olabel = arc.olabel;
+        oarc.nextstate = arc.nextstate;
+        ofst->AddArc(s, oarc);
+      }
+    }
+  }
+}
+
+
 
 template<class Weight, class ScaleFloat>
 void ScaleLattice(
@@ -151,7 +193,7 @@ void ScaleLattice(
       aiter.SetValue(arc);
     }
     Weight final_weight = fst->Final(s);
-    if(final_weight != Weight::Zero())
+    if (final_weight != Weight::Zero())
       fst->SetFinal(s, ScaleTupleWeight(final_weight, scale));
   }
 }

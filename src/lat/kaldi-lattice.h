@@ -39,6 +39,68 @@ typedef fst::ArcTpl<LatticeWeight> LatticeArc;
 
 typedef fst::ArcTpl<CompactLatticeWeight> CompactLatticeArc;
 
+typedef fst::VectorFst<LatticeArc> Lattice;
+
+typedef fst::VectorFst<CompactLatticeArc> CompactLattice;
+
+class CompactLatticeHolder {
+ public:
+  typedef CompactLattice T;
+
+  CompactLatticeHolder() { t_ = NULL; }
+
+  static bool Write(std::ostream &os, bool binary, const T &t);
+
+  bool Read(std::istream &is);
+
+  static bool IsReadInBinary() { return true; }
+
+  const T &Value() const {
+    KALDI_ASSERT(t_ != NULL && "Called Value() on empty CompactLatticeHolder");
+    return *t_;
+  } 
+
+  void Clear() { if(t_) { delete t_; t_ = NULL; } }
+
+  ~CompactLatticeHolder() { Clear(); }
+
+ private:
+  T *t_;
+};
+
+class LatticeHolder {
+ public:
+  typedef Lattice T;
+
+  LatticeHolder() { t_ = NULL; }
+
+  static bool Write(std::ostream &os, bool binary, const T &t);
+
+  bool Read(std::istream &is);
+
+  static bool IsReadInBinary() { return true; }
+
+  const T &Value() const {
+    KALDI_ASSERT(t_ != NULL && "Called Value() on empty LatticeHolder");
+    return *t_;
+  } 
+
+  void Clear() { if(t_) { delete t_; t_ = NULL; } }
+
+  ~LatticeHolder() { Clear(); }
+
+ private:
+  T *t_;
+};
+
+typedef TableWriter<LatticeHolder> LatticeWriter;
+typedef SequentialTableReader<LatticeHolder> SequentialLatticeReader;
+typedef RandomAccessTableReader<LatticeHolder> RandomAccessLatticeReader;
+
+typedef TableWriter<CompactLatticeHolder> CompactLatticeWriter;
+typedef SequentialTableReader<CompactLatticeHolder> SequentialCompactLatticeReader;
+typedef RandomAccessTableReader<CompactLatticeHolder> RandomAccessCompactLatticeReader;
+
 
 } // namespace kaldi
 

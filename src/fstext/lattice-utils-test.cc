@@ -32,7 +32,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<CompactArc> ofst;
-    ConvertLatticeToCompact<Weight, Int>(*fst, &ofst, invert);
+    ConvertLattice<Weight, Int>(*fst, &ofst, invert);
 
     std::cout << "FST after converting is:\n";
     {
@@ -40,7 +40,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> origfst;
-    ConvertLatticeFromCompact<Weight, Int>(ofst, &origfst, invert);
+    ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     std::cout << "FST after back conversion is:\n";
     {
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
@@ -53,6 +53,88 @@ template<class Weight, class Int> void TestConvert(bool invert) {
 }
 
 
+template<class Int> void TestConvert2() {
+  typedef ArcTpl<LatticeWeightTpl<float> > ArcF;
+  typedef ArcTpl<LatticeWeightTpl<double> > ArcD;
+  typedef ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > CArcF;
+  typedef ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > CArcD;
+  
+  for(int i = 0; i < 2; i++) {
+    {
+      VectorFst<ArcF> *fst1 = RandPairFst<ArcF>();
+      VectorFst<ArcD> fst2;
+      VectorFst<ArcF> fst3;
+      ConvertLattice(*fst1, &fst2);
+      ConvertLattice(fst2, &fst3);
+      assert(Equal(*fst1, fst3));
+      delete fst1;
+    }
+
+    {
+      VectorFst<ArcF> *fst1 = RandPairFst<ArcF>();
+      VectorFst<CArcF> cfst1, cfst3;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<CArcD> cfst2;
+      ConvertLattice(cfst1, &cfst2);
+      ConvertLattice(cfst2, &cfst3);
+      assert(Equal(cfst1, cfst3));
+      delete fst1;
+    }
+
+    {
+      VectorFst<ArcF> *fst1 = RandPairFst<ArcF>();
+      VectorFst<CArcD> cfst1, cfst3;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<CArcF> cfst2;
+      ConvertLattice(cfst1, &cfst2);
+      ConvertLattice(cfst2, &cfst3);
+      assert(Equal(cfst1, cfst3));
+      delete fst1;
+    }
+
+    {
+      VectorFst<ArcD> *fst1 = RandPairFst<ArcD>();
+      VectorFst<CArcD> cfst1, cfst3;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<CArcF> cfst2;
+      ConvertLattice(cfst1, &cfst2);
+      ConvertLattice(cfst2, &cfst3);
+      assert(Equal(cfst1, cfst3));
+      delete fst1;
+    }
+
+    {
+      VectorFst<ArcD> *fst1 = RandPairFst<ArcD>();
+      VectorFst<CArcF> cfst1;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<ArcD> fst2;
+      ConvertLattice(cfst1, &fst2);
+      assert(Equal(*fst1, fst2));
+      delete fst1;
+    }
+
+    {
+      VectorFst<ArcF> *fst1 = RandPairFst<ArcF>();
+      VectorFst<CArcD> cfst1;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<ArcF> fst2;
+      ConvertLattice(cfst1, &fst2);
+      assert(Equal(*fst1, fst2));
+      delete fst1;
+    }
+    
+    {
+      VectorFst<ArcD> *fst1 = RandPairFst<ArcD>();
+      VectorFst<CArcF> cfst1;
+      ConvertLattice(*fst1, &cfst1);
+      VectorFst<ArcD> fst2;
+      ConvertLattice(cfst1, &fst2);
+      assert(Equal(*fst1, fst2));
+      delete fst1;
+    }
+  }
+}
+    
 
 // use TestConvertPair when the Weight can be constructed from
 // a pair of floats.
@@ -67,7 +149,7 @@ template<class Weight, class Int> void TestConvertPair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<CompactArc> ofst;
-    ConvertLatticeToCompact<Weight, Int>(*fst, &ofst, invert);
+    ConvertLattice<Weight, Int>(*fst, &ofst, invert);
 
     std::cout << "FST after converting is:\n";
     {
@@ -75,7 +157,7 @@ template<class Weight, class Int> void TestConvertPair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> origfst;
-    ConvertLatticeFromCompact<Weight, Int>(ofst, &origfst, invert);
+    ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     std::cout << "FST after back conversion is:\n";
     {
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
@@ -118,7 +200,7 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<CompactArc> ofst;
-    ConvertLatticeToCompact<Weight, Int>(*fst, &ofst, invert);
+    ConvertLattice<Weight, Int>(*fst, &ofst, invert);
     ScaleLattice(scale1, &ofst);
     std::cout << "FST after converting and scaling is:\n";
     {
@@ -126,7 +208,7 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> origfst;
-    ConvertLatticeFromCompact<Weight, Int>(ofst, &origfst, invert);
+    ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     ScaleLattice(scale2, &origfst);
     std::cout << "FST after back conversion and scaling is:\n";
     {
@@ -164,6 +246,7 @@ int main() {
   }
   {
     typedef LatticeWeightTpl<double> LatticeWeight;
+    TestConvert2<int32>();
     for(int i = 0; i < 2; i++) {
       bool invert = (i % 2);
       TestConvertPair<LatticeWeight, int32>(invert);

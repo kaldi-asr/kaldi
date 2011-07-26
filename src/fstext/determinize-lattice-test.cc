@@ -105,14 +105,14 @@ template<class Arc> void TestDeterminizeLattice() {
       // [note: it's not normal determinization, it's taking the best path
       // for any input-symbol sequence....
       VectorFst<CompactArc> compact_fst, compact_det_fst;
-      ConvertLatticeToCompact<Weight, Int>(*fst, &compact_fst, false);
+      ConvertLattice<Weight, Int>(*fst, &compact_fst, false);
       std::cout << "Compact FST is:\n";
       {
         FstPrinter<CompactArc> fstprinter(compact_fst, NULL, NULL, NULL, false, true);
         fstprinter.Print(&std::cout, "standard output");
       }
       if(rand() % 2 == 1)
-        ConvertLatticeToCompact<Weight, Int>(det_fst, &compact_det_fst, false);
+        ConvertLattice<Weight, Int>(det_fst, &compact_det_fst, false);
       else 
         DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, kDelta, NULL, max_states);
       

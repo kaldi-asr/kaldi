@@ -31,13 +31,16 @@ namespace fst {
 
 
 template<class Arc, class LabelT>
-typename ContextFstImpl<Arc, LabelT>::StateId ContextFstImpl<Arc, LabelT>::FindState(const vector<LabelT> &seq) {
-  // Finds state-id corresponding to this vector of phones.  Inserts it if necessary.
+typename ContextFstImpl<Arc, LabelT>::StateId
+   ContextFstImpl<Arc, LabelT>::FindState(const vector<LabelT> &seq) {
+  // Finds state-id corresponding to this vector of phones.  Inserts it if
+  // necessary.
   assert(static_cast<int32>(seq.size()) == N_-1);
   VectorToStateIter iter = state_map_.find(seq);
   if (iter == state_map_.end()) {  // Not already in map.
     StateId this_state_id = (StateId)state_seqs_.size();
-    StateId this_state_id_check = CacheImpl<Arc>::AddState();  // goes back to VectorFstBaseImpl<Arc>, inherited via CacheFst<Arc>
+    StateId this_state_id_check = CacheImpl<Arc>::AddState();
+    // goes back to VectorFstBaseImpl<Arc>, inherited via CacheFst<Arc>
     assert(this_state_id == this_state_id_check);
     state_seqs_.push_back(seq);
     state_map_[seq] = this_state_id;

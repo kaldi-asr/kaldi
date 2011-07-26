@@ -61,8 +61,8 @@ void LatticeWeightTest() {
     LatticeWeight l1 = RandomLatticeWeight(), l2 = RandomLatticeWeight();
     LatticeWeight l3 = Plus(l1, l2);
     LatticeWeight l4 = Times(l1, l2);
-    BaseFloat f1 = l1.a_ + l1.b_, f2 = l2.a_ + l2.b_, f3 = l3.a_ + l3.b_,
-        f4 = l4.a_ + l4.b_;
+    BaseFloat f1 = l1.Value1() + l1.Value2(), f2 = l2.Value1() + l2.Value2(), f3 = l3.Value1() + l3.Value2(),
+        f4 = l4.Value1() + l4.Value2();
     kaldi::AssertEqual(std::min(f1, f2), f3);
     kaldi::AssertEqual(f1 + f2, f4);
 

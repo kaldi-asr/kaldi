@@ -24,6 +24,11 @@
 
 namespace fst {
 
+// The template ConvertLattice does conversions to and from
+// LatticeWeight FSTs and CompactLatticeWeight FSTs, and
+// between float and double.  It's used in the I/O code
+// for lattices.
+
 
 /**
    Convert lattice from a normal FST to a CompactLattice FST.
@@ -36,10 +41,10 @@ namespace fst {
    application), set invert=true.
 */
 template<class Weight, class Int>
-void ConvertLatticeToCompact(
+void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
-    bool invert);
+    bool invert = false);
 
 /**
    Convert lattice from a CompactLattice FST to a normal FST.  This is a bit like
@@ -50,11 +55,56 @@ void ConvertLatticeToCompact(
    recognition lattices).
 */
 template<class Weight, class Int>
-void ConvertLatticeFromCompact(
+void ConvertLattice(
     const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
     MutableFst<ArcTpl<Weight> > *ofst,
-    bool invert);
+    bool invert = false);
 
+
+/**
+  Convert between CompactLattices of different floating point types...
+  this works between any pair of weight types for which ConvertLatticeWeight
+  is defined (c.f. lattice-weight.h)... 
+ */
+template<class WeightIn, class WeightOut>
+void ConvertLattice(
+    const ExpandedFst<ArcTpl<WeightIn> > &ifst,
+    MutableFst<ArcTpl<WeightOut> > *ofst);
+
+
+// Now define some ConvertLattice functions that require two phases of conversion (don't
+// bother coding these separately as they will be used rarely.
+template<class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<float> > > &ifst,
+                    MutableFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > *ofst) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst);
+}
+
+template<class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<double> > > &ifst,
+                    MutableFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > *ofst) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst);
+}
+
+template<class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > &ifst,
+                    MutableFst<ArcTpl<LatticeWeightTpl<float> > > *ofst) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst);
+}
+
+template<class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > &ifst,
+                    MutableFst<ArcTpl<LatticeWeightTpl<double> > > *ofst) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst);
+}
 
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
 inline vector<vector<double> > DefaultLatticeScale() {

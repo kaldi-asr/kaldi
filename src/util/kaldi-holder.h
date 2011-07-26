@@ -75,11 +75,11 @@ namespace kaldi {
 /// GenericHolder serves to document the requirements of the Holder interface;
 /// it's not intended to be used.
 template<class SomeType> class GenericHolder {
+ public:
   typedef SomeType T;
 
   /// Must have a constructor that takes no arguments.
   GenericHolder() { }
-
 
   /// Write writes this object of type T.  Possibly also writes a binary-mode
   /// header so that the Read function knows which mode to read in (since the
@@ -90,16 +90,16 @@ template<class SomeType> class GenericHolder {
   /// assume the stream has been opened in the given mode (where relevant).  The
   /// object can write the data how it likes.
   static bool Write(std::ostream &os, bool binary, const T &t);
-
-  /// Reads into the holder.  Must work out from the stream (which
-  /// will be opened in binary mode) whether actual the data is binary or
-  /// not (usually via reading the Kaldi binary-mode header).  We put
-  /// the responsibility for reading the Kaldi binary-mode header in
-  /// the Read function (rather than making the binary mode an argument
-  /// to this function), so that for non-Kaldi binary files we don't have
-  /// to write the header, which would prevent the file being read
-  /// by non-Kaldi programs (e.g. if we write to individual files using
-  /// an scp).
+  
+  /// Reads into the holder.  Must work out from the stream (which will be opened
+  /// on Windows in binary mode if the IsReadInBinary() function of this class
+  /// returns true, and text mode otherwise) whether the actual data is binary or
+  /// not (usually via reading the Kaldi binary-mode header).  We put the
+  /// responsibility for reading the Kaldi binary-mode header in the Read
+  /// function (rather than making the binary mode an argument to this function),
+  /// so that for non-Kaldi binary files we don't have to write the header, which
+  /// would prevent the file being read by non-Kaldi programs (e.g. if we write
+  /// to individual files using an scp).
   ///
   /// Read must deallocate any existing data we have here, if applicable (must
   /// not assume the object was newly constructed).

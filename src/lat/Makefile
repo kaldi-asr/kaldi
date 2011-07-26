@@ -6,8 +6,9 @@ include ../kaldi.mk
 EXTRA_CXXFLAGS = -Wno-sign-compare
 
 TESTFILES = 
+#kaldi-lattice-test
 
-OBJFILES = 
+OBJFILES = kaldi-lattice.o
 
 
 LIBFILE = kaldi-lat.a
