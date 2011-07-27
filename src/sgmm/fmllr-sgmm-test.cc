@@ -110,7 +110,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike2 = sgmm.LogLikelihood(frame_vars, 0);
   std::cout << "LL1 = " << loglike1 << ", LL2 = " << loglike2 << std::endl;
-  kaldi::AssertEqual(loglike1, loglike2, 1e-4);
+  kaldi::AssertEqual(loglike1, loglike2, 1e-2);
   delete accs1;
 
   // Next, binary write
