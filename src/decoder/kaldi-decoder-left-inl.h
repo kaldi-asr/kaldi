@@ -58,7 +58,7 @@ namespace kaldi {
     do {  // go over all feature frames and decode
       frame_index_++;
       DEBUG_OUT1("==== FRAME " << frame_index_)
-      if ((frame_index_%50) == 0) KALDI_LOG << "==== FRAME " << frame_index_;
+      if ((frame_index_%50) == 0) KALDI_VLOG(2) << "==== FRAME " << frame_index_;
 
       ProcessToDoList();
       // all active tokens from last frame are by now processed

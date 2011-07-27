@@ -91,7 +91,7 @@ class FasterDecoder {
     for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
       DEBUG_OUT1("==== FRAME " << frame << " =====")
       if ((frame%50) == 0)
-        KALDI_LOG << "==== FRAME " << frame << " =====";
+        KALDI_VLOG(2) << "==== FRAME " << frame << " =====";
       BaseFloat adaptive_beam = ProcessEmitting(decodable, frame);
       ProcessNonemitting(adaptive_beam);
     }

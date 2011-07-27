@@ -73,7 +73,7 @@ struct KaldiDecoderOptions {
   BaseFloat beamwidth2;
 
   KaldiDecoderOptions(): lm_scale(1.0), word_penalty(0.0),
-                         max_active_tokens(std::numeric_limits<int32>::max()),
+                         max_active_tokens(10000),
                          beamwidth(16.0), beamwidth2(16.0) { }
   void Register(ParseOptions *po, bool full) {  // "full":use obscure options too
 	// depends on program
