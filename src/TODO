@@ -16,8 +16,8 @@
    documentation for acoustic modeling code.
 
  TODO items (Dan):
- [add ,s,cs on sgmm3e feats]
 
+  Check kaldi-decoder and add example scripts.
   Look into how better to estimate vectors in training time
     (I think WERs degraded when I fixed a script bug that
     was having the effect of re-estimating spk-vecs from
@@ -25,7 +25,7 @@
   Remove non-Kaldi code from decoder/
   Rename to branches/kaldi-1.0
 
-  Add code to average over multiple models while aligning...
+  Add code to average over multiple models while aligning ...
 
  documentation:
   add something on dir structure

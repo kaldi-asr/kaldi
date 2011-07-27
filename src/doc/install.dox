@@ -1,7 +1,5 @@
 // doc/install.dox
 
-// util/common-utils.h
-
 // Copyright 2009-2011 Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,16 +20,17 @@
 
  \section install_download  Dowloading Kaldi
 
-  You first need to install Subversion (SVN).  Currently, Kaldi can
+  You first need to install Subversion (SVN).  The most current version of Kaldi can
    be downloaded by typing into a shell:
   \verbatim
     svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/trunk kaldi-trunk
   \endverbatim
-  Note that we previously advised to check out the top-level directory 
- kaldi/.  We will add version numbers soon so downloading it like this
- this will be a bad idea,
- because eventually you would type "svn update" and would get all the versions
-  of Kaldi downloaded to your machine.
+  A branch corresponding to version 1 of Kaldi may be obtained at:
+  \verbatim
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
+  \endverbatim
+  This may be more stable than the ``trunk'' version, which may occassionally
+  be broken by new changes.
   If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim

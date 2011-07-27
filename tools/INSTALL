@@ -1,169 +1,239 @@
-This INSTALL file has manual instructions.    The script ./install.sh
-will attempt to execute these instructions automatically.
+#!/bin/bash
+# This script attempts to automatically execute the instructions in INSTALL.
 
-[note: ./install_atlas.sh is a backup plan in case you don't have ATLAS
- installed on your system; ignore it unless you get errors from
- ../src/configure.]
+# (1) Install instructions for sph2pipe_v2.5.tar.gz
 
-See below install instructions for:
-(1) sph2pipe (needed to run the example scripts but not for compilation)
-(2) openfst (needed)
-(3) dot (optional; only used by doxygen and for FST debugging).
-(4) IRSTLM (optional; only needed if you want to build LMs and
-  don't already have a setup).
-(5) sclite (optional; useful for detailed scoring output but the
-   default scripts don't use it).
-(6) ATLAS (needed only for headers, if already on system, but for
-  native Windows compilation without Intel MKL you have to compile this)
-(7) CLAPACK headers (required if you have the library available but
- no headers in a directory accessed by default; this is the case on Cygwin)
+if ! which wget >&/dev/null; then
+   echo "This script requires you to first install wget";
+   exit 1;
+fi
 
+if ! which automake >&/dev/null; then
+   echo "Warning: automake not installed (IRSTLM installation will not work)"
+   sleep 1
+fi
 
-####
-
-(1)
-Install instructions for sph2pipe_v2.5.tar.gz
-
-wget ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
-tar -xovzf sph2pipe_v2.5.tar.gz 
-cd sph2pipe_v2.5
-gcc -o sph2pipe *.c -lm 
-cd ..
-
-# These instructions are not valid for native Windows;
-# see the reame, 0readme.1st, in sph2pipe_v2.5
-
-####
-(2)
-Install instructions for OpenFst
-
-Note that this should be compiled with g++-4.x
-You may have to install this and give the option CXX=<g++-4-binary-name>
-to configure, if it's not already the default (g++ -v will tell you).
-(on cygwin you may have to install the g++-4.0 package and give the options CXX=g++-4.exe CC=gcc-4.exe to configure).
+if ! which libtoolize >&/dev/null; then
+   echo "Warning: libtoolize not installed (IRSTLM installation probably will not work)"
+   sleep 1
+fi
 
 
-wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
-tar -xovzf openfst-1.2.7.tar.gz   
-cp partition.h minimize.h openfst-1.2.7/src/include/fst
-#ignore errors in the following; it's for robustness in case
-# someone follows these instructions after the installation of openfst.
-cp partition.h minimize.h openfst-1.2.7/include/fst 2>/dev/null
-rm openfst 2>/dev/null # Remove any existing link
-ln -s openfst-1.2.7 openfst
- 
-cd openfst-1.2.7
-# Choose the correct configure statement:
+echo "****(1) Installing sph2pipe"
 
-Linux or Darwin:
-  ./configure --prefix=`pwd` --enable-static --disable-shared 
+(
+  rm sph2pipe_v2.5.tar.gz 2>/dev/null
+  wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
 
-Linux, cross-compile (64-bit) [you probably don't want this]:
- # Configure for linux, cross-compile to 64-bit
- # Note that this refers to 64-bit compilation, which
- # on the BUT machines it not the default even though the machines
- # are 64bit [you would have to compile with OPT=64bit].  
-  ./configure --host=x86_64-linux --prefix=`pwd` --enable-static --disable-shared 
+  if [ ! -e sph2pipe_v2.5.tar.gz ]; then
+    echo "****download of sph2pipe_v2.5.tar.gz failed."
+    exit 1
+else
+    tar -xovzf sph2pipe_v2.5.tar.gz || exit 1
+    cd sph2pipe_v2.5
+    gcc -o sph2pipe *.c -lm  || exit 1
+    cd ..
+fi
+)
+ok_sph2pipe=$?
+if [ $ok_sph2pipe -ne 0 ]; then
+  echo "****sph2pipe install failed."
+fi
 
-Cygwin:
-  ./configure --prefix=`pwd` CXX=g++-4.exe CC=gcc-4.exe --enable-static --disable-shared  
 
-# make install is equivalent to "make; make install"
-make install
+# (2) download Atlas
+(
+  echo "****(2) downloading ATLAS"
 
-####
+  wget -T 10 -t 3 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz
 
-(3) dot
+  if [ ! -e atlas3.8.3.tar.gz ]; then
+      echo "****download atlas3.8.3.tar.gz failed."
+      exit 1
+  else
+    tar -xovzf atlas3.8.3.tar.gz ATLAS/include || exit 1
+  fi
+)
+ok_atlas=$?
+if [ $ok_atlas -ne 0 ]; then
+  echo "****Download of ATLAS headers failed."
+fi
 
-This is used by doxygen to automatically generate documentation for the source, and
-is also useful for debugging FSTs (in conjunction with fstdraw).
 
-We provide here instructions for installing dot on cygwin.
-On most native UNIX systems, dot is likely to be installed already.
-If not, once you work out how to install it please put the instructions here.
+# (3) download CLAPACK headers
+(
+  echo "****(3) downloading CLAPACK headers"
 
-Get the Windows version of dot from
-http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.26.3.msi
-follow the default installation setup.
-in your .bashrc file, add the line
-export PATH=$PATH:/cygdrive/c/Program\ Files/Graphviz2.26.3/bin/
-[you might want to first make sure that that's where you installed it.
-If your shell is not bash, this may have to be changed a bit].
+  mkdir CLAPACK_include
+  cd CLAPACK_include
 
-####
+  for x in  clapack.h f2c.h cblas.h; do 
+    wget -T 10 -t 3 http://www.netlib.org/clapack/$x; 
+  done
+  cp ../ATLAS/include/cblas.h . || exit 1
+  
+  if [ ! -e clapack.h ] || [ ! -e f2c.h ]; then
+    echo "****download clapack.h or f2c.h failed."
+    cd ..
+    exit 1
+  fi
+  cd ..
+)
+ok_clapack=$?
+if [ $ok_clapack -ne 0 ]; then
+  echo "****Download of CLAPACK headers failed."
+fi
 
-(4)
-The following are instructions to install IRSTLM.
-This is not needed for the basic system builds (RM has its own
-non-ARPA LM, and WSJ comes with LMs).  So installing this may be
-left till later, if you are in a hurry.
 
-svn co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm
-cd irstlm
-[
-if your aclocal and automake are too old, you may want to 
-adjust the settings for the variables ACLOCAL and AUTOMAKE
-in ./regenerate-makefiles.sh.  For example, on cygwin you have
-to install the package automake-1.9, and the two lines in
-regenerate-makefiles.sh become:
-ACLOCAL=/bin/aclocal-1.9
-AUTOMAKE=/bin/automake-1.9 
-... however, the defaults may work.
-]
-./regenerate-makefiles.sh  # try this again if it doesn't work.
-./configure --prefix=`pwd`
-or for 64 bit cross-compilation (tested on BUT machines)
-./configure --prefix=`pwd` CC="x86_64-linux-gcc" CXX="x86_64-linux-g++" AR="x86_64-linux-ar" AS="x86_64-linux-as" RANLIB="x86_64-linux-ranlib"
-[ you may have to install zlib before typing make ]
-make
-make install
+(
+  # (4) Install instructions to install IRSTLM.
+  # This is not needed for the basic system builds (RM has its own
+  # non-ARPA LM, and WSJ comes with LMs).  So installing this may be
+  # left till later, if you are in a hurry.
+  echo "****(4) install IRSTLM (optional; only needed if you want to build LMs and don't already have a setup)"
 
-####
+  svn co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm || exit 1
 
-(5) sclite [OPTIONAL!]
-This can be helpful helpful for scoring but the default scoring scripts do not
-use it (they use our own Kaldi-based scorer).
+  if [ ! -e irstlm ]; then
+    echo "***download of irstlm failed."
+    exit 1
+  else
+    cd irstlm
+    # Just using the default aclocal, automake.
+    # You may have to mess with the version by editing
+    # regenerate-makefiles.sh if this does not work. 
+    # We try regenerate-makefiles.sh twice as we have found that
+    # under some circumstances this makes it work.
+    ./regenerate-makefiles.sh || ./regenerate-makefiles.sh || exit 1;
 
-Install instructions for sclite/sctk.
-This was obtained as follows:
+   ./configure --prefix=`pwd` || exit 1
 
- (a) download it.
- If the following command fails with e.g. a proxy error:
-   wget ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
- then try this:  
-  ftp jaguar.ncsl.nist.gov 
-  use username="anonymous" and an empty password
-  cd pub
-  get sctk-2.4.0-20091110-0958.tar.bz2
-(b)
-# Convert into gzip format (bunzip2 needs to be installed for this to work):
-bunzip2 sctk-2.4.0-20091110-0958.tar.bz2
-gzip sctk-2.4.0-20091110-0958.tar
+    # [ you may have to install zlib before typing make ]
+    make || exit 1
+    make install || exit 1
+    cd ..
+  fi
+)
+ok_irstlm=$?
+if [ $ok_irstlm -ne 0 ]; then
+  echo "****Installation of IRSTLM failed [not needed for most steps, anyway]."
+fi
 
-tar -xovzf sctk-2.4.0-20091110-0958.tar.gz 
-cd sctk-2.4.0
-make config
-make all
-make check
-make install
-make doc
 
-####
+(
+  # (5) Install sclite [OPTIONAL!]
+  # This can be helpful helpful for scoring but the default scoring scripts do not
+  # use it (they use our own Kaldi-based scorer).
+  echo "**** (5) install sclite (optional; useful for detailed scoring output but the default scripts don't use it)"
+  rm sctk-2.4.0-20091110-0958.tar.bz2  2>/dev/null
+  wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
 
-(6) Atlas
-wget http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz
-tar -xovzf atlas3.8.3.tar.gz ATLAS/include
-# don't do any more installation at this point, we just need this for headers
-# (except for native Windows compilation, for which see ../windows/INSTALL.atlas)
+  if [ ! -e sctk-2.4.0-20091110-0958.tar.bz2 ]; then
+    echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
+    exit 1
+  else
+    bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
+    gzip -f sctk-2.4.0-20091110-0958.tar || exit 1
 
-#####
+    tar -xovzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
+    cd sctk-2.4.0
+    make config || exit 1
+    make all || exit 1
+    # Not doing the checks, they don't always succeed and it
+    # it doesn't really matter.
+    # make check || exit 1
+    make install || exit 1
+    make doc || exit 1
+    cd ..
+  fi
+)
+ok_sclite=$?
+if [ $ok_sclite -ne 0 ]; then
+  echo "****Installation of SCLITE failed [not needed anyway]."
+fi
 
-(7) CLAPACK headers (in case needed, if CLAPACK is installed on the machine...
-   we don't go to the trouble of installing CLAPACK if the libraries are not
-   already there).
-mkdir CLAPACK_include
-cd CLAPACK_include
-for x in  clapack.h	f2c.h; do 
-  wget http://www.netlib.org/clapack/$x; 
-done
+# (6) Install instructions for OpenFst
+
+# Note that this should be compiled with g++-4.x
+# You may have to install this and give the option CXX=<g++-4-binary-name>
+# to configure, if it's not already the default (g++ -v will tell you).
+# (on cygwin you may have to install the g++-4.0 package and give the options CXX=g++-4.exe CC=gcc-4.exe to configure).
+
+(
+  echo "****(6) Install openfst"
+
+  rm openfst-1.2.7.tar.gz 2>/dev/null
+  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
+
+  if [ ! -e openfst-1.2.7.tar.gz ]; then
+    echo "****download openfst-1.2.7.tar.gz failed."
+    exit 1
+  else
+    tar -xovzf openfst-1.2.7.tar.gz   || exit 1
+    cp partition.h minimize.h openfst-1.2.7/src/include/fst
+    #ignore errors in the following; it's for robustness in case
+    # someone follows these instructions after the installation of openfst.
+    cp partition.h minimize.h openfst-1.2.7/include/fst 2>/dev/null
+    # Remove any existing link
+    rm openfst 2>/dev/null
+    ln -s openfst-1.2.7 openfst
+     
+    cd openfst-1.2.7
+    # Choose the correct configure statement:
+
+    # Linux or Darwin:
+    if [ "`uname`" == "Linux"  ] || [ "`uname`" == "Darwin"  ]; then
+        ./configure --prefix=`pwd` --enable-static --disable-shared || exit 1
+    elif [ "`uname -o`" == "Cygwin"  ]; then
+        which gcc-4.exe || exit 1
+        ./configure --prefix=`pwd` CXX=g++-4.exe CC=gcc-4.exe --enable-static --disable-shared  || exit 1
+    else
+        echo "Platform detection error"
+        exit 1
+    fi
+
+    # make install is equivalent to "make; make install"
+    make install || exit 1
+    cd ..
+  fi
+)
+ok_openfst=$?
+if [ $ok_openfst -ne 0 ]; then
+  echo "****Installation of OpenFst failed"
+fi
+
+echo
+echo Install summary:
+
+if [ $ok_sph2pipe -eq 0 ]; then
+   echo "sph2pipe:Success"
+else
+   echo "sph2pipe:Failure"
+fi
+if [ $ok_atlas -eq 0 ]; then
+   echo "ATLAS:   Success"
+else
+   echo "ATLAS:   Failure"
+fi
+if [ $ok_clapack -eq 0 ]; then
+   echo "CLAPACK: Success"
+else
+   echo "CLAPACK: Failure"
+fi
+if [ $ok_irstlm -eq 0 ]; then
+   echo "irstlm:  Success"
+else
+   echo "irstlm:  Failure [optional anyway]"
+fi
+if [ $ok_sclite -eq 0 ]; then
+   echo "sclite:  Success"
+else
+   echo "sclite:  Failure [optional anyway]"
+fi
+if [ $ok_openfst -eq 0 ]; then
+   echo "openfst: Success"
+else
+   echo "openfst: Failure"
+fi
+
 

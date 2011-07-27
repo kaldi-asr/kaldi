@@ -1,0 +1,146 @@
+// doc/tutorial.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial Kaldi tutorial
+
+  \section tutorial_prereqs Prerequisites
+
+  This tutorial assumes that you know the basics of speech recognition using the
+  HMM-GMM approach.  One brief introduction that is available online
+  is\footnote{M. Gales and S. Young (2007). ``The Application of Hidden Markov
+  Models in Speech Recognition.'' Foundations and Trends in Signal Processing
+  1(3): 195-304}.  The HTK Book is also a good resource.  However, unless you
+  have a strong mathematical background and are extremely dedicated, we
+  discourage trying to learn about speech recognition outside an institutional
+  setting.  The intended audience for this tutorial is either speech recognition
+  researchers, or graduates or advanced undergraduates who are studying this
+  area.
+
+  We also assume that you know C++, and have at least some familiarity with shell
+  scripting, preferably using bash or a similar shell.  This tutorial assumes you
+  are using a UNIX-like environment or Cygwin (although Kaldi will not
+  necessarily compile and run in all such environments).
+
+  Also, importantly, the tutorial assumes you have access to the data on the Resource
+  Management (RM) CDs from the Linguistic Data Consortium (LDC), in the original form
+  as distributed by the LDC.  That is, we assume this data is sitting on your system
+  somewhere.  We obtained this as catalog number LDC93S3A.   It is
+  also available in two separate pieces; be careful because there was previously 
+  a different distribution of the RM data with a different layout.
+
+  The system requirements are fairly basic.  We assume that you have tools
+  including wget, svn, awk, perl and so on, or that you know how to install them.
+  The most difficult part of the installation process relates to the math library
+  ATLAS; if this is not already installed as a library on your system you will
+  have to compile it, and this requires that CPU throttling be turned off, which
+  may require root priveleges.  We provide scripts and detailed instructions for
+  all installation steps.  Please inform us if there are problems at any point,
+  however minor; see \ref contact.
+
+
+  \section tutorial_setup Getting started
+
+  The first step is to download and install Kaldi.  We will be using version 1 of
+  the toolkit, so that this tutorial does not get out of date.  Assuming
+  Subversion (svn) is installed, type:
+  \verbatim
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
+  \endverbatim
+  Then cd to kaldi-1.  Look at the INSTALL file and follow the instructions 
+  (it points you to two subdirectories).  Look carefully at the output of the
+  installation scripts, as they try to guide you what to do.  Some installation
+  errors are non-fatal, and the installation scripts will tell you so (i.e. there 
+  are some things it installs which are nice to have but are not really needed).
+  The ``best-case'' scenario is that you do:
+ \verbatim
+   cd tools/; ./install.sh; cd ../src; ./configure; make
+ \endverbatim
+ and everything will just work; however, if this does not happen there are
+ fallback plans (e.g. you may have to install some package on your machine, or run 
+ install_atlas.sh in tools/, or run some steps in tools/INSTALL manually, 
+ or provide options to the configure script in src/).  If there are problems,
+ there may be some information in \ref build_setup that will help you; otherwise,
+ feel free to contact the maintainers (\ref contact) and we will be happy to help.  
+
+
+  \section tutorial_svn Version control with Subversion
+
+ In case you are unfamiliar with the Subversion (svn) version control system, we
+ give a brief overview of some commands that might be useful to you.  Subversion commands
+ always look like: ``svn [command] [arguments]''; you can do ``svn help'' to see what
+ commands are available, or ``svn help <command>'' for help on a specific command.  
+  In kaldi-1 or any subdirectory, type
+ \verbatim
+   svn up
+ \endverbatim
+ (this is short for ``svn update'').  If we have committed changes to the repository
+ in the several minutes since you installed Kaldi, you should see output like
+ the following:
+\verbatim
+kaldi-1: svn update
+U    src/lat/Makefile
+U    src/nnetbin/nnet-forward.cc
+Updated to revision 191.
+\endverbatim
+ More likely, it will just say something like ``At revision 191.''  
+ To see if you have made any changes to anything, type ``svn status''.  This will
+ list files that you changed or that have been added.  Files that have been added
+ to the directories but are not under version control because you have not used the
+ ``svn add'' command, will appear with the descriptor '?'.  If you are going to be 
+ contributing to the Kaldi project (and we do welcome contributors, even if all
+ you can do is fix typos), then you should become familiar with other commands such
+ as ``svn add'', ``svn commit'' and so on.  For this, there are tutorials available
+  online.
+ 
+
+  \section tutorial_setup Looking at the code
+
+ Before we jump into the example scripts, let us take a minute to look at what
+ is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
+ There are a few files and subdirectories.  
+
+ Assuming you have got everything to work, type
+ \verbatim
+  make test
+ \endverbatim
+ This will run
+ 
+  
+
+  This may be more stable than the ``trunk'' version, which may occassionally
+  be broken by new changes.
+  If you want to get updates and bug fixes you can go to some checked-out
+ directory, and type
+  \verbatim
+    svn update
+  \endverbatim
+ If "svn update" prints out scary looking messages about conflicts (caused by
+ you changing parts of files that were later modified centerally),
+ you may have to resolve the conflicts; for that, we recommend that you
+ read about how svn works.
+
+  \section install_install Installing Kaldi
+   
+  The top-level installation instructions are in the file INSTALL. 
+  For Windows, there are separate instructions in windows/INSTALL.
+  See also \ref build_setup which explains how the build process
+  works internally.
+
+  The example scripts are in egs/
+  
+*/
