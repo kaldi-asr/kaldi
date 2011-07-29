@@ -23,13 +23,14 @@ if [ -f path.sh ]; then . path.sh; fi
 beam=20
 acousticscale=0.22
 
-dir=exp/decode_nnet_beam${beam}_scale${acousticscale}
+dir=exp/decode_nnet_tri2a_s4_scale${acousticscale}
 tree=exp/mono/tree
 mkdir -p $dir
 model=exp/tri2a/final.mdl
 tree=exp/tri2a/tree
 graphdir=exp/graph_tri2a
-nnet=exp/nnet/final.nnet
+nnet=exp/nnet_tri2a_s3/final.nnet
+priors=exp/nnet_tri2a_s3/cur.counts #optional
 
 scripts/mkgraph.sh $tree $model $graphdir
 
@@ -38,27 +39,16 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
   #get features
   feats="ark:add-deltas --print-args=false scp:data/test_${test}.scp ark:- |"
-  #compute per-utterance CMN
-  cmn=ark:$dir/test_${test}_cmn.ark
-  compute-cmvn-stats "$feats" $cmn
-  feats="$feats apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
+  #compute per-speaker CMVN
+  cmvn=ark:$dir/test_${test}_cmvn.ark
+  compute-cmvn-stats --spk2utt=ark:data_prep/test_${test}.spk2utt "$feats" $cmvn
+  feats="$feats apply-cmvn --print-args=false --norm-vars=true --utt2spk=ark:data_prep/test_${test}.utt2spk $cmvn ark:- ark:- |"
 
-  #compute global CVN
-  cvn=ark:$dir/test_${test}_cvn.ark
-  gcvn_spk2utt=$dir/test_${test}_globalcvn.spk2utt
-  { echo -n "global "
-    cat data/test_${test}.scp | cut -d " " -f 1 | tr '\n' ' '
-  } > $gcvn_spk2utt
-  compute-cmvn-stats --spk2utt=ark:${gcvn_spk2utt} "$feats" $cvn 
-
-  #add global CVN to feature extration
-  gcvn_utt2spk=$dir/test_${test}_globalcvn.utt2spk
-  cat data/test_${test}.scp | cut -d " " -f 1 | awk '{ print $0" global";}' > $gcvn_utt2spk
-  gcvn_utt2spk_opt="--utt2spk=ark:$gcvn_utt2spk"
-  feats="$feats apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
+  #add splicing
+  feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
 
   #add MLP transform
-  feats="$feats nnet-forward --print-args=false --apply-log=true $nnet ark:- ark:- |"
+  feats="$feats nnet-forward --print-args=false --apply-log=true ${priors:+--class-frame-counts=$priors} $nnet ark:- ark:- |"
 
   echo $feats
 

@@ -37,6 +37,9 @@ int main(int argc, char *argv[])
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
 
+    std::string class_frame_counts;
+    po.Register("class-frame-counts", &class_frame_counts, "Counts of frames for posterior division by class-priors");
+
     bool apply_log = false;
     po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
 
@@ -69,41 +72,70 @@ int main(int argc, char *argv[])
 
     Matrix<BaseFloat> feats_transf, nnet_out;
 
+    //Read the class-counts, compute priors
+    Vector<BaseFloat> priors;
+    if(class_frame_counts != "") {
+      Input in;
+      in.OpenTextMode(class_frame_counts);
+      priors.Read(in.Stream(),false);
+      in.Close();
+      
+      BaseFloat sum = priors.Sum();
+      priors.Scale(1.0/sum);
+      if(apply_log) {
+        priors.ApplyLog();
+        priors.Scale(-1.0);
+      } else {
+        priors.InvertElements();
+      }
+    }
+
     Timer tim;
-    //KALDI_LOG << "MLP FEEDFORWARD STARTED";
-
+    KALDI_LOG << "MLP FEEDFORWARD STARTED";
     int32 num_done = 0;
+    //iterate over all the feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
+      //read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
-
-      /*
-      if(num_done % 10000 == 0) std::cout << num_done << ", " << std::flush;
-      num_done++;
-      */
-
+      //fwd-pass
       nnet_transf.Feedforward(mat,&feats_transf);
       nnet.Feedforward(feats_transf,&nnet_out);
-
+      
+      //convert posteriors to log-posteriors
       if(apply_log) {
         nnet_out.ApplyLog();
       }
-
+     
+      //divide posteriors by priors to get quasi-likelihoods
+      if(class_frame_counts != "") {
+        if(apply_log) {
+          for(int32 r=0; r<nnet_out.NumRows(); r++) {
+            nnet_out.Row(r).AddVec(1.0,priors);
+          } 
+        } else {
+          nnet_out.MulColsVec(priors);
+        }
+      }
+ 
+      //write
       feature_writer.Write(feature_reader.Key(),nnet_out);
 
+      //progress log
+      if(num_done % 1000 == 0) {
+        KALDI_LOG << num_done << ", " << std::flush;
+      }
+      num_done++;
       tot_t += mat.NumRows();
     }
     
-    /*
-    std::cout << "\n" << std::flush;
-
+    //final message
     KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
     KALDI_LOG << "Done " << num_done << " files";
-    */
 
     return 0;
   } catch(const std::exception& e) {
-    std::cerr << e.what();
+    KALDI_ERR << e.what();
     return -1;
   }
 }

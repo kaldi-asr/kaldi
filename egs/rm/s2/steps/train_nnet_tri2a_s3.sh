@@ -3,7 +3,7 @@
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/nnet
+dir=exp/nnet_tri2a_s3
 mkdir -p $dir/{log,nnet}
 
 
@@ -24,6 +24,8 @@ echo alignments: $dir_ali
 ln -s $PWD/$dir_ali/cur.ali $dir
 ali-to-pdf $dir_ali/final.mdl ark:$dir/cur.ali t,ark:$dir/cur.pdf
 labels="ark:$dir/cur.pdf"
+#count the class frames for division by prior
+scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 
 
 
@@ -52,12 +54,16 @@ feats="$feats apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $
 feats_tr="$feats_tr apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
 
+#add splicing
+feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
+feats_tr="$feats_tr splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
+feats_cv="$feats_cv splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
 
 
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
 num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
-scripts/gen_mlp_init.py --dim=39:1024:${num_tgt} --gauss --negbias > $mlp_init
+scripts/gen_mlp_init.py --dim=429:568:${num_tgt} --gauss --negbias > $mlp_init
 
 
 

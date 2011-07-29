@@ -1,3 +1,72 @@
-decode_mono: Average WER is 14.234421 (1784 / 12533) 
-decode_nnet_pdf: Average WER is 20.553738 (2576 / 12533) 
-decode_nnet_trans: Average WER is 21.311737 (2671 / 12533) 
+
+
+#The accuracies will differ by approx. 0.1%, 
+#due to different random MLP initializations.
+
+######################################################################
+#Testing accuracies:
+exp/decode_mono/wer: 
+- Average WER is 14.234421 (1784 / 12533) 
+- Monophone system, subset
+exp/decode_nnet_mono_trans/wer:
+- Average WER is 20.290433 (2543 / 12533)
+- Monophone transition targets, subset
+exp/decode_nnet_mono_pdf/wer: 
+- Average WER is 18.375489 (2303 / 12533) 
+- Monophone transition targets, subset; tuned_acwt:0.338137
+
+#437-PDFs GMM
+exp/tri1:
+- Average WER is 6.191654 (776 / 12533)
+- w/o fmllr
+exp/tri2a:
+- Average WER is 5.848560 (733 / 12533)
+- w/o fmllr 
+
+#437-PDFs MLP, 1 hidden layer, 0.5M parameters
+exp/nnet_tri2a_s1:
+- Average WER is 6.063991 (760 / 12533) acc:93.936009
+- w/o prior division
+- tuned_acwt:0.257354
+exp/nnet_tri2a_s2:
+- Average WER is 5.401739 (677 / 12533) acc:94.598261
+- + division by prior
+- tuned_acwt:0.246711
+exp/nnet_tri2a_s3: 
+- Average WER is 5.034708 (631 / 12533) acc:94.965292
+- + splice 11 frames, still 0.5M params
+- tuned_acwt:0.236844
+exp/nnet_tri2a_s4:
+- Average WER is 5.002793 (627 / 12533) 
+- + speaker-wise CMVN 
+- tuned_acwt:0.239357
+
+
+For further improvements we should:
+* use more parameters
+* use more target classes
+* use better alignments 
+* use the CRBE-SPLICE-Hamming-DCT features
+* use hierarchical structure (HATs, Universal context)
+
+The training can be accelerated by multithreading BLAS
+or by GPGPU implementation. Also it's possible to dump 
+features to HTK format, train the network by the TNet 
+GPGPU toolkit and convert it back to Kaldi format.
+
+
+######################################################################
+#Training time with ATLAS on welda2
+#??? optimizations ???
+exp/mono:real    6m3.101s
+exp/nnet_mono_trans:real	25m37.175s
+exp/nnet_mono_pdf:real	17m13.133s
+
+exp/tri1:real	18m8.550s
+exp/tri2a:real	19m46.379s
+
+exp/nnet_tri2a_s1: real 253m12.008s
+exp/nnet_tri2a_s2: real	265m36.880s
+exp/nnet_tri2a_s3: real	171m46.545s
+exp/nnet_tri2a_s4: real	198m8.982s
+

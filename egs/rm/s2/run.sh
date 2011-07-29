@@ -57,19 +57,51 @@ steps/make_mfcc_train.sh $mfccdir
 steps/make_mfcc_test.sh $mfccdir
 
 
+## MONOPHONE ##
+# first, we will train monophone GMM-HMM system to get training labels
+time steps/train_mono.sh
+steps/decode_mono.sh &
 
-# first, we will train monophone GMM system to get training labels
-steps/train_mono.sh
-steps/decode_mono.sh  &
+# train MLP with monophone transition targets,
+# MFCC_D_A_0 per-utterance CMVN normalization
+time steps/train_nnet_mono_trans.sh
+steps/decode_nnet_mono_trans.sh &
 
-# Now we train the MLP,
-# it will have CMVN normalized MFCCs as input and HMM transitions as targets
-steps/train_nnet_trans.sh
-steps/decode_nnet_trans.sh &
 
-# Now we train another MLP,
-# it will have CMVN normalized MFCCs as input and PDFs as targets
-steps/train_nnet_pdf.sh
-steps/decode_nnet_pdf.sh &
+# train MLP with monophone pdf targets,
+# MFCC_D_A_0 per-utterance CMVN normalization 
+time steps/train_nnet_mono_pdf.sh
+steps/decode_nnet_mono_pdf.sh &
 
+
+
+## TRIPHONE ##
+# now, we will train triphone GMM-HMM system to get context-dependent training labels
+# 500 pdfs
+time steps/train_tri1.sh
+(steps/decode_tri1.sh ; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ) &
+time steps/train_tri2a.sh
+(steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh ) &
+
+# train MLP with context-dependent pdf targets
+# 1-frame of MFCC_D_A_0, per-utternace CMN, global CVN, 
+# 500K params 
+time steps/train_nnet_tri2a_s1.sh 
+steps/decode_nnet_tri2a_s1.sh &
+
+# +class priors
+time steps/train_nnet_tri2a_s2.sh 
+steps/decode_nnet_tri2a_s2.sh &
+
+# +splice 11
+time steps/train_nnet_tri2a_s3.sh 
+steps/decode_nnet_tri2a_s3.sh &
+# tune acoustic scale
+scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s3_tune steps/decode_nnet_tri2a_s3.sh
+
+# +spk-cmvn
+time steps/train_nnet_tri2a_s4.sh 
+steps/decode_nnet_tri2a_s4.sh &
+# tune acoustic scale
+scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s4_tune steps/decode_nnet_tri2a_s4.sh
 

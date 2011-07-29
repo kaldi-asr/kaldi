@@ -14,8 +14,6 @@ scripts for a sequence of experiments.
       techniques including global and speaker-specific transforms.
       See a parallel setup in ../wsj/s1
       
-  s2: This setup is experiment with pure hybrid system with 
-      monophone targets (either transitions or PDFs).
+  s2: This setup is experiments with pure hybrid system.
 
-  s3: This setup is pure hybrid system with CD-PDF targets.
-
+      
