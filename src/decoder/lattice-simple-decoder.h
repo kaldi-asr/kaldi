@@ -40,18 +40,15 @@ struct LatticeSimpleDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   bool determinize_lattice;
-  bool debug_latgen;
   LatticeSimpleDecoderConfig(): beam(16.0),
                                 lattice_beam(10.0),
                                 prune_interval(25),
-                                determinize_lattice(true),
-                                debug_latgen(false) { }
+                                determinize_lattice(true) { }
   void Register(ParseOptions *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("debug-latgen", &debug_latgen, "If true, check memory consistency of lattice generation (very slow).");
   }
 };
 
@@ -89,29 +86,23 @@ class LatticeSimpleDecoder {
     StateId start_state = fst_.Start();
     KALDI_ASSERT(start_state != fst::kNoStateId);
     active_toks_.resize(1);
-    active_toks_[0].tok_head = active_toks_[0].tok_tail =
-        cur_toks_[start_state] = new Token(0.0, 0.0, NULL, NULL, NULL);
+    active_toks_[0].toks = 
+        cur_toks_[start_state] = new Token(0.0, 0.0, NULL, NULL);
     num_toks_++;
     ProcessNonemitting(0);
     // We use 1-based indexing for frames in this decoder (if you view it in
     // terms of features), but note that the decodable object uses zero-based
     // numbering, which we have to correct for when we call it.
-    CheckLists();
     for (int32 frame = 1; !decodable->IsLastFrame(frame-2); frame++) {
       active_toks_.resize(frame+1);
       prev_toks_.clear();
       cur_toks_.swap(prev_toks_);
-      CheckLists();
       ProcessEmitting(decodable, frame);
-      CheckLists();
       // Important to call PruneCurrentTokens before ProcessNonemitting, or
       // we would get dangling forward pointers.  Anyway, ProcessNonemitting uses
       // the beam.
-      CheckLists();
       PruneCurrentTokens(config_.beam, &cur_toks_);
-      CheckLists();
       ProcessNonemitting(frame);
-      CheckLists();
       if (decodable->IsLastFrame(frame-1))
         PruneActiveTokensFinal(frame);
       else if (frame % config_.prune_interval == 0)
@@ -154,23 +145,20 @@ class LatticeSimpleDecoder {
     unordered_map<Token*, StateId> tok_map(num_toks_/2 + 3);
     // First create all states.
     for (int32 f = 0; f <= num_frames; f++) {
-      if (active_toks_[f].tok_head == NULL) {
+      if (active_toks_[f].toks == NULL) {
         KALDI_WARN << "GetRawLattice: no tokens active on frame " << f
                    << ": not producing lattice.\n";
         return false;
       }
-      for (Token *tok = active_toks_[f].tok_head;
-          tok != NULL;
-           tok = tok->next)
+      for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next)
         tok_map[tok] = ofst->AddState();
     }
     ofst->SetStart(0);
     StateId cur_state = 0; // we rely on the fact that we numbered these
     // consecutively (AddState() returns the numbers in order..)
     for (int32 f = 0; f <= num_frames; f++) {
-      for (Token *tok = active_toks_[f].tok_head;
-           tok != NULL;
-           tok = tok->next, cur_state++) {
+      for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next,
+               cur_state++) {
         for (ForwardLink *l = tok->links;
              l != NULL;
              l = l->next) {
@@ -293,11 +281,11 @@ class LatticeSimpleDecoder {
     
     ForwardLink *links; // Head of singly linked list of ForwardLinks
     
-    Token *next; // "next" and "prev" are links in a per-frame doubly linked list
-    Token *prev; // of Tokens, for the whole utterance.
-    Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links, Token *next,
-          Token *prev): tot_cost(tot_cost), extra_cost(extra_cost), links(links),
-                        next(next), prev(prev) { }
+    Token *next; // Next in list of tokens for this frame.
+    
+    Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
+          Token *next): tot_cost(tot_cost), extra_cost(extra_cost), links(links),
+                        next(next) { }
     Token() {}
     void DeleteForwardLinks() {
       ForwardLink *l = links, *m; 
@@ -313,48 +301,36 @@ class LatticeSimpleDecoder {
   // head and tail of per-frame list of Tokens (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
   struct TokenList {
-    Token *tok_head;
-    Token *tok_tail;
+    Token *toks;
     bool must_prune_forward_links;
     bool must_prune_tokens;
-    TokenList(): tok_head(NULL), tok_tail(NULL), must_prune_forward_links(true),
+    TokenList(): toks(NULL), must_prune_forward_links(true),
                  must_prune_tokens(true) { }
   };
   
 
-  // AddToken inserts a new, empty token (i.e. with no forward links) for the
-  // given frame.  [note: it's inserted if necessary into cur_toks_ and also into
-  // the doubly linked list of tokens active on this frame (whose head and tail is
-  // at active_toks_[frame]).
-  //
-  // If "emitting" is false, then we're a bit careful about the order (since we
-  // need to maintain the tokens in topological order); in this case, it will
-  // move any existing token to the end of the doubly linked list of tokens for
-  // the current frame.
+  // FindOrAddToken either locates a token in cur_toks_, or if necessary inserts a new,
+  // empty token (i.e. with no forward links) for the current frame.  [note: it's
+  // inserted if necessary into cur_toks_ and also into the singly linked list
+  // of tokens active on this frame (whose head is at active_toks_[frame]).
   //
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
-  inline Token *AddToken(StateId state, int32 frame, BaseFloat tot_cost,
-                         bool emitting, bool *changed) {
+  inline Token *FindOrAddToken(StateId state, int32 frame, BaseFloat tot_cost,
+                               bool emitting, bool *changed) {
     KALDI_ASSERT(frame < active_toks_.size());
-    Token *&tok_head = active_toks_[frame].tok_head,
-        *&tok_tail = active_toks_[frame].tok_tail;
+    Token *&toks = active_toks_[frame].toks;
     
     unordered_map<StateId, Token*>::iterator find_iter = cur_toks_.find(state);
     if (find_iter == cur_toks_.end()) { // no such token presently.
       // Create one.
-      Token *new_tok = new Token;
+      const BaseFloat extra_cost = 0.0;
+      // tokens on the currently final frame have zero extra_cost
+      // as any of them could end up
+      // on the winning path.
+      Token *new_tok = new Token (tot_cost, extra_cost, NULL, toks);
+      toks = new_tok;
       num_toks_++;
-      new_tok->tot_cost = tot_cost;
-      new_tok->extra_cost = 0; // tokens on the currently final frame have zero extra_cost
-                          // as any of them could end up
-          // on the winning path.
-      new_tok->links = NULL; // forward links: will be populated later.
-      new_tok->next = NULL; // since new_tok will be the tail of the list.
-      new_tok->prev = tok_tail;
-      if (tok_tail) tok_tail->next = new_tok;
-      else tok_head = new_tok;
-      tok_tail = new_tok;
       cur_toks_[state] = new_tok;
       if (changed) *changed = true;
       return new_tok;
@@ -366,75 +342,23 @@ class LatticeSimpleDecoder {
       } else {
         if (changed) *changed = false;
       }
-      if (!emitting && tok != tok_tail) {
-        // Excise tok from list; put at tail of list.  This is necessary to
-        // maintain nonemitting tokens in topological order, which is necessary
-        // for the token-pruning algorithm (PruneActiveTokens).
-        tok->next->prev = tok->prev;
-        // note: tok->next != NULL since tok != tok_tail
-        if (tok->prev != NULL) tok->prev->next = tok->next;
-        else tok_head = tok->next;
-        // At this point the token is excised; now we put it at tail
-        // of list.
-        tok->prev = tok_tail;
-        tok_tail->next = tok;
-        tok->next = NULL;
-        tok_tail = tok;
-      }
       return tok;
     }
   }
   
-  // Deletes a token, and any forward pointers it has.
-  // Excise from doubly linked list of tokens.
-  void DeleteToken(int32 frame, Token *tok) {
-    KALDI_ASSERT(frame < active_toks_.size());
-    Token *&tok_head = active_toks_[frame].tok_head,
-        *&tok_tail = active_toks_[frame].tok_tail;
-    tok->DeleteForwardLinks();
-    if (tok->next != NULL) tok->next->prev = tok->prev;
-    else { KALDI_ASSERT(tok_tail == tok);  tok_tail = tok->prev; }
-    if (tok->prev != NULL) tok->prev->next = tok->next;
-    else { KALDI_ASSERT(tok_head == tok); tok_head = tok->next; }
-    delete tok;
-    num_toks_--;
-  }
+  // delta is the amount by which the extra_costs must
+  // change before it sets "extra_costs_changed" to true.  If delta is larger,
+  // we'll tend to go back less far toward the beginning of the file.
+  void PruneForwardLinks(int32 frame, bool *extra_costs_changed,
+                         bool *links_pruned,
+                         BaseFloat delta) {
+    // We have to iterate until there is no more change, because the links
+    // are not guaranteed to be in topological order.
 
-  void CheckLists() {
-    if(!config_.debug_latgen) return;
-    for(size_t frame = 0; frame < active_toks_.size(); frame++) {
-      for(Token *tok = active_toks_[frame].tok_head;
-          tok != NULL;
-          tok = tok->next) {
-        if (tok->prev){ KALDI_ASSERT(tok->prev->next == tok); }
-        else { KALDI_ASSERT(tok == active_toks_[frame].tok_head); }
-        if (tok->next){ KALDI_ASSERT(tok->next->prev == tok); }
-        else { KALDI_ASSERT(tok == active_toks_[frame].tok_tail); }
-        for(ForwardLink *link = tok->links;
-            link != NULL;
-            link = link->next) {
-          Token *next_tok = link->next_tok;
-          if (next_tok->prev){ KALDI_ASSERT(next_tok->prev->next == next_tok); }
-          else {
-            size_t next_frame = frame + (link->ilabel == 0 ? 0 : 1);
-            if (next_tok->prev){ KALDI_ASSERT(next_tok->prev->next == next_tok); }
-            else{ KALDI_ASSERT(next_tok == active_toks_[next_frame].tok_head); }
-            if (next_tok->next){ KALDI_ASSERT(next_tok->next->prev == next_tok); }
-            else { KALDI_ASSERT(next_tok == active_toks_[next_frame].tok_tail); }
-          }                              
-        }
-      }
-    }
-  }
-
-  void PruneForwardLinks(int32 frame, bool *extra_costs_changed, bool *links_pruned,
-                         BaseFloat delta) { // delta is the amount by which the extra_costs must
-    // change before it sets "extra_costs_changed" to true.  If delta is larger,
-    // we'll tend to go back less far toward the beginning of the file.
     *extra_costs_changed = false;
     *links_pruned = false;
     KALDI_ASSERT(frame >= 0 && frame < active_toks_.size());
-    if (active_toks_[frame].tok_head == NULL ) { // empty list; this should
+    if (active_toks_[frame].toks == NULL ) { // empty list; this should
       // not happen.
       if (!warned_) {
         KALDI_WARN << "No tokens alive [doing pruning].. warning first "
@@ -442,42 +366,49 @@ class LatticeSimpleDecoder {
         warned_ = true;
       }
     }
-    // Go through tokens on this frame in reverse order (required to correctly
-    // handle epsilon links; they are in topological order).
-    for (Token *tok = active_toks_[frame].tok_tail;
-         tok != NULL;
-         tok = tok->prev) {
-      ForwardLink *link, *prev_link=NULL;
-      // will recompute tok_extra_cost.
-      BaseFloat tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
-      for (link = tok->links; link != NULL; ) {
-        // See if we need to excise this link...
-        Token *next_tok = link->next_tok;
-        BaseFloat link_extra_cost = next_tok->extra_cost +
-            ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
-             - next_tok->tot_cost);
-        if (link_extra_cost > config_.lattice_beam) { // excise link
-          ForwardLink *next_link = link->next;
-          if (prev_link != NULL) prev_link->next = next_link;
-          else tok->links = next_link;
-          delete link;
-          link = next_link; // advance link but leave prev_link the same.
-          *links_pruned = true;
-        } else { // keep the link and update the tok_extra_cost if needed.
-          if (link_extra_cost < 0.0) { // this is just a precaution.
-            if (link_extra_cost < -0.01)
-              KALDI_WARN << "Negative extra_cost: " << link_extra_cost;
-            link_extra_cost = 0.0;
+    
+    bool changed = true;
+    while (changed) {
+      changed = false;
+      for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+        ForwardLink *link, *prev_link=NULL;
+        // will recompute tok_extra_cost.
+        BaseFloat tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
+        for (link = tok->links; link != NULL; ) {
+          // See if we need to excise this link...
+          Token *next_tok = link->next_tok;
+          BaseFloat link_extra_cost = next_tok->extra_cost +
+              ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
+               - next_tok->tot_cost);
+          KALDI_ASSERT(link_extra_cost == link_extra_cost); // check for NaN
+          if (link_extra_cost > config_.lattice_beam) { // excise link
+            ForwardLink *next_link = link->next;
+            if (prev_link != NULL) prev_link->next = next_link;
+            else tok->links = next_link;
+            delete link;
+            link = next_link; // advance link but leave prev_link the same.
+            *links_pruned = true;
+          } else { // keep the link and update the tok_extra_cost if needed.
+            if (link_extra_cost < 0.0) { // this is just a precaution.
+              if (link_extra_cost < -0.01)
+                KALDI_WARN << "Negative extra_cost: " << link_extra_cost;
+              link_extra_cost = 0.0;
+            }
+            if (link_extra_cost < tok_extra_cost)
+              tok_extra_cost = link_extra_cost;
+            prev_link = link;
+            link = link->next;
           }
-          if (link_extra_cost < tok_extra_cost)
-            tok_extra_cost = link_extra_cost;
-          prev_link = link;
-          link = link->next;
         }
+        if (fabs(tok_extra_cost - tok->extra_cost) > delta)
+          changed = true;
+        tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
       }
-      if (fabs(tok_extra_cost - tok->extra_cost) > delta)
-        *extra_costs_changed = true;
-      tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
+      if (changed) *extra_costs_changed = true;
+
+      // Note: it's theoretically possible that aggressive compiler
+      // optimizations could cause an infinite loop here for small delta and
+      // high-dynamic-range scores.
     }
   }
 
@@ -486,7 +417,7 @@ class LatticeSimpleDecoder {
   // for pruning, otherwise it treats all tokens as final.
   void PruneForwardLinksFinal(int32 frame) {
     KALDI_ASSERT(static_cast<size_t>(frame+1) == active_toks_.size());
-    if (active_toks_[frame].tok_head == NULL ) // empty list; this should
+    if (active_toks_[frame].toks == NULL ) // empty list; this should
       // not happen.
       KALDI_WARN << "No tokens alive at end of file\n";
 
@@ -509,56 +440,68 @@ class LatticeSimpleDecoder {
     }
     final_active_ = (best_cost_final != infinity);
 
-    // Go through tokens on this frame in reverse order (required to correctly
-    // handle epsilon links; they are in topological order).
-    for (Token *tok = active_toks_[frame].tok_tail;
-         tok != NULL;
-         tok = tok->prev) {
-      ForwardLink *link, *prev_link=NULL;
-      // will recompute tok_extra_cost.  It has a term in it that corresponds
-      // to the "final-prob", so instead of initializing tok_extra_cost to infinity
-      // below we set it to the difference between the (score+final_prob) of this token,
-      // and the best such (score+final_prob).
-      BaseFloat tok_extra_cost;
-      if (final_active_) {
-        BaseFloat final_cost = fst_.Final(tok_to_state_map[tok]).Value();
-        tok_extra_cost = (tok->tot_cost + final_cost) - best_cost_final;
-      } else 
-        tok_extra_cost = tok->tot_cost - best_cost_nofinal;
+
+    // Now go through tokens on this frame, pruning forward links...  may have
+    // to iterate a few times until there is no more change, because the list is
+    // not in topological order.
+
+    bool changed = true;
+    BaseFloat delta = 1.0e-05;
+    while (changed) {
+      changed = false;
+      for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
+        ForwardLink *link, *prev_link=NULL;
+        // will recompute tok_extra_cost.  It has a term in it that corresponds
+        // to the "final-prob", so instead of initializing tok_extra_cost to infinity
+        // below we set it to the difference between the (score+final_prob) of this token,
+        // and the best such (score+final_prob).
+        BaseFloat tok_extra_cost;
+        if (final_active_) {
+          BaseFloat final_cost = fst_.Final(tok_to_state_map[tok]).Value();
+          tok_extra_cost = (tok->tot_cost + final_cost) - best_cost_final;
+        } else 
+          tok_extra_cost = tok->tot_cost - best_cost_nofinal;
       
-      for (link = tok->links; link != NULL; ) {
-        // See if we need to excise this link...
-        Token *next_tok = link->next_tok;
-        BaseFloat link_extra_cost = next_tok->extra_cost +
-            ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
-             - next_tok->tot_cost);
-        if (link_extra_cost > config_.lattice_beam) { // excise link
-          ForwardLink *next_link = link->next;
-          if (prev_link != NULL) prev_link->next = next_link;
-          else tok->links = next_link;
-          delete link;
-          link = next_link; // advance link but leave prev_link the same.
-        } else { // keep the link and update the tok_extra_cost if needed.
-          if (link_extra_cost < 0.0) { // this is just a precaution.
-            if (link_extra_cost < -0.01)
-              KALDI_WARN << "Negative extra_cost: " << link_extra_cost;
-            link_extra_cost = 0.0;
+        for (link = tok->links; link != NULL; ) {
+          // See if we need to excise this link...
+          Token *next_tok = link->next_tok;
+          BaseFloat link_extra_cost = next_tok->extra_cost +
+              ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
+               - next_tok->tot_cost);
+          if (link_extra_cost > config_.lattice_beam) { // excise link
+            ForwardLink *next_link = link->next;
+            if (prev_link != NULL) prev_link->next = next_link;
+            else tok->links = next_link;
+            delete link;
+            link = next_link; // advance link but leave prev_link the same.
+          } else { // keep the link and update the tok_extra_cost if needed.
+            if (link_extra_cost < 0.0) { // this is just a precaution.
+              if (link_extra_cost < -0.01)
+                KALDI_WARN << "Negative extra_cost: " << link_extra_cost;
+              link_extra_cost = 0.0;
+            }
+            if (link_extra_cost < tok_extra_cost)
+              tok_extra_cost = link_extra_cost;
+            prev_link = link;
+            link = link->next;
           }
-          if (link_extra_cost < tok_extra_cost)
-            tok_extra_cost = link_extra_cost;
-          prev_link = link;
-          link = link->next;
         }
+        // prune away tokens worse than lattice_beam above best path.  This step
+        // was not necessary in the non-final case because then, this case
+        // showed up as having no forward links.  Here, the tok_extra_cost has
+        // an extra component relating to the final-prob.
+        if(tok_extra_cost > config_.lattice_beam)
+          tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
+
+        if (!ApproxEqual(tok->extra_cost, tok_extra_cost, delta))
+          changed = true;
+        tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
       }
-      // prune away tokens worse than lattice_beam above best path.  This step
-      // was not necessary in non-final case because then, this case showed up as
-      // having no forward links.  Here, the tok_extra_cost has an extra component
-      // relating to the final-prob.
-      if(tok_extra_cost > config_.lattice_beam)
-        tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
-      
-      tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
-      if (tok_extra_cost != std::numeric_limits<BaseFloat>::infinity()) {
+    }
+
+    // Now put surviving Tokens in the final_costs_ hash.
+    for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {    
+      if (tok->extra_cost != std::numeric_limits<BaseFloat>::infinity()) {
         // If the token was not pruned away, 
         if(final_active_) {
           BaseFloat final_cost = fst_.Final(tok_to_state_map[tok]).Value();
@@ -577,24 +520,21 @@ class LatticeSimpleDecoder {
   // pointers].
   void PruneTokensForFrame(int32 frame) {
     KALDI_ASSERT(frame >= 0 && frame < active_toks_.size());
-    Token *&tok_head = active_toks_[frame].tok_head,
-        *&tok_tail = active_toks_[frame].tok_tail;
-    if (tok_head == NULL)
+    Token *&toks = active_toks_[frame].toks;
+    if (toks == NULL)
       KALDI_WARN << "No tokens alive [doing pruning]\n";
-    Token *tok, *next_tok;
-    for (tok = tok_head;
-         tok != NULL;
-         tok = next_tok) {
+    Token *tok, *next_tok, *prev_tok = NULL;
+    for (tok = toks; tok != NULL; tok = next_tok) {
       next_tok = tok->next;
       if (tok->extra_cost == std::numeric_limits<BaseFloat>::infinity()) {
         // Next token is unreachable from end of graph; excise tok from list
         // and delete tok.
-        if (tok->prev) tok->prev->next = tok->next;
-        else tok_head = tok->next;
-        if (tok->next) tok->next->prev = tok->prev;
-        else tok_tail = tok->prev;
+        if (prev_tok != NULL) prev_tok->next = tok->next;
+        else toks = tok->next;
         delete tok;
         num_toks_--;
+      } else {
+        prev_tok = tok;
       }
     }
   }
@@ -607,16 +547,14 @@ class LatticeSimpleDecoder {
   // going backward and propagating the change.  larger delta -> will recurse less
   // far.
   void PruneActiveTokens(int32 cur_frame, BaseFloat delta) {
-    CheckLists();
     int32 num_toks_begin = num_toks_;
     for (int32 frame = cur_frame-1; frame >= 0; frame--) {
-      CheckLists();
       // Reason why we need to prune forward links in this situation:
       // (1) we have never pruned them
       // (2) we never pruned the forward links on the next frame, which
       //     
       if (active_toks_[frame].must_prune_forward_links) {
-        bool extra_costs_changed, links_pruned;
+        bool extra_costs_changed = false, links_pruned = false;
         PruneForwardLinks(frame, &extra_costs_changed, &links_pruned, delta);
         if (extra_costs_changed && frame > 0)
           active_toks_[frame-1].must_prune_forward_links = true;
@@ -624,7 +562,6 @@ class LatticeSimpleDecoder {
           active_toks_[frame].must_prune_tokens = true;
         active_toks_[frame].must_prune_forward_links = false;
       }
-      CheckLists();
       if (frame+1 < cur_frame &&
          active_toks_[frame+1].must_prune_tokens) {
         PruneTokensForFrame(frame+1);
@@ -644,15 +581,12 @@ class LatticeSimpleDecoder {
   // final_active_ is set intenally (by PruneForwardLinksFinal),
   // and final_probs_ (a hash) is also set by PruneForwardLinksFinal.
   void PruneActiveTokensFinal(int32 cur_frame) {
-    CheckLists();
     int32 num_toks_begin = num_toks_;
     PruneForwardLinksFinal(cur_frame); 
     for (int32 frame = cur_frame-1; frame >= 0; frame--) {
-      CheckLists();
       bool b1, b2; // values not used.
       BaseFloat dontcare = 0.0;
       PruneForwardLinks(frame, &b1, &b2, dontcare);
-      CheckLists();
       PruneTokensForFrame(frame+1);
     }
     KALDI_VLOG(1) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
@@ -682,7 +616,7 @@ class LatticeSimpleDecoder {
           else if (tot_cost + config_.beam < cutoff)
             cutoff = tot_cost + config_.beam;
           // AddToken adds the next_tok to cur_toks_ (if not already present).
-          Token *next_tok = AddToken(arc.nextstate, frame, tot_cost, true, NULL);
+          Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
           
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
           tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
@@ -700,15 +634,15 @@ class LatticeSimpleDecoder {
     // it may cause us to process states unnecessarily (e.g. more than once),
     // but in the baseline code, turning this vector into a set to fix this
     // problem did not improve overall speed.
-    std::vector<StateId> queue_;
+    std::vector<StateId> queue;
     float best_cost = std::numeric_limits<BaseFloat>::infinity();
     for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
          iter != cur_toks_.end();
          ++iter) {
-      queue_.push_back(iter->first);
+      queue.push_back(iter->first);
       best_cost = std::min(best_cost, iter->second->tot_cost);
     }
-    if (queue_.empty()) {
+    if (queue.empty()) {
       if (!warned_) {
         KALDI_ERR << "Error in ProcessEmitting: no surviving tokens: frame is "
                   << frame;
@@ -717,9 +651,9 @@ class LatticeSimpleDecoder {
     }
     BaseFloat cutoff = best_cost + config_.beam;
     
-    while (!queue_.empty()) {
-      StateId state = queue_.back();
-      queue_.pop_back();
+    while (!queue.empty()) {
+      StateId state = queue.back();
+      queue.pop_back();
       Token *tok = cur_toks_[state];
       // If "tok" has any existing forward links, delete them,
       // because we're about to regenerate them.  This is a kind
@@ -737,8 +671,8 @@ class LatticeSimpleDecoder {
               tot_cost = cur_cost + graph_cost;
           if (tot_cost < cutoff) {
             bool changed;
-            Token *new_tok = AddToken(arc.nextstate, frame, tot_cost,
-                                      false, &changed);
+            Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
+                                            false, &changed);
             
             tok->links = new ForwardLink(new_tok, 0, arc.olabel,
                                          graph_cost, 0, tok->links);
@@ -746,7 +680,7 @@ class LatticeSimpleDecoder {
             // "changed" tells us whether the new token has a different
             // cost from before, or is new [if so, add into queue].
             if (changed)
-              queue_.push_back(arc.nextstate);
+              queue.push_back(arc.nextstate);
           }
         }
       }
@@ -756,7 +690,8 @@ class LatticeSimpleDecoder {
   unordered_map<StateId, Token*> cur_toks_;
   unordered_map<StateId, Token*> prev_toks_;
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
-  // frame (members of TokenList are tok_head, tok_tail, ever_pruned).  
+  // frame (members of TokenList are toks, must_prune_forward_links,
+  // must_prune_tokens).
   const fst::Fst<fst::StdArc> &fst_;
   LatticeSimpleDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
@@ -770,8 +705,7 @@ class LatticeSimpleDecoder {
     for (size_t i = 0; i < active_toks_.size(); i++) {
       // Delete all tokens alive on this frame, and any forward
       // links they may have.
-      Token *tok = active_toks_[i].tok_head;
-      while (tok != NULL) {
+      for (Token *tok = active_toks_[i].toks; tok != NULL; ) {
         tok->DeleteForwardLinks();
         Token *next_tok = tok->next;
         delete tok;

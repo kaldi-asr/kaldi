@@ -227,6 +227,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
                 << (like / features.NumRows()) << " over "
                 << features.NumRows() << " frames.";
+      num_success++;
     }
       
     double elapsed = timer.Elapsed();
