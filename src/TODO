@@ -4,7 +4,39 @@
   - Try to run the scripts and compile on various platforms, and
     report problems.
 
+=====
 
+gmm-latgen-simple   [Mostly finished]  Create lattices.  Write either state-level traceback or word-level lattice-determinized output, depending on options.
+
+gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
+
+lattice-scale [not started] Applies scaling to lattices' scores [ScaleLattice function].... would probably be called normally as lattice-scale --acoustic-scale=0.1 <in-archive> <out-archive>, but
+also with options --graph-scale, --acoustic2graph-scale, --graph2acoustic-scale, corresponding to a 2x2 scaling matrix.
+
+lattice-best-path [not started] Computes the best path through the lattice.  Probable usage: 
+     lattice-best-path --acoustic-scale=0.1 <input-lattice-archive> <word-archive>  [<alignment-archive> [<cost-archive>]] 
+
+lattice-rand-path [not started]  Eventually have a version that computes a random path weighted by probability?  Not sure how useful.
+
+lattice-to-post [not started]  Does forward-backward on the lattice, using its current weights, and converts it to state-level (transition-id-level) posteriors.   Would include --acoustic-scale option for convenience.
+   Normal usage: lattice-to-post --acoustic-scale=$acwt <in-archive> <out-archive>.  Another option would be --rand-prune, which would do randomized pruning of state-level posteriors if they are below a threshold, as I already do in some programs that create Gaussian-level posteriors. [the randomization is there to preserve expectations].
+
+lattice-combine [not started]  This would take two archives of lattices with identical topologies and possibly different scores, and combine the scores in some, probably linear, way.  It's a cheap way to emulate having more than 2 weights on the lattice.  Let's not create this until we have a use for it though.
+
+gmm-rescore-lattice [not started]  Replace acoustic scores on a lattice with newly computed acoustic scores.  Normal usage: gmm-rescore-lattice model <lattice-in-archive> <feats-in-archive> <lattice-out-archive>.  
+  Would have option --old-acoustic-scale [default = 0] to keep the old acoustics with some scale.
+  Might add options to add in the transition probabilities to either the acoustic part or the graph part of the weights-- or might create a separate program for this.
+
+lm-rescore-lattice-{fst,arpa} [for Gilles; not started]  Replace (or add) graph scores on a lattice with newly computed LM scores.  Normal usage: lm-rescore-lattice <LM FST/arpa> <lattice-in-archive> <lattice-out-archive>.
+  Options would include --lm-scale [default = 1]; set to -1 for removing old LM scores; and --old-graph-scale [default = 0] to keep the old graph scores with some scale [e.g. useful if we previously added transition probabilities].
+
+lex-rescore-lattice [not started].  This would add in the probabilities from the lexicon to the graph part of the lattice score.  This is a tricky algorithm that involves working out the corresponding phone-sequences for paths through the lattices, and simultaneously matching the labels on both sides of the (lattice and lexicon) FSTs.  I'll work on this at some point.
+
+transition-rescore-lattice: add transition-probs to a lattice. [possible..]
+
+lattice-nbest [not started] From a lattice, create N-best lists.  (I think the ShortestPath algorithm does what we need).  There are different possible outputs to this program, e.g.: word-Nbest (using Int32VectorVectorWriter), transition-id-Nbest (using the same), acoustic scores (BaseFloatVectorWriter), LM scores, acoustic+lm scores?  I'm not sure whether the same program should do all this.  Note: the ShortestPath algorithm creates an FST representing the N-best list, and we could consider writing this FST form too.  Perhaps we should wait till we see what the output is needed for.
+
+=====
 
  TODO items (Arnab):
   Check the clapack configuration in the configure script... not clear
@@ -16,7 +48,7 @@
    documentation for acoustic modeling code.
 
  TODO items (Dan):
-
+  Harmonize output style of decoders (e.g. same type of lattices).
   Check kaldi-decoder and add example scripts.
   Look into how better to estimate vectors in training time
     (I think WERs degraded when I fixed a script bug that

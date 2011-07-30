@@ -276,7 +276,7 @@ class SimpleDecoder {
     for (size_t i = 0; i < retained.size(); i++) {
       tmp[retained[i]] = (*toks)[retained[i]];
     }
-    KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
+    KALDI_VLOG(2) <<  "Pruned to " << (retained.size()) << " toks.\n";
     tmp.swap(*toks);
   }
 };
