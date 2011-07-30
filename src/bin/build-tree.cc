@@ -48,8 +48,7 @@ void GetSeenPhones(BuildTreeStatsType &stats, int P, std::vector<int32> *phones_
 
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     using namespace kaldi;

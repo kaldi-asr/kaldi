@@ -190,8 +190,7 @@ void InitAmGmmFromOld(const BuildTreeStatsType &stats,
 
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     using namespace kaldi;
@@ -201,9 +200,9 @@ int main(int argc, char *argv[])
         "Train decision tree\n"
         "Usage:  gmm-init-model [options] <tree-in> <tree-stats-in> <topo-file> <model-out> [<old-tree> <old-model>]\n"
         "e.g.: \n"
-        " gmm-init-model tree treeacc topo tree 1.mdl\n"
-        " or (initializing GMMs with old model):\n"
-        " gmm-init-model tree treeacc topo tree 1.mdl prev/tree prev/30.mdl\n";
+        "  gmm-init-model tree treeacc topo tree 1.mdl\n"
+        "or (initializing GMMs with old model):\n"
+        "  gmm-init-model tree treeacc topo tree 1.mdl prev/tree prev/30.mdl\n";
 
     bool binary = false;
     std::string occs_out_filename;

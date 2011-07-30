@@ -28,8 +28,7 @@ and generats the sufficient statistics for the decision tree
 creation. Context width and central phone position are used to
 identify the contexts.Transition model is used as an input to identify
 the PDF's and the phones.  */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
   try {

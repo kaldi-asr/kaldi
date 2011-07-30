@@ -39,8 +39,7 @@ void ReverseFeatures(Matrix<BaseFloat> *feats) {
 }
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
@@ -105,11 +104,10 @@ int main(int argc, char *argv[])
         KALDI_ERR << "Failed to open alignments output.";
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") {
-      word_syms = fst::SymbolTable::ReadText(word_syms_filename);
-      if (!word_syms)
-        KALDI_EXIT << "Could not read symbol table from file "<<word_syms_filename;
-    }
+    if (word_syms_filename != "") 
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
+        KALDI_EXIT << "Could not read symbol table from file "
+                   << word_syms_filename;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
@@ -119,11 +117,11 @@ int main(int argc, char *argv[])
     SimpleDecoder decoder(*decode_fst, beam);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
-      std::string key = feature_reader.Key();
+      std::string utt = feature_reader.Key();
       Matrix<BaseFloat> features (feature_reader.Value());
       feature_reader.FreeCurrent();
       if (features.NumRows() == 0) {
-        KALDI_WARN << "Zero-length utterance: " << key;
+        KALDI_WARN << "Zero-length utterance: " << utt;
         num_fail++;
         continue;
       }
@@ -132,8 +130,6 @@ int main(int argc, char *argv[])
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
-
-      KALDI_LOG << "Length of file is " << features.NumRows();
 
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
@@ -154,11 +150,11 @@ int main(int argc, char *argv[])
 
         if (time_reversed) { ReverseVector(&alignment);  ReverseVector(&words); } 
 
-        words_writer.Write(key, words);
+        words_writer.Write(utt, words);
         if (alignment_writer.IsOpen())
-          alignment_writer.Write(key, alignment);
+          alignment_writer.Write(utt, alignment);
         if (word_syms != NULL) {
-          std::cerr << key << ' ';
+          std::cerr << utt << ' ';
           for (size_t i = 0; i < words.size(); i++) {
             std::string s = word_syms->Find(words[i]);
             if (s == "")
@@ -169,12 +165,12 @@ int main(int argc, char *argv[])
         }
         BaseFloat like = -weight.Value();
         tot_like += like;
-        KALDI_LOG << "Log-like per frame for utterance " << key << " is "
-                  << (like / features.NumRows());
-
+        KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+                  << (like / features.NumRows()) << " over "
+                  << features.NumRows() << " frames.";
       } else {
         num_fail++;
-        KALDI_WARN << "Did not successfully decode utterance " << key
+        KALDI_WARN << "Did not successfully decode utterance " << utt
                    << ", len = " << features.NumRows();
       }
     }

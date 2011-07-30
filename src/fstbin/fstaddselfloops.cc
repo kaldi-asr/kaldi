@@ -31,8 +31,7 @@
  ( echo "0 1 0 1"; echo " 0 2 1 0"; echo "1 0"; echo "2 0"; ) | fstcompile | fstaddselfloops in.list out.list | fstprint
 */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;

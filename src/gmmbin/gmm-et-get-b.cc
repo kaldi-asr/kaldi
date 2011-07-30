@@ -21,8 +21,7 @@
 #include "transform/exponential-transform.h"
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using kaldi::int32;

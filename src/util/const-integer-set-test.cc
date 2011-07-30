@@ -35,7 +35,8 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   }
 
   std::vector<Int> vector_set;
-  for (typename std::set<Int>::iterator iter = baseline_set.begin();iter!= baseline_set.end();iter++)
+  for (typename std::set<Int>::iterator iter = baseline_set.begin();
+       iter!= baseline_set.end();iter++)
     vector_set.push_back(*iter);
   if (vector_set.size() != 0) {
     for (size_t i = 0;i < 10;i++) // randomize order.

@@ -75,6 +75,8 @@ class LatticeSimpleDecoder {
     ClearActiveTokens();
   }
 
+  // Returns true if any kind of traceback is available (not necessarily from
+  // a final state).
   bool Decode(DecodableInterface *decodable) {
     // clean up from last time:
     cur_toks_.clear();
@@ -122,7 +124,7 @@ class LatticeSimpleDecoder {
 
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
-  bool ReachedFinal() { return final_active_; }
+  bool ReachedFinal() const { return final_active_; }
 
 
   // Outputs an FST corresponding to the single best path

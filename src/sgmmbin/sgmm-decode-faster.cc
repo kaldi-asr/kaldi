@@ -86,33 +86,19 @@ int main(int argc, char *argv[]) {
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
-    Int32VectorWriter alignment_writer;
-    if (alignment_wspecifier != "")
-      if (!alignment_writer.Open(alignment_wspecifier))
-        KALDI_ERR << "Failed to open alignments output.";
+    Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") {
-      word_syms = fst::SymbolTable::ReadText(word_syms_filename);
-      if (!word_syms)
+    if (word_syms_filename != "") 
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_EXIT << "Could not read symbol table from file "
                    << word_syms_filename;
-    }
 
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty())
-      if (!gselect_reader.Open(gselect_rspecifier))
-        KALDI_ERR << "Cannot open stream to read gaussian-selection indices";
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
-    RandomAccessTokenReader utt2spk_reader;
-    if (!utt2spk_rspecifier.empty())  // per-speaker adaptation
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Could not open the utt2spk map: " << utt2spk_rspecifier;
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot read speaker vectors.";
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
@@ -189,8 +175,6 @@ int main(int argc, char *argv[]) {
                                            log_prune, acoustic_scale);
       decoder.Decode(&sgmm_decodable);
 
-      KALDI_LOG << "Length of file is " << features.NumRows();
-
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states
                                             &decoded);
@@ -224,8 +208,8 @@ int main(int argc, char *argv[]) {
         BaseFloat like = -weight.Value();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-                  << (like / features.NumRows());
-
+                  << (like / features.NumRows()) << " over "
+                  << features.NumRows() << " frames.";
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << utt

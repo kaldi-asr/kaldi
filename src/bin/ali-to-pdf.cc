@@ -24,8 +24,7 @@
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
   try {

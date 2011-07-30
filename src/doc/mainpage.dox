@@ -43,6 +43,7 @@
   <p>
    - \ref about 
    - \ref install 
+   - \ref tutorial
    - \ref build_setup 
    - \ref style 
    - \ref dependencies

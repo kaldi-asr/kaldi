@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     std::string lats_rspecifier = po.GetArg(1),
         transcriptions_wspecifier = po.GetOptArg(2),
-        alignments_wspecifier = po.GetArg(3);
+        alignments_wspecifier = po.GetOptArg(3);
 
     // Read as regular lattice, not compact lattice--
     // this is the form we need it in for efficient best-path.
@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
+      lattice_reader.FreeCurrent();
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
       Lattice best_path;

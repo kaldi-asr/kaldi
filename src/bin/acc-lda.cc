@@ -25,8 +25,7 @@
 source models, that serve as the input (and may potentially contain
 the current transformation), the un-transformed features and state
 posterior probabilities */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
   try {

@@ -37,8 +37,7 @@
 // (echo "0 0 0 0 0.693147 "; echo "0 1 0 0 0.693147 "; echo "1 0" ) | fstcompile | fstisstochastic --test-in-log=false --delta=1
 // returns 0 even though not stochastic because we gave it an absurdly large delta.
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;

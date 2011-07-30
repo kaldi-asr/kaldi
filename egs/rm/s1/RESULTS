@@ -17,6 +17,19 @@ exp/decode_tri1_fmllr/wer:Average WER is 3.837868 (481 / 12533) # + fMLLR
 exp/decode_tri1_regtree_fmllr/wer:Average WER is 3.789994 (475 / 12533) # + regression-tree
 
 
+# Note: looks like we had not tuned the acwt...
+svatava:s1: grep WER exp/decode_tri1_latgen/wer{,_?,_??}
+exp/decode_tri1_latgen/wer:Average WER is 4.420330 (554 / 12533) 
+exp/decode_tri1_latgen/wer_6:Average WER is 3.917657 (491 / 12533)
+exp/decode_tri1_latgen/wer_7:Average WER is 3.813931 (478 / 12533)
+exp/decode_tri1_latgen/wer_8:Average WER is 3.869784 (485 / 12533)
+exp/decode_tri1_latgen/wer_9:Average WER is 4.013405 (503 / 12533)
+exp/decode_tri1_latgen/wer_10:Average WER is 4.085215 (512 / 12533)
+exp/decode_tri1_latgen/wer_11:Average WER is 4.188941 (525 / 12533)
+exp/decode_tri1_latgen/wer_12:Average WER is 4.420330 (554 / 12533)
+exp/decode_tri1_latgen/wer_13:Average WER is 4.555972 (571 / 12533)
+
+
 exp/decode_tri2a/wer:Average WER is 3.973510 (498 / 12533)  # Second triphone pass
 exp/decode_tri2a_fmllr/wer:Average WER is 3.590521 (450 / 12533) # + fMLLR
 exp/decode_tri2a_fmllr_utt/wer:Average WER is 3.933615 (493 / 12533)  # [ fMLLR per utterance ]
@@ -78,6 +91,7 @@ exp/decode_sgmmd_fmllr/wer:Average WER is 2.305912 (289 / 12533)
 # sgmme is like sgmmb but with LDA+ET features.
 exp/decode_sgmme/wer:Average WER is 2.321870 (291 / 12533) 
 exp/decode_sgmme_fmllr/wer:Average WER is 2.154313 (270 / 12533) 
+
 
 #### Note: stuff below this line may be out of date / not computed
 # with most recent version of toolkit.

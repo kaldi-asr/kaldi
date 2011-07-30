@@ -503,7 +503,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
 
 template<class Holder>
 SequentialTableReader<Holder>::SequentialTableReader(const std::string &rspecifier): impl_(NULL) {
-  if (!Open(rspecifier))
+  if (rspecifier != "" && !Open(rspecifier))
     KALDI_ERR << "Error constructing TableReader: rspecifier is " << rspecifier;
 }
 
@@ -2043,7 +2043,7 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
 template<class Holder>
 RandomAccessTableReader<Holder>::RandomAccessTableReader(const std::string &rspecifier):
     impl_(NULL) {
-  if (!Open(rspecifier))
+  if (rspecifier != "" && !Open(rspecifier))
     KALDI_ERR << "Error opening RandomAccessTableReader object "
         " (rspecifier is: " << rspecifier << ")";
 }

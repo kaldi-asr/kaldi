@@ -8,10 +8,10 @@ valgrind=no
 # ( grep 'ERROR SUMMARY' exp/*/*.log | grep -v '0 errors' ;  grep 'definitely lost' exp/*/*.log | grep -v -w 0 )
 
 if [ $valgrind == "no" ]; then
-  export PATH=${root}/src/bin:${root}/tools/openfst/bin:${root}/src/fstbin/:${root}/src/gmmbin/:${root}/src/featbin/:${root}/src/fgmmbin:${root}/src/sgmmbin:${root}/src/lm:$PATH  
+  export PATH=${root}/src/bin:${root}/tools/openfst/bin:${root}/src/fstbin/:${root}/src/gmmbin/:${root}/src/featbin/:${root}/src/fgmmbin:${root}/src/sgmmbin:${root}/src/lm:${root}/src/latbin:$PATH  
 else 
   mkdir bin
-  for x in ${root}/src/{bin,fstbin,gmmbin,featbin,fgmmbin,sgmmbin,lm}; do
+  for x in ${root}/src/{bin,fstbin,gmmbin,featbin,fgmmbin,sgmmbin,lm,latbin}; do
     for y in $x/*; do
       if [ -x $y ]; then
         b=`basename $y`

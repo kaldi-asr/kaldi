@@ -6,9 +6,9 @@
 # Compile subdirectories starting with the things "depended on".
 
 SUBDIRS = base matrix util feat tree optimization gmm transform sgmm \
-	    fstext hmm lm decoder \
-	    bin fstbin gmmbin fgmmbin sgmmbin featbin \
-	    nnet nnetbin lat
+          fstext hmm lm decoder \
+          bin fstbin gmmbin fgmmbin sgmmbin featbin \
+          nnet nnetbin lat latbin
 
 all: $(SUBDIRS) 
 	echo Done
@@ -31,10 +31,5 @@ $(SUBDIRS) : .phony
 
 
 .phony:
-
-
-# % is a wildcard that matches targets "gmm", "fstext" etc.
-# $@ is the thing that % expanded to (e.g. utils).  we
-# cd to there and 'make'.
 
 

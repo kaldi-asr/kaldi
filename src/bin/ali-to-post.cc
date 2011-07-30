@@ -24,8 +24,7 @@
 
 /** @brief Convert alignments to viterbi style posteriors. The aligned
     symbol gets a weight of 1.0 */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
   try {

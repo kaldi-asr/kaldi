@@ -30,8 +30,7 @@
  ( echo "0 1 0 0"; echo " 0 2 0 0"; echo "1 0"; echo "2 0"; ) | fstcompile | fstoptimize | fstprint
 */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;

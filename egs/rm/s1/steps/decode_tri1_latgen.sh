@@ -37,11 +37,27 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  # the ,p option lets it score partial output without dying..
   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
   compute-wer --mode=present ark:-  ark,p:$dir/test_${test}.tra >& $dir/wer_${test}
+
+ # Now rescore lattices with various acoustic scales, and compute the WER.
+ for inv_acwt in  6 7 8 9 10 11 12 13; do
+   acwt=`perl -e "print (1.0/$inv_acwt);"`
+   lattice-best-path --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
+      "ark:gunzip -c $dir/test_${test}.lat.gz|" ark:$dir/test_${test}.acwt${inv_acwt}.tra \
+      2>$dir/rescore_${inv_acwt}.log
+   scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
+   compute-wer --mode=present ark:-  ark,p:$dir/test_${test}.acwt${inv_acwt}.tra \
+     >& $dir/wer_${test}_${inv_acwt}
+ done
+
  ) &
 done
 
 wait
 
-grep WER $dir/wer_* | \
+
+
+for inv_acwt in "" _6 _7 _8 _9 _10 _11 _12 _13; do
+ grep WER $dir/wer_{mar87,oct87,feb89,oct89,feb91,sep92}${inv_acwt} | \
   awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
-   > $dir/wer
+   > $dir/wer${inv_acwt}
+done

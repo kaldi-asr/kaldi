@@ -22,8 +22,7 @@
 #include "util/edit-distance.h"
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
 

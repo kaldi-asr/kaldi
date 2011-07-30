@@ -58,8 +58,7 @@ void signal_handler(int) {
 
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;

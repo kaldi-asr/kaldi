@@ -43,8 +43,7 @@ void ReadSharedPhonesList(std::string rxfilename, std::vector<std::vector<int32>
 
 } // end namespace kaldi
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using kaldi::int32;

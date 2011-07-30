@@ -33,8 +33,7 @@
   did not affect decoding time in what seemed like a statistically significant way.
 */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace fst;
     using kaldi::int32;

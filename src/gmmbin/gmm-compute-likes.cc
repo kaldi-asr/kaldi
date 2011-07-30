@@ -25,8 +25,7 @@
 
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;

@@ -38,8 +38,7 @@ void ReverseFeatures(Matrix<BaseFloat> *feats) {
 }
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
@@ -92,11 +91,10 @@ int main(int argc, char *argv[])
         KALDI_ERR << "Failed to open alignments output.";
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") {
-      word_syms = fst::SymbolTable::ReadText(word_syms_filename);
-      if (!word_syms)
-        KALDI_EXIT << "Could not read symbol table from file "<<word_syms_filename;
-    }
+    if (word_syms_filename != "") 
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
+        KALDI_EXIT << "Could not read symbol table from file "
+                   << word_syms_filename;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
@@ -140,8 +138,6 @@ int main(int argc, char *argv[])
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      KALDI_LOG << "Length of file is " << features.NumRows();
-
       VectorFst<StdArc> decoded;  // linear FST.
       bool saw_endstate = decoder.GetOutput(true,  // consider only final states.
                                             &decoded);
@@ -177,8 +173,8 @@ int main(int argc, char *argv[])
         BaseFloat like = -weight.Value();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
-                  << (like / features.NumRows());
-
+                  << (like / features.NumRows()) << " over "
+                  << features.NumRows() << " frames.";
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << key

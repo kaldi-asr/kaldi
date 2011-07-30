@@ -7,7 +7,7 @@ BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali sgmm-sum-a
            sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect  sgmm-acc-stats \
            sgmm-est-spkvecs sgmm-post-to-gpost sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost \
            sgmm-comp-prexform sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
-           sgmm-calc-distances sgmm-normalize
+           sgmm-calc-distances sgmm-normalize sgmm-latgen-simple
 
 
 OBJFILES =
@@ -18,7 +18,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../sgmm/kaldi-sgmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../sgmm/kaldi-sgmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 

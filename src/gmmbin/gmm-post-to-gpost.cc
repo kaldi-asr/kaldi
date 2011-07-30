@@ -22,8 +22,7 @@
 #include "hmm/transition-model.h"
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =

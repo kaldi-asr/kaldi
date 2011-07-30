@@ -25,8 +25,7 @@
 
 /* for example of testing setup, see fstmakecontextsymbols.cc */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;

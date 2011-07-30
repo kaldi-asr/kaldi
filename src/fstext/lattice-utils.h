@@ -38,7 +38,7 @@ namespace fst {
    Note: the ilabels end up as the symbols on the arcs of the
    output acceptor, and the olabels go to the strings.  To make
    it the other way around (useful for the speech-recognition
-   application), set invert=true.
+   application), set invert=true [the default].
 */
 template<class Weight, class Int>
 void ConvertLattice(
@@ -51,7 +51,7 @@ void ConvertLattice(
    converting from the Gallic semiring.  "ifst" must be an acceptor (i.e.,
    ilabels and olabels should be identical).  If invert=false, the labels on
    "ifst" become the ilabels on "ofst" and the strings in the weights of "ifst"
-   becomes the olabels.  If invert=true, this is reversed (useful for speech
+   becomes the olabels.  If invert=true [default], this is reversed (useful for speech
    recognition lattices).
 */
 template<class Weight, class Int>
@@ -112,6 +112,15 @@ inline vector<vector<double> > DefaultLatticeScale() {
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
   ans[0][0] = ans[1][1] = 1.0;
+  return ans;
+}
+
+inline vector<vector<double> > AcousticLatticeScale(double acwt) {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = 1.0;
+  ans[1][1] = acwt;
   return ans;
 }
 

@@ -52,8 +52,7 @@ int32 ProcessTopo(const HmmTopology &topo, const std::vector<std::vector<int32> 
 
 } // end namespace kaldi.
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     using namespace kaldi;

@@ -2637,8 +2637,7 @@ template<class Real> static void MatrixUnitTest() {
 }
 
 
-int main()
-{
+int main() {
   kaldi::MatrixUnitTest<float>();
   kaldi::MatrixUnitTest<double>();
   std::cout << "Tests succeeded.\n";

@@ -22,9 +22,9 @@
 
   This tutorial assumes that you know the basics of speech recognition using the
   HMM-GMM approach.  One brief introduction that is available online
-  is\footnote{M. Gales and S. Young (2007). ``The Application of Hidden Markov
-  Models in Speech Recognition.'' Foundations and Trends in Signal Processing
-  1(3): 195-304}.  The HTK Book is also a good resource.  However, unless you
+  is: M. Gales and S. Young (2007). ``The Application of Hidden Markov
+  Models in Speech Recognition." Foundations and Trends in Signal Processing
+  1(3): 195-304.  The HTK Book is also a good resource.  However, unless you
   have a strong mathematical background and are extremely dedicated, we
   discourage trying to learn about speech recognition outside an institutional
   setting.  The intended audience for this tutorial is either speech recognition
@@ -66,7 +66,7 @@
   installation scripts, as they try to guide you what to do.  Some installation
   errors are non-fatal, and the installation scripts will tell you so (i.e. there 
   are some things it installs which are nice to have but are not really needed).
-  The ``best-case'' scenario is that you do:
+  The "best-case" scenario is that you do:
  \verbatim
    cd tools/; ./install.sh; cd ../src; ./configure; make
  \endverbatim
@@ -82,13 +82,13 @@
 
  In case you are unfamiliar with the Subversion (svn) version control system, we
  give a brief overview of some commands that might be useful to you.  Subversion commands
- always look like: ``svn [command] [arguments]''; you can do ``svn help'' to see what
- commands are available, or ``svn help <command>'' for help on a specific command.  
+ always look like: "svn [command] [arguments]"; you can do "svn help" to see what
+ commands are available, or "svn help <command>" for help on a specific command.  
   In kaldi-1 or any subdirectory, type
  \verbatim
    svn up
  \endverbatim
- (this is short for ``svn update'').  If we have committed changes to the repository
+ (this is short for "svn update").  If we have committed changes to the repository
  in the several minutes since you installed Kaldi, you should see output like
  the following:
 \verbatim
@@ -97,50 +97,238 @@ U    src/lat/Makefile
 U    src/nnetbin/nnet-forward.cc
 Updated to revision 191.
 \endverbatim
- More likely, it will just say something like ``At revision 191.''  
- To see if you have made any changes to anything, type ``svn status''.  This will
+ More likely, it will just say something like "At revision 191."  
+ To see if you have made any changes to anything, type "svn status".  This will
  list files that you changed or that have been added.  Files that have been added
  to the directories but are not under version control because you have not used the
- ``svn add'' command, will appear with the descriptor '?'.  If you are going to be 
- contributing to the Kaldi project (and we do welcome contributors, even if all
- you can do is fix typos), then you should become familiar with other commands such
- as ``svn add'', ``svn commit'' and so on.  For this, there are tutorials available
-  online.
+ "svn add" command, will appear with the descriptor '?' (you will see all the
+ binaries that were compiled).  If you are going to be 
+ contributing to the Kaldi project (and we do welcome new contributors), 
+ then you should become familiar with other commands such
+ as "svn add", "svn commit" and so on.  For this, there are tutorials available
+ online.
  
+ \section tutorial_looking Looking at the code and scripts
 
-  \section tutorial_setup Looking at the code
-
- Before we jump into the example scripts, let us take a minute to look at what
+ Before we jump into the example scripts, let us take a few minutes to look at what
  is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
  There are a few files and subdirectories.  
+ The important subdirectories are "tools/", "src/", and "egs/".  
+ We will give an overview of what is in each of these below.
 
- Assuming you have got everything to work, type
- \verbatim
-  make test
- \endverbatim
- This will run
+ \subsection tutorial_looking_tools The tools/ directory
+
+ The directory "tools/' is where we install things that Kaldi depends on in
+ various ways.  Change directory to tools/ and list it.  You will see various
+ files and subdirectories, mostly things that have been installed by the script
+ install.sh.  Look very quickly at the files install.sh and INSTALL.  These files
+ are similar since they cover the same steps, but INSTALL is the manual version
+ of the instructions.  The manual version may be helpful if you have installation problems.
+
+ The most important subdirectory is the one for OpenFst.  cd to openfst/.  This is a soft link
+ to the actual directory which has a version number.  List the openfst directory.
+ If the installation succeeded, there will be a bin/ directory with the installed
+ binaries, and a lib/ directory with the library (we require both of these).
+ The most important code is in the directory include/fst/.  If you ever want to
+ understand Kaldi deeply you will need to understand OpenFst.  For this,
+ the best starting point is http://www.openfst.org/.
+
+ For now, just view the file include/fst/fst.h.  This consists of some declarations
+ of an abstract FST type.  You can see that there are a lot of templates involved.
+ If templates are not your thing, you will probably have trouble understanding this code.
+
+ Change directory to bin/, or add it to your path.  Then follow the instructions
+ that you see when you go to http://www.openfst.org , click on "quick tour", and
+ follow the instructions in the section "Creating FSTs Using Text Files from the
+ Shell".  This should take less than five minutes.  This little snippet of the
+ OpenFst tutorial won't teach you much.  The point is to have some vague idea of
+ the kinds of things OpenFst does and what kinds of materials are available to
+ learn more about it.
+
+ \subsection tutorial_looking_src The src/ directory
+
+ Change directory back up to the top level (kaldi-1) and into src/.
+ List the directory.  You will see a few files and a large number of 
+ subdirectories.  Look at the Makefile.  At the top it sets the variable
+ SUBDIRS.  This is a list of the subdirectories containing code.
+ Notice that some of them end in "bin".  These are the ones that contain
+ executables (the code and executables are in the same directory).  The
+ other directories contain internal code.
+
+ You can see that one of the targets in the Makefile is "test".
+ Type "make test".  This command goes into the various subdirectories and
+ runs test programs in there.  All the tests should succeed.  If you are
+ feeling lucky you can also type "make valgrind".  This runs the same
+ tests with a memory checker, and takes longer, but will find more 
+ errors.  If this doesn't work, forget about it.
  
-  
+ Change directory to (for example) base/.  Look at the Makefile.  Notice the line
+\verbatim
+include ../kaldi.mk
+\endverbatim
+ This lines includes the file ../kaldi.mk verbatim whenever a Makefile in a
+ subdirectory is invoked.  Look at the file ../kaldi.mk.  It will contain
+ some rules related to valgrind (for memory debugging), and then some
+ system-specific configuration in the form of variables such as CXXFLAGS.
+ See if there are any -O options (e.g. -O0).  You might want to remove the flags
+ -O0 and -DKALDI_PARANOID before running big experiments, as they slow things
+ down (we enable them by default for better debugging).
+ 
+Going back to the Makefile in the base/ directory: choose one of the binaries
+listed in TESTFILES, and run it.  Then briefly view the corresponding .cc file.
+The math one is a good example (note: this excludes the majority of math functions
+in Kaldi, which are matrix-vector related functions, and are located in
+../matrix/).  Notice that there are a lot of assertions, with the macro
+KALDI_ASSERT.  These test programs are designed to exit with error status if
+there is a problem (they are not supposed to rely on human inspection of the
+output).
 
-  This may be more stable than the ``trunk'' version, which may occassionally
-  be broken by new changes.
-  If you want to get updates and bug fixes you can go to some checked-out
- directory, and type
-  \verbatim
-    svn update
-  \endverbatim
- If "svn update" prints out scary looking messages about conflicts (caused by
- you changing parts of files that were later modified centerally),
- you may have to resolve the conflicts; for that, we recommend that you
- read about how svn works.
+Look at the header kaldi-math.h.  You will see some elements of our coding practices.
+Notice that all our \#includes are relative to the src/ directory (so we \#include
+base/kaldi-types.h even though we are already in the base/ directory).
+Notice that all macros we \#define, except for standard ones that we are just
+making sure have their normal values, begin with KALDI_.  This is a precaution
+to avoid future conflicts with other codebases (since \#defines don't limit themselves
+to the kaldi namespace).  Notice the style of the function names: LikeThis().  
+Our style is generally based on
+<a href=http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml> this one </a>,
+to conform with OpenFst, but there are some differences.
 
-  \section install_install Installing Kaldi
-   
-  The top-level installation instructions are in the file INSTALL. 
-  For Windows, there are separate instructions in windows/INSTALL.
-  See also \ref build_setup which explains how the build process
-  works internally.
+To see other elements of the style, which will help you to understand Kaldi
+code, cd to ../util, and view text-utils.h.  Notice that the inputs of these
+functions are always first, and are generally const references, while the
+outputs (or inputs that are modified) are always last, and are pointer arguments.  Non-const references
+as function arguments are not allowed.  You can read more about the Kaldi-specific
+elements of the coding style \ref style "here" later if you are interested.  
+For now, just be aware that there is a coding style with quite specific rules.
 
-  The example scripts are in egs/
-  
+Change directory to ../gmmbin and type
+\verbatim
+./gmm-init-model 
+\endverbatim
+It prints out the usage, which should give you a generic idea of how Kaldi programs
+are called.  Note that while there is a --config option that can be used to
+pass a configuration file, in general Kaldi is not as config-driven as HTK and these
+files are not widely used.  You will see a --binary option.  In general, Kaldi file
+formats come in both binary and test forms, and the --binary option controls how
+they are written.  However, this only controls how single objects (e.g. acoustic models)
+are written.  For whole collections of objects (e.g. collections of feature files), 
+there is a different mechanism that we will come to later.
+Type
+\verbatim
+./gmm-init-model >/dev/null
+\endverbatim
+What do you see, and what does this tell you about what Kaldi does with logging-type
+output?  The place that the usage message goes is the same place that all error and
+logging messages go, and there is a reason for this, which should become apparent
+when you start looking at the scripts.
+ 
+To get a little insight into the build process,  cd to ../matrix, and type
+\verbatim
+rm *.o
+make
+\endverbatim
+Look at the options that are passed to the compiler.  These are ultimately
+controlled by the variables that are set in ../kaldi.mk, which in turn is
+determined by ../configure.  Also look at the linking options, passed in when it
+creates matrix-lib-test.  You will get some idea what math libraries it is
+linking against (this is somewhat system dependent).  For more information on how
+we make use of external matrix libraries, you can read \ref matrixwrap.
+
+Change directory to one level up (to src/), and look at the "configure" file.  If you
+are familiar with the "configure" files generated by automake, you will notice that it
+is not one of those.  In fact it is hand generated.  Search within it for "makefiles/"
+and quickly scan all the places where that string occurs (e.g. in the command
+"less configure", type "/makefiles[enter]" and then type "n" to see later instances).
+You will see that it makes use of some files with the .mk in the subdirectory "makefiles/".
+These are essentially "prototype" versions of kaldi.mk.  For systems that are more
+predictable, it just copies the  corresponding file to kaldi.mk.  For Linux, it has to
+do a little more sleuthing because there are so many distributions.  Mostly this relates
+to finding where the math libraries are installed.  If you are having problems with
+a build process, we recommend modifying kaldi.mk by hand.  In order to do this you should
+probably understand how Kaldi makes use of external math libraries (see \ref matrixwrap).
+
+\subsection tutorial_looking_whats What's in the code
+
+Now that we have a vague idea of what the code looks like, where it is, and how it is
+compiled, we are going to briefly skim over some parts of the code to give you an idea
+what is in there.  
+
+First look at the file base/kaldi-common.h.  This file includes a number of
+things from the base/ directory that are used by almost every Kaldi program.  You
+can mostly guess from the filenames the types of things that are provided: things
+like error-logging macros, typedefs, math utility functions such as random number
+generation, and miscellaneous \#defines.  But this is a stripped-down set of
+utilities; look at util/common-utils.h to see a more complete set, including
+command-line parsing and I/O functions that handle extended filenames such as
+pipes.  Some of the other I/O related utilities included in util/common-utils.h
+are hard to describe concisely, and we'll come to them in time.  The reason why
+we segregated a subset of utilities into the base/ directory is so that we could
+minimize the set of things that the matrix/ library depends on (since it's useful
+independent of the rest of Kaldi).
+
+Look at the file matrix/matrix-lib.h.  See what files it includes.  This provides
+an overview of the kinds of things that are in the matrix library.  This library
+is basically a C++ wrapper for BLAS and LAPACK, in case that means anything to you.
+The files sp-matrix.h and tp-matrix relate to symmetric packed matrices and
+triangular packed matrices, respectively.  Quickly scan the file matrix/kaldi-matrix.h.
+This will give you some idea what the matrix code looks like.  It consists of
+a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
+library \ref matrix "here", if you are interested.  Scanning through
+matrix/matrix-lib-test.cc will give you some idea how the various matrix
+and vector functions are called.
+
+Next look at gmm/diag-gmm.h (this class stores a Gaussian Mixture Model).  
+The class DiagGmm may look a bit confusing as
+it has many different accessor functions.  Search for "private" and look
+at the class member variables (they always end with an underscore, as per
+the Kaldi style).  This should make it clear how we store the GMM.
+This is just a single GMM, not a whole collection of GMMs. 
+Look at gmm/am-diag-gmm.h; this class stores a collection of GMMs.
+Notice that it does not inherit from anything.
+Search for "private" and you can see the member variables (there
+are only two of them).  You can understand from this how simple the
+class is (everything else consists of various accessors and convenience
+functions).  A natural question to ask is: where are the transitions,
+where is the decision tree, and where is the HMM topology?  All of these
+things are kept separate from the acoustic model, because it's likely
+that researchers might want to replace the acoustic likelihoods while
+keeping the rest of the system the same.  We'll come to all this stuff later.
+
+Next look at feat/feature-mfcc.h.  Focus on the MfccOptions struct.
+The struct members give you some idea what kind of options are supported
+in MFCC feature extraction.  
+Notice that some struct members are options structs themselves.
+Look at the Register function.  This is standard in Kaldi options classes.
+Then look at featbin/compute-mfcc-feats.cc and search for Register.
+You can see where this function is called from the command-line program.
+To see a complete list of the options supported for MFCC feature extraction,
+execute the program featbin/compute-mfcc-feats with no arguments.
+Recall that you saw some of these options being registered in 
+the MfccOptions class, and others being registered in 
+featbin/compute-mfcc-feats.cc.  The way to specify options is --option=value.
+
+Next look at tree/build-tree.h.  Find the BuildTree function.  This is the main
+top-level function for building the decision tree.  Notice that it returns a
+pointer the type EventMap.  This is a type that stores a function from a set of
+(key, value) pairs to an integer.  It's defined in tree/event-map.h.  The keys
+and values are both integers, but the keys represent phonetic-context positions
+(typically 0, 1 or 2) and the values represent phones.  There is also a special
+key, -1, that roughly represents the position in the HMM.  There are a lot of
+details inside the tree-building code: list all the header files in the tree
+directory.  For now we won't discuss it further.
+
+Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
+topologies.  In general each phone can have a different topology.  The topology
+includes "default" transitions, used for initialization.  Look at the
+example topology in the extended comment at the top of the header.  There is
+a tag <PdfClass> (note: this format is vaguely XML-like, but it is not really XML).  
+The <PdfClass> is always the same as the HMM-state (<State>).  In general it doesn't
+have to be.  This is a mechanism to enforce tying of distributions between
+distinct HMM states; it's possibly useful if you want to create more interesting
+transition models.
+
+
+
+
 */
