@@ -1074,7 +1074,7 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
-  if (!Open(wspecifier)) {
+  if (wspecifier == "" || !Open(wspecifier)) {
     KALDI_ERR << "TableWriter: failed to write to "
               << wspecifier;
   }
