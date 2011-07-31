@@ -102,11 +102,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader x_reader(feats_orig_rspecifier);
       RandomAccessBaseFloatMatrixReader y_reader(feats_transformed_rspecifier);
 
-      RandomAccessPosteriorReader post_reader;
-      if (posteriors_rspecifier != "")
-        if (!post_reader.Open(posteriors_rspecifier))
-          KALDI_ERR << "Could not initialize the reading of posteriors from "
-                    << posteriors_rspecifier;
+      RandomAccessPosteriorReader post_reader(posteriors_rspecifier);
 
       for (; !x_reader.Done(); x_reader.Next()) {
         std::string utt = x_reader.Key();
@@ -203,11 +199,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader x_reader(feats_orig_rspecifier);
       RandomAccessBaseFloatMatrixReader y_reader(feats_transformed_rspecifier);
 
-      RandomAccessPosteriorReader post_reader;
-      if (posteriors_rspecifier != "")
-        if (!post_reader.Open(posteriors_rspecifier))
-          KALDI_ERR << "Could not initialize the reading of posteriors from "
-                    << posteriors_rspecifier;
+      RandomAccessPosteriorReader post_reader(posteriors_rspecifier);
 
       for (; !x_reader.Done(); x_reader.Next()) {
         std::string utt = x_reader.Key();

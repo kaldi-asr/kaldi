@@ -27,13 +27,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Compute cepstral mean and variance normalization statistics\n"
-        "Per-utterance by default, or per-speaker if spk2utt option provided\n"
-        "Usage: compute-cmvn-stats  [options] feats-rspecifier stats-wspecifier\n";
-
+        "If wspecifier provided: per-utterance by default, or per-speaker if\n"
+        "spk2utt option provided; if wxfilename: global\n"
+        "Usage: compute-cmvn-stats  [options] feats-rspecifier (stats-wspecifier|stats-wxfilename)\n";
+    
     ParseOptions po(usage);
     std::string spk2utt_rspecifier;
+    bool binary = false;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to utterance-list map");
-
+    po.Register("binary", &binary, "write in binary mode (applies only to global CMN/CVN)");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -42,45 +44,66 @@ int main(int argc, char *argv[]) {
     }
 
     std::string rspecifier = po.GetArg(1);
-    std::string wspecifier = po.GetArg(2);
+    std::string wspecifier_or_wxfilename = po.GetArg(2);
 
-    DoubleMatrixWriter writer(wspecifier);
+    if (ClassifyWspecifier(wspecifier_or_wxfilename, NULL, NULL, NULL)
+        != kNoWspecifier) { // writing to a Table: per-speaker or per-utt CMN/CVN.
+      std::string wspecifier = wspecifier_or_wxfilename;
 
-    if (spk2utt_rspecifier != "") {
-      SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
-      RandomAccessBaseFloatMatrixReader feat_reader(rspecifier);
-      for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
-        std::string spk = spk2utt_reader.Key();
-        const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-        bool is_init = false;
-        Matrix<double> stats;
-        for (size_t i = 0; i < uttlist.size(); i++) {
-          std::string utt = uttlist[i];
-          if (!feat_reader.HasKey(utt))
-            KALDI_WARN << "Did not find features for utterance " << utt;
-          else {
-            const Matrix<BaseFloat> &feats = feat_reader.Value(utt);
-            if (!is_init) {
-              InitCmvnStats(feats.NumCols(), &stats);
-              is_init = true;
+      DoubleMatrixWriter writer(wspecifier);
+
+      if (spk2utt_rspecifier != "") {
+        SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
+        RandomAccessBaseFloatMatrixReader feat_reader(rspecifier);
+        for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
+          std::string spk = spk2utt_reader.Key();
+          const std::vector<std::string> &uttlist = spk2utt_reader.Value();
+          bool is_init = false;
+          Matrix<double> stats;
+          for (size_t i = 0; i < uttlist.size(); i++) {
+            std::string utt = uttlist[i];
+            if (!feat_reader.HasKey(utt))
+              KALDI_WARN << "Did not find features for utterance " << utt;
+            else {
+              const Matrix<BaseFloat> &feats = feat_reader.Value(utt);
+              if (!is_init) {
+                InitCmvnStats(feats.NumCols(), &stats);
+                is_init = true;
+              }
+              AccCmvnStats(feats, NULL, &stats);
             }
-            AccCmvnStats(feats, NULL, &stats);
           }
+          if (stats.NumRows() == 0)
+            KALDI_WARN << "No stats accumulated for speaker " << spk;
+          else
+            writer.Write(spk, stats);
         }
-        if (stats.NumRows() == 0)
-          KALDI_WARN << "No stats accumulated for speaker " << spk;
-        else
-          writer.Write(spk, stats);
+      } else {  // per-utterance normalization
+        SequentialBaseFloatMatrixReader feat_reader(rspecifier);
+        for (; !feat_reader.Done(); feat_reader.Next()) {
+          Matrix<double> stats;
+          const Matrix<BaseFloat> &feats = feat_reader.Value();
+          InitCmvnStats(feats.NumCols(), &stats);
+          AccCmvnStats(feats, NULL, &stats);
+          writer.Write(feat_reader.Key(), stats);
+        }
       }
-    } else {  // per-utterance normalization
+    } else { // accumulate global stats
+      std::string wxfilename = wspecifier_or_wxfilename;
+      bool is_init = false;
+      Matrix<double> stats;
       SequentialBaseFloatMatrixReader feat_reader(rspecifier);
       for (; !feat_reader.Done(); feat_reader.Next()) {
-        Matrix<double> stats;
         const Matrix<BaseFloat> &feats = feat_reader.Value();
-        InitCmvnStats(feats.NumCols(), &stats);
+        if (!is_init) {
+          InitCmvnStats(feats.NumCols(), &stats);
+          is_init = true;
+        }
         AccCmvnStats(feats, NULL, &stats);
-        writer.Write(feat_reader.Key(), stats);
       }
+      Matrix<float> fstats(stats);
+      Output ko(wxfilename, binary);
+      fstats.Write(ko.Stream(), binary);
     }
     return 0;
   } catch(const std::exception& e) {

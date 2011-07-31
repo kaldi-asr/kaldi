@@ -66,6 +66,18 @@ exp/decode_tri2k_regtree_fmllr/wer:Average WER is 2.688901 (337 / 12533)  # +reg
 exp/decode_tri2l/wer:Average WER is 2.704859 (339 / 12533) # Splice-9-frames + LDA + MLLT + SAT (fMLLR in test)
 exp/decode_tri2l_utt/wer:Average WER is 4.930982 (618 / 12533) # [ as decode_tri2l but per-utt in test. ]
 
+# linear-VTLN on top of LDA+MLLT features.
+exp/decode_tri2m/wer:Average WER is 3.223490 (404 / 12533) # offset-only transform after VTLN part of LVTLN
+exp/decode_tri2m_diag/wer:Average WER is 3.119764 (391 / 12533)  # diagonal transform after VTLN part of LVTLN
+exp/decode_tri2m_diag_fmllr/wer:Average WER is 2.784649 (349 / 12533) # + fMLLR
+exp/decode_tri2m_diag_utt/wer:Average WER is 3.279343 (411 / 12533)   # [per-utt]
+exp/decode_tri2m_vtln/wer:Average WER is 4.747467 (595 / 12533)   # feature-space VTLN, plus offset-only transform
+                                                                  #  (for some reason it failed)
+exp/decode_tri2m_vtln_diag/wer:Average WER is 3.087848 (387 / 12533)  # + diagonal transform
+exp/decode_tri2m_vtln_diag_utt/wer:Average WER is 4.340541 (544 / 12533)  # [per-utterance]
+exp/decode_tri2m_vtln_nofmllr/wer:Average WER is 5.784728 (725 / 12533)  # feature-space VTLN, with no fMLLR
+
+
 # sgmma is SGMM without speaker vectors.
 exp/decode_sgmma/wer:Average WER is 3.319237 (416 / 12533) 
 exp/decode_sgmma_fmllr/wer:Average WER is 2.934308 (289 / 9849) 

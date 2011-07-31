@@ -101,11 +101,7 @@ int main(int argc, char *argv[]) {
 
     BaseFloatMatrixWriter transform_writer(trans_wspecifier);
 
-    Int32Writer class_writer;
-    if (class_wspecifier != "")
-      if (!class_writer.Open(class_wspecifier))
-        KALDI_EXIT << "Could not write class information to wspecifier "
-                   << class_wspecifier;
+    Int32Writer class_writer(class_wspecifier);
 
     std::vector<int32> class_counts(lvtln.NumClasses(), 0);
     int32 num_done = 0, num_no_gpost = 0, num_other_error = 0;

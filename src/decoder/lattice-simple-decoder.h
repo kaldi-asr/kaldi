@@ -120,7 +120,7 @@ class LatticeSimpleDecoder {
 
   // Outputs an FST corresponding to the single best path
   // through the lattice.
-  bool GetTraceback(fst::MutableFst<LatticeArc> *ofst) const {
+  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
     fst::VectorFst<LatticeArc> fst;
     if (!GetRawLattice(&fst)) return false;
     // std::cout << "Raw lattice is:\n";

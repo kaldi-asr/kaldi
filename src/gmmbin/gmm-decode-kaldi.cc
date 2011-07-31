@@ -119,7 +119,8 @@ int main(int argc, char *argv[]) {
 
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
-      fst::VectorFst<fst::StdArc> *word_links = decoder.Decode(*decode_fst, &gmm_decodable);
+      fst::VectorFst<fst::StdArc> *word_links = decoder.Decode(*decode_fst,
+                                                               &gmm_decodable);
 
       if (word_links == NULL) {
         KALDI_WARN << "Could not decode file " << key;

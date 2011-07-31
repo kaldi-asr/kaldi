@@ -102,15 +102,9 @@ int main(int argc, char *argv[]) {
 
     RandomAccessSgmmGauPostReader gpost_reader(gpost_rspecifier);
 
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot read speaker vectors.";
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
-    RandomAccessBaseFloatMatrixReader fmllr_reader;
-    if (!fmllr_rspecifier.empty())
-      if (!fmllr_reader.Open(fmllr_rspecifier))
-        KALDI_ERR << "Cannot read input FMLLR transforms.";
+    RandomAccessBaseFloatMatrixReader fmllr_reader(fmllr_rspecifier);
 
     BaseFloatMatrixWriter fmllr_writer(fmllr_wspecifier);
 

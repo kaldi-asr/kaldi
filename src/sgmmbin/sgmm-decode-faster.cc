@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
         "Usage:  sgmm-decode-faster [options] <model-in> <fst-in> "
         "<features-rspecifier> <words-wspecifier> [alignments-wspecifier]\n";
     ParseOptions po(usage);
+    bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
     BaseFloat log_prune = 5.0;
     string word_syms_filename, gselect_rspecifier, spkvecs_rspecifier,
@@ -63,6 +64,8 @@ int main(int argc, char *argv[]) {
                 "rspecifier for speaker vectors");
     po.Register("utt2spk", &utt2spk_rspecifier,
                 "rspecifier for utterance to speaker map");
+    po.Register("allow-partial", &allow_partial,
+                "Produce output even when final state was not reached");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {
@@ -176,15 +179,13 @@ int main(int argc, char *argv[]) {
       decoder.Decode(&sgmm_decodable);
 
       VectorFst<StdArc> decoded;  // linear FST.
-      bool saw_endstate = decoder.GetOutput(true,  // consider only final states
-                                            &decoded);
 
-      if (saw_endstate || decoder.GetOutput(false, &decoded)) {
-        num_success++;
-        if (!saw_endstate) {
+      if ( (allow_partial || decoder.ReachedFinal())
+           && decoder.GetBestPath(&decoded) ) {
+        if (!decoder.ReachedFinal())
           KALDI_WARN << "Decoder did not reach end-state, "
-                     << "outputting partial traceback.";
-        }
+                     << "outputting partial traceback since --allow-partial=true";
+        num_success++;
         std::vector<int32> alignment;
         std::vector<int32> words;
         StdArc::Weight weight;

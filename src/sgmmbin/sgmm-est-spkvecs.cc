@@ -104,15 +104,9 @@ int main(int argc, char *argv[]) {
     MleSgmmSpeakerAccs spk_stats(am_sgmm);
 
     RandomAccessPosteriorReader post_reader(post_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty())
-      if (!gselect_reader.Open(gselect_rspecifier))
-        KALDI_ERR << "Cannot open stream to read gaussian-selection indices";
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot read speaker vectors.";
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
     BaseFloatVectorWriter vecs_writer(vecs_wspecifier);
 

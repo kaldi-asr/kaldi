@@ -71,14 +71,9 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
-      KALDI_ERR << "Unable to open stream for gaussian-selection indices";
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot read speaker vectors.";
-
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    
     RandomAccessTokenReader utt2spk_reader;
     if (!utt2spk_rspecifier.empty())
       if (!utt2spk_reader.Open(utt2spk_rspecifier))

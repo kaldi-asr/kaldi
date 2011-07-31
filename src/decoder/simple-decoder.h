@@ -52,7 +52,10 @@ class SimpleDecoder {
     ClearToks(prev_toks_);
   }
 
-  void Decode(DecodableInterface *decodable) {
+  // Returns true if any tokens reached the end of the file (regardless of
+  // whether they are in a final state); query ReachedFinal() after Decode()
+  // to see whether we reached a final state.
+  bool Decode(DecodableInterface *decodable) {
     // clean up from last time:
     ClearToks(cur_toks_);
     ClearToks(prev_toks_);
@@ -68,15 +71,30 @@ class SimpleDecoder {
       ProcessNonemitting();
       PruneToks(beam_, &cur_toks_);
     }
+    return (!cur_toks_.empty());
   }
 
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {
-    // GetOutput gets the decoding output.  If is_final == true, it limits itself to final states;
-    // otherwise it gets the most likely token not taking into account final-probs.
-    // fst_out will be empty (Start() == kNoStateId) if nothing was available.
-    // It returns true if it got output (thus, fst_out will be nonempty).
+  bool ReachedFinal() {
+    Weight best_weight = Weight::Zero();
+    for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
+         iter != cur_toks_.end();
+         ++iter) {
+      Weight this_weight = Times(iter->second->weight_, fst_.Final(iter->first));
+      if (this_weight != Weight::Zero())
+        return true;
+    }
+    return false;
+  }
+
+  // GetBestPath gets the decoding traceback.  If we reached a final state,
+  // it limits itself to final states;
+  // otherwise it gets the most likely token not taking into account final-probs.
+  // fst_out will be empty (Start() == kNoStateId) if nothing was available.
+  // If Decode() returned true, it is safe to assume GetBestPath will return true.
+  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) {
     fst_out->DeleteStates();
     Token *best_tok = NULL;
+    bool is_final = ReachedFinal();
     if (!is_final) {
       for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
           iter != cur_toks_.end();

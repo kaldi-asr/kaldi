@@ -21,6 +21,7 @@
 if [ -f path.sh ]; then . path.sh; fi
 dir=exp/decode_tri2m_vtln_nofmllr
 mkdir -p $dir
+mat=exp/tri2f/final.mat
 vtlnmodel=exp/tri2m/final.vtlnmdl
 lvtlnmodel=exp/tri2m/final.mdl
 alignmodel=exp/tri2m/final.alimdl

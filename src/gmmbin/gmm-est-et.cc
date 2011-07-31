@@ -61,11 +61,7 @@ int main(int argc, char *argv[]) {
 
     RandomAccessGauPostReader gpost_reader(gpost_rspecifier);
     BaseFloatMatrixWriter xform_writer(xforms_wspecifier);
-    BaseFloatWriter warps_writer;
-    if (warps_wspecifier != "")
-      if (!warps_writer.Open(warps_wspecifier))
-        KALDI_ERR << "Failed to open stream for writing warps to "
-                  << warps_wspecifier;
+    BaseFloatWriter warps_writer(warps_wspecifier);
 
     AmDiagGmm am_gmm;
     TransitionModel trans_model;

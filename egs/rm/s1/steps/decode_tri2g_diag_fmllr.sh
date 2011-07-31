@@ -21,6 +21,7 @@ dir=exp/decode_tri2g_diag_fmllr
 mkdir -p $dir
 model=exp/tri2g/final.mdl
 alignmodel=exp/tri2g/final.alimdl
+lvtln=exp/tri2g/final.lvtln
 tree=exp/tri2g/tree
 graphdir=exp/graph_tri2g
 silphones=`cat data/silphones.csl`

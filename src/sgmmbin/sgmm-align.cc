@@ -114,10 +114,7 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorVectorReader gselect_reader;
     if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
       KALDI_ERR << "Unable to open stream for gaussian-selection indices";
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot read speaker vectors.";
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
     RandomAccessTokenReader utt2spk_reader;
     if (!utt2spk_rspecifier.empty())
@@ -194,15 +191,15 @@ int main(int argc, char *argv[]) {
         decoder.Decode(&sgmm_decodable);
 
         VectorFst<StdArc> decoded;  // linear FST.
-        bool ans = decoder.GetOutput(true,  // consider only final states.
-                                     &decoded);
+        bool ans = decoder.ReachedFinal() // consider only final states.
+            && decoder.GetBestPath(&decoded);  
         if (!ans && retry_beam != 0.0) {
           KALDI_WARN << "Retrying utterance " << utt << " with beam " << retry_beam;
           decode_opts.beam = retry_beam;
           decoder.SetOptions(decode_opts);
           decoder.Decode(&sgmm_decodable);
-          ans = decoder.GetOutput(true,  // consider only final states.
-                                  &decoded);
+          ans = decoder.ReachedFinal() // consider only final states.
+              && decoder.GetBestPath(&decoded);
           decode_opts.beam = beam;
           decoder.SetOptions(decode_opts);
         }

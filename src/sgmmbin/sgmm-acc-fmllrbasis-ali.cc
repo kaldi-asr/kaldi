@@ -76,15 +76,9 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
 
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty())
-      if (!gselect_reader.Open(gselect_rspecifier))
-        KALDI_ERR << "Cannot open stream for reading Gaussian-selection.";
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
-    RandomAccessBaseFloatVectorReader spkvecs_reader;
-    if (!spkvecs_rspecifier.empty())
-      if (!spkvecs_reader.Open(spkvecs_rspecifier))
-        KALDI_ERR << "Cannot open stream for reading speaker vectors.";
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silphones_str, ":", false, &silence_phones)) {

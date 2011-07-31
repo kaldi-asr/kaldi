@@ -41,18 +41,18 @@ struct DecodeInfo {
  public:
   DecodeInfo(const kaldi::AmDiagGmm &am,
              const kaldi::TransitionModel &tm, kaldi::FasterDecoder *decoder,
-             BaseFloat scale, bool reverse,
+             BaseFloat scale, bool allow_partial,
              const kaldi::Int32VectorWriter &wwriter,
              const kaldi::Int32VectorWriter &awriter, fst::SymbolTable *wsyms)
       : acoustic_model(am), trans_model(tm), decoder(decoder),
-        acoustic_scale(scale), time_reversed(reverse), words_writer(wwriter),
+        acoustic_scale(scale), allow_partial(allow_partial), words_writer(wwriter),
         alignment_writer(awriter), word_syms(wsyms) {}
 
   const kaldi::AmDiagGmm &acoustic_model;
   const kaldi::TransitionModel &trans_model;
   kaldi::FasterDecoder *decoder;
   BaseFloat acoustic_scale;
-  bool time_reversed;
+  bool allow_partial;
   const kaldi::Int32VectorWriter &words_writer;
   const kaldi::Int32VectorWriter &alignment_writer;
   fst::SymbolTable *word_syms;
@@ -60,17 +60,6 @@ struct DecodeInfo {
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodeInfo);
 };
-
-void ReverseFeatures(kaldi::Matrix<BaseFloat> *feats) {
-  kaldi::Vector<BaseFloat> tmp(feats->NumCols());
-  for (int32 i = 0; i < feats->NumRows() / 2; i++) {
-    size_t j = feats->NumRows() - i - 1;  // mirror-image of i.
-    tmp.CopyRowFromMat(*feats, i);
-    feats->Row(i).CopyRowFromMat(*feats, j);
-    feats->Row(j).CopyFromVec(tmp);
-  }
-}
-
 
 bool DecodeUtterance(kaldi::FasterDecoder *decoder,
                      kaldi::DecodableInterface *decodable,
@@ -82,20 +71,15 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
   KALDI_LOG << "Length of file is " << num_frames;
 
   VectorFst<StdArc> decoded;  // linear FST.
-  bool saw_endstate = decoder->GetOutput(true /*only final states*/, &decoded);
-  if (saw_endstate || decoder->GetOutput(false, &decoded)) {
-    if (!saw_endstate) {
+  if ( (info->allow_partial || decoder->ReachedFinal())
+       && decoder->GetBestPath(&decoded) ) {
+    if (!decoder->ReachedFinal())
       KALDI_WARN << "Decoder did not reach end-state, outputting partial "
           "traceback.";
-    }
+    
     vector<kaldi::int32> alignment, words;
     StdArc::Weight weight;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-
-    if (info->time_reversed) {
-      kaldi::ReverseVector(&alignment);
-      kaldi::ReverseVector(&words);
-    }
 
     info->words_writer.Write(uttid, words);
     if (info->alignment_writer.IsOpen())
@@ -135,21 +119,21 @@ int main(int argc, char *argv[]) {
               "words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool binary = false;
-    bool time_reversed = false;
+    bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
-
+    
     std::string word_syms_filename, utt2spk_rspecifier;
     FasterDecoderOptions decoder_opts;
     decoder_opts.Register(&po, true);  // true == include obscure settings.
     po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to "
                 "speaker map");
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("time-reversed", &time_reversed,
-        "If true, decode backwards in time [requires reversed graph.]\n");
     po.Register("acoustic-scale", &acoustic_scale,
         "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename,
         "Symbol table for words [for debug output]");
+    po.Register("allow-partial", &allow_partial,
+                "Produce output even when final state was not reached");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 6 || po.NumArgs() > 7) {
@@ -195,10 +179,7 @@ int main(int argc, char *argv[]) {
 
     Int32VectorWriter words_writer(words_wspecifier);
 
-    Int32VectorWriter alignment_writer;
-    if (alignment_wspecifier != "")
-      if (!alignment_writer.Open(alignment_wspecifier))
-        KALDI_ERR << "Failed to open alignments output.";
+    Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") {
@@ -217,7 +198,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
 
     DecodeInfo decode_info(am_gmm, trans_model, &decoder, acoustic_scale,
-                           time_reversed, words_writer, alignment_writer,
+                           allow_partial, words_writer, alignment_writer,
                            word_syms);
 
 
@@ -241,7 +222,6 @@ int main(int argc, char *argv[]) {
           continue;
         } else utt_or_spk = utt2spk_reader.Value(utt);
       }
-
       Matrix<BaseFloat> features(feature_reader.Value());
       feature_reader.FreeCurrent();
       if (features.NumRows() == 0) {
@@ -249,7 +229,6 @@ int main(int argc, char *argv[]) {
         num_fail++;
         continue;
       }
-      if (time_reversed) ReverseFeatures(&features);
 
       if (!fmllr_reader.HasKey(utt_or_spk)) {  // Decode without FMLLR if none found
         KALDI_WARN << "No FMLLR transform for key " << utt_or_spk <<

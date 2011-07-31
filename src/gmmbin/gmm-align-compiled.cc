@@ -126,15 +126,15 @@ int main(int argc, char *argv[]) {
         decoder.Decode(&gmm_decodable);
 
         VectorFst<StdArc> decoded;  // linear FST.
-        bool ans = decoder.GetOutput(true,  // consider only final states.
-                                     &decoded);
+        bool ans = decoder.ReachedFinal() // consider only final states.
+            && decoder.GetBestPath(&decoded);  
         if (!ans && retry_beam != 0.0) {
           KALDI_WARN << "Retrying utterance " << key << " with beam " << retry_beam;
           decode_opts.beam = retry_beam;
           decoder.SetOptions(decode_opts);
           decoder.Decode(&gmm_decodable);
-          ans = decoder.GetOutput(true,  // consider only final states.
-                                  &decoded);
+          ans = decoder.ReachedFinal() // consider only final states.
+              && decoder.GetBestPath(&decoded);  
           decode_opts.beam = beam;
           decoder.SetOptions(decode_opts);
         }

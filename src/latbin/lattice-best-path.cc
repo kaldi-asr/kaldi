@@ -65,17 +65,9 @@ int main(int argc, char *argv[]) {
         KALDI_EXIT << "Could not open table for writing lattices: "
                    << lats_wspecifier;
 
-    Int32VectorWriter transcriptions_writer;
-    if (transcriptions_wspecifier != "")
-      if (!transcriptions_writer.Open(transcriptions_wspecifier))
-        KALDI_EXIT << "Could not open table for writing transcriptions: "
-                   << transcriptions_wspecifier;
+    Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
-    Int32VectorWriter alignments_writer;
-    if (alignments_wspecifier != "")
-      if (!alignments_writer.Open(alignments_wspecifier))
-        KALDI_EXIT << "Could not open table for writing alignments: "
-                   << alignments_wspecifier;
+    Int32VectorWriter alignments_writer(alignments_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 

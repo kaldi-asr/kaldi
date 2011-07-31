@@ -34,7 +34,6 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
                             std::string utt,
                             double acoustic_scale,
                             bool determinize,
-                            bool write_partial_lattices,
                             Int32VectorWriter *alignment_writer,
                             Int32VectorWriter *words_writer,
                             CompactLatticeWriter *compact_lattice_writer,
@@ -43,11 +42,8 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
   
   double likelihood;
   { // First do some stuff with word-level traceback...
-    if (!decoder.ReachedFinal())       
-      KALDI_WARN << "Decoder did not reach end-state, outputting "
-                 << "partial traceback or word-sequence.";
     VectorFst<LatticeArc> decoded;
-    if (!decoder.GetTraceback(&decoded)) 
+    if (!decoder.GetBestPath(&decoded)) 
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
 
@@ -72,18 +68,6 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
     likelihood = -(weight.Value1() + weight.Value2());
   }
 
-  // Now write the lattice.
-  if (!decoder.ReachedFinal()) {
-    if (!write_partial_lattices) {
-      KALDI_WARN << "Not outputting lattice for utterance " << utt
-                 << " since no final-state reached and "
-                 << "--write-partial-lattices=false.\n";
-      return likelihood;
-    } else {
-      KALDI_WARN << "Outputting partial lattice for utterance " << utt
-                 << " since no final-state reached\n";
-    }
-  }
   if (determinize) {
     CompactLattice fst;
     if (!decoder.GetLattice(&fst))
@@ -107,6 +91,7 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
 }
 
 
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -122,7 +107,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
     bool determinize = true;
-    bool write_partial_lattices = false;
+    bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeSimpleDecoderConfig config;
     
@@ -132,8 +117,8 @@ int main(int argc, char *argv[]) {
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("determinize", &determinize, "If true, do lattice determinization and output as CompactLattice");
-    po.Register("write-partial-lattices", &write_partial_lattices, "If true, write lattice even if end state was not reached.");
-
+    po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
@@ -175,15 +160,9 @@ int main(int argc, char *argv[]) {
       KALDI_EXIT << "Could not open table for writing lattices: "
                  << lattice_wspecifier;
 
-    Int32VectorWriter words_writer;
-    if (words_wspecifier != "") 
-      if (!words_writer.Open(words_wspecifier))
-        KALDI_EXIT << "Failed to open words output.";
+    Int32VectorWriter words_writer(words_wspecifier);
 
-    Int32VectorWriter alignment_writer;
-    if (alignment_wspecifier != "")
-      if (!alignment_writer.Open(alignment_wspecifier))
-        KALDI_EXIT << "Failed to open alignments output.";
+    Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
@@ -219,9 +198,20 @@ int main(int argc, char *argv[]) {
 
       frame_count += features.NumRows();
       double like;
+      if (!decoder.ReachedFinal()) {
+        if (allow_partial) {
+          KALDI_WARN << "Outputting partial output for utterance " << utt
+                     << " since no final-state reached\n";
+          num_fail++;
+        } else {
+          KALDI_WARN << "Not producing output for utterance " << utt
+                     << " since no final-state reached and "
+                     << "--allow-partial=false.\n";
+          continue;
+        }
+      }
       like = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
-                                  determinize, write_partial_lattices,
-                                  &alignment_writer, &words_writer,
+                                  determinize, &alignment_writer, &words_writer,
                                   &compact_lattice_writer, &lattice_writer);
       tot_like += like;
       KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
