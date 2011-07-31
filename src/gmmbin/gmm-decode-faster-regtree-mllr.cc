@@ -201,11 +201,7 @@ int main(int argc, char *argv[]) {
                            word_syms);
 
 
-    RandomAccessTokenReader utt2spk_reader;
-    if (utt2spk_rspecifier != "")  // per-speaker adaptation
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Could not open the utt2spk map: "
-                  << utt2spk_rspecifier;
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);

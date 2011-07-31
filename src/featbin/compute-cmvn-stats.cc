@@ -89,6 +89,9 @@ int main(int argc, char *argv[]) {
         }
       }
     } else { // accumulate global stats
+      if (spk2utt_rspecifier != "")
+        KALDI_EXIT << "--spk2utt option not compatible with wxfilename as output "
+                   << "(did you forget ark:?)";
       std::string wxfilename = wspecifier_or_wxfilename;
       bool is_init = false;
       Matrix<double> stats;

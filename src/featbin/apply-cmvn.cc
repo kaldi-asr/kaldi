@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Apply cepstral mean and (optionally) variance normalization\n"
         "Per-utterance by default, or per-speaker if utt2spk option provided\n"
-        "Usage: apply-cmvn [options] cmvn-stats-rspecifier feats-rspecifier feats-wspecifier\n";
+        "Usage: apply-cmvn [options] (cmvn-stats-rspecifier|cmvn-stats-rxfilename) feats-rspecifier feats-wspecifier\n";
 
     ParseOptions po(usage);
     std::string utt2spk_rspecifier;
@@ -43,47 +43,65 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string cmvn_rspecifier = po.GetArg(1);
+    std::string cmvn_rspecifier_or_rxfilename = po.GetArg(1);
     std::string feat_rspecifier = po.GetArg(2);
     std::string feat_wspecifier = po.GetArg(3);
 
-    RandomAccessDoubleMatrixReader cmvn_reader(cmvn_rspecifier);
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
+    
+    if (ClassifyRspecifier(cmvn_rspecifier_or_rxfilename, NULL, NULL)
+        != kNoRspecifier) { // reading from a Table: per-speaker or per-utt CMN/CVN.
+      std::string cmvn_rspecifier = cmvn_rspecifier_or_rxfilename;
 
-    RandomAccessTokenReader utt2spk_reader;
-    if (utt2spk_rspecifier != "") {
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_EXIT << "Error upening utt2spk map from "
-                   << utt2spk_rspecifier;
-    }
+      RandomAccessDoubleMatrixReader cmvn_reader(cmvn_rspecifier);
 
-    for (;!feat_reader.Done(); feat_reader.Next()) {
-      std::string utt = feat_reader.Key();
-      Matrix<BaseFloat> feat(feat_reader.Value());
-      std::string utt_or_spk;  // key for cmvn.
-      if (utt2spk_rspecifier == "") utt_or_spk = utt;
-      else {
-        if (utt2spk_reader.HasKey(utt))
-          utt_or_spk = utt2spk_reader.Value(utt);
-        else {  // can't really recover from this error.
-          KALDI_WARN << "Utt2spk map has no value for utterance "
+      RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+
+      for (;!feat_reader.Done(); feat_reader.Next()) {
+        std::string utt = feat_reader.Key();
+        Matrix<BaseFloat> feat(feat_reader.Value());
+        std::string utt_or_spk;  // key for cmvn.
+        if (utt2spk_rspecifier == "") utt_or_spk = utt;
+        else {
+          if (utt2spk_reader.HasKey(utt))
+            utt_or_spk = utt2spk_reader.Value(utt);
+          else {  // can't really recover from this error.
+            KALDI_WARN << "Utt2spk map has no value for utterance "
+                       << utt << ", producing no output for this utterance";
+            continue;
+          }
+        }
+        if (!cmvn_reader.HasKey(utt_or_spk)) {
+          KALDI_WARN << "No normalization statistics available for key "
                      << utt << ", producing no output for this utterance";
           continue;
         }
-      }
-      if (!cmvn_reader.HasKey(utt_or_spk)) {
-        KALDI_WARN << "No normalization statistics available for key "
-                   << utt << ", producing no output for this utterance";
-        continue;
-      }
-      const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt_or_spk);
+        const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt_or_spk);
 
-      ApplyCmvn(cmvn_stats, norm_vars, &feat);
+        ApplyCmvn(cmvn_stats, norm_vars, &feat);
 
-      feat_writer.Write(utt, feat);
+        feat_writer.Write(utt, feat);
+      }
+      return 0;
+    } else {
+      if (utt2spk_rspecifier != "")
+        KALDI_EXIT << "--utt2spk option not compatible with rxfilename as input "
+                   << "(did you forget ark:?)";
+      std::string cmvn_rxfilename = cmvn_rspecifier_or_rxfilename;
+      bool binary;
+      Input ki(cmvn_rxfilename, &binary);
+      Matrix<double> cmvn_stats;
+      cmvn_stats.Read(ki.Stream(), binary);
+      
+      for (;!feat_reader.Done(); feat_reader.Next()) {
+        std::string utt = feat_reader.Key();
+        Matrix<float> feat(feat_reader.Value());
+        ApplyCmvn(cmvn_stats, norm_vars, &feat);
+        feat_writer.Write(utt, feat);
+      }
+      
     }
-    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

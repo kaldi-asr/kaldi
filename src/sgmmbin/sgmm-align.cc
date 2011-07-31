@@ -116,10 +116,7 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Unable to open stream for gaussian-selection indices";
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
-    RandomAccessTokenReader utt2spk_reader;
-    if (!utt2spk_rspecifier.empty())
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Could not open utt2spk map: " << utt2spk_rspecifier;
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 

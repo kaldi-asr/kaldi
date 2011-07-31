@@ -89,10 +89,7 @@ int main(int argc, char *argv[]) {
 
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
-    RandomAccessTokenReader utt2spk_reader;
-    if (!utt2spk_rspecifier.empty())
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Could not open utt2spk map: " << utt2spk_rspecifier;
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
     kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
