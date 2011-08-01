@@ -31,7 +31,7 @@ template<class Arc> void TestDeterminizeGeneral() {
   int max_states = 100; // don't allow more det-states than this.
   for(int i = 0; i < 100; i++) {
     VectorFst<Arc> *fst = RandFst<Arc>();
-    std::cout << "FST before lattice-determinizing is:\n";
+    std::cout << "FST before determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");

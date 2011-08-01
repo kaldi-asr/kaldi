@@ -38,12 +38,18 @@ namespace fst {
 
 
 /**
-   Factor turns any linear sequences of states in the input FST into special
-   symbols and outputs a mapping from these to sequences of the original
-   symbols.  As a side effect it also sorts the FST in depth-first order.
-   Factor will, in general, do the best job when the olabels have been pushed to
-   the left, i.e. if you do a call like
-      Push<Arc, REWEIGHT_TO_INITIAL>(fsta, &fstb, kPushLabels);
+   Factor identifies linear chains of states with an olabel (if any)
+   only on the first arc of the chain, and possibly a sequence of
+   ilabels; it outputs an FST with different symbols on the input
+   that represent sequences of the original input symbols; it outputs
+   the mapping from the new symbol to sequences of original symbols,
+   as "symbols" [zero is reserved for epsilon].
+
+   As a side effect it also sorts the FST in depth-first order.  Factor will
+   usually do the best job when the olabels have been pushed to the left,
+   i.e. if you make a call like
+   
+     Push<Arc, REWEIGHT_TO_INITIAL>(fsta, &fstb, kPushLabels);
 
    This is because it only creates a chain with olabels on the first arc of the
    chain (or a chain with no olabels). [it's possible to construct cases where
@@ -58,7 +64,7 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
             vector<vector<I> > *symbols);
 
 
-/// This is a more standard interface of Factor that outputs
+/// This is a more conventional interface of Factor that outputs
 /// the result as two FSTs.
 template<class Arc>
 void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst1,

@@ -39,7 +39,9 @@ typename Arc::Label HighestNumberedOutputSymbol(const Fst<Arc> &fst);
 template<class Arc>
 typename Arc::Label HighestNumberedInputSymbol(const Fst<Arc> &fst);
 
-
+/// Returns the total number of arcs in an FST.
+template<class Arc>
+typename Arc::StateId NumArcs(const ExpandedFst<Arc> &fst);
 
 /// GetInputSymbols gets the list of symbols on the input of fst
 /// (including epsilon, if include_eps == true)

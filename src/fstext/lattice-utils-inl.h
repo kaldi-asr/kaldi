@@ -22,6 +22,73 @@
 
 namespace fst {
 
+
+/* Convert from FST with arc-type Weight, to one with arc-type
+   CompactLatticeWeight.  Uses FactorFst to identify chains
+   of states which can be turned into a single output arc. */
+
+template<class Weight, class Int>
+void ConvertLattice(
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
+    bool invert) {
+  typedef ArcTpl<Weight> Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+  typedef CompactLatticeWeightTpl<Weight,Int> CompactWeight;
+  typedef ArcTpl<CompactWeight> CompactArc;
+
+  VectorFst<ArcTpl<Weight> > ffst;
+  vector<vector<Int> > labels;
+  if (invert) // normal case: want the ilabels as sequences on the arcs of
+    Factor(ifst, &ffst, &labels);  // the output... Factor makes seqs of
+                                   // ilabels.
+  else {
+    VectorFst<ArcTpl<Weight> > invfst(ifst);
+    Invert(&invfst);
+    Factor(invfst, &ffst,  &labels);
+  }
+    
+  TopSort(&ffst); // Put the states in ffst in topological order, which is
+  // easier on the eye when reading the text-form lattices and corresponds to
+  // what we get when we generate the lattices in the decoder.
+  
+  ofst->DeleteStates();
+  // The states will be numbered exactly the same as the original FST.
+  // Add the states to the new FST.
+  StateId num_states = ffst.NumStates();
+  for (StateId s = 0; s < num_states; s++) {
+    StateId news = ofst->AddState();
+    assert(news == s);
+  }
+  ofst->SetStart(ffst.Start());
+  for (StateId s = 0; s < num_states; s++) {
+    Weight final_weight = ffst.Final(s);
+    if (final_weight != Weight::Zero()) {
+      CompactWeight final_compact_weight(final_weight, vector<Int>());
+      ofst->SetFinal(s, final_compact_weight);
+    }
+    for (ArcIterator<ExpandedFst<Arc> > iter(ffst, s);
+         !iter.Done();
+         iter.Next()) {
+      const Arc &arc = iter.Value();
+#ifdef KALDI_PARANOID
+      assert(arc.weight != Weight::Zero());
+#endif
+      // note: zero-weight arcs not allowed anyway so weight should not be zero,
+      // but no harm in checking.
+      CompactArc compact_arc(arc.olabel, arc.olabel,
+                             CompactWeight(arc.weight, labels[arc.ilabel]),
+                             arc.nextstate);
+      ofst->AddArc(s, compact_arc);
+    }
+  }
+}
+
+/*
+  This was the older version of ConvertLattice [ from regular to compact], which
+  did not do the factoring to find linear chains of states.
+  
 template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
@@ -64,6 +131,7 @@ void ConvertLattice(
     }
   }
 }
+*/
 
 
 template<class Weight, class Int>
@@ -88,22 +156,23 @@ void ConvertLattice(
   ofst->SetStart(ifst.Start());
   for (StateId s = 0; s < num_states; s++) {
     CompactWeight final_weight = ifst.Final(s);
-    if (final_weight != CompactWeight::Zero()) {
-      StateId cur_state = s;
-      size_t string_length = final_weight.String().size();
-      for (size_t n = 0; n < string_length; n++) {
-        StateId next_state = ofst->AddState();
-        Label ilabel = 0;
-        Arc arc(ilabel, final_weight.String()[n],
-                (n == 0 ? final_weight.Weight() : Weight::One()),
-                next_state);
-        if (invert) std::swap(arc.ilabel, arc.olabel);
-        ofst->AddArc(cur_state, arc);
-        cur_state = next_state;
-      }
-      ofst->SetFinal(cur_state,
-                     string_length > 0 ? Weight::One() : final_weight.Weight());
+#ifdef KALDI_PARANOID
+    assert(final_weight != CompactWeight::Zero());
+#endif
+    StateId cur_state = s;
+    size_t string_length = final_weight.String().size();
+    for (size_t n = 0; n < string_length; n++) {
+      StateId next_state = ofst->AddState();
+      Label ilabel = 0;
+      Arc arc(ilabel, final_weight.String()[n],
+              (n == 0 ? final_weight.Weight() : Weight::One()),
+              next_state);
+      if (invert) std::swap(arc.ilabel, arc.olabel);
+      ofst->AddArc(cur_state, arc);
+      cur_state = next_state;
     }
+    ofst->SetFinal(cur_state,
+                   string_length > 0 ? Weight::One() : final_weight.Weight());
     for (ArcIterator<ExpandedFst<CompactArc> > iter(ifst, s);
          !iter.Done();
          iter.Next()) {
@@ -160,14 +229,15 @@ void ConvertLattice(
          !iter.Done();
          iter.Next()) {
       ArcIn arc = iter.Value();
-      if (arc.weight != WeightIn::Zero()) {
-        ArcOut oarc;
-        ConvertLatticeWeight(arc.weight, &oarc.weight);
-        oarc.ilabel = arc.ilabel;
-        oarc.olabel = arc.olabel;
-        oarc.nextstate = arc.nextstate;
-        ofst->AddArc(s, oarc);
-      }
+#ifdef KALDI_PARANOID
+      assert(arc.weight != WeightIn::Zero());
+#endif
+      ArcOut oarc;
+      ConvertLatticeWeight(arc.weight, &oarc.weight);
+      oarc.ilabel = arc.ilabel;
+      oarc.olabel = arc.olabel;
+      oarc.nextstate = arc.nextstate;
+      ofst->AddArc(s, oarc);
     }
   }
 }

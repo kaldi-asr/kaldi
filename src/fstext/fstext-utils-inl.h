@@ -58,6 +58,14 @@ typename Arc::Label HighestNumberedInputSymbol(const Fst<Arc> &fst) {
   return ans;
 }
 
+template<class Arc>
+typename Arc::StateId NumArcs(const ExpandedFst<Arc> &fst) {
+  typedef typename Arc::StateId StateId;
+  StateId num_arcs = 0;
+  for (StateId s = 0; s < fst.NumStates(); s++)
+    num_arcs += fst.NumArcs(s);
+  return num_arcs;
+}
 
 template<class Arc, class I>
 void GetOutputSymbols(const Fst<Arc> &fst,

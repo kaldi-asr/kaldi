@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         lattice_wspecifier = po.GetArg(4),
-        words_wspecifier = po.GetArg(5),
+        words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
     
     TransitionModel trans_model;

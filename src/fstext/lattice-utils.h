@@ -21,6 +21,7 @@
 
 #include "fst/fstlib.h"
 #include "fstext/lattice-weight.h"
+#include "fstext/factor.h"
 
 namespace fst {
 

@@ -59,12 +59,9 @@ int main(int argc, char *argv[]) {
     // this is the form we need it in for efficient best-path.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
 
-    CompactLatticeWriter compact_lattice_writer; // optional: write 1-best to lats.
-    if (lats_wspecifier != "")
-      if (!compact_lattice_writer.Open(lats_wspecifier))
-        KALDI_EXIT << "Could not open table for writing lattices: "
-                   << lats_wspecifier;
-
+    // optional: write 1-best paths as fsts
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
     Int32VectorWriter alignments_writer(alignments_wspecifier);
@@ -113,6 +110,12 @@ int main(int argc, char *argv[]) {
           std::cerr << '\n';
         }
         if (lats_wspecifier != "") {
+          if (acoustic_scale == 0.0)
+            KALDI_ERR << "You can't use zero acoustic scale and write best-path"
+                      << " as FSTs (use a very small scale instead).";
+          if (acoustic_scale != 1.0)
+            fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                              &best_path);
           CompactLattice clat;
           ConvertLattice(best_path, &clat);
           compact_lattice_writer.Write(key, clat);

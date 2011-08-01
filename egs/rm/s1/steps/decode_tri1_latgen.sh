@@ -61,3 +61,38 @@ for inv_acwt in "" _6 _7 _8 _9 _10 _11 _12 _13; do
   awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
    > $dir/wer${inv_acwt}
 done
+
+
+### The following commands test some properties of our lattice generation: mainly
+# that if you generate at a larger beam and prune to a smaller beam, it's the
+# same as if you had originally generated at the smaller beam and pruned to
+# the smaller beam.  Actually I'm not 100% sure we can prove this, but it seems
+# to be the case.
+
+
+#
+test=mar87
+n=20
+
+for latbeam in 7 10; do
+  feats="ark:head -$n data/test_${test}.scp | add-deltas --print-args=false scp:- ark:- |"
+  gmm-latgen-simple --lattice-beam=$latbeam --beam=20.0 --acoustic-scale=0.08333 --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" "ark,t:|gzip -c > $dir/tmp.${latbeam}.lat.gz"  2> $dir/test_lat.$latbeam.log
+  lattice-prune --acoustic-scale=0.08333 --beam=7 "ark:gunzip -c $dir/tmp.${latbeam}.lat.gz|" "ark,t:|gzip -c > $dir/tmp.pr.${latbeam}.lat.gz" 2>$dir/test_prune.$latbeam.log
+done
+
+# We like this to be equivalent.  I'm not sure if it can be proved that they must be equivalent,
+# though.
+lattice-equivalent "ark:gunzip -c $dir/tmp.pr.7.lat.gz|" "ark:gunzip -c $dir/tmp.pr.10.lat.gz|" \
+ || exit 1;
+
+
+# Also testing that lattice pruning can be done twice, and the second time has no effect.
+
+lattice-prune --acoustic-scale=0.08333 --beam=7 "ark:gunzip -c $dir/tmp.10.lat.gz|" ark:- | \
+ lattice-prune --acoustic-scale=0.08333 --beam=7 ark:- ark,t:- | \
+ gzip -c > $dir/tmp.pr2.10.lat.gz 
+
+
+lattice-equivalent "ark:gunzip -c $dir/tmp.pr.10.lat.gz|" "ark:gunzip -c $dir/tmp.pr2.10.lat.gz|" \
+ || exit 1;
+

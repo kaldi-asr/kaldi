@@ -96,14 +96,14 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
                  || state_properties[i] == (kStateArcsIn|kStateArcsOut|kStateIlabelsOut));
   vector<StateId> state_mapping(max_state+1, kNoStateId);
 
-  typedef std::tr1::unordered_map<vector<Label>, Label, kaldi::VectorHasher<Label> > SymbolMapType;
+  typedef std::tr1::unordered_map<vector<I>, Label, kaldi::VectorHasher<I> > SymbolMapType;
   SymbolMapType symbol_mapping;
   Label symbol_counter = 0;
   {
-    vector<Label> eps;
+    vector<I> eps;
     symbol_mapping[eps] = symbol_counter++;
   }
-  vector<Label> this_sym;  // a temporary used inside the loop.
+  vector<I> this_sym;  // a temporary used inside the loop.
   for (size_t i = 0; i < order.size(); i++) {
     StateId state = order[i];
     if (!remove[state]) {  // Process this state...
@@ -123,6 +123,8 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
           arc.weight = Times(arc.weight, nextarc.weight);
           assert(nextarc.olabel == 0);
           if (nextarc.ilabel != 0) this_sym.push_back(nextarc.ilabel);
+          assert(static_cast<Label>(static_cast<I>(nextarc.ilabel))
+                 == nextarc.ilabel); // check within integer range.
           arc.nextstate = nextarc.nextstate;
         }
         StateId &new_nextstate = state_mapping[arc.nextstate];
