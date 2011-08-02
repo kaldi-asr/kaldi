@@ -51,8 +51,8 @@ done
 
 echo "Configuring ..."
 
-if [ ! -f makefiles/kaldi.mk.common ]; then
-    failure makefiles/kaldi.mk.common not found
+if [ ! -f makefiles/common.mk ]; then
+    failure makefiles/common.mk not found
 fi
 
 echo "Checking for OpenFST library ..."
@@ -75,7 +75,7 @@ if [ -f kaldi.mk ]; then
   cp kaldi.mk kaldi.mk.bak
 fi
 
-cp makefiles/kaldi.mk.common kaldi.mk
+cp makefiles/common.mk kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
@@ -115,7 +115,7 @@ if [ "`uname -o`" == "Cygwin"  ]; then
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure  please first install package liblapack0
     fi
-    cat makefiles/kaldi.mk.cygwin >> kaldi.mk
+    cat makefiles/cygwin.mk >> kaldi.mk
     echo "Configuration succeeded for platform cygwin"
     exit 0
 fi
@@ -150,7 +150,7 @@ fi
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASLIBDIR = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
-   cat makefiles/kaldi.mk.linux >> kaldi.mk
+   cat makefiles/linux_atlas.mk >> kaldi.mk
    echo "** $* ***"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
    echo "** you may be able to proceed (replace [somewhere] with a directory)"
@@ -205,7 +205,7 @@ function linux_configure_static {
   done    
 
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
-  cat makefiles/kaldi.mk.linux >> kaldi.mk
+  cat makefiles/linux_atlas.mk >> kaldi.mk
   echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -257,7 +257,7 @@ function linux_configure_dynamic {
 
 
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
-  cat makefiles/kaldi.mk.linux >> kaldi.mk
+  cat makefiles/linux_atlas.mk >> kaldi.mk
   echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
