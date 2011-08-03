@@ -35,7 +35,6 @@ scripts/silphones.pl data/phones.txt "$silphones" data/silphones.csl data/nonsil
 ndisambig=`scripts/add_lex_disambig.pl data/lexicon.txt data/lexicon_disambig.txt`
 scripts/add_disambig.pl data/phones.txt $ndisambig > data/phones_disambig.txt
 
-
 # Create train transcripts in integer format:
 cat data_prep/train_trans.txt | \
   scripts/sym2int.pl --ignore-first-field data/words.txt  > data/train.tra

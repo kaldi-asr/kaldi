@@ -1,3 +1,4 @@
+#!/bin/bash
 # as decode_tri2m but using the feature-level VTLN
 # Copyright 2010-2011 Microsoft Corporation
 

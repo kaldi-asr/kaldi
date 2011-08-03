@@ -1,3 +1,4 @@
+#!/bin/bash
 # This script should be run from its own directory (.)
 # Copyright 2010-2011 Microsoft Corporation
 

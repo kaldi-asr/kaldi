@@ -52,6 +52,7 @@ steps/prepare_graphs.sh
 # mfcc should be set to some place to put training mfcc's
 # where you have space.
 #e.g.: mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
+# Note: mfccdir should be an absolute pathname
 mfccdir=/path/to/mfccdir
 steps/make_mfcc_train.sh $mfccdir
 steps/make_mfcc_test.sh $mfccdir

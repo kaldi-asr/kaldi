@@ -1,3 +1,4 @@
+#!/bin/bash
 # This script should be run from the directory where it is located (i.e. data_prep)
 # Copyright 2010-2011 Microsoft Corporation
 

@@ -1,3 +1,4 @@
+#!/bin/bash
 # to be run from ..
 # Copyright 2010-2011 Microsoft Corporation
 
