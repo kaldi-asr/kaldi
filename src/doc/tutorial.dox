@@ -434,16 +434,19 @@ calling code, type the following command:
 tail -30 ../../../src/featbin/copy-feats.cc
 \endverbatim
 
-The basic concept is the concept of an ordered set of items (e.g. feature files), indexed
-by strings (e.g. utterance identifiers).  The .scp format has lines with a key,
-and then an "extended filename" that tells Kaldi where to find the data.  The
-archive format may be text or binary (you can write in text mode with the ",t" modifier).
-The format is: the key (e.g. utterance id), then a space, then the object data.
-Kaldi doesn't attempt to put the object type into the archive; you have to know
-the object type in advance (archives can't contain mixtures of types).
-Many times, we will pipe data between programs using archives on the standard input
-and output; when this happens, you will see the string "ark:-" as one of the command
-line arguments.  For more details on this topic you can see \ref io.
+The basic concept is the concept of an ordered set of items (e.g. feature files),
+indexed by strings (e.g. utterance identifiers).  We call this a Table (it is not
+really a C++ object, as we have separate C++ objects to access the data depending
+whether we are writing, iterating, or doing random access).  The .scp format has
+lines with a key, and then an "extended filename" that tells Kaldi where to find
+the data.  The archive format may be text or binary (you can write in text mode
+with the ",t" modifier).  The format is: the key (e.g. utterance id), then a
+space, then the object data.  Kaldi doesn't attempt to put the object type into
+the archive; you have to know the object type in advance (archives can't contain
+mixtures of types).  Many times, we will pipe data between programs using
+archives on the standard input and output; when this happens, you will see the
+string "ark:-" as one of the command line arguments.  For more details on this
+topic you can see \ref io.
 
 \subsection tutorial_running_feats Monophone training
 
@@ -454,7 +457,7 @@ to a few gigabytes).  Type
 \verbatim
 nohup steps/train_mono.sh &
 \endverbatim
-You can view the most recent output by typing
+You can view the most recent output of this by typing
 \verbatim
 tail nohup.out
 \endverbatim
@@ -462,7 +465,7 @@ tail nohup.out
 There is actually very little output that goes to the standard out and error of this
 script; most of it goes to log files in exp/mono/.
 
-While it is running, look at the file exp/mono/topo/.  This file is created immediately.
+While it is running, look at the file exp/mono/topo.  This file is created immediately.
 One of the phones has a different topology from the others.  Look at data/phones.txt
 in order to figure out from the numeric id which phone it is.  Notice that each entry in
 the topology file has a final state with no transitions out of it.  The convention in
@@ -478,10 +481,61 @@ topology file at the top of it, and then some other things, before the model par
 The convention is that the .mdl file contains two objects: one of type TransitionModel,
 and one of the relevant model type (in this case, type AmGmm).  By "contains two objects",
 what we mean is that the objects have Write and Read functions in a standard form, and
-we call these functions to write the objects to the file.  
+we call these functions to write the objects to the file.  For objects such as this,
+that are not part of a Table (i.e. there is no "ark:" or "scp:" involved), writing is
+in binary or text mode and can be controlled by the standard command-line 
+options --binary=true or --binary=false (different programs have different defaults).
+Glance through the model file to see what kind of information it contains.  At this
+point we won't go into more detail on how models are represented in Kaldi; see
+hmm to find out more.  
 
-The convention in .mdl files is that it contains two
-objects: an object of type TransitionModel
+We will mention one important point, though: p.d.f.'s in Kaldi are represented by
+numeric id's, starting from zero (we call these pdf-ids).  They do not have
+"names", as in HTK.  The .mdl file does not have sufficient information to map
+between context-dependent phones and pdf-ids.  For the tree file, look at
+exp/mono/tree.  Note that this is a monophone "tree" so it is very trivial-- it
+does not have any "splits".  Although this tree format was not indended to be
+very human-readable, because we have received a number of queries about this, we
+will explain it.  The rest of this paragraph can be skipped over by the casual reader.
+After "ToPdf", the tree file contains an object of the
+polymorphic type EventMap, which can be thought of as storing a mapping from a
+set of integer (key,value) pairs representing the phone-in-context and HMM state,
+to a numeric p.d.f. id.  Derived from EventMap are the types ConstantEventMap
+(representing the leaves of the tree), TableEventMap (representing some kind of
+lookup table) and SplitEventMap (representing a tree split).  In this file
+exp/mono/tree, "CE" is a marker for ConstantEventMap (and corresponds to the
+leaves of the tree), and "TE" is a marker for TableEventMap (there is no "SE", or
+SplitEventMap, because this is the monophone case).  "TE 0 49" is the start of a
+TableEventMap that "splits" on key zero (representing the zeroth phone position
+in a phone-context vector of length one, for the monophone case).  It is
+followed, in parentheses by 49 objects of type EventMap.  The first one is NULL
+(representing a zero pointer to EventMap) because the phone-id zero is reserved
+for "epsilon").  An example non-NULL object is the string "TE -1 3 ( CE 33 CE 34
+CE 35 )", which represents a TableEventMap splitting on key -1.  The value
+assigned to this key can take the values 0, 1 or 2 for this phone, and
+corresponds to the numeric PdfClass specified in the topology file.   In our
+topology file this is identical to the HMM-state index.  Inside the parentheses are three
+objects of type ConstantEventMap, each representing a leaf of the tree.
+
+Now look at the file exp/mono/cur.ali (it should exist if the training has progressed
+far enough).  This is the Viterbi alignment of the training data; it has one line
+for each training file.  Now do "tail exp/mono/tree" and look for the highest-numbered
+p.d.f. id (which is the last number in the file).  Compare this with the numbers in
+exp/mono/cur.ali.  Does something seem wrong?  The reason is that the alignment file
+does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
+that we call a "transition-id".  This also encodes the phone, and the transition within
+the prototype topology of the phone.  This is useful for a number of reasons.
+For more details, see \ref hmm.
+
+Next let's look at how training is progressing (this step assumes your shell is bash).
+Type
+\verbatim
+grep Overall exp/mono/acc.{?,??}.log
+\endverbatim
+You can see the acoustic likelihods on each iteration.  Next look at one of the files
+exp/mono/update.*.log to see what kind of information is in the update log.
+
+
 
 \subsection tutorial_looking_whats What's in the code
 
@@ -554,14 +608,14 @@ details inside the tree-building code: list all the header files in the tree
 directory.  For now we won't discuss it further.
 
 Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
-topologies.  In general each phone can have a different topology.  The topology
-includes "default" transitions, used for initialization.  Look at the
-example topology in the extended comment at the top of the header.  There is
-a tag <PdfClass> (note: this format is vaguely XML-like, but it is not really XML).  
-The <PdfClass> is always the same as the HMM-state (<State>).  In general it doesn't
-have to be.  This is a mechanism to enforce tying of distributions between
-distinct HMM states; it's possibly useful if you want to create more interesting
-transition models.
+topologies for a number of phones.  In general each phone can have a different
+topology.  The topology includes "default" transitions, used for initialization.
+Look at the example topology in the extended comment at the top of the header.
+There is a tag <PdfClass> (note: this format is vaguely XML-like, but it is not
+really XML).  The <PdfClass> is always the same as the HMM-state (<State>).  In
+general it doesn't have to be.  This is a mechanism to enforce tying of
+distributions between distinct HMM states; it's possibly useful if you want to
+create more interesting transition models.
 
 
 
