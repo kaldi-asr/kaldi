@@ -1,9 +1,19 @@
-This INSTALL file has manual instructions.    The script ./install.sh
-will attempt to execute these instructions automatically.
+To install the prerequisites for Kaldi, try running
+ ./install.sh
+It tries to install various things, and it will tell you at the
+end whether each item succeeded or failed.
+If you get warnings that certain things failed to install but
+it says "optional anyway", this does not matter.  But if it
+just says "Failure" for one of the prerequisites, that is a problem--
+you will have to go to the manual instructions in this file (below),
+and try to install the prerequisite yourself and if you can, fix the
+problem.
 
 [note: ./install_atlas.sh is a backup plan in case you don't have ATLAS
  installed on your system; ignore it unless you get errors from
  ../src/configure.]
+
+---
 
 See below install instructions for:
 (1) sph2pipe (needed to run the example scripts but not for compilation)

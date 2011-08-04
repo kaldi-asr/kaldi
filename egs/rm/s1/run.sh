@@ -50,7 +50,7 @@ steps/prepare_graphs.sh
 # If it doesn't exist, the scripts below will make the directory "exp".
 
 # mfcc should be set to some place to put training mfcc's
-# where you have space.
+# where you have space.  Make sure you create the directory.
 #e.g.: mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
 # Note: mfccdir should be an absolute pathname
 mfccdir=/path/to/mfccdir
