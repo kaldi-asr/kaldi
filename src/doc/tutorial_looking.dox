@@ -1,0 +1,232 @@
+// doc/tutorial_looking.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_looking Kaldi tutorial: Overview of the distribution (20 minutes)
+
+  - Up: \ref tutorial "Kaldi tutorial"
+  - Previous: \ref tutorial_svn "Version control with Subversion"
+  - Next: \ref tutorial_running "Running the example scripts"
+
+ Before we jump into the example scripts, let us take a few minutes to look at what
+ else is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
+ There are a few files and subdirectories.  
+ The important subdirectories are "tools/", "src/", and "egs/" which we will
+ look at in the next section.
+ We will give an overview of "tools/" and "src/".
+
+ \section tutorial_looking_tools The tools/ directory (10 minutes)
+
+ The directory "tools/' is where we install things that Kaldi depends on in
+ various ways.  Change directory to tools/ and list it.  You will see various
+ files and subdirectories, mostly things that have been installed by the script
+ install.sh.  Look very quickly at the files install.sh and INSTALL.  These files
+ contain similar material since they cover the same steps, but INSTALL is the
+ manual version of the instructions and install.sh is the automatic version.  The
+ manual version may be helpful as a fall-back plan in case you have installation problems.
+
+ The most important subdirectory is the one for OpenFst.  cd to openfst/.  This is a soft link
+ to the actual directory which has a version number.  List the openfst directory.
+ If the installation succeeded, there will be a bin/ directory with the installed
+ binaries, and a lib/ directory with the library (we require both of these).
+ The most important code is in the directory include/fst/.  If you ever want to
+ understand Kaldi deeply you will need to understand OpenFst.  For this,
+ the best starting point is http://www.openfst.org/.
+
+ For now, just view the file include/fst/fst.h.  This consists of some declarations
+ of an abstract FST type.  You can see that there are a lot of templates involved.
+ If templates are not your thing, you will probably have trouble understanding this code.
+
+ Change directory to bin/, or add it to your path.  
+ We will be executing some simple example instructions from
+ <a href=http://www.openfst.org/twiki/bin/view/FST/FstQuickTour#CreatingFsts>here</a>.
+
+
+ Paste the following command into the shell:
+\verbatim
+# arc format: src dest ilabel olabel [weight]
+# final state format: state [weight]
+# lines may occur in any order except initial state must be first line
+# unspecified weights default to 0.0 (for the library-default Weight type) 
+cat >text.fst <<EOF
+0 1 a x .5
+0 1 b y 1.5
+1 2 c z 2.5
+2 3.5
+EOF
+\endverbatim
+
+The following commands create the symbol tables; paste them into the shell too.
+\verbatim
+cat >isyms.txt <<EOF
+<eps> 0
+a 1
+b 2
+c 3
+EOF
+
+cat >osyms.txt <<EOF
+<eps> 0
+x 1
+y 2
+z 3
+EOF
+\endverbatim
+Next create a binary-format FST:
+\verbatim
+fstcompile --isymbols=isyms.txt --osymbols=osyms.txt text.fst binary.fst
+\endverbatim
+Let's execute an example command:
+\verbatim
+fstinvert binary.fst | fstcompose - binary.fst > binary2.fst
+\endverbatim
+The resulting WFST, binary2.fst, should be similar to binary.fst
+but with twice the weights.  You can print them both out to see:
+\verbatim
+fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary.fst
+fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary2.fst
+\endverbatim
+This example was modified from a longer tutorial available at
+<a href=www.openfst.org> www.openfst.org </a>.  After you have done
+this, clean up by typing:
+\verbatim
+rm *.fst *.txt
+\endverbatim
+
+
+ \section tutorial_looking_src The src/ directory (10 minutes)
+
+ Change directory back up to the top level (kaldi-1) and into src/.
+ List the directory.  You will see a few files and a large number of 
+ subdirectories.  Look at the Makefile.  At the top it sets the variable
+ SUBDIRS.  This is a list of the subdirectories containing code.
+ Notice that some of them end in "bin".  These are the ones that contain
+ executables (the code and executables are in the same directory).  The
+ other directories contain internal code.
+
+ You can see that one of the targets in the Makefile is "test".
+ Type "make test".  This command goes into the various subdirectories and
+ runs test programs in there.  All the tests should succeed.  If you are
+ feeling lucky you can also type "make valgrind".  This runs the same
+ tests with a memory checker, and takes longer, but will find more 
+ errors.  If this doesn't work, forget about it; it's not important
+ for now.  If it is taking too long, stop it with ctrl-c.
+ 
+ Change directory to base/.  Look at the Makefile.  Notice the line
+\verbatim
+include ../kaldi.mk
+\endverbatim
+ This lines includes the file ../kaldi.mk verbatim whenever a Makefile in a
+ subdirectory is invoked (just like a C \#include directive).  
+ Look at the file ../kaldi.mk.  It will contain
+ some rules related to valgrind (for memory debugging), and then some
+ system-specific configuration in the form of variables such as CXXFLAGS.
+ See if there are any -O options (e.g. -O0).  You might want to remove the flags
+ -O0 and -DKALDI_PARANOID before running big experiments, as they slow things
+ down (we enable them by default for better debugging).
+ Look again at base/Makefile.  The statement "all:" at the top tells Make
+ that "all" is the top-level target (because there are targets in kaldi.mk
+ and we don't want these to become the top-level target).  Because the
+ dependencies of "all" depend on variables defined later, we have another
+ statement down below in which we define what "all" depends on.  Look for
+ it.  Several other targets are defined, starting with "clean".  Look for
+ them in the Makefile.  To make "clean" you would type "make clean".
+ The target .vagrind is not something you would invoke from the command line;
+ you would type "make valgrind" (the target is defined in kaldi.mk).  
+ Invoke all of these targets, i.e. type "make clean" and the same for the others,
+ and notice what commands are issued when you do this.
+ 
+ In the Makefile in the base/ directory: choose one of the binaries
+listed in TESTFILES, and run it.  Then briefly view the corresponding .cc file.
+The math one is a good example (note: this excludes the majority of math functions
+in Kaldi, which are matrix-vector related functions, and are located in
+../matrix/).  Notice that there are a lot of assertions, with the macro
+KALDI_ASSERT.  These test programs are designed to exit with error status if
+there is a problem (they are not supposed to rely on human inspection of the
+output).
+
+Look at the header kaldi-math.h.  You will see some elements of our coding practices.
+Notice that all our local \#includes are relative to the src/ directory (so we \#include
+base/kaldi-types.h even though we are already in the base/ directory).
+Notice that all macros we \#define, except for standard ones that we are just
+making sure have their normal values, begin with KALDI_.  This is a precaution
+to avoid future conflicts with other codebases (since \#defines don't limit themselves
+to the kaldi namespace).  Notice the style of the function names: LikeThis().
+Our style is generally based on
+<a href=http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml> this one </a>,
+to conform with OpenFst, but there are some differences.
+
+To see other elements of the style, which will help you to understand Kaldi
+code, cd to ../util, and view text-utils.h.  Notice that the inputs of these
+functions are always first, and are generally const references, while the
+outputs (or inputs that are modified) are always last, and are pointer arguments.  Non-const references
+as function arguments are not allowed.  You can read more about the Kaldi-specific
+elements of the coding style \ref style "here" later if you are interested.  
+For now, just be aware that there is a coding style with quite specific rules.
+
+Change directory to ../gmmbin and type
+\verbatim
+./gmm-init-model 
+\endverbatim
+It prints out the usage, which should give you a generic idea of how Kaldi programs
+are called.  Note that while there is a --config option that can be used to
+pass a configuration file, in general Kaldi is not as config-driven as HTK and these
+files are not widely used.  You will see a --binary option.  In general, Kaldi file
+formats come in both binary and test forms, and the --binary option controls how
+they are written.  However, this only controls how single objects (e.g. acoustic models)
+are written.  For whole collections of objects (e.g. collections of feature files), 
+there is a different mechanism that we will come to later.
+Type
+\verbatim
+./gmm-init-model >/dev/null
+\endverbatim
+What do you see, and what does this tell you about what Kaldi does with logging-type
+output?  The place that the usage message goes is the same place that all error and
+logging messages go, and there is a reason for this, which should become apparent
+when you start looking at the scripts.
+ 
+To get a little insight into the build process,  cd to ../matrix, and type
+\verbatim
+rm *.o
+make
+\endverbatim
+Look at the options that are passed to the compiler.  These are ultimately
+controlled by the variables that are set in ../kaldi.mk, which in turn is
+determined by ../configure.  Also look at the linking options, passed in when it
+creates matrix-lib-test.  You will get some idea what math libraries it is
+linking against (this is somewhat system dependent).  For more information on how
+we make use of external matrix libraries, you can read \ref matrixwrap.
+
+Change directory to one level up (to src/), and look at the "configure" file.  If you
+are familiar with the "configure" files generated by automake, you will notice that it
+is not one of those.  It is hand generated.  Search within it for "makefiles/"
+and quickly scan all the places where that string occurs (e.g. type into the shell
+"less configure", type "/makefiles[enter]" and then type "n" to see later instances).
+You will see that it makes use of some files with the .mk in the subdirectory "makefiles/".
+These are essentially "prototype" versions of kaldi.mk.  Look at one of the prototypes,
+e.g. makefiles/cygwin.mk, to see the kinds of things they contain.  For systems that are more
+predictable, it just copies the  corresponding file to kaldi.mk.  For Linux, it has to
+do a little more sleuthing because there are so many distributions.  Mostly this relates
+to finding where the math libraries are installed.  If you are having problems with
+a build process, we recommend modifying kaldi.mk by hand.  In order to do this you should
+probably understand how Kaldi makes use of external math libraries (see \ref matrixwrap).
+
+  - Up: \ref tutorial "Kaldi tutorial"
+  - Previous: \ref tutorial_svn "Version control with Subversion"
+  - Next: \ref tutorial_running "Running the example scripts"
+
+*/

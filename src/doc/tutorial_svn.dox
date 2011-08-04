@@ -1,0 +1,68 @@
+// doc/tutorial_svn.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_svn Kaldi Tutorial: Version control with Subversion (5 minutes)
+
+   - Up: \ref tutorial "Kaldi tutorial"
+   - Previous: \ref tutorial_setup "Getting started"
+   - Next: \ref tutorial_looking "Overview of the distribution"
+
+ In case you are unfamiliar with the Subversion (svn) version control system, we
+ give a brief overview of some commands that might be useful to you.  Subversion commands
+ always look like: "svn [command] [arguments]"; you can do "svn help" to see what
+ commands are available, or "svn help <command>" for help on a specific command.  
+  In kaldi-1 or any subdirectory, type
+ \verbatim
+   svn up
+ \endverbatim
+ (this is short for "svn update").  If we have committed changes to the repository
+ in the several minutes since you installed Kaldi, you should see output like
+ the following:
+\verbatim
+kaldi-1: svn update
+U    src/lat/Makefile
+U    src/nnetbin/nnet-forward.cc
+Updated to revision 191.
+\endverbatim
+ More likely, it will just say something like "At revision 191."  
+ To see if you have made any changes to anything, type 
+\verbatim
+ svn status
+\endverbatim
+ This will
+ list files that you changed or that have been added.  Files that have been added
+ to the directories but are not under version control because you have not used the
+ "svn add" command, will appear with the descriptor '?' (you will see all the
+ binaries that were compiled).  Next, edit a version-controlled file (for example,
+ src/Makefile; add a comment or something), and type
+\verbatim
+ svn diff
+\endverbatim
+This should show how your version differs from the copy that you downlaoded.
+If you are going to be 
+ contributing to the Kaldi project (and we do welcome new contributors), 
+ then you should become familiar with other commands such
+ as "svn add", "svn commit" and so on.  For this, there are tutorials available
+ online.
+
+
+   - Up: \ref tutorial "Kaldi tutorial"
+   - Previous: \ref tutorial_setup "Getting started"
+   - Next: \ref tutorial_looking "Overview of the distribution"
+
+*/
