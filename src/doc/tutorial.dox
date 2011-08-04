@@ -29,9 +29,9 @@
   discourage trying to learn about speech recognition outside an institutional
   setting.  The intended audience for this tutorial is either speech recognition
   researchers, or graduates or advanced undergraduates who are studying this
-  area.
+  area anyway.
 
-  We also assume that you know C++, and have at least some familiarity with shell
+  We assume that you know C++, and have at least some familiarity with shell
   scripting, preferably using bash or a similar shell.  This tutorial assumes you
   are using a UNIX-like environment or Cygwin (although Kaldi will not
   necessarily compile and run in all such environments).
@@ -40,7 +40,7 @@
   Management (RM) CDs from the Linguistic Data Consortium (LDC), in the original form
   as distributed by the LDC.  That is, we assume this data is sitting on your system
   somewhere.  We obtained this as catalog number LDC93S3A.   It is
-  also available in two separate pieces; be careful because there was previously 
+  also available in two separate pieces.  Be careful because there was previously 
   a different distribution of the RM data with a different layout.
 
   The system requirements are fairly basic.  We assume that you have tools
@@ -49,11 +49,20 @@
   ATLAS; if this is not already installed as a library on your system you will
   have to compile it, and this requires that CPU throttling be turned off, which
   may require root priveleges.  We provide scripts and detailed instructions for
-  all installation steps.  Please inform us if there are problems at any point,
-  however minor; see \ref contact.
+  all installation steps.  When scripts fail, read the output carefully because
+  it tries to provide guidance as to how to fix problems.  Please inform us if there
+  are problems at any point, however minor; see \ref contact.
 
+  We try to provide some idea how long it should take to execute each step of the tutorial.
+  If there is a limited amount of time available to complete the tutorial, we recommend
+  to try to keep to the posted schedule, if necessary by skipping steps and avoiding
+  following links to more information that we provide in the text.  This will help ensure
+  that you get a balanced overview.  You can always review the material in more
+  detail later on.  If this tutorial is to be given in a classroom setting, it is 
+  important that someone run through the tutorial on the relevant system beforehand in order
+  to verify that all the prerequisites are installed.
 
-  \section tutorial_setup Getting started
+  \section tutorial_setup Getting started (15 minutes)
 
   The first step is to download and install Kaldi.  We will be using version 1 of
   the toolkit, so that this tutorial does not get out of date.  Assuming
@@ -78,7 +87,7 @@
  feel free to contact the maintainers (\ref contact) and we will be happy to help.  
 
 
-  \section tutorial_svn Version control with Subversion
+  \section tutorial_svn Version control with Subversion (3 minutes)
 
  In case you are unfamiliar with the Subversion (svn) version control system, we
  give a brief overview of some commands that might be useful to you.  Subversion commands
@@ -108,7 +117,7 @@ Updated to revision 191.
  as "svn add", "svn commit" and so on.  For this, there are tutorials available
  online.
  
- \section tutorial_looking Overview of the distribution
+ \section tutorial_looking Overview of the distribution (15 minutes)
 
  Before we jump into the example scripts, let us take a few minutes to look at what
  else is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
@@ -117,7 +126,7 @@ Updated to revision 191.
  look at in the next section.
  We will give an overview of the first two.
 
- \subsection tutorial_looking_tools The tools/ directory
+ \subsection tutorial_looking_tools The tools/ directory (5 minutes)
 
  The directory "tools/' is where we install things that Kaldi depends on in
  various ways.  Change directory to tools/ and list it.  You will see various
@@ -138,13 +147,57 @@ Updated to revision 191.
  of an abstract FST type.  You can see that there are a lot of templates involved.
  If templates are not your thing, you will probably have trouble understanding this code.
 
- Change directory to bin/, or add it to your path.  Then follow the instructions
- that you see when you go to http://www.openfst.org , click on "quick tour", and
- follow the instructions in the section "Creating FSTs Using Text Files from the
- Shell".  This should take less than five minutes.  This little snippet of the
- OpenFst tutorial won't teach you much.  The point is to have some vague idea of
- the kinds of things OpenFst does and what kinds of materials are available to
- learn more about it.
+ Change directory to bin/, or add it to your path.  
+ We will be executing some simple example instructions from
+ <a href=http://www.openfst.org/twiki/bin/view/FST/FstQuickTour#CreatingFsts>here</a>.
+
+ Paste the following commands into the shell:
+\verbatim
+# arc format: src dest ilabel olabel [weight]
+# final state format: state [weight]
+# lines may occur in any order except initial state must be first line
+# unspecified weights default to 0.0 (for the library-default Weight type) 
+cat >text.fst <<EOF
+0 1 a x .5
+0 1 b y 1.5
+1 2 c z 2.5
+2 3.5
+EOF
+\endverbatim
+
+The following commands create the symbol tables; paste them into the shell too.
+\verbatim
+cat >isyms.txt <<EOF
+<eps> 0
+a 1
+b 2
+c 3
+EOF
+
+cat >osyms.txt <<EOF
+<eps> 0
+x 1
+y 2
+z 3
+EOF
+\endverbatim
+Next create a binary-format FST:
+\verbatim
+fstcompile --isymbols=isyms.txt --osymbols=osyms.txt text.fst binary.fst
+\endverbatim
+Let's execute an example command:
+\verbatim
+fstinvert binary.fst | fstcompose - binary.fst > binary2.fst
+\endverbatim
+The resulting WFST, binary2.fst, should be similar to binary.fst
+but with twice the weights.  You can print them both out to see:
+\verbatim
+fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary.fst
+fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary2.fst
+\endverbatim
+This example was modified from a longer tutorial available at
+<a href=www.openfst.org> www.openfst.org </a>.
+
 
  \subsection tutorial_looking_src The src/ directory
 
