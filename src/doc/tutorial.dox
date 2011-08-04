@@ -87,7 +87,7 @@
  feel free to contact the maintainers (\ref contact) and we will be happy to help.  
 
 
-  \section tutorial_svn Version control with Subversion (3 minutes)
+  \section tutorial_svn Version control with Subversion (5 minutes)
 
  In case you are unfamiliar with the Subversion (svn) version control system, we
  give a brief overview of some commands that might be useful to you.  Subversion commands
@@ -107,33 +107,45 @@ U    src/nnetbin/nnet-forward.cc
 Updated to revision 191.
 \endverbatim
  More likely, it will just say something like "At revision 191."  
- To see if you have made any changes to anything, type "svn status".  This will
+ To see if you have made any changes to anything, type 
+\verbatim
+ svn status
+\endverbatim
+ This will
  list files that you changed or that have been added.  Files that have been added
  to the directories but are not under version control because you have not used the
  "svn add" command, will appear with the descriptor '?' (you will see all the
- binaries that were compiled).  If you are going to be 
+ binaries that were compiled).  Next, edit a version-controlled file (for example,
+ src/Makefile; add a comment or something), and type
+\verbatim
+ svn diff
+\endverbatim
+This should show how your version differs from the copy that you downlaoded.
+If you are going to be 
  contributing to the Kaldi project (and we do welcome new contributors), 
  then you should become familiar with other commands such
  as "svn add", "svn commit" and so on.  For this, there are tutorials available
  online.
+
  
- \section tutorial_looking Overview of the distribution (15 minutes)
+ \section tutorial_looking Overview of the distribution (20 minutes)
 
  Before we jump into the example scripts, let us take a few minutes to look at what
  else is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
  There are a few files and subdirectories.  
  The important subdirectories are "tools/", "src/", and "egs/" which we will
  look at in the next section.
- We will give an overview of the first two.
+ We will give an overview of "tools/" and "src/".
 
- \subsection tutorial_looking_tools The tools/ directory (5 minutes)
+ \subsection tutorial_looking_tools The tools/ directory (10 minutes)
 
  The directory "tools/' is where we install things that Kaldi depends on in
  various ways.  Change directory to tools/ and list it.  You will see various
  files and subdirectories, mostly things that have been installed by the script
  install.sh.  Look very quickly at the files install.sh and INSTALL.  These files
- are similar since they cover the same steps, but INSTALL is the manual version
- of the instructions.  The manual version may be helpful if you have installation problems.
+ contain similar material since they cover the same steps, but INSTALL is the
+ manual version of the instructions and install.sh is the automatic version.  The
+ manual version may be helpful as a fall-back plan in case you have installation problems.
 
  The most important subdirectory is the one for OpenFst.  cd to openfst/.  This is a soft link
  to the actual directory which has a version number.  List the openfst directory.
@@ -151,7 +163,8 @@ Updated to revision 191.
  We will be executing some simple example instructions from
  <a href=http://www.openfst.org/twiki/bin/view/FST/FstQuickTour#CreatingFsts>here</a>.
 
- Paste the following commands into the shell:
+
+ Paste the following command into the shell:
 \verbatim
 # arc format: src dest ilabel olabel [weight]
 # final state format: state [weight]
@@ -196,10 +209,14 @@ fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary.fst
 fstprint --isymbols=isyms.txt --osymbols=osyms.txt binary2.fst
 \endverbatim
 This example was modified from a longer tutorial available at
-<a href=www.openfst.org> www.openfst.org </a>.
+<a href=www.openfst.org> www.openfst.org </a>.  After you have done
+this, clean up by typing:
+\verbatim
+rm *.fst *.txt
+\endverbatim
 
 
- \subsection tutorial_looking_src The src/ directory
+ \subsection tutorial_looking_src The src/ directory (10 minutes)
 
  Change directory back up to the top level (kaldi-1) and into src/.
  List the directory.  You will see a few files and a large number of 
