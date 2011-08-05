@@ -18,9 +18,9 @@
 /**
  \page tutorial_setup Kaldi tutorial: Getting started (15 minutes)
 
-   - Up: \ref tutorial "Kaldi tutorial"
-   - Previous: \ref tutorial_prereqs "Prerequisites"
-   - Next: \ref tutorial_svn "Version control with Subversion"
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_prereqs "Previous: Prerequisites" <BR>
+    \ref tutorial_svn "Next: Version control with Subversion" <BR>
 
   The first step is to download and install Kaldi.  We will be using version 1 of
   the toolkit, so that this tutorial does not get out of date.  Assuming
@@ -44,8 +44,8 @@
  there may be some information in \ref build_setup that will help you; otherwise,
  feel free to contact the maintainers (\ref contact) and we will be happy to help.  
 
-   - Up: \ref tutorial "Kaldi tutorial"
-   - Previous: \ref tutorial_prereqs "Prerequisites"
-   - Next: \ref tutorial_svn "Version control with Subversion"
-
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_prereqs "Previous: Prerequisites" <BR>
+    \ref tutorial_svn "Next: Version control with Subversion" <BR>
+<P>
 */

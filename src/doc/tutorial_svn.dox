@@ -18,9 +18,9 @@
 /**
  \page tutorial_svn Kaldi Tutorial: Version control with Subversion (5 minutes)
 
-   - Up: \ref tutorial "Kaldi tutorial"
-   - Previous: \ref tutorial_setup "Getting started"
-   - Next: \ref tutorial_looking "Overview of the distribution"
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_setup "Previous: Getting started" <BR>
+    \ref tutorial_looking "Next: Overview of the distribution" <BR>
 
  In case you are unfamiliar with the Subversion (svn) version control system, we
  give a brief overview of some commands that might be useful to you.  Subversion commands
@@ -61,8 +61,8 @@ If you are going to be
  online.
 
 
-   - Up: \ref tutorial "Kaldi tutorial"
-   - Previous: \ref tutorial_setup "Getting started"
-   - Next: \ref tutorial_looking "Overview of the distribution"
-
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_setup "Previous: Getting started" <BR>
+    \ref tutorial_looking "Next: Overview of the distribution" <BR>
+<P>
 */

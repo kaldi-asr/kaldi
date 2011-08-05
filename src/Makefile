@@ -1,7 +1,6 @@
 # This is the top-level Makefile for Kaldi.
 # Also see kaldi.mk which supplies options and some rules
-# used by the Makefiles in the subdirectories.
-
+# used by the Makefiles in the subdirectories. 
 
 # Compile subdirectories starting with the things "depended on".
 

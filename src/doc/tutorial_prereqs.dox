@@ -18,8 +18,8 @@
 /**
  \page tutorial_prereqs Kaldi tutorial: Prerequisites
 
-  - Up: \ref tutorial "Kaldi tutorial"
-  - Next: \ref tutorial_setup "Getting started"
+   \ref tutorial "Up: Kaldi tutorial" <BR>
+   \ref tutorial_setup "Next: Getting started" <BR>
 
   This tutorial assumes that you know the basics of speech recognition using the
   HMM-GMM approach.  One brief introduction that is available online
@@ -63,7 +63,7 @@
   important that someone run through the tutorial on the relevant system beforehand in order
   to verify that all the prerequisites are installed.
 
-  - Up: \ref tutorial "Kaldi tutorial"
-  - Next: \ref tutorial_setup "Getting started"
-
+   \ref tutorial "Up: Kaldi tutorial" <BR>
+   \ref tutorial_setup "Next: Getting started" <BR>
+<P>
 */

@@ -16,10 +16,11 @@
 // limitations under the License.
 
 /**
- \page tutorial_running Running the example scripts (1 hour)
+ \page tutorial_running Running the example scripts (40 minutes)
 
- - Up: \ref tutorial "Kaldi tutorial"
- - Previous: \ref tutorial_looking "Overview of the distribution"
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_looking "Previous: Overview of the distribution" <BR>
+  \ref tutorial_code "Next: Taking a look at the code" <BR>
 
 
 \section tutorial_running_start Getting started, and prerequisites.
@@ -34,11 +35,10 @@ reading this tutorial and doing the steps that you can do without the data, and
 you may still obtain some value from it.  The best case is that there is some
 directory on your system, say /mnt/data4/RM, that contains three subdirectories;
 call them rm1_audio1, rm1_audio2 and rm2_audio.  These would correspond to the
-three original disks in the data distribution from the LDC, with no changes in
-format.  These instructions assume your shell is bash.  If you have a different
+three original disks in the data distribution from the LDC.
+These instructions assume that your shell is bash.  If you have a different
 shell, these commands will not work or should be modified (just type "bash"
 to get into bash, and everything should work).
-
 
 Now change directory to rm/, glance at the file README.txt to see what the
 overall structure is, and cd to s1/.  This is the basic sequence of experiments
@@ -53,7 +53,7 @@ the idea is that you run the commands in it one by one, by hand.
 \section tutorial_running_data_prep Data preparation
 
 The first three lines you have to run are as follows [assuming your data is
-in /mnt/data4/RM, which is an example]:
+oin /mnt/data4/RM, which is an example]:
 \verbatim
 cd data_prep
 ./run.sh /mnt/data4/RM
@@ -62,7 +62,7 @@ cd ..
 If this works it should say "Succeeded".  If not, you will have to work out
 where the script failed and what the problem was.
 
-The next couple of steps in run.sh copy some things from data_prep/ into data/.
+The next couple of steps in s1/run.sh copy some things from data_prep/ into data/.
 Run these.  The general concept behind this directory structure is that
 data_prep/ contains the corpus-specific data preparation stages and data/
 contains the same data in some kind of "normalized" form, so that in theory the
@@ -81,17 +81,17 @@ commands, looking at the output each time.
  head train_wav.scp
 \endverbatim
 These will give you some idea of what the outputs of a generic data preparation process would
-look like.  Something you should appreciate is that not all of these are "native" Kaldi
-formats:
+look like.  Something you should appreciate is that not all of these files are "native" Kaldi
+formats, i.e. not all of them could be read by Kaldi's C++ programs:
  - The grammar, G.txt, needs to be compiled into an FST before it is used, and even then
-   it is not read directly by Kaldi but is processed further with OpenFst tools before
-   being used.
+   it is not generally read directly by Kaldi but would be processed further using OpenFst tools.
  - The lexicon, lexicon.txt, needs to be converted by OpenFst into the binary FST format
    before Kaldi will read it (and we'll turn the words and phones into integer labels;
    Kaldi will only deal with integers).
- - The transcriptions, train_trans.txt, will also be turned into an integer format
-   (but still text),  with the words replaced with integers.
- - The file train_wav.scp is actually read directly by Kaldi programs.  Look at the file
+ - The transcriptions, train_trans.txt, will also be turned into an integer format--
+   still a text file, but with the words replaced with integers.
+ - The file train_wav.scp is actually read directly by Kaldi programs when doing feature 
+   extraction.  Look at the file
    again.  It is parsed as a set of key-value pairs, where the key is the first string on
    each line.  The value is a kind of "extended filename", and you can guess how it works.  
    Since it is for reading we will refer to this type of string as an "rxfilename" (for writing
@@ -107,13 +107,18 @@ Look at the script.  It transforms some of the files created in data_prep/ to a 
 normalized form that is read by Kaldi.  This script creates its output in the
 data/ directory.  The files we mention below will be in that directory.
 
-The first two files this script creates are called words.txt and phones.txt.
+The first two files this script creates are called words.txt and phones.txt
+(both in the directory data/).
 These are OpenFst format symbol tables, and represent a mapping from strings to
-integers and back.
+integers and back.  Look at these files; since they are important and will be
+frequently used so you need to understand what is in them.  They have the same
+format as the symbol table format we encountered previously in \ref tutorial_looking
+"Overview of the distribution".
 
-Look at the files with suffix .csl.  These are colon-separated lists of
+Look at the files with suffix .csl (in data/).  These are colon-separated lists of
 the integer id's of non-silence, and silence, phones respectively.  They are sometimes
-needed as options on program command lines (e.g. to specify lists of silence phones).
+needed as options on program command lines (e.g. to specify lists of silence phones),
+and for other purposes.
 
 Look at phones_disambig.txt.  This file is a phone symbol table that also 
 handles the "disambiguation symbols" used in the standard FST recipe.
@@ -121,7 +126,10 @@ These symbols are conventionally called \#1, \#2 and so on;
  see the paper <a href=www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
 with Weighted Finite State Transducers" </a>.  We also add a symbol \#0
 which replaces epsilon transitions in the language model; see
-\ref graph_disambig for more information.
+\ref graph_disambig for more information.  How many disambiguation symbols
+are there?  In some recipes the number of disambiguation symbols is the same
+as the maximum number of words that share the same pronunciation.  In our recipe
+there are a few more; you can find more explanation \ref graph_disambig "here".
 
 The file L.fst is the compiled lexicon in FST format.  To see what kind of information
 is in it, you can (from s1/), do:
@@ -129,7 +137,7 @@ is in it, you can (from s1/), do:
  . path.sh
  fstprint --isymbols=data/phones_disambig.txt --osymbols=data/words.txt data/L.fst | head
 \endverbatim
-The FST format is not very human-readable.  Look at the command-line that creates L.fst
+Look at the command-line that creates L.fst
 in steps/prepare_graphs.sh.  Try to figure out what the 0.5 on the command line means
 (you will have to look at the Perl script that is invoked).
 
@@ -146,16 +154,26 @@ steps/make_mfcc_test.sh /my/disk/rm_mfccdir
 \endverbatim
 Run these jobs.  They
 use several CPUs in parallel and should be done in around two minutes on a fast
-machine.  
+machine.  Look at the file exp/make_mfcc/make_mfcc_train.1.log to see the logging
+output of the program that creates the MFCCs.  At the top of it you will see the
+command line (Kaldi programs always echo the command line unless you specify
+--print-args=false).  
 
 In the script steps/make_mfcc_train.sh,
-look at the line that invokes split_scp.pl.  By doing a word count of data_prep/train_wav.scp
-and the files matched by the pattern exp/make_mfcc/train_wav?.scp, you can see what this
-line does.
-Next look at the line that invokes compute-mfcc-feats.  The options should be fairly self-explanatory.
-The option that involves the config file is a mechanism that can be used in Kaldi to pass configuration
-options, like a HTK config file, but it is quite rarely used.  The positional arguments (the
-ones that begin with "scp" and "ark,scp" require a little more explanation.  
+look at the line that invokes split_scp.pl.  You can probably guess what this does.
+Type
+
+By typing
+\verbatim
+wc data_prep/train_wav.scp
+wc exp/make_mfcc/train_wav?.scp
+\endverbatim
+you can confirm it.
+Next look at the line that invokes compute-mfcc-feats.  The options should be
+fairly self-explanatory.  The option that involves the config file is a
+mechanism that can be used in Kaldi to pass configuration options, like a HTK
+config file, but it is actually quite rarely used.  The positional arguments
+(the ones that begin with "scp" and "ark,scp" require a little more explanation.
 
 Before we explain this, have a look at the command line in the script again and examine
 the inputs and outputs using:
@@ -164,9 +182,10 @@ head exp/make_mfcc/train_wav1.scp
 head /my/disk/rm_mfccdir/train_raw_mfcc1.scp
 less /my/disk/rm_mfccdir/train_raw_mfcc1.ark
 \endverbatim
-(in these commands you would replace /my/disk/rm_mfccdir/ with the actual directory.
+(in these commands you would replace /my/disk/rm_mfccdir/ with the actual directory where
+you put your mfcc data.
 Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal
-doesn't work right after viewing this data).
+doesn't work right after looking at it).
 
 By listing the files you can see that the .ark files are quite big (because they contain
 the actual data).  You can view one of these archive files more conveniently by typing:
@@ -181,17 +200,19 @@ An alternative way to view the same data is to do:
 \verbatim
 copy-feats scp:data/train.scp ark,t:- | head
 \endverbatim
-This is because the archive and script file both represent the same data.  Notice
+This is because these archive and script files both represent the same data (well, technically
+the archive only represents one quarter of it because we split it into four pieces).  Notice
 the "scp:" and "ark:" prefixes in these commands.  Kaldi doesn't attempt to work
 out whether something is a script file or archive format from the data itself,
 and in fact Kaldi never attempts to work things out from file suffixes.  This is
 for general philosophical reasons, and also to forestall bad interaction with
-pipes (because pipes don't have a filename).
+pipes (because pipes don't normally have a name).
 
 Now type the following command:
 \verbatim
 head -10 data/train.scp | tail -1 | copy-feats scp:- ark,t:- | head
 \endverbatim
+(remember to source path.sh by entering ". path.sh" if it fails).
 This prints out some data from the tenth training file.  Notice that in
 "scp:-", the "-" tells it to read from the standard input, while "scp" tells
 it to interpret the input as a script file.
@@ -203,22 +224,70 @@ calling code, type the following command:
 \verbatim
 tail -30 ../../../src/featbin/copy-feats.cc
 \endverbatim
+You can see that the part of this program that actually does the work is just
+three lines of code (actually there are two branches, each with three lines
+of code).  If you are familiar with the StateIterator type in OpenFst you will 
+notice that the way we iterate is in the same style (we have tried to be
+as style-compatible as OpenFst as possible).
 
-The basic concept is the concept of an ordered set of items (e.g. feature files),
-indexed by strings (e.g. utterance identifiers).  We call this a Table (it is not
-really a C++ object, as we have separate C++ objects to access the data depending
-whether we are writing, iterating, or doing random access).  The .scp format has
-lines with a key, and then an "extended filename" that tells Kaldi where to find
-the data.  The archive format may be text or binary (you can write in text mode
-with the ",t" modifier).  The format is: the key (e.g. utterance id), then a
-space, then the object data.  Kaldi doesn't attempt to put the object type into
-the archive; you have to know the object type in advance (archives can't contain
-mixtures of types).  Many times, we will pipe data between programs using
-archives on the standard input and output; when this happens, you will see the
-string "ark:-" as one of the command line arguments.  For more details on this
-topic you can see \ref io.
+Underlying scripts and archives is the concept of a Table.  A Table is basically
+an ordered set of items (e.g. feature files), indexed by unique strings
+(e.g. utterance identifiers).  A Table is not really a C++ object, because we have
+separate C++ objects to access the data depending whether we are writing,
+iterating, or doing random access.  An example of these types where the object
+in question is a matrix of floats (Matrix<BaseFloat>), is:
+\verbatim
+BaseFloatMatrixWriter
+RandomAccessBaseFloatMatrixReader
+SequentialBaseFloatMatrixReader
+\endverbatim
+These types are all typedefs that are actually templated classes.  We won't go
+into further detail here.
+A script (.scp) file or an archive (.ark) file
+are both viewed as Tables of data.  The formats are as follows:
 
-\section tutorial_running_feats Monophone training
+ - The .scp format is a text-only format has lines with a key, and then an "extended filename" 
+   that tells Kaldi where to find the data.  
+ - The archive format may be text or binary (you can write in text mode
+   with the ",t" modifier; binary is default).  The format is: the key (e.g. utterance id), then a
+   space, then the object data.  
+
+A few generic points about scripts and archives:
+ - A string that specifies how to read a Table (archive or script) is called an rspecifier;
+   for example "ark:gunzip -c my/dir/foo.ark.gz|".
+ - A string that specifies how to write a Table (archive or script) is called a wspecifier;
+   for example "ark,t:foo.ark".
+ - Archives can be concatenated together and still be valid archives (there is no
+  "central index" in them). 
+ - The code can read both scripts and archives either sequentially or via random access.
+   The user-level code only knows whether it's iterating or doing lookup; it doesn't
+   know whether it's accessing a script or an archive.
+ - Kaldi doesn't attempt to represent the object type in
+   the archive; you have to know the object type in advance 
+ - Archives and script files can't contain mixtures of types. 
+ - Reading archives via random access can be memory-inefficient as the code may have
+   to cache the objects in memory.
+ - For efficient random access to an archive, you can write out a corresponding 
+   script file using the "ark,scp" writing mechanism (e.g., used in writing the mfcc
+   features to disk).  You would then access it via the scp file.
+ - Another way to avoid the code having to cache a bunch of stuff in memory when doing
+   random access on archives is
+   to tell the code that the archive is sorted and will be called in sorted 
+   order (e.g. "ark,s,cs:-").
+ - Types that read and write archives are templated on a Holder type, which is a type
+   that "knows how" to read and write the object in question.
+
+ Here we have just given a very quick overview that will probably raise more questions
+ than it provides answers; it is just intended to make you aware of the kinds of
+ issues involved.  For more details, see \ref io.
+
+To give you some idea how archives and script files can be used within pipes,
+type the following command and try to understand what is going on:
+\verbatim
+head -1 data/train.scp | copy-feats scp:- ark:- | copy-feats ark:- ark,t:- | head
+\endverbatim
+
+\section tutorial_running_monophone Monophone training
 
 The next step is to train monophone models.  If the disk where you installed
 Kaldi is not big, you might want to make exp/ a soft link to a directory somewhere
@@ -248,24 +317,32 @@ less exp/mono/0.mdl
 \endverbatim
 and look at the model file.  You will see that it contains the information in 
 topology file at the top of it, and then some other things, before the model parameters.
-The convention is that the .mdl file contains two objects: one of type TransitionModel,
-and one of the relevant model type (in this case, type AmGmm).  By "contains two objects",
-what we mean is that the objects have Write and Read functions in a standard form, and
-we call these functions to write the objects to the file.  For objects such as this,
-that are not part of a Table (i.e. there is no "ark:" or "scp:" involved), writing is
-in binary or text mode and can be controlled by the standard command-line 
-options --binary=true or --binary=false (different programs have different defaults).
-Glance through the model file to see what kind of information it contains.  At this
-point we won't go into more detail on how models are represented in Kaldi; see
-hmm to find out more.  
+The convention is that the .mdl file contains two objects: one object of type TransitionModel,
+which contains the topology information as a member variable of type HmmTopology, 
+and one object of the relevant model type (in this case, type AmGmm).  
+By "contains two objects", what we mean is that the objects have Write and Read
+functions in a standard form, and we call these functions to write the objects
+to the file.  For objects such as this, that are not part of a Table (i.e. there
+is no "ark:" or "scp:" involved), writing is in binary or text mode and can be
+controlled by the standard command-line options --binary=true or --binary=false
+(different programs have different defaults).  For Tables (i.e. archives and scripts),
+binary or text model is controlled by the ",t" option in the specifier.
+
+Glance through the model file to see what kind of information it contains.  At
+this point we won't go into more detail on how models are represented in Kaldi;
+see \ref hmm to find out more.
 
 We will mention one important point, though: p.d.f.'s in Kaldi are represented by
 numeric id's, starting from zero (we call these pdf-ids).  They do not have
 "names", as in HTK.  The .mdl file does not have sufficient information to map
-between context-dependent phones and pdf-ids.  For the tree file, look at
-exp/mono/tree.  Note that this is a monophone "tree" so it is very trivial-- it
+between context-dependent phones and pdf-ids.  For that information, see the tree file:
+do
+\verbatim
+less exp/mono/tree
+\endverbatim
+Note that this is a monophone "tree" so it is very trivial-- it
 does not have any "splits".  Although this tree format was not indended to be
-very human-readable, because we have received a number of queries about this, we
+very human-readable, we have received a number of queries about the tree format so we
 will explain it.  The rest of this paragraph can be skipped over by the casual reader.
 After "ToPdf", the tree file contains an object of the
 polymorphic type EventMap, which can be thought of as storing a mapping from a
@@ -278,14 +355,15 @@ leaves of the tree), and "TE" is a marker for TableEventMap (there is no "SE", o
 SplitEventMap, because this is the monophone case).  "TE 0 49" is the start of a
 TableEventMap that "splits" on key zero (representing the zeroth phone position
 in a phone-context vector of length one, for the monophone case).  It is
-followed, in parentheses by 49 objects of type EventMap.  The first one is NULL
-(representing a zero pointer to EventMap) because the phone-id zero is reserved
-for "epsilon").  An example non-NULL object is the string "TE -1 3 ( CE 33 CE 34
-CE 35 )", which represents a TableEventMap splitting on key -1.  The value
-assigned to this key can take the values 0, 1 or 2 for this phone, and
-corresponds to the numeric PdfClass specified in the topology file.   In our
-topology file this is identical to the HMM-state index.  Inside the parentheses are three
-objects of type ConstantEventMap, each representing a leaf of the tree.
+followed, in parentheses, by 49 objects of type EventMap.  The first one is NULL,
+representing a zero pointer to EventMap, because the phone-id zero is reserved
+for "epsilon".  An example non-NULL object is the string "TE -1 3 ( CE 33 CE 34
+CE 35 )", which represents a TableEventMap splitting on key -1.  This key represents
+the PdfClass specified in the topology file, which in our example
+is identical to the HMM-state index.  This phone has 3 HMM states, so the value
+assigned to this key can take the values 0, 1 or 2.
+Inside the parentheses are three objects of type ConstantEventMap, each representing 
+a leaf of the tree.
 
 Now look at the file exp/mono/cur.ali (it should exist if the training has progressed
 far enough).  This is the Viterbi alignment of the training data; it has one line
@@ -293,7 +371,7 @@ for each training file.  Now do "tail exp/mono/tree" and look for the highest-nu
 p.d.f. id (which is the last number in the file).  Compare this with the numbers in
 exp/mono/cur.ali.  Does something seem wrong?  The reason is that the alignment file
 does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
-that we call a "transition-id".  This also encodes the phone, and the transition within
+that we call a "transition-id".  This also encodes the phone and the transition within
 the prototype topology of the phone.  This is useful for a number of reasons.
 For more details, see \ref hmm.
 
@@ -305,87 +383,82 @@ grep Overall exp/mono/acc.{?,??}.log
 You can see the acoustic likelihods on each iteration.  Next look at one of the files
 exp/mono/update.*.log to see what kind of information is in the update log.
 
-\section tutorial_looking_whats What's in the code
+When the monophone training is finished, start the monophone decoding with:
+\verbatim
+steps/decode_mono.sh &
+\endverbatim
+It first puts some output on the screen that comes from the graph creation
+process.  Look at the script steps/decode_mono.sh and see where it invokes
+the script to create the graph (near the top).  Then view the graph-creation
+script that is invoked (scripts/mkgraph.sh).  Look at the programs that this 
+script calls.  The names of many of them start with "fst" (e.g. fsttablecompose),
+most of these programs are not actually from the OpenFst distribution.  We created
+some of our own FST-manipulating programs.  You can find out
+where these programs are located as follows.  Take an arbitrary program that
+is invoked in scripts/mkgraph.sh (say, fstdeterminizestar).  Then type:
+\verbatim
+. path.sh
+which fstdeterminizestar
+\endverbatim
+The reason why we have different versions of the programs is mostly because we
+have a slightly different (less AT&T-ish) way of using FSTs in speech recognition.
+For example, "fstdeterminizestar" corresponds to "classical" determinization in which
+we remove epsilon arcs.  See \ref graph for more information.
+To see some of the decoded output
+\verbatim
+less exp/decode_mono/decode_mar87.log 
+\endverbatim
+You can see that it puts the transcript on the screen.  The text form of the
+transcript only appears in the logging information: the actual output of this
+program appears in the file exp/decode_mono/test_mar87.tra.  Look at this file.
+Then view it as words by typing:
+\verbatim
+scripts/int2sym.pl --ignore-first-field data/words.txt exp/decode_mono/test_mar87.tra 
+\endverbatim
+There is a corresponding script called sym2int.pl.  You can convert it back
+to integer form by typing:
+\verbatim
+scripts/int2sym.pl --ignore-first-field data/words.txt exp/decode_mono/test_mar87.tra | \
+ scripts/sym2int.pl --ignore-first-field data/words.txt 
+\endverbatim
+The \verb|--ignore-first-field| option is so that it doesn't try to convert the utterance
+id to an integer.
+Next, try doing
+\verbatim
+tail exp/decode_mono/decode_mar87.log 
+\endverbatim
+It will print out some useful summary information at the end, including the
+real-time factor and the average log-likelihood per frame.  The real-time factor
+will typically be about 0.2 to 0.3 (i.e. faster than real time).  This depends
+on your CPU, how many jobs were on the machine and other factors.  This script
+runs six jobs in parallel, so if your machine has fewer than six cores it may be
+much slower.  Note that we use a fairly wide beam (20), for accurate results; in a
+typical LVCSR setup, the beam would be much smaller (e.g. around 13).
 
-Now that we have a vague idea of what the code looks like, where it is, and how it is
-compiled, we are going to briefly skim over some parts of the code to give you an idea
-what is in there.  
+Look at the top of the log file again, and focus on the command line.  The optional
+arguments are before the positional arguments (this is mandatory).  In a separate
+window (in the directory s1/), type
+\verbatim
+. path.sh
+gmm-decode-faster
+\endverbatim
+to see the usage message, and match up the arguments with what you see in the log file.
+Recall that "rspecifier" is one of those strings that specifies how to read a table,
+and "wspecifier" specifies how to write one.  Look carefuly at these arguments and try
+to figure out what they mean.  Look at the rspecifier that corresponds to the features, and
+try to understand it (this one has spaces inside, so Kaldi prints it out with single quotes
+around it so that you could paste it into the shell and the program would run as intended).
 
-First look at the file base/kaldi-common.h.  This file includes a number of
-things from the base/ directory that are used by almost every Kaldi program.  You
-can mostly guess from the filenames the types of things that are provided: things
-like error-logging macros, typedefs, math utility functions such as random number
-generation, and miscellaneous \#defines.  But this is a stripped-down set of
-utilities; look at util/common-utils.h to see a more complete set, including
-command-line parsing and I/O functions that handle extended filenames such as
-pipes.  Some of the other I/O related utilities included in util/common-utils.h
-are hard to describe concisely, and we'll come to them in time.  The reason why
-we segregated a subset of utilities into the base/ directory is so that we could
-minimize the set of things that the matrix/ library depends on (since it's useful
-independent of the rest of Kaldi).
+Next, type
+\verbatim
+nohup steps/train_tri1.sh &
+\endverbatim
+and while this is running (it should take about ten minutes), we will do the next
+step of tutorial.
 
-Look at the file matrix/matrix-lib.h.  See what files it includes.  This provides
-an overview of the kinds of things that are in the matrix library.  This library
-is basically a C++ wrapper for BLAS and LAPACK, in case that means anything to you.
-The files sp-matrix.h and tp-matrix relate to symmetric packed matrices and
-triangular packed matrices, respectively.  Quickly scan the file matrix/kaldi-matrix.h.
-This will give you some idea what the matrix code looks like.  It consists of
-a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
-library \ref matrix "here", if you are interested.  Scanning through
-matrix/matrix-lib-test.cc will give you some idea how the various matrix
-and vector functions are called.
-
-Next look at gmm/diag-gmm.h (this class stores a Gaussian Mixture Model).  
-The class DiagGmm may look a bit confusing as
-it has many different accessor functions.  Search for "private" and look
-at the class member variables (they always end with an underscore, as per
-the Kaldi style).  This should make it clear how we store the GMM.
-This is just a single GMM, not a whole collection of GMMs. 
-Look at gmm/am-diag-gmm.h; this class stores a collection of GMMs.
-Notice that it does not inherit from anything.
-Search for "private" and you can see the member variables (there
-are only two of them).  You can understand from this how simple the
-class is (everything else consists of various accessors and convenience
-functions).  A natural question to ask is: where are the transitions,
-where is the decision tree, and where is the HMM topology?  All of these
-things are kept separate from the acoustic model, because it's likely
-that researchers might want to replace the acoustic likelihoods while
-keeping the rest of the system the same.  We'll come to all this stuff later.
-
-Next look at feat/feature-mfcc.h.  Focus on the MfccOptions struct.
-The struct members give you some idea what kind of options are supported
-in MFCC feature extraction.  
-Notice that some struct members are options structs themselves.
-Look at the Register function.  This is standard in Kaldi options classes.
-Then look at featbin/compute-mfcc-feats.cc and search for Register.
-You can see where this function is called from the command-line program.
-To see a complete list of the options supported for MFCC feature extraction,
-execute the program featbin/compute-mfcc-feats with no arguments.
-Recall that you saw some of these options being registered in 
-the MfccOptions class, and others being registered in 
-featbin/compute-mfcc-feats.cc.  The way to specify options is --option=value.
-
-Next look at tree/build-tree.h.  Find the BuildTree function.  This is the main
-top-level function for building the decision tree.  Notice that it returns a
-pointer the type EventMap.  This is a type that stores a function from a set of
-(key, value) pairs to an integer.  It's defined in tree/event-map.h.  The keys
-and values are both integers, but the keys represent phonetic-context positions
-(typically 0, 1 or 2) and the values represent phones.  There is also a special
-key, -1, that roughly represents the position in the HMM.  There are a lot of
-details inside the tree-building code: list all the header files in the tree
-directory.  For now we won't discuss it further.
-
-Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
-topologies for a number of phones.  In general each phone can have a different
-topology.  The topology includes "default" transitions, used for initialization.
-Look at the example topology in the extended comment at the top of the header.
-There is a tag <PdfClass> (note: this format is vaguely XML-like, but it is not
-really XML).  The <PdfClass> is always the same as the HMM-state (<State>).  In
-general it doesn't have to be.  This is a mechanism to enforce tying of
-distributions between distinct HMM states; it's possibly useful if you want to
-create more interesting transition models.
-
-  - Up: \ref tutorial "Kaldi tutorial"
-  - Previous: \ref tutorial_looking "Overview of the distribution"
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_looking "Previous: Overview of the distribution" <BR>
+  \ref tutorial_code "Next: Taking a look at the code" <BR>
+<P>
 
 */

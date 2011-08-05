@@ -1,0 +1,129 @@
+// doc/tutorial_code.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_code Taking a look at the code (1/2 hour)
+
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_running "Previous: Running the example scripts" <BR>
+
+
+ While the triphone system build is running, we will take a little while to
+ glance at some parts of the code.  The main thing you will get out of this
+ section of the tutorial is some idea of how the code is organized and what the
+ dependency structure is.  If you want
+ to understand the code in more depth, we advise you to follow the links
+ on the \ref mainpage "main documentation page page", which are organized
+ by topic.
+
+ \section Common utilities
+
+
+ Go to the top-level directory (we called it kaldi-1) and then into
+ src/.  
+ First look at the file base/kaldi-common.h.  This \#includes a number of
+ things from the base/ directory that are used by almost every Kaldi program.  You
+ can mostly guess from the filenames the types of things that are provided: things
+ like error-logging macros, typedefs, math utility functions such as random number
+ generation, and miscellaneous \#defines.  But this is a stripped-down set of
+ utilities; in util/common-utils.h there is a more complete set, including
+ command-line parsing and I/O functions that handle extended filenames such as
+ pipes.  Take a few seconds to glance over util/common-utils.h and see what it
+ \#includes.  The reason why
+ we segregated a subset of utilities into the base/ directory is so that we could
+ minimize the the dependencies of the matrix/ directory (which is useful in
+ itself);
+ the matrix/ directory only depends on the base/ directory.  Look at matrix/Makefile
+ and search for base/ to see how this is specified.  Looking at this type of rule
+ in the Makefiles can give you some insight into the structure of the toolkit.
+
+
+ \section Matrix library
+ 
+ Now look at the file matrix/matrix-lib.h.  See what files it includes.  This provides
+ an overview of the kinds of things that are in the matrix library.  This library
+ is basically a C++ wrapper for BLAS and LAPACK, if that means anything to you (if not,
+ don't worry).  The files sp-matrix.h and tp-matrix relate to symmetric packed matrices and
+ triangular packed matrices, respectively.  Quickly scan the file matrix/kaldi-matrix.h.
+ This will give you some idea what the matrix code looks like.  It consists of
+ a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
+ library \ref matrix "here", if you are interested.  Looking at
+ matrix/matrix-lib-test.cc will give you some idea how the various matrix
+ and vector functions are called.
+
+ At this point we would like you to modify the code and compile it.  We will
+ be adding a test function.  As mentioned before, the test programs are designed
+ to abort or exit with nonzero status if something is wrong.
+
+
+
+ \section 
+
+Next look at gmm/diag-gmm.h (this class stores a Gaussian Mixture Model).  
+The class DiagGmm may look a bit confusing as
+it has many different accessor functions.  Search for "private" and look
+at the class member variables (they always end with an underscore, as per
+the Kaldi style).  This should make it clear how we store the GMM.
+This is just a single GMM, not a whole collection of GMMs. 
+Look at gmm/am-diag-gmm.h; this class stores a collection of GMMs.
+Notice that it does not inherit from anything.
+Search for "private" and you can see the member variables (there
+are only two of them).  You can understand from this how simple the
+class is (everything else consists of various accessors and convenience
+functions).  A natural question to ask is: where are the transitions,
+where is the decision tree, and where is the HMM topology?  All of these
+things are kept separate from the acoustic model, because it's likely
+that researchers might want to replace the acoustic likelihoods while
+keeping the rest of the system the same.  We'll come to all this stuff later.
+
+Next look at feat/feature-mfcc.h.  Focus on the MfccOptions struct.
+The struct members give you some idea what kind of options are supported
+in MFCC feature extraction.  
+Notice that some struct members are options structs themselves.
+Look at the Register function.  This is standard in Kaldi options classes.
+Then look at featbin/compute-mfcc-feats.cc and search for Register.
+You can see where this function is called from the command-line program.
+To see a complete list of the options supported for MFCC feature extraction,
+execute the program featbin/compute-mfcc-feats with no arguments.
+Recall that you saw some of these options being registered in 
+the MfccOptions class, and others being registered in 
+featbin/compute-mfcc-feats.cc.  The way to specify options is --option=value.
+
+Next look at tree/build-tree.h.  Find the BuildTree function.  This is the main
+top-level function for building the decision tree.  Notice that it returns a
+pointer the type EventMap.  This is a type that stores a function from a set of
+(key, value) pairs to an integer.  It's defined in tree/event-map.h.  The keys
+and values are both integers, but the keys represent phonetic-context positions
+(typically 0, 1 or 2) and the values represent phones.  There is also a special
+key, -1, that roughly represents the position in the HMM.  There are a lot of
+details inside the tree-building code: list all the header files in the tree
+directory.  For now we won't discuss it further.
+
+Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
+topologies for a number of phones.  In general each phone can have a different
+topology.  The topology includes "default" transitions, used for initialization.
+Look at the example topology in the extended comment at the top of the header.
+There is a tag <PdfClass> (note: this format is vaguely XML-like, but it is not
+really XML).  The <PdfClass> is always the same as the HMM-state (<State>).  In
+general it doesn't have to be.  This is a mechanism to enforce tying of
+distributions between distinct HMM states; it's possibly useful if you want to
+create more interesting transition models.
+
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_running "Previous: Running the example scripts" <BR>
+<P>
+*/
