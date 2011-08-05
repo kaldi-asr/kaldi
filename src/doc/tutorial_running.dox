@@ -20,7 +20,7 @@
 
   \ref tutorial "Up: Kaldi tutorial" <BR>
   \ref tutorial_looking "Previous: Overview of the distribution" <BR>
-  \ref tutorial_code "Next: Taking a look at the code" <BR>
+  \ref tutorial_code "Next: Reading and modifying the code" <BR>
 
 
 \section tutorial_running_start Getting started, and prerequisites.
@@ -458,7 +458,7 @@ step of tutorial.
 
   \ref tutorial "Up: Kaldi tutorial" <BR>
   \ref tutorial_looking "Previous: Overview of the distribution" <BR>
-  \ref tutorial_code "Next: Taking a look at the code" <BR>
+  \ref tutorial_code "Next: Reading and modifying the code" <BR>
 <P>
 
 */

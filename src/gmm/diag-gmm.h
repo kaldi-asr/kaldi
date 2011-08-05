@@ -28,7 +28,7 @@ namespace kaldi {
 
 class FullGmm;
 
-/** \class Definition for Gaussian Mixture Model with diagonal covariances
+/** \class DiagGmm Definition for Gaussian Mixture Model with diagonal covariances
  */
 class DiagGmm {
  public:

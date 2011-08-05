@@ -16,7 +16,7 @@
 // limitations under the License.
 
 /**
- \page tutorial_code Taking a look at the code (1/2 hour)
+ \page tutorial_code Reading and modifying the code (1/2 hour)
 
   \ref tutorial "Up: Kaldi tutorial" <BR>
   \ref tutorial_running "Previous: Running the example scripts" <BR>
@@ -25,12 +25,12 @@
  While the triphone system build is running, we will take a little while to
  glance at some parts of the code.  The main thing you will get out of this
  section of the tutorial is some idea of how the code is organized and what the
- dependency structure is.  If you want
- to understand the code in more depth, we advise you to follow the links
- on the \ref mainpage "main documentation page page", which are organized
- by topic.
+ dependency structure is; and some experience with modifying and debugging the
+ code.  If you want to understand it code in more depth, we advise you to follow the links
+ on the \ref mainpage "main documentation page", where we have more detailed documentation
+ organized by topic.
 
- \section Common utilities
+ \section tutorial_code_utils Common utilities
 
 
  Go to the top-level directory (we called it kaldi-1) and then into
@@ -52,12 +52,12 @@
  in the Makefiles can give you some insight into the structure of the toolkit.
 
 
- \section Matrix library
+ \section tutorial_code_matrix Matrix library (and modifying and debugging code)
  
  Now look at the file matrix/matrix-lib.h.  See what files it includes.  This provides
  an overview of the kinds of things that are in the matrix library.  This library
  is basically a C++ wrapper for BLAS and LAPACK, if that means anything to you (if not,
- don't worry).  The files sp-matrix.h and tp-matrix relate to symmetric packed matrices and
+ don't worry).  The files sp-matrix.h and tp-matrix.h relate to symmetric packed matrices and
  triangular packed matrices, respectively.  Quickly scan the file matrix/kaldi-matrix.h.
  This will give you some idea what the matrix code looks like.  It consists of
  a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
@@ -69,9 +69,117 @@
  be adding a test function.  As mentioned before, the test programs are designed
  to abort or exit with nonzero status if something is wrong.
 
+ We will be adding a test routine for the function Vector::AddVec.  This function
+ adds some constant times one vector, to another vector.  Read through the code
+ and try to understand as much of it as you can (be careful: we have deliberately
+ inserted an error into the code).  If you are not familiar with templates,
+ understanding it may be difficult.  We have tried to avoid the use of templates as much as possible,
+ so large parts of Kaldi are still understandable without knowing template progamming.
+\verbatim
+template<class Real>
+void UnitTestAddVec() {
+  // note: Real will be float or double when instantiated.
+  int32 dim = 1 + rand() % 10;
+  Vector<Real> v(dim), w(dim); // two vectors the same size.
+  InitRand(&v);
+  InitRand(&w);
+  Vector<Real> w2(w); // w2 is a copy of w.
+  Real f = RandGauss(); 
+  w.AddVec(f, v); // w <-- w + f v
+  for (int32 i = 0; i < dim; i++) {
+    Real a = w(i), b = f * w2(i) + v(i);
+    AssertEqual(a, b); // will crash if not equal to within
+    // a tolerance.
+  }        
+}
+\endverbatim
+Add the code above to the file matrix-lib-test.cc, just above the function
+MatrixUnitTest().  Then, inside MatrixUnitTest(), add the line:
+\verbatim
+  UnitTestAddVec<Real>();
+\endverbatim
+It doesn't matter where in the function you add this.
+Then type "make".  If there are errors, it probably means you didn't follow the
+instructions exactly; try to figure out what the problem was and try again.
+Now type "./matrix-lib-test".  This should crash with an assertion failure, 
+because there was a mistake in the unit-test code.  Next we will try to debug it.
+Type
+\verbatim
+ gdb ./matrix-lib-test
+\endverbatim
+(if you are on cygwin, you should now type into the gdb prompt, "break __assert_func").
+Type "r".  When it crashes, it calls abort(), which gets caught by the debugger.
+Type "bt" to see the stack trace.  Nagivate up the stack by typing "up" until you are inside the
+test function.  When you are at the right place you should see output like:
+\verbatim
+#5  0x080943cf in kaldi::UnitTestAddVec<float> () at matrix-lib-test.cc:2568
+2568	    AssertEqual(a, b); // will crash if not equal to within
+\endverbatim
+If you go too far you can type "down" to go back.  Then type "p a" and "p b" to see the
+values of a and b ("p" is short for "print").  Your screen should look someting like this:
+\verbatim
+(gdb) p a
+$5 = -0.931363404
+(gdb) p b
+$6 = -0.270584524
+(gdb) 
+\endverbatim
+The exact values are, of course, random, and may be different for you.  Since
+the numbers are considerably different, it's clear that it's not just a question
+of the tolerances being wrong.  In general you can access any kind of expression
+from the debugger using the "print" expression, but the parenthesis operator
+(expressions like "v(i)") doesn't work, so to see the values inside the vectors
+you have to enter expressions like the following:
+\verbatim
+(gdb) p v.data_[0]
+$8 = 0.281656802
+(gdb) p w.data_[0]
+$9 = -0.931363404
+(gdb) p w2.data_[0]
+$10 = -1.07592916
+(gdb) 
+\endverbatim
+This may help you work out that the expression for "b" is wrong.  Fix it in the code, recompile, and run
+again (you can just type "r" in the gdb prompt to rerun).  It should now run OK.  Force gdb to break into the
+code at the point where it was previously failing, so you can check the values of the expressions again
+and see that things are now working OK.  To force the debugger to break there you have to set a
+breakpoint.  Work out the line number that the assertion was failing (somewhere in UnitTestAddVec()),
+and type into gdb something like the following:
+\verbatim
+(gdb) b matrix-lib-test.cc:2568
+Breakpoint 1 at 0x80943b4: file matrix-lib-test.cc, line 2568. (4 locations)
+\endverbatim
+Then run the program (type "r"), and when it breaks there, look at the values of the expressions
+using "p" commands.  To continue, type "c".  It will keep stopping there since it was inside
+a loop.  Type "d 1" to delete the breakpoint (assuming it was breakpoint number one),
+and type "c" to continue.  The program should run to the end.  Type "q" to quit the debugger.
+If you need to debug a program that takes command-line arguments, you can do it like:
+\verbatim
+ gdb --args kaldi-program arg1 arg2 ...
+ (gdb) r
+ ...
+\endverbatim
+or you can invoke gdb without arguments and then type "r arg1 arg2..." at the prompt.
 
+When you are done, and it compiles, type
+\verbatim
+svn diff
+\endverbatim
+to see what changes you made.  If you may in future commit code to the Kaldi project, you
+may want to revert the changes you made so you don't accidentally commit them.  The following
+commands will save the file you modified in case you need it later, and revert the version-controlled
+version:
+\verbatim
+ cp matrix-lib-test.cc matrix-lib-test.cc.tmp
+ svn revert matrix-lib-test.cc
+\endverbatim
+If you actually wanted to commit the changes, and you had an account on Sourceforge, you
+would have to ask us to add you to the Kaldi project, and you would type something like
+\verbatim
+svn commit --username=your_sourceforge_username -m "Added a unit-test in matrix/ directory."
+\endverbatim
 
- \section 
+\section tutorial_code_acoustic Acoustic modeling code
 
 Next look at gmm/diag-gmm.h (this class stores a Gaussian Mixture Model).  
 The class DiagGmm may look a bit confusing as
@@ -90,6 +198,8 @@ things are kept separate from the acoustic model, because it's likely
 that researchers might want to replace the acoustic likelihoods while
 keeping the rest of the system the same.  We'll come to all this stuff later.
 
+\section tutorial_code_feat Feature extraction code
+
 Next look at feat/feature-mfcc.h.  Focus on the MfccOptions struct.
 The struct members give you some idea what kind of options are supported
 in MFCC feature extraction.  
@@ -102,6 +212,8 @@ execute the program featbin/compute-mfcc-feats with no arguments.
 Recall that you saw some of these options being registered in 
 the MfccOptions class, and others being registered in 
 featbin/compute-mfcc-feats.cc.  The way to specify options is --option=value.
+
+\section tutorial_code_acoustic Acoustic decision-tree and HMM topology code
 
 Next look at tree/build-tree.h.  Find the BuildTree function.  This is the main
 top-level function for building the decision tree.  Notice that it returns a
@@ -117,11 +229,12 @@ Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
 topologies for a number of phones.  In general each phone can have a different
 topology.  The topology includes "default" transitions, used for initialization.
 Look at the example topology in the extended comment at the top of the header.
-There is a tag <PdfClass> (note: this format is vaguely XML-like, but it is not
-really XML).  The <PdfClass> is always the same as the HMM-state (<State>).  In
-general it doesn't have to be.  This is a mechanism to enforce tying of
+There is a tag <PdfClass> (note: as with HTK text formats,
+this file looks vaguely XML-like, but it is not really XML).  
+The <PdfClass> is always the same as the HMM-state (<State>) here; in
+general, it doesn't have to be.  This is a mechanism to enforce tying of
 distributions between distinct HMM states; it's possibly useful if you want to
-create more interesting transition models.
+5~create more interesting transition models.
 
   \ref tutorial "Up: Kaldi tutorial" <BR>
   \ref tutorial_running "Previous: Running the example scripts" <BR>
