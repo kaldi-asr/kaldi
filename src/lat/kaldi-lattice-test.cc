@@ -147,7 +147,7 @@ void TestLatticeTableCross(bool binary) {
     const CompactLattice &fst = reader.Value(key);
     Lattice fst2;
     ConvertLattice(fst, &fst2);
-    KALDI_ASSERT(fst::Equal(fst2, *(lat_vec[i])));
+    KALDI_ASSERT(fst::RandEquivalent(fst2, *(lat_vec[i]), 5, 0.01, rand(), 10));
     delete lat_vec[i];
   }
 }
