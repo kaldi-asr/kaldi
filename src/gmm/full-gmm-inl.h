@@ -73,7 +73,7 @@ void FullGmm::SetInvCovarsAndMeansInvCovars(
   for (size_t i = 0; i < num_comp; ++i) {
     inv_covars_[i].CopyFromSp(invcovars[i]);
   }
-    means_invcovars_.CopyFromMat(means_invcovars);
+  means_invcovars_.CopyFromMat(means_invcovars);
   valid_gconsts_ = false;
 }
 
