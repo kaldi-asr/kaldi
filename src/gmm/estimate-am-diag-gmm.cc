@@ -83,6 +83,7 @@ BaseFloat MlEstimateAmDiagGmm::AccumulateForGmmTwofeats(
   MlEstimateDiagGmm &acc = *(gmm_estimators_[gmm_index]);
   Vector<BaseFloat> posteriors;
   BaseFloat log_like = gmm.ComponentPosteriors(data1, &posteriors);
+  posteriors.Scale(weight);
   acc.AccumulateFromPosteriors(data2, posteriors);
   return log_like;
 }
