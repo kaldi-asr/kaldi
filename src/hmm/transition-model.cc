@@ -417,7 +417,7 @@ void TransitionModel::Print(std::ostream &os,
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);
       os << " Transition-id = " << tid << " p = " << p;
-      if (stats != NULL) os << " count = " << (*stats)[tid];
+      if (stats != NULL) os << " count = " << (*stats)(tid);
       // now describe what it's a transition to.
       if (IsSelfLoop(tid)) os << " [self-loop]\n";
       else {
