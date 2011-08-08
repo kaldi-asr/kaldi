@@ -27,7 +27,7 @@
  section of the tutorial is some idea of how the code is organized and what the
  dependency structure is; and some experience with modifying and debugging the
  code.  If you want to understand it code in more depth, we advise you to follow the links
- on the \ref mainpage "main documentation page", where we have more detailed documentation
+ on the \ref index "main documentation page", where we have more detailed documentation
  organized by topic.
 
  \section tutorial_code_utils Common utilities
@@ -35,7 +35,8 @@
 
  Go to the top-level directory (we called it kaldi-1) and then into
  src/.  
- First look at the file base/kaldi-common.h.  This \#includes a number of
+ First look at the file base/kaldi-common.h (don't follow the links within
+ this document; view it from the shell or from an editor).  This \#includes a number of
  things from the base/ directory that are used by almost every Kaldi program.  You
  can mostly guess from the filenames the types of things that are provided: things
  like error-logging macros, typedefs, math utility functions such as random number
@@ -61,18 +62,23 @@
  triangular packed matrices, respectively.  Quickly scan the file matrix/kaldi-matrix.h.
  This will give you some idea what the matrix code looks like.  It consists of
  a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
- library \ref matrix "here", if you are interested.  Looking at
- matrix/matrix-lib-test.cc will give you some idea how the various matrix
- and vector functions are called.
+ library \ref matrix "here", if you are interested.  You might notice what seems like
+ a strange comment style in the code, with comments started by three slashes (///).
+ These types of commends, and block comments that begin with /**, are interpreted by the
+ Doxygen software that automatically generates documentation.  It also generates the
+ page you are reading right now (the source for this type of documentation
+ is in src/doc/).  
 
- At this point we would like you to modify the code and compile it.  We will
- be adding a test function.  As mentioned before, the test programs are designed
- to abort or exit with nonzero status if something is wrong.
+ At this point we would like you to modify the code and compile it.  We will be
+ adding a test function to the file matrix/matrix-lib-test.cc.  As mentioned
+ before, the test programs are designed to abort or exit with nonzero status if
+ something is wrong.
 
  We will be adding a test routine for the function Vector::AddVec.  This function
  adds some constant times one vector, to another vector.  Read through the code
+ below
  and try to understand as much of it as you can (be careful: we have deliberately
- inserted an error into the code).  If you are not familiar with templates,
+ inserted two errors into the code).  If you are not familiar with templates,
  understanding it may be difficult.  We have tried to avoid the use of templates as much as possible,
  so large parts of Kaldi are still understandable without knowing template progamming.
 \verbatim
@@ -80,7 +86,7 @@ template<class Real>
 void UnitTestAddVec() {
   // note: Real will be float or double when instantiated.
   int32 dim = 1 + rand() % 10;
-  Vector<Real> v(dim), w(dim); // two vectors the same size.
+  Vector<Real> v(dim); w(dim); // two vectors the same size.
   InitRand(&v);
   InitRand(&w);
   Vector<Real> w2(w); // w2 is a copy of w.
@@ -93,16 +99,16 @@ void UnitTestAddVec() {
   }        
 }
 \endverbatim
-Add the code above to the file matrix-lib-test.cc, just above the function
+Add this code to the file matrix-lib-test.cc, just above the function
 MatrixUnitTest().  Then, inside MatrixUnitTest(), add the line:
 \verbatim
   UnitTestAddVec<Real>();
 \endverbatim
 It doesn't matter where in the function you add this.
-Then type "make".  If there are errors, it probably means you didn't follow the
-instructions exactly; try to figure out what the problem was and try again.
+Then type "make".  There should be an error (a semicolon that should be
+a comma); fix it and try again.
 Now type "./matrix-lib-test".  This should crash with an assertion failure, 
-because there was a mistake in the unit-test code.  Next we will try to debug it.
+because there was another mistake in the unit-test code.  Next we will debug it.
 Type
 \verbatim
  gdb ./matrix-lib-test
@@ -115,7 +121,7 @@ test function.  When you are at the right place you should see output like:
 #5  0x080943cf in kaldi::UnitTestAddVec<float> () at matrix-lib-test.cc:2568
 2568	    AssertEqual(a, b); // will crash if not equal to within
 \endverbatim
-If you go too far you can type "down" to go back.  Then type "p a" and "p b" to see the
+If you go too far you can type "down".  Then type "p a" and "p b" to see the
 values of a and b ("p" is short for "print").  Your screen should look someting like this:
 \verbatim
 (gdb) p a
@@ -142,7 +148,7 @@ $10 = -1.07592916
 This may help you work out that the expression for "b" is wrong.  Fix it in the code, recompile, and run
 again (you can just type "r" in the gdb prompt to rerun).  It should now run OK.  Force gdb to break into the
 code at the point where it was previously failing, so you can check the values of the expressions again
-and see that things are now working OK.  To force the debugger to break there you have to set a
+and see that things are now working OK.  To get the debugger to break there you have to set a
 breakpoint.  Work out the line number that the assertion was failing (somewhere in UnitTestAddVec()),
 and type into gdb something like the following:
 \verbatim
@@ -165,10 +171,11 @@ When you are done, and it compiles, type
 \verbatim
 svn diff
 \endverbatim
-to see what changes you made.  If you may in future commit code to the Kaldi project, you
+to see what changes you made.  If you are contributing to the Kaldi project and you
+are planning to commit code in the near future, you
 may want to revert the changes you made so you don't accidentally commit them.  The following
-commands will save the file you modified in case you need it later, and revert the version-controlled
-version:
+commands will save the file you modified in case you need it later, and will revert to 
+the original version:
 \verbatim
  cp matrix-lib-test.cc matrix-lib-test.cc.tmp
  svn revert matrix-lib-test.cc
@@ -196,7 +203,7 @@ functions).  A natural question to ask is: where are the transitions,
 where is the decision tree, and where is the HMM topology?  All of these
 things are kept separate from the acoustic model, because it's likely
 that researchers might want to replace the acoustic likelihoods while
-keeping the rest of the system the same.  We'll come to all this stuff later.
+keeping the rest of the system the same.  We'll come to this other stuff later.
 
 \section tutorial_code_feat Feature extraction code
 
@@ -205,13 +212,26 @@ The struct members give you some idea what kind of options are supported
 in MFCC feature extraction.  
 Notice that some struct members are options structs themselves.
 Look at the Register function.  This is standard in Kaldi options classes.
-Then look at featbin/compute-mfcc-feats.cc and search for Register.
-You can see where this function is called from the command-line program.
+Then look at featbin/compute-mfcc-feats.cc (this is a command-line
+program) and search for Register.
+You can see where the Register function of the options struct is called.
 To see a complete list of the options supported for MFCC feature extraction,
 execute the program featbin/compute-mfcc-feats with no arguments.
 Recall that you saw some of these options being registered in 
 the MfccOptions class, and others being registered in 
 featbin/compute-mfcc-feats.cc.  The way to specify options is --option=value.
+Type
+\verbatim
+featbin/compute-mfcc-feats ark:/dev/null ark:/dev/null
+\endverbatim
+This should run successfuly, as it interprets /dev/null as an empty archive.
+You can try setting the options using this example.  Try, for example,
+\verbatim
+featbin/compute-mfcc-feats --raw-energy=false ark:/dev/null ark:/dev/null
+\endverbatim
+The only useful information you get from this is that it doesn't crash; try
+removing the "=" sign or abbreviating the option name or changing the
+number of arguments, and see that it fails and prints a usage message.
 
 \section tutorial_code_acoustic Acoustic decision-tree and HMM topology code
 
@@ -221,9 +241,53 @@ pointer the type EventMap.  This is a type that stores a function from a set of
 (key, value) pairs to an integer.  It's defined in tree/event-map.h.  The keys
 and values are both integers, but the keys represent phonetic-context positions
 (typically 0, 1 or 2) and the values represent phones.  There is also a special
-key, -1, that roughly represents the position in the HMM.  There are a lot of
-details inside the tree-building code: list all the header files in the tree
-directory.  For now we won't discuss it further.
+key, -1, that roughly represents the position in the HMM.  Go to the experimental
+directory (../egs/rm/s1), and we are going to look at how the tree is built.
+The main input to the BuildTree function is of type BuildTreeStatsType,
+which is a typedef as follows:
+\verbatim
+typedef vector<pair<EventType, Clusterable*> > BuildTreeStatsType;
+\endverbatim
+Here, EvenType is the following typedef:
+\verbatim
+typedef vector<pair<EventKeyType, EventValueType> > EventType;
+\endverbatim
+The EventType represents a set of (key,value) pairs, e.g. a typical one
+would be { {-1, 1}, {0, 15}, {1, 21}, {2, 38} } which represents phone
+21 with a left-context of phone 15, a right-context of phone 38, and
+"pdf-class" 1 (which in the normal case means it's in state number 1, which
+is the middle of three states).  The Clusterable* pointer is a pointer to
+a virtual class which has a generic interface that supports operations like
+adding statistics together and evaluating some kind of objective function
+(e.g. a likelihood).  In the normal recipe, it actually points to a class
+that contains sufficient statistics for estimating a diagonal Gaussian p.d.f..
+
+Do 
+\verbatim
+less exp/tri1/acc_tree.log
+\endverbatim
+There won't be much information in this file, but you can see the command 
+line.  This program accumulates the single-Gaussian statistics for each HMM-state
+(actually, pdf-class) of each seen triphone context.
+The \verb|--ci-phones| options is so that it knows to avoid accumulating separate
+statistics for distinct context of phones like silence that we don't want to be
+context dependent (this is an optimization; it would work without this option).
+The output of this program can be thought of as being of the type BuildTreeStatsType
+discussed above, although in order to read it we have to know what concrete type it is.
+
+Do
+\verbatim
+less exp/tri1/train_tree.log
+\endverbatim
+This program does the decision-tree clustering; it reads in the statistics
+that were output by.  It is basically a wrapper for the BuildTree function discussed above.
+The questions that it asks in the decision-tree clustering are automatically generated,
+as you can see in the script steps/train_tri1.sh (look for the programs cluster-phones
+and compile-questions).  
+
+
+
+
 
 Next look at hmm/hmm-topology.h.  The class HmmTopology defines a set of HMM
 topologies for a number of phones.  In general each phone can have a different

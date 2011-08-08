@@ -373,7 +373,22 @@ exp/mono/cur.ali.  Does something seem wrong?  The reason is that the alignment 
 does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
 that we call a "transition-id".  This also encodes the phone and the transition within
 the prototype topology of the phone.  This is useful for a number of reasons.
-For more details, see \ref hmm.
+If you want an explation of what a particular transition-id is (e.g. you are looking
+at an alignment in cur.ali and you see one repeated a lot and you wonder why),
+you can use the program "show-transitions" to show you some information about the transition-ids.
+Type
+\verbatim
+  show-transitions exp/mono/0.mdl
+\endverbatim
+If you have a file with occupation counts in it (a file named *.occs), you can give this as
+a second argument and it will show you some more information.
+
+To view the alignments in a more human-friendly form, try the following:
+\verbatim
+ show-alignments data/phones.txt exp/mono/0.mdl ark:exp/mono/cur.ali | less
+\endverbatim
+For more details on things like HMM topologies, transition-ids,
+transition modeling and so on, see \ref hmm.
 
 Next let's look at how training is progressing (this step assumes your shell is bash).
 Type
