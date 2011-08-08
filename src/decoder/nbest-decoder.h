@@ -11,13 +11,14 @@
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-`// MERCHANTABLITY OR NON-INFRINGEMENT.
+// MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
 #ifndef KALDI_DECODER_NBEST_DECODER_H_
 #define KALDI_DECODER_NBEST_DECODER_H_
 
+#include <tr1/unordered_map>
 #include "util/stl-utils.h"
 #include "util/parse-options.h"
 #include "util/hash-list.h"
@@ -113,6 +114,7 @@ class NBestDecoder {
       BaseFloat adaptive_beam = PropagateEmitting(frame);
       PropagateEpsilon(adaptive_beam);
       //Prune();
+      //if (frame==12) break;
     }
   }
 
@@ -379,8 +381,8 @@ class NBestDecoder {
       }
     }
     
-    inline void CombineN(Elem *head, Token *new_tok) { // n-best version
-      if (!new_tok) return;
+    inline bool CombineN(Elem *head, Token *new_tok) { // n-best version
+      if (!new_tok) return false;
       DEBUG_OUT2("combine: " << new_tok->unique 
         << " (" << new_tok->hash << ")," << new_tok->c)
       if (new_tok->I) DEBUG_OUT2("(" << new_tok->I->unique << ")")
@@ -393,7 +395,7 @@ class NBestDecoder {
       do {
         count++;
         Token *tok = e->val;
-        if (tok == new_tok) { DEBUG_OUT2("same")  return; }
+        if (tok == new_tok) { DEBUG_OUT2("same") return false; }
         DEBUG_OUT2("with:" << tok->unique << "(" << tok->hash << ")," << tok->c)
         if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
         BaseFloat w = static_cast<BaseFloat>(tok->c.Value());
@@ -405,12 +407,12 @@ class NBestDecoder {
           if (w < new_weight) {
             DEBUG_OUT2("old one better")
             DeleteTok(new_tok);
-            return;
+            return false;
           } else {
             DEBUG_OUT2("new one better")
             DeleteTok(tok);
 	    e->val = new_tok;
-            return;
+            return true;
           }
         }
         e = e->tail;
@@ -419,15 +421,18 @@ class NBestDecoder {
       if (count < n_best_) {
         DEBUG_OUT2("append: (" << count++ << ")")
         toks_->InsertMore(state, new_tok);
+        return true;
       } else {
         DEBUG_OUT2("nbest full")
         if (worst_weight < new_weight) {
           DEBUG_OUT2("forget")
           DeleteTok(new_tok);
+          return false;
         } else {
           DEBUG_OUT2("replace: " << worst_elem->val->unique << "," << worst_elem->val->c)
           DeleteTok(worst_elem->val);
-          worst_elem->val = new_tok;  
+          worst_elem->val = new_tok;
+          return true;
         }
       }
     }
@@ -590,11 +595,14 @@ class NBestDecoder {
     // the tokens are now owned here, in last_toks, and the hash is empty.
     // 'owned' is a complex thing here; the point is we need to call DeleteElem
     // on each elem 'e' to let toks_ know we're done with them.
+    StateId last = 123456789;
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
       // for all (s,t) in P
       // n++;
       // because we delete "e" as we go.
       StateId state = e->key;
+      if (state == last) { DEBUG_OUT2("repeat") }
+      last = state;
       Token *tok = e->val;
       DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c)
       if (tok->I) DEBUG_OUT2("(" << tok->I->unique << ")")
@@ -620,7 +628,7 @@ class NBestDecoder {
             }
           }
         }
-      }
+      } else { DEBUG_OUT2("prune") }
       e_tail = e->tail; // several tokens with the same key can follow
       token_store_.DeleteTok(e->val);
       toks_.Delete(e);
@@ -634,50 +642,66 @@ class NBestDecoder {
     // cur_toks_.
     DEBUG_OUT1("PropagateEpsilon")
     assert(queue_.empty());
+    queue_.max_load_factor(1.0);
     float best_weight = 1.0e+10;
     for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
-      queue_.push_back(e->key);
+      //queue_.push_back(e->key);
+      queue_.insert(e->key);
       best_weight = std::min(best_weight, e->val->c.Value());
     }
     BaseFloat cutoff = best_weight + adaptive_beam;
     DEBUG_OUT1("queue:" << queue_.size() << " best:" << best_weight << " cutoff:" << cutoff)
 
+    StateId last = 123456789;
     while (!queue_.empty()) {
-      StateId state = queue_.back();
-      queue_.pop_back();
-      Token *tok = toks_.Find(state)->val;  // would segfault if state not
+      //StateId state = queue_.back();
+      StateId state = *(queue_.begin());
+      if (state == last) { DEBUG_OUT2("repeat") }
+      last = state;
+      //queue_.pop_back();
+      queue_.erase(queue_.begin());
+      Elem *elem = toks_.Find(state);  // would segfault if state not
       // in toks_ but this can't happen.
-      DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c)
-      if (tok->I) DEBUG_OUT2("(" << tok->I->unique << ")")
+      
+      // we have to pop all tokens with the same state
+      // this may create some unneccessary repetitions, since only the new token
+      // needs to be forwarded, but I don't know yet how to solve this
+      while(elem && elem->key == state) {
+        Token *tok = elem->val;
+        elem = elem->tail;
+        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c)
+        if (tok->I) DEBUG_OUT2("(" << tok->I->unique << ")")
 
-      if (tok->c.Value() > cutoff)  // Don't bother processing successors.
-        continue;
-      //assert(tok != NULL && state == tok->arc_.nextstate);
-      assert(tok != NULL);
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done(); aiter.Next()) {
-        // for all a in A(state)
-        Arc arc = aiter.Value();
-        if (arc.ilabel == 0) {  // propagate nonemitting only...
-          Token *new_tok = token_store_.Advance(tok, arc, -1, cutoff); // -1:eps
-          if (new_tok) {
-            Elem *e_found = toks_.Find(arc.nextstate);
-            if (e_found == NULL) {
-              DEBUG_OUT2("insert/queue to: " << arc.nextstate)
-              toks_.Insert(arc.nextstate, new_tok);
-              queue_.push_back(arc.nextstate);
-              // !!we might push back a state several times!!
-              // make the queue an unordered_set and do queue_.insert
-            } else {
-              DEBUG_OUT2("combine: " << arc.nextstate)
-              token_store_.CombineN(e_found, new_tok);
-              if ( e_found->val == new_tok ) { // C was updated
-                queue_.push_back(arc.nextstate);
+        if (tok->c.Value() > cutoff) {  // Don't bother processing successors.
+          DEBUG_OUT2("prune")
+          continue;
+        }
+        //assert(tok != NULL && state == tok->arc_.nextstate);
+        assert(tok != NULL);
+        for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+            !aiter.Done(); aiter.Next()) {
+          // for all a in A(state)
+          Arc arc = aiter.Value();
+          if (arc.ilabel == 0) {  // propagate nonemitting only...
+            Token *new_tok = token_store_.Advance(tok, arc, -1, cutoff); // -1:eps
+            if (new_tok) {
+              Elem *e_found = toks_.Find(arc.nextstate);
+              if (e_found == NULL) {
+                DEBUG_OUT2("insert/queue to: " << arc.nextstate)
+                toks_.Insert(arc.nextstate, new_tok);
+                //queue_.push_back(arc.nextstate);
+                queue_.insert(arc.nextstate); // might be pushed several times
+              } else {
+                DEBUG_OUT2("combine: " << arc.nextstate)
+                if (token_store_.CombineN(e_found, new_tok)) { // C was updated
+                  //queue_.push_back(arc.nextstate);
+                  queue_.insert(arc.nextstate);
+                }
               }
             }
-          }
-        }
-      }
+          } // if nonemitting
+        } // for Arciterator
+      } // while
     }
   }
 
@@ -687,7 +711,9 @@ class NBestDecoder {
   TokenHash toks_;
   const fst::Fst<fst::StdArc> &fst_;
   NBestDecoderOptions opts_;
-  std::vector<StateId> queue_;  // temp variable used in PropagateEpsilon,
+  typedef std::tr1::unordered_set<StateId> StateQueue;
+  StateQueue queue_; // used in PropagateEpsilon,
+  //std::vector<StateId> queue_;  // temp variable used in PropagateEpsilon,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   TokenStore token_store_;
