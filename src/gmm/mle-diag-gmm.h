@@ -21,6 +21,7 @@
 #define KALDI_GMM_ESTIMATE_DIAG_GMM_H_ 1
 
 #include "gmm/diag-gmm.h"
+#include "gmm/diag-gmm-normal.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 
@@ -103,12 +104,14 @@ class MlEstimateDiagGmm {
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
+  /// Update using the DiagGmm: exponential form
   void Update(const MleDiagGmmOptions &config,
               GmmFlagsType flags,
               DiagGmm *gmm,
               BaseFloat *obj_change_out,
               BaseFloat *count_out) const;
 
+  /// Calc using the DiagGMM exponential form
   BaseFloat MlObjective(const DiagGmm& gmm) const;
 
   void Read(std::istream &in_stream, bool binary, bool add);
@@ -121,7 +124,9 @@ class MlEstimateDiagGmm {
 
  private:
   static int32 FloorVariance(const MleDiagGmmOptions &config,
-                             VectorBase<BaseFloat> *var);
+                             VectorBase<float> *var);
+  static int32 FloorVariance(const MleDiagGmmOptions &config,
+                             VectorBase<double> *var);
 
   int32 dim_;
   int32 num_comp_;

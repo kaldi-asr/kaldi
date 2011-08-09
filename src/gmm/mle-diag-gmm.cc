@@ -141,9 +141,8 @@ BaseFloat MlEstimateDiagGmm::MlObjective(const DiagGmm& gmm) const {
   return obj;
 }
 
-
 int32 MlEstimateDiagGmm::FloorVariance(const MleDiagGmmOptions &config,
-                                       VectorBase<BaseFloat> *var) {
+                                       VectorBase<float> *var) {
   int32 ans = 0;
   if (config.variance_floor_vector.Dim() != 0) {
     KALDI_ASSERT(config.variance_floor_vector.Dim() == var->Dim());
@@ -164,7 +163,28 @@ int32 MlEstimateDiagGmm::FloorVariance(const MleDiagGmmOptions &config,
   return ans;
 }
 
-
+int32 MlEstimateDiagGmm::FloorVariance(const MleDiagGmmOptions &config,
+                                       VectorBase<double> *var) {
+  int32 ans = 0;
+  if (config.variance_floor_vector.Dim() != 0) {
+    KALDI_ASSERT(config.variance_floor_vector.Dim() == var->Dim());
+    for (int32 i = 0; i < var->Dim(); i++) {
+      if ((*var)(i) < config.variance_floor_vector(i)) {
+        (*var)(i) = config.variance_floor_vector(i);
+        ans++;
+      }
+    }
+  } else {
+    for (int32 i = 0; i < var->Dim(); i++) {
+      if ((*var)(i) < config.min_variance) {
+        (*var)(i) = config.min_variance;
+        ans++;
+      }
+    }
+  }
+  return ans;
+}
+/*
 void MlEstimateDiagGmm::Update(const MleDiagGmmOptions &config,
                                GmmFlagsType flags,
                                DiagGmm *gmm,
@@ -264,13 +284,122 @@ void MlEstimateDiagGmm::Update(const MleDiagGmmOptions &config,
   if (obj_change_out) *obj_change_out = (obj_new - obj_old);
   if (count_out) *count_out = occ_sum;
   if (!removed_components.empty())
+    gmm->RemoveComponents(removed_components, true /*renormalize weights);
+  if (tot_floored != 0)
+    KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
+               << " Gaussians.";
+  gmm->ComputeGconsts();
+}
+*/
+void MlEstimateDiagGmm::Update(const MleDiagGmmOptions &config,
+                               GmmFlagsType flags,
+                               DiagGmm *gmm,
+                               BaseFloat *obj_change_out,
+                               BaseFloat *count_out) const {
+  if (flags & ~flags_)
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+
+  double occ_sum = occupancy_.Sum();
+  int32 num_comp = occupancy_.Dim();
+  int32 dim = gmm->Dim();
+  KALDI_ASSERT(gmm->NumGauss() == num_comp);
+  if (flags_ & kGmmMeans)
+    KALDI_ASSERT(dim == mean_accumulator_.NumCols());
+
+  int32 tot_floored = 0, gauss_floored = 0;
+  gmm->ComputeGconsts();
+  BaseFloat obj_old = MlObjective(*gmm);
+
+  DiagGmmNormal *diaggmmnormal = new DiagGmmNormal();
+  diaggmmnormal->CopyFromDiagGmm(*gmm);
+
+  std::vector<int32> removed_components;
+  for (int32 g = 0; g < num_comp; g++) {
+    double occ = occupancy_(g);
+    double prob;
+    if (occ_sum != 0.0)
+      prob = occupancy_(g) / occ_sum;
+    else
+      prob = 1.0 / num_comp;
+    if (occ > static_cast<double>(config.min_gaussian_occupancy)
+        && prob > static_cast<double>(config.min_gaussian_weight)) {
+      if (flags & kGmmWeights) diaggmmnormal->SetComponentWeight(g, prob);
+      if ((flags & kGmmMeans) && !(flags & kGmmVariances)) {
+        // setting means but not vars.
+        Vector<double> mean(dim);
+        mean.CopyFromVec(mean_accumulator_.Row(g));
+        mean.Scale(1.0 / occ);
+        diaggmmnormal->SetComponentMean(g, mean);
+      } else if ((flags & kGmmMeans) && (flags & kGmmVariances)) {
+        // setting means and vars.
+        Vector<double> mean(dim), var(dim);
+        mean.CopyFromVec(mean_accumulator_.Row(g));
+        mean.Scale(1.0 / occ);
+        var.CopyFromVec(variance_accumulator_.Row(g));
+        var.Scale(1.0 / occ);
+        var.AddVec2(-1.0, mean);  // subtract squared means.
+        int32 floored = FloorVariance(config, &var);
+        if (floored) {
+          tot_floored += floored;
+          gauss_floored++;
+        }
+        diaggmmnormal->SetComponentVar(g, var);
+        diaggmmnormal->SetComponentMean(g, mean);
+      } else if (!(flags & kGmmMeans) && (flags & kGmmVariances)) {
+        // setting vars but not means.
+        Vector<double> mean(dim), var(dim);
+        mean.CopyFromVec(mean_accumulator_.Row(g));
+        mean.Scale(1.0 / occ);
+        var.CopyFromVec(variance_accumulator_.Row(g));
+        var.Scale(1.0 / occ);
+        var.AddVec2(-1.0, mean);  // subtract squared data mean.
+        Vector<double> mean_diff(dim);
+        diaggmmnormal->GetComponentMean(g, &mean_diff);
+        mean_diff.AddVec(-1.0, mean);
+        var.AddVec2(1.0, mean_diff);  // add mean difference.
+
+        int32 floored = FloorVariance(config, &var);
+        if (floored) {
+          tot_floored += floored;
+          gauss_floored++;
+        }
+        diaggmmnormal->SetComponentVar(g, var);
+      }
+    } else {  // Insufficient occupancy.
+      if (config.remove_low_count_gaussians &&
+          static_cast<int32>(removed_components.size()) < num_comp-1) {
+        // remove the component, unless it is the last one.
+        KALDI_WARN << "Too little data - removing Gaussian (weight "
+                   << std::fixed << prob
+                   << ", occupation count " << std::fixed << occupancy_(g)
+                   << ", vector size " << diaggmmnormal->Dim() << ")";
+        removed_components.push_back(g);
+      } else {
+        KALDI_WARN << "Gaussian has too little data but not removing it because"
+                   << (config.remove_low_count_gaussians ?
+                       " it is the last Gaussian: i = "
+                       : " remove-low-count-gaussians == false: g = ") << g
+                   << ", occ = " << occupancy_(g) << ", weight = " << prob;
+        if (flags & kGmmWeights)
+          diaggmmnormal->SetComponentWeight(g, std::max(prob, static_cast<double>(
+                                              config.min_gaussian_weight)));
+      }
+    }
+  }
+  diaggmmnormal->CopyToDiagGmm(gmm);
+  delete diaggmmnormal;
+
+  gmm->ComputeGconsts();  // or MlObjective will fail.
+  BaseFloat obj_new = MlObjective(*gmm);
+  if (obj_change_out) *obj_change_out = (obj_new - obj_old);
+  if (count_out) *count_out = occ_sum;
+  if (!removed_components.empty())
     gmm->RemoveComponents(removed_components, true /*renormalize weights*/);
   if (tot_floored != 0)
     KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
                << " Gaussians.";
   gmm->ComputeGconsts();
 }
-
 
 
 void MlEstimateDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
