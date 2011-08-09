@@ -60,8 +60,6 @@ namespace kaldi {
     do {
       frame_index_++;
       DEBUG_OUT1("==== FRAME " << frame_index_ << " =====")
-      if ((frame_index_%50) == 0)
-        KALDI_LOG << "==== FRAME " << frame_index_ << " =====";
 
       // all active tokens from last frame are by now processed
       // tokens for next frame are on active_tokens_(next) or on priority queue
@@ -88,7 +86,6 @@ namespace kaldi {
     } while (!(p_decodable_->IsLastFrame(frame_index_)));
 
     DEBUG_OUT1("==== FINISH FRAME " << frame_index_ << " =====")
-    KALDI_LOG << "==== FINISH FRAME " << frame_index_ << " =====";
     // FinalizeDecoding also processes the active states and the priority queue
     FinalizeDecoding();
     // forwards to final state, backtracking, build output FST, memory clean-up
@@ -143,7 +140,7 @@ namespace kaldi {
     frame_index_ = 0;
     beam_threshold_ = options_.beamwidth;
 
-    KALDI_LOG << "START DECODING";
+    DEBUG_OUT("start decoding")
     // init decoding queues with source state and initial token
     StateId source = reconet_->Start();  // start state for search
     DEBUG_OUT2("Push initial state: " << source)

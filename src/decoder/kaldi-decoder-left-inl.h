@@ -84,7 +84,6 @@ namespace kaldi {
     } while (!(p_decodable_->IsLastFrame(frame_index_)));
 
     DEBUG_OUT1("==== FINISH FRAME " << frame_index_)
-    KALDI_LOG << "==== FINISH FRAME " << frame_index_;
     FinalizeDecoding(); // processes the active states and the priority queue
     // forwards to final state, backtracking, build output FST, memory clean-up
     double diff = (std::clock() - start) / (double)CLOCKS_PER_SEC;
@@ -128,7 +127,7 @@ namespace kaldi {
     frame_index_ = 0;
     beam_threshold_ = Weight::Zero(); //do not prune at immediate start
 
-    KALDI_LOG << "START DECODING";
+    DEBUG_OUT1("start decoding")
     // init decoding queue with source state and initial token
     StateId source = reconet_->Start();  // start state for search
     DEBUG_OUT2("Initial state: " << source)
