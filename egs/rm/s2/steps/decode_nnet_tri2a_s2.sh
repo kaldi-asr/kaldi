@@ -24,13 +24,17 @@ beam=20
 acousticscale=0.22
 
 dir=exp/decode_nnet_tri2a_s2_scale${acousticscale}
-tree=exp/mono/tree
 mkdir -p $dir
+
+dir_nnet=exp/nnet_tri2a_s2/
+nnet=$dir_nnet/final.nnet
+priors=$dir_nnet/cur.counts #optional
+cvn=$dir_nnet/global_cvn.mat
+
+tree=exp/mono/tree
 model=exp/tri2a/final.mdl
 tree=exp/tri2a/tree
 graphdir=exp/graph_tri2a
-nnet=exp/nnet_tri2a_s2/final.nnet
-priors=exp/nnet_tri2a_s2/cur.counts #optional
 
 scripts/mkgraph.sh $tree $model $graphdir
 
@@ -44,24 +48,14 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   compute-cmvn-stats "$feats" $cmn
   feats="$feats apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
 
-  #compute global CVN
-  cvn=ark:$dir/test_${test}_cvn.ark
-  gcvn_spk2utt=$dir/test_${test}_globalcvn.spk2utt
-  { echo -n "global "
-    cat data/test_${test}.scp | cut -d " " -f 1 | tr '\n' ' '
-  } > $gcvn_spk2utt
-  compute-cmvn-stats --spk2utt=ark:${gcvn_spk2utt} "$feats" $cvn 
+  #add precomputed global CVN 
+  feats="$feats apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 
-  #add global CVN to feature extration
-  gcvn_utt2spk=$dir/test_${test}_globalcvn.utt2spk
-  cat data/test_${test}.scp | cut -d " " -f 1 | awk '{ print $0" global";}' > $gcvn_utt2spk
-  gcvn_utt2spk_opt="--utt2spk=ark:$gcvn_utt2spk"
-  feats="$feats apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
+  #add splicing
+  feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
 
   #add MLP transform
   feats="$feats nnet-forward --print-args=false --apply-log=true ${priors:+--class-frame-counts=$priors} $nnet ark:- ark:- |"
-
-  echo $feats
 
   decode-faster-mapped --beam=$beam --acoustic-scale=$acousticscale --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 

@@ -25,7 +25,7 @@ ln -s $PWD/$dir_ali/cur.ali $dir
 ali-to-pdf $dir_ali/final.mdl ark:$dir/cur.ali t,ark:$dir/cur.pdf
 labels="ark:$dir/cur.pdf"
 #count the class frames for division by prior
-#scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
+scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 
 
 
@@ -38,21 +38,12 @@ feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=false $cmn ark:- a
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
 
 #compute global CVN
-cvn="ark:$dir/cvn.ark"
-gcvn_spk2utt=$dir/globalcvn.spk2utt
-{ echo -n "global "
-  cat $dir/train.scp | cut -d " " -f 1 | tr '\n' ' '
-} > $gcvn_spk2utt
-compute-cmvn-stats --spk2utt=ark:${gcvn_spk2utt} "$feats" $cvn 
-
+cvn="$dir/global_cvn.mat"
+compute-cmvn-stats "$feats" $cvn 
 #add global CVN to feature extration
-gcvn_utt2spk=$dir/globalcvn.utt2spk
-cat $dir/train.scp | cut -d " " -f 1 | awk '{ print $0" global";}' > $gcvn_utt2spk
-gcvn_utt2spk_opt="--utt2spk=ark:$gcvn_utt2spk"
-
-feats="$feats apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
-feats_tr="$feats_tr apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
-feats_cv="$feats_cv apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
+feats="$feats apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
+feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
+feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 
 
 

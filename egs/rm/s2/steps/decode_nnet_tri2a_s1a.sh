@@ -23,14 +23,17 @@ if [ -f path.sh ]; then . path.sh; fi
 beam=20
 acousticscale=0.22
 
-dir=exp/decode_nnet_tri2a_s4_scale${acousticscale}
-tree=exp/mono/tree
+dir=exp/decode_nnet_tri2a_s1a_scale${acousticscale}
 mkdir -p $dir
+
+dir_nnet=exp/nnet_tri2a_s1/
+nnet=$dir_nnet/final.nnet
+cvn=$dir_nnet/global_cvn.mat
+
+tree=exp/mono/tree
 model=exp/tri2a/final.mdl
 tree=exp/tri2a/tree
 graphdir=exp/graph_tri2a
-nnet=exp/nnet_tri2a_s3/final.nnet
-priors=exp/nnet_tri2a_s3/cur.counts #optional
 
 scripts/mkgraph.sh $tree $model $graphdir
 
@@ -39,18 +42,16 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
  (
   #get features
   feats="ark:add-deltas --print-args=false scp:data/test_${test}.scp ark:- |"
-  #compute per-speaker CMVN
-  cmvn=ark:$dir/test_${test}_cmvn.ark
-  compute-cmvn-stats --spk2utt=ark:data_prep/test_${test}.spk2utt "$feats" $cmvn
-  feats="$feats apply-cmvn --print-args=false --norm-vars=true --utt2spk=ark:data_prep/test_${test}.utt2spk $cmvn ark:- ark:- |"
-
-  #add splicing
-  feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
+  #compute per-utterance CMN
+  cmn=ark:$dir/test_${test}_cmn.ark
+  compute-cmvn-stats "$feats" $cmn
+  feats="$feats apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
+  
+  #add precomputed global CVN
+  feats="$feats apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 
   #add MLP transform
-  feats="$feats nnet-forward --print-args=false --apply-log=true ${priors:+--class-frame-counts=$priors} $nnet ark:- ark:- |"
-
-  echo $feats
+  feats="$feats nnet-forward --print-args=false --apply-log=true $nnet ark:- ark:- |"
 
   decode-faster-mapped --beam=$beam --acoustic-scale=$acousticscale --word-symbol-table=data/words.txt $model $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 

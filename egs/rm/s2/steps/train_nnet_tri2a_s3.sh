@@ -17,7 +17,7 @@ feats_tr="ark:add-deltas --print-args=false scp:$dir/train.scp.tr ark:- |"
 feats_cv="ark:add-deltas --print-args=false scp:$dir/train.scp.cv ark:- |"
 
 ###### SELECT ALIGNMENTS ######
-#choose directory with alignements
+#choose directory with alignments
 dir_ali=exp/tri2a
 echo alignments: $dir_ali
 #convert ali to pdf
@@ -30,29 +30,12 @@ scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 
 
 ###### NORMALIZE FEATURES ######
-#compute per-utterance CMN
-cmn="ark:$dir/cmn.ark"
-compute-cmvn-stats "$feats" $cmn
-feats="$feats apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
-feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
-feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
-
-#compute global CVN
-cvn="ark:$dir/cvn.ark"
-gcvn_spk2utt=$dir/globalcvn.spk2utt
-{ echo -n "global "
-  cat $dir/train.scp | cut -d " " -f 1 | tr '\n' ' '
-} > $gcvn_spk2utt
-compute-cmvn-stats --spk2utt=ark:${gcvn_spk2utt} "$feats" $cvn 
-
-#add global CVN to feature extration
-gcvn_utt2spk=$dir/globalcvn.utt2spk
-cat $dir/train.scp | cut -d " " -f 1 | awk '{ print $0" global";}' > $gcvn_utt2spk
-gcvn_utt2spk_opt="--utt2spk=ark:$gcvn_utt2spk"
-
-feats="$feats apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
-feats_tr="$feats_tr apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
-feats_cv="$feats_cv apply-cmvn --print-args=false $gcvn_utt2spk_opt --norm-vars=true $cvn ark:- ark:- |"
+#compute per-speaker CMVN
+cmvn="ark:$dir/cmvn.ark"
+compute-cmvn-stats --spk2utt=ark:data_prep/train.spk2utt "$feats" $cmvn
+feats="$feats apply-cmvn --print-args=false --norm-vars=true --utt2spk=ark:data_prep/train.utt2spk $cmvn ark:- ark:- |"
+feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true --utt2spk=ark:data_prep/train.utt2spk $cmvn ark:- ark:- |"
+feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true --utt2spk=ark:data_prep/train.utt2spk $cmvn ark:- ark:- |"
 
 #add splicing
 feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
@@ -63,7 +46,7 @@ feats_cv="$feats_cv splice-feats --print-args=false --left-context=5 --right-con
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
 num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
-scripts/gen_mlp_init.py --dim=429:568:${num_tgt} --gauss --negbias > $mlp_init
+scripts/gen_mlp_init.py --dim=429:577:${num_tgt} --gauss --negbias > $mlp_init
 
 
 

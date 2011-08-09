@@ -1,6 +1,6 @@
 
 
-#The accuracies will differ by approx. 0.1%, 
+#The accuracies will differ by approx. 0.1% absolute, 
 #due to different random MLP initializations.
 
 ######################################################################
@@ -24,22 +24,22 @@ exp/tri2a:
 - w/o fmllr 
 
 #437-PDFs MLP, 1 hidden layer, 0.5M parameters
-exp/nnet_tri2a_s1:
+exp/nnet_tri2a_s1a:
 - Average WER is 6.063991 (760 / 12533) acc:93.936009
 - w/o prior division
 - tuned_acwt:0.257354
-exp/nnet_tri2a_s2:
+exp/nnet_tri2a_s1b:
 - Average WER is 5.401739 (677 / 12533) acc:94.598261
 - + division by prior
 - tuned_acwt:0.246711
-exp/nnet_tri2a_s3: 
+exp/nnet_tri2a_s2: 
 - Average WER is 5.034708 (631 / 12533) acc:94.965292
 - + splice 11 frames, still 0.5M params
 - tuned_acwt:0.236844
-exp/nnet_tri2a_s4:
-- Average WER is 5.002793 (627 / 12533) 
+exp/nnet_tri2a_s3:
+- Average WER is 4.946940 (620 / 12533) 
 - + speaker-wise CMVN 
-- tuned_acwt:0.239357
+- tuned_acwt:0.215558
 
 
 For further improvements we should:

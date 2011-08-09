@@ -87,21 +87,19 @@ time steps/train_tri2a.sh
 # 1-frame of MFCC_D_A_0, per-utternace CMN, global CVN, 
 # 500K params 
 time steps/train_nnet_tri2a_s1.sh 
-steps/decode_nnet_tri2a_s1.sh &
-
+steps/decode_nnet_tri2a_s1a.sh &
 # +class priors
-time steps/train_nnet_tri2a_s2.sh 
-steps/decode_nnet_tri2a_s2.sh &
+steps/decode_nnet_tri2a_s1b.sh &
 
 # +splice 11
+time steps/train_nnet_tri2a_s2.sh 
+steps/decode_nnet_tri2a_s2.sh &
+# tune acoustic scale
+scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s2_tune steps/decode_nnet_tri2a_s2.sh
+
+# +spk-cmvn
 time steps/train_nnet_tri2a_s3.sh 
 steps/decode_nnet_tri2a_s3.sh &
 # tune acoustic scale
 scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s3_tune steps/decode_nnet_tri2a_s3.sh
-
-# +spk-cmvn
-time steps/train_nnet_tri2a_s4.sh 
-steps/decode_nnet_tri2a_s4.sh &
-# tune acoustic scale
-scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s4_tune steps/decode_nnet_tri2a_s4.sh
 
