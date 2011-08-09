@@ -72,7 +72,7 @@ fi
   done
   cp ../ATLAS/include/cblas.h . || exit 1
   
-  if [ ! -e clapack.h ] || [ ! -e f2c.h ] || [ ! -e cblas.h]; then
+  if [ ! -e clapack.h ] || [ ! -e f2c.h ] || [ ! -e cblas.h ]; then
     echo "****download clapack.h or f2c.h failed."
     cd ..
     exit 1
