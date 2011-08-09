@@ -1,4 +1,4 @@
-// gmm/estimate-am-diag-gmm.cc
+// gmm/mle-am-diag-gmm.cc
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Georg Stemmer
@@ -17,7 +17,7 @@
 // limitations under the License.
 
 #include "gmm/am-diag-gmm.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {

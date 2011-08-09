@@ -22,7 +22,7 @@
 #include <string>
 
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 
@@ -115,8 +115,8 @@ class AccumDiagGmm {
   Matrix<double> variance_accumulator_;
 };
 
-/** Class for computing the maximum-likelihood estimates of the parameters of
- *  a Gaussian mixture model.
+/** Class for computing the maximum mutual information estimate of the
+ *  parameters of a Gaussian mixture model.
  */
 class MmieDiagGmm {
  public:

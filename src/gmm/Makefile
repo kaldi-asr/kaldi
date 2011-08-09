@@ -4,11 +4,11 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = diag-gmm-test estimate-diag-gmm-test full-gmm-test estimate-full-gmm-test \
+TESTFILES = diag-gmm-test mle-diag-gmm-test full-gmm-test mle-full-gmm-test \
 		am-diag-gmm-test
 
-OBJFILES = diag-gmm.o estimate-diag-gmm.o am-diag-gmm.o estimate-am-diag-gmm.o \
-		full-gmm.o estimate-full-gmm.o model-common.o \
+OBJFILES = diag-gmm.o mle-diag-gmm.o am-diag-gmm.o mle-am-diag-gmm.o \
+		full-gmm.o mle-full-gmm.o model-common.o \
 		model-test-common.o 
 
 LIBFILE = kaldi-gmm.a

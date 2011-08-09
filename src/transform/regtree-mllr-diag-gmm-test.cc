@@ -18,8 +18,8 @@
 
 #include "util/common-utils.h"
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "gmm/model-test-common.h"
 #include "transform/regtree-mllr-diag-gmm.h"
 

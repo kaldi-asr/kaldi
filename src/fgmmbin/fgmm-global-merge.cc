@@ -17,7 +17,7 @@
 
 #include "util/common-utils.h"
 #include "gmm/full-gmm.h"
-#include "gmm/estimate-full-gmm.h"
+#include "gmm/mle-full-gmm.h"
 
 namespace kaldi {
 

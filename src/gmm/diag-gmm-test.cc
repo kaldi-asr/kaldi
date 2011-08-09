@@ -17,7 +17,7 @@
 // limitations under the License.
 
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "util/kaldi-io.h"
 
 namespace kaldi {

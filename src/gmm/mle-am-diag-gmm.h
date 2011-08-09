@@ -1,4 +1,4 @@
-// gmm/estimate-am-diag-gmm.h
+// gmm/mle-am-diag-gmm.h
 
 // Copyright 2009-2011  Saarland University
 // Author:  Arnab Ghoshal
@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "gmm/am-diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 
 namespace kaldi {
 

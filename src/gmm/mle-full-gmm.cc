@@ -1,4 +1,4 @@
-// gmm/estimate-full-gmm.cc
+// gmm/mle-full-gmm.cc
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
 //                      Microsoft Corporation;  Georg Stemmer
@@ -20,7 +20,7 @@
 
 #include "gmm/full-gmm.h"
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-full-gmm.h"
+#include "gmm/mle-full-gmm.h"
 
 namespace kaldi {
 

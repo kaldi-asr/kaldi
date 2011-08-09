@@ -18,7 +18,7 @@
 #include "base/kaldi-common.h"
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "transform/regression-tree.h"

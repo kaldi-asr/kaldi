@@ -20,7 +20,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
   try {

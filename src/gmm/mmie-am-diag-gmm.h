@@ -71,9 +71,9 @@ class AccumAmDiagGmm {
 };
 
 /** \class MmieAmDiagGmm
- *  Class for computing the maximum-likelihood estimates of the parameters of
- *  an acoustic model that uses diagonal Gaussian mixture models as emission
- *  densities.
+ *  Class for computing the maximum mutual information estimate of the
+ *  parameters of an acoustic model that uses diagonal Gaussian mixture models
+ *  as emission densities.
  */
 // TODO(arnab): maybe we don't really need a class, and can make this a function.
 class MmieAmDiagGmm {

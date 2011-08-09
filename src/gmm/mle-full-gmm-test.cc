@@ -1,4 +1,4 @@
-// gmm/estimate-full-gmm-test.cc
+// gmm/mle-full-gmm-test.cc
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
 //                      Microsoft Corporation;   Yanmin Qian;  Georg Stemmer
@@ -18,8 +18,8 @@
 
 #include "gmm/full-gmm.h"
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-full-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-full-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "util/stl-utils.h"
 #include "util/kaldi-io.h"
 

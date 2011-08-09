@@ -1,4 +1,4 @@
-// gmm/estimate-diag-gmm.cc
+// gmm/mmie-diag-gmm.cc
 
 // Copyright 2009-2011  Arnab Ghoshal
 

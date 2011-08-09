@@ -1,4 +1,4 @@
-// gmm/estimate-diag-gmm-test.cc
+// gmm/mle-diag-gmm-test.cc
 
 // Copyright 2009-2011  Georg Stemmer;  Jan Silovsky;  Saarland University;
 //                      Microsoft Corporation;  Yanmin Qian
@@ -17,7 +17,7 @@
 // limitations under the License.
 
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "util/kaldi-io.h"
 
 using namespace kaldi;

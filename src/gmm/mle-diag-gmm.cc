@@ -1,4 +1,4 @@
-// gmm/estimate-diag-gmm.cc
+// gmm/mle-diag-gmm.cc
 
 // Copyright 2009-2011  Saarland University;  Georg Stemmer;  Jan Silovsky;
 //                      Microsoft Corporation
@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 
 namespace kaldi {
 

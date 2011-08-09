@@ -1,7 +1,7 @@
-// gmm/estimate-full-gmm.h
+// gmm/mle-diag-gmm.h
 
-// Copyright 2009-2011  Jan Silovsky;  Saarland University;
-//                      Microsoft Corporation
+// Copyright 2009-2011  Saarland University;  Georg Stemmer;
+//                      Microsoft Corporation;  Jan Silovsky
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,48 +16,49 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_GMM_ESTIMATE_FULL_GMM_H_
-#define KALDI_GMM_ESTIMATE_FULL_GMM_H_
 
-#include <vector>
+#ifndef KALDI_GMM_ESTIMATE_DIAG_GMM_H_
+#define KALDI_GMM_ESTIMATE_DIAG_GMM_H_ 1
 
+#include "gmm/diag-gmm.h"
 #include "gmm/model-common.h"
-#include "gmm/full-gmm.h"
+#include "util/parse-options.h"
 
 namespace kaldi {
 
-/** \struct MleFullGmmOptions
+/** \struct MleDiagGmmOptions
  *  Configuration variables like variance floor, minimum occupancy, etc.
  *  needed in the estimation process.
  */
-struct MleFullGmmOptions {
-  /// Minimum weight below which a Gaussian is removed
+struct MleDiagGmmOptions {
+  /// Flags to control which parameters to update
+
+  /// Variance floor for each dimension [empty if not supplied].
+  Vector<BaseFloat> variance_floor_vector;
+  /// Minimum weight below which a Gaussian is not updated (and is
+  /// removed, if remove_low_count_gaussians == true);
   BaseFloat min_gaussian_weight;
-  /// Minimum occupancy count below which a Gaussian is removed
+  /// Minimum count below which a Gaussian is not updated (and is
+  /// removed, if remove_low_count_gaussians == true).
   BaseFloat min_gaussian_occupancy;
-  /// Floor on eigenvalues of covariance matrices
-  BaseFloat variance_floor;
-  /// Maximum condition number of covariance matrices (apply
-  /// floor to eigenvalues if they pass this).
-  BaseFloat max_condition;
+  /// Minimum allowed variance in any dimension (if no variance floor)
+  BaseFloat min_variance;
   bool remove_low_count_gaussians;
-  MleFullGmmOptions() {
-    min_gaussian_weight    = 1.0e-05;
-    min_gaussian_occupancy     = 100.0;
-    variance_floor         = 0.001;
-    max_condition          = 1.0e+04;
+  MleDiagGmmOptions() {
+    // don't set var floor vector by default.
+    min_gaussian_weight     = 1.0e-05;
+    min_gaussian_occupancy  = 10.0;
+    min_variance            = 0.001;
     remove_low_count_gaussians = true;
   }
   void Register(ParseOptions *po) {
-    std::string module = "MleFullGmmOptions: ";
+    std::string module = "MleDiagGmmOptions: ";
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
     po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
-                 module+"Minimum count before we remove a Gaussian.");
-    po->Register("variance-floor", &variance_floor,
-                 module+"Minimum eigenvalue of covariance matrix.");
-    po->Register("max-condition", &max_condition,
-                 module+"Maximum condition number of covariance matrix (use it to floor).");
+                 module+"Minimum occupancy to update a Gaussian.");
+    po->Register("min-variance", &min_variance,
+                 module+"Variance floor (absolute variance).");
     po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
                  module+"If true, remove Gaussians that fall below the floors.");
   }
@@ -66,20 +67,19 @@ struct MleFullGmmOptions {
 /** Class for computing the maximum-likelihood estimates of the parameters of
  *  a Gaussian mixture model.
  */
-class MlEstimateFullGmm {
+class MlEstimateDiagGmm {
  public:
-  MlEstimateFullGmm(): dim_(0), num_comp_(0), flags_(0) { }
-  explicit MlEstimateFullGmm(const FullGmm &gmm, GmmFlagsType flags) {
+  MlEstimateDiagGmm(): dim_(0), num_comp_(0), flags_(0) { }
+  explicit MlEstimateDiagGmm(const DiagGmm &gmm, GmmFlagsType flags) {
     ResizeAccumulators(gmm, flags);
   }
   // provide copy constructor.
-  explicit MlEstimateFullGmm(const MlEstimateFullGmm &other);
+  explicit MlEstimateDiagGmm(const MlEstimateDiagGmm &other);
 
   /// Allocates memory for accumulators
-  void ResizeAccumulators(int32 num_components, int32 dim,
-                          GmmFlagsType flags);
-  /// Calls ResizeAccumulators with arguments based on gmm_ptr_
-  void ResizeAccumulators(const FullGmm &gmm, GmmFlagsType flags);
+  void ResizeAccumulators(int32 num_comp, int32 dim, GmmFlagsType flags);
+  /// Calls ResizeAccumulators with arguments based on gmm
+  void ResizeAccumulators(const DiagGmm &gmm, GmmFlagsType flags);
   /// Returns the number of mixture components
   int32 NumGauss() const { return num_comp_; }
   /// Returns the dimensionality of the feature vectors
@@ -87,7 +87,7 @@ class MlEstimateFullGmm {
 
   void ZeroAccumulators(GmmFlagsType flags);
 
-  void ScaleAccumulators(BaseFloat f, GmmFlagsType flags);  // scale stats.
+  void ScaleAccumulators(BaseFloat f, GmmFlagsType flags);
 
   /// Accumulate for a single component, given the posterior
   void AccumulateForComponent(const VectorBase<BaseFloat>& data,
@@ -97,63 +97,55 @@ class MlEstimateFullGmm {
   void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
                                 const VectorBase<BaseFloat>& gauss_posteriors);
 
-  /// Accumulate for all components given a full-covariance GMM.
-  /// Computes posteriors and returns log-likelihood
-  BaseFloat AccumulateFromFull(const FullGmm &gmm,
-                               const VectorBase<BaseFloat>& data,
-                               BaseFloat frame_posterior);
-
   /// Accumulate for all components given a diagonal-covariance GMM.
   /// Computes posteriors and returns log-likelihood
   BaseFloat AccumulateFromDiag(const DiagGmm &gmm,
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
-  /// Const version of the update which preserves the accumulators
-  void Update(const MleFullGmmOptions &config, GmmFlagsType f, FullGmm *gmm,
-              BaseFloat *obj_change_out, BaseFloat *count_out) const;
+  void Update(const MleDiagGmmOptions &config,
+              GmmFlagsType flags,
+              DiagGmm *gmm,
+              BaseFloat *obj_change_out,
+              BaseFloat *count_out) const;
 
-  BaseFloat MlObjective(const FullGmm& gmm) const;
+  BaseFloat MlObjective(const DiagGmm& gmm) const;
 
   void Read(std::istream &in_stream, bool binary, bool add);
   void Write(std::ostream &out_stream, bool binary) const;
+
+  // Accessors
   const GmmFlagsType Flags() const { return flags_; }
+  Vector<double>& occupancy() { return occupancy_; }
+  const Vector<double>& occupancy() const { return occupancy_; }
 
  private:
-  /// Non-const version of Update that is used internally. This destroys
-  /// the accumulators at the end.
-  void UpdateInternal(const MleFullGmmOptions &config, GmmFlagsType flags,
-                      FullGmm *gmm);
+  static int32 FloorVariance(const MleDiagGmmOptions &config,
+                             VectorBase<BaseFloat> *var);
 
   int32 dim_;
   int32 num_comp_;
+  /// Flags corresponding to the accumulators that are stored.
   GmmFlagsType flags_;
-
+  /// Accumulators
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
-  std::vector<SpMatrix<double> > covariance_accumulator_;
-
-  /// Resizes arrays to this dim. Does not initialize data.
-  void ResizeVarAccumulator(int32 nMix, int32 dim);
+  Matrix<double> variance_accumulator_;
 
   /// Returns "augmented" version of flags: e.g. if just updating means, need
   /// weights too.
   static GmmFlagsType AugmentFlags(GmmFlagsType f);
 
-  /// Removes Gaussian component, returns total components after removal
-  int32 RemoveComponent(int32 comp);
-
-  // Disallow assignment: make this private.
-  MlEstimateFullGmm &operator= (const MlEstimateFullGmm &other);
+  // Disallow assignment operator.
+  MlEstimateDiagGmm &operator = (const MlEstimateDiagGmm &other);
 };
 
-inline void MlEstimateFullGmm::ResizeAccumulators(const FullGmm &gmm,
+inline void MlEstimateDiagGmm::ResizeAccumulators(const DiagGmm &gmm,
                                                   GmmFlagsType flags) {
   ResizeAccumulators(gmm.NumGauss(), gmm.Dim(), flags);
 }
 
-
 }  // End namespace kaldi
 
 
-#endif  // KALDI_GMM_ESTIMATE_FULL_GMM_H_
+#endif  // KALDI_GMM_ESTIMATE_DIAG_GMM_H_
