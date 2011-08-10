@@ -27,18 +27,54 @@
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 
-typedef fst::ConstFst<fst::StdArc> FstType;
+using namespace kaldi;
+
+fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
+  // read decoding network FST
+  Input ki(filename); // use ki.Stream() instead of is.
+  if (!ki.Stream().good()) KALDI_EXIT << "Could not open decoding-graph FST "
+                                      << filename;
+
+  fst::FstHeader hdr;
+  if (!hdr.Read(ki.Stream(), "<unknown>")) {
+    KALDI_ERR << "Reading FST: error reading FST header.";
+  }
+  if (hdr.ArcType() != fst::StdArc::Type()) {
+    KALDI_ERR << "FST with arc type " << hdr.ArcType() << " not supported.\n";
+  }
+  fst::FstReadOptions ropts("<unspecified>", &hdr);
+
+  fst::ConstFst<fst::StdArc> *decode_fst = NULL;
+
+  if (hdr.FstType() == "vector") {
+    fst::VectorFst<fst::StdArc> *read_fst = NULL;
+    read_fst = fst::VectorFst<fst::StdArc>::Read(ki.Stream(), ropts);
+    if (read_fst == NULL) { // fst code will warn.
+      KALDI_ERR << "Error reading FST (after reading header).";
+    }
+    KALDI_WARN << "We suggest to use ConstFST instead of VectorFST.";
+    decode_fst = new fst::ConstFst<fst::StdArc>(*read_fst);
+    // copy to ConstFst.  If memory exhausted, should copy as ConstFst to disk
+  } else if (hdr.FstType() == "const") {
+    decode_fst = fst::ConstFst<fst::StdArc>::Read(ki.Stream(), ropts);
+        // fst::FstReadOptions((std::string)filename));
+  } else {
+    KALDI_ERR << "Reading FST: unsupported FST type: " << hdr.FstType();
+  }
+  if (decode_fst == NULL) { // fst code will warn.
+    KALDI_ERR << "Error reading FST (after reading header).";
+    return NULL;
+  } else {
+    return decode_fst;
+  }
+}
+
 
 int main(int argc, char *argv[]) {
   try {
 #ifdef _MSC_VER
-    if (0) { new FstType(* static_cast<fst::VectorFst<fst::StdArc>*> (NULL)); }
+    if (0) { new fst::ConstFst<fst::StdArc>(* static_cast<fst::VectorFst<fst::StdArc>*> (NULL)); }
 #endif
-    using namespace kaldi;
-	using fst::SymbolTable;
-    using fst::VectorFst;
-    using fst::StdArc;
-
     const char *usage =
         "Decode features using GMM-based model.\n"
         "Usage:   gmm-decode-kaldi [options] model-in fst-in features-rspecifier words-wspecifier\n";
@@ -72,7 +108,6 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(is.Stream(), binary);
     }
 
-
     Int32VectorWriter words_writer(words_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
@@ -88,23 +123,11 @@ int main(int argc, char *argv[]) {
     // It has to do with what happens on UNIX systems if you call fork() on a
     // large process: the page-table entries are duplicated, which requires a
     // lot of virtual memory.
-    FstType *decode_fst = NULL;
-    {
-      VectorFst<StdArc> *read_fst = NULL;
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
-                                << fst_in_filename;
-      read_fst = VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
-      if (read_fst == NULL) // fst code will warn.
-        exit(1);
-      decode_fst = new FstType(*read_fst);
-      // copy to ConstFst.  If memory
-      // exhausted here, should copy as ConstFst to disk.
-    }
+    fst::ConstFst<fst::StdArc> *decode_fst = ReadNetwork(fst_in_filename);
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
-    KaldiDecoder<DecodableAmDiagGmmScaled, FstType> decoder(decoder_opts);
+    KaldiDecoder<DecodableAmDiagGmmScaled, fst::ConstFst<fst::StdArc> > decoder(decoder_opts);
 
     Timer timer;
 
@@ -126,7 +149,7 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "Could not decode file " << key;
       } else {
         std::vector<kaldi::int32> words;
-        StdArc::Weight weight;
+        fst::StdArc::Weight weight;
         GetLinearSymbolSequence(*word_links, static_cast<std::vector<kaldi::int32>*>(NULL),
                                 &words, &weight);
 
