@@ -16,7 +16,7 @@
 
 # To be run from ..
 # You must run train_ubma.sh first, as well as train_tri1.sh
-# We rely on the UBM exp/sgmma/4.ubm being there
+# We rely on the UBM exp/ubma/4.ubm being there
 
 if [ -f path.sh ]; then . path.sh; fi
 

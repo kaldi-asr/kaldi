@@ -20,7 +20,7 @@ if [ -f path.sh ]; then . path.sh; fi
 # This is SGMM with speaker vectors (as sgmmb) but on top of LDA+ET features.
 # To be run from ..
 # You must run train_ubmd.sh first, as well as train_tri2k.sh
-# We rely on the UBM exp/sgmmc/4.ubm being there
+# We rely on the UBM exp/ubmc/4.ubm being there
 
 dir=exp/sgmme
 srcdir=exp/tri2k
