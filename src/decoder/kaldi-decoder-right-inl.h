@@ -140,7 +140,7 @@ namespace kaldi {
     frame_index_ = 0;
     beam_threshold_ = options_.beamwidth;
 
-    DEBUG_OUT("start decoding")
+    DEBUG_OUT1("start decoding")
     // init decoding queues with source state and initial token
     StateId source = reconet_->Start();  // start state for search
     DEBUG_OUT2("Push initial state: " << source)
