@@ -167,7 +167,7 @@ namespace kaldi {
     DEBUG_CMD(assert(!(aiter.Done() && reconet_->Final(state)==Weight::Zero())))
     // check for states without outgoing links
 
-    do { // go through all outgoing arcs
+    while(!aiter.Done()) { // go through all outgoing arcs
       const MyArc &arc = aiter.Value();
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
                 << arc.ilabel << ":" << arc.olabel << "/" << arc.weight)
@@ -185,7 +185,7 @@ namespace kaldi {
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
-    } while(!aiter.Done()); // for arc iterator
+    } // for arc iterator
     return;
   }
 
@@ -201,7 +201,7 @@ namespace kaldi {
     DEBUG_CMD(assert(!(aiter.Done() && reconet_->Final(state)==Weight::Zero())))
     // check for states without outgoing links
 
-    do { // go through all outgoing arcs
+    while(!aiter.Done()) { // go through all outgoing arcs
       const MyArc &arc = aiter.Value();
       if (arc.ilabel > 0) { aiter.Next(); continue; } // follow only non-emitting arcs
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
@@ -220,7 +220,7 @@ namespace kaldi {
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
-    } while(!aiter.Done()); // for arc iterator
+    } // for arc iterator
     return;
   }
 
