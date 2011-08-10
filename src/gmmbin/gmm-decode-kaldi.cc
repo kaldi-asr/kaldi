@@ -55,6 +55,7 @@ fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
     KALDI_WARN << "We suggest to use ConstFST instead of VectorFST.";
     decode_fst = new fst::ConstFst<fst::StdArc>(*read_fst);
     // copy to ConstFst.  If memory exhausted, should copy as ConstFst to disk
+    // the conversion is very time consuming due to computation of FstProperties
   } else if (hdr.FstType() == "const") {
     decode_fst = fst::ConstFst<fst::StdArc>::Read(ki.Stream(), ropts);
         // fst::FstReadOptions((std::string)filename));
@@ -128,6 +129,7 @@ int main(int argc, char *argv[]) {
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     KaldiDecoder<DecodableAmDiagGmmScaled, fst::ConstFst<fst::StdArc> > decoder(decoder_opts);
+    // templating on ConstFst gives only a small improvement in speed
 
     Timer timer;
 
