@@ -594,10 +594,10 @@ class LatticeSimpleDecoder {
       PruneForwardLinks(frame, &b1, &b2, dontcare);
       PruneTokensForFrame(frame+1);
     }
+    PruneTokensForFrame(0); 
     KALDI_VLOG(1) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
   }
-    
   
   void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
     // Processes emitting arcs for one frame.  Propagates from
