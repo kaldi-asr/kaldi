@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <queue>
 #include <map>
-#include <list>
 #include <vector>
 #include <set>
 
@@ -294,6 +293,7 @@ class KaldiDecoder {
       DEBUG_CMD(assert(token->state != fst::kNoStateId))
       DEBUG_CMD(token->state = fst::kNoStateId)
       DEBUG_CMD(dtnumber++)
+      token->state = fst::kNoStateId; // to indicate deleted tokens
       // clean up unused links recursively backwards
       if (token->arcs != NULL) link_store_->SlowDelete(token->arcs);
       // save the unused token (abusing *arcs as linked list)
@@ -387,7 +387,7 @@ class KaldiDecoder {
     std::vector<Token*> hash_;  // big, sparse vector for random access
     // initially NULL, later stores the pointer to token (also in members_)
     // the hash is only needed for members_next_
-    std::list<StateId> queue_;  // used as topologically sorted priority queue
+    std::vector<StateId> queue_;  // used as topologically sorted priority queue
     // always two tokens form one entry: source and destination
     TokenStore *tokens_, *tokens_next_;  // to allocate new tokens
     std::vector<Token*> *members_;  // small, dense vector for consecutive access
@@ -428,20 +428,10 @@ class KaldiDecoder {
       token->ilabel = 0; // non-emitting and finished
       queue_.push_back(token->state);
     }
-    inline void PushFront(Token *token) { // for emitting arcs
-      DEBUG_OUT2("push front:" << token->state << ":" << token->ilabel)
-      DEBUG_CMD(assert(token->ilabel > 0)) //non-emitting (<=0) not allowed
-      queue_.push_front(token->state);
-    }
-    inline Token *PopQueue() { // get next destination node from queue_
+    inline StateId PopQueue() { // get next destination node from queue_
       StateId state = queue_.back();
       queue_.pop_back(); // start popping from last finished states
-      DEBUG_CMD(assert(hash_.size() > state))
-      DEBUG_CMD(assert(hash_[state] != NULL))
-      DEBUG_CMD(assert(hash_[state]->state == state))
-      Token *ans = hash_[state]; 
-      hash_[state] = NULL; //HashRemove
-      return ans;
+      return state;
     }
 
     // functions for random access of members_next_ via hash
@@ -474,7 +464,8 @@ class KaldiDecoder {
           ans = tokens_next_->NewToken(state);
           ans->ilabel = ilabel; // code: finished emitting
           DEBUG_OUT2("state " << state << " to hash (next)")
-          PushFront(ans); // put to queue
+          //PushFront(ans); // put to queue, to handle all states on one queue
+          NextPush(ans); // to be fetched in ProcessTokens
         } else {  // non-emitting state
           ans = tokens_->NewToken(state); //?? tokens_ or tokens_next_
           DEBUG_OUT2("state " << state << " to hash (this)")
@@ -489,9 +480,15 @@ class KaldiDecoder {
       return hash_[state];  // return corresponding token
     }
     inline void HashRemove(Token *token) {
+      DEBUG_CMD(assert(hash_.size() > token->state))
+      DEBUG_CMD(assert(hash_[token->state] != NULL))
+      DEBUG_CMD(assert(hash_[token->state]->state == token->state))
       hash_[token->state] = NULL;
     }
     inline void HashRemove(StateId state) {
+      DEBUG_CMD(assert(hash_.size() > state))
+      DEBUG_CMD(assert(hash_[state] != NULL))
+      DEBUG_CMD(assert(hash_[state]->state == state))
       hash_[state] = NULL;
     }
     inline void ResizeHash(size_t newsize) {  // memory allocation
@@ -544,13 +541,22 @@ class KaldiDecoder {
     //inline bool Empty() { return members_ == NULL; }
     inline void Start() { iter_ = members_->begin(); }
     //inline void Start() { current_ = members_; }    
+    inline void NextStart() { iter_ = members_next_->begin(); }
     inline bool Ended() { return iter_ == members_->end(); }
     //inline bool Ended() { return current_ == NULL; }    
+    inline bool NextEnded() { return iter_ == members_next_->end(); }
     inline Token *GetNext() {  // consecutive access
       if (iter_ == members_->end()) { return NULL; } else { return *iter_++; }
       //Token *ans = current_;
       //current_ = current_->next;
       //return ans;
+    }
+    inline Token *NextGetNext() {  // consecutive access
+      if (iter_ == members_next_->end()) {
+        return NULL;
+      } else {
+        return *iter_++;
+      }
     }
     inline Token *Get(size_t s) { return (*members_)[s]; }
     inline Token *PopNext() {  // destructive, consecutive access to members_ and remove from hash
@@ -646,6 +652,9 @@ class KaldiDecoder {
 
   /// process active states list and find topological arc order
   void ProcessToDoList();
+
+  /// processes incoming arcs to a state in viterbi style
+  inline void ProcessState(Token *dest, bool final_frame);
 
   /// follow non-emitting and emitting arcs for tokens on queue and members
   void ProcessTokens(bool final_frame);

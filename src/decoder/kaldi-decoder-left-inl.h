@@ -181,7 +181,7 @@ namespace kaldi {
         VisitNode(next_token); // go recursively down, follow links
         active_tokens_.PushQueue(next_token);
         active_tokens_.ThisPush(next_token); // only to delete tokens later
-      }
+      } // 0 would be explored non-emitting, the rest emitting
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
@@ -203,11 +203,12 @@ namespace kaldi {
 
     while(!aiter.Done()) { // go through all outgoing arcs
       const MyArc &arc = aiter.Value();
-      if (arc.ilabel > 0) { aiter.Next(); continue; } // follow only non-emitting arcs
+      if (arc.ilabel > 0) { aiter.Next(); continue; } // follow only non-emitting
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
                 << arc.ilabel << ":" << arc.olabel << "/" << arc.weight)
 
-      Token *next_token = active_tokens_.HashCheck(arc.nextstate, arc.ilabel, p_decodable_);
+      Token *next_token =
+          active_tokens_.HashCheck(arc.nextstate, arc.ilabel, p_decodable_);
       // gets token and state color from hash
       // checks also that label for arc.nextstate is always the same
       // unexplored emitting links are pushed to front of queue
@@ -215,13 +216,84 @@ namespace kaldi {
         // == 0 means explored (and queued)
         VisitNode2(next_token); // go recursively down, follow links
         active_tokens_.PushQueue(next_token);
-        active_tokens_.ThisPush(next_token); // only to delete tokens later
+        active_tokens_.ThisPush(next_token); // pushes non-emitting destination
+        // there are already old emitting -> ProcessTokens will delete all these
       }
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
     } // for arc iterator
     return;
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  template<class Decodable, class Fst>
+  inline void KaldiDecoder<Decodable, Fst>::ProcessState(Token *dest,
+      bool final_frame) { // processes incoming arcs to a state in viterbi style
+    Weight before_w;
+    Label best_label = fst::kNoLabel;
+    Link *best_link = NULL;
+    Link *link = dest->arcs;
+    // viterbi operation for all incoming links
+    while(link != NULL) {
+      Token *source = link->source;
+      // source cannot be on hash, hash is only for new frame
+      DEBUG_OUT2("from:" << source->state << "(" << source->weight
+          << "):" << link->olabel << "/" << link->weight)
+
+// Weight new_w=Times(source->weight,link->weight.Value()*options_.lm_scale);
+// if (link->olabel > 0) {
+//  new_w = Times(new_w, options_.word_penalty);  // add word penalty
+//  DEBUG_OUT2("word penalty: " << options_.word_penalty) }
+
+      Weight new_w = Times(source->weight, link->weight); // Times (log plus)
+      DEBUG_OUT2(dest->state << " new: " << new_w)
+      if (is_less(beam_threshold_, new_w)) {
+        DEBUG_OUT2("prune arc!")
+      } else {
+        before_w = dest->weight;
+        dest->weight = Plus(before_w, new_w); // always log-add (log-semiring)
+        if (before_w != dest->weight) { // if the new path is better
+          DEBUG_OUT2("update token")
+          best_label = link->olabel; // remember best incoming arc (olabel)
+          best_link = source->arcs;  // remember corresponding lattice link
+        }
+      }
+      link = link->next;
+    }
+    // remember best incoming token / create lattice link
+    if (best_link) {
+      // process lattice links
+      dest->arcs = best_link;
+      best_link->refs++;       // remember new usage in ref counter
+      DEBUG_OUT3("remember:"<< best_link->unique << " ("<<best_link->refs<<"x)")
+      if (best_label > 0) { // creates Link for word arcs (olabel > 0)
+        Link *ans = link_store_.SlowNewLink();
+        //?? no time info at the moment !! ans->state = frame_index_;
+        ans->source = NULL;
+        ans->olabel = best_label;
+        ans->weight = dest->weight;
+        ans->next = best_link;  // lattice backward pointer
+        ans->refs = 1;  // can it be zero if not yet assigned?
+        DEBUG_CMD(ans->unique = lnumber++)
+        dest->arcs = ans;  // store new link in token
+      }
+      if (final_frame) {
+        ReachedFinalState(dest);
+      } else {
+        //if (dest->ilabel > 0) active_tokens_.NextPush(dest);
+        // all emitting targets would be pushed here for acoustic evaluation
+        // but emitting states were already pushed by HashCheck before
+        // also the ones pruned here remain there (now deleted by NextDelete)
+      }
+     } else { // no incoming arc survived
+      dest->arcs = NULL;
+      if (dest->ilabel > 0) active_tokens_.NextDelete(dest);
+      // emitting nodes can be deleted from tokens_next_
+      // non-emitting ones might be source for another queued node in this frame
+      // all non-emitting nodes will be deleted at the end of ProcessTokens
+     }    
   }
 
   //***************************************************************************
@@ -234,79 +306,39 @@ namespace kaldi {
     // non-emitting arcs go to the queue in topological order in the same frame
     // emitting arcs go to active_tokens_(next)
     DEBUG_OUT2("ProcessTokens")
+    // processes non-emitting arcs
     while (!active_tokens_.QueueEmpty()) {
-      Token *dest = active_tokens_.PopQueue();  // get next state from queue
-      //if (!dest) continue;
+      StateId state = active_tokens_.PopQueue();  // get next state from queue
+      Token *dest = active_tokens_.HashLookup(state);
+      active_tokens_.HashRemove(state); // also remove from hash
+      DEBUG_CMD(assert(dest != NULL))
       DEBUG_OUT2("pop destination: " << dest->state << "(" << dest->weight<<")")
-
-      Weight before_w;
-      Label best_label = fst::kNoLabel;
-      Link *best_link = NULL;
-      Link *link = dest->arcs;
-      // viterbi operation for all incoming links
-      while(link != NULL) {
-        Token *source = link->source;
-        // source cannot be on hash, hash is only for new frame
-        DEBUG_OUT2("from:" << source->state << "(" << source->weight
-	  << "):" << link->olabel << "/" << link->weight)
-
-// Weight new_w=Times(source->weight,link->weight.Value()*options_.lm_scale);
-// if (link->olabel > 0) {
-//  new_w = Times(new_w, options_.word_penalty);  // add word penalty
-//  DEBUG_OUT2("word penalty: " << options_.word_penalty) }
-
-	Weight new_w = Times(source->weight, link->weight); // Times (log plus)
-        DEBUG_OUT2(dest->state << " new: " << new_w)
-	if (is_less(beam_threshold_, new_w)) {
-	  DEBUG_OUT2("prune arc!")
-	} else {
-          before_w = dest->weight;
-	  dest->weight = Plus(before_w, new_w); // always log-add (log-semiring)
-          if (before_w != dest->weight) { // if the new path is better
-            DEBUG_OUT2("update token")
-            best_label = link->olabel; // remember best incoming arc (olabel)
-            best_link = source->arcs;  // remember corresponding lattice link
-          }
-        }
-        link = link->next;
-      }
-      if (best_link) {
-        // process lattice links
-        dest->arcs = best_link;
-        best_link->refs++;       // remember new usage in ref counter
-        DEBUG_OUT3("remember:"<< best_link->unique << " ("<<best_link->refs<<"x)")
-        if (best_label > 0) { // creates Link for word arcs (olabel > 0)
-          Link *ans = link_store_.SlowNewLink();
-          //?? no time info at the moment !! ans->state = frame_index_;
-          ans->source = NULL;
-          ans->olabel = best_label;
-          ans->weight = dest->weight;
-          ans->next = best_link;  // lattice backward pointer
-          ans->refs = 1;  // can it be zero if not yet assigned?
-          DEBUG_CMD(ans->unique = lnumber++)
-          dest->arcs = ans;  // store new link in token
-        }
-        if (final_frame) {
-          ReachedFinalState(dest);
-        } else {
-          if (dest->ilabel > 0) active_tokens_.NextPush(dest);
-          // all emitting targets for evaluation of acoustic models
-        }
-      } else {
-        dest->arcs = NULL;
-        if (dest->ilabel > 0) active_tokens_.NextDelete(dest);
-      }    
+      ProcessState(dest, final_frame);
       //token should only be really deleted, if all arcs from it have been processed
     }
-    //active_tokens_.DefragmentThis();
-    link_store_.FastDefragment(); // free all temporary links
+    // processes emitting arcs
+    active_tokens_.NextStart();
+    while (!active_tokens_.NextEnded()) {
+      Token *dest = active_tokens_.NextGetNext(); // get next state
+      active_tokens_.HashRemove(dest);
+      DEBUG_CMD(assert(dest != NULL))
+      DEBUG_OUT2("get destination:" << dest->state << "(" << dest->weight<<")")
+      ProcessState(dest, final_frame);
+    }
 
-    // clear old tokens from current frame
+    link_store_.FastDefragment(); // free all temporary links
+    // clear tokens from current frame (old emitting and current non-emitting)
     do {
       Token *token = active_tokens_.PopNext();
       DEBUG_OUT2("kill token:" << token->state << "(" << token->weight<<")")
       active_tokens_.ThisDelete(token);
     } while (!active_tokens_.Empty());
+
+    active_tokens_.Swap();  // flip dual token lists
+    // on the hash are all tokens that are on active tokens (this)
+    DEBUG_CMD(assert(active_tokens_.NextEmpty()))
+    DEBUG_CMD(active_tokens_.AssertHashEmpty())
+    active_tokens_.Defragment();  // memory defragmentation for next frame
   }
 
   //***************************************************************************
@@ -347,9 +379,7 @@ namespace kaldi {
 
     // the priority queue is empty, so flip active tokens and take next frame
     DEBUG_OUT2("EvaluateAndPrune")
-    active_tokens_.Swap();  // flip dual token lists
     if (active_tokens_.Empty()) KALDI_ERR << "no token survived!";
-    // on the hash are all tokens that are on active tokens (this)
 
     bool limit_tokens = false;  // did we set the max_active_tokens?
     if (options_.max_active_tokens != std::numeric_limits<int32>::max()) {
@@ -360,21 +390,16 @@ namespace kaldi {
     // search for best token on active_tokens_ before evaluating acoustic model
     Weight best_active_score_ = Weight::Zero();
     active_tokens_.Start();
-    do {
+    while (!active_tokens_.Ended()) {
         Token *token = active_tokens_.GetNext();
         DEBUG_CMD(assert(token != NULL))
         DEBUG_OUT2("get:" << token->state << ":" << token->unique)
-        active_tokens_.HashRemove(token); //some of them we still need as begin of queue for next frame
-
+        if (token->state == fst::kNoStateId) continue;  // some of them can be pruned
         // compute minimum score:
         best_active_score_ = Plus(best_active_score_, token->weight);
         // save in scores_ array to determine n-best tokens:
         if (limit_tokens) scores_.push_back(token->weight.Value());
-    } while(!active_tokens_.Ended()); 
-    DEBUG_CMD(assert(active_tokens_.NextEmpty()))
-    DEBUG_CMD(active_tokens_.AssertHashEmpty())
-    //!! ?? at the moment, we still have the non-emitting states on the hash
-    active_tokens_.Defragment();  // memory defragmentation for next frame
+    } 
 
     // compute new beam threshold for this frame
     beam_threshold_ = Times(best_active_score_, options_.beamwidth);
@@ -403,9 +428,10 @@ namespace kaldi {
     // evaluate acoustic models and again find best score on active_tokens_
     best_active_score_ = Weight::Zero();
     KALDI_ASSERT(NULL != p_decodable_);
-    do {
+    while (!active_tokens_.Empty()) {
       // go through all active tokens, write compact new list
       Token *token = active_tokens_.PopNext();
+      if (token->state == fst::kNoStateId) continue;  // some of them can be pruned
 
       if (!is_less(beam_threshold_, token->weight)) {
         DEBUG_OUT2("evaluate state " << token->state << " (" << token->weight
@@ -421,10 +447,11 @@ namespace kaldi {
         //token->state is already marked on color_
         active_tokens_.NextPush(token);  // write new, compact token list
       } else {  // prune token
-        DEBUG_OUT2("prune token:" << token->state << "(" << token->weight<<")" << ":" << token->unique)
+        DEBUG_OUT2("prune token:" << token->state << "(" << token->weight
+            <<")" << ":" << token->unique)
         active_tokens_.ThisDelete(token);
       }
-    } while (!active_tokens_.Empty());
+    } // while not active_tokens_.Empty()
     active_tokens_.SwapMembers();
     DEBUG_CMD(assert(active_tokens_.NextEmpty()))
     active_tokens_.NextReserve(
