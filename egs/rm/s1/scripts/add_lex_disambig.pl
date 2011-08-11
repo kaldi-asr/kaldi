@@ -22,7 +22,7 @@
 # Outputs the number of disambig syms to the standard output.
 
 if(@ARGV != 2) {
-    die "Usage: add_lex_disambig.pl  lexicon.txt lexicon_disambig.txt "
+    die "Usage: add_lex_disambig.pl [ --sil silphone ] lexicon.txt lexicon_disambig.txt "
 }
 
 
@@ -78,7 +78,7 @@ foreach $l (@L) {
         ; # Do nothing.
     } else {
         if($phnseq eq "") { # need disambig symbols for the empty string
-            # that are not use anywhere else.
+            # that are not used anywhere else.
             $max_disambig++;
             $reserved{$max_disambig} = 1;
             $phnseq = "#$max_disambig";

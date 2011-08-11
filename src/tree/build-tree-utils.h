@@ -58,7 +58,8 @@ bool PossibleValues(EventKeyType key, const BuildTreeStatsType &stats, std::vect
 
 /// Splits stats according to the EventMap, indexing them at output by the
 /// leaf type.   A utility function.  NOTE-- pointers in stats_out point to
-/// the same memory location as those in stats.  No copying of Clusterable*
+/// the same memory location as those in stats.  NULL pointers are OK; they
+/// will appear in the output.  No Copy()ing of Clusterable*
 /// objects happens.  Will add to stats in stats_out if non-empty at input.
 /// This function may increase the size of vector stats_out as necessary
 /// to accommodate stats, but will never decrease the size.
@@ -67,9 +68,11 @@ void SplitStatsByMap(const BuildTreeStatsType &stats_in, const EventMap &e, std:
 /// SplitStatsByKey splits stats up according to the value of a particular key,
 /// which must be always defined and nonnegative.  Like MapStats.  Pointers to
 /// Clusterable* in stats_out are not newly allocated-- they are the same as the
-/// ones in stats_in.  Generally they will still be owned at stats_in (user can
-/// decide where to allocate ownership).
-void SplitStatsByKey(const BuildTreeStatsType &stats_in, EventKeyType key, std::vector<BuildTreeStatsType> *stats_out);
+/// ones in stats_in, and will be NULL if those in stats_in were NULL.
+/// Generally they will still be owned at stats_in (user can decide where to
+/// allocate ownership).
+void SplitStatsByKey(const BuildTreeStatsType &stats_in, EventKeyType key,
+                     std::vector<BuildTreeStatsType> *stats_out);
 
 
 /// Converts stats from a given context-window (N) and central-position (P) to a

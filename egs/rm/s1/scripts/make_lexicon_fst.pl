@@ -17,15 +17,17 @@
 
 # makes lexicon FST (no pron-probs involved).
 
-if(@ARGV != 1 && @ARGV != 3) {
-    die "Usage: make_lexicon_fst.pl lexicon.txt [silprob silphone] > lexiconfst.txt"
+if(@ARGV != 1 && @ARGV != 3 && @ARGV != 4) {
+    die "Usage: make_lexicon_fst.pl lexicon.txt [silprob silphone [sil_disambig_sym]] lexiconfst.txt"
 }
 
 $lexfn = shift @ARGV;
 if(@ARGV == 0) {
     $silprob = 0.0;
-} else { 
+} elsif (@ARGV == 2){ 
     ($silprob,$silphone) = @ARGV;
+} else {
+    ($silprob,$silphone,$sildisambig) = @ARGV;
 }
 if($silprob != 0.0) {
     $silprob < 1.0 || die "Sil prob cannot be >= 1.0";
@@ -70,10 +72,18 @@ if( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state
     $startstate = 0;
     $loopstate = 1;
     $silstate = 2; # state from where we go to loopstate after emitting silence.
-    $nextstate = 3;
     print "$startstate\t$loopstate\t<eps>\t<eps>\t$nosilcost\n"; # no silence.
-    print "$startstate\t$loopstate\t$silphone\t<eps>\t$silcost\n"; # silence.
-    print "$silstate\t$loopstate\t$silphone\t<eps>\n"; # no cost.
+    if (!defined $sildisambig) {
+        print "$startstate\t$loopstate\t$silphone\t<eps>\t$silcost\n"; # silence.
+        print "$silstate\t$loopstate\t$silphone\t<eps>\n"; # no cost.
+        $nextstate = 3;
+    } else {
+        $disambigstate = 3;
+        $nextstate = 4;
+        print "$startstate\t$disambigstate\t$silphone\t<eps>\t$silcost\n"; # silence.
+        print "$silstate\t$disambigstate\t$silphone\t<eps>\n"; # no cost.
+        print "$disambigstate\t$loopstate\t$sildisambig\t<eps>\n"; # silence disambiguation symbol.
+    }
     while(<L>) {
         @A = split(" ", $_);
         $w = shift @A;

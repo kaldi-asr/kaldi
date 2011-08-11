@@ -86,6 +86,23 @@ EventMap *BuildTree(Questions &qopts,
                     int32 P);
 
 
+/// CreateUntiedTree creates a special tree without tying, and returns the
+/// corresponding EventMap.  "contexts" is a list of phonetic context windows.
+/// N and P are as normal (the context-window length and the central phone index),
+/// phone2num_pdf_classes[phone] equals the number of pdf-classes (normally the
+/// same as the number of HMM states) for that phone.  ci_phones is a list
+/// of context-independent phones.  "states" is set, at output, to a vector
+/// where each element is one of the "contexts", with the pdf-class appended
+/// (note: for normally, for 3-state HMMs, pdf-class is 0, 1 or 2).  The "states"
+/// vector gives you the information in convenient form, about what phonetic
+/// context each triphone state corresponds to.
+
+EventMap *CreateUntiedTree(int N, int P,
+                           const std::vector<std::vector<int32> > &contexts,
+                           const std::vector<int32> &phone2num_pdf_classes,
+                           const std::vector<int32> &ci_phones,
+                           std::vector<std::vector<int32> > *states);
+
 /// GenRandStats generates random statistics of the form used by BuildTree.
 /// It tries to do so in such a way that they mimic "real" stats.  The event keys
 /// and their corresponding values are:

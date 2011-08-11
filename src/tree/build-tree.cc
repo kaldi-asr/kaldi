@@ -571,6 +571,126 @@ void ReadRootsFile(std::istream &is,
 }
 
 
+/// Helper function for CreateUntiedTree and CreateUntiedTreeHelper
+/// Return an EventMap that splits on pdf-id, for a particular
+/// context.
+EventMap *UntiedTreeHandleOneContext(const std::vector<int32> &context,
+                                     int32 num_pdf_classes, 
+                                     std::vector<std::vector<int32> > *states) {
+  std::vector<EventMap*> leaves_per_pdf_class;
+  KALDI_ASSERT(num_pdf_classes > 0);
+  for (int32 i = 0; i < num_pdf_classes; i++) {
+    std::vector<int32> this_state(context);
+    this_state.push_back(i);
+    int32 this_pdf_id = states->size();
+    leaves_per_pdf_class.push_back(new ConstantEventMap(this_pdf_id));
+    states->push_back(this_state);
+  }
+  // note: kPdfClass==-1 is the key corresponding to the pdf-class.
+  return new TableEventMap(kPdfClass, leaves_per_pdf_class);
+}
+
+/// Recursive helper for CreateUntiedTree.  Splits on each of the
+/// members of "keys_to_split_in".
+EventMap *CreateUntiedTreeHelper(const BuildTreeStatsType &stats,
+                                 const std::vector<int32> &keys_to_split_in,
+                                 int32 num_pdf_classes,
+                                 std::vector<std::vector<int32> > *states) {
+  std::vector<int32> keys_to_split(keys_to_split_in);
+  if (stats.empty()) return NULL;
+  else if (stats.size() == 1) { // no point splitting on the specified keys,
+    // just split on the pdf-class.
+    std::vector<EventMap*> split_on_pdf_class;
+    std::vector<int32> context;
+    const EventType &evec = stats[0].first;
+    for (int32 j = 0; j < static_cast<int32>(evec.size()); j++) {
+      KALDI_ASSERT(evec[j].first == j);
+      context.push_back(evec[j].second);
+    }
+    return UntiedTreeHandleOneContext(context, num_pdf_classes, states);
+  } else {
+    KALDI_ASSERT(!keys_to_split.empty()); // or how could there be >1 stats?
+    int32 key_to_split = keys_to_split.back();
+    keys_to_split.pop_back();
+    std::vector<BuildTreeStatsType> split_stats;
+    SplitStatsByKey(stats, key_to_split, &split_stats);
+    std::vector<EventMap*> ans_maps(split_stats.size(), NULL);
+    for (size_t i = 0; i < ans_maps.size(); i++) {
+      ans_maps[i] = CreateUntiedTreeHelper(split_stats[i],
+                                          keys_to_split,
+                                          num_pdf_classes,
+                                          states);
+    }
+    return new TableEventMap(key_to_split, ans_maps);
+  }
+}
+
+
+EventMap *CreateUntiedTree(int N, int P,
+                           const std::vector<std::vector<int32> > &contexts,
+                           const std::vector<int32> &phone2num_pdf_classes,
+                           const std::vector<int32> &ci_phones_in,
+                           std::vector<std::vector<int32> > *states) {
+  KALDI_ASSERT(!contexts.empty());
+  states->clear();
+  for (size_t i = 0; i < contexts.size(); i++)
+    KALDI_ASSERT(contexts[i].size() == static_cast<size_t>(N));
+
+  // It's convenient to represent the context as "fake stats"
+  // consisting of pairs of ( (sets of (key,value) pairs), Clusterable* ),
+  // where the Clusterable* pointers are NULL.  This means we
+  // can use functions like SplitsStatsByKey.
+  BuildTreeStatsType fake_stats;
+  for (size_t i = 0; i < contexts.size(); i++) {
+    EventType evec;
+    for (int32 j = 0; j < N; j++) {
+      int32 key = j, value = contexts[i][j];
+      evec.push_back(std::make_pair<EventKeyType, EventValueType>(key, value));
+    }
+    Clusterable *cptr = NULL;
+    fake_stats.push_back(std::make_pair(evec, cptr));
+  }
+  
+  std::vector<BuildTreeStatsType> stats_per_phone;
+  SplitStatsByKey(fake_stats, P, &stats_per_phone);
+  std::vector<EventMap*> map_per_phone(stats_per_phone.size(), NULL);
+  KALDI_ASSERT(stats_per_phone[0].empty());
+  for (int32 p = 1; p < static_cast<int32>(stats_per_phone.size()); p++) {
+    if (!stats_per_phone[p].empty()) {
+      KALDI_ASSERT(static_cast<size_t>(p) < phone2num_pdf_classes.size());
+      int32 num_pdf_classes = phone2num_pdf_classes[p];
+      KALDI_ASSERT (num_pdf_classes > 0);
+      
+      if (std::find(ci_phones_in.begin(), ci_phones_in.end(), p) !=
+          ci_phones_in.end()) { // it is a context-indep. phone.
+        if (stats_per_phone[p].size() != 1u)
+          KALDI_ERR << "Error: you specified more than one phonetic context for "
+                    << "a context-independent phone.";
+        
+        const EventType &evec(stats_per_phone[p][0].first);
+        std::vector<int32> context;
+        for (int32 j = 0; j < static_cast<int32>(evec.size()); j++) {
+          KALDI_ASSERT(evec[j].first == j);
+          context.push_back(evec[j].second);
+        }
+        map_per_phone[p] = UntiedTreeHandleOneContext(context,
+                                                      num_pdf_classes,
+                                                      states);
+      } else {
+        // not context-dep.
+        // split on everything but the central phone...
+        std::vector<int32> keys;
+        for (int32 i = 0; i < N; i++)
+          if (i != P) keys.push_back(i);
+        map_per_phone[p] = CreateUntiedTreeHelper(stats_per_phone[p], keys,
+                                                  num_pdf_classes, states);
+      }
+    }
+  }
+  return new TableEventMap(P, map_per_phone);
+}
+
+
 
 } // end namespace kaldi
 

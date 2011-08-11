@@ -33,6 +33,7 @@ silphones="sil"; # This would in general be a space-separated list of all silenc
 scripts/silphones.pl data/phones.txt "$silphones" data/silphones.csl data/nonsilphones.csl
 
 ndisambig=`scripts/add_lex_disambig.pl data/lexicon.txt data/lexicon_disambig.txt`
+ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 scripts/add_disambig.pl data/phones.txt $ndisambig > data/phones_disambig.txt
 
 # Create train transcripts in integer format:
@@ -45,7 +46,7 @@ cat data_prep/train_trans.txt | \
 # silprob = 0.5: same prob as word.
 scripts/make_lexicon_fst.pl data/lexicon.txt 0.5 sil  | fstcompile --isymbols=data/phones.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L.fst
 
-scripts/make_lexicon_fst.pl data/lexicon_disambig.txt 0.5 sil  | fstcompile --isymbols=data/phones_disambig.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L_disambig.fst
+scripts/make_lexicon_fst.pl data/lexicon_disambig.txt 0.5 sil '#'$ndisambig | fstcompile --isymbols=data/phones_disambig.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L_disambig.fst
 
 fstcompile --isymbols=data/words.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false data/G.txt > data/G.fst
 
