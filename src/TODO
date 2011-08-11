@@ -5,16 +5,17 @@
     report problems.
 
 =====
+minor:
+ remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
 
-gmm-latgen-simple   [Mostly finished]  Create lattices.  Write either state-level traceback or word-level lattice-determinized output, depending on options.
+gmm-latgen-simple   [finished]  Create lattices.  Write either state-level traceback or word-level lattice-determinized output, depending on options.
 
 gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
 
 lattice-scale [not started] Applies scaling to lattices' scores [ScaleLattice function].... would probably be called normally as lattice-scale --acoustic-scale=0.1 <in-archive> <out-archive>, but
 also with options --graph-scale, --acoustic2graph-scale, --graph2acoustic-scale, corresponding to a 2x2 scaling matrix.
 
-lattice-best-path [not started] Computes the best path through the lattice.  Probable usage: 
-     lattice-best-path --acoustic-scale=0.1 <input-lattice-archive> <word-archive>  [<alignment-archive> [<cost-archive>]] 
+lattice-lmrescore [not started] Given an FST representing an LM, and a scale with which to add the LM score (typically 1 or -1): composes it (on the right) with the lattice (in Lattice format), and then lattice-determinizes it to make there be only one path per word-seq.  Note: if the LM scale (to add) is negative, we would have to negate the weights before lattice-determinizing, and then negate again after.
 
 lattice-rand-path [not started]  Eventually have a version that computes a random path weighted by probability?  Not sure how useful.
 

@@ -25,14 +25,44 @@
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 
+using namespace kaldi;
+
+fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
+  // read decoding network FST
+  Input ki(filename); // use ki.Stream() instead of is.
+  if (!ki.Stream().good()) KALDI_EXIT << "Could not open decoding-graph FST "
+                                      << filename;
+
+  fst::FstHeader hdr;
+  if (!hdr.Read(ki.Stream(), "<unknown>")) {
+    KALDI_ERR << "Reading FST: error reading FST header.";
+  }
+  if (hdr.ArcType() != fst::StdArc::Type()) {
+    KALDI_ERR << "FST with arc type " << hdr.ArcType() << " not supported.\n";
+  }
+  fst::FstReadOptions ropts("<unspecified>", &hdr);
+
+  fst::Fst<fst::StdArc> *decode_fst = NULL;
+
+  if (hdr.FstType() == "vector") {
+    decode_fst = fst::VectorFst<fst::StdArc>::Read(ki.Stream(), ropts);
+  } else if (hdr.FstType() == "const") {
+    decode_fst = fst::ConstFst<fst::StdArc>::Read(ki.Stream(), ropts);
+  } else {
+    KALDI_ERR << "Reading FST: unsupported FST type: " << hdr.FstType();
+  }
+  if (decode_fst == NULL) { // fst code will warn.
+    KALDI_ERR << "Error reading FST (after reading header).";
+    return NULL;
+  } else {
+    return decode_fst;
+  }
+}
+
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
     typedef kaldi::int32 int32;
-    using fst::SymbolTable;
-    using fst::VectorFst;
-    using fst::StdArc;
 
     const char *usage =
         "Decode features using GMM-based model.\n"
@@ -89,16 +119,7 @@ int main(int argc, char *argv[]) {
     // It has to do with what happens on UNIX systems if you call fork() on a
     // large process: the page-table entries are duplicated, which requires a
     // lot of virtual memory.
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
-                                << fst_in_filename;
-      decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
-      if (decode_fst == NULL) // fst code will warn.
-        exit(1);
-    }
+    fst::Fst<fst::StdArc> *decode_fst = ReadNetwork(fst_in_filename);
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
@@ -121,7 +142,7 @@ int main(int argc, char *argv[]) {
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      VectorFst<StdArc> decoded;  // linear FST.
+      fst::VectorFst<fst::StdArc> decoded;  // linear FST.
 
       if ( (allow_partial || decoder.ReachedFinal())
            && decoder.GetBestPath(&decoded) ) {
@@ -133,7 +154,7 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
         std::vector<int32> alignment;
         std::vector<int32> words;
-        StdArc::Weight weight;
+        fst::StdArc::Weight weight;
         frame_count += features.NumRows();
 
         GetLinearSymbolSequence(decoded, &alignment, &words, &weight);

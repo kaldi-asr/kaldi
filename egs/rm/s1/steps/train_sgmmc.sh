@@ -19,7 +19,7 @@ if [ -f path.sh ]; then . path.sh; fi
 
 # To be run from ..
 # You must run init_sgmmb.sh first.
-# We rely on the initial model exp/sgmmb/final.ubm being there
+# We rely on the initial model exp/ubmb/final.ubm being there
 
 dir=exp/sgmmc
 srcdir=exp/tri1

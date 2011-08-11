@@ -84,7 +84,6 @@ namespace kaldi {
     } while (!(p_decodable_->IsLastFrame(frame_index_)));
 
     DEBUG_OUT1("==== FINISH FRAME " << frame_index_)
-    KALDI_LOG << "==== FINISH FRAME " << frame_index_;
     FinalizeDecoding(); // processes the active states and the priority queue
     // forwards to final state, backtracking, build output FST, memory clean-up
     double diff = (std::clock() - start) / (double)CLOCKS_PER_SEC;
@@ -128,7 +127,7 @@ namespace kaldi {
     frame_index_ = 0;
     beam_threshold_ = Weight::Zero(); //do not prune at immediate start
 
-    KALDI_LOG << "START DECODING";
+    DEBUG_OUT1("start decoding")
     // init decoding queue with source state and initial token
     StateId source = reconet_->Start();  // start state for search
     DEBUG_OUT2("Initial state: " << source)
@@ -168,7 +167,7 @@ namespace kaldi {
     DEBUG_CMD(assert(!(aiter.Done() && reconet_->Final(state)==Weight::Zero())))
     // check for states without outgoing links
 
-    do { // go through all outgoing arcs
+    while(!aiter.Done()) { // go through all outgoing arcs
       const MyArc &arc = aiter.Value();
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
                 << arc.ilabel << ":" << arc.olabel << "/" << arc.weight)
@@ -186,7 +185,7 @@ namespace kaldi {
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
-    } while(!aiter.Done()); // for arc iterator
+    } // for arc iterator
     return;
   }
 
@@ -202,7 +201,7 @@ namespace kaldi {
     DEBUG_CMD(assert(!(aiter.Done() && reconet_->Final(state)==Weight::Zero())))
     // check for states without outgoing links
 
-    do { // go through all outgoing arcs
+    while(!aiter.Done()) { // go through all outgoing arcs
       const MyArc &arc = aiter.Value();
       if (arc.ilabel > 0) { aiter.Next(); continue; } // follow only non-emitting arcs
       DEBUG_OUT2("state " << state << " follow link:" << arc.nextstate << " "
@@ -221,7 +220,7 @@ namespace kaldi {
       next_token->AddInputArc(token, arc, &link_store_);
       // save all incoming arcs into next state
       aiter.Next();
-    } while(!aiter.Done()); // for arc iterator
+    } // for arc iterator
     return;
   }
 
