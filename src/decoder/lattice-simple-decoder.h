@@ -123,7 +123,7 @@ class LatticeSimpleDecoder {
   bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
     fst::VectorFst<LatticeArc> fst;
     if (!GetRawLattice(&fst)) return false;
-    // std::cout << "Raw lattice is:\n";
+    //std::cout << "Raw lattice is:\n";
     // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
     // fstprinter.Print(&std::cout, "standard output");
     ShortestPath(fst, ofst);
@@ -152,8 +152,13 @@ class LatticeSimpleDecoder {
       }
       for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next)
         tok_map[tok] = ofst->AddState();
+      // The next statement sets the start state of the output FST.
+      // Because we always add new states to the head of the list
+      // active_toks_[f].toks, and the start state was the first one
+      // added, it will be the last one added to ofst.
+      if (f == 0 && ofst->NumStates() > 0)
+        ofst->SetStart(ofst->NumStates()-1);
     }
-    ofst->SetStart(0);
     StateId cur_state = 0; // we rely on the fact that we numbered these
     // consecutively (AddState() returns the numbers in order..)
     for (int32 f = 0; f <= num_frames; f++) {
