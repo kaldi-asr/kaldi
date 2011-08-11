@@ -118,13 +118,24 @@ class NBestDecoder {
     }
   }
 
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {
-    // GetOutput gets the decoding output.  If is_final == true, it limits itself
+  bool ReachedFinal() {
+    Weight best_weight = Weight::Zero();
+    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+      Weight this_weight = Times(e->val->c, fst_.Final(e->key));
+      if (this_weight != Weight::Zero())
+        return true;
+    }
+    return false;
+  }
+
+  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) {
+    // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
     // nothing was available.  It returns true if it got output (thus, fst_out
     // will be nonempty).
-    DEBUG_OUT1("GetOutput")
+    DEBUG_OUT1("GetBestPath")
+    bool is_final = ReachedFinal();
     Elem *last_toks = toks_.Clear(); // P <- C , C = {}
     Token *tok = token_store_.CreateTok(0, NULL);
     StateId end_state = 1E9; // some imaginary super end state
