@@ -74,28 +74,11 @@ if [ ! -f $dir/0.ali ]; then
         "$feats" ark,t:$dir/0.ali 2> $dir/align.0.log || exit 1;
 fi
 
-
 # Initialize tree with untied triphones.
 init-tree-special $dir/triphones $dir/topo $dir/states $dir/tree 2>$dir/init_tree.log
 
 
-# We accumulate tree stats for a very stupid reason...
-# this is because the GMM initialization program
-# requires it.  The information is later discarded.
-# but it doesn't really take long, so why not...
-
-if [ ! -f $dir/treeacc ]; then
-  acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" ark:$dir/0.ali \
-    $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
-fi
-
-
-# the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
-
-gmm-init-model  --write-occs=$dir/0.occs  \
-    $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
-
-sgmm-init $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
+sgmm-init $dir/topo $dir/tree $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
 rm $dir/0.gmm
 

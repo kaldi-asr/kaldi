@@ -20,17 +20,19 @@
 #include "gmm/am-diag-gmm.h"
 #include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
+#include "tree/context-dep.h"
 
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
     typedef kaldi::int32 int32;
 
     const char *usage =
         "Initialize an SGMM from a trained full-covariance UBM and a specified"
         " model topology.\n"
-        "Usage: sgmm-init [options] <am-gmm-in> <ubm-in> <sgmm-out>\n";
-
+        "Usage: sgmm-init [options] <topology-in> <tree-in> <ubm-in> <sgmm-out>\n";
+    
     bool binary = false;
     int32 phn_space_dim = 0, spk_space_dim = 0;
     kaldi::ParseOptions po(usage);
@@ -40,23 +42,32 @@ int main(int argc, char *argv[]) {
 
 
     po.Read(argc, argv);
-    if (po.NumArgs() < 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
-        ubm_in_filename = po.GetArg(2),
-        sgmm_out_filename = po.GetArg(3);
+    std::string topo_in_filename = po.GetArg(1),
+        tree_in_filename = po.GetArg(2),
+        ubm_in_filename = po.GetArg(3),
+        sgmm_out_filename = po.GetArg(4);
 
-    kaldi::AmDiagGmm am_gmm;
-    kaldi::TransitionModel trans_model;
+    ContextDependency ctx_dep;
     {
-      bool binary_read;
-      kaldi::Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      bool binary_in;
+      Input ki(tree_in_filename.c_str(), &binary_in);
+      ctx_dep.Read(ki.Stream(), binary_in);
     }
+
+
+    HmmTopology topo;
+    {
+      bool binary_in;
+      Input ki(topo_in_filename, &binary_in);
+      topo.Read(ki.Stream(), binary_in);
+    }
+    
+    TransitionModel trans_model(ctx_dep, topo);    
 
     kaldi::FullGmm ubm;
     {
@@ -66,7 +77,7 @@ int main(int argc, char *argv[]) {
     }
 
     kaldi::AmSgmm sgmm;
-    sgmm.InitializeFromFullGmm(ubm, am_gmm.NumPdfs(), phn_space_dim,
+    sgmm.InitializeFromFullGmm(ubm, trans_model.NumPdfs(), phn_space_dim,
                                spk_space_dim);
     sgmm.ComputeNormalizers();
 
