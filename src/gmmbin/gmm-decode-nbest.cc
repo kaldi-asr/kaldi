@@ -143,15 +143,22 @@ int main(int argc, char *argv[]) {
       decoder.Decode(&gmm_decodable);
 
       fst::VectorFst<fst::StdArc> decoded;  // linear FST.
-
-      if ( (allow_partial || decoder.ReachedFinal())
-           && decoder.GetBestPath(&decoded) ) {
-        if (!decoder.ReachedFinal())
-          KALDI_WARN << "Decoder did not reach end-state, "
-                     << "outputting partial traceback since --allow-partial=true";
+      bool was_final;
+      if (decoder.GetBestPath(&decoded,&was_final)) {
+        if (!was_final) {
+          if (allow_partial) {
+            KALDI_WARN << "Decoder did not reach end-state, "
+               << "outputting partial traceback since --allow-partial=true";
+          } else {
+            KALDI_WARN << "Decoder did not reach end-state, "
+               << "output partial traceback with --allow-partial=true";
+            num_fail++;
+            KALDI_WARN << "Did not successfully decode utterance " << key
+                   << ", len = " << features.NumRows();
+            continue; // next utterance
+          }
+        }
         num_success++;
-        if (!decoder.ReachedFinal())
-          KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
         std::vector<int32> alignment;
         std::vector<int32> words;
         fst::StdArc::Weight weight;
