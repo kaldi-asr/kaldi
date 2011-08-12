@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> transition_accs;
-    MlEstimateAmDiagGmm gmm_accs;
+    AccumAmDiagGmm gmm_accs;
     {
       bool binary;
       Input is(stats_filename, &binary);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      gmm_accs.Update(gmm_opts, kGmmAll, &am_gmm, &objf_impr, &count);
+      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, kGmmAll, &am_gmm, &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";

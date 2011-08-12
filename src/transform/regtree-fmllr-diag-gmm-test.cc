@@ -191,7 +191,7 @@ void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
 
   AmDiagGmm *am = new AmDiagGmm();
   am->AddPdf(*gmm);
-  MlEstimateAmDiagGmm *est_am = new MlEstimateAmDiagGmm();
+  AccumAmDiagGmm *est_am = new AccumAmDiagGmm();
 
   // train HMM
   size_t iteration = 0;
@@ -199,13 +199,13 @@ void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
   int32 maxcomponents = n_gaussians;
   BaseFloat loglike = 0;
   while (iteration < maxiterations) {
-    est_am->InitAccumulators(*am, flags);
+    est_am->Init(*am, flags);
 
     loglike = 0;
     for (size_t j = 0; j < train_feats.size(); j++) {
       loglike += est_am->AccumulateForGmm(*am, *train_feats[j], 0, 1.0);
     }
-    est_am->Update(opts, flags, am, NULL, NULL);
+    MleAmDiagGmmUpdate(opts, *est_am, flags, am, NULL, NULL);
 
     std::cout << "Loglikelihood before iteration " << iteration << " : "
               << std::scientific << loglike << " number of components: "

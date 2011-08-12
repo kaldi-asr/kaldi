@@ -17,8 +17,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_GMM_ESTIMATE_AM_DIAG_GMM_H_
-#define KALDI_GMM_ESTIMATE_AM_DIAG_GMM_H_ 1
+#ifndef KALDI_GMM_MLE_AM_DIAG_GMM_H_
+#define KALDI_GMM_MLE_AM_DIAG_GMM_H_ 1
 
 #include <vector>
 
@@ -91,4 +91,4 @@ void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config, const AccumAmDiagGmm &a
 }  // End namespace kaldi
 
 
-#endif  // KALDI_GMM_ESTIMATE_AM_DIAG_GMM_H_
+#endif  // KALDI_GMM_MLE_AM_DIAG_GMM_H_

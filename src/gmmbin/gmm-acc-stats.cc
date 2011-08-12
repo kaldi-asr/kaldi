@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
 
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
-    MlEstimateAmDiagGmm gmm_accs;
-    gmm_accs.InitAccumulators(am_gmm, kGmmAll);
+    AccumAmDiagGmm gmm_accs;
+    gmm_accs.Init(am_gmm, kGmmAll);
 
     double tot_like = 0.0;
     double tot_t = 0.0;

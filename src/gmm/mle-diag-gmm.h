@@ -17,8 +17,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_GMM_ESTIMATE_DIAG_GMM_H_
-#define KALDI_GMM_ESTIMATE_DIAG_GMM_H_ 1
+#ifndef KALDI_GMM_MLE_DIAG_GMM_H_
+#define KALDI_GMM_MLE_DIAG_GMM_H_ 1
 
 #include "gmm/diag-gmm.h"
 #include "gmm/diag-gmm-normal.h"
@@ -125,11 +125,11 @@ class AccumDiagGmm {
   const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
 
  private:
+  int32 dim_;
+  int32 num_comp_;
   /// Flags corresponding to the accumulators that are stored.
   GmmFlagsType flags_;
 
-  int32 dim_;
-  int32 num_comp_;
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
@@ -165,4 +165,4 @@ int32 FloorVariance(const BaseFloat min_variance,
 }  // End namespace kaldi
 
 
-#endif  // KALDI_GMM_ESTIMATE_DIAG_GMM_H_
+#endif  // KALDI_GMM_MLE_DIAG_GMM_H_

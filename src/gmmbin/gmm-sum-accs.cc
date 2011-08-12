@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
     std::string stats_out_filename = po.GetArg(1);
     kaldi::Vector<double> transition_accs;
-    kaldi::MlEstimateAmDiagGmm gmm_accs;
+    kaldi::AccumAmDiagGmm gmm_accs;
 
     for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
