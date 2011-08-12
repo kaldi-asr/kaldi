@@ -24,7 +24,7 @@
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
-#include "lat/kaldi-lattice.h" // for LatticeArc
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
 // macros to switch off all debugging messages without runtime cost
 //#define DEBUG_CMD(x) x;
@@ -105,6 +105,7 @@ class NBestDecoder {
     assert(start_state != fst::kNoStateId);
     Token *tok = token_store_.CreateTok(0, NULL);
     tok->c = Weight::One();
+    tok->ca = Weight::One();
     tok->I = NULL;
     toks_.Insert(start_state, tok);
     PropagateEpsilon(std::numeric_limits<float>::max());
@@ -191,7 +192,7 @@ class NBestDecoder {
           str.push_back(stok->i);
         }
         arcs_reverse.push_back(new CompactLatticeArc(
-            0, tok->o, CompactLatticeWeight(LatticeWeight::One(), str), 0));
+            tok->o, tok->o, CompactLatticeWeight(LatticeWeight::One(), str), 0));
         // no weight info (tok->c), no state info
       }
 
@@ -207,6 +208,7 @@ class NBestDecoder {
       }
       BaseFloat lmscore = best_tok->c.Value() - best_tok->ca.Value();
       BaseFloat amscore = best_tok->ca.Value();
+      DEBUG_OUT1("final weight:" << lmscore << "," << amscore)
       fst_out->SetFinal(cur_state, CompactLatticeWeight(
           LatticeWeight(lmscore,amscore), vector<int32>()));
       token_store_.DeleteTok(best_tok);
@@ -220,16 +222,16 @@ class NBestDecoder {
     RemoveEpsLocal(fst_out);
     return true;
   }
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
-    fst::VectorFst<CompactLatticeArc> fst, fst_compact;
-    if (!GetNBestLattice(&fst, was_final)) return false;
-    std::cout << "n-best paths:\n";
-    fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-    ShortestPath(fst, &fst_compact);
-    ConvertLattice(fst_compact, fst_out);
-    return true;
-  } 
+//  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
+//    fst::VectorFst<CompactLatticeArc> fst, fst_one;
+//    if (!GetNBestLattice(&fst, was_final)) return false;
+    //std::cout << "n-best paths:\n";
+    //fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+    //fstprinter.Print(&std::cout, "standard output");
+//    ShortestPath(fst, &fst_one);
+//    ConvertLattice(fst_one, fst_out, true);
+//    return true;
+//  } 
   
  private:
 
@@ -638,7 +640,7 @@ class NBestDecoder {
       if (state == last) { DEBUG_OUT2("repeat") }
       last = state;
       Token *tok = e->val;
-      DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c)
+      DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
       if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
@@ -703,7 +705,7 @@ class NBestDecoder {
       while(elem && elem->key == state) {
         Token *tok = elem->val;
         elem = elem->tail;
-        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c)
+        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
         if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
 
         if (tok->c.Value() > cutoff) {  // Don't bother processing successors.
