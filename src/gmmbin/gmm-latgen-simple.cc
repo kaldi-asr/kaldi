@@ -106,7 +106,6 @@ int main(int argc, char *argv[]) {
         " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
     ParseOptions po(usage);
     Timer timer;
-    bool determinize = true;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeSimpleDecoderConfig config;
@@ -116,7 +115,6 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
-    po.Register("determinize", &determinize, "If true, do lattice determinization and output as CompactLattice");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
     
     po.Read(argc, argv);
@@ -153,6 +151,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
@@ -202,11 +201,11 @@ int main(int argc, char *argv[]) {
         if (allow_partial) {
           KALDI_WARN << "Outputting partial output for utterance " << utt
                      << " since no final-state reached\n";
-          num_fail++;
         } else {
           KALDI_WARN << "Not producing output for utterance " << utt
                      << " since no final-state reached and "
                      << "--allow-partial=false.\n";
+          num_fail++;
           continue;
         }
       }

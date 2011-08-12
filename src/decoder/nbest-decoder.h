@@ -26,14 +26,14 @@
 #include "itf/decodable-itf.h"
 
 // macros to switch off all debugging messages without runtime cost
-#define DEBUG_CMD(x) x;
-#define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
-#define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
-#define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
-//#define DEBUG_OUT1(x)
-//#define DEBUG_OUT2(x)
-//#define DEBUG_OUT3(x)
-//#define DEBUG_CMD(x)
+//#define DEBUG_CMD(x) x;
+//#define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
+//#define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
+//#define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
+#define DEBUG_OUT1(x)
+#define DEBUG_OUT2(x)
+#define DEBUG_OUT3(x)
+#define DEBUG_CMD(x)
 DEBUG_CMD(int snumber = 0)
 DEBUG_CMD(int dsnumber = 0)
 DEBUG_CMD(int tnumber = 0)
@@ -109,8 +109,6 @@ class NBestDecoder {
     PropagateEpsilon(std::numeric_limits<float>::max());
     for (int32 frame = 0; !decodable_->IsLastFrame(frame-1); frame++) {
       DEBUG_OUT1("==== FRAME " << frame << " =====")
-      if ((frame%50) == 0)
-        KALDI_LOG << "==== FRAME " << frame << " =====";
       BaseFloat adaptive_beam = PropagateEmitting(frame);
       PropagateEpsilon(adaptive_beam);
       //Prune();
@@ -118,13 +116,27 @@ class NBestDecoder {
     }
   }
 
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {
-    // GetOutput gets the decoding output.  If is_final == true, it limits itself
+  bool ReachedFinal() {
+    DEBUG_OUT1("ReachedFinal")
+    Weight best_weight = Weight::Zero();
+    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+      Weight this_weight = Times(e->val->c, fst_.Final(e->key));
+      if (this_weight != Weight::Zero()) {
+         DEBUG_OUT1("final state reached: " << e->key << " path weight:" << this_weight)
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out, bool *was_final) {
+    // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
     // nothing was available.  It returns true if it got output (thus, fst_out
     // will be nonempty).
-    DEBUG_OUT1("GetOutput")
+    DEBUG_OUT1("GetBestPath")
+    *was_final = ReachedFinal();
     Elem *last_toks = toks_.Clear(); // P <- C , C = {}
     Token *tok = token_store_.CreateTok(0, NULL);
     StateId end_state = 1E9; // some imaginary super end state
@@ -133,7 +145,7 @@ class NBestDecoder {
     toks_.Insert(end_state, tok);
     Elem *best_e = toks_.Find(end_state);
 
-    if (!is_final) { // only look for best tokens in this frame
+    if (!(*was_final)) { // only look for best tokens in this frame
       for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
         token_store_.CombineN(best_e, e->val);
         e_tail = e->tail;
@@ -367,11 +379,11 @@ class NBestDecoder {
     inline Token* Combine(Token *tok1, Token *tok2) { // Viterbi version
       assert(tok1);
       DEBUG_OUT2("combine: " << tok1->unique << "," << tok1->c)
-      if (tok1->I) DEBUG_OUT2("(" << tok1->I->unique << ")")
+      if (tok1->I) { DEBUG_OUT2("(" << tok1->I->unique << ")") }
       if (!tok2) return tok1;
       if (tok1 == tok2) { DEBUG_OUT2("same") return tok1; }
       DEBUG_OUT2("with: " << tok2->unique << "," << tok2->c)
-      if (tok2->I) DEBUG_OUT2("(" << tok2->I->unique << ")")
+      if (tok2->I) { DEBUG_OUT2("(" << tok2->I->unique << ")") }
       if (tok1->c.Value() < tok2->c.Value()) {
         DeleteTok(tok2);
         return tok1;
@@ -385,7 +397,7 @@ class NBestDecoder {
       if (!new_tok) return false;
       DEBUG_OUT2("combine: " << new_tok->unique 
         << " (" << new_tok->hash << ")," << new_tok->c)
-      if (new_tok->I) DEBUG_OUT2("(" << new_tok->I->unique << ")")
+      if (new_tok->I) { DEBUG_OUT2("(" << new_tok->I->unique << ")") }
       Elem *e = head;
       StateId state = e->key;
       BaseFloat new_weight = static_cast<BaseFloat>(new_tok->c.Value());
@@ -605,7 +617,7 @@ class NBestDecoder {
       last = state;
       Token *tok = e->val;
       DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c)
-      if (tok->I) DEBUG_OUT2("(" << tok->I->unique << ")")
+      if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
         //assert(state == tok->arc_.nextstate);
@@ -670,7 +682,7 @@ class NBestDecoder {
         Token *tok = elem->val;
         elem = elem->tail;
         DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c)
-        if (tok->I) DEBUG_OUT2("(" << tok->I->unique << ")")
+        if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
 
         if (tok->c.Value() > cutoff) {  // Don't bother processing successors.
           DEBUG_OUT2("prune")
