@@ -24,6 +24,8 @@
 #include "decoder/nbest-decoder.h"
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
+#include "fstext/lattice-utils.h" // for ConvertLattice
 
 using namespace kaldi;
 
@@ -142,9 +144,9 @@ int main(int argc, char *argv[]) {
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      fst::VectorFst<fst::StdArc> decoded;  // linear FST.
+      fst::VectorFst<LatticeArc> decoded;  // output FST.
       bool was_final;
-      if (decoder.GetBestPath(&decoded,&was_final)) {
+      if (decoder.GetBestPath(&decoded, &was_final)) {
         if (!was_final) {
           if (allow_partial) {
             KALDI_WARN << "Decoder did not reach end-state, "
@@ -161,7 +163,7 @@ int main(int argc, char *argv[]) {
         num_success++;
         std::vector<int32> alignment;
         std::vector<int32> words;
-        fst::StdArc::Weight weight;
+        LatticeWeight weight;
         frame_count += features.NumRows();
 
         GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
@@ -179,7 +181,7 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -(weight.Value1() + weight.Value2());
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "
