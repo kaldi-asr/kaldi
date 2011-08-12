@@ -24,15 +24,15 @@ using namespace kaldi;
 
 void TestComponentAcc(const DiagGmm &gmm, const Matrix<BaseFloat> &feats) {
   MleDiagGmmOptions config;
-  MlEstimateDiagGmm est_atonce;    // updates all components
-  MlEstimateDiagGmm est_compwise;  // updates single components
+  AccumDiagGmm est_atonce;    // updates all components
+  AccumDiagGmm est_compwise;  // updates single components
 
   // Initialize estimators
-  est_atonce.ResizeAccumulators(gmm.NumGauss(), gmm.Dim(), kGmmAll);
-  est_atonce.ZeroAccumulators(kGmmAll);
-  est_compwise.ResizeAccumulators(gmm.NumGauss(),
+  est_atonce.Resize(gmm.NumGauss(), gmm.Dim(), kGmmAll);
+  est_atonce.SetZero(kGmmAll);
+  est_compwise.Resize(gmm.NumGauss(),
       gmm.Dim(), kGmmAll);
-  est_compwise.ZeroAccumulators(kGmmAll);
+  est_compwise.SetZero(kGmmAll);
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {
@@ -49,8 +49,8 @@ void TestComponentAcc(const DiagGmm &gmm, const Matrix<BaseFloat> &feats) {
   gmm_atonce.Resize(gmm.NumGauss(), gmm.Dim());
   gmm_compwise.Resize(gmm.NumGauss(), gmm.Dim());
 
-  est_atonce.Update(config, kGmmAll, &gmm_atonce, NULL, NULL);
-  est_compwise.Update(config, kGmmAll, &gmm_compwise, NULL, NULL);
+  MleDiagGmmUpdate(config, est_atonce, kGmmAll, &gmm_atonce, NULL, NULL);
+  MleDiagGmmUpdate(config, est_compwise, kGmmAll, &gmm_compwise, NULL, NULL);
 
   // the two ways of updating should result in the same model
   double loglike0 = 0.0;
@@ -85,17 +85,17 @@ void test_flags_driven_update(const DiagGmm &gmm,
                               const Matrix<BaseFloat> &feats,
                               GmmFlagsType flags) {
   MleDiagGmmOptions config;
-  MlEstimateDiagGmm est_gmm_allp;   // updates all params
+  AccumDiagGmm est_gmm_allp;   // updates all params
   // let's trust that all-params update works
-  MlEstimateDiagGmm est_gmm_somep;  // updates params indicated by flags
+  AccumDiagGmm est_gmm_somep;  // updates params indicated by flags
 
   // warm-up estimators
-  est_gmm_allp.ResizeAccumulators(gmm.NumGauss(),
+  est_gmm_allp.Resize(gmm.NumGauss(),
     gmm.Dim(), kGmmAll);
-  est_gmm_allp.ZeroAccumulators(kGmmAll);
-  est_gmm_somep.ResizeAccumulators(gmm.NumGauss(),
+  est_gmm_allp.SetZero(kGmmAll);
+  est_gmm_somep.Resize(gmm.NumGauss(),
     gmm.Dim(), flags);
-  est_gmm_somep.ZeroAccumulators(flags);
+  est_gmm_somep.SetZero(flags);
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {
@@ -108,8 +108,8 @@ void test_flags_driven_update(const DiagGmm &gmm,
   gmm_all_update.CopyFromDiagGmm(gmm);   // init with orig. model
   gmm_some_update.CopyFromDiagGmm(gmm);  // init with orig. model
 
-  est_gmm_allp.Update(config, kGmmAll, &gmm_all_update, NULL, NULL);
-  est_gmm_somep.Update(config, flags, &gmm_some_update, NULL, NULL);
+  MleDiagGmmUpdate(config, est_gmm_allp, kGmmAll, &gmm_all_update, NULL, NULL);
+  MleDiagGmmUpdate(config, est_gmm_somep, flags, &gmm_some_update, NULL, NULL);
 
   if (est_gmm_allp.NumGauss() != gmm.NumGauss()) {
     KALDI_WARN << "Unable to pass test_update_flags() test because of "
@@ -155,15 +155,15 @@ void test_flags_driven_update(const DiagGmm &gmm,
 }
 
 void
-test_io(const DiagGmm &gmm, const MlEstimateDiagGmm &est_gmm, bool binary,
+test_io(const DiagGmm &gmm, const AccumDiagGmm &est_gmm, bool binary,
         const Matrix<BaseFloat> &feats) {
   std::cout << "Testing I/O, binary = " << binary << '\n';
 
   est_gmm.Write(Output("tmp_stats", binary).Stream(), binary);
 
   bool binary_in;
-  MlEstimateDiagGmm est_gmm2;
-  est_gmm2.ResizeAccumulators(est_gmm.NumGauss(),
+  AccumDiagGmm est_gmm2;
+  est_gmm2.Resize(est_gmm.NumGauss(),
     est_gmm.Dim(), kGmmAll);
   Input ki("tmp_stats", &binary_in);
   est_gmm2.Read(ki.Stream(), binary_in, false);  // not adding
@@ -171,7 +171,7 @@ test_io(const DiagGmm &gmm, const MlEstimateDiagGmm &est_gmm, bool binary,
   Input ki2("tmp_stats", &binary_in);
   est_gmm2.Read(ki2.Stream(), binary_in, true);  // adding
 
-  est_gmm2.ScaleAccumulators(0.5, kGmmAll);
+  est_gmm2.Scale(0.5, kGmmAll);
     // 0.5 -> make it same as what it would have been if we read just once.
     // [may affect it due to removal of components with small counts].
 
@@ -180,8 +180,8 @@ test_io(const DiagGmm &gmm, const MlEstimateDiagGmm &est_gmm, bool binary,
   DiagGmm gmm2;
   gmm1.CopyFromDiagGmm(gmm);
   gmm2.CopyFromDiagGmm(gmm);
-  est_gmm.Update(config, est_gmm.Flags(), &gmm1, NULL, NULL);
-  est_gmm2.Update(config, est_gmm2.Flags(), &gmm2, NULL, NULL);
+  MleDiagGmmUpdate(config, est_gmm, est_gmm.Flags(), &gmm1, NULL, NULL);
+  MleDiagGmmUpdate(config, est_gmm2, est_gmm2.Flags(), &gmm2, NULL, NULL);
 
   BaseFloat loglike1 = 0.0;
   BaseFloat loglike2 = 0.0;
@@ -267,7 +267,7 @@ UnitTestEstimateDiagGmm() {
   gmm->SetInvVarsAndMeans(invvars, means);
   gmm->ComputeGconsts();
 
-  MlEstimateDiagGmm est_gmm;
+  AccumDiagGmm est_gmm;
 //  var_acc.Scale(0.1);
 //  est_gmm.config_.p_variance_floor_vector = &var_acc;
 
@@ -275,7 +275,7 @@ UnitTestEstimateDiagGmm() {
   config.min_variance = 0.01;
   GmmFlagsType flags = kGmmAll;  // Should later try reducing this.
 
-  est_gmm.ResizeAccumulators(gmm->NumGauss(), gmm->Dim(), flags);
+  est_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
 
   // iterate
   size_t iteration = 0;
@@ -284,8 +284,8 @@ UnitTestEstimateDiagGmm() {
 
   while (iteration < maxiterations) {
     Vector<BaseFloat> featvec(dim);
-    est_gmm.ResizeAccumulators(gmm->NumGauss(), gmm->Dim(), flags);
-    est_gmm.ZeroAccumulators(flags);
+    est_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
+    est_gmm.SetZero(flags);
     double loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
       featvec.CopyRowFromMat(feats, i);
@@ -315,7 +315,7 @@ UnitTestEstimateDiagGmm() {
     est_gmm.Read(ki.Stream(), binary_in, false);  // false = not adding.
 
     BaseFloat obj, count;
-    est_gmm.Update(config, flags, gmm, &obj, &count);
+    MleDiagGmmUpdate(config, est_gmm, flags, gmm, &obj, &count);
     KALDI_LOG <<"ML objective function change = " << (obj/count)
               << " per frame, over " << (count) << " frames.";
 
@@ -339,9 +339,9 @@ UnitTestEstimateDiagGmm() {
 
   {  // I/O tests
     GmmFlagsType flags_all = kGmmAll;
-    est_gmm.ResizeAccumulators(gmm->NumGauss(),
+    est_gmm.Resize(gmm->NumGauss(),
       gmm->Dim(), flags_all);
-    est_gmm.ZeroAccumulators(flags_all);
+    est_gmm.SetZero(flags_all);
     float loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
       loglike += est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), 1.0F);

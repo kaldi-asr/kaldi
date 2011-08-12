@@ -1,7 +1,7 @@
 // gmm/mle-am-diag-gmm.h
 
 // Copyright 2009-2011  Saarland University
-// Author:  Arnab Ghoshal
+// Author:  Arnab Ghoshal; Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,23 +27,20 @@
 
 namespace kaldi {
 
-
-/** \class MlEstimateAmDiagGmm
- *  Class for computing the maximum-likelihood estimates of the parameters of
- *  an acoustic model that uses diagonal Gaussian mixture models as emission
- *  densities.
- */
-class MlEstimateAmDiagGmm {
+class AccumAmDiagGmm {
  public:
-  MlEstimateAmDiagGmm() { }
-  ~MlEstimateAmDiagGmm();
+  AccumAmDiagGmm() {}
+  ~AccumAmDiagGmm();
+
+  void Read(std::istream &in_stream, bool binary, bool add);
+  void Write(std::ostream &out_stream, bool binary) const;
+
   /// Initializes accumulators for each GMM based on the number of components
   /// and dimension.
-  void InitAccumulators(const AmDiagGmm &model, GmmFlagsType flags);
+  void Init(const AmDiagGmm &model, GmmFlagsType flags);
   /// Initialization using different dimension than model.
-  void InitAccumulators(const AmDiagGmm &model, int32 dim,
-                        GmmFlagsType flags);
-  void ZeroAccumulators(GmmFlagsType flags);
+  void Init(const AmDiagGmm &model, int32 dim, GmmFlagsType flags);
+  void SetZero(GmmFlagsType flags);
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
   /// This does not work with multiple feature transforms.
@@ -71,27 +68,25 @@ class MlEstimateAmDiagGmm {
                              int32 gmm_index, int32 gauss_index,
                              BaseFloat weight);
 
-  void Update(const MleDiagGmmOptions &config, GmmFlagsType flags,
-              AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
-              BaseFloat *count_out) const;
+  int32 NumAccs() { return gmm_accumulators_.size(); }
 
-  void Read(std::istream &in_stream, bool binary, bool add);
+  int32 NumAccs() const { return gmm_accumulators_.size(); }
 
-  void Write(std::ostream &out_stream, bool binary) const;
-
-  MlEstimateDiagGmm& GetAcc(int32 index);
-
-  const MlEstimateDiagGmm& GetAcc(int32 index) const;
-
-  int32 NumAccs() { return gmm_estimators_.size(); }
+  const AccumDiagGmm& GetAcc(int32 index) const;
 
  private:
   /// MLE accumulators and update methods for the GMMs
-  std::vector<MlEstimateDiagGmm*> gmm_estimators_;
+  std::vector<AccumDiagGmm*> gmm_accumulators_;
 
   // Cannot have copy constructor and assigment operator
-  KALDI_DISALLOW_COPY_AND_ASSIGN(MlEstimateAmDiagGmm);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(AccumAmDiagGmm);
 };
+
+/// for computing the maximum-likelihood estimates of the parameters of
+/// an acoustic model that uses diagonal Gaussian mixture models as emission densities.
+void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config, const AccumAmDiagGmm &amdiaggmm_acc,
+            GmmFlagsType flags, AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
+            BaseFloat *count_out);
 
 }  // End namespace kaldi
 

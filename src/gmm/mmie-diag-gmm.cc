@@ -45,10 +45,10 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
                   << (dimension) + ", " << (flags);
       }
     } else {
-      ResizeAccumulators(num_components, dimension, flags);
+      Resize(num_components, dimension, flags);
     }
   } else {
-    ResizeAccumulators(num_components, dimension, flags);
+    Resize(num_components, dimension, flags);
   }
 
   ReadMarker(in_stream, binary, &token);
