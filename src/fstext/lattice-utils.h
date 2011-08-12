@@ -138,7 +138,30 @@ void ScaleLattice(
     const vector<vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst);
 
+/// Class LatticeToStdMapper maps a normal arc (StdArc)
+/// to a LatticeArc by putting the StdArc weight as the first
+/// element of the LatticeWeight.  Useful when doing LM
+/// rescoring.
 
+template<class Int>
+class LatticeToStdMapper {
+  typedef LatticeWeightTpl<Int> LatticeWeight;
+  typedef ArcTpl<LatticeWeight> LatticeArc;
+ public:
+  LatticeArc operator()(const StdArc &arc) {
+    return LatticeArc(arc.ilabel, arc.olabel,
+                      LatticeWeight(arc.weight.Value(), 0.0),
+                      arc.nextstate);
+  }
+  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
+
+  MapSymbolsAction InputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  // I believe all properties are preserved.
+  uint64 Properties(uint64 props) { return props; }
+};
 
 
 } // end namespace fst
