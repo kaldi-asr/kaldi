@@ -88,7 +88,7 @@ class RemoveEpsLocalClass {
     num_arcs_out_.resize(num_states);
     num_arcs_in_[fst_->Start()]++;  // count start as trans in.
     for (StateId s = 0; s < num_states; s++) {
-      if (fst_->Final(s) != LogWeight::Zero())
+      if (fst_->Final(s) != Weight::Zero())
       num_arcs_out_[s]++;  // count final as transition.
       for (ArcIterator<MutableFst<Arc> > aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
         num_arcs_in_[aiter.Value().nextstate]++;
@@ -102,7 +102,7 @@ class RemoveEpsLocalClass {
     StateId num_states =   fst_->NumStates();
     for (StateId s = 0; s < num_states; s++) {
       if (s == non_coacc_state_) continue;
-      if (fst_->Final(s) != LogWeight::Zero())
+      if (fst_->Final(s) != Weight::Zero())
         num_arcs_out_[s]--;  // count final as transition.
       for (ArcIterator<MutableFst<Arc> > aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
         if (aiter.Value().nextstate == non_coacc_state_) continue;
