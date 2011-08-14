@@ -4,7 +4,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest
+BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest lattice-union
 
 OBJFILES =
 
