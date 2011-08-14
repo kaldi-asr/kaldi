@@ -27,7 +27,7 @@
 
 namespace kaldi {
 
-typedef fst::StdArc::StateId StateId;
+//typedef fst::StdArc::StateId StateId;
 
 // newlyAdded will be updated
 StateId LmFstConverter::AddStateFromSymb(

@@ -24,6 +24,7 @@
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
 // macros to switch off all debugging messages without runtime cost
 //#define DEBUG_CMD(x) x;
@@ -70,8 +71,8 @@ struct NBestDecoderOptions {
 
 class NBestDecoder {
  public:
-  // better use Fst<LatticeArc> or fst<CompactLatticeArc>, as declared in lat/kaldi-lattice.h
-  // the lattice should store information sufficient to get the graph scores and acoustic scores separately
+  // maybe use fst<LatticeArc>/fst<CompactLatticeArc>, as in lat/kaldi-lattice.h
+  // to store information to get graph and acoustic scores separately
   typedef fst::StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
@@ -104,6 +105,7 @@ class NBestDecoder {
     assert(start_state != fst::kNoStateId);
     Token *tok = token_store_.CreateTok(0, NULL);
     tok->c = Weight::One();
+    tok->ca = Weight::One();
     tok->I = NULL;
     toks_.Insert(start_state, tok);
     PropagateEpsilon(std::numeric_limits<float>::max());
@@ -129,7 +131,7 @@ class NBestDecoder {
     return false;
   }
 
-  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out, bool *was_final) {
+  bool GetNBestLattice(fst::MutableFst<CompactLatticeArc> *fst_out, bool *was_final) {
     // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
@@ -176,24 +178,27 @@ class NBestDecoder {
     // go through tokens in imaginary super end state
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
       Token *best_tok = e->val;
-      DEBUG_OUT1("n-best final token: " << best_tok->unique << " path weight:" << best_tok->c)
+      DEBUG_OUT1("n-best final token: " << best_tok->unique
+                 << " path weight:" << best_tok->c)
 
-      std::vector<Arc*> arcs_reverse;  // output arcs in reverse order.
+      std::vector<CompactLatticeArc*> arcs_reverse; // reverse order output arcs
       // outer loop for word tokens
       for (Token *tok = best_tok; tok != NULL; tok = tok->previous) {
         DEBUG_OUT1("out:" << tok->o)
-        arcs_reverse.push_back(new Arc(0, tok->o, Weight::One(), 0));
-        // no weight info (tok->c), no state info
         // inner loop for input label tokens
+        std::vector<int32> str;
         for (SeqToken *stok = tok->I; stok != NULL; stok = stok->previous) {
           DEBUG_OUT3("in:" << stok->i)
-          arcs_reverse.push_back(new Arc(stok->i, 0, Weight::One(), 0));
+          str.push_back(stok->i);
         }
+        arcs_reverse.push_back(new CompactLatticeArc(
+            tok->o, tok->o, CompactLatticeWeight(LatticeWeight::One(), str), 0));
+        // no weight info (tok->c), no state info
       }
 
       StateId cur_state = start_state;
       for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-        Arc *arc = arcs_reverse[i];
+        CompactLatticeArc *arc = arcs_reverse[i];
         arc->nextstate = fst_out->AddState();
         fst_out->AddArc(cur_state, *arc);
         cur_state = arc->nextstate;
@@ -201,7 +206,11 @@ class NBestDecoder {
                    << arc->olabel << "/" << arc->weight)
         delete arc;
       }
-      fst_out->SetFinal(cur_state, best_tok->c);
+      BaseFloat lmscore = best_tok->c.Value() - best_tok->ca.Value();
+      BaseFloat amscore = best_tok->ca.Value();
+      DEBUG_OUT1("final weight:" << lmscore << "," << amscore)
+      fst_out->SetFinal(cur_state, CompactLatticeWeight(
+          LatticeWeight(lmscore,amscore), vector<int32>()));
       token_store_.DeleteTok(best_tok);
 
       e_tail = e->tail;
@@ -213,7 +222,17 @@ class NBestDecoder {
     RemoveEpsLocal(fst_out);
     return true;
   }
-
+//  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
+//    fst::VectorFst<CompactLatticeArc> fst, fst_one;
+//    if (!GetNBestLattice(&fst, was_final)) return false;
+    //std::cout << "n-best paths:\n";
+    //fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+    //fstprinter.Print(&std::cout, "standard output");
+//    ShortestPath(fst, &fst_one);
+//    ConvertLattice(fst_one, fst_out, true);
+//    return true;
+//  } 
+  
  private:
 
   // TokenStore is a store of linked tokens with its own allocator
@@ -230,7 +249,8 @@ class NBestDecoder {
     class Token {
      public:
       // here will be the c and I of 'full tokens'
-      Weight c; // c
+      Weight c; // c (total weight)
+      Weight ca; // acoustic part of c
       SeqToken *I; // sequence I
       Label o; // o
       Token *previous; // t'
@@ -362,6 +382,7 @@ class NBestDecoder {
       DEBUG_CMD(tmp->unique = tnumber++)
       tmp->refs = 1;
       tmp->c = Weight::Zero();
+      tmp->ca = Weight::Zero();
       tmp->I = NULL;
       tmp->o = output;
       tmp->previous = prev;
@@ -423,7 +444,7 @@ class NBestDecoder {
           } else {
             DEBUG_OUT2("new one better")
             DeleteTok(tok);
-	    e->val = new_tok;
+	        e->val = new_tok;
             return true;
           }
         }
@@ -454,12 +475,14 @@ class NBestDecoder {
                  << arc.olabel << "/" << arc.weight)
       // compute new weight	
       Weight w = Times(source->c, arc.weight);
+      Weight wa = source->ca;
       if (arc.ilabel > 0) { // emitting arc
-        w = Times(w, Weight(- decodable_->LogLikelihood(frame, arc.ilabel)));
-        DEBUG_OUT2("acoustic: " << 
-          Weight(- decodable_->LogLikelihood(frame, arc.ilabel)))
+        Weight amscore = Weight(- decodable_->LogLikelihood(frame, arc.ilabel));
+        w = Times(w, amscore);
+        wa = Times(wa, amscore);
+        DEBUG_OUT2("acoustic: " << amscore)
       }
-      DEBUG_OUT2("new weight: " << w)
+      DEBUG_OUT2("new weight: " << w << "," << wa)
       if (w.Value() > cutoff) {  // prune
           DEBUG_OUT2("prune")
           return NULL;
@@ -475,6 +498,7 @@ class NBestDecoder {
         tok->I = CreateSeq(arc.ilabel, source->I);
       }
       tok->c = w;
+      tok->ca = wa;
       return tok;
     }
 
@@ -616,7 +640,7 @@ class NBestDecoder {
       if (state == last) { DEBUG_OUT2("repeat") }
       last = state;
       Token *tok = e->val;
-      DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c)
+      DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
       if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
@@ -681,7 +705,7 @@ class NBestDecoder {
       while(elem && elem->key == state) {
         Token *tok = elem->val;
         elem = elem->tail;
-        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c)
+        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
         if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
 
         if (tok->c.Value() > cutoff) {  // Don't bother processing successors.

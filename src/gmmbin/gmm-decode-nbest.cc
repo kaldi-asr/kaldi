@@ -20,10 +20,13 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
+#include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/nbest-decoder.h"
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
+#include "fstext/lattice-utils.h" // for ConvertLattice
 
 using namespace kaldi;
 
@@ -66,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier nbestlattice-wspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
@@ -82,7 +85,7 @@ int main(int argc, char *argv[]) {
                 "Produce output even when final state was not reached");
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
     }
@@ -90,8 +93,9 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1),
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
-        words_wspecifier = po.GetArg(4),
-        alignment_wspecifier = po.GetOptArg(5);
+        lattice_wspecifier = po.GetArg(4),
+        words_wspecifier = po.GetOptArg(5),
+        alignment_wspecifier = po.GetOptArg(6);
 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
@@ -100,6 +104,12 @@ int main(int argc, char *argv[]) {
       Input is(model_in_filename, &binary);
       trans_model.Read(is.Stream(), binary);
       am_gmm.Read(is.Stream(), binary);
+    }
+
+    CompactLatticeWriter compact_lattice_writer;
+    if (!compact_lattice_writer.Open(lattice_wspecifier)) {
+      KALDI_EXIT << "Could not open table for writing lattices: "
+                 << lattice_wspecifier;
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
@@ -142,9 +152,9 @@ int main(int argc, char *argv[]) {
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      fst::VectorFst<fst::StdArc> decoded;  // linear FST.
+      fst::VectorFst<CompactLatticeArc> decoded;  // output FST.
       bool was_final;
-      if (decoder.GetBestPath(&decoded,&was_final)) {
+      if (decoder.GetNBestLattice(&decoded, &was_final)) {
         if (!was_final) {
           if (allow_partial) {
             KALDI_WARN << "Decoder did not reach end-state, "
@@ -159,12 +169,25 @@ int main(int argc, char *argv[]) {
           }
         }
         num_success++;
+        //std::cout << "n-best paths:\n";
+        //fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+        //fstprinter.Print(&std::cout, "standard output");
+
+        if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
+        compact_lattice_writer.Write(key, decoded);
+
+        fst::VectorFst<CompactLatticeArc> decoded1;
+        ShortestPath(decoded, &decoded1);
+        fst::VectorFst<LatticeArc> utterance;
+        ConvertLattice(decoded1, &utterance, true);
+
         std::vector<int32> alignment;
         std::vector<int32> words;
-        fst::StdArc::Weight weight;
+        LatticeWeight weight;
         frame_count += features.NumRows();
 
-        GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+        GetLinearSymbolSequence(utterance, &alignment, &words, &weight);
 
         words_writer.Write(key, words);
         if (alignment_writer.IsOpen())
@@ -179,7 +202,7 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -(weight.Value1() + weight.Value2());
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "

@@ -55,65 +55,6 @@ struct MmieDiagGmmOptions : public MleDiagGmmOptions {
   }
 };
 
-class AccumDiagGmm {
- public:
-  void Read(std::istream &in_stream, bool binary, bool add);
-  void Write(std::ostream &out_stream, bool binary) const;
-
-  /// Allocates memory for accumulators
-  void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
-  /// Calls ResizeAccumulators with arguments based on gmm
-  void Resize(const DiagGmm &gmm, GmmFlagsType flags);
-
-  /// Returns the number of mixture components
-  int32 NumGauss() const { return num_comp_; }
-  /// Returns the dimensionality of the feature vectors
-  int32 Dim() const { return dim_; }
-
-  void SetZero(GmmFlagsType flags);
-  void Scale(BaseFloat f, GmmFlagsType flags);
-
-  /// Accumulate for a single component, given the posterior
-  void AccumulateForComponent(const VectorBase<BaseFloat>& data,
-                              int32 comp_index, BaseFloat weight);
-
-  /// Accumulate for all components, given the posteriors.
-  void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& gauss_posteriors);
-
-  /// Accumulate for all components given a diagonal-covariance GMM.
-  /// Computes posteriors and returns log-likelihood
-  BaseFloat AccumulateFromDiag(const DiagGmm &gmm,
-                               const VectorBase<BaseFloat>& data,
-                               BaseFloat frame_posterior);
-
-  /// Smooths the accumulated counts by adding 'tau' extra frames. An example
-  /// use for this is I-smoothing for MMIE/MPE.
-  void SmoothStats(BaseFloat tau);
-
-  /// Smooths the accumulated counts using some other accumulator. Performs
-  /// a weighted sum of the current accumulator with the given one. Both
-  /// accumulators must have the same dimension and number of components.
-  void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
-
-  /// Smooths the accumulated counts using the parameters of a given model.
-  /// An example use of this is MAP-adaptation. The model must have the
-  /// same dimension and number of components as the current accumulator.
-  void SmoothWithModel(BaseFloat tau, const DiagGmm& src_gmm);
-
-  // Accessors
-  const GmmFlagsType Flags() const { return flags_; }
-
- private:
-  /// Flags corresponding to the accumulators that are stored.
-  GmmFlagsType flags_;
-
-  int32 dim_;
-  int32 num_comp_;
-  Vector<double> occupancy_;
-  Matrix<double> mean_accumulator_;
-  Matrix<double> variance_accumulator_;
-};
 
 /** Class for computing the maximum mutual information estimate of the
  *  parameters of a Gaussian mixture model.
