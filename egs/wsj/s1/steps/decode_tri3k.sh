@@ -25,7 +25,7 @@
 # this script will assume you want to do per-speaker (not per-utterance) adaptation.
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_tri3k.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: steps/decode_tri3k.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 

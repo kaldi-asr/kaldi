@@ -19,7 +19,7 @@ $ignore_noninteger = 0;
 $ignore_first_field = 0;
 $field = -1;
 for($x = 0; $x < 2; $x++) {
-    if($ARGV[0] eq "--ignore-noninteger") { $ignore_oov = 1; shift @ARGV; }
+    if($ARGV[0] eq "--ignore-noninteger") { $ignore_noninteger = 1; shift @ARGV; }
     if($ARGV[0] eq "--ignore-first-field") { $ignore_first_field = 1; shift @ARGV; }
     if($ARGV[0] eq "--field") { 
        shift @ARGV; $field = $ARGV[0]+0; shift @ARGV;

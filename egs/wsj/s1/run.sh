@@ -65,6 +65,7 @@ scripts/silphones.pl data/phones.txt "$silphones" data/silphones.csl data/nonsil
 # This adds disambig symbols to the lexicon and produces data/lexicon_disambig.txt
 
 ndisambig=`scripts/add_lex_disambig.pl data/lexicon.txt data/lexicon_disambig.txt`
+ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 echo $ndisambig > data/lex_ndisambig
 # Next, create a phones.txt file that includes the disambiguation symbols.
 # the --include-zero includes the #0 symbol we pass through from the grammar.
@@ -134,12 +135,11 @@ scripts/make_lexicon_fst.pl data/lexicon.txt 0.5 SIL | \
 phone_disambig_symbol=`grep \#0 data/phones_disambig.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 data/words.txt | awk '{print $2}'`
 
-scripts/make_lexicon_fst.pl data/lexicon_disambig.txt 0.5 SIL  | \
+scripts/make_lexicon_fst.pl data/lexicon_disambig.txt 0.5 SIL '#'$ndisambig | \
    fstcompile --isymbols=data/phones_disambig.txt --osymbols=data/words.txt \
    --keep_isymbols=false --keep_osymbols=false |   \
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
    fstarcsort --sort_type=olabel > data/L_disambig.fst
-
 
 # Making the grammar FSTs 
 # This step is quite specific to this WSJ setup.
@@ -151,7 +151,8 @@ steps/make_lm_fsts.sh
 fstdeterminizestar data/G_bg.fst >/dev/null  
 
 ## Sanity check; just making sure the next command does not crash. 
-fsttablecompose data/L_disambig.fst data/G_bg.fst | fstdeterminizestar >/dev/null
+fstdeterminizestar data/L_disambig.fst >/dev/null  
+
 
 
 # At this point, make sure that "./exp/" is somewhere you can write
@@ -209,13 +210,19 @@ steps/train_tri2a.sh || exit 1;
 
 )&
 
-# also doing tri2a with bigram
+# also doing tri2a with bigram [+ lattice generation + rescoring]
 (
  scripts/mkgraph.sh data/G_bg.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_bg || exit 1;
  for year in 92 93; do
   scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
+  scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/eval_nov${year}.scp 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst exp/decode_tri2a_bg_rescore_tg data/eval_nov${year}.txt
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst exp/decode_tri2a_bg_rescore_tg_pruned data/eval_nov${year}.txt
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst exp/decode_tri2a_bg_rescore_bg data/eval_nov${year}.txt
  done
  )&
+
+
 
 steps/train_tri3a.sh || exit 1;
 

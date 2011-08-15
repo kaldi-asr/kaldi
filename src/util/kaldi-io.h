@@ -123,11 +123,11 @@ class Output {
 
   /// This opens the stream, with the given mode (binary or text).  It returns
   /// true on success and false on failure.  However, it will throw if something
-  /// was already open and could not be closed (to avoid this, call Close() first.
-  /// if write_header == true and binary == true, it writes the Kaldi binary-mode
-  /// header.  You may call Open even if it is already open; it will close the
-  /// existing stream and reopen (however if closing the old stream failed it will
-  /// throw).
+  /// was already open and could not be closed (to avoid this, call Close()
+  /// first.  if write_header == true and binary == true, it writes the Kaldi
+  /// binary-mode header ('\0' then 'B').  You may call Open even if it is
+  /// already open; it will close the existing stream and reopen (however if
+  /// closing the old stream failed it will throw).
   bool Open(const std::string &wxfilename, bool binary, bool write_header);
 
   inline bool IsOpen();  // return true if we have an open stream.  Does not imply

@@ -17,6 +17,50 @@
 
 exit 1 # Don't run this... it's to be run line by line from the shell.
 
+
+notes on structure...
+
+
+data_prep/ will contain temporary data used when preparing data/?
+
+local_scripts/ contains the most RM-specific scripts. [used to create data_prep/]
+
+scripts/ will contain generic scipts.
+
+Stuff that's about the language:
+
+lang/
+ words.txt silphones.csl nonsilphones.csl topo
+ 
+
+ [for training:]
+ phones.txt [for testing too?]
+ phonesets.txt [ phonesets used in building questions... if not supplied, use the "base phones" ]
+ extra_questions.txt [ extra questions appended to automatically generated questions.  Should ask 
+        questions that elicit information that's lost when we go to "phonesets.txt", e.g. about stress
+        and position ]
+ questions.txt [ if you supply the questions, this file should exist. ]
+ L.fst
+
+ [for testing:]
+ phones_disambig.txt
+ L_disambig.fst
+ G.fst
+
+data/
+ spk2utt
+ utt2spk
+ txt
+ scp
+ spk2gender
+
+
+steps/train_mono.sh data.1h/ lang/ exp/mono
+
+steps/train_tri1.sh exp/mono data.1h/ lang/ exp/mono
+
+
+
 # This script file cannot be run as-is; some paths in it need to be changed
 # before you can run it.
 # Search for /path/to.

@@ -175,6 +175,7 @@ template<class IntType> class LatticeStringRepository {
 
 
 
+
 // class LatticeDeterminizer is templated on the same types that
 // CompactLatticeWeight is templated on: the base weight (Weight), typically
 // LatticeWeightTpl<float> etc. but could also be e.g. TropicalWeight, and the
@@ -322,14 +323,15 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   }
 
 
-  // Initializer.  After initializing the object you will typically call 
-  // one of the Output functions.  Note: ifst.Copy() will generally do a
+  // Initializer.  After initializing the object you will typically
+  // call Determinize() and then call one of the Output functions.
+  // Note: ifst.Copy() will generally do a
   // shallow copy.  We do it like this for memory safety, rather than
   // keeping a reference or pointer to ifst_.
-  LatticeDeterminizer(const Fst<Arc> &ifst, float delta = kDelta, 
-                      int max_states = -1):
-      ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
-      equal_(delta), determinized_(false),
+  LatticeDeterminizer(const Fst<Arc> &ifst,
+                      DeterminizeLatticeOptions opts):
+      num_arcs_(0), ifst_(ifst.Copy()), opts_(opts),
+      equal_(opts_.delta), determinized_(false),
       minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
     Initialize();
   }
@@ -359,23 +361,33 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   ~LatticeDeterminizer() {
     FreeMostMemory(); // rest is deleted by destructors.
   }
-  void Determinize(bool *debug_ptr) {
+  // Returns true on success.  Can fail for out-of-memory
+  // or max-states related reasons.
+  bool Determinize(bool *debug_ptr) {
     assert(!determinized_);
     // This determinizes the input fst but leaves it in the "special format"
     // in "output_arcs_".  Must be called after Initialize().  To get the
     // output, call one of the Output routines.
-    while (!queue_.empty()) {
-      OutputStateId out_state = queue_.back();
-      queue_.pop_back();
-      ProcessState(out_state);
-      if (debug_ptr && *debug_ptr) Debug();  // will exit.
-      if(max_states_ > 0 && output_arcs_.size() > max_states_) {
-        std::cerr << "Lattice determinization aborted since passed " << max_states_
-                  << " states.\n";
-        throw std::runtime_error("max-states reached in lattice determinization");
+    try {
+      while (!queue_.empty()) {
+        OutputStateId out_state = queue_.back();
+        queue_.pop_back();
+        ProcessState(out_state);
+        if (debug_ptr && *debug_ptr) Debug();  // will exit.
+        if(opts_.max_arcs > 0 && num_arcs_ > opts_.max_arcs) {
+          std::cerr << "Lattice determinization aborted since passed "
+                    << opts_.max_arcs << " arcs.\n";
+          return false;
+        }
       }
-    }
-    determinized_ = true;
+      return (determinized_ = true);
+    } catch (std::bad_alloc) {
+      std::cerr << "Memory allocation error doing lattice determinization\n";
+      return (determinized_ = false);
+    } catch (std::runtime_error) {
+      std::cerr << "Caught exception doing lattice determinization\n";
+      return (determinized_ = false);
+    }      
   }
  private:
   
@@ -449,7 +461,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       for (; iter1 < iter1_end; ++iter1, ++iter2) {
         if (iter1->state != iter2->state ||
            iter1->string != iter2->string ||
-           ! ApproxEqual(iter1->weight, iter2->weight, delta_)) return false;
+            ! ApproxEqual(iter1->weight, iter2->weight, delta_)) return false;
       }
       return true;
     }
@@ -645,10 +657,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       // processing the old Element.
       if(replaced_elems && cur_subset[elem.state] != elem)
         continue;
-      if(max_states_ > 0 && counter++ > max_states_) {
+      if(opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         std::cerr << "Lattice determinization aborted since looped more than "
-                  << max_states_ << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-states times in lattice determinization");
+                  << opts_.max_loop << " times during epsilon closure.\n";
+        throw std::runtime_error("looped more than max-arcs times in lattice determinization");
       }
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -735,6 +747,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       temp_arc.string = final_string;
       temp_arc.weight = final_weight;
       output_arcs_[output_state].push_back(temp_arc);
+      num_arcs_++;      
     }
   }
 
@@ -838,6 +851,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     temp_arc.string = common_str;
     temp_arc.weight = tot_weight;
     output_arcs_[state].push_back(temp_arc);  // record the arc.
+    num_arcs_++;
   }
 
 
@@ -1067,10 +1081,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                                             // View pointers as owned in
                                             // minimal_hash_.
   vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.
+  int num_arcs_;
 
   const Fst<Arc> *ifst_;
-  float delta_;
-  int max_states_;
+  DeterminizeLatticeOptions opts_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   bool determinized_; // set to true when user called Determinize(); used to make
@@ -1108,28 +1122,34 @@ template<class Weight, class IntType> class LatticeDeterminizer {
 // normally Weight would be LatticeWeight<float> (which has two floats),
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
 template<class Weight, class IntType>
-void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
+bool DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
                         MutableFst<ArcTpl<Weight> > *ofst,
-                        float delta, bool *debug_ptr, int max_states) {
+                        DeterminizeLatticeOptions opts,
+                        bool *debug_ptr) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, max_states);
-  det.Determinize(debug_ptr);
+  LatticeDeterminizer<Weight, IntType> det(ifst, opts);
+  if (!det.Determinize(debug_ptr))
+    return false;
   det.Output(ofst);
+  return true;
 }
 
 
 // normally Weight would be LatticeWeight<float> (which has two floats),
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
 template<class Weight, class IntType>
-void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
+bool DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
                         MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > >*ofst,
-                        float delta, bool *debug_ptr, int max_states) {                        
+                        DeterminizeLatticeOptions opts,
+                        bool *debug_ptr) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizer<Weight, IntType> det(ifst, delta, max_states);
-  det.Determinize(debug_ptr);
+  LatticeDeterminizer<Weight, IntType> det(ifst, opts);
+  if (!det.Determinize(debug_ptr))
+    return false;
   det.Output(ofst);
+  return true;
 }
 
 

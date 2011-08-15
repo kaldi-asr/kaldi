@@ -71,8 +71,7 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
       int64 narcs = NumArcs(lat), nstates = lat.NumStates();
       n_arcs_in += narcs;
       n_states_in += nstates;
@@ -85,8 +84,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "For utterance " << key << ", pruned #states from "
                 << nstates << " to " << pruned_nstates << " and #arcs from"
                 << narcs << " to " << pruned_narcs;
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_lat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_lat);
       CompactLattice pruned_clat;
       ConvertLattice(pruned_lat, &pruned_clat);
       compact_lattice_writer.Write(key, pruned_clat);

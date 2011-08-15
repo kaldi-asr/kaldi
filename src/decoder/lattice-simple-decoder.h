@@ -40,15 +40,31 @@ struct LatticeSimpleDecoderConfig {
   BaseFloat lattice_beam;
   int32 prune_interval;
   bool determinize_lattice;
+  bool prune_lattice;
+  int32 max_arcs;
+  int32 max_loop;
+  BaseFloat beam_ratio;
   LatticeSimpleDecoderConfig(): beam(16.0),
                                 lattice_beam(10.0),
                                 prune_interval(25),
-                                determinize_lattice(true) { }
+                                determinize_lattice(true),
+                                prune_lattice(true),
+                                max_arcs(50000),
+                                max_loop(200000),
+                                beam_ratio(0.9) { }
   void Register(ParseOptions *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
+    po->Register("prune-lattice", &prune_lattice, "If true, prune lattice using the lattice-beam (recommended)");
+    po->Register("max-arcs", &max_arcs, "Maximum number of arcs (before pruning) in a lattice-- used to control memory usage during determinization");
+    po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
+    po->Register("beam-ratio", &beam_ratio, "Ratio by which to decrease lattice-beam if we reach the max-arcs.");
+  }
+  void Check() const {
+    KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0
+                 && beam_ratio > 0.0 && beam_ratio < 1.0);
   }
 };
 
@@ -66,7 +82,7 @@ class LatticeSimpleDecoder {
   // instantiate this class onece for each thing you have to decode.
   LatticeSimpleDecoder(const fst::Fst<fst::StdArc> &fst,
                        const LatticeSimpleDecoderConfig &config):
-      fst_(fst), config_(config), num_toks_(0) { }
+      fst_(fst), config_(config), num_toks_(0) { config.Check(); }
   
   ~LatticeSimpleDecoder() {
     ClearActiveTokens();
@@ -191,11 +207,28 @@ class LatticeSimpleDecoder {
   // Outputs an FST corresponding to the lattice-determinized
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
-    fst::VectorFst<LatticeArc> raw_fst;
+    Lattice raw_fst;
     if(!GetRawLattice(&raw_fst)) return false;
     Invert(&raw_fst); // make it so word labels are on the input.
-    DeterminizeLattice(raw_fst, ofst);
-    return true;
+    BaseFloat cur_beam = config_.lattice_beam;
+    fst::DeterminizeLatticeOptions lat_opts;
+    lat_opts.max_arcs = config_.max_arcs;
+    lat_opts.max_loop = config_.max_loop;
+    for (int32 i = 0; i < 20; i++) {
+      if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {
+        if (config_.prune_lattice)
+          fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), ofst);
+        return true;
+      } else {
+        cur_beam *= config_.beam_ratio;
+        KALDI_WARN << "Failed to determinize lattice (presumably max-states "
+                   << "reached), reducing lattice-beam to " << cur_beam
+                   << " and re-trying.";
+        Lattice tmp_fst(raw_fst);
+        Prune(tmp_fst, &raw_fst, LatticeWeight(cur_beam, 0));
+      }
+    }
+    return false; // fell off loop-- shouldn't really happen.
   }
   
   

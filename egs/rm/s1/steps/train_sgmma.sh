@@ -74,14 +74,9 @@ build-tree --verbose=1 --max-leaves=$numleaves \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $dir/topo $dir/tree  2> $dir/train_tree.log || exit 1;
 
-# the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
 
-gmm-init-model  --write-occs=$dir/0.occs  \
-    $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
+sgmm-init $dir/topo $dir/tree $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
-sgmm-init $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
-
-rm $dir/0.gmm
 
 if [ ! -f $dir/gselect.gz ]; then
  sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;

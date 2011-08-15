@@ -121,7 +121,7 @@ build-tree --verbose=1 --max-leaves=$numleaves \
 gmm-init-model  --write-occs=$dir/0.occs  \
     $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
 
-sgmm-init --spk-space-dim=39 $dir/0.gmm $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
+sgmm-init --spk-space-dim=39 $dir/topo $dir/tree $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
 rm $dir/0.gmm
 

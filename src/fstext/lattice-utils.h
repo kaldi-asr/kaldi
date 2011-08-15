@@ -125,6 +125,15 @@ inline vector<vector<double> > AcousticLatticeScale(double acwt) {
   return ans;
 }
 
+inline vector<vector<double> > GraphLatticeScale(double acwt) {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = acwt;
+  ans[1][1] = 1.0;
+  return ans;
+}
+
 
 /** Scales the pairs of weights in LatticeWeight or CompactLatticeWeight by
     viewing the pair (a, b) as a 2-vector and pre-multiplying by the 2x2 matrix
@@ -162,6 +171,11 @@ class LatticeToStdMapper {
   // I believe all properties are preserved.
   uint64 Properties(uint64 props) { return props; }
 };
+
+template<class Weight, class Int>
+void PruneCompactLattice(
+    Weight beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst);
 
 
 } // end namespace fst
