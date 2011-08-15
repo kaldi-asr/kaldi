@@ -186,11 +186,15 @@ class NBestDecoder {
       for (Token *tok = best_tok; tok != NULL; tok = tok->previous) {
         DEBUG_OUT1("out:" << tok->o)
         // inner loop for input label tokens
-        std::vector<int32> str;
+        std::vector<int32> str_rev, str;
         for (SeqToken *stok = tok->I; stok != NULL; stok = stok->previous) {
           DEBUG_OUT3("in:" << stok->i)
-          str.push_back(stok->i);
+          str_rev.push_back(stok->i);
         }
+        // reverse vector
+        std::vector<int32>::reverse_iterator rit;
+        for (rit = str_rev.rbegin(); rit < str_rev.rend(); ++rit)
+          str.push_back(*rit);
         arcs_reverse.push_back(new CompactLatticeArc(
             tok->o, tok->o, CompactLatticeWeight(LatticeWeight::One(), str), 0));
         // no weight info (tok->c), no state info
