@@ -9,7 +9,7 @@ mkdir -p $dir/{log,nnet}
 
 
 ###### SELECT FEATURES ######
-cat data/train.scp | scripts/shuffle_list.pl > $dir/train.scp
+cat data/train.scp | scripts/shuffle_list.pl ${seed:-666} > $dir/train.scp
 head -n 3591 $dir/train.scp > $dir/train.scp.tr
 tail -n 399 $dir/train.scp > $dir/train.scp.cv
 feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
@@ -50,7 +50,7 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ar
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
 num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
-scripts/gen_mlp_init.py --dim=39:1024:${num_tgt} --gauss --negbias > $mlp_init
+scripts/gen_mlp_init.py --dim=39:1024:${num_tgt} --gauss --negbias --seed=666 > $mlp_init
 
 
 
