@@ -216,9 +216,9 @@ steps/train_tri2a.sh || exit 1;
  for year in 92 93; do
   scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
   scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/eval_nov${year}.scp 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst exp/decode_tri2a_bg_rescore_tg data/eval_nov${year}.txt
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst exp/decode_tri2a_bg_rescore_tg_pruned data/eval_nov${year}.txt
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst exp/decode_tri2a_bg_rescore_bg data/eval_nov${year}.txt
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_pruned 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_bg
  done
  )&
 
