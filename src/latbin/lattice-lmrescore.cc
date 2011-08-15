@@ -53,19 +53,30 @@ int main(int argc, char *argv[]) {
         fst_rxfilename = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-    VectorFst<StdArc> *lm_fst = NULL; 
+
+    VectorFst<LatticeArc> lm_fst;
+
     {
+      VectorFst<StdArc> *std_lm_fst = NULL; 
       Input ki(fst_rxfilename);
-      lm_fst = VectorFst<StdArc>::Read(
+      std_lm_fst = VectorFst<StdArc>::Read(
           ki.Stream(),
           fst::FstReadOptions((std::string)fst_rxfilename));
-      if (lm_fst == NULL)
+      if (std_lm_fst == NULL)
         exit(1);
+
+      // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
+      // with all the cost on the first member of the pair (since it's a graph
+      // weight).
+      fst::LatticeToStdMapper<BaseFloat> mapper;
+      fst::MapFst<StdArc, LatticeArc, fst::LatticeToStdMapper<BaseFloat> >
+          mapped_fst(*std_lm_fst, mapper);
+      lm_fst = mapped_fst;
     }
 
     { // Make sure LM is sorted on ilabel.
-      fst::ILabelCompare<StdArc> ilabel_comp;
-      fst::ArcSort(lm_fst, ilabel_comp);
+      fst::ILabelCompare<LatticeArc> ilabel_comp;
+      fst::ArcSort(&lm_fst, ilabel_comp);
     }
 
     // The next fifteen or so lines are a kind of optimization and
@@ -81,13 +92,6 @@ int main(int argc, char *argv[]) {
     // composition: it stores certain tables that enable fast
     // lookup of arcs during composition.
     fst::TableComposeCache<fst::Fst<LatticeArc> > lm_compose_cache(compose_opts);
-
-    // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
-    // with all the cost on the first member of the pair (since it's a graph
-    // weight).
-    fst::LatticeToStdMapper<BaseFloat> mapper;
-    fst::MapFst<StdArc, LatticeArc, fst::LatticeToStdMapper<BaseFloat> >
-        mapped_fst(*lm_fst, mapper);
     
     // Read as regular lattice-- this is the form we need it in for efficient
     // composition and determinization.
@@ -113,11 +117,11 @@ int main(int argc, char *argv[]) {
 
         
         Lattice composed_lat;
-        // Could just do, more simply: Compose(Lat, mapped_fst, &composed_lat);
+        // Could just do, more simply: Compose(Lat, lm_fst, &composed_lat);
         // and not have lm_compose_cache at all.
         // The command below is faster, though; it's constant not
         // logarithmic in vocab size.
-        TableCompose(lat, mapped_fst, &composed_lat, &lm_compose_cache);
+        TableCompose(lat, lm_fst, &composed_lat, &lm_compose_cache);
 
         Invert(&composed_lat); // make it so word labels are on the input.
         CompactLattice determinized_lat;
