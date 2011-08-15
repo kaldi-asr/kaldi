@@ -30,6 +30,8 @@ newlm=$3
 transcript=$4 # e.g. data/eval_nov92.txt
 dir=$5
 
+mkdir -p $dir # create output decode dir if not yet existing 
+
 
 # First remove the old LM scores.
 
