@@ -4,7 +4,8 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest lattice-union
+BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest lattice-union \
+	lattice-to-post
 
 OBJFILES =
 
@@ -14,7 +15,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 
 
