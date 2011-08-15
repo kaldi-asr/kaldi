@@ -26,6 +26,8 @@
 #include "base/kaldi-error.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "fst/queue.h"
+#include "fst/dfs-visit.h"
 #include "lat/kaldi-lattice.h"
 
 using namespace Eigen;
@@ -148,10 +150,14 @@ class RNN{
 
     RNN(const string& filename) {
       Read(filename);
-    };
+    }
 
     virtual ~RNN() {
-    };
+    }
+
+    void Propagate(int32 w0,int32 w1,VectorXr* h=NULL) {
+      // TODO propagate only one single word!
+    }
 
     // propagate a sequence through the RNN
     // seq - the sequence of words w0 w1 w2 ... in RNN int32 code, at least two words. First word w0 is the history word!
@@ -236,6 +242,10 @@ class RNN{
 
 };
 
+BaseFloat Visit(CompactLattice& lat,fst::LifoQueue<fst::StdFst::StateId>) {
+  return 0.0;
+}
+
 int main(int argc, char *argv[]) {
   try {
     using fst::SymbolTable;
@@ -243,21 +253,22 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Rescore N-best paths in lattices with an RNN model and write it out as FST\n"
-        "Usage: lattice-rnnrescore [options] dict rnn-model lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --iv-penalty=3 --oov-penalty=10 --lambda=0.5 --n=10 WSJ.word-sym-tab WSJ.rnn ark:1.lats ark:nbest.lats\n";
+        "Extracts N-best paths extracted from lattices using given acoustic scale. \n"
+        "Rescores them using an RNN model and given lm scale and writes it out as FST\n"
+        "Usage: lattice-rnnrescore [options] dict lattice-rspecifier rnn-model lattice-wspecifier\n"
+        " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lm-scale=1.5 --iv-penalty=3 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
       
     ParseOptions po(usage);
+    BaseFloat lm_scale = 1.0;
     BaseFloat acoustic_scale = 1.0;
-    BaseFloat lambda = 0.75;
     BaseFloat oov_penalty = 11; // assumes vocabularies around 60k words 
     BaseFloat iv_penalty = 0;
     bool no_oovs = false;
     RNN::int32 n = 10;
     
 
+    po.Register("lm-scale", &lm_scale, "Scaling factor for RNN LM likelihoods" );
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("lambda", &lambda, "Weight for the RNN model, between 0 and 1");
     po.Register("oov-penalty", &oov_penalty, "A reasonable value is ln(vocab_size)" );
     po.Register("iv-penalty", &iv_penalty, "Can be used to tune performance" );
     po.Register("no-oovs", &no_oovs, "Will cause rescoring to abort in cases of OOV words!" ); 
@@ -271,8 +282,8 @@ int main(int argc, char *argv[]) {
     }
 
     std::string wordsymtab_filename = po.GetArg(1),
-        rnnmodel_filename = po.GetArg(2),
-        lats_rspecifier = po.GetArg(3),
+        rnnmodel_filename = po.GetArg(3),
+        lats_rspecifier = po.GetArg(2),
         lats_wspecifier = po.GetArg(4);
 
     // read the dictionary
@@ -295,12 +306,16 @@ int main(int argc, char *argv[]) {
 
     if (acoustic_scale == 0.0)
       KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+    if (lm_scale == 0.0)
+      KALDI_EXIT << "Do not use a zero RNN LM scale (has no effect)";
+
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       Lattice rlat;
 
       lattice_reader.FreeCurrent();
+
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);\
 
@@ -315,8 +330,11 @@ int main(int argc, char *argv[]) {
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &nbest_lat);
 
+      fst::LifoQueue<fst::StdFst::StateId> q; 
       CompactLattice nbest_clat;
+
       ConvertLattice(nbest_lat, &nbest_clat);
+      Visit(nbest_clat,q);
       compact_lattice_writer.Write(key, nbest_clat);
       n_done++;
     }
