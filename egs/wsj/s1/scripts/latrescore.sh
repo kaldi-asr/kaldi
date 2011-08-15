@@ -38,10 +38,10 @@ mkdir -p $dir
 
 # First remove the old LM scores.
 
-#lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $inputdir/*.lats.gz|" "$oldlmcommand" \
-#    ark:-  2>$dir/remove_old_lm.log | \
-#lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$dir/lats.newlm.gz"  \
-#   2>$dir/add_new_lm.log
+lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $inputdir/*.lats.gz|" "$oldlmcommand" \
+    ark:-  2>$dir/remove_old_lm.log | \
+lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$dir/lats.newlm.gz"  \
+   2>$dir/add_new_lm.log
 
 for inv_acwt in 14 15 16 17 18; do
   acwt=`perl -e "print (1.0/$inv_acwt);"`;
