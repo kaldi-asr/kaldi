@@ -38,18 +38,20 @@ mkdir -p $dir
 
 # First remove the old LM scores.
 
-lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $inputdir/*.lats.gz|" "$oldlmcommand" \
-    ark:-  2>$dir/remove_old_lm.log | \
-lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$dir/lats.newlm.gz"  \
-   2>$dir/add_new_lm.log
+#lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $inputdir/*.lats.gz|" "$oldlmcommand" \
+#    ark:-  2>$dir/remove_old_lm.log | \
+#lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$dir/lats.newlm.gz"  \
+#   2>$dir/add_new_lm.log
 
 for inv_acwt in 14 15 16 17 18; do
   acwt=`perl -e "print (1.0/$inv_acwt);"`;
   lattice-best-path --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
-    "ark:gunzip -c $dir/lats.newlm.gz|" ark:$dir/acwt${inv_acwt}.tra \
+    "ark:gunzip -c $dir/lats.newlm.gz|" ark,t:$dir/acwt${inv_acwt}.tra \
        2>$dir/best_path.$inv_acwt.log
-  scripts/sym2int.pl --ignore-first-field data/words.txt $transcript | \
-    compute-wer --mode=present ark:-  ark,p:$dir/acwt${inv_acwt}.tra \
-     >& $dir/wer_${inv_acwt}
+  
+  cat $dir/acwt${inv_acwt}.tra | \
+   scripts/int2sym.pl --ignore-first-field data/words.txt | \
+   sed 's:<s>::' | sed 's:</s>::' | sed 's:<UNK>::g' | \
+    compute-wer --text --mode=present ark:$transcript  ark,p:-   >& $dir/wer_${inv_acwt}
 done
 
