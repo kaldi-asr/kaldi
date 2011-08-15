@@ -79,9 +79,9 @@ steps/decode_nnet_mono_pdf.sh &
 # now, we will train triphone GMM-HMM system to get context-dependent training labels
 # 500 pdfs
 time steps/train_tri1.sh
-(steps/decode_tri1.sh ; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ) &
+steps/decode_tri1.sh &
 time steps/train_tri2a.sh
-(steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh ) &
+steps/decode_tri2a.sh &
 
 # train MLP with context-dependent pdf targets
 # 1-frame of MFCC_D_A_0, per-utternace CMN, global CVN, 
