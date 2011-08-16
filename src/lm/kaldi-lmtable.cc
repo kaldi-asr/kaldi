@@ -69,6 +69,25 @@ StateId LmFstConverter::AddStateFromSymb(
   return sid;
 }
 
+void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst* pfst) {
+
+  // go through all states with a recorded backoff destination 
+  // and find out any that has no output arcs and is not final
+  unsigned int connected = 0;
+  //cerr << "ConnectUnusedStates has recorded "<<bkState_.size()<<" states.\n";
+
+  for (BkStateMap::iterator bkit = bkState_.begin(); bkit != bkState_.end(); ++bkit) {
+	// add an output arc to its backoff destination recorded in backoff_
+	fst::StdArc::StateId src = bkit->first, dst = bkit->second;
+	if (pfst->NumArcs(src)==0 && !IsFinal(pfst, src)) {
+	  //cerr << "ConnectUnusedStates: adding arc from "<<src<<" to "<<dst<<endl;
+	  pfst->AddArc(src, fst::StdArc(0, 0, fst::StdArc::Weight::One(), dst)); // epsilon arc with no cost
+	  connected++;
+	}
+  }
+  cerr << "Connected "<<connected<<" states without outgoing arcs."<<endl;
+}
+
 void LmFstConverter::AddArcsForNgramProb(
                          int ilev, int maxlev,
                          float logProb,
@@ -89,12 +108,21 @@ void LmFstConverter::AddArcsForNgramProb(
     // General case works from N down to 2-grams
     src = AddStateFromSymb(ngs,   ilev,   2, "_", pfst, psst, newSrc);
     if (ilev != maxlev) {
-      dst = AddStateFromSymb(ngs, ilev,   1, "_", pfst, psst, newDst);
-      dbo = AddStateFromSymb(ngs, ilev-1, 1, "_", pfst, psst, newDbo);
+	  // add all intermediate levels from 2 to current
+	  // last ones will be current backoff source and destination
+	  for (int iilev=2; iilev <= ilev; iilev++) {
+		dst = AddStateFromSymb(ngs, iilev,   1, "_", pfst, psst, newDst);
+		dbo = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDbo);
+		bkState_[dst] = dbo;
+	  }
     } else {
-      dst = AddStateFromSymb(ngs, ilev-1, 1, "_", pfst, psst, newDst);
-      assert(ilev>=2);
-      dbo = AddStateFromSymb(ngs, ilev-2, 1, "_", pfst, psst, newDbo);
+	  // add all intermediate levels from 2 to current
+	  // last ones will be current backoff source and destination
+	  for (int iilev=2; iilev <= ilev; iilev++) {
+		dst = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDst);
+		dbo = AddStateFromSymb(ngs, iilev-2, 1, "_", pfst, psst, newDbo);
+		bkState_[dst] = dbo;
+	  }
     }
   } else {
     // special case for 1-grams: start from 0-gram
@@ -108,7 +136,9 @@ void LmFstConverter::AddArcsForNgramProb(
     }
     dst = AddStateFromSymb(ngs, 1, 1, "_", pfst, psst, newDst);
     dbo = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newDbo);
+	bkState_[dst] = dbo;
   }
+
   // state is final if last word is end of sentence
   if (curwrd.compare(endSent) == 0) {
     pfst->SetFinal(dst, fst::StdArc::Weight::One());
@@ -272,6 +302,8 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                           pStateSymbs, startSent, endSent);
     }  // end of loop on individual n-gram lines
   }
+
+  conv_->ConnectUnusedStates(pfst);
 
   delete pStateSymbs;
   // input and output symbol tables will be deleted by ~fst()
