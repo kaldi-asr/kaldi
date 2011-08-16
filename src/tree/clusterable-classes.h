@@ -88,9 +88,9 @@ class GaussClusterable: public Clusterable {
   SubVector<double> x2_stats() const { return stats_.Row(1); }
 
  private:
-  BaseFloat count_;
+  double count_;
   Matrix<double> stats_;
-  BaseFloat var_floor_;  // should be common for all objects created.
+  double var_floor_;  // should be common for all objects created.
 
   void Read_(std::istream &is, bool binary);
 };

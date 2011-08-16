@@ -198,7 +198,7 @@ BaseFloat GaussClusterable::Objf() const {
     size_t dim = stats_.NumCols();
     Vector<BaseFloat> vars(dim);
     for (size_t d = 0; d < dim; d++) {
-      BaseFloat mean(stats_(0, d) / count_), var = stats_(1, d) / count_ - mean
+      double mean(stats_(0, d) / count_), var = stats_(1, d) / count_ - mean
           * mean;
       var = std::max(var, var_floor_);
       vars(d) = var;

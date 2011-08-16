@@ -15,7 +15,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 
