@@ -1,0 +1,418 @@
+--- src/lmtable.cpp	2011-08-15 17:15:32.000000000 -0400
++++ ../irstlm-5.60.02/src/lmtable.cpp	2011-08-12 10:03:30.000000000 -0400
+@@ -1242,7 +1242,330 @@
+   return slmt;
+ }
+ 
++// this will map a integer encoding of a word in fromDict
++// to the integer encoding in toDict
++// The word will be added in toDict if new
++int lmtable::translate(dictionary *fromDict, dictionary *toDict, int w) {
++  // temporarily set incflag so word will be added if new
++  int tifl = toDict->incflag();
++  int tw = toDict->encode(fromDict->decode(w));
++  // return incflag to its previous value
++  toDict->incflag(tifl);
++  return tw;
++}
++
++// this will convert ngram word codes from the encoding in fromDict
++// to the integer encoding in toDict and store result in (same size) tng
++void lmtable::convert_ng(dictionary *fromDict, dictionary *toDict, ngram ng, ngram &tng) {
++  for (int k=ng.size;k>=1;k--) {
++    *tng.wordp(k) = translate(fromDict, toDict, *ng.wordp(k));
++  }
++}
++
++// this will print an ngram words using the dictionary from the given table
++void lmtable::print_ng(lmtable* lmt, ngram ng) {
++  cerr << " [";
++  for (int k=ng.size;k>=1;k--) cerr <<lmt->getDict()->decode(*ng.wordp(k))<< " ";
++  cerr << "] ";
++}
++
++// GB : merge 'this' lmtable with another one (mt), creating a new one (returned)
++lmtable* lmtable::mergelm(lmtable* mt, float weight) {
++  
++  lmtable *nt = new lmtable();  // new table
++  assert(!isQtable);  // isQtable == true is not supported!
++  nt->configure(maxlev,isQtable);
++  
++  // 'this' and 'mt' dictionaries will
++  // be merged into 'nt' dictionary
++  nt->dict = new dictionary(dict,1);  // do sort dictionary
++  
++  // generate OOV codes
++  cerr << "Generating OOV codes for this->dict" << endl;
++  dict->genoovcode(); 
++  cerr << "Generating OOV codes for nt->dict" << endl;
++  nt->dict->genoovcode();
+ 
++  // start with an new empty table
++	for (int l=1;l<=maxlev;l++){
++		nt->cursize[l]=0;
++		nt->table[l]=NULL;
++  }
++  
++  ngram ng(nt->dict,0);
++  ng.size = 0;
++  
++  // unigrams are all rooted in the same zero-gram, so start recursion with 'combine'
++  combineSucc(mt, ng, weight, 1, maxlev, 0, this->cursize[1], 0, mt->cursize[1], nt);
++  
++  return nt ;
++}
++
++// GB useful for debugging: print one level of 'this' table
++/*void lmtable::dumpLevel(int ilev) {
++ LMT_TYPE ndt= tbltype[ilev];
++ int ndsz = nodesize(ndt);
++ cout << "level: "<<ilev<<endl;
++ for (table_entry_pos_t ipos = 0; ipos < cursize[ilev]; ipos++) {
++ char* entry = table[ilev] + (table_pos_t)ipos * ndsz;
++ table_entry_pos_t isucc = (ipos>0 ? bound(table[ilev] + (table_pos_t)(ipos-1) * ndsz, ndt) : 0);
++ table_entry_pos_t esucc = bound(table[ilev] + (table_pos_t)ipos * ndsz, ndt);
++ float eprob = exp(prob(entry,ndt)*2.302585092994045);
++ cout <<"\t"<<ipos<<"\t"<<getDict()->decode(word(entry))<<"\t"<<isucc<<"\t"<<esucc<<"\t"<<eprob<<endl;
++ }
++ }*/
++
++// GB recursively add successor entries from 'this' table into current position of 'nt' table
++// interpolating with 'mt' table probabilities
++double lmtable::addSucc(lmtable* mt, ngram ng, float weight,
++                        int ilev, int elev, 
++                        table_entry_pos_t ipos, 
++                        table_entry_pos_t epos,
++                        lmtable *nt) {
++  
++  //variables useful to navigate in the lmtable structure
++  LMT_TYPE ndt; 
++  int ndsz; 
++  
++  // increase ngram size
++  ng.pushc(0);
++  
++  //cerr<<"addSucc: >> ilev "<<ilev<<" elev "<<elev;
++  //cerr<<" ipos "<<ipos<<" epos "<<epos<<endl;
++  
++  assert(epos<=this->cursize[ilev] && ipos<epos);
++  
++  // use node size and type from 'this' table, assume 'merge' is same
++  ndt=this->tbltype[ilev];  assert(ndt==mt->tbltype[ilev]);
++  ndsz=this->nodesize(ndt); assert(ndsz==mt->nodesize(ndt));
++  
++  table_entry_pos_t cpos; // position in 'this' table
++  
++  double totCurrProb = 0;
++  
++  for (cpos=ipos; cpos<epos; cpos++) {
++    
++    double totSuccProb = 0;
++    char* centry = this->table[ilev] + (table_pos_t)cpos *ndsz;
++    int cword = translate(this->getDict(),nt->getDict(),word(centry));
++    
++    //cerr << "addSucc: ilev "<<ilev<<" at position cpos "<<cpos<<endl;
++    if (ilev < elev) {
++      table_entry_pos_t isucc = (cpos>0 ? bound(this->table[ilev] + (table_pos_t) (cpos-1) * ndsz, ndt) : 0);
++      table_entry_pos_t esucc = bound(this->table[ilev] + (table_pos_t) cpos * ndsz, ndt);
++      if (isucc < esucc ) {
++        // there are successors
++        *ng.wordp(1)=cword;
++        //cerr << "addSucc: adding successors for ngram ";
++        //print_ng(nt,ng); cerr << endl;
++        totSuccProb += addSucc(mt, ng, weight, ilev+1, elev, isucc, esucc, nt);
++      }
++    }
++    
++    // end of recursion (ilev == elev)
++    
++    // allocate space in new table in chunks, will also do the initial allocation
++    if ((nt->cursize[ilev] % nt->dict->size()) ==0) {
++      nt->table[ilev]=(char *)realloc(nt->table[ilev], ((table_pos_t) nt->cursize[ilev] + (table_pos_t) nt->dict->size()) * ndsz);
++    }					
++    char* newentry = nt->table[ilev] + (table_pos_t) nt->cursize[ilev] * ndsz; 
++    
++    // put current entry in new table
++    //cerr << "addSucc: << ilev "<<ilev<<" setting newentry word ["<< nt->getDict()->decode(cword)<< " ] at pos "<<nt->cursize[ilev]<<endl;
++    nt->word(newentry, cword);
++    *ng.wordp(1) = cword;
++    ngram cng = ng;
++    convert_ng(nt->getDict(),this->getDict(),ng,cng);
++    ngram mng = ng;
++    convert_ng(nt->getDict(),mt->getDict(),ng,mng);
++    
++    float cprob = this->lprob(cng);
++    float mprob = mt->lprob(mng);
++    //cerr << "    c ngram "; print_ng(this,cng); cerr<<" clprob(tng) "<<cprob<<endl;
++    //cerr << "    m ngram "; print_ng(mt,mng);   cerr<<" mlprob(mng) "<<mprob<<endl;
++    double eprob = (1.-weight)*exp((double)cprob*M_LN10) + weight*exp((double)mprob*M_LN10);
++    totCurrProb += eprob;
++    float nprob = log(eprob)/M_LN10;
++    float nbow = log(1.-totSuccProb)/M_LN10;
++    //cerr << "    combining probs "<<cprob<<" and "<<mprob<<" to yield "<<nprob<<", totSuccProb "<<totSuccProb<<" to yield "<<nbow<<endl;
++    
++    nt->prob(newentry, ndt, nprob);
++    nt->bow(newentry,  ndt, nbow);
++    
++    if (ilev<maxlev) nt->bound(newentry,ndt,nt->cursize[ilev+1]); // store in bound end position at next level 
++    nt->cursize[ilev]++;
++    
++  }  // end of loop on table positions
++  return totCurrProb;
++}
++
++// GB: double-recursively combine successor entries from 'this' and 'merge' table 
++// with (weight)*this prob and (1-weight)*merge prob
++// into current position in 'nt' table
++// Return (linear) total probability mass for successors
++//        
++double lmtable::combineSucc(lmtable *mt, ngram ng, float weight,
++                            int ilev, int elev, 
++                            table_entry_pos_t tstart, 
++                            table_entry_pos_t tend,
++                            table_entry_pos_t mstart,
++                            table_entry_pos_t mend,
++                            lmtable *nt) {
++  
++  
++	//variables useful to navigate in the lmtable structure
++	LMT_TYPE ndt; 
++  int ndsz; 
++  
++  // increase ngram size
++  ng.pushc(0);
++  
++  //cerr<<"combineSucc: >> ilev "<<ilev<<" elev "<<elev;
++  //cerr<<" tstart "<<tstart<<" tend "<<tend<<" mstart "<<mstart<<" mend "<<mend<<endl;
++  
++  //cout << "THIS table at ";
++  //this->dumpLevel(ilev);
++  //flush(cout);
++  //cout << "MERGE table at ";
++  //mt->dumpLevel(ilev);
++  //flush(cout);
++  
++	assert(tend<=this->cursize[ilev] && tstart<tend);
++	assert(mend<=mt->cursize[ilev] && mstart<mend);
++  
++  // use node size and type from 'this' table, assert that 'merge' is same
++  ndt=this->tbltype[ilev];  assert(ndt==mt->tbltype[ilev]);
++  ndsz=this->nodesize(ndt); assert(ndsz==mt->nodesize(ndt));
++  
++  // run over positions in both this and lmt tables
++  table_entry_pos_t tp; // position in this table
++  table_entry_pos_t mp; // position in merge table
++  
++  double totCurrProb = 0;
++  
++  for (tp=tstart,mp=mstart; tp<tend || mp<mend; ) {
++    
++    double totSuccProb = 0;
++    char* tentry=NULL;
++    char* mentry=NULL;
++    int tword=-1, mword=-1;   // note: tword and mword integer codes are based on nt->getDict()
++    int cmp=0;
++    table_entry_pos_t tsuccstart=BOUND_EMPTY1, tsuccend=BOUND_EMPTY1, msuccstart=BOUND_EMPTY1, msuccend=BOUND_EMPTY1;
++    float tprob, tbow, mprob, mbow;
++    
++    //cerr << "combineSucc: ilev "<<ilev<<" at positions tp "<<tp<<" mp "<<mp<<endl;
++    if (tp<tend) {
++      // we are within this table
++      tentry = this->table[ilev] + (table_pos_t)tp * ndsz;
++      tword = translate(this->getDict(),nt->getDict(),word(tentry));
++      tsuccstart = (tp>0 ? bound(this->table[ilev] + (table_pos_t) (tp-1) * ndsz, ndt) : 0);
++      tsuccend = bound(this->table[ilev] + (table_pos_t) tp * ndsz, ndt);
++      //cerr << " tw "<<nt->getDict()->decode(tword)<<endl;
++    } else {
++      // end of this table, force use of merge table
++      cmp = 1;
++    }
++    if (mp<mend) {
++      // we are within merge table
++      mentry = mt->table[ilev] + (table_pos_t)mp *ndsz;
++      mword = translate(mt->getDict(),nt->getDict(),mt->word(mentry));
++      msuccstart = (mp>0 ? mt->bound(mt->table[ilev] + (table_pos_t) (mp-1) * ndsz, ndt) : 0);
++      msuccend = mt->bound(mt->table[ilev] + (table_pos_t) mp * ndsz, ndt);
++      //cerr <<" mw "<<nt->getDict()->decode(mword)<<endl;
++    } else {
++      // end of merge table, force use of this table
++      cmp = -1;
++    }
++    // both tables ended, break out of loop
++    if (mp>=mend && tp>=tend) break;
++    
++    // both tables can be used, select according to lexicographic order
++    if (tp<tend && mp<mend) cmp = strcmp(nt->getDict()->decode(tword),nt->getDict()->decode(mword));
++    
++    if (ilev < elev) {
++      
++      if (cmp==0 && (tsuccstart < tsuccend) && (msuccstart < msuccend) ){
++        // entries are the same, and both have successors, must run over both sets of successors
++        *ng.wordp(1)=tword;
++        //cerr << "combineSucc: combining successors of ngram ";
++        //print_ng(nt,ng);
++        //cerr <<endl;
++        totSuccProb += combineSucc(mt, ng, weight, ilev+1, elev, tsuccstart, tsuccend, msuccstart, msuccend, nt);
++      } else if (cmp <= 0 && tsuccstart < tsuccend) {
++        // add successors of less advanced table
++        // from now on recursion can only be of 'addSucc' type
++        *ng.wordp(1)=tword;
++        //cerr << "combineSucc: adding successors of ngram "; print_ng(nt,ng); cerr << "from this" << endl;
++        totSuccProb += this->addSucc(mt, ng, weight, ilev+1, elev, tsuccstart, tsuccend, nt);
++      } else if (cmp >=0 && msuccstart < msuccend) {
++        *ng.wordp(1)=mword;
++        //cerr << "combineSucc: adding successors of ngram "; print_ng(nt,ng); cerr << "from mt" << endl;
++        totSuccProb += mt->addSucc(this, ng, 1.-weight, ilev+1, elev, msuccstart, msuccend, nt);
++      }
++    }  
++    
++    // end of recursion (ilev == elev)
++    
++    // allocate space in new table in chunks, will also do the initial allocation
++    if ((nt->cursize[ilev] % nt->dict->size()) ==0) {
++      nt->table[ilev]=(char *)realloc(nt->table[ilev], ((table_pos_t) nt->cursize[ilev] + (table_pos_t) nt->dict->size()) * ndsz);
++    }					
++    char* newentry = nt->table[ilev] + (table_pos_t) nt->cursize[ilev] * ndsz; 
++    
++    // here we combine probabilities from both models
++    if (cmp==0) {
++      // use entries from both tables
++      //cerr << "combineSucc: << "<<ilev<<" setting newentry word ["<< nt->getDict()->decode(tword)<< "] at pos "<<nt->cursize[ilev]<<endl;
++      nt->word(newentry,tword);
++      *ng.wordp(1)=tword;
++      tbow = this->bow(tentry,ndt);
++      mbow = mt->bow(mentry,ndt);
++    } else if (cmp < 0) {
++      // use entry from 'this' table
++      //cerr << "combineSucc: << "<<ilev<<" setting newentry word ["<< nt->getDict()->decode(tword)<< "] at pos "<<nt->cursize[ilev]<<endl;
++      nt->word(newentry,tword);
++      *ng.wordp(1)=tword;
++      tbow = this->bow(tentry,ndt);
++      mbow = 0;      
++    } else {
++      // use entry from 'merge' table
++      //cerr << "combineSucc: << "<<ilev<<" setting newentry word ["<< nt->getDict()->decode(mword)<< "] at pos "<<nt->cursize[ilev]<<endl;
++      nt->word(newentry,mword);
++      *ng.wordp(1)=mword;
++      tbow = 0;
++      mbow = mt->bow(mentry,ndt);
++    }  
++    ngram tng = ng;
++    convert_ng(nt->getDict(),this->getDict(),ng,tng);  // convert back to LM own's encoding to query lprob()
++    ngram mng = ng;
++    convert_ng(nt->getDict(),mt->getDict(),ng,mng);    // convert back to LM own's encoding to query lprob()
++    tprob = this->lprob(tng);
++    mprob = mt->lprob(mng);    //cerr << "    t ngram "; print_ng(this,tng); cerr<<" tlprob(tng) "<<tprob<<endl;
++    //cerr << "    m ngram "; print_ng(mt,mng);   cerr<<" mlprob(mng) "<<mprob<<endl;
++    double eprob = (1.-weight)*exp((double)tprob*M_LN10) + weight*exp((double)mprob*M_LN10);
++    totCurrProb += eprob;
++    float nprob = log(eprob)/M_LN10;
++    float nbow = log(1.-totSuccProb)/M_LN10;
++    //cerr << "    combining probs "<<tprob<<" and "<<mprob<<" to yield "<<nprob<<", totSuccProb "<<totSuccProb<<" to yield "<<nbow<<endl;
++    nt->prob(newentry,ndt,nprob);
++    nt->bow(newentry,ndt,nbow);
++    if (cmp==0) {
++      // advance in both tables
++      tp++, mp++;
++    } else if (cmp<0) {
++      tp++;
++    } else {
++      mp++;
++    }
++    if (ilev<maxlev) nt->bound(newentry,ndt,nt->cursize[ilev+1]); //store in bound end position at next level
++    nt->cursize[ilev]++;
++    //cerr << "NEW TABLE : cursize= "<<nt->cursize[ilev]<<" ";
++    //nt->printTable(ilev);
++  }  // end of loop on successor table positions  
++  //flush(cout);
++  // return total probability mass from successors
++  return(totCurrProb);
++}
+ 
+ // saves a LM table in text format
+ 
+--- src/lmtable.h	2011-08-15 17:15:32.000000000 -0400
++++ ../irstlm-5.60.02/src/lmtable.h	2011-08-15 17:06:17.000000000 -0400
+@@ -258,6 +258,22 @@
+   void expand_level_mmap(int level, table_entry_pos_t size, const char* outfilename);	
+   lmtable* cpsublm(dictionary* subdict,bool keepunigr=true);
+ 
++  void dumpLevel(int ilev);
++  int translate(dictionary *fromDict, dictionary *toDict, int w);
++  void convert_ng(dictionary *fromDict, dictionary *toDict, ngram ng, ngram &tng);
++  void print_ng(lmtable* lmt, ngram ng);
++  lmtable* mergelm(lmtable* mt, float weight);
++  double addSucc(lmtable* mt, ngram ng, float weight, int ilev, int elev, 
++                 table_entry_pos_t ipos, 
++                 table_entry_pos_t epos,
++                 lmtable *nt);
++  double combineSucc(lmtable *mt, ngram ng, float weight, int ilev, int elev, 
++                     table_entry_pos_t tstart, 
++                     table_entry_pos_t tend,
++                     table_entry_pos_t mstart,
++                     table_entry_pos_t mend,
++                     lmtable *nt);
++
+   int reload(std::set<string> words);
+ 	
+   void filter(const char* /* unused parameter: lmfile */){};
+--- src/interpolate-lm.cpp	2011-08-15 17:15:32.000000000 -0400
++++ ../irstlm-5.60.02/src/interpolate-lm.cpp	2011-08-15 17:08:15.000000000 -0400
+@@ -43,6 +43,7 @@
+ std::string ssent_PP_flag = "no";
+ std::string sdictionary_load_factor = "0.0";
+ std::string sngramcache_load_factor = "0.0";
++std::string swrite = "";
+ 
+ /********************************/
+ 
+@@ -71,8 +72,8 @@
+             << "--sentence [yes|no] (compute pperplexity at sentence level (identified through the end symbol)"<< std::endl
+             << "--memmap| -mm 1      use memory map to read a binary LM" << std::endl
+             << "--ngram_load_factor <value> (set the load factor for ngram cache ; it should be a positive real value; if not defined a default value is used)" << std::endl
+-            << "--dict_load_factor <value> (set the load factor for ngram cache ; it should be a positive real value; if not defined a default value is used)" << std::endl;
+-  
++            << "--dict_load_factor <value> (set the load factor for ngram cache ; it should be a positive real value; if not defined a default value is used)" << std::endl
++            << "--write|-w text-file write LM to text-file" << std::endl;  
+ }
+ 
+ 
+@@ -134,6 +135,9 @@
+ 		  else
+ 		    if (starts_with(opt, "--ngram_load_factor"))
+ 		      sngramcache_load_factor = get_param(opt, argc, argv, argi);
++        else
++          if (starts_with(opt, "--write") || starts_with(opt, "-w"))
++            swrite = get_param(opt, argc, argv, argi);     
+  
+ 		    else {
+ 		      usage(("Don't understand option " + opt).c_str());
+@@ -546,6 +550,28 @@
+ 
+   }
+ 
++  // code for writing interpolated result to file
++  if (swrite != "") {
++    // TODO: normalize weights to do file-by-file interpolation
++
++    // new lmtable to store interpolated results
++    lmtable *nlmt=NULL, *ilmt=NULL;
++
++    // loop over lm files, adding each to the lmtable with weight
++    std::cerr << "Current model is " << lmf[0].c_str() << std::endl;
++    ilmt = lmt[0];
++    for (int i=1;i<2 /* N not supported currently */ ;i++) {
++      std::cerr << "Interpolating current model with " << lmf[i].c_str() << "..." << std::endl;
++      nlmt = ilmt->mergelm(lmt[i], w[i]);
++      if (dub) nlmt->setlogOOVpenalty(dub); // set OOV Penalty for each LM
++
++      ilmt = nlmt;  // not good, memory leak if we don't delete any. Should rather keep an array of nlmt and delete all of them at the end
++    }
++    // write final lmtable
++    std::cerr << "Writing interpolated LM to " << swrite << std::endl;
++    nlmt->savetxt(swrite.c_str());
++  }
++    
+   for (int i=0;i<N;i++) delete lmt[i];
+ 	
+   return 0;
