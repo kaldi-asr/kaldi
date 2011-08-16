@@ -81,8 +81,7 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
       Lattice best_path;
       fst::ShortestPath(lat, &best_path);
       if (best_path.Start() == fst::kNoStateId) {
@@ -113,9 +112,8 @@ int main(int argc, char *argv[]) {
           if (acoustic_scale == 0.0)
             KALDI_ERR << "You can't use zero acoustic scale and write best-path"
                       << " as FSTs (use a very small scale instead).";
-          if (acoustic_scale != 1.0)
-            fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
-                              &best_path);
+          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                            &best_path);
           CompactLattice clat;
           ConvertLattice(best_path, &clat);
           compact_lattice_writer.Write(key, clat);

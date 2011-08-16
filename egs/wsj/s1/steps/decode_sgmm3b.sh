@@ -23,7 +23,7 @@
 
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_sgmm3b.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: steps/decode_sgmm3b.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 

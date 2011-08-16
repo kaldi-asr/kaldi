@@ -248,6 +248,8 @@ void ScaleLattice(
     const vector<vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst) {
   assert(scale.size() == 2 && scale[0].size() == 2 && scale[1].size() == 2);
+  if (scale == DefaultLatticeScale()) // nothing to do.
+    return;
   typedef ArcTpl<Weight> Arc;
   typedef MutableFst<Arc> Fst;
   typedef typename Arc::StateId StateId;
@@ -266,6 +268,20 @@ void ScaleLattice(
       fst->SetFinal(s, ScaleTupleWeight(final_weight, scale));
   }
 }
+
+
+template<class Weight, class Int>
+void PruneCompactLattice(
+    Weight beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst) {
+  VectorFst<ArcTpl<Weight> > lattice, pruned_lattice; // in non-compact form
+  ConvertLattice(*fst, &lattice);
+  fst->DeleteStates();
+  Prune(lattice, &pruned_lattice, beam);
+  ConvertLattice(pruned_lattice, fst);
+}
+
+
 
 
 }

@@ -31,11 +31,10 @@ using std::tr1::unordered_map;
 namespace kaldi {
 
 int32 CalculateStateTimes(const Lattice &lat, vector<int32> *times) {
-  uint64 props = lat.Properties(fst::kFstProperties, false);
+  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
   KALDI_ASSERT(props & fst::kTopSorted);
 
-  int32 num_states = lat.NumStates(),
-      max_time = 0;
+  int32 num_states = lat.NumStates();
   times->resize(num_states, -1);
   (*times)[0] = 0;
   for (int32 state = 0; state < num_states; ++state) {
@@ -48,7 +47,6 @@ int32 CalculateStateTimes(const Lattice &lat, vector<int32> *times) {
         // next time instance
         if ((*times)[arc.nextstate] == -1) {
           (*times)[arc.nextstate] = cur_time + 1;
-          max_time = cur_time + 1;
         } else {
           KALDI_ASSERT((*times)[arc.nextstate] == cur_time + 1);
         }
@@ -61,7 +59,7 @@ int32 CalculateStateTimes(const Lattice &lat, vector<int32> *times) {
       }
     }
   }
-  return max_time;
+  return (*std::max_element(times->begin(), times->end())) + 1;
 }
 
 
@@ -139,7 +137,7 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
 }
 
 BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
-  uint64 props = lat.Properties(fst::kFstProperties, false);
+  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
   KALDI_ASSERT(props & fst::kTopSorted);
 
   KALDI_ASSERT(lat.Start() == 0);
@@ -152,7 +150,8 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
       state_betas(num_states, kLogZeroDouble);
   state_alphas[0] = 0.0;
 
-  vector< unordered_map<int32, double> > arc_alphas, arc_betas;
+  vector< unordered_map<int32, double> > arc_alphas(max_time),
+      arc_betas(max_time);
   double lat_forward_prob = kLogZeroDouble;
 
   // Forward pass
@@ -172,7 +171,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   for (int32 state = num_states -1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, active_states, &state_betas,
-                 &arc_betas[cur_time]);
+                 &arc_betas[cur_time - 1]);
   }
   double lat_backward_prob = state_betas[0];  // Initial state id == 0
   if (!ApproxEqual(lat_forward_prob, lat_backward_prob, 1e-6)) {
@@ -181,11 +180,10 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   }
 
   // Compute posteriors
-  arc_post->resize(max_time);
-  for (int32 cur_time = 0; cur_time < max_time; ++cur_time) {
+  arc_post->resize(max_time -1);
+  for (int32 cur_time = 0; cur_time < max_time - 1; ++cur_time) {
     size_t num_arcs = arc_alphas[cur_time].size();
     KALDI_ASSERT(arc_betas[cur_time].size() == num_arcs);
-    (*arc_post)[cur_time].resize(num_arcs);
     Vector<double> post(num_arcs);
     unordered_map<int32, double>::const_iterator alpha_itr =
         arc_alphas[cur_time].begin();
@@ -230,9 +228,12 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n";
       
     BaseFloat acoustic_scale = 1.0;
+    std::string lats_wspecifier;
     ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
+    po.Register("expand-lat", &lats_wspecifier,
+                "Write expanded lattices to this archive.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -249,6 +250,8 @@ int main(int argc, char *argv[]) {
     // Read as regular lattice
     SequentialLatticeReader lattice_reader(lats_rspecifier);
 
+    LatticeWriter lattice_writer(lats_wspecifier);
+
     PosteriorWriter posterior_writer(posteriors_wspecifier);
 
     int32 n_done = 0; // there is no failure mode, barring a crash.
@@ -260,12 +263,14 @@ int main(int argc, char *argv[]) {
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
-      uint64 props = lat.Properties(fst::kFstProperties, false);
+      kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         KALDI_WARN << "Supplied lattice not topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
       }
+
+      lattice_writer.Write(key, lat);
 
       Posterior post;
       LatticeForwardBackward(lat, &post);

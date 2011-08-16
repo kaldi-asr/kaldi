@@ -69,14 +69,12 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
       Lattice nbest_lat;
       fst::ShortestPath(lat, &nbest_lat, n);
       if (nbest_lat.Start() != fst::kNoStateId)
         n_paths_out += nbest_lat.NumArcs(nbest_lat.Start());
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &nbest_lat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &nbest_lat);
       CompactLattice nbest_clat;
       ConvertLattice(nbest_lat, &nbest_clat);
       compact_lattice_writer.Write(key, nbest_clat);

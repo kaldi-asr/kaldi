@@ -73,7 +73,6 @@ template<class Arc> void TestDeterminizeLattice() {
   typedef int32 Int;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
   
-  int max_states = 100; // don't allow more det-states than this.
   for(int i = 0; i < 100; i++) {
     RandFstOptions opts;
     opts.n_states = 4;
@@ -94,7 +93,12 @@ template<class Arc> void TestDeterminizeLattice() {
     }
     VectorFst<Arc> det_fst;
     try {
-      DeterminizeLattice<TropicalWeight, int32>(*fst, &det_fst, kDelta, NULL, max_states);
+      DeterminizeLatticeOptions lat_opts;
+      lat_opts.max_loop = 100;
+      lat_opts.max_arcs = 100;
+      
+      if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &det_fst, lat_opts, NULL))
+        throw std::runtime_error("could not determinize");
       std::cout << "FST after lattice-determinizing is:\n";
       {
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
@@ -113,8 +117,9 @@ template<class Arc> void TestDeterminizeLattice() {
       }
       if(rand() % 2 == 1)
         ConvertLattice<Weight, Int>(det_fst, &compact_det_fst, false);
-      else 
-        DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, kDelta, NULL, max_states);
+      else
+        if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, lat_opts, NULL))
+          throw std::runtime_error("could not determinize");
       
       std::cout << "Compact version of determinized FST is:\n";
       {

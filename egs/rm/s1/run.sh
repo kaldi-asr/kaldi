@@ -44,7 +44,6 @@ mkdir -p data
 # This next step converts the lexicon, grammar, etc., into FST format.
 steps/prepare_graphs.sh
 
-
 # Next, make sure that "exp/" is someplace you can write a significant amount of
 # data to (e.g. make it a link to a file on some reasonably large file system).
 # If it doesn't exist, the scripts below will make the directory "exp".

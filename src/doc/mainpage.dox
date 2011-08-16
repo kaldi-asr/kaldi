@@ -64,10 +64,11 @@
    - \ref graph_recipe_train
    - \ref fst_algo 
    - \ref decoders 
+   - \ref lattices
    - \ref feat
    - \ref model
    - \ref transform
    - \ref feat
    - \ref tools
-
+<P>
 */

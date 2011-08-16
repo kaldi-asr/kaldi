@@ -23,7 +23,7 @@
 
 
 if [ $# != 4 ]; then
-   echo "Usage: scripts/decode_sgmm2d.sh <graph> <decode-dir> <job-number> <graph-for-tri2k>"
+   echo "Usage: steps/decode_sgmm2d.sh <graph> <decode-dir> <job-number> <graph-for-tri2k>"
    exit 1;
 fi
 

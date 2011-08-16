@@ -18,11 +18,17 @@ parser.add_option('--gauss', dest='gauss', help='use gaussian noise for weights'
 parser.add_option('--negbias', dest='negbias', help='use uniform [-4.1,-3.9] for bias (defaultall 0.0)', action='store_true', default=False)
 parser.add_option('--inputscale', dest='inputscale', help='scale the weights by 3/sqrt(Ninputs)', action='store_true', default=False)
 parser.add_option('--linBNdim', dest='linBNdim', help='dim of linear bottleneck (sigmoids will be omitted, bias will be zero)',default=0)
+parser.add_option('--seed', dest='seedval', help='seed for random generator',default=0)
 (options, args) = parser.parse_args()
 
 if(options.dim == None):
     parser.print_help()
     sys.exit(1)
+
+#seeding
+seedval=int(options.seedval)
+if(seedval != 0):
+    random.seed(seedval)
 
 
 dimStrL = options.dim.split(':')

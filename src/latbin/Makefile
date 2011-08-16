@@ -4,8 +4,8 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest lattice-union \
-	lattice-to-post
+BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
+           lattice-lmrescore lattice-scale lattice-union lattice-to-post
 
 OBJFILES =
 

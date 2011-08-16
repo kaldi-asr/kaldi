@@ -35,17 +35,16 @@ int main(int argc, char *argv[]) {
         "paths through lattice.  Does this by composing with LM FST, then\n"
         "lattice-determinizing (it has to negate weights first if lm_scale<0)\n"
         "Usage: lattice-lmrescore [options] lattice-rspecifier lm-fst-in lattice-wspecifier\n"
-        " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats ark:out.lats\n";
+        " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats data/G.fst ark:out.lats\n";
       
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
     
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs");
-    po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]");
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
@@ -54,21 +53,45 @@ int main(int argc, char *argv[]) {
         fst_rxfilename = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-    VectorFst<StdArc> *lm_fst = NULL; 
+
+    VectorFst<LatticeArc> lm_fst;
+
     {
+      VectorFst<StdArc> *std_lm_fst = NULL; 
       Input ki(fst_rxfilename);
-      lm_fst = VectorFst<StdArc>::Read(
+      std_lm_fst = VectorFst<StdArc>::Read(
           ki.Stream(),
           fst::FstReadOptions((std::string)fst_rxfilename));
-      if (lm_fst == NULL)
+      if (std_lm_fst == NULL)
         exit(1);
+
+      // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
+      // with all the cost on the first member of the pair (since it's a graph
+      // weight).
+      fst::LatticeToStdMapper<BaseFloat> mapper;
+      fst::MapFst<StdArc, LatticeArc, fst::LatticeToStdMapper<BaseFloat> >
+          mapped_fst(*std_lm_fst, mapper);
+      lm_fst = mapped_fst;
     }
 
-    // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
-    // with all the cost on the first member of the pair (since it's a graph
-    // weight).
-    fst::LatticeToStdMapper mapper;
-    MapFst<StdArc, LatticeArc, LatticeToStdMapper> mapped_fst(lm_fst, mapper);
+    { // Make sure LM is sorted on ilabel.
+      fst::ILabelCompare<LatticeArc> ilabel_comp;
+      fst::ArcSort(&lm_fst, ilabel_comp);
+    }
+
+    // The next fifteen or so lines are a kind of optimization and
+    // can be ignored if you just want to understand what is going on.
+    // Change the options for TableCompose to match the input
+    // (because it's the arcs of the LM FST we want to do lookup
+    // on).
+    fst::TableComposeOptions compose_opts(fst::TableMatcherOptions(),
+                                          true, fst::SEQUENCE_FILTER,
+                                          fst::MATCH_INPUT);
+    
+    // The following is an optimization for the TableCompose
+    // composition: it stores certain tables that enable fast
+    // lookup of arcs during composition.
+    fst::TableComposeCache<fst::Fst<LatticeArc> > lm_compose_cache(compose_opts);
     
     // Read as regular lattice-- this is the form we need it in for efficient
     // composition and determinization.
@@ -77,50 +100,50 @@ int main(int argc, char *argv[]) {
     // Write as compact lattice.
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
-    int32 n_done = 0; // there is no failure mode, barring a crash.
-    int64 n_arcs_in = 0, n_arcs_out = 0,
-        n_states_in = 0, n_states_out = 0;
-
+    int32 n_done = 0, n_fail = 0;
+    
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
       if (lm_scale != 0.0) {
         // Only need to modify it if LM scale nonzero.
-        if (
+        // Before composing with the LM FST, we scale the lattice weights
+        // by the inverse of "lm_scale".  We'll later scale by "lm_scale".
+        // We do it this way so we can determinize and it will give the
+        // right effect (taking the "best path" through the LM) regardless
+        // of the sign of lm_scale.
+        fst::ScaleLattice(fst::GraphLatticeScale(1.0/lm_scale), &lat);
 
+        
+        Lattice composed_lat;
+        // Could just do, more simply: Compose(Lat, lm_fst, &composed_lat);
+        // and not have lm_compose_cache at all.
+        // The command below is faster, though; it's constant not
+        // logarithmic in vocab size.
+        TableCompose(lat, lm_fst, &composed_lat, &lm_compose_cache);
 
+        Invert(&composed_lat); // make it so word labels are on the input.
+        CompactLattice determinized_lat;
+        DeterminizeLattice(composed_lat, &determinized_lat);
+        fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_lat);
+        if (determinized_lat.Start() == fst::kNoStateId) {
+          KALDI_WARN << "Empty lattice for key " << key << " (incompatible LM?)";
+          n_fail++;
+        } else {
+          compact_lattice_writer.Write(key, determinized_lat);
+          n_done++;
+        }
+      } else {
+        // zero scale so nothing to do.
+        n_done++;
+        CompactLattice compact_lat;
+        ConvertLattice(lat, &compact_lat);
+        compact_lattice_writer.Write(key, compact_lat);
       }
-
-      
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
-      int64 narcs = NumArcs(lat), nstates = lat.NumStates();
-      n_arcs_in += narcs;
-      n_states_in += nstates;
-      Lattice pruned_lat;
-      Prune(lat, &pruned_lat, beam_weight);
-      int64 pruned_narcs = NumArcs(pruned_lat),
-          pruned_nstates = pruned_lat.NumStates();
-      n_arcs_out += pruned_narcs;
-      n_states_out += pruned_nstates;
-      KALDI_LOG << "For utterance " << key << ", pruned #states from "
-                << nstates << " to " << pruned_nstates << " and #arcs from"
-                << narcs << " to " << pruned_narcs;
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_lat);
-      CompactLattice pruned_clat;
-      ConvertLattice(pruned_lat, &pruned_clat);
-      compact_lattice_writer.Write(key, pruned_clat);
-      n_done++;
     }
 
-    BaseFloat den = (n_done > 0 ? static_cast<BaseFloat>(n_done) : 1.0);
-    KALDI_LOG << "Overall, pruned from on average " << (n_states_in/den) << " to "
-              << (n_states_out/den) << " states, and from " << (n_arcs_in/den)
-              << " to " << (n_arcs_out/den) << " arcs, over " << n_done
-              << " utterances.";
-    KALDI_LOG << "Done " << n_done << " lattices.";
+    KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

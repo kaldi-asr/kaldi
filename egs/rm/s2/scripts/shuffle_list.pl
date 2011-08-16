@@ -16,8 +16,14 @@
 # limitations under the License.
 
 
+#seeding is optional...
+if($#ARGV==0) {
+    srand($ARGV[0]);
+}
+
+
 # This script shuffles lines of a list. 
 # The list is read from stdin and written to stdout. 
-@X = <>;
+@X = <STDIN>;
 @X = sort { rand() <=> rand() } @X;
 print @X; 

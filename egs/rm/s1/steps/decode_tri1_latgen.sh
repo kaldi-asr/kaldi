@@ -45,9 +45,10 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
    lattice-best-path --acoustic-scale=$acwt --word-symbol-table=data/words.txt \
       "ark:gunzip -c $dir/test_${test}.lat.gz|" ark:$dir/test_${test}.acwt${inv_acwt}.tra \
       2>$dir/rescore_${inv_acwt}.log
+
    scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
-   compute-wer --mode=present ark:-  ark,p:$dir/test_${test}.acwt${inv_acwt}.tra \
-     >& $dir/wer_${test}_${inv_acwt}
+    compute-wer --mode=present ark:-  ark,p:$dir/test_${test}.acwt${inv_acwt}.tra \
+     >& $dir/wer_${inv_acwt}
  done
 
  ) &
@@ -97,3 +98,8 @@ lattice-prune --acoustic-scale=0.08333 --beam=7 "ark:gunzip -c $dir/tmp.10.lat.g
 lattice-equivalent "ark:gunzip -c $dir/tmp.pr.10.lat.gz|" "ark:gunzip -c $dir/tmp.pr2.10.lat.gz|" \
  || exit 1;
 
+
+# The following command checks that the lattice-lmrescore program
+# runs OK and doesn't change the lattices if you apply it twice with opposite
+# weights.
+lattice-lmrescore --lm-scale=1.0 "ark:gunzip -c $dir/test_feb89.lat.gz|" data/G.fst ark:- | lattice-lmrescore --lm-scale=-1.0 ark:- data/G.fst ark:- |  lattice-equivalent ark:- "ark:gunzip -c $dir/test_feb89.lat.gz|" || exit 1;

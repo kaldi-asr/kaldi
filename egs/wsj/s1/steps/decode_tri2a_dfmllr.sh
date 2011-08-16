@@ -25,7 +25,7 @@
 # this script will assume you want to do per-speaker adaptation.
 
 if [ $# != 3 ]; then
-   echo "Usage: scripts/decode_tri2a_fmllr.sh <graph> <decode-dir> <job-number>"
+   echo "Usage: steps/decode_tri2a_fmllr.sh <graph> <decode-dir> <job-number>"
    exit 1;
 fi
 

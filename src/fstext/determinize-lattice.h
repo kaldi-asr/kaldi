@@ -94,6 +94,14 @@ namespace fst {
 */   
 
 
+struct DeterminizeLatticeOptions {
+  float delta;
+  int max_arcs;
+  int max_loop;
+  DeterminizeLatticeOptions(): delta(kDelta),
+      max_arcs(-1), max_loop(-1) { }
+};
+
 /**
     This function implements the normal version of DeterminizeLattice, in which the
     output strings are represented using sequences of arcs, where all but the
@@ -102,30 +110,31 @@ namespace fst {
     executing, the algorithm will print a traceback and terminate (used in
     fstdeterminizestar.cc debug non-terminating determinization).
     More efficient if ifst is arc-sorted on input label.
-    If the #states gets more than max_states, it will throw std::runtime_error (otherwise
+    If the #arcs gets more than max_states, it will throw std::runtime_error (otherwise
     this code does not use exceptions).  This is mainly useful for debug.
 */
 template<class Weight, class IntType>
-void DeterminizeLattice(const Fst<ArcTpl<Weight> > &ifst,
-                        MutableFst<ArcTpl<Weight> > *ofst,
-                        float delta = kDelta,
-                        bool *debug_ptr = NULL,
-                        int max_states = -1);
+bool DeterminizeLattice(
+    const Fst<ArcTpl<Weight> > &ifst,
+    MutableFst<ArcTpl<Weight> > *ofst,
+    DeterminizeLatticeOptions opts = DeterminizeLatticeOptions(),
+    bool *debug_ptr = NULL);
 
 
 /*  This is a version of DeterminizeLattice with a slightly more "natural" output format,
     where the output sequences are encoded using the CompactLatticeArcTpl template
     (i.e. the sequences of output symbols are represented directly as strings)
     More efficient if ifst is arc-sorted on input label.
-    If the #states gets more than max_states, it will throw std::runtime_error (otherwise
+    If the #arcs gets more than max_arcs, it will throw std::runtime_error (otherwise
     this code does not use exceptions).  This is mainly useful for debug.
 */
 template<class Weight, class IntType>
-void DeterminizeLattice(const Fst<ArcTpl<Weight> >&ifst,
-                        MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
-                        float delta = kDelta,
-                        bool *debug_ptr = NULL,
-                        int max_states = -1);
+bool DeterminizeLattice(
+    const Fst<ArcTpl<Weight> >&ifst,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticeOptions opts = DeterminizeLatticeOptions(),
+    bool *debug_ptr = NULL);
+
 
 
 
