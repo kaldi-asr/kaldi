@@ -17,13 +17,47 @@
 
 exit 1 # Don't run this... it's to be run line by line from the shell.
 
+# call the next line with the directory where the RM data is
+# (the argument below is just an example).  This should contain
+# subdirectories named as follows:
+#    rm1_audio1  rm1_audio2	rm2_audio
+local/RM_data_prep.sh /mnt/matylda2/data/RM/
+
+local/RM_format_data.sh
+
+###
 
 notes on structure...
 
 
-data_prep/ will contain temporary data used when preparing data/?
 
-local_scripts/ contains the most RM-specific scripts. [used to create data_prep/]
+
+scripts/ contains generic scripts
+local/ contains more corpus-specific scripts
+steps/ contains system-building steps...
+
+
+data/local  contains temp., local stuff
+data/train
+data/train.1k
+data/lang  [note: could have separate dirs like this for different test sets]
+data/test_feb89
+data/test_feb89
+
+
+local/RM_data_prep.sh
+
+
+steps/train_mono.sh
+
+
+
+
+exp/ contains experiments.
+  [ Decode_dirs in subdir of exp. dir? ]
+
+
+ocal_scripts/ contains the most RM-specific scripts. [used to create data_prep/]
 
 scripts/ will contain generic scipts.
 
