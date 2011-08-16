@@ -29,7 +29,8 @@ namespace kaldi {
 
 int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
-  KALDI_ASSERT(props & fst::kTopSorted);
+  if (!(props & fst::kTopSorted))
+    KALDI_ERR << "Input lattice must be topologically sorted.";
 
   int32 num_states = lat.NumStates();
   times->resize(num_states, -1);
@@ -72,10 +73,12 @@ static void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
 
 
 BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
+  // Make sure the lattice is topologically sorted.
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
-  KALDI_ASSERT(props & fst::kTopSorted);
-
+  if (!(props & fst::kTopSorted))
+    KALDI_ERR << "Input lattice must be topologically sorted.";
   KALDI_ASSERT(lat.Start() == 0);
+
   int32 num_states = lat.NumStates();
   vector<int32> state_times;
   int32 max_time = LatticeStateTimes(lat, &state_times);

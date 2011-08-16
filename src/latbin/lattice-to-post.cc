@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0;
     double total_like = 0.0, lat_like;
-    int64 total_time = 0, lat_time;
+    double total_time = 0, lat_time;
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
@@ -69,7 +69,8 @@ int main(int argc, char *argv[]) {
 
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        KALDI_WARN << "Supplied lattice not topologically sorted. Sorting it.";
+        KALDI_WARN << "Utterance " << key << ": Supplied lattice not "
+                   << "topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
       }
