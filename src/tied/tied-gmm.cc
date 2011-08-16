@@ -49,6 +49,7 @@ void TiedGmm::CopyFromTiedGmm(const TiedGmm &copy) {
 int32 TiedGmm::ComputeGconsts() {
   int32 num_mix = NumGauss();
   int32 num_bad = 0;
+  gconsts_.Resize(num_mix);
   
   for (int32 mix = 0; mix < num_mix; mix++) {
     KALDI_ASSERT(weights_(mix) >= 0);  // Cannot have negative weights.
@@ -159,6 +160,7 @@ void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<PDF_INDEX>");
   WriteBasicType(out_stream, binary, pdf_index_);
+  if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<GCONSTS>");
   gconsts_.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "<WEIGHTS>");

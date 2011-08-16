@@ -123,7 +123,6 @@ class TiedGmm {
   }
 
   /// Const accessors
-  const int32 Dim() const { return weights_.Dim(); }
   const Vector<BaseFloat>& weights() const { return weights_; }
   const int32& pdf_index() const { return pdf_index_; }
 

@@ -37,7 +37,7 @@ class AmTiedDiagGmm {
 
   /// Initializes with a single GMM as codebook and initializes num_tied_pdfs
   /// (uniform) tied pdfs
-  void Init(const DiagGmm &proto, int32 num_tied_pdfs);
+  void Init(const DiagGmm &proto);
   
   /// Adds a DiagGmm as codebook to the model
   void AddPdf(const DiagGmm &gmm);
@@ -68,7 +68,7 @@ class AmTiedDiagGmm {
 
   /// This needs to be called for each frame prior to any likelihood computation
   void ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
-                           TiedGmmPerFrameVars *per_frame_vars);
+                           TiedGmmPerFrameVars *per_frame_vars) const;
 
   BaseFloat LogLikelihood(const TiedGmmPerFrameVars &per_frame_vars,
                           const int32 pdf_index) const;

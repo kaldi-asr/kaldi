@@ -4,9 +4,9 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = 
+TESTFILES = am-tied-diag-gmm-test
 
-OBJFILES = tied-gmm.o mle-tied-gmm.o am-tied-diag-gmm.o mle-am-tied-diag-gmm.o 
+OBJFILES = tied-gmm.o mle-tied-gmm.o am-tied-diag-gmm.o mle-am-tied-diag-gmm.o am-tied-diag-gmm-test.o
 
 LIBFILE = kaldi-tied-gmm.a
 
