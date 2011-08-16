@@ -25,6 +25,13 @@
 #include <vector>
 #include <string>
 
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
+#include <tr1/unordered_map>
+#endif
+using std::tr1::unordered_map;
+
 #ifndef HAVE_IRSTLM
 #else
 #include "irstlm/lmtable.h"
@@ -61,6 +68,7 @@ typedef fst::StdArc::StateId StateId;
 /// @brief Helper methods to convert toolkit internal representations into FST.
 class LmFstConverter {
   typedef fst::StdArc::StateId StateId;
+  typedef unordered_map<fst::StdArc::StateId, fst::StdArc::StateId> BkStateMap;
 
  public:
 
@@ -95,6 +103,8 @@ class LmFstConverter {
     return(pfst->Final(s) != fst::StdArc::Weight::Zero());
   }
 
+  void ConnectUnusedStates(fst::StdVectorFst* pfst);
+
  private:
   StateId AddStateFromSymb(const std::vector<string> &ngramString,
                             int kstart,
@@ -105,6 +115,7 @@ class LmFstConverter {
                             bool& newlyAdded);
 
   bool use_natural_log_;
+  BkStateMap bkState_;
 };
 
 #ifndef HAVE_IRSTLM
