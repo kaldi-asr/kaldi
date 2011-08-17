@@ -62,8 +62,6 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
     return (frame == NumFrames() - 1);
   }
 
-  virtual bool ComparePdfId(int32 ind1, int32 ind2) { return ind1 == ind2; }
-  
   void ResetLogLikeCache();
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
@@ -100,13 +98,8 @@ class DecodableAmDiagGmm : public DecodableAmDiagGmmUnmapped {
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
-  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
-    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
-    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
-    return index1 == index2;
-  }
 
- private:
+// private: // want it public to have pdf id information
   const TransitionModel &trans_model_;  // for tid to pdf mapping
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmm);
 };
@@ -127,13 +120,8 @@ class DecodableAmDiagGmmScaled : public DecodableAmDiagGmmUnmapped {
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
-  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
-    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
-    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
-    return index1 == index2;
-  }
 
- private:
+// private: // want it public to have pdf id information
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmScaled);
@@ -160,17 +148,13 @@ class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
-  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
-    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
-    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
-    return index1 == index2;
-  }
 
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
- private:
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
+ // we want trans_model_ to be public to have access to pdf ids
+ private:
   BaseFloat scale_;
   const RegtreeFmllrDiagGmm &fmllr_xform_;
   const RegressionTree &regtree_;
@@ -205,12 +189,10 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
-  virtual bool ComparePdfId(int32 tid1, int32 tid2) {
-    int32 index1 = trans_model_.TransitionIdToPdf(tid1);
-    int32 index2 = trans_model_.TransitionIdToPdf(tid2);
-    return index1 == index2;
-  }
 
+  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
+  // we want it public to have access to the pdf ids
+  
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
@@ -224,7 +206,6 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
   /// likelihood calculation. The 'state_index' is 0-based.
   const Vector<BaseFloat>& GetXformedGconsts(int32 state_index);
 
-  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
   const RegtreeMllrDiagGmm &mllr_xform_;
   const RegressionTree &regtree_;
