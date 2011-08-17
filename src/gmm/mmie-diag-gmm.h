@@ -1,6 +1,6 @@
 // gmm/mmie-diag-gmm.h
 
-// Copyright 2009-2011  Arnab Ghoshal
+// Copyright 2009-2011  Arnab Ghoshal, Petr Motlicek
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,10 @@ struct MmieDiagGmmOptions : public MleDiagGmmOptions {
 class MmieDiagGmm {
  public:
   MmieDiagGmm(): dim_(0), num_comp_(0), flags_(0) {}
+  //MmieDiagGmm() {}
+
+  /// Allocates memory for accumulators
+  void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
 
   /// Computes the difference between the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed.
@@ -77,24 +81,43 @@ class MmieDiagGmm {
 
   BaseFloat MmiObjective(const DiagGmm& gmm) const;
 
- private:
+  // Accessors
+  //const GmmFlagsType Flags() const { return flags_; }
+  const Vector<double>& occupancy() const { return occupancy_; }
+  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
+  const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
+
+
+  private:
+  int32 dim_;
+  int32 num_comp_;
+  /// Flags corresponding to the accumulators that are stored.
+  GmmFlagsType flags_;
+
   /// Accumulators
   // TODO(arnab): not decided yet whether to store the difference or keep the
   //              num and den accs for mean and var.
-  Vector<double> num_occupancy_;
-  Vector<double> den_occupancy_;
+  //     (petr): storing the difference in this version
+  
+  //Vector<double> num_occupancy_;
+  //Vector<double> den_occupancy_;
+  Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
 
   BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
 
+  /// Returns "augmented" version of flags: e.g. if just updating means, need
+  /// weights too.
+  static GmmFlagsType AugmentFlags(GmmFlagsType f);
+
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(MmieDiagGmm);
 };
 
-inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
-  Resize(gmm.NumGauss(), gmm.Dim(), flags);
-}
+//inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
+//  Resize(gmm.NumGauss(), gmm.Dim(), flags);
+//}
 
 }  // End namespace kaldi
 

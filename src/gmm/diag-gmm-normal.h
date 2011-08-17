@@ -52,8 +52,8 @@ class DiagGmmNormal {
   void CopyToDiagGmm(DiagGmm *diaggmm);
 
   Vector<double> weights_;        ///< weights (not log).
-  Matrix<double> means_;       ///< Means
-  Matrix<double> vars_;  ///< diagonal variance
+  Matrix<double> means_;          ///< Means
+  Matrix<double> vars_;           ///< diagonal variance
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DiagGmmNormal);
 };
