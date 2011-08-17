@@ -94,6 +94,7 @@ class FullGmm {
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>
   void SetMeans(const Matrix<Real>& m);
+  
   /// Use SetInvCovarsAndMeans if updating both means and (inverse) covariances
   template<class Real>
   void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> >& invcovars,

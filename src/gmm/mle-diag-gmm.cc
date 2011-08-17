@@ -302,7 +302,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
     double occ = diaggmm_acc.occupancy()(g);
     double prob;
     if (occ_sum != 0.0)
-      prob = diaggmm_acc.occupancy()(g) / occ_sum;
+      prob = occ / occ_sum;
     else
       prob = 1.0 / num_comp;
     if (occ > static_cast<double>(config.min_gaussian_occupancy)

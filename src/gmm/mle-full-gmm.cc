@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
 //                      Microsoft Corporation;  Georg Stemmer
+//                      Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,24 +26,22 @@
 namespace kaldi {
 
 
-MlEstimateFullGmm::MlEstimateFullGmm(const MlEstimateFullGmm &other)
+AccumFullGmm::AccumFullGmm(const AccumFullGmm &other)
   : dim_(other.dim_), num_comp_(other.num_comp_),
     flags_(other.flags_), occupancy_(other.occupancy_),
     mean_accumulator_(other.mean_accumulator_),
     covariance_accumulator_(other.covariance_accumulator_) {}
 
 
-GmmFlagsType MlEstimateFullGmm::AugmentFlags(GmmFlagsType f) {
-  assert((f & ~kGmmAll) == 0);  // make sure only valid flags are present.
+GmmFlagsType AccumFullGmm::AugmentFlags(GmmFlagsType f) {
+  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present.
   if (f & kGmmVariances) f |= kGmmMeans;
   if (f & kGmmMeans) f |= kGmmWeights;
-  assert(f & kGmmWeights);  // make sure zero-stats will be accumulated
+  KALDI_ASSERT(f & kGmmWeights);  // make sure zero-stats will be accumulated
   return f;
 }
 
-
-void MlEstimateFullGmm::ResizeAccumulators(int32 num_comp, int32 dim,
-                                           GmmFlagsType flags) {
+void AccumFullGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   num_comp_ = num_comp;
   dim_ = dim;
   flags_ = AugmentFlags(flags);
@@ -51,36 +50,14 @@ void MlEstimateFullGmm::ResizeAccumulators(int32 num_comp, int32 dim,
     mean_accumulator_.Resize(num_comp, dim);
   else
     mean_accumulator_.Resize(0, 0);
+    
   if (flags_ & kGmmVariances)
     ResizeVarAccumulator(num_comp, dim);
   else
     covariance_accumulator_.clear();
 }
 
-void MlEstimateFullGmm::ZeroAccumulators(GmmFlagsType flags) {
-  if (flags & ~flags_)
-    KALDI_ERR << "Flags in argument do not match the active accumulators";
-  if (flags & kGmmWeights) occupancy_.SetZero();
-  if (flags & kGmmMeans) mean_accumulator_.SetZero();
-  if (flags & kGmmVariances) {
-    for (int32 i = 0, end = covariance_accumulator_.size(); i < end; ++i)
-      covariance_accumulator_[i].SetZero();
-  }
-}
-
-void MlEstimateFullGmm::ScaleAccumulators(BaseFloat f, GmmFlagsType flags) {
-  if (flags & ~flags_)
-    KALDI_ERR << "Flags in argument do not match the active accumulators";
-  double d = static_cast<double>(f);
-  if (flags & kGmmWeights) occupancy_.Scale(d);
-  if (flags & kGmmMeans) mean_accumulator_.Scale(d);
-  if (flags & kGmmVariances) {
-    for (int32 i = 0, end = covariance_accumulator_.size(); i < end; ++i)
-      covariance_accumulator_[i].Scale(d);
-  }
-}
-
-void MlEstimateFullGmm::ResizeVarAccumulator(int32 num_comp, int32 dim) {
+void AccumFullGmm::ResizeVarAccumulator(int32 num_comp, int32 dim) {
   KALDI_ASSERT(num_comp > 0 && dim > 0);
   if (covariance_accumulator_.size() != static_cast<size_t>(num_comp))
     covariance_accumulator_.resize(num_comp);
@@ -90,7 +67,40 @@ void MlEstimateFullGmm::ResizeVarAccumulator(int32 num_comp, int32 dim) {
   }
 }
 
-void MlEstimateFullGmm::AccumulateForComponent(
+void AccumFullGmm::SetZero(GmmFlagsType flags) {
+  if (flags & ~flags_)
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+  
+  if (flags & kGmmWeights) 
+    occupancy_.SetZero();
+  
+  if (flags & kGmmMeans) 
+    mean_accumulator_.SetZero();
+  
+  if (flags & kGmmVariances) {
+    for (int32 i = 0, end = covariance_accumulator_.size(); i < end; ++i)
+      covariance_accumulator_[i].SetZero();
+  }
+}
+
+void AccumFullGmm::Scale(BaseFloat f, GmmFlagsType flags) {
+  if (flags & ~flags_)
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+    
+  double d = static_cast<double>(f);
+  if (flags & kGmmWeights) 
+    occupancy_.Scale(d);
+  
+  if (flags & kGmmMeans) 
+    mean_accumulator_.Scale(d);
+  
+  if (flags & kGmmVariances) {
+    for (int32 i = 0, end = covariance_accumulator_.size(); i < end; ++i)
+      covariance_accumulator_[i].Scale(d);
+  }
+}
+
+void AccumFullGmm::AccumulateForComponent(
     const VectorBase<BaseFloat>& data, int32 comp_index, BaseFloat weight) {
   assert(data.Dim() == Dim());
   double wt = static_cast<double>(weight);
@@ -106,7 +116,7 @@ void MlEstimateFullGmm::AccumulateForComponent(
   }
 }
 
-void MlEstimateFullGmm::AccumulateFromPosteriors(
+void AccumFullGmm::AccumulateFromPosteriors(
     const VectorBase<BaseFloat>& data,
     const VectorBase<BaseFloat>& gauss_posteriors) {
   assert(gauss_posteriors.Dim() == NumGauss());
@@ -137,7 +147,7 @@ void MlEstimateFullGmm::AccumulateFromPosteriors(
   }
 }
 
-BaseFloat MlEstimateFullGmm::AccumulateFromFull(const FullGmm &gmm,
+BaseFloat AccumFullGmm::AccumulateFromFull(const FullGmm &gmm,
     const VectorBase<BaseFloat>& data, BaseFloat frame_posterior) {
   assert(gmm.NumGauss() == NumGauss());
   assert(gmm.Dim() == Dim());
@@ -151,7 +161,7 @@ BaseFloat MlEstimateFullGmm::AccumulateFromFull(const FullGmm &gmm,
   return log_like;
 }
 
-BaseFloat MlEstimateFullGmm::AccumulateFromDiag(const DiagGmm &gmm,
+BaseFloat AccumFullGmm::AccumulateFromDiag(const DiagGmm &gmm,
     const VectorBase<BaseFloat>& data, BaseFloat frame_posterior) {
   assert(gmm.NumGauss() == NumGauss());
   assert(gmm.Dim() == Dim());
@@ -165,145 +175,7 @@ BaseFloat MlEstimateFullGmm::AccumulateFromDiag(const DiagGmm &gmm,
   return log_like;
 }
 
-int32 MlEstimateFullGmm::RemoveComponent(int32 comp) {
-  KALDI_ASSERT(comp >= 0 && comp < occupancy_.Dim());
-  occupancy_.RemoveElement(comp);
-  if (flags_ & kGmmMeans) mean_accumulator_.RemoveRow(comp);
-  if (flags_ & kGmmVariances)
-    covariance_accumulator_.erase(covariance_accumulator_.begin() + comp);
-  num_comp_--;
-  return occupancy_.Dim();
-}
-
-BaseFloat MlEstimateFullGmm::MlObjective(const FullGmm& gmm) const {
-  Vector<BaseFloat> occ_bf(occupancy_);
-  Matrix<BaseFloat> mean_accs_bf(mean_accumulator_);
-  SpMatrix<BaseFloat> covar_accs_bf(dim_);
-  BaseFloat obj = VecVec(occ_bf, gmm.gconsts());
-  if (flags_ & kGmmMeans)
-    obj += TraceMatMat(mean_accs_bf, gmm.means_invcovars(), kTrans);
-  if (flags_ & kGmmVariances) {
-    for (int32 i = 0; i < num_comp_; ++i) {
-      covar_accs_bf.CopyFromSp(covariance_accumulator_[i]);
-      obj -= 0.5 * TraceSpSp(covar_accs_bf, gmm.inv_covars()[i]);
-    }
-  }
-  return obj;
-}
-
-void MlEstimateFullGmm::Update(const MleFullGmmOptions &config,
-                               GmmFlagsType flags,
-                               FullGmm *gmm,
-                               BaseFloat *obj_change_out,
-                               BaseFloat *count_out) const {
-  KALDI_ASSERT(gmm != NULL);
-  KALDI_ASSERT(gmm->NumGauss() == NumGauss());
-  if (flags & ~flags_)
-    KALDI_ERR << "Flags in argument do not match the active accumulators";
-
-  BaseFloat obj_old, obj_new, count = occupancy_.Sum();
-  if (obj_change_out != NULL)
-    obj_old = MlObjective(*gmm);
-
-  if (count == 0.0) {
-    KALDI_WARN << "MlEstimateFullGmm::Update, no data observed so not updating.";
-    if (obj_change_out) *obj_change_out = 0.0;
-    if (count_out) *count_out = count;
-    return;
-  }
-  std::vector<int32> to_remove;
-  int32 num_gauss = NumGauss(), dim = Dim();
-
-  Vector<double> weights(num_gauss);
-  Matrix<double> means(mean_accumulator_);
-  if (!(flags_ & kGmmMeans)) gmm->GetMeans(&means);
-  std::vector<SpMatrix<double> > inv_vars(num_gauss);
-
-  for (int32 i = 0; i < num_gauss; i++) {
-    double v = occupancy_(i) / count;
-    weights(i) = v;
-
-    if (occupancy_(i) > static_cast<double> (config.min_gaussian_occupancy)
-        && v > static_cast<double> (config.min_gaussian_weight)) {
-      if (flags_ & kGmmMeans)   // mean calculation
-        means.Row(i).Scale(1 / occupancy_(i));
-      SubVector<double> mean_dbl(means.Row(i));  // either updated, or old, mean.
-
-      if (flags_ & kGmmVariances) {  // covariance calculation
-        SpMatrix<double> var(covariance_accumulator_[i]);
-        var.Scale(1 / occupancy_(i));
-        if (flags_ & kGmmMeans)
-          var.AddVec2(-1.0, mean_dbl);
-        else {
-          var.AddVec2(-1.0 / occupancy_(i), mean_accumulator_.Row(i));
-          // now "var" is the variance of the data around its own mean.
-          mean_dbl.AddVec(-1.0 / occupancy_(i), mean_accumulator_.Row(i));
-          // now, "mean_dbl" is the difference between the observed and
-          // model mean.
-          var.AddVec2(1.0, mean_dbl);
-        }
-        // Now flooring etc. of variance's eigenvalues.
-        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
-                                   var.MaxAbsEig() / config.max_condition);
-        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
-        int32 num_floored = var.ApplyFloor(floor, 2.0);
-        if (num_floored)
-          KALDI_WARN << "Floored " << num_floored << " covariance eigenvalues for "
-              "Gaussian " << i << ", count = " << occupancy_(i);
-
-        var.Invert();
-        inv_vars[i].Resize(dim);
-        inv_vars[i].CopyFromSp(var);
-      }
-    } else {  // Below threshold to update -> just set to old mean/var.
-      if (flags_ & kGmmVariances) {
-        inv_vars[i].Resize(dim);
-        inv_vars[i].CopyFromSp( (gmm->inv_covars())[i] );
-      }
-      if (flags_ & kGmmMeans) {
-        SubVector<double> mean(means, i);
-        gmm->GetComponentMean(i, &mean);
-      }
-      if (config.remove_low_count_gaussians) {
-        to_remove.push_back(i);
-        KALDI_WARN << "Removing Gaussian " << i << ", occupancy is "
-                   << occupancy_(i);
-      } else {
-        KALDI_WARN << "Not updating mean and variance of Gaussian " << i << ", occupancy is "
-                   << occupancy_(i);
-      }
-    }
-  }
-  if (flags & kGmmWeights) gmm->SetWeights(weights);
-  if ((flags & kGmmMeans) && (flags & kGmmVariances))
-    gmm->SetInvCovarsAndMeans(inv_vars, means);
-  else if (flags & kGmmMeans)
-    gmm->SetMeans(means);
-  else if (flags & kGmmVariances)
-    gmm->SetInvCovars(inv_vars);
-
-  gmm->ComputeGconsts();
-
-  if (obj_change_out != NULL) {
-    if (gmm->NumGauss() == NumGauss()) {
-      obj_new = MlObjective(*gmm);
-      KALDI_VLOG(2) << "ML objective function: old = " << (obj_old/count)
-                 << ", new = " << (obj_new/count) << ", change = "
-                 << ((obj_new - obj_old)/count) << ", over "
-                 << (count) << " frames.";
-      *obj_change_out = obj_new - obj_old;
-    } else { *obj_change_out = 0.0; }  // hard to compute, not doing it!
-  }
-  if (count_out != NULL) *count_out = count;
-
-  if (!to_remove.empty()) {
-    gmm->RemoveComponents(to_remove);
-    gmm->ComputeGconsts();
-  }
-}
-
-
-void MlEstimateFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
+void AccumFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
   int32 dimension, num_components;
   GmmFlagsType flags;
   std::string token;
@@ -327,10 +199,10 @@ void MlEstimateFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
             << (dimension) << ", " << (flags);
       }
     } else {
-      ResizeAccumulators(num_components, dimension, flags);
+      Resize(num_components, dimension, flags);
     }
   } else {
-    ResizeAccumulators(num_components, dimension, flags);
+    Resize(num_components, dimension, flags);
   }
 
   // these are needed for demangling the variances.
@@ -363,7 +235,7 @@ void MlEstimateFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
   }
 }
 
-void MlEstimateFullGmm::Write(std::ostream &out_stream, bool binary) const {
+void AccumFullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<GMMACCS>");
   WriteMarker(out_stream, binary, "<VECSIZE>");
   WriteBasicType(out_stream, binary, dim_);
@@ -392,6 +264,157 @@ void MlEstimateFullGmm::Write(std::ostream &out_stream, bool binary) const {
     }
   }
   WriteMarker(out_stream, binary, "</GMMACCS>");
+}
+
+BaseFloat MlObjective(const FullGmm& gmm, const AccumFullGmm &fullgmm_acc) {
+  GmmFlagsType flags = fullgmm_acc.Flags();
+  Vector<BaseFloat> occ_bf(fullgmm_acc.occupancy());
+  Matrix<BaseFloat> mean_accs_bf(fullgmm_acc.mean_accumulator());
+  SpMatrix<BaseFloat> covar_accs_bf(gmm.Dim());
+ 
+  BaseFloat obj = VecVec(occ_bf, gmm.gconsts());
+  
+  if (flags & kGmmMeans)
+    obj += TraceMatMat(mean_accs_bf, gmm.means_invcovars(), kTrans);
+  
+  if (flags & kGmmVariances) {
+    for (int32 i = 0; i < gmm.NumGauss(); ++i) {
+      covar_accs_bf.CopyFromSp(fullgmm_acc.covariance_accumulator()[i]);
+      obj -= 0.5 * TraceSpSp(covar_accs_bf, gmm.inv_covars()[i]);
+    }
+  }
+  
+  return obj;
+}
+
+void MleFullGmmUpdate(const MleFullGmmOptions &config,
+                      const AccumFullGmm &fullgmm_acc,
+                      GmmFlagsType flags,
+                      FullGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out) {
+  KALDI_ASSERT(gmm != NULL);
+  
+  if (flags & ~fullgmm_acc.Flags())
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+
+  gmm->ComputeGconsts();
+  BaseFloat obj_old = MlObjective(*gmm, fullgmm_acc);
+
+  int32 dim = gmm->Dim();
+  int32 num_gauss = gmm->NumGauss();
+  double occ_sum = fullgmm_acc.occupancy().Sum();
+
+  Vector<double> weights(num_gauss);
+  Matrix<double> means(fullgmm_acc.mean_accumulator());
+  // restore old means, if there is no mean update
+  if (!(flags & kGmmMeans)) 
+    gmm->GetMeans(&means);
+  
+  std::vector<SpMatrix<double> > inv_vars(num_gauss);
+
+  std::vector<int32> to_remove;
+  for (int32 i = 0; i < num_gauss; i++) {
+    double occ = fullgmm_acc.occupancy()(i);
+    double prob;
+    if (occ_sum > 0.)
+      prob = occ / occ_sum;
+    else
+      prob = 1. / num_gauss;
+    
+    if (occ > static_cast<double> (config.min_gaussian_occupancy)
+        && prob > static_cast<double> (config.min_gaussian_weight)) {
+      if (flags & kGmmWeights)
+        weights(i) = prob;
+
+      if ((flags & kGmmMeans) && !(flags & kGmmVariances)) {
+        // update mean, but not variance
+        means.Row(i).Scale(1. / occ);
+      } else if ((flags & kGmmMeans) && (flags && kGmmVariances)) {
+        // mean and variances
+        means.Row(i).Scale(1. / occ);
+        SpMatrix<double> var(fullgmm_acc.covariance_accumulator()[i]);
+        var.Scale(1. / occ);
+        var.AddVec2(-1., means.Row(i));
+        
+        // Now flooring etc. of variance's eigenvalues.
+        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
+                                   var.MaxAbsEig() / config.max_condition);
+        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
+        int32 num_floored = var.ApplyFloor(floor, 2.0);
+        if (num_floored)
+          KALDI_WARN << "Floored " << num_floored << " covariance eigenvalues for "
+              "Gaussian " << i << ", count = " << occ;
+
+        var.Invert();
+        inv_vars[i].Resize(dim);
+        inv_vars[i].CopyFromSp(var);
+      } else if (!(flags & kGmmMeans) && (flags & kGmmVariances)) {
+        // update variance, but not mean, compute it, though!
+        Vector<double> m(fullgmm_acc.mean_accumulator().Row(i));
+        m.Scale(1. / occ);
+
+        SpMatrix<double> var(fullgmm_acc.covariance_accumulator()[i]);
+        var.Scale(1. / occ);
+        var.AddVec2(-1., m);
+
+        // Now flooring etc. of variance's eigenvalues.
+        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
+                                   var.MaxAbsEig() / config.max_condition);
+        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
+        int32 num_floored = var.ApplyFloor(floor, 2.0);
+        if (num_floored)
+          KALDI_WARN << "Floored " << num_floored << " covariance eigenvalues for "
+              "Gaussian " << i << ", count = " << occ;
+
+        var.Invert();
+        inv_vars[i].Resize(dim);
+        inv_vars[i].CopyFromSp(var);
+      }
+    } else {  // Below threshold to update -> just set to old mean/var.
+      if (flags & kGmmVariances) {
+        inv_vars[i].Resize(dim);
+        inv_vars[i].CopyFromSp( (gmm->inv_covars())[i] );
+      }
+      
+      if (flags & kGmmMeans) {
+        SubVector<double> mean(means, i);
+        gmm->GetComponentMean(i, &mean);
+      }
+
+      if (config.remove_low_count_gaussians) {
+        to_remove.push_back(i);
+        KALDI_WARN << "Removing Gaussian " << i << ", occupancy is "
+                   << occ;
+      } else {
+        KALDI_WARN << "Not updating mean and variance of Gaussian " << i << ", occupancy is "
+                   << occ;
+      }
+    }
+  }
+
+  if (flags & kGmmWeights) 
+    gmm->SetWeights(weights);
+
+  if ((flags & kGmmMeans) && (flags & kGmmVariances))
+    gmm->SetInvCovarsAndMeans(inv_vars, means);
+  else if (flags & kGmmMeans)
+    gmm->SetMeans(means);
+  else if (flags & kGmmVariances)
+    gmm->SetInvCovars(inv_vars);
+
+  gmm->ComputeGconsts();
+  BaseFloat obj_new = MlObjective(*gmm, fullgmm_acc);
+  
+  if (obj_change_out)
+      *obj_change_out = obj_new - obj_old;
+  
+  if (count_out) *count_out = occ_sum;
+
+  if (!to_remove.empty()) {
+    gmm->RemoveComponents(to_remove);
+    gmm->ComputeGconsts();
+  }
 }
 
 }  // End namespace kaldi
