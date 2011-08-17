@@ -5,9 +5,9 @@
 # Compile subdirectories starting with the things "depended on".
 
 SUBDIRS = base matrix util feat tree optimization gmm transform sgmm \
-          fstext hmm lm decoder \
+          fstext hmm lm decoder lat \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
-          nnet nnetbin lat latbin
+          nnet nnetbin latbin
 
 all: $(SUBDIRS) 
 	echo Done
