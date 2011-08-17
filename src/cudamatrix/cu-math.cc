@@ -6,12 +6,12 @@
 
 
 namespace kaldi {
+namespace cu {
 
-//////////////////////////////////////////////////////////////////////////////
-//// CuMath<> Template specializations (float)
-////
-template<>
-void CuMath<float>::Sigmoid(CuMatrix<float>& Y, const CuMatrix<float>& X) {
+/*
+ * Float specializations
+ */
+void Sigmoid(CuMatrix<float>& Y, const CuMatrix<float>& X) {
   #if HAVE_CUDA==1 
   if(CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -36,8 +36,7 @@ void CuMath<float>::Sigmoid(CuMatrix<float>& Y, const CuMatrix<float>& X) {
   }
 }
 
-template<>
-void CuMath<float>::DiffSigmoid(CuMatrix<float>& Eout, const CuMatrix<float>& Ein, const CuMatrix<float>& Y) {
+void DiffSigmoid(CuMatrix<float>& Eout, const CuMatrix<float>& Ein, const CuMatrix<float>& Y) {
   #if HAVE_CUDA==1 
   if(CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -64,8 +63,7 @@ void CuMath<float>::DiffSigmoid(CuMatrix<float>& Eout, const CuMatrix<float>& Ei
 }
 
   
-template<>
-void CuMath<float>::Softmax(CuMatrix<float>& Y, const CuMatrix<float>& X) {
+void Softmax(CuMatrix<float>& Y, const CuMatrix<float>& X) {
   #if HAVE_CUDA==1 
   if(CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -112,8 +110,7 @@ void CuMath<float>::Softmax(CuMatrix<float>& Y, const CuMatrix<float>& X) {
 
 
 
-template<>
-void CuMath<float>::CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector<float>& match) {
+void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector<float>& match) {
   assert(out.NumCols() == des.NumCols());
   assert(out.NumRows() == des.NumRows());
   assert(out.Stride() == des.Stride());
@@ -158,7 +155,6 @@ void CuMath<float>::CheckClass(const CuMatrix<float>& out, const CuMatrix<float>
   }
 }
 
+} //namespace cu
 
-
-
-} //namespace
+} //namespace kaldi

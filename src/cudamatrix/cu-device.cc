@@ -29,9 +29,6 @@ CuDevice::CuDevice()
 CuDevice::~CuDevice() {
   if(enabled_) {
     cuSafeCall(cublasShutdown());
-    if(verbose_) {
-      PrintProfile();
-    }
   } else {
     KALDI_WARN << "CUDA was not used";
   }
@@ -46,14 +43,17 @@ void CuDevice::AccuProfile(const std::string& key,double time) {
 }
 
 
-void CuDevice::PrintProfile() { 
-  std::ostringstream os;
-  os << "[cudevice profile]\n";
-  std::map<std::string, double>::iterator it;
-  for(it = profile_map_.begin(); it != profile_map_.end(); ++it) {
-    os << it->first << "\t" << it->second << "s\n";
+void CuDevice::PrintProfile() {
+  if(verbose_) { 
+    std::ostringstream os;
+    os << "-----\n[cudevice profile]\n";
+    std::map<std::string, double>::iterator it;
+    for(it = profile_map_.begin(); it != profile_map_.end(); ++it) {
+      os << it->first << "\t" << it->second << "s\n";
+    }
+    os << "-----";
+    KALDI_LOG << os.str();
   }
-  KALDI_LOG << os.str();
 }
 
 

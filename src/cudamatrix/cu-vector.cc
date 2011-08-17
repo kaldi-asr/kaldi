@@ -6,9 +6,10 @@
 
 namespace kaldi {
 
-////////////////////////////////////////////////////////////////////////
-//// CuVector:: templeate specializations (float)
-////
+
+/*
+ * implement float specialized methdos
+ */
 template<>
 void CuVector<float>::Set(float value) {
   #if HAVE_CUDA==1

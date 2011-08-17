@@ -16,7 +16,7 @@ ifeq ($(CUDA), true)
   OBJFILES += cu-kernels.o
 endif
 
-LIBFILE = cudamatrix.a
+LIBFILE = cuda-matrix.a
 
 all:  $(LIBFILE) $(TESTFILES)
 

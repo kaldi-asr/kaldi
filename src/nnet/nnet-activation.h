@@ -19,7 +19,7 @@
 #ifndef KALDI_NNET_ACTIVATION_H
 #define KALDI_NNET_ACTIVATION_H
 
-#include "cudannet/nnet-component.h"
+#include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
@@ -38,13 +38,13 @@ class Sigmoid : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     //y = 1/(1+e^-x)
-    CuMath<BaseFloat>::Sigmoid(*out,in);
+    cu::Sigmoid(*out,in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {
     //ey = y(1-y)ex
     const CuMatrix<BaseFloat>& y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
-    CuMath<BaseFloat>::DiffSigmoid(*out_err,in_err,y);
+    cu::DiffSigmoid(*out_err,in_err,y);
   }
 };
 
@@ -63,7 +63,7 @@ class Softmax : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     //y = e^x_j/sum_j(e^x_j)
-    CuMath<BaseFloat>::Softmax(*out,in);
+    cu::Softmax(*out,in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {
@@ -72,7 +72,7 @@ class Softmax : public Component {
     // while in_err contains (net_output-target) :
     // this is already derivative of the error with 
     // respect to activations of last layer neurons)
-    out_err->CopyFrom(in_err);
+    out_err->CopyFromMat(in_err);
   }
 };
 

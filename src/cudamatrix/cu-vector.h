@@ -8,7 +8,7 @@ namespace kaldi {
 template<typename _ElemT> class CuMatrix;
 
 /**
- * Matrix for CUDA computing
+ * Vector for CUDA computing
  */
 template<typename _ElemT>
 class CuVector {
@@ -47,16 +47,15 @@ class CuVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFrom(const CuVector<_ElemT>& src);
-  ThisType&        CopyFrom(const Vector<_ElemT>& src);
-  void             CopyTo(Vector<_ElemT>& dst) const;
+  ThisType&        CopyFromVec(const CuVector<_ElemT>& rSrc);
+  ThisType&        CopyFromVec(const Vector<_ElemT>& rSrc);
+  void             CopyToVec(Vector<_ElemT>& rDst) const;
 
-  ThisType&        CopyFrom(const std::vector<_ElemT>& src);
-  void             CopyTo(std::vector<_ElemT>& dst) const;
-
+  ThisType&        CopyFromVec(const std::vector<_ElemT>& rSrc);
+  void             CopyToVec(std::vector<_ElemT>& rDst) const;
+  
   void             Read(std::istream& is, bool binary);
-  void             Write(std::ostream& os, bool binary) const;
-
+  void             Write(std::ostream& is, bool binary) const;
   
   // Math operations
   //
@@ -87,9 +86,10 @@ class CuVector {
 
 private:
   size_t dim_;
-  _ElemT* data_;
+ 
+  _ElemT* data_; ///< GPU data pointer
 
-  Vector<_ElemT> vec_; ///< non-GPU backup vector
+  Vector<_ElemT> vec_; ///< non-GPU vector as back-off
 };
 
 
@@ -101,6 +101,6 @@ std::ostream& operator << (std::ostream& out, const CuVector<_ElemT>& vec);
 } //namespace
 
 
-#include "cu-vector.tcc"
+#include "cu-vector-inl.h"
 
 #endif

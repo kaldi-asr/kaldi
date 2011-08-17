@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cudannet/nnet-nnet.h"
-#include "cudannet/nnet-loss.h"
+#include "nnet/nnet-nnet.h"
+#include "nnet/nnet-loss.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
@@ -95,14 +95,21 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, glob_err;
 
     Timer tim;
+    double time_next=0, time_has_key=0, txent=0;
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_alignment = 0, num_other_error = 0;
-    for (; !feature_reader.Done(); feature_reader.Next()) {
+    for (; !feature_reader.Done(); /*feature_reader.Next()*/) {
       std::string key = feature_reader.Key();
-      if (!alignments_reader.HasKey(key)) {
+      
+      Timer t1;
+      bool has_key = alignments_reader.HasKey(key);
+      time_has_key += t1.Elapsed();
+
+      if (!has_key/*alignments_reader.HasKey(key)*/) {
         num_no_alignment++;
       } else {
+        
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(key);
          
@@ -118,12 +125,15 @@ int main(int argc, char *argv[]) {
         num_done++;
 
         //push features to GPU
-        feats.CopyFrom(mat);
+        feats.CopyFromMat(mat);
 
         nnet_transf.Feedforward(feats,&feats_transf);
         nnet.Propagate(feats_transf,&nnet_out);
         //std::cout << "\nNETOUT" << nnet_out;
+        
+        Timer t5;
         xent.Eval(nnet_out,alignment,&glob_err);
+        txent += t5.Elapsed();
         //std::cout << "\nALIGN" << alignment[0] << " "<< alignment[1]<< " "<< alignment[2];
         //std::cout << "\nGLOBERR" << glob_err;
         if(!crossvalidate) {
@@ -132,6 +142,10 @@ int main(int argc, char *argv[]) {
 
         tot_t += mat.NumRows();
       }
+    
+      Timer t4;
+      feature_reader.Next();
+      time_next += t4.Elapsed();
     }
 
     if(!crossvalidate) {
@@ -149,6 +163,11 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << xent.Report();
 
+    CuDevice::Instantiate().PrintProfile();
+
+    KALDI_LOG << "time_feature::next" << time_next
+              << " time_alignment::has_key" << time_has_key
+              << " time_xentropy::eval" << txent;
 
     return 0;
   } catch(const std::exception& e) {

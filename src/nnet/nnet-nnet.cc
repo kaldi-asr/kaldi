@@ -15,10 +15,10 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cudannet/nnet-nnet.h"
-#include "cudannet/nnet-component.h"
-#include "cudannet/nnet-activation.h"
-#include "cudannet/nnet-biasedlinearity.h"
+#include "nnet/nnet-nnet.h"
+#include "nnet/nnet-component.h"
+#include "nnet/nnet-activation.h"
+#include "nnet/nnet-biasedlinearity.h"
 
 namespace kaldi {
 
@@ -27,7 +27,7 @@ void Nnet::Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
 
   if(LayerCount() == 0) { 
     out->Resize(in.NumRows(),in.NumCols());
-    out->CopyFrom(in); 
+    out->CopyFromMat(in); 
     return; 
   }
 
@@ -36,7 +36,7 @@ void Nnet::Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
 
   
   propagate_buf_[0].Resize(in.NumRows(),in.NumCols());
-  propagate_buf_[0].CopyFrom(in);
+  propagate_buf_[0].CopyFromMat(in);
 
   for(int32 i=0; i<(int32)nnet_.size(); i++) {
     nnet_[i]->Propagate(propagate_buf_[i],&propagate_buf_[i+1]);
@@ -44,7 +44,7 @@ void Nnet::Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
 
   CuMatrix<BaseFloat>& mat = propagate_buf_[nnet_.size()];
   out->Resize(mat.NumRows(),mat.NumCols());
-  out->CopyFrom(mat);
+  out->CopyFromMat(mat);
 }
 
 
@@ -125,7 +125,7 @@ void Nnet::Feedforward(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) 
 
   if(LayerCount() == 0) { 
     out->Resize(in.NumRows(),in.NumCols());
-    out->CopyFrom(in); 
+    out->CopyFromMat(in); 
     return; 
   }
 

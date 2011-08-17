@@ -16,7 +16,7 @@ template<typename _ElemT> class CuVector;
 /**
  * Matrix for CUDA computing,
  *
- * It has polymorphic behavior. When CUDA is not compiled in 
+ * It has "polymorphic" behavior. When CUDA is not compiled in 
  * or is not Enabled() the computation is back-off'ed to the CPU.
  */
 template<typename _ElemT>
@@ -88,9 +88,9 @@ class CuMatrix {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFrom(const CuMatrix<_ElemT>& src);
-  ThisType&        CopyFrom(const Matrix<_ElemT>& src);
-  Matrix<_ElemT>&  CopyTo(Matrix<_ElemT>& dst) const;
+  ThisType&        CopyFromMat(const CuMatrix<_ElemT>& src);
+  ThisType&        CopyFromMat(const Matrix<_ElemT>& src);
+  Matrix<_ElemT>&  CopyToMat(Matrix<_ElemT>& dst) const;
 
   void             Read(std::istream& is, bool binary);
   void             Write(std::ostream& os, bool binary) const;
@@ -131,7 +131,7 @@ class CuMatrix {
   }
 
   /// B = aplha * row + beta * B
-  void AddScaledRow(_ElemT alpha, const CuVector<_ElemT>& row, _ElemT beta) { 
+  void AddScaledRow(_ElemT alpha, const CuVector<_ElemT>& row, _ElemT beta=1.0) { 
     KALDI_ERR << "__func__ Not implemented"; 
   }
 
@@ -154,8 +154,9 @@ class CuMatrix {
   MatrixIndexT num_cols_;
   MatrixIndexT stride_;
 
-  _ElemT* data_;
-  Matrix<_ElemT> mat_;
+  _ElemT* data_;       ///< GPU data pointer
+  
+  Matrix<_ElemT> mat_; ///< non-GPU matrix as back-off
 
 
 }; //class CuMatrix
@@ -169,6 +170,6 @@ std::ostream& operator << (std::ostream& out, const CuMatrix<_ElemT>& mat);
 } //namespace
 
 
-#include "cu-matrix.tcc"
+#include "cu-matrix-inl.h"
 
 #endif

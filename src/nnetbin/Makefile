@@ -13,7 +13,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../cudannet/cudannet.a ../cudamatrix/cudamatrix.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../nnet/kaldi-nnet.a ../cudamatrix/cuda-matrix.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 

@@ -6,9 +6,9 @@
 
 namespace kaldi {
 
-////////////////////////////////////////////////////////////////////////
-//// CuMatrix:: templeate specializations (float)
-////
+/*
+ * implement float specialized methdos
+ */
 template<> 
 void CuMatrix<float>::Set(float value) { 
   #if HAVE_CUDA==1 
@@ -51,7 +51,6 @@ void CuMatrix<float>::ApplyLog() {
 }
 
 
-
 template<>
 void CuMatrix<float>::MulElements(const CuMatrix<float>& A) {
   #if HAVE_CUDA==1
@@ -75,7 +74,6 @@ void CuMatrix<float>::MulElements(const CuMatrix<float>& A) {
     mat_.MulElements(A.mat_);
   }
 }
-
 
 
 template<>
@@ -102,7 +100,6 @@ void CuMatrix<float>::MulColsVec(const CuVector<float>& scale) {
 }
 
 
-
 template<>
 void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
   #if HAVE_CUDA==1
@@ -125,7 +122,6 @@ void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
     mat_.MulRowsVec(scale.Vec());
   }
 }
-
 
 
 template<>
@@ -151,7 +147,6 @@ void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta) 
     mat_.AddMat(alpha,A.mat_);
   }
 }
-
 
 
 template<>
@@ -181,7 +176,6 @@ void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float>& row, floa
     }
   }
 }
-
 
 
 template<>
@@ -225,5 +219,5 @@ void CuMatrix<float>::AddMatMat(
   }
 }
 
-} //namespace
+} //namespace kaldi
 

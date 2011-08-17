@@ -51,13 +51,8 @@ namespace kaldi {
   static const int CUBLOCK = 16;
 
   /** Number of blocks in which the task of size 'size' is splitted **/
-  inline int n_blocks(int size, int block_size) 
-  { return size / block_size + ((size % block_size == 0)? 0 : 1); }
-
-  /** Printing dim3 output operator **/
-  inline std::ostream& operator<<(std::ostream& os, dim3 arr) {
-    os << "[" << arr.x << "," << arr.y << "," << arr.z << "]";
-    return os;
+  inline int n_blocks(int size, int block_size) { 
+    return size / block_size + ((size % block_size == 0)? 0 : 1); 
   }
 
 }

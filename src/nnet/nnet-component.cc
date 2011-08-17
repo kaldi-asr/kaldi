@@ -15,11 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cudannet/nnet-component.h"
+#include "nnet/nnet-component.h"
 
-#include "cudannet/nnet-nnet.h"
-#include "cudannet/nnet-activation.h"
-#include "cudannet/nnet-biasedlinearity.h"
+#include "nnet/nnet-nnet.h"
+#include "nnet/nnet-activation.h"
+#include "nnet/nnet-biasedlinearity.h"
 
 namespace kaldi {
 
@@ -65,7 +65,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   ReadBasicType(is,binary,&dim_out); 
   ReadBasicType(is,binary,&dim_in);
 
-  Component* p_comp;
+  Component* p_comp=NULL;
   switch(comp_type) {
     case Component::kBiasedLinearity :
       p_comp = new BiasedLinearity(dim_in,dim_out,nnet); 

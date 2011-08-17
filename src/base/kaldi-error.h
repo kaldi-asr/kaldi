@@ -21,6 +21,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <cstring>
 #include <sstream>
 
 #include "base/kaldi-types.h"

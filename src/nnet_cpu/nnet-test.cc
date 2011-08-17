@@ -19,8 +19,8 @@
 #include <iostream>
 
 #include "base/kaldi-common.h"
-#include "nnet/nnet-component.h"
-#include "nnet/nnet-nnet.h"
+#include "nnet_cpu/nnet-component.h"
+#include "nnet_cpu/nnet-nnet.h"
 
 using namespace kaldi;
 

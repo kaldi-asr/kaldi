@@ -8,7 +8,7 @@ TESTFILES = nnet-test
 
 OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o
 
-LIBFILE = cudannet.a 
+LIBFILE = kaldi-nnet.a 
 
 all:  $(LIBFILE) $(TESTFILES)
 
@@ -18,7 +18,7 @@ $(LIBFILE): $(OBJFILES)
 
 
 
-$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a ../cudamatrix/cudamatrix.a 
+$(TESTFILES): $(LIBFILE) ../cudamatrix/cuda-matrix.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:

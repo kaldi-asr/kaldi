@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cudannet/nnet-nnet.h"
-#include "cudannet/nnet-loss.h"
+#include "nnet/nnet-nnet.h"
+#include "nnet/nnet-loss.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
       }
 
       //push priors to GPU
-      priors.CopyFrom(tmp_priors);
+      priors.CopyFromVec(tmp_priors);
     }
 
     Timer tim;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
       //read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       //push it to gpu
-      feats.CopyFrom(mat);
+      feats.CopyFromMat(mat);
       //fwd-pass
       nnet_transf.Feedforward(feats,&feats_transf);
       nnet.Feedforward(feats_transf,&nnet_out);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
       }
       
       //write
-      nnet_out.CopyTo(nnet_out_host);
+      nnet_out.CopyToMat(nnet_out_host);
       feature_writer.Write(feature_reader.Key(),nnet_out_host);
 
       //progress log
@@ -137,6 +137,8 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
     KALDI_LOG << "Done " << num_done << " files";
+
+    CuDevice::Instantiate().PrintProfile();
 
     return 0;
   } catch(const std::exception& e) {

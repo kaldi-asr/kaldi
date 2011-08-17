@@ -15,7 +15,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cudannet/nnet-loss.h"
+#include "nnet/nnet-loss.h"
 
 #include <sstream>
 
@@ -72,7 +72,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& ta
   }
 
   //
-  Matrix<BaseFloat> net_out2; net_out.CopyTo(net_out2);
+  Matrix<BaseFloat> net_out2; net_out.CopyToMat(net_out2);
   Matrix<BaseFloat> diff2; Matrix<BaseFloat>* diff3 = &diff2;
 
   //compute derivative wrt. activations of last layer of neurons
@@ -82,7 +82,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& ta
     KALDI_ASSERT(target.at(r) <= diff3->NumCols());
     (*diff3)(r,target.at(r)) -= 1.0;
   }
-  diff->CopyFrom(diff2);
+  diff->CopyFromMat(diff2);
 
   //we'll not produce per-frame classification accuracy for soft labels
   correct_ += Correct(net_out2,target);
@@ -109,9 +109,8 @@ std::string Xent::Report() {
   oss << "Xent:" << loss_ << " frames:" << frames_ 
       << " err/frm:" << loss_/frames_;
   if(correct_ >= 0.0) {
-    oss << " correct[" << 100.0*correct_/frames_ << "%]";
+    oss << "\nFRAME_ACCURACY >> " << 100.0*correct_/frames_ << "% <<";
   }
-  oss << std::endl;
   return oss.str(); 
 }
 
