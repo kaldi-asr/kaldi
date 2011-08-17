@@ -453,8 +453,8 @@ class KaldiDecoder {
         DEBUG_CMD(assert(hash_[state]->state == state))
         // check that all incoming arcs have the same model!
         DEBUG_CMD(if (ilabel > 0)
-          assert(decodable->trans_model_.TransitionIdToPdf(hash_[state]->ilabel) ==
-                 decodable->trans_model_.TransitionIdToPdf(ilabel)))
+          assert(decodable->TransModel()->TransitionIdToPdf(hash_[state]->ilabel)
+              == decodable->TransModel()->TransitionIdToPdf(ilabel)))
         //DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
         DEBUG_CMD(if (ilabel <= 0) assert(hash_[state]->ilabel == 0))
         // this also checks that transducer doesn't contain epsilon loop!

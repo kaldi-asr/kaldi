@@ -99,7 +99,8 @@ class DecodableAmDiagGmm : public DecodableAmDiagGmmUnmapped {
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
-// private: // want it public to have pdf id information
+  const TransitionModel *TransModel() { return &trans_model_; }
+ private: // want to access public to have pdf id information
   const TransitionModel &trans_model_;  // for tid to pdf mapping
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmm);
 };
@@ -121,7 +122,8 @@ class DecodableAmDiagGmmScaled : public DecodableAmDiagGmmUnmapped {
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
-// private: // want it public to have pdf id information
+  const TransitionModel *TransModel() { return &trans_model_; }
+ private: // want to access it public to have pdf id information
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmScaled);
@@ -152,9 +154,10 @@ class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
-  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
- // we want trans_model_ to be public to have access to pdf ids
+  const TransitionModel *TransModel() { return &trans_model_; }
+
  private:
+  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
   const RegtreeFmllrDiagGmm &fmllr_xform_;
   const RegressionTree &regtree_;
@@ -190,8 +193,7 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
-  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
-  // we want it public to have access to the pdf ids
+  const TransitionModel *TransModel() { return &trans_model_; }
   
  protected:
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
@@ -206,9 +208,11 @@ class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
   /// likelihood calculation. The 'state_index' is 0-based.
   const Vector<BaseFloat>& GetXformedGconsts(int32 state_index);
 
+  const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
   const RegtreeMllrDiagGmm &mllr_xform_;
   const RegressionTree &regtree_;
+  // we want it public to have access to the pdf ids
 
   /// Cache of transformed means time inverse variances for each state.
   std::vector< Matrix<BaseFloat>* > xformed_mean_invvars_;
