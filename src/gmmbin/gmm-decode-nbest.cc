@@ -169,12 +169,14 @@ int main(int argc, char *argv[]) {
           }
         }
         num_success++;
-        //std::cout << "n-best paths:\n";
-        //fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-        //fstprinter.Print(&std::cout, "standard output");
 
-        if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
+//        std::cout << "n-best paths:\n";
+//        fst::FstPrinter<CompactLatticeArc> fstprinter(decoded, NULL, NULL, NULL, false, true);
+//        fstprinter.Print(&std::cout, "standard output");
+
+// WARNING: ScaleLattice doesn't work with CompactLatticeWeight
+//        if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+//          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
         compact_lattice_writer.Write(key, decoded);
 
         fst::VectorFst<CompactLatticeArc> decoded1;
@@ -202,7 +204,8 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -(weight.Value1() + weight.Value2());
+        BaseFloat like = -(weight.Value1() - weight.Value2());
+        KALDI_LOG << "final weight:" << weight.Value1() << "," << weight.Value2();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "
