@@ -21,10 +21,27 @@ exit 1 # Don't run this... it's to be run line by line from the shell.
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
 #    rm1_audio1  rm1_audio2	rm2_audio
+
 local/RM_data_prep.sh /mnt/matylda2/data/RM/
 
 local/RM_format_data.sh
 
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features. 
+mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfcc
+
+steps/make_mfcc.sh data/train exp/make_mfcc/train $mfccdir 4
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/make_mfcc.sh data/test_$test exp/make_mfcc/test_$test $mfccdir 4
+done
+
+scripts/subset_data_dir.sh data/train 1000 data/train.1k
+
+steps/train_mono.sh data/train.1k data/lang exp/mono
+
+#for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+#  steps/decode_mono.sh data/test_$test data/lang exp/mono exp/mono/decode_$test
+#done
 ###
 
 notes on structure...

@@ -36,7 +36,7 @@ for x in $data_list; do
   cp data/local/$x.spk2utt data/$x/spk2utt || exit 1;
   cp data/local/$x.utt2spk data/$x/utt2spk || exit 1;
   cp data/local/${x}_wav.scp data/$x/wav.scp || exit 1;
-  cp data/local/${x}_trans.txt data/$x/txt || exit 1;
+  cp data/local/${x}_trans.txt data/$x/text || exit 1;
 done
 
 

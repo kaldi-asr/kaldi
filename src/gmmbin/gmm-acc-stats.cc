@@ -101,14 +101,13 @@ int main(int argc, char *argv[]) {
             tot_weight += weight;
           }
         }
-        KALDI_LOG << "Average like for this file is "
-                  << (tot_like_this_file/tot_weight) << " over "
-                  << tot_weight <<" frames.";
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << key << " avg. like is " << (tot_like_this_file/tot_weight)
+                    << " over " << tot_weight <<" frames.";
+        }
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
       }
     }
 
