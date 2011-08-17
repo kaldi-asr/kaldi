@@ -9,7 +9,7 @@ TESTFILES = diag-gmm-test mle-diag-gmm-test full-gmm-test mle-full-gmm-test \
 
 OBJFILES = diag-gmm.o diag-gmm-normal.o mle-diag-gmm.o am-diag-gmm.o mle-am-diag-gmm.o \
 		full-gmm.o mle-full-gmm.o model-common.o \
-		model-test-common.o 
+		model-test-common.o
 
 LIBFILE = kaldi-gmm.a
 
@@ -21,7 +21,7 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../tree/kaldi-tree.a
+$(TESTFILES): $(LIBFILE) ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:
