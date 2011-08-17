@@ -24,6 +24,7 @@
 #include "decoder/faster-decoder.h"
 #include "decoder/decodable-matrix.h"
 #include "util/timer.h"
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 int main(int argc, char *argv[]) {
   try {
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
       DecodableMatrixScaled decodable(loglikes, acoustic_scale);
       decoder.Decode(&decodable);
 
-      VectorFst<StdArc> decoded;  // linear FST.
+      VectorFst<LatticeArc> decoded;  // linear FST.
 
       if ( (allow_partial || decoder.ReachedFinal())
            && decoder.GetBestPath(&decoded) ) {
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]) {
           
         std::vector<int32> alignment;
         std::vector<int32> words;
-        StdArc::Weight weight;
+        LatticeWeight weight;
         frame_count += loglikes.NumRows();
 
         GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
@@ -137,7 +138,7 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -weight.Value1() -weight.Value2();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / loglikes.NumRows()) << " over "

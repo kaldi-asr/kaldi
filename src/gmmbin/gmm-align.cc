@@ -23,7 +23,7 @@
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
 #include "decoder/decodable-am-diag-gmm.h"
-
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 
 int main(int argc, char *argv[]) {
@@ -136,9 +136,7 @@ int main(int argc, char *argv[]) {
                                                acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
-        KALDI_LOG << "Length of file is "<<features.NumRows();
-
-        VectorFst<StdArc> decoded;  // linear FST.
+        VectorFst<LatticeArc> decoded;  // linear FST.
         bool ans = decoder.ReachedFinal() // consider only final states.
             && decoder.GetBestPath(&decoded);  
         if (!ans && retry_beam != 0.0) {
@@ -154,17 +152,21 @@ int main(int argc, char *argv[]) {
         if (ans) {
           std::vector<int32> alignment;
           std::vector<int32> words;
-          StdArc::Weight weight;
+          LatticeWeight weight;
           frame_count += features.NumRows();
 
           GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-          BaseFloat like = -weight.Value() / acoustic_scale;
+          BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
           tot_like += like;
           assert(words == transcript);
           alignment_writer.Write(key, alignment);
           num_success ++;
-          KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows());
+          if (num_success % 50  == 0) {
+            KALDI_LOG << "Processed " << num_success << " utterances, "
+                      << "log-like per frame for " << key << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+          }
         } else {
           KALDI_WARN << "Did not successfully decode file " << key << ", len = "
                      << (features.NumRows());

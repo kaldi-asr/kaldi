@@ -43,6 +43,7 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
+#include "hmm/transition-model.h"
 
 // macros to switch off all debugging messages without runtime cost
 //#define DEBUG_CMD(x) x;
@@ -452,7 +453,8 @@ class KaldiDecoder {
         DEBUG_CMD(assert(hash_[state]->state == state))
         // check that all incoming arcs have the same model!
         DEBUG_CMD(if (ilabel > 0)
-          assert(decodable->ComparePdfId(hash_[state]->ilabel, ilabel)))
+          assert(decodable->TransModel()->TransitionIdToPdf(hash_[state]->ilabel)
+              == decodable->TransModel()->TransitionIdToPdf(ilabel)))
         //DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
         DEBUG_CMD(if (ilabel <= 0) assert(hash_[state]->ilabel == 0))
         // this also checks that transducer doesn't contain epsilon loop!

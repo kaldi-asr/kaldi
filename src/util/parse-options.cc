@@ -346,10 +346,9 @@ void ParseOptions::ReadConfigFile(const std::string& filename) {
 
 void ParseOptions::SplitLongArg(std::string in, std::string* key,
                                 std::string* value) {
-  assert(in.substr(0, 2) != " == ");  // precondition.
+  assert(in.substr(0, 2) == "--");  // precondition.
   size_t pos = in.find_first_of('=', 0);
-  if (std::string::npos == pos ||
-      std::string::npos != in.find_first_of('=', pos + 1)) {
+  if (pos == std::string::npos) {
     // defaults to empty.  We handle this differently in different cases.
     *key = in.substr(2, in.size()-2);  // 2 because starts with --.
     *value = "";

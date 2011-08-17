@@ -40,7 +40,6 @@ DEBUG_CMD(int dsnumber = 0)
 DEBUG_CMD(int tnumber = 0)
 DEBUG_CMD(int dtnumber = 0)
 
-
 namespace kaldi {
 
 
@@ -179,22 +178,31 @@ class NBestDecoder {
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
       Token *best_tok = e->val;
       DEBUG_OUT1("n-best final token: " << best_tok->unique
-                 << " path weight:" << best_tok->c)
+                 << " path weight:" << best_tok->c << "," << best_tok->ca)
+      BaseFloat amscore = best_tok->ca.Value(),
+                lmscore = best_tok->c.Value() - amscore;
+      LatticeWeight path_w(lmscore, amscore);
+      CompactLatticeWeight path_weight(path_w, vector<int32>());
 
       std::vector<CompactLatticeArc*> arcs_reverse; // reverse order output arcs
       // outer loop for word tokens
       for (Token *tok = best_tok; tok != NULL; tok = tok->previous) {
         DEBUG_OUT1("out:" << tok->o)
         // inner loop for input label tokens
-        std::vector<int32> str;
+        std::vector<int32> str_rev, str;
         for (SeqToken *stok = tok->I; stok != NULL; stok = stok->previous) {
           DEBUG_OUT3("in:" << stok->i)
-          str.push_back(stok->i);
+          str_rev.push_back(stok->i);
         }
+        // reverse vector
+        std::vector<int32>::reverse_iterator rit;
+        for (rit = str_rev.rbegin(); rit < str_rev.rend(); ++rit)
+          str.push_back(*rit);
         arcs_reverse.push_back(new CompactLatticeArc(
             tok->o, tok->o, CompactLatticeWeight(LatticeWeight::One(), str), 0));
         // no weight info (tok->c), no state info
       }
+      token_store_.DeleteTok(best_tok);
 
       StateId cur_state = start_state;
       for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
@@ -206,13 +214,7 @@ class NBestDecoder {
                    << arc->olabel << "/" << arc->weight)
         delete arc;
       }
-      BaseFloat lmscore = best_tok->c.Value() - best_tok->ca.Value();
-      BaseFloat amscore = best_tok->ca.Value();
-      DEBUG_OUT1("final weight:" << lmscore << "," << amscore)
-      fst_out->SetFinal(cur_state, CompactLatticeWeight(
-          LatticeWeight(lmscore,amscore), vector<int32>()));
-      token_store_.DeleteTok(best_tok);
-
+      fst_out->SetFinal(cur_state, path_weight);
       e_tail = e->tail;
       toks_.Delete(e);
     }
@@ -382,7 +384,6 @@ class NBestDecoder {
       DEBUG_CMD(tmp->unique = tnumber++)
       tmp->refs = 1;
       tmp->c = Weight::Zero();
-      tmp->ca = Weight::Zero();
       tmp->I = NULL;
       tmp->o = output;
       tmp->previous = prev;
@@ -475,13 +476,13 @@ class NBestDecoder {
                  << arc.olabel << "/" << arc.weight)
       // compute new weight	
       Weight w = Times(source->c, arc.weight);
-      Weight wa = source->ca;
+      Weight amscore = Weight::One();
       if (arc.ilabel > 0) { // emitting arc
-        Weight amscore = Weight(- decodable_->LogLikelihood(frame, arc.ilabel));
+        amscore = Weight(- decodable_->LogLikelihood(frame, arc.ilabel));
         w = Times(w, amscore);
-        wa = Times(wa, amscore);
         DEBUG_OUT2("acoustic: " << amscore)
       }
+      Weight wa = Times(source->ca, amscore);
       DEBUG_OUT2("new weight: " << w << "," << wa)
       if (w.Value() > cutoff) {  // prune
           DEBUG_OUT2("prune")

@@ -23,18 +23,17 @@
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
+//#include "fstext/lattice-utils.h" // for ConvertLattice
+
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
+#include <tr1/unordered_map>
+#endif
+using std::tr1::unordered_map;
 
 namespace kaldi {
-
-// macros to switch off all debugging messages without runtime cost
-#define DEBUG_CMD(x) x;
-#define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
-#define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
-#define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
-//#define DEBUG_OUT1(x)
-//#define DEBUG_OUT2(x)
-//#define DEBUG_OUT3(x)
-//#define DEBUG_CMD(x)
 
 struct FasterDecoderOptions {
   BaseFloat beam;
@@ -83,15 +82,11 @@ class FasterDecoder {
     // clean up from last time:
     ClearToks(toks_.Clear());
     StateId start_state = fst_.Start();
-    DEBUG_OUT2("Initial state: " << start_state)
     assert(start_state != fst::kNoStateId);
     Arc dummy_arc(0, 0, Weight::One(), start_state);
     toks_.Insert(start_state, new Token(dummy_arc, NULL));
     ProcessNonemitting(std::numeric_limits<float>::max());
     for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
-      DEBUG_OUT1("==== FRAME " << frame << " =====")
-      if ((frame%50) == 0)
-        KALDI_VLOG(2) << "==== FRAME " << frame << " =====";
       BaseFloat adaptive_beam = ProcessEmitting(decodable, frame);
       ProcessNonemitting(adaptive_beam);
     }
@@ -107,7 +102,7 @@ class FasterDecoder {
     return false;
   }
 
-  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) {
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
     // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
@@ -124,7 +119,6 @@ class FasterDecoder {
       Weight best_weight = Weight::Zero();
       for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
         Weight this_weight = Times(e->val->weight, fst_.Final(e->key));
-        if (this_weight != Weight::Zero()) DEBUG_OUT1("final state reached: " << e->key << " path weight:" << this_weight)
         if (this_weight != Weight::Zero() &&
            this_weight.Value() < best_weight.Value()) {
           best_weight = this_weight;
@@ -133,12 +127,18 @@ class FasterDecoder {
       }
     }
     if (best_tok == NULL) return false;  // No output.
-    DEBUG_OUT1("best final token:  path weight:" << best_tok->weight)
 
-
-    std::vector<Arc> arcs_reverse;  // arcs in reverse order.
+    std::vector<LatticeArc> arcs_reverse;  // arcs in reverse order.
+    Weight amscore = Weight::One();
     for (Token *tok = best_tok; tok != NULL; tok = tok->prev_) {
-      arcs_reverse.push_back(tok->arc_);
+      BaseFloat ams = tok->weight_a.Value(),
+                lms = tok->arc_.weight.Value() - ams;
+      Times(amscore, ams);
+      LatticeArc l_arc(tok->arc_.ilabel,
+                       tok->arc_.olabel,
+                       LatticeWeight(lms, ams),
+                       tok->arc_.nextstate);
+      arcs_reverse.push_back(l_arc);
     }
     assert(arcs_reverse.back().nextstate == fst_.Start());
     arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
@@ -146,16 +146,17 @@ class FasterDecoder {
     StateId cur_state = fst_out->AddState();
     fst_out->SetStart(cur_state);
     for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-      Arc arc = arcs_reverse[i];
+      LatticeArc arc = arcs_reverse[i];
       arc.nextstate = fst_out->AddState();
       fst_out->AddArc(cur_state, arc);
-      DEBUG_OUT1("arc: " << arc.ilabel << " : " << arc.olabel)
       cur_state = arc.nextstate;
     }
-    if (is_final)
-      fst_out->SetFinal(cur_state, fst_.Final(best_tok->arc_.nextstate));
-    else
-      fst_out->SetFinal(cur_state, Weight::One());
+    if (is_final) {
+      Weight final_weight = fst_.Final(best_tok->arc_.nextstate);
+      fst_out->SetFinal(cur_state, LatticeWeight(final_weight.Value(), 0.0));
+    } else {
+      fst_out->SetFinal(cur_state, LatticeWeight::One());
+    }
     RemoveEpsLocal(fst_out);
     return true;
   }
@@ -168,18 +169,15 @@ class FasterDecoder {
     Token *prev_;
     int32 ref_count_;
     Weight weight;
+    Weight weight_a;
     inline Token(Arc &arc, Token *prev): arc_(arc), prev_(prev), ref_count_(1) {
-      DEBUG_OUT2("advance: " << arc.nextstate << " " << arc.ilabel << ":"
-                 << arc.olabel << "/" << arc.weight)
-      DEBUG_OUT3("create t")
       if (prev) {
-        DEBUG_OUT3("inc t(" << prev->weight << "):" << prev->ref_count_ )
         prev->ref_count_++;
         weight = Times(prev->weight, arc.weight);
       } else {
         weight = arc.weight;
       }
-      DEBUG_OUT3("new weight t:" << weight)
+      weight_a = Weight::One();
     }
     inline bool operator < (const Token &other) {
       return weight.Value() > other.weight.Value();
@@ -192,11 +190,9 @@ class FasterDecoder {
     }
     inline static void TokenDelete(Token *tok) {
       if (tok->ref_count_ == 1) { 
-        DEBUG_OUT3( "kill t" )
         delete tok;
       } else {
         tok->ref_count_--;
-        DEBUG_OUT3("dec t:" << tok->ref_count_)
       }
     }
   };
@@ -206,7 +202,6 @@ class FasterDecoder {
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem) {
-    DEBUG_OUT1("GetCufoff")
     BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
     size_t count = 0;
     if (opts_.max_active == std::numeric_limits<int32>::max()) {
@@ -219,7 +214,6 @@ class FasterDecoder {
       }
       if (tok_count != NULL) *tok_count = count;
       if (adaptive_beam != NULL) *adaptive_beam = opts_.beam;
-      DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << best_weight + opts_.beam << " adaptive:" << *adaptive_beam)
       return best_weight + opts_.beam;
     } else {
       tmp_array_.clear();
@@ -234,7 +228,6 @@ class FasterDecoder {
       if (tok_count != NULL) *tok_count = count;
       if (tmp_array_.size() <= static_cast<size_t>(opts_.max_active)) {
         if (adaptive_beam) *adaptive_beam = opts_.beam;
-        DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << best_weight + opts_.beam << " adaptive:" << *adaptive_beam)
         return best_weight + opts_.beam;
       } else {
         // the lowest elements (lowest costs, highest likes)
@@ -248,7 +241,6 @@ class FasterDecoder {
         if (adaptive_beam)
           *adaptive_beam = std::min(opts_.beam,
                                     ans - best_weight + opts_.beam_delta);
-        DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << ans << " adaptive:" << *adaptive_beam)
         return ans;
       }
     }
@@ -259,13 +251,11 @@ class FasterDecoder {
                                         * opts_.hash_ratio);
     if (new_sz > toks_.Size()) {
       toks_.SetSize(new_sz);
-      DEBUG_OUT1("resize hash:" << new_sz)
     }
   }
 
   // ProcessEmitting returns the likelihood cutoff used.
   BaseFloat ProcessEmitting(DecodableInterface *decodable, int frame) {
-    DEBUG_OUT1("PropagateEmitting")
     Elem *last_toks = toks_.Clear();
     size_t tok_cnt;
     BaseFloat adaptive_beam;
@@ -308,7 +298,6 @@ class FasterDecoder {
       // because we delete "e" as we go.
       StateId state = e->key;
       Token *tok = e->val;
-      DEBUG_OUT2("get token: " << " state:" << state << " weight:" << tok->weight)
       if (tok->weight.Value() < weight_cutoff) {  // not pruned.
         // np++;
         assert(state == tok->arc_.nextstate);
@@ -317,32 +306,23 @@ class FasterDecoder {
             aiter.Next()) {
           Arc arc = aiter.Value();
           if (arc.ilabel != 0) {  // propagate..
-            arc.weight = Times(arc.weight,
-                               Weight(- decodable->LogLikelihood(frame, arc.ilabel)));
-            DEBUG_OUT2("acoustic: " << 
-              Weight(- decodable->LogLikelihood(frame, arc.ilabel)))
+            Weight amscore(- decodable->LogLikelihood(frame, arc.ilabel));
+            arc.weight = Times(arc.weight, amscore);
             BaseFloat new_weight = arc.weight.Value() + tok->weight.Value();
             if (new_weight < next_weight_cutoff) {  // not pruned..
               Token *new_tok = new Token(arc, tok);
+              new_tok->weight_a = amscore;
               Elem *e_found = toks_.Find(arc.nextstate);
               if (e_found == NULL) {
-                DEBUG_OUT2("insert to: " << arc.nextstate)
                 toks_.Insert(arc.nextstate, new_tok);
               } else {
-                DEBUG_OUT2("combine: " << arc.nextstate)
-                DEBUG_OUT2("combine: " << e_found->val->weight)
-                DEBUG_OUT2("with: " << new_tok->weight)
                 if ( *(e_found->val) < *new_tok ) {
-                  DEBUG_OUT2("delete first")
                   Token::TokenDelete(e_found->val);
                   e_found->val = new_tok;
                 } else {
-                  DEBUG_OUT2("delete second")
                   Token::TokenDelete(new_tok);
                 }
               }
-            } else {
-              DEBUG_OUT2("prune")
             }
           }
         }
@@ -358,7 +338,6 @@ class FasterDecoder {
   void ProcessNonemitting(BaseFloat adaptive_beam) {
     // Processes nonemitting arcs for one frame.  Propagates within
     // cur_toks_.
-    DEBUG_OUT1("PropagateEpsilon")
     assert(queue_.empty());
     float best_weight = 1.0e+10;
     for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
@@ -366,16 +345,13 @@ class FasterDecoder {
       best_weight = std::min(best_weight, e->val->weight.Value());
     }
     BaseFloat cutoff = best_weight + adaptive_beam;
-    DEBUG_OUT1("queue:" << queue_.size() << " best:" << best_weight << " cutoff:" << cutoff)
 
     while (!queue_.empty()) {
       StateId state = queue_.back();
       queue_.pop_back();
       Token *tok = toks_.Find(state)->val;  // would segfault if state not
-      DEBUG_OUT2("pop token: state:" << state << " weight:" << tok->weight)
       // in toks_ but this can't happen.
       if (tok->weight.Value() > cutoff) { // Don't bother processing successors.
-        DEBUG_OUT2("prune")
         continue;
       }
       assert(tok != NULL && state == tok->arc_.nextstate);
@@ -390,20 +366,14 @@ class FasterDecoder {
           } else {
             Elem *e_found = toks_.Find(arc.nextstate);
             if (e_found == NULL) {
-              DEBUG_OUT2("insert/queue to: " << arc.nextstate)
               toks_.Insert(arc.nextstate, new_tok);
               queue_.push_back(arc.nextstate);
             } else {
-              DEBUG_OUT2("combine: " << arc.nextstate)
-              DEBUG_OUT2("combine: " << e_found->val->weight)
-              DEBUG_OUT2("with: " << new_tok->weight)
               if ( *(e_found->val) < *new_tok ) {
-                DEBUG_OUT2("delete first")
                 Token::TokenDelete(e_found->val);
                 e_found->val = new_tok;
                 queue_.push_back(arc.nextstate);
               } else {
-                DEBUG_OUT2("delete second")
                 Token::TokenDelete(new_tok);
               }
             }
@@ -422,7 +392,6 @@ class FasterDecoder {
   std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
-
 
   // It might seem unclear why we call ClearToks(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.

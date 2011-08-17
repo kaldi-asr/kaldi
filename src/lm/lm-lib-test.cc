@@ -311,6 +311,10 @@ int main(int argc, char *argv[]) {
   infile = "missing_backoffs.arpa";
   success &= kaldi::TestLmTableReadWrite(ntests, infile, outfile);
 
+  std::cout << "Testing small arpa file with unused backoffs" << '\n';
+  infile = "unused_backoffs.arpa";
+  success &= kaldi::TestLmTableReadWrite(ntests, infile, outfile);
+
   std::cout << "Testing normal small arpa file" << '\n';
   infile = "input.arpa";
   success &= kaldi::TestLmTableReadWrite(ntests, infile, outfile);

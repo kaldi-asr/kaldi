@@ -96,14 +96,14 @@ int main(int argc, char *argv[]) {
           trans_model.Accumulate(1.0, tid, &transition_accs);
           tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, 1.0);
         }
-        KALDI_LOG << "Average like for this file is "
-                  << (tot_like_this_file/alignment.size()) << " over "
-                  << alignment.size() <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << key << " avg. like is "
+                    << (tot_like_this_file/alignment.size())
+                    << " over " << alignment.size() <<" frames.";
+        }
       }
     }
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
