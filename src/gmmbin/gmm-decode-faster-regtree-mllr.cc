@@ -28,6 +28,7 @@
 #include "decoder/faster-decoder.h"
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 using fst::SymbolTable;
 using fst::VectorFst;
@@ -35,6 +36,8 @@ using fst::StdArc;
 using kaldi::BaseFloat;
 using std::string;
 using std::vector;
+using kaldi::LatticeWeight;
+using kaldi::LatticeArc;
 
 struct DecodeInfo {
  public:
@@ -69,7 +72,7 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
   decoder->Decode(decodable);
   KALDI_LOG << "Length of file is " << num_frames;;
 
-  VectorFst<StdArc> decoded;  // linear FST.
+  VectorFst<LatticeArc> decoded;  // linear FST.
   if ( (info->allow_partial || decoder->ReachedFinal())
        && decoder->GetBestPath(&decoded) ) {
     if (!decoder->ReachedFinal())
@@ -77,7 +80,7 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
           "traceback.";
     
     vector<kaldi::int32> alignment, words;
-    StdArc::Weight weight;
+    LatticeWeight weight;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
 
     info->words_writer.Write(uttid, words);
@@ -96,7 +99,7 @@ bool DecodeUtterance(kaldi::FasterDecoder *decoder,
       KALDI_LOG << ss.str();
     }
 
-    BaseFloat like = -weight.Value();
+    BaseFloat like = -weight.Value1() -weight.Value2();
     KALDI_LOG << "Log-like per frame = " << (like/num_frames);
     (*total_like) += like;
     return true;
