@@ -23,7 +23,7 @@ if [ -f path.sh ]; then . path.sh; fi
 beam=20
 acousticscale=0.22
 
-dir=exp/decode_nnet_tri2a_s1b_scale${acousticscale}
+dir=exp/decode_nnet_tri2a_s1b
 mkdir -p $dir
 
 dir_nnet=exp/nnet_tri2a_s1/

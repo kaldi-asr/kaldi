@@ -39,7 +39,7 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn ark:- a
 
 #initialize the nnet
 mlp_init=$dir/nnet.init
-scripts/gen_mlp_init.py --dim=39:512:301 --gauss --negbias > $mlp_init
+scripts/gen_mlp_init.py --dim=39:512:301 --gauss --negbias --seed=777 > $mlp_init
 
 #global config for trainig
 max_iters=20
@@ -51,7 +51,7 @@ lrate=0.001
 
 nnet-train-xent-hardlab-perutt --cross-validate=true $mlp_init "$feats_cv" "$labels" &> $dir/log/prerun.log
 if [ $? != 0 ]; then cat $dir/log/prerun.log; exit 1; fi
-acc=$(cat $dir/log/prerun.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+acc=$(cat $dir/log/prerun.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
 echo CROSSVAL PRERUN ACCURACY $acc
 
 mlp_best=$mlp_init
@@ -61,13 +61,13 @@ for iter in $(seq -w $max_iters); do
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
   nnet-train-xent-hardlab-perutt --learn-rate=$lrate $mlp_best "$feats_tr" "$labels" $mlp_next &> $dir/log/iter$iter.log
   if [ $? != 0 ]; then cat $dir/log/iter$iter.log; exit 1; fi
-  tr_acc=$(cat $dir/log/iter$iter.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+  tr_acc=$(cat $dir/log/iter$iter.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
   echo TRAIN ITERATION $iter ACCURACY $tr_acc LRATE $lrate
   nnet-train-xent-hardlab-perutt --cross-validate=true $mlp_next "$feats_cv" "$labels" 1>>$dir/log/iter$iter.log 2>>$dir/log/iter$iter.log
   if [ $? != 0 ]; then cat $dir/log/iter$iter.log; exit 1; fi
 
   #accept or reject new parameters
-  acc_new=$(cat $dir/log/iter$iter.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+  acc_new=$(cat $dir/log/iter$iter.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
   echo CROSSVAL ITERATION $iter ACCURACY $acc_new
   acc_prev=$acc
   if [ 1 == $(awk 'BEGIN{print('$acc_new' > '$acc')}') ]; then
@@ -103,7 +103,10 @@ if [ $mlp_best != $mlp_init ]; then
 fi
 mlp_final=$dir/${mlp_base}_final_iter${iter:-0}_acc${acc}
 cp $mlp_best $mlp_final
-ln -s $mlp_final $dir/${mlp_base}_final
+if [ -e $dir/nnet.final ]; then
+  unlink $dir/nnet.final
+fi
+ln -s $mlp_final $dir/nnet.final
 
 echo final network $mlp_final
 

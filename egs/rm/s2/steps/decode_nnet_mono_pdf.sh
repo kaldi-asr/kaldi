@@ -27,7 +27,7 @@ tree=exp/mono/tree
 mkdir -p $dir
 model=exp/mono/final.mdl
 graphdir=exp/graph_mono
-nnet=exp/nnet_mono_pdf/nnet_final
+nnet=exp/nnet_mono_pdf/nnet.final
 
 scripts/mkgraph.sh --mono $tree $model $graphdir
 

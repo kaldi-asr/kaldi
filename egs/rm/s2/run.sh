@@ -53,25 +53,31 @@ steps/prepare_graphs.sh
 # where you have space.
 #e.g.: mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
 mfccdir=/path/to/mfccdir
-steps/make_mfcc_train.sh $mfccdir
-steps/make_mfcc_test.sh $mfccdir
+scripts/run_sge_or_locally.sh "-pe smp 6" "steps/make_mfcc_train.sh $mfccdir" $mfccdir
+scripts/run_sge_or_locally.sh "-pe smp 6" "steps/make_mfcc_test.sh $mfccdir" $mfccdir
+
 
 
 ## MONOPHONE ##
 # first, we will train monophone GMM-HMM system to get training labels
 time steps/train_mono.sh
-steps/decode_mono.sh &
+scripts/run_sge_or_locally.sh "-pe smp 6" steps/decode_mono.sh $PWD/exp/decode_mono/ &
+
 
 # train MLP with monophone transition targets,
 # MFCC_D_A_0 per-utterance CMVN normalization
-time steps/train_nnet_mono_trans.sh
-steps/decode_nnet_mono_trans.sh &
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_mono_trans.sh $PWD/exp/nnet_mono_trans/
+# decode
+scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_mono_trans.sh $PWD/exp/decode_nnet_mono_trans/ &
 
 
 # train MLP with monophone pdf targets,
 # MFCC_D_A_0 per-utterance CMVN normalization 
-time steps/train_nnet_mono_pdf.sh
-steps/decode_nnet_mono_pdf.sh &
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_mono_pdf.sh $PWD/exp/nnet_mono_pdf/
+# decode
+scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_mono_pdf.sh $PWD/exp/decode_nnet_mono_pdf/ &
 
 
 
@@ -79,27 +85,47 @@ steps/decode_nnet_mono_pdf.sh &
 # now, we will train triphone GMM-HMM system to get context-dependent training labels
 # 500 pdfs
 time steps/train_tri1.sh
-steps/decode_tri1.sh &
+#steps/decode_tri1.sh &
+scripts/run_sge_or_locally.sh "-pe smp 6" steps/decode_tri1.sh $PWD/exp/decode_tri1/ &
 time steps/train_tri2a.sh
-steps/decode_tri2a.sh &
+#steps/decode_tri2a.sh &
+scripts/run_sge_or_locally.sh "-pe smp 6" steps/decode_tri2a.sh $PWD/exp/decode_tri2a/ &
+
+
 
 # train MLP with context-dependent pdf targets
 # 1-frame of MFCC_D_A_0, per-utternace CMN, global CVN, 
 # 500K params 
-time steps/train_nnet_tri2a_s1.sh 
-steps/decode_nnet_tri2a_s1a.sh &
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_tri2a_s1.sh $PWD/exp/nnet_tri2a_s1/
+#time steps/train_nnet_tri2a_s1.sh 
+# -- w/o priors: steps/decode_nnet_tri2a_s1a.sh &
+# -- w priots:   steps/decode_nnet_tri2a_s1b.sh &
+# decode
+( scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s1a.sh $PWD/exp/decode_nnet_tri2a_s1a/
 # +class priors
-steps/decode_nnet_tri2a_s1b.sh &
+  scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s1b.sh $PWD/exp/decode_nnet_tri2a_s1b/ 
+) &
+
+
 
 # +splice 11
-time steps/train_nnet_tri2a_s2.sh 
-steps/decode_nnet_tri2a_s2.sh &
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_tri2a_s2.sh $PWD/exp/nnet_tri2a_s2/
+# decode
+( scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s2.sh $PWD/exp/decode_nnet_tri2a_s2/ 
 # tune acoustic scale
-scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s2_tune steps/decode_nnet_tri2a_s2.sh
+  scripts/run_sge_or_locally.sh "-pe smp 12" "scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s2_tune steps/decode_nnet_tri2a_s2.sh" $PWD/exp/decode_nnet_tri2a_s2_tune_sge 
+) &
+
+
 
 # +spk-cmvn
-time steps/train_nnet_tri2a_s3.sh 
-steps/decode_nnet_tri2a_s3.sh &
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_tri2a_s3.sh $PWD/exp/nnet_tri2a_s3/
+# decode
+( scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s3.sh $PWD/exp/decode_nnet_tri2a_s3/ 
 # tune acoustic scale
-scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s3_tune steps/decode_nnet_tri2a_s3.sh
+  scripts/run_sge_or_locally.sh "-pe smp 12" "scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s3_tune steps/decode_nnet_tri2a_s3.sh" $PWD/exp/decode_nnet_tri2a_s3_tune_sge/
+) &
 

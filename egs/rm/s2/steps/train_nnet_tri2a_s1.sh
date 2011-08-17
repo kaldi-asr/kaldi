@@ -9,7 +9,7 @@ mkdir -p $dir/{log,nnet}
 
 
 ###### SELECT FEATURES ######
-cat data/train.scp | scripts/shuffle_list.pl ${seed:-666} > $dir/train.scp
+cat data/train.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
 head -n 3591 $dir/train.scp > $dir/train.scp.tr
 tail -n 399 $dir/train.scp > $dir/train.scp.cv
 feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
@@ -50,7 +50,7 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ar
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
 num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
-scripts/gen_mlp_init.py --dim=39:1024:${num_tgt} --gauss --negbias --seed=666 > $mlp_init
+scripts/gen_mlp_init.py --dim=39:1024:${num_tgt} --gauss --negbias --seed=777 > $mlp_init
 
 
 
@@ -65,7 +65,7 @@ lrate=0.001
 
 nnet-train-xent-hardlab-perutt --cross-validate=true $mlp_init "$feats_cv" "$labels" &> $dir/log/prerun.log
 if [ $? != 0 ]; then cat $dir/log/prerun.log; exit 1; fi
-acc=$(cat $dir/log/prerun.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+acc=$(cat $dir/log/prerun.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
 echo CROSSVAL PRERUN ACCURACY $acc
 
 mlp_best=$mlp_init
@@ -75,13 +75,13 @@ for iter in $(seq -w $max_iters); do
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
   nnet-train-xent-hardlab-perutt --learn-rate=$lrate $mlp_best "$feats_tr" "$labels" $mlp_next &> $dir/log/iter$iter.log
   if [ $? != 0 ]; then cat $dir/log/iter$iter.log; exit 1; fi
-  tr_acc=$(cat $dir/log/iter$iter.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+  tr_acc=$(cat $dir/log/iter$iter.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
   echo TRAIN ITERATION $iter ACCURACY $tr_acc LRATE $lrate
   nnet-train-xent-hardlab-perutt --cross-validate=true $mlp_next "$feats_cv" "$labels" 1>>$dir/log/iter$iter.log 2>>$dir/log/iter$iter.log
   if [ $? != 0 ]; then cat $dir/log/iter$iter.log; exit 1; fi
 
   #accept or reject new parameters
-  acc_new=$(cat $dir/log/iter$iter.log | grep Xent | tail -n 1 | cut -d'[' -f 2 | cut -d'%' -f 1)
+  acc_new=$(cat $dir/log/iter$iter.log | grep FRAME_ACCURACY | tail -n 1 | cut -d' ' -f 3 | cut -d'%' -f 1)
   echo CROSSVAL ITERATION $iter ACCURACY $acc_new
   acc_prev=$acc
   if [ 1 == $(awk 'BEGIN{print('$acc_new' > '$acc')}') ]; then
