@@ -119,20 +119,20 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT>& src) {
 
 
 template<typename _ElemT>
-void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>& dst) const {
-  if(dst.Dim() != dim_) {
-    dst.Resize(dim_);
+void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
+  if(dst->Dim() != dim_) {
+    dst->Resize(dim_);
   }
 
   #if HAVE_CUDA==1
   if(CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemcpy(dst.Data(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
+    cuSafeCall(cudaMemcpy(dst->Data(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
   } else
   #endif
   {
-    dst.CopyFromVec(vec_);
+    dst->CopyFromVec(vec_);
   }
 }
 
@@ -158,20 +158,20 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>& src) 
 
 
 template<typename _ElemT>
-void CuVector<_ElemT>::CopyToVec(std::vector<_ElemT>& dst) const {
-  if(dst.Dim() != dim_) {
-    dst.resize(dim_);
+void CuVector<_ElemT>::CopyToVec(std::vector<_ElemT>* dst) const {
+  if(dst->Dim() != dim_) {
+    dst->resize(dim_);
   }
 
   #if HAVE_CUDA==1
   if(CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemcpy(&dst.front(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
+    cuSafeCall(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
   } else
   #endif
   {
-    memcpy(&dst.front(), vec_.Data(), dim_*sizeof(_ElemT));
+    memcpy(&dst->front(), vec_.Data(), dim_*sizeof(_ElemT));
   }
 }
 
@@ -187,7 +187,7 @@ void CuVector<_ElemT>::Read(std::istream& is, bool binary) {
 template<typename _ElemT>
 void CuVector<_ElemT>::Write(std::ostream& os, bool binary) const {
   Vector<BaseFloat> tmp;
-  CopyToVec(tmp);
+  CopyToVec(&tmp);
   tmp.Write(os,binary); 
 }
 
@@ -212,7 +212,7 @@ void CuVector<_ElemT>::SetZero() {
 template<typename _ElemT>
 std::ostream& operator << (std::ostream& out, const CuVector<_ElemT>& vec) {
   Vector<_ElemT> tmp;
-  vec.CopyToVec(tmp);
+  vec.CopyToVec(&tmp);
   out << tmp;
   return out;
 }

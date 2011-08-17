@@ -90,7 +90,7 @@ class CuMatrix {
   /// Copy functions (reallocates when needed)
   ThisType&        CopyFromMat(const CuMatrix<_ElemT>& src);
   ThisType&        CopyFromMat(const Matrix<_ElemT>& src);
-  Matrix<_ElemT>&  CopyToMat(Matrix<_ElemT>& dst) const;
+  void             CopyToMat(Matrix<_ElemT>* dst) const;
 
   void             Read(std::istream& is, bool binary);
   void             Write(std::ostream& os, bool binary) const;

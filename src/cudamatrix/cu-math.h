@@ -10,7 +10,7 @@ namespace kaldi {
   
   
 /**
- * Separate CUDA kernel wrappers to subnamespace...
+ * Hide the CUDA kernel ANSI-C wrappers to subnamespace cu::
  */
 namespace cu {
   
@@ -18,43 +18,54 @@ namespace cu {
    * Float version of functions
    */
   /// Y = Sigmoid(X)
-  void Sigmoid(CuMatrix<float>& Y, const CuMatrix<float>& X);
+  void Sigmoid(const CuMatrix<float>& X, CuMatrix<float>* Y);
 
   /// Eout = E(1-E) * Y
-  void DiffSigmoid(CuMatrix<float>& Eout, const CuMatrix<float>& Ein, const CuMatrix<float>& Y);
+  void DiffSigmoid(const CuMatrix<float>& Ein, const CuMatrix<float>& Y, CuMatrix<float>* Eout);
     
   /// Y = Softmax(X)
-  void Softmax(CuMatrix<float>& Y, const CuMatrix<float>& X);
+  void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y);
 
   /// check match in the classification for Xentropy
-  void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector<float>& match);
+  void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector<float>* match);
+
+  /// apply the L1 regularization, sets zero to wei and grad elements on zero-crossing
+  void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float lr);
+
+
+
+
 
 
   /*
    * Templated implementation to make it always compilable
    */
   template<typename _ElemT>
-  void Sigmoid(CuMatrix<_ElemT>& Y, const CuMatrix<_ElemT>& X) { 
+  void Sigmoid(const CuMatrix<_ElemT>& X, CuMatrix<_ElemT>* Y) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   template<typename _ElemT>
-  void DiffSigmoid(CuMatrix<_ElemT>& Eout, const CuMatrix<_ElemT>& Ein, const CuMatrix<_ElemT>& Y) { 
+  void DiffSigmoid(const CuMatrix<_ElemT>& Ein, const CuMatrix<_ElemT>& Y, CuMatrix<_ElemT>* Eout) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   template<typename _ElemT>
-  void Softmax(CuMatrix<_ElemT>& Y, const CuMatrix<_ElemT>& X) { 
+  void Softmax(const CuMatrix<_ElemT>& X, CuMatrix<_ElemT>* Y) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   template<typename _ElemT>
-  void CheckClass(const CuMatrix<_ElemT>& out, const CuMatrix<_ElemT> &des, CuVector<float>& match) { 
+  void CheckClass(const CuMatrix<_ElemT>& out, const CuMatrix<_ElemT> &des, CuVector<float>& match) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
+  template<typename _ElemT>
+  void RegularizeL1(CuMatrix<_ElemT>* wei, CuMatrix<_ElemT>* grad, _ElemT l1, _ElemT lr) {
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
  
-} //namespace Cu
+} //namespace cu
 
 } //namespace kaldi
 

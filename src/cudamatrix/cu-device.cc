@@ -11,10 +11,6 @@
 
 namespace kaldi {
 
-
-/**********************************************************************************
- * CuDevice::
- */
 CuDevice::CuDevice()
  : enabled_(false), verbose_(true) {
   int ret;
@@ -70,7 +66,7 @@ std::string CuDevice::GetFreeMemory() {
 
 
 ////////////////////////////////////////////////
-// Instance of the static singleton 
+// The instance of the static singleton 
 //
 CuDevice CuDevice::msDevice;
 //

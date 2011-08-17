@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
       }
       
       //write
-      nnet_out.CopyToMat(nnet_out_host);
+      nnet_out.CopyToMat(&nnet_out_host);
       feature_writer.Write(feature_reader.Key(),nnet_out_host);
 
       //progress log

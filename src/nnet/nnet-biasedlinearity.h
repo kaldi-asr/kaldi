@@ -66,51 +66,22 @@ class BiasedLinearity : public UpdatableComponent {
 
 
   void Update(const CuMatrix<BaseFloat>& input, const CuMatrix<BaseFloat>& err) {
-    
     //compute gradient
     linearity_corr_.AddMatMat(1.0,err,kTrans,input,kNoTrans,momentum_);
     bias_corr_.AddColSum(1.0,err,momentum_);
     //l2 regularization
     if(l2_penalty_ != 0.0) {
-      linearity_.AddMat(-learn_rate_*l2_penalty_*input.NumRows(),linearity_);
+      BaseFloat l2 = learn_rate_*l2_penalty_*input.NumRows();
+      linearity_.AddMat(-l2,linearity_);
     }
     //l1 regularization
-    /*
     if(l1_penalty_ != 0.0) {
       BaseFloat l1 = learn_rate_*input.NumRows()*l1_penalty_;
-      for(MatrixIndexT r=0; r<linearity_.NumRows(); r++) {
-        for(MatrixIndexT c=0; c<linearity_.NumCols(); c++) {
-          if(linearity_(r,c)==0.0) continue; //skip L1 if zero weight!
-          BaseFloat l1sign = l1;
-          if(linearity_(r,c) < 0.0) 
-            l1sign = -l1;
-          BaseFloat before = linearity_(r,c);
-          BaseFloat after = linearity_(r,c)-learn_rate_*linearity_corr_(r,c)-l1sign;
-          if((after > 0.0) ^ (before > 0.0)) {
-            linearity_(r,c) = 0.0;
-            linearity_corr_(r,c) = 0.0;
-          } else {
-            linearity_(r,c) -= l1sign;
-          }
-        }
-      }
+      cu::RegularizeL1(&linearity_,&linearity_corr_,l1,learn_rate_);
     }
-    */
     //update
     linearity_.AddMat(-learn_rate_,linearity_corr_);
     bias_.AddVec(-learn_rate_,bias_corr_);
-
-    /*
-    std::cout <<"I"<< input.Row(0);
-    std::cout <<"E"<< err.Row(0);
-    std::cout <<"CORL"<< linearity_corr_.Row(0);
-    std::cout <<"CORB"<< bias_corr_;
-    std::cout <<"L"<< linearity_.Row(0);
-    std::cout <<"B"<< bias_;
-    std::cout << "\n";
-    */
-
-    //std::cout << l1_penalty_ << l2_penalty_ << momentum_ << learn_rate_ << "\n";
   }
 
  private:

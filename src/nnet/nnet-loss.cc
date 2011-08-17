@@ -72,7 +72,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& ta
   }
 
   //
-  Matrix<BaseFloat> net_out2; net_out.CopyToMat(net_out2);
+  Matrix<BaseFloat> net_out2; net_out.CopyToMat(&net_out2);
   Matrix<BaseFloat> diff2; Matrix<BaseFloat>* diff3 = &diff2;
 
   //compute derivative wrt. activations of last layer of neurons

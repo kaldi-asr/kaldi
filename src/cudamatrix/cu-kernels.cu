@@ -4,10 +4,14 @@
 
 
 
-/*****************
+/*
  * CUDA kernels
  */
-//CuMatrix
+
+
+/*
+ * CuMatrix
+ */
 template<typename T>
 __global__
 static void _set_const(T* mat, T value, MatrixDim d) {
@@ -17,7 +21,6 @@ static void _set_const(T* mat, T value, MatrixDim d) {
   if ( i < d.cols  &&  j < d.rows )
     mat[index] = value;
 }
-
 
 
 template<typename T>
@@ -46,19 +49,26 @@ static void _apply_mask(T* mat, const char* mask, MatrixDim dmat, MatrixDim dmas
 
 template<typename T>
 __global__
-static void _apply_l1(T* mat, T l1, MatrixDim d) {
+static void _regularize_l1(T* wei, T* grad, T l1, T lr, MatrixDim d) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int index = i + j*d.stride;
   if ( i < d.cols  &&  j < d.rows ) {
-    T value = mat[index];
-    T tgt;
-    if(abs(value) < l1) {
-      tgt = 0;
+
+    if(wei[index]==0.0) return; //skip L1 if zero weight!
+    
+    T l1_signed = l1;
+    if(wei[index] < 0.0) //flip sign
+      l1_signed = -l1;
+
+    T before = wei[index];
+    T after = wei[index] -lr*grad[index] -l1_signed;//simulate update
+    if((after > 0.0) ^ (before > 0.0)) { //sign changed?
+      wei[index] = 0.0;
+      grad[index] = 0.0;
     } else {
-      tgt = (value > 0?value-l1:value+l1);
+      wei[index] -= l1_signed;
     }
-    mat[index] = tgt;
   }
 }
 
@@ -132,7 +142,9 @@ static void _mul_elem(T* mat, const T* A, MatrixDim d) {
 
 
 
-//CuVector
+/*
+ * CuVector
+ */
 template<typename T>
 __global__
 static void _add_col_sum(T alpha, const T* mat, T beta, T* vec, MatrixDim d) {
@@ -177,7 +189,9 @@ static void _add_col_sum_reduce(T alpha, const T* mat, T beta, T* vec, MatrixDim
 
 
 
-//CuMath
+/*
+ * cu::
+ */
 template<typename T>
 __global__
 static void _sigmoid(T*y, const T*x, MatrixDim d) {
@@ -474,136 +488,104 @@ static void _check_class_reduce(const T* out, const T* des, float* match, Matrix
 
 
 
-/**************
- * C wrappers around CUDA kernels
+/*
+ * ANSI-C wrappers of CUDA kernels
  */
-//:FLOAT:
-//CuMatrix
-void cudaF_set_const(dim3 Gr, dim3 Bl, float* mat, float value, MatrixDim d) 
-{ _set_const<<<Gr,Bl>>>(mat,value,d); }
 
-void cudaF_apply_log(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) 
-{ _apply_log<<<Gr,Bl>>>(mat,d); }
+/*
+ * float 
+ */
 
-void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim dmat, MatrixDim dmask)
-{ _apply_mask<<<Gr,Bl>>>(mat,mask,dmat,dmask); }
+/*
+ * CuMatrix
+ */
+void cudaF_set_const(dim3 Gr, dim3 Bl, float* mat, float value, MatrixDim d) {
+  _set_const<<<Gr,Bl>>>(mat,value,d); 
+}
 
-void cudaF_apply_l1(dim3 Gr, dim3 Bl, float* mat, float l1, MatrixDim d)
-{ _apply_l1<<<Gr,Bl>>>(mat,l1,d); }
+void cudaF_apply_log(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
+  _apply_log<<<Gr,Bl>>>(mat,d); 
+}
 
-void cudaF_scale_cols(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d)
-{ _scale_cols<<<Gr,Bl>>>(mat,scale,d); }
+void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
+  _apply_mask<<<Gr,Bl>>>(mat,mask,dmat,dmask); 
+}
 
-void cudaF_scale_rows(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d)
-{ _scale_rows<<<Gr,Bl>>>(mat,scale,d); }
+void cudaF_scale_cols(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
+  _scale_cols<<<Gr,Bl>>>(mat,scale,d); 
+}
 
-void cudaF_add_scaled(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d)
-{ _add_scaled<<<Gr,Bl>>>(alpha,A,beta,dst,d); }
+void cudaF_scale_rows(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
+  _scale_rows<<<Gr,Bl>>>(mat,scale,d);
+}
 
-void cudaF_add_scaled_row(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d)
-{ _add_scaled_row<<<Gr,Bl>>>(alpha,row,beta,dst,d); }
+void cudaF_add_scaled(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d) {
+  _add_scaled<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
+}
 
-void cudaF_mul_elem(dim3 Gr, dim3 Bl, float*mat, const float*A, MatrixDim d)
-{ _mul_elem<<<Gr,Bl>>>(mat,A,d); }
+void cudaF_add_scaled_row(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d) {
+  _add_scaled_row<<<Gr,Bl>>>(alpha,row,beta,dst,d); 
+}
 
-//CuVector
-void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d)
-{ _add_col_sum<<<Gr,Bl>>>(alpha,mat,beta,vec,d); }
+void cudaF_mul_elem(dim3 Gr, dim3 Bl, float*mat, const float*A, MatrixDim d) {
+  _mul_elem<<<Gr,Bl>>>(mat,A,d); 
+}
 
-void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) 
-{ _add_col_sum_reduce<<<Gr,Bl>>>(alpha,mat,beta,vec,d); }
+/*
+ * CuVector
+ */
+void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) {
+  _add_col_sum<<<Gr,Bl>>>(alpha,mat,beta,vec,d); 
+}
 
-//CuMath
-void cudaF_sigmoid (dim3 Gr, dim3 Bl, float *y, const float*x, MatrixDim d)
-{ _sigmoid<<<Gr,Bl>>>(y, x, d); }
+void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) {
+  _add_col_sum_reduce<<<Gr,Bl>>>(alpha,mat,beta,vec,d); 
+}
+
+/*
+ * cu::
+ */
+void cudaF_sigmoid (dim3 Gr, dim3 Bl, float *y, const float*x, MatrixDim d) {
+  _sigmoid<<<Gr,Bl>>>(y, x, d); 
+}
 
 void cudaF_diff_sigmoid (dim3 Gr, dim3 Bl, float*eout, const float*e, const float*y, MatrixDim d) {
   _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
 }
 
-void cudaF_softmax (size_t Gr, size_t Bl, float*y, const float*x, MatrixDim d) 
-{ _softmax<<<Gr,Bl>>>(y, x, d); }
-
-void cudaF_softmax_reduce (dim3 Gr, dim3 Bl, float*y, const float*x, MatrixDim d) 
-{ _softmax_reduce<<<Gr,Bl>>>(y, x, d); }
-
-
-void cudaF_expand(dim3 Gr, dim3 Bl, float* y, const float* x, const int* off, MatrixDim d_out, MatrixDim d_in)
-{ _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); }
-
-
-void cudaF_rearrange(dim3 Gr, dim3 Bl, float* y, const float* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in)
-{ _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); }
-
-  
-void cudaF_randomize(dim3 Gr, dim3 Bl, float* y, const float* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in)
-{ _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); }
-
-
-void cudaF_check_class(size_t Gr, size_t Bl, const float* out, const float* des, float* match, MatrixDim d)
-{ _check_class<<<Gr,Bl>>>(out,des,match,d); }
-
-void cudaF_check_class_reduce(dim3 Gr, dim3 Bl, const float* out, const float* des, float* match, MatrixDim d)
-{ _check_class_reduce<<<Gr,Bl>>>(out,des,match,d); }
-
-
-
-
-//:DOUBLE:
-//CuMatrix
-void cudaD_set_const(dim3 Gr, dim3 Bl, double* mat, double value, MatrixDim d) 
-{ _set_const<<<Gr,Bl>>>(mat,value,d); }
-
-void cudaD_apply_log(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) 
-{ _apply_log<<<Gr,Bl>>>(mat,d); }
-
-void cudaD_scale_cols(dim3 Gr, dim3 Bl, double* mat, const double* scale, MatrixDim d)
-{ _scale_cols<<<Gr,Bl>>>(mat,scale,d); }
-
-void cudaD_scale_rows(dim3 Gr, dim3 Bl, double* mat, const double* scale, MatrixDim d)
-{ _scale_rows<<<Gr,Bl>>>(mat,scale,d); }
-
-void cudaD_add_scaled(dim3 Gr, dim3 Bl, double alpha, const double* A, double beta, double* dst, MatrixDim d)
-{ _add_scaled<<<Gr,Bl>>>(alpha,A,beta,dst,d); }
-
-void cudaD_add_scaled_row(dim3 Gr, dim3 Bl, double alpha, const double* row, double beta, double* dst, MatrixDim d)
-{ _add_scaled_row<<<Gr,Bl>>>(alpha,row,beta,dst,d); }
-
-void cudaD_mul_elem(dim3 Gr, dim3 Bl, double*mat, const double*A, MatrixDim d)
-{ _mul_elem<<<Gr,Bl>>>(mat,A,d); }
-
-//CuVector
-void cudaD_add_col_sum(size_t Gr, size_t Bl, double alpha, const double* mat, double beta, double* vec, MatrixDim d)
-{ _add_col_sum<<<Gr,Bl>>>(alpha,mat,beta,vec,d); }
-
-//CuMath
-void cudaD_sigmoid (dim3 Gr, dim3 Bl, double *y, const double*x, MatrixDim d)
-{ _sigmoid<<<Gr,Bl>>>(y, x, d); }
-
-
-void cudaD_diff_sigmoid (dim3 Gr, dim3 Bl, double*eout, const double*e, const double*y, MatrixDim d) {
-  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
+void cudaF_softmax (size_t Gr, size_t Bl, float*y, const float*x, MatrixDim d) { 
+  _softmax<<<Gr,Bl>>>(y, x, d); 
 }
 
-void cudaD_softmax (size_t Gr, size_t Bl, double*y, const double*x, MatrixDim d) 
-{ _softmax<<<Gr,Bl>>>(y, x, d); }
+void cudaF_softmax_reduce (dim3 Gr, dim3 Bl, float*y, const float*x, MatrixDim d) { 
+  _softmax_reduce<<<Gr,Bl>>>(y, x, d); 
+}
 
 
-void cudaD_expand(dim3 Gr, dim3 Bl, double* y, const double* x, const int* off, MatrixDim d_out, MatrixDim d_in)
-{ _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); }
+void cudaF_expand(dim3 Gr, dim3 Bl, float* y, const float* x, const int* off, MatrixDim d_out, MatrixDim d_in) {
+  _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
+}
 
 
-void cudaD_rearrange(dim3 Gr, dim3 Bl, double* y, const double* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in)
-{ _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); }
+void cudaF_rearrange(dim3 Gr, dim3 Bl, float* y, const float* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in) {
+  _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+}
 
   
-void cudaD_randomize(dim3 Gr, dim3 Bl, double* y, const double* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in)
-{ _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); }
+void cudaF_randomize(dim3 Gr, dim3 Bl, float* y, const float* x, const int* copy_from, MatrixDim d_out, MatrixDim d_in) { 
+  _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+}
 
 
-void cudaD_check_class(size_t Gr, size_t Bl, const double* out, const double* des, float* match, MatrixDim d)
-{ _check_class<<<Gr,Bl>>>(out,des,match,d); }
+void cudaF_check_class(size_t Gr, size_t Bl, const float* out, const float* des, float* match, MatrixDim d) { 
+  _check_class<<<Gr,Bl>>>(out,des,match,d); 
+}
 
+void cudaF_check_class_reduce(dim3 Gr, dim3 Bl, const float* out, const float* des, float* match, MatrixDim d) { 
+  _check_class_reduce<<<Gr,Bl>>>(out,des,match,d); 
+}
 
-
+void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, float lr, MatrixDim d) {
+  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
+}
 

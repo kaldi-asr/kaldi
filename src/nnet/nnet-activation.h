@@ -38,13 +38,13 @@ class Sigmoid : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     //y = 1/(1+e^-x)
-    cu::Sigmoid(*out,in);
+    cu::Sigmoid(in,out);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {
     //ey = y(1-y)ex
     const CuMatrix<BaseFloat>& y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
-    cu::DiffSigmoid(*out_err,in_err,y);
+    cu::DiffSigmoid(in_err,y,out_err);
   }
 };
 
@@ -63,7 +63,7 @@ class Softmax : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     //y = e^x_j/sum_j(e^x_j)
-    cu::Softmax(*out,in);
+    cu::Softmax(in,out);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {

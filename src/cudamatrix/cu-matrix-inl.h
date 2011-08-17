@@ -162,9 +162,9 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT>& src) {
 
 
 template<typename _ElemT>
-Matrix<_ElemT>& CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>& dst) const {
-  if(dst.NumRows() != NumRows()  ||  dst.NumCols() != NumCols()) {
-    dst.Resize(NumRows(),NumCols());
+void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>* dst) const {
+  if(dst->NumRows() != NumRows()  ||  dst->NumCols() != NumCols()) {
+    dst->Resize(NumRows(),NumCols());
   }
 
   #if HAVE_CUDA==1 
@@ -173,18 +173,16 @@ Matrix<_ElemT>& CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>& dst) const {
     Timer tim;
    
     MatrixIndexT src_pitch = stride_*sizeof(_ElemT);
-    MatrixIndexT dst_pitch = dst.Stride()*sizeof(_ElemT);
+    MatrixIndexT dst_pitch = dst->Stride()*sizeof(_ElemT);
     MatrixIndexT width = NumCols()*sizeof(_ElemT);
-    cuSafeCall(cudaMemcpy2D(dst.Data(), dst_pitch, Data(), src_pitch, width, NumRows(), cudaMemcpyDeviceToHost));
+    cuSafeCall(cudaMemcpy2D(dst->Data(), dst_pitch, Data(), src_pitch, width, NumRows(), cudaMemcpyDeviceToHost));
 
     CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H",tim.Elapsed());
   } else
   #endif
   {
-    dst.CopyFromMat(mat_);
+    dst->CopyFromMat(mat_);
   }
-
-  return dst;
 }
 
 
@@ -229,7 +227,7 @@ void CuMatrix<_ElemT>::Read(std::istream& is, bool binary) {
 template<typename _ElemT>
 void CuMatrix<_ElemT>::Write(std::ostream& os, bool binary) const {
   Matrix<BaseFloat> tmp;
-  CopyToMat(tmp);
+  CopyToMat(&tmp);
   tmp.Write(os,binary); 
 }
 
@@ -253,7 +251,7 @@ void CuMatrix<_ElemT>::SetZero() {
 template<typename _ElemT>
 std::ostream& operator << (std::ostream& out, const CuMatrix<_ElemT>& mat) {
   Matrix<_ElemT> tmp;
-  mat.CopyToMat(tmp);
+  mat.CopyToMat(&tmp);
   out << tmp;
   return out;
 }

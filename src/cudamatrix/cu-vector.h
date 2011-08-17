@@ -47,12 +47,12 @@ class CuVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromVec(const CuVector<_ElemT>& rSrc);
-  ThisType&        CopyFromVec(const Vector<_ElemT>& rSrc);
-  void             CopyToVec(Vector<_ElemT>& rDst) const;
+  ThisType&        CopyFromVec(const CuVector<_ElemT>& src);
+  ThisType&        CopyFromVec(const Vector<_ElemT>& src);
+  void             CopyToVec(Vector<_ElemT>* dst) const;
 
-  ThisType&        CopyFromVec(const std::vector<_ElemT>& rSrc);
-  void             CopyToVec(std::vector<_ElemT>& rDst) const;
+  ThisType&        CopyFromVec(const std::vector<_ElemT>& src);
+  void             CopyToVec(std::vector<_ElemT>* dst) const;
   
   void             Read(std::istream& is, bool binary);
   void             Write(std::ostream& is, bool binary) const;
