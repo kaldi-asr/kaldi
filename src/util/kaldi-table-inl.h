@@ -1328,7 +1328,7 @@ class RandomAccessTableReaderScriptImpl:
       default: break;
     }
     KALDI_ASSERT(IsToken(key));
-    size_t key_pos;
+    size_t key_pos = 0; // set to zero to suppress warning
     bool ans = LookupKey(key, &key_pos);
     if (!ans) return false;
     else {
