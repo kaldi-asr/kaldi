@@ -252,7 +252,8 @@ void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::Std
     for (fst::ArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
       const CompactLatticeArc &arc = aiter.Value();
       const CompactLatticeWeight &wgt = aiter.Value().weight;
-      rnnscore=ComputeWord(
+      BaseFloat rnnscore=0;
+      //TODO compute word posterior! 
       TreeTraverse(wordsym,lat,arc.nextstate,sentence+" "+wordsym.Find(arc.olabel),rnnscore+score+wgt.Weight().Value1());
     }
 }
