@@ -1,4 +1,4 @@
-// tied/am-tied-diag-gmm.h
+// tied/am-tied-full-gmm.h
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
@@ -21,26 +21,26 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "gmm/diag-gmm.h"
+#include "gmm/full-gmm.h"
 #include "tied/tied-gmm.h"
 #include "util/parse-options.h"
 
 namespace kaldi {
 /// @defgroup TiedGmm TiedGmm
 /// @{
-/// kaldi Diagonal Gaussian Mixture Models
+/// kaldi Full Gaussian Mixture Models
 
-class AmTiedDiagGmm {
+class AmTiedFullGmm {
  public:
-  AmTiedDiagGmm() : dim_(0) { }
-  ~AmTiedDiagGmm();
+  AmTiedFullGmm() : dim_(0) { }
+  ~AmTiedFullGmm();
 
   /// Initializes with a single GMM as codebook and initializes num_tied_pdfs
   /// (uniform) tied pdfs
-  void Init(const DiagGmm &proto);
+  void Init(const FullGmm &proto);
   
   /// Adds a DiagGmm as codebook to the model
-  void AddPdf(const DiagGmm &gmm);
+  void AddPdf(const FullGmm &gmm);
   
   /// Adds a tied PDF to the model
   void AddTiedPdf(const TiedGmm &tied);
@@ -55,10 +55,10 @@ class AmTiedDiagGmm {
   void ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index);
   
   /// Replace the designated codebook
-  void ReplacePdf(const int32 pdf_index, DiagGmm &gmm);
+  void ReplacePdf(const int32 pdf_index, FullGmm &gmm);
   
   /// Copies the parameters from another model. Allocates necessary memory.
-  void CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other);
+  void CopyFromAmTiedFullGmm(const AmTiedFullGmm &other);
 
   /// Sets the gconsts for all the PDFs. Returns the total number of Gaussians
   /// over all PDFs that are "invalid" e.g. due to zero weights or variances.
@@ -82,46 +82,46 @@ class AmTiedDiagGmm {
   int32 NumGaussInPdf(int32 pdf_index) const;
 
   /// Accessors
-  DiagGmm& GetPdf(int32 pdf_index);
-  const DiagGmm& GetPdf(int32 pdf_index) const;
+  FullGmm& GetPdf(int32 pdf_index);
+  const FullGmm& GetPdf(int32 pdf_index) const;
   
   TiedGmm& GetTiedPdf(int32 pdf_index);
   const TiedGmm& GetTiedPdf(int32 pdf_index) const;
 
  private:
-  std::vector<DiagGmm*> densities_;
+  std::vector<FullGmm*> densities_;
   std::vector<TiedGmm*> tied_densities_;
   int32 dim_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(AmTiedDiagGmm);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(AmTiedFullGmm);
 };
 
-inline BaseFloat AmTiedDiagGmm::LogLikelihood(
+inline BaseFloat AmTiedFullGmm::LogLikelihood(
     const TiedGmmPerFrameVars &per_frame_vars,
     const int32 pdf_index) const {
   TiedGmm *tied = tied_densities_[pdf_index];
   return tied->LogLikelihood(*per_frame_vars.ll[tied->pdf_index()]);
 }
 
-inline DiagGmm& AmTiedDiagGmm::GetPdf(int32 pdf_index) {
+inline FullGmm& AmTiedFullGmm::GetPdf(int32 pdf_index) {
   KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
                && (densities_[pdf_index] != NULL));
   return *(densities_[pdf_index]);
 }
 
-inline const DiagGmm& AmTiedDiagGmm::GetPdf(int32 pdf_index) const {
+inline const FullGmm& AmTiedFullGmm::GetPdf(int32 pdf_index) const {
   KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
                && (densities_[pdf_index] != NULL));
   return *(densities_[pdf_index]);
 }
 
-inline TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) {
+inline TiedGmm& AmTiedFullGmm::GetTiedPdf(int32 tied_pdf_index) {
   KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
                && (tied_densities_[tied_pdf_index] != NULL));
   return *(tied_densities_[tied_pdf_index]);
 }
 
-inline const TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) const {
+inline const TiedGmm& AmTiedFullGmm::GetTiedPdf(int32 tied_pdf_index) const {
   KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
                && (tied_densities_[tied_pdf_index] != NULL));
   return *(tied_densities_[tied_pdf_index]);

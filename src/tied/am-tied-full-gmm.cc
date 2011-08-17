@@ -20,17 +20,17 @@
 #include <vector>
 using std::vector;
 
-#include "tied/am-tied-diag-gmm.h"
+#include "tied/am-tied-full-gmm.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {
 
-AmTiedDiagGmm::~AmTiedDiagGmm() {
+AmTiedFullGmm::~AmTiedFullGmm() {
   DeletePointers(&densities_);
   DeletePointers(&tied_densities_);
 }
 
-void AmTiedDiagGmm::Init(const DiagGmm& proto) {
+void AmTiedFullGmm::Init(const FullGmm& proto) {
   if (densities_.size() != 0 || tied_densities_.size() != 0) {
     KALDI_WARN << "Init() called on a non-empty object. Contents will be "
         "overwritten";
@@ -40,45 +40,45 @@ void AmTiedDiagGmm::Init(const DiagGmm& proto) {
 
   // the codebook...
   densities_.resize(1, NULL);
-  densities_[0] = new DiagGmm();
-  densities_[0]->CopyFromDiagGmm(proto);
+  densities_[0] = new FullGmm();
+  densities_[0]->CopyFromFullGmm(proto);
 
   dim_ = proto.Dim();
 }
 
-void AmTiedDiagGmm::AddPdf(const DiagGmm &gmm) {
+void AmTiedFullGmm::AddPdf(const FullGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
   else
     dim_ = gmm.Dim();
 
-  DiagGmm *gmm_ptr = new DiagGmm();
-  gmm_ptr->CopyFromDiagGmm(gmm);
+  FullGmm *gmm_ptr = new FullGmm();
+  gmm_ptr->CopyFromFullGmm(gmm);
   densities_.push_back(gmm_ptr);
 }
 
-void AmTiedDiagGmm::AddTiedPdf(const TiedGmm &tied) {
+void AmTiedFullGmm::AddTiedPdf(const TiedGmm &tied) {
   TiedGmm *tgmm_ptr = new TiedGmm();
   tgmm_ptr->CopyFromTiedGmm(tied);
   tied_densities_.push_back(tgmm_ptr);
 }
 
 /// Remove designated codebook; caveat: does not take care of the tied dependents!
-void AmTiedDiagGmm::RemovePdf(const int32 pdf_index) {
+void AmTiedFullGmm::RemovePdf(const int32 pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
   delete densities_[pdf_index];
   densities_.erase(densities_.begin() + pdf_index);
 }
   
 /// Remove designated tied pdf
-void AmTiedDiagGmm::RemoveTiedPdf(const int32 tied_pdf_index) {
+void AmTiedFullGmm::RemoveTiedPdf(const int32 tied_pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
   delete tied_densities_[tied_pdf_index];
   tied_densities_.erase(tied_densities_.begin() + tied_pdf_index);
 }
 
 /// Replace the codebook of the designated tied pdf by the new index
-void AmTiedDiagGmm::ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index) {
+void AmTiedFullGmm::ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(new_pdf_index) < densities_.size());
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
   
@@ -86,15 +86,15 @@ void AmTiedDiagGmm::ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_i
 }
   
 /// Replace the designated codebook
-void AmTiedDiagGmm::ReplacePdf(const int32 pdf_index, DiagGmm &gmm) {
+void AmTiedFullGmm::ReplacePdf(const int32 pdf_index, FullGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
  
-  densities_[pdf_index]->CopyFromDiagGmm(gmm);
+  densities_[pdf_index]->CopyFromFullGmm(gmm);
 }
 
-void AmTiedDiagGmm::CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other) {
+void AmTiedFullGmm::CopyFromAmTiedFullGmm(const AmTiedFullGmm &other) {
   if (densities_.size() != 0) {
     DeletePointers(&densities_);
   }
@@ -109,8 +109,8 @@ void AmTiedDiagGmm::CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other) {
   dim_ = other.dim_;
 
   for (int32 i = 0; i < densities_.size(); ++i) {
-    densities_[i] = new DiagGmm();
-    densities_[i]->CopyFromDiagGmm(*(other.densities_[i]));
+    densities_[i] = new FullGmm();
+    densities_[i]->CopyFromFullGmm(*(other.densities_[i]));
   }
 
   for (int32 i = 0; i < tied_densities_.size(); ++i) {
@@ -119,9 +119,9 @@ void AmTiedDiagGmm::CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other) {
   }
 }
 
-int32 AmTiedDiagGmm::ComputeGconsts() {
+int32 AmTiedFullGmm::ComputeGconsts() {
   int32 num_bad_diag = 0;
-  for (std::vector<DiagGmm*>::iterator itr = densities_.begin(),
+  for (std::vector<FullGmm*>::iterator itr = densities_.begin(),
       end = densities_.end(); itr != end; ++itr) {
     num_bad_diag += (*itr)->ComputeGconsts();
   }
@@ -140,21 +140,21 @@ int32 AmTiedDiagGmm::ComputeGconsts() {
   return num_bad_tied + num_bad_diag;
 }
 
-void AmTiedDiagGmm::SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const {
+void AmTiedFullGmm::SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const {
   per_frame_vars->x.Resize(dim_);
   per_frame_vars->Resize(NumPdfs());
   for (int32 i = 0; i < NumPdfs(); ++i)
     per_frame_vars->Resize(i, GetPdf(i).NumGauss());
 }
 
-void AmTiedDiagGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
+void AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
                                         TiedGmmPerFrameVars *per_frame_vars) const {
   per_frame_vars->x.CopyFromVec(data);
   for (int32 i = 0; i < NumPdfs(); ++i)
     densities_[i]->LogLikelihoods(data, per_frame_vars->ll[i]);
 }
 
-void AmTiedDiagGmm::Read(std::istream &in_stream, bool binary) {
+void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
   int32 num_pdfs;
   int32 num_tied_pdfs;
 
@@ -169,7 +169,7 @@ void AmTiedDiagGmm::Read(std::istream &in_stream, bool binary) {
   KALDI_ASSERT(num_pdfs > 0);
   densities_.reserve(num_pdfs);
   for (int32 i = 0; i < num_pdfs; i++) {
-    densities_.push_back(new DiagGmm());
+    densities_.push_back(new FullGmm());
     densities_.back()->Read(in_stream, binary);
     KALDI_ASSERT(static_cast<int32>(densities_.back()->Dim())
                  == dim_);
@@ -185,7 +185,7 @@ void AmTiedDiagGmm::Read(std::istream &in_stream, bool binary) {
   }
 }
 
-void AmTiedDiagGmm::Write(std::ostream &out_stream, bool binary) const {
+void AmTiedFullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
@@ -195,7 +195,7 @@ void AmTiedDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteBasicType(out_stream, binary, static_cast<int32>(densities_.size()));
   if (!binary) out_stream << "\n";
   
-  for (std::vector<DiagGmm*>::const_iterator it = densities_.begin(),
+  for (std::vector<FullGmm*>::const_iterator it = densities_.begin(),
       end = densities_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);
   }
