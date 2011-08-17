@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
       fgmm.Read(is.Stream(), binary_read);
     }
 
-    kaldi::MlEstimateFullGmm gmm_accs;
+    kaldi::AccumFullGmm gmm_accs;
     {
       bool binary;
       kaldi::Input is(stats_filename, &binary);
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       kaldi::BaseFloat objf_impr, count;
-      gmm_accs.Update(gmm_opts, kaldi::kGmmAll, &fgmm, &objf_impr, &count);
+      MleFullGmmUpdate(gmm_opts, gmm_accs, kaldi::kGmmAll, &fgmm, &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";

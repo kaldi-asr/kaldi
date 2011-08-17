@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     if (diag_gmm_nbest != 0)
       dgmm.CopyFromFullGmm(fgmm);
 
-    kaldi::MlEstimateFullGmm gmm_accs;
-    gmm_accs.ResizeAccumulators(fgmm, kaldi::kGmmAll);
+    kaldi::AccumFullGmm gmm_accs;
+    gmm_accs.Resize(fgmm, kaldi::kGmmAll);
 
     double tot_like = 0.0;
     double tot_frames = 0.0;
