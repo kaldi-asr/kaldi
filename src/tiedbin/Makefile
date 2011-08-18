@@ -6,7 +6,10 @@ include ../kaldi.mk
 
 BINFILES = tied-diag-gmm-init-mono tied-diag-gmm-acc-stats-ali \
            tied-diag-gmm-est tied-diag-gmm-align-compiled \
-           tied-diag-gmm-decode-simple
+           tied-diag-gmm-decode-simple \
+           tied-full-gmm-init-mono tied-full-gmm-acc-stats-ali \
+           tied-full-gmm-est tied-full-gmm-align-compiled \
+           tied-full-gmm-decode-simple
 
 OBJFILES =
 
