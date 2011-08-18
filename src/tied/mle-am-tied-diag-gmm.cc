@@ -151,7 +151,7 @@ void AccumAmTiedDiagGmm::Read(std::istream& in_stream, bool binary, bool add) {
   ReadBasicType(in_stream, binary, &num_tied);
   KALDI_ASSERT(num_tied > 0);
   if (!add || (add && tied_gmm_accumulators_.empty())) {
-    tied_gmm_accumulators_.resize(num_pdfs, NULL);
+    tied_gmm_accumulators_.resize(num_tied, NULL);
     for (std::vector<AccumTiedGmm*>::iterator it = tied_gmm_accumulators_.begin(),
              end = tied_gmm_accumulators_.end(); it != end; ++it) {
       if (*it != NULL) delete *it;
