@@ -261,6 +261,131 @@ TableEventMap::TableEventMap(EventKeyType key, const std::map<EventValueType, Ev
   }
 }
 
+// This function is only used inside this .cc file so make it static.
+static bool IsLeafNode(const EventMap *e) {
+  std::vector<EventMap*> children;
+  e->GetChildren(&children);
+  return children.empty();
+}
+
+
+// This helper function called from GetTreeStructure outputs the tree structure
+// of the EventMap in a more convenient form.  At input, the objects pointed to
+// by last three pointers should be empty.  The function will return false if
+// the EventMap "map" doesn't have the required structure (see the comments in
+// the header for GetTreeStructure).  If it returns true, then at output,
+// "nonleaf_nodes" will be a vector of pointers to the EventMap* values
+// corresponding to nonleaf nodes, in an order where the root node comes first
+// and child nodes are after their parents; "nonleaf_parents" will be a map
+// from each nonleaf node to its parent, and the root node points to itself;
+// and "leaf_parents" will be a map from the numeric id of each leaf node
+// (corresponding to the value returned by the EventMap) to its parent node;
+// leaf_parents will contain no NULL pointers, otherwise we would have returned
+// false as the EventMap would not have had the required structure.
+
+static bool GetTreeStructureInternal(
+    const EventMap &map,
+    std::vector<const EventMap*> *nonleaf_nodes,
+    std::map<const EventMap*, const EventMap*> *nonleaf_parents,
+    std::vector<const EventMap*> *leaf_parents) {
+
+  std::vector<const EventMap*> queue; // parents to be processed.
+
+  const EventMap *top_node = &map;
+    
+  queue.push_back(top_node);
+  nonleaf_nodes->push_back(top_node);
+  (*nonleaf_parents)[top_node] = top_node;
+  
+  while (!queue.empty()) {
+    const EventMap *parent = queue.back();
+    queue.pop_back();
+    std::vector<EventMap*> children;
+    parent->GetChildren(&children);
+    KALDI_ASSERT(!children.empty());
+    for (size_t i = 0; i < children.size(); i++) {
+      EventMap *child = children[i];
+      if (IsLeafNode(child)) {
+        int32 leaf;
+        if (!child->Map(EventType(), &leaf)
+            || leaf < 0) return false;
+        if (static_cast<int32>(leaf_parents->size()) <= leaf)
+          leaf_parents->resize(leaf+1, NULL);
+        if ((*leaf_parents)[leaf] != NULL) return false; // repeated leaf.
+        (*leaf_parents)[leaf] = parent;
+      } else {
+        (*nonleaf_parents)[child] = parent;
+        queue.push_back(child);
+      }
+    }
+  }
+
+  for (size_t i = 0; i < leaf_parents->size(); i++) 
+    if ((*leaf_parents)[i] == NULL) return false; // non-consecutively
+  // numbered leaves.
+  
+  KALDI_ASSERT(!leaf_parents->empty()); // or no leaves.
+  
+  return true;
+}
+
+// See the header for a description of what this function does.
+bool GetTreeStructure(const EventMap &map,
+                      int32 *num_leaves,
+                      std::vector<int32> *parents) {
+  KALDI_ASSERT (num_leaves != NULL && parents != NULL);
+  
+  if (IsLeafNode(&map)) { // handle degenerate case where root is a leaf.
+    int32 leaf;
+    if (!map.Map(EventType(), &leaf)
+        || leaf != 0) return false;
+    *num_leaves = 1;
+    parents->resize(1);
+    (*parents)[0] = 0;
+    return true;
+  }
+
+  
+  // This vector gives the address of nonleaf nodes in the tree,
+  // in a numbering where 0 is the root and children always come
+  // after parents.
+  std::vector<const EventMap*> nonleaf_nodes;
+
+  // Map from each nonleaf node to its parent node
+  // (or to itself for the root node).
+  std::map<const EventMap*, const EventMap*> nonleaf_parents;
+
+  // Map from leaf nodes to their parent nodes.
+  std::vector<const EventMap*> leaf_parents;
+
+  if (!GetTreeStructureInternal(map, &nonleaf_nodes,
+                               &nonleaf_parents,
+                                &leaf_parents)) return false;
+
+  *num_leaves = nonleaf_nodes.size() + leaf_parents.size();
+
+  std::map<const EventMap*, int32> nonleaf_indices;
+
+  // number the nonleaf indices so they come after the leaf
+  // indices and the root is last.
+  for (size_t i = 0; i < nonleaf_nodes.size(); i++)
+    nonleaf_indices[nonleaf_nodes[i]] = *num_leaves - i - 1;
+
+  parents->resize(*num_leaves);
+  for (size_t i = 0; i < leaf_parents.size(); i++)
+    (*parents)[i] = nonleaf_indices[leaf_parents[i]];
+  for (size_t i = 0; i < nonleaf_nodes.size(); i++) {
+    int32 index = nonleaf_indices[nonleaf_nodes[i]],
+        parent_index = nonleaf_indices[nonleaf_parents[nonleaf_nodes[i]]];
+    KALDI_ASSERT(index > 0 && parent_index >= index);
+    (*parents)[index] = parent_index;
+  }
+  for (int32 i = 0; i < *num_leaves; i++)
+    KALDI_ASSERT ((*parents)[i] > i || (i+1==*num_leaves && (*parents)[i] == i));
+  return true;
+}
+
+
 
 
 } // end namespace kaldi

@@ -307,6 +307,19 @@ inline LatticeWeightTpl<FloatType> Plus(const LatticeWeightTpl<FloatType> &w1,
 }
 
 
+// For efficiency, override the NaturalLess template class.  
+template<class FloatType>
+class NaturalLess<LatticeWeightTpl<FloatType> > {
+ public:
+  typedef LatticeWeightTpl<FloatType> Weight;
+  bool operator()(const Weight &w1, const Weight &w2) const {
+    // NaturalLess is a negative order (opposite to normal ordering).
+    // This operator () corresponds to "<" in the negative order, which
+    // corresponds to the ">" in the normal order.
+    return (Compare(w1, w2) == 1); 
+  }
+};
+
 template<class FloatType>
 inline LatticeWeightTpl<FloatType> Times(const LatticeWeightTpl<FloatType> &w1,
                                          const LatticeWeightTpl<FloatType> &w2) {
@@ -547,6 +560,19 @@ inline int Compare (const CompactLatticeWeightTpl<WeightType,IntType> &w1,
   }
   return 0;
 }
+
+// For efficiency, override the NaturalLess template class.
+template<class FloatType, class IntType>
+class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> > {
+ public:
+  typedef CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> Weight;
+  bool operator()(const Weight &w1, const Weight &w2) const {
+    // NaturalLess is a negative order (opposite to normal ordering).
+    // This operator () corresponds to "<" in the negative order, which
+    // corresponds to the ">" in the normal order.
+    return (Compare(w1, w2) == 1); 
+  }
+};
 
 // Make sure Compare is defined for TropicalWeight, so everything works
 // if we substitute LatticeWeight for TropicalWeight.

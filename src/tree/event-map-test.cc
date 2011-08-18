@@ -28,7 +28,20 @@ void TestEventMap() {
 
 
   ConstantEventMap *C0a = new ConstantEventMap(0);
+  {
+    int32 num_leaves;
+    std::vector<int32> parents;
+    bool a = GetTreeStructure(*C0a, &num_leaves, &parents);
+    KALDI_ASSERT(a && parents.size() == 1 && parents[0] == 0);
+  }
   ConstantEventMap *C1b = new ConstantEventMap(1);
+  {
+    int32 num_leaves;
+    std::vector<int32> parents;
+    bool a = GetTreeStructure(*C1b, &num_leaves, &parents);
+    KALDI_ASSERT(!a); // since C1b's leaves don't start from 0.
+  }
+  
   std::vector<EventMap*> tvec;
   tvec.push_back(C0a);
   tvec.push_back(C1b);
@@ -36,6 +49,14 @@ void TestEventMap() {
   TableEventMap *T1 = new TableEventMap(1, tvec);  // takes ownership of C0a, C1b
   assert(T1->MaxResult() == 1);
 
+  {
+    int32 num_leaves;
+    std::vector<int32> parents;
+    bool a = GetTreeStructure(*T1, &num_leaves, &parents);
+    KALDI_ASSERT(a && parents.size() == 3 && parents[0] == 2
+                 && parents[1] == 2 && parents[2] == 2);
+  }
+  
   ConstantEventMap *C0c = new ConstantEventMap(0);
   ConstantEventMap *C1d = new ConstantEventMap(1);
 

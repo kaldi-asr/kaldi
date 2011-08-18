@@ -52,6 +52,62 @@ template<class Weight, class Int> void TestConvert(bool invert) {
   }
 }
 
+// This tests the ShortestPath algorithm, and by proxy, tests the
+// NaturalLess template etc.
+
+template<class Weight, class Int> void TestShortestPath() {
+  for (int p = 0; p < 100; p++) {
+    typedef ArcTpl<Weight> Arc;
+    typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
+    for(int i = 0; i < 5; i++) {
+      VectorFst<Arc> *fst = RandPairFst<Arc>();
+      std::cout << "Testing shortest path\n";
+      std::cout << "FST before converting to compact-arc is:\n";
+      {
+        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+        fstprinter.Print(&std::cout, "standard output");
+      }
+      VectorFst<CompactArc> cfst;
+      ConvertLattice<Weight, Int>(*fst, &cfst, false); // invert == false
+
+
+      {
+        VectorFst<Arc> nbest_fst_1;
+        ShortestPath(*fst, &nbest_fst_1, 1);
+        VectorFst<Arc> nbest_fst_2;
+        ShortestPath(*fst, &nbest_fst_2, 3);
+        VectorFst<Arc> nbest_fst_1b;
+        ShortestPath(nbest_fst_2, &nbest_fst_1b, 1);
+      
+      
+        assert(ApproxEqual(ShortestDistance(nbest_fst_1),
+                           ShortestDistance(nbest_fst_1b)));
+
+        // since semiring is idempotent, this should succeed too.
+        assert(ApproxEqual(ShortestDistance(*fst),
+                           ShortestDistance(nbest_fst_1b)));
+      }
+      {
+        VectorFst<CompactArc> nbest_fst_1;
+        ShortestPath(cfst, &nbest_fst_1, 1);
+        VectorFst<CompactArc> nbest_fst_2;
+        ShortestPath(cfst, &nbest_fst_2, 3);
+        VectorFst<CompactArc> nbest_fst_1b;
+        ShortestPath(nbest_fst_2, &nbest_fst_1b, 1);
+      
+        assert(ApproxEqual(ShortestDistance(nbest_fst_1),
+                           ShortestDistance(nbest_fst_1b)));
+        // since semiring is idempotent, this should succeed too.
+        assert(ApproxEqual(ShortestDistance(cfst),
+                           ShortestDistance(nbest_fst_1b)));
+      }
+
+      delete fst;
+    }
+  }  
+}
+
+
 
 template<class Int> void TestConvert2() {
   typedef ArcTpl<LatticeWeightTpl<float> > ArcF;
@@ -251,6 +307,7 @@ int main() {
   }
   {
     typedef LatticeWeightTpl<double> LatticeWeight;
+    TestShortestPath<LatticeWeight, int32>();    
     TestConvert2<int32>();
     for(int i = 0; i < 2; i++) {
       bool invert = (i % 2);
