@@ -197,6 +197,85 @@ void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float l
 }
 
 
+void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id) {
+  #if HAVE_CUDA==1 
+  if(CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+     
+    //initialize the vectors
+    CuVector<float> max(mat.NumRows());
+    max.Set(-1e21);
+    id->Resize(mat.NumRows());
+    id->Set(-1);
+
+    MatrixDim d=mat.Dim();//only stride will be used!
+   
+    //process per 256 column blocks 
+    for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
+      dim3 dimBlock(256,1);
+      dim3 dimGrid(1,mat.NumRows());
+      int32 offset=block*256;
+
+      cudaF_find_row_max_id(dimGrid,dimBlock,mat.Data()+offset,max.Data(),id->Data(),offset,d);
+    }
+    
+    //process the remainder
+    int32 div = mat.NumCols() / 256;
+    int32 mod = mat.NumCols() % 256;
+    if(mod != 0) {
+      dim3 dimBlock(mod,1);
+      dim3 dimGrid(1,mat.NumRows());
+      int32 offset=div*256;
+      
+      cudaF_find_row_max_id(dimGrid,dimBlock,mat.Data()+offset,max.Data(),id->Data(),offset,d);
+    }
+    //now we have the indices!
+    
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else
+  #endif
+  {
+    for(int32 r=0; r<mat.NumRows(); r++) {
+      BaseFloat max = -1e21;
+      int32 max_id = -1;
+      for(int32 c=0; c<mat.NumCols(); c++) {
+        if(max < mat.Mat()(r,c)) {
+          max = mat.Mat()(r,c);
+          max_id = c;
+        }
+      }
+      id->Vec()[r] = max_id;
+    }
+  }
+}
+
+
+void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_diff, CuVector<BaseFloat>* log_post_tgt) {
+
+  assert(tgt.Dim() == net_out_or_diff->NumRows());
+  log_post_tgt->Resize(tgt.Dim());
+
+  #if HAVE_CUDA==1 
+  if(CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(1,CUBLOCK*8);
+    dim3 dimGrid(1,n_blocks(tgt.Dim(),CUBLOCK*8));
+    cudaF_diff_xent(dimGrid,dimBlock,tgt.Data(),net_out_or_diff->Data(),log_post_tgt->Data(),net_out_or_diff->Dim());
+
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else
+  #endif
+  {
+    for(int32 r=0; r<net_out_or_diff->NumRows(); r++) {
+      int32 col_tgt = tgt.Vec()[r];
+      log_post_tgt->Vec()(r) = log(net_out_or_diff->Mat()(r,col_tgt));
+      net_out_or_diff->Mat()(r,col_tgt) -= 1.0;
+    }
+  }
+}
+
+
 } //namespace cu
 
 } //namespace kaldi

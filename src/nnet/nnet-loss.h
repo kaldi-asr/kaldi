@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-stlvector.h"
 
 namespace kaldi {
 
@@ -47,8 +48,14 @@ class Xent {
   int32 frames_;
   int32 correct_;
   double loss_;
-  
-  CuVector<BaseFloat> target_vec_;
+ 
+  CuStlVector<int32> max_id_;
+  std::vector<int32> max_id_host_;
+
+  CuStlVector<int32>  target_device_;
+  CuVector<BaseFloat> log_post_tgt_;
+  Vector<BaseFloat>   log_post_tgt_host_;
+
 };
 
 

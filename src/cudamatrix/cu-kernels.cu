@@ -487,6 +487,52 @@ static void _check_class_reduce(const T* out, const T* des, float* match, Matrix
 
 
 
+template<typename T>
+__global__
+static void _find_row_max_id(const T* mat, T* vec_val, int32_cuda* vec_id, int voff, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if(blockIdx.x > 0) return;
+  if(blockDim.y != 1) return;
+
+  __shared__ T value[256];
+  __shared__ int index[256];
+
+  //copy to shared memory
+  value[threadIdx.x] = mat[i+j*d.stride];
+  index[threadIdx.x] = threadIdx.x;
+  __syncthreads();
+  
+  //get the id of the max value
+  int out_max = _max_id_reduce(value,index);
+  __syncthreads();
+
+  //see if it's bigger value
+  if(threadIdx.x == 0) {
+    if(vec_val[j] <= mat[out_max+j*d.stride]) {
+      vec_val[j] = mat[out_max+j*d.stride];
+      vec_id[j]  = voff+out_max;
+    }
+  }
+}
+
+
+template<typename T>
+__global__
+static void _diff_xent(const int32_cuda* vec_tgt, T* mat_net_out, T* vec_log_post, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if(i>0) return;
+  if(j<d.rows) {
+    int index = vec_tgt[j] + j*d.stride;
+    vec_log_post[j] = log(mat_net_out[index]);
+    mat_net_out[index] -= 1.0;
+  }
+}
+
+
 
 /*
  * ANSI-C wrappers of CUDA kernels
@@ -589,3 +635,20 @@ void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, fl
   _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
 }
 
+
+void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
+  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, voff, d);
+}
+
+void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net_out, float* vec_log_post, MatrixDim d) {
+  _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
+}
+
+
+
+/*
+ * int32 CUDA functions
+ */
+void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, MatrixDim d) {
+  _set_const<<<Gr,Bl>>>(mat,value,d); 
+}

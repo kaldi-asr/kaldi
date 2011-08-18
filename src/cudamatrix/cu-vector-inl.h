@@ -138,45 +138,6 @@ void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
 
 
 template<typename _ElemT>
-CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>& src) {
-  Resize(src.size());
-
-  #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-
-    cuSafeCall(cudaMemcpy(data_, &src.front(), src.size()*sizeof(_ElemT), cudaMemcpyHostToDevice));
-
-    CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D",tim.Elapsed());
-  } else
-  #endif
-  {
-    memcpy(vec_.Data(),&src.front(),src.size()*sizeof(_ElemT));
-  }
-  return *this;
-}
-
-
-template<typename _ElemT>
-void CuVector<_ElemT>::CopyToVec(std::vector<_ElemT>* dst) const {
-  if(dst->Dim() != dim_) {
-    dst->resize(dim_);
-  }
-
-  #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-    cuSafeCall(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
-  } else
-  #endif
-  {
-    memcpy(&dst->front(), vec_.Data(), dim_*sizeof(_ElemT));
-  }
-}
-
-
-template<typename _ElemT>
 void CuVector<_ElemT>::Read(std::istream& is, bool binary) {
   Vector<BaseFloat> tmp;
   tmp.Read(is,binary);

@@ -51,9 +51,6 @@ class CuVector {
   ThisType&        CopyFromVec(const Vector<_ElemT>& src);
   void             CopyToVec(Vector<_ElemT>* dst) const;
 
-  ThisType&        CopyFromVec(const std::vector<_ElemT>& src);
-  void             CopyToVec(std::vector<_ElemT>* dst) const;
-  
   void             Read(std::istream& is, bool binary);
   void             Write(std::ostream& is, bool binary) const;
   
@@ -62,15 +59,15 @@ class CuVector {
   void SetZero();
 
   void Set(_ElemT value) { 
-    KALDI_ERR << "__func__ Not implemented"; 
+    KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   void AddVec(_ElemT alpha, const CuVector<_ElemT>& vec, _ElemT beta=1.0) {
-    KALDI_ERR << "__func__ Not implemented"; 
+    KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   void AddColSum(_ElemT alpha, const CuMatrix<_ElemT>& mat, _ElemT beta=1.0) { 
-    KALDI_ERR << "__func__ Not implemented"; 
+    KALDI_ERR << __func__ << " Not implemented"; 
   }
 
 

@@ -43,6 +43,18 @@ void cudaF_check_class_reduce(dim3 Gr, dim3 Bl, const float* out, const float* d
 
 void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, float lr, MatrixDim d);
 
+void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d);
+
+void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net_out, float* vec_log_post, MatrixDim d);
+
+
+
+/*
+ * int32 CUDA functions
+ */
+void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda*mat, int32_cuda value, MatrixDim d);
+
+
 } //extern "C" 
 
 #endif

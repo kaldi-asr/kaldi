@@ -17,6 +17,8 @@
 
 #include "nnet/nnet-loss.h"
 
+#include "cudamatrix/cu-math.h"
+
 #include <sstream>
 
 namespace kaldi {
@@ -52,7 +54,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& t
 
 
 void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target, CuMatrix<BaseFloat>* diff) {
-
+#if 0
   //:TODO: do all this in the GPU!!!!
   /*
    *
@@ -101,6 +103,33 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& ta
    *
    *
    */
+#else
+
+  //evaluate the correct classification
+  int32 correct=0;
+  
+  cu::FindRowMaxId(net_out,&max_id_);
+  max_id_.CopyToVec(&max_id_host_);
+  KALDI_ASSERT(max_id_host_.size() == target.size());
+  for(int32 i=0; i<target.size(); i++) {
+    if(target[i] == max_id_host_[i]) correct++;
+  }
+  
+  
+  //get the xentropy and global error 
+  target_device_.CopyFromVec(target);
+  if(&net_out != diff) { //<allow no-copy speedup
+    diff->CopyFromMat(net_out);
+  }
+  cu::DiffXent(target_device_,diff,&log_post_tgt_);
+  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
+  
+  //accumulate error quantites
+  frames_  += net_out.NumRows();
+  correct_ += correct;
+  loss_    -= log_post_tgt_host_.Sum();
+   
+#endif
 }
 
 

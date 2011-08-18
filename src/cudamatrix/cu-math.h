@@ -2,9 +2,11 @@
 #define KALDI_CUDAMATRIX_CUMATH_H_
 
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-device.h"
 
 #include "util/timer.h"
-#include "cudamatrix/cu-device.h"
 
 namespace kaldi {
   
@@ -32,8 +34,12 @@ namespace cu {
   /// apply the L1 regularization, sets zero to wei and grad elements on zero-crossing
   void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float lr);
 
+  /// Find the id of the maximal element for each row
+  void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id);
 
-
+  /// Differentiate cross-entropy+softmax coupling (subtract post - tgt)
+  /// extract per-frame cross-entropy to vector log_post_tgt_
+  void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_diff, CuVector<BaseFloat>* log_post_tgt_);
 
 
 
@@ -64,7 +70,19 @@ namespace cu {
   void RegularizeL1(CuMatrix<_ElemT>* wei, CuMatrix<_ElemT>* grad, _ElemT l1, _ElemT lr) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
+
  
+  template<typename _ElemT>
+  void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id) {
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
+    
+  template<typename _ElemT>
+  void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<_ElemT>* net_out_or_diff, CuVector<_ElemT>* log_post_tgt_) {
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
+
+
 } //namespace cu
 
 } //namespace kaldi
