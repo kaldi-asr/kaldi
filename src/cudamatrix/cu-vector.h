@@ -70,6 +70,11 @@ class CuVector {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
+  void InvertElements() {
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
+
+
 
   /// Accessor to non-GPU vector
   const VectorBase<_ElemT>& Vec() const {

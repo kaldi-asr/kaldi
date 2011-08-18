@@ -26,6 +26,7 @@ void cudaF_mul_elem(dim3 Gr, dim3 Bl, float*mat, const float*A, MatrixDim d);
  */
 void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d);
 void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d);
+void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d);
 
 /*
  * cu::

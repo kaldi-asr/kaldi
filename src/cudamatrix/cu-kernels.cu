@@ -199,6 +199,17 @@ static void _add_col_sum_reduce(T alpha, const T* mat, T beta, T* vec, MatrixDim
 }
 
 
+template<typename T>
+__global__
+static void _invert_elements(T* data, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i + j*d.stride;
+  if ( i < d.cols  &&  j < d.rows )
+    data[index] = 1.0/data[index];
+}
+
+
 
 /*
  * cu::
@@ -637,6 +648,10 @@ void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float* mat, floa
 
 void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) {
   _add_col_sum_reduce<<<Gr,Bl>>>(alpha,mat,beta,vec,d); 
+}
+
+void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
+  _invert_elements<<<Gr,Bl>>>(data, d);
 }
 
 /*

@@ -107,7 +107,11 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
    
     CuVector<BaseFloat> sum(X.NumRows());
     SumRowsVec(*Y,&sum);
-
+    
+    //slower by 4% than DivRowsVec(...)
+    //sum.InvertElements();
+    //Y->MulRowsVec(sum);
+    
     Y->DivRowsVec(sum);
 
     #endif

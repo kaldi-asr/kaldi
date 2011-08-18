@@ -97,6 +97,26 @@ void CuVector<float>::AddColSum(float alpha, const CuMatrix<float>& mat, float b
 }
 
 
+template<> 
+void CuVector<float>::InvertElements() {
+  #if HAVE_CUDA==1
+  if(CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+    
+    dim3 dimBlock(CUBLOCK*8,1);
+    dim3 dimGrid(n_blocks(dim_,CUBLOCK*8));
+    MatrixDim d = {1,dim_,dim_};
+
+    cudaF_invert_elements(dimGrid,dimBlock,data_,d);
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.InvertElements();
+  }
+}
 
 
 
