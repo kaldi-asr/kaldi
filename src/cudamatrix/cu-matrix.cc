@@ -125,6 +125,31 @@ void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
 
 
 template<>
+void CuMatrix<float>::DivRowsVec(const CuVector<float>& div) {
+  #if HAVE_CUDA==1
+  if(CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    assert(div.Dim() == NumRows());
+
+    dim3 dimBlock(CUBLOCK,CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+
+    cudaF_div_rows_vec(dimGrid,dimBlock,data_,div.Data(),Dim());
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else 
+  #endif
+  {
+    Vector<float> tmp(div.Vec());
+    tmp.InvertElements();
+    mat_.MulRowsVec(tmp);
+  }
+}
+
+
+template<>
 void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta) {
   #if HAVE_CUDA==1
   if(CuDevice::Instantiate().Enabled()) {

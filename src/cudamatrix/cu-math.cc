@@ -66,7 +66,7 @@ void DiffSigmoid(const CuMatrix<float>& Ein, const CuMatrix<float>& Y, CuMatrix<
   
 void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if(CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     #if 0
@@ -76,7 +76,9 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
 
     cudaF_softmax(dimGrid, dimBlock, Y.Data(), X.Data(), X.Dim());
     cuSafeCall(cudaGetLastError());
-    #else
+    #endif
+
+    #if 0
     if(X.NumCols() > 256) {
       //use old implementation (can't use reduction due to 
       //limited size of shared memory)
@@ -93,6 +95,21 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
       cudaF_softmax_reduce(dimGrid, dimBlock, Y->Data(), X.Data(), X.Dim());
       cuSafeCall(cudaGetLastError());
     }
+    #endif
+
+    #if 1
+    CuStlVector<int32> max_id;
+    FindRowMaxId(X,&max_id);
+
+    dim3 dimBlock(CUBLOCK,CUBLOCK);
+    dim3 dimGrid(n_blocks(X.NumCols(),CUBLOCK), n_blocks(X.NumRows(), CUBLOCK));
+    cudaF_softmax_part(dimGrid,dimBlock,X.Data(),max_id.Data(),Y->Data(),X.Dim());
+   
+    CuVector<BaseFloat> sum(X.NumRows());
+    SumRowsVec(*Y,&sum);
+
+    Y->DivRowsVec(sum);
+
     #endif
 
     CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
@@ -274,6 +291,55 @@ void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_dif
     }
   }
 }
+
+
+void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum) {
+
+  //initialize the sum vector
+  sum->Resize(mat.NumRows());
+  sum->SetZero();
+ 
+  #if HAVE_CUDA==1 
+  if(CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    MatrixDim d=mat.Dim();//only stride will be used!
+   
+    //process per 256 column blocks 
+    for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
+      dim3 dimBlock(256,1);
+      dim3 dimGrid(1,mat.NumRows());
+      int32 offset=block*256;
+
+      cudaF_sum_rows_vec(dimGrid,dimBlock,mat.Data()+offset,sum->Data(),d);
+    }
+    
+    //process the remainder
+    int32 div = mat.NumCols() / 256;
+    int32 mod = mat.NumCols() % 256;
+    if(mod != 0) {
+      dim3 dimBlock(mod,1);
+      dim3 dimGrid(1,mat.NumRows());
+      int32 offset=div*256;
+      
+      cudaF_sum_rows_vec(dimGrid,dimBlock,mat.Data()+offset,sum->Data(),d);
+    }
+    //now we have the sum!
+    
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else
+  #endif
+  {
+    for(int32 r=0; r<mat.NumRows(); r++) {
+      BaseFloat rsum = 0;
+      for(int32 c=0; c<mat.NumCols(); c++) {
+        rsum += mat.Mat()(r,c);
+      }
+      sum->Vec()(r) = rsum;
+    }
+  }
+}
+
 
 
 } //namespace cu

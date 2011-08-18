@@ -125,6 +125,11 @@ class CuMatrix {
     KALDI_ERR << "__func__ Not implemented"; 
   }
 
+  /// divide i'th row by scale[i]
+  void DivRowsVec(const CuVector<_ElemT>& div) { 
+    KALDI_ERR << "__func__ Not implemented"; 
+  }
+  
   /// B = aplha * A + beta * B
   void AddMat(_ElemT alpha, const CuMatrix<_ElemT>& A, _ElemT beta=1.0) { 
     KALDI_ERR << "__func__ Not implemented"; 

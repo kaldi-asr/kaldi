@@ -97,6 +97,17 @@ static void _scale_rows(T* mat, const T* scale, MatrixDim d) {
 
 template<typename T>
 __global__
+static void _div_rows_vec(T* mat, const T* vec_div, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i + j*d.stride;
+  if ( i < d.cols  &&  j < d.rows )
+    mat[index] /= vec_div[j];
+}
+
+
+template<typename T>
+__global__
 static void _add_scaled(T alpha, const T* A, T beta, T* dst, MatrixDim d) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -533,6 +544,42 @@ static void _diff_xent(const int32_cuda* vec_tgt, T* mat_net_out, T* vec_log_pos
 }
 
 
+template<typename T>
+__global__
+static void _softmax_part(const T* X, const int32_cuda* vec_ids, T* Y, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i + j*d.stride;
+  if ( i < d.cols  &&  j < d.rows ) {
+    T tmp = X[index] - X[vec_ids[j] + j*d.stride];
+    Y[index] = exp(tmp);
+  }
+}
+
+
+template<typename T>
+__global__
+static void _sum_rows_vec(const T* mat, T* vec_sum, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if(blockIdx.x > 0) return;
+  if(blockDim.y > 1) return;
+
+  __shared__ T row_data[256];
+
+  //copy the input to row_data
+  row_data[i] = mat[i+j*d.stride];
+  __syncthreads();
+
+  //get the sum
+  T sum = _sum_reduce(row_data);
+  __syncthreads();
+  
+  //add to previously accumulated sum
+  vec_sum[j] += sum;
+}
+
 
 /*
  * ANSI-C wrappers of CUDA kernels
@@ -563,6 +610,10 @@ void cudaF_scale_cols(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDi
 
 void cudaF_scale_rows(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
   _scale_rows<<<Gr,Bl>>>(mat,scale,d);
+}
+
+void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float*mat, const float* vec_div, MatrixDim d) {
+  _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
 }
 
 void cudaF_add_scaled(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d) {
@@ -644,6 +695,13 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
 }
 
+void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
+  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
+}
+
+void cudaF_sum_rows_vec(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
+  _sum_rows_vec<<<Gr,Bl>>>(mat,vec_sum,d);
+}
 
 
 /*

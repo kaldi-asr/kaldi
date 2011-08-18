@@ -16,6 +16,7 @@ void cudaF_set_const(dim3 Gr, dim3 Bl, float*mat, float value, MatrixDim d);
 void cudaF_apply_log(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_scale_cols(dim3 Gr, dim3 Bl, float*mat, const float* scale, MatrixDim d);
 void cudaF_scale_rows(dim3 Gr, dim3 Bl, float*mat, const float* scale, MatrixDim d);
+void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float*mat, const float* vec_div, MatrixDim d);
 void cudaF_add_scaled(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d);
 void cudaF_add_scaled_row(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d);
 void cudaF_mul_elem(dim3 Gr, dim3 Bl, float*mat, const float*A, MatrixDim d);
@@ -47,6 +48,9 @@ void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, i
 
 void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net_out, float* vec_log_post, MatrixDim d);
 
+void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d);
+
+void cudaF_sum_rows_vec(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d);
 
 
 /*

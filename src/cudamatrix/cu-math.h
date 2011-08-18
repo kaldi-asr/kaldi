@@ -41,7 +41,8 @@ namespace cu {
   /// extract per-frame cross-entropy to vector log_post_tgt_
   void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_diff, CuVector<BaseFloat>* log_post_tgt_);
 
-
+  /// Sum each row of the matrix
+  void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum);
 
   /*
    * Templated implementation to make it always compilable
@@ -82,6 +83,10 @@ namespace cu {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
+  template<typename _ElemT>
+  void SumRowsVec(const CuMatrix<_ElemT>& mat, CuVector<_ElemT>* sum) {
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
 
 } //namespace cu
 

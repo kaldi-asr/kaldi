@@ -267,6 +267,7 @@ template<> void CuMatrix<float>::ApplyLog();
 template<> void CuMatrix<float>::MulElements(const CuMatrix<float>& A);
 template<> void CuMatrix<float>::MulColsVec(const CuVector<float>& scale);
 template<> void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale);
+template<> void CuMatrix<float>::DivRowsVec(const CuVector<float>& div); 
 
 template<> void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta);
 
