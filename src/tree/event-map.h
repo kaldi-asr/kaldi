@@ -96,10 +96,10 @@ class EventMap {
   // e.g.: SortAndUniq(ans).
   virtual void MultiMap(const EventType &event, std::vector<EventAnswerType> *ans) const = 0;
 
-  // GetChildren() returns the EventMaps that are children of this EventMap (if they exist).
-  // by appending them to *out.  Useful for determining the structure of the event map e.g.
-  // for making decision trees.
-  // virtual void GetChildren(std::vector<EventMap*> *out) = 0;
+  // GetChildren() returns the EventMaps that are immediate children of this
+  // EventMap (if they exist), by putting them in *out.  Useful for
+  // determining the structure of the event map.
+  virtual void GetChildren(std::vector<EventMap*> *out) const = 0;
 
   // This Copy() does a deep copy of the event map.
   // If new_leaves is nonempty when it reaches a leaf with value l s.t. new_leaves[l] != NULL,
@@ -144,15 +144,23 @@ class ConstantEventMap: public EventMap {
     *ans = answer_;
     return true;
   }
-  virtual void MultiMap(const EventType &, std::vector<EventAnswerType> *ans) const
-     { ans->push_back(answer_); }
-  // virtual void GetChildren(std::vector<EventMap*>*) {} // No children.
+
+  virtual void MultiMap(const EventType &,
+                        std::vector<EventAnswerType> *ans) const {
+     ans->push_back(answer_);
+  }
+
+  virtual void GetChildren(std::vector<EventMap*> *out) const { out->clear(); }
+
   virtual EventMap *Copy(const std::vector<EventMap*> &new_leaves) const {
-    if (answer_<0 || answer_>=(EventAnswerType)new_leaves.size() || new_leaves[answer_] == NULL)
+    if (answer_<0 || answer_>=(EventAnswerType)new_leaves.size() ||
+        new_leaves[answer_] == NULL)
       return new ConstantEventMap(answer_);
     else return new_leaves[answer_]->Copy();
   }
-  explicit ConstantEventMap(EventAnswerType answer): answer_(answer) {}
+  
+  explicit ConstantEventMap(EventAnswerType answer): answer_(answer) { }
+  
   virtual void Write(std::ostream &os, bool binary);
   static ConstantEventMap *Read(std::istream &is, bool binary);
  private:
@@ -172,9 +180,11 @@ class TableEventMap: public EventMap {
     return false;
   }
 
-  // virtual void GetChildren(std::vector<EventMap*> *out) {
-  //  for (size_t i = 0;i<table_.size();i++) if (table_[i] != NULL) out->push_back(table_[i]);
-  //}
+  virtual void GetChildren(std::vector<EventMap*> *out) const {
+    out->clear();
+    for (size_t i = 0; i<table_.size(); i++)
+      if (table_[i] != NULL) out->push_back(table_[i]);
+  }
 
   virtual void MultiMap(const EventType &event, std::vector<EventAnswerType> *ans) const {
     EventValueType tmp;
@@ -243,10 +253,11 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
     }
   }
 
-  // virtual void GetChildren(std::vector<EventMap*> *out) {
-  //  out->push_back(yes_);
-  // out->push_back(no_);
-  //}
+  virtual void GetChildren(std::vector<EventMap*> *out) const {
+    out->clear();
+    out->push_back(yes_);
+    out->push_back(no_);
+  }
 
   virtual EventMap *Copy(const std::vector<EventMap*> &new_leaves) const {
     return new SplitEventMap(key_, yes_set_, yes_->Copy(new_leaves), no_->Copy(new_leaves));
@@ -283,6 +294,24 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   EventMap *no_;  // owned here.
   SplitEventMap &operator = (const SplitEventMap &other);  // Disallow.
 };
+
+/**
+   This function gets the tree structure of the EventMap "map" in a convenient form.
+   If "map" corresponds to a tree structure (not necessarily binary) with leaves
+   uniquely numbered from 0 to num_leaves-1, then the function will return true,
+   output "num_leaves", and set "parent" to a vector of size equal to the number of
+   nodes in the tree (nonleaf and leaf), where each index corresponds to a node
+   and the leaf indices correspond to the values returned by the EventMap from
+   that leaf; for an index i, parent[i] equals the parent of that node in the tree
+   structure, where parent[i] > i, except for the last (root) node where parent[i] == i.
+   If the EventMap does not have this structure (e.g. if multiple different leaf nodes share
+   the same number), then it will return false.
+*/
+
+bool GetTreeStructure(const EventMap &map,
+                      int32 *num_leaves,
+                      std::vector<int32> *parents);
+
 
 /// @} end "addtogroup event_map_group"
 
