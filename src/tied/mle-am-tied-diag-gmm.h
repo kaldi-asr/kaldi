@@ -46,6 +46,21 @@ class AccumAmTiedDiagGmm {
                        const TiedGmmPerFrameVars &per_frame_vars,
                        int32 pdf_index, 
                        BaseFloat frame_posterior);
+                       
+  /// Accumulate stats for single GMM in the model; returns log likelihood
+  /// This will evaluate the associated codebook; use Accumulate for pre-computed
+  /// codebook scores
+  BaseFloat AccumulateForGmm(const AmTiedDiagGmm &model, 
+                             const VectorBase<BaseFloat> &data,
+                             int32 pdf_index,
+                             BaseFloat frame_posterior);
+
+  /// Accumulate for a certain codebook (pdf_index) and tied gmm (tied_pdf_index)
+  /// given the data and posteriors
+  void AccumulateFromPosteriors(const VectorBase<BaseFloat> &data,
+                                int32 pdf_index,
+                                int32 tied_pdf_index,
+                                const VectorBase<BaseFloat> &posteriors);
 
   int32 NumAccs() { return gmm_accumulators_.size() + tied_gmm_accumulators_.size(); }
   int32 NumAccs() const { return gmm_accumulators_.size() + tied_gmm_accumulators_.size(); }

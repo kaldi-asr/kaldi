@@ -88,6 +88,8 @@ class AmTiedFullGmm {
   TiedGmm& GetTiedPdf(int32 pdf_index);
   const TiedGmm& GetTiedPdf(int32 pdf_index) const;
 
+  int32 GetPdfIdOfTiedPdf(int32 pdf_index) const;
+
  private:
   std::vector<FullGmm*> densities_;
   std::vector<TiedGmm*> tied_densities_;
@@ -125,6 +127,12 @@ inline const TiedGmm& AmTiedFullGmm::GetTiedPdf(int32 tied_pdf_index) const {
   KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
                && (tied_densities_[tied_pdf_index] != NULL));
   return *(tied_densities_[tied_pdf_index]);
+}
+
+inline int32 AmTiedFullGmm::GetPdfIdOfTiedPdf(int32 pdf_index) const {
+  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size()) 
+               && (tied_densities_[pdf_index] != NULL));
+  return tied_densities_[pdf_index]->pdf_index();
 }
 
 }  // namespace kaldi

@@ -69,7 +69,7 @@ BaseFloat AccumAmTiedFullGmm::Accumulate(const AmTiedFullGmm &model,
                                          int32 pdf_index, 
                                          BaseFloat frame_posterior) {
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < tied_gmm_accumulators_.size());  
-  const TiedGmm &tied = model.GetTiedPdf(pdf_index);
+  const TiedGmm & tied = model.GetTiedPdf(pdf_index);
   
   KALDI_ASSERT(static_cast<size_t>(tied.pdf_index()) < gmm_accumulators_.size());
     
@@ -82,10 +82,46 @@ BaseFloat AccumAmTiedFullGmm::Accumulate(const AmTiedFullGmm &model,
   posteriors.Scale(frame_posterior);
   
   // accumulate for codebook and tied pdf
-  gmm_accumulators_[tied.pdf_index()]->AccumulateFromPosteriors(per_frame_vars.x, posteriors);
-  tied_gmm_accumulators_[pdf_index]->AccumulateFromPosteriors(posteriors);
+  AccumulateFromPosteriors(per_frame_vars.x, tied.pdf_index(), pdf_index, posteriors);
   
   return logl;
+}
+
+BaseFloat AccumAmTiedFullGmm::AccumulateForGmm(const AmTiedFullGmm &model, 
+                             const VectorBase<BaseFloat> &data,
+                             int32 pdf_index,
+                             BaseFloat frame_posterior) {
+  KALDI_ASSERT(static_cast<size_t>(pdf_index) < tied_gmm_accumulators_.size());  
+  const TiedGmm &tied = model.GetTiedPdf(pdf_index);
+  
+  KALDI_ASSERT(static_cast<size_t>(tied.pdf_index()) < gmm_accumulators_.size());
+  const FullGmm &full = model.GetPdf(tied.pdf_index());
+
+  Vector<BaseFloat> scores(full.Dim());
+  Vector<BaseFloat> posteriors(full.Dim());
+
+  full.LogLikelihoods(data, &scores);
+  tied.LogLikelihoods(scores, &posteriors);
+
+  BaseFloat logl = posteriors.ApplySoftMax();
+  posteriors.Scale(frame_posterior);
+  
+  /// dont forget to accumulate :)
+  AccumulateFromPosteriors(data, tied.pdf_index(), pdf_index, posteriors);
+  
+  return logl;
+}
+
+void AccumAmTiedFullGmm::AccumulateFromPosteriors(
+    const VectorBase<BaseFloat> &data,
+    int32 pdf_index,
+    int32 tied_pdf_index,
+    const VectorBase<BaseFloat> &posteriors) {
+  /// accumulate for codebook...
+  gmm_accumulators_[pdf_index]->AccumulateFromPosteriors(data, posteriors);
+  
+  /// and tied gmm
+  tied_gmm_accumulators_[tied_pdf_index]->AccumulateFromPosteriors(posteriors);
 }
 
 void AccumAmTiedFullGmm::Read(std::istream& in_stream, bool binary, bool add) {
