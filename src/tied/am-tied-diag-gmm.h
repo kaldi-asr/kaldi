@@ -28,7 +28,7 @@
 namespace kaldi {
 /// @defgroup TiedGmm TiedGmm
 /// @{
-/// kaldi Diagonal Gaussian Mixture Models
+/// kaldi Tied Diagonal Gaussian Mixture Models
 
 class AmTiedDiagGmm {
  public:
