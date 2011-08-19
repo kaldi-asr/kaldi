@@ -187,7 +187,7 @@ void AccumAmTiedFullGmm::Write(std::ostream& out_stream, bool binary) const {
 }
 
 void MleAmTiedFullGmmUpdate(
-            const MleFullGmmOptions &config_diag,
+            const MleFullGmmOptions &config_full,
             const MleTiedGmmOptions &config_tied,
             const AccumAmTiedFullGmm &acc,
             GmmFlagsType flags,
@@ -197,7 +197,9 @@ void MleAmTiedFullGmmUpdate(
   KALDI_ASSERT(model != NULL);
   KALDI_ASSERT(acc.NumFullAccs() == model->NumPdfs());
   KALDI_ASSERT(acc.NumTiedAccs() == model->NumTiedPdfs());
-  
+ 
+  KALDI_ASSERT(!config_full.remove_low_count_gaussians);
+ 
   if (obj_change_out != NULL) *obj_change_out = 0.0;
   if (count_out != NULL) *count_out = 0.0;
   
@@ -207,13 +209,19 @@ void MleAmTiedFullGmmUpdate(
 
   /// reestimate the codebooks
   for (size_t i = 0; i < acc.NumFullAccs(); i++) {
-    MleFullGmmUpdate(config_diag, acc.GetFullAcc(i), flags, &(model->GetPdf(i)), 
+    // modify flags by enforcing no weight update
+    MleFullGmmUpdate(config_full, acc.GetFullAcc(i), flags & !kGmmWeights, &(model->GetPdf(i)), 
         p_obj, p_count);
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;
   }
   
+  if (!(flags & kGmmWeights)) {
+    KALDI_WARN << "no weight update as desired by flags";
+    return;
+  }
+
   /// reestimate the tied gmms
   for (size_t i = 0; i < acc.NumTiedAccs(); i++) {
     MleTiedGmmUpdate(config_tied, acc.GetTiedAcc(i), flags, &(model->GetTiedPdf(i)), 

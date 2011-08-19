@@ -18,6 +18,7 @@
 #include <algorithm>  // for std::max
 #include <string>
 #include <vector>
+#include <sstream>
 
 #include "tied/tied-gmm.h"
 #include "tied/mle-tied-gmm.h"
@@ -144,10 +145,13 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
   if (flags & ~tiedgmm_acc.Flags())
     KALDI_ERR << "Flags in argument do not match the active accumulators";
 
+  if (!(flags & kGmmWeights)) {
+    KALDI_WARN << "no weight update as desired by flags -- why would you call MleTiedGmmUpdate in the first place?";
+    return;
+  }
+
   double occ_sum = tiedgmm_acc.occupancy().Sum();
   int32 num_comp = tiedgmm_acc.occupancy().Dim();
-  
-  int32 floored_weights = 0;
 
   KALDI_ASSERT(tied->NumGauss() == num_comp);
 
@@ -159,20 +163,36 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
     BaseFloat obj_old = MlObjective(*tied, tiedgmm_acc);
 
     // update weights
+    std::vector<int32> floored_weights;
     for (int32 g = 0; g < num_comp; g++) {
       double wt = tiedgmm_acc.occupancy()(g) / occ_sum;
       
       if (wt < config.min_gaussian_weight) {
-        KALDI_WARN << "Weight of component " << g << " too small (" << wt << "), flooring to min_gaussian_weight";
+        // KALDI_WARN << "Weight of component " << g << " too small (" << wt << "), flooring to min_gaussian_weight";
         wt = config.min_gaussian_weight;
-        floored_weights++;
+        floored_weights.push_back(g);
       }
       
       tied->SetComponentWeight(g, wt);    
     } 
     
-    if (floored_weights > 0)
-    KALDI_WARN << "Floored " << floored_weights << " weights in this update";
+    if (floored_weights.size() > 0) {
+
+      /// to correct for the min weights, we need to re-normalize the weights
+      Vector<BaseFloat> w(tied->weights());
+      w.Scale(1./w.Sum());
+      tied->SetWeights(w);
+
+      KALDI_WARN << "Number of floored weights: " << floored_weights.size();
+      
+/*    
+      std::ostringstream ids;
+      for (std::vector<int32>::iterator it = floored_weights.begin(), end = floored_weights.end(); 
+            it != end; ++it)
+        ids << *it << " ";
+      KALDI_WARN << "Ids of floored weights: " << ids.str();
+*/
+    }
   
     // compute new objective value
     tied->ComputeGconsts();

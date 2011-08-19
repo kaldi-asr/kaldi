@@ -38,15 +38,15 @@ struct MleTiedGmmOptions {
   MleTiedGmmOptions() {
     /// gaussian weight should be rather small, due to large (> 512) code book sizes
     min_gaussian_weight     = 1.0e-8;
-    min_gaussian_occupancy  = 5.0;
+    min_gaussian_occupancy  = 3.0;
   }
   
   void Register(ParseOptions *po) {
     std::string module = "MleTiedGmmOptions: ";
-    po->Register("min-gaussian-weight", &min_gaussian_weight,
-                 module+"Min Gaussian weight before we remove it.");
-    po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
-                 module+"Minimum occupancy to update a Gaussian.");
+    po->Register("min-tied-gaussian-weight", &min_gaussian_weight,
+                 module+"Min tied Gaussian weight to enforce.");
+    po->Register("min-tied-gaussian-occupancy", &min_gaussian_occupancy,
+                 module+"Minimum occupancy to update a tied Gaussian.");
   }
 };
 

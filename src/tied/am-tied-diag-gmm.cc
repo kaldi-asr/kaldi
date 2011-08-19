@@ -43,6 +43,11 @@ void AmTiedDiagGmm::Init(const DiagGmm& proto) {
   densities_[0] = new DiagGmm();
   densities_[0]->CopyFromDiagGmm(proto);
 
+  // make sure the weights are uniform
+  Vector<BaseFloat> w(proto.NumGauss());
+  w.Set(1./w.Dim());
+  densities_[0]->SetWeights(w);
+
   dim_ = proto.Dim();
 }
 
@@ -54,6 +59,12 @@ void AmTiedDiagGmm::AddPdf(const DiagGmm &gmm) {
 
   DiagGmm *gmm_ptr = new DiagGmm();
   gmm_ptr->CopyFromDiagGmm(gmm);
+  
+  // make sure the weights are uniform
+  Vector<BaseFloat> w(gmm.NumGauss());
+  w.Set(1./w.Dim());
+  gmm_ptr->SetWeights(w);
+
   densities_.push_back(gmm_ptr);
 }
 

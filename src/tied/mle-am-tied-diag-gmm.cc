@@ -207,11 +207,16 @@ void MleAmTiedDiagGmmUpdate(
 
   /// reestimate the codebooks
   for (size_t i = 0; i < acc.NumDiagAccs(); i++) {
-    MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags, &(model->GetPdf(i)), 
+    MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags & !kGmmWeights, &(model->GetPdf(i)), 
         p_obj, p_count);
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;
+  }
+
+  if (!(flags & kGmmWeights)) {
+    KALDI_WARN << "no weight update as desired by flags";
+    return;
   }
   
   /// reestimate the tied gmms

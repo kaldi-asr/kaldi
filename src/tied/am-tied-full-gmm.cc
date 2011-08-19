@@ -43,6 +43,11 @@ void AmTiedFullGmm::Init(const FullGmm& proto) {
   densities_[0] = new FullGmm();
   densities_[0]->CopyFromFullGmm(proto);
 
+  // make sure the weights are uniform
+  Vector<BaseFloat> w(proto.NumGauss());
+  w.Set(1./w.Dim());
+  densities_[0]->SetWeights(w);
+
   dim_ = proto.Dim();
 }
 
@@ -54,6 +59,12 @@ void AmTiedFullGmm::AddPdf(const FullGmm &gmm) {
 
   FullGmm *gmm_ptr = new FullGmm();
   gmm_ptr->CopyFromFullGmm(gmm);
+
+  // make sure the weights are uniform
+  Vector<BaseFloat> w(gmm.NumGauss());
+  w.Set(1./w.Dim());
+  gmm_ptr->SetWeights(w);
+
   densities_.push_back(gmm_ptr);
 }
 
