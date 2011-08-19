@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
 
     Output ko(acc_wxfilename, binary);
     lda.Write(ko.Stream(), binary);
+    KALDI_LOG << "Written statistics.";
+    return (num_done != 0);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

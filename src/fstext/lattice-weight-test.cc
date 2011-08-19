@@ -74,6 +74,11 @@ void LatticeWeightTest() {
     KALDI_ASSERT(Times(l3, LatticeWeight::Zero()) == LatticeWeight::Zero()); // x * 0 = 0
 
     KALDI_ASSERT(l3.Reverse().Reverse() == l3);
+
+    NaturalLess<LatticeWeight> nl;
+    bool a = nl(l1, l2);
+    bool b = (Plus(l1, l2) == l1 && l1 != l2);
+    KALDI_ASSERT(a == b);
     
     KALDI_ASSERT(Compare(l1, Plus(l1, l2)) != 1); // so do not have l1 > l1 + l2
     LatticeWeight l5 = RandomLatticeWeight(), l6 = RandomLatticeWeight();
@@ -124,6 +129,10 @@ void CompactLatticeWeightTest() {
     KALDI_ASSERT(Plus(l3, CompactLatticeWeight::Zero()) == l3); // x + 0 = x
     KALDI_ASSERT(Times(l3, CompactLatticeWeight::One()) == l3); // x * 1 = x
     KALDI_ASSERT(Times(l3, CompactLatticeWeight::Zero()) == CompactLatticeWeight::Zero()); // x * 0 = 0
+    NaturalLess<CompactLatticeWeight> nl;
+    bool a = nl(l1, l2);
+    bool b = (Plus(l1, l2) == l1 && l1 != l2);
+    KALDI_ASSERT(a == b);
 
     KALDI_ASSERT(Compare(l1, Plus(l1, l2)) != 1); // so do not have l1 > l1 + l2
     CompactLatticeWeight l5 = RandomCompactLatticeWeight(), l6 = RandomCompactLatticeWeight();

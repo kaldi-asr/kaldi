@@ -29,13 +29,14 @@ struct TrainingGraphCompilerOptions {
 
   BaseFloat trans_prob_scale;
   BaseFloat self_loop_scale;
-  bool reorder;  // (Dan-style)
+  bool reorder;  // (Dan-style graphs)
+
   explicit TrainingGraphCompilerOptions(BaseFloat trans_prob_scale = 1.0,
                                         BaseFloat self_loop_scale = 1.0,
                                         bool b = true) :
       trans_prob_scale(trans_prob_scale),
       self_loop_scale(self_loop_scale),
-      reorder(b) {}
+      reorder(b) { }
 
   void Register(ParseOptions *po) {
     po->Register("transition-scale", &trans_prob_scale, "Scale of transition probabilities relative to LM");

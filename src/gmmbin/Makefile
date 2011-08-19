@@ -15,7 +15,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
            gmm-est-regtree-mllr gmm-decode-kaldi gmm-compute-likes \
            gmm-decode-faster-regtree-mllr gmm-et-apply-c gmm-latgen-simple \
-	   gmm-rescore-lattice
+	   gmm-rescore-lattice gmm-decode-biglm-faster 
 
 OBJFILES =
 
