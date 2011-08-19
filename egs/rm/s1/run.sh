@@ -59,7 +59,7 @@ steps/make_mfcc_test.sh $mfccdir
 steps/train_mono.sh
 steps/decode_mono.sh  &
 steps/train_tri1.sh
-(steps/decode_tri1.sh ; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ; steps/decode_tri1_latgen.sh) &
+(steps/decode_tri1.sh; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ;steps/decode_tri1_latgen.sh) &
 
 steps/train_tri2a.sh
 (steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh ;

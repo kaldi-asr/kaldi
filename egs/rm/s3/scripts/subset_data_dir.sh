@@ -59,8 +59,9 @@ if $perspk; then
          printf("\n"); }' <$srcdir/spk2utt >$destdir/spk2utt
   scripts/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk
   scripts/filter_scp.pl $destdir/utt2spk <$srcdir/feats.scp >$destdir/feats.scp
-  [ -f $srcdir/wav.scp ] && scripts/filter_scp.pl $destdir/utt2spk <$srcdir/wav.scp >$destdir/wav.scp
-  [ -f $srcdir/text ] && scripts/filter_scp.pl $destdir/utt2spk <$srcdir/text >$destdir/text
+  [ -f $srcdir/wav.scp ] && scripts/filter_scp.pl $destdir/feats.scp <$srcdir/wav.scp >$destdir/wav.scp
+  [ -f $srcdir/text ] && scripts/filter_scp.pl $destdir/feats.scp <$srcdir/text >$destdir/text
+  [ -f $srcdir/spk2gender ] && scripts/filter_scp.pl $destdir/spk2utt <$srcdir/spk2gender >$destdir/spk2gender
   srcutts=`cat $srcdir/utt2spk | wc -l`
   destutts=`cat $destdir/utt2spk | wc -l`
   echo "Retained $numutt utterances per speaker from data-dir $srcdir and put it in $destdir, reducing #utt from $srcutts to $destutts"
@@ -87,9 +88,9 @@ else
     scripts/utt2spk_to_spk2utt.pl $destdir/utt2spk > $destdir/spk2utt || exit 1;
   fi
 
-  if [ -f $srcdir/text ]; then
-    scripts/filter_scp.pl $destdir/feats.scp $srcdir/text > $destdir/text || exit 1;
-  fi
+  [ -f $srcdir/text ] && scripts/filter_scp.pl $destdir/feats.scp <$srcdir/text >$destdir/text
+
+  [ -f $srcdir/spk2gender ] && scripts/filter_scp.pl $destdir/spk2utt <$srcdir/spk2gender >$destdir/spk2gender
 
   echo "Created a $numutt-utterance subset of $srcdir and put it in $destdir."
 

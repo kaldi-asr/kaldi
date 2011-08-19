@@ -37,6 +37,7 @@ for x in $data_list; do
   cp data/local/$x.utt2spk data/$x/utt2spk || exit 1;
   cp data/local/${x}_wav.scp data/$x/wav.scp || exit 1;
   cp data/local/${x}_trans.txt data/$x/text || exit 1;
+  scripts/filter_scp.pl data/$x/spk2utt data/local/spk2gender.map > data/$x/spk2gender || exit 1;
 done
 
 

@@ -1,5 +1,6 @@
 #!/bin/bash
-
+### [men at work sign] ###
+### WORK IN PROGRESS###
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,6 +74,19 @@ local/decode.sh steps/decode_lda_mllt.sh exp/tri2b
 
 # Get per-speaker subset for ET
 scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
+
+
+#scripts/subset_data_dir.sh data/train 800 data/train.800
+
+scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
+steps/train_lda_et.sh data/train data/train.15utt data/lang exp/tri1_ali exp/tri2c
+
+scripts/mkgraph.sh data/lang_test exp/tri2c exp/tri2c/graph
+steps/decode_lda_et.sh exp/tri2c data/test_feb89 data/lang_test exp/tri2c/decode_feb89
+
+
+
+##### Below here is trash. ######
 
 #steps/train_lda_mllt.sh.bak data/train data/train.1k data/lang exp/tri1 exp/tri2b_tmp
 

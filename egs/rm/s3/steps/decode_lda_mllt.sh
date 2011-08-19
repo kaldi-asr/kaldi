@@ -21,7 +21,7 @@
 
 if [ $# != 4 ]; then
    echo "Usage: steps/decode_ldamllt.sh <model-dir> <data-dir> <lang-dir> <decode-dir>"
-   echo " e.g.: steps/decode_ldamllt.sh exp/tri2b data/test_feb89 data/test_lang exp/tri2b/decode_feb89"
+   echo " e.g.: steps/decode_ldamllt.sh exp/tri2b data/test_feb89 data/lang_test exp/tri2b/decode_feb89"
    exit 1;
 fi
 
