@@ -150,8 +150,8 @@ int32 TransitionModel::TripleToTransitionState(int32 phone, int32 hmm_state, int
   std::vector<Triple>::const_iterator iter =
       std::lower_bound(triples_.begin(), triples_.end(), triple);
   if (iter == triples_.end() || !(*iter == triple)) {
-    KALDI_ERR << "TransitionModel::TripleToTransitionState, triple not found.";
-    // probably some kind of coding error.
+    KALDI_ERR << "TransitionModel::TripleToTransitionState, triple not found."
+              << " (incompatible tree and model?)";
   }
   // triples_ is indexed by transition_state-1, so add one.
   return static_cast<int32>((iter - triples_.begin())) + 1;
