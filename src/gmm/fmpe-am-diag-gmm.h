@@ -39,9 +39,9 @@ struct FmpeConfig {
   int32 gmm_cluster_centers_nbest;
   /// Number of highest-scoring of the best gaussians
   int32 gmm_gaussian_nbest;
-  /// The lenght of context expension
-  int32 nlenght_context_expension;
-  /// weights for the corresponding frame used in
+  /// The length of context expension
+  int32 nlength_context_expension;
+  /// weigths for the corresponding frame used in
   /// computing the context expension features
   Vector<BaseFloat> frame_weight_vector;
   /// The lat prob scale
@@ -55,11 +55,11 @@ struct FmpeConfig {
     cluster_varfloor = 0.01;
     gmm_cluster_centers_nbest = 25;
     gmm_gaussian_nbest = 2;
-    nlenght_context_expension = 9;
+    nlength_context_expension = 9;
     lat_prob_scale = 0.083;
     E = 10;
 
-    frame_weight_vector.Resize(nlenght_context_expension);
+    frame_weight_vector.Resize(nlength_context_expension);
     frame_weight_vector.Range(0, 3).Add(0.333);
     frame_weight_vector.Range(3, 4).Add(0.5);
     frame_weight_vector.Range(7, 3).Add(1.0);
@@ -76,8 +76,8 @@ struct FmpeConfig {
         "Number of highest-scoring of the best cluster centers.");
     po->Register("gmm-gaussian-nbest", &gmm_gaussian_nbest, "Number of"
         " of highest-scoring of the best gaussians.");
-    po->Register("nlenght-context-expension", &nlenght_context_expension,
-        "The lenght of context expension.");
+    po->Register("nlength-context-expension", &nlength_context_expension,
+        "The length of context expension.");
     po->Register("lat-prob-scale", &lat_prob_scale,
         "The lattice probability scale, very important.");
     po->Register("E", &E, "The constant that contrals the overall learning rate.");

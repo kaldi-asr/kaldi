@@ -137,18 +137,18 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
 
   WriteMarker(out_stream, binary, "<FMPEACCS>");
 
-  WriteMarker(out_stream, binary, "<NUMGaussians>");
+  WriteMarker(out_stream, binary, "<NumGaussians>");
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<LENGHTContExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlenght_context_expension);
+  WriteMarker(out_stream, binary, "<LengthContextExp>");
+  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expension);
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (p_.size() != 0) {
     WriteMarker(out_stream, binary, "<P>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlenght_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
         p_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -156,7 +156,7 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   if (n_.size() != 0) {
     WriteMarker(out_stream, binary, "<N>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlenght_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
         n_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -179,12 +179,12 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
 
   ExpectMarker(in_stream, binary, "<FMPACCS>");
 
-  ExpectMarker(in_stream, binary, "<NUMGaussians>");
+  ExpectMarker(in_stream, binary, "<NumGaussians>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 num_gaussians = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<LENGHTContExp>");
+  ExpectMarker(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
-  int32 lenght_cont_exp = static_cast<int32>(tmp_uint32);
+  int32 length_cont_exp = static_cast<int32>(tmp_uint32);
 
   ReadMarker(in_stream, binary, &token);
 
@@ -192,7 +192,7 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
     if (token == "<P>") {
       p_.resize(num_gaussians);
       for (size_t i = 0; i < p_.size(); ++i) {
-        p_[i].resize(lenght_cont_exp);
+        p_[i].resize(length_cont_exp);
 		for (size_t j = 0; j < p_[i].size(); ++j) {
           p_[i][j].Read(in_stream, binary, add);
 		}
@@ -200,7 +200,7 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
     } else if (token == "<N>") {
       n_.resize(num_gaussians);
       for (size_t i = 0; i < n_.size(); ++i) {
-        n_[i].resize(lenght_cont_exp);
+        n_[i].resize(length_cont_exp);
 		for (size_t j = 0; j < n_[i].size(); ++j) {
           n_[i][j].Read(in_stream, binary, add);
 		}
@@ -254,7 +254,7 @@ void FmpeAccs::InitModelDiff(const AmDiagGmm &model) {
 void FmpeAccs::Init(const AmDiagGmm &am_model, bool update) {
   dim_ = am_model.Dim();
 
-  InitPNandDiff(config_.gmm_num_comps, config_.nlenght_context_expension, dim_);
+  InitPNandDiff(config_.gmm_num_comps, config_.nlength_context_expension, dim_);
 
   if (update) {
 	InitModelDiff(am_model);
@@ -726,7 +726,7 @@ void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
 
 FmpeUpdater::FmpeUpdater(const FmpeAccs &accs)
       : config_(accs.config()), dim_(accs.Dim()) {
-  Init(config_.gmm_num_comps, config_.nlenght_context_expension, dim_);
+  Init(config_.gmm_num_comps, config_.nlength_context_expension, dim_);
 };
 
 FmpeUpdater::FmpeUpdater(const FmpeUpdater &other)
@@ -761,18 +761,18 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
 
   WriteMarker(out_stream, binary, "<FMPE>");
 
-  WriteMarker(out_stream, binary, "<NUMGaussians>");
+  WriteMarker(out_stream, binary, "<NumGaussians>");
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<LENGHTContExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlenght_context_expension);
+  WriteMarker(out_stream, binary, "<LengthContExp>");
+  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expension);
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (M_.size() != 0) {
     WriteMarker(out_stream, binary, "<PROJ_MAT>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlenght_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
         M_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -788,20 +788,20 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary,
 
   ExpectMarker(in_stream, binary, "<FMPE>");
 
-  ExpectMarker(in_stream, binary, "<NUMGaussians>");
+  ExpectMarker(in_stream, binary, "<NumGaussians>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 num_gaussians = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<LENGHTContExp>");
+  ExpectMarker(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
-  int32 lenght_cont_exp = static_cast<int32>(tmp_uint32);
-
+  int32 length_cont_exp = static_cast<int32>(tmp_uint32);
+  
   ReadMarker(in_stream, binary, &token);
 
   while (token != "</FMPE>") {
     if (token == "<PROJ_MAT>") {
       M_.resize(num_gaussians);
       for (size_t i = 0; i < M_.size(); ++i) {
-        M_[i].resize(lenght_cont_exp);
+        M_[i].resize(length_cont_exp);
 		for (size_t j = 0; j < M_[i].size(); ++j) {
           M_[i][j].Read(in_stream, binary, add);
 		}
@@ -834,7 +834,7 @@ void FmpeUpdater::Update(const FmpeAccs &accs,
                          BaseFloat *count_out) {
   KALDI_ASSERT((M_.size() == accs.pos().size()) && (M_.size() == accs.neg().size()));
   KALDI_ASSERT((M_[0].size() == accs.pos()[0].size()) && (M_[0].size() == accs.neg()[0].size())
-			   && M_[0].size() == config_.nlenght_context_expension);
+			   && M_[0].size() == config_.nlength_context_expension);
   KALDI_ASSERT((M_[0][0].NumRows() == accs.pos()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == accs.neg()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == avg_std_var_.Dim()));
