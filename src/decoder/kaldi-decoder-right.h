@@ -44,6 +44,7 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 // macros to switch off all debugging messages without runtime cost
 //#define DEBUG_CMD(x) x;
@@ -581,7 +582,7 @@ class KaldiDecoder {
 
   // functions in main decoding loop
   /// performs the decoding
-  fst::VectorFst<fst::StdArc>* Decode(const Fst &fst, Decodable *decodable);
+  fst::VectorFst<LatticeArc>* Decode(const Fst &fst, Decodable *decodable);
   // fst: recognition network
   // decodable: acoustic model/features
   // output: linear FST of wordlinks in best path
@@ -634,7 +635,7 @@ class KaldiDecoder {
   const Fst* reconet_;              // recognition network as FST
   // const fst::SymbolTable *model_list;     // input symbol table
   // const fst::SymbolTable *word_list;     // output symbol table
-  fst::VectorFst<fst::StdArc>* output_arcs_;  // recogn. output as word link FST
+  fst::VectorFst<LatticeArc>* output_arcs_;  // recogn. output as word link FST
 
   // arrays for token passing
   WordLinkStore wl_store_;           // data structure for allocating word links

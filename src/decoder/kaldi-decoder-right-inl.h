@@ -47,7 +47,7 @@ namespace kaldi {
   //***************************************************************************
   //***************************************************************************
   template<class Decodable, class Fst>
-  fst::VectorFst<typename fst::StdArc>* KaldiDecoder<Decodable, Fst>::Decode(
+  fst::VectorFst<LatticeArc>* KaldiDecoder<Decodable, Fst>::Decode(
       const Fst &fst, Decodable *decodable) {
     // the decoding main routine
 
@@ -663,25 +663,22 @@ namespace kaldi {
     }
 
     // build output FST
-    output_arcs_ = new fst::VectorFst<MyArc>;
+    output_arcs_ = new fst::VectorFst<LatticeArc>;
     // output_arcs_->SetOutputSymbols(reconet_->OutputSymbols());
     // in case we'd have symbol tables
 
     // back-track word links in best path
     assert(final_token_.previous != NULL);
     StateId wlstate = output_arcs_->AddState();
-    output_arcs_->SetFinal(wlstate, final_token_.weight);
+    output_arcs_->SetFinal(wlstate, LatticeWeight(final_token_.weight.Value(), 0.0));
     DEBUG_OUT1("set final state of WordLinks:" << wlstate << " total score:"
               << final_token_.weight)
     WordLink *wl = final_token_.previous;
     while (wl != NULL && (wl->olabel >= 0)) {
       StateId new_wlstate = output_arcs_->AddState();
       // add corresponding arc
-      BaseFloat arc_weight = (wl->previous != NULL) ?
-        wl->weight.Value() - wl->previous->weight.Value() : wl->weight.Value();
-      // difference between scores at word labels
       output_arcs_->AddArc(new_wlstate,
-                           MyArc(wl->state, wl->olabel, arc_weight, wlstate));
+                           LatticeArc(wl->state, wl->olabel, LatticeWeight::One(), wlstate));
       std::string word = "";
       // if (reconet_->OutputSymbols())
         // word = reconet_->OutputSymbols()->Find(wl->olabel);
