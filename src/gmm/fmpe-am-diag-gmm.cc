@@ -141,14 +141,14 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
   WriteMarker(out_stream, binary, "<LengthContextExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expension);
+  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expansion);
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (p_.size() != 0) {
     WriteMarker(out_stream, binary, "<P>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
         p_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -156,7 +156,7 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   if (n_.size() != 0) {
     WriteMarker(out_stream, binary, "<N>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
         n_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -254,7 +254,7 @@ void FmpeAccs::InitModelDiff(const AmDiagGmm &model) {
 void FmpeAccs::Init(const AmDiagGmm &am_model, bool update) {
   dim_ = am_model.Dim();
 
-  InitPNandDiff(config_.gmm_num_comps, config_.nlength_context_expension, dim_);
+  InitPNandDiff(config_.gmm_num_comps, config_.nlength_context_expansion, dim_);
 
   if (update) {
 	InitModelDiff(am_model);
@@ -726,7 +726,7 @@ void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
 
 FmpeUpdater::FmpeUpdater(const FmpeAccs &accs)
       : config_(accs.config()), dim_(accs.Dim()) {
-  Init(config_.gmm_num_comps, config_.nlength_context_expension, dim_);
+  Init(config_.gmm_num_comps, config_.nlength_context_expansion, dim_);
 };
 
 FmpeUpdater::FmpeUpdater(const FmpeUpdater &other)
@@ -765,14 +765,14 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
   WriteMarker(out_stream, binary, "<LengthContExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expension);
+  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expansion);
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (M_.size() != 0) {
     WriteMarker(out_stream, binary, "<PROJ_MAT>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expension; ++j) {
+      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
         M_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -834,7 +834,7 @@ void FmpeUpdater::Update(const FmpeAccs &accs,
                          BaseFloat *count_out) {
   KALDI_ASSERT((M_.size() == accs.pos().size()) && (M_.size() == accs.neg().size()));
   KALDI_ASSERT((M_[0].size() == accs.pos()[0].size()) && (M_[0].size() == accs.neg()[0].size())
-			   && M_[0].size() == config_.nlength_context_expension);
+			   && M_[0].size() == config_.nlength_context_expansion);
   KALDI_ASSERT((M_[0][0].NumRows() == accs.pos()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == accs.neg()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == avg_std_var_.Dim()));

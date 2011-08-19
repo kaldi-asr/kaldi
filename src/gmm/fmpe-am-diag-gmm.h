@@ -39,27 +39,49 @@ struct FmpeConfig {
   int32 gmm_cluster_centers_nbest;
   /// Number of highest-scoring of the best gaussians
   int32 gmm_gaussian_nbest;
-  /// The length of context expension
-  int32 nlength_context_expension;
+  /// The length of context expansion
+  int32 nlength_context_expansion;
   /// weigths for the corresponding frame used in
-  /// computing the context expension features
+  /// computing the context expansion features
   Vector<BaseFloat> frame_weight_vector;
   /// The lat prob scale
   double lat_prob_scale;
   /// The constant that contrals the overall learning rate
   double E;
 
+  /*
+    Matrix<BaseFloat> context_windows;
+    // Normal dimension is [9][17]
+    // Example would be
+    // context_windows = [ 0 0 0 0 0 0 0 0 1.0 0 0 0 0 0 0 0 0
+    //                     0 0 0 0 0 0 0 0 0 1.0 0 0 0 0 0 0 0
+    //  .... etc.
+    // Then your nlength_context_expansion variable equals
+    // the NumRows() of this.
+    // Then you don't have to hard-code the computation in ComputeContExpOffsetFeature.
+    // Note: the code in ComputeContExpOffsetFeature that iterates over
+    // context_windows will check for zeros, so it will not have to do any work if
+    // it finds a zero feature.
+    // Also be careful when the same Gaussian index is present on more than one frame,
+    // that you are adding the values together, not replacing one with the other or
+    // creating duplicates with the same index. [maybe use function DeDuplicateVector(
+    //  std::vector<std::pair<int32, Vector<BaseFloat> >*), that would first sort on the
+    // int32 and then add together and combine any sets of elements with the same
+    // integer value.
+    // Also TODO: change std::map to std::vector.
+  */
   FmpeConfig() {
     gmm_num_comps = 2048;
     gmm_num_cluster_centers = 128;
     cluster_varfloor = 0.01;
     gmm_cluster_centers_nbest = 25;
     gmm_gaussian_nbest = 2;
-    nlength_context_expension = 9;
+    nlength_context_expansion = 9;
     lat_prob_scale = 0.083;
     E = 10;
 
-    frame_weight_vector.Resize(nlength_context_expension);
+    // TODO: this code would not work if nlength_context_expansion
+    frame_weight_vector.Resize(nlength_context_expansion);
     frame_weight_vector.Range(0, 3).Add(0.333);
     frame_weight_vector.Range(3, 4).Add(0.5);
     frame_weight_vector.Range(7, 3).Add(1.0);
@@ -76,8 +98,8 @@ struct FmpeConfig {
         "Number of highest-scoring of the best cluster centers.");
     po->Register("gmm-gaussian-nbest", &gmm_gaussian_nbest, "Number of"
         " of highest-scoring of the best gaussians.");
-    po->Register("nlength-context-expension", &nlength_context_expension,
-        "The length of context expension.");
+    po->Register("nlength-context-expansion", &nlength_context_expansion,
+        "The length of context expansion.");
     po->Register("lat-prob-scale", &lat_prob_scale,
         "The lattice probability scale, very important.");
     po->Register("E", &E, "The constant that contrals the overall learning rate.");
@@ -171,8 +193,8 @@ class FmpeAccs {
   void ComputeOneFrameOffsetFeature(const VectorBase<BaseFloat>& data,
                            std::vector<std::pair<int32, Vector<double> > > *offset) const;
 
-  /// Compute the context expension high dimension feature
-  /// The high dimension offset feature with the context expension: "ht";
+  /// Compute the context expansion high dimension feature
+  /// The high dimension offset feature with the context expansion: "ht";
   /// the Map key is the context index, and each value of the key
   /// is the relative context's offset feature, which stored as the pair,
   /// including the used gaussian index and the corresponding offset feature
