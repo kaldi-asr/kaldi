@@ -37,12 +37,63 @@ done
 
 scripts/subset_data_dir.sh data/train 1000 data/train.1k
 
+# train monophone system.
 steps/train_mono.sh data/train.1k data/lang exp/mono
 
-#for test in mar87 oct87 feb89 oct89 feb91 sep92; do
-#  steps/decode_mono.sh data/test_$test data/lang exp/mono exp/mono/decode_$test
-#done
-###
+# decode mono [do this "manually" in the next few lines of
+# script; generally this stuff gets called by "local/decode.sh"
+# but here we want to pass the --mono option to mkgraph.sh.
+scripts/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/decode_deltas.sh exp/mono data/test_$test data/lang exp/mono/decode_$test &
+done
+wait
+scripts/average_wer.sh exp/mono/decode_?????/wer > exp/mono/wer
+
+# Get alignments from monophone system.
+steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali
+
+# train tri1 [first triphone pass]
+steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1
+# decode tri1
+local/decode.sh steps/decode_deltas.sh exp/tri1
+
+# align tri1
+steps/align_deltas.sh data/train data/lang exp/tri1 exp/tri1_ali
+
+# train tri2a [delta+delta-deltas]
+steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
+# decode tri2a
+local/decode.sh steps/decode_deltas.sh exp/tri2a
+
+# train tri2b [LDA+MLLT]
+steps/train_lda_mllt.sh data/train data/train.1k data/lang exp/tri1_ali exp/tri2b
+# decode tri2b
+local/decode.sh steps/decode_lda_mllt.sh exp/tri2b
+
+# Get per-speaker subset for ET
+scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
+
+#steps/train_lda_mllt.sh.bak data/train data/train.1k data/lang exp/tri1 exp/tri2b_tmp
+
+#scripts/subset_data_dir.sh data/train 800 data/train.800
+#steps/train_lda_mllt.sh data/train data/train.800 data/lang exp/tri1_ali exp/tri2b_tmp2
+
+
+scripts/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/decode_deltas.sh exp/tri1 data/test_$test data/lang exp/tri1/decode_$test &
+done
+wait
+scripts/average_wer.sh exp/mono/decode_?????/wer > exp/mono/wer
+
+
+
+scripts/mkgraph.sh --mono exp/mono/tree exp/mono/final.mdl exp/mono/graph
+
+
+\
+   > $dir/wer
 
 notes on structure...
 
@@ -81,10 +132,23 @@ scripts/ will contain generic scipts.
 Stuff that's about the language:
 
 lang/
- words.txt silphones.csl nonsilphones.csl topo
- 
+  words.txt phones.txt silphones.csl nonsilphones.csl topo
+  L.fst
 
- [for training:]
+maybe also, later:
+  phonesets.txt [ phonesets used in building questions... if not supplied, use the "base phones" ]
+  extra_questions.txt [ extra questions appended to automatically generated questions.  Should ask 
+        questions that elicit information that's lost when we go to "phonesets.txt", e.g. about stress
+        and position ]
+  questions.txt [ if you supply the questions, this file should exist. ]
+
+
+lang_test/
+ words.txt phones.txt silphones.csl nonsilphones.csl topo  
+ phones_dismbig.txt L_disambig.txt G.fst
+
+
+[for training:]
  phones.txt [for testing too?]
  phonesets.txt [ phonesets used in building questions... if not supplied, use the "base phones" ]
  extra_questions.txt [ extra questions appended to automatically generated questions.  Should ask 
