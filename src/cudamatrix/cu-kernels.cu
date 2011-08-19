@@ -101,8 +101,19 @@ static void _div_rows_vec(T* mat, const T* vec_div, MatrixDim d) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int index = i + j*d.stride;
+
+  if( j >= d.rows ) return;
+
+  //invert divider in shared memory
+  __shared__ T inv[16];
+  if(threadIdx.x==0) {
+    inv[threadIdx.y] = 1.0/vec_div[j];
+  }
+  __syncthreads();
+ 
+  //multiply elements
   if ( i < d.cols  &&  j < d.rows )
-    mat[index] /= vec_div[j];
+    mat[index] *= inv[threadIdx.y];
 }
 
 

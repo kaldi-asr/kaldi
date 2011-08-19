@@ -92,13 +92,17 @@ fi
   # left till later, if you are in a hurry.
   echo "****(4) install IRSTLM (optional; only needed if you want to build LMs and don't already have a setup)"
 
-  svn co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm || exit 1
+  svn -r 398 co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm || exit 1
 
   if [ ! -e irstlm ]; then
     echo "***download of irstlm failed."
     exit 1
   else
     cd irstlm
+    # Applying patch to get -write option of interpolate-lm
+    # May not work with anything else than revision 398
+	patch -p0 < ../interpolatedwrite-5.60.02.patch
+
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
     # regenerate-makefiles.sh if this does not work. 

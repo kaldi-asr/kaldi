@@ -95,18 +95,14 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, glob_err;
 
     Timer tim;
-    double time_next=0, time_has_key=0, txent=0;
+    double time_next=0;
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_alignment = 0, num_other_error = 0;
     for (; !feature_reader.Done(); /*feature_reader.Next()*/) {
       std::string key = feature_reader.Key();
-      
-      Timer t1;
-      bool has_key = alignments_reader.HasKey(key);
-      time_has_key += t1.Elapsed();
 
-      if (!has_key/*alignments_reader.HasKey(key)*/) {
+      if (!alignments_reader.HasKey(key)) {
         num_no_alignment++;
       } else {
         
@@ -129,13 +125,9 @@ int main(int argc, char *argv[]) {
 
         nnet_transf.Feedforward(feats,&feats_transf);
         nnet.Propagate(feats_transf,&nnet_out);
-        //std::cout << "\nNETOUT" << nnet_out;
         
-        Timer t5;
         xent.Eval(nnet_out,alignment,&glob_err);
-        txent += t5.Elapsed();
-        //std::cout << "\nALIGN" << alignment[0] << " "<< alignment[1]<< " "<< alignment[2];
-        //std::cout << "\nGLOBERR" << glob_err;
+        
         if(!crossvalidate) {
           nnet.Backpropagate(glob_err,NULL);
         }
@@ -143,9 +135,9 @@ int main(int argc, char *argv[]) {
         tot_t += mat.NumRows();
       }
     
-      Timer t4;
+      Timer t_features;
       feature_reader.Next();
-      time_next += t4.Elapsed();
+      time_next += t_features.Elapsed();
     }
 
     if(!crossvalidate) {
@@ -155,7 +147,8 @@ int main(int argc, char *argv[]) {
     std::cout << "\n" << std::flush;
 
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
+              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
+              << ", feature wait " << time_next << "s"; 
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment
               << " with no alignments, " << num_other_error
@@ -165,9 +158,6 @@ int main(int argc, char *argv[]) {
 
     CuDevice::Instantiate().PrintProfile();
 
-    KALDI_LOG << "time_feature::next" << time_next
-              << " time_alignment::has_key" << time_has_key
-              << " time_xentropy::eval" << txent;
 
     return 0;
   } catch(const std::exception& e) {

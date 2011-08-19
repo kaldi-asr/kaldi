@@ -101,6 +101,17 @@ system:
  [spk;+fmllr] 7.4        9.8                          | [per-spk; +fMLLR]
 
 
+# Lattice-rescoring results:
+
+LM:       |   Pruned trigram     |    Bigram          |    Trigram            |
+Test set: | Eval92   |   Eval93  | Eval92   |  Eval93 |  Eval92   |   Eval93  |
+ tri2a    |   12.5       18.3      14.3       21.0    |                       |
+ [beam=15]|   12.5       18.5
+latrescore|   12.6       18.7      14.3       21.0        12.1         18.2
+ [beam=15]|   12.5       18.7      14.3       20.9        11.7         18.2
+
+
+
 # Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
 exp/decode_mono_tgpr_eval93/wer:%WER 37.54 [ 1291 / 3439, 52 ins, 385 del, 854 sub ]
@@ -272,6 +283,38 @@ exp/decode_sgmm3e_tgpr_eval93/wer:%WER 9.92 [ 341 / 3439, 58 ins, 43 del, 240 su
 exp/decode_sgmm3e_tgpr_utt_eval92/wer:%WER 7.75 [ 437 / 5641, 113 ins, 19 del, 305 sub ]
 exp/decode_sgmm3e_tgpr_utt_eval93/wer:%WER 10.00 [ 344 / 3439, 57 ins, 46 del, 241 sub ]
 
+[lattice rescoring results]
+
+svatava:s1: grep WER exp/decode_tri2a_bg_eval9?/wer
+exp/decode_tri2a_bg_eval92/wer:%WER 14.25 [ 804 / 5641, 146 ins, 87 del, 571 sub ]
+exp/decode_tri2a_bg_eval93/wer:%WER 20.97 [ 721 / 3439, 62 ins, 122 del, 537 sub ]
+
+svatava:s1: grep WER exp/decode_tri2a_tg_pruned_eval9?/wer
+grep: exp/decode_tri2a_tg_pruned_eval9?/wer: No such file or directory
+svatava:s1: grep WER exp/decode_tri2a_tgpr_eval9?/wer
+exp/decode_tri2a_tgpr_eval92/wer:%WER 12.52 [ 706 / 5641, 127 ins, 60 del, 519 sub ]
+exp/decode_tri2a_tgpr_eval93/wer:%WER 18.29 [ 629 / 3439, 47 ins, 104 del, 478 sub ]
+
+...
+exp/decode_tri2a_tgpr_beam15_eval92/wer:%WER 12.53 [ 707 / 5641, 128 ins, 60 del, 519 sub ]
+exp/decode_tri2a_tgpr_beam15_eval93/wer:%WER 18.49 [ 636 / 3439, 49 ins, 104 del, 483 sub ]
+
+svatava:s1: grep WER exp/decode_tri2a_bg_rescore_*/wer_16
+exp/decode_tri2a_bg_rescore_bg_eval92/wer_16:%WER 14.25 [ 804 / 5641, 146 ins, 87 del, 571 sub ]
+exp/decode_tri2a_bg_rescore_bg_eval93/wer_16:%WER 20.99 [ 722 / 3439, 62 ins, 122 del, 538 sub ]
+exp/decode_tri2a_bg_rescore_tg/wer_16:%WER 12.88 [ 734 / 5700, 132 ins, 106 del, 496 sub ]
+exp/decode_tri2a_bg_rescore_tg_eval92/wer_16:%WER 12.05 [ 680 / 5641, 137 ins, 52 del, 491 sub ]
+exp/decode_tri2a_bg_rescore_tg_eval93/wer_16:%WER 18.20 [ 626 / 3439, 62 ins, 93 del, 471 sub ]
+exp/decode_tri2a_bg_rescore_tg_pruned_eval92/wer_16:%WER 12.64 [ 713 / 5641, 130 ins, 60 del, 523 sub ]
+exp/decode_tri2a_bg_rescore_tg_pruned_eval93/wer_16:%WER 18.70 [ 643 / 3439, 50 ins, 105 del, 488 sub ]
+svatava:s1: grep WER exp/decode_tri2a_bg15_rescore_*/wer_16
+exp/decode_tri2a_bg15_rescore_bg_eval92/wer_16:%WER 14.29 [ 806 / 5641, 143 ins, 87 del, 576 sub ]
+exp/decode_tri2a_bg15_rescore_bg_eval93/wer_16:%WER 20.85 [ 717 / 3439, 62 ins, 125 del, 530 sub ]
+exp/decode_tri2a_bg15_rescore_tg_eval92/wer_16:%WER 11.74 [ 662 / 5641, 127 ins, 51 del, 484 sub ]
+exp/decode_tri2a_bg15_rescore_tg_eval93/wer_16:%WER 18.17 [ 625 / 3439, 59 ins, 95 del, 471 sub ]
+exp/decode_tri2a_bg15_rescore_tg_pruned_eval92/wer_16:%WER 12.52 [ 706 / 5641, 127 ins, 60 del, 519 sub ]
+exp/decode_tri2a_bg15_rescore_tg_pruned_eval93/wer_16:%WER 18.70 [ 643 / 3439, 49 ins, 107 del, 487 sub ]
+svatava:s1: 
 
 
 # [old:]

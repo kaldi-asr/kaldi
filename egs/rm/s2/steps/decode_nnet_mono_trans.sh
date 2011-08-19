@@ -18,7 +18,7 @@
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
-acousticscale=0.22
+acousticscale=0.34
 
 dir=exp/decode_nnet_mono_trans
 tree=exp/mono/tree
@@ -41,7 +41,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
   #add MLP transform
   feats="$feats nnet-forward --print-args=false --apply-log=true $nnet ark:- ark:- |"
 
-  echo $feats
+  #echo $feats
 
   decode-faster --beam=20.0 --acoustic-scale=$acousticscale --word-symbol-table=data/words.txt $graphdir/HCLG.fst "$feats" ark,t:$dir/test_${test}.tra ark,t:$dir/test_${test}.ali  2> $dir/decode_${test}.log
 

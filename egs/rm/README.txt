@@ -17,3 +17,5 @@ scripts for a sequence of experiments.
   s2: This setup is experiments with pure hybrid system.
 
       
+  s3: This is not finished yet; it contains some preliminary work
+      for some cleaned-up versions of scripts.

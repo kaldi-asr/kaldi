@@ -53,8 +53,8 @@ steps/prepare_graphs.sh
 # where you have space.
 #e.g.: mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfccb
 mfccdir=/path/to/mfccdir
-scripts/run_sge_or_locally.sh "-pe smp 6" "steps/make_mfcc_train.sh $mfccdir" $mfccdir
-scripts/run_sge_or_locally.sh "-pe smp 6" "steps/make_mfcc_test.sh $mfccdir" $mfccdir
+scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_mfcc_train.sh $mfccdir" $mfccdir
+scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_mfcc_test.sh $mfccdir" $mfccdir
 
 
 

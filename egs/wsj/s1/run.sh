@@ -216,11 +216,21 @@ steps/train_tri2a.sh || exit 1;
  for year in 92 93; do
   scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
   scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/eval_nov${year}.scp 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst exp/decode_tri2a_bg_rescore_tg data/eval_nov${year}.txt
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst exp/decode_tri2a_bg_rescore_tg_pruned data/eval_nov${year}.txt
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst exp/decode_tri2a_bg_rescore_bg data/eval_nov${year}.txt
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_pruned_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_bg_eval${year} 
+ done
+
+ for year in 92 93; do
+  scripts/decode.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen_beam15.sh data/eval_nov${year}.scp 
+  scripts/decode.sh exp/decode_tri2a_tgpr_beam15_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_beam15.sh data/eval_nov${year}.scp 
+
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_tg_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_tg_pruned_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_bg_eval${year} 
  done
  )&
+
 
 
 
@@ -475,4 +485,5 @@ done
 # For an e.g. of scoring with sclite: do e.g.
 # scripts/score_sclite.sh exp/decode_tri2a_tgpr_eval92 data/eval_nov92.txt
 # cat exp/decode_tri2a_tgpr_eval92/scoring/hyp.sys
+
 
