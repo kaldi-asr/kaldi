@@ -93,9 +93,9 @@ inline void InitFmllr(int32 dim,
 // InitFmllr to get this).
 // Returns auxf improvement.
 BaseFloat ComputeFmllrDiagGmm(const FmllrDiagGmmAccs& accs,
-                                    const FmllrOptions &opts,
-                                    Matrix<BaseFloat> *out_fmllr,
-                                    BaseFloat *logdet);  // add this to likelihoods
+                              const FmllrOptions &opts,
+                              Matrix<BaseFloat> *out_fmllr,
+                              BaseFloat *logdet);  // add this to likelihoods
 
 inline BaseFloat ComputeFmllrLogDet(const Matrix<BaseFloat> &fmllr_mat) {
   KALDI_ASSERT(fmllr_mat.NumRows() != 0 && fmllr_mat.NumCols() == fmllr_mat.NumRows()+1);

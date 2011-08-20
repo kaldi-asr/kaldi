@@ -248,6 +248,8 @@ class RandomAccessTableReader {
   ~RandomAccessTableReader();
 
  private:
+  void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
+                          // message and dies (with KALDI_ERR) if NULL.
   RandomAccessTableReaderImplBase<Holder> *impl_;
 };
 
@@ -320,6 +322,8 @@ class SequentialTableReader {
   // that prevented further reading.
   ~SequentialTableReader();
  private:
+  void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
+                          // message and dies (with KALDI_ERR) if NULL.
   SequentialTableReaderImplBase<Holder> *impl_;
 };
 
@@ -364,6 +368,8 @@ class TableWriter {
 
   ~TableWriter();
  private:
+  void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
+                          // message and dies (with KALDI_ERR) if NULL.
   TableWriterImplBase<Holder> *impl_;
 };
 

@@ -1,5 +1,6 @@
 #!/bin/bash
-
+### [men at work sign] ###
+### WORK IN PROGRESS###
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,23 +18,149 @@
 
 exit 1 # Don't run this... it's to be run line by line from the shell.
 
+# call the next line with the directory where the RM data is
+# (the argument below is just an example).  This should contain
+# subdirectories named as follows:
+#    rm1_audio1  rm1_audio2	rm2_audio
+
+local/RM_data_prep.sh /mnt/matylda2/data/RM/
+
+local/RM_format_data.sh
+
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features. 
+mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfcc
+
+steps/make_mfcc.sh data/train exp/make_mfcc/train $mfccdir 4
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/make_mfcc.sh data/test_$test exp/make_mfcc/test_$test $mfccdir 4
+done
+
+scripts/subset_data_dir.sh data/train 1000 data/train.1k
+
+# train monophone system.
+steps/train_mono.sh data/train.1k data/lang exp/mono
+
+# decode mono [do this "manually" in the next few lines of
+# script; generally this stuff gets called by "local/decode.sh"
+# but here we want to pass the --mono option to mkgraph.sh.
+scripts/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/decode_deltas.sh exp/mono data/test_$test data/lang exp/mono/decode_$test &
+done
+wait
+scripts/average_wer.sh exp/mono/decode_?????/wer > exp/mono/wer
+
+# Get alignments from monophone system.
+steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali
+
+# train tri1 [first triphone pass]
+steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1
+# decode tri1
+local/decode.sh steps/decode_deltas.sh exp/tri1
+
+# align tri1
+steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
+    $data/train data/lang exp/tri1 exp/tri1_ali
+
+# train tri2a [delta+delta-deltas]
+steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
+# decode tri2a
+local/decode.sh steps/decode_deltas.sh exp/tri2a
+
+# train tri2b [LDA+MLLT]
+steps/train_lda_mllt.sh data/train data/train.1k data/lang exp/tri1_ali exp/tri2b
+# decode tri2b
+local/decode.sh steps/decode_lda_mllt.sh exp/tri2b
+
+# Get per-speaker subset for ET; train and test ET.
+scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
+steps/train_lda_et.sh data/train data/train.15utt data/lang exp/tri1_ali exp/tri2c
+scripts/mkgraph.sh data/lang_test exp/tri2c exp/tri2c/graph
+local/decode.sh steps/decode_lda_et.sh exp/tri2c
+
+# Align all data with LDA+MLLT system (tri2b) and do LDA+MLLT+SAT
+steps/align_lda_mllt.sh --graphs "ark,s,cs:gunzip -c exp/tri2b/graphs.fsts.gz|" \
+   data/train data/lang exp/tri2b exp/tri2b_ali
+steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d
+
+##### Below here is trash. ######
+
+#steps/train_lda_mllt.sh.bak data/train data/train.1k data/lang exp/tri1 exp/tri2b_tmp
+
+#scripts/subset_data_dir.sh data/train 800 data/train.800
+#steps/train_lda_mllt.sh data/train data/train.800 data/lang exp/tri1_ali exp/tri2b_tmp2
+
+
+scripts/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
+for test in mar87 oct87 feb89 oct89 feb91 sep92; do
+  steps/decode_deltas.sh exp/tri1 data/test_$test data/lang exp/tri1/decode_$test &
+done
+wait
+scripts/average_wer.sh exp/mono/decode_?????/wer > exp/mono/wer
+
+
+
+scripts/mkgraph.sh --mono exp/mono/tree exp/mono/final.mdl exp/mono/graph
+
+
+\
+   > $dir/wer
 
 notes on structure...
 
 
-data_prep/ will contain temporary data used when preparing data/?
 
-local_scripts/ contains the most RM-specific scripts. [used to create data_prep/]
+
+scripts/ contains generic scripts
+local/ contains more corpus-specific scripts
+steps/ contains system-building steps...
+
+
+data/local  contains temp., local stuff
+data/train
+data/train.1k
+data/lang  [note: could have separate dirs like this for different test sets]
+data/test_feb89
+data/test_feb89
+
+
+local/RM_data_prep.sh
+
+
+steps/train_mono.sh
+
+
+
+
+exp/ contains experiments.
+  [ Decode_dirs in subdir of exp. dir? ]
+
+
+ocal_scripts/ contains the most RM-specific scripts. [used to create data_prep/]
 
 scripts/ will contain generic scipts.
 
 Stuff that's about the language:
 
 lang/
- words.txt silphones.csl nonsilphones.csl topo
- 
+  words.txt phones.txt silphones.csl nonsilphones.csl topo
+  L.fst
 
- [for training:]
+maybe also, later:
+  phonesets.txt [ phonesets used in building questions... if not supplied, use the "base phones" ]
+  extra_questions.txt [ extra questions appended to automatically generated questions.  Should ask 
+        questions that elicit information that's lost when we go to "phonesets.txt", e.g. about stress
+        and position ]
+  questions.txt [ if you supply the questions, this file should exist. ]
+
+
+lang_test/
+ words.txt phones.txt silphones.csl nonsilphones.csl topo  
+ phones_dismbig.txt L_disambig.txt G.fst
+
+
+[for training:]
  phones.txt [for testing too?]
  phonesets.txt [ phonesets used in building questions... if not supplied, use the "base phones" ]
  extra_questions.txt [ extra questions appended to automatically generated questions.  Should ask 

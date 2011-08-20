@@ -103,12 +103,6 @@ bool TrainingGraphCompiler::CompileGraph(const std::vector<int32> &transcript,
 
   assert(trans2word_fst.Start() != kNoStateId);
 
-  // Remove-eps local;  maintain tropical equivalence but
-  // log-semiring stochasticity.  This isn't mentioned in the documentation
-  // as it's really an optimization that's not important (DeterminizeStar
-  // will remove any remaining epsilons).
-  RemoveEpsLocalSpecial(&trans2word_fst);
-
   // Epsilon-removal and determinization combined. This will fail if not determinizable.
   DeterminizeStarInLog(&trans2word_fst);
 
@@ -188,10 +182,6 @@ bool TrainingGraphCompiler::CompileGraphs(const std::vector<std::vector<int32> >
     VectorFst<StdArc> &ctx2word_fst = *((*out_fsts)[i]);
     VectorFst<StdArc> trans2word_fst;
     TableCompose(*H, ctx2word_fst, &trans2word_fst);
-
-    // This step doesn't affect the final answer but may speed it up
-    // in certain cases (or may slow it down)...
-    RemoveEpsLocalSpecial(&trans2word_fst);
 
     DeterminizeStarInLog(&trans2word_fst);
     // Encoded minimization.

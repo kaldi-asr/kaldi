@@ -43,6 +43,8 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
+#include "hmm/transition-model.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
 // macros to switch off all debugging messages without runtime cost
 //#define DEBUG_CMD(x) x;
@@ -452,7 +454,8 @@ class KaldiDecoder {
         DEBUG_CMD(assert(hash_[state]->state == state))
         // check that all incoming arcs have the same model!
         DEBUG_CMD(if (ilabel > 0)
-          assert(decodable->ComparePdfId(hash_[state]->ilabel, ilabel)))
+          assert(decodable->TransModel()->TransitionIdToPdf(hash_[state]->ilabel)
+              == decodable->TransModel()->TransitionIdToPdf(ilabel)))
         //DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
         DEBUG_CMD(if (ilabel <= 0) assert(hash_[state]->ilabel == 0))
         // this also checks that transducer doesn't contain epsilon loop!
@@ -641,7 +644,7 @@ class KaldiDecoder {
 
   // functions in main decoding loop
   /// performs the decoding
-  fst::VectorFst<fst::StdArc>* Decode(const Fst &fst, Decodable *decodable);
+  fst::VectorFst<LatticeArc>* Decode(const Fst &fst, Decodable *decodable);
   // fst: recognition network
   // decodable: acoustic model/features
   // output: linear FST of lattice links in best path
@@ -690,7 +693,7 @@ class KaldiDecoder {
   const Fst* reconet_;                  // recognition network as FST
   // const fst::SymbolTable *model_list;     // input symbol table
   // const fst::SymbolTable *word_list;     // output symbol table
-  fst::VectorFst<fst::StdArc>* output_arcs_;  // recogn. output as word link FST
+  fst::VectorFst<LatticeArc>* output_arcs_;  // recogn. output as word link FST
 
   // arrays for token passing
   LinkStore link_store_;          // data structure for allocating lattice links

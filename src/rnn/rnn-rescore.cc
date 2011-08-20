@@ -26,7 +26,9 @@
 #include "base/kaldi-error.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "fst/fst.h"
 #include "fst/queue.h"
+#include "fst/rmepsilon.h"
 #include "fst/dfs-visit.h"
 #include "lat/kaldi-lattice.h"
 
@@ -242,8 +244,18 @@ class RNN{
 
 };
 
-BaseFloat Visit(CompactLattice& lat,fst::LifoQueue<fst::StdFst::StateId>) {
-  return 0.0;
+void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat score=0) {
+    if (lat.NumArcs(i)==0) {
+      KALDI_LOG<<" "<<sentence<<" "<<score;
+      return;
+    }
+    for (fst::ArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
+      const CompactLatticeArc &arc = aiter.Value();
+      const CompactLatticeWeight &wgt = aiter.Value().weight;
+      BaseFloat rnnscore=0;
+      //TODO compute word posterior! 
+      TreeTraverse(wordsym,lat,arc.nextstate,sentence+" "+wordsym.Find(arc.olabel),rnnscore+score+wgt.Weight().Value1());
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -263,11 +275,13 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
     BaseFloat oov_penalty = 11; // assumes vocabularies around 60k words 
     BaseFloat iv_penalty = 0;
+    std::string text_file = "";
     bool no_oovs = false;
     RNN::int32 n = 10;
     
 
     po.Register("lm-scale", &lm_scale, "Scaling factor for RNN LM likelihoods" );
+    po.Register("write-as-text", &text_file, "Dump the nbests in a text formatted file");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("oov-penalty", &oov_penalty, "A reasonable value is ln(vocab_size)" );
     po.Register("iv-penalty", &iv_penalty, "Can be used to tune performance" );
@@ -299,7 +313,7 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
     // initialize our RNN
-    RNN myRNN(rnnmodel_filename); 
+    //RNN myRNN(rnnmodel_filename); 
 
     RNN::int32 n_done = 0; // there is no failure mode, barring a crash.
     RNN::int64 n_paths_out = 0;
@@ -334,9 +348,13 @@ int main(int argc, char *argv[]) {
       CompactLattice nbest_clat;
 
       ConvertLattice(nbest_lat, &nbest_clat);
-      Visit(nbest_clat,q);
       compact_lattice_writer.Write(key, nbest_clat);
       n_done++;
+
+      if (acoustic_scale != 1.0)
+        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &nbest_clat);\
+
+      TreeTraverse(*word_syms,nbest_clat,nbest_clat.Start(),key);
     }
 
     KALDI_LOG << "Did N-best algorithm to " << n_done << " lattices with n = "

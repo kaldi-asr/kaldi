@@ -27,8 +27,8 @@
 
 namespace fst {
 
-
-
+// Note: all weights are constructed from nonnegative floats.
+// (so no "negative costs").
 struct RandFstOptions {
   size_t n_syms;
   size_t n_states;

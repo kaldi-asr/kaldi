@@ -60,7 +60,7 @@ FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
   size_t num_comp = static_cast<int32>(pdf.NumGauss());
   Vector<BaseFloat> posterior(num_comp);
   BaseFloat loglike;
-
+  
   loglike = pdf.ComponentPosteriors(data, &posterior);
   AccumulateFromPosteriors(pdf, data, posterior);
   return loglike;

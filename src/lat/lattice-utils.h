@@ -21,10 +21,12 @@
 #define KALDI_LAT_LATTICE_UTILS_H_
 
 #include <vector>
+#include <map>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -40,6 +42,18 @@ int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 /// posterior probabilities of the arcs. It returns the total log-probability
 /// of the lattice.
 BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post);
+
+
+void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
+                         const std::vector<int32> &sil_phones,
+                         std::vector< std::map<int32, int32> > *active_phones);
+
+/// This function takes a reference lattice
+void LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
+                               const std::vector< std::map<int32, int32> > &ref,
+                               std::vector< std::map<int32, char> > *arc_accs);
+
+BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post);
 
 }  // namespace kaldi
 

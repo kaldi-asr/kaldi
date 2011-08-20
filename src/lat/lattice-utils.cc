@@ -17,13 +17,14 @@
 // limitations under the License.
 
 #include <algorithm>
-using std::pair;
+#include <map>
+using std::map;
 #include <vector>
 using std::vector;
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
 
 #include "lat/lattice-utils.h"
+#include "hmm/transition-model.h"
+#include "util/stl-utils.h"
 
 namespace kaldi {
 
@@ -69,7 +70,7 @@ static void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
                          const vector< vector<int32> > &active_states,
                          const vector<double> &state_alphas,
                          vector<double> *state_betas,
-                         unordered_map<int32, double> *post);
+                         map<int32, double> *post);
 
 
 BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
@@ -104,7 +105,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   }
 
   // Backward pass and collect posteriors
-  vector< unordered_map<int32, double> > tmp_arc_post(max_time);
+  vector< map<int32, double> > tmp_arc_post(max_time);
   for (int32 state = num_states -1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
@@ -119,7 +120,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   // Output the computed posteriors
   arc_post->resize(max_time);
   for (int32 cur_time = 0; cur_time < max_time; ++cur_time) {
-    unordered_map<int32, double>::const_iterator post_itr =
+    map<int32, double>::const_iterator post_itr =
         tmp_arc_post[cur_time].begin();
     for (; post_itr != tmp_arc_post[cur_time].end(); ++post_itr) {
       (*arc_post)[cur_time].push_back(std::make_pair(post_itr->first,
@@ -128,6 +129,64 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   }
 
   return tot_forward_prob;
+}
+
+
+void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
+                         const vector<int32> &sil_phones,
+                         vector< map<int32, int32> > *active_phones) {
+  KALDI_ASSERT(IsSortedAndUniq(sil_phones));
+  vector<int32> state_times;
+  int32 num_states = lat.NumStates();
+  int32 max_time = LatticeStateTimes(lat, &state_times);
+  active_phones->resize(max_time);
+  for (int32 state = 0; state < num_states; ++state) {
+    int32 cur_time = state_times[state];
+    for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
+        aiter.Next()) {
+      const LatticeArc& arc = aiter.Value();
+      if (arc.ilabel != 0) {  // Non-epsilon arc
+        int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+        if (!std::binary_search(sil_phones.begin(), sil_phones.end(), phone))
+          (*active_phones)[cur_time][phone] = state;
+      }
+    }  // end looping over arcs
+  }  // end looping over states
+}
+
+
+void LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
+                               const vector< map<int32, int32> > &ref_phones,
+                               vector< map<int32, char> > *arc_accs) {
+  vector<int32> state_times_hyp;
+  int32 max_time_hyp = LatticeStateTimes(hyp, &state_times_hyp),
+      max_time_ref = ref_phones.size();
+  if (max_time_ref != max_time_hyp) {
+    KALDI_ERR << "Reference and hypothesis lattices must have same numbers of "
+              << "frames. Found " << max_time_ref << " in ref and "
+              << max_time_hyp  << " in hyp.";
+  }
+
+  int32 num_states_hyp = hyp.NumStates();
+  for (int32 state = 0; state < num_states_hyp; ++state) {
+    int32 cur_time = state_times_hyp[state];
+    for (fst::ArcIterator<Lattice> aiter(hyp, state); !aiter.Done();
+        aiter.Next()) {
+      const LatticeArc& arc = aiter.Value();
+      if (arc.ilabel != 0) {  // Non-epsilon arc
+        int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+        (*arc_accs)[cur_time][phone] =
+            (ref_phones[cur_time].find(phone) == ref_phones[cur_time].end())?
+                0 : 1;
+      }
+    }  // end looping over arcs
+  }  // end looping over states
+}
+
+
+BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post) {
+
+  return 0.0;
 }
 
 
@@ -153,7 +212,7 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
                          const vector< vector<int32> > &active_states,
                          const vector<double> &state_alphas,
                          vector<double> *state_betas,
-                         unordered_map<int32, double> *post) {
+                         map<int32, double> *post) {
   // Epsilon arcs leading into the state
   for (vector<int32>::const_iterator st_it = active_states[cur_time].begin();
       st_it != active_states[cur_time].end(); ++st_it) {
@@ -189,15 +248,12 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
             arc_score = (*state_betas)[state] - graph_score - am_score;
         (*state_betas)[(*st_it)] = LogAdd((*state_betas)[(*st_it)],
                                           arc_score);
-        BaseFloat gamma = std::exp(state_alphas[(*st_it)] - graph_score -
-                                   am_score + (*state_betas)[state] -
-                                   tot_forward_prob);
-        unordered_map<int32, double>::iterator find_iter = post->find(key);
-        if (find_iter == post->end()) {  // New label found at prev_time
+        double gamma = std::exp(state_alphas[(*st_it)] - graph_score - am_score
+                                + (*state_betas)[state] - tot_forward_prob);
+        if (post->find(key) == post->end())  // New label found at prev_time
           (*post)[key] = gamma;
-        } else {  // Arc label already seen at this time
+        else  // Arc label already seen at this time
           (*post)[key] += gamma;
-        }
       }
     }
   }

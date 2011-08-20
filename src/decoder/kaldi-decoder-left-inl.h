@@ -22,6 +22,13 @@
 #include <ctime>
 #include <iomanip>
 
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
+#include <tr1/unordered_map>
+#endif
+using std::tr1::unordered_map;
+
 namespace kaldi {
   //***************************************************************************
   //***************************************************************************
@@ -47,7 +54,7 @@ namespace kaldi {
   //***************************************************************************
   //***************************************************************************
   template<class Decodable, class Fst>
-  fst::VectorFst<typename fst::StdArc>* KaldiDecoder<Decodable, Fst>::Decode(
+  fst::VectorFst<LatticeArc>* KaldiDecoder<Decodable, Fst>::Decode(
       const Fst &fst, Decodable *decodable) {
     // the decoding main routine
 
@@ -58,7 +65,6 @@ namespace kaldi {
     do {  // go over all feature frames and decode
       frame_index_++;
       DEBUG_OUT1("==== FRAME " << frame_index_)
-      if ((frame_index_%50) == 0) KALDI_VLOG(2) << "==== FRAME " << frame_index_;
 
       ProcessToDoList();
       // all active tokens from last frame are by now processed
@@ -525,26 +531,23 @@ namespace kaldi {
     }
 
     // build output FST
-    output_arcs_ = new fst::VectorFst<MyArc>;
+    output_arcs_ = new fst::VectorFst<LatticeArc>;
     // output_arcs_->SetOutputSymbols(reconet_->OutputSymbols());
     // in case we'd have symbol tables
 
     // back-track word links in best path
     assert(final_token_.arcs != NULL);
     StateId wlstate = output_arcs_->AddState();
-    output_arcs_->SetFinal(wlstate, final_token_.weight);
+    output_arcs_->SetFinal(wlstate,
+                           LatticeWeight(final_token_.weight.Value(), 0.0));
     DEBUG_OUT1("set final state of Links:" << wlstate << " total score:"
               << final_token_.weight)
     Link *wl = final_token_.arcs;
     while (wl != NULL && (wl->olabel >= 0)) {
       StateId new_wlstate = output_arcs_->AddState();
       // add corresponding arc
-      BaseFloat arc_weight = (wl->next != NULL) ?
-        wl->weight.Value() - wl->next->weight.Value() : wl->weight.Value();
-      // difference between scores at word labels
       output_arcs_->AddArc(new_wlstate,
-                           MyArc(0, wl->olabel, arc_weight, wlstate));
-      //!!??               MyArc(wl->state, wl->olabel, arc_weight, wlstate));
+                           LatticeArc(0, wl->olabel, LatticeWeight::One(), wlstate));
       std::string word = "";
       // if (reconet_->OutputSymbols())
         // word = reconet_->OutputSymbols()->Find(wl->olabel);

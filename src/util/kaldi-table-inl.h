@@ -536,7 +536,7 @@ bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
 
 template<class Holder>
 bool SequentialTableReader<Holder>::Close() {
-  if (!IsOpen()) KALDI_ERR << "TableReader: called Close() on non-open reader.";
+  CheckImpl();  
   bool ans = impl_->Close();
   delete impl_;  // We don't keep around empty impl_ objects.
   impl_ = NULL;
@@ -553,7 +553,7 @@ bool SequentialTableReader<Holder>::IsOpen() const {
 
 template<class Holder>
 std::string SequentialTableReader<Holder>::Key() {
-  KALDI_ASSERT(impl_ != NULL);  // Or called wrongly.
+  CheckImpl();
   return impl_->Key();  // this call may throw if called wrongly in other ways,
   // e.g. eof.
 }
@@ -561,7 +561,7 @@ std::string SequentialTableReader<Holder>::Key() {
 
 template<class Holder>
 void SequentialTableReader<Holder>::FreeCurrent() {
-  KALDI_ASSERT(impl_ != NULL);  // Or called wrongly.
+  CheckImpl();
   impl_->FreeCurrent();
 }
 
@@ -569,20 +569,20 @@ void SequentialTableReader<Holder>::FreeCurrent() {
 template<class Holder>
 const typename SequentialTableReader<Holder>::T &
 SequentialTableReader<Holder>::Value() {
-  KALDI_ASSERT(impl_ != NULL);  // Or called wrongly.
+  CheckImpl();
   return impl_->Value();  // This may throw (if LoadCurrent() returned false you are safe.).
 }
 
 
 template<class Holder>
 void SequentialTableReader<Holder>::Next() {
-  KALDI_ASSERT(impl_ != NULL);  // Or called wrongly.
+  CheckImpl();
   impl_->Next();
 }
 
 template<class Holder>
 bool SequentialTableReader<Holder>::Done() {
-  KALDI_ASSERT(impl_ != NULL);  // Or called wrongly.
+  CheckImpl();
   return impl_->Done();
 }
 
@@ -1119,7 +1119,7 @@ bool TableWriter<Holder>::Open(const std::string &wspecifier) {
 
 template<class Holder>
 bool TableWriter<Holder>::Write(const std::string &key, const T &value) const {
-  KALDI_ASSERT(impl_ != NULL);  // or wrongly called.
+  CheckImpl();
   return impl_->Write(key, value);
 }
 
@@ -1133,13 +1133,13 @@ void TableWriter<Holder>::WriteThrow(const std::string &key,
 
 template<class Holder>
 void TableWriter<Holder>::Flush() {
-  KALDI_ASSERT(impl_ != NULL);
+  CheckImpl();
   impl_->Flush();
 }
 
 template<class Holder>
 bool TableWriter<Holder>::Close() {
-  KALDI_ASSERT(impl_ != NULL);
+  CheckImpl();
   bool ans = impl_->Close();
   delete impl_;  // We don't keep around non-open impl_ objects [c.f. definition of IsOpen()]
   impl_ = NULL;
@@ -1328,7 +1328,7 @@ class RandomAccessTableReaderScriptImpl:
       default: break;
     }
     KALDI_ASSERT(IsToken(key));
-    size_t key_pos;
+    size_t key_pos = 0; // set to zero to suppress warning
     bool ans = LookupKey(key, &key_pos);
     if (!ans) return false;
     else {
@@ -2083,8 +2083,7 @@ bool RandomAccessTableReader<Holder>::Open(const std::string &rspecifier) {
 
 template<class Holder>
 bool RandomAccessTableReader<Holder>::HasKey(const std::string &key) {
-  if (!impl_)
-    KALDI_ERR << "RandomAccessTableReader::HasKey called on non-open object.";
+  CheckImpl();
   if (!IsToken(key))
     KALDI_ERR << "RandomAccessTableReader::HasKey, invalid key \"" << key << '"';
   return impl_->HasKey(key);
@@ -2094,15 +2093,13 @@ bool RandomAccessTableReader<Holder>::HasKey(const std::string &key) {
 template<class Holder>
 const typename RandomAccessTableReader<Holder>::T&
 RandomAccessTableReader<Holder>::Value(const std::string &key) {
-  if (!impl_)
-    KALDI_ERR << "RandomAccessTableReader::Value() called on non-open object.";
+  CheckImpl();  
   return impl_->Value(key);
 }
 
 template<class Holder>
 bool RandomAccessTableReader<Holder>::Close() {
-  if (!IsOpen())
-    KALDI_ERR << "RandomAccessTableReader::Close() called on non-open object.";
+  CheckImpl();
   bool ans =impl_->Close();
   delete impl_;
   impl_ = NULL;
@@ -2114,6 +2111,32 @@ RandomAccessTableReader<Holder>::~RandomAccessTableReader() {
   if (IsOpen() && !Close()) // call Close() yourself to stop this being thrown.
     KALDI_ERR << "RandomAccessTableReader destructor: failure detected.";
 }
+
+template<class Holder>
+void SequentialTableReader<Holder>::CheckImpl() const {
+  if (!impl_) {
+    KALDI_ERR << "Trying to use empty SequentialTableReader (perhaps you "
+              << "passed the empty string as an argument to a program?)";
+  }
+}
+
+template<class Holder>
+void RandomAccessTableReader<Holder>::CheckImpl() const {
+  if (!impl_) {
+    KALDI_ERR << "Trying to use empty RandomAccessTableReader (perhaps you "
+              << "passed the empty string as an argument to a program?)";
+  }
+}
+
+template<class Holder>
+void TableWriter<Holder>::CheckImpl() const {
+  if (!impl_) {
+    KALDI_ERR << "Trying to use empty RandomAccessTableReader (perhaps you "
+              << "passed the empty string as an argument to a program?)";
+  }
+}
+
+
 
 
 /// @}

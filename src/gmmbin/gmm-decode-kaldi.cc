@@ -25,6 +25,7 @@
 #include "decoder/kaldi-decoder-left.h"
 // you can either use left or right: without or with reorder option
 #include "decoder/decodable-am-diag-gmm.h"
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 #include "util/timer.h"
 
 using namespace kaldi;
@@ -78,7 +79,7 @@ int main(int argc, char *argv[]) {
 #endif
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:   gmm-decode-kaldi [options] model-in fst-in features-rspecifier words-wspecifier\n";
+        "Usage:   gmm-decode-kaldi [options] model-in fst-in features-rspecifier words-wspecifier [lattice-wspecifier]\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if ((po.NumArgs() < 4) || (po.NumArgs() > 5)) {
       po.PrintUsage();
       exit(1);
     }
@@ -98,7 +99,8 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1),
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
-        words_wspecifier = po.GetArg(4);
+        words_wspecifier = po.GetArg(4),
+        lattice_wspecifier = po.GetArg(5);
 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
@@ -110,6 +112,17 @@ int main(int argc, char *argv[]) {
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
+
+    bool write_lattices = false;
+    LatticeWriter lattice_writer;
+    if (lattice_wspecifier != "") {
+      if (lattice_writer.Open(lattice_wspecifier)) {
+        write_lattices = true;
+      } else {
+        KALDI_EXIT << "Could not open table for writing lattices: "
+                   << lattice_wspecifier;
+      }
+    }
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
@@ -129,7 +142,7 @@ int main(int argc, char *argv[]) {
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     KaldiDecoder<DecodableAmDiagGmmScaled, fst::ConstFst<fst::StdArc> > decoder(decoder_opts);
-    // templating on ConstFst gives only a small improvement in speed
+    // templating on ConstFst gives a small improvement in speed
 
     Timer timer;
 
@@ -144,15 +157,28 @@ int main(int argc, char *argv[]) {
 
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
-      fst::VectorFst<fst::StdArc> *word_links = decoder.Decode(*decode_fst,
-                                                               &gmm_decodable);
+      fst::VectorFst<LatticeArc> *decoded = decoder.Decode(*decode_fst,
+                                                            &gmm_decodable);
 
-      if (word_links == NULL) {
+      if (decoded == NULL) {
         KALDI_WARN << "Could not decode file " << key;
       } else {
+      
+//        std::cout << "best path:\n";
+//        fst::FstPrinter<fst::StdArc> fstprinter(*decoded, NULL, NULL, NULL, false, true);
+//        fstprinter.Print(&std::cout, "standard output");
+
+        if (write_lattices) {
+          //if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+          //  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), *decoded);
+          //fst::VectorFst<CompactLatticeArc> decoded1;
+          //ConvertLattice(decoded, &decoded1, true);
+          lattice_writer.Write(key, *decoded);
+        }
+      
         std::vector<kaldi::int32> words;
-        fst::StdArc::Weight weight;
-        GetLinearSymbolSequence(*word_links, static_cast<std::vector<kaldi::int32>*>(NULL),
+        LatticeWeight weight(0.0, 0.0);
+        GetLinearSymbolSequence(*decoded, static_cast<std::vector<kaldi::int32>*>(NULL),
                                 &words, &weight);
 
         frame_count += features.NumRows();
@@ -169,12 +195,12 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -weight.Value1() -weight.Value2();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "
                   << features.NumRows() << " frames.";
-        delete word_links;
+        delete decoded;
       }
     }
     double elapsed = timer.Elapsed();

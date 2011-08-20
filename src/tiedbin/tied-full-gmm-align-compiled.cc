@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
                                                acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
-        VectorFst<StdArc> decoded;  // linear FST.
+        VectorFst<LatticeArc> decoded;  // linear FST.
         bool ans = decoder.ReachedFinal() // consider only final states.
             && decoder.GetBestPath(&decoded);  
         if (!ans && retry_beam != 0.0) {
@@ -142,11 +142,11 @@ int main(int argc, char *argv[]) {
         if (ans) {
           std::vector<int32> alignment;
           std::vector<int32> words;
-          StdArc::Weight weight;
+          LatticeWeight weight;
           frame_count += features.NumRows();
 
           GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-          BaseFloat like = -weight.Value() / acoustic_scale;
+          BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
           tot_like += like;
           alignment_writer.Write(key, alignment);
           num_success ++;
