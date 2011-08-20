@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (normalize_type != "") {
-      EtNormalizeType nt;
+      EtNormalizeType nt = kEtNormalizeNone;
       if (normalize_type == "offset") nt = kEtNormalizeOffset;
       else if (normalize_type == "diag") nt = kEtNormalizeDiag;
       else if (normalize_type == "none") nt = kEtNormalizeNone;

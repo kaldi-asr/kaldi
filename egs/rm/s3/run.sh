@@ -60,7 +60,8 @@ steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1
 local/decode.sh steps/decode_deltas.sh exp/tri1
 
 # align tri1
-steps/align_deltas.sh data/train data/lang exp/tri1 exp/tri1_ali
+steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
+    $data/train data/lang exp/tri1 exp/tri1_ali
 
 # train tri2a [delta+delta-deltas]
 steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
@@ -72,19 +73,16 @@ steps/train_lda_mllt.sh data/train data/train.1k data/lang exp/tri1_ali exp/tri2
 # decode tri2b
 local/decode.sh steps/decode_lda_mllt.sh exp/tri2b
 
-# Get per-speaker subset for ET
-scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
-
-
-#scripts/subset_data_dir.sh data/train 800 data/train.800
-
+# Get per-speaker subset for ET; train and test ET.
 scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
 steps/train_lda_et.sh data/train data/train.15utt data/lang exp/tri1_ali exp/tri2c
-
 scripts/mkgraph.sh data/lang_test exp/tri2c exp/tri2c/graph
-steps/decode_lda_et.sh exp/tri2c data/test_feb89 data/lang_test exp/tri2c/decode_feb89
+local/decode.sh steps/decode_lda_et.sh exp/tri2c
 
-
+# Align all data with LDA+MLLT system (tri2b) and do LDA+MLLT+SAT
+steps/align_lda_mllt.sh --graphs "ark,s,cs:gunzip -c exp/tri2b/graphs.fsts.gz|" \
+   data/train data/lang exp/tri2b exp/tri2b_ali
+steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d
 
 ##### Below here is trash. ######
 

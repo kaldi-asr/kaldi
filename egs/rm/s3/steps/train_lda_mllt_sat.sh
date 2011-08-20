@@ -16,30 +16,30 @@
 
 # To be run from ..
 # Triphone model training, using cepstral mean normalization plus
-# splice-9-frames.  It starts from an existing directory (e.g.
-# exp/tri1), supplied as an argument, which is assumed to be built using
-# cepstral mean subtraction plus delta features.
+# splice-9-frames, an LDA+MLLT transform, then speaker-specific
+# affine transforms (fMLLR/CMLLR).  
+#
+# This training run starts from an initial directory that has
+# alignments, models and transforms from an LDA+MLLT system:
+#  ali, final.mdl, final.mat
 
 
-if [ $# != 5 ]; then
-   echo "Usage: steps/train_lda_mllt.sh <data-dir> <data-subset-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_lda_mllt.sh data/train.1k data/train data/lang exp/tri1_ali exp/tri2b"
+if [ $# != 4 ]; then
+   echo "Usage: steps/train_lda_mllt_sat.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-datasub=$2
-lang=$3
-alidir=$4
-dir=$5
-
-scripts/is_subset_scp.pl $datasub/feats.scp $data/feats.scp || exit 1;
+lang=$2
+alidir=$3
+dir=$4
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
-mllt_iters="2 4 6 12";
+fmllr_iters="2 4 6 12";
 silphonelist=`cat $lang/silphones.csl`
 numiters=25    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
@@ -50,33 +50,25 @@ numgauss=$[$numleaves + $numleaves/2];  # starting num-Gauss.
      # up to final amount.
 totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-
+randprune=5.0 # for fMLLR accumulation, to speed it up (0.0 would be exact)
 
 mkdir -p $dir
+cp $alidir/final.mat $dir # Will use the same transform as in the baseline.
 
-# This variable gets overwritten in this script.
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
-featsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
-splicedfeatsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- |"
+
+sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+# This variable gets overwritten in this script:
+feats="$sifeats"
+cur_fmllr=
 
 # compute integer form of transcripts.
 scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
   || exit 1;
 
-echo "Accumulating LDA statistics."
-
-( ali-to-post ark:$alidir/ali ark:- | \
-   weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | \
-   acc-lda $alidir/final.mdl "$splicedfeatsub" ark,s,cs:- $dir/lda.acc ) 2>$dir/lda_acc.log
-est-lda $dir/0.mat $dir/lda.acc 2>$dir/lda_est.log
-
-cur_lda=$dir/0.mat
-
 echo "Accumulating tree stats"
 
-acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-    ark:$alidir/ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
-
+acc-tree-stats --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
+   ark:$alidir/ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
 
@@ -124,19 +116,24 @@ while [ $x -lt $numiters ]; do
              "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
              ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
    fi
-   if echo $mllt_iters | grep -w $x >/dev/null; then
-     echo "Estimating MLLT"
+   if echo $fmllr_iters | grep -w $x >/dev/null; then
+     echo "Estimating fMLLR"
     ( ali-to-post ark:$dir/cur.ali ark:- | \
-       weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
-       gmm-acc-mllt --binary=false $dir/$x.mdl "$featsub" ark:- $dir/$x.macc ) 2> $dir/macc.$x.log  || exit 1;
-
-     est-mllt $dir/$x.mat.new $dir/$x.macc 2> $dir/mupdate.$x.log || exit 1;
-     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$[$x+1].mdl 2> $dir/transform_means.$x.log || exit 1;
-     compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
-     cur_lda=$dir/$x.mat
-
-     feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $cur_lda ark:- ark:- |"
-     featsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $cur_lda ark:- ark:- |"
+      weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
+      rand-prune-post $randprune ark:- ark:- | \
+      gmm-est-fmllr --spk2utt=ark:$data/spk2utt $dir/$x.mdl "$feats" ark:- ark:$dir/tmp.trans ) \
+      2>$dir/trans.$x.log || exit 1;
+     if [ "$feats" == "$sifeats" ]; then # first time...
+       mv $dir/tmp.trans $dir/cur.trans || exit 1;
+       feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/cur.trans ark:- ark:- |"
+     else
+       # compose the transforms; we apply tmp.trans after cur.trans so 
+       # it comes first in matrix multiplication.
+       compose-transforms --b-is-affine=true ark:$dir/tmp.trans ark:$dir/cur.trans \
+          ark:$dir/tmp2.trans || exit 1;
+       mv $dir/tmp2.trans $dir/cur.trans || exit 1;
+       rm $dir/tmp.trans
+     fi
    fi
 
    gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log || exit 1;
@@ -149,7 +146,17 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-( cd $dir; rm final.{mdl,occs,mat} 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs;
-  ln -s `basename $cur_lda` final.mat )
+# Accumulate stats for "alignment model" which is as the model but with
+# unadapted features.
+( ali-to-post ark:$dir/cur.ali ark:-  | \
+  gmm-acc-stats-twofeats $dir/$x.mdl "$feats" "$sifeats" ark:- $dir/$x.acc2 ) \
+    2>$dir/acc_alimdl.log || exit 1;
+  # Update model.
+gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false $dir/$x.mdl $dir/$x.acc2 $dir/$x.alimdl \
+      2>$dir/est_alimdl.log  || exit 1;
+rm $dir/$x.acc2
+
+( cd $dir; rm final.{mdl,alimdl,occs} 2>/dev/null; ln -s $x.mdl final.mdl; 
+  ln -s $x.alimdl final.alimdl; ln -s $x.occs final.occs; )
 
 echo Done

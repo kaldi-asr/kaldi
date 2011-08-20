@@ -45,7 +45,6 @@ normtype=offset # et option; could be offset [recommended], or none
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
-mllt_iters="2 4 6 12";
 silphonelist=`cat $lang/silphones.csl`
 numiters=25    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
@@ -187,9 +186,18 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-gmm-et-get-b $dir/$numiters_et.et $dir/B.mat 2>$dir/get_b.log || exit 1
 
-compose-transforms $dir/B.mat $dir/lda.mat $dir/default.mat 2>>$dir/get_b.log || exit 1
+
+# Write out the B matrix which we will combine with LDA to get
+# final.mat; and write out final.et which is the current final et
+# but with B set to unity (since it's now part of final.mat).
+# This is just more convenient going forward, since the "default features"
+# (i.e. when speaker factor equals zero) are now the same as the
+# features that the ET acts on.
+
+gmm-et-get-b $dir/$numiters_et.et $dir/B.mat $dir/final.et 2>$dir/get_b.log || exit 1
+
+compose-transforms $dir/B.mat $dir/lda.mat $dir/final.mat 2>>$dir/get_b.log || exit 1
 
 defaultfeats="$basefeats transform-feats $dir/B.mat ark:- ark:- |"
 
@@ -209,7 +217,6 @@ done
 
 ( cd $dir; rm final.mdl 2>/dev/null; 
   ln -s $x.mdl final.mdl; ln -s $x.alimdl final.alimdl;
-  ln -s $numiters_et.et final.et
   ln -s $[$numiters_et-1].trans final.trans )
 
 echo Done

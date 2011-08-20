@@ -25,8 +25,8 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Estimate LDA transform using stats obtained with lda-acc.\n"
-        "Usage:  lda-est [options] <lda-matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
+        "Estimate LDA transform using stats obtained with acc-lda.\n"
+        "Usage:  est-lda [options] <lda-matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
 
     bool binary = false;
     int32 dim = 40;

@@ -95,7 +95,10 @@ class ExponentialTransform {
   /// that we have.
   void GetDefaultTransform(Matrix<BaseFloat> *transform) const;
 
-
+  /// Make B unit; this can be useful for combining the B part of the
+  /// transform with MLLT.
+  void MakeBUnit() { B_.SetUnit(); }
+  
   void ComputeDs(const MatrixBase<BaseFloat> &Ws,
                  BaseFloat t,
                  MatrixBase<BaseFloat> *Ds) const;  // Computes the D_s matrix,

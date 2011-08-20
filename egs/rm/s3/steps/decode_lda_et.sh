@@ -38,7 +38,7 @@ mkdir -p $dir
 if [ -f path.sh ]; then . path.sh; fi
 
 # -f means file exists; -o means or.
-requirements="$srcdir/final.mdl $srcdir/final.alimdl $srcdir/lda.mat $srcdir/default.mat $srcdir/final.et"
+requirements="$srcdir/final.mdl $srcdir/final.alimdl $srcdir/final.mat $srcdir/final.et"
 
 for f in $requirements; do
   if [ ! -f $f ]; then
@@ -53,9 +53,10 @@ if [ ! -f $graphdir/HCLG.fst -o $graphdir/HCLG.fst -ot $srcdir/final.mdl ]; then
 fi
 
 # Compute CMVN stats.
-compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,t:$dir/cmvn.ark 
+compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,t:$dir/cmvn.ark \
+   2>$dir/cmvn.log
 
-sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/default.mat ark:- ark:- |"
+sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 # For Resource Management, we use beam of 30 and acwt of 1/7.
 # More normal, LVCSR setups would have a beam of 13 and acwt of 1/15 or so.
@@ -72,7 +73,7 @@ gmm-decode-faster --beam=30.0 --acoustic-scale=0.1429 --word-symbol-table=$lang/
        ark,s,cs:- ark:$dir/trans.ark ark,t:$dir/warp ) \
      2> $dir/trans.log || exit 1;
 
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/lda.mat ark:- ark:- | transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/trans.ark ark:- ark:- |"
+feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/trans.ark ark:- ark:- |"
 
 # Second pass decoding...
 gmm-decode-faster --beam=30.0 --acoustic-scale=0.1429 --word-symbol-table=$lang/words.txt \

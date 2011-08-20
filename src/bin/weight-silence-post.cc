@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Apply weight to silences in posteriors\n"
-        "Usage:  weight-silence-post [options] silence-weight silence-phones model posteriors-rspecifier posteriors-wspecifier\n"
+        "Usage:  weight-silence-post [options] <silence-weight> <silence-phones> "
+        "<model> <posteriors-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
         " weight-silence-post 0.0 1:2:3 1.mdl ark:1.ali ark:1.post\n";
 
@@ -45,11 +46,11 @@ int main(int argc, char *argv[]) {
     }
 
 
-    std::string silence_weight_str = po.GetArg(1);
-    std::string silence_phones_str = po.GetArg(2);
-    std::string model_rxfilename = po.GetArg(3);
-    std::string posteriors_rspecifier = po.GetArg(4);
-    std::string posteriors_wspecifier = po.GetArg(5);
+    std::string silence_weight_str = po.GetArg(1),
+        silence_phones_str = po.GetArg(2),
+        model_rxfilename = po.GetArg(3),
+        posteriors_rspecifier = po.GetArg(4),
+        posteriors_wspecifier = po.GetArg(5);
 
     BaseFloat silence_weight = 0.0;
     if (!ConvertStringToReal(silence_weight_str, &silence_weight))

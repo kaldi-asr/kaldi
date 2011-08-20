@@ -34,7 +34,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = false;
+    BaseFloat rand_prune = 0.0;
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning of posteriors less than this");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -97,6 +99,14 @@ int main(int argc, char *argv[]) {
             BaseFloat like =
                 gmm.ComponentPosteriors(mat.Row(i), &(gpost[i][j].second));
             gpost[i][j].second.Scale(weight);
+            if (rand_prune > 0.0) {
+              for (int32 i = 0; i < gpost[i][j].second.Dim(); i++) {
+                BaseFloat &post = gpost[i][j].second(i);
+                if (fabs(post) < rand_prune && post != 0.0)
+                  post = (post >= 0 ? 1.0 : -1.0) *
+                      (RandUniform() <= fabs(post)/rand_prune ? rand_prune : 0.0);
+              }
+            }
             tot_like_this_file += like * weight;
             tot_weight += weight;
           }
