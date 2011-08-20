@@ -244,9 +244,9 @@ class RNN{
 
 };
 
-void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat score=0) {
+void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat lms=0,BaseFloat ams=0) {
     if (lat.NumArcs(i)==0) {
-      KALDI_LOG<<" "<<sentence<<" "<<score;
+      KALDI_LOG<<" "<<sentence<<" "<<lms<<" "<<ams;
       return;
     }
     for (fst::ArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
@@ -254,7 +254,7 @@ void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::Std
       const CompactLatticeWeight &wgt = aiter.Value().weight;
       BaseFloat rnnscore=0;
       //TODO compute word posterior! 
-      TreeTraverse(wordsym,lat,arc.nextstate,sentence+" "+wordsym.Find(arc.olabel),rnnscore+score+wgt.Weight().Value1());
+      TreeTraverse(wordsym,lat,arc.nextstate,sentence+" "+wordsym.Find(arc.olabel),rnnscore+lms+wgt.Weight().Value1(),ams+wgt.Weight().Value2());
     }
 }
 
