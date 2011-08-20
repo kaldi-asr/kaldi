@@ -17,7 +17,7 @@
 
 #include <vector>
 #include <set>
-#include <map>
+#include <algorithm>
 
 #include "gmm/diag-gmm.h"
 #include "gmm/fmpe-am-diag-gmm.h"
@@ -141,14 +141,14 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
   WriteMarker(out_stream, binary, "<LengthContextExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expansion);
+  tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (p_.size() != 0) {
     WriteMarker(out_stream, binary, "<P>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
+      for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
         p_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -156,7 +156,7 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   if (n_.size() != 0) {
     WriteMarker(out_stream, binary, "<N>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
+      for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
         n_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -254,7 +254,7 @@ void FmpeAccs::InitModelDiff(const AmDiagGmm &model) {
 void FmpeAccs::Init(const AmDiagGmm &am_model, bool update) {
   dim_ = am_model.Dim();
 
-  InitPNandDiff(config_.gmm_num_comps, config_.nlength_context_expansion, dim_);
+  InitPNandDiff(config_.gmm_num_comps, config_.context_windows.NumRows(), dim_);
 
   if (update) {
 	InitModelDiff(am_model);
@@ -337,249 +337,49 @@ void FmpeAccs::ComputeOneFrameOffsetFeature(const VectorBase<BaseFloat>& data,
   }
 }
 
+bool Gauss_index_lower(std::pair<int32, Vector<double> > M,
+					   std::pair<int32, Vector<double> >  N) {
+  return M.first < N.first;
+}
 
 void FmpeAccs::ComputeContExpOffsetFeature(
-                const std::vector<std::vector<std::pair<int32, Vector<double> > > > &offset_win,
-                const Vector<double> &frame_weight,
-                std::map<int32, std::vector<std::pair<int32, Vector<double> > > > *ht) const {
+       const std::vector<std::vector<std::pair<int32, Vector<double> > > > &offset_win,
+       std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const {
+  KALDI_ASSERT((config_.context_windows.NumCols() == offset_win.size()));
+
   std::vector<std::pair<int32, Vector<double> > > offset_tmp;
-  int32 icontexp = 0;
-  int32 iframe = 0;
+  std::vector<std::pair<int32, Vector<double> > > offset_uniq_tmp;
 
-  /// for the context feature in position -4 (0)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
+  for (int32 i = 0; i < config_.context_windows.NumRows(); i++) {
+	// for every context
+	for (int32 j = 0; j < config_.context_windows.NumCols(); j++) {
+	  if (config_.context_windows(i, j) > 0.0) {
+		for (int32 k = 0; k < offset_win[j].size(); k++) {
+	        offset_tmp.push_back(offset_win[j][k]);
+	        offset_tmp.back().second.Scale(config_.context_windows(i, j));
+	    }
 	  }
 	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
+
+	std::sort(offset_tmp.begin(), offset_tmp.end(), Gauss_index_lower);
+	offset_uniq_tmp.push_back(offset_tmp[0]);
+	for (int32 igauss = 1; igauss < offset_tmp.size(); igauss++) {
+	  if (offset_tmp[igauss].first == offset_tmp[igauss - 1].first) {
+		offset_uniq_tmp.back().second.AddVec(1.0, offset_tmp[igauss].second);
+	  } else {
+        offset_uniq_tmp.push_back(offset_tmp[igauss]);
 	  }
 	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
+
+	ht->push_back(std::make_pair(i, offset_uniq_tmp));
+    offset_tmp.clear();
+	offset_uniq_tmp.clear();
   }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context -4 (0)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position -3 (1)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context -3 (1)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position -2 (2)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context -2 (2)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position -1 (3)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context -1 (3)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-
-  /// for the context feature in position 0 (4)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context 0 (4)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position 1 (5)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context 1 (5)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position 2 (6)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context 2 (6)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position 3 (7)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context 3 (7)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
-  /// for the context feature in position 4 (8)
-  offset_tmp = offset_win[iframe];
-  for (int32 i = 0; i < offset_tmp.size(); i++) {
-    offset_tmp[i].second.Scale(frame_weight(iframe));
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-  for (int32 i = 0; i < offset_win[iframe].size(); i++) {
-	int32 flag = 0;
-	for (int32 j = 0; j < offset_tmp.size(); j++) {
-	  if (offset_tmp[j].first == offset_win[iframe][i].first) {
-		offset_tmp[j].second.AddVec(frame_weight(iframe), offset_win[iframe][i].second);
-		flag = 1;
-		break;
-	  }
-	}
-	if (flag == 0) {  // not exist about this gaussian's offset
-	  offset_tmp.push_back(offset_win[iframe][i]);
-	  offset_tmp.back().second.Scale(frame_weight(iframe));
-	}
-  }
-  iframe++;
-
-  /// insert in the final hi dimension feature vector for context 4 (8)
-  ht->insert(std::make_pair(icontexp, offset_tmp));
-  icontexp++;
-  offset_tmp.clear();
-
 }
 
 void FmpeAccs::ProjectHighDimensionFeature(
          const std::vector< std::vector< Matrix<double> > > &M,
-         const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht,
+         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
          Vector<double> *fea_out) const {
   KALDI_ASSERT((M.size() == gmm_.NumGauss())
 			   && (M[0].size() == ht.size())
@@ -587,15 +387,14 @@ void FmpeAccs::ProjectHighDimensionFeature(
 			   && (M[0][0].NumCols() == gmm_.Dim() + 1));
 
   int32 dim = gmm_.Dim();
-  std::map<int32, std::vector<std::pair<int32, Vector<double> > > >::const_iterator ht_Iter;
   Vector<double> tmp_fea(dim);
   tmp_fea.SetZero();
 
-  for (ht_Iter = ht.begin(); ht_Iter != ht.end(); ht_Iter++) {
-	int32 cont_index = ht_Iter->first;
-	for (int32 i = 0; i < ht_Iter->second.size(); i++) {
-      int32 gauss_index = ht_Iter->second[i].first;
-	  tmp_fea.AddMatVec(1.0, M[gauss_index][cont_index], kNoTrans, ht_Iter->second[i].second, 1.0);
+  for(int32 i = 0; i < ht.size(); i++) {
+	int32 cont_index = ht[i].first;
+	for (int32 j = 0; j < ht[i].second.size(); j++) {
+      int32 gauss_index = ht[i].second[j].first;
+	  tmp_fea.AddMatVec(1.0, M[gauss_index][cont_index], kNoTrans, ht[i].second[j].second, 1.0);
 	}
   }
 
@@ -604,7 +403,7 @@ void FmpeAccs::ProjectHighDimensionFeature(
 
 void FmpeAccs::ObtainNewFmpeFeature(const VectorBase<BaseFloat> &data,
          const std::vector< std::vector< Matrix<double> > > &M,
-         const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht,
+         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
          Vector<double> *fea_new) const {
   KALDI_ASSERT((data.Dim() == gmm_.Dim()));
 
@@ -684,7 +483,7 @@ void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
 
 void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
 										  const VectorBase<double> &indirect_diff,
-       const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht) {
+       const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht) {
   KALDI_ASSERT((direct_diff.Dim() == indirect_diff.Dim()));
   KALDI_ASSERT((direct_diff.Dim() == gmm_.Dim()));
 
@@ -692,16 +491,15 @@ void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
   diff.AddVec(1.0, indirect_diff);
 
   int32 dim = gmm_.Dim();
-  std::map<int32, std::vector<std::pair<int32, Vector<double> > > >::const_iterator ht_Iter;
   Matrix<double> tmp(dim, dim + 1);
   tmp.SetZero();
 
   /// accumulate the p and n statistics
-  for (ht_Iter = ht.begin(); ht_Iter != ht.end(); ht_Iter++) {
-	int32 cont_index = ht_Iter->first;
-	for (int32 i = 0; i < ht_Iter->second.size(); i++) {
-      int32 gauss_index = ht_Iter->second[i].first;
-	  tmp.AddVecVec(1.0, diff, ht_Iter->second[i].second);
+  for (int32 i = 0; i < ht.size(); i++) {
+	int32 cont_index = ht[i].first;
+	for (int32 j = 0; j < ht[i].second.size(); j++) {
+      int32 gauss_index = ht[i].second[j].first;
+	  tmp.AddVecVec(1.0, diff, ht[i].second[j].second);
 
       for (int32 r = 0; r < dim; r++) {
         for (int32 c = 0;c < (dim + 1); c++) {
@@ -726,7 +524,7 @@ void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
 
 FmpeUpdater::FmpeUpdater(const FmpeAccs &accs)
       : config_(accs.config()), dim_(accs.Dim()) {
-  Init(config_.gmm_num_comps, config_.nlength_context_expansion, dim_);
+  Init(config_.gmm_num_comps, config_.context_windows.NumRows(), dim_);
 };
 
 FmpeUpdater::FmpeUpdater(const FmpeUpdater &other)
@@ -765,14 +563,14 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
   WriteMarker(out_stream, binary, "<LengthContExp>");
-  tmp_uint32 = static_cast<uint32>(config_.nlength_context_expansion);
+  tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (M_.size() != 0) {
     WriteMarker(out_stream, binary, "<PROJ_MAT>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
-      for (int32 j = 0; j < config_.nlength_context_expansion; ++j) {
+      for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
         M_[i][j].Write(out_stream, binary);
 	  }
     }
@@ -794,7 +592,7 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary,
   ExpectMarker(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 length_cont_exp = static_cast<int32>(tmp_uint32);
-  
+
   ReadMarker(in_stream, binary, &token);
 
   while (token != "</FMPE>") {
@@ -834,7 +632,7 @@ void FmpeUpdater::Update(const FmpeAccs &accs,
                          BaseFloat *count_out) {
   KALDI_ASSERT((M_.size() == accs.pos().size()) && (M_.size() == accs.neg().size()));
   KALDI_ASSERT((M_[0].size() == accs.pos()[0].size()) && (M_[0].size() == accs.neg()[0].size())
-			   && M_[0].size() == config_.nlength_context_expansion);
+			   && M_[0].size() == config_.context_windows.NumRows());
   KALDI_ASSERT((M_[0][0].NumRows() == accs.pos()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == accs.neg()[0][0].NumRows())
 			   && (M_[0][0].NumRows() == avg_std_var_.Dim()));

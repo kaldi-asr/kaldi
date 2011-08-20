@@ -20,7 +20,6 @@
 #define KALDI_GMM_FMPE_AM_DIAG_GMM_H_ 1
 
 #include <vector>
-#include <map>
 
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
@@ -39,15 +38,13 @@ struct FmpeConfig {
   int32 gmm_cluster_centers_nbest;
   /// Number of highest-scoring of the best gaussians
   int32 gmm_gaussian_nbest;
-  /// The length of context expansion
-  int32 nlength_context_expansion;
-  /// weigths for the corresponding frame used in
-  /// computing the context expansion features
-  Vector<BaseFloat> frame_weight_vector;
   /// The lat prob scale
   double lat_prob_scale;
   /// The constant that contrals the overall learning rate
   double E;
+  /// The Matrix indicates the length of context expansion
+  /// and the weight of each corresponding context frame. e.g.[9][17]
+  Matrix<BaseFloat> context_windows;
 
   /*
     Matrix<BaseFloat> context_windows;
@@ -68,7 +65,6 @@ struct FmpeConfig {
     //  std::vector<std::pair<int32, Vector<BaseFloat> >*), that would first sort on the
     // int32 and then add together and combine any sets of elements with the same
     // integer value.
-    // Also TODO: change std::map to std::vector.
   */
   FmpeConfig() {
     gmm_num_comps = 2048;
@@ -76,17 +72,8 @@ struct FmpeConfig {
     cluster_varfloor = 0.01;
     gmm_cluster_centers_nbest = 25;
     gmm_gaussian_nbest = 2;
-    nlength_context_expansion = 9;
     lat_prob_scale = 0.083;
     E = 10;
-
-    // TODO: this code would not work if nlength_context_expansion
-    frame_weight_vector.Resize(nlength_context_expansion);
-    frame_weight_vector.Range(0, 3).Add(0.333);
-    frame_weight_vector.Range(3, 4).Add(0.5);
-    frame_weight_vector.Range(7, 3).Add(1.0);
-    frame_weight_vector.Range(10, 4).Add(0.5);
-    frame_weight_vector.Range(14, 3).Add(0.333);
   }
 
   void Register(ParseOptions *po) {
@@ -94,12 +81,12 @@ struct FmpeConfig {
         " components in the gmm model to calculate the gaussian posteriors.");
     po->Register("gmm-num-cluster-centers", &gmm_num_cluster_centers, "Number"
         " of the Gaussian cluster centers for fast posteriors evaluation.");
+    po->Register("cluster-varfloor", &cluster_varfloor,
+      "Variance floor used in bottom-up state clustering.");
     po->Register("gmm-cluster-centers-nbest", &gmm_cluster_centers_nbest,
         "Number of highest-scoring of the best cluster centers.");
     po->Register("gmm-gaussian-nbest", &gmm_gaussian_nbest, "Number of"
         " of highest-scoring of the best gaussians.");
-    po->Register("nlength-context-expansion", &nlength_context_expansion,
-        "The length of context expansion.");
     po->Register("lat-prob-scale", &lat_prob_scale,
         "The lattice probability scale, very important.");
     po->Register("E", &E, "The constant that contrals the overall learning rate.");
@@ -204,8 +191,7 @@ class FmpeAccs {
   /// which are used to compute "ht"
   void ComputeContExpOffsetFeature(
        const std::vector<std::vector<std::pair<int32, Vector<double> > > > &offset_win,
-       const Vector<double> &frame_weight,
-       std::map<int32, std::vector<std::pair<int32, Vector<double> > > > *ht) const;
+       std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const;
 
   /// Prject the high dimension features down to the dimension of the original
   /// features and add them to the origianl features.
@@ -213,13 +199,13 @@ class FmpeAccs {
   /// the sparse high dimension vector ht
   void ProjectHighDimensionFeature(
          const std::vector< std::vector< Matrix<double> > > &M,
-         const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht,
+         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
          Vector<double> *fea_out) const;
 
   /// Add the projected feature to the old feature and obtain the new fmpe feature
   void ObtainNewFmpeFeature(const VectorBase<BaseFloat> &data,
          const std::vector< std::vector< Matrix<double> > > &M,
-         const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht,
+         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
          Vector<double> *fea_new) const;
 
   /// Accumulate the direct differentials
@@ -238,7 +224,7 @@ class FmpeAccs {
   /// Accumulate the statistics about the positive and negative differential
   void AccumulateFromDifferential(const VectorBase<double> &direct_diff,
                                   const VectorBase<double> &indirect_diff,
-         const std::map<int32, std::vector<std::pair<int32, Vector<double> > > > &ht);
+         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht);
 
   // Accessors
   FmpeAccumModelDiff& GetAccsModelDiff(int32 pdf_index);
