@@ -69,7 +69,7 @@ class MmieDiagGmm {
 
   /// Computes the difference between the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed.
-  void SubtractAccumulators(const AccumDiagGmm& num_acc,
+  void SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
                             const AccumDiagGmm& den_acc,
                             const MmieDiagGmmOptions& opts);
 
@@ -83,7 +83,9 @@ class MmieDiagGmm {
 
   // Accessors
   //const GmmFlagsType Flags() const { return flags_; }
-  const Vector<double>& occupancy() const { return occupancy_; }
+  const Vector<double>& num_occupancy() const { return num_occupancy_; }
+  const Vector<double>& den_occupancy() const { return den_occupancy_; }
+  const Vector<double>& occupancy() const { return occupancy_; }  
   const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
   const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
 
@@ -97,10 +99,10 @@ class MmieDiagGmm {
   /// Accumulators
   // TODO(arnab): not decided yet whether to store the difference or keep the
   //              num and den accs for mean and var.
-  //     (petr): storing the difference in this version
+  //     (petr): we store the difference of mean and var; we keep occupancy for num and den 
   
-  //Vector<double> num_occupancy_;
-  //Vector<double> den_occupancy_;
+  Vector<double> num_occupancy_;
+  Vector<double> den_occupancy_;
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
