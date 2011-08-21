@@ -1,6 +1,6 @@
 // latbin/lattice-nbest.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Stefan Kombrink 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,8 +87,8 @@ class RNN{
     inline bool IsIV(int32 w) const { return w>=0; }
     inline bool IsOOV(int32 w) const { return !IsIV(w); }
 
-    BaseFloat OOVPenalty() const { return OOVPenalty_; }
-    void SetOOVPenalty( BaseFloat oovp ) { OOVPenalty_=oovp; }
+    realn OOVPenalty() const { return OOVPenalty_; }
+    void SetOOVPenalty( realn oovp ) { OOVPenalty_=oovp; }
 
     void Read(istream& in, bool binary) {
       KaldiMatrix V1,U1,W2,Cl;
@@ -149,7 +149,10 @@ class RNN{
     };
 
     void SetLatticeSymbols(const fst::SymbolTable& symtab) {
-      
+        for (int32 i=0;i<int2class_.size();i++) {
+          int32 j=word2int_[symtab.Find(i)];
+          intlat2intrnn[i]=j; intrnn2intlat[j]=i;
+        } 
     }
 
 
@@ -168,7 +171,7 @@ class RNN{
     }
 
     BaseFloat Propagate(int32 lastW,int32 w,VectorXr* hOut=NULL,VectorXr* hIn=NULL) {
-      BaseFloat pprob=OOVPenalty(); // posterior probability P(w|lastW,hidden)
+      BaseFloat nllh=OOVPenalty(); // negative log likelihood of P(w|lastW,hidden)
       if (!hIn) hIn=&h_; // if no explicit hidden vector is passed use the RNN-state one!
       if (!hOut) hOut=&h_; // if no explicit hidden vector is passed use the RNN-state one!
       VectorXr h_ac; // temporary variables for helping optimization
@@ -189,93 +192,10 @@ class RNN{
         // determine distribution of class of the predicted word
         // activate class part of the word layer (softmax)
         y_.segment(b,n).noalias()=VectorXr((V1_.middleRows(b,n)*(*hOut)).array().exp());
-        pprob=y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum();
+        nllh=-log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
       }
-      return pprob;
+      return nllh;
     }
-
-
-    // propagate a sequence through the RNN
-    // seq - the sequence of words w0 w1 w2 ... in RNN int32 code, at least two words. First word w0 is the history word!
-    // prob - vectors with posterior probabilities for w1 w2 ... - NB: seq.count()-1 == prob.count() 
-    // hidden - pointer to a hidden state vector which is used for initialization. After processing will contain the updated hidden state
-    //        - if omitted, will use the member state vector h_ instead !!
-    void PropagateSeq(const vector<int32>& seq, vector<realn>* prob, VectorXr* hidden=NULL) {
-      VectorXr h_ac; // temporary variables for helping optimization
-      int32 seqlen=seq.size()-1;
-      if (seqlen<1) return; // at least two words must be passed!
-
-      MatrixXr H(seqlen,HiddenSize()); // matrix to store hidden state activations
-
-      if (!hidden) hidden=&h_; // if no explicit hidden vector is passed use the RNN-state one!
-
-      int32 w;
-      for (int32 i=0;i<seqlen;i++) {
-        w=seq[i];
-        h_ac.noalias()=-U1_*(*hidden); // h(t)=-U1*h(t-1)
-        if (IsIV(w)) h_ac-=V1_.col(w); // h(t)=-h(t)-V1*w-1(t)
-
-        // activate hidden layers (sigmoid) and determine updated s(t)
-        (*hidden).noalias()=VectorXr(VectorXr(h_ac.array().exp()+1.0).array().inverse());
-        H.row(i)=(*hidden);
-      }
-      // evaluate classes: c(t)=Cl*h(t) + activation class layer (softmax)
-      MatrixXr C=MatrixXr((H*Cl_.transpose()).array().exp());
-      VectorXr c_norm(seqlen); for (int32 i=0;i<seqlen;i++) c_norm(i)=C.row(i).sum();
-      realn y_norm;
-
-      prob->clear();
-      for (int32 i=0;i<seqlen;i++) {
-      w=seq[i+1]; // predicted word 
-      if (IsIV(w)) {
-        // evaluate post. distribution for all words within that class: y(t)=V*s(t)
-        int32 b=class2minint_[int2class_[w]];
-        int32 n=class2maxint_[int2class_[w]]-b+1;
-
-        // determine distribution of class of the predicted word
-        // activate class part of the word layer (softmax)
-        y_.segment(b,n).noalias()=VectorXr((W2_.middleRows(b,n)*VectorXr(H.row(i))).array().exp());
-        y_norm=y_.segment(b,n).sum();
-        //std::cout << y_norm << " "<<c_norm(i)<<std::endl;
-        prob->push_back((y_(w)*C.row(i))(int2class_[w])/c_norm(i)/y_norm);
-      } else prob->push_back(0);
-    }
-    KALDI_ASSERT(seq.size()-1==prob->size());
-  }
-
-  void Score(const vector<int32>& seq, float oov_penalty, Vector<realn>* score) {
-    KALDI_ASSERT(seq.size()>=2);
-
-    vector<realn> score_part;
-    vector<int32> seq_part;
-    score->Resize(seq.size(),kUndefined);
-
-    bool firstRun=true;
-    VectorXr hOld=h_,hNew;
-
-    int32 i=0,ix=0;
-    while (ix<seq.size()) {
-      seq_part.clear();seq_part.push_back(0);seq_part.push_back(0);
-      while (seq[i]!=0) {seq_part.push_back(seq[i]); i++;}
-      seq_part.push_back(0);i++;
-      h_=hOld;
-      PropagateSeq(seq_part,&score_part);
-      if (firstRun) {
-        firstRun=false;
-        hNew=h_;
-      }
-      double p,sumllh=0;
-      for (int32 s=1;s<score_part.size();s++) {
-        p=score_part[s]==0?(oov_penalty):(score_part[s]);
-        sumllh+=log10(p);
-        (*score)(ix)=p;
-        ix++;
-      }
-      std::cout<<sumllh<<"\n";
-    }
-    h_=hNew;
-  }
-
 
   void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat lms=0,BaseFloat ams=0) {
     if (lat.NumArcs(i)==0) {
