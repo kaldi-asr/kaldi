@@ -61,6 +61,9 @@ class RNN{
     vector<int32> int2class_;                     // mapping words (integer) to their classes
     map<int32,int32> class2minint_,class2maxint_; // determines the range of a class of words in the output layer
 
+    // others...
+    realn OOVPenalty_;
+
   protected:
     void KaldiToEigen(KaldiVector* in, VectorXr* out) {
       out->resize(in->Dim());
@@ -83,6 +86,9 @@ class RNN{
 
     inline bool IsIV(int32 w) const { return w>=0; }
     inline bool IsOOV(int32 w) const { return !IsIV(w); }
+
+    BaseFloat OOVPenalty() const { return OOVPenalty_; }
+    void SetOOVPenalty( BaseFloat oovp ) { OOVPenalty_=oovp; }
 
     void Read(istream& in, bool binary) {
       KaldiMatrix V1,U1,W2,Cl;
@@ -142,6 +148,10 @@ class RNN{
       KALDI_LOG << "RNN model is loaded! ";
     };
 
+    void SetLatticeSymbols(const fst::SymbolTable& symtab) {
+      
+    }
+
 
     void Read(const string& filename) {
       bool binary;
@@ -157,9 +167,33 @@ class RNN{
     virtual ~RNN() {
     }
 
-    void Propagate(int32 w0,int32 w1,VectorXr* h=NULL) {
-      // TODO propagate only one single word!
+    BaseFloat Propagate(int32 lastW,int32 w,VectorXr* hOut=NULL,VectorXr* hIn=NULL) {
+      BaseFloat pprob=OOVPenalty(); // posterior probability P(w|lastW,hidden)
+      if (!hIn) hIn=&h_; // if no explicit hidden vector is passed use the RNN-state one!
+      if (!hOut) hOut=&h_; // if no explicit hidden vector is passed use the RNN-state one!
+      VectorXr h_ac; // temporary variables for helping optimization
+
+      h_ac.noalias()=-U1_*(*hIn); // s(t)=-T*s(t-1)
+      if (IsIV(lastW)) h_ac-=V1_.col(lastW); // s(t)=-s(t)-U*w-1(t)
+
+      // activate hidden layer (sigmoid) and determine updated s(t)
+      hOut->noalias()=VectorXr(VectorXr(h_ac.array().exp()+1.0).array().inverse());
+
+      if (IsIV(w)){
+        // evaluate classes: c(t)=W*s(t) + activation class layer (softmax)
+        cl_.noalias()=VectorXr((W2_*(*hOut)).array().exp());
+        // evaluate post. distribution for all words within that class: y(t)=V*s(t)
+        int b=class2minint_[int2class_[w]];
+        int n=class2maxint_[int2class_[w]]-b+1;
+
+        // determine distribution of class of the predicted word
+        // activate class part of the word layer (softmax)
+        y_.segment(b,n).noalias()=VectorXr((V1_.middleRows(b,n)*(*hOut)).array().exp());
+        pprob=y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum();
+      }
+      return pprob;
     }
+
 
     // propagate a sequence through the RNN
     // seq - the sequence of words w0 w1 w2 ... in RNN int32 code, at least two words. First word w0 is the history word!
@@ -242,9 +276,8 @@ class RNN{
     h_=hNew;
   }
 
-};
 
-void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat lms=0,BaseFloat ams=0) {
+  void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::StdFst::StateId i,std::string sentence="",BaseFloat lms=0,BaseFloat ams=0) {
     if (lat.NumArcs(i)==0) {
       KALDI_LOG<<" "<<sentence<<" "<<lms<<" "<<ams;
       return;
@@ -256,7 +289,10 @@ void TreeTraverse(const fst::SymbolTable& wordsym, CompactLattice& lat, fst::Std
       //TODO compute word posterior! 
       TreeTraverse(wordsym,lat,arc.nextstate,sentence+" "+wordsym.Find(arc.olabel),rnnscore+lms+wgt.Weight().Value1(),ams+wgt.Weight().Value2());
     }
-}
+  }
+
+};
+
 
 int main(int argc, char *argv[]) {
   try {
@@ -265,13 +301,13 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Extracts N-best paths extracted from lattices using given acoustic scale. \n"
+        "Extracts N-best paths from lattices using given acoustic scale. \n"
         "Rescores them using an RNN model and given lm scale and writes it out as FST\n"
         "Usage: lattice-rnnrescore [options] dict lattice-rspecifier rnn-model lattice-wspecifier\n"
         " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lm-scale=1.5 --iv-penalty=3 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
       
     ParseOptions po(usage);
-    BaseFloat lm_scale = 1.0;
+    BaseFloat lambda = 0.75;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat oov_penalty = 11; // assumes vocabularies around 60k words 
     BaseFloat iv_penalty = 0;
@@ -280,12 +316,12 @@ int main(int argc, char *argv[]) {
     RNN::int32 n = 10;
     
 
-    po.Register("lm-scale", &lm_scale, "Scaling factor for RNN LM likelihoods" );
-    po.Register("write-as-text", &text_file, "Dump the nbests in a text formatted file");
+    po.Register("lambda", &lambda, "Weighting factor between 0 and 1 for the given RNN LM" );
+    po.Register("write-as-text", &text_file, "TODO Dump the nbests in a text formatted file");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("oov-penalty", &oov_penalty, "A reasonable value is ln(vocab_size)" );
-    po.Register("iv-penalty", &iv_penalty, "Can be used to tune performance" );
-    po.Register("no-oovs", &no_oovs, "Will cause rescoring to abort in cases of OOV words!" ); 
+    po.Register("iv-penalty", &iv_penalty, "TODO Can be used to tune performance" );
+    po.Register("no-oovs", &no_oovs, "TODO Will cause rescoring to abort in cases of OOV words!" ); 
     po.Register("n", &n, "Number of distinct paths >= 1");
     
     po.Read(argc, argv);
@@ -313,15 +349,16 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
     // initialize our RNN
-    //RNN myRNN(rnnmodel_filename); 
+    RNN myRNN(rnnmodel_filename); 
+    myRNN.SetLatticeSymbols(*word_syms);
 
     RNN::int32 n_done = 0; // there is no failure mode, barring a crash.
     RNN::int64 n_paths_out = 0;
 
     if (acoustic_scale == 0.0)
       KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
-    if (lm_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero RNN LM scale (has no effect)";
+    if (lambda == 0.0)
+      KALDI_EXIT << "Do not use lambda==0, it has no effect";
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
@@ -354,7 +391,7 @@ int main(int argc, char *argv[]) {
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &nbest_clat);\
 
-      TreeTraverse(*word_syms,nbest_clat,nbest_clat.Start(),key);
+      myRNN.TreeTraverse(*word_syms,nbest_clat,nbest_clat.Start(),key);
     }
 
     KALDI_LOG << "Did N-best algorithm to " << n_done << " lattices with n = "
