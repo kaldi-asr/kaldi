@@ -10,3 +10,4 @@ Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
   s1: 
+   [adding first version of scripts.  This is a draft.]
