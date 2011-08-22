@@ -155,7 +155,7 @@ class RNN{
       y_.setZero(VocabSize());
       cl_.setZero(ClassSize());       
 
-      KALDI_LOG << "RNN model is loaded! ";
+      //KALDI_LOG << "RNN model is loaded! ";
     };
 
     void SetLatticeSymbols(const fst::SymbolTable& symtab) {
@@ -212,7 +212,7 @@ class RNN{
         //KALDI_LOG<<cl_.sum()<<" "<<y_.segment(b,n).sum();
         wordcnt_++;
         return y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum();
-      } else return exp(-OOVPenalty());
+      } else { KALDI_LOG<<"WARNING OOV!!! "<<w;return exp(-OOVPenalty()); };
     }
 
 
@@ -239,6 +239,7 @@ class RNN{
       CompactLatticeArc newarc = aiter.Value();
       CompactLatticeWeight newwgt(LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
       newarc.weight=newwgt;
+      aiter.SetValue(newarc);
 
       //KALDI_LOG<<" "<<int2word_[w]<<" "<<lms<<" "<<lmcs<<" "<<-log(rnns)<<" "<<ams;
 
@@ -259,7 +260,7 @@ int main(int argc, char *argv[]) {
         "Extracts N-best paths from lattices using given acoustic scale. \n"
         "Rescores them using an RNN model and given lm scale and writes it out as FST\n"
         "Usage: lattice-rnnrescore [options] dict lattice-rspecifier rnn-model lattice-wspecifier\n"
-        " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lm-scale=1.5 --iv-penalty=3 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
+        " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lambda=0.8 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
       
     ParseOptions po(usage);
     BaseFloat lambda = 0.75;
@@ -312,8 +313,6 @@ int main(int argc, char *argv[]) {
 
     if (acoustic_scale == 0.0)
       KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
-    if (lambda == 0.0)
-      KALDI_EXIT << "Do not use lambda==0, it has no effect";
 
     // set lambda/oov penalty
     myRNN.SetLambda(lambda); 
@@ -340,21 +339,17 @@ int main(int argc, char *argv[]) {
       if (acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &nbest_lat);
 
-      fst::LifoQueue<fst::StdFst::StateId> q; 
       CompactLattice nbest_clat;
-
       ConvertLattice(nbest_lat, &nbest_clat);
-      compact_lattice_writer.Write(key, nbest_clat);
-      n_done++;
-
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &nbest_clat);\
 
       VectorXr h;
       h.setZero(myRNN.HiddenSize());
 
       myRNN.Propagate(0,0,&h,h);
       myRNN.TreeTraverse(&nbest_clat,h);
+
+      compact_lattice_writer.Write(key, nbest_clat);
+      n_done++;
     }
 
     KALDI_LOG << "Did N-best algorithm to " << n_done << " lattices with n = "
