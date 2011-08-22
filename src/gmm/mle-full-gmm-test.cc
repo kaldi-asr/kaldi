@@ -18,6 +18,7 @@
 
 #include "gmm/full-gmm.h"
 #include "gmm/diag-gmm.h"
+#include "gmm/model-common.h"
 #include "gmm/mle-full-gmm.h"
 #include "gmm/mle-diag-gmm.h"
 #include "util/stl-utils.h"
@@ -153,14 +154,6 @@ void test_flags_driven_update(const FullGmm &gmm,
   
   est_gmm_somep.Resize(gmm.NumGauss(), gmm.Dim(), flags);
   est_gmm_somep.SetZero(flags);
-
-  GmmFlagsType f1 = est_gmm_allp.Flags();
-  GmmFlagsType f2 = est_gmm_somep.Flags();
-  
-  std::cout << "flags-all, flags-some, flags, augmented(flags)\n";
-  std::cout << "weights: " << (f1 & kGmmWeights)   << " " << (f2 & kGmmWeights) << " " << (AugmentGmmFlags(flags) & kGmmWeights) << std::endl;
-  std::cout << "means  : " << (f1 & kGmmMeans)     << " " << (f2 & kGmmMeans) << " " << (AugmentGmmFlags(flags) & kGmmMeans) << std::endl;
-  std::cout << "covs   : " << (f1 & kGmmVariances) << " " << (f2 & kGmmVariances) << " " << (AugmentGmmFlags(flags) & kGmmVariances) << std::endl;
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {
@@ -359,6 +352,29 @@ UnitTestEstimateFullGmm() {
   gmm->SetWeights(weights);
   gmm->SetInvCovarsAndMeans(invcovars, means);
   gmm->ComputeGconsts();
+
+  {
+    KALDI_LOG << "Testing natural<>normal conversion";
+    FullGmmNormal ngmm(*gmm);
+    FullGmm rgmm;
+    rgmm.Resize(1, dim);
+    ngmm.CopyToFullGmm(&rgmm, kGmmAll);
+    
+    // check contents
+    KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
+    KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
+    double prec_m = 1e-3;
+    double prec_v = 1e-3;
+    for (int32 d = 0; d < dim; ++d) {
+      KALDI_ASSERT(ApproxEqual(means.Row(0)(d), ngmm.means_.Row(0)(d), prec_m));
+      KALDI_ASSERT(ApproxEqual(gmm->means_invcovars().Row(0)(d), rgmm.means_invcovars().Row(0)(d), prec_v));
+      for (int32 d2 = d; d2 < dim; ++d2) {
+        KALDI_ASSERT(ApproxEqual(covar(d, d2), ngmm.vars_[0](d, d2), prec_v));
+        KALDI_ASSERT(ApproxEqual(gmm->inv_covars()[0](d, d2), rgmm.inv_covars()[0](d, d2), prec_v));
+      }
+    }
+    KALDI_LOG << "OK";
+  } 
 
   MleFullGmmOptions config;
   GmmFlagsType flags_all = kGmmAll;

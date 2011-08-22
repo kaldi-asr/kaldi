@@ -17,6 +17,7 @@
 // limitations under the License.
 
 #include "gmm/diag-gmm.h"
+#include "gmm/diag-gmm-normal.h"
 #include "gmm/mle-diag-gmm.h"
 #include "util/kaldi-io.h"
 
@@ -267,6 +268,25 @@ UnitTestEstimateDiagGmm() {
   gmm->SetInvVarsAndMeans(invvars, means);
   gmm->ComputeGconsts();
 
+  {
+    KALDI_LOG << "Testing natural<>normal conversion";
+    DiagGmmNormal ngmm(*gmm);
+    DiagGmm rgmm;
+    rgmm.Resize(1, dim);
+    ngmm.CopyToDiagGmm(&rgmm);
+    
+    // check contents
+    KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
+    KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
+    for (int32 d = 0; d < dim; ++d) {
+      KALDI_ASSERT(ApproxEqual(means.Row(0)(d), ngmm.means_.Row(0)(d), 1e-6));
+      KALDI_ASSERT(ApproxEqual(1./invvars.Row(0)(d), ngmm.vars_.Row(0)(d), 1e-6));
+      KALDI_ASSERT(ApproxEqual(gmm->means_invvars().Row(0)(d), rgmm.means_invvars().Row(0)(d), 1e-6));
+      KALDI_ASSERT(ApproxEqual(gmm->inv_vars().Row(0)(d), rgmm.inv_vars().Row(0)(d), 1e-6));
+    }
+    KALDI_LOG << "OK";
+  }
+
   AccumDiagGmm est_gmm;
 //  var_acc.Scale(0.1);
 //  est_gmm.config_.p_variance_floor_vector = &var_acc;
@@ -305,7 +325,7 @@ UnitTestEstimateDiagGmm() {
       lastloglike = loglike;
       lastloglike_nM = gmm->NumGauss();
     }
-
+    
     // binary write
     est_gmm.Write(Output("tmp_stats", true).Stream(), true);
 

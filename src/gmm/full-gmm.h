@@ -28,10 +28,15 @@
 namespace kaldi {
 
 class DiagGmm;
+class FullGmmNormal;
 
 /** \class Definition for Gaussian Mixture Model with full covariances
   */
 class FullGmm {
+ 
+ /// this makes it a little easier to modify the internals
+ friend class FullGmmNormal;
+
  public:
   /// Empty constructor.
   FullGmm() : valid_gconsts_(false) {}
@@ -83,6 +88,7 @@ class FullGmm {
   const Matrix<BaseFloat>& means_invcovars() const { return means_invcovars_; }
   const std::vector<SpMatrix<BaseFloat> >& inv_covars() const {
     return inv_covars_; }
+
   /// Non-const accessors
   Matrix<BaseFloat>& means_invcovars() { return means_invcovars_; }
   std::vector<SpMatrix<BaseFloat> >& inv_covars() { return inv_covars_; }
@@ -122,10 +128,10 @@ class FullGmm {
 
   /// Mutators for single component, supports float or double
   /// Removes single component from model
-  void RemoveComponent(int32 gauss);
+  void RemoveComponent(int32 gauss, bool renorm_weights);
 
   /// Removes multiple components from model; "gauss" must not have dups.
-  void RemoveComponents(const std::vector<int32> &gauss);
+  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
 
   /// Accessor for component mean
   template<class Real>

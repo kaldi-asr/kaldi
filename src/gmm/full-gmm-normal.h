@@ -1,7 +1,8 @@
-// gmm/diag-gmm-normal.h
+// gmm/full-gmm-normal.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University;
 //                      Yanmin Qian
+//                      Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,55 +17,54 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_GMM_DIAG_GMM_NORMAL_H_
-#define KALDI_GMM_DIAG_GMM_NORMAL_H_ 1
+#ifndef KALDI_GMM_FULL_GMM_NORMAL_H_
+#define KALDI_GMM_FULL_GMM_NORMAL_H_ 1
 
 #include <vector>
 
 #include "base/kaldi-common.h"
 #include "gmm/model-common.h"
-#include "gmm/diag-gmm.h"
+#include "gmm/full-gmm.h"
 #include "matrix/matrix-lib.h"
 
 namespace kaldi {
 
+class FullGmm;
 
-class DiagGmm;
-
-/** \class DiagGmmNormal
- *  Definition for Gaussian Mixture Model with diagonal covariances in normal
+/** \class FullGmmNormal
+ *  Definition for Gaussian Mixture Model with full covariances in normal
  *  mode: where the parameters are stored as means and variances (instead of
- *  the exponential form that the DiagGmm class is stored as). This class will
+ *  the exponential form that the FullGmm class is stored as). This class will
  *  be used in the update (since the update formulas are for the standard
- *  parameterization) and then copied to the exponential form of the DiagGmm
- *  class. The DiagGmmNormal class will not be used anywhere else, and should
+ *  parameterization) and then copied to the exponential form of the FullGmm
+ *  class. The FullGmmNormal class will not be used anywhere else, and should
  *  not have any extra methods that are not needed.
  */
-class DiagGmmNormal {
+class FullGmmNormal {
  public:
   /// Empty constructor.
-  DiagGmmNormal() { }
+  FullGmmNormal() { }
 
-  DiagGmmNormal(const DiagGmm &gmm) {
-    CopyFromDiagGmm(gmm);
+  FullGmmNormal(const FullGmm &gmm) {
+    CopyFromFullGmm(gmm);
   }
 
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
 
-  /// Copies from given DiagGmm
-  void CopyFromDiagGmm(const DiagGmm &diaggmm);
+  /// Copies from given FullGmm
+  void CopyFromFullGmm(const FullGmm &fullgmm);
   
-  /// Copies to DiagGmm the requested parameters
-  void CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags = kGmmAll);
+  /// Copies to FullGmm
+  void CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags = kGmmAll);
 
-  Vector<double> weights_;        ///< weights (not log).
-  Matrix<double> means_;          ///< Means
-  Matrix<double> vars_;           ///< diagonal variance
+  Vector<double> weights_;             ///< weights (not log).
+  Matrix<double> means_;               ///< Means
+  std::vector<SpMatrix<double> >vars_; ///< covariances
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(DiagGmmNormal);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FullGmmNormal);
 };
 
 }  // End namespace kaldi
 
-#endif  // KALDI_GMM_DIAG_GMM_NORMAL_H_
+#endif  // KALDI_GMM_FULL_GMM_NORMAL_H_

@@ -32,6 +32,10 @@ typedef uint16 GmmFlagsType;  ///< Bitwise OR of the above flags.
 /// flags.
 GmmFlagsType StringToGmmFlags(std::string str);
 
+// Make sure that the flags make sense, i.e. if there is variance
+// accumulation that there is also mean accumulation
+GmmFlagsType AugmentGmmFlags(GmmFlagsType flags);
+
 enum SgmmUpdateFlags {  /// The letters correspond to the variable names.
   kSgmmPhoneVectors       = 0x001,  /// v
   kSgmmPhoneProjections   = 0x002,  /// M

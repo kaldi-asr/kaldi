@@ -427,26 +427,28 @@ BaseFloat FullGmm::ComponentPosteriors(const VectorBase<BaseFloat> &data,
   return log_sum;
 }
 
-void FullGmm::RemoveComponent(int32 gauss) {
+void FullGmm::RemoveComponent(int32 gauss, bool renorm_weights) {
   KALDI_ASSERT(gauss < NumGauss());
 
   weights_.RemoveElement(gauss);
   gconsts_.RemoveElement(gauss);
   means_invcovars_.RemoveRow(gauss);
   inv_covars_.erase(inv_covars_.begin() + gauss);
-  BaseFloat sum_weights = weights_.Sum();
-  weights_.Scale(1/sum_weights);
-  valid_gconsts_ = false;
+  if (renorm_weights) {
+    BaseFloat sum_weights = weights_.Sum();
+    weights_.Scale(1.0/sum_weights);
+    valid_gconsts_ = false;
+  }
 }
 
-void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in) {
+void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in, bool renorm_weights) {
   std::vector<int32> gauss(gauss_in);
   std::sort(gauss.begin(), gauss.end());
   KALDI_ASSERT(IsSortedAndUniq(gauss));
   // If efficiency is later an issue, will code this specially (unlikely,
   // except for quite large GMMs).
   for (size_t i = 0; i < gauss.size(); i++) {
-    RemoveComponent(gauss[i]);
+    RemoveComponent(gauss[i], renorm_weights);
     for (size_t j = i + 1; j < gauss.size(); j++)
       gauss[j]--;
   }

@@ -35,6 +35,14 @@ GmmFlagsType StringToGmmFlags(std::string str) {
   return flags;
 }
 
+GmmFlagsType AugmentGmmFlags(GmmFlagsType flags) {
+KALDI_ASSERT((flags & ~kGmmAll) == 0);  // make sure only valid flags are present.
+  if (flags & kGmmVariances) flags |= kGmmMeans;
+  if (flags & kGmmMeans) flags |= kGmmWeights;
+  KALDI_ASSERT(flags & kGmmWeights);  // make sure zero-stats will be accumulated
+  return flags;
+}
+
 SgmmUpdateFlagsType StringToSgmmUpdateFlags(std::string str) {
   SgmmUpdateFlagsType flags = 0;
   for (const char *c = str.c_str(); *c != '\0'; c++) {

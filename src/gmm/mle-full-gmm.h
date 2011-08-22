@@ -24,6 +24,7 @@
 
 #include "gmm/model-common.h"
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
 #include "gmm/mle-diag-gmm.h"  // for AugmentGmmFlags()
 
 namespace kaldi {

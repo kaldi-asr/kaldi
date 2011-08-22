@@ -27,10 +27,15 @@
 namespace kaldi {
 
 class FullGmm;
+class DiagGmmNormal;
 
 /** \class DiagGmm Definition for Gaussian Mixture Model with diagonal covariances
  */
 class DiagGmm {
+
+ /// this makes it a little easier to modify the internals
+ friend class DiagGmmNormal;
+
  public:
   /// Empty constructor.
   DiagGmm() : valid_gconsts_(false) { }
@@ -99,6 +104,12 @@ class DiagGmm {
   const Matrix<BaseFloat>& inv_vars() const { return inv_vars_; }
   bool valid_gconsts() const { return valid_gconsts_; }
 
+  /// Removes single component from model
+  void RemoveComponent(int32 gauss, bool renorm_weights);
+
+  /// Removes multiple components from model; "gauss" must not have dups.
+  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
+
   /// Mutators for both float or double
   template<class Real>
   void SetWeights(const VectorBase<Real>& w);    ///< Set mixure weights
@@ -131,13 +142,7 @@ class DiagGmm {
   void SetComponentInvVar(int32 gauss, const VectorBase<Real>& in);
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
-
-  /// Removes single component from model
-  void RemoveComponent(int32 gauss, bool renorm_weights);
-
-  /// Removes multiple components from model; "gauss" must not have dups.
-  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
-
+  
   /// Accessor for single component mean
   template<class Real>
   void GetComponentMean(int32 gauss, VectorBase<Real>* out) const;

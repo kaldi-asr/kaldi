@@ -28,37 +28,56 @@ namespace kaldi {
 
 void DiagGmmNormal::Resize(int32 nmix, int32 dim) {
   KALDI_ASSERT(nmix > 0 && dim > 0);
-  if (weights_.Dim() != nmix) weights_.Resize(nmix);
+  
+  if (weights_.Dim() != nmix) 
+    weights_.Resize(nmix);
+
   if (vars_.NumRows() != nmix ||
-      vars_.NumCols() != dim) {
+      vars_.NumCols() != dim) 
     vars_.Resize(nmix, dim);
-    vars_.Set(1.0);
-    // must be initialized to unit for case of calling SetMeans while having
-    // covars/invcovars that are not set yet (i.e. zero)
-  }
+  
   if (means_.NumRows() != nmix ||
       means_.NumCols() != dim)
     means_.Resize(nmix, dim);
 }
 
 void DiagGmmNormal::CopyFromDiagGmm(const DiagGmm &diaggmm) {
-  int32 num_comp = diaggmm.NumGauss(), dim = diaggmm.Dim();
+  int32 num_comp = diaggmm.weights_.Dim(), dim = diaggmm.Dim();
   Resize(num_comp, dim);
-  weights_.CopyFromVec(diaggmm.weights());
-  vars_.CopyFromMat(diaggmm.inv_vars());
+
+  weights_.CopyFromVec(diaggmm.weights_);
+  vars_.CopyFromMat(diaggmm.inv_vars_);
   vars_.InvertElements();
-  means_.CopyFromMat(diaggmm.means_invvars());
+  means_.CopyFromMat(diaggmm.means_invvars_);
   means_.MulElements(vars_);
 }
 
-void DiagGmmNormal::CopyToDiagGmm(DiagGmm *diaggmm) {
-    assert((static_cast<int32>(diaggmm->Dim()) == means_.NumCols()) && (static_cast<int32>(diaggmm->NumGauss()) == weights_.Dim()));
-    diaggmm->SetWeights(weights_);
-    Matrix<double> means(weights_.Dim(), means_.NumCols()), invvars(weights_.Dim(), means_.NumCols());
-    means = means_;
-    invvars = vars_;
-    invvars.InvertElements();
-    diaggmm->SetInvVarsAndMeans(invvars, means);
+void DiagGmmNormal::CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags) {
+    KALDI_ASSERT((static_cast<int32>(diaggmm->Dim()) == means_.NumCols()) 
+      && (static_cast<int32>(diaggmm->weights_.Dim()) == weights_.Dim()));
+
+    DiagGmmNormal oldg(*diaggmm);
+
+    if (flags & kGmmWeights) 
+      diaggmm->weights_.CopyFromVec(weights_);
+
+    if (flags & kGmmVariances) {
+      diaggmm->inv_vars_.CopyFromMat(vars_);
+      diaggmm->inv_vars_.InvertElements();
+
+      // update the mean related natural part with the old mean, if necessary
+      if (!(flags & kGmmMeans)) {
+        diaggmm->means_invvars_.CopyFromMat(oldg.means_);
+        diaggmm->means_invvars_.MulElements(diaggmm->inv_vars_);
+      }
+    }
+
+    if (flags & kGmmMeans) {
+      diaggmm->means_invvars_.CopyFromMat(means_);
+      diaggmm->means_invvars_.MulElements(diaggmm->inv_vars_);
+    }
+
+    diaggmm->valid_gconsts_ = false;
 }
 
 }  // End namespace kaldi

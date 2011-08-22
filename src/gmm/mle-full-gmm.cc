@@ -32,7 +32,6 @@ AccumFullGmm::AccumFullGmm(const AccumFullGmm &other)
     mean_accumulator_(other.mean_accumulator_),
     covariance_accumulator_(other.covariance_accumulator_) {}
 
-
 void AccumFullGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   num_comp_ = num_comp;
   dim_ = dim;
@@ -293,20 +292,22 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
   gmm->ComputeGconsts();
   BaseFloat obj_old = MlObjective(*gmm, fullgmm_acc);
 
-  int32 dim = gmm->Dim();
+  // Korbinian: I removed checks that validate if the referenced gmm matches
+  // the accumulator, as this should be responsibility of the caller.
+  // Furthermore, the re-estimation of the normal representation is done 
+  // regardless of the flags, but the transfer to the natural form is
+  // done with respect to the flags.
+
   int32 num_gauss = gmm->NumGauss();
   double occ_sum = fullgmm_acc.occupancy().Sum();
 
-  Vector<double> weights(num_gauss);
-  Matrix<double> means(fullgmm_acc.mean_accumulator());
-  // restore old means, if there is no mean update
-  if (!(flags & kGmmMeans)) 
-    gmm->GetMeans(&means);
-  
-  std::vector<SpMatrix<double> > inv_vars(num_gauss);
+  int32 tot_floored = 0, gauss_floored = 0;
+
+  // allocate the gmm in normal representation
+  FullGmmNormal ngmm(*gmm);
 
   std::vector<int32> to_remove;
-  for (int32 i = 0; i < num_gauss; i++) {
+  for (int32 i = 0; i < num_gauss; ++i) {
     double occ = fullgmm_acc.occupancy()(i);
     double prob;
     if (occ_sum > 0.)
@@ -316,97 +317,88 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
     
     if (occ > static_cast<double> (config.min_gaussian_occupancy)
         && prob > static_cast<double> (config.min_gaussian_weight)) {
-      if (flags & kGmmWeights)
-        weights(i) = prob;
-
-      if ((flags & kGmmMeans) && !(flags & kGmmVariances)) {
-        // update mean, but not variance
-        means.Row(i).Scale(1. / occ);
-      } else if ((flags & kGmmMeans) && (flags && kGmmVariances)) {
-        // mean and variances
-        means.Row(i).Scale(1. / occ);
-        SpMatrix<double> var(fullgmm_acc.covariance_accumulator()[i]);
-        var.Scale(1. / occ);
-        var.AddVec2(-1., means.Row(i));
-        
-        // Now flooring etc. of variance's eigenvalues.
-        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
-                                   var.MaxAbsEig() / config.max_condition);
-        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
-        int32 num_floored = var.ApplyFloor(floor, 2.0);
-        if (num_floored)
-          KALDI_WARN << "Floored " << num_floored << " covariance eigenvalues for "
-              "Gaussian " << i << ", count = " << occ;
-
-        var.Invert();
-        inv_vars[i].Resize(dim);
-        inv_vars[i].CopyFromSp(var);
-      } else if (!(flags & kGmmMeans) && (flags & kGmmVariances)) {
-        // update variance, but not mean, compute it, though!
-        Vector<double> m(fullgmm_acc.mean_accumulator().Row(i));
-        m.Scale(1. / occ);
-
-        SpMatrix<double> var(fullgmm_acc.covariance_accumulator()[i]);
-        var.Scale(1. / occ);
-        var.AddVec2(-1., m);
-
-        // Now flooring etc. of variance's eigenvalues.
-        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
-                                   var.MaxAbsEig() / config.max_condition);
-        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
-        int32 num_floored = var.ApplyFloor(floor, 2.0);
-        if (num_floored)
-          KALDI_WARN << "Floored " << num_floored << " covariance eigenvalues for "
-              "Gaussian " << i << ", count = " << occ;
-
-        var.Invert();
-        inv_vars[i].Resize(dim);
-        inv_vars[i].CopyFromSp(var);
-      }
-    } else {  // Below threshold to update -> just set to old mean/var.
-      if (flags & kGmmVariances) {
-        inv_vars[i].Resize(dim);
-        inv_vars[i].CopyFromSp( (gmm->inv_covars())[i] );
-      }
       
-      if (flags & kGmmMeans) {
-        SubVector<double> mean(means, i);
-        gmm->GetComponentMean(i, &mean);
-      }
+      ngmm.weights_(i) = prob;
 
-      if (config.remove_low_count_gaussians) {
+      // copy old mean for later normalizations
+      Vector<double> oldmean(ngmm.means_.Row(i));
+
+      // update mean, then variance, as far as there are accumulators
+      if ((fullgmm_acc.Flags() & kGmmMeans) || (fullgmm_acc.Flags() & kGmmVariances)) {
+        Vector<double> mean(fullgmm_acc.mean_accumulator().Row(i));
+        mean.Scale(1. / occ);
+
+        // transfer to estimate
+        ngmm.means_.CopyRowFromVec(mean, i);
+      }      
+
+      if (fullgmm_acc.Flags() & kGmmVariances) {
+        SpMatrix<double> covar(fullgmm_acc.covariance_accumulator()[i]);
+        covar.Scale(1. / occ);
+        covar.AddVec2(-1., ngmm.means_.Row(i));  // subtract squared means.
+        // if we intend to only update the variances, we need to compensate by 
+        // adding the difference between the new and old mean
+        if (!(flags & kGmmMeans) || !(fullgmm_acc.Flags() & kGmmMeans)) {
+          oldmean.AddVec(-1., ngmm.means_.Row(i));
+          covar.AddVec2(1., oldmean);
+        }
+
+        // Now flooring etc. of variance's eigenvalues.
+        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
+                                   covar.MaxAbsEig() / config.max_condition);
+
+        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
+        int32 floored = covar.ApplyFloor(floor, 2.0);
+
+        if (floored) {
+          tot_floored += floored;
+          gauss_floored++;
+        }
+
+        // transfer to estimate
+        ngmm.vars_[i].CopyFromSp(covar);
+      }
+    } else {  // Insufficient occupancy
+      if (config.remove_low_count_gaussians &&
+            static_cast<int32>(to_remove.size()) < num_gauss-1) {
+        KALDI_WARN << "Too little data - removing Gaussian (weight "
+                   << std::fixed << prob
+                   << ", occupation count " << std::fixed << fullgmm_acc.occupancy()(i)
+                   << ", vector size " << gmm->Dim() << ")";
         to_remove.push_back(i);
-        KALDI_WARN << "Removing Gaussian " << i << ", occupancy is "
-                   << occ;
       } else {
-        KALDI_WARN << "Not updating mean and variance of Gaussian " << i << ", occupancy is "
-                   << occ;
+        KALDI_WARN << "Gaussian has too little data but not removing it because"
+                   << (config.remove_low_count_gaussians ?
+                       " it is the last Gaussian: i = "
+                       : " remove-low-count-gaussians == false: i = ") << i
+                   << ", occ = " << fullgmm_acc.occupancy()(i) << ", weight = " << prob;
+        ngmm.weights_(i) = std::max(prob, static_cast<double>(
+                                                config.min_gaussian_weight));
       }
     }
   }
 
-  if (flags & kGmmWeights) 
-    gmm->SetWeights(weights);
-
-  if ((flags & kGmmMeans) && (flags & kGmmVariances))
-    gmm->SetInvCovarsAndMeans(inv_vars, means);
-  else if (flags & kGmmMeans)
-    gmm->SetMeans(means);
-  else if (flags & kGmmVariances)
-    gmm->SetInvCovars(inv_vars);
+  // copy to natural representation according to flags
+  ngmm.CopyToFullGmm(gmm, flags);
 
   gmm->ComputeGconsts();
   BaseFloat obj_new = MlObjective(*gmm, fullgmm_acc);
   
   if (obj_change_out)
-      *obj_change_out = obj_new - obj_old;
+    *obj_change_out = obj_new - obj_old;
   
-  if (count_out) *count_out = occ_sum;
+  if (count_out) 
+    *count_out = occ_sum;
 
-  if (!to_remove.empty()) {
-    gmm->RemoveComponents(to_remove);
+  if (to_remove.size() > 0) {
+    gmm->RemoveComponents(to_remove, true /* renorm weights */);
     gmm->ComputeGconsts();
   }
+  
+  if (tot_floored > 0)
+    KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
+               << " Gaussians.";
+
 }
 
 }  // End namespace kaldi
