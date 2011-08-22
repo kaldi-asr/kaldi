@@ -30,7 +30,7 @@ void MmieDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   KALDI_ASSERT(num_comp > 0 && dim > 0);
   num_comp_ = num_comp;
   dim_ = dim;
-  flags_ = AugmentFlags(flags);
+  flags_ = AugmentGmmFlags(flags);
   num_occupancy_.Resize(num_comp);
   den_occupancy_.Resize(num_comp);
   occupancy_.Resize(num_comp);
@@ -42,15 +42,6 @@ void MmieDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
     variance_accumulator_.Resize(num_comp, dim);
   else
     variance_accumulator_.Resize(0, 0);
-}
-
-
-GmmFlagsType MmieDiagGmm::AugmentFlags(GmmFlagsType f) {
-  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present
-  if (f & kGmmVariances) f |= kGmmMeans;
-  if (f & kGmmMeans) f |= kGmmWeights;
-  KALDI_ASSERT(f & kGmmWeights);  // make sure zero-stats will be accumulated
-  return f;
 }
 
 

@@ -24,6 +24,7 @@
 
 #include "gmm/model-common.h"
 #include "gmm/full-gmm.h"
+#include "gmm/mle-diag-gmm.h"  // for AugmentGmmFlags()
 
 namespace kaldi {
 
@@ -128,11 +129,6 @@ class AccumFullGmm {
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   std::vector<SpMatrix<double> > covariance_accumulator_;
-
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-public:
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
 };
 
 inline void AccumFullGmm::Resize(const FullGmm &gmm, GmmFlagsType flags) {

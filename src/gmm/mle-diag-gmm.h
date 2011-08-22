@@ -105,12 +105,13 @@ class AccumDiagGmm {
                                BaseFloat frame_posterior);
 
   /// Smooths the accumulated counts by adding 'tau' extra frames. An example
-  /// use for this is I-smoothing for MMIE/MPE.
+  /// use for this is I-smoothing for MMIE.
   void SmoothStats(BaseFloat tau);
 
   /// Smooths the accumulated counts using some other accumulator. Performs
-  /// a weighted sum of the current accumulator with the given one. Both
-  /// accumulators must have the same dimension and number of components.
+  /// a weighted sum of the current accumulator with the given one. An example
+  /// use for this is I-smoothing for MPE. Both accumulators must have the same
+  /// dimension and number of components.
   void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
 
   /// Smooths the accumulated counts using the parameters of a given model.
@@ -133,11 +134,13 @@ class AccumDiagGmm {
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
-
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
 };
+
+
+/// Returns "augmented" version of flags: e.g. if just updating means, need
+/// weights too.
+GmmFlagsType AugmentGmmFlags(GmmFlagsType f);
+
 
 inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
   Resize(gmm.NumGauss(), gmm.Dim(), flags);

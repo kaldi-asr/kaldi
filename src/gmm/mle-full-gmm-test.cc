@@ -158,9 +158,9 @@ void test_flags_driven_update(const FullGmm &gmm,
   GmmFlagsType f2 = est_gmm_somep.Flags();
   
   std::cout << "flags-all, flags-some, flags, augmented(flags)\n";
-  std::cout << "weights: " << (f1 & kGmmWeights)   << " " << (f2 & kGmmWeights) << " " << (AccumFullGmm::AugmentFlags(flags) & kGmmWeights) << std::endl;
-  std::cout << "means  : " << (f1 & kGmmMeans)     << " " << (f2 & kGmmMeans) << " " << (AccumFullGmm::AugmentFlags(flags) & kGmmMeans) << std::endl;
-  std::cout << "covs   : " << (f1 & kGmmVariances) << " " << (f2 & kGmmVariances) << " " << (AccumFullGmm::AugmentFlags(flags) & kGmmVariances) << std::endl;
+  std::cout << "weights: " << (f1 & kGmmWeights)   << " " << (f2 & kGmmWeights) << " " << (AugmentGmmFlags(flags) & kGmmWeights) << std::endl;
+  std::cout << "means  : " << (f1 & kGmmMeans)     << " " << (f2 & kGmmMeans) << " " << (AugmentGmmFlags(flags) & kGmmMeans) << std::endl;
+  std::cout << "covs   : " << (f1 & kGmmVariances) << " " << (f2 & kGmmVariances) << " " << (AugmentGmmFlags(flags) & kGmmVariances) << std::endl;
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {

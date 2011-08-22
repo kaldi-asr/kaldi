@@ -33,18 +33,10 @@ AccumFullGmm::AccumFullGmm(const AccumFullGmm &other)
     covariance_accumulator_(other.covariance_accumulator_) {}
 
 
-GmmFlagsType AccumFullGmm::AugmentFlags(GmmFlagsType f) {
-  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present.
-  if (f & kGmmVariances) f |= kGmmMeans;
-  if (f & kGmmMeans) f |= kGmmWeights;
-  KALDI_ASSERT(f & kGmmWeights);  // make sure zero-stats will be accumulated
-  return f;
-}
-
 void AccumFullGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   num_comp_ = num_comp;
   dim_ = dim;
-  flags_ = AugmentFlags(flags);
+  flags_ = AugmentGmmFlags(flags);
   occupancy_.Resize(num_comp);
   if (flags_ & kGmmMeans)
     mean_accumulator_.Resize(num_comp, dim);

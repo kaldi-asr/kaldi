@@ -42,10 +42,9 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
     if ((NumGauss() != 0 || Dim() != 0 || Flags() != 0)) {
       if (num_components != NumGauss() || dimension != Dim()
           || flags != Flags()) {
-        KALDI_ERR << "MlEstimatediagGmm::Read, dimension or flags mismatch, "
-                  << (NumGauss()) + ", " << (Dim()) + ", "
-                  << (Flags()) +" vs. " << (num_components) + ", "
-                  << (dimension) + ", " << (flags);
+        KALDI_ERR << "Dimension or flags mismatch: " << NumGauss() << ", "
+                  << Dim() << ", " << Flags() << " vs. " << num_components
+                  << ", " << dimension << ", " << flags;
       }
     } else {
       Resize(num_components, dimension, flags);
@@ -102,7 +101,7 @@ void AccumDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   KALDI_ASSERT(num_comp > 0 && dim > 0);
   num_comp_ = num_comp;
   dim_ = dim;
-  flags_ = AugmentFlags(flags);
+  flags_ = AugmentGmmFlags(flags);
   occupancy_.Resize(num_comp);
   if (flags_ & kGmmMeans)
     mean_accumulator_.Resize(num_comp, dim);
@@ -207,7 +206,6 @@ void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
 
 void AccumDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm& gmm) {
   KALDI_ASSERT(gmm.NumGauss() == num_comp_ && gmm.Dim() == dim_);
-  // this won't compile now because of the precision issues... wait for the DiagGmmNormal class to be implemented
   Matrix<double> means(num_comp_, dim_);
   Matrix<double> vars(num_comp_, dim_);
   gmm.GetMeans(&means);
@@ -227,13 +225,14 @@ AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)
       mean_accumulator_(other.mean_accumulator_),
       variance_accumulator_(other.variance_accumulator_) {}
 
-GmmFlagsType AccumDiagGmm::AugmentFlags(GmmFlagsType f) {
-  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present
+GmmFlagsType AugmentGmmFlags(GmmFlagsType f) {
+  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present.
   if (f & kGmmVariances) f |= kGmmMeans;
   if (f & kGmmMeans) f |= kGmmWeights;
   KALDI_ASSERT(f & kGmmWeights);  // make sure zero-stats will be accumulated
   return f;
 }
+
 
 int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
                            VectorBase<double> *var) {

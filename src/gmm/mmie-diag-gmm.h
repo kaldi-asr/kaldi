@@ -109,10 +109,6 @@ class MmieDiagGmm {
 
   BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
 
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
-
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(MmieDiagGmm);
 };

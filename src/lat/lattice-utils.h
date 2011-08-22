@@ -49,9 +49,10 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
                          std::vector< std::map<int32, int32> > *active_phones);
 
 /// This function takes a reference lattice
-void LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
+int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
                                const std::vector< std::map<int32, int32> > &ref,
-                               std::vector< std::map<int32, char> > *arc_accs);
+                               std::vector< std::map<int32, char> > *arc_accs,
+                               std::vector<int32> *state_times);
 
 BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post);
 

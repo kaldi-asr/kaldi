@@ -17,6 +17,7 @@
 // limitations under the License.
 
 #include <algorithm>
+using std::pair;
 #include <map>
 using std::map;
 #include <vector>
@@ -155,9 +156,10 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 }
 
 
-void LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
+int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
                                const vector< map<int32, int32> > &ref_phones,
-                               vector< map<int32, char> > *arc_accs) {
+                               vector< map<int32, char> > *arc_accs,
+                               vector<int32> *state_times) {
   vector<int32> state_times_hyp;
   int32 max_time_hyp = LatticeStateTimes(hyp, &state_times_hyp),
       max_time_ref = ref_phones.size();
@@ -181,12 +183,87 @@ void LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
       }
     }  // end looping over arcs
   }  // end looping over states
+  if (state_times != NULL)
+    (*state_times) = state_times_hyp;
+  return max_time_hyp;
 }
 
 
-BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post) {
+// Helper functions for MPE lattice forward-backward
+static void ForwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
+                           int32 state, int32 cur_time,
+                           const vector< map<int32, char> > &arc_accs,
+                           vector< pair<double, double> > *state_alphas);
+static void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
+                            int32 state, int32 cur_time,
+                            pair<double, double> tot_forward_score,
+                            const vector< vector<int32> > &active_states,
+                            const vector< pair<double, double> > &state_alphas,
+                            vector< pair<double, double> > *state_betas);
 
-  return 0.0;
+BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
+                                    const TransitionModel &trans,
+                                    const vector< map<int32, char> > &arc_accs,
+                                    Posterior *arc_post) {
+  // Make sure the lattice is topologically sorted.
+  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted))
+    KALDI_ERR << "Input lattice must be topologically sorted.";
+  KALDI_ASSERT(lat.Start() == 0);
+
+  int32 num_states = lat.NumStates();
+  vector<int32> state_times;
+  int32 max_time = LatticeStateTimes(lat, &state_times);
+  vector< vector<int32> > active_states(max_time + 1);
+  // the +1 is needed since time is indexed from 0
+
+  vector< pair<double, double> > state_alphas(num_states,
+                                              std::make_pair(kLogZeroDouble, 0)),
+      state_betas(num_states, std::make_pair(kLogZeroDouble, 0));
+  state_alphas[0].first = 0.0;
+  pair<double, double> tot_forward_score = std::make_pair(kLogZeroDouble, 0.0);
+
+  // Forward pass
+  for (int32 state = 0; state < num_states; ++state) {
+    int32 cur_time = state_times[state];
+    active_states[cur_time].push_back(state);
+
+    if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
+      state_betas[state] = std::make_pair(state_alphas[state].first, 0.0);
+      tot_forward_score.first = LogAdd(tot_forward_score.first,
+                                       state_alphas[state].first);
+      tot_forward_score.second += state_alphas[state].second;
+    } else {
+      ForwardNodeMpe(lat, trans, state, cur_time, arc_accs, &state_alphas);
+    }
+  }
+
+  // Backward pass and collect posteriors
+  vector< map<int32, double> > tmp_arc_post_pos(max_time),
+      tmp_arc_post_neg(max_time);
+  for (int32 state = num_states -1; state > 0; --state) {
+    int32 cur_time = state_times[state];
+    BackwardNodeMpe(lat, trans, state, cur_time, tot_forward_score,
+                    active_states, state_alphas, &state_betas);
+  }
+//  double tot_backward_prob = state_betas[0];  // Initial state id == 0
+//  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-9)) {
+//    KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+//              << ", while total backward probability = " << tot_backward_prob;
+//  }
+
+//  // Output the computed posteriors
+//  arc_post->resize(max_time);
+//  for (int32 cur_time = 0; cur_time < max_time; ++cur_time) {
+//    map<int32, double>::const_iterator post_itr =
+//        tmp_arc_post[cur_time].begin();
+//    for (; post_itr != tmp_arc_post[cur_time].end(); ++post_itr) {
+//      (*arc_post)[cur_time].push_back(std::make_pair(post_itr->first,
+//                                                     post_itr->second));
+//    }
+//  }
+
+  return tot_forward_score.second;
 }
 
 
@@ -257,6 +334,42 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
       }
     }
   }
+}
+
+
+// static
+void ForwardNodeMpe(const Lattice &lat, const TransitionModel &tr,
+                    int32 state, int32 cur_time,
+                    const vector< map<int32, char> > &arc_accs,
+                    vector< pair<double, double> > *state_alphas) {
+  for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
+      aiter.Next()) {
+    const LatticeArc& arc = aiter.Value();
+    double graph_score = arc.weight.Value1(),
+        am_score = arc.weight.Value2(),
+        arc_score = (*state_alphas)[state].first - am_score - graph_score;
+    (*state_alphas)[arc.nextstate].first =
+        LogAdd((*state_alphas)[arc.nextstate].first, arc_score);
+    double frame_acc = 0.0;
+    if (arc.ilabel != 0) {
+      int32 phone = tr.TransitionIdToPhone(arc.ilabel);
+      frame_acc = (arc_accs[cur_time].find(phone) == arc_accs[cur_time].end())?
+          0.0 : 1.0;
+    }
+    (*state_alphas)[arc.nextstate].second += ((*state_alphas)[state].second
+                                                + frame_acc);
+  }
+}
+
+
+//static
+void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
+                     int32 state, int32 cur_time,
+                     pair<double, double> tot_forward_score,
+                     const vector< vector<int32> > &active_states,
+                     const vector< pair<double, double> > &state_alphas,
+                     vector< pair<double, double> > *state_betas) {
+
 }
 
 

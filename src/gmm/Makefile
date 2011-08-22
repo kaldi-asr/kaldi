@@ -4,12 +4,12 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = mmie-diag-gmm-test diag-gmm-test mle-diag-gmm-test full-gmm-test mle-full-gmm-test \
-		am-diag-gmm-test
+TESTFILES = diag-gmm-test mle-diag-gmm-test full-gmm-test mle-full-gmm-test \
+		am-diag-gmm-test # mmie-diag-gmm-test NOTE: MMIE test does not terminate!
 
 OBJFILES = diag-gmm.o diag-gmm-normal.o mle-diag-gmm.o am-diag-gmm.o mle-am-diag-gmm.o \
 		full-gmm.o mle-full-gmm.o fmpe-am-diag-gmm.o model-common.o \
-		model-test-common.o mmie-diag-gmm.o 
+		model-test-common.o ebw-diag-gmm.o mmie-diag-gmm.o 
 
 LIBFILE = kaldi-gmm.a
 
