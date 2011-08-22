@@ -20,25 +20,19 @@
 # exp/tri1), supplied as an argument, which is assumed to be built using
 # cepstral mean subtraction plus delta features.
 
-
-if [ $# != 5 ]; then
-   echo "Usage: steps/train_lda_mllt.sh <data-dir> <data-subset-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_lda_mllt.sh data/train data/train.15utt data/lang exp/tri1_ali exp/tri2c"
+if [ $# != 4 ]; then
+   echo "Usage: steps/train_lda_et.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_lda_et.sh data/train data/lang exp/tri1_ali exp/tri2c"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-datasub=$2
-lang=$3
-alidir=$4
-dir=$5
+lang=$2
+alidir=$3
+dir=$4
 
-# Make sure datasub is a subset of data.
-scripts/is_subset_scp.pl $datasub/feats.scp $data/feats.scp || exit 1;
-# Make sure datasub doesn't have missing speakers vs. data.
-scripts/is_subset_scp.pl $data/spk2utt $datasub/spk2utt || exit 1;
 
 numiters_et=15 # Before this, update et parameters.
 normtype=offset # et option; could be offset [recommended], or none
@@ -55,16 +49,14 @@ numgauss=$[$numleaves + $numleaves/2];  # starting num-Gauss.
      # up to final amount.
 totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-
+randprune=4.0
 
 mkdir -p $dir $dir/warps
 
 # This variable gets overwritten in this script.
 basefeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 feats="$basefeats"
-basefeatsub="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
-featsub="$basefeatsub"
-splicedfeatsub="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- |"
 
 # compute integer form of transcripts.
 scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
@@ -74,7 +66,7 @@ echo "Accumulating LDA statistics."
 
 ( ali-to-post ark:$alidir/ali ark:- | \
    weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | \
-   acc-lda $alidir/final.mdl "$splicedfeatsub" ark,s,cs:- $dir/lda.acc ) \
+   acc-lda --rand-prune=$randprune $alidir/final.mdl "$splicedfeats" ark,s,cs:- $dir/lda.acc ) \
    2>$dir/lda_acc.log
 est-lda $dir/lda.mat $dir/lda.acc 2>$dir/lda_est.log
 
@@ -138,8 +130,9 @@ while [ $x -lt $numiters ]; do
      echo "Re-estimating ET transforms"
    ( ali-to-post ark:$dir/cur.ali ark:- | \
      weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
-     gmm-post-to-gpost $dir/$x.mdl "$featsub" ark:- ark:- | \
-     gmm-est-et --spk2utt=ark:$datasub/spk2utt $dir/$x.mdl $dir/$x.et "$basefeatsub" \
+     rand-prune-post $randprune ark:- ark:- | \
+     gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- | \
+     gmm-est-et --spk2utt=ark:$data/spk2utt $dir/$x.mdl $dir/$x.et "$basefeats" \
         ark,s,cs:- ark:$dir/$x.trans ark,t:$dir/warps/$x.warp ) \
      2> $dir/trans.$x.log || exit 1;
 
@@ -147,7 +140,6 @@ while [ $x -lt $numiters ]; do
      if [ $x -gt 1 ]; then rm $dir/$[$x-1].trans; fi
      # Set features to include transform.
      feats="$basefeats transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/$x.trans ark:- ark:- |"
-     featsub="$basefeatsub transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/$x.trans ark:- ark:- |"
    fi
 
    gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log || exit 1;
@@ -161,15 +153,17 @@ while [ $x -lt $numiters ]; do
      if [ $[$x%2] == 0 ]; then  # Estimate A:
        ( ali-to-post ark:$dir/cur.ali ark:- | \
          weight-silence-post 0.0 $silphonelist $dir/$x1.mdl ark:- ark:- | \
-         gmm-post-to-gpost $dir/$x1.mdl "$featsub" ark:- ark:- | \
-         gmm-et-acc-a $spk2utt_opt --verbose=1 $dir/$x1.mdl $dir/$x.et "$basefeatsub" \
+         rand-prune-post $randprune ark:- ark:- | \
+         gmm-post-to-gpost $dir/$x1.mdl "$feats" ark:- ark:- | \
+         gmm-et-acc-a --spk2utt=ark:$data/spk2utt --verbose=1 $dir/$x1.mdl $dir/$x.et "$basefeats" \
               ark,s,cs:- $dir/$x.et_acc_a ) 2> $dir/acc_a.$x.log || exit 1;
        gmm-et-est-a --verbose=1 $dir/$x.et $dir/$x1.et $dir/$x.et_acc_a 2> $dir/update_a.$x.log || exit 1;
        rm $dir/$x.et_acc_a
      else
       ( ali-to-post ark:$dir/cur.ali ark:- | \
         weight-silence-post 0.0 $silphonelist $dir/$x1.mdl ark:- ark:- | \
-        gmm-acc-mllt $dir/$x1.mdl "$featsub" ark:- $dir/$x.mllt_acc ) 2> $dir/acc_b.$x.log || exit 1;
+        gmm-acc-mllt --rand-prune=$randprune $dir/$x1.mdl "$feats" ark:- \
+           $dir/$x.mllt_acc ) 2> $dir/acc_b.$x.log || exit 1;
         est-mllt $dir/$x.mat $dir/$x.mllt_acc 2> $dir/update_b.$x.log || exit 1;
        gmm-et-apply-c $dir/$x.et $dir/$x.mat $dir/$x1.et 2>>$dir/update_b.$x.log || exit 1;
        gmm-transform-means $dir/$x.mat $dir/$x1.mdl $dir/$x1.mdl 2>> $dir/update_b.$x.log || exit 1;
@@ -206,7 +200,7 @@ defaultfeats="$basefeats transform-feats $dir/B.mat ark:- ark:- |"
 ( ali-to-post ark:$dir/cur.ali ark:-  | \
   gmm-acc-stats-twofeats $dir/$x.mdl "$feats" "$defaultfeats" ark:- $dir/$x.acc2 ) 2>$dir/acc_alimdl.log || exit 1;
   # Update model.
-gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false $dir/$x.mdl $dir/$x.acc2 $dir/$x.alimdl \
+ gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false $dir/$x.mdl $dir/$x.acc2 $dir/$x.alimdl \
       2>$dir/est_alimdl.log  || exit 1;
 rm $dir/$x.acc2
 
