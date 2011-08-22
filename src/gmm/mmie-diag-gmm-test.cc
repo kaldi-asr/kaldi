@@ -26,7 +26,7 @@ namespace kaldi {
 
 
 void UnitTestEstimateMmieDiagGmm() {
-  size_t dim = 2;  // dimension of the gmm
+  size_t dim = 15;  // dimension of the gmm
   size_t nMix = 2;  // number of mixtures in the data
   size_t maxiterations = 20;  // number of iterations for estimation
 
@@ -145,7 +145,9 @@ void UnitTestEstimateMmieDiagGmm() {
     num.SetZero(flags);
     den.Resize(gmm->NumGauss(), gmm->Dim(), flags);
     den.SetZero(flags);
-    
+    mmie_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
+  
+  
     double loglike_num = 0.0;
     double loglike_den = 0.0;
     for (size_t i = 0; i < counter_num; i++) {
@@ -172,9 +174,26 @@ void UnitTestEstimateMmieDiagGmm() {
   
    mmie_gmm.SubtractAccumulatorsISmoothing(num, den, config);
    BaseFloat obj, count;
-   mmie_gmm.Update(config, flags, gmm, &obj, &count);
-}
+   //Vector<double> mean_hlp(dim);
+   //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
+   //std::cout << "MEANX: " << mean_hlp << '\n'; 
+   std::cout << "MEANX: " << gmm->weights() << '\n'; 
 
+   mmie_gmm.Update(config, flags, gmm, &obj, &count);
+   //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
+   //std::cout << "MEANY: " << mean_hlp << '\n'; 
+   std::cout << "MEANY: " << gmm->weights() << '\n'; 
+
+
+   if ((iteration % 3 == 1) && (gmm->NumGauss() * 2 <= maxcomponents)) {
+      gmm->Split(gmm->NumGauss() * 2, 0.001);
+      std::cout << "Ngauss, Ndim: " << gmm->NumGauss() << " " << gmm->Dim() << '\n'; 
+   
+   }
+
+
+   iteration++;
+  }
 }
 
 }  // end namespace kaldi

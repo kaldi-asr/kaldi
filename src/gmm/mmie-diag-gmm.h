@@ -105,7 +105,7 @@ class MmieDiagGmm {
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
 
-  BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
+//  BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
 
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(MmieDiagGmm);
