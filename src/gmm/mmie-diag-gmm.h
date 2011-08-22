@@ -70,16 +70,14 @@ class MmieDiagGmm {
   /// Computes the difference between the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed.
   void SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
-                            const AccumDiagGmm& den_acc,
-                            const MmieDiagGmmOptions& opts);
+                                      const AccumDiagGmm& den_acc,
+                                      const MmieDiagGmmOptions& opts);
 
   void Update(const MmieDiagGmmOptions &config,
               GmmFlagsType flags,
               DiagGmm *gmm,
               BaseFloat *obj_change_out,
               BaseFloat *count_out) const;
-
-  BaseFloat MmiObjective(const DiagGmm& gmm) const;
 
   // Accessors
   //const GmmFlagsType Flags() const { return flags_; }
