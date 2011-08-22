@@ -1,4 +1,4 @@
-// latbin/lattice-nbest.cc
+// rnn/rnn-rescore.cc
 
 // Copyright 2009-2011  Stefan Kombrink 
 
@@ -67,7 +67,8 @@ class RNN{
     realn Lambda_;
     const fst::SymbolTable* wordsym_;
 
-    int32 wordcnt_;
+    int32 ivcnt_;
+    int32 oovcnt_;
 
   protected:
     void KaldiToEigen(KaldiVector* in, VectorXr* out) {
@@ -89,7 +90,8 @@ class RNN{
     inline int32 HiddenSize() const { return V1_.rows(); }
     inline int32 ClassSize() const { return Cl_.rows(); }
 
-    inline int32 WordsProcessed() const { return wordcnt_; }
+    inline int32 IVProcessed() const { return ivcnt_; }
+    inline int32 OOVProcessed() const { return oovcnt_; }
 
     inline bool IsIV(int32 w) const { return w>=0; }
     inline bool IsOOV(int32 w) const { return !IsIV(w); }
@@ -154,10 +156,9 @@ class RNN{
       h_.setZero(HiddenSize());
       y_.setZero(VocabSize());
       cl_.setZero(ClassSize());       
-
-      //KALDI_LOG << "RNN model is loaded! ";
     };
 
+    // this is required to convert openfst symbol IDs to RNN IDs
     void SetLatticeSymbols(const fst::SymbolTable& symtab) {
         wordsym_=&symtab;
         int32 j,ii,oov=-1;
@@ -174,7 +175,6 @@ class RNN{
         } 
     }
 
-
     void Read(const string& filename) {
       bool binary;
       Input in(filename,&binary);
@@ -182,7 +182,7 @@ class RNN{
       in.Close();
     }
 
-    RNN(const string& filename) : wordcnt_(0)  {
+    RNN(const string& filename) : ivcnt_(0),oovcnt_(0)  {
       Read(filename);
     }
 
@@ -190,7 +190,6 @@ class RNN{
     }
 
     realn Propagate(int32 lastW,int32 w,VectorXr* hOut,const VectorXr& hIn) {
-      //KALDI_LOG<<int2word_[lastW]<<" - "<<int2word_[w];
       VectorXr h_ac; // temporary variables for helping optimization
 
       h_ac.noalias()=-U1_*hIn; // h(t)=-U1*h(t-1)
@@ -209,10 +208,9 @@ class RNN{
         // determine distribution of class of the predicted word
         // activate class part of the word layer (softmax)
         y_.segment(b,n).noalias()=VectorXr((W2_.middleRows(b,n)*(*hOut)).array().exp());
-        //KALDI_LOG<<cl_.sum()<<" "<<y_.segment(b,n).sum();
-        wordcnt_++;
+        ivcnt_++;
         return -log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
-      } else { KALDI_LOG<<"WARNING OOV!!! "<<w;return OOVPenalty(); };
+      } else { oovcnt_++; return OOVPenalty(); };
     }
 
 
@@ -231,23 +229,19 @@ class RNN{
     VectorXr h(HiddenSize());
     for (fst::MutableArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
       int32 w=intlat2intrnn[aiter.Value().olabel];  
-      //VectorXr h(HiddenSize());
       realn rnns=Propagate(lastW,w,&h,lasth);
       realn lms=aiter.Value().weight.Weight().Value1();
       realn ams=aiter.Value().weight.Weight().Value2();
-      realn lmcs=rnns*Lambda()+lms*(1.0-Lambda());//-log(Lambda()*rnns + (1-Lambda())*exp(-lms)); // interpolate linearly
+      realn lmcs=rnns*Lambda()+lms*(1.0-Lambda()); // linear interpolation of log scores
       
       CompactLatticeArc newarc = aiter.Value();
       CompactLatticeWeight newwgt(LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
       newarc.weight=newwgt;
       aiter.SetValue(newarc);
 
-      //KALDI_LOG<<" "<<int2word_[w]<<" "<<lms<<" "<<lmcs<<" "<<-log(rnns)<<" "<<ams;
-
       TreeTraverseRec(lat,aiter.Value().nextstate,h,w);
     }
   }
-
 };
 
 
@@ -267,18 +261,12 @@ int main(int argc, char *argv[]) {
     BaseFloat lambda = 0.75;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat oov_penalty = 11; // assumes vocabularies around 60k words 
-//    BaseFloat iv_penalty = 0;
-//    std::string text_file = "";
-//    bool no_oovs = false;
     RNN::int32 n = 10;
     
 
     po.Register("lambda", &lambda, "Weighting factor between 0 and 1 for the given RNN LM" );
-    //po.Register("write-as-text", &text_file, "TODO Dump the nbests in a text formatted file");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("oov-penalty", &oov_penalty, "A reasonable value is ln(vocab_size)" );
-    //po.Register("iv-penalty", &iv_penalty, "TODO Can be used to tune performance" );
-    //po.Register("no-oovs", &no_oovs, "TODO Will cause rescoring to abort in cases of OOV words!" ); 
     po.Register("n", &n, "Number of distinct paths >= 1");
     
     po.Read(argc, argv);
@@ -298,8 +286,7 @@ int main(int argc, char *argv[]) {
     if (!(word_syms = fst::SymbolTable::ReadText(wordsymtab_filename)))
       KALDI_EXIT << "Could not read symbol table from file " << wordsymtab_filename;
 
-    // Read as regular lattice-- this is the form we need it in for efficient
-    // pruning.
+    // read as regular lattice-- this is the form we need it in for efficient pruning.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     
     // Write as compact lattice.
@@ -318,6 +305,8 @@ int main(int argc, char *argv[]) {
     // set lambda/oov penalty
     myRNN.SetLambda(lambda); 
     myRNN.SetOOVPenalty(oov_penalty);
+
+    VectorXr h(myRNN.HiddenSize()); 
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
@@ -343,12 +332,13 @@ int main(int argc, char *argv[]) {
       CompactLattice nbest_clat;
       ConvertLattice(nbest_lat, &nbest_clat);
 
-      VectorXr h;
-      h.setZero(myRNN.HiddenSize());
+      // initialize the RNN
+      h.setZero(); myRNN.Propagate(0,0,&h,h);
 
-      myRNN.Propagate(0,0,&h,h);
+      // recompute LM scores  
       myRNN.TreeTraverse(&nbest_clat,h);
 
+      // write out the new lattice
       compact_lattice_writer.Write(key, nbest_clat);
       n_done++;
     }
@@ -356,7 +346,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Did N-best algorithm to " << n_done << " lattices with n = "
               << n << ", average actual #paths is "
               << (n_paths_out/(n_done+1.0e-20));
-    KALDI_LOG << "Done " << n_done << " utterances, " << myRNN.WordsProcessed() << " RNN computations!";
+    KALDI_LOG << "Done " << n_done << " utterances, " << myRNN.IVProcessed()+myRNN.OOVProcessed() << " RNN computations ("<<myRNN.OOVProcessed()<<" OOVs)!";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
