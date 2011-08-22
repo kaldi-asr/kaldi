@@ -211,8 +211,8 @@ class RNN{
         y_.segment(b,n).noalias()=VectorXr((W2_.middleRows(b,n)*(*hOut)).array().exp());
         //KALDI_LOG<<cl_.sum()<<" "<<y_.segment(b,n).sum();
         wordcnt_++;
-        return y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum();
-      } else { KALDI_LOG<<"WARNING OOV!!! "<<w;return exp(-OOVPenalty()); };
+        return -log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
+      } else { KALDI_LOG<<"WARNING OOV!!! "<<w;return OOVPenalty(); };
     }
 
 
@@ -228,13 +228,14 @@ class RNN{
   protected:
 
   void TreeTraverseRec(CompactLattice* lat, fst::StdFst::StateId i,const VectorXr& lasth,int32 lastW) {
+    VectorXr h(HiddenSize());
     for (fst::MutableArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
       int32 w=intlat2intrnn[aiter.Value().olabel];  
-      VectorXr h(HiddenSize());
+      //VectorXr h(HiddenSize());
       realn rnns=Propagate(lastW,w,&h,lasth);
       realn lms=aiter.Value().weight.Weight().Value1();
       realn ams=aiter.Value().weight.Weight().Value2();
-      realn lmcs=-log(Lambda()*rnns + (1-Lambda())*exp(-lms)); // interpolate linearly
+      realn lmcs=rnns*Lambda()+lms*(1.0-Lambda());//-log(Lambda()*rnns + (1-Lambda())*exp(-lms)); // interpolate linearly
       
       CompactLatticeArc newarc = aiter.Value();
       CompactLatticeWeight newwgt(LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
