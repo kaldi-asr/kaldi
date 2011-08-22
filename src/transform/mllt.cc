@@ -140,16 +140,7 @@ void MlltAccs::AccumulateFromPosteriors(const DiagGmm &gmm,
   double this_beta_ = 0.0;
   KALDI_ASSERT(rand_prune_ >= 0.0);
   for (int32 i = 0; i < posteriors.Dim(); i++) {  // for each mixcomp..
-    BaseFloat posterior = posteriors(i);
-    if (posterior < rand_prune_) {
-      KALDI_ASSERT(posterior >= 0.0);
-      // We preserve expectations by setting posterior to rand_prune_
-      // with probability (posterior / rand_prune_).
-      if (RandUniform() < (posterior / rand_prune_))
-        posterior = rand_prune_;
-      else
-        posterior = 0.0;
-    }
+    BaseFloat posterior = RandPrune(posteriors(i), rand_prune_);
     if (posterior == 0.0) continue;
     SubVector<BaseFloat> mean_invvar(means_invvars, i);
     SubVector<BaseFloat> inv_var(inv_vars, i);

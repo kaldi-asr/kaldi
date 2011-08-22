@@ -252,12 +252,12 @@ int ParseOptions::Read(int argc, const char* const argv[]) {
       }
     }
   }
-
+  
   if (print_args_) {  // if the user did not suppress this with --print-args = false....
+    std::ostringstream strm;
     for (int j = 0; j < argc; j++)
       std::cerr << Escape(argv[j]) << " ";
-    std::cerr << '\n';
-    std::cerr << std::flush;
+    std::cerr << '\n' << std::flush;
   }
   return i;
 }

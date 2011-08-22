@@ -89,24 +89,22 @@ int main(int argc, char *argv[]) {
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
         for (size_t i = 0; i < posterior.size(); i++) {
-          gpost[i].resize(posterior[i].size());
+          gpost[i].reserve(posterior[i].size());
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,  // transition identifier.
                 pdf_id = trans_model.TransitionIdToPdf(tid);
             BaseFloat weight = posterior[i][j].second;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
-            gpost[i][j].first = tid;
+            Vector<BaseFloat> this_post_vec;           
             BaseFloat like =
-                gmm.ComponentPosteriors(mat.Row(i), &(gpost[i][j].second));
-            gpost[i][j].second.Scale(weight);
-            if (rand_prune > 0.0) {
-              for (int32 i = 0; i < gpost[i][j].second.Dim(); i++) {
-                BaseFloat &post = gpost[i][j].second(i);
-                if (fabs(post) < rand_prune && post != 0.0)
-                  post = (post >= 0 ? 1.0 : -1.0) *
-                      (RandUniform() <= fabs(post)/rand_prune ? rand_prune : 0.0);
-              }
-            }
+                gmm.ComponentPosteriors(mat.Row(i), &this_post_vec);
+            this_post_vec.Scale(weight);
+            if (rand_prune > 0.0)
+              for (int32 k = 0; k < this_post_vec.Dim(); k++)
+                this_post_vec(k) = RandPrune(this_post_vec(k),
+                                             rand_prune);
+            if (!this_post_vec.IsZero())
+              gpost[i].push_back(std::make_pair(tid, this_post_vec));
             tot_like_this_file += like * weight;
             tot_weight += weight;
           }

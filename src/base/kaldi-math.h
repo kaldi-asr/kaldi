@@ -98,6 +98,17 @@ inline float RandGauss() {
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda);
 
+// This is a randomized pruning mechanism that preserves expectations,
+// that we typically use to prune posteriors.
+template<class Float>
+inline Float RandPrune(Float post, BaseFloat prune_thresh) {
+  KALDI_ASSERT(prune_thresh >= 0.0);
+  if (post == 0.0 || std::abs(post) >= prune_thresh)
+    return post;
+  return (post >= 0 ? 1.0 : -1.0) *
+      (RandUniform() <= fabs(post)/prune_thresh ? prune_thresh : 0.0);
+}
+
 static const double kMinLogDiffDouble = std::log(DBL_EPSILON);  // negative!
 static const float kMinLogDiffFloat = std::log(FLT_EPSILON);  // negative!
 

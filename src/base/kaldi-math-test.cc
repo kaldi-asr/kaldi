@@ -100,6 +100,18 @@ void UnitTestRand() {
         if (std::abs((float)sum) < 0.5*sqrt((double)j)*(maxint-minint)) break;
       }
     }
+    { // test RandPrune in basic way.
+      KALDI_ASSERT(RandPrune(1.1, 1.0) == 1.1);
+      KALDI_ASSERT(RandPrune(0.0, 0.0) == 0.0);
+      KALDI_ASSERT(RandPrune(-1.1, 1.0) == -1.1);
+      KALDI_ASSERT(RandPrune(0.0, 1.0) == 0.0);
+      KALDI_ASSERT(RandPrune(0.5, 1.0) >= 0.0);
+      KALDI_ASSERT(RandPrune(-0.5, 1.0) <= 0.0);
+      BaseFloat f = RandPrune(-0.5, 1.0);
+      KALDI_ASSERT(f == 0.0 || f == -1.0);
+      f = RandPrune(0.5, 1.0);
+      KALDI_ASSERT(f == 0.0 || f == 1.0);
+    }
   }
 }
 

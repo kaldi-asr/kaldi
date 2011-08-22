@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
       for (; !feature_reader.Done(); feature_reader.Next()) {
         string key = feature_reader.Key();
         if (!posteriors_reader.HasKey(key)) {
-          KALDI_WARN << "Did not find aligned transcription for utterance "
+          KALDI_WARN << "Did not find posteriors for utterance "
               << key;
           num_no_posterior++;
           continue;

@@ -71,11 +71,9 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < posterior.size(); i++) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first;
-            BaseFloat weight = posterior[i][j].second;
-            if (fabs(weight) < rand_prune && weight != 0.0)
-              weight = (weight >= 0 ? 1.0 : -1.0) *
-                  (RandUniform() <= fabs(weight)/rand_prune ? rand_prune : 0.0);
-            new_post[i].push_back(std::make_pair(tid, weight));
+            BaseFloat weight = RandPrune(posterior[i][j].second, rand_prune);
+            if (weight != 0.0)
+              new_post[i].push_back(std::make_pair(tid, weight));
           }
         }
         posterior_writer.Write(posterior_reader.Key(), new_post);

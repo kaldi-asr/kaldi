@@ -36,8 +36,10 @@ int main(int argc, char *argv[]) {
         " ali-to-post ark:1.ali ark:- | lda-acc 1.mdl \"ark:splice-feats scp:train.scp|\"  ark:- ldaacc.1\n";
 
     bool binary = true;
+    BaseFloat rand_prune = 0.0;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning threshold for posteriors");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -94,9 +96,11 @@ int main(int argc, char *argv[]) {
         SubVector<BaseFloat> feat(feats, i);
         for (size_t j = 0; j < post[i].size(); j++) {
           int32 tid = post[i][j].first;
-          BaseFloat weight = post[i][j].second;
-          int32 pdf = trans_model.TransitionIdToPdf(tid);
-          lda.Accumulate(feat, pdf, weight);
+          BaseFloat weight = RandPrune(post[i][j].second, rand_prune);
+          if (weight != 0.0) {
+            int32 pdf = trans_model.TransitionIdToPdf(tid);
+            lda.Accumulate(feat, pdf, weight);
+          }
         }
       }
       num_done++;
