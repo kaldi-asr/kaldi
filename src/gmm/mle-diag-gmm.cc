@@ -183,11 +183,14 @@ BaseFloat AccumDiagGmm::AccumulateFromDiag(const DiagGmm &gmm,
 }
 
 
+// Careful: this wouldn't be valid if it were used to update the
+// Gaussian weights.
 void AccumDiagGmm::SmoothStats(BaseFloat tau) {
   Vector<double> smoothing_vec(occupancy_);
   smoothing_vec.InvertElements();
   smoothing_vec.Scale(static_cast<double>(tau));
   smoothing_vec.Add(1.0);
+  // now smoothing_vec = (tau + occ) / occ
 
   mean_accumulator_.MulRowsVec(smoothing_vec);
   variance_accumulator_.MulRowsVec(smoothing_vec);
@@ -195,12 +198,22 @@ void AccumDiagGmm::SmoothStats(BaseFloat tau) {
 }
 
 
+// want to add tau "virtual counts" of each Gaussian from "src_acc"
+// to each Gaussian in this acc.
+// Careful: this wouldn't be valid if it were used to update the
+// Gaussian weights.
 void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
   KALDI_ASSERT(src_acc.NumGauss() == num_comp_ && src_acc.Dim() == dim_);
-  double tau_d = static_cast<double>(tau);
-  occupancy_.AddVec(tau_d, src_acc.occupancy_);
-  mean_accumulator_.AddMat(tau_d, src_acc.mean_accumulator_, kNoTrans);
-  variance_accumulator_.AddMat(tau_d, src_acc.variance_accumulator_, kNoTrans);
+  for (int32 i = 0; i < num_comp_; i++) {
+    if (src_acc.occupancy_(i) != 0.0) { // can only smooth if src was nonzero...
+      occupancy_(i) += tau;
+      mean_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                      src_acc.mean_accumulator_.Row(i));
+      variance_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                          src_acc.variance_accumulator_.Row(i));
+    } else
+      KALDI_WARN << "Could not smooth since source acc had zero occupancy.";
+  }
 }
 
 
