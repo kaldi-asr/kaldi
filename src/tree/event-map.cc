@@ -314,6 +314,7 @@ static bool GetTreeStructureInternal(
         if ((*leaf_parents)[leaf] != NULL) return false; // repeated leaf.
         (*leaf_parents)[leaf] = parent;
       } else {
+        nonleaf_nodes->push_back(child);
         (*nonleaf_parents)[child] = parent;
         queue.push_back(child);
       }
