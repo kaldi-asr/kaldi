@@ -70,19 +70,21 @@ BaseFloat AccumAmTiedDiagGmm::Accumulate(const AmTiedDiagGmm &model,
                                          BaseFloat frame_posterior) {
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < tied_gmm_accumulators_.size());  
   const TiedGmm &tied = model.GetTiedPdf(pdf_index);
+  int32 pdfid = tied.pdf_index();
+
+  KALDI_ASSERT(static_cast<size_t>(pdfid) < gmm_accumulators_.size());
   
-  KALDI_ASSERT(static_cast<size_t>(tied.pdf_index()) < gmm_accumulators_.size());
-    
-  Vector<BaseFloat> posteriors(per_frame_vars.ll[tied.pdf_index()]->Dim());
-  
-  // use the loglikelihoods from the per_frame_vars and the weights of the target
-  // pdf to compute the ll and the posteriors
-  tied.LogLikelihoods(*(per_frame_vars.ll[tied.pdf_index()]), &posteriors);
-  BaseFloat logl = posteriors.ApplySoftMax();
+  Vector<BaseFloat> posteriors;
+  BaseFloat logl = tied.ComponentPosteriors(
+                     per_frame_vars.c(pdfid), 
+                     *per_frame_vars.svq[pdfid],
+                     &posteriors);
+
+  // scale by frame posterior 
   posteriors.Scale(frame_posterior);
   
   // accumulate for codebook and tied pdf
-  AccumulateFromPosteriors(per_frame_vars.x, tied.pdf_index(), pdf_index, posteriors);
+  AccumulateFromPosteriors(per_frame_vars.x, pdfid, pdf_index, posteriors);
   
   return logl;
 }
@@ -95,18 +97,16 @@ BaseFloat AccumAmTiedDiagGmm::AccumulateForGmm(const AmTiedDiagGmm &model,
   const TiedGmm &tied = model.GetTiedPdf(pdf_index);
   
   KALDI_ASSERT(static_cast<size_t>(tied.pdf_index()) < gmm_accumulators_.size());
-  const DiagGmm &diag = model.GetPdf(tied.pdf_index());
+  Vector<BaseFloat> svq;
+  BaseFloat c = model.ComputePerFrameVars(data, &svq, tied.pdf_index());
 
-  Vector<BaseFloat> scores(diag.Dim());
-  Vector<BaseFloat> posteriors(diag.Dim());
+  Vector<BaseFloat> posteriors;
+  BaseFloat logl = tied.ComponentPosteriors(c, svq, &posteriors);
 
-  diag.LogLikelihoods(data, &scores);
-  tied.LogLikelihoods(scores, &posteriors);
-
-  BaseFloat logl = posteriors.ApplySoftMax();
+  // scale by frame posterior
   posteriors.Scale(frame_posterior);
   
-  /// dont forget to accumulate :)
+  // dont forget to accumulate :)
   AccumulateFromPosteriors(data, tied.pdf_index(), pdf_index, posteriors);
   
   return logl;
@@ -117,6 +117,7 @@ void AccumAmTiedDiagGmm::AccumulateFromPosteriors(
     int32 pdf_index,
     int32 tied_pdf_index,
     const VectorBase<BaseFloat> &posteriors) {
+  
   /// accumulate for codebook...
   gmm_accumulators_[pdf_index]->AccumulateFromPosteriors(data, posteriors);
   
@@ -200,7 +201,14 @@ void MleAmTiedDiagGmmUpdate(
   
   if (obj_change_out != NULL) *obj_change_out = 0.0;
   if (count_out != NULL) *count_out = 0.0;
-  
+ 
+  AmTiedDiagGmm *oldm = NULL;
+  if (config_tied.interpolate()) {
+    // make a copy of the model
+    oldm = new AmTiedDiagGmm();
+    oldm->CopyFromAmTiedDiagGmm(*model);
+  }
+ 
   BaseFloat tmp_obj_change, tmp_count;
   BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
             *p_count   = (count_out != NULL) ? &tmp_count : NULL;
@@ -226,6 +234,33 @@ void MleAmTiedDiagGmmUpdate(
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;
+  }
+
+  /// smooth new model with old: new <- wt*est + (1-est)old
+  if (config_tied.interpolate()) {
+    KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho=" << config_tied.interpolation_weight << ")...";
+
+    // smooth the weights for tied...
+    if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
+      KALDI_LOG << "...weights";
+      for (int32 i = 0; i < model->NumTiedPdfs(); ++i)
+        model->GetTiedPdf(i).SmoothWithTiedGmm(config_tied.interpolation_weight, &(oldm->GetTiedPdf(i)));
+    }
+
+    // ...and mean/var for codebooks
+    if ((flags & kGmmMeans) && config_tied.interpolate_means) {
+      KALDI_LOG << "...means";
+      for (int32 i = 0; i < model->NumPdfs(); ++i)
+        model->GetPdf(i).SmoothWithDiagGmm(config_tied.interpolation_weight, &(oldm->GetPdf(i)), kGmmMeans);
+    }
+
+    if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
+      KALDI_LOG << "...variances";
+      for (int32 i = 0; i < model->NumPdfs(); ++i)
+        model->GetPdf(i).SmoothWithDiagGmm(config_tied.interpolation_weight, &(oldm->GetPdf(i)), kGmmVariances);
+    }
+
+    delete oldm;
   }
 }
 

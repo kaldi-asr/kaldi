@@ -131,38 +131,50 @@ void AmTiedFullGmm::CopyFromAmTiedFullGmm(const AmTiedFullGmm &other) {
 }
 
 int32 AmTiedFullGmm::ComputeGconsts() {
-  int32 num_bad_diag = 0;
+  int32 num_bad = 0;
   for (std::vector<FullGmm*>::iterator itr = densities_.begin(),
       end = densities_.end(); itr != end; ++itr) {
-    num_bad_diag += (*itr)->ComputeGconsts();
+    num_bad += (*itr)->ComputeGconsts();
   }
   
-  int32 num_bad_tied = 0;
-  for (std::vector<TiedGmm*>::iterator itr = tied_densities_.begin(),
-      end = tied_densities_.end(); itr != end; ++itr) {
-    num_bad_tied += (*itr)->ComputeGconsts();
-  }
-  
-  if (num_bad_diag > 0)
-    KALDI_WARN << "Found " << num_bad_diag << " bad Gaussian components in codebooks";
-  if (num_bad_tied > 0)
-    KALDI_WARN << "Found " << num_bad_tied << " bad Gaussian components in tied densities";
+  if (num_bad > 0)
+    KALDI_WARN << "Found " << num_bad << " bad Gaussian components in codebooks";
 
-  return num_bad_tied + num_bad_diag;
+  return num_bad;
 }
 
 void AmTiedFullGmm::SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const {
-  per_frame_vars->x.Resize(dim_);
-  per_frame_vars->Resize(NumPdfs());
+  // init containers
+  per_frame_vars->Setup(dim_, NumPdfs());
+
+  // allocate the svqs
   for (int32 i = 0; i < NumPdfs(); ++i)
-    per_frame_vars->Resize(i, GetPdf(i).NumGauss());
+    per_frame_vars->ResizeSvq(i, GetPdf(i).NumGauss());
 }
 
-void AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
+void AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                         TiedGmmPerFrameVars *per_frame_vars) const {
   per_frame_vars->x.CopyFromVec(data);
-  for (int32 i = 0; i < NumPdfs(); ++i)
-    densities_[i]->LogLikelihoods(data, per_frame_vars->ll[i]);
+  for (int32 i = 0; i < NumPdfs(); ++i) 
+    per_frame_vars->c(i) = ComputePerFrameVars(data, per_frame_vars->svq[i], i);
+}
+
+BaseFloat AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
+                                            Vector<BaseFloat> *svq,
+                                            int32 pdfid) const {
+  // get loglikes
+  densities_[pdfid]->LogLikelihoods(data, svq);
+
+  // subtract log(weight) = log(1/NumGauss) = -log(NumGauss)
+  svq->Add(log(densities_[pdfid]->NumGauss()));
+
+  // normalize
+  BaseFloat c = svq->LogSumExp();
+  svq->Add(-c);
+  svq->ApplyExp();
+
+  // return offset
+  return  c;
 }
 
 void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {

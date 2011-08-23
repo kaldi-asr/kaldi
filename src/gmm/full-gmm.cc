@@ -19,6 +19,7 @@
 #include <limits>
 
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm.h"
 #include "util/stl-utils.h"
 
@@ -477,6 +478,34 @@ std::ostream & operator <<(std::ostream & out_stream,
                            const kaldi::FullGmm &gmm) {
   gmm.Write(out_stream, false);
   return out_stream;
+}
+
+void FullGmm::SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source->NumGauss());
+  KALDI_ASSERT(Dim() == source->Dim());
+  FullGmmNormal us(*this);
+  FullGmmNormal them(*source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(rho);
+    us.weights_.AddVec(1. - rho, them.weights_);
+    us.weights_.Scale(1. / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(rho);
+    us.means_.AddMat(1. - rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    for (int32 i = 0; i < NumGauss(); ++i) {
+      us.vars_[i].Scale(rho);
+      us.vars_[i].AddSp(1. - rho, them.vars_[i]);
+    }
+  }
+
+  us.CopyToFullGmm(this);
+  ComputeGconsts();
 }
 
 void FullGmm::Read(std::istream &in_stream, bool binary) {

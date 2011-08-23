@@ -35,45 +35,62 @@ void TiedGmm::Setup(int32 pdf_index, int32 nmix) {
   
   /// init weights with uniform distribution
   weights_.Set(1./nmix);
-  
-  valid_gconsts_ = false;
 }
 
 void TiedGmm::CopyFromTiedGmm(const TiedGmm &copy) {
   Setup(copy.pdf_index_, copy.weights_.Dim());
-  gconsts_.CopyFromVec(copy.gconsts_);
   weights_.CopyFromVec(copy.weights_);
-  valid_gconsts_ = copy.valid_gconsts_;
 }
 
-int32 TiedGmm::ComputeGconsts() {
-  int32 num_mix = NumGauss();
-  int32 num_bad = 0;
-  gconsts_.Resize(num_mix);
+// Compute the log-likelihood of the p(x|i) given the precomputed svq
+BaseFloat TiedGmm::LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) const {
+  KALDI_ASSERT(svq.Dim() == weights_.Dim());
+
+  // log p(x|i) = log(w_i^T v) + c, where c is the offset from the soft vector quantizer
+  BaseFloat logl = log(VecVec(weights_, svq)) + c;
+
+  if (KALDI_ISNAN(logl) || KALDI_ISINF(logl))
+    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
+
+  return logl;
+}
+
+
+// Compute log-likelihood of p(x|i) given the precomputed svq, also provide per-Gaussian posteriors
+BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
+                                       Vector<BaseFloat> *posteriors) const {
+  KALDI_ASSERT(posteriors != NULL);
+
+  // compute pre-gaussian posterior
+  posteriors->Resize(svq.Dim());
+  posteriors->CopyFromVec(svq);
+  posteriors->MulElements(weights_);
   
-  for (int32 mix = 0; mix < num_mix; mix++) {
-    KALDI_ASSERT(weights_(mix) >= 0);  // Cannot have negative weights.
+  // log-likelihood...
+  BaseFloat log_sum = posteriors->Sum();
 
-    // the codebook weights are assumed to be uniform, so subtract these before adding the actual weight
-    BaseFloat gc = log(weights_(mix)) - std::log(num_mix);  // May be -inf if weights == 0
+  // make posteriors
+  posteriors->Scale(1. / log_sum);
 
-    if (KALDI_ISNAN(gc)) {  // negative infinity is OK but NaN is not acceptable
-      KALDI_ERR << "At component "  << mix
-                << ", not a number in gconst computation";
-    }
-    if (KALDI_ISINF(gc)) {
-      num_bad++;
-      // If positive infinity, make it negative infinity.
-      // Want to make sure the answer becomes -inf in the end, not NaN.
-      if (gc > 0) gc = -gc;
-    }
-    gconsts_(mix) = gc;
-  }
+  // add svq offset
+  log_sum += c;
 
-  valid_gconsts_ = true;
-  return num_bad;
+  if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
+    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
+  
+  return log_sum;
 }
 
+// weights <- rho*weights + (1.-rho)source->weights, renorm weights afterwards
+void TiedGmm::SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source) {
+  KALDI_ASSERT(NumGauss() == source->NumGauss());
+  KALDI_ASSERT(rho > 0. && rho < 1.);
+  weights_.Scale(rho);
+  weights_.AddVec(1. - rho, source->weights_);
+  weights_.Scale(1. / weights_.Sum());
+}
+
+/*
 BaseFloat TiedGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &scores,
                                           int32 comp_id) const {
   if (static_cast<int32>(scores.Dim()) != weights_.Dim()) {
@@ -86,18 +103,7 @@ BaseFloat TiedGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &scores,
   return scores(comp_id) + gconsts_(comp_id); 
 }
 
-BaseFloat TiedGmm::LogLikelihood(const VectorBase<BaseFloat> &scores) const {
-  if (!valid_gconsts_)
-    KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
-  Vector<BaseFloat> loglikes;
-  LogLikelihoods(scores, &loglikes);
-  BaseFloat log_sum = loglikes.LogSumExp();
-  if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
-    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-  return log_sum;
-}
-
-void TiedGmm::LogLikelihoods(const VectorBase<BaseFloat> &scores,
+void TiedGmm::LogLikelihoods(const VectorBase<BaseFloat> &svq,
                              Vector<BaseFloat> *loglikes) const {
   loglikes->Resize(gconsts_.Dim(), kUndefined);
   loglikes->CopyFromVec(gconsts_);
@@ -132,37 +138,13 @@ void TiedGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &scores,
     }
   }
 }
-
-// Gets likelihood of data given this. Also provides per-Gaussian posteriors.
-BaseFloat TiedGmm::ComponentPosteriors(const VectorBase<BaseFloat> &scores,
-                                       Vector<BaseFloat> *posterior) const {
-  if (!valid_gconsts_)
-    KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
-  if (posterior == NULL) 
-    KALDI_ERR << "NULL pointer passed as return argument.";
-
-  Vector<BaseFloat> loglikes;
-  LogLikelihoods(scores, &loglikes);
-  BaseFloat log_sum = loglikes.ApplySoftMax();
-  if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
-    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-  if (posterior->Dim() != loglikes.Dim())
-    posterior->Resize(loglikes.Dim());
-  posterior->CopyFromVec(loglikes);
-  return log_sum;
-}
-
+*/
 void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
-  if (!valid_gconsts_)
-    KALDI_ERR << "Must call ComputeGconsts() before writing the model.";
-
   WriteMarker(out_stream, binary, "<TIEDGMM>");
   if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<PDF_INDEX>");
   WriteBasicType(out_stream, binary, pdf_index_);
   if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<GCONSTS>");
-  gconsts_.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "</TIEDGMM>");
@@ -188,22 +170,15 @@ void TiedGmm::Read(std::istream &in_stream, bool binary) {
   ReadBasicType(in_stream, binary, &pdf_index_);
   
   ReadMarker(in_stream, binary, &marker);
-  if (marker == "<GCONSTS>") {  // The gconsts are optional.
-    gconsts_.Read(in_stream, binary);
-    ExpectMarker(in_stream, binary, "<WEIGHTS>");
-  } else {
-    if (marker != "<WEIGHTS>")
-      KALDI_ERR << "TiedGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
-                << marker;
-  }
+  if (marker != "<WEIGHTS>")
+    KALDI_ERR << "TiedGmm::Read, expected <WEIGHTS> got "
+              << marker;
   weights_.Read(in_stream, binary);
   // ExpectMarker(in_stream, binary, "<TiedDiagGMM>");
   ReadMarker(in_stream, binary, &marker);
   // <DiagGMMEnd> is for compatibility. Will be deleted later
   if (marker != "</TIEDGMM>")
     KALDI_ERR << "Expected </TIEDGMM>, got " << marker;
-
-  ComputeGconsts();  // safer option than trusting the read gconsts
 }
 
 std::istream & operator >>(std::istream & rIn, kaldi::TiedGmm &gmm) {

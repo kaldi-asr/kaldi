@@ -27,38 +27,47 @@
 namespace kaldi {
 
 /** \struct TiedGmmPerFrameVars
- *  Holds the per-frame derived variables, e.g. the codebook loglikelihoods.
+ *  Holds the per-frame derived variables, e.g. the posteriors of the soft vector quantizer (svq)
  */
 struct TiedGmmPerFrameVars {
-  TiedGmmPerFrameVars() { }
+  TiedGmmPerFrameVars() { 
+    // nop
+  }
   
   ~TiedGmmPerFrameVars() {
-    DeletePointers(&ll);
+    DeletePointers(&svq);
+  }
+
+  void Setup(int32 dim, int32 num_gauss) {
+    x.Resize(dim);
+    c.Resize(num_gauss);
+
+    if (svq.size() > 0)
+      DeletePointers(&svq);
+
+    svq.resize(num_gauss, NULL);
   }
     
-  /// Resize the loglikelihood vector to have num_pdf entries (but initialized with NULL)
-  void Resize(int32 num_pdfs) {
-    if (ll.size() > 0)
-      DeletePointers(&ll);
-    
-    ll.resize(num_pdfs, NULL);
-  }
-  
   /// Resize the loglikelihood vector of the given pdf
-  void Resize(int32 pdf_index, int32 num_gauss) {
-    if (ll[pdf_index] != NULL)
-      delete ll[pdf_index];
+  void ResizeSvq(int32 pdf_index, int32 num_gauss) {
+    if (svq[pdf_index] != NULL)
+      delete svq[pdf_index];
     
-    ll[pdf_index] = new Vector<BaseFloat>(num_gauss);
+    svq[pdf_index] = new Vector<BaseFloat>(num_gauss);
   }
-  
+ 
   void Clear() {
-    DeletePointers(&ll);
+    DeletePointers(&svq);
   }
   
+  /// data vector associated with svq values
   Vector<BaseFloat> x;
-  
-  std::vector<Vector<BaseFloat> *> ll;
+
+  /// offsets of the svq
+  Vector<BaseFloat> c;
+
+  /// soft vector quantizer -- store the posteriors of the codebook(s)
+  std::vector<Vector<BaseFloat> *> svq;
 };
 
 /** \class TiedGmm 
@@ -67,7 +76,7 @@ struct TiedGmmPerFrameVars {
 class TiedGmm {
  public:
   /// Empty constructor.
-  TiedGmm() : valid_gconsts_(false) { }
+  TiedGmm() { }
 
   /// Resizes arrays to this dim. Does not initialize data.
   void Setup(int32 pdf_index, int32 nMix);
@@ -79,12 +88,21 @@ class TiedGmm {
   void CopyFromTiedGmm(const TiedGmm &copy);
 
   /// Returns the log-likelihood of a data point (vector) given the tied GMM component scores
-  /// caveat: The argument contains the codebook component scores, /NOT/ the data!
-  BaseFloat LogLikelihood(const VectorBase<BaseFloat> &scores) const;
+  /// caveat: The argument contains the svq scores, /NOT/ the data!
+  BaseFloat LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) const;
 
+  /// Computes the posterior probabilities of all Gaussian components and returns loglike
+  /// caveat: The argument contains the svq scores, /NOT/ the data!
+  BaseFloat ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
+                                Vector<BaseFloat> *posteriors) const;
+
+  /// *this = rho*this + (1-rho)source
+  void SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source);
+
+/*
   /// Outputs the per-component log-likelihoods given the tied GMM component scores
 /// caveat: The argument contains the codebook component scores, /NOT/ the data!
-  void LogLikelihoods(const VectorBase<BaseFloat> &scores,
+  void LogLikelihoods(const VectorBase<BaseFloat> &svq,
                       Vector<BaseFloat> *loglikes) const;
 
   /// Outputs the per-component log-likelihoods of a subset
@@ -96,31 +114,18 @@ class TiedGmm {
   void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &scores,
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;
-
+*/
   
-  /// Computes the posterior probabilities of all Gaussian components
-  /// caveat: The argument contains the codebook component scores, /NOT/ the data!
-  BaseFloat ComponentPosteriors(const VectorBase<BaseFloat> &scores,
-                                Vector<BaseFloat> *posteriors) const;
-
+/*
   /// Computes the log-likelihood of a data point given a single Gaussian
   /// component. NOTE: Currently we make no guarantees about what happens if
   /// one of the variances is zero.
-  BaseFloat ComponentLogLikelihood(const VectorBase<BaseFloat> &scores,
+  BaseFloat ComponentLogLikelihood(const VectorBase<BaseFloat> &svq,
                                    int32 comp_id) const;
-
-  /// Sets the gconsts.  Returns the number that are "invalid" e.g. because of
-  /// zero weights or variances.
-  int32 ComputeGconsts();
+*/
 
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
-
-  /// Const accessors
-  const Vector<BaseFloat>& gconsts() const {
-    KALDI_ASSERT(valid_gconsts_);
-    return gconsts_;
-  }
 
   /// Const accessors
   const Vector<BaseFloat>& weights() const { return weights_; }
@@ -138,8 +143,6 @@ class TiedGmm {
 
  private:
   int32 pdf_index_;            ///< index of the respective codebook (within the AM)
-  Vector<BaseFloat> gconsts_; ///< This is actually log(weight) - log(1/nMix), to fix the codebook's gconsts_
-  bool valid_gconsts_;        ///< Recompute gconsts_ if false
   Vector<BaseFloat> weights_; ///< weights (not log).
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(TiedGmm);

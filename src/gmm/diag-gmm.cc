@@ -22,7 +22,9 @@
 #include <vector>
 
 #include "gmm/diag-gmm.h"
+#include "gmm/diag-gmm-normal.h"
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
 
 namespace kaldi {
 
@@ -498,6 +500,63 @@ void DiagGmm::RemoveComponents(const std::vector<int32> &gauss_in,
   }
 }
 
+void DiagGmm::SmoothWithDiagGmm(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source->NumGauss());
+  KALDI_ASSERT(Dim() == source->Dim());
+
+  DiagGmmNormal us(*this);
+  DiagGmmNormal them(*source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(rho);
+    us.weights_.AddVec(1. - rho, them.weights_);
+    us.weights_.Scale(1. / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(rho);
+    us.means_.AddMat(1. - rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    us.vars_.Scale(rho);
+    us.vars_.AddMat(1. - rho, them.vars_);
+  }
+
+  us.CopyToDiagGmm(this);
+  ComputeGconsts();
+}
+
+void DiagGmm::SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source->NumGauss());
+  KALDI_ASSERT(Dim() == source->Dim());
+  DiagGmmNormal us(*this);
+  FullGmmNormal them(*source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(rho);
+    us.weights_.AddVec(1. - rho, them.weights_);
+    us.weights_.Scale(1. / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(rho);
+    us.means_.AddMat(1. - rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    for (int32 i = 0; i < NumGauss(); ++i) {
+      us.vars_.Scale(rho);
+      Vector<double> diag(Dim());
+      for (int32 j = 0; j < Dim(); ++j)
+        diag(j) = them.vars_[i](j, j);
+      us.vars_.Row(i).AddVec(1. - rho, diag);
+    }
+  }
+
+  us.CopyToDiagGmm(this);
+  ComputeGconsts();
+}
 
 void DiagGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!valid_gconsts_)

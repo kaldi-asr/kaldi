@@ -69,6 +69,11 @@ class AmTiedFullGmm {
   /// This needs to be called for each frame prior to any likelihood computation
   void ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
                            TiedGmmPerFrameVars *per_frame_vars) const;
+  
+  /// This computes the individual codebook per frame variables (used by above function)
+  BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
+                               Vector<BaseFloat> *svq,
+                               int32 pdfid) const;
 
   BaseFloat LogLikelihood(const TiedGmmPerFrameVars &per_frame_vars,
                           const int32 pdf_index) const;
@@ -102,7 +107,11 @@ inline BaseFloat AmTiedFullGmm::LogLikelihood(
     const TiedGmmPerFrameVars &per_frame_vars,
     const int32 pdf_index) const {
   TiedGmm *tied = tied_densities_[pdf_index];
-  return tied->LogLikelihood(*per_frame_vars.ll[tied->pdf_index()]);
+
+  int32 pdfid = tied->pdf_index();
+  Vector<BaseFloat> *svq = per_frame_vars.svq[pdfid];
+
+  return tied->LogLikelihood(per_frame_vars.c(pdfid), *svq);
 }
 
 inline FullGmm& AmTiedFullGmm::GetPdf(int32 pdf_index) {

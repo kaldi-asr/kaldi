@@ -133,7 +133,9 @@ GmmFlagsType AccumTiedGmm::AugmentFlags(GmmFlagsType f) {
 BaseFloat MlObjective(const TiedGmm &tied, const AccumTiedGmm &tiedgmm_acc) {
   // use the occupancy of the tied pdf
   Vector<BaseFloat> occ_bf(tiedgmm_acc.occupancy()); 
-  return VecVec(occ_bf, tied.gconsts());
+  Vector<BaseFloat> logwt(tied.weights());
+  logwt.ApplyLog();
+  return VecVec(occ_bf, logwt);
 }
 
 void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
@@ -159,7 +161,6 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
     KALDI_WARN << "Total occupancy of this TiedGmm too small, skipping weight update!";
   } else {
     // remember old objective value
-    tied->ComputeGconsts();
     BaseFloat obj_old = MlObjective(*tied, tiedgmm_acc);
 
     // update weights
@@ -195,7 +196,6 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
     }
   
     // compute new objective value
-    tied->ComputeGconsts();
     BaseFloat obj_new = MlObjective(*tied, tiedgmm_acc);
   
     if (obj_change_out) 

@@ -41,7 +41,6 @@ class AccumAmTiedDiagGmm {
   void SetZero(GmmFlagsType flags);
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
-  /// This does not work with multiple feature transforms.
   BaseFloat Accumulate(const AmTiedDiagGmm &model,
                        const TiedGmmPerFrameVars &per_frame_vars,
                        int32 pdf_index, 

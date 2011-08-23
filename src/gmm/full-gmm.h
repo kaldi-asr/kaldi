@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
+#include "gmm/model-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
 
@@ -81,6 +82,8 @@ class FullGmm {
   void Merge(int32 target_components);
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
+
+  void SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const { return gconsts_; }

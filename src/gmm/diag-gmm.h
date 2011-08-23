@@ -22,6 +22,7 @@
 #include<vector>
 
 #include "base/kaldi-common.h"
+#include "model-common.h"
 #include "matrix/matrix-lib.h"
 
 namespace kaldi {
@@ -93,6 +94,9 @@ class DiagGmm {
 
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
+
+  void SmoothWithDiagGmm(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags = kGmmAll); 
+  void SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll); 
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const {
