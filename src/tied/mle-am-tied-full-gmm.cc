@@ -215,7 +215,7 @@ void MleAmTiedFullGmmUpdate(
             *p_count   = (count_out != NULL) ? &tmp_count : NULL;
 
   /// reestimate the codebooks
-  for (size_t i = 0; i < acc.NumFullAccs(); i++) {
+  for (int32 i = 0; i < acc.NumFullAccs(); i++) {
     // modify flags by enforcing no weight update
     MleFullGmmUpdate(config_full, acc.GetFullAcc(i), flags & ~kGmmWeights, &(model->GetPdf(i)), 
         p_obj, p_count);
@@ -228,16 +228,23 @@ void MleAmTiedFullGmmUpdate(
   
   if (flags & kGmmWeights) {
     /// reestimate the tied gmms
-    for (size_t i = 0; i < acc.NumTiedAccs(); i++) {
+    BaseFloat sum_tied_obj = 0, sum_tied_count = 0;
+    for (int32 i = 0; i < acc.NumTiedAccs(); i++) {
       MleTiedGmmUpdate(config_tied, acc.GetTiedAcc(i), flags, &(model->GetTiedPdf(i)), 
           p_obj, p_count);
 
-      KALDI_LOG << "MleTiedGmmUpdate tied-pdf(" << i << ") delta-obj=" << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
+      KALDI_VLOG(1) << "MleTiedGmmUpdate tied-pdf(" << i << ") delta-obj=" << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
+
+      sum_tied_obj += tmp_obj_change;
+      sum_tied_count += tmp_count;
 
       if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
       if (count_out != NULL) *count_out += tmp_count;
     }
-  }
+
+    KALDI_LOG << "MleTiedGmmUpdate after " << acc.NumTiedAccs() << " delta-obj=" << (sum_tied_obj/sum_tied_count) << " count=" << sum_tied_count;
+  } else
+    KALDI_LOG << "No weight update for tied states as requested by flags.";
 
   /// smooth new model with old: new <- wt*est + (1-est)old
   if (config_tied.interpolate()) {
