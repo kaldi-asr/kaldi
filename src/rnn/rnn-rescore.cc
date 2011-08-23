@@ -38,12 +38,11 @@ using namespace std;
 using namespace kaldi;
 
 // define if float or doubles are used
-// realn->BaseFloat
-typedef float realn;
 typedef MatrixXf MatrixXr;
 typedef VectorXf VectorXr;
-typedef kaldi::Matrix<realn> KaldiMatrix;
-typedef kaldi::Vector<realn> KaldiVector;
+
+typedef kaldi::Matrix<BaseFloat> KaldiMatrix;
+typedef kaldi::Vector<BaseFloat> KaldiVector;
 
 class RNN{
   public:
@@ -63,8 +62,8 @@ class RNN{
     map<int32,int32> class2minint_,class2maxint_; // determines the range of a class of words in the output layer
 
     // others...
-    realn OOVPenalty_;
-    realn Lambda_;
+    BaseFloat OOVPenalty_;
+    BaseFloat Lambda_;
     const fst::SymbolTable* wordsym_;
 
     int32 ivcnt_;
@@ -95,11 +94,11 @@ class RNN{
     inline bool IsIV(int32 w) const { return w>=0; }
     inline bool IsOOV(int32 w) const { return !IsIV(w); }
 
-    realn OOVPenalty() const { return OOVPenalty_; }
-    void SetOOVPenalty( realn oovp ) { OOVPenalty_=oovp; }
+    BaseFloat OOVPenalty() const { return OOVPenalty_; }
+    void SetOOVPenalty( BaseFloat oovp ) { OOVPenalty_=oovp; }
 
-    realn Lambda() const { return Lambda_; }
-    void SetLambda(realn l) { Lambda_=l; }
+    BaseFloat Lambda() const { return Lambda_; }
+    void SetLambda(BaseFloat l) { Lambda_=l; }
 
     void Read(istream& in, bool binary) {
       KaldiMatrix V1,U1,W2,Cl;
@@ -189,7 +188,7 @@ class RNN{
     virtual ~RNN() {
     }
 
-    realn Propagate(int32 lastW,int32 w,VectorXr* hOut,const VectorXr& hIn) {
+    BaseFloat Propagate(int32 lastW,int32 w,VectorXr* hOut,const VectorXr& hIn) {
       VectorXr h_ac; // temporary variables for helping optimization
 
       h_ac.noalias()=-U1_*hIn; // h(t)=-U1*h(t-1)
@@ -229,10 +228,10 @@ class RNN{
     VectorXr h(HiddenSize());
     for (fst::MutableArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
       int32 w=intlat2intrnn[aiter.Value().olabel];  
-      realn rnns=Propagate(lastW,w,&h,lasth);
-      realn lms=aiter.Value().weight.Weight().Value1();
-      realn ams=aiter.Value().weight.Weight().Value2();
-      realn lmcs=rnns*Lambda()+lms*(1.0-Lambda()); // linear interpolation of log scores
+      BaseFloat rnns=Propagate(lastW,w,&h,lasth);
+      BaseFloat lms=aiter.Value().weight.Weight().Value1();
+      BaseFloat ams=aiter.Value().weight.Weight().Value2();
+      BaseFloat lmcs=rnns*Lambda()+lms*(1.0-Lambda()); // linear interpolation of log scores
       
       CompactLatticeArc newarc = aiter.Value();
       CompactLatticeWeight newwgt(LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
