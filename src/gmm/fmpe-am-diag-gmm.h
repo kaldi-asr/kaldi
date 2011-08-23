@@ -24,6 +24,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
 #include "gmm/mmie-diag-gmm.h"
+#include "gmm/ebw-diag-gmm.h"
 
 namespace kaldi {
 
@@ -125,13 +126,10 @@ class FmpeAccumModelDiff {
   /// the MPE training, including the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed,
   /// which using mle_acc.
+  void ComputeModelParaDiff(const DiagGmm& diag_gmm,
+                              const AccumEbwDiagGmm& ebw_acc,
+                              const AccumDiagGmm& mle_acc);
 
-  // And change the name of this function to Compute()
-  void AccumulateFromMpeStats(const DiagGmm& diag_gmm,
-                              const AccumDiagGmm& num_acc, // AccumEbwDiagGmm for first two.
-                              const AccumDiagGmm& den_acc,
-                              const AccumDiagGmm& mle_acc,
-                              const MmieDiagGmmOptions& opts);
 
  private:
   int32 dim_;
@@ -184,15 +182,24 @@ class FmpeAccs {
 
   /// Compute the context expansion high dimension feature
   /// The high dimension offset feature with the context expansion: "ht";
-  /// the Map key is the context index, and each value of the key
-  /// is the relative context's offset feature, which stored as the pair,
-  /// including the used gaussian index and the corresponding offset feature
+  /// the vector "ht" store the expanded offset feature corresponding
+  /// each context. And each element of "ht" is the relative context's
+  /// offset feature, which stored as the pair, including the used
+  /// gaussian index and the corresponding offset feature
   /// vector. This structure is designed for the sparse vector ht.
   /// dim is [nContExp * nGaussian * (fea_dim + 1)]
   /// "offset_win" stores the current corresponding offset features
   /// which are used to compute "ht"
   void ComputeContExpOffsetFeature(
-       const std::vector<std::vector<std::pair<int32, Vector<double> > > > &offset_win,
+       const std::vector<std::vector<std::pair<int32, Vector<double> > >* > &offset_win,
+       std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const;
+
+  /// obtain the current needed context expension high dimension feature using
+  /// the whole file offset features as the inputs which is indexed
+  /// by the current frame's number frame_index
+  void ComputeHighDimemsionFeature(
+       const std::vector<std::vector<std::pair<int32, Vector<double> > > > &whole_file_offset_feat,
+       int32 frame_index,
        std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const;
 
   /// Prject the high dimension features down to the dimension of the original
@@ -211,14 +218,21 @@ class FmpeAccs {
          Vector<double> *fea_new) const;
 
   /// Accumulate the direct differentials
-  void AccumulateDirectDiffFromDiag(const DiagGmm &gmm,
+  void AccumulateDirectDiffFromPosteriors(const DiagGmm &gmm,
                                     const VectorBase<BaseFloat> &data,
-                                    BaseFloat frame_posterior,
+                                    const VectorBase<BaseFloat> &posteriors,
                                     Vector<double> *direct_diff);
 
-  /// Accumulate the direct differentials
+  /// Accumulate the indirect differentials from posteriors
+  void AccumulateInDirectDiffFromPosteriors(const DiagGmm &gmm,
+                                      const FmpeAccumModelDiff &fmpe_diaggmm_diff_acc,
+                                      const VectorBase<BaseFloat> &data,
+                                      const VectorBase<BaseFloat> &posteriors,
+                                      Vector<double> *indirect_diff);
+
+  /// Accumulate the indirect differentials from a DiagGmm model
   void AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
-                                      const FmpeAccumModelDiff fmpe_diaggmm_diff_acc,
+                                      const FmpeAccumModelDiff &fmpe_diaggmm_diff_acc,
                                       const VectorBase<BaseFloat> &data,
                                       BaseFloat frame_posterior,
                                       Vector<double> *indirect_diff);
@@ -310,7 +324,7 @@ class FmpeUpdater {
 
   /// compute the average standard deviation of gaussians
   /// in the current AmDiagGmm set
-  void ComputeAvgStandartDeviation(const AmDiagGmm &am);
+  void ComputeAvgStandardDeviation(const AmDiagGmm &am);
 
   /// Update the projection matrix M
   void Update(const FmpeAccs &accs,

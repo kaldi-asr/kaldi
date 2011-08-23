@@ -42,91 +42,57 @@ void FmpeAccumModelDiff::SetZero() {
   variance_diff_accumulator_.SetZero();
 }
 
-void FmpeAccumModelDiff::AccumulateFromMpeStats(const DiagGmm& diag_gmm,
-							const AccumDiagGmm& num_acc,
-                            const AccumDiagGmm& den_acc,
-							const AccumDiagGmm& mle_acc,
-                            const MmieDiagGmmOptions& opts) {
-  KALDI_ASSERT(num_acc.NumGauss() == num_comp_ && num_acc.Dim() == dim_);
-  KALDI_ASSERT(den_acc.NumGauss() == num_comp_ && den_acc.Dim() == dim_);
+void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
+                                              const AccumEbwDiagGmm& ebw_acc,
+                                              const AccumDiagGmm& mle_acc) {
+  KALDI_ASSERT(ebw_acc.NumGauss() == num_comp_ && ebw_acc.Dim() == dim_);
   KALDI_ASSERT(mle_acc.NumGauss() == num_comp_ && mle_acc.Dim() == dim_);
 
   Matrix<double> mean_diff_tmp(num_comp_, dim_);
-  Matrix<double> means_tmp(num_comp_, dim_);
-  Matrix<double> vars_tmp(num_comp_, dim_);
-  Vector<double> occ_tmp(num_comp_);
+  Matrix<double> var_diff_tmp(num_comp_, dim_);
+  Matrix<double> mat_tmp(num_comp_, dim_);
+  Vector<double> occ_diff(num_comp_);
+  Matrix<double> means_invvars(num_comp_, dim_);
+  Matrix<double> inv_vars(num_comp_, dim_);
 
+  occ_diff.CopyFromVec(ebw_acc.num_occupancy());
+  occ_diff.AddVec(-1.0, ebw_acc.den_occupancy());
+
+  means_invvars.CopyFromMat(diag_gmm.means_invvars(), kNoTrans);
+  inv_vars.CopyFromMat(diag_gmm.inv_vars(), kNoTrans);
   /// compute the means differentials first
-  diag_gmm.GetMeans(&means_tmp);
-  occ_tmp.CopyFromVec(num_acc.occupancy());
-  occ_tmp.AddVec(-1.0, den_acc.occupancy());
-  means_tmp.MulRowsVec(occ_tmp);
-  mean_diff_tmp.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
-  mean_diff_tmp.AddMat(-1.0, den_acc.mean_accumulator(), kNoTrans);
-  mean_diff_tmp.AddMat(-1.0, means_tmp, kNoTrans);
-  diag_gmm.GetVars(&vars_tmp);
-  means_tmp.DivElements(vars_tmp);
+  mean_diff_tmp.CopyFromMat(ebw_acc.mean_accumulator(), kNoTrans);
+  mean_diff_tmp.MulElements(inv_vars);
+
+  mat_tmp.CopyFromMat(means_invvars, kNoTrans);
+  mat_tmp.MulRowsVec(occ_diff);
+
+  mean_diff_tmp.AddMat(-1.0, mat_tmp, kNoTrans);
 
   /// compute the means differetials
-  mean_diff_accumulator_.CopyFromMat(means_tmp, kNoTrans);
+  mean_diff_accumulator_.CopyFromMat(mean_diff_tmp, kNoTrans);
 
   /// compute the vars differentials second
-  /// compute the variance of the num/den statistics around the current mean
-  Matrix<double> svars_means_num(num_comp_, dim_);
-  Matrix<double> svars_means_den(num_comp_, dim_);
-  Matrix<double> mat_tmp(num_comp_, dim_);
-  Vector<double> vec_tmp(num_comp_);
+  var_diff_tmp.CopyFromMat(ebw_acc.variance_accumulator(), kNoTrans);
+  var_diff_tmp.MulElements(inv_vars);
+  var_diff_tmp.MulElements(inv_vars);
 
-  /// the variance around the num stats
-  svars_means_num.CopyFromMat(num_acc.variance_accumulator(), kNoTrans);
-  diag_gmm.GetMeans(&mat_tmp);
-  mat_tmp.MulElements(num_acc.mean_accumulator());
-  mat_tmp.Scale(2.0);
-  svars_means_num.AddMat(-1.0, mat_tmp, kNoTrans);
-  diag_gmm.GetMeans(&mat_tmp);
-  mat_tmp.ApplyPow(2.0);
-  mat_tmp.MulRowsVec(num_acc.occupancy());
-  svars_means_num.AddMat(1.0, mat_tmp, kNoTrans);
-  vec_tmp.CopyFromVec(num_acc.occupancy());
-  vec_tmp.InvertElements();
-  svars_means_num.MulRowsVec(vec_tmp);
+  mat_tmp.CopyFromMat(ebw_acc.mean_accumulator(), kNoTrans);
+  mat_tmp.MulElements(inv_vars);
+  mat_tmp.MulElements(means_invvars);
 
-  /// the variance around the den stats
-  svars_means_den.CopyFromMat(den_acc.variance_accumulator(), kNoTrans);
-  diag_gmm.GetMeans(&mat_tmp);
-  mat_tmp.MulElements(den_acc.mean_accumulator());
-  mat_tmp.Scale(2.0);
-  svars_means_den.AddMat(-1.0, mat_tmp, kNoTrans);
-  diag_gmm.GetMeans(&mat_tmp);
-  mat_tmp.ApplyPow(2.0);
-  mat_tmp.MulRowsVec(den_acc.occupancy());
-  svars_means_den.AddMat(1.0, mat_tmp, kNoTrans);
-  vec_tmp.CopyFromVec(den_acc.occupancy());
-  vec_tmp.InvertElements();
-  svars_means_den.MulRowsVec(vec_tmp);
+  var_diff_tmp.AddMat(-2.0, mat_tmp, kNoTrans);
+
+  mat_tmp.CopyFromMat(means_invvars, kNoTrans);
+  mat_tmp.MulElements(means_invvars);
+  mat_tmp.AddMat(-1.0, inv_vars, kNoTrans);
+  mat_tmp.MulRowsVec(occ_diff);
+
+  var_diff_tmp.AddMat(1.0, mat_tmp, kNoTrans);
+  var_diff_tmp.Scale(0.5);
 
   /// compute the vars differentials
-  diag_gmm.GetVars(&mat_tmp);
-  mat_tmp.InvertElements();
-
-  svars_means_num.MulElements(mat_tmp);
-  svars_means_num.Add(-1.0);
-  svars_means_num.MulElements(mat_tmp);
-
-  svars_means_den.MulElements(mat_tmp);
-  svars_means_den.Add(-1.0);
-  svars_means_den.MulElements(mat_tmp);
-
-  vec_tmp.CopyFromVec(num_acc.occupancy());
-  svars_means_num.MulRowsVec(vec_tmp);
-  svars_means_num.Scale(0.5);
-
-  vec_tmp.CopyFromVec(den_acc.occupancy());
-  svars_means_den.MulRowsVec(vec_tmp);
-  svars_means_den.Scale(0.5);
-
-  variance_diff_accumulator_.CopyFromMat(svars_means_num, kNoTrans);
-  variance_diff_accumulator_.AddMat(-1.0, svars_means_den, kNoTrans);
+  variance_diff_accumulator_.CopyFromMat(var_diff_tmp, kNoTrans);
 
   /// copy to obtain the mle occupation probapility
   occupancy_.CopyFromVec(mle_acc.occupancy());
@@ -145,11 +111,15 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
+  // convert into BaseFloat before writing things
+  Matrix<BaseFloat> mat_bf(dim_, dim_ + 1);
+
   if (p_.size() != 0) {
     WriteMarker(out_stream, binary, "<P>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
-        p_[i][j].Write(out_stream, binary);
+		mat_bf.CopyFromMat(p_[i][j], kNoTrans);
+        mat_bf.Write(out_stream, binary);
 	  }
     }
   }
@@ -157,17 +127,26 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
     WriteMarker(out_stream, binary, "<N>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
-        n_[i][j].Write(out_stream, binary);
+		mat_bf.CopyFromMat(n_[i][j], kNoTrans);
+        mat_bf.Write(out_stream, binary);
 	  }
     }
   }
 
+  // convert into BaseFloat before writing things
+  Vector<BaseFloat> diff_bf(diff_.Dim());
+  Vector<BaseFloat> direct_diff_bf(direct_diff_.Dim());
+  Vector<BaseFloat> indirect_diff_bf(indirect_diff_.Dim());
+  diff_bf.CopyFromVec(diff_);
+  direct_diff_bf.CopyFromVec(direct_diff_);
+  indirect_diff_bf.CopyFromVec(indirect_diff_);
+
   WriteMarker(out_stream, binary, "<DIFFERENTIAL>");
-  diff_.Write(out_stream, binary);
+  diff_bf.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "<DIRECTDIFFERENTIAL>");
-  direct_diff_.Write(out_stream, binary);
+  direct_diff_bf.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "<INDIRECTDIFFERENTIAL>");
-  indirect_diff_.Write(out_stream, binary);
+  indirect_diff_bf.Write(out_stream, binary);
 
   WriteMarker(out_stream, binary, "</FMPEACCS>");
 }
@@ -343,7 +322,7 @@ bool Gauss_index_lower(std::pair<int32, Vector<double> > M,
 }
 
 void FmpeAccs::ComputeContExpOffsetFeature(
-       const std::vector<std::vector<std::pair<int32, Vector<double> > > > &offset_win,
+       const std::vector<std::vector<std::pair<int32, Vector<double> > >* > &offset_win,
        std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const {
   KALDI_ASSERT((config_.context_windows.NumCols() == offset_win.size()));
 
@@ -354,27 +333,58 @@ void FmpeAccs::ComputeContExpOffsetFeature(
 	// for every context
 	for (int32 j = 0; j < config_.context_windows.NumCols(); j++) {
 	  if (config_.context_windows(i, j) > 0.0) {
-		for (int32 k = 0; k < offset_win[j].size(); k++) {
-	        offset_tmp.push_back(offset_win[j][k]);
+		if (offset_win[j]->empty() == 0) {
+		  for (int32 k = 0; k < offset_win[j]->size(); k++) {
+	        offset_tmp.push_back((*offset_win[j])[k]);
 	        offset_tmp.back().second.Scale(config_.context_windows(i, j));
+	      }
+		}
+	  }
+	}
+
+	if (offset_tmp.empty() == 0) {
+	  std::sort(offset_tmp.begin(), offset_tmp.end(), Gauss_index_lower);
+	  offset_uniq_tmp.push_back(offset_tmp[0]);
+	  for (int32 igauss = 1; igauss < offset_tmp.size(); igauss++) {
+	    if (offset_tmp[igauss].first == offset_tmp[igauss - 1].first) {
+		  offset_uniq_tmp.back().second.AddVec(1.0, offset_tmp[igauss].second);
+	    } else {
+          offset_uniq_tmp.push_back(offset_tmp[igauss]);
 	    }
 	  }
-	}
 
-	std::sort(offset_tmp.begin(), offset_tmp.end(), Gauss_index_lower);
-	offset_uniq_tmp.push_back(offset_tmp[0]);
-	for (int32 igauss = 1; igauss < offset_tmp.size(); igauss++) {
-	  if (offset_tmp[igauss].first == offset_tmp[igauss - 1].first) {
-		offset_uniq_tmp.back().second.AddVec(1.0, offset_tmp[igauss].second);
-	  } else {
-        offset_uniq_tmp.push_back(offset_tmp[igauss]);
-	  }
+	  ht->push_back(std::make_pair(i, offset_uniq_tmp));
+      offset_tmp.clear();
+	  offset_uniq_tmp.clear();
 	}
-
-	ht->push_back(std::make_pair(i, offset_uniq_tmp));
-    offset_tmp.clear();
-	offset_uniq_tmp.clear();
   }
+}
+
+void FmpeAccs::ComputeHighDimemsionFeature(
+     const std::vector<std::vector<std::pair<int32, Vector<double> > > > &whole_file_offset_feat,
+	 int32 frame_index,
+     std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > *ht) const {
+  KALDI_ASSERT((frame_index >= 0) && (frame_index < whole_file_offset_feat.size()));
+
+  int32 lenght_context_windows = config_.context_windows.NumCols();
+  int32 half_len_win = lenght_context_windows / 2;
+  int32 num_frame = whole_file_offset_feat.size();
+  std::vector<std::vector<std::pair<int32, Vector<double> > >* > offset_win;
+  std::vector<std::pair<int32, Vector<double> > > empty_feat;
+
+  for (int32 i = (frame_index - half_len_win);
+	   i < (frame_index - half_len_win + lenght_context_windows); i++) {
+	/// we append zero if the index is out of the whole file feature lenght
+	if ((i < 0) || (i >= num_frame)) {
+	  offset_win.push_back(&empty_feat);
+	} else {
+	  offset_win.push_back(
+                 const_cast<std::vector<std::pair<int32, Vector<double> > >* >
+				 (&(whole_file_offset_feat[i])));
+	}
+  }
+
+  ComputeContExpOffsetFeature(offset_win, ht);
 }
 
 void FmpeAccs::ProjectHighDimensionFeature(
@@ -415,48 +425,48 @@ void FmpeAccs::ObtainNewFmpeFeature(
   fea_new->AddVec(1.0, tmp_fea);
 }
 
-void FmpeAccs::AccumulateDirectDiffFromDiag(const DiagGmm &gmm,
+void FmpeAccs::AccumulateDirectDiffFromPosteriors(const DiagGmm &gmm,
                                             const VectorBase<BaseFloat> &data,
-                                            BaseFloat frame_posterior,
+											const VectorBase<BaseFloat> &posteriors,
                                             Vector<double> *direct_diff) {
   assert(gmm.Dim() == Dim());
+  assert(gmm.NumGauss() == posteriors.Dim());
   assert(static_cast<int32>(data.Dim()) == Dim());
 
-  Vector<BaseFloat> posteriors(gmm.NumGauss());
-  BaseFloat log_like = gmm.ComponentPosteriors(data, &posteriors);
-  posteriors.Scale(frame_posterior);
+  Matrix<double> means_invvars(gmm.NumGauss(), gmm.Dim());
+  Matrix<double> inv_vars(gmm.NumGauss(), gmm.Dim());
+  Matrix<double> data_tmp(gmm.NumGauss(), gmm.Dim());
+  Matrix<double> mat_tmp(gmm.NumGauss(), gmm.Dim());
+  Vector<double> post_scale(gmm.NumGauss());
 
-  Matrix<double> means_tmp(gmm.NumGauss(), gmm.Dim());
-  Matrix<double> vars_tmp(gmm.NumGauss(), gmm.Dim());
-  Vector<double> vec_tmp(gmm.NumGauss());
+  means_invvars.CopyFromMat(gmm.means_invvars(), kNoTrans);
+  inv_vars.CopyFromMat(gmm.inv_vars(), kNoTrans);
 
-  gmm.GetMeans(&means_tmp);
-  gmm.GetVars(&vars_tmp);
-  for (int32 i = 0; i < means_tmp.NumRows(); i++) {
-	means_tmp.Row(i).AddVec(-1.0, data);
+  for (int32 i = 0; i < data_tmp.NumRows(); i++) {
+	data_tmp.Row(i).AddVec(1.0, data);
   }
-  means_tmp.DivElements(vars_tmp);
+  data_tmp.MulElements(inv_vars);
 
-  vec_tmp.CopyFromVec(posteriors);
-  vec_tmp.Scale(config_.lat_prob_scale);
+  mat_tmp.CopyFromMat(means_invvars, kNoTrans);
+  mat_tmp.AddMat(-1.0, data_tmp, kNoTrans);
+
+  post_scale.CopyFromVec(posteriors);
+  post_scale.Scale(config_.lat_prob_scale);
 
   direct_diff->Resize(data.Dim());
-  direct_diff->AddMatVec(1.0, means_tmp, kTrans, vec_tmp, 0.0);
+  direct_diff->AddMatVec(1.0, mat_tmp, kTrans, post_scale, 0.0);
 }
 
-void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
-                             const FmpeAccumModelDiff fmpe_diaggmm_diff_acc,
+void FmpeAccs::AccumulateInDirectDiffFromPosteriors(const DiagGmm &gmm,
+                             const FmpeAccumModelDiff &fmpe_diaggmm_diff_acc,
                              const VectorBase<BaseFloat> &data,
-                             BaseFloat frame_posterior,
+                             const VectorBase<BaseFloat> &posteriors,
 							 Vector<double> *indirect_diff) {
   assert(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
+  assert(gmm.NumGauss() == posteriors.Dim());
   assert(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
   assert(gmm.Dim() == Dim());
   assert(static_cast<int32>(data.Dim()) == Dim());
-
-  Vector<BaseFloat> posteriors(gmm.NumGauss());
-  gmm.ComponentPosteriors(data, &posteriors);
-  posteriors.Scale(frame_posterior);
 
   Matrix<double> mat_tmp(gmm.NumGauss(), gmm.Dim());
   Vector<double> vec_tmp(gmm.NumGauss());
@@ -477,6 +487,24 @@ void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
 
   indirect_diff->Resize(data.Dim());
   indirect_diff->AddMatVec(1.0, mat_tmp, kTrans, vec_tmp, 0.0);
+}
+
+void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
+                             const FmpeAccumModelDiff &fmpe_diaggmm_diff_acc,
+                             const VectorBase<BaseFloat> &data,
+                             BaseFloat frame_posterior,
+							 Vector<double> *indirect_diff) {
+  assert(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
+  assert(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
+  assert(gmm.Dim() == Dim());
+  assert(static_cast<int32>(data.Dim()) == Dim());
+
+  Vector<BaseFloat> posteriors(gmm.NumGauss());
+  gmm.ComponentPosteriors(data, &posteriors);
+  posteriors.Scale(frame_posterior);
+
+  AccumulateInDirectDiffFromPosteriors(gmm, fmpe_diaggmm_diff_acc,
+									   data, posteriors, indirect_diff);
 }
 
 void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
@@ -565,11 +593,15 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
+  // convert into BaseFloat before writing things
+  Matrix<BaseFloat> mat_bf(dim_, dim_ + 1);
+
   if (M_.size() != 0) {
     WriteMarker(out_stream, binary, "<PROJ_MAT>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
-        M_[i][j].Write(out_stream, binary);
+		mat_bf.CopyFromMat(M_[i][j], kNoTrans);
+        mat_bf.Write(out_stream, binary);
 	  }
     }
   }
@@ -609,7 +641,7 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary,
   }
 }
 
-void FmpeUpdater::ComputeAvgStandartDeviation(const AmDiagGmm &am) {
+void FmpeUpdater::ComputeAvgStandardDeviation(const AmDiagGmm &am) {
   Matrix<double> vars_tmp;
   Vector<double> vec_tmp(am.Dim());
 
