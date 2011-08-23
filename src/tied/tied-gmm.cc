@@ -82,12 +82,16 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> 
   return log_sum;
 }
 
-// weights <- rho*weights + (1.-rho)source->weights, renorm weights afterwards
-void TiedGmm::SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source) {
+/// this = rho x source + (1-rho) x this
+void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
   KALDI_ASSERT(NumGauss() == source->NumGauss());
   KALDI_ASSERT(rho > 0. && rho < 1.);
-  weights_.Scale(rho);
-  weights_.AddVec(1. - rho, source->weights_);
+  
+  // interpolate
+  weights_.Scale(1.-rho);
+  weights_.AddVec(rho, source->weights_);
+  
+  // renorm to sum to one
   weights_.Scale(1. / weights_.Sum());
 }
 

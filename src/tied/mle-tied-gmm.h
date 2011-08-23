@@ -35,12 +35,12 @@ struct MleTiedGmmOptions {
   /// minimum total occupancy for update
   BaseFloat min_gaussian_occupancy;
   
-  /// interpolation weight to smooth the newly estimated parameters with the old ones
-  BaseFloat interpolation_weight;
+  /// smoothing weight to smooth the newly estimated parameters with the old ones
+  BaseFloat smoothing_weight;
 
-  bool interpolate_weights;
-  bool interpolate_means;
-  bool interpolate_variances;
+  bool smooth_weights;
+  bool smooth_means;
+  bool smooth_variances;
 
   MleTiedGmmOptions() {
     /// gaussian weight should be rather small, due to large (> 512) code book sizes
@@ -48,11 +48,11 @@ struct MleTiedGmmOptions {
     min_gaussian_occupancy  = 3.0;
 
     // apis stuff
-    interpolation_weight    = 0.5;
+    smoothing_weight    = 0.5;
 
-    interpolate_weights   = true;
-    interpolate_means     = false;
-    interpolate_variances = false;
+    smooth_weights   = false;
+    smooth_means     = false;
+    smooth_variances = false;
   }
   
   void Register(ParseOptions *po) {
@@ -61,17 +61,17 @@ struct MleTiedGmmOptions {
                  module+"Min tied Gaussian weight to enforce.");
     po->Register("min-tied-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum occupancy to update a tied Gaussian.");
-    po->Register("interpolation-weight", &interpolation_weight,
-                 module+"Interpolation weight to smooth the newly estimated parameters with the old ones. new <- wt*est + (1-wt*old)");
-    po->Register("interpolate-weights", &interpolate_weights,
+    po->Register("smoothing-weight", &smoothing_weight,
+                 module+"smoothing weight (0 < w < 1) to smooth new = rho x old + (1-rho) x new; high rho means strong impact of source");
+    po->Register("interpolate-weights", &smooth_weights,
                  module+"Interpolate tied mixture weights?");
-    po->Register("interpolate-means", &interpolate_means,
+    po->Register("interpolate-means", &smooth_means,
                  module+"Interpolate codebook means?");
-    po->Register("interpolate-variances", &interpolate_variances,
+    po->Register("interpolate-variances", &smooth_variances,
                  module+"Interpolate codebook variances?");
   }
 
-  bool interpolate() const { return interpolate_weights || interpolate_means || interpolate_variances; }
+  bool smooth() const { return smooth_weights || smooth_means || smooth_variances; }
 };
 
 class AccumTiedGmm {
@@ -105,14 +105,15 @@ class AccumTiedGmm {
   /// Accumulate for all components, given the posteriors.
   void AccumulateFromPosteriors(const VectorBase<BaseFloat>& gauss_posteriors);
 
-  /// Smooths the accumulated counts by adding 'tau' extra frames. An example
-  /// use for this is I-smoothing for MMIE/MPE.
-  void SmoothStats(BaseFloat tau);
-
-  /// Smooths the accumulated counts using some other accumulator. Performs
-  /// a weighted sum of the current accumulator with the given one. Both
-  /// accumulators must have the same dimension and number of components.
-  void SmoothWithAccum(BaseFloat tau, const AccumTiedGmm& src_acc);
+  /// Propagate the sufficient statistics to the target accumulator
+  void Propagate(AccumTiedGmm *target) const;
+  
+  /// Interpolate the local model depending on the occupancies
+  /// rho' <- rho / (rho + gamma)
+  /// this <- rho' x source + (1-rho') x this
+  /// i.e., if gamma is high, rho vanishes, and the current stats are kept; if
+  /// gamma is zero, the stats are completely replaced by the source's.
+  void Interpolate(BaseFloat rho, const AccumTiedGmm *source);
 
   // Accessors
   const GmmFlagsType Flags() const { return flags_; }
@@ -122,10 +123,6 @@ class AccumTiedGmm {
   int32 num_comp_;
   GmmFlagsType flags_;
   Vector<double> occupancy_;
-  
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
 };
 
 inline void AccumTiedGmm::Resize(const TiedGmm &tied, GmmFlagsType flags) {

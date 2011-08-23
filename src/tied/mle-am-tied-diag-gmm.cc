@@ -203,7 +203,7 @@ void MleAmTiedDiagGmmUpdate(
   if (count_out != NULL) *count_out = 0.0;
  
   AmTiedDiagGmm *oldm = NULL;
-  if (config_tied.interpolate()) {
+  if (config_tied.smooth()) {
     // make a copy of the model
     oldm = new AmTiedDiagGmm();
     oldm->CopyFromAmTiedDiagGmm(*model);
@@ -244,27 +244,27 @@ void MleAmTiedDiagGmmUpdate(
     KALDI_LOG << "No weight update for tied states as requested by flags.";
 
   /// smooth new model with old: new <- wt*est + (1-est)old
-  if (config_tied.interpolate()) {
-    KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho=" << config_tied.interpolation_weight << ")...";
+  if (config_tied.smooth()) {
+    KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho=" << config_tied.smoothing_weight << ")...";
 
     // smooth the weights for tied...
-    if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
+    if ((flags & kGmmWeights) && config_tied.smooth_weights) {
       KALDI_LOG << "...weights";
       for (int32 i = 0; i < model->NumTiedPdfs(); ++i)
-        model->GetTiedPdf(i).SmoothWithTiedGmm(config_tied.interpolation_weight, &(oldm->GetTiedPdf(i)));
+        model->GetTiedPdf(i).Interpolate(config_tied.smoothing_weight, &(oldm->GetTiedPdf(i)));
     }
 
     // ...and mean/var for codebooks
-    if ((flags & kGmmMeans) && config_tied.interpolate_means) {
+    if ((flags & kGmmMeans) && config_tied.smooth_means) {
       KALDI_LOG << "...means";
       for (int32 i = 0; i < model->NumPdfs(); ++i)
-        model->GetPdf(i).SmoothWithDiagGmm(config_tied.interpolation_weight, &(oldm->GetPdf(i)), kGmmMeans);
+        model->GetPdf(i).Interpolate(config_tied.smoothing_weight, &(oldm->GetPdf(i)), kGmmMeans);
     }
 
-    if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
+    if ((flags & kGmmVariances) && config_tied.smooth_variances) {
       KALDI_LOG << "...variances";
       for (int32 i = 0; i < model->NumPdfs(); ++i)
-        model->GetPdf(i).SmoothWithDiagGmm(config_tied.interpolation_weight, &(oldm->GetPdf(i)), kGmmVariances);
+        model->GetPdf(i).Interpolate(config_tied.smoothing_weight, &(oldm->GetPdf(i)), kGmmVariances);
     }
 
     delete oldm;

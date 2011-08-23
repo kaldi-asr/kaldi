@@ -82,8 +82,9 @@ class FullGmm {
   void Merge(int32 target_components);
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
-
-  void SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll);
+  
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const { return gconsts_; }

@@ -95,8 +95,10 @@ class DiagGmm {
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
 
-  void SmoothWithDiagGmm(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags = kGmmAll); 
-  void SmoothWithFullGmm(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll); 
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags = kGmmAll); 
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll); 
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const {

@@ -96,8 +96,8 @@ class TiedGmm {
   BaseFloat ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
                                 Vector<BaseFloat> *posteriors) const;
 
-  /// *this = rho*this + (1-rho)source
-  void SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source);
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const TiedGmm *source);
 
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);

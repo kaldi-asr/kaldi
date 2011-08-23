@@ -80,7 +80,7 @@ void AccumTiedGmm::Write(std::ostream &out_stream, bool binary) const {
 void AccumTiedGmm::Resize(int32 num_comp, GmmFlagsType flags) {
   KALDI_ASSERT(num_comp > 0);
   num_comp_ = num_comp;
-  flags_ = AugmentFlags(flags);
+  flags_ = AugmentGmmFlags(flags);
   occupancy_.Resize(num_comp);
 }
 
@@ -108,27 +108,30 @@ void AccumTiedGmm::AccumulateFromPosteriors(const VectorBase<BaseFloat> &posteri
   occupancy_.AddVec(1.0, post_d);
 }
 
-void AccumTiedGmm::SmoothStats(BaseFloat tau) {
-  occupancy_.Add(static_cast<double>(tau));
+/// Propagate the sufficient statistics to the target accumulator
+void AccumTiedGmm::Propagate(AccumTiedGmm *target) const {
+  KALDI_ASSERT(num_comp_ == target->num_comp_);
+  target->occupancy_.AddVec(1., occupancy_);
 }
-
-void AccumTiedGmm::SmoothWithAccum(BaseFloat tau, const AccumTiedGmm& src_acc) {
-  KALDI_ASSERT(src_acc.NumGauss() == num_comp_);
-  occupancy_.AddVec(static_cast<double>(tau), src_acc.occupancy_);
+  
+/// Interpolate the local model depending on the occupancies
+/// rho' <- rho / (rho + gamma)
+/// this <- rho' x source + (1-rho') x this
+void AccumTiedGmm::Interpolate(BaseFloat rho, const AccumTiedGmm *source) {
+  KALDI_ASSERT(num_comp_ == source->num_comp_);
+  BaseFloat rhoi = rho / (rho + occupancy_.Sum());
+  
+  if (rhoi > 0.8)
+    KALDI_VLOG(1) << "rhoi > 0.8";
+  
+  occupancy_.Scale(1.-rhoi);
+  occupancy_.AddVec(rhoi, source->occupancy_);
 }
 
 AccumTiedGmm::AccumTiedGmm(const AccumTiedGmm &other)
     : num_comp_(other.num_comp_),
       flags_(other.flags_), occupancy_(other.occupancy_)
       {}
-
-GmmFlagsType AccumTiedGmm::AugmentFlags(GmmFlagsType f) {
-  KALDI_ASSERT((f & ~kGmmAll) == 0);  // make sure only valid flags are present
-  if (f & kGmmVariances) f |= kGmmMeans;
-  if (f & kGmmMeans) f |= kGmmWeights;
-  KALDI_ASSERT(f & kGmmWeights);  // make sure zero-stats will be accumulated
-  return f;
-}
 
 BaseFloat MlObjective(const TiedGmm &tied, const AccumTiedGmm &tiedgmm_acc) {
   // use the occupancy of the tied pdf
