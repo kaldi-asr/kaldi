@@ -38,6 +38,7 @@ using namespace std;
 using namespace kaldi;
 
 // define if float or doubles are used
+// realn->BaseFloat
 typedef float realn;
 typedef MatrixXf MatrixXr;
 typedef VectorXf VectorXr;
@@ -46,9 +47,8 @@ typedef kaldi::Vector<realn> KaldiVector;
 
 class RNN{
   public:
-    // override stupid ofst types
-    typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
+  typedef kaldi::int32 int32;
+  typedef kaldi::int64 int64;
 
   private:
     MatrixXr V1_,U1_,W2_,Cl_; // weights
@@ -70,19 +70,18 @@ class RNN{
     int32 ivcnt_;
     int32 oovcnt_;
 
-  protected:
     void KaldiToEigen(KaldiVector* in, VectorXr* out) {
       out->resize(in->Dim());
       for (int i=0;i<in->Dim();i++) (*out)(i)=(*in)(i);
-      in->Resize(0,kUndefined);
+      in->Resize(0);
     }
-
+  
     void KaldiToEigen(KaldiMatrix* in, MatrixXr* out) {
       out->resize(in->NumRows(),in->NumCols());
       for (int row=0;row<in->NumRows();row++)
         for (int col=0;col<in->NumCols();col++)
           (*out)(row,col)=(*in)(row,col);
-      in->Resize(0,0,kUndefined);
+      in->Resize(0,0);
     }
 
   public:
@@ -175,6 +174,7 @@ class RNN{
         } 
     }
 
+  // remove
     void Read(const string& filename) {
       bool binary;
       Input in(filename,&binary);
@@ -252,8 +252,8 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Extracts N-best paths from lattices using given acoustic scale. \n"
-        "Rescores them using an RNN model and given lm scale and writes it out as FST\n"
+        "Extracts N-best paths from lattices using given acoustic scale, \n"
+        "rescores them using an RNN model and given lm scale and writes it out as FST.\n"
         "Usage: lattice-rnnrescore [options] dict lattice-rspecifier rnn-model lattice-wspecifier\n"
         " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lambda=0.8 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
       
@@ -292,6 +292,18 @@ int main(int argc, char *argv[]) {
     // Write as compact lattice.
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
+    /*
+      RNN myRNN;
+      {
+        bool binary_in;
+        Input ki(rnnmodel_filename, &binary_in);
+        myRNN.Read(ki.Stream(), binary_in);
+      }
+      // possibly also define Write() function--but not impt.
+    */
+    // should probably be defining the RNN class in a .h and .cc file
+    // let's call it RnnLm
+    
     // initialize our RNN
     RNN myRNN(rnnmodel_filename); 
     myRNN.SetLatticeSymbols(*word_syms);
