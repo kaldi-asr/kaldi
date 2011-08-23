@@ -209,32 +209,34 @@ void MleAmTiedDiagGmmUpdate(
     oldm->CopyFromAmTiedDiagGmm(*model);
   }
  
-  BaseFloat tmp_obj_change, tmp_count;
+  BaseFloat tmp_obj_change = 0, tmp_count = 0;
   BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
-            *p_count   = (count_out != NULL) ? &tmp_count : NULL;
+            *p_count  = (count_out != NULL) ? &tmp_count : NULL;
 
   /// reestimate the codebooks
   for (size_t i = 0; i < acc.NumDiagAccs(); i++) {
-    MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags & !kGmmWeights, &(model->GetPdf(i)), 
+    MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags & ~kGmmWeights, &(model->GetPdf(i)), 
         p_obj, p_count);
+
+    KALDI_LOG << "MleDiagGmmUpdate pdf(" << i << ") delta-obj=" << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;
   }
 
-  if (!(flags & kGmmWeights)) {
-    KALDI_WARN << "no weight update as desired by flags";
-    return;
-  }
-  
-  /// reestimate the tied gmms
-  for (size_t i = 0; i < acc.NumTiedAccs(); i++) {
-    MleTiedGmmUpdate(config_tied, acc.GetTiedAcc(i), flags, &(model->GetTiedPdf(i)), 
-        p_obj, p_count);
+  if (flags & kGmmWeights) {
+    /// reestimate the tied gmms
+    for (size_t i = 0; i < acc.NumTiedAccs(); i++) {
+      MleTiedGmmUpdate(config_tied, acc.GetTiedAcc(i), flags, &(model->GetTiedPdf(i)), 
+          p_obj, p_count);
+    
+      KALDI_LOG << "MleTiedGmmUpdate tied-pdf(" << i << ") delta-obj=" << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
 
-    if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
-    if (count_out != NULL) *count_out += tmp_count;
-  }
+      if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
+      if (count_out != NULL) *count_out += tmp_count;
+    }
+  } else
+    KALDI_LOG << "No weight update for tied states as requested by flags.";
 
   /// smooth new model with old: new <- wt*est + (1-est)old
   if (config_tied.interpolate()) {

@@ -99,31 +99,6 @@ class TiedGmm {
   /// *this = rho*this + (1-rho)source
   void SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source);
 
-/*
-  /// Outputs the per-component log-likelihoods given the tied GMM component scores
-/// caveat: The argument contains the codebook component scores, /NOT/ the data!
-  void LogLikelihoods(const VectorBase<BaseFloat> &svq,
-                      Vector<BaseFloat> *loglikes) const;
-
-  /// Outputs the per-component log-likelihoods of a subset
-  /// of mixture components.  Note: indices.size() will
-  /// equal loglikes->Dim() at output.  loglikes[i] will 
-  /// correspond to the log-likelihood of the Gaussian
-  /// indexed indices[i].
-  /// caveat: The argument contains the codebook component scores, /NOT/ the data!
-  void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &scores,
-                               const std::vector<int32> &indices,
-                               Vector<BaseFloat> *loglikes) const;
-*/
-  
-/*
-  /// Computes the log-likelihood of a data point given a single Gaussian
-  /// component. NOTE: Currently we make no guarantees about what happens if
-  /// one of the variances is zero.
-  BaseFloat ComponentLogLikelihood(const VectorBase<BaseFloat> &svq,
-                                   int32 comp_id) const;
-*/
-
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
 

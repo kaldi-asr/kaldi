@@ -67,10 +67,11 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> 
   posteriors->MulElements(weights_);
   
   // log-likelihood...
-  BaseFloat log_sum = posteriors->Sum();
+  BaseFloat sum = posteriors->Sum();
+  BaseFloat log_sum = log(sum);
 
   // make posteriors
-  posteriors->Scale(1. / log_sum);
+  posteriors->Scale(1. / sum);
 
   // add svq offset
   log_sum += c;
@@ -90,55 +91,6 @@ void TiedGmm::SmoothWithTiedGmm(BaseFloat rho, const TiedGmm *source) {
   weights_.Scale(1. / weights_.Sum());
 }
 
-/*
-BaseFloat TiedGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &scores,
-                                          int32 comp_id) const {
-  if (static_cast<int32>(scores.Dim()) != weights_.Dim()) {
-    KALDI_ERR << "TiedGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (scores.Dim()) << "vs. "<< (weights_.Dim());
-  }
-
-  // ok, the tied GMM score is just the codebook component score minus
-  // the uniform weight plus the actual component weight (log)
-  return scores(comp_id) + gconsts_(comp_id); 
-}
-
-void TiedGmm::LogLikelihoods(const VectorBase<BaseFloat> &svq,
-                             Vector<BaseFloat> *loglikes) const {
-  loglikes->Resize(gconsts_.Dim(), kUndefined);
-  loglikes->CopyFromVec(gconsts_);
-  loglikes->AddVec(1., scores);
-}
-
-void TiedGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &scores,
-                                      const std::vector<int32> &indices,
-                                      Vector<BaseFloat> *loglikes) const {
-  KALDI_ASSERT(IsSortedAndUniq(indices) && !indices.empty()
-               && indices.back() < NumGauss());
-
-  if (!valid_gconsts_)
-    KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
-  
-  if (static_cast<int32>(scores.Dim()) != weights_.Dim()) {
-    KALDI_ERR << "TiedGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (scores.Dim()) << "vs. "<< (weights_.Dim());
-  }
-    
-  int32 num_indices = static_cast<int32>(indices.size());
-  loglikes->Resize(num_indices, kUndefined);
-  if(indices.back() + 1 - indices.front() == num_indices) {
-    // A special (but common) case when the indices form a contiguous range.
-    int32 start_idx = indices.front();
-    loglikes->CopyFromVec(SubVector<BaseFloat>(gconsts_, start_idx, num_indices));
-    loglikes->AddVec(1., SubVector<BaseFloat>(scores, start_idx, num_indices));
-  } else {
-    for(int32 i = 0; i < num_indices; i++) {
-      int32 idx = indices[i]; // The Gaussian index.
-      (*loglikes)(i) = gconsts_(idx) + scores(idx);
-    }
-  }
-}
-*/
 void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<TIEDGMM>");
   if (!binary) out_stream << "\n";
