@@ -401,10 +401,11 @@ void FmpeAccs::ProjectHighDimensionFeature(
   fea_out->CopyFromVec(tmp_fea);
 }
 
-void FmpeAccs::ObtainNewFmpeFeature(const VectorBase<BaseFloat> &data,
-         const std::vector< std::vector< Matrix<double> > > &M,
-         const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
-         Vector<double> *fea_new) const {
+void FmpeAccs::ObtainNewFmpeFeature(
+    const VectorBase<BaseFloat> &data,
+    const std::vector< std::vector< Matrix<double> > > &M,
+    const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht,
+    Vector<double> *fea_new) const {
   KALDI_ASSERT((data.Dim() == gmm_.Dim()));
 
   Vector<double> tmp_fea(data.Dim());
@@ -415,19 +416,16 @@ void FmpeAccs::ObtainNewFmpeFeature(const VectorBase<BaseFloat> &data,
 }
 
 void FmpeAccs::AccumulateDirectDiffFromDiag(const DiagGmm &gmm,
-                             const VectorBase<BaseFloat> &data,
-                             BaseFloat frame_posterior,
-							 Vector<double> *direct_diff) {
+                                            const VectorBase<BaseFloat> &data,
+                                            BaseFloat frame_posterior,
+                                            Vector<double> *direct_diff) {
   assert(gmm.Dim() == Dim());
   assert(static_cast<int32>(data.Dim()) == Dim());
 
   Vector<BaseFloat> posteriors(gmm.NumGauss());
-  /// we should need to use the scaled phone arc's
-  /// gaussian occupation probability here. // TODO
-//  BaseFloat log_like = gmm.ComponentPosteriors(data, &posteriors);
+  BaseFloat log_like = gmm.ComponentPosteriors(data, &posteriors);
   posteriors.Scale(frame_posterior);
 
-//  AccumulateFromPosteriors(data, posteriors);
   Matrix<double> means_tmp(gmm.NumGauss(), gmm.Dim());
   Matrix<double> vars_tmp(gmm.NumGauss(), gmm.Dim());
   Vector<double> vec_tmp(gmm.NumGauss());
