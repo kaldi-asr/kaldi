@@ -363,7 +363,7 @@ bool GetTreeStructure(const EventMap &map,
                                &nonleaf_parents,
                                 &leaf_parents)) return false;
 
-  *num_leaves = nonleaf_nodes.size() + leaf_parents.size();
+  *num_leaves = leaf_parents.size();
 
   std::map<const EventMap*, int32> nonleaf_indices;
 
