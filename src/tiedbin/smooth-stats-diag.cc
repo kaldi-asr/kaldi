@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
     }
 
     // validate all leaf accumulators
+    std::cout << "Supposedly " << num_leaves << " leaves in the tree. Querying accumulators..." << std::endl;
     for (int32 i = 0; i < num_leaves; ++i) {
         const AccumTiedGmm &a = acc.GetTiedAcc(i);
         std::cout << "model(" << i << ") p=" << p[i] << " gamma(i)=" << a.occupancy().Sum() << std::endl 
