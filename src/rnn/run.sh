@@ -7,8 +7,12 @@ ln -sf /mnt/matylda5/kombrink/src/kaldi/trunk/src/rnnrescore_/words.txt .
 ln -sf /mnt/matylda5/kombrink/src/kaldi/trunk/src/rnnrescore_/WSJ.35M.200cl.350h.kaldi.rnn .
 ln -sf /mnt/matylda5/kombrink/src/kaldi/trunk/src/rnnrescore_/WSJ.35M.200cl.350h.rnn .
 
+
 make clean
+make depend
 make
+
+exit
 
 ./rnn-rescore --acoustic-scale=0.0625 --lambda=0.5 --n=10 words.txt ark,t:1.lats WSJ.35M.200cl.350h.kaldi.rnn ark,t:nbest.lats
 
