@@ -9,8 +9,8 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         add-self-loops convert-ali compile-train-graphs \
         make-pdf-to-tid-transducer make-ilabel-transducer show-transitions \
         ali-to-phones ali-to-post weight-silence-post acc-lda est-lda \
-        ali-to-pdf est-mllt build-tree decode-faster decode-faster-mapped \
-        scale-vecs copy-transition-model rand-prune-post
+        ali-to-pdf est-mllt build-tree build-tree-two-level decode-faster \
+        decode-faster-mapped scale-vecs copy-transition-model rand-prune-post
 
 
 OBJFILES = 

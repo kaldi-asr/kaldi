@@ -159,7 +159,7 @@ EventMap *BuildTree(Questions &qopts,
                                    phone2num_pdf_classes,
                                    share_roots,
                                    &num_leaves);
-  KALDI_VLOG(1) <<  "BuildTree: before building trees, map has "<< num_leaves << " leaves.";
+  KALDI_LOG <<  "BuildTree: before building trees, map has "<< num_leaves << " leaves.";
 
 
   BaseFloat impr;
@@ -185,14 +185,14 @@ EventMap *BuildTree(Questions &qopts,
                                            &num_leaves, &impr, &smallest_split);
   
   if (cluster_thresh < 0.0) {
-    KALDI_VLOG(1) <<  "Setting clustering threshold to smallest split " << smallest_split;
+    KALDI_LOG <<  "Setting clustering threshold to smallest split " << smallest_split;
     cluster_thresh = smallest_split;
   }
 
   BaseFloat normalizer = SumNormalizer(stats),
       impr_normalized = impr / normalizer;
 
-  KALDI_VLOG(1) <<  "After decision tree split, num-leaves = "<< num_leaves
+  KALDI_LOG <<  "After decision tree split, num-leaves = "<< num_leaves
                 << ", like-impr = " << impr_normalized << " per frame over "
                 << normalizer << " frames.";
 
@@ -206,17 +206,17 @@ EventMap *BuildTree(Questions &qopts,
                                                               cluster_thresh,
                                                               *tree_stub,
                                                               &num_removed);
-    KALDI_VLOG(1) <<  "BuildTree: removed "<< num_removed << " leaves.";
+    KALDI_LOG <<  "BuildTree: removed "<< num_removed << " leaves.";
 
     int32 num_leaves = 0;
     EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
 
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
 
-    KALDI_VLOG(1) << "Objf change due to clustering "
+    KALDI_LOG << "Objf change due to clustering "
                   << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
                   << " per frame.";
-    KALDI_VLOG(1) <<  "Num-leaves now "<< num_leaves;
+    KALDI_LOG <<  "Num-leaves now "<< num_leaves;
     delete tree_clustered;
     delete tree_split;
     delete tree_stub;
@@ -243,7 +243,7 @@ static void ComputeTreeMapping(const EventMap &small_tree,
   int32 num_leaves_big = big_tree.MaxResult() + 1,
       num_leaves_small = small_tree.MaxResult() + 1;
   SplitStatsByMap(stats, small_tree, &split_stats_small);
-
+  KALDI_ASSERT(split_stats_small.size() <= num_leaves_small);
   leaf_map->clear();
   leaf_map->resize(num_leaves_big, -1); // fill with -1.
 
@@ -259,16 +259,18 @@ static void ComputeTreeMapping(const EventMap &small_tree,
                  << "Continuing but this is a serious error.";
       small_leaves_unseen.push_back(i);
     } else {
-      int32 leaf = 0; // = 0 to keep compiler happy.  Leaf in big tree.
-      bool ok = big_tree.Map(split_stats_small[i][0].first, &leaf);
-      if (!ok)
-        KALDI_ERR << "Could not map stats with big tree: probable code error.";
-      if (leaf < 0 || leaf >= num_leaves_big)
-        KALDI_ERR << "Leaf out of range: " << leaf << " vs. " << num_leaves_big;
-      if ((*leaf_map)[leaf] != -1 && (*leaf_map)[leaf] != i)
-        KALDI_ERR << "Inconsistent mapping for big tree: "
-                  << i << " vs. " << (*leaf_map)[leaf];
-      (*leaf_map)[leaf] = i;
+      for (size_t j = 0; j < split_stats_small[i].size(); j++) {
+        int32 leaf = 0; // = 0 to keep compiler happy.  Leaf in big tree.
+        bool ok = big_tree.Map(split_stats_small[i][j].first, &leaf);
+        if (!ok)
+          KALDI_ERR << "Could not map stats with big tree: probable code error.";
+        if (leaf < 0 || leaf >= num_leaves_big)
+          KALDI_ERR << "Leaf out of range: " << leaf << " vs. " << num_leaves_big;
+        if ((*leaf_map)[leaf] != -1 && (*leaf_map)[leaf] != i)
+          KALDI_ERR << "Inconsistent mapping for big tree: "
+                    << i << " vs. " << (*leaf_map)[leaf];
+        (*leaf_map)[leaf] = i;
+      }
     }
   }
   // Now make sure that all leaves in the big tree have a leaf in the small tree
@@ -342,20 +344,20 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
                                      qopts, 0.0, max_leaves_second,
                                      &num_leaves, &impr, &smallest_split);
   
-  KALDI_VLOG(1) << "Building second-level tree: increased #leaves from "
+  KALDI_LOG << "Building second-level tree: increased #leaves from "
                 << old_num_leaves << " to " << num_leaves << ", smallest split was "
-                << num_leaves;
+                << smallest_split;
   
   BaseFloat normalizer = SumNormalizer(stats),
       impr_normalized = impr / normalizer;
   
-  KALDI_VLOG(1) <<  "After second decision tree split, num-leaves = "
+  KALDI_LOG <<  "After second decision tree split, num-leaves = "
                 << num_leaves << ", like-impr = " << impr_normalized
                 << " per frame over " << normalizer << " frames.";
 
 
   if (cluster_leaves) {  // Cluster the leaves of the tree.
-    KALDI_VLOG(1) << "Clustering leaves of larger.";
+    KALDI_LOG << "Clustering leaves of larger.";
     BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree);
 
     // Now do the clustering.
@@ -365,19 +367,20 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
                                                               smallest_split,
                                                               *first_level_tree,
                                                               &num_removed);
-    KALDI_VLOG(1) <<  "BuildTreeTwoLevel: removed "<< num_removed << " leaves.";
-
+    KALDI_LOG <<  "BuildTreeTwoLevel: removed " << num_removed << " leaves.";
+    
     int32 num_leaves = 0;
     EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
 
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
-
-    KALDI_VLOG(1) << "Objf change due to clustering "
+    
+    KALDI_LOG << "Objf change due to clustering "
                   << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
                   << " per frame.";
-    KALDI_VLOG(1) <<  "Num-leaves now "<< num_leaves;
+    KALDI_LOG <<  "Num-leaves now "<< num_leaves;
     delete tree;
-    tree = tree_clustered;
+    delete tree_clustered;
+    tree = tree_renumbered;
   }
 
   ComputeTreeMapping(*first_level_tree,
