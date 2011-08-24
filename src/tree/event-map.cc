@@ -364,28 +364,33 @@ bool GetTreeStructure(const EventMap &map,
                                 &leaf_parents)) return false;
 
   *num_leaves = leaf_parents.size();
+  int32 num_nodes = leaf_parents.size() + nonleaf_nodes.size();
   
   std::map<const EventMap*, int32> nonleaf_indices;
 
   // number the nonleaf indices so they come after the leaf
   // indices and the root is last.
   for (size_t i = 0; i < nonleaf_nodes.size(); i++)
-    nonleaf_indices[nonleaf_nodes[i]] = *num_leaves - i - 1;
+    nonleaf_indices[nonleaf_nodes[i]] = num_nodes - i - 1;
 
-  parents->resize(*num_leaves);
-  for (size_t i = 0; i < leaf_parents.size(); i++)
+  parents->resize(num_nodes);
+  for (size_t i = 0; i < leaf_parents.size(); i++) {
+    KALDI_ASSERT(nonleaf_indices.count(leaf_parents[i]) != 0);
     (*parents)[i] = nonleaf_indices[leaf_parents[i]];
+  }
   for (size_t i = 0; i < nonleaf_nodes.size(); i++) {
+    KALDI_ASSERT(nonleaf_indices.count(nonleaf_nodes[i]) != 0);
+    KALDI_ASSERT(nonleaf_parents.count(nonleaf_nodes[i]) != 0);
+    KALDI_ASSERT(nonleaf_indices.count(nonleaf_parents[nonleaf_nodes[i]]) != 0);
     int32 index = nonleaf_indices[nonleaf_nodes[i]],
         parent_index = nonleaf_indices[nonleaf_parents[nonleaf_nodes[i]]];
     KALDI_ASSERT(index > 0 && parent_index >= index);
     (*parents)[index] = parent_index;
   }
-  for (int32 i = 0; i < *num_leaves; i++)
-    KALDI_ASSERT ((*parents)[i] > i || (i+1==*num_leaves && (*parents)[i] == i));
+  for (int32 i = 0; i < num_nodes; i++)
+    KALDI_ASSERT ((*parents)[i] > i || (i+1==num_nodes && (*parents)[i] == i));
   return true;
 }
-
 
 
 

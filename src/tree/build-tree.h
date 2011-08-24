@@ -64,10 +64,13 @@ namespace kaldi {
  *                  to a large number if you want to just specify  "thresh".
  * @param cluster_thresh [in] Threshold for clustering leaves after decision-tree
  *                  splitting (only within each phone-set); leaves will be combined
- *                  if less than this.  A value about equal to "thresh" is suitable
+ *                  if log-likelihood change is less than this.  A value about equal
+ *                  to "thresh" is suitable
  *                  if thresh != 0; otherwise, zero will mean no clustering is done,
  *                  or a negative value (e.g. -1) sets it to the smallest likelihood
- *                  change seen during the splitting algorithm; this is a suitable value.
+ *                  change seen during the splitting algorithm; this typically causes
+ *                  about a 20% reduction in #leaves.
+ 
  * @param P [in] The central position of the phone context window, e.g. 1 for a
  *                triphone system.
  * @return  Returns a pointer to an EventMap object that is the tree.
@@ -84,6 +87,70 @@ EventMap *BuildTree(Questions &qopts,
                     int32 max_leaves,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
                     int32 P);
+
+
+/**
+ *
+ *  BuildTreeTwoLevel builds a two-level tree, useful for example in building tied mixture
+ *  systems with multiple codebooks.  It first builds a small tree by splitting to
+ *  "max_leaves_first".  It then splits at the leaves of "max_leaves_first" (think of this
+ *  as creating multiple little trees at the leaves of the first tree), until the total
+ *  number of leaves reaches "max_leaves_second".  It then outputs the second tree, along
+ *  with a mapping from the leaf-ids of the second tree to the leaf-ids of the first tree.
+ *  Note that the interface is similar to BuildTree, and in fact it calls BuildTree
+ *  internally.
+ *
+ *  The sets "phone_sets" dictate how we set up the roots of the decision trees.
+ *  each set of phones phone_sets[i] has shared decision-tree roots, and if
+ *  the corresponding variable share_roots[i] is true, the root will be shared
+ *  for the different HMM-positions in the phone.  All phones in "phone_sets"
+ *  should be in the stats (use FixUnseenPhones to ensure this).
+ *  if for any i, do_split[i] is false, we will not do any tree splitting for
+ *  phones in that set.
+ *
+ * @param qopts [in] Questions options class, contains questions for each key
+ *                   (e.g. each phone position)
+ * @param phone_sets [in] Each element of phone_sets is a set of phones whose
+ *                 roots are shared together (prior to decision-tree splitting).
+ * @param phone2num_pdf_classes [in] A map from phones to the number of
+ *                 \ref pdf_class "pdf-classes"
+ *                 in the phone (this info is derived from the HmmTopology object)
+ * @param share_roots [in] A vector the same size as phone_sets; says for each
+ *                phone set whether the root should be shared among all the
+ *                pdf-classes or not.
+ * @param do_split [in] A vector the same size as phone_sets; says for each
+ *                phone set whether decision-tree splitting should be done
+ *                 (generally true for non-silence phones).
+ * @param stats [in] The statistics used in tree-building.
+ * @param max_leaves_first [in] Maximum number of leaves it will create in first
+ *                  level of decision tree. 
+ * @param max_leaves_second [in] Maximum number of leaves it will create in second
+ *                  level of decision tree.  Must be > max_leaves_first.
+ * @param cluster_leaves [in] Boolean value; if true, we post-cluster the leaves produced
+ *                  in the second level of decision-tree split; if false, we don't.
+ *                  The threshold for post-clustering is the log-like change of the last
+ *                  decision-tree split; this typically causes about a 20% reduction in
+ *                  #leaves.
+ * @param P [in]   The central position of the phone context window, e.g. 1 for a
+ *                 triphone system.
+ * @param leaf_map [out]  Will be set to be a mapping from the leaves of the
+ *                 "big" tree to the leaves of the "little" tree, which you can
+ *                 view as cluster centers.
+ * @return  Returns a pointer to an EventMap object that is the (big) tree.
+
+*/
+
+EventMap *BuildTreeTwoLevel(Questions &qopts,
+                            const std::vector<std::vector<int32> > &phone_sets,
+                            const std::vector<int32> &phone2num_pdf_classes,
+                            const std::vector<bool> &share_roots,
+                            const std::vector<bool> &do_split,
+                            const BuildTreeStatsType &stats,
+                            int32 max_leaves_first,
+                            int32 max_leaves_second,
+                            bool cluster_leaves,
+                            int32 P,
+                            std::vector<int32> *leaf_map);
 
 
 /// GenRandStats generates random statistics of the form used by BuildTree.
