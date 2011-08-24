@@ -168,7 +168,7 @@ BaseFloat AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
   // subtract log(weight) = log(1/NumGauss) = -log(NumGauss)
   svq->Add(log(densities_[pdfid]->NumGauss()));
 
-  // normalize
+  // normalize; speed-up using svq->Max()?
   BaseFloat c = svq->LogSumExp();
   svq->Add(-c);
   svq->ApplyExp();

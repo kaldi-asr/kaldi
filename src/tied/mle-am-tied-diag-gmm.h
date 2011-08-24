@@ -70,8 +70,8 @@ class AccumAmTiedDiagGmm {
   int32 NumTiedAccs() { return tied_gmm_accumulators_.size(); }
   int32 NumTiedAccs() const { return tied_gmm_accumulators_.size(); }
 
-  const AccumDiagGmm& GetDiagAcc(int32 index) const;
-  const AccumTiedGmm& GetTiedAcc(int32 pdf_index) const;
+  AccumDiagGmm& GetDiagAcc(int32 index) const;
+  AccumTiedGmm& GetTiedAcc(int32 pdf_index) const;
 
  private:
   /// MLE accumulators and update methods for the GMMs

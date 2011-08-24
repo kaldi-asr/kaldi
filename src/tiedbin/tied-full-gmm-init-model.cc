@@ -1,4 +1,4 @@
-// tiedbin/tied-full-gmm-init-model.cc
+// gmmbin/gmm-init-model.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -15,6 +15,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <vector>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -29,91 +30,62 @@
 
 namespace kaldi {
 
-/// InitAmGmm initializes the GMM with one Gaussian per state.
-void InitAmTiedFullGmm(const BuildTreeStatsType &stats,
-               const EventMap &to_pdf_map,
-               AmTiedFullGmm *am_gmm) {
-  // Get stats split by tree-leaf ( == pdf):
-  std::vector<BuildTreeStatsType> split_stats;
-  SplitStatsByMap(stats, to_pdf_map, &split_stats);
-  // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
-  std::vector<Clusterable*> summed_stats;
-  SumStatsVec(split_stats, &summed_stats);
+using std::map;
+using std::vector;
 
-  // very basic for now, just initialize all states on the same codebook
+/// Initialize the tied densities of the AmTiedFull using the
+/// AmTiedFullGmm (with set codebooks) and a list of codebook ids for the stats
+void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) {
   TiedGmm *tied = new TiedGmm();
-  tied->Setup(0, am_gmm->GetPdf(0).NumGauss());
-  for (size_t i = 0; i < summed_stats.size(); i++) {
-    KALDI_ASSERT(summed_stats[i] != NULL);
+
+  // initialize for ever leaf
+  for (int32 i = 0; i < tied_to_pdf->size() ; i++) {
+    int32 pdfid = (*tied_to_pdf)[i];
+
+    // make sure we have this codebook
+    KALDI_ASSERT(pdfid < am_gmm->NumPdfs());
+
+    // link to codebook and allocate uniform weights
+    tied->Setup(pdfid, am_gmm->GetPdf(pdfid).NumGauss());
     am_gmm->AddTiedPdf(*tied);
   }
+
   delete tied;
+  
   am_gmm->ComputeGconsts();
-  DeletePointers(&summed_stats);
-}
-
-/// Get state occupation counts.
-void GetOccs(const BuildTreeStatsType &stats,
-             const EventMap &to_pdf_map,
-             Vector<BaseFloat> *occs) {
-
-    // Get stats split by tree-leaf ( == pdf):
-  std::vector<BuildTreeStatsType> split_stats;
-  SplitStatsByMap(stats, to_pdf_map, &split_stats);
-  // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
-  occs->Resize(split_stats.size());
-  for (int32 pdf = 0; pdf < occs->Dim(); pdf++)
-    (*occs)(pdf) = SumNormalizer(split_stats[pdf]);
 }
 
 }
 
 int main(int argc, char *argv[]) {
-  using namespace kaldi;
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
     const char *usage =
         "Train decision tree\n"
-        "Usage:  gmm-init-model [options] <tree-in> <tree-stats-in> <topo-file> <full-gmm> <model-out>\n"
+        "Usage:  tied-full-gmm-init-model [options] <tree> <topo> <tied_to_pdf_map> <full-ubm0> [full-ubm0 ...] <model-out>\n"
         "e.g.: \n"
-        "  gmm-init-model tree treeacc topo tree full.ubm 1.mdl\n";
+        "  tied-full-gmm-init-model tree topo tiedmap diag0.ubm diag1.ubm 1.mdl\n";
 
     bool binary = false;
-    std::string occs_out_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("write-occs", &occs_out_filename, "File to write state "
-                "occupancies to.");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 5) {
+    if (po.NumArgs() < 5) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string
-        tree_filename = po.GetArg(1),
-        stats_filename = po.GetArg(2),
-        topo_filename = po.GetArg(3),
-        cb_filename = po.GetArg(4),
-        model_out_filename = po.GetArg(5);
+    // use the last argument as output
+    std::string 
+      tree_filename = po.GetArg(1),
+      topo_filename = po.GetArg(2),
+      tied_to_pdf_file = po.GetArg(3),
+      model_out_filename = po.GetArg(po.NumArgs());
 
     ContextDependency ctx_dep;
     {
@@ -122,15 +94,6 @@ int main(int argc, char *argv[]) {
       ctx_dep.Read(ki.Stream(), binary_in);
     }
 
-    BuildTreeStatsType stats;
-    {
-      bool binary_in;
-      GaussClusterable gc;  // dummy needed to provide type.
-      Input is(stats_filename, &binary_in);
-      ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
-    }
-    KALDI_LOG << "Number of separate statistics is " << stats.size();
-
     HmmTopology topo;
     {
       bool binary_in;
@@ -138,33 +101,34 @@ int main(int argc, char *argv[]) {
       topo.Read(ki.Stream(), binary_in);
     }
 
-
-    std::vector<int32> phone2num_pdf_classes;
-    topo.GetPhoneToNumPdfClasses(&phone2num_pdf_classes);
-
-    const EventMap &to_pdf = ctx_dep.ToPdfMap();  // not owned here.
-
-    FullGmm cb;
+    // read in tied->pdf map
+    std::vector<int32> tied_to_pdf;
     {
       bool binary_in;
-      Input ki(cb_filename, &binary_in);
-      cb.Read(ki.Stream(), binary_in);
+      Input ki(tied_to_pdf_file, &binary_in);
+      ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
     }
 
-    // Now, the summed_stats will be used to initialize the GMM.
+    KALDI_ASSERT(tied_to_pdf.size() > 0);
+
+    // subsequently add the codebooks
     AmTiedFullGmm am_gmm;
-    am_gmm.Init(cb);
-    InitAmTiedFullGmm(stats, to_pdf, &am_gmm);  // Normal case: initialize 1 Gauss/model from tree stats.
+    for (int32 i = 4; i < po.NumArgs() - 1; ++i) {
+      FullGmm cb;
+      bool binary_in;
+      Input ki(po.GetArg(i), &binary_in);
+      cb.Read(ki.Stream(), binary_in);
+      
+      if (i == 0)
+        am_gmm.Init(cb);
+      else
+        am_gmm.AddPdf(cb);
+    } 
 
-    if (!occs_out_filename.empty()) {  // write state occs
-      Vector<BaseFloat> occs;
-      GetOccs(stats, to_pdf, &occs);
-      Output ko(occs_out_filename, binary);
-      occs.Write(ko.Stream(), binary);
-    }
+    // Init the model by allocating the tied mixtures
+    InitAmTiedFullGmm(&am_gmm, &tied_to_pdf);  
 
     TransitionModel trans_model(ctx_dep, topo);
-
     {
       Output os(model_out_filename, binary);
       trans_model.Write(os.Stream(), binary);
@@ -172,7 +136,6 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Wrote tree and model.";
 
-    DeleteBuildTreeStats(&stats);
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
