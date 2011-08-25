@@ -21,12 +21,12 @@
 
 namespace kaldi {
 
-const AccumFullGmm& AccumAmTiedFullGmm::GetFullAcc(int32 index) const {
+AccumFullGmm& AccumAmTiedFullGmm::GetFullAcc(int32 index) const {
   assert(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
   return *(gmm_accumulators_[index]);
 }
 
-const AccumTiedGmm& AccumAmTiedFullGmm::GetTiedAcc(int32 pdf_index) const {
+AccumTiedGmm& AccumAmTiedFullGmm::GetTiedAcc(int32 pdf_index) const {
   assert(pdf_index >= 0 && pdf_index < static_cast<int32>(tied_gmm_accumulators_.size()));
   return *(tied_gmm_accumulators_[pdf_index]);
 }

@@ -34,13 +34,14 @@ using std::map;
 using std::vector;
 
 /// Initialize the tied densities of the AmTiedFull using the
-/// AmTiedFullGmm (with set codebooks) and a list of codebook ids for the stats
+/// AmTiedFullGmm (with set codebooks) and a (optional) list of codebook ids
+/// to assign the tied gmms to.
 void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) {
   TiedGmm *tied = new TiedGmm();
 
   // initialize for ever leaf
   for (int32 i = 0; i < tied_to_pdf->size() ; i++) {
-    int32 pdfid = (*tied_to_pdf)[i];
+    int32 pdfid = tied_to_pdf ? (*tied_to_pdf)[i] : 0;
 
     // make sure we have this codebook
     KALDI_ASSERT(pdfid < am_gmm->NumPdfs());
@@ -63,10 +64,12 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Train decision tree\n"
-        "Usage:  tied-full-gmm-init-model [options] <tree> <topo> <tied_to_pdf_map> <full-ubm0> [full-ubm0 ...] <model-out>\n"
+        "Initialize a tied mixture model with fullonal mixture codebooks. If\n"
+        "using more than one codebook, you need to specify a map file, mapping\n"
+        "the tree leaves to the codebook ids as a vector, e.g. \"[ 0 0 1 1 \"]\n"
+        "Usage:  tied-full-gmm-init-model [options] <tree> <topo> <full-ubm0> [tiedmap full-ubm1 ...] <model-out>\n"
         "e.g.: \n"
-        "  tied-full-gmm-init-model tree topo tiedmap diag0.ubm diag1.ubm 1.mdl\n";
+        "  tied-full-gmm-init-model tree topo full0.ubm tiedmap full1.ubm 1.mdl\n";
 
     bool binary = false;
 
@@ -75,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 5) {
+    if (po.NumArgs() < 4 || po.NumArgs() == 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -84,7 +87,7 @@ int main(int argc, char *argv[]) {
     std::string 
       tree_filename = po.GetArg(1),
       topo_filename = po.GetArg(2),
-      tied_to_pdf_file = po.GetArg(3),
+      first_cb_filename = po.GetArg(3),
       model_out_filename = po.GetArg(po.NumArgs());
 
     ContextDependency ctx_dep;
@@ -100,33 +103,40 @@ int main(int argc, char *argv[]) {
       Input ki(topo_filename, &binary_in);
       topo.Read(ki.Stream(), binary_in);
     }
-
-    // read in tied->pdf map
-    std::vector<int32> tied_to_pdf;
+    
+    FullGmm cb0;
     {
       bool binary_in;
-      Input ki(tied_to_pdf_file, &binary_in);
-      ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
+      Input ki(first_cb_filename, &binary_in);
+      cb0.Read(ki.Stream(), binary_in);
     }
 
-    KALDI_ASSERT(tied_to_pdf.size() > 0);
-
-    // subsequently add the codebooks
     AmTiedFullGmm am_gmm;
-    for (int32 i = 4; i < po.NumArgs() - 1; ++i) {
-      FullGmm cb;
-      bool binary_in;
-      Input ki(po.GetArg(i), &binary_in);
-      cb.Read(ki.Stream(), binary_in);
+    am_gmm.Init(cb0);
+
+    std::vector<int32> tied_to_pdf;
+
+    // more codebooks?
+    if (po.NumArgs() > 5) {
+      // read the mapping
+      {
+        bool binary_in;
+        Input ki(po.GetArg(4), &binary_in);
+        ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
+      }
       
-      if (i == 0)
-        am_gmm.Init(cb);
-      else
+      // subsequently add the codebooks
+      for (int32 i = 5; i < po.NumArgs(); ++i) {
+        FullGmm cb;
+        bool binary_in;
+        Input ki(po.GetArg(i), &binary_in);
+        cb.Read(ki.Stream(), binary_in);
         am_gmm.AddPdf(cb);
-    } 
+      } 
+    }
 
     // Init the model by allocating the tied mixtures
-    InitAmTiedFullGmm(&am_gmm, &tied_to_pdf);  
+    InitAmTiedFullGmm(&am_gmm, tied_to_pdf.size() > 0 ? &tied_to_pdf : NULL);  
 
     TransitionModel trans_model(ctx_dep, topo);
     {
