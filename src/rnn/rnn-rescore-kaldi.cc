@@ -169,7 +169,7 @@ class RNN{
       //  (*hOut)(i)=1.0/(1.0-FAST_EXP((*hOut)(i))); 
       hOut->ApplyExp();hOut->Add(1.0);hOut->InvertElements();
 
-      KALDI_LOG<<(*hOut)(112);
+      //KALDI_LOG<<(*hOut)(112);
 
 
       if (IsOOV(w)) {
@@ -197,7 +197,7 @@ class RNN{
         y_part.AddMatVec(1.0,W2_part,kTrans,*hOut,0.0);
         for (int32 i=0;i<y_part.Dim();i++) ysum+=(y_part(i)=FAST_EXP(y_part(i)));
 
-        KALDI_LOG << -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
+        //KALDI_LOG << -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
         return -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
       }
 

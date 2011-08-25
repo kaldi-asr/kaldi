@@ -197,7 +197,7 @@ class RNN{
       // activate hidden layer (sigmoid) and determine updated s(t)
       *hOut=VectorXr(VectorXr(h_ac.array().exp()+1.0).array().inverse());
 
-      KALDI_LOG<<(*hOut)(112);
+//      KALDI_LOG<<(*hOut)(112);
 
       if (IsIV(w)){
         // evaluate classes: c(t)=W*s(t) + activation class layer (softmax)
@@ -210,7 +210,7 @@ class RNN{
         // activate class part of the word layer (softmax)
         y_.segment(b,n).noalias()=VectorXr((W2_.middleRows(b,n)*(*hOut)).array().exp());
         ivcnt_++;
-        KALDI_LOG<<-log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
+//        KALDI_LOG<<-log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
         return -log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
       } else { oovcnt_++; return OOVPenalty(); };
     }
