@@ -31,8 +31,10 @@ fi
 . path.sh || exit 1;
 
 acwt=0.0625
-beam=11.0
-max_active=7000
+beam=15.0
+max_active=15000
+lat_beam=9.0
+max_arcs=50000
 model=exp/tri3a/final.mdl
 graph=$1
 dir=$2
@@ -49,4 +51,4 @@ for file in $filenames; do
 done
 
 echo running on `hostname` > $dir/decode${job}.log
-gmm-latgen-simple --beam=$beam --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" "ark,t:|gzip -c >$dir/$job.lats.gz" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode${job}.log 
+gmm-latgen-simple --beam=$beam --acoustic-scale=$acwt --lattice-beam=$lat_beam --max-arcs=$max_arcs --word-symbol-table=data/words.txt $model $graph "$feats" "ark,t:|gzip -c >$dir/$job.lats.gz" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode${job}.log 
