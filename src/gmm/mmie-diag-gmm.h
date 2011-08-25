@@ -1,6 +1,6 @@
 // gmm/mmie-diag-gmm.h
 
-// Copyright 2009-2011  Arnab Ghoshal, Petr Motlicek
+// Copyright 2009-2011  Petr Motlicek, Arnab Ghoshal 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,13 +59,35 @@ struct MmieDiagGmmOptions : public MleDiagGmmOptions {
 /** Class for computing the maximum mutual information estimate of the
  *  parameters of a Gaussian mixture model.
  */
-class MmieDiagGmm {
+class MmieAccumDiagGmm {
  public:
-  MmieDiagGmm(): dim_(0), num_comp_(0), flags_(0) {}
+  MmieAccumDiagGmm(): dim_(0), num_comp_(0), flags_(0) {}
   //MmieDiagGmm() {}
+  explicit MmieAccumDiagGmm(const DiagGmm &gmm, GmmFlagsType flags) {
+    Resize(gmm.NumGauss(), gmm.Dim(), flags);
+  }
+
+  // provide copy constructor.
+  explicit MmieAccumDiagGmm(const MmieAccumDiagGmm &other);
+
+
+  void Read(std::istream &in_stream, bool binary, bool add);
+  void Write(std::ostream &out_stream, bool binary) const;
 
   /// Allocates memory for accumulators
   void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
+/// Calls ResizeAccumulators with arguments based on gmm
+  void Resize(const DiagGmm &gmm, GmmFlagsType flags);
+
+
+  /// Returns the number of mixture components
+  int32 NumGauss() const { return num_comp_; }
+  /// Returns the dimensionality of the feature vectors
+  int32 Dim() const { return dim_; }
+
+  void SetZero(GmmFlagsType flags);
+  void Scale(BaseFloat f, GmmFlagsType flags);
+
 
   /// Computes the difference between the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed.
@@ -73,14 +95,18 @@ class MmieDiagGmm {
                                       const AccumDiagGmm& den_acc,
                                       const MmieDiagGmmOptions& opts);
 
+
+  /// MMIe update
   void Update(const MmieDiagGmmOptions &config,
-              GmmFlagsType flags,
-              DiagGmm *gmm,
-              BaseFloat *obj_change_out,
-              BaseFloat *count_out) const;
+                                      GmmFlagsType flags,
+                                      DiagGmm *gmm,
+                                      BaseFloat *obj_change_out,
+                                      BaseFloat *count_out) const;
+
+
 
   // Accessors
-  //const GmmFlagsType Flags() const { return flags_; }
+  const GmmFlagsType Flags() const { return flags_; }
   const Vector<double>& num_occupancy() const { return num_occupancy_; }
   const Vector<double>& den_occupancy() const { return den_occupancy_; }
   const Vector<double>& occupancy() const { return occupancy_; }  
@@ -95,9 +121,7 @@ class MmieDiagGmm {
   GmmFlagsType flags_;
 
   /// Accumulators
-  // TODO(arnab): not decided yet whether to store the difference or keep the
-  //              num and den accs for mean and var.
-  //     (petr): we store the difference of mean and var; we keep occupancy for num and den 
+  /// (petr): we store the difference of mean and var; we keep occupancy for num and den and their difference 
   
   Vector<double> num_occupancy_;
   Vector<double> den_occupancy_;
@@ -105,15 +129,17 @@ class MmieDiagGmm {
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
 
-//  BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
+  //  BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
 
-  // Cannot have copy constructor and assigment operator
-  KALDI_DISALLOW_COPY_AND_ASSIGN(MmieDiagGmm);
+  /// Cannot have copy constructor and assigment operator
+  //KALDI_DISALLOW_COPY_AND_ASSIGN(MmieDiagGmm);
 };
 
-//inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
-//  Resize(gmm.NumGauss(), gmm.Dim(), flags);
-//}
+
+inline void MmieAccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
+  Resize(gmm.NumGauss(), gmm.Dim(), flags);
+}
+
 
 }  // End namespace kaldi
 

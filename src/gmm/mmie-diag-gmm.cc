@@ -1,6 +1,6 @@
 // gmm/mmie-diag-gmm.cc
 
-// Copyright 2009-2011  Arnab Ghoshal, Petr Motlicek
+// Copyright 2009-2011 Petr Motlicek, Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,91 @@
 namespace kaldi {
 
 
-void MmieDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
+void MmieAccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
+  int32 dimension, num_components;
+  GmmFlagsType flags;
+  std::string token;
+
+  ExpectMarker(in_stream, binary, "<GMMMMIACCS>");
+  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ReadBasicType(in_stream, binary, &dimension);
+  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ReadBasicType(in_stream, binary, &num_components);
+  ExpectMarker(in_stream, binary, "<FLAGS>");
+  ReadBasicType(in_stream, binary, &flags);
+
+  if (add) {
+    if ((NumGauss() != 0 || Dim() != 0 || Flags() != 0)) {
+      if (num_components != NumGauss() || dimension != Dim()
+          || flags != Flags()) {
+        KALDI_ERR << "Dimension or flags mismatch: " << NumGauss() << ", "
+                  << Dim() << ", " << Flags() << " vs. " << num_components
+                  << ", " << dimension << ", " << flags;
+      }
+    } else {
+      Resize(num_components, dimension, flags);
+    }
+  } else {
+    Resize(num_components, dimension, flags);
+  }
+
+  ReadMarker(in_stream, binary, &token);
+  while (token != "</GMMMMIACCS>") {
+    if (token == "<NUM_OCCUPANCY>") {
+      num_occupancy_.Read(in_stream, binary, add);
+    } else if (token == "<DEN_OCCUPANCY>") {
+      den_occupancy_.Read(in_stream, binary, add);
+    } else if (token == "<MEANACCS>") {
+      mean_accumulator_.Read(in_stream, binary, add);
+    } else if (token == "<DIAGVARACCS>") {
+      variance_accumulator_.Read(in_stream, binary, add);
+    } else {
+      KALDI_ERR << "Unexpected token '" << token << "' in model file ";
+    }
+    ReadMarker(in_stream, binary, &token);
+  }
+  /// get difference
+  occupancy_.CopyFromVec(num_occupancy_);
+  occupancy_.AddVec(-1.0, den_occupancy_);
+
+}
+
+void MmieAccumDiagGmm::Write(std::ostream &out_stream, bool binary) const {
+  WriteMarker(out_stream, binary, "<GMMMMIACCS>");
+  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteBasicType(out_stream, binary, dim_);
+  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteBasicType(out_stream, binary, num_comp_);
+  WriteMarker(out_stream, binary, "<FLAGS>");
+  WriteBasicType(out_stream, binary, flags_);
+
+  // convert into BaseFloat before writing things
+  Vector<BaseFloat> num_occupancy_bf(num_occupancy_.Dim());
+  Vector<BaseFloat> den_occupancy_bf(den_occupancy_.Dim());
+  Matrix<BaseFloat> mean_accumulator_bf(mean_accumulator_.NumRows(),
+      mean_accumulator_.NumCols());
+  Matrix<BaseFloat> variance_accumulator_bf(variance_accumulator_.NumRows(),
+      variance_accumulator_.NumCols());
+  num_occupancy_bf.CopyFromVec(num_occupancy_);
+  den_occupancy_bf.CopyFromVec(den_occupancy_);
+  mean_accumulator_bf.CopyFromMat(mean_accumulator_);
+  variance_accumulator_bf.CopyFromMat(variance_accumulator_);
+
+  WriteMarker(out_stream, binary, "<NUM_OCCUPANCY>");
+  num_occupancy_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "<DEN_OCCUPANCY>");
+  den_occupancy_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "<MEANACCS>");
+  mean_accumulator_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "<DIAGVARACCS>");
+  variance_accumulator_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "</GMMMMIACCS>");
+}
+
+
+
+
+void MmieAccumDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
   KALDI_ASSERT(num_comp > 0 && dim > 0);
   num_comp_ = num_comp;
   dim_ = dim;
@@ -45,7 +129,34 @@ void MmieDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
 }
 
 
-void MmieDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
+void MmieAccumDiagGmm::SetZero(GmmFlagsType flags) {
+  if (flags & ~flags_)
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+  if (flags & kGmmWeights) {
+    num_occupancy_.SetZero();
+    den_occupancy_.SetZero();
+    occupancy_.SetZero();
+  }
+  if (flags & kGmmMeans) mean_accumulator_.SetZero();
+  if (flags & kGmmVariances) variance_accumulator_.SetZero();
+}
+
+
+void MmieAccumDiagGmm::Scale(BaseFloat f, GmmFlagsType flags) {
+  if (flags & ~flags_)
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+  double d = static_cast<double>(f);
+  if (flags & kGmmWeights) {
+    num_occupancy_.Scale(d);
+    den_occupancy_.Scale(d);
+    occupancy_.Scale(d);
+  }
+  if (flags & kGmmMeans) mean_accumulator_.Scale(d);
+  if (flags & kGmmVariances) variance_accumulator_.Scale(d);
+}
+
+
+void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
                             const AccumDiagGmm& den_acc,
                             const MmieDiagGmmOptions& opts){
 
@@ -54,8 +165,7 @@ void MmieDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
   KALDI_ASSERT(num_acc.NumGauss() == num_comp_ && num_acc.Dim() == dim_);
   KALDI_ASSERT(den_acc.NumGauss() == num_comp_ && den_acc.Dim() == dim_);
   
-  int32 Tau = 100;
-
+  
   // no subracting occs, just copy them to local vars
   num_occupancy_.CopyFromVec(num_acc.occupancy());
   den_occupancy_.CopyFromVec(den_acc.occupancy());
@@ -63,7 +173,6 @@ void MmieDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
   // Copy nums to private vars
   mean_accumulator_.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
   variance_accumulator_.CopyFromMat(num_acc.variance_accumulator(), kNoTrans);
-
 
   /*
   std::cout << "OCC: " << num_occupancy_.Dim() << '\n';
@@ -84,14 +193,14 @@ void MmieDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
     double occ = num_occupancy_(g);
   //  std::cout << "M1: " << mean_accumulator_.Row(g) << '\n';
   //  std::cout << "Occ: " << occ << '\n';
-    mean_accumulator_.Row(g).AddVec(Tau/occ, mean_accumulator_.Row(g));
-    variance_accumulator_.Row(g).AddVec(Tau/occ, variance_accumulator_.Row(g));
+    mean_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ, mean_accumulator_.Row(g));
+    variance_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ, variance_accumulator_.Row(g));
   //  std::cout << "M2: " << mean_accumulator_.Row(g) << '\n';
   //  std::cout << "M22: " << den_acc.mean_accumulator().Row(g) << '\n';
 
   }
 
-  num_occupancy_.Add(Tau);
+  num_occupancy_.Add(opts.i_smooth_tau);
   occupancy_.CopyFromVec(num_occupancy_);
   occupancy_.AddVec(-1.0, den_occupancy_);
 
@@ -106,7 +215,9 @@ void MmieDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
 }
 
 
-void MmieDiagGmm::Update(const MmieDiagGmmOptions &config,
+
+
+void MmieAccumDiagGmm::Update(const MmieDiagGmmOptions &config,
               GmmFlagsType flags,
               DiagGmm *gmm,
               BaseFloat *obj_change_out,
@@ -136,7 +247,7 @@ void MmieDiagGmm::Update(const MmieDiagGmmOptions &config,
   // initialize D for all components
   Vector<double> D(num_comp);
   for (int32 g = 0; g < num_comp; g++)
-       D(g) = den_occupancy_(g); // E*y_den/2 where E = 2;
+       D(g) = config.ebw_e * den_occupancy_(g) / 2; // E*y_den/2 where E = 2;
 
   // go over all components
   double occ;
@@ -191,7 +302,6 @@ void MmieDiagGmm::Update(const MmieDiagGmmOptions &config,
 
     } // while  
   }   // for
-
   // get sum of updated occupancies
   double occ_sum = 0.0;
   for (int32 g = 0; g < num_comp; g++){
@@ -227,6 +337,17 @@ void MmieDiagGmm::Update(const MmieDiagGmmOptions &config,
 
   std::cout << "End MMIe update\n";
 }
+
+
+
+
+MmieAccumDiagGmm::MmieAccumDiagGmm(const MmieAccumDiagGmm &other)
+    : dim_(other.dim_), num_comp_(other.num_comp_),
+      flags_(other.flags_), num_occupancy_(other.num_occupancy_),
+      den_occupancy_(other.den_occupancy_),
+      mean_accumulator_(other.mean_accumulator_),
+      variance_accumulator_(other.variance_accumulator_) {}
+
 
 
 //BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e){

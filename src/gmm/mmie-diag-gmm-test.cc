@@ -116,7 +116,7 @@ void UnitTestEstimateMmieDiagGmm() {
   gmm->ComputeGconsts();
 
 
-  MmieDiagGmm mmie_gmm;
+  MmieAccumDiagGmm mmie_gmm;
 
   MmieDiagGmmOptions  config;
   config.min_variance = 0.01;
@@ -178,6 +178,15 @@ void UnitTestEstimateMmieDiagGmm() {
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
    //std::cout << "MEANX: " << mean_hlp << '\n'; 
    std::cout << "MEANX: " << gmm->weights() << '\n'; 
+
+   // binary write
+   mmie_gmm.Write(Output("tmp_stats", false).Stream(), false);
+
+   // binary read
+   bool binary_in;
+   Input ki("tmp_stats", &binary_in);
+   mmie_gmm.Read(ki.Stream(), binary_in, false);  // false = not adding.
+
 
    mmie_gmm.Update(config, flags, gmm, &obj, &count);
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));

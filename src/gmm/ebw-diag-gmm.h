@@ -1,6 +1,6 @@
 // gmm/ebw-diag-gmm.h
 
-// Copyright 2009-2011  Arnab Ghoshal
+// Copyright 2009-2011  Arnab Ghoshal, Petr Motlicek
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ class AccumEbwDiagGmm {
   void SetZero(GmmFlagsType flags);
   void Scale(BaseFloat f, GmmFlagsType flags);
 
-  // TODO(arnab): maybe it's better to acc using a singe posterior, but we
+  // TODO(arnab): maybe it's better to acc using a single posterior, but we
   // need to know which occ stats to add to. Create 2 functions instead?
   /// Accumulate for all components, given the posteriors.
   void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
