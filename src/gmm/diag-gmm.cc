@@ -115,7 +115,7 @@ int32 DiagGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void DiagGmm::Split(int32 target_components, float perturb_factor) {
+void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<int32> *history) {
   if (target_components < NumGauss() || NumGauss() == 0) {
     KALDI_ERR << "Cannot split from "  << NumGauss() << " to "
               << target_components  << " components";
@@ -150,6 +150,11 @@ void DiagGmm::Split(int32 target_components, float perturb_factor) {
         max_idx = i;
       }
     }
+
+    // remember what component was split
+    if (history != NULL)
+      history->push_back(max_idx);
+
     weights_(max_idx) /= 2;
     weights_(current_components) = weights_(max_idx);
     Vector<BaseFloat> rand_vec(dim);
@@ -169,7 +174,7 @@ void DiagGmm::Split(int32 target_components, float perturb_factor) {
   ComputeGconsts();
 }
 
-void DiagGmm::Merge(int32 target_components) {
+void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
         << target_components << ")";
@@ -275,6 +280,12 @@ void DiagGmm::Merge(int32 target_components) {
 
     // make sure that different components will be merged
     assert(max_i != max_j);
+
+    // remember the merge candidates
+    if (history != NULL) {
+      history->push_back(max_i);
+      history->push_back(max_j);
+    }
 
     // Merge components
     BaseFloat w1 = weights_(max_i), w2 = weights_(max_j);

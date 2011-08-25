@@ -89,8 +89,14 @@ class DiagGmm {
   /// Generates a random data-point from this distribution.
   void Generate(VectorBase<BaseFloat> *output);
 
-  void Split(int32 target_components, float perturb_factor);
-  void Merge(int32 target_components);
+  /// Split the components and remember the order in which the components were 
+  /// split
+  void Split(int32 target_components, float perturb_factor, 
+             std::vector<int32> *history = NULL);
+
+  /// Merge the components and remember the order in which the components were 
+  /// merged (flat list of pairs)
+  void Merge(int32 target_components, std::vector<int32> *history = NULL);
 
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);

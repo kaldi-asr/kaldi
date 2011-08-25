@@ -116,7 +116,8 @@ int32 FullGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void FullGmm::Split(int32 target_components, float perturb_factor) {
+void FullGmm::Split(int32 target_components, float perturb_factor, 
+                    std::vector<int32> *history) {
   if (target_components <= NumGauss() || NumGauss() == 0) {
     KALDI_ERR << "Cannot split from " << NumGauss() <<  " to "
               << target_components << " components";
@@ -151,6 +152,11 @@ void FullGmm::Split(int32 target_components, float perturb_factor) {
         max_idx = i;
       }
     }
+
+    // remember history
+    if (history != NULL)
+      history->push_back(max_idx);
+
     weights_(max_idx) /= 2;
     weights_(current_components) = weights_(max_idx);
     Vector<BaseFloat> rand_vec(dim);
@@ -168,7 +174,7 @@ void FullGmm::Split(int32 target_components, float perturb_factor) {
   ComputeGconsts();
 }
 
-void FullGmm::Merge(int32 target_components) {
+void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
         << target_components << ")";
@@ -277,6 +283,12 @@ void FullGmm::Merge(int32 target_components) {
 
     // make sure that different components will be merged
     assert(max_i != max_j);
+
+    // remember history
+    if (history != NULL) {
+      history->push_back(max_i);
+      history->push_back(max_j);
+    }
 
     // Merge components
     BaseFloat w1 = weights_(max_i), w2 = weights_(max_j);
