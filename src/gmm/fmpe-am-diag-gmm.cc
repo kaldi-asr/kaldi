@@ -27,17 +27,70 @@
 
 namespace kaldi {
 
+void FmpeAccumModelDiff::Read(std::istream &in_stream, bool binary) {
+  int32 dimension, num_components;
+  std::string token;
+
+  ExpectMarker(in_stream, binary, "<FMPEMODELDIFFS>");
+  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ReadBasicType(in_stream, binary, &dimension);
+  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ReadBasicType(in_stream, binary, &num_components);
+
+  Resize(num_components, dimension);
+
+  ReadMarker(in_stream, binary, &token);
+  while (token != "</FMPEMODELDIFFS>") {
+    if (token == "<MLE_OCCUPANCY>") {
+      mle_occupancy_.Read(in_stream, binary);
+    } else if (token == "<MEANDIFFS>") {
+      mean_diff_accumulator_.Read(in_stream, binary);
+    } else if (token == "<DIAGVARDIFFS>") {
+      variance_diff_accumulator_.Read(in_stream, binary);
+    } else {
+      KALDI_ERR << "Unexpected token '" << token << "' in model file ";
+    }
+    ReadMarker(in_stream, binary, &token);
+  }
+}
+
+void FmpeAccumModelDiff::Write(std::ostream &out_stream, bool binary) const {
+  WriteMarker(out_stream, binary, "<FMPEMODELDIFFS>");
+  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteBasicType(out_stream, binary, dim_);
+  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteBasicType(out_stream, binary, num_comp_);
+
+  // convert into BaseFloat before writing things
+  Vector<BaseFloat> occupancy_bf(mle_occupancy_.Dim());
+  Matrix<BaseFloat> mean_diff_accumulator_bf(mean_diff_accumulator_.NumRows(),
+      mean_diff_accumulator_.NumCols());
+  Matrix<BaseFloat> variance_diff_accumulator_bf(variance_diff_accumulator_.NumRows(),
+      variance_diff_accumulator_.NumCols());
+  occupancy_bf.CopyFromVec(mle_occupancy_);
+  mean_diff_accumulator_bf.CopyFromMat(mean_diff_accumulator_);
+  variance_diff_accumulator_bf.CopyFromMat(variance_diff_accumulator_);
+
+  WriteMarker(out_stream, binary, "<MLE_OCCUPANCY>");
+  occupancy_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "<MEANDIFFS>");
+  mean_diff_accumulator_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "<DIAGVARDIFFS>");
+  variance_diff_accumulator_bf.Write(out_stream, binary);
+  WriteMarker(out_stream, binary, "</FMPEMODELDIFFS>");
+}
+
 void FmpeAccumModelDiff::Resize(int32 num_comp, int32 dim) {
   KALDI_ASSERT(num_comp > 0 && dim > 0);
   num_comp_ = num_comp;
   dim_ = dim;
-  occupancy_.Resize(num_comp);
+  mle_occupancy_.Resize(num_comp);
   mean_diff_accumulator_.Resize(num_comp, dim);
   variance_diff_accumulator_.Resize(num_comp, dim);
 }
 
 void FmpeAccumModelDiff::SetZero() {
-  occupancy_.SetZero();
+  mle_occupancy_.SetZero();
   mean_diff_accumulator_.SetZero();
   variance_diff_accumulator_.SetZero();
 }
@@ -95,7 +148,7 @@ void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
   variance_diff_accumulator_.CopyFromMat(var_diff_tmp, kNoTrans);
 
   /// copy to obtain the mle occupation probapility
-  occupancy_.CopyFromVec(mle_acc.occupancy());
+  mle_occupancy_.CopyFromVec(mle_acc.occupancy());
 }
 
 void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
@@ -109,6 +162,8 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<LengthContextExp>");
   tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
+  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
 
   // convert into BaseFloat before writing things
@@ -164,6 +219,8 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
   ExpectMarker(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 length_cont_exp = static_cast<int32>(tmp_uint32);
+  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ReadBasicType(in_stream, binary, &dim_);
 
   ReadMarker(in_stream, binary, &token);
 
@@ -195,6 +252,26 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
     }
     ReadMarker(in_stream, binary, &token);
   }
+}
+
+void FmpeAccs::ReadModelDiffs(std::istream &in_stream, bool binary) {
+  int32 num_pdfs;
+  int32 dim;
+  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ReadBasicType(in_stream, binary, &dim);
+  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ReadBasicType(in_stream, binary, &num_pdfs);
+  KALDI_ASSERT((num_pdfs > 0) && (dim > 0));
+
+  if (model_diff_accumulators_.size() != static_cast<size_t> (num_pdfs))
+    KALDI_ERR << "Reading model differentials but num-pdfs do not match: "
+              << (model_diff_accumulators_.size()) << " vs. "
+              << (num_pdfs);
+  for (std::vector<FmpeAccumModelDiff*>::iterator it = model_diff_accumulators_.begin(),
+           end = model_diff_accumulators_.end(); it != end; ++it) {
+    (*it)->Read(in_stream, binary);
+  }
+
 }
 
 void FmpeAccs::InitPNandDiff(int32 num_gmm_gauss, int32 con_exp, int32 dim) {
@@ -316,6 +393,18 @@ void FmpeAccs::ComputeOneFrameOffsetFeature(const VectorBase<BaseFloat>& data,
   }
 }
 
+void FmpeAccs::ComputeWholeFileOffsetFeature(const MatrixBase<BaseFloat>& data,
+           std::vector<std::vector<std::pair<int32, Vector<double> > > > *whole_file_offset) const {
+  int32 nframe = data.NumRows();
+  whole_file_offset->reserve(nframe);
+
+  for (int32 i = 0; i < nframe; i++) {
+	std::vector<std::pair<int32, Vector<double> > > offset;
+    ComputeOneFrameOffsetFeature(data.Row(i), &offset);
+    whole_file_offset->push_back(offset);
+  }
+}
+
 bool Gauss_index_lower(std::pair<int32, Vector<double> > M,
 					   std::pair<int32, Vector<double> >  N) {
   return M.first < N.first;
@@ -429,9 +518,10 @@ void FmpeAccs::AccumulateDirectDiffFromPosteriors(const DiagGmm &gmm,
                                             const VectorBase<BaseFloat> &data,
 											const VectorBase<BaseFloat> &posteriors,
                                             Vector<double> *direct_diff) {
-  assert(gmm.Dim() == Dim());
-  assert(gmm.NumGauss() == posteriors.Dim());
-  assert(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(gmm.Dim() == Dim());
+  KALDI_ASSERT(gmm.NumGauss() == posteriors.Dim());
+  KALDI_ASSERT(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(direct_diff->Dim() == Dim());
 
   Matrix<double> means_invvars(gmm.NumGauss(), gmm.Dim());
   Matrix<double> inv_vars(gmm.NumGauss(), gmm.Dim());
@@ -453,8 +543,7 @@ void FmpeAccs::AccumulateDirectDiffFromPosteriors(const DiagGmm &gmm,
   post_scale.CopyFromVec(posteriors);
   post_scale.Scale(config_.lat_prob_scale);
 
-  direct_diff->Resize(data.Dim());
-  direct_diff->AddMatVec(1.0, mat_tmp, kTrans, post_scale, 0.0);
+  direct_diff->AddMatVec(1.0, mat_tmp, kTrans, post_scale, 1.0);
 }
 
 void FmpeAccs::AccumulateInDirectDiffFromPosteriors(const DiagGmm &gmm,
@@ -462,11 +551,12 @@ void FmpeAccs::AccumulateInDirectDiffFromPosteriors(const DiagGmm &gmm,
                              const VectorBase<BaseFloat> &data,
                              const VectorBase<BaseFloat> &posteriors,
 							 Vector<double> *indirect_diff) {
-  assert(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
-  assert(gmm.NumGauss() == posteriors.Dim());
-  assert(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
-  assert(gmm.Dim() == Dim());
-  assert(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
+  KALDI_ASSERT(gmm.NumGauss() == posteriors.Dim());
+  KALDI_ASSERT(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
+  KALDI_ASSERT(gmm.Dim() == Dim());
+  KALDI_ASSERT(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(indirect_diff->Dim() == Dim());
 
   Matrix<double> mat_tmp(gmm.NumGauss(), gmm.Dim());
   Vector<double> vec_tmp(gmm.NumGauss());
@@ -483,10 +573,9 @@ void FmpeAccs::AccumulateInDirectDiffFromPosteriors(const DiagGmm &gmm,
   mat_tmp.Scale(config_.lat_prob_scale);
 
   vec_tmp.CopyFromVec(posteriors);
-  vec_tmp.DivElemByElem(fmpe_diaggmm_diff_acc.occupancy());
+  vec_tmp.DivElemByElem(fmpe_diaggmm_diff_acc.mle_occupancy());
 
-  indirect_diff->Resize(data.Dim());
-  indirect_diff->AddMatVec(1.0, mat_tmp, kTrans, vec_tmp, 0.0);
+  indirect_diff->AddMatVec(1.0, mat_tmp, kTrans, vec_tmp, 1.0);
 }
 
 void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
@@ -494,10 +583,11 @@ void FmpeAccs::AccumulateInDirectDiffFromDiag(const DiagGmm &gmm,
                              const VectorBase<BaseFloat> &data,
                              BaseFloat frame_posterior,
 							 Vector<double> *indirect_diff) {
-  assert(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
-  assert(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
-  assert(gmm.Dim() == Dim());
-  assert(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(gmm.NumGauss() == fmpe_diaggmm_diff_acc.NumGauss());
+  KALDI_ASSERT(gmm.Dim() == fmpe_diaggmm_diff_acc.Dim());
+  KALDI_ASSERT(gmm.Dim() == Dim());
+  KALDI_ASSERT(static_cast<int32>(data.Dim()) == Dim());
+  KALDI_ASSERT(indirect_diff->Dim() == Dim());
 
   Vector<BaseFloat> posteriors(gmm.NumGauss());
   gmm.ComponentPosteriors(data, &posteriors);
@@ -511,7 +601,7 @@ void FmpeAccs::AccumulateFromDifferential(const VectorBase<double> &direct_diff,
 										  const VectorBase<double> &indirect_diff,
        const std::vector<std::pair<int32, std::vector<std::pair<int32, Vector<double> > > > > &ht) {
   KALDI_ASSERT((direct_diff.Dim() == indirect_diff.Dim()));
-  KALDI_ASSERT((direct_diff.Dim() == gmm_.Dim()));
+  KALDI_ASSERT(direct_diff.Dim() == Dim());
 
   Vector<double> diff(direct_diff);
   diff.AddVec(1.0, indirect_diff);
@@ -591,6 +681,8 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<LengthContExp>");
   tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
+  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
 
   // convert into BaseFloat before writing things
@@ -609,8 +701,7 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "</FMPE>");
 }
 
-void FmpeUpdater::Read(std::istream &in_stream, bool binary,
-                         bool add) {
+void FmpeUpdater::Read(std::istream &in_stream, bool binary) {
   uint32 tmp_uint32;
   std::string token;
 
@@ -622,6 +713,8 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary,
   ExpectMarker(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 length_cont_exp = static_cast<int32>(tmp_uint32);
+  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ReadBasicType(in_stream, binary, &dim_);
 
   ReadMarker(in_stream, binary, &token);
 
@@ -631,7 +724,7 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary,
       for (size_t i = 0; i < M_.size(); ++i) {
         M_[i].resize(length_cont_exp);
 		for (size_t j = 0; j < M_[i].size(); ++j) {
-          M_[i][j].Read(in_stream, binary, add);
+          M_[i][j].Read(in_stream, binary);
 		}
       }
     } else {

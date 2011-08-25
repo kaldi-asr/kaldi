@@ -74,7 +74,7 @@ struct FmpeConfig {
     gmm_cluster_centers_nbest = 25;
     gmm_gaussian_nbest = 2;
     lat_prob_scale = 0.083;
-    E = 10;
+    E = 10.0;
   }
 
   void Register(ParseOptions *po) {
@@ -105,6 +105,9 @@ class FmpeAccumModelDiff {
     Resize(gmm);
   }
 
+  void Read(std::istream &in_stream, bool binary);
+  void Write(std::ostream &out_stream, bool binary) const;
+
   /// Allocates memory for accumulators
   void Resize(int32 num_comp, int32 dim);
   /// Calls ResizeAccumulators based on gmm
@@ -118,7 +121,7 @@ class FmpeAccumModelDiff {
   void SetZero();
 
   // Accessors
-  const Vector<double>& occupancy() const { return occupancy_; }
+  const Vector<double>& mle_occupancy() const { return mle_occupancy_; }
   const Matrix<double>& mean_diff_accumulator() const { return mean_diff_accumulator_; }
   const Matrix<double>& variance_diff_accumulator() const { return variance_diff_accumulator_; }
 
@@ -136,7 +139,7 @@ class FmpeAccumModelDiff {
   int32 num_comp_;
 
   /// Accumulators
-  Vector<double> occupancy_;
+  Vector<double> mle_occupancy_;
   Matrix<double> mean_diff_accumulator_;
   Matrix<double> variance_diff_accumulator_;
 
@@ -158,10 +161,14 @@ class FmpeAccs {
  public:
   explicit FmpeAccs(const FmpeConfig &config)
       : config_(config) {};
-  ~FmpeAccs();
+
+  ~FmpeAccs() {}
 
   void Read(std::istream &in_stream, bool binary, bool add);
   void Write(std::ostream &out_stream, bool binary) const;
+
+  /// Read the am model's parameters differentials
+  void ReadModelDiffs(std::istream &in_stream, bool binary);
 
   /// Initializes the P and N statistics, and model parameter differentials if needed
   void Init(const AmDiagGmm &am_model, bool update);
@@ -179,6 +186,10 @@ class FmpeAccs {
   /// Compute the offset feature given one frame data
   void ComputeOneFrameOffsetFeature(const VectorBase<BaseFloat>& data,
                            std::vector<std::pair<int32, Vector<double> > > *offset) const;
+
+  /// Compute all the offset features given the whole file data
+  void ComputeWholeFileOffsetFeature(const MatrixBase<BaseFloat>& data,
+                           std::vector<std::vector<std::pair<int32, Vector<double> > > > *whole_file_offset) const;
 
   /// Compute the context expansion high dimension feature
   /// The high dimension offset feature with the context expansion: "ht";
@@ -311,12 +322,12 @@ inline const FmpeAccumModelDiff& FmpeAccs::GetAccsModelDiff(int32 pdf_index) con
 class FmpeUpdater {
  public:
   explicit FmpeUpdater(const FmpeAccs &accs);
-  ~FmpeUpdater();
+  ~FmpeUpdater() {}
 
   // provide copy constructor.
   explicit FmpeUpdater(const FmpeUpdater &other);
 
-  void Read(std::istream &in_stream, bool binary, bool add);
+  void Read(std::istream &in_stream, bool binary);
   void Write(std::ostream &out_stream, bool binary) const;
 
   /// Initializes feature projection Matrix M
