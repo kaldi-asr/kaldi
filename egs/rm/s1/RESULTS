@@ -28,6 +28,13 @@ exp/decode_tri1_latgen/wer_11:Average WER is 4.188941 (525 / 12533)
 exp/decode_tri1_latgen/wer_12:Average WER is 4.420330 (554 / 12533)
 exp/decode_tri1_latgen/wer_13:Average WER is 4.555972 (571 / 12533)
 
+# Lattice oracle error rate for exp/decode_tri1_latgen/
+# when acoustic scale is set to 10
+Beam 0.01 Average WER is 4.085215 (512 / 12533) 
+Beam 0.5  Average WER is 3.702226 (464 / 12533) 
+Beam 1    Average WER is 3.279343 (411 / 12533) 
+Beam 5    Average WER is 1.412272 (177 / 12533) 
+Beam 10   Average WER is 0.582462 ( 73 / 12533) 
 
 # Results on a second pass of triphone system building--
 # various configurations.
