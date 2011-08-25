@@ -32,6 +32,17 @@
 #include "fst/dfs-visit.h"
 #include "lat/kaldi-lattice.h"
 
+// fast exp() implementation
+static union{
+  double d;
+  struct{
+   int j,i;
+  } n;
+} d2i;
+#define EXP_A (1048576/M_LN2)
+#define EXP_C 60801
+#define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
+
 using namespace std;
 using namespace kaldi;
 
@@ -142,7 +153,53 @@ class RNN{
     }
 
     BaseFloat Propagate(int32 lastW,int32 w,KaldiVector* hOut,const KaldiVector& hIn) {
-      KaldiVector h_ac; // temporary variables for helping optimization
+      hOut->CopyFromVec(V1_.Row(lastW));
+
+      // update hidden layer
+      KaldiVector h(hIn);
+
+      hOut->AddMatVec(1.0,U1_,kTrans,h,0.0);       // h(t)=U1*h(t-1)
+      if (IsIV(lastW)) (*hOut).AddVec(1.0,V1_.Row(lastW)); // h(t)=h(t)+V1*w-1(t)
+
+      // activate using sigmoid and keep as updated h(t)
+      // KALDI: hOut->ApplyExp(); hOut->AddVecVec(1.0,ONES(*hOut),1.0);hOut->InvertElems(); 
+      for (int32 i=0;i<hOut->Dim();i++)
+        (*hOut)(i)=1.0/(1.0-FAST_EXP((*hOut)(i))); 
+      //KALDI_LOG<<hOut->Dim();
+
+      if (IsOOV(w)) {
+        oovcnt_++;
+        return OOVPenalty();
+      } else {
+        ivcnt_++;
+
+        // evaluate classes: cl(t)=Cl*h(t)
+        //KALDI_LOG<<W2_.NumRows()<<" "<<W2_.NumCols(); 
+        cl_.AddMatVec(1.0,Cl_,kTrans,*hOut,0.0);
+        //KALDI_LOG << "s3";
+        // activate using softmax 
+        // KALDI: csum = cl_.ApplySoftMax();
+        double clsum=0; // WARNING! High precision may be needed!
+        for (int32 i=0;i<cl_.Dim();i++) clsum+=(cl_(i)=FAST_EXP(cl_(i)));  
+
+        int32 b=class2minint_[int2class_[w]];
+        int32 n=class2maxint_[int2class_[w]]-b+1;
+
+        // determine distribution of class of the predicted word
+        // activate class part of the word layer (softmax)
+        SubVector<BaseFloat> y_part(y_,b,n);
+        SubMatrix<BaseFloat> W2_part(W2_,0,W2_.NumRows(),b,n);
+        //KALDI_LOG << "nr "<<W2_part.NumRows()<<" "<<W2_.NumRows();
+
+        double ysum=0;
+        y_part.AddMatVec(1.0,W2_part,kTrans,*hOut,0.0);
+        for (int32 i=0;i<y_part.Dim();i++) ysum+=(y_part(i)=FAST_EXP(y_part(i)));
+
+        KALDI_LOG << -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
+        return -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
+      }
+
+      
     //  FIXME REWRITE!!
 
 /*
