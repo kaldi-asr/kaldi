@@ -153,19 +153,24 @@ class RNN{
     }
 
     BaseFloat Propagate(int32 lastW,int32 w,KaldiVector* hOut,const KaldiVector& hIn) {
-      hOut->CopyFromVec(V1_.Row(lastW));
+      // create a local copy (for cases like aliasing!)
+      KaldiVector h;
+      h.Resize(hIn.Dim(),kUndefined);
+      h.CopyFromVec(hIn);
 
       // update hidden layer
-      KaldiVector h(hIn);
+      hOut->CopyFromVec(V1_.Row(lastW));
 
-      hOut->AddMatVec(1.0,U1_,kTrans,h,0.0);       // h(t)=U1*h(t-1)
-      if (IsIV(lastW)) (*hOut).AddVec(1.0,V1_.Row(lastW)); // h(t)=h(t)+V1*w-1(t)
+      hOut->AddMatVec(-1.0,U1_,kTrans,h,0.0);       // h(t)=U1*h(t-1)
+      if (IsIV(lastW)) (*hOut).AddVec(-1.0,V1_.Row(lastW)); // h(t)=h(t)+V1*w-1(t)
 
       // activate using sigmoid and keep as updated h(t)
-      // KALDI: hOut->ApplyExp(); hOut->AddVecVec(1.0,ONES(*hOut),1.0);hOut->InvertElems(); 
-      for (int32 i=0;i<hOut->Dim();i++)
-        (*hOut)(i)=1.0/(1.0-FAST_EXP((*hOut)(i))); 
-      //KALDI_LOG<<hOut->Dim();
+      //for (int32 i=0;i<hOut->Dim();i++)
+      //  (*hOut)(i)=1.0/(1.0-FAST_EXP((*hOut)(i))); 
+      hOut->ApplyExp();hOut->Add(1.0);hOut->InvertElements();
+
+      KALDI_LOG<<(*hOut)(112);
+
 
       if (IsOOV(w)) {
         oovcnt_++;
@@ -174,11 +179,9 @@ class RNN{
         ivcnt_++;
 
         // evaluate classes: cl(t)=Cl*h(t)
-        //KALDI_LOG<<W2_.NumRows()<<" "<<W2_.NumCols(); 
         cl_.AddMatVec(1.0,Cl_,kTrans,*hOut,0.0);
-        //KALDI_LOG << "s3";
+
         // activate using softmax 
-        // KALDI: csum = cl_.ApplySoftMax();
         double clsum=0; // WARNING! High precision may be needed!
         for (int32 i=0;i<cl_.Dim();i++) clsum+=(cl_(i)=FAST_EXP(cl_(i)));  
 
@@ -189,7 +192,6 @@ class RNN{
         // activate class part of the word layer (softmax)
         SubVector<BaseFloat> y_part(y_,b,n);
         SubMatrix<BaseFloat> W2_part(W2_,0,W2_.NumRows(),b,n);
-        //KALDI_LOG << "nr "<<W2_part.NumRows()<<" "<<W2_.NumRows();
 
         double ysum=0;
         y_part.AddMatVec(1.0,W2_part,kTrans,*hOut,0.0);

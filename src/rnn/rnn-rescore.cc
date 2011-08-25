@@ -197,6 +197,8 @@ class RNN{
       // activate hidden layer (sigmoid) and determine updated s(t)
       *hOut=VectorXr(VectorXr(h_ac.array().exp()+1.0).array().inverse());
 
+      KALDI_LOG<<(*hOut)(112);
+
       if (IsIV(w)){
         // evaluate classes: c(t)=W*s(t) + activation class layer (softmax)
         cl_.noalias()=VectorXr((Cl_*(*hOut)).array().exp());
