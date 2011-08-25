@@ -255,6 +255,8 @@ done
  scripts/mkgraph.sh data/G_bg.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_bg || exit 1;
  scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov92.scp 
  scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri3a_bg_latgen_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a_latgen.sh data/eval_nov92.scp 
+ scripts/latrescore.sh exp/decode_tri3a_bg_latgen_eval92 data/G_bg.fst data/G_tg.fst data/eval_nov92.txt exp/decode_tri3a_bg_rescore_tg_eval92 
 )&
 
 
