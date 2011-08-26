@@ -33,3 +33,8 @@ local/SWBD_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 
 local/SWBD_format_data.sh
 
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features. 
+mfccdir=/mnt/matylda6/ijanda/kaldi_swbd_mfcc
+
+steps/make_mfcc_segs.sh data/train exp/make_mfcc/train $mfccdir 8
