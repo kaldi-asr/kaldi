@@ -99,6 +99,12 @@ class TiedGmm {
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const TiedGmm *source);
 
+  /// Split the tied GMM weights based on the split sequence of the mixture
+  void Split(std::vector<int32> *sequence);
+  
+  /// Merge the tied GMM weights based on the merge sequence of the mixture
+  void Merge(std::vector<int32> *sequence);
+
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
 

@@ -32,19 +32,22 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Smooth the sufficient statistics of tied models by propagating them up and\n"
         "interpolating them down in the tree hierarchy (w.r.t. their codebook)\n"
-        "Usage:   smooth-stats-diag [options] tree tiedmap acc-in acc-out\n"
+        "Usage:   smooth-stats-diag [options] <tree> <tree.map> <acc-in> <acc-out>\n"
         "e.g.: \n"
-        " smooth-stats-diag tri1-tied/tree tri1-tied/tiedmap tri1-tied/3.acc tri1-tied/3.acc.smoothed\n";
+        " smooth-stats-diag tree tree.map 12.acc 12.acc.s\n";
     ParseOptions po(usage);
 
     bool propagate = true;
     bool interpolate = true;
+
+    bool print_diversity = false;
 
     BaseFloat rho = 10.;
 
     po.Register("rho", &rho, "Interpolation factor, rho(i) = rho / (rho + gamma(i)");
     po.Register("propagate", &propagate, "Propagate the sufficient statistics");
     po.Register("interpolate", &interpolate, "Interpolate the sufficient statistics");
+    po.Register("print-diversity", &print_diversity, "Print the diversity of the nodes, i.e. the childrens' codebooks");
 
     po.Read(argc, argv);
 
@@ -84,6 +87,15 @@ int main(int argc, char *argv[]) {
       ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
     }
 
+    // determine the number of codebooks from the map: max() + 1 due to indexing
+    int32 num_pdfs = 0;
+    for (std::vector<int32>::iterator it = tied_to_pdf.begin(),
+         end = tied_to_pdf.end(); it != end; ++it) {
+      if (*it > num_pdfs) 
+        num_pdfs = *it;
+    }
+    num_pdfs++;
+
     Vector<double> trans_accs;
     bool binary_accu;
     AccumAmTiedDiagGmm acc;
@@ -100,52 +112,80 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
+    // make sure we're at home
     KALDI_ASSERT(num_leaves == tied_to_pdf.size());
+    KALDI_ASSERT(num_leaves == acc.NumTiedAccs());
+    KALDI_ASSERT(num_pdfs   == acc.NumDiagAccs());
 
+    // step 1: determine the codebooks under each node
+    std::vector<std::set<int32> > diversity(p.size() - num_leaves);
+    for (int32 i = 0; i < num_leaves; ++i) {
+      int32 cur = i, par = p[i];
+      int32 pdf = tied_to_pdf[i];
+      while (cur != par) {
+        int32 offs = par-num_leaves;
+        if (diversity[offs].find(pdf) == diversity[offs].end())
+          diversity[offs].insert(pdf);
+        cur = par;
+        par = p[cur];
+      }
+    }
+    
+    // print the diversity of each node, i.e. the codebook ids related to its
+    // children
+    if (print_diversity) {
+      int32 k = diversity.size() - 1;
+      for (std::vector<std::set<int32> >::reverse_iterator rit = diversity.rbegin(), rend = diversity.rend();
+           rit != rend; ++rit, --k) {
+        std::cout << "node=" << (k+num_leaves) << " pdf-ids [ ";
+        for (std::set<int32>::iterator si = (*rit).begin(), se = (*rit).end();
+             si != se; ++si)
+          std::cout << *si << " ";
+        std::cout << "]" << std::endl;
+      }
+    }
+    
     // walk up the tree, validate accumulators, allocate interim allocators 
-    // and remember trace
-    std::vector<std::vector<int32> > trace(p.size() - num_leaves);
+    // and remember trace; terminate propagation on diverse nodes
+    std::vector<std::set<int32> > trace(p.size() - num_leaves);
     std::vector<AccumTiedGmm *> interim(p.size() - num_leaves, NULL);
 
     std::cout << "Propagating " << num_leaves << " leaves" << std::endl;
     for (int32 i = 0; i < num_leaves; ++i) {
-        AccumTiedGmm &a = acc.GetTiedAcc(i);
-        std::cout << "model-id=" << i << " p=" << p[i] << " occ=" << a.occupancy().Sum() << " ==>"; 
-        int32 cur = i, par = p[i] ;
+      AccumTiedGmm &a = acc.GetTiedAcc(i);
+      std::cout << "tied-id=" << i << " occ=" << a.occupancy().Sum() << " ==>" << std::flush; 
+      int32 cur = i, par = p[i] ;
 
-        // walk up, as long as the parent is not the root (aka selfloop)
-        while (par != p[par]) {
-          int32 k = par - num_leaves;
-
-          // check if the current node is already listed as child
-          bool present = false;
-          for (std::vector<int32>::iterator it = trace[k].begin(),
-               end = trace[k].end(); it != end && !present; ++it)
-            present |= (*it == cur);
-          if (!present)
-            trace[k].push_back(cur);
-
-          // add accumulator
-          if (interim[k] == NULL) {
-            std::cout << " alloc:" << par;
-            interim[k] = new AccumTiedGmm(a);
-          } else {
-            std::cout << " " << par;
-            a.Propagate(interim[k]);
-          }
-
-          cur = par;
-          par = p[cur];
+      // walk up, as long as the parent is a diverse node or the root node
+      while (cur != par) {
+        int32 k = par - num_leaves;
+        if (diversity[k].size() != 1) {
+          std::cout << " stop -- div = [";
+          for (std::set<int32>::iterator si = diversity[k].begin(), 
+               se = diversity[k].end(); si != se; ++si)
+            std::cout << " " << (*si);
+          std::cout << " ]" << std::endl;
+          break;
         }
-        // add the current node to the root node
-        // check if the current node is already listed as child
-        bool present = false;
-        for (std::vector<int32>::iterator it = trace[par-num_leaves].begin(),
-             end = trace[par-num_leaves].end(); it != end && !present; ++it)
-          present |= (*it == cur);
-        if (!present)
-          trace[trace.size()-1].push_back(cur);
-        std::cout << std::endl;
+        
+        // add the node is already listed as child
+        if (trace[k].find(cur) == trace[k].end())
+          trace[k].insert(cur);
+
+        // add accumulator
+        if (interim[k] == NULL) {
+          std::cout << " alloc:" << par;
+          interim[k] = new AccumTiedGmm(a);
+        } else {
+          std::cout << " " << par;
+          a.Propagate(interim[k]);
+        }
+
+        cur = par;
+        par = p[cur];
+      }
+        
+      std::cout << std::endl;
     }
 
     if (interpolate) {
@@ -153,17 +193,23 @@ int main(int argc, char *argv[]) {
 
       // interpolate down, beginning from the top
       int32 k = trace.size() - 1;
-      for (std::vector<std::vector<int32> >::reverse_iterator rit = trace.rbegin(), rend = trace.rend();
+      for (std::vector<std::set<int32> >::reverse_iterator rit = trace.rbegin(), rend = trace.rend();
            rit != rend; ++rit, --k) {
         std::cout << (k + num_leaves) << " <==";
-
+        
+        // no interpolation on diverse nodes
+        if (diversity[k].size() > 1) {
+          std::cout << " (null -- diverse node, sizeof diversity = " << diversity[k].size() << std::endl;
+          continue;
+        }
+          
         // the root will have some trace, but we're not propagating over the root
         if (interim[k] == NULL) {
           std::cout<< " (null -- skipping; sizeof trace = " << rit->size() << ")" << std::endl;
           continue;
         }
 
-        for (std::vector<int32>::iterator it = (*rit).begin(), end = (*rit).end();
+        for (std::set<int32>::iterator it = (*rit).begin(), end = (*rit).end();
              it != end; ++it) {
           int32 t = *it;
           if (t < num_leaves) {

@@ -95,6 +95,56 @@ void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
   weights_.Scale(1. / weights_.Sum());
 }
 
+/// Split the tied GMM weights based on the split sequence of the mixture
+void TiedGmm::Split(std::vector<int32> *sequence) {
+  KALDI_ASSERT(sequence != NULL);
+  
+  if (sequence->size() == 0)
+    return;
+  
+  int32 oldsize = weights_.Dim();
+  weights_.Resize(oldsize + sequence->size());
+  
+  // as in the gmm splitting, we'll distribute the weights evenly
+  for (std::vector<int32>::iterator it = sequence->begin(), 
+       end = sequence->end(); it != end; ++it) {
+    BaseFloat w = weights_(*it);
+    weights_(*it) = w / 2.;
+    weights_(oldsize++) = w / 2.;
+  }
+  
+  // re-norm weights
+  weights_.Scale(1. / weights_.Sum());
+}
+  
+/// Merge the tied GMM weights based on the merge sequence of the mixture
+void TiedGmm::Merge(std::vector<int32> *sequence) {
+  KALDI_ASSERT(sequence != NULL);
+  KALDI_ASSERT(sequence->size() % 2 == 0);
+  
+  if (sequence->size() == 0)
+    return;
+    
+  // as in the gmm merging, we sum the weights of the candidates, and write them
+  // to the first index
+  std::vector<bool> discarded(weights_.Dim(), false);
+  for (std::vector<int32>::iterator it = sequence->begin(), 
+       end = sequence->end(); it != end; it += 2) {
+     weights_(*it) = weights_(*it) + weights_(*(it+1));
+     discarded[*(it+1)] = true;
+  }
+  
+  int32 m = 0;
+  for (int32 i = 0; i < discarded.size(); ++i) {
+    if (discarded[i])
+      weights_.RemoveElement(m);
+    else
+      ++m;
+  }
+  
+  weights_.Scale(1. / weights_.Sum());
+}
+
 void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<TIEDGMM>");
   if (!binary) out_stream << "\n";

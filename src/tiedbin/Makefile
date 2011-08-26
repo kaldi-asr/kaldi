@@ -23,6 +23,7 @@ BINFILES = \
   tied-full-gmm-init-model \
   tied-full-gmm-align \
   smooth-stats-full \
+  init-codebooks-two-level \
   full-to-diag
 
 OBJFILES =

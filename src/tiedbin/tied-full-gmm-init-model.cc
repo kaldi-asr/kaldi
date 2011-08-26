@@ -67,9 +67,9 @@ int main(int argc, char *argv[]) {
         "Initialize a tied mixture model with fullonal mixture codebooks. If\n"
         "using more than one codebook, you need to specify a map file, mapping\n"
         "the tree leaves to the codebook ids as a vector, e.g. \"[ 0 0 1 1 \"]\n"
-        "Usage:  tied-full-gmm-init-model [options] <tree> <topo> <full-ubm0> [tiedmap full-ubm1 ...] <model-out>\n"
+        "Usage:  tied-full-gmm-init-model [options] <tree> <topo>  [<diag-ubm0> | <tree-map> <diag-ubm> ...] <model-out>\n"
         "e.g.: \n"
-        "  tied-full-gmm-init-model tree topo full0.ubm tiedmap full1.ubm 1.mdl\n";
+        "  tied-full-gmm-init-model tree topo tree.map full0.ubm full1.ubm 1.mdl\n";
 
     bool binary = false;
 
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     std::string 
       tree_filename = po.GetArg(1),
       topo_filename = po.GetArg(2),
-      first_cb_filename = po.GetArg(3),
+      first_cb_filename = po.GetArg(po.NumArgs() == 4 ? 3 : 4),
       model_out_filename = po.GetArg(po.NumArgs());
 
     ContextDependency ctx_dep;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
       // read the mapping
       {
         bool binary_in;
-        Input ki(po.GetArg(4), &binary_in);
+        Input ki(po.GetArg(3), &binary_in);
         ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
       }
       
