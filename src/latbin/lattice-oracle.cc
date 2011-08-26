@@ -19,56 +19,81 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+using std::vector;
+using std::set;
 
 using namespace kaldi;
 
-typedef std::vector<fst::StdArc::Label> SymbolVector;
+typedef vector<fst::StdArc::Label> LabelVector;
+typedef set<fst::StdArc::Label> LabelSet; 
 
-SymbolVector *GetSymbolSet(const fst::StdVectorFst &fst, bool inputSide) {
-  SymbolVector *sv = new SymbolVector();
+LabelVector *GetSymbolSet(const fst::StdVectorFst &fst, bool inputSide) {
+  LabelVector *lv = new LabelVector();
   for (fst::StateIterator<fst::StdVectorFst> siter(fst); !siter.Done(); siter.Next()) {
     fst::StdArc::StateId s = siter.Value();
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, s); !aiter.Done();  aiter.Next()) {
       const fst::StdArc &arc = aiter.Value();
-      sv->push_back(inputSide ? arc.ilabel : arc.olabel);
+      lv->push_back(inputSide ? arc.ilabel : arc.olabel);
     }
   }  
-  return sv;
+  return lv;
 }
 
-#ifdef UNUSED
-// mapping FST symbols to be ignored to epsilon
-void mapIgnoredSymbols(std::unordered_map *ignored_syms, fst::StdArc::Label highest, fst::StdVectorFst *ofst) {
-  fst::StdVectorFst *mapping = new fst::StdVectorFst();
-  mapping->AddState();
-  mapping->SetStart(0);
-  mapping->SetFinal(0,fst::StdArc::Weight::One());
-  for (fst::StdArc::Label key=0; key <= highest; key++) {
-    fst::StdArc::Label mapto;
-    mapto = (!ignored_syms || ignored_syms->Find(key) == "") ? key : 0;  // map to 0 if found in table 
-    mapping->AddArc(0, fst::StdArc(key,key,0.0,0));
+void ReadSymbolList(std::string filename, fst::SymbolTable *word_syms, LabelSet *lset) {
+  std::ifstream is(filename.c_str());
+  if (!is.good()) 
+    KALDI_ERR << "ReadSymbolList: could not open symbol list "<<filename;
+  std::string line;
+  assert(lset != NULL);
+  lset->clear();
+  while (getline(is, line)) {
+    std::string sym;
+    std::istringstream ss(line);
+    ss >> sym >> std::ws;
+    if (ss.fail() || !ss.eof()) {
+      KALDI_ERR << "Bad line in symbol list: "<< line<<", file is: "<<filename;
+    }
+    fst::StdArc::Label lab = word_syms->Find(sym.c_str());
+    if (lab == fst::SymbolTable::kNoSymbol) {
+      KALDI_ERR << "Can't find symbol in symbol table: "<< line<<", file is: "<<filename;
+    }
+    cerr << "ReadSymbolList: adding symbol "<<sym<<" ("<<lab<<")"<<endl;
+    lset->insert(lab);
   }
-  fst::ArcSort(mapping, fst::StdILabelCompare());
-  fst::StdVectorFst origfst(*ofst);
-  fst::Compose(origfst,*mapping,ofst);
-  fst::RmEpsilon(ofst);
-  fst::ArcSort(ofst, fst::StdILabelCompare());
-  delete mapping;
 }
-#endif
+
+void MapWildCards(LabelSet &wildcards, fst::StdVectorFst *ofst) {
+  // map all wildcards symbols to epsilons
+  for (fst::StateIterator<fst::StdVectorFst> siter(*ofst); !siter.Done(); siter.Next()) {
+    fst::StdArc::StateId s = siter.Value();
+    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(ofst, s); !aiter.Done();  aiter.Next()) {
+      fst::StdArc arc(aiter.Value());
+      LabelSet::iterator it = wildcards.find(arc.ilabel);
+      if (it != wildcards.end()) {
+        cerr << "MapWildCards: mapping symbol "<<arc.ilabel<<" to epsilon"<<endl;
+        arc.ilabel = 0;
+      }
+      it = wildcards.find(arc.olabel);
+      if (it != wildcards.end()) {arc.olabel = 0;}
+      aiter.SetValue(arc);
+    }
+  }    
+}
 
 // convert from Lattice to standard FST
-void convertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat, 
+// also maps wildcard symbols to epsilons
+// then removes epsilons
+void convertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
+                                        LabelSet wildcards,
                                         fst::StdVectorFst *ofst) {
   // first convert from  lattice to normal FST
-  //cerr << " convertLatticeToUnweightedAcceptor: ";
   fst::ConvertLattice(ilat, ofst); 
   // remove weights, project to output, sort according to input arg
   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>()); 
   fst::Project(ofst, fst::PROJECT_OUTPUT);  // for some reason the words are on the output side  
+  MapWildCards(wildcards,ofst);
   fst::RmEpsilon(ofst);          // don't tolerate epsilons as they screw up tallying of errors vs arcs
   fst::ArcSort(ofst, fst::StdILabelCompare());
-  //cerr << " convertLatticeToUnweightedAcceptor: ofst has "<<ofst->NumArcs(0)<<" arcs at initial state"<<endl;
 }
 
 void createEditDistance(fst::StdVectorFst &fst1, fst::StdVectorFst &fst2, fst::StdVectorFst *pfst) {
@@ -78,22 +103,22 @@ void createEditDistance(fst::StdVectorFst &fst1, fst::StdVectorFst &fst2, fst::S
   fst::StdArc::Weight delCost(1.0);
 
   // create set of output symbols in fst1
-  SymbolVector *fst1syms = GetSymbolSet(fst1,false);
+  LabelVector *fst1syms = GetSymbolSet(fst1,false);
   
   // create set of input symbols in fst2
-  SymbolVector *fst2syms = GetSymbolSet(fst2,true);
+  LabelVector *fst2syms = GetSymbolSet(fst2,true);
 
   pfst->AddState();
   pfst->SetStart(0);
-  for (SymbolVector::iterator it=fst1syms->begin(); it<fst1syms->end(); it++) {
+  for (LabelVector::iterator it=fst1syms->begin(); it<fst1syms->end(); it++) {
     pfst->AddArc(0,fst::StdArc(*it,0,delCost,0));    // deletions
   }
-  for (SymbolVector::iterator it=fst2syms->begin(); it<fst2syms->end(); it++) {
+  for (LabelVector::iterator it=fst2syms->begin(); it<fst2syms->end(); it++) {
     pfst->AddArc(0,fst::StdArc(0,*it,insCost,0));    // insertions
   }
   // stupid implementation O(N^2)
-  for (SymbolVector::iterator it1=fst1syms->begin(); it1<fst1syms->end(); it1++) {
-    for (SymbolVector::iterator it2=fst2syms->begin(); it2<fst2syms->end(); it2++) {
+  for (LabelVector::iterator it1=fst1syms->begin(); it1<fst1syms->end(); it1++) {
+    for (LabelVector::iterator it2=fst2syms->begin(); it2<fst2syms->end(); it2++) {
       fst::StdArc::Weight cost( (*it1) == (*it2) ? corrCost : subsCost);
       pfst->AddArc(0,fst::StdArc((*it1),(*it2),cost,0));    // substitutions
     }
@@ -114,19 +139,18 @@ void countErrors(fst::StdVectorFst &fst,
   // go through the first complete path in fst (there should be only one)
   fst::StdArc::StateId src = fst.Start(); 
   while (fst.Final(src)== fst::StdArc::Weight::Zero()) { // while not final
-    (*totwords)++;
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst,src); !aiter.Done(); aiter.Next()) {
       fst::StdArc arc = aiter.Value();
       if (arc.ilabel == 0 && arc.olabel == 0) {
         // don't count these so we may compare number of arcs and number of errors
       } else if (arc.ilabel == arc.olabel) {
-        (*corr)++;
+        (*corr)++; (*totwords)++;
       } else if (arc.ilabel == 0) {
         (*ins)++;
       } else if (arc.olabel == 0) {
-        (*del)++;
+        (*del)++; (*totwords)++;
       } else {
-        (*subs)++;
+        (*subs)++; (*totwords)++;
       }
       src = arc.nextstate;
       continue; // jump to next state
@@ -166,9 +190,11 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     
     std::string word_syms_filename;
+    std::string wild_syms_filename;
 
     std::string lats_wspecifier;
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
+    po.Register("wildcard-symbols-list", &wild_syms_filename, "List of symbols that don't count as errors");
     po.Register("write-lattices", &lats_wspecifier, "If supplied, write 1-best path as lattices to this wspecifier");
     
     po.Read(argc, argv);
@@ -193,6 +219,10 @@ int main(int argc, char *argv[]) {
         KALDI_EXIT << "Could not read symbol table from file "
         << word_syms_filename;
 
+    LabelSet wild_syms;
+    if (wild_syms_filename != "") 
+      ReadSymbolList(wild_syms_filename, word_syms, &wild_syms);
+    
     int32 n_done = 0, n_fail = 0;
     unsigned int tot_corr=0, tot_subs=0, tot_ins=0, tot_del=0, tot_words=0;
 
@@ -203,7 +233,7 @@ int main(int argc, char *argv[]) {
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> fst1;
-      convertLatticeToUnweightedAcceptor(lat1,&fst1);
+      convertLatticeToUnweightedAcceptor(lat1,wild_syms,&fst1);
       checkFst(fst1, "fst1_", key);
 
       // TODO: map certain symbols (using an FST created with CreateMapFst())
@@ -215,7 +245,7 @@ int main(int argc, char *argv[]) {
       
       // remove all while creating a normal FST
       VectorFst<StdArc> fst2;
-      convertLatticeToUnweightedAcceptor(lat2,&fst2);
+      convertLatticeToUnweightedAcceptor(lat2,wild_syms,&fst2);
       checkFst(fst2, "fst2_", key);
             
       // recreate edit distance fst if necessary
