@@ -110,7 +110,13 @@ Test set: | Eval92   |   Eval93  | Eval92   |  Eval93 |  Eval92   |   Eval93  |
 latrescore|   12.6       18.7      14.3       21.0        12.1         18.2
  [beam=15]|   12.5       18.7      14.3       20.9        11.7         18.2
 
-
+# Oracle lattice results:
+On Eval92 lattices generated with a bigram LM (from exp/decode_tri2a_bg_latgen_eval92)
+Lattices pruned with varying beam values:
+beam=0.01 %WER 16.13 [ 910 / 5641, 213 ins, 59 del, 638 sub ]
+beam=1    %WER 13.07 [ 737 / 5641, 171 ins, 46 del, 520 sub ]
+beam=5    %WER  6.38 [ 360 / 5641, 86 ins, 20 del, 254 sub ]
+beam=10   %WER  4.11 [ 232 / 5641, 53 ins, 9 del, 170 sub ]
 
 # Raw results:
 exp/decode_mono_tgpr_eval92/wer:%WER 31.38 [ 1770 / 5641, 108 ins, 386 del, 1276 sub ]
