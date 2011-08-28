@@ -32,17 +32,6 @@
 #include "fst/dfs-visit.h"
 #include "lat/kaldi-lattice.h"
 
-// fast exp() implementation
-static union{
-  double d;
-  struct{
-   int j,i;
-  } n;
-} d2i;
-#define EXP_A (1048576/M_LN2)
-#define EXP_C 60801
-#define FAST_EXP(y) (d2i.n.i = EXP_A*(y)+(1072693248-EXP_C),d2i.d)
-
 using namespace std;
 using namespace kaldi;
 
@@ -77,7 +66,7 @@ class RNN{
   public:
     inline int32 VocabSize() const { return V1_.NumRows(); }
     inline int32 HiddenSize() const { return V1_.NumCols(); }
-    inline int32 ClassSize() const { return Cl_.NumCols(); }
+    inline int32 ClassSize() const { return Cl_.NumRows(); }
 
     inline int32 IVProcessed() const { return ivcnt_; }
     inline int32 OOVProcessed() const { return oovcnt_; }
@@ -94,11 +83,11 @@ class RNN{
     void Read(istream& in, bool binary) {
       ExpectMarker(in,binary,"<rnnlm_v2.0>");
       ExpectMarker(in,binary,"<v1>"); in >> V1_;
-      ExpectMarker(in,binary,"<u1>"); in >> U1_;
+      ExpectMarker(in,binary,"<u1>"); in >> U1_; U1_.Transpose();
       ExpectMarker(in,binary,"<b1>"); in >> b1_;
-      ExpectMarker(in,binary,"<w2>"); in >> W2_;
+      ExpectMarker(in,binary,"<w2>"); in >> W2_; W2_.Transpose();
       ExpectMarker(in,binary,"<b2>"); in >> b2_;
-      ExpectMarker(in,binary,"<cl>"); in >> Cl_;
+      ExpectMarker(in,binary,"<cl>"); in >> Cl_; Cl_.Transpose();
       ExpectMarker(in,binary,"<cl_b>"); in >> cl_b_;
       ExpectMarker(in,binary,"<classes>");
       ReadIntegerVector(in,binary,&int2class_);
@@ -161,15 +150,11 @@ class RNN{
       // update hidden layer
       hOut->CopyFromVec(V1_.Row(lastW));
 
-      hOut->AddMatVec(-1.0,U1_,kTrans,h,0.0);       // h(t)=U1*h(t-1)
+      hOut->AddMatVec(-1.0,U1_,kNoTrans,h,0.0);       // h(t)=U1*h(t-1)
       if (IsIV(lastW)) (*hOut).AddVec(-1.0,V1_.Row(lastW)); // h(t)=h(t)+V1*w-1(t)
 
       // activate using sigmoid and keep as updated h(t)
-      //for (int32 i=0;i<hOut->Dim();i++)
-      //  (*hOut)(i)=1.0/(1.0-FAST_EXP((*hOut)(i))); 
       hOut->ApplyExp();hOut->Add(1.0);hOut->InvertElements();
-
-      //KALDI_LOG<<(*hOut)(112);
 
 
       if (IsOOV(w)) {
@@ -179,11 +164,10 @@ class RNN{
         ivcnt_++;
 
         // evaluate classes: cl(t)=Cl*h(t)
-        cl_.AddMatVec(1.0,Cl_,kTrans,*hOut,0.0);
+        cl_.AddMatVec(1.0,Cl_,kNoTrans,*hOut,0.0);
 
         // activate using softmax 
-        double clsum=0; // WARNING! High precision may be needed!
-        for (int32 i=0;i<cl_.Dim();i++) clsum+=(cl_(i)=FAST_EXP(cl_(i)));  
+        cl_.ApplySoftMax();
 
         int32 b=class2minint_[int2class_[w]];
         int32 n=class2maxint_[int2class_[w]]-b+1;
@@ -191,39 +175,15 @@ class RNN{
         // determine distribution of class of the predicted word
         // activate class part of the word layer (softmax)
         SubVector<BaseFloat> y_part(y_,b,n);
-        SubMatrix<BaseFloat> W2_part(W2_,0,W2_.NumRows(),b,n);
+        SubMatrix<BaseFloat> W2_part(W2_,b,n,0,W2_.NumCols());
 
-        double ysum=0;
-        y_part.AddMatVec(1.0,W2_part,kTrans,*hOut,0.0);
-        for (int32 i=0;i<y_part.Dim();i++) ysum+=(y_part(i)=FAST_EXP(y_part(i)));
+        y_part.AddMatVec(1.0,W2_part,kNoTrans,*hOut,0.0);
+        // apply softmax
+        y_part.ApplySoftMax();
 
-        //KALDI_LOG << -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
-        return -log(y_(w)*cl_(int2class_[w])/clsum/ysum);
+        return -log(y_(w)*cl_(int2class_[w]));
       }
 
-      
-    //  FIXME REWRITE!!
-
-/*
-      h_ac.noalias()=-U1_*hIn; // h(t)=-U1*h(t-1)
-      if (IsIV(lastW)) h_ac-=V1_.col(lastW); // h(t)=-h(t)-V1*w-1(t)
-
-      // activate hidden layer (sigmoid) and determine updated s(t)
-      *hOut=VectorXr(VectorXr(h_ac.array().exp()+1.0).array().inverse());
-
-      if (IsIV(w)){
-        // evaluate classes: c(t)=W*s(t) + activation class layer (softmax)
-        cl_.noalias()=VectorXr((Cl_*(*hOut)).array().exp());
-        // evaluate post. distribution for all words within that class: y(t)=V*s(t)
-        int b=class2minint_[int2class_[w]];
-        int n=class2maxint_[int2class_[w]]-b+1;
-
-        // determine distribution of class of the predicted word
-        // activate class part of the word layer (softmax)
-        y_.segment(b,n).noalias()=VectorXr((W2_.middleRows(b,n)*(*hOut)).array().exp());
-        ivcnt_++;
-        return -log(y_(w)*cl_(int2class_[w])/cl_.sum()/y_.segment(b,n).sum());
-      } else { oovcnt_++; return OOVPenalty(); }; */
       return 0; 
     }
 
