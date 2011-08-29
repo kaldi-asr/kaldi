@@ -12,6 +12,6 @@ echo "EXTRACT NEW ONEBEST"
 ../latbin/lattice-best-path --acoustic-scale=$S ark:rnn.92.lats ark,t:- 2> /dev/null | ../../egs/wsj/s1/scripts/int2sym.pl --ignore-first-field words.txt | sed 's/ <s>//' | sed 's/ <\/s>//' > rnntest 
 
 echo "WER RNN*$L"
-../bin/compute-wer --text --mode=present "ark:cat ../../egs/wsj/s1/data/eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' |" ark:rnntest
+../bin/compute-wer --text --mode=present "ark:cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' |" ark:rnntest
 
 done
