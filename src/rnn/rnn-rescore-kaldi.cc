@@ -1,4 +1,4 @@
-// rnn/rnn-rescore.cc
+// rnn/rnn-rescore-kaldi.cc
 
 // Copyright 2009-2011  Stefan Kombrink 
 
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
         "Extracts N-best paths from lattices using given acoustic scale, \n"
         "rescores them using an RNN model and given lm scale and writes it out as FST.\n"
         "Usage: lattice-rnnrescore [options] dict lattice-rspecifier rnn-model lattice-wspecifier\n"
-        " e.g.: lattice-rnnrescore --acoustic-scale=0.0625 --lambda=0.8 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
+        " e.g.: lattice-rnnrescore-kaldi --acoustic-scale=0.0625 --lambda=0.8 --oov-penalty=10 --n=10 WSJ.word-sym-tab ark:in.lats WSJ.rnn ark:nbest.lats\n";
       
     ParseOptions po(usage);
     BaseFloat lambda = 0.75;
