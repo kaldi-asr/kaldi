@@ -1,9 +1,9 @@
 #!/bin/bash
-N=100
+N=10
 S=0.0625
 INLATS=lats.newlm.gz
 
-for L in 0.5 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0; do
+for L in 0.0 0.25 0.5 0.75 1.0; do
 
 echo "RESCORE WITH RNN"
 time ./rnn-rescore-kaldi --lambda=$L --acoustic-scale=$S --n=$N words.txt ark,t:"gunzip -c $INLATS |" WSJ.35M.200cl.350h.kaldi.rnn ark,t:rnn.92.lats
