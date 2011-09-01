@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    bool push = true;
+    bool push = false;
 
     po.Register("push", &push, "Push output symbols to initial state before factoring");
 

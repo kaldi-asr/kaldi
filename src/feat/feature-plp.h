@@ -72,7 +72,7 @@ struct PlpOptions {
     po->Register("compress-factor", &compress_factor, "Compression factor in PLP computation");
     po->Register("cepstral-lifter", &cepstral_lifter, "Constant that controls scaling of PLPs");
     po->Register("cepstral-scale", &cepstral_scale, "Scaling constant in PLP computation");
-    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.");
+    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.  Warning: not sufficient to get HTK compatible features (need to change other parameters).");
   }
 };
 

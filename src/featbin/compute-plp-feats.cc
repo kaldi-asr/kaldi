@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
           KALDI_ERR << "Write error writing Kaldi features.";
       } else {
         std::pair<Matrix<BaseFloat>, HtkHeader> p;
+        p.first.Resize(features.NumRows(), features.NumCols());
         p.first.CopyFromMat(features);
         HtkHeader header = {
           features.NumRows(),
