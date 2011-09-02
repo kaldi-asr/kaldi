@@ -15,3 +15,14 @@ echo "WER RNN*$L"
 ../bin/compute-wer --text --mode=present "ark:cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' |" ark:rnntest
 
 done
+
+echo "LATTICE ORACLE ERROR"
+# these symbols we want to ignore completely
+echo "<UNK> <s> </s>" | tr ' ' '\n' > ignore.txt
+# construct an FST containing the reference
+cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g'| ../../egs/wsj/s1/scripts/sym2int.pl --ignore-first-field words.txt | ../latbin/string-to-lattice ark,t:eval92.lats
+# we need to prune here a bit due to memory consumption! Hence, oracle error of the real lattices is even lower!
+# the lower bound is defined by the OOV rate (=1.9%)
+../latbin/lattice-prune --acoustic-scale=$S --beam=7 ark:"gunzip -c $INLATS |" ark,t:"| gzip -c > ${INLATS}.pruned" 2> /dev/null
+../latbin/lattice-oracle --word-symbol-table=words.txt --wildcard-symbols-list=ignore.txt ark:eval92.lats ark:"gunzip -c ${INLATS}.pruned |" ark,t:oracle.pruned.tra 2> /dev/null
+cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | ../../egs/wsj/s1/scripts/sym2int.pl --ignore-first-field words.txt | ../bin/compute-wer ark,t:- ark:oracle.pruned.tra
