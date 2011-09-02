@@ -1,8 +1,20 @@
 #!/bin/bash
+
+#
+if [ -f WSJ.tar.gz ]; then
+  tar xzf WSJ.tar.gz
+else
+  echo "if you have access to it copy the data tar ball"
+  echo "cp /homes/kazi/kombrink/WSJ.tar.gz ."
+  echo "then you can run this script successfully!"
+  exit 1
+fi;
+
 N=10
 S=0.0625
 INLATS=lats.newlm.gz
 
+# RNN lm rescoring
 for L in 0.0 0.25 0.5 0.75 1.0; do
 
 echo "RESCORE WITH RNN"
@@ -16,7 +28,10 @@ echo "WER RNN*$L"
 
 done
 
+
 echo "LATTICE ORACLE ERROR"
+
+
 # these symbols we want to ignore completely
 echo "<UNK> <s> </s>" | tr ' ' '\n' > ignore.txt
 # construct an FST containing the reference
@@ -26,3 +41,10 @@ cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g'| ../../egs/w
 ../latbin/lattice-prune --acoustic-scale=$S --beam=7 ark:"gunzip -c $INLATS |" ark,t:"| gzip -c > ${INLATS}.pruned" 2> /dev/null
 ../latbin/lattice-oracle --word-symbol-table=words.txt --wildcard-symbols-list=ignore.txt ark:eval92.lats ark:"gunzip -c ${INLATS}.pruned |" ark,t:oracle.pruned.tra 2> /dev/null
 cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | ../../egs/wsj/s1/scripts/sym2int.pl --ignore-first-field words.txt | ../bin/compute-wer ark,t:- ark:oracle.pruned.tra
+
+echo "${N}-BEST ORACLE ERROR"
+# now compare how well the n-bests can do:
+../latbin/lattice-nbest --n=$N --acoustic-scale=$S ark:"gunzip -c $INLATS |" ark,t:"| gzip -c > ${INLATS}.n$N" 2> /dev/null
+../latbin/lattice-oracle --word-symbol-table=words.txt --wildcard-symbols-list=ignore.txt ark:eval92.lats ark:"gunzip -c ${INLATS}.n$N |" ark,t:oracle.n$N.tra 2> /dev/null
+cat eval_nov92.txt | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' | ../../egs/wsj/s1/scripts/sym2int.pl --ignore-first-field words.txt | ../bin/compute-wer ark,t:- ark:oracle.n$N.tra
+
