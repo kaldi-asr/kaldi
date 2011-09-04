@@ -26,13 +26,13 @@ namespace kaldi {
 
 void TiedGmm::Setup(int32 pdf_index, int32 nmix) {
   KALDI_ASSERT(nmix > 0);
-  
+
   /// remember the pdf_index (within the AM)
   pdf_index_ = pdf_index;
-  
-  if (weights_.Dim() != nmix) 
+
+  if (weights_.Dim() != nmix)
     weights_.Resize(nmix);
-  
+
   /// init weights with uniform distribution
   weights_.Set(1./nmix);
 }
@@ -43,10 +43,12 @@ void TiedGmm::CopyFromTiedGmm(const TiedGmm &copy) {
 }
 
 // Compute the log-likelihood of the p(x|i) given the precomputed svq
-BaseFloat TiedGmm::LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) const {
+BaseFloat TiedGmm::LogLikelihood(BaseFloat c,
+                                 const VectorBase<BaseFloat> &svq) const {
   KALDI_ASSERT(svq.Dim() == weights_.Dim());
 
-  // log p(x|i) = log(w_i^T v) + c, where c is the offset from the soft vector quantizer
+  // log p(x|i) = log(w_i^T v) + c, where c is the offset from the soft vector
+  // quantizer
   BaseFloat logl = log(VecVec(weights_, svq)) + c;
 
   if (KALDI_ISNAN(logl) || KALDI_ISINF(logl))
@@ -56,8 +58,10 @@ BaseFloat TiedGmm::LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) 
 }
 
 
-// Compute log-likelihood of p(x|i) given the precomputed svq, also provide per-Gaussian posteriors
-BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
+// Compute log-likelihood of p(x|i) given the precomputed svq, also provide
+// per-Gaussian posteriors
+BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c,
+                                       const VectorBase<BaseFloat> &svq,
                                        Vector<BaseFloat> *posteriors) const {
   KALDI_ASSERT(posteriors != NULL);
 
@@ -65,7 +69,7 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> 
   posteriors->Resize(svq.Dim());
   posteriors->CopyFromVec(svq);
   posteriors->MulElements(weights_);
-  
+
   // log-likelihood...
   BaseFloat sum = posteriors->Sum();
   BaseFloat log_sum = log(sum);
@@ -78,7 +82,7 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> 
 
   if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-  
+
   return log_sum;
 }
 
@@ -86,11 +90,11 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> 
 void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
   KALDI_ASSERT(NumGauss() == source->NumGauss());
   KALDI_ASSERT(rho > 0. && rho < 1.);
-  
+
   // interpolate
   weights_.Scale(1.-rho);
   weights_.AddVec(rho, source->weights_);
-  
+
   // renorm to sum to one
   weights_.Scale(1. / weights_.Sum());
 }
@@ -98,42 +102,42 @@ void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
 /// Split the tied GMM weights based on the split sequence of the mixture
 void TiedGmm::Split(std::vector<int32> *sequence) {
   KALDI_ASSERT(sequence != NULL);
-  
+
   if (sequence->size() == 0)
     return;
-  
+
   int32 oldsize = weights_.Dim();
   weights_.Resize(oldsize + sequence->size());
-  
+
   // as in the gmm splitting, we'll distribute the weights evenly
-  for (std::vector<int32>::iterator it = sequence->begin(), 
+  for (std::vector<int32>::iterator it = sequence->begin(),
        end = sequence->end(); it != end; ++it) {
     BaseFloat w = weights_(*it);
     weights_(*it) = w / 2.;
     weights_(oldsize++) = w / 2.;
   }
-  
+
   // re-norm weights
   weights_.Scale(1. / weights_.Sum());
 }
-  
+
 /// Merge the tied GMM weights based on the merge sequence of the mixture
 void TiedGmm::Merge(std::vector<int32> *sequence) {
   KALDI_ASSERT(sequence != NULL);
   KALDI_ASSERT(sequence->size() % 2 == 0);
-  
+
   if (sequence->size() == 0)
     return;
-    
+
   // as in the gmm merging, we sum the weights of the candidates, and write them
   // to the first index
   std::vector<bool> discarded(weights_.Dim(), false);
-  for (std::vector<int32>::iterator it = sequence->begin(), 
+  for (std::vector<int32>::iterator it = sequence->begin(),
        end = sequence->end(); it != end; it += 2) {
      weights_(*it) = weights_(*it) + weights_(*(it+1));
      discarded[*(it+1)] = true;
   }
-  
+
   int32 m = 0;
   for (int32 i = 0; i < discarded.size(); ++i) {
     if (discarded[i])
@@ -141,7 +145,7 @@ void TiedGmm::Merge(std::vector<int32> *sequence) {
     else
       ++m;
   }
-  
+
   weights_.Scale(1. / weights_.Sum());
 }
 
@@ -169,12 +173,12 @@ void TiedGmm::Read(std::istream &in_stream, bool binary) {
   ReadMarker(in_stream, binary, &marker);
   if (marker != "<TIEDGMM>")
     KALDI_ERR << "Expected <TIEDGMM>, got " << marker;
-  
+
   ReadMarker(in_stream, binary, &marker);
   if (marker != "<PDF_INDEX>")
     KALDI_ERR << "Expected <PDF_INDEX>, got " << marker;
   ReadBasicType(in_stream, binary, &pdf_index_);
-  
+
   ReadMarker(in_stream, binary, &marker);
   if (marker != "<WEIGHTS>")
     KALDI_ERR << "TiedGmm::Read, expected <WEIGHTS> got "

@@ -87,20 +87,20 @@ int main(int argc, char *argv[]) {
 
     // Now the tree [not really a tree at this point]:
     ContextDependency *ctx_dep = MonophoneContextDependency(phones, phone2num_pdf_classes);
-    
+
     int32 num_pdfs = ctx_dep->NumPdfs();
 
     // init the tied model with a single gmm
     AmTiedDiagGmm am;
     am.Init(gmm);
-    
+
     // setup the prototype tied density
     TiedGmm tied;
     tied.Setup(0, gmm.NumGauss());
 
     for (int i = 0; i < num_pdfs; i++)
       am.AddTiedPdf(tied);
-    
+
     am.ComputeGconsts();
 
     // Now the transition model:

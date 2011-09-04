@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "Usage:   tied-diag-gmm-decode-simple [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     Timer timer;
-    bool allow_partial = true; 
+    bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
 
     std::string word_syms_filename;
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_EXIT << "Could not read symbol table from file "
                    << word_syms_filename;

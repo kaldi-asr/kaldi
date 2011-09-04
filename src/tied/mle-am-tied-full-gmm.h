@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_TIED_MLE_AM_TIED_DIAG_GMM_H_
-#define KALDI_TIED_MLE_AM_TIED_DIAG_GMM_H_ 1
+#ifndef KALDI_TIED_MLE_AM_TIED_FULL_GMM_H_
+#define KALDI_TIED_MLE_AM_TIED_FULL_GMM_H_ 1
 
 #include <vector>
 
@@ -37,34 +37,39 @@ class AccumAmTiedFullGmm {
 
   /// Initializes accumulators for each diagonal and tied GMM
   void Init(const AmTiedFullGmm &model, GmmFlagsType flags);
-  
+
   void SetZero(GmmFlagsType flags);
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
   /// This does not work with multiple feature transforms.
   BaseFloat Accumulate(const AmTiedFullGmm &model,
                        const TiedGmmPerFrameVars &per_frame_vars,
-                       int32 pdf_index, 
+                       int32 pdf_index,
                        BaseFloat frame_posterior);
-                       
+
   /// Accumulate stats for single GMM in the model; returns log likelihood
-  /// This will evaluate the associated codebook; use Accumulate for pre-computed
-  /// codebook scores
-  BaseFloat AccumulateForGmm(const AmTiedFullGmm &model, 
+  /// This will evaluate the associated codebook; use Accumulate for
+  /// pre-computed codebook scores
+  BaseFloat AccumulateForGmm(const AmTiedFullGmm &model,
                              const VectorBase<BaseFloat> &data,
                              int32 pdf_index,
                              BaseFloat frame_posterior);
 
-  /// Accumulate for a certain codebook (pdf_index) and tied gmm (tied_pdf_index)
-  /// given the data and posteriors
+  /// Accumulate for a certain codebook (pdf_index) and tied gmm
+  /// (tied_pdf_index) given the data and posteriors
   void AccumulateFromPosteriors(const VectorBase<BaseFloat> &data,
                                 int32 pdf_index,
                                 int32 tied_pdf_index,
                                 const VectorBase<BaseFloat> &posteriors);
-                                
-  int32 NumAccs() { return gmm_accumulators_.size() + tied_gmm_accumulators_.size(); }
-  int32 NumAccs() const { return gmm_accumulators_.size() + tied_gmm_accumulators_.size(); }
-  
+
+  int32 NumAccs() {
+    return gmm_accumulators_.size() + tied_gmm_accumulators_.size();
+  }
+
+  int32 NumAccs() const {
+    return gmm_accumulators_.size() + tied_gmm_accumulators_.size();
+  }
+
   int32 NumFullAccs() { return gmm_accumulators_.size(); }
   int32 NumFullAccs() const { return gmm_accumulators_.size(); }
 
@@ -86,13 +91,13 @@ class AccumAmTiedFullGmm {
 /// for computing the maximum-likelihood estimates of the parameters of
 /// an acoustic model that uses (tied) diagonal Gaussian mixture models
 void MleAmTiedFullGmmUpdate(const MleFullGmmOptions &config_diag,
-                            const MleTiedGmmOptions &config_tied, 
+                            const MleTiedGmmOptions &config_tied,
                             const AccumAmTiedFullGmm &amtieddiaggmm_acc,
-                            GmmFlagsType flags, 
-                            AmTiedFullGmm *model, 
+                            GmmFlagsType flags,
+                            AmTiedFullGmm *model,
                             BaseFloat *obj_change_out,
                             BaseFloat *count_out);
-                            
+
 }  // End namespace kaldi
 
-#endif  // KALDI_TIED_MLE_AM_TIED_DIAG_GMM_H_
+#endif  // KALDI_TIED_MLE_AM_TIED_FULL_GMM_H_

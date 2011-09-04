@@ -43,13 +43,13 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   }
 
   BaseFloat loglike = 0.0;
-  
+
   am_gmm.SetupPerFrameVars(&pfv);
   am_gmm.ComputePerFrameVars(feat, &pfv);
-  
+
   for (int32 i = 0; i < am_gmm.NumPdfs(); ++i)
     loglike += am_gmm.LogLikelihood(pfv, i);
- 
+
   // First, non-binary write
   am_gmm.Write(kaldi::Output("tmpf", false).Stream(), false);
 
@@ -60,13 +60,13 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm1->Read(ki1.Stream(), binary_in);
 
   BaseFloat loglike1 = 0.0;
-  
+
   am_gmm1->SetupPerFrameVars(&pfv);
   am_gmm1->ComputePerFrameVars(feat, &pfv);
 
   for (int32 i = 0; i < am_gmm1->NumPdfs(); ++i)
     loglike1 += am_gmm1->LogLikelihood(pfv, i);
-  
+
   kaldi::AssertEqual(loglike, loglike1, 1e-4);
 
   // Next, binary write
@@ -77,12 +77,12 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   // Binary read
   kaldi::Input ki2("tmpfb", &binary_in);
   am_gmm2->Read(ki2.Stream(), binary_in);
-  
+
   BaseFloat loglike2 = 0.0;
-  
+
   am_gmm2->SetupPerFrameVars(&pfv);
   am_gmm2->ComputePerFrameVars(feat, &pfv);
-  
+
   for (int32 i = 0; i < am_gmm2->NumPdfs(); ++i)
     loglike2 += am_gmm2->LogLikelihood(pfv, i);
 
@@ -94,14 +94,14 @@ void UnitTestAmTiedDiagGmm() {
   int32 dim = 1 + kaldi::RandInt(0, 5);  // random dimension of the gmm
   int32 num_pdfs = 2 + kaldi::RandInt(0, 5);  // random number of codebooks
   int32 num_tied_pdfs = num_pdfs + kaldi::RandInt(0, 20);
-  
+
   DiagGmm diag;
   int32 num_comp = 4 + kaldi::RandInt(0, 12);
   ut::InitRandDiagGmm(dim, num_comp, &diag);
-  
+
   AmTiedDiagGmm am_gmm;
   am_gmm.Init(diag);
-  
+
   // add codebooks
   for (int32 i = 1; i < num_pdfs; ++i) {
     num_comp = 4 + kaldi::RandInt(0, 12);  // random number of mixtures
@@ -114,19 +114,19 @@ void UnitTestAmTiedDiagGmm() {
     TiedGmm tied;
     int32 pdf_index = i % num_pdfs;
     tied.Setup(pdf_index, am_gmm.GetPdf(pdf_index).NumGauss());
-    
+
     // generate random weights
     Vector<BaseFloat> wts(am_gmm.GetPdf(pdf_index).NumGauss());
     for (int32 j = 0; j < wts.Dim(); ++j)
       wts(j) = kaldi::RandInt(1, 1024);
-    
+
     wts.Scale(1./wts.Sum());
-    
+
     tied.SetWeights(wts);
-    
+
     am_gmm.AddTiedPdf(tied);
   }
-  
+
   am_gmm.ComputeGconsts();
 
   TestAmTiedDiagGmmIO(am_gmm);

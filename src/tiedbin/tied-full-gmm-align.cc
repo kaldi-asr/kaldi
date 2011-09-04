@@ -1,6 +1,6 @@
-// tiedbin/tied-diag-gmm-align-compiled.cc
+// gmmbin/gmm-align.cc
 
-// Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
+// Copyright 2009-2011  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "tied/tied-gmm.h"
-#include "tied/am-tied-diag-gmm.h"
+#include "tied/am-tied-full-gmm.h"
 #include "hmm/transition-model.h"
-#include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
-#include "decoder/decodable-am-tied-diag-gmm.h"
+#include "decoder/decodable-am-tied-full-gmm.h"
+#include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
+
 
 int main(int argc, char *argv[]) {
   try {
@@ -35,44 +35,47 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Align features given tied diagonal GMM-based models.\n"
-        "Usage:   tied-diag-gmm-align-compiled [options] model-in graphs-rspecifier feature-rspecifier alignments-wspecifier\n"
+        "Align features given [GMM-based] models.\n"
+        "Usage:   gmm-align [options] tree-in model-in lexicon-fst-in feature-rspecifier transcriptions-rspecifier alignments-wspecifier\n"
         "e.g.: \n"
-        " tied-diag-gmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
-        "or:\n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra b, ark:- | \\\n"
-        "   tied-diag-gmm-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
-
+        " gmm-align tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
     ParseOptions po(usage);
     bool binary = false;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
-    BaseFloat trans_prob_scale = 1.0;
-    BaseFloat self_loop_scale = 1.0;
-
+    TrainingGraphCompilerOptions gopts;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
     po.Register("retry-beam", &retry_beam, "Decoding beam for second try at alignment");
-    po.Register("transition-scale", &trans_prob_scale, "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
+    gopts.Register(&po);
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
+
     FasterDecoderOptions decode_opts;
     decode_opts.beam = beam;  // Don't set the other options.
 
-    std::string model_in_filename = po.GetArg(1);
-    std::string fst_rspecifier = po.GetArg(2);
-    std::string feature_rspecifier = po.GetArg(3);
-    std::string alignment_wspecifier = po.GetArg(4);
+    std::string tree_in_filename = po.GetArg(1);
+    std::string model_in_filename = po.GetArg(2);
+    std::string lex_in_filename = po.GetArg(3);
+    std::string feature_rspecifier = po.GetArg(4);
+    std::string transcript_rspecifier = po.GetArg(5);
+    std::string alignment_wspecifier = po.GetArg(6);
+
+    ContextDependency ctx_dep;
+    {
+      bool binary;
+      Input is(tree_in_filename, &binary);
+      ctx_dep.Read(is.Stream(), binary);
+    }
 
     TransitionModel trans_model;
-    AmTiedDiagGmm am_gmm;
+    AmTiedFullGmm am_gmm;
     {
       bool binary;
       Input is(model_in_filename, &binary);
@@ -80,25 +83,41 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(is.Stream(), binary);
     }
 
-    SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
-    RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.
+    {
+      std::ifstream is(lex_in_filename.c_str());
+      if (!is.good()) KALDI_EXIT << "Could not open lexicon FST " << (std::string)lex_in_filename;
+      lex_fst =
+          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)lex_in_filename));
+      if (lex_fst == NULL)
+        exit(1);
+    }
+
+    TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, gopts);
+
+    lex_fst = NULL;  // we gave ownership to gc.
+
+    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessInt32VectorReader transcript_reader(transcript_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
-    int num_success = 0, num_no_feat = 0, num_other_error = 0;
+    int num_success = 0, num_no_transcript = 0, num_other_error = 0;
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
+    for (; !feature_reader.Done(); feature_reader.Next()) {
+      std::string key = feature_reader.Key();
+      if (!transcript_reader.HasKey(key)) num_no_transcript++;
+      else {
+        const Matrix<BaseFloat> &features = feature_reader.Value();
+        const std::vector<int32> &transcript = transcript_reader.Value(key);
 
-    for (; !fst_reader.Done(); fst_reader.Next()) {
-      std::string key = fst_reader.Key();
-      if (!feature_reader.HasKey(key)) {
-        num_no_feat++;
-        KALDI_WARN << "No features for utterance " << key;
-      } else {
-        const Matrix<BaseFloat> &features = feature_reader.Value(key);
-        VectorFst<StdArc> decode_fst(fst_reader.Value());
-        fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
-        // by deleting the fst inside the reader, since we're about to mutate
-        // the fst by adding transition probs.
+        VectorFst<StdArc> decode_fst;
+        if (!gc.CompileGraph(transcript, &decode_fst)) {
+          KALDI_WARN << "Problem creating decoding graph for utterance " <<
+              key <<" [serious error]";
+          num_other_error++;
+          continue;
+        }
 
         if (features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << key;
@@ -111,18 +130,9 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        {  // Add transition-probs to the FST.
-          std::vector<int32> disambig_syms;  // empty.
-          AddTransitionProbs(trans_model, disambig_syms,
-                             trans_prob_scale, self_loop_scale,
-                             &decode_fst);
-        }
-
-        // SimpleDecoder decoder(decode_fst, beam);
         FasterDecoder decoder(decode_fst, decode_opts);
-        // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
 
-        DecodableAmTiedDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
+        DecodableAmTiedFullGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                                acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
@@ -148,11 +158,15 @@ int main(int argc, char *argv[]) {
           GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
           BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
           tot_like += like;
+          assert(words == transcript);
           alignment_writer.Write(key, alignment);
           num_success ++;
-          KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows()) << " over "
-                    << features.NumRows() << " frames.";
+          if (num_success % 50  == 0) {
+            KALDI_LOG << "Processed " << num_success << " utterances, "
+                      << "log-like per frame for " << key << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+          }
         } else {
           KALDI_WARN << "Did not successfully decode file " << key << ", len = "
                      << (features.NumRows());
@@ -162,8 +176,8 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count<< " frames.";
-    KALDI_LOG << "Done " << num_success << ", could not find features for "
-              << num_no_feat << ", other errors on " << num_other_error;
+    KALDI_LOG << "Done " << num_success << ", could not find transcripts for "
+              << num_no_transcript << ", other errors on " << num_other_error;
     if (num_success != 0) return 0;
     else return 1;
   } catch(const std::exception& e) {

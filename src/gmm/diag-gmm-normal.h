@@ -45,7 +45,7 @@ class DiagGmmNormal {
   /// Empty constructor.
   DiagGmmNormal() { }
 
-  DiagGmmNormal(const DiagGmm &gmm) {
+  explicit DiagGmmNormal(const DiagGmm &gmm) {
     CopyFromDiagGmm(gmm);
   }
 
@@ -54,13 +54,13 @@ class DiagGmmNormal {
 
   /// Copies from given DiagGmm
   void CopyFromDiagGmm(const DiagGmm &diaggmm);
-  
+
   /// Copies to DiagGmm the requested parameters
   void CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags = kGmmAll);
 
-  Vector<double> weights_;        ///< weights (not log).
-  Matrix<double> means_;          ///< Means
-  Matrix<double> vars_;           ///< diagonal variance
+  Vector<double> weights_;  ///< weights (not log).
+  Matrix<double> means_;    ///< Means
+  Matrix<double> vars_;     ///< diagonal variance
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DiagGmmNormal);
 };

@@ -38,25 +38,26 @@ class AmTiedDiagGmm {
   /// Initializes with a single GMM as codebook and initializes num_tied_pdfs
   /// (uniform) tied pdfs
   void Init(const DiagGmm &proto);
-  
+
   /// Adds a DiagGmm as codebook to the model
   void AddPdf(const DiagGmm &gmm);
-  
+
   /// Adds a tied PDF to the model
   void AddTiedPdf(const TiedGmm &tied);
-  
-  /// Remove designated codebook; caveat: does not take care of the tied dependents!
-  void RemovePdf(const int32 pdf_index);
-  
+
+  /// Remove designated codebook
+  /// caveat: does not take care of the tied dependents!
+  void RemovePdf(int32 pdf_index);
+
   /// Remove designated tied pdf
-  void RemoveTiedPdf(const int32 tied_pdf_index);
-  
+  void RemoveTiedPdf(int32 tied_pdf_index);
+
   /// Replace the codebook of the designated tied pdf by the new index
-  void ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index);
-  
+  void ReplacePdf(int32 tied_pdf_index, int32 new_pdf_index);
+
   /// Replace the designated codebook
-  void ReplacePdf(const int32 pdf_index, DiagGmm &gmm);
-  
+  void ReplacePdf(int32 pdf_index, const DiagGmm &gmm);
+
   /// Copies the parameters from another model. Allocates necessary memory.
   void CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other);
 
@@ -66,11 +67,11 @@ class AmTiedDiagGmm {
 
   void SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const;
 
-  /// This needs to be called for each frame prior to any likelihood computation
-  void ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
+  /// Needs to be called for each frame prior to any likelihood computation
+  void ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                            TiedGmmPerFrameVars *per_frame_vars) const;
-  
-  /// This computes the individual codebook per frame variables (used by above function)
+
+  /// Computes the individual codebook per frame variables
   BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                Vector<BaseFloat> *svq,
                                int32 pdfid) const;
@@ -89,10 +90,10 @@ class AmTiedDiagGmm {
   /// Accessors
   DiagGmm& GetPdf(int32 pdf_index);
   const DiagGmm& GetPdf(int32 pdf_index) const;
-  
+
   TiedGmm& GetTiedPdf(int32 pdf_index);
   const TiedGmm& GetTiedPdf(int32 pdf_index) const;
-  
+
   int32 GetPdfIdOfTiedPdf(int32 pdf_index) const;
 
  private:
@@ -139,7 +140,7 @@ inline const TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) const {
 }
 
 inline int32 AmTiedDiagGmm::GetPdfIdOfTiedPdf(int32 pdf_index) const {
-  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size()) 
+  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size())
                && (tied_densities_[pdf_index] != NULL));
   return tied_densities_[pdf_index]->pdf_index();
 }

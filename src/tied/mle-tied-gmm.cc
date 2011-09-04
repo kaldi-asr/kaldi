@@ -40,7 +40,7 @@ void AccumTiedGmm::Read(std::istream &in_stream, bool binary, bool add) {
     if (NumGauss() != 0) {
       if (num_components != NumGauss() || Flags() != 0) {
         KALDI_ERR << "AccumTiedDiagGmm::Read, num_components mismatch "
-                  << (NumGauss()) << ", " << (Flags()) << " vs " 
+                  << (NumGauss()) << ", " << (Flags()) << " vs "
                   << (num_components) << ", " << (flags);
       }
     } else {
@@ -102,7 +102,8 @@ void AccumTiedGmm::AccumulateForComponent(int32 comp_index, BaseFloat weight) {
   occupancy_(comp_index) += static_cast<double>(weight);
 }
 
-void AccumTiedGmm::AccumulateFromPosteriors(const VectorBase<BaseFloat> &posteriors) {
+void AccumTiedGmm::AccumulateFromPosteriors(
+       const VectorBase<BaseFloat> &posteriors) {
   assert(static_cast<int32>(posteriors.Dim()) == NumGauss());
   Vector<double> post_d(posteriors);  // Copy with type-conversion
   occupancy_.AddVec(1.0, post_d);
@@ -113,17 +114,17 @@ void AccumTiedGmm::Propagate(AccumTiedGmm *target) const {
   KALDI_ASSERT(num_comp_ == target->num_comp_);
   target->occupancy_.AddVec(1., occupancy_);
 }
-  
+
 /// Interpolate the local model depending on the occupancies
 /// rho' <- rho / (rho + gamma)
 /// this <- rho' x source + (1-rho') x this
 void AccumTiedGmm::Interpolate(BaseFloat rho, const AccumTiedGmm *source) {
   KALDI_ASSERT(num_comp_ == source->num_comp_);
   BaseFloat rhoi = rho / (rho + occupancy_.Sum());
-  
+
   if (rhoi > 0.8)
     KALDI_VLOG(1) << "rhoi > 0.8";
-  
+
   occupancy_.Scale(1.-rhoi);
   occupancy_.AddVec(rhoi, source->occupancy_);
 }
@@ -135,7 +136,7 @@ AccumTiedGmm::AccumTiedGmm(const AccumTiedGmm &other)
 
 BaseFloat MlObjective(const TiedGmm &tied, const AccumTiedGmm &tiedgmm_acc) {
   // use the occupancy of the tied pdf
-  Vector<BaseFloat> occ_bf(tiedgmm_acc.occupancy()); 
+  Vector<BaseFloat> occ_bf(tiedgmm_acc.occupancy());
   Vector<BaseFloat> logwt(tied.weights());
   logwt.ApplyLog();
   return VecVec(occ_bf, logwt);
@@ -151,7 +152,8 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
     KALDI_ERR << "Flags in argument do not match the active accumulators";
 
   if (!(flags & kGmmWeights)) {
-    KALDI_WARN << "no weight update as desired by flags -- why would you call MleTiedGmmUpdate in the first place?";
+    KALDI_WARN << "no weight update as desired by flags -- why would you call "
+                  "MleTiedGmmUpdate in the first place?";
     return;
   }
 
@@ -161,8 +163,12 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
   KALDI_ASSERT(tied->NumGauss() == num_comp);
 
   if (occ_sum <= config.min_gaussian_occupancy) {
-    KALDI_WARN << "Total occupancy of this TiedGmm too small, skipping weight update!";
+    KALDI_WARN << "Total occupancy of this TiedGmm too small, skipping weight "
+                  "update!";
   } else {
+    // floor the weights with respect to the number of components
+    double floor = config.min_gaussian_weight / num_comp;
+
     // remember old objective value
     BaseFloat obj_old = MlObjective(*tied, tiedgmm_acc);
 
@@ -170,41 +176,35 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
     std::vector<int32> floored_weights;
     for (int32 g = 0; g < num_comp; g++) {
       double wt = tiedgmm_acc.occupancy()(g) / occ_sum;
-      
-      if (wt < config.min_gaussian_weight) {
-        // KALDI_WARN << "Weight of component " << g << " too small (" << wt << "), flooring to min_gaussian_weight";
-        wt = config.min_gaussian_weight;
+
+      if (wt < floor) {
+        // KALDI_WARN << "Weight of component " << g << " too small
+        // (" << wt << "), flooring to min_gaussian_weight";
+        wt = floor;
         floored_weights.push_back(g);
       }
-      
-      tied->SetComponentWeight(g, wt);    
-    } 
-    
-    if (floored_weights.size() > 0) {
 
-      /// to correct for the min weights, we need to re-normalize the weights
+      tied->SetComponentWeight(g, wt);
+    }
+
+    if (floored_weights.size() > 0) {
+      // to correct for the min weights
+      // we need to re-normalize the weights
       Vector<BaseFloat> w(tied->weights());
       w.Scale(1./w.Sum());
       tied->SetWeights(w);
 
-      KALDI_WARN << "Number of floored weights: " << floored_weights.size();
-      
-/*    
-      std::ostringstream ids;
-      for (std::vector<int32>::iterator it = floored_weights.begin(), end = floored_weights.end(); 
-            it != end; ++it)
-        ids << *it << " ";
-      KALDI_WARN << "Ids of floored weights: " << ids.str();
-*/
+      KALDI_WARN << "Floored " << floored_weights.size() << " weights to "
+                 << floor;
     }
-  
+
     // compute new objective value
     BaseFloat obj_new = MlObjective(*tied, tiedgmm_acc);
-  
-    if (obj_change_out) 
+
+    if (obj_change_out)
       *obj_change_out = (obj_new - obj_old);
-  
-    if (count_out) 
+
+    if (count_out)
       *count_out = occ_sum;
   }
 }

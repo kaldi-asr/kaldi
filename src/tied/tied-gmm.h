@@ -30,10 +30,10 @@ namespace kaldi {
  *  Holds the per-frame derived variables, e.g. the posteriors of the soft vector quantizer (svq)
  */
 struct TiedGmmPerFrameVars {
-  TiedGmmPerFrameVars() { 
+  TiedGmmPerFrameVars() {
     // nop
   }
-  
+
   ~TiedGmmPerFrameVars() {
     DeletePointers(&svq);
   }
@@ -47,19 +47,19 @@ struct TiedGmmPerFrameVars {
 
     svq.resize(num_gauss, NULL);
   }
-    
+
   /// Resize the loglikelihood vector of the given pdf
   void ResizeSvq(int32 pdf_index, int32 num_gauss) {
     if (svq[pdf_index] != NULL)
       delete svq[pdf_index];
-    
+
     svq[pdf_index] = new Vector<BaseFloat>(num_gauss);
   }
- 
+
   void Clear() {
     DeletePointers(&svq);
   }
-  
+
   /// data vector associated with svq values
   Vector<BaseFloat> x;
 
@@ -70,7 +70,7 @@ struct TiedGmmPerFrameVars {
   std::vector<Vector<BaseFloat> *> svq;
 };
 
-/** \class TiedGmm 
+/** \class TiedGmm
  *  Definition for tied Gaussian mixture models
  */
 class TiedGmm {
@@ -83,15 +83,17 @@ class TiedGmm {
 
   /// Returns the number of mixture components in the GMM
   int32 NumGauss() const { return weights_.Dim(); }
-  
+
   /// Copies from given DiagGmm
   void CopyFromTiedGmm(const TiedGmm &copy);
 
-  /// Returns the log-likelihood of a data point (vector) given the tied GMM component scores
+  /// Returns the log-likelihood of a data point (vector) given the tied GMM
+  /// component scores
   /// caveat: The argument contains the svq scores, /NOT/ the data!
   BaseFloat LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) const;
 
-  /// Computes the posterior probabilities of all Gaussian components and returns loglike
+  /// Computes the posterior probabilities of all Gaussian components and
+  /// returns loglike
   /// caveat: The argument contains the svq scores, /NOT/ the data!
   BaseFloat ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
                                 Vector<BaseFloat> *posteriors) const;
@@ -101,7 +103,7 @@ class TiedGmm {
 
   /// Split the tied GMM weights based on the split sequence of the mixture
   void Split(std::vector<int32> *sequence);
-  
+
   /// Merge the tied GMM weights based on the merge sequence of the mixture
   void Merge(std::vector<int32> *sequence);
 
@@ -119,12 +121,12 @@ class TiedGmm {
   /// Mutators for single component, supports float or double
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
-  
+
   void SetPdfIndex(int32 pdf_index) { pdf_index_ = pdf_index; }
 
  private:
-  int32 pdf_index_;            ///< index of the respective codebook (within the AM)
-  Vector<BaseFloat> weights_; ///< weights (not log).
+  int32 pdf_index_;  ///< index of the respective codebook (within the AM)
+  Vector<BaseFloat> weights_;  ///< weights (not log).
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(TiedGmm);
 };

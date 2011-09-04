@@ -19,6 +19,8 @@
 #ifndef KALDI_TIED_MLE_TIED_GMM_H_
 #define KALDI_TIED_MLE_TIED_GMM_H_ 1
 
+#include <string>
+
 #include "gmm/model-common.h"
 #include "tied/tied-gmm.h"
 #include "util/parse-options.h"
@@ -31,11 +33,11 @@ namespace kaldi {
 struct MleTiedGmmOptions {
   /// minimum component weight
   BaseFloat min_gaussian_weight;
-  
+
   /// minimum total occupancy for update
   BaseFloat min_gaussian_occupancy;
-  
-  /// smoothing weight to smooth the newly estimated parameters with the old ones
+
+  /// smoothing weight to smooth the newly estimated parameters with the old
   BaseFloat smoothing_weight;
 
   bool smooth_weights;
@@ -43,8 +45,8 @@ struct MleTiedGmmOptions {
   bool smooth_variances;
 
   MleTiedGmmOptions() {
-    /// gaussian weight should be rather small, due to large (> 512) code book sizes
-    min_gaussian_weight     = 1.0e-8;
+    /// floor = (1/numgauss) * weight
+    min_gaussian_weight     = 0.01;
     min_gaussian_occupancy  = 3.0;
 
     // apis stuff
@@ -54,15 +56,17 @@ struct MleTiedGmmOptions {
     smooth_means     = false;
     smooth_variances = false;
   }
-  
+
   void Register(ParseOptions *po) {
     std::string module = "MleTiedGmmOptions: ";
     po->Register("min-tied-gaussian-weight", &min_gaussian_weight,
-                 module+"Min tied Gaussian weight to enforce.");
+                 module+"Minimum gaussian weight w.r.t. the number of "
+                 "components (floor = weight / num_comp)");
     po->Register("min-tied-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum occupancy to update a tied Gaussian.");
     po->Register("smoothing-weight", &smoothing_weight,
-                 module+"smoothing weight (0 < w < 1) to smooth new = rho x old + (1-rho) x new; high rho means strong impact of source");
+                 module+"smoothing weight (0 < w < 1) to smooth new = rho x old"
+                 " + (1-rho) x new; high rho means strong impact of source");
     po->Register("interpolate-weights", &smooth_weights,
                  module+"Interpolate tied mixture weights?");
     po->Register("interpolate-means", &smooth_means,
@@ -71,17 +75,19 @@ struct MleTiedGmmOptions {
                  module+"Interpolate codebook variances?");
   }
 
-  bool smooth() const { return smooth_weights || smooth_means || smooth_variances; }
+  bool smooth() const {
+    return smooth_weights || smooth_means || smooth_variances;
+  }
 };
 
 class AccumTiedGmm {
  public:
   AccumTiedGmm(): num_comp_(0), flags_(0) { }
-  
+
   explicit AccumTiedGmm(const TiedGmm &tied, GmmFlagsType flags) {
     Resize(tied, flags);
   }
-  
+
   // provide copy constructor.
   explicit AccumTiedGmm(const AccumTiedGmm &other);
 
@@ -107,7 +113,7 @@ class AccumTiedGmm {
 
   /// Propagate the sufficient statistics to the target accumulator
   void Propagate(AccumTiedGmm *target) const;
-  
+
   /// Interpolate the local model depending on the occupancies
   /// rho' <- rho / (rho + gamma)
   /// this <- rho' x source + (1-rho') x this

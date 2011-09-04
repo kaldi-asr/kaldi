@@ -52,7 +52,7 @@ void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) 
   }
 
   delete tied;
-  
+
   am_gmm->ComputeGconsts();
 }
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     }
 
     // use the last argument as output
-    std::string 
+    std::string
       tree_filename = po.GetArg(1),
       topo_filename = po.GetArg(2),
       first_cb_filename = po.GetArg(po.NumArgs() == 4 ? 3 : 4),
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
       Input ki(topo_filename, &binary_in);
       topo.Read(ki.Stream(), binary_in);
     }
-    
+
     FullGmm cb0;
     {
       bool binary_in;
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
         Input ki(po.GetArg(3), &binary_in);
         ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
       }
-      
+
       // subsequently add the codebooks
       for (int32 i = 5; i < po.NumArgs(); ++i) {
         FullGmm cb;
@@ -132,11 +132,11 @@ int main(int argc, char *argv[]) {
         Input ki(po.GetArg(i), &binary_in);
         cb.Read(ki.Stream(), binary_in);
         am_gmm.AddPdf(cb);
-      } 
+      }
     }
 
     // Init the model by allocating the tied mixtures
-    InitAmTiedFullGmm(&am_gmm, tied_to_pdf.size() > 0 ? &tied_to_pdf : NULL);  
+    InitAmTiedFullGmm(&am_gmm, tied_to_pdf.size() > 0 ? &tied_to_pdf : NULL);
 
     TransitionModel trans_model(ctx_dep, topo);
     {

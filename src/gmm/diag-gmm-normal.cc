@@ -28,14 +28,14 @@ namespace kaldi {
 
 void DiagGmmNormal::Resize(int32 nmix, int32 dim) {
   KALDI_ASSERT(nmix > 0 && dim > 0);
-  
-  if (weights_.Dim() != nmix) 
+
+  if (weights_.Dim() != nmix)
     weights_.Resize(nmix);
 
   if (vars_.NumRows() != nmix ||
-      vars_.NumCols() != dim) 
+      vars_.NumCols() != dim)
     vars_.Resize(nmix, dim);
-  
+
   if (means_.NumRows() != nmix ||
       means_.NumCols() != dim)
     means_.Resize(nmix, dim);
@@ -53,12 +53,12 @@ void DiagGmmNormal::CopyFromDiagGmm(const DiagGmm &diaggmm) {
 }
 
 void DiagGmmNormal::CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags) {
-    KALDI_ASSERT((static_cast<int32>(diaggmm->Dim()) == means_.NumCols()) 
+    KALDI_ASSERT((static_cast<int32>(diaggmm->Dim()) == means_.NumCols())
       && (static_cast<int32>(diaggmm->weights_.Dim()) == weights_.Dim()));
 
     DiagGmmNormal oldg(*diaggmm);
 
-    if (flags & kGmmWeights) 
+    if (flags & kGmmWeights)
       diaggmm->weights_.CopyFromVec(weights_);
 
     if (flags & kGmmVariances) {

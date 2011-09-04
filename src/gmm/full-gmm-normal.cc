@@ -29,10 +29,10 @@ namespace kaldi {
 
 void FullGmmNormal::Resize(int32 nmix, int32 dim) {
   KALDI_ASSERT(nmix > 0 && dim > 0);
-  
-  if (weights_.Dim() != nmix) 
+
+  if (weights_.Dim() != nmix)
     weights_.Resize(nmix);
-  
+
   if (means_.NumRows() != nmix ||
       means_.NumCols() != dim)
     means_.Resize(nmix, dim);
@@ -53,9 +53,9 @@ void FullGmmNormal::CopyFromFullGmm(const FullGmm &fullgmm) {
   size_t num_gauss = fullgmm.NumGauss();
   Resize(num_gauss, dim);
 
-  /// copy weights 
+  /// copy weights
   weights_.CopyFromVec(fullgmm.weights_);
- 
+
   /// we need to split the natural components for each gaussian
   Vector<double> mean_times_invcovar(dim);
 
@@ -73,9 +73,9 @@ void FullGmmNormal::CopyFromFullGmm(const FullGmm &fullgmm) {
 void FullGmmNormal::CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags) {
   KALDI_ASSERT(weights_.Dim() == fullgmm->weights_.Dim()
     && means_.NumCols() == fullgmm->Dim());
- 
+
   FullGmmNormal oldg(*fullgmm);
-   
+
   if (flags & kGmmWeights)
     fullgmm->weights_.CopyFromVec(weights_);
 

@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_TIED_AM_TIED_DIAG_GMM_H_
-#define KALDI_TIED_AM_TIED_DIAG_GMM_H_ 1
+#ifndef KALDI_TIED_AM_TIED_FULL_GMM_H_
+#define KALDI_TIED_AM_TIED_FULL_GMM_H_ 1
 
 #include <vector>
 
@@ -38,25 +38,26 @@ class AmTiedFullGmm {
   /// Initializes with a single GMM as codebook and initializes num_tied_pdfs
   /// (uniform) tied pdfs
   void Init(const FullGmm &proto);
-  
+
   /// Adds a DiagGmm as codebook to the model
   void AddPdf(const FullGmm &gmm);
-  
+
   /// Adds a tied PDF to the model
   void AddTiedPdf(const TiedGmm &tied);
-  
-  /// Remove designated codebook; caveat: does not take care of the tied dependents!
-  void RemovePdf(const int32 pdf_index);
-  
+
+  /// Remove designated codebook
+  /// caveat: does not take care of the tied dependents!
+  void RemovePdf(int32 pdf_index);
+
   /// Remove designated tied pdf
-  void RemoveTiedPdf(const int32 tied_pdf_index);
-  
+  void RemoveTiedPdf(int32 tied_pdf_index);
+
   /// Replace the codebook of the designated tied pdf by the new index
-  void ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index);
-  
+  void ReplacePdf(int32 tied_pdf_index, int32 new_pdf_index);
+
   /// Replace the designated codebook
-  void ReplacePdf(const int32 pdf_index, FullGmm &gmm);
-  
+  void ReplacePdf(int32 pdf_index, const FullGmm &gmm);
+
   /// Copies the parameters from another model. Allocates necessary memory.
   void CopyFromAmTiedFullGmm(const AmTiedFullGmm &other);
 
@@ -66,11 +67,11 @@ class AmTiedFullGmm {
 
   void SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const;
 
-  /// This needs to be called for each frame prior to any likelihood computation
-  void ComputePerFrameVars(const VectorBase<BaseFloat> &data, 
+  /// Needs to be called for each frame prior to any likelihood computation
+  void ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                            TiedGmmPerFrameVars *per_frame_vars) const;
-  
-  /// This computes the individual codebook per frame variables (used by above function)
+
+  /// Computes the individual codebook per frame variables
   BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                Vector<BaseFloat> *svq,
                                int32 pdfid) const;
@@ -89,7 +90,7 @@ class AmTiedFullGmm {
   /// Accessors
   FullGmm& GetPdf(int32 pdf_index);
   const FullGmm& GetPdf(int32 pdf_index) const;
-  
+
   TiedGmm& GetTiedPdf(int32 pdf_index);
   const TiedGmm& GetTiedPdf(int32 pdf_index) const;
 
@@ -139,7 +140,7 @@ inline const TiedGmm& AmTiedFullGmm::GetTiedPdf(int32 tied_pdf_index) const {
 }
 
 inline int32 AmTiedFullGmm::GetPdfIdOfTiedPdf(int32 pdf_index) const {
-  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size()) 
+  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size())
                && (tied_densities_[pdf_index] != NULL));
   return tied_densities_[pdf_index]->pdf_index();
 }
@@ -147,4 +148,4 @@ inline int32 AmTiedFullGmm::GetPdfIdOfTiedPdf(int32 pdf_index) const {
 }  // namespace kaldi
 
 /// @} TiedGmm
-#endif  // KALDI_TIED_AM_TIED_DIAG_GMM_H_
+#endif  // KALDI_TIED_AM_TIED_FULL_GMM_H_

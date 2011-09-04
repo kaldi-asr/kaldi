@@ -47,11 +47,11 @@ int main(int argc, char *argv[]) {
     tied_opts.Register(&po);
 
     po.Read(argc, argv);
-   
+
     if (gmm_opts.remove_low_count_gaussians) {
       KALDI_WARN << "enforcing gmm_opts.remove_low_count_gaussians = false";
       gmm_opts.remove_low_count_gaussians = false;
-    } 
+    }
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();

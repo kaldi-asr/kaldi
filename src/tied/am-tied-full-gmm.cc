@@ -74,34 +74,35 @@ void AmTiedFullGmm::AddTiedPdf(const TiedGmm &tied) {
   tied_densities_.push_back(tgmm_ptr);
 }
 
-/// Remove designated codebook; caveat: does not take care of the tied dependents!
-void AmTiedFullGmm::RemovePdf(const int32 pdf_index) {
+/// Remove designated codebook
+/// caveat: does not take care of the tied dependents!
+void AmTiedFullGmm::RemovePdf(int32 pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
   delete densities_[pdf_index];
   densities_.erase(densities_.begin() + pdf_index);
 }
-  
+
 /// Remove designated tied pdf
-void AmTiedFullGmm::RemoveTiedPdf(const int32 tied_pdf_index) {
+void AmTiedFullGmm::RemoveTiedPdf(int32 tied_pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
   delete tied_densities_[tied_pdf_index];
   tied_densities_.erase(tied_densities_.begin() + tied_pdf_index);
 }
 
 /// Replace the codebook of the designated tied pdf by the new index
-void AmTiedFullGmm::ReplacePdf(const int32 tied_pdf_index, const int32 new_pdf_index) {
+void AmTiedFullGmm::ReplacePdf(int32 tied_pdf_index, int32 new_pdf_index) {
   KALDI_ASSERT(static_cast<size_t>(new_pdf_index) < densities_.size());
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
-  
+
   tied_densities_[tied_pdf_index]->SetPdfIndex(new_pdf_index);
 }
-  
+
 /// Replace the designated codebook
-void AmTiedFullGmm::ReplacePdf(const int32 pdf_index, FullGmm &gmm) {
+void AmTiedFullGmm::ReplacePdf(int32 pdf_index, const FullGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
   KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
- 
+
   densities_[pdf_index]->CopyFromFullGmm(gmm);
 }
 
@@ -109,7 +110,7 @@ void AmTiedFullGmm::CopyFromAmTiedFullGmm(const AmTiedFullGmm &other) {
   if (densities_.size() != 0) {
     DeletePointers(&densities_);
   }
-  
+
   if (tied_densities_.size() != 0) {
     DeletePointers(&tied_densities_);
   }
@@ -136,14 +137,16 @@ int32 AmTiedFullGmm::ComputeGconsts() {
       end = densities_.end(); itr != end; ++itr) {
     num_bad += (*itr)->ComputeGconsts();
   }
-  
+
   if (num_bad > 0)
-    KALDI_WARN << "Found " << num_bad << " bad Gaussian components in codebooks";
+    KALDI_WARN << "Found " << num_bad
+               << " bad Gaussian components in codebooks";
 
   return num_bad;
 }
 
-void AmTiedFullGmm::SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const {
+void AmTiedFullGmm::SetupPerFrameVars(
+       TiedGmmPerFrameVars *per_frame_vars) const {
   // init containers
   per_frame_vars->Setup(dim_, NumPdfs());
 
@@ -152,10 +155,11 @@ void AmTiedFullGmm::SetupPerFrameVars(TiedGmmPerFrameVars *per_frame_vars) const
     per_frame_vars->ResizeSvq(i, GetPdf(i).NumGauss());
 }
 
-void AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
-                                        TiedGmmPerFrameVars *per_frame_vars) const {
+void AmTiedFullGmm::ComputePerFrameVars(
+       const VectorBase<BaseFloat> &data,
+       TiedGmmPerFrameVars *per_frame_vars) const {
   per_frame_vars->x.CopyFromVec(data);
-  for (int32 i = 0; i < NumPdfs(); ++i) 
+  for (int32 i = 0; i < NumPdfs(); ++i)
     per_frame_vars->c(i) = ComputePerFrameVars(data, per_frame_vars->svq[i], i);
 }
 
@@ -186,7 +190,7 @@ void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
 
   ExpectMarker(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim_);
-  
+
   ExpectMarker(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
@@ -197,7 +201,7 @@ void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
     KALDI_ASSERT(static_cast<int32>(densities_.back()->Dim())
                  == dim_);
   }
-  
+
   ExpectMarker(in_stream, binary, "<NUMTIEDPDFS>");
   ReadBasicType(in_stream, binary, &num_tied_pdfs);
   KALDI_ASSERT(num_tied_pdfs > 0);
@@ -212,12 +216,12 @@ void AmTiedFullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
- 
+
   // write out codebooks
   WriteMarker(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, static_cast<int32>(densities_.size()));
   if (!binary) out_stream << "\n";
-  
+
   for (std::vector<FullGmm*>::const_iterator it = densities_.begin(),
       end = densities_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);
@@ -225,9 +229,10 @@ void AmTiedFullGmm::Write(std::ostream &out_stream, bool binary) const {
 
   // write out tied pdfs
   WriteMarker(out_stream, binary, "<NUMTIEDPDFS>");
-  WriteBasicType(out_stream, binary, static_cast<int32>(tied_densities_.size()));
+  WriteBasicType(out_stream, binary,
+                 static_cast<int32>(tied_densities_.size()));
   if (!binary) out_stream << "\n";
-  
+
   for (std::vector<TiedGmm*>::const_iterator it = tied_densities_.begin(),
       end = tied_densities_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);

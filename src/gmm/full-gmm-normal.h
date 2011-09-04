@@ -45,7 +45,7 @@ class FullGmmNormal {
   /// Empty constructor.
   FullGmmNormal() { }
 
-  FullGmmNormal(const FullGmm &gmm) {
+  explicit FullGmmNormal(const FullGmm &gmm) {
     CopyFromFullGmm(gmm);
   }
 
@@ -54,13 +54,13 @@ class FullGmmNormal {
 
   /// Copies from given FullGmm
   void CopyFromFullGmm(const FullGmm &fullgmm);
-  
+
   /// Copies to FullGmm
   void CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags = kGmmAll);
 
-  Vector<double> weights_;             ///< weights (not log).
-  Matrix<double> means_;               ///< Means
-  std::vector<SpMatrix<double> >vars_; ///< covariances
+  Vector<double> weights_;              ///< weights (not log).
+  Matrix<double> means_;                ///< Means
+  std::vector<SpMatrix<double> >vars_;  ///< covariances
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(FullGmmNormal);
 };

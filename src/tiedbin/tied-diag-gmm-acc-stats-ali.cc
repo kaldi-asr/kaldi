@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
           int32 tid = alignment[i],  // transition identifier.
               pdf_id = trans_model.TransitionIdToPdf(tid);
           trans_model.Accumulate(1.0, tid, &transition_accs);
-          
+
           tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, 1.0);
         }
         KALDI_LOG << "Average like for this file is "

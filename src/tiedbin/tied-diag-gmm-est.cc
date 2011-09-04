@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     tcfg.Register(&po);
     gmm_opts.Register(&po);
     tied_opts.Register(&po);
-    
+
     po.Read(argc, argv);
 
     if (gmm_opts.remove_low_count_gaussians) {
