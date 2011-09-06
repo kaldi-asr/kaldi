@@ -804,4 +804,59 @@ void AddTransitionProbs(const TransitionModel &trans_model,
 }
 
 
+// This function takes a phone-sequence with word-start and word-end
+// markers in it, and a word-sequence, and outputs the pronunciations
+// "prons"... the format of "prons" is, each element is a vector,
+// where the first element is the word (or zero meaning no word, e.g.
+// for optional silence introduced by the lexicon), and the remaining
+// elements are the phones in the word's pronunciation.
+// It returns false if it encounters a problem of some kind, e.g.
+// if the phone-sequence doesn't seem to have the right number of
+// words in it.
+bool ConvertPhnxToProns(const std::vector<int32> &phnx,
+                        const std::vector<int32> &words,
+                        int32 word_start_sym,
+                        int32 word_end_sym,
+                        std::vector<std::vector<int32> > *prons) {
+  size_t i = 0, j = 0;
+    
+  while (i < phnx.size()) {
+    if (phnx[i] == 0) return false; // zeros not valid here.
+    if (phnx[i] == word_start_sym) { // start a word...
+      std::vector<int32> pron;
+      if (j >= words.size()) return false; // no word left..
+      if (words[j] == 0) return false; // zero word disallowed.
+      pron.push_back(words[j++]);
+      i++;
+      while (i < phnx.size()) {
+        if (phnx[i] == 0) return false;
+        if (phnx[i] == word_start_sym) return false; // error.
+        if (phnx[i] == word_end_sym) { i++; break; }
+        pron.push_back(phnx[i]);
+        i++;
+      }
+      // check we did see the word-end symbol.
+      if (!(i > 0 && phnx[i-1] == word_end_sym))
+        return false;
+      prons->push_back(pron);
+    } else if (phnx[i] == word_end_sym) {
+      return false;  // error.
+    } else {
+      // start a non-word sequence of phones (e.g. opt-sil).
+      std::vector<int32> pron;
+      pron.push_back(0); // 0 serves as the word-id.
+      while (i < phnx.size()) {
+        if (phnx[i] == 0) return false;
+        if (phnx[i] == word_start_sym) break;
+        if (phnx[i] == word_end_sym) return false; // error.
+        pron.push_back(phnx[i]);
+        i++;
+      }
+      prons->push_back(pron);
+    }
+  }
+  return (j == words.size());
+}
+
+
 } // End namespace kaldi

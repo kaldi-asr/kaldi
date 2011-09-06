@@ -180,7 +180,7 @@ class Output {
 
 class Input {
  public:
-  /// The normal constructor.  Opens the stream in binary mode (where relevant).
+  /// The normal constructor.  Opens the stream in binary mode.
   /// Equivalent to calling the default constructor followed by Open(); then, if
   /// binary != NULL, it calls ReadHeader(), putting the output in "binary"; it
   /// throws on error.

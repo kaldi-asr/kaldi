@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
       Input ki(fst_rxfilename);
       std_lm_fst = VectorFst<StdArc>::Read(
           ki.Stream(),
-          fst::FstReadOptions((std::string)fst_rxfilename));
+          fst::FstReadOptions(fst_rxfilename));
       if (std_lm_fst == NULL)
         exit(1);
 

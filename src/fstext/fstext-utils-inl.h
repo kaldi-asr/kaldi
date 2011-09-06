@@ -221,10 +221,10 @@ void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
   StateId cur_state = ofst->AddState();
   ofst->SetStart(cur_state);
   for (size_t i = 0; i < labels.size(); i++) {
-    assert(labels[i].size() != NULL);
+    assert(labels[i].size() != 0);
     StateId next_state = ofst->AddState();
     for (size_t j = 0; j < labels[i].size(); j++) {
-      Arc arc(labels[i], labels[i], Weight::One(), next_state);
+      Arc arc(labels[i][j], labels[i][j], Weight::One(), next_state);
       ofst->AddArc(cur_state, arc);
     }
     cur_state = next_state;

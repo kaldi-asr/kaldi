@@ -148,9 +148,12 @@ run the corresponding three lines of script (you have to decide where you want t
 features first and modify the example accordingly).  Suppose we decide to put the
 features on /my/disk/rm_mfccdir, we would do something like:
 \verbatim
-mkdir /my/disk/rm_mfccdir
-steps/make_mfcc_train.sh /my/disk/rm_mfccdir
-steps/make_mfcc_test.sh /my/disk/rm_mfccdir
+export MFCCDIR=/my/disk/rm_mfccdir
+# make sure MFCCDIR exists and is somewhere you can write.
+# can be local if you want.
+mkdir $MFCCDIR
+steps/make_mfcc_train.sh $MFCCDIR
+steps/make_mfcc_test.sh $MFCCDIR
 \endverbatim
 Run these jobs.  They
 use several CPUs in parallel and should be done in around two minutes on a fast
@@ -161,7 +164,6 @@ command line (Kaldi programs always echo the command line unless you specify
 
 In the script steps/make_mfcc_train.sh,
 look at the line that invokes split_scp.pl.  You can probably guess what this does.
-Type
 
 By typing
 \verbatim
@@ -179,11 +181,9 @@ Before we explain this, have a look at the command line in the script again and 
 the inputs and outputs using:
 \verbatim
 head exp/make_mfcc/train_wav1.scp
-head /my/disk/rm_mfccdir/train_raw_mfcc1.scp
-less /my/disk/rm_mfccdir/train_raw_mfcc1.ark
+head $MFCCDIR/train_raw_mfcc1.scp
+less $MFCCDIR/train_raw_mfcc1.ark
 \endverbatim
-(in these commands you would replace /my/disk/rm_mfccdir/ with the actual directory where
-you put your mfcc data.
 Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal
 doesn't work right after looking at it).
 
@@ -378,7 +378,7 @@ at an alignment in cur.ali and you see one repeated a lot and you wonder why),
 you can use the program "show-transitions" to show you some information about the transition-ids.
 Type
 \verbatim
-  show-transitions exp/mono/0.mdl
+  show-transitions data/phones.txt exp/mono/0.mdl
 \endverbatim
 If you have a file with occupation counts in it (a file named *.occs), you can give this as
 a second argument and it will show you some more information.
@@ -402,6 +402,10 @@ When the monophone training is finished, start the monophone decoding with:
 \verbatim
 steps/decode_mono.sh &
 \endverbatim
+Be careful-- this job uses about 6 cores, and if your machine has less than this it may
+become sluggish.  You can first edit it by replacing the "&" with ";", and this will make it use
+just one core; it will be slower but won't slow down your machine, and you can look at the partial 
+output.
 It first puts some output on the screen that comes from the graph creation
 process.  Look at the script steps/decode_mono.sh and see where it invokes
 the script to create the graph (near the top).  Then view the graph-creation
