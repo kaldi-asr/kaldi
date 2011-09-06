@@ -65,6 +65,7 @@ double VecVec<>(const VectorBase<double>& ra,
 
 
 template<>
+template<>
 void VectorBase<float>::AddVec(const float alpha,
                                const VectorBase<float>& rv) {
   KALDI_ASSERT(dim_ == rv.dim_);
@@ -72,6 +73,7 @@ void VectorBase<float>::AddVec(const float alpha,
   cblas_saxpy(dim_, alpha, rv.Data(), 1, data_, 1);
 }
 
+template<>
 template<>
 void VectorBase<double>::AddVec(const double alpha,
                                 const VectorBase<double>& rv) {

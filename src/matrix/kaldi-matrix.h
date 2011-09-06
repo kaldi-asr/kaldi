@@ -348,12 +348,8 @@ class MatrixBase {
   void Add(const Real alpha);
 
   /// *this += alpha * a * b^T
-  void AddVecVec(const Real alpha, const VectorBase<Real>& a,
-                 const VectorBase<Real>& b);
-
-  /// *this += alpha * a * b^T
   template<class OtherReal>
-  void AddVecVec(const OtherReal alpha, const VectorBase<OtherReal>& a,
+  void AddVecVec(const Real alpha, const VectorBase<OtherReal>& a,
                  const VectorBase<OtherReal>& b);
 
 

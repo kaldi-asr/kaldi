@@ -53,7 +53,7 @@ the idea is that you run the commands in it one by one, by hand.
 \section tutorial_running_data_prep Data preparation
 
 The first three lines you have to run are as follows [assuming your data is
-oin /mnt/data4/RM, which is an example]:
+in /mnt/data4/RM, which is an example]:
 \verbatim
 cd data_prep
 ./run.sh /mnt/data4/RM

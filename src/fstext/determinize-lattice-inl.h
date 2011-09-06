@@ -629,7 +629,11 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       MapIter iter = cur_subset.end();
       for (size_t i = 0;i < subset->size();i++) {
         std::pair<const InputStateId, Element> pr((*subset)[i].state, (*subset)[i]);
+#if __GNUC__ == 4 && __GNUC_MINOR__ == 0
+        iter = cur_subset.insert(iter, pr).first;
+#else
         iter = cur_subset.insert(iter, pr);
+#endif
         // By providing iterator where we inserted last one, we make insertion more efficient since
         // input subset was already in sorted order.
       }
@@ -1035,10 +1039,12 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     if(ifst_->Properties(kExpanded, false) != 0) { // if we know the number of
       // states in ifst_, it might be a bit more efficient
       // to pre-size the hashes so we're not constantly rebuilding them.
-     StateId num_states =
-         down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(ifst_)->NumStates();
-     minimal_hash_.rehash(num_states/2 + 3);
-     initial_hash_.rehash(num_states/2 + 3);
+#if !(__GNUC__ == 4 && __GNUC_MINOR__ == 0)
+      StateId num_states =
+          down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(ifst_)->NumStates();
+      minimal_hash_.rehash(num_states/2 + 3);
+      initial_hash_.rehash(num_states/2 + 3);
+#endif
     }
     InputStateId start_id = ifst_->Start();
     if (start_id != kNoStateId) {

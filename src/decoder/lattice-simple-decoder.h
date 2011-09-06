@@ -467,8 +467,8 @@ class LatticeSimpleDecoder {
         best_cost_nofinal = infinity;
     unordered_map<Token*, StateId> tok_to_state_map;
 
-    unordered_map<StateId, Token*>::iterator iter;
-    for(iter = cur_toks_.begin(); iter != cur_toks_.end(); ++iter) {
+    unordered_map<StateId, Token*>::iterator iter(cur_toks_.begin());
+    for(; iter != cur_toks_.end(); ++iter) {
       StateId state = iter->first;
       Token *tok = iter->second;
       tok_to_state_map[tok] = state;
