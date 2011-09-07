@@ -21,8 +21,39 @@
 #include "hmm/hmm-utils.h"
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
-#include "fstext/fstext-utils.h"
+#include "fstext/fstext-lib.h"
 
+// Create FST that accepts the phone sequence, with any number
+// of word-start and word-end symbol in between each phone. 
+void CreatePhonesAltFst(const std::vector<int32> &phones,
+                        int32 word_start_sym,
+                        int32 word_end_sym,
+                        fst::VectorFst<fst::StdArc> *ofst) {
+  using fst::StdArc;
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Weight Weight;
+
+  ofst->SetStart(0);
+  StateId cur_s = ofst->AddState();
+  for (size_t i = 0; i < phones.size(); i++) {
+    StateId next_s = ofst->AddState();
+    // add arc to next state.
+    ofst->AddArc(cur_s, StdArc(phones[i], phones[i], Weight::One(),
+                               next_s));
+    cur_s = next_s;
+  }
+  for (StateId s = 0; s <= cur_s; s++) {
+    ofst->AddArc(s, StdArc(word_end_sym, word_end_sym,
+                                    Weight::One(), s));
+    ofst->AddArc(s, StdArc(word_start_sym, word_start_sym,
+                                    Weight::One(), s));
+  }
+  ofst->SetFinal(cur_s, Weight::One());
+  {
+    fst::OLabelCompare<StdArc> olabel_comp;
+    ArcSort(ofst, olabel_comp);
+  }
+}
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -118,33 +149,14 @@ int main(int argc, char *argv[]) {
         MakeLinearAcceptor(words, &words_acceptor);
         Compose(*L, words_acceptor, &phn2word);
       }
-
-      // phones_alts is a vector of alternatives that will be turned into an
-      // acceptor.  For odd-numbered positions there is just one alternative,
-      // which is the phone.  For even-numbered positions there are three
-      // alternatives: zero (epsilon), word_start_sym, and word_end_sym.
-      // This, when composed with phn2word, will give us the phone-sequences
-      // with word-start and word-end symbols that are consistent with the
-      // lexicon.
-      std::vector<std::vector<int32> > phones_alts(phones.size()*2 + 1);
-      for (size_t i = 0; i < phones.size(); i++) {
-        phones_alts[1 + 2*i].push_back(phones[i]);
-        KALDI_ASSERT(phones[i] != word_start_sym &&
-                     phones[i] != word_end_sym);
-      }
-      for (size_t i = 0; i <= phones.size(); i++) {
-        phones_alts[2*i].push_back(0);
-        phones_alts[2*i].push_back(word_start_sym);
-        phones_alts[2*i].push_back(word_end_sym);
+      if (phn2word.Start() == fst::kNoStateId) {
+        KALDI_WARN << "Phone to word FST is empty (possible mismatch in lexicon?)";
+        n_err++;
+        continue;
       }
 
       VectorFst<StdArc> phones_alt_fst;
-      MakeLinearAcceptorWithAlternatives(phones_alts,
-                                         &phones_alt_fst);
-      {
-        fst::OLabelCompare<StdArc> olabel_comp;
-        ArcSort(&phones_alt_fst, olabel_comp);
-      }
+      CreatePhonesAltFst(phones, word_start_sym, word_end_sym, &phones_alt_fst);
 
       // phnx2word will have phones and word-start and word-end symbols
       // on the input side, and words on the output side.

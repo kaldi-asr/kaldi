@@ -43,3 +43,16 @@ wait
 grep WER $dir/wer_* | \
   awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", 100.0*n/d, n, d); }' \
    > $dir/wer
+
+# Example to show how to get the word alignments:
+
+test=mar87
+wbegin=`grep "#1" data/phones_disambig.txt | awk '{print $2}'`
+wend=`grep "#2" data/phones_disambig.txt | awk '{print $2}'`
+ali-to-phones $model ark:$dir/test_${test}.ali ark:- | \
+  phones-to-prons data/L_align.fst $wbegin $wend ark:- ark:$dir/test_${test}.tra ark,t:- | \
+  prons-to-wordali ark:- \
+    "ark:ali-to-phones --write-lengths $model ark:$dir/test_${test}.ali ark:-|" ark,t:$dir/test_${test}.wali
+
+scripts/wali_to_ctm.sh $dir/test_${test}.wali data/words.txt > $dir/test_${test}.ctm
+

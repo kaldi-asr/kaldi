@@ -90,7 +90,7 @@ gmm-init-model  --write-occs=$dir/1.occs  \
 gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
    2>$dir/mixup.log || exit 1;
 
-rm $dir/treeacc
+#rm $dir/treeacc
 
 # Convert alignments generated from monophone model, to use as initial alignments.
 

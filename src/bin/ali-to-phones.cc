@@ -61,6 +61,8 @@ int main(int argc, char *argv[]) {
     std::string empty;
     Int32VectorWriter phones_writer(write_lengths ? empty : phones_wspecifier);
     Int32PairVectorWriter pair_writer(write_lengths ? phones_wspecifier : empty);
+
+    int32 n_done = 0;
     
     for (; !reader.Done(); reader.Next()) {
       std::string key = reader.Key();
@@ -68,7 +70,6 @@ int main(int argc, char *argv[]) {
 
       std::vector<std::vector<int32> > split;
       SplitToPhones(trans_model, alignment, &split);
-
 
       if (!write_lengths) {
         std::vector<int32> phones;
@@ -84,8 +85,8 @@ int main(int argc, char *argv[]) {
               phones.push_back(phone);
           else
             phones.push_back(phone);
-          phones_writer.Write(key, phones);
         }
+        phones_writer.Write(key, phones);        
       } else {
         std::vector<std::pair<int32,int32> > pairs;
         for (size_t i = 0; i < split.size(); i++) {
@@ -96,10 +97,12 @@ int main(int argc, char *argv[]) {
           int32 num_repeats = split[i].size();
           KALDI_ASSERT(num_repeats!=0);
           pairs.push_back(std::make_pair(phone, num_repeats));
-          pair_writer.Write(key, pairs);
         }
+        pair_writer.Write(key, pairs);
       }
+      n_done++;
     }
+    KALDI_LOG << "Done " << n_done << " utterances."; 
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

@@ -23,7 +23,9 @@ echo "****(1) Installing sph2pipe"
 
 (
   rm sph2pipe_v2.5.tar.gz 2>/dev/null
-  wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
+  wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz  || \
+    ( echo "Trying back-up server:"; 
+     wget -T 10 -t 3 http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz )
 
   if [ ! -e sph2pipe_v2.5.tar.gz ]; then
     echo "****download of sph2pipe_v2.5.tar.gz failed."

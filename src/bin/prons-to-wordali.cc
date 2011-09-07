@@ -48,20 +48,16 @@ int main(int argc, char *argv[]) {
         " <phone-lengths-rspecifier> <wordali-wspecifier>\n"
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:- | \\\n"
-        "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:1.prons \\\n"
+        "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:- | \\\n"
         "  prons-to-wordali ark:- \\\n"
         "    \"ark:ali-to-phones --write-lengths 1.mdl ark:1.ali ark:-|\" ark:1.wali\n";
     
     ParseOptions po(usage);
     bool per_frame = false;
-    bool keep_null_words = false;
     po.Register("per-frame", &per_frame, "If true, write out the frame-level word alignment (else word sequence)");
-    po.Register("keep-null-words", &keep_null_words, "If true, keep words with zero word-id (typically optional silences)");
     po.Read(argc, argv);
 
-    KALDI_ASSERT(!(per_frame && !keep_null_words)); // incompatible options.
-    
-    if (po.NumArgs() != 6) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
@@ -113,9 +109,7 @@ int main(int argc, char *argv[]) {
           }
           word_len += phones[p].second;
         }
-        if (keep_null_words || word != 0) {
-          word_alignment.push_back(std::make_pair(word, word_len));
-        }
+        word_alignment.push_back(std::make_pair(word, word_len));
       }
       if (static_cast<size_t>(p) != phones.size()) {
         KALDI_WARN << "For key " << key << ", mismatch between prons and phones (wrong #phones)";
