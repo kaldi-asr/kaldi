@@ -1,4 +1,4 @@
-// tiedbin/init-full-codebooks.cc
+// tiedbin/init-tied-codebooks.cc
 
 // Copyright 2011 Univ. Erlangen Nuremberg, Korbinian Riedhammer
 
@@ -95,12 +95,12 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Generate codebooks for a tied mixture system based on the accumulated "
-        "tree stats and given two-level tree. Will write to "
-          "<codebook-out-base>.(num)\n"
-        "Usage:  init-full-codebooks [options] <tree-in> <tree-stats-in> "
-          "<tree-map> <codebook-out-base>\n"
+        "tree stats and optional two-level tree. Will write to "
+          "<codebook-out>[.num]\n"
+        "Usage:  init-tied-codebooks [options] <tree-in> <tree-stats-in> "
+          "<codebook-out> [tree.map]\n"
         "e.g.: \n"
-        "  init-full-codebooks tree tree.acc tree.map ubm-full\n";
+        "  init-tied-codebooks tree tree.acc ubm-full tree.map\n";
 
     bool binary = false;
     int max_num_gaussians = 512;
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
     std::string
         tree_filename = po.GetArg(1),
         stats_filename = po.GetArg(2),
-        tied_to_pdf_file = po.GetArg(3),
-        model_out_filebase = po.GetArg(4);
+        model_out_filebase = po.GetArg(3),
+        tied_to_pdf_file = (po.NumArgs() == 4 ? po.GetArg(4) : "");
 
     ContextDependency ctx_dep;
     {
@@ -167,9 +167,14 @@ int main(int argc, char *argv[]) {
     // read in tied to pdf map
     vector<int32> tied_to_pdf;
     {
-      bool binary_in;
-      Input ki(tied_to_pdf_file, &binary_in);
-      ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
+      if (tied_to_pdf_file.length() > 0) {
+        bool binary_in;
+        Input ki(tied_to_pdf_file, &binary_in);
+        ReadIntegerVector(ki.Stream(), binary_in, &tied_to_pdf);
+      } else {
+        // allocate dummy map by putting each leaf in the same codebook
+        tied_to_pdf.resize(leafs.size(), 0);
+      }
     }
 
     KALDI_ASSERT(tied_to_pdf.size() == leafs.size());

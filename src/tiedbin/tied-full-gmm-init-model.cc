@@ -41,7 +41,7 @@ void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) 
 
   // initialize for ever leaf
   for (int32 i = 0; i < tied_to_pdf->size() ; i++) {
-    int32 pdfid = tied_to_pdf ? (*tied_to_pdf)[i] : 0;
+    int32 pdfid = (*tied_to_pdf)[i];
 
     // make sure we have this codebook
     KALDI_ASSERT(pdfid < am_gmm->NumPdfs());
@@ -133,10 +133,12 @@ int main(int argc, char *argv[]) {
         cb.Read(ki.Stream(), binary_in);
         am_gmm.AddPdf(cb);
       }
+    } else {
+      tied_to_pdf.resize(ctx_dep.NumPdfs(), 0);
     }
 
     // Init the model by allocating the tied mixtures
-    InitAmTiedFullGmm(&am_gmm, tied_to_pdf.size() > 0 ? &tied_to_pdf : NULL);
+    InitAmTiedFullGmm(&am_gmm, &tied_to_pdf);
 
     TransitionModel trans_model(ctx_dep, topo);
     {
