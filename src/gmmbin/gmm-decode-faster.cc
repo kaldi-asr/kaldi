@@ -27,7 +27,7 @@
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
 //#include "fstext/lattice-utils.h" // for ConvertLattice
 
-using namespace kaldi;
+namespace kaldi {
 
 fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
@@ -61,10 +61,14 @@ fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   }
 }
 
+}
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
     typedef kaldi::int32 int32;
+    typedef kaldi::uint32 uint32;
+    typedef kaldi::uint64 uint64;
 
     const char *usage =
         "Decode features using GMM-based model.\n"

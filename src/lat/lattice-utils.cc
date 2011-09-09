@@ -20,7 +20,11 @@
 using std::pair;
 #include <vector>
 using std::vector;
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
 #include <tr1/unordered_map>
+#endif
 using std::tr1::unordered_map;
 
 #include "lat/lattice-utils.h"

@@ -41,7 +41,7 @@ int32 RandInt(int32 min_val, int32 max_val) {  // This is not exact.
   // RAND_MAX is quite small on Windows -> may need to handle larger numbers.
   if (RAND_MAX > (max_val-min_val)*8) {
         // *8 to avoid large inaccuracies in probability, from the modulus...
-    return min + ((unsigned int)rand() % (unsigned int)(max_val+1-min_val));
+    return min_val + ((unsigned int)rand() % (unsigned int)(max_val+1-min_val));
   } else {
     if ((unsigned int)(RAND_MAX*RAND_MAX) > (unsigned int)((max_val+1-min_val)*8)) {
         // *8 to avoid inaccuracies in probability, from the modulus...

@@ -26,6 +26,8 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
+    typedef kaldi::uint32 uint32;
+    typedef kaldi::uint64 uint64;
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;

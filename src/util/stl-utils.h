@@ -29,9 +29,8 @@
 #include <unordered_map>
 #else
 #include <tr1/unordered_map>
-using std::tr1::unordered_map;
 #endif
-
+using std::tr1::unordered_map;
 
 
 namespace kaldi {

@@ -24,8 +24,8 @@
 #else
 #include <tr1/unordered_map>
 #endif
-#include <vector>
 using std::tr1::unordered_map;
+#include <vector>
 #include <climits>
 
 namespace fst {

@@ -205,7 +205,7 @@ BaseFloat Rnnlm::Score(const std::vector<int32>& seq, const VectorBase<BaseFloat
   Propagate(in,&out);
 
   BaseFloat llk = 0.0;
-  for(int32 i=0; i<seq.size(); i++) {
+  for(size_t i=0; i<seq.size(); i++) {
     llk += log(out(i,seq[i]-1));
   }
 

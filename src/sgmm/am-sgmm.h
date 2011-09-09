@@ -32,8 +32,6 @@
 
 namespace kaldi {
 
-static const int32 kMaxSgmmStates = 10000000;
-
 struct SgmmGselectConfig {
   /// Number of highest-scoring full-covariance Gaussians per frame.
   int32 full_gmm_nbest;

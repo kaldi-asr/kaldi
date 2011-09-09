@@ -56,7 +56,9 @@ std::string ReadTxtLine( const string &inpline, Lattice *pfst) {
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-
+    typedef kaldi::uint32 uint32;
+    typedef kaldi::uint64 uint64;
+    
     const char *usage =
         "Read strings at standard input and writes them out as a lattice.\n"
         "Usage: string-to-lattice lattice-wspecifier\n"

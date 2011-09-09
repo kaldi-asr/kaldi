@@ -155,7 +155,7 @@ void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorDa
 
 // helper method for GetArc()
 template<class Arc>
-bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, DeterministicOnDemandFstImpl<Arc>::Weight iweight = Weight::One()){
+bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, typename DeterministicOnDemandFstImpl<Arc>::Weight iweight = Weight::One()){
 
   // use a SortedMatcher
   // fst should already have been tested for correct "sortedness"
