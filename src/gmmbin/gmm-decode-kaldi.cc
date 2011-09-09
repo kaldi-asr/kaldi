@@ -28,7 +28,7 @@
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 #include "util/timer.h"
 
-using namespace kaldi;
+namespace kaldi {
 
 fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
@@ -71,9 +71,12 @@ fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
   }
 }
 
+}
+
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
 #ifdef _MSC_VER
     if (0) { new fst::ConstFst<fst::StdArc>(* static_cast<fst::VectorFst<fst::StdArc>*> (NULL)); }
 #endif

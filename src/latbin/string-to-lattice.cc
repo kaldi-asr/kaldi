@@ -22,7 +22,7 @@
 #include "lat/kaldi-lattice.h"
 #include <stdexcept>
 
-using namespace kaldi;
+namespace kaldi {
 
 // add the string contained in inpline to the current transducer
 // starting at initial state
@@ -51,13 +51,11 @@ std::string ReadTxtLine( const string &inpline, Lattice *pfst) {
   return key;
 }
 
-// convert from Lattice to unweighted FST and sort it
+}
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    typedef kaldi::uint32 uint32;
-    typedef kaldi::uint64 uint64;
     
     const char *usage =
         "Read strings at standard input and writes them out as a lattice.\n"

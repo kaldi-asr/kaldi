@@ -108,7 +108,7 @@ DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc> &
 }
 
 template<class Arc>
-DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const DeterministicOnDemandFstImpl &other):
+DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const DeterministicOnDemandFstImpl<Arc> &other):
                  scm_it_(state_cache_map_.end()) // initialize iterator to keep older compilers happy.
 {
   /* to be implemented */
@@ -155,7 +155,7 @@ void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorDa
 
 // helper method for GetArc()
 template<class Arc>
-bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, typename DeterministicOnDemandFstImpl<Arc>::Weight iweight = Weight::One()){
+bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, typename DeterministicOnDemandFstImpl<Arc>::Weight iweight = Arc::Weight::One()){
 
   // use a SortedMatcher
   // fst should already have been tested for correct "sortedness"
@@ -189,7 +189,7 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oar
     // composition case
     StatePair sp = composedState_[s];
     Arc arc1, arc2;
-    bool r1 = GetArcFromNonDetFst(fst1_,sp.first, ilabel,     &arc1); 
+    bool r1 = GetArcFromNonDetFst(fst1_,sp.first, ilabel, &arc1); 
     if (!r1) {
       SetArc(s,ilabel); // set without arc added
       return false;

@@ -18,7 +18,11 @@
 #ifndef KALDI_DECODER_NBEST_DECODER_H_
 #define KALDI_DECODER_NBEST_DECODER_H_
 
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
 #include <tr1/unordered_map>
+#endif
 #include "util/stl-utils.h"
 #include "util/parse-options.h"
 #include "util/hash-list.h"

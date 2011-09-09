@@ -19,10 +19,11 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+
+namespace kaldi {
+
 using std::vector;
 using std::set;
-
-using namespace kaldi;
 
 typedef vector<fst::StdArc::Label> LabelVector;
 typedef set<fst::StdArc::Label> LabelSet; 
@@ -39,7 +40,9 @@ LabelVector *GetSymbolSet(const fst::StdVectorFst &fst, bool inputSide) {
   return lv;
 }
 
-void ReadSymbolList(std::string filename, fst::SymbolTable *word_syms, LabelSet *lset) {
+void ReadSymbolList(const std::string &filename,
+                    fst::SymbolTable *word_syms,
+                    LabelSet *lset) {
   std::ifstream is(filename.c_str());
   if (!is.good()) 
     KALDI_ERR << "ReadSymbolList: could not open symbol list "<<filename;
@@ -62,7 +65,7 @@ void ReadSymbolList(std::string filename, fst::SymbolTable *word_syms, LabelSet 
   }
 }
 
-void MapWildCards(LabelSet &wildcards, fst::StdVectorFst *ofst) {
+void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
   // map all wildcards symbols to epsilons
   for (fst::StateIterator<fst::StdVectorFst> siter(*ofst); !siter.Done(); siter.Next()) {
     fst::StdArc::StateId s = siter.Value();
@@ -83,8 +86,8 @@ void MapWildCards(LabelSet &wildcards, fst::StdVectorFst *ofst) {
 // convert from Lattice to standard FST
 // also maps wildcard symbols to epsilons
 // then removes epsilons
-void convertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
-                                        LabelSet wildcards,
+void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
+                                        const LabelSet &wildcards,
                                         fst::StdVectorFst *ofst) {
   // first convert from  lattice to normal FST
   fst::ConvertLattice(ilat, ofst); 
@@ -96,7 +99,9 @@ void convertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
   fst::ArcSort(ofst, fst::StdILabelCompare());
 }
 
-void createEditDistance(fst::StdVectorFst &fst1, fst::StdVectorFst &fst2, fst::StdVectorFst *pfst) {
+void CreateEditDistance(const fst::StdVectorFst &fst1,
+                        const fst::StdVectorFst &fst2,
+                        fst::StdVectorFst *pfst) {
   fst::StdArc::Weight corrCost(0.0);
   fst::StdArc::Weight subsCost(1.0);
   fst::StdArc::Weight insCost(1.0);
@@ -127,7 +132,7 @@ void createEditDistance(fst::StdVectorFst &fst1, fst::StdVectorFst &fst2, fst::S
   fst::ArcSort(pfst, fst::StdILabelCompare());
 }
 
-void countErrors(fst::StdVectorFst &fst,
+void CountErrors(fst::StdVectorFst &fst,
                  unsigned int *corr,
                  unsigned int *subs,
                  unsigned int *ins,
@@ -159,7 +164,7 @@ void countErrors(fst::StdVectorFst &fst,
 }
 
 
-bool checkFst(fst::StdVectorFst &fst, string name, string key) {
+bool CheckFst(fst::StdVectorFst &fst, string name, string key) {
 
 #ifdef DEBUG
   fst::StdArc::StateId numstates = fst.NumStates();
@@ -170,6 +175,8 @@ bool checkFst(fst::StdVectorFst &fst, string name, string key) {
 #else
   return true;
 #endif
+}
+
 }
 
 int main(int argc, char *argv[]) {
@@ -233,8 +240,8 @@ int main(int argc, char *argv[]) {
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> fst1;
-      convertLatticeToUnweightedAcceptor(lat1,wild_syms,&fst1);
-      checkFst(fst1, "fst1_", key);
+      ConvertLatticeToUnweightedAcceptor(lat1,wild_syms,&fst1);
+      CheckFst(fst1, "fst1_", key);
 
       // TODO: map certain symbols (using an FST created with CreateMapFst())
       
@@ -245,17 +252,17 @@ int main(int argc, char *argv[]) {
       
       // remove all while creating a normal FST
       VectorFst<StdArc> fst2;
-      convertLatticeToUnweightedAcceptor(lat2,wild_syms,&fst2);
-      checkFst(fst2, "fst2_", key);
+      ConvertLatticeToUnweightedAcceptor(lat2,wild_syms,&fst2);
+      CheckFst(fst2, "fst2_", key);
             
       // recreate edit distance fst if necessary
       fst::StdVectorFst editDistanceFst;
-      createEditDistance(fst1, fst2, &editDistanceFst);
+      CreateEditDistance(fst1, fst2, &editDistanceFst);
       
       // compose with edit distance transducer
       VectorFst<StdArc> composedFst;
       fst::Compose(fst1, editDistanceFst, &composedFst);
-      checkFst(composedFst, "composed_", key);
+      CheckFst(composedFst, "composed_", key);
       
       // make sure composed FST in output sorted
       fst::ArcSort(&composedFst, fst::StdOLabelCompare());
@@ -263,12 +270,12 @@ int main(int argc, char *argv[]) {
       // compose with previous result
       VectorFst<StdArc> resultFst;
       fst::Compose(composedFst, fst2, &resultFst);
-      checkFst(resultFst, "result_", key);
+      CheckFst(resultFst, "result_", key);
       
       // find out best path
       VectorFst<StdArc> best_path;
       fst::ShortestPath(resultFst, &best_path);
-      checkFst(best_path, "best_path_", key);
+      CheckFst(best_path, "best_path_", key);
 
       if (best_path.Start() == fst::kNoStateId) {
         KALDI_WARN << "Best-path failed for key " << key;
@@ -277,7 +284,7 @@ int main(int argc, char *argv[]) {
 
         // count errors
         unsigned int corr, subs, ins, del, totwords;
-        countErrors(best_path, &corr, &subs, &ins, &del, &totwords);
+        CountErrors(best_path, &corr, &subs, &ins, &del, &totwords);
         unsigned int toterrs = subs+ins+del;
         KALDI_LOG << "%WER "<<(100.*toterrs)/totwords<<" [ "<<toterrs<<" / "<<totwords<<", "<<ins<<" ins, "<<del<<" del, "<<subs<<" sub ]";
         tot_corr += corr; tot_subs += subs; tot_ins += ins; tot_del += del; tot_words += totwords;     
