@@ -21,6 +21,7 @@
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
+mkdir -p data
 cp data_prep/G.txt data/
 scripts/make_words_symtab.pl < data/G.txt > data/words.txt
 cp data_prep/lexicon.txt data/
