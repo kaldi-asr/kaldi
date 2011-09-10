@@ -21,21 +21,18 @@
 # cepstral mean subtraction plus delta features.
 
 
-if [ $# != 5 ]; then
-   echo "Usage: steps/train_lda_mllt.sh <data-dir> <data-subset-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_lda_mllt.sh data/train.1k data/train data/lang exp/tri1_ali exp/tri2b"
+if [ $# != 4 ]; then
+   echo "Usage: steps/train_lda_mllt.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_lda_mllt.sh data/train data/lang exp/tri1_ali exp/tri2b"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-datasub=$2
-lang=$3
-alidir=$4
-dir=$5
-
-scripts/is_subset_scp.pl $datasub/feats.scp $data/feats.scp || exit 1;
+lang=$2
+alidir=$3
+dir=$4
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
@@ -48,6 +45,8 @@ numgauss=$[$numleaves + $numleaves/2];  # starting num-Gauss.
      # Initially mix up to avg. 1.5 Gauss/state ( a bit more
      # than this, due to state clustering... then slowly mix 
      # up to final amount.
+randprune=4.0 # This is approximately the ratio by which we will speed up the
+    # LDA and MLLT calculations via randomized pruning.
 totgauss=9000 # Target #Gaussians
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 
@@ -56,8 +55,7 @@ mkdir -p $dir
 
 # This variable gets overwritten in this script.
 feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
-featsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
-splicedfeatsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$datasub/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- |"
+splicedfeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- |"
 
 # compute integer form of transcripts.
 scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
@@ -67,7 +65,7 @@ echo "Accumulating LDA statistics."
 
 ( ali-to-post ark:$alidir/ali ark:- | \
    weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | \
-   acc-lda $alidir/final.mdl "$splicedfeatsub" ark,s,cs:- $dir/lda.acc ) 2>$dir/lda_acc.log
+   acc-lda --rand-prune=$randprune $alidir/final.mdl "$splicedfeats" ark,s,cs:- $dir/lda.acc ) 2>$dir/lda_acc.log
 est-lda $dir/0.mat $dir/lda.acc 2>$dir/lda_est.log
 
 cur_lda=$dir/0.mat
@@ -128,7 +126,8 @@ while [ $x -lt $numiters ]; do
      echo "Estimating MLLT"
     ( ali-to-post ark:$dir/cur.ali ark:- | \
        weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
-       gmm-acc-mllt --binary=false $dir/$x.mdl "$featsub" ark:- $dir/$x.macc ) 2> $dir/macc.$x.log  || exit 1;
+       gmm-acc-mllt --rand-prune=$randprune --binary=false $dir/$x.mdl \
+         "$feats" ark:- $dir/$x.macc ) 2> $dir/macc.$x.log  || exit 1;
 
      est-mllt $dir/$x.mat.new $dir/$x.macc 2> $dir/mupdate.$x.log || exit 1;
      gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$[$x+1].mdl 2> $dir/transform_means.$x.log || exit 1;
@@ -136,7 +135,6 @@ while [ $x -lt $numiters ]; do
      cur_lda=$dir/$x.mat
 
      feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $cur_lda ark:- ark:- |"
-     featsub="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$datasub/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $cur_lda ark:- ark:- |"
    fi
 
    gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log || exit 1;

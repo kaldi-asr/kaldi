@@ -19,3 +19,8 @@ Explanations of the corpora are below:
     Available from the LDC as catalog number LDC93S3A (it may be possible to
     get the same data using combinations of other catalog numbers, but this
     is the one we used).
+
+ swbd: Switchboard.  A fairly large amount of telephone speech (2-channel, 8kHz
+    sampling rate).
+    This directory is a work in progress.
+  

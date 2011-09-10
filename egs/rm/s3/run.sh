@@ -69,13 +69,12 @@ steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
 local/decode.sh steps/decode_deltas.sh exp/tri2a
 
 # train tri2b [LDA+MLLT]
-steps/train_lda_mllt.sh data/train data/train.1k data/lang exp/tri1_ali exp/tri2b
+steps/train_lda_mllt.sh data/train data/lang exp/tri1_ali exp/tri2b
 # decode tri2b
 local/decode.sh steps/decode_lda_mllt.sh exp/tri2b
 
-# Get per-speaker subset for ET; train and test ET.
-scripts/subset_data_dir.sh --per-spk data/train 15 data/train.15utt
-steps/train_lda_et.sh data/train data/train.15utt data/lang exp/tri1_ali exp/tri2c
+# Train and test ET.
+steps/train_lda_et.sh data/train data/lang exp/tri1_ali exp/tri2c
 scripts/mkgraph.sh data/lang_test exp/tri2c exp/tri2c/graph
 local/decode.sh steps/decode_lda_et.sh exp/tri2c
 
@@ -83,6 +82,18 @@ local/decode.sh steps/decode_lda_et.sh exp/tri2c
 steps/align_lda_mllt.sh --graphs "ark,s,cs:gunzip -c exp/tri2b/graphs.fsts.gz|" \
    data/train data/lang exp/tri2b exp/tri2b_ali
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d
+scripts/mkgraph.sh data/lang_test exp/tri3d exp/tri3d/graph
+local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d
+
+# Align all data with LDA+MLLT+SAT system (tri3d)
+steps/align_lda_mllt_sat.sh --graphs "ark,s,cs:gunzip -c exp/tri3d/graphs.fsts.gz|" \
+    data/train data/lang exp/tri3d exp/tri3d_ali
+
+# Try another pass on top of that.
+steps/train_lda_mllt_sat.sh data/train data/lang exp/tri3d_ali exp/tri4d
+scripts/mkgraph.sh data/lang_test exp/tri4d exp/tri4d/graph
+local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d
+
 
 ##### Below here is trash. ######
 

@@ -116,6 +116,7 @@ if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
   fstisstochastic $dir/HCLG.fst || echo "Final HCLG is not stochastic."
 fi
 
+fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
 
 #The next five lines are debug.
 # The last two lines of this block print out some alignment info.

@@ -39,7 +39,9 @@ dir=$4
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
-fmllr_iters="2 4 6 12";
+# Previously had 2 4 6 12, but noticed very small objf impr on iter 4, so moved extra iters
+# to later.
+fmllr_iters="2 6 12 20";
 silphonelist=`cat $lang/silphones.csl`
 numiters=25    # Number of iterations of training
 maxiterinc=15 # Last iter to increase #Gauss on.
