@@ -154,7 +154,7 @@ void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<PDF_INDEX>");
   WriteBasicType(out_stream, binary, pdf_index_);
-  if (!binary) out_stream << "\n";
+  //  if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
   WriteMarker(out_stream, binary, "</TIEDGMM>");

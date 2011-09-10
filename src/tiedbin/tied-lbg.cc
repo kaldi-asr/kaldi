@@ -169,7 +169,6 @@ try {
 
     bool binary = false;
     bool full = true;
-    bool split_gaussians = false;
     
     BaseFloat perturb = 0.01;
     
@@ -183,9 +182,6 @@ try {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("max-gauss", &max_num_gaussians, "Maximum number of total "
                 "gaussians to allocate (including all codebooks.)");
-    po.Register("split-gaussians", &split_gaussians, "If the resulting "
-                "codebook(s) have a total number of gaussians less then the max"
-                " split the components");
     po.Register("perturb", &perturb, "Perturbation factor for gaussian "
                 "splitting.");
     po.Register("min-gauss", &min_num_gaussians, "Minimum number of gaussians "
