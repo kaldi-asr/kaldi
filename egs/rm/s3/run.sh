@@ -94,6 +94,9 @@ steps/train_lda_mllt_sat.sh data/train data/lang exp/tri3d_ali exp/tri4d
 scripts/mkgraph.sh data/lang_test exp/tri4d exp/tri4d/graph
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d
 
+# Next, SGMM system-- train SGMM system with speaker vectors, on top 
+# of LDA+MLLT features.
+steps/train_sgmm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/sgmm3d
 
 ##### Below here is trash. ######
 

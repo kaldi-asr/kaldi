@@ -54,7 +54,7 @@ for f in $requirements; do
 done
 
 mkdir -p $dir
-cp $srcdir/{final.mdl,tree,final.mat} $dir || exit 1;  # Create copies in $dir
+cp $srcdir/{final.mdl,final.occs,tree,final.mat} $dir || exit 1;  # Create copies in $dir
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
