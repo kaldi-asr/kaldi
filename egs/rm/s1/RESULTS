@@ -106,8 +106,8 @@ exp/decode_sgmmc_fmllr/wer:Average WER is 2.457512 (308 / 12533)
  exp/decode_sgmmc_fmllr_norm/wer:Average WER is 2.425596 (304 / 12533) 
 
 # sgmmd is like sgmmb but with LDA+MLLT features.
-exp/decode_sgmmd/wer:Average WER is 2.449533 (307 / 12533) 
-exp/decode_sgmmd_fmllr/wer:Average WER is 2.305912 (289 / 12533) 
+exp/decode_sgmmd/wer:Average WER is 2.449533 (307 / 12533)
+exp/decode_sgmmd_fmllr/wer:Average WER is 2.305912 (289 / 12533)
 
 # sgmme is like sgmmb but with LDA+ET features.
 exp/decode_sgmme/wer:Average WER is 2.321870 (291 / 12533) 
