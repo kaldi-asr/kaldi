@@ -33,20 +33,20 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
   return n+1;
 }
 
-int32 RandInt(int32 min, int32 max) {  // This is not exact.
-  assert(max >= min);
-  if (max == min) return min;
+int32 RandInt(int32 min_val, int32 max_val) {  // This is not exact.
+  assert(max_val >= min_val);
+  if (max_val == min_val) return min_val;
 
 #ifdef _MSC_VER
   // RAND_MAX is quite small on Windows -> may need to handle larger numbers.
-  if (RAND_MAX > (max-min)*8) {
+  if (RAND_MAX > (max_val-min_val)*8) {
         // *8 to avoid large inaccuracies in probability, from the modulus...
-    return min + ((unsigned int)rand() % (unsigned int)(max+1-min));
+    return min_val + ((unsigned int)rand() % (unsigned int)(max_val+1-min_val));
   } else {
-    if ((unsigned int)(RAND_MAX*RAND_MAX) > (unsigned int)((max+1-min)*8)) {
+    if ((unsigned int)(RAND_MAX*RAND_MAX) > (unsigned int)((max_val+1-min_val)*8)) {
         // *8 to avoid inaccuracies in probability, from the modulus...
-      return min + ( (unsigned int)( (rand()+RAND_MAX*rand()))
-                    % (unsigned int)(max+1-min));
+      return min_val + ( (unsigned int)( (rand()+RAND_MAX*rand()))
+                    % (unsigned int)(max_val+1-min_val));
     } else {
       throw std::runtime_error(std::string()
                                +"rand_int failed because we do not support "
@@ -55,7 +55,8 @@ int32 RandInt(int32 min, int32 max) {  // This is not exact.
     }
   }
 #else
-  return min + ((unsigned int32)rand() % (unsigned int32)(max+1-min));
+  return min_val +
+      (static_cast<int32>(rand()) % (int32)(max_val+1-min_val));
 #endif
 }
 

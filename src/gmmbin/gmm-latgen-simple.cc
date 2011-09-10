@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
       if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
+          VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
       if (decode_fst == NULL) // fst code will warn.
         exit(1);
     }

@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "Add self-loops and transition probabilities to transducer, expanding to transition-ids\n"
         "Usage:   add-self-loops [options] transition-gmm/acoustic-model [fst-in] [fst-out]\n"
         "e.g.: \n"
-        " add-self-loops --self-loop-scale = 0.1 1.mdl < HCLG_noloops.fst > HCLG_full.fst\n";
+        " add-self-loops --self-loop-scale=0.1 1.mdl < HCLG_noloops.fst > HCLG_full.fst\n";
 
     BaseFloat self_loop_scale = 1.0;
     bool reorder = true;

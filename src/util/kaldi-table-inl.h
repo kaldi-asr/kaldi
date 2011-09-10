@@ -24,13 +24,6 @@
 #include "util/text-utils.h"
 #include "util/stl-utils.h" // for StringHasher.
 
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
-
 
 namespace kaldi {
 
@@ -1908,7 +1901,9 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
   typedef typename Holder::T T;
 
  public:
-  RandomAccessTableReaderUnsortedArchiveImpl(): to_delete_iter_valid_(false) {
+  RandomAccessTableReaderUnsortedArchiveImpl(): to_delete_iter_(map_.end()),
+                                                to_delete_iter_valid_(false)
+                                                 {
     map_.max_load_factor(0.5);  // make it quite empty -> quite efficient.
     // default seems to be 1.
   }

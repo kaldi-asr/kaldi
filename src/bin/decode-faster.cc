@@ -81,11 +81,9 @@ int main(int argc, char *argv[]) {
     // lot of virtual memory.
     VectorFst<StdArc> *decode_fst = NULL;
     {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
-                                << fst_in_filename;
+      Input ki(fst_in_filename.c_str());
       decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
+          VectorFst<StdArc>::Read(ki.Stream(), fst::FstReadOptions(fst_in_filename));
       if (decode_fst == NULL) // fst code will warn.
         exit(1);
     }

@@ -28,7 +28,7 @@
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 #include "util/timer.h"
 
-using namespace kaldi;
+namespace kaldi {
 
 fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
@@ -46,7 +46,7 @@ fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
   fst::FstReadOptions ropts("<unspecified>", &hdr);
 
   fst::ConstFst<fst::StdArc> *decode_fst = NULL;
-
+  
   if (hdr.FstType() == "vector") {
     fst::VectorFst<fst::StdArc> *read_fst = NULL;
     read_fst = fst::VectorFst<fst::StdArc>::Read(ki.Stream(), ropts);
@@ -59,7 +59,7 @@ fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
     // the conversion is very time consuming due to computation of FstProperties
   } else if (hdr.FstType() == "const") {
     decode_fst = fst::ConstFst<fst::StdArc>::Read(ki.Stream(), ropts);
-        // fst::FstReadOptions((std::string)filename));
+        // fst::FstReadOptions(filename));
   } else {
     KALDI_ERR << "Reading FST: unsupported FST type: " << hdr.FstType();
   }
@@ -71,9 +71,12 @@ fst::ConstFst<fst::StdArc> *ReadNetwork(std::string filename) {
   }
 }
 
+}
+
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
 #ifdef _MSC_VER
     if (0) { new fst::ConstFst<fst::StdArc>(* static_cast<fst::VectorFst<fst::StdArc>*> (NULL)); }
 #endif

@@ -756,7 +756,6 @@ inline void ConvertLatticeWeight(
   w_out->SetValue2(w_in.Value2());
 }
 
-
 template<class Float1, class Float2, class Int>
 inline void ConvertLatticeWeight(
     const CompactLatticeWeightTpl<LatticeWeightTpl<Float1>, Int> &w_in,
@@ -767,7 +766,17 @@ inline void ConvertLatticeWeight(
   w_out->SetString(w_in.String());
 }
 
+// to convert from Lattice to standard FST
+template<class Float1, class Float2>
+inline void ConvertLatticeWeight(
+    const LatticeWeightTpl<Float1> &w_in,
+    TropicalWeightTpl<Float2> *w_out) {
+  TropicalWeightTpl<Float2> w1(w_in.Value1());
+  TropicalWeightTpl<Float2> w2(w_in.Value2());
+  *w_out = Times(w1, w2);
+}
 
+  
 } // end namespace fst
 
 #endif  // KALDI_FSTEXT_LATTICE_WEIGHT_H_

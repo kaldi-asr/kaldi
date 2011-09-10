@@ -603,8 +603,8 @@ template<class Real> static void UnitTestSger() {
     Vector<Real> v1(dimM); InitRand(&v1);
     Vector<Real> v2(dimN); InitRand(&v2);
     Vector<double> v1d(v1), v2d(v2);
-    M.AddVecVec(1.0, v1, v2);
-    M2.AddVecVec(1.0, v1, v2);
+    M.AddVecVec(1.0f, v1, v2);
+    M2.AddVecVec(1.0f, v1, v2);
     for (MatrixIndexT m = 0;m < dimM;m++)
       for (MatrixIndexT n = 0;n < dimN;n++) {
         KALDI_ASSERT(M(m, n) - v1(m)*v2(n) < 0.01);

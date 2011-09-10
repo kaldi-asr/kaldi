@@ -232,8 +232,27 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);
 
-} // end namespace kaldi
+// ConvertPhnxToProns is only needed in bin/phones-to-prons.cc and
+// isn't closely related with HMMs, but we put it here as there isn't
+// any other obvious place for it and it needs to be tested.
+// This function takes a phone-sequence with word-start and word-end
+// markers in it, and a word-sequence, and outputs the pronunciations
+// "prons"... the format of "prons" is, each element is a vector,
+// where the first element is the word (or zero meaning no word, e.g.
+// for optional silence introduced by the lexicon), and the remaining
+// elements are the phones in the word's pronunciation.
+// It returns false if it encounters a problem of some kind, e.g.
+// if the phone-sequence doesn't seem to have the right number of
+// words in it.
+bool ConvertPhnxToProns(const std::vector<int32> &phnx,
+                        const std::vector<int32> &words,
+                        int32 word_start_sym,
+                        int32 word_end_sym,
+                        std::vector<std::vector<int32> > *prons);
 
 /// @} end "addtogroup hmm_group"
+
+} // end namespace kaldi
+
 
 #endif

@@ -1,6 +1,6 @@
 // gmmbin/gmm-decode-faster.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Gilles Boulianne  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
       if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
+          VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
       if (decode_fst == NULL) // fst code will warn.
         exit(1);
     }
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
       if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
         << gminus_fst_in_filename;
       gminus_fst =
-      VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)gminus_fst_in_filename));
+      VectorFst<StdArc>::Read(is, fst::FstReadOptions(gminus_fst_in_filename));
       if (gminus_fst == NULL) // fst code will warn.
         exit(1);
     }
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
       if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
         << gprime_fst_in_filename;
       gprime_fst =
-      VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)gprime_fst_in_filename));
+      VectorFst<StdArc>::Read(is, fst::FstReadOptions(gprime_fst_in_filename));
       if (gprime_fst == NULL) // fst code will warn.
         exit(1);
     }

@@ -21,6 +21,8 @@
 
 #include <sys/stat.h> 
 
+namespace fst {
+
 bool FileExists(string strFilename) { 
   struct stat stFileInfo; 
   bool blnReturn; 
@@ -135,29 +137,32 @@ Weight WalkSinglePath(StdVectorFst* ifst, StdDeterministicOnDemandFst* dfst) {
   return totalCost;
 }
 
+
+}
+
+
 int main() {
-
   //--------------- Test without files ---------------------
-
+  using namespace fst;
   // Build from existing fst
   cout << "Test with single generated backoff FST" << endl;
   StdVectorFst* nfst = CreateBackoffFst();
   StdVectorFst* rfst = CreateResultFst();
 
   // before using, make sure that it is input sorted
-  fst::ArcSort(nfst, fst::StdILabelCompare());
+  ArcSort(nfst, StdILabelCompare());
   StdDeterministicOnDemandFst* dfst1 = new StdDeterministicOnDemandFst(*nfst);
   
   // Compare all arcs in dfst1 with expected result
-  for (fst::StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
+  for (StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
 	StateId rsrc = riter.Value();
 	// verify that states have same weight (or final status)
-	assert(fst::ApproxEqual(rfst->Final(rsrc),dfst1->Final(rsrc)));
-	for (fst::ArcIterator<StdVectorFst> aiter(*rfst,rsrc); !aiter.Done(); aiter.Next()) {
+	assert(ApproxEqual(rfst->Final(rsrc),dfst1->Final(rsrc)));
+	for (ArcIterator<StdVectorFst> aiter(*rfst,rsrc); !aiter.Done(); aiter.Next()) {
 	  StdArc rarc = aiter.Value();
 	  StdArc darc;
 	  if (dfst1->GetArc(rsrc, rarc.ilabel, &darc)) {
-		assert(fst::ApproxEqual(rarc.weight, darc.weight,0.001));
+		assert(ApproxEqual(rarc.weight, darc.weight,0.001));
 		assert(rarc.ilabel==darc.ilabel);
 		assert(rarc.olabel==darc.olabel);
 		assert(rarc.nextstate == darc.nextstate);

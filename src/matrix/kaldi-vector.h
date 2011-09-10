@@ -130,9 +130,6 @@ class VectorBase {
   /// Invert all elements.
   void InvertElements();
 
-  /// Add vector : *this = *this + alpha * rv.
-  void AddVec(const Real alpha, const VectorBase<Real>& v);
-
   /// Add vector : *this = *this + alpha * rv (with casting between floats and
   /// doubles)
   template<class OtherReal>

@@ -107,6 +107,15 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(fst, ofst);
 }
 
+template<class Weight, class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<Weight> > > &ifst,
+                    MutableFst<ArcTpl<Weight> > *ofst,
+                    bool invert = true) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<Weight>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst, invert);
+}
+
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
 inline vector<vector<double> > DefaultLatticeScale() {
   vector<vector<double> > ans(2);

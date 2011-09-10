@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(is.Stream(), binary);
     }
 
-    MlltAccs mllt_accs(am_gmm.Dim());
+    MlltAccs mllt_accs(am_gmm.Dim(), rand_prune);
 
     double tot_like = 0.0;
     double tot_t = 0.0;

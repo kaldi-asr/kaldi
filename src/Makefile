@@ -7,7 +7,7 @@
 SUBDIRS = base matrix util feat tree optimization gmm tied transform sgmm \
           fstext hmm lm decoder lat \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnet nnetbin latbin
+          nnet nnetbin latbin rnn
 
 all: $(SUBDIRS) 
 	echo Done

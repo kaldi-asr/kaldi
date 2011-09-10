@@ -407,16 +407,8 @@ MleAmSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
 
     for (int32 m = 0; m < num_substates; ++m) {
       // Eq. (39): gamma_{jmi}(t) = p (j, m, i|t)
-      BaseFloat gammat_jmi = posteriors(ki, m);
-
-      if (gammat_jmi < rand_prune_) {
-        // randomized pruning that preserves expectations.
-        if (RandUniform()* rand_prune_ <= gammat_jmi)
-          gammat_jmi = rand_prune_;
-        else
-          gammat_jmi = 0.0;
-      }
-
+      BaseFloat gammat_jmi = RandPrune(posteriors(ki, m), rand_prune_);
+      
       // Accumulate statistics for non-zero gaussian posterior
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
@@ -1705,14 +1697,7 @@ MleSgmmSpeakerAccs::AccumulateFromPosteriors(const AmSgmm &model,
     int32 i = gselect[ki];
     for (int32 m = 0; m < num_substates; ++m) {
       // Eq. (39): gamma_{jmi}(t) = p (j, m, i|t)
-      double gammat_jmi = posteriors(ki, m);
-      if (gammat_jmi < rand_prune_) {
-        // randomized pruning that preserves expectations.
-        if (RandUniform()* rand_prune_ <= gammat_jmi)
-          gammat_jmi = rand_prune_;
-        else
-          gammat_jmi = 0.0;
-      }
+      BaseFloat gammat_jmi = RandPrune(posteriors(ki, m), rand_prune_);
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
         model.GetSubstateMean(j, m, i, &mu_jmi);

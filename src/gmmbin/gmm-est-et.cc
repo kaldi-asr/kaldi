@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           if (!gpost_reader.HasKey(*utt_itr)) {
-            KALDI_WARN << "Did not find aligned transcription for utterance "
+            KALDI_WARN << "Did not find Gaussian posteriors for utterance "
                        << *utt_itr;
             num_no_gpost++;
             continue;

@@ -35,7 +35,7 @@
   are some things it installs which are nice to have but are not really needed).
   The "best-case" scenario is that you do:
  \verbatim
-   cd tools/; ./install.sh; cd ../src; ./configure; make
+   cd kaldi-1/tools/; ./install.sh; cd ../src; ./configure; make
  \endverbatim
  and everything will just work; however, if this does not happen there are
  fallback plans (e.g. you may have to install some package on your machine, or run 

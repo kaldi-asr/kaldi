@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
       std::ifstream is(lex_in_filename.c_str());
       if (!is.good()) KALDI_EXIT << "Could not open lexicon FST " << (std::string)lex_in_filename;
       lex_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)lex_in_filename));
+          VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_in_filename));
       if (lex_fst == NULL)
         KALDI_EXIT << "Could not open lexicon FST "<<lex_in_filename;
     }

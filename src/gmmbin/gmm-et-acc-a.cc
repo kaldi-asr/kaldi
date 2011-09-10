@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         string spk = spk2utt_reader.Key();
         FmllrDiagGmmAccs accs(dim);
-
+        
         const vector<string> &uttlist = spk2utt_reader.Value();
         for (vector<string>::const_iterator utt_itr = uttlist.begin(),
             itr_end = uttlist.end(); utt_itr != itr_end; ++utt_itr) {

@@ -892,9 +892,9 @@ void AmSgmm::InitializeN(int32 spk_subspace_dim,
   }
 }
 
-// Initializes othe vectors v_{jm}
+// Initializes the vectors v_{jm}
 void AmSgmm::InitializeVecs(int32 num_states) {
-  KALDI_ASSERT(num_states < kMaxSgmmStates);
+  KALDI_ASSERT(num_states >= 0);
   int32 phn_subspace_dim = PhoneSpaceDim();
   KALDI_ASSERT(phn_subspace_dim > 0 && "Initialize M and w first.");
 
