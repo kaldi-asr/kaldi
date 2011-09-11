@@ -32,11 +32,8 @@
 #include "fst/dfs-visit.h"
 #include "lat/kaldi-lattice.h"
 
-using namespace std;
-using namespace kaldi;
-
-typedef kaldi::Matrix<BaseFloat> KaldiMatrix;
-typedef kaldi::Vector<BaseFloat> KaldiVector;
+typedef kaldi::Matrix<kaldi::BaseFloat> KaldiMatrix;
+typedef kaldi::Vector<kaldi::BaseFloat> KaldiVector;
 
 class RNN{
   public:
@@ -48,16 +45,16 @@ class RNN{
     KaldiVector b1_,b2_,cl_b_;   // biases TODO not yet used!!!
     KaldiVector h_,cl_,y_;       // activations
 
-    map<int32,string> int2word_;                  // maps from rnn ints to word strings
-    map<string,int32> word2int_;                  // maps from word strings to rnn ints
-    map<int32,int32> intlat2intrnn;               // maps from ints in lattices to ints in RNN
-    map<int32,int32> intrnn2intlat;               // maps from ints in RNN to ins in lattices
-    vector<int32> int2class_;                     // mapping words (integer) to their classes
-    map<int32,int32> class2minint_,class2maxint_; // determines the range of a class of words in the output layer
+    std::map<int32,string> int2word_;                  // maps from rnn ints to word strings
+    std::map<string,int32> word2int_;                  // maps from word strings to rnn ints
+    std::map<int32,int32> intlat2intrnn;               // maps from ints in lattices to ints in RNN
+    std::map<int32,int32> intrnn2intlat;               // maps from ints in RNN to ins in lattices
+    std::vector<int32> int2class_;                     // mapping words (integer) to their classes
+    std::map<int32,int32> class2minint_,class2maxint_; // determines the range of a class of words in the output layer
 
     // others...
-    BaseFloat OOVPenalty_;
-    BaseFloat Lambda_;
+    kaldi::BaseFloat OOVPenalty_;
+    kaldi::BaseFloat Lambda_;
     const fst::SymbolTable* wordsym_;
 
     int32 ivcnt_;
@@ -74,13 +71,15 @@ class RNN{
     inline bool IsIV(int32 w) const { return w>=0; }
     inline bool IsOOV(int32 w) const { return !IsIV(w); }
 
-    BaseFloat OOVPenalty() const { return OOVPenalty_; }
-    void SetOOVPenalty( BaseFloat oovp ) { OOVPenalty_=oovp; }
+    kaldi::BaseFloat OOVPenalty() const { return OOVPenalty_; }
+    void SetOOVPenalty( kaldi::BaseFloat oovp ) { OOVPenalty_=oovp; }
 
-    BaseFloat Lambda() const { return Lambda_; }
-    void SetLambda(BaseFloat l) { Lambda_=l; }
+    kaldi::BaseFloat Lambda() const { return Lambda_; }
+    void SetLambda(kaldi::BaseFloat l) { Lambda_=l; }
 
-    void Read(istream& in, bool binary) {
+    void Read(std::istream& in, bool binary) {
+      using namespace kaldi;
+
       ExpectMarker(in,binary,"<rnnlm_v2.0>");
       ExpectMarker(in,binary,"<v1>"); in >> V1_;
       ExpectMarker(in,binary,"<u1>"); in >> U1_; U1_.Transpose();
@@ -141,7 +140,9 @@ class RNN{
     virtual ~RNN() {
     }
 
-    BaseFloat Propagate(int32 lastW,int32 w,KaldiVector* hOut,const KaldiVector& hIn) {
+    kaldi::BaseFloat Propagate(int32 lastW,int32 w,KaldiVector* hOut,const KaldiVector& hIn) {
+      using namespace kaldi;
+
       // create a local copy (for cases like aliasing!)
       KaldiVector h;
       h.Resize(hIn.Dim(),kUndefined);
@@ -174,8 +175,8 @@ class RNN{
 
         // determine distribution of class of the predicted word
         // activate class part of the word layer (softmax)
-        SubVector<BaseFloat> y_part(y_,b,n);
-        SubMatrix<BaseFloat> W2_part(W2_,b,n,0,W2_.NumCols());
+        SubVector<kaldi::BaseFloat> y_part(y_,b,n);
+        SubMatrix<kaldi::BaseFloat> W2_part(W2_,b,n,0,W2_.NumCols());
 
         y_part.AddMatVec(1.0,W2_part,kNoTrans,*hOut,0.0);
         // apply softmax
@@ -188,10 +189,10 @@ class RNN{
     }
 
 
-  void TreeTraverse(CompactLattice* lat,const KaldiVector h) {
+  void TreeTraverse(kaldi::CompactLattice* lat,const KaldiVector h) {
     // deal with the head of the tree explicitely, leave its scores untouched!
-    for (fst::MutableArcIterator<CompactLattice> aiter(lat,lat->Start()); !aiter.Done(); aiter.Next()) { // follow <eps>
-      for (fst::MutableArcIterator<CompactLattice> a2iter(lat,aiter.Value().nextstate); !a2iter.Done(); a2iter.Next()) { // follow <s>
+    for (fst::MutableArcIterator<kaldi::CompactLattice> aiter(lat,lat->Start()); !aiter.Done(); aiter.Next()) { // follow <eps>
+      for (fst::MutableArcIterator<kaldi::CompactLattice> a2iter(lat,aiter.Value().nextstate); !a2iter.Done(); a2iter.Next()) { // follow <s>
         TreeTraverseRec(lat,a2iter.Value().nextstate,h,0); // call the visitor method with the given history and preceding <s> recursively
       }
     }
@@ -199,17 +200,17 @@ class RNN{
 
   protected:
 
-  void TreeTraverseRec(CompactLattice* lat, fst::StdFst::StateId i,const KaldiVector& lasth,int32 lastW) {
+  void TreeTraverseRec(kaldi::CompactLattice* lat, fst::StdFst::StateId i,const KaldiVector& lasth,int32 lastW) {
     KaldiVector h(HiddenSize());
-    for (fst::MutableArcIterator<CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
+    for (fst::MutableArcIterator<kaldi::CompactLattice> aiter(lat, i); !aiter.Done(); aiter.Next()) {
       int32 w=intlat2intrnn[aiter.Value().olabel];  
-      BaseFloat rnns=Propagate(lastW,w,&h,lasth);
-      BaseFloat lms=aiter.Value().weight.Weight().Value1();
-      BaseFloat ams=aiter.Value().weight.Weight().Value2();
-      BaseFloat lmcs=rnns*Lambda()+lms*(1.0-Lambda()); // linear interpolation of log scores
+      kaldi::BaseFloat rnns=Propagate(lastW,w,&h,lasth);
+      kaldi::BaseFloat lms=aiter.Value().weight.Weight().Value1();
+      kaldi::BaseFloat ams=aiter.Value().weight.Weight().Value2();
+      kaldi::BaseFloat lmcs=rnns*Lambda()+lms*(1.0-Lambda()); // linear interpolation of log scores
       
-      CompactLatticeArc newarc = aiter.Value();
-      CompactLatticeWeight newwgt(LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
+      kaldi::CompactLatticeArc newarc = aiter.Value();
+      kaldi::CompactLatticeWeight newwgt(kaldi::LatticeWeight(lmcs,ams),aiter.Value().weight.String()); 
       newarc.weight=newwgt;
       aiter.SetValue(newarc);
 
@@ -220,6 +221,7 @@ class RNN{
 
 
 int main(int argc, char *argv[]) {
+  using namespace kaldi;
   try {
     using fst::SymbolTable;
     using fst::VectorFst;
