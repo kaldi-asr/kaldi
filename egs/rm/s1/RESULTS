@@ -86,32 +86,30 @@ exp/decode_tri2m_vtln_diag/wer:Average WER is 3.087848 (387 / 12533)  # + diagon
 exp/decode_tri2m_vtln_diag_utt/wer:Average WER is 4.340541 (544 / 12533)  # [per-utterance]
 exp/decode_tri2m_vtln_nofmllr/wer:Average WER is 5.784728 (725 / 12533)  # feature-space VTLN, with no fMLLR
 
-
 # sgmma is SGMM without speaker vectors.
 exp/decode_sgmma/wer:Average WER is 3.319237 (416 / 12533) 
-exp/decode_sgmma_fmllr/wer:Average WER is 2.934308 (289 / 9849) 
+exp/decode_sgmma_fmllr/wer:Average WER is 2.928269 (367 / 12533) 
 exp/decode_sgmma_fmllr_utt/wer:Average WER is 3.303279 (414 / 12533) 
 exp/decode_sgmma_fmllrbasis_utt/wer:Average WER is 3.191574 (400 / 12533) 
 
 # sgmmb is SGMM with speaker vectors.
-exp/decode_sgmmb/wer:Average WER is 2.760712 (346 / 12533) 
-exp/decode_sgmmb_fmllr/wer:Average WER is 2.585175 (324 / 12533) 
-exp/decode_sgmmb_utt/wer:Average WER is 2.808585 (352 / 12533) 
+exp/decode_sgmmb/wer:Average WER is 2.521344 (316 / 12533) 
+exp/decode_sgmmb_fmllr/wer:Average WER is 2.377723 (298 / 12533) 
+exp/decode_sgmmb_utt/wer:Average WER is 2.728796 (342 / 12533) 
 
 # sgmmc is like sgmmb but with gender dependency
-exp/decode_sgmmc/wer:Average WER is 2.696880 (338 / 12533) 
-exp/decode_sgmmc_fmllr/wer:Average WER is 2.457512 (308 / 12533) 
- # "norm" is normalizing weights per gender..
- exp/decode_sgmmc_norm/wer:Average WER is 2.696880 (338 / 12533) 
- exp/decode_sgmmc_fmllr_norm/wer:Average WER is 2.425596 (304 / 12533) 
+exp/decode_sgmmc/wer:Average WER is 2.720817 (341 / 12533) 
+exp/decode_sgmmc_fmllr/wer:Average WER is 2.489428 (312 / 12533) 
 
 # sgmmd is like sgmmb but with LDA+MLLT features.
-exp/decode_sgmmd/wer:Average WER is 2.449533 (307 / 12533)
-exp/decode_sgmmd_fmllr/wer:Average WER is 2.305912 (289 / 12533)
+exp/decode_sgmmd/wer:Average WER is 2.656986 (333 / 12533) 
+exp/decode_sgmmd_fmllr/wer:Average WER is 2.409639 (302 / 12533) 
 
 # sgmme is like sgmmb but with LDA+ET features.
-exp/decode_sgmme/wer:Average WER is 2.321870 (291 / 12533) 
-exp/decode_sgmme_fmllr/wer:Average WER is 2.154313 (270 / 12533) 
+exp/decode_sgmme/wer:Average WER is 2.337828 (293 / 12533) 
+exp/decode_sgmme_fmllr/wer:Average WER is 2.266018 (284 / 12533) 
+
+
 
 
 #### Note: stuff below this line may be out of date / not computed
@@ -167,3 +165,4 @@ exp/decode_sgmmc_fmllr/wer:Average WER is 2.688901 (337 / 12533)
 # 64-bit+ATLAS was 0.171s
 # 32-bit+ATLAS was 0.205s
 # 64-bit+MKL was 0.291s
+

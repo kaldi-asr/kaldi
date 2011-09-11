@@ -96,7 +96,26 @@ local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d
 
 # Next, SGMM system-- train SGMM system with speaker vectors, on top 
 # of LDA+MLLT features.
-steps/train_sgmm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/sgmm3d
+
+steps/train_ubm_lda_etc.sh data/train data/lang exp/tri2b_ali exp/ubm3d
+steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri2b_ali exp/ubm3d/final.ubm exp/sgmm3d
+
+scripts/mkgraph.sh data/lang_test exp/sgmm3d exp/sgmm3d/graph
+local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3d
+
+# Align LDA+ET system prior to training corresponding SGMM system.
+steps/align_lda_et.sh --graphs "ark,s,cs:gunzip -c exp/tri2c/graphs.fsts.gz|" \
+  data/train data/lang exp/tri2c exp/tri2c_ali 
+
+# Train SGMM system on top of LDA+ET.
+steps/train_ubm_lda_etc.sh data/train data/lang exp/tri2c_ali exp/ubm3e
+steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri2c_ali exp/ubm3e/final.ubm exp/sgmm3e
+
+local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3e 
+
+# Now train SGMM system on top of LDA+MLLT+SAT
+steps/train_ubm_lda_etc.sh data/train data/lang exp/tri3d_ali exp/ubm4f
+steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri3d_ali exp/ubm4f/final.ubm exp/sgmm4f
 
 ##### Below here is trash. ######
 

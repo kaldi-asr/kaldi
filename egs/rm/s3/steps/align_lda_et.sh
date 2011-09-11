@@ -17,9 +17,10 @@
 # To be run from ..
 
 # This script does training-data alignment given a model built using CMN +
-# splice-9-frames + LDA + MLLT features, plus fMLLR/CMLLR.  Its output, all in
-# its own experimental directory, is cmvn.ark, trans.ark, ali, tree, final.mdl
-# and final.mat (the last three are just copied from the source directory).
+# splice-9-frames + LDA + ET features.  Its output, all in
+# its own experimental directory, is cmvn.ark, trans.ark, ali, tree, final.mdl,
+# final.alimdl, final.occs, final.mat and final.et (the last six are just copied
+# from the source directory).
 
 # Option to use precompiled graphs from last phase, if these
 # are available (i.e. if they were built with the same data).
@@ -33,8 +34,8 @@ fi
 
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/align_lda_mllt_sat.sh <data-dir> <lang-dir> <src-dir> <exp-dir>"
-   echo " e.g.: steps/align_lda_mllt_sat.sh data/train data/lang exp/tri3d exp/tri3d_ali"
+   echo "Usage: steps/align_lda_et.sh <data-dir> <lang-dir> <src-dir> <exp-dir>"
+   echo " e.g.: steps/align_lda_et.sh data/train data/lang exp/tri2c exp/tri2c_ali"
    exit 1;
 fi
 
@@ -45,7 +46,7 @@ lang=$2
 srcdir=$3
 dir=$4
 
-requirements="$srcdir/final.mdl $srcdir/final.alimdl $srcdir/final.mat $srcdir/tree"
+requirements="$srcdir/final.mdl $srcdir/final.alimdl $srcdir/final.mat $srcdir/final.et $srcdir/tree"
 for f in $requirements; do
   if [ ! -f $f ]; then
      echo "align_lda_mllt.sh: no such file $f"
@@ -54,7 +55,7 @@ for f in $requirements; do
 done
 
 mkdir -p $dir
-cp $srcdir/{final.mdl,final.occs,final.alimdl,tree,final.mat} $dir || exit 1;  # Create copies in $dir
+cp $srcdir/{final.mdl,final.occs,final.alimdl,tree,final.mat,final.et} $dir || exit 1;  # Create copies in $dir
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
@@ -79,14 +80,15 @@ else
    "$graphs" "$sifeats" ark:$dir/pre.ali 2> $dir/align_pass1.log || exit 1;
 fi
 
-echo "Computing fMLLR transforms"
+echo "Computing exponential transforms"
 
 silphonelist=`cat $lang/silphones.csl`
 [ -z $silphonelist ] && exit 1;
 ( ali-to-post ark:$dir/pre.ali ark:- | \
   weight-silence-post 0.0 $silphonelist $dir/final.alimdl ark:- ark:- | \
   gmm-post-to-gpost $dir/final.alimdl "$sifeats" ark:- ark:- | \
-  gmm-est-fmllr-gpost --spk2utt=ark:$data/spk2utt $dir/final.mdl "$sifeats" ark:- ark:$dir/trans.ark ) \
+  gmm-est-et --spk2utt=ark:$data/spk2utt $dir/final.mdl $dir/final.et \
+    "$sifeats" ark,s,cs:- ark:$dir/trans.ark ark,t:$dir/warp ) \
     2>$dir/trans.log || exit 1;
 
 feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/trans.ark ark:- ark:- |"

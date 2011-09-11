@@ -18,4 +18,4 @@
 # To be run from one directory above this script.
 
 grep WER $* | \
-  awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", (100.0*n)/d, n, d); }' 
+  awk '{e=e+$4; n=n+$6; i=i+$7; d=d+$9; s=s+$11;} END{ printf("%%WER %f [ %d / %d, %d ins, %d del, %d sub ]\n", (100.0*e)/n, e, n, i, d, s); }' 

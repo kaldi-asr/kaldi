@@ -14,37 +14,34 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-if [ $# != 4 ]; then
-   echo "Usage: steps/train_sgmm_lda_mllt.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_sgmm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/sgmm3d"
+if [ $# != 5 ]; then
+   echo "Usage: steps/train_sgmm_lda_mllt.sh <data-dir> <lang-dir> <ali-dir> <ubm> <exp-dir>"
+   echo " e.g.: steps/train_sgmm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/ubm3c/final.ubm exp/sgmm3d"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
-# This is SGMM with speaker vectors, on top of LDA+STC features.
+# This is SGMM with speaker vectors, on top of LDA+STC/MLLT features.
 # To be run from ..
 
 data=$1
 lang=$2
 alidir=$3
-dir=$4
+ubm=$4
+dir=$5
 
 mkdir -p $dir || exit 1;
 cp $alidir/final.mat $dir/final.mat || exit 1;
 
-
-mat=$srcdir/final.mat
-srcmodel=$srcdir/final.mdl
-srcgraphs="ark:gunzip -c $srcdir/graphs.fsts.gz|"
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
 numiters=25   # Total number of iterations
 
-ubm=exp/ubmc/4.ubm
 realign_iters="5 10 15"; 
 spkvec_iters="5 8 12 17 22"
-silphonelist=`cat data/silphones.csl`
+silphonelist=`cat $lang/silphones.csl`
+spkspacedim=40
 numleaves=2500
 numsubstates=2500 # Initial #-substates.
 totsubstates=7500 # Target #-substates.
@@ -57,65 +54,55 @@ spkvecs_opt=
 randprune=0.1
 mkdir -p $dir
 
-utt2spk_opt="--utt2spk=ark:data/train.utt2spk"
-spk2utt_opt="--spk2utt=ark:data/train.spk2utt"
-feats="ark,s,cs:splice-feats scp:data/train.scp ark:- | transform-feats $mat ark:- ark:- |"
+utt2spk_opt="--utt2spk=ark:$data/utt2spk"
+spk2utt_opt="--spk2utt=ark:$data/spk2utt"
+
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 if [ ! -f $ubm ]; then
   echo "No UBM in $ubm"
+  exit 1;
 fi
 
-cp $srcdir/topo $dir
-
-echo "aligning all training data"
-if [ ! -f $dir/0.ali ]; then
-  gmm-align-compiled  $scale_opts --beam=8 --retry-beam=40  $srcmodel "$srcgraphs" \
-        "$feats" ark,t:$dir/0.ali 2> $dir/align.0.log || exit 1;
-fi
 
 # We rebuild the tree because we want a larger #states than for a normal
 # GMM system (the optimum #states for SGMMs tends to be a bit higher).
 
 if [ ! -f $dir/treeacc ]; then
-  acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" ark:$dir/0.ali \
-    $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
+  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" ark:$alidir/ali \
+    $dir/treeacc 2> $dir/acc.tree.log || exit 1;
 fi
 
-cat data/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
+cat $lang/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
 cluster-phones $dir/treeacc $dir/phones.list $dir/questions.txt 2> $dir/questions.log || exit 1;
-scripts/int2sym.pl data/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
-compile-questions $dir/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
-scripts/make_roots.pl --separate data/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+scripts/int2sym.pl $lang/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
+compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
+scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
 build-tree --verbose=1 --max-leaves=$numleaves \
     $dir/treeacc $dir/roots.txt \
-    $dir/questions.qst $dir/topo $dir/tree  2> $dir/train_tree.log || exit 1;
+    $dir/questions.qst $lang/topo $dir/tree  2> $dir/train_tree.log || exit 1;
 
 # the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
 
 gmm-init-model  --write-occs=$dir/0.occs  \
-    $dir/tree $dir/treeacc $dir/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
+    $dir/tree $dir/treeacc $lang/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
 
-sgmm-init --spk-space-dim=40 $dir/topo $dir/tree $ubm $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
+sgmm-init --spk-space-dim=$spkspacedim $lang/topo $dir/tree $ubm \
+    $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
-if [ ! -f $dir/0.mdl ]; then
-   echo "you must run train_ubma.sh before train_sgmmb.sh"
-   exit 1
-fi
+sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | \
+    gzip -c > $dir/gselect.gz || exit 1;
 
-if [ ! -f $dir/gselect.gz ]; then
- sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | gzip -c > $dir/gselect.gz || exit 1;
-fi
-
-convert-ali  $srcmodel $dir/0.mdl $dir/tree ark:$dir/0.ali \
-  ark:$dir/cur.ali 2>$dir/convert.log 
-
-rm $dir/0.ali
+convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree ark:$alidir/ali \
+    ark:$dir/cur.ali 2>$dir/convert.log 
 
 # Make training graphs
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/0.mdl  data/L.fst ark:data/train.tra \
-   "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1 
+
+compile-train-graphs $dir/tree $dir/0.mdl $lang/L.fst  \
+  "ark:scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text |" \
+  "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1 
 
 
 iter=0
@@ -124,8 +111,9 @@ while [ $iter -lt $numiters ]; do
    if echo $realign_iters | grep -w $iter >/dev/null; then
       echo "Aligning data"
       sgmm-align-compiled $spkvecs_opt $utt2spk_opt $scale_opts "$gselect_opt" \
-          --retry-beam=40 $dir/$iter.mdl "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-      	ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
+          --beam=8 --retry-beam=40 $dir/$iter.mdl \
+          "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
+          ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
    fi
    if echo $spkvec_iters | grep -w $iter >/dev/null; then
     ( ali-to-post ark:$dir/cur.ali ark:- | \
@@ -175,5 +163,6 @@ sgmm-est --update-flags=$flags --remove-speaker-space=true $dir/$iter.mdl \
   ln -s $iter.mdl final.mdl; 
   ln -s $iter.alimdl final.alimdl;
   ln -s $iter.occs final.occs )
+
 cp $mat $dir/final.mat
 

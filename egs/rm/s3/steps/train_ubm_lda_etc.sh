@@ -19,7 +19,7 @@
 
 if [ $# != 4 ]; then
    echo "Usage: steps/train_ubm_lda_mllt.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_ubm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/ubm2d"
+   echo " e.g.: steps/train_ubm_lda_mllt.sh data/train data/lang exp/tri2b_ali exp/ubm3c"
    exit 1;
 fi
 
@@ -36,6 +36,11 @@ mat=$alidir/final.mat
 
 feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
+if [ -f $alidir/trans.ark ]; then
+   echo "Running with speaker transforms $alidir/trans.ark"
+   feats="$feats transform-feats --utt2spk=ark:$data/utt2spk ark:$alidir/trans.ark ark:- ark:- |"
+fi
+
 init-ubm --intermediate-numcomps=2000 --ubm-numcomps=400 --verbose=2 \
     --fullcov-ubm=true $alidir/final.mdl $alidir/final.occs \
     $dir/0.ubm 2> $dir/cluster.log
@@ -50,6 +55,6 @@ for x in 0 1 2 3; do
     rm $dir/$x.acc $dir/$x.ubm
 done
 
-mv $dir/$x.ubm $dir/final.ubm
+mv $dir/4.ubm $dir/final.ubm || exit 1;
 
 
