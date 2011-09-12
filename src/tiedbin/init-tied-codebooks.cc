@@ -69,8 +69,8 @@ void AllocateDiagGmms(const BuildTreeStatsType &stats,
     if (count < 100)
       KALDI_VLOG(1) << "Very small count for state "<< i << ": " << count;
 
-    x.Scale(1. / count);
-    x2.Scale(1. / count);
+    x.Scale(1.0 / count);
+    x2.Scale(1.0 / count);
     x2.AddVec2(-1.0, x);  // subtract mean^2.
     KALDI_ASSERT(x2.Min() > 0);
 
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
         }
 
         // transfer back
-        npdfsi.weights_.Scale(1. / npdfsi.weights_.Sum());
+        npdfsi.weights_.Scale(1.0 / npdfsi.weights_.Sum());
         npdfsi.CopyToDiagGmm(pdfs[i]);
 
         // now resize to target number of gaussians

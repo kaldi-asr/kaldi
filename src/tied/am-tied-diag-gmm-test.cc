@@ -120,7 +120,7 @@ void UnitTestAmTiedDiagGmm() {
     for (int32 j = 0; j < wts.Dim(); ++j)
       wts(j) = kaldi::RandInt(1, 1024);
 
-    wts.Scale(1./wts.Sum());
+    wts.Scale(1.0 / wts.Sum());
 
     tied.SetWeights(wts);
 

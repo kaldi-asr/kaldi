@@ -112,7 +112,7 @@ void AccumTiedGmm::AccumulateFromPosteriors(
 /// Propagate the sufficient statistics to the target accumulator
 void AccumTiedGmm::Propagate(AccumTiedGmm *target) const {
   KALDI_ASSERT(num_comp_ == target->num_comp_);
-  target->occupancy_.AddVec(1., occupancy_);
+  target->occupancy_.AddVec(1.0, occupancy_);
 }
 
 /// Interpolate the local model depending on the occupancies
@@ -125,7 +125,7 @@ void AccumTiedGmm::Interpolate(BaseFloat rho, const AccumTiedGmm *source) {
   if (rhoi > 0.8)
     KALDI_VLOG(1) << "rhoi > 0.8";
 
-  occupancy_.Scale(1.-rhoi);
+  occupancy_.Scale(1.0 - rhoi);
   occupancy_.AddVec(rhoi, source->occupancy_);
 }
 
@@ -191,7 +191,7 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
       // to correct for the min weights
       // we need to re-normalize the weights
       Vector<BaseFloat> w(tied->weights());
-      w.Scale(1./w.Sum());
+      w.Scale(1.0 / w.Sum());
       tied->SetWeights(w);
 
       KALDI_WARN << "Floored " << floored_weights.size() << " weights to "

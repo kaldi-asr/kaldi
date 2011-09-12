@@ -77,8 +77,8 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
       // accumulate only for target Gmm
       if (*mit != i) continue;
 
-      x.AddVec(1., *fit);
-      x2.AddVec2(1., Vector<double>(*fit));
+      x.AddVec(1.0, *fit);
+      x2.AddVec2(1.0, Vector<double>(*fit));
       ++n;
     }
     
@@ -86,15 +86,15 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
                  && "No observations for codebook, check tree and alignment!");
     
     // normalize parameters
-    x.Scale(1. / n);
-    x2.Scale(1. / n);
-    x2.AddVec2(-1., x);
+    x.Scale(1.0 / n);
+    x2.Scale(1.0 / n);
+    x2.AddVec2(-1.0, x);
     
     // transfer to normal gmm...
     DiagGmm *diag = new DiagGmm();
     diag->Resize(1, x.Dim());
     DiagGmmNormal ngmm(*diag);
-    ngmm.weights_(0) = 1.;
+    ngmm.weights_(0) = 1.0;
     ngmm.means_.CopyRowFromVec(x, 0);
     ngmm.vars_.CopyRowFromVec(x2, 0);
     ngmm.CopyToDiagGmm(diag);
@@ -140,7 +140,7 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
         for (mit = mapping.begin(), mend = mapping.end(), fit = features.begin(),
              fend = features.end(); mit != mend && fit != fend; ++mit, ++fit) {
           if (*mit == i)
-            acc.AccumulateFromDiag(*diag, *fit, 1.);
+            acc.AccumulateFromDiag(*diag, *fit, 1.0);
         }
 
         MleDiagGmmUpdate(config, acc, kGmmAll, diag, NULL, NULL);

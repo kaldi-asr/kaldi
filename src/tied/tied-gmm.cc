@@ -34,7 +34,7 @@ void TiedGmm::Setup(int32 pdf_index, int32 nmix) {
     weights_.Resize(nmix);
 
   /// init weights with uniform distribution
-  weights_.Set(1./nmix);
+  weights_.Set(1.0 / nmix);
 }
 
 void TiedGmm::CopyFromTiedGmm(const TiedGmm &copy) {
@@ -75,7 +75,7 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c,
   BaseFloat log_sum = log(sum);
 
   // make posteriors
-  posteriors->Scale(1. / sum);
+  posteriors->Scale(1.0 / sum);
 
   // add svq offset
   log_sum += c;
@@ -89,14 +89,14 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c,
 /// this = rho x source + (1-rho) x this
 void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
   KALDI_ASSERT(NumGauss() == source->NumGauss());
-  KALDI_ASSERT(rho > 0. && rho < 1.);
+  KALDI_ASSERT(rho > 0.0 && rho < 1.0);
 
   // interpolate
-  weights_.Scale(1.-rho);
+  weights_.Scale(1.0 - rho);
   weights_.AddVec(rho, source->weights_);
 
   // renorm to sum to one
-  weights_.Scale(1. / weights_.Sum());
+  weights_.Scale(1.0 / weights_.Sum());
 }
 
 /// Split the tied GMM weights based on the split sequence of the mixture
@@ -113,12 +113,12 @@ void TiedGmm::Split(std::vector<int32> *sequence) {
   for (std::vector<int32>::iterator it = sequence->begin(),
        end = sequence->end(); it != end; ++it) {
     BaseFloat w = weights_(*it);
-    weights_(*it) = w / 2.;
-    weights_(oldsize++) = w / 2.;
+    weights_(*it) = w / 2.0;
+    weights_(oldsize++) = w / 2.0;
   }
 
   // re-norm weights
-  weights_.Scale(1. / weights_.Sum());
+  weights_.Scale(1.0 / weights_.Sum());
 }
 
 /// Merge the tied GMM weights based on the merge sequence of the mixture
@@ -146,7 +146,7 @@ void TiedGmm::Merge(std::vector<int32> *sequence) {
       ++m;
   }
 
-  weights_.Scale(1. / weights_.Sum());
+  weights_.Scale(1.0 / weights_.Sum());
 }
 
 void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
