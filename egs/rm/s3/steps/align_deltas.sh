@@ -69,11 +69,11 @@ if [ -z "$graphs" ]; then # --graphs option not supplied [-z means empty string]
   # compute integer form of transcripts.
   scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
     || exit 1;
-  gmm-align $scale_opts --beam=8 --retry-beam=40 $dir/tree $dir/model $lang/L.fst \
+  gmm-align $scale_opts --beam=8 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
    "$feats" ark:$dir/train.tra ark:$dir/ali 2> $dir/align.log || exit 1;
   rm $dir/train.tra
 else
-  gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/model \
+  gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/final.mdl \
    "$graphs" "$feats" ark:$dir/ali 2> $dir/align.log || exit 1;
 fi
 
