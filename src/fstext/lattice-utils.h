@@ -162,6 +162,13 @@ template<class Weight, class Int>
 void RemoveAlignmentsFromCompactLattice(
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst);
 
+/// Returns true if lattice has alignments, i.e. it has
+/// any nonempty strings inside its weights.
+template<class Weight, class Int>
+bool CompactLatticeHasAlignment(
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &fst);
+
+
 /// Class LatticeToStdMapper maps a normal arc (StdArc)
 /// to a LatticeArc by putting the StdArc weight as the first
 /// element of the LatticeWeight.  Useful when doing LM

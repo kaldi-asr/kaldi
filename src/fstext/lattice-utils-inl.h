@@ -292,6 +292,27 @@ void RemoveAlignmentsFromCompactLattice(
   }
 }
 
+template<class Weight, class Int>
+bool CompactLatticeHasAlignment(
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &fst) {
+  typedef CompactLatticeWeightTpl<Weight, Int> W;
+  typedef ArcTpl<W> Arc;
+  typedef ExpandedFst<Arc> Fst;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+  StateId num_states = fst.NumStates();
+  for (StateId s = 0; s < num_states; s++) {
+    for (ArcIterator<Fst> aiter(fst, s);
+         !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      if (!arc.weight.String().empty()) return true;
+    }
+    W final_weight = fst.Final(s);
+    if (!final_weight.String().empty()) return true;
+  }
+  return false;
+}
 
 template<class Weight, class Int>
 void PruneCompactLattice(

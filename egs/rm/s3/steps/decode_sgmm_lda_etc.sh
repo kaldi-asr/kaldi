@@ -109,7 +109,7 @@ sgmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 "$gselect_opt" \
 for inv_acwt in 4 5 6 7 8 9 10; do
   acwt=`perl -e "print (1.0/$inv_acwt);"`
   lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$lang/words.txt \
-     "ark:gunzip -c $dir/lat.gz|" ark:$dir/${inv_acwt}.tra \
+     "ark:gunzip -c $dir/lat.gz|" ark,t:$dir/${inv_acwt}.tra \
      2>$dir/rescore_${inv_acwt}.log
 
   scripts/sym2int.pl --ignore-first-field $lang/words.txt $data/text | \
