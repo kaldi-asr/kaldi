@@ -78,7 +78,7 @@ sgmm-gselect $srcdir/final.mdl "$feats" "ark,t:|gzip -c > $dir/gselect.gz" \
 gselect_opt="--gselect=ark:gunzip -c $dir/gselect.gz|"
 
 # Using smaller beam for first decoding pass.
-sgmm-decode-faster "$gselect_opt" --beam=15.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
+sgmm-decode-faster "$gselect_opt" --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
   $srcdir/final.alimdl $graphdir/HCLG.fst "$feats" ark,t:$dir/pass1.tra ark,t:$dir/pass1.ali \
      2> $dir/decode_pass1.log || exit 1;
 
@@ -97,17 +97,23 @@ sgmm-decode-faster "$gselect_opt" --beam=15.0 --acoustic-scale=0.1 --word-symbol
 
 
 # Second pass decoding...
-sgmm-decode-faster --beam=20.0 --acoustic-scale=0.1 "$gselect_opt" \
+sgmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 "$gselect_opt" \
   --spk-vecs=ark:$dir/vecs.ark --utt2spk=ark:$data/utt2spk \
   --word-symbol-table=$lang/words.txt $srcdir/final.mdl $graphdir/HCLG.fst \
-  "$feats" ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali \
-     2> $dir/decode_pass2.log || exit 1;
+  "$feats" "ark,t:|gzip -c >$dir/lat.gz" ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali \
+    2> $dir/decode_pass2.log || exit 1;
 
 
-# In this setup there are no non-scored words, so
-# scoring is simple.
 
-# the ,p option lets it score partial output without dying..
-scripts/sym2int.pl --ignore-first-field $lang/words.txt $data/text | \
-  compute-wer --mode=present ark:-  ark,p:$dir/pass2.tra >& $dir/wer
+# Now rescore lattices with various acoustic scales, and compute the WER.
+for inv_acwt in 4 5 6 7 8 9 10; do
+  acwt=`perl -e "print (1.0/$inv_acwt);"`
+  lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$lang/words.txt \
+     "ark:gunzip -c $dir/lat.gz|" ark:$dir/${inv_acwt}.tra \
+     2>$dir/rescore_${inv_acwt}.log
+
+  scripts/sym2int.pl --ignore-first-field $lang/words.txt $data/text | \
+   compute-wer --mode=present ark:-  ark,p:$dir/${inv_acwt}.tra \
+    >& $dir/wer_${inv_acwt}
+done
 

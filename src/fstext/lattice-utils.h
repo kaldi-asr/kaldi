@@ -156,6 +156,12 @@ void ScaleLattice(
     const vector<vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst);
 
+/// Removes state-level alignments (the strings that are
+/// part of the weights).
+template<class Weight, class Int>
+void RemoveAlignmentsFromCompactLattice(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst);
+
 /// Class LatticeToStdMapper maps a normal arc (StdArc)
 /// to a LatticeArc by putting the StdArc weight as the first
 /// element of the LatticeWeight.  Useful when doing LM
