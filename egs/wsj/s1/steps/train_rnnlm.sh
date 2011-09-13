@@ -10,7 +10,7 @@ fi
 
 NumHidden=$1
 NumClass=$2
-ModelName=$(basename $3)
+ModelName=$PWD/$(basename $3)
 
 TMP=$(mktemp)
 rm -rf $TMP
