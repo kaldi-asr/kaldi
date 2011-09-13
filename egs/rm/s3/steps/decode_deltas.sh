@@ -57,7 +57,7 @@ feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ar
 # If you decode with a beam of 20 on an LVCSR setup it will be very slow.
 
 gmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark,t:|gzip -c > $dir/lat.gz" \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.gz" \
   ark,t:$dir/test.tra ark,t:$dir/test.ali \
      2> $dir/decode.log || exit 1;
 

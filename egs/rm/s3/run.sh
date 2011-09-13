@@ -113,12 +113,17 @@ steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri3d_ali exp/ubm4f/final.u
 
 local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode
 
+# Decode with fMLLR
+sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl}
+local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode
+
+local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_nofmllr exp/sgmm4f/decode exp/tri3d/decode
 
 # Some system combination experiments (just compose lattices).
 local/decode_combine.sh steps/decode_combine.sh exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode
 local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/decode exp/combine_sgmm4f_tri3d/decode
 
-for x in exp/*/decode; do grep WER $x/wer_* | scripts/best_wer.sh; done
+for x in exp/*/decode*; do grep WER $x/wer_* | scripts/best_wer.sh; done
 
 exp/combine_1_2a/decode/wer_7:%WER 3.399027 [ 426 / 12533, 55 ins, 94 del, 277 sub ]
 exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 1.731429 [ 217 / 12533, 30 ins, 43 del, 144 sub ]

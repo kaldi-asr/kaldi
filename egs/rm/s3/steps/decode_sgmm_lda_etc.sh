@@ -73,7 +73,7 @@ if [ ! -z $olddir ]; then # i.e. if $olddir not empty string...
   feats="$feats transform-feats --utt2spk=ark:$data/utt2spk ark:$olddir/trans.ark ark:- ark:- |"
 fi
 
-sgmm-gselect $srcdir/final.mdl "$feats" "ark,t:|gzip -c > $dir/gselect.gz" \
+sgmm-gselect $srcdir/final.mdl "$feats" "ark:|gzip -c > $dir/gselect.gz" \
     2>$dir/gselect.log || exit 1;
 gselect_opt="--gselect=ark:gunzip -c $dir/gselect.gz|"
 
@@ -100,7 +100,7 @@ sgmm-decode-faster "$gselect_opt" --beam=20.0 --acoustic-scale=0.1 --word-symbol
 sgmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 "$gselect_opt" \
   --spk-vecs=ark:$dir/vecs.ark --utt2spk=ark:$data/utt2spk \
   --word-symbol-table=$lang/words.txt $srcdir/final.mdl $graphdir/HCLG.fst \
-  "$feats" "ark,t:|gzip -c >$dir/lat.gz" ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali \
+  "$feats" "ark:|gzip -c >$dir/lat.gz" ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali \
     2> $dir/decode_pass2.log || exit 1;
 
 

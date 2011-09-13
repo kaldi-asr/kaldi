@@ -78,7 +78,7 @@ feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmv
 # Second pass decoding... generate lattices and rescore with
 # various scales.
 gmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark,t:|gzip -c > $dir/lat.gz" \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.gz" \
   ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali  2> $dir/decode_pass2.log || exit 1;
 
 
