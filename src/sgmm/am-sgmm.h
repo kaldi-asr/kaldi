@@ -227,7 +227,7 @@ class AmSgmm {
                             Vector<BaseFloat> *diag_mean_scatter) const;
 
   /// Various model dimensions.
-  int32 NumStates() const { return c_.size(); }
+  int32 NumPdfs() const { return c_.size(); }
   int32 NumSubstates(int32 j) const { return c_[j].Dim(); }
   int32 NumGauss() const { return M_.size(); }
   int32 PhoneSpaceDim() const { return w_.NumCols(); }
@@ -332,7 +332,7 @@ template<typename Real>
 inline void AmSgmm::GetSubstateMean(int32 j, int32 m, int32 i,
                                     VectorBase<Real> *mean_out) const {
   KALDI_ASSERT(mean_out != NULL);
-  KALDI_ASSERT(j < NumStates() && m < NumSubstates(j) && i < NumGauss());
+  KALDI_ASSERT(j < NumPdfs() && m < NumSubstates(j) && i < NumGauss());
   KALDI_ASSERT(mean_out->Dim() == FeatureDim());
   Vector<BaseFloat> mean_tmp(FeatureDim());
   mean_tmp.AddMatVec(1.0, M_[i], kNoTrans, v_[j].Row(m), 0.0);

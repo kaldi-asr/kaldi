@@ -1,4 +1,4 @@
-// gmmbin/gmm-resocre-lattice.cc
+// sgmmbin/sgmm-rescore-lattice.cc
 
 // Copyright 2009-2011   Saarland University
 // Author: Arnab Ghoshal
@@ -19,7 +19,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/stl-utils.h"
-#include "gmm/am-diag-gmm.h"
+#include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
@@ -27,9 +27,13 @@
 
 namespace kaldi {
 
-void LatticeAcousticRescore(const AmDiagGmm& am,
+void LatticeAcousticRescore(const AmSgmm& am,
                             const TransitionModel& trans_model,
                             const MatrixBase<BaseFloat>& data,
+                            const SgmmPerSpkDerivedVars &spk_vars,
+                            const std::vector<std::vector<int32> > &gselect,
+                            const SgmmGselectConfig &sgmm_config,
+                            double log_prune,
                             const std::vector<int32> state_times,
                             Lattice *lat) {
   kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
@@ -44,9 +48,19 @@ void LatticeAcousticRescore(const AmDiagGmm& am,
     KALDI_ASSERT(state_times[i] >= 0);
     time_to_state[state_times[i]].push_back(i);
   }
-
-
+  
   for (int32 t = 0; t <= max_time; t++) {
+    SgmmPerFrameDerivedVars per_frame_vars;
+    std::vector<int32> this_gselect;
+    if (!gselect.empty()) {
+      KALDI_ASSERT(t < gselect.size());
+      this_gselect = gselect[t];
+    } else  {
+      am.GaussianSelection(sgmm_config, data.Row(t), &this_gselect);
+    }
+    am.ComputePerFrameVars(data.Row(t), this_gselect, spk_vars,
+                           0.0 /*fMLLR logdet*/, &per_frame_vars);
+                           
     unordered_map<int32, BaseFloat> pdf_id_to_like;
     for (size_t i = 0; i < time_to_state[t].size(); i++) {
       int32 state = time_to_state[t][i];
@@ -58,7 +72,7 @@ void LatticeAcousticRescore(const AmDiagGmm& am,
           int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
           BaseFloat ll;
           if (pdf_id_to_like.count(pdf_id) == 0) {
-            ll = am.LogLikelihood(pdf_id, data.Row(t));
+            ll = am.LogLikelihood(per_frame_vars, pdf_id, log_prune);
             pdf_id_to_like[pdf_id] = ll;
           } else {
             ll = pdf_id_to_like[pdf_id];
@@ -89,9 +103,19 @@ int main(int argc, char *argv[]) {
         " e.g.: gmm-resocre-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
+    BaseFloat log_prune = 5.0;
+    std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
+    SgmmGselectConfig sgmm_opts;    
     kaldi::ParseOptions po(usage);
     po.Register("old-acoustic-scale", &old_acoustic_scale,
                 "Add the current acoustic scores with some scale.");
+    po.Register("log-prune", &log_prune, "Pruning beam used to reduce number of exp() evaluations.");
+    po.Register("spk-vecs", &spkvecs_rspecifier, "Speaker vectors (rspecifier)");
+    po.Register("utt2spk", &utt2spk_rspecifier,
+                "rspecifier for utterance to speaker map");
+    po.Register("gselect", &gselect_rspecifier, "Precomputed Gaussian indices (rspecifier)");
+    sgmm_opts.Register(&po);
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -104,15 +128,18 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(3),
         lats_wspecifier = po.GetArg(4);
 
-    AmDiagGmm am_gmm;
+    AmSgmm am_sgmm;
     TransitionModel trans_model;
     {
       bool binary;
       Input is(model_filename, &binary);
       trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      am_sgmm.Read(is.Stream(), binary);
     }
 
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     // Read as regular lattice
     SequentialLatticeReader lattice_reader(lats_rspecifier);
@@ -154,8 +181,43 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      kaldi::LatticeAcousticRescore(am_gmm, trans_model, feats, state_times,
-                                    &lat);
+      std::string utt_or_spk; // used to work out speaker vector.
+      if (utt2spk_rspecifier.empty())  utt_or_spk = key;
+      else {
+        if (!utt2spk_reader.HasKey(key)) {
+          KALDI_WARN << "Utterance " << key << " not present in utt2spk map; "
+                     << "skipping this utterance.";
+          num_other_error++;
+          continue;
+        } else {
+          utt_or_spk = utt2spk_reader.Value(key);
+        }
+      }
+
+      // Get speaker vectors      
+      SgmmPerSpkDerivedVars spk_vars;
+      if (spkvecs_reader.IsOpen()) {
+        if (spkvecs_reader.HasKey(utt_or_spk)) {
+          spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+          am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
+        } else {
+          KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+        }
+      }  // else spk_vars is "empty"
+
+      bool have_gselect  = !gselect_rspecifier.empty()
+          && gselect_reader.HasKey(key)
+          && gselect_reader.Value(key).size() == feats.NumRows();
+      if (!gselect_rspecifier.empty() && !have_gselect)
+        KALDI_WARN << "No Gaussian-selection info available for utterance "
+                   << key << " (or wrong size)";
+      std::vector<std::vector<int32> > empty_gselect;
+      const std::vector<std::vector<int32> > *gselect =
+          (have_gselect ? &gselect_reader.Value(key) : &empty_gselect);
+        
+      kaldi::LatticeAcousticRescore(am_sgmm, trans_model, feats,
+                                    spk_vars, *gselect, sgmm_opts,
+                                    log_prune, state_times, &lat);
       CompactLattice clat_out;
       ConvertLattice(lat, &clat_out);
       compact_lattice_writer.Write(key, clat_out);

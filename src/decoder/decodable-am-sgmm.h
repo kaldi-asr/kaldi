@@ -60,7 +60,7 @@ class DecodableAmSgmm : public DecodableInterface {
   void ResetLogLikeCache();
 
  protected:
-  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
 
   const AmSgmm &acoustic_model_;
   const SgmmGselectConfig &sgmm_config_;
@@ -137,7 +137,7 @@ class DecodableAmSgmmFmllr : public DecodableAmSgmm {
   }
 
  protected:
-  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
 
  private:
   Matrix<BaseFloat> fmllr_mat_;

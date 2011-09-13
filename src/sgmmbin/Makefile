@@ -3,12 +3,13 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali sgmm-sum-accs \
-           sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect  sgmm-acc-stats \
-           sgmm-est-spkvecs sgmm-post-to-gpost sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost \
-           sgmm-comp-prexform sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
-           sgmm-calc-distances sgmm-normalize sgmm-latgen-simple
-
+BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali \
+           sgmm-sum-accs sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect \
+           sgmm-acc-stats sgmm-est-spkvecs sgmm-post-to-gpost \
+           sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost sgmm-comp-prexform \
+           sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
+           sgmm-calc-distances sgmm-normalize sgmm-latgen-simple \
+           sgmm-rescore-lattice
 
 OBJFILES =
 

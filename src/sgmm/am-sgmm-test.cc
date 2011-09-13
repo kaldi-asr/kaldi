@@ -92,8 +92,8 @@ void TestSgmmIO(const AmSgmm &sgmm) {
 
 void TestSgmmSubstates(const AmSgmm &sgmm) {
   using namespace kaldi;
-  int32 target_substates = 2 * sgmm.NumStates();
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  int32 target_substates = 2 * sgmm.NumPdfs();
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   for (int32 i = 0; i < occs.Dim(); ++i)
     occs(i) = std::fabs(kaldi::RandGauss()) * (kaldi::RandUniform()+1);
   AmSgmm *sgmm1 = new AmSgmm();
@@ -173,7 +173,7 @@ void TestSgmmIncreaseDim(const AmSgmm &sgmm) {
 void TestSgmmPreXform(const AmSgmm &sgmm) {
   kaldi::Matrix<BaseFloat> xform, inv_xform;
   kaldi::Vector<BaseFloat> diag_scatter;
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   occs.Set(100);
   sgmm.ComputeFmllrPreXform(occs, &xform, &inv_xform, &diag_scatter);
   int32 dim = xform.NumRows();

@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Usage:  weight-silence-post [options] <silence-weight> <silence-phones> "
         "<model> <posteriors-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
-        " weight-silence-post 0.0 1:2:3 1.mdl ark:1.ali ark:1.post\n";
+        " weight-silence-post 0.0 1:2:3 1.mdl ark:1.post ark:nosil.post\n";
 
     ParseOptions po(usage);
 

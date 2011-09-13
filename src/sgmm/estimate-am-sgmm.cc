@@ -184,7 +184,7 @@ void MleAmSgmmAccs::Check(const AmSgmm &model,
         feature_dim_ << ", S = " << phn_space_dim_ << ", T = " <<
         spk_space_dim_ << ", I = " << num_gaussians_;
   }
-  KALDI_ASSERT(num_states_ == model.NumStates() && num_states_ > 0);
+  KALDI_ASSERT(num_states_ == model.NumPdfs() && num_states_ > 0);
   KALDI_ASSERT(num_gaussians_ == model.NumGauss() && num_gaussians_ > 0);
   KALDI_ASSERT(feature_dim_ == model.FeatureDim() && feature_dim_ > 0);
   KALDI_ASSERT(phn_space_dim_ == model.PhoneSpaceDim() && phn_space_dim_ > 0);
@@ -275,7 +275,7 @@ void MleAmSgmmAccs::Check(const AmSgmm &model,
 
 void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
                                        SgmmUpdateFlagsType flags) {
-  num_states_ = model.NumStates();
+  num_states_ = model.NumPdfs();
   num_gaussians_ = model.NumGauss();
   feature_dim_ = model.FeatureDim();
   phn_space_dim_ = model.PhoneSpaceDim();

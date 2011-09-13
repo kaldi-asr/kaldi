@@ -57,7 +57,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   frame_vars.Resize(sgmm.NumGauss(), dim, sgmm.PhoneSpaceDim());
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest,
                                         sgmm.NumGauss());
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   occs.Set(feats.NumRows());
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
@@ -145,7 +145,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   frame_vars.Resize(sgmm.NumGauss(), dim, sgmm.PhoneSpaceDim());
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest,
                                         sgmm.NumGauss());
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   occs.Set(feats.NumRows());
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
