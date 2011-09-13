@@ -52,7 +52,7 @@ cd ..
 
 echo "Training a RNN language model ($ModelName) with $NumHidden hidden neurons and $NumClass classes"
 time ./rnnlm -rnnlm rnn -train WSJ.train -valid WSJ.valid -hidden $NumHidden -class $NumClass -bptt 5 -bptt-block 10 -debug 2 -alpha 0.1
-mv rnn ../$ModelName
+mv rnn $ModelName
 
 echo "Deleting $TMP"
 rm -rf $TMP
