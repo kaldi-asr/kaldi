@@ -69,8 +69,6 @@ int main(int argc, char *argv[]) {
 
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        KALDI_WARN << "Utterance " << key << ": Supplied lattice not "
-                   << "topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
       }
