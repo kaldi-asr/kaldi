@@ -134,12 +134,21 @@ inline vector<vector<double> > AcousticLatticeScale(double acwt) {
   return ans;
 }
 
-inline vector<vector<double> > GraphLatticeScale(double acwt) {
+inline vector<vector<double> > GraphLatticeScale(double lmwt) {
   vector<vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
-  ans[0][0] = acwt;
+  ans[0][0] = lmwt;
   ans[1][1] = 1.0;
+  return ans;
+}
+
+inline vector<vector<double> > LatticeScale(double lmwt, double acwt) {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = lmwt;
+  ans[1][1] = acwt;
   return ans;
 }
 

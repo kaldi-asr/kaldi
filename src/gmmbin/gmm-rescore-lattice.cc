@@ -37,16 +37,17 @@ void LatticeAcousticRescore(const AmDiagGmm& am,
     KALDI_ERR << "Input lattice must be topologically sorted.";
 
   KALDI_ASSERT(!state_times.empty());
-  int32 max_time = *std::max_element(state_times.begin(), state_times.end());
-  KALDI_ASSERT(max_time > 0);
-  std::vector<std::vector<int32> > time_to_state(max_time+1);
+  std::vector<std::vector<int32> > time_to_state(data.NumRows());
   for (size_t i = 0; i < state_times.size(); i++) {
     KALDI_ASSERT(state_times[i] >= 0);
-    time_to_state[state_times[i]].push_back(i);
+    if (state_times[i] < data.NumRows()) // end state may be past this..
+      time_to_state[state_times[i]].push_back(i);
+    else
+      KALDI_ASSERT(state_times[i] == data.NumRows()
+                   && "There appears to be lattice/feature mismatch.");
   }
 
-
-  for (int32 t = 0; t <= max_time; t++) {
+  for (int32 t = 0; t < data.NumRows(); t++) {
     unordered_map<int32, BaseFloat> pdf_id_to_like;
     for (size_t i = 0; i < time_to_state[t].size(); i++) {
       int32 state = time_to_state[t][i];
@@ -84,9 +85,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Replace the acoustic scores on a lattice using a new model.\n"
-        "Usage: gmm-resocre-lattice [options] <model-in> <lattice-rspecifier> "
+        "Usage: gmm-rescore-lattice [options] <model-in> <lattice-rspecifier> "
         "<feature-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: gmm-resocre-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
+        " e.g.: gmm-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
     kaldi::ParseOptions po(usage);
@@ -135,12 +136,8 @@ int main(int argc, char *argv[]) {
 
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        KALDI_WARN << "Utterance " << key << ": Supplied lattice not "
-                   << "topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
-      } else {
-        KALDI_LOG << "Already topologically sorted.";
       }
 
       vector<int32> state_times;

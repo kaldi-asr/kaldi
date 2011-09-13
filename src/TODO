@@ -8,6 +8,7 @@
 minor:
  remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
  Make ApplySoftMax() function more efficient (does two exp()'s per element)
+ possibly change the way lattice-compose works to remove properties hack.
 
 gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
 

@@ -34,10 +34,12 @@ int main(int argc, char *argv[]) {
         "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier\n"
         " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n";
 
-    kaldi::BaseFloat acoustic_scale = 1.0;
+    kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     kaldi::ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale,
+                "Scaling factor for \"graph costs\" (including LM costs)");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -64,9 +66,9 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       kaldi::Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
-
+      if (acoustic_scale != 1.0 || lm_scale != 1.0)
+        fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
+      
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         if (fst::TopSort(&lat) == false)
