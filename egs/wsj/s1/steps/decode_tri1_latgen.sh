@@ -48,5 +48,5 @@ for file in $filenames; do
 done
 
 echo running on `hostname` > $dir/decode${job}.log
-gmm-latgen-simple --beam=$beam --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.lats ark,t:$dir/$job.tra ark,t:$dir/$job.ali 2>>$dir/decode${job}.log 
+gmm-latgen-simple --beam=$beam --lattice-beam=9 --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.lats ark,t:$dir/$job.tra ark,t:$dir/$job.ali 2>>$dir/decode${job}.log 
 
