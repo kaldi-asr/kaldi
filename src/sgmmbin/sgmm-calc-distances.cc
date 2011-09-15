@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
       occs.Read(is.Stream(), binary);
     }
 
-    Matrix<BaseFloat> dists(am_sgmm.NumStates(), am_sgmm.NumStates());
+    Matrix<BaseFloat> dists(am_sgmm.NumPdfs(), am_sgmm.NumPdfs());
     AmSgmmFunctions::ComputeDistances(am_sgmm, occs, &dists);
 
     Output os(distances_out_filename, binary);

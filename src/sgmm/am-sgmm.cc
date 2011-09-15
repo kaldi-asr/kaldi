@@ -95,7 +95,7 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
 
 void AmSgmm::Write(std::ostream &out_stream, bool binary,
                    SgmmWriteFlagsType write_params) const {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       feat_dim = FeatureDim(),
       num_gauss = NumGauss();
 
@@ -166,7 +166,7 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
 }
 
 void AmSgmm::Check(bool show_properties) {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       num_gauss = NumGauss(),
       feat_dim = FeatureDim(),
       phn_dim = PhoneSpaceDim(),
@@ -318,7 +318,7 @@ void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
 
 BaseFloat AmSgmm::LogLikelihood(const SgmmPerFrameDerivedVars &per_frame_vars,
                                 int32 j, BaseFloat log_prune) const {
-  KALDI_ASSERT(j < NumStates());
+  KALDI_ASSERT(j < NumPdfs());
   const vector<int32> &gselect = per_frame_vars.gselect;
 
 
@@ -344,7 +344,7 @@ BaseFloat
 AmSgmm::ComponentPosteriors(const SgmmPerFrameDerivedVars &per_frame_vars,
                             int32 j,
                             Matrix<BaseFloat> *post) const {
-  KALDI_ASSERT(j < NumStates());
+  KALDI_ASSERT(j < NumPdfs());
   if (post == NULL) KALDI_ERR << "NULL pointer passed as return argument.";
   const vector<int32> &gselect = per_frame_vars.gselect;
   post->Resize(gselect.size(), NumSubstates(j));
@@ -379,7 +379,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
                                    int32 target_nsubstates, BaseFloat perturb,
                                    BaseFloat power, BaseFloat max_cond) {
   // power == p in document.  target_nsubstates == T in document.
-  KALDI_ASSERT(state_occupancies.Dim() == NumStates());
+  KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
   int32 tot_n_substates_old = 0;
   int32 phn_dim = PhoneSpaceDim();
   std::priority_queue<SubstateCounter> substate_counts;
@@ -387,7 +387,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
   SpMatrix<BaseFloat> sqrt_H_sm;
   Vector<BaseFloat> rand_vec(phn_dim), v_shift(phn_dim);
 
-  for (int32 j = 0; j < NumStates(); j++) {
+  for (int32 j = 0; j < NumPdfs(); j++) {
     // work out the sub-model's prob from the sum of 'c'.;
     BaseFloat gamma_p = pow(state_occupancies(j) * c_[j].Sum(), power);
     substate_counts.push(SubstateCounter(j, NumSubstates(j), gamma_p));
@@ -482,7 +482,7 @@ void AmSgmm::IncreasePhoneSpaceDim(int32 target_dim,
     w_.Resize(tmp_w.NumRows(), target_dim);
     w_.Range(0, tmp_w.NumRows(), 0, tmp_w.NumCols()).CopyFromMat(tmp_w);
 
-    for (int32 j = 0; j < NumStates(); ++j) {
+    for (int32 j = 0; j < NumPdfs(); ++j) {
       // Resize v[j]
       Matrix<BaseFloat> tmp_v_j = v_[j];
       v_[j].Resize(tmp_v_j.NumRows(), target_dim);
@@ -563,8 +563,8 @@ void AmSgmm::ComputeNormalizers() {
 
   double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumStates());
-  for (int32 j = 0; j < NumStates(); ++j) {
+  n_.resize(NumPdfs());
+  for (int32 j = 0; j < NumPdfs(); ++j) {
     Vector<BaseFloat> log_w_jm(NumGauss());
 
     n_[j].Resize(NumGauss(), NumSubstates(j));
@@ -650,8 +650,8 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
 
 //  double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumStates());
-  for (int32 j = 0; j < NumStates(); ++j) {
+  n_.resize(NumPdfs());
+  for (int32 j = 0; j < NumPdfs(); ++j) {
     Vector<BaseFloat> log_w_jm(NumGauss());
 
     n_[j].Resize(NumGauss(), NumSubstates(j));
@@ -709,7 +709,7 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
 void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
     Matrix<BaseFloat> *xform, Matrix<BaseFloat> *inv_xform,
     Vector<BaseFloat> *diag_mean_scatter) const {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       num_gauss = NumGauss(),
       dim = FeatureDim();
   KALDI_ASSERT(state_occs.Dim() == num_states);
@@ -927,13 +927,13 @@ void AmSgmm::ComputeSmoothingTermsFromModel(
     BaseFloat max_cond) const {
   int32 num_gauss = NumGauss();
   BaseFloat tot_sum = 0.0;
-  KALDI_ASSERT(state_occupancies.Dim() == NumStates());
+  KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
   Vector<BaseFloat> w_jm(num_gauss);
   H_sm->Resize(PhoneSpaceDim());
   H_sm->SetZero();
   Vector<BaseFloat> gamma_i(num_gauss);
   gamma_i.SetZero();
-  for (int32 j = 0; j < NumStates(); j++) {
+  for (int32 j = 0; j < NumPdfs(); j++) {
     int32 M_j = NumSubstates(j);
     KALDI_ASSERT(M_j > 0);
     for (int32 m = 0; m < M_j; ++m) {
@@ -1196,7 +1196,7 @@ void SgmmGauPost::Read(std::istream &is, bool binary) {
 void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
                                        const Vector<BaseFloat> &state_occs,
                                        MatrixBase<BaseFloat> *dists) {
-  int32 num_states = model.NumStates(),
+  int32 num_states = model.NumPdfs(),
       phn_space_dim = model.PhoneSpaceDim(),
       num_gauss = model.NumGauss();
   KALDI_ASSERT(dists != NULL && dists->NumRows() == num_states

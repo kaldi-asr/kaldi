@@ -68,6 +68,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    if (retry_beam != 0 && retry_beam <= beam)
+      KALDI_WARN << "Beams do not make sense: beam " << beam
+                 << ", retry-beam " << retry_beam;
 
     FasterDecoderOptions decode_opts;
     decode_opts.beam = beam;  // Don't set the other options.
@@ -88,9 +91,7 @@ int main(int argc, char *argv[]) {
 
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
-      KALDI_ERR << "Unable to open stream for gaussian-selection indices";
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 

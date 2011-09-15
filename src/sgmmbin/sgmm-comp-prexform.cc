@@ -26,8 +26,8 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Initialize an SGMM from a trained full-covariance UBM and a specified"
-        " model topology.\n"
+        "Compute \"pre-transform\" parameters required for estimating fMLLR with\n"
+        "SGMMs, and write to a model file, after the SGMM.\n"
         "Usage: sgmm-comp-prexform [options] <sgmm-in> <occs-in> <sgmm-out>\n";
 
     bool binary = false;

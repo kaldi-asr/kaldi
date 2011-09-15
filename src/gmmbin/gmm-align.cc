@@ -56,6 +56,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    if (retry_beam != 0 && retry_beam <= beam)
+      KALDI_WARN << "Beams do not make sense: beam " << beam
+                 << ", retry-beam " << retry_beam;
 
     FasterDecoderOptions decode_opts;
     decode_opts.beam = beam;  // Don't set the other options.

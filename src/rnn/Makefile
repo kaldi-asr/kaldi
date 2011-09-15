@@ -1,27 +1,28 @@
-
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = rnn-rescore-kaldi 
+EXTRA_CXXFLAGS = -Wno-sign-compare
 
-OBJFILES =
+BINFILES = rnn-rescore
 
-all:  $(BINFILES)
+OBJFILES = rnnlm.o
 
+LIBFILE = rnnlm.a
 
-TESTFILES =
-
-
-$(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+all:  $(LIBFILE) $(BINFILES)
 
 
+$(LIBFILE): $(OBJFILES)
+	$(AR) -cru $(LIBFILE) $(OBJFILES)
+	$(RANLIB) $(LIBFILE)
+
+$(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../rnn/rnnlm.a
 
 # Rule below would expand to, e.g.:
-# ../base/kaldi-base.a:
-# 	make -c ../base kaldi-base.a
-# -c option to make is same as changing directory.
+# # ../base/kaldi-base.a:
+# #       make -c ../base kaldi-base.a
+# # -c option to make is same as changing directory.
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 
@@ -34,7 +35,6 @@ test: $(TESTFILES)
 
 .valgrind: $(TESTFILES)
 
-
 depend:
 	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
 
@@ -42,4 +42,3 @@ depend:
 #.depend.mk: depend
 
 -include .depend.mk
-

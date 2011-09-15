@@ -6,7 +6,8 @@ include ../kaldi.mk
 
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
            lattice-lmrescore lattice-scale lattice-union lattice-to-post \
-           lattice-determinize lattice-oracle string-to-lattice
+           lattice-determinize lattice-oracle string-to-lattice lattice-rmali \
+           lattice-compose
 
 OBJFILES =
 

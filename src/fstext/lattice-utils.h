@@ -134,12 +134,21 @@ inline vector<vector<double> > AcousticLatticeScale(double acwt) {
   return ans;
 }
 
-inline vector<vector<double> > GraphLatticeScale(double acwt) {
+inline vector<vector<double> > GraphLatticeScale(double lmwt) {
   vector<vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
-  ans[0][0] = acwt;
+  ans[0][0] = lmwt;
   ans[1][1] = 1.0;
+  return ans;
+}
+
+inline vector<vector<double> > LatticeScale(double lmwt, double acwt) {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = lmwt;
+  ans[1][1] = acwt;
   return ans;
 }
 
@@ -155,6 +164,19 @@ template<class Weight, class ScaleFloat>
 void ScaleLattice(
     const vector<vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst);
+
+/// Removes state-level alignments (the strings that are
+/// part of the weights).
+template<class Weight, class Int>
+void RemoveAlignmentsFromCompactLattice(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst);
+
+/// Returns true if lattice has alignments, i.e. it has
+/// any nonempty strings inside its weights.
+template<class Weight, class Int>
+bool CompactLatticeHasAlignment(
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &fst);
+
 
 /// Class LatticeToStdMapper maps a normal arc (StdArc)
 /// to a LatticeArc by putting the StdArc weight as the first

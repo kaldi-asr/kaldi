@@ -50,7 +50,7 @@ model=$srcdir/final.mdl
 
 
 mkdir -p $dir
-cp $srcdir/{tree,final.mdl} $dir || exit 1;  # Create copy of the tree and model...
+cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;  # Create copy of the tree and model and occs...
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 

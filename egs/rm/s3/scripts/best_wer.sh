@@ -17,5 +17,7 @@
 
 # To be run from one directory above this script.
 
-grep WER $* | \
-  awk '{e=e+$4; n=n+$6; i=i+$7; d=d+$9; s=s+$11;} END{ printf("%%WER %f [ %d / %d, %d ins, %d del, %d sub ]\n", (100.0*e)/n, e, n, i, d, s); }' 
+perl -e 'while(<>){ 
+    if (m/WER (\S+)/ && !defined $bestwer || $bestwer > $1){ $bestwer = $1; $bestline=$_; }}
+   if (defined $bestline){ print $bestline; } '
+
