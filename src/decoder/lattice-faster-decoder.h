@@ -912,7 +912,7 @@ class LatticeFasterDecoder {
       e_tail = e->tail;
       toks_.Delete(e);
     }
-    toks_.clear();
+    toks_.Clear();
   }
   
   void ClearActiveTokens() { // a cleanup routine, at utt end/begin

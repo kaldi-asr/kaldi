@@ -27,7 +27,13 @@ $(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ..
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(BINFILES)
+	rm *.o *.a $(TESTFILES) $(BINFILES)
+
+test: $(TESTFILES)
+	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	echo Tests succeeded
+
+.valgrind: $(TESTFILES)
 
 depend:
 	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
