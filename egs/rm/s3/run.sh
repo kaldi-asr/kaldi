@@ -117,7 +117,6 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode
 sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl}
 local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode
 
-local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_nofmllr exp/sgmm4f/decode exp/tri3d/decode
 
 # Some system combination experiments (just compose lattices).
 local/decode_combine.sh steps/decode_combine.sh exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode
