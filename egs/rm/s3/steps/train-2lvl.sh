@@ -51,7 +51,7 @@ mingauss=3           # minimum size of codebook
 init_style=$8        # (0, init-tied-codebooks) (1, tied-lbg)
 
 rho_stats=$9         # set to > 0 to activate prop/interp of suff. stats. (weights only)
-rho_iters=${10}      # set to > 0 to actiavte smoothing of new model with prior model (weights only)
+rho_iters=${10}      # set to > 0 to activate smoothing of new model with prior model (weights only)
 
 emiters=5            # interim EM iterations for lbg-style initialization
 
@@ -107,7 +107,13 @@ fi
 
 
 echo "Initializing model"
-tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+
+ubmnames=
+for (( x=0; x < max_leaves_first; x++ )); do
+  ubmnames="$ubmnames $dir/ubm-full.$x"
+done
+
+tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $ubmnames $dir/1.mdl 2> $dir/init_model.log || exit 1;
 
 rm $dir/treeacc
 

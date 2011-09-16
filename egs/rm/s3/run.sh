@@ -55,7 +55,7 @@ local/decode.sh steps/decode_deltas.sh exp/tri1/decode
 
 # align tri1
 steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
-    $data/train data/lang exp/tri1 exp/tri1_ali
+    data/train data/lang exp/tri1 exp/tri1_ali
 
 # train tri2a [delta+delta-deltas]
 steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
