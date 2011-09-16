@@ -21,9 +21,11 @@
 # exp/mono), supplied as an argument, which is assumed to be built using
 # the same type of features.
 
-if [ $# != 10 ]; then
-   echo "Usage: steps/train-2lvl-5.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> <num-codebooks> <num-gaussians> <num-tree-leaves> <init-style> <rho-stats> <rho-reest>"
-   echo " e.g.: steps/train-2lvl-5.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl-5 100 1024 1800 0 0 0"
+# this training scripts assumes tri1 alignments to start from
+
+if [ $# != 11 ]; then
+   echo "Usage: steps/train_2lvl_full.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> <num-codebooks> <num-gaussians> <num-tree-leaves> <init-type> <smooth-type> <rho-stats> <rho-reest>"
+   echo " e.g.: steps/train_2lvl_full.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 100 1024 1800 0 1 10 0"
    exit 1;
 fi
 
@@ -50,15 +52,27 @@ mingauss=3           # minimum size of codebook
 
 init_style=$8        # (0, init-tied-codebooks) (1, tied-lbg)
 
-rho_stats=$9   # set to > 0 to activate prop/interp of suff. stats. (weights only)
-rho_iters=${10}    # set to > 0 to actiavte smoothing of new model with prior model (weights only)
+smooth_type=$9       # (0, regular Interpolate1) (1, preserve-counts, Interpolate2)
+rho_stats=${10}      # set to > 0 to activate smoothing of suff. stats. (weights only)
+rho_iters=${11}      # set to > 0 to actiavte smoothing of new model with prior model (weights only)
 
-ctx_width=5
+emiters=5            # interim EM iterations for lbg-style initialization
 
+# interpolation between iterations requested?
 psmoothing=""
-
 if [ "$rho_iters" != "0" ]; then
-  psmoothing="--smoothing-weight=$rho_iters --interpolate-weights"
+  psmoothing="--interpolation-weight=$rho_iters --interpolate-weights"
+fi
+
+# smothing of stats requested?
+ssmoothing=""
+if [ "$smooth_type" == "0" ]; then
+  ssmoothing=""
+elif [ "$smooth_type" == "1" ]; then
+  ssmoothing="--preserve-counts"
+else
+  echo "Invalid smoothing type $smooth_type"
+  exit 1
 fi
 
 mkdir -p $dir
@@ -70,7 +84,7 @@ scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/trai
   || exit 1;
 
 echo "Accumulating tree stats"
-acc-tree-stats --context-width=$ctx_width --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
+acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
    ark:$alidir/ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
@@ -83,12 +97,11 @@ compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compil
 scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split \
     > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
-# build tree, make sure to disable leaf clustering
+# build the 2-lvl tree, make sure to not cluster the leaves!
 echo "Building tree"
 build-tree-two-level --verbose=1 --cluster-leaves=false \
     --max-leaves_first=$max_leaves_first \
 	--max-leaves_second=$max_leaves_second \
-	--context-width=$ctx_width \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $lang/topo $dir/tree $dir/tree.map 2> $dir/train_tree.log || exit 1;
 
@@ -99,7 +112,7 @@ if [ $init_style == 0 ]; then
     $dir/tree $dir/treeacc $dir/ubm-full $dir/tree.map 2> $dir/init-tied-codebooks.err > $dir/init-tied-codebooks.out || exit 1;
 elif [ $init_style == 1 ]; then
   echo "Initializing codebooks by LBG on (ali<->features)"
-  tied-lbg --full=true --min-gauss=$mingauss --max-gauss=$totgauss --remove-low-count-gaussians=false --interim-em=5 \
+  tied-lbg --full=true --min-gauss=$mingauss --max-gauss=$totgauss --remove-low-count-gaussians=false --interim-em=$emiters \
     $alidir/tree $dir/tree $lang/topo "$feats" ark:$alidir/ali $dir/ubm-full $dir/tree.map 2> $dir/tied-lbg.err > $dir/tied-lbg.out || exit 1;
 else
   echo "Invalid codebook initialization: $init_style"
@@ -108,16 +121,7 @@ fi
 
 
 echo "Initializing model"
-if [ $max_leaves_first -lt 10 ]; then
-  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.? $dir/1.mdl 2> $dir/init_model.log || exit 1;
-elif [ $max_leaves_first -lt 100 ]; then
-  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??} $dir/1.mdl 2> $dir/init_model.log || exit 1;
-elif [ $max_leaves_first -lt 1000 ]; then
-  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
-else
-  echo "Error: Adapt script to allow more than 1000 codebooks!"
-  exit 1;
-fi
+tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
 
 rm $dir/treeacc
 
@@ -146,7 +150,7 @@ while [ $x -lt $numiters ]; do
 
    # suff. stats smoothing?
    if [ "$rho_stats" != "0" ]; then
-	 smooth-stats-full --rho=$rho_stats $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp 2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
+	 smooth-stats-full $ssmoothing --rho=$rho_stats $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp 2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
 	 mv $dir/$x.acc.tmp $dir/$x.acc
    fi
 

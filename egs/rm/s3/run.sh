@@ -62,6 +62,27 @@ steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
 # decode tri2a
 local/decode.sh steps/decode_deltas.sh exp/tri2a/decode
 
+# Train a classic semi-continuous model using {diag,full} densities
+# the numeric parameters following exp/tri1-semi are: 
+#   number of gaussians, something like 4096 for diag, 2048 for full
+#   number of tree leaves 
+#   type of suff-stats interpolation (0 regular, 1 preserves counts)
+#   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
+#   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
+steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1-semi 4096 1800 1 10 0
+local/decode.sh steps/decode_tied_full.sh exp/tri1-semi
+
+# Train a 2-lvl semi-continuous model using {diag,full} densities
+# the numeric parameters following exp/tri1-2lvl are:
+#   number of codebooks, typically 1-3 times number of phones, the more, the faster
+#   total number of gaussians, something like 2048 for full, 4096 for diag
+#   number of tree leaves
+#   type of suff-stats interpolation (0 regular, 1 preserves counts)
+#   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
+#   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
+steps/train_2lvl_full.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 104 2048 2500 0 1 10 0
+local/decode.sh steps/decode_tied_full.sh exp/tri1-2lvl
+
 # train tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh data/train data/lang exp/tri1_ali exp/tri2b
 # decode tri2b
