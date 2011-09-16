@@ -34,7 +34,8 @@ int main(int argc, char *argv[]) {
         "Usage: sgmm-est [options] <model-in> <stats-in> <model-out>\n";
 
     bool binary_write = false;
-    std::string update_flags_str = "vMNwcS";
+    std::string update_flags_str = "vMNwcSt";
+    std::string write_flags_str = "gsnu";
     kaldi::TransitionUpdateConfig tcfg;
     kaldi::MleAmSgmmOptions sgmm_opts;
     int32 split_substates = 0;
@@ -65,7 +66,9 @@ int main(int argc, char *argv[]) {
     po.Register("write-occs", &occs_out_filename, "File to write state "
                 "occupancies to.");
     po.Register("update-flags", &update_flags_str, "Which SGMM parameters to "
-                "update: subset of vMNwcS.");
+                "update: subset of vMNwcSt.");
+    po.Register("write-flags", &write_flags_str, "Which SGMM parameters to "
+                "write: subset of gsnu");
     tcfg.Register(&po);
     sgmm_opts.Register(&po);
 
@@ -78,8 +81,11 @@ int main(int argc, char *argv[]) {
         stats_filename = po.GetArg(2),
         model_out_filename = po.GetArg(3);
 
-    kaldi::SgmmUpdateFlagsType acc_flags = StringToSgmmUpdateFlags(update_flags_str);
-
+    kaldi::SgmmUpdateFlagsType update_flags =
+        StringToSgmmUpdateFlags(update_flags_str);
+    kaldi::SgmmWriteFlagsType write_flags =
+        StringToSgmmWriteFlags(write_flags_str);
+    
     AmSgmm am_sgmm;
     TransitionModel trans_model;
     {
@@ -98,7 +104,7 @@ int main(int argc, char *argv[]) {
       sgmm_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
-    {  // Update transition model.
+    if (update_flags & kSgmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
       trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
@@ -110,7 +116,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update SGMM.
       kaldi::MleAmSgmmUpdater sgmm_updater(sgmm_opts);
-      sgmm_updater.Update(sgmm_accs, &am_sgmm, acc_flags);
+      sgmm_updater.Update(sgmm_accs, &am_sgmm, update_flags);
     }
 
     if (split_substates != 0 || !occs_out_filename.empty()) {  // get state occs
@@ -147,7 +153,7 @@ int main(int argc, char *argv[]) {
     {
       Output os(model_out_filename, binary_write);
       trans_model.Write(os.Stream(), binary_write);
-      am_sgmm.Write(os.Stream(), binary_write, kSgmmWriteAll);
+      am_sgmm.Write(os.Stream(), binary_write, write_flags);
     }
     
     

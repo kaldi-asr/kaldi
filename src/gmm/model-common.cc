@@ -26,6 +26,7 @@ GmmFlagsType StringToGmmFlags(std::string str) {
       case 'm': flags |= kGmmMeans; break;
       case 'v': flags |= kGmmVariances; break;
       case 'w': flags |= kGmmWeights; break;
+      case 't': flags |= kGmmTransitions; break;
       case 'a': flags |= kGmmAll; break;
       default: KALDI_ERR << "Invalid element " << CharToString(*c)
                          << " of GmmFlagsType option string "
@@ -53,9 +54,28 @@ SgmmUpdateFlagsType StringToSgmmUpdateFlags(std::string str) {
       case 'S': flags |= kSgmmCovarianceMatrix; break;
       case 'c': flags |= kSgmmSubstateWeights; break;
       case 'N': flags |= kSgmmSpeakerProjections; break;
+      case 't': flags |= kSgmmTransitions; break;
       case 'a': flags |= kSgmmAll; break;
       default: KALDI_ERR << "Invalid element " << CharToString(*c)
                          << " of SgmmUpdateFlagsType option string "
+                         << str;
+    }
+  }
+  return flags;
+}
+
+
+SgmmUpdateFlagsType StringToSgmmWriteFlags(std::string str) {
+  SgmmWriteFlagsType flags = 0;
+  for (const char *c = str.c_str(); *c != '\0'; c++) {
+    switch (*c) {
+      case 'g': flags |= kSgmmGlobalParams; break;
+      case 's': flags |= kSgmmStateParams; break;
+      case 'n': flags |= kSgmmNormalizers; break;
+      case 'u': flags |= kSgmmBackgroundGmms; break;
+      case 'a': flags |= kSgmmAll; break;
+      default: KALDI_ERR << "Invalid element " << CharToString(*c)
+                         << " of SgmmWriteFlagsType option string "
                          << str;
     }
   }

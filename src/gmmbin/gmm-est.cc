@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;
     BaseFloat power = 0.2;
+    std::string update_flags_str = "mvwt";
     std::string occs_out_filename;
 
 
@@ -49,11 +50,13 @@ int main(int argc, char *argv[]) {
     po.Register("mix-down", &mixdown, "If nonzero, merge mixture components to this "
                 "target.");
     po.Register("power", &power, "If mixing up, power to allocate Gaussians to"
-        " states.");
+                " states.");
+    po.Register("update-flags", &update_flags_str, "Which GMM parameters to "
+                "update: subset of mvwt.");
     po.Register("perturb-factor", &perturb_factor, "While mixing up, perturb "
-        "means by standard deviation times this factor.");
+                "means by standard deviation times this factor.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
-        "occupancies to.");
+                "occupancies to.");
     tcfg.Register(&po);
     gmm_opts.Register(&po);
 
@@ -64,6 +67,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    kaldi::GmmFlagsType update_flags =
+        StringToGmmFlags(update_flags_str);    
 
     std::string model_in_filename = po.GetArg(1),
         stats_filename = po.GetArg(2),
@@ -87,7 +92,7 @@ int main(int argc, char *argv[]) {
       gmm_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
-    {  // Update transition model.
+    if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
       trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
@@ -97,7 +102,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, kGmmAll, &am_gmm, &objf_impr, &count);
+      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags, &am_gmm, &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";

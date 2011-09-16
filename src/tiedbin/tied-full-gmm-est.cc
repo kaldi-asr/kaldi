@@ -35,13 +35,16 @@ int main(int argc, char *argv[]) {
         "e.g.: tied-full-gmm-est 1.mdl 1.acc 2.mdl\n";
 
     bool binary_write = false;
+    std::string update_flags_str = "mvwt";
     TransitionUpdateConfig tcfg;
     std::string occs_out_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("write-occs", &occs_out_filename, "File to write state "
-        "occupancies to.");
+                "occupancies to.");
+    po.Register("update-flags", &update_flags_str, "Which GMM parameters to "
+                "update: subset of mvwt.");
     tcfg.Register(&po);
     gmm_opts.Register(&po);
     tied_opts.Register(&po);
@@ -58,6 +61,9 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    kaldi::GmmFlagsType update_flags =
+        StringToGmmFlags(update_flags_str);    
+    
     std::string model_in_filename = po.GetArg(1),
         stats_filename = po.GetArg(2),
         model_out_filename = po.GetArg(3);
@@ -80,7 +86,7 @@ int main(int argc, char *argv[]) {
       gmm_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
-    {  // Update transition model.
+    if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
       trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
@@ -90,7 +96,8 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, kGmmAll, &am_gmm, &objf_impr, &count);
+      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, update_flags,
+                             &am_gmm, &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";

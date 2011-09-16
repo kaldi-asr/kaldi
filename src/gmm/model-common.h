@@ -22,10 +22,11 @@
 namespace kaldi {
 
 enum GmmUpdateFlags {
-  kGmmMeans     = 0x001,  // m
-  kGmmVariances = 0x002,  // v
-  kGmmWeights   = 0x004,  // w
-  kGmmAll       = 0x007  // a
+  kGmmMeans       = 0x001,  // m
+  kGmmVariances   = 0x002,  // v
+  kGmmWeights     = 0x004,  // w
+  kGmmTransitions = 0x008,  // t ... not really part of GMM.
+  kGmmAll       = 0x00F  // a
 };
 typedef uint16 GmmFlagsType;  ///< Bitwise OR of the above flags.
 /// Convert string which is some subset of "mSwa" to
@@ -43,7 +44,8 @@ enum SgmmUpdateFlags {  /// The letters correspond to the variable names.
   kSgmmCovarianceMatrix   = 0x008,  /// S
   kSgmmSubstateWeights    = 0x010,  /// c
   kSgmmSpeakerProjections = 0x020,  /// N
-  kSgmmAll                = 0x03F  /// a (won't normally use this).
+  kSgmmTransitions        = 0x040,  /// t .. not really part of SGMM.
+  kSgmmAll                = 0x07F   /// a (won't normally use this).
 };
 
 typedef uint16 SgmmUpdateFlagsType;  ///< Bitwise OR of the above flags.
@@ -59,7 +61,7 @@ enum SgmmWriteFlags {
 
 typedef uint16 SgmmWriteFlagsType;  ///< Bitwise OR of the above flags.
 
-SgmmUpdateFlagsType StringToSgmmWriteFlags(std::string str);
+SgmmWriteFlagsType StringToSgmmWriteFlags(std::string str);
 
 }  // End namespace kaldi
 
