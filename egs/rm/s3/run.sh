@@ -57,6 +57,9 @@ local/decode.sh steps/decode_deltas.sh exp/tri1/decode
 steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
     data/train data/lang exp/tri1 exp/tri1_ali
 
+# 2level full-cov training...
+steps/train-2lvl.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 100 1024 1800 0 0 0
+
 # train tri2a [delta+delta-deltas]
 steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
 # decode tri2a
@@ -93,16 +96,26 @@ steps/train_lda_et.sh data/train data/lang exp/tri1_ali exp/tri2c
 scripts/mkgraph.sh data/lang_test exp/tri2c exp/tri2c/graph
 local/decode.sh steps/decode_lda_et.sh exp/tri2c/decode
 
-# Align all data with LDA+MLLT system (tri2b) and do LDA+MLLT+SAT
+# Align all data with LDA+MLLT system (tri2b)
 steps/align_lda_mllt.sh --graphs "ark,s,cs:gunzip -c exp/tri2b/graphs.fsts.gz|" \
    data/train data/lang exp/tri2b exp/tri2b_ali
+
+#  Do MMI on top of LDA+MLLT.
+steps/train_lda_etc_mmi.sh data/train data/lang exp/tri2b_ali exp/tri3a &
+local/decode.sh steps/decode_lda_mllt.sh exp/tri3a/decode
+
+# Do LDA+MLLT+SAT
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d
-scripts/mkgraph.sh data/lang_test exp/tri3d exp/tri3d/graph
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d/decode
+
 
 # Align all data with LDA+MLLT+SAT system (tri3d)
 steps/align_lda_mllt_sat.sh --graphs "ark,s,cs:gunzip -c exp/tri3d/graphs.fsts.gz|" \
     data/train data/lang exp/tri3d exp/tri3d_ali
+
+# MMI on top of that.
+steps/train_lda_etc_mmi.sh data/train data/lang exp/tri3d_ali exp/tri4a &
+local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4a/decode
 
 # Try another pass on top of that.
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri3d_ali exp/tri4d

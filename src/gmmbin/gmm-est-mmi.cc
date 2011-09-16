@@ -29,24 +29,20 @@ int main(int argc, char *argv[]) {
     MmieDiagGmmOptions mmi_opts;
 
     const char *usage =
-        "Accumulate stats for MMI discriminative training.\n"
+        "Do EBW update with I-smoothing for MMI discriminative training.\n"
         "Usage:  gmm-est-mmi [options] <model-in> <stats-num-in> <stats-den-in> <model-out>\n"
         "e.g.: gmm-est 1.mdl num.acc den.acc 2.mdl\n";
 
     bool binary_write = false;
     //TransitionUpdateConfig tcfg;
-    BaseFloat ebwe = 2.0;
-    BaseFloat tau = 100.0;
     std::string occs_out_filename;
-
+    std::string update_flags_str = "mvwt";
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode"
                 "target.");
-    po.Register("tau", &tau, "Tau i-smoothing"
-        " constant.");
-    po.Register("ebw_e", &ebwe, "Ebw_e "
-        "constant.");
+    po.Register("update-flags", &update_flags_str, "Which GMM parameters to "
+                "update: subset of mvwt.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
         "occupancies to.");
     //tcfg.Register(&po);
@@ -54,11 +50,13 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
+    kaldi::GmmFlagsType update_flags =
+        StringToGmmFlags(update_flags_str);    
 
     std::string model_in_filename = po.GetArg(1),
         num_stats_filename = po.GetArg(2),
@@ -95,13 +93,20 @@ int main(int argc, char *argv[]) {
 
    
     {  // Update GMMs.
-      BaseFloat objf_impr, count;
-      MmieAmDiagGmmUpdate(mmi_opts, mmi_accs, kGmmAll, &am_gmm, &objf_impr, &count);
-      KALDI_LOG << "GMM update: average " << (objf_impr/count)
-                << " objective function improvement per frame over "
-                <<  (count) <<  " frames.";
-    }
+      BaseFloat auxf_impr_gauss, auxf_impr_weights, count;
+      int32 num_floored;
+      MmieAmDiagGmmUpdate(mmi_opts, mmi_accs, update_flags, &am_gmm,
+                          &auxf_impr_gauss, &auxf_impr_weights, &count,
+                          &num_floored);
+      KALDI_LOG << "Num count " << mmi_accs.TotNumCount() << ", den count "
+                << mmi_accs.TotDenCount();
+      KALDI_LOG << "Overall, " << (auxf_impr_gauss/count)
+                << " auxf impr/frame (Gauss) " << (auxf_impr_weights/count)
+                << " (weights), " << ((auxf_impr_gauss+auxf_impr_weights)/count)
+                << " (total), over " << count << " frames; floored D for "
+                << num_floored << " Gaussians.";
 
+    }
 
     {
       Output ko(model_out_filename, binary_write);

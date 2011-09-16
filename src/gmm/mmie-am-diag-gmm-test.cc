@@ -116,7 +116,7 @@ void UnitTestMmieAmDiagGmm() {
     size_t iteration = 0;
     size_t maxiterations = 2;
     MmieDiagGmmOptions config;
-    BaseFloat obj, count;
+    BaseFloat auxf, count;
     while (iteration < maxiterations) {
       std::cout << "Iteration :" << iteration << " Num Gauss: " <<  gmm->NumGauss() << '\n';
 
@@ -146,7 +146,8 @@ void UnitTestMmieAmDiagGmm() {
      }
 
      /// get 2 mixtures from 1
-     MleDiagGmmUpdate(config, num, flags, gmm, &obj, &count);
+     MleDiagGmmUpdate(config, num, flags, gmm, &auxf, &count);
+
      /// Split gaussian
      if (iteration < maxiterations -1) gmm->Split(gmm->NumGauss() * 2, 0.001);
 
@@ -214,7 +215,10 @@ void UnitTestMmieAmDiagGmm() {
     am_gmm.GetGaussianMean(0,0,&tmp_mean);
     std::cout << "Mean of 1st Gmm before: " << tmp_mean << '\n';
 
-    MmieAmDiagGmmUpdate(config, mmi_am_accs, flags, &am_gmm, &obj, &count);
+    BaseFloat auxf_gauss, auxf_weight;
+    int32 num_floored;
+    MmieAmDiagGmmUpdate(config, mmi_am_accs, flags, &am_gmm,
+                        &auxf_gauss, &auxf_weight, &count, &num_floored);
     am_gmm.GetGaussianMean(0,0,&tmp_mean);
     std::cout << "Mean of 1st Gmm after: " << tmp_mean << '\n';
 

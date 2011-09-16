@@ -54,6 +54,8 @@ class MmieAccumAmDiagGmm {
   AccumDiagGmm& GetDenAcc(int32 index) const;
 
   void CopyToNumAcc(int32 index);
+  BaseFloat TotNumCount();
+  BaseFloat TotDenCount();
  private:
   /// MMIE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> num_accumulators_;
@@ -68,10 +70,13 @@ class MmieAccumAmDiagGmm {
 /// for computing the maximum-likelihood estimates of the parameters of
 /// an acoustic model that uses diagonal Gaussian mixture models as emission densities.
 void MmieAmDiagGmmUpdate(const MmieDiagGmmOptions &config, 
-            const MmieAccumAmDiagGmm &mmieamdiaggmm_acc,
-            GmmFlagsType flags, 
-                         AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
-                         BaseFloat *count_out);
+                         const MmieAccumAmDiagGmm &mmieamdiaggmm_acc,
+                         GmmFlagsType flags, 
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *auxf_change_gauss,
+                         BaseFloat *auxf_change_weight,
+                         BaseFloat *count_out,
+                         int32 *num_floored_out);
 
 }  // End namespace kaldi
 

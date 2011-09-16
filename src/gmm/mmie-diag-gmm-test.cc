@@ -173,7 +173,7 @@ void UnitTestEstimateMmieDiagGmm() {
 
   
    mmie_gmm.SubtractAccumulatorsISmoothing(num, den, config);
-   BaseFloat obj, count;
+   BaseFloat auxf_gauss, auxf_weight, count;
    //Vector<double> mean_hlp(dim);
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
    //std::cout << "MEANX: " << mean_hlp << '\n'; 
@@ -187,8 +187,9 @@ void UnitTestEstimateMmieDiagGmm() {
    Input ki("tmp_stats", &binary_in);
    mmie_gmm.Read(ki.Stream(), binary_in, false);  // false = not adding.
 
-
-   mmie_gmm.Update(config, flags, gmm, &obj, &count);
+   int32 num_floored;
+   mmie_gmm.Update(config, flags, gmm, &auxf_gauss, &auxf_weight, &count,
+                   &num_floored);
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
    //std::cout << "MEANY: " << mean_hlp << '\n'; 
    std::cout << "MEANY: " << gmm->weights() << '\n'; 

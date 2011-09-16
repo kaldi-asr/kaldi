@@ -165,31 +165,55 @@ void MmieAccumAmDiagGmm::WriteDen(std::ostream& out_stream, bool binary) const {
 
 
 void MmieAmDiagGmmUpdate(const MmieDiagGmmOptions &config,
-            const MmieAccumAmDiagGmm &mmieamdiaggmm_acc,
-            GmmFlagsType flags,
-            AmDiagGmm *am_gmm,
-            BaseFloat *obj_change_out,
-            BaseFloat *count_out) {
+                         const MmieAccumAmDiagGmm &mmieamdiaggmm_acc,
+                         GmmFlagsType flags,
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *auxf_change_gauss,
+                         BaseFloat *auxf_change_weights,
+                         BaseFloat *count_out,
+                         int32 *num_floored_out) {
   KALDI_ASSERT(am_gmm != NULL);
   KALDI_ASSERT(mmieamdiaggmm_acc.NumAccs() == am_gmm->NumPdfs());
-  if (obj_change_out != NULL) *obj_change_out = 0.0;
+  if (auxf_change_gauss != NULL) *auxf_change_gauss = 0.0;
+  if (auxf_change_weights != NULL) *auxf_change_weights = 0.0;
   if (count_out != NULL) *count_out = 0.0;
-  BaseFloat tmp_obj_change, tmp_count;
-  BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
-            *p_count   = (count_out != NULL) ? &tmp_count : NULL;
+  if (num_floored_out != NULL) *num_floored_out = 0.0;
+  BaseFloat tmp_auxf_change_gauss, tmp_auxf_change_weights, tmp_count;
+  int32 tmp_num_floored;
 
   MmieAccumDiagGmm mmie_gmm;
 
   for (size_t i = 0; i < mmieamdiaggmm_acc.NumAccs(); i++) {
      mmie_gmm.Resize(am_gmm->GetPdf(i).NumGauss(), am_gmm->GetPdf(i).Dim(), flags);
-     mmie_gmm.SubtractAccumulatorsISmoothing(mmieamdiaggmm_acc.GetNumAcc(i), mmieamdiaggmm_acc.GetDenAcc(i), config);
-     mmie_gmm.Update(config, flags, &(am_gmm->GetPdf(i)), p_obj, p_count);
-
-    if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
-    if (count_out != NULL) *count_out += tmp_count;
+     mmie_gmm.SubtractAccumulatorsISmoothing(mmieamdiaggmm_acc.GetNumAcc(i),
+                                             mmieamdiaggmm_acc.GetDenAcc(i),
+                                             config);
+     mmie_gmm.Update(config, flags, &(am_gmm->GetPdf(i)),
+                     &tmp_auxf_change_gauss, &tmp_auxf_change_weights,
+                     &tmp_count, &tmp_num_floored);
+     if (auxf_change_gauss != NULL) *auxf_change_gauss += tmp_auxf_change_gauss;
+     if (auxf_change_weights != NULL) *auxf_change_weights += tmp_auxf_change_weights;
+     if (count_out != NULL) *count_out += tmp_count;
+     if (num_floored_out != NULL) *num_floored_out += tmp_num_floored;
   }
-
 }
+
+BaseFloat MmieAccumAmDiagGmm::TotNumCount() {
+  BaseFloat ans = 0.0;
+  for (size_t i = 0; i < num_accumulators_.size(); i++)
+    if (num_accumulators_[i])
+      ans += num_accumulators_[i]->occupancy().Sum();
+  return ans;
+}
+
+BaseFloat MmieAccumAmDiagGmm::TotDenCount() {
+  BaseFloat ans = 0.0;
+  for (size_t i = 0; i < den_accumulators_.size(); i++)
+    if (den_accumulators_[i])
+      ans += den_accumulators_[i]->occupancy().Sum();
+  return ans;
+}
+
 
 
 }  // namespace kaldi

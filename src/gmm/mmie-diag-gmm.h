@@ -43,8 +43,6 @@ struct MmieDiagGmmOptions : public MleDiagGmmOptions {
     std::string module = "MmieDiagGmmOptions: ";
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
-    po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
-                 module+"Minimum occupancy to update a Gaussian.");
     po->Register("min-variance", &min_variance,
                  module+"Variance floor (absolute variance).");
     po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
@@ -95,14 +93,29 @@ class MmieAccumDiagGmm {
                                       const AccumDiagGmm& den_acc,
                                       const MmieDiagGmmOptions& opts);
 
-
-  /// MMIe update
+  /// Does EBW update on one diagonal Gaussian; returns true if resulting
+  /// variance was all positive.
+  bool EBWUpdateGaussian(
+      BaseFloat D,
+      GmmFlagsType flags,
+      const VectorBase<double> &orig_mean,
+      const VectorBase<double> &orig_var,
+      const VectorBase<double> &x_stats,
+      const VectorBase<double> &x2_stats,
+      double occ,
+      VectorBase<double> *mean,
+      VectorBase<double> *var,
+      double *auxf_impr) const;
+  
+  /// MMIE update
   void Update(const MmieDiagGmmOptions &config,
-                                      GmmFlagsType flags,
-                                      DiagGmm *gmm,
-                                      BaseFloat *obj_change_out,
-                                      BaseFloat *count_out) const;
-
+              GmmFlagsType flags,
+              DiagGmm *gmm,
+              BaseFloat *auxf_change_out_gauss, // gets set to EBW auxf impr.
+              BaseFloat *auxf_change_out_weights, // auxf impr in weights auxf.
+              BaseFloat *count_out, // gets set to numerator count.
+              int32 *num_floored_out) const;
+  
 
 
   // Accessors
@@ -120,14 +133,15 @@ class MmieAccumDiagGmm {
   /// Flags corresponding to the accumulators that are stored.
   GmmFlagsType flags_;
 
-  /// Accumulators
-  /// (petr): we store the difference of mean and var; we keep occupancy for num and den and their difference 
+  /// Accumulators.
+  /// We store the difference of mean and var; we keep occupancy
+  /// for num and den and their difference (with I-smoothing)
   
-  Vector<double> num_occupancy_;
-  Vector<double> den_occupancy_;
-  Vector<double> occupancy_;
-  Matrix<double> mean_accumulator_;
-  Matrix<double> variance_accumulator_;
+  Vector<double> num_occupancy_; // Numerator occupancy
+  Vector<double> den_occupancy_; // Denominator occupancy
+  Vector<double> occupancy_; // Num-Den occupancy *plus I-smoothing*
+  Matrix<double> mean_accumulator_; // Sum of num-den+I-smooth stats.
+  Matrix<double> variance_accumulator_;  // Sum of num-den+I-smooth stats.
 
   //  BaseFloat ComputeD(const DiagGmm& old_gmm, int32 mix_index, BaseFloat ebw_e);
 

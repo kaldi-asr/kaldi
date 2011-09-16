@@ -150,11 +150,11 @@ inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
 /// a Gaussian mixture model.
 /// Update using the DiagGmm: exponential form
 void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
-            const AccumDiagGmm &diaggmm_acc,
-            GmmFlagsType flags,
-            DiagGmm *gmm,
-            BaseFloat *obj_change_out,
-            BaseFloat *count_out);
+                      const AccumDiagGmm &diaggmm_acc,
+                      GmmFlagsType flags,
+                      DiagGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out);
 
 /// Calc using the DiagGMM exponential form
 BaseFloat MlObjective(const DiagGmm& gmm,

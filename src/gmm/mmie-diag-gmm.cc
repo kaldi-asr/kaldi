@@ -156,10 +156,11 @@ void MmieAccumDiagGmm::Scale(BaseFloat f, GmmFlagsType flags) {
 }
 
 
-void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
-                            const AccumDiagGmm& den_acc,
-                            const MmieDiagGmmOptions& opts){
-
+void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(
+    const AccumDiagGmm& num_acc,
+    const AccumDiagGmm& den_acc,
+    const MmieDiagGmmOptions& opts){
+  
   //KALDI_ASSERT(num_acc.NumGauss() == den_acc.NumGauss && num_acc.Dim() == den_acc.Dim());
   //std::cout << "NumGauss: " << num_acc.NumGauss() << " " << den_acc.NumGauss() << " " << num_comp_ << '\n';
   KALDI_ASSERT(num_acc.NumGauss() == num_comp_ && num_acc.Dim() == dim_);
@@ -169,173 +170,204 @@ void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_ac
   // no subracting occs, just copy them to local vars
   num_occupancy_.CopyFromVec(num_acc.occupancy());
   den_occupancy_.CopyFromVec(den_acc.occupancy());
+  occupancy_.CopyFromVec(num_occupancy_);
+  occupancy_.AddVec(-1.0, den_occupancy_);
 
   // Copy nums to private vars
   mean_accumulator_.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
   variance_accumulator_.CopyFromMat(num_acc.variance_accumulator(), kNoTrans);
 
-  /*
-  std::cout << "OCC: " << num_occupancy_.Dim() << '\n';
-  num_occupancy_(0) = 10;
-  num_occupancy_(1) = 20;
-  mean_accumulator_(0,0) = 2;
-  mean_accumulator_(0,1) = 3;
-  mean_accumulator_(1,0) = 4;
-  mean_accumulator_(1,1) = 5;
-  variance_accumulator_(0,0) = 2;
-  variance_accumulator_(0,1) = 3;
-  variance_accumulator_(1,0) = 4;
-  variance_accumulator_(1,1) = 5;
-  */
-
   // I- smoothing
   for (int32 g = 0; g < num_comp_; g++) {
     double occ = num_occupancy_(g);
-  //  std::cout << "M1: " << mean_accumulator_.Row(g) << '\n';
-  //  std::cout << "Occ: " << occ << '\n';
-    mean_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ, mean_accumulator_.Row(g));
-    variance_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ, variance_accumulator_.Row(g));
-  //  std::cout << "M2: " << mean_accumulator_.Row(g) << '\n';
-  //  std::cout << "M22: " << den_acc.mean_accumulator().Row(g) << '\n';
-
-  }
-
-  num_occupancy_.Add(opts.i_smooth_tau);
-  occupancy_.CopyFromVec(num_occupancy_);
-  occupancy_.AddVec(-1.0, den_occupancy_);
-
+    if (occ >= 0.0) {
+      occupancy_(g) += opts.i_smooth_tau; // Add I-smoothing to occupancy_, but
+      // *not* to num_occupancy_, which remains the original count before
+      // I-smoothing, and which we use to update the weights.
+      mean_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ,
+                                      mean_accumulator_.Row(g));
+      variance_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ,
+                                          variance_accumulator_.Row(g));
+    }
+  }  
   // Subtract den from smoothed num
   mean_accumulator_.AddMat(-1.0, den_acc.mean_accumulator(), kNoTrans);
-  variance_accumulator_.AddMat(-1.0, den_acc.variance_accumulator(), kNoTrans);
-
-  //for (int32 g = 0; g < num_comp_; g++) {
-  //  std::cout << "M3: " << mean_accumulator_.Row(g) << '\n';
-  //}
-  //std::cout << "Dim: " << mean_accumulator_.NumRows() << " " << mean_accumulator_.NumCols() << '\n';
+  variance_accumulator_.AddMat(-1.0, den_acc.variance_accumulator(), kNoTrans);  
 }
 
 
+bool MmieAccumDiagGmm::EBWUpdateGaussian(
+    BaseFloat D,
+    GmmFlagsType flags,
+    const VectorBase<double> &orig_mean,
+    const VectorBase<double> &orig_var,
+    const VectorBase<double> &x_stats,
+    const VectorBase<double> &x2_stats,
+    double occ,
+    VectorBase<double> *mean,
+    VectorBase<double> *var,
+    double *auxf_impr) const {
+  if (! (flags&(kGmmMeans|kGmmVariances)) || occ <= 0.0) { // nothing to do.
+    if (auxf_impr) *auxf_impr = 0.0;
+    mean->CopyFromVec(orig_mean);
+    var->CopyFromVec(orig_var);
+    return true; 
+  }    
+  KALDI_ASSERT(!( (flags&kGmmVariances) && !(flags&kGmmMeans)));
+  
+  mean->SetZero();
+  var->SetZero();
+  mean->AddVec(D, orig_mean);
+  var->AddVec2(D, orig_mean);
+  var->AddVec(D, orig_var);
+  mean->AddVec(1.0, x_stats);
+  var->AddVec(1.0, x2_stats);
+  BaseFloat scale = 1.0 / (occ + D);
+  mean->Scale(scale);
+  var->Scale(scale);
+  var->AddVec2(-1.0, *mean);
+
+  if (!(flags&kGmmVariances)) var->CopyFromVec(orig_var);
+  if (!(flags&kGmmMeans)) mean->CopyFromVec(orig_mean);
+  
+  if (var->Min() > 0.0) {
+    if (auxf_impr != NULL) {
+      // work out auxf improvement.  
+      BaseFloat old_auxf = 0.0, new_auxf = 0.0;
+      int32 dim = orig_mean.Dim();
+      for (int32 i = 0; i < dim; i++) {
+        BaseFloat mean_diff = (*mean)(i) - orig_mean(i);
+        old_auxf += (occ+D) * -0.5 * (log(orig_var(i)) +
+                                      ((*var)(i) + mean_diff*mean_diff)
+                                      / orig_var(i));
+        new_auxf += (occ+D) * -0.5 * (log((*var)(i)) + 1.0);
+      }
+      *auxf_impr = new_auxf - old_auxf;
+    }
+    return true;
+  } else return false;
+}
 
 
 void MmieAccumDiagGmm::Update(const MmieDiagGmmOptions &config,
-              GmmFlagsType flags,
-              DiagGmm *gmm,
-              BaseFloat *obj_change_out,
-              BaseFloat *count_out) const {
-
+                              GmmFlagsType flags,
+                              DiagGmm *gmm,
+                              BaseFloat *auxf_change_out_gauss,
+                              BaseFloat *auxf_change_out_weights,
+                              BaseFloat *count_out,
+                              int32 *num_floored_out) const {
   if (flags_ & ~flags)
     KALDI_ERR << "Flags in argument do not match the active accumulators";
 
-
+  if (auxf_change_out_gauss) *auxf_change_out_gauss = 0.0;
+  if (auxf_change_out_weights) *auxf_change_out_weights = 0.0;
+  if (count_out) *count_out = 0.0;
+  if (num_floored_out) *num_floored_out = 0;
+  
   KALDI_ASSERT(gmm->NumGauss() == (num_comp_));
   if (flags_ & kGmmMeans)
     KALDI_ASSERT(dim_ == mean_accumulator_.NumCols());
-
   
-      //Vector<double> hlp;
-     // hlp.CopyFromVec(num_occupancy_);
-     // hlp.AddVec(-1.0, den_occupancy_);
-
   int32 num_comp = num_comp_;
   int32 dim = dim_;
- 
+  
   // copy DiagGMM model and transform this to the normal case
-  DiagGmmNormal *diaggmmnormal = new DiagGmmNormal();
+  DiagGmmNormal diaggmmnormal;
   gmm->ComputeGconsts();
-  diaggmmnormal->CopyFromDiagGmm(*gmm);
-
-  // initialize D for all components
-  Vector<double> D(num_comp);
-  for (int32 g = 0; g < num_comp; g++)
-       D(g) = config.ebw_e * den_occupancy_(g) / 2; // E*y_den/2 where E = 2;
-
+  diaggmmnormal.CopyFromDiagGmm(*gmm);
+  
   // go over all components
   double occ;
   Vector<double> mean(dim), var(dim);
   for (int32 g = 0; g < num_comp; g++) {
-    occ = occupancy_(g) + D(g); // update occupancy score for given component
-            
-    while (1){
-          // update mean - MMIe
-          mean.CopyFromVec(diaggmmnormal->means_.Row(g));
-          //std::cout << "MEAN1: " << mean << '\n';
-          //std::cout << "D: " << D << '\n';
-          //std::cout << "Occ: " << occ << '\n';
-          mean.Scale(D(g));
-          mean.AddVec(1.0, mean_accumulator_.Row(g));
-          mean.Scale(1.0 / occ);
-          //std::cout << "U: " << mean << '\n';
-  
-          // update var - MMIe
-          //var.CopyFromVec(variance_accumulator_.Row(g));
-          var.CopyFromVec(diaggmmnormal->means_.Row(g));
-          var.ApplyPow(2.0);
-          var.AddVec(1.0, diaggmmnormal->vars_.Row(g));
-          var.Scale(D(g));
-          var.AddVec(1.0, variance_accumulator_.Row(g));
-          var.Scale(1.0 / occ);
-          var.AddVec2(-1.0, mean);
-          //std::cout << "g Min D: " << g << " " << var.Min() << '\n';
-          
-          // check D param
-          if (var.Min() > 0){
-            // good, we can update the GMM 
-            D(g) *= 2;
-            if ((flags & kGmmMeans) && !(flags & kGmmVariances)) {
-              // updating means but not vars.  
-              diaggmmnormal->means_.CopyRowFromVec(mean, g);
-              //std::cout << "MEAN2: " << mean << '\n';
-            }
-            if ((flags & kGmmMeans) && (flags & kGmmVariances)) {
-              // updating means and vars
-              diaggmmnormal->means_.CopyRowFromVec(mean, g);
-              diaggmmnormal->vars_.CopyRowFromVec(var, g);
-              //std::cout << "MEAN2: " << mean << '\n';
-            } 
-            // we are done
-            break;
+    double D = config.ebw_e * den_occupancy_(g) / 2; // E*y_den/2 where E = 2;
+    // We initialize to half the value of D that would be dicated by
+    // E; this is part of the strategy used to ensure that the value of
+    // D we use is at least twice the value that would ensure positive
+    // variances.
 
-          } else {
-            // small step
-            D(g) *= 1.1; 
-          }
+    occ = occupancy_(g);
 
-    } // while  
-  }   // for
-  // get sum of updated occupancies
-  double occ_sum = 0.0;
-  for (int32 g = 0; g < num_comp; g++){
-    occ = occupancy_(g) + D(g);
-    occ_sum += occ; 
+    int32 iter, max_iter = 100;
+    for (iter = 0; iter < max_iter; iter++) { // will normally break the first time.
+      if (EBWUpdateGaussian(D, flags,
+                            diaggmmnormal.means_.Row(g),
+                            diaggmmnormal.vars_.Row(g),
+                            mean_accumulator_.Row(g),
+                            variance_accumulator_.Row(g),
+                            occ,
+                            &mean,
+                            &var,
+                            NULL)) {
+        // Succeeded in getting all +ve vars at this value of D.
+        // So double D and commit changes.
+        D *= 2.0;
+        double auxf_impr = 0.0;
+        EBWUpdateGaussian(D, flags,
+                          diaggmmnormal.means_.Row(g),
+                          diaggmmnormal.vars_.Row(g),                             
+                          mean_accumulator_.Row(g),
+                          variance_accumulator_.Row(g),
+                          occ,
+                          &mean,
+                          &var,
+                          &auxf_impr);
+        if (auxf_change_out_gauss) *auxf_change_out_gauss += auxf_impr;
+        if (count_out) *count_out += num_occupancy_(g);
+        // the EBWUpdateGaussian function only updates the
+        // appropriate parameters according to the flags.
+        diaggmmnormal.means_.CopyRowFromVec(mean, g);
+        diaggmmnormal.vars_.CopyRowFromVec(var, g);
+        break;
+      } else {
+        // small step
+        D *= 1.1; 
+      }
+    }
+    if (iter > 0 && num_floored_out != NULL) *num_floored_out++;
+    if (iter == max_iter) KALDI_WARN << "Dropped off end of loop, recomputing D. (unexpected.)";
   }
 
-  // update weights and check the conditions 
-  double prob;
-  for (int32 g = 0; g < num_comp; g++){
-    occ = occupancy_(g) + D(g);
-    if (occ_sum != 0.0)
-     prob = occ / occ_sum;
-    else
-     prob = 1.0 / num_comp;
+  // Now update weights...
+  if (flags & kGmmWeights) {
+    double weight_auxf_at_start = 0.0, weight_auxf_at_end = 0.0;
+    Vector<double> weights(diaggmmnormal.weights_);
+    for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.
+      weight_auxf_at_start +=
+          num_occupancy_(g) * log (weights(g))
+          - den_occupancy_(g) * weights(g) / diaggmmnormal.weights_(g);
+    }
+    for (int32 iter = 0; iter < 50; iter++) {
+      Vector<double> k_jm(num_comp); // c.f. eq. 4.35
+      double max_m = 0.0;
+      for (int32 g = 0; g < num_comp; g++)
+        max_m = std::max(max_m, den_occupancy_(g)/diaggmmnormal.weights_(g));
+      for (int32 g = 0; g < num_comp; g++)
+        k_jm(g) = max_m - den_occupancy_(g)/diaggmmnormal.weights_(g);
+      for (int32 g = 0; g < num_comp; g++) // c.f. eq. 4.34
+        weights(g) = num_occupancy_(g) + k_jm(g)*weights(g);
+      weights.Scale(1.0 / weights.Sum()); // c.f. eq. 4.34 (denominator)
+    }
+    for (int32 g = 0; g < num_comp; g++) {   // weight flooring.
+      if (weights(g) < config.min_gaussian_weight)
+        weights(g) = config.min_gaussian_weight;
+    }
+    weights.Scale(1.0 / weights.Sum()); // renormalize after flooring..
+    // floor won't be exact now but doesn't really matter.
 
-    // check other  conditions, if not fullfilled, we get back original mean and var (no update)
-    if (occ > static_cast<double>(config.min_gaussian_occupancy)
-        && prob > static_cast<double>(config.min_gaussian_weight)) {
-          if (flags & kGmmWeights) diaggmmnormal->weights_(g) = prob;
-    } else {
-          mean.CopyFromVec(diaggmmnormal->means_.Row(g));
-          var.CopyFromVec(diaggmmnormal->means_.Row(g));
-          diaggmmnormal->means_.CopyRowFromVec(mean, g);
-          diaggmmnormal->vars_.CopyRowFromVec(var, g);
-    }            
-  } 
- 
+    for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.
+      weight_auxf_at_end +=
+          num_occupancy_(g) * log (weights(g))
+          - den_occupancy_(g) * weights(g) / diaggmmnormal.weights_(g);
+    }
+
+    if (auxf_change_out_weights)
+      *auxf_change_out_weights += weight_auxf_at_end - weight_auxf_at_start;
+    diaggmmnormal.weights_.CopyFromVec(weights);
+  }  
   // copy to natural representation according to flags
-  diaggmmnormal->CopyToDiagGmm(gmm, flags);
-  gmm->ComputeGconsts();  // or MlObjective will fail.
-
-
-  std::cout << "End MMIe update\n";
+  diaggmmnormal.CopyToDiagGmm(gmm, flags);
+  gmm->ComputeGconsts();
 }
 
 
