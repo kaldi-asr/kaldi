@@ -23,15 +23,16 @@ namespace kaldi {
 
 using std::vector;
 
-AccumFullGmm& AccumAmTiedFullGmm::GetFullAcc(int32 index) const {
-  assert(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
-  return *(gmm_accumulators_[index]);
+AccumFullGmm& AccumAmTiedFullGmm::GetFullAcc(int32 codebook_index) const {
+  KALDI_ASSERT(codebook_index >= 0 && 
+               codebook_index < static_cast<int32>(gmm_accumulators_.size()));
+  return *(gmm_accumulators_[codebook_index]);
 }
 
-AccumTiedGmm& AccumAmTiedFullGmm::GetTiedAcc(int32 pdf_index) const {
-  assert(pdf_index >= 0
-         && pdf_index < static_cast<int32>(tied_gmm_accumulators_.size()));
-  return *(tied_gmm_accumulators_[pdf_index]);
+AccumTiedGmm& AccumAmTiedFullGmm::GetTiedAcc(int32 tied_pdf_index) const {
+  KALDI_ASSERT(tied_pdf_index >= 0 && tied_pdf_index
+               < static_cast<int32>(tied_gmm_accumulators_.size()));
+  return *(tied_gmm_accumulators_[tied_pdf_index]);
 }
 
 AccumAmTiedFullGmm::~AccumAmTiedFullGmm() {
@@ -44,13 +45,13 @@ void AccumAmTiedFullGmm::Init(const AmTiedFullGmm &model,
   DeletePointers(&gmm_accumulators_);
   DeletePointers(&tied_gmm_accumulators_);
 
-  gmm_accumulators_.resize(model.NumPdfs(), NULL);
+  gmm_accumulators_.resize(model.NumCodebooks(), NULL);
   tied_gmm_accumulators_.resize(model.NumTiedPdfs(), NULL);
 
   /// codebook accumulators
-  for (int32 i = 0; i < model.NumPdfs(); ++i) {
+  for (int32 i = 0; i < model.NumCodebooks(); ++i) {
     gmm_accumulators_[i] = new AccumFullGmm();
-    gmm_accumulators_[i]->Resize(model.GetPdf(i), flags);
+    gmm_accumulators_[i]->Resize(model.GetCodebook(i), flags);
   }
 
   /// tied gmm accumulators
@@ -67,45 +68,20 @@ void AccumAmTiedFullGmm::SetZero(GmmFlagsType flags) {
     tied_gmm_accumulators_[i]->SetZero(flags);
 }
 
-BaseFloat AccumAmTiedFullGmm::Accumulate(
-            const AmTiedFullGmm &model,
-            const TiedGmmPerFrameVars &per_frame_vars,
-            int32 pdf_index,
-            BaseFloat frame_posterior) {
-  KALDI_ASSERT(static_cast<size_t>(pdf_index) < tied_gmm_accumulators_.size());
-  const TiedGmm &tied = model.GetTiedPdf(pdf_index);
-  int32 pdfid = tied.pdf_index();
-
-  KALDI_ASSERT(static_cast<size_t>(pdfid) < gmm_accumulators_.size());
-
-  Vector<BaseFloat> posteriors;
-  BaseFloat logl = tied.ComponentPosteriors(
-                   per_frame_vars.c(pdfid),
-                   *per_frame_vars.svq[pdfid],
-                   &posteriors);
-
-  // scale by frame posterior
-  posteriors.Scale(frame_posterior);
-
-  // accumulate for codebook and tied pdf
-  AccumulateFromPosteriors(per_frame_vars.x, tied.pdf_index(), pdf_index,
-                           posteriors);
-
-  return logl;
-}
-
-BaseFloat AccumAmTiedFullGmm::AccumulateForGmm(
+BaseFloat AccumAmTiedFullGmm::AccumulateForTied(
             const AmTiedFullGmm &model,
             const VectorBase<BaseFloat> &data,
-            int32 pdf_index,
+            int32 tied_pdf_index,
             BaseFloat frame_posterior) {
-  KALDI_ASSERT(static_cast<size_t>(pdf_index) < tied_gmm_accumulators_.size());
-  const TiedGmm &tied = model.GetTiedPdf(pdf_index);
+  KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < 
+                 tied_gmm_accumulators_.size());
+  const TiedGmm &tied = model.GetTiedPdf(tied_pdf_index);
 
-  KALDI_ASSERT(static_cast<size_t>(tied.pdf_index())
-               < gmm_accumulators_.size());
+  int32 i = tied.codebook_index();
+  KALDI_ASSERT(static_cast<size_t>(i) < gmm_accumulators_.size());
+
   Vector<BaseFloat> svq;
-  BaseFloat c = model.ComputePerFrameVars(data, &svq, tied.pdf_index());
+  BaseFloat c = model.ComputePerFrameVars(data, i, &svq);
 
   Vector<BaseFloat> posteriors;
   BaseFloat logl = tied.ComponentPosteriors(c, svq, &posteriors);
@@ -114,21 +90,26 @@ BaseFloat AccumAmTiedFullGmm::AccumulateForGmm(
   posteriors.Scale(frame_posterior);
 
   // dont forget to accumulate :)
-  AccumulateFromPosteriors(data, tied.pdf_index(), pdf_index, posteriors);
+  AccumulateFromPosteriors(data, i, tied_pdf_index, posteriors);
 
   return logl;
 }
 
 void AccumAmTiedFullGmm::AccumulateFromPosteriors(
     const VectorBase<BaseFloat> &data,
-    int32 pdf_index,
+    int32 codebook_index,
     int32 tied_pdf_index,
     const VectorBase<BaseFloat> &posteriors) {
+  KALDI_ASSERT(codebook_index < NumFullAccs());
+  KALDI_ASSERT(tied_pdf_index < NumTiedAccs());
+
   /// accumulate for codebook...
-  gmm_accumulators_[pdf_index]->AccumulateFromPosteriors(data, posteriors);
+  gmm_accumulators_[codebook_index]->
+    AccumulateFromPosteriors(data, posteriors);
 
   /// and tied gmm
-  tied_gmm_accumulators_[tied_pdf_index]->AccumulateFromPosteriors(posteriors);
+  tied_gmm_accumulators_[tied_pdf_index]->
+    AccumulateFromPosteriors(posteriors);
 }
 
 void AccumAmTiedFullGmm::Read(std::istream& in_stream, bool binary, bool add) {
@@ -200,91 +181,96 @@ void MleAmTiedFullGmmUpdate(
        const AccumAmTiedFullGmm &acc,
        GmmFlagsType flags,
        AmTiedFullGmm *model,
-       BaseFloat *obj_change_out,
-       BaseFloat *count_out) {
+       BaseFloat *obj_change_out_cb,
+       BaseFloat *count_out_cb,
+	   BaseFloat *obj_change_out_tied,
+       BaseFloat *count_out_tied) {
   KALDI_ASSERT(model != NULL);
-  KALDI_ASSERT(acc.NumFullAccs() == model->NumPdfs());
+  KALDI_ASSERT(acc.NumFullAccs() == model->NumCodebooks());
   KALDI_ASSERT(acc.NumTiedAccs() == model->NumTiedPdfs());
 
   KALDI_ASSERT(!config_full.remove_low_count_gaussians);
 
-  if (obj_change_out != NULL) *obj_change_out = 0.0;
-  if (count_out != NULL) *count_out = 0.0;
+  // clear output stats
+  if (obj_change_out_cb != NULL) *obj_change_out_cb = 0.0;
+  if (count_out_cb != NULL) *count_out_cb = 0.0;
+  if (obj_change_out_tied != NULL) *obj_change_out_tied = 0.0;
+  if (count_out_tied != NULL) *count_out_tied = 0.0;
 
   AmTiedFullGmm *oldm = NULL;
-  if (config_tied.smooth()) {
+  if (config_tied.interpolate()) {
     // make a copy of the model
     oldm = new AmTiedFullGmm();
     oldm->CopyFromAmTiedFullGmm(*model);
   }
 
-  BaseFloat tmp_obj_change = 0, tmp_count = 0;
-  BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
-            *p_count   = (count_out != NULL) ? &tmp_count : NULL;
+  BaseFloat tmp_obj_change = 0.0, tmp_count = 0.0;
+  BaseFloat *p_obj = (obj_change_out_cb != NULL) ? &tmp_obj_change : NULL,
+            *p_count = (count_out_cb != NULL) ? &tmp_count : NULL;
 
-  /// reestimate the codebooks
+  // reestimate the codebooks
   for (int32 i = 0; i < acc.NumFullAccs(); i++) {
     // modify flags by enforcing no weight update
     MleFullGmmUpdate(config_full, acc.GetFullAcc(i), flags & ~kGmmWeights,
-                     &(model->GetPdf(i)), p_obj, p_count);
+                     &(model->GetCodebook(i)), p_obj, p_count);
 
-    KALDI_LOG << "MleFullGmmUpdate pdf(" << i << ") delta-obj="
-              << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
+    KALDI_VLOG(1) << "MleFullGmmUpdate " << i << " delta-obj="
+                  << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
 
-    if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
-    if (count_out != NULL) *count_out += tmp_count;
+    if (obj_change_out_cb != NULL) *obj_change_out_cb += tmp_obj_change;
+    if (count_out_cb != NULL) *count_out_cb += tmp_count;
   }
 
+  // only reestimate the tied Gmms if we have a weight update requested
   if (flags & kGmmWeights) {
-    /// reestimate the tied gmms
-    BaseFloat sum_tied_obj = 0, sum_tied_count = 0;
+	tmp_obj_change = 0.0;
+	tmp_count = 0.0;
+	p_obj = (obj_change_out_tied != NULL) ? &tmp_obj_change : NULL;
+	p_count = (count_out_tied != NULL) ? &tmp_count : NULL;
+
+    // reestimate the tied gmms
     for (int32 i = 0; i < acc.NumTiedAccs(); i++) {
       MleTiedGmmUpdate(config_tied, acc.GetTiedAcc(i), flags,
                        &(model->GetTiedPdf(i)), p_obj, p_count);
 
-      KALDI_VLOG(1) << "MleTiedGmmUpdate tied-pdf(" << i << ") delta-obj="
+      KALDI_VLOG(1) << "MleTiedGmmUpdate tied-pdf " << i << " delta-obj="
                     << (tmp_obj_change/tmp_count) << " count=" << tmp_count;
 
-      sum_tied_obj += tmp_obj_change;
-      sum_tied_count += tmp_count;
-
-      if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
-      if (count_out != NULL) *count_out += tmp_count;
+      if (obj_change_out_tied != NULL) *obj_change_out_cb += tmp_obj_change;
+      if (count_out_tied != NULL) *count_out_tied += tmp_count;
     }
 
-    KALDI_LOG << "MleTiedGmmUpdate after " << acc.NumTiedAccs()
-              << " delta-obj=" << (sum_tied_obj/sum_tied_count) << " count="
-              << sum_tied_count;
   } else {
     KALDI_LOG << "No weight update for tied states as requested by flags.";
   }
 
-  /// smooth new model with old: new <- wt*est + (1-est)old
-  if (config_tied.smooth()) {
-    KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho="
-              << config_tied.smoothing_weight << ")...";
+  // smooth new model with old: new <- wt*est + (1-est)old
+  if (config_tied.interpolate()) {
+	BaseFloat wt = config_tied.interpolation_weight;
+
+    KALDI_LOG << "Interpolating MLE estimate with prior iteration, (rho="
+              << wt << "): "
+			  << (config_tied.interpolate_weights ? "weights " : "")
+			  << (config_tied.interpolate_weights ? "means " : "")
+			  << (config_tied.interpolate_weights ? "variances" : "");
 
     // smooth the weights for tied...
-    if ((flags & kGmmWeights) && config_tied.smooth_weights) {
-      KALDI_LOG << "...weights";
+    if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
       for (int32 i = 0; i < model->NumTiedPdfs(); ++i)
-        model->GetTiedPdf(i).Interpolate(config_tied.smoothing_weight,
-                                         &(oldm->GetTiedPdf(i)));
+        model->GetTiedPdf(i).Interpolate(wt, &(oldm->GetTiedPdf(i)));
     }
 
     // ...and mean/var for codebooks
-    if ((flags & kGmmMeans) && config_tied.smooth_means) {
-      KALDI_LOG << "...means";
-      for (int32 i = 0; i < model->NumPdfs(); ++i)
-        model->GetPdf(i).Interpolate(config_tied.smoothing_weight,
-                                     &(oldm->GetPdf(i)), kGmmMeans);
+    if ((flags & kGmmMeans) && config_tied.interpolate_means) {
+      for (int32 i = 0; i < model->NumCodebooks(); ++i)
+        model->GetCodebook(i).Interpolate(wt, &(oldm->GetCodebook(i)), 
+		                                  kGmmMeans);
     }
 
-    if ((flags & kGmmVariances) && config_tied.smooth_variances) {
-      KALDI_LOG << "...variances";
-      for (int32 i = 0; i < model->NumPdfs(); ++i)
-        model->GetPdf(i).Interpolate(config_tied.smoothing_weight,
-                                     &(oldm->GetPdf(i)), kGmmVariances);
+    if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
+      for (int32 i = 0; i < model->NumCodebooks(); ++i)
+        model->GetCodebook(i).Interpolate(wt, &(oldm->GetCodebook(i)), 
+		                                  kGmmVariances);
     }
 
     delete oldm;

@@ -115,18 +115,21 @@ void AccumTiedGmm::Propagate(AccumTiedGmm *target) const {
   target->occupancy_.AddVec(1.0, occupancy_);
 }
 
-/// Interpolate the local model depending on the occupancies
-/// rho' <- rho / (rho + gamma)
-/// this <- rho' x source + (1-rho') x this
-void AccumTiedGmm::Interpolate(BaseFloat rho, const AccumTiedGmm *source) {
-  KALDI_ASSERT(num_comp_ == source->num_comp_);
+// see description in header file
+void AccumTiedGmm::Interpolate1(BaseFloat rho, const AccumTiedGmm &source) {
+  KALDI_ASSERT(num_comp_ == source.num_comp_);
   BaseFloat rhoi = rho / (rho + occupancy_.Sum());
-
-  if (rhoi > 0.8)
-    KALDI_VLOG(1) << "rhoi > 0.8";
-
   occupancy_.Scale(1.0 - rhoi);
-  occupancy_.AddVec(rhoi, source->occupancy_);
+  occupancy_.AddVec(rhoi, source.occupancy_);
+}
+
+// see description in header file
+void AccumTiedGmm::Interpolate2(BaseFloat rho, const AccumTiedGmm &source) {
+   KALDI_ASSERT(num_comp_ == source.num_comp_);
+   BaseFloat old_sum = occupancy_.Sum();
+   occupancy_.AddVec(rho / (source.occupancy_.Sum() + 1.0e-10),
+                            source.occupancy_);
+   occupancy_.Scale(old_sum / occupancy_.Sum());
 }
 
 AccumTiedGmm::AccumTiedGmm(const AccumTiedGmm &other)

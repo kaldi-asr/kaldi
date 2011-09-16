@@ -24,11 +24,11 @@
 
 namespace kaldi {
 
-void TiedGmm::Setup(int32 pdf_index, int32 nmix) {
+void TiedGmm::Setup(int32 codebook_index, int32 nmix) {
   KALDI_ASSERT(nmix > 0);
 
   /// remember the pdf_index (within the AM)
-  pdf_index_ = pdf_index;
+  codebook_index_ = codebook_index;
 
   if (weights_.Dim() != nmix)
     weights_.Resize(nmix);
@@ -38,7 +38,7 @@ void TiedGmm::Setup(int32 pdf_index, int32 nmix) {
 }
 
 void TiedGmm::CopyFromTiedGmm(const TiedGmm &copy) {
-  Setup(copy.pdf_index_, copy.weights_.Dim());
+  Setup(copy.codebook_index_, copy.weights_.Dim());
   weights_.CopyFromVec(copy.weights_);
 }
 
@@ -99,7 +99,7 @@ void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
   weights_.Scale(1.0 / weights_.Sum());
 }
 
-/// Split the tied GMM weights based on the split sequence of the mixture
+/// Split the tied GMM weights based on the split sequence of the codebook
 void TiedGmm::Split(std::vector<int32> *sequence) {
   KALDI_ASSERT(sequence != NULL);
 
@@ -121,7 +121,7 @@ void TiedGmm::Split(std::vector<int32> *sequence) {
   weights_.Scale(1.0 / weights_.Sum());
 }
 
-/// Merge the tied GMM weights based on the merge sequence of the mixture
+/// Merge the tied GMM weights based on the merge sequence of the codebook
 void TiedGmm::Merge(std::vector<int32> *sequence) {
   KALDI_ASSERT(sequence != NULL);
   KALDI_ASSERT(sequence->size() % 2 == 0);
@@ -153,7 +153,7 @@ void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteMarker(out_stream, binary, "<TIEDGMM>");
   if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<PDF_INDEX>");
-  WriteBasicType(out_stream, binary, pdf_index_);
+  WriteBasicType(out_stream, binary, codebook_index_);
   //  if (!binary) out_stream << "\n";
   WriteMarker(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
@@ -177,7 +177,7 @@ void TiedGmm::Read(std::istream &in_stream, bool binary) {
   ReadMarker(in_stream, binary, &marker);
   if (marker != "<PDF_INDEX>")
     KALDI_ERR << "Expected <PDF_INDEX>, got " << marker;
-  ReadBasicType(in_stream, binary, &pdf_index_);
+  ReadBasicType(in_stream, binary, &codebook_index_);
 
   ReadMarker(in_stream, binary, &marker);
   if (marker != "<WEIGHTS>")

@@ -51,7 +51,7 @@ void AmTiedDiagGmm::Init(const DiagGmm& proto) {
   dim_ = proto.Dim();
 }
 
-void AmTiedDiagGmm::AddPdf(const DiagGmm &gmm) {
+void AmTiedDiagGmm::AddCodebook(const DiagGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
   else
@@ -74,36 +74,23 @@ void AmTiedDiagGmm::AddTiedPdf(const TiedGmm &tied) {
   tied_densities_.push_back(tgmm_ptr);
 }
 
-/// Remove designated codebook
-/// caveat: does not take care of the tied dependents!
-void AmTiedDiagGmm::RemovePdf(const int32 pdf_index) {
-  KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
-  delete densities_[pdf_index];
-  densities_.erase(densities_.begin() + pdf_index);
-}
-
-/// Remove designated tied pdf
-void AmTiedDiagGmm::RemoveTiedPdf(int32 tied_pdf_index) {
-  KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
-  delete tied_densities_[tied_pdf_index];
-  tied_densities_.erase(tied_densities_.begin() + tied_pdf_index);
-}
-
-/// Replace the codebook of the designated tied pdf by the new index
-void AmTiedDiagGmm::ReplacePdf(int32 tied_pdf_index, int32 new_pdf_index) {
-  KALDI_ASSERT(static_cast<size_t>(new_pdf_index) < densities_.size());
+/// Set the codebook of the designated tied pdf
+void AmTiedDiagGmm::ReplaceCodebook(int32 tied_pdf_index, 
+                                    int32 new_codebook_index) {
+  KALDI_ASSERT(static_cast<size_t>(new_codebook_index) < densities_.size());
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
 
-  tied_densities_[tied_pdf_index]->SetPdfIndex(new_pdf_index);
+  tied_densities_[tied_pdf_index]->SetCodebookIndex(new_codebook_index);
 }
 
 /// Replace the designated codebook
-void AmTiedDiagGmm::ReplacePdf(int32 pdf_index, const DiagGmm &gmm) {
+void AmTiedDiagGmm::ReplaceCodebook(int32 codebook_index, const DiagGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
-  KALDI_ASSERT(static_cast<size_t>(pdf_index) < densities_.size());
 
-  densities_[pdf_index]->CopyFromDiagGmm(gmm);
+  KALDI_ASSERT(static_cast<size_t>(codebook_index) < densities_.size());
+
+  densities_[codebook_index]->CopyFromDiagGmm(gmm);
 }
 
 void AmTiedDiagGmm::CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other) {
@@ -115,7 +102,7 @@ void AmTiedDiagGmm::CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other) {
     DeletePointers(&tied_densities_);
   }
 
-  densities_.resize(other.NumPdfs(), NULL);
+  densities_.resize(other.NumCodebooks(), NULL);
   tied_densities_.resize(other.NumTiedPdfs(), NULL);
 
   dim_ = other.dim_;
@@ -148,29 +135,34 @@ int32 AmTiedDiagGmm::ComputeGconsts() {
 void AmTiedDiagGmm::SetupPerFrameVars(
        TiedGmmPerFrameVars *per_frame_vars) const {
   // init containers
-  per_frame_vars->Setup(dim_, NumPdfs());
+  per_frame_vars->Setup(dim_, NumCodebooks());
 
   // allocate the svqs
-  for (int32 i = 0; i < NumPdfs(); ++i)
-    per_frame_vars->ResizeSvq(i, GetPdf(i).NumGauss());
+  for (int32 i = 0; i < NumCodebooks(); ++i) {
+    per_frame_vars->ResizeSvq(i, GetCodebook(i).NumGauss());
+	per_frame_vars->current[i] = false;
+  }
 }
 
 void AmTiedDiagGmm::ComputePerFrameVars(
        const VectorBase<BaseFloat> &data,
        TiedGmmPerFrameVars *per_frame_vars) const {
+  // copy the current data vector
   per_frame_vars->x.CopyFromVec(data);
-  for (int32 i = 0; i < NumPdfs(); ++i)
-    per_frame_vars->c(i) = ComputePerFrameVars(data, per_frame_vars->svq[i], i);
+
+  // set the currency indicators to false
+  for (int32 i = 0; i < NumCodebooks(); ++i)
+    per_frame_vars->current[i] = false;
 }
 
 BaseFloat AmTiedDiagGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
-                                            Vector<BaseFloat> *svq,
-                                            int32 pdfid) const {
+                                             int32 codebook_index,
+                                             Vector<BaseFloat> *svq) const {
   // get loglikes
-  densities_[pdfid]->LogLikelihoods(data, svq);
+  densities_[codebook_index]->LogLikelihoods(data, svq);
 
   // subtract log(weight) = log(1/NumGauss) = -log(NumGauss)
-  svq->Add(log(densities_[pdfid]->NumGauss()));
+  svq->Add(log(densities_[codebook_index]->NumGauss()));
 
   // normalize; speed-up by using svq->Max() instead?
   BaseFloat c = svq->LogSumExp();

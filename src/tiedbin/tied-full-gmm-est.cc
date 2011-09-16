@@ -96,9 +96,16 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, update_flags,
-                             &am_gmm, &objf_impr, &count);
-      KALDI_LOG << "GMM update: average " << (objf_impr/count)
+      BaseFloat objf_impr_t, count_t;
+      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, update_flags, 
+	                         &am_gmm, &objf_impr, &count, &objf_impr_t, 
+							 &count_t);
+
+      KALDI_LOG << "codebook update: average " << (objf_impr/count)
+                << " objective function improvement per frame over "
+                <<  (count) <<  " frames.";
+
+      KALDI_LOG << "tied update: average " << (objf_impr_t/count_t)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";
     }

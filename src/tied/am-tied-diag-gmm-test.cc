@@ -47,8 +47,8 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm.SetupPerFrameVars(&pfv);
   am_gmm.ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm.NumPdfs(); ++i)
-    loglike += am_gmm.LogLikelihood(pfv, i);
+  for (int32 i = 0; i < am_gmm.NumCodebooks(); ++i)
+    loglike += am_gmm.LogLikelihood(i, &pfv);
 
   // First, non-binary write
   am_gmm.Write(kaldi::Output("tmpf", false).Stream(), false);
@@ -64,8 +64,8 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm1->SetupPerFrameVars(&pfv);
   am_gmm1->ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm1->NumPdfs(); ++i)
-    loglike1 += am_gmm1->LogLikelihood(pfv, i);
+  for (int32 i = 0; i < am_gmm1->NumCodebooks(); ++i)
+    loglike1 += am_gmm1->LogLikelihood(i, &pfv);
 
   kaldi::AssertEqual(loglike, loglike1, 1e-4);
 
@@ -83,8 +83,8 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm2->SetupPerFrameVars(&pfv);
   am_gmm2->ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm2->NumPdfs(); ++i)
-    loglike2 += am_gmm2->LogLikelihood(pfv, i);
+  for (int32 i = 0; i < am_gmm2->NumCodebooks(); ++i)
+    loglike2 += am_gmm2->LogLikelihood(i, &pfv);
 
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete am_gmm2;
@@ -106,17 +106,17 @@ void UnitTestAmTiedDiagGmm() {
   for (int32 i = 1; i < num_pdfs; ++i) {
     num_comp = 4 + kaldi::RandInt(0, 12);  // random number of mixtures
     ut::InitRandDiagGmm(dim, num_comp, &diag);
-    am_gmm.AddPdf(diag);
+    am_gmm.AddCodebook(diag);
   }
 
   // add tied mixtures, round robin with codebooks
   for (int32 i = 0; i < num_tied_pdfs; ++i) {
     TiedGmm tied;
     int32 pdf_index = i % num_pdfs;
-    tied.Setup(pdf_index, am_gmm.GetPdf(pdf_index).NumGauss());
+    tied.Setup(pdf_index, am_gmm.GetCodebook(pdf_index).NumGauss());
 
     // generate random weights
-    Vector<BaseFloat> wts(am_gmm.GetPdf(pdf_index).NumGauss());
+    Vector<BaseFloat> wts(am_gmm.GetCodebook(pdf_index).NumGauss());
     for (int32 j = 0; j < wts.Dim(); ++j)
       wts(j) = kaldi::RandInt(1, 1024);
 

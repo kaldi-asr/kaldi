@@ -40,23 +40,16 @@ class AmTiedDiagGmm {
   void Init(const DiagGmm &proto);
 
   /// Adds a DiagGmm as codebook to the model
-  void AddPdf(const DiagGmm &gmm);
+  void AddCodebook(const DiagGmm &gmm);
 
   /// Adds a tied PDF to the model
   void AddTiedPdf(const TiedGmm &tied);
 
-  /// Remove designated codebook
-  /// caveat: does not take care of the tied dependents!
-  void RemovePdf(int32 pdf_index);
-
-  /// Remove designated tied pdf
-  void RemoveTiedPdf(int32 tied_pdf_index);
-
-  /// Replace the codebook of the designated tied pdf by the new index
-  void ReplacePdf(int32 tied_pdf_index, int32 new_pdf_index);
+  /// Set the codebook of the designated tied pdf
+  void ReplaceCodebook(int32 tied_pdf_index, int32 new_codebook_index);
 
   /// Replace the designated codebook
-  void ReplacePdf(int32 pdf_index, const DiagGmm &gmm);
+  void ReplaceCodebook(int32 codebook_index, const DiagGmm &gmm);
 
   /// Copies the parameters from another model. Allocates necessary memory.
   void CopyFromAmTiedDiagGmm(const AmTiedDiagGmm &other);
@@ -71,30 +64,29 @@ class AmTiedDiagGmm {
   void ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                            TiedGmmPerFrameVars *per_frame_vars) const;
 
-  /// Computes the individual codebook per frame variables
+  /// Evaluate the target codebook and save the scores to svq
   BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
-                               Vector<BaseFloat> *svq,
-                               int32 pdfid) const;
+                                int32 codebook_index,
+								Vector<BaseFloat> *svq) const;
 
-  BaseFloat LogLikelihood(const TiedGmmPerFrameVars &per_frame_vars,
-                          const int32 pdf_index) const;
+  BaseFloat LogLikelihood(int32 tied_pdf_index,
+                          TiedGmmPerFrameVars *per_frame_vars) const;
 
   void Read(std::istream &in_stream, bool binary);
   void Write(std::ostream &out_stream, bool binary) const;
 
   int32 Dim() const { return dim_; }
-  int32 NumPdfs() const { return densities_.size(); }
+  int32 NumCodebooks() const { return densities_.size(); }
   int32 NumTiedPdfs() const { return tied_densities_.size(); }
-  int32 NumGaussInPdf(int32 pdf_index) const;
 
   /// Accessors
-  DiagGmm& GetPdf(int32 pdf_index);
-  const DiagGmm& GetPdf(int32 pdf_index) const;
+  DiagGmm& GetCodebook(int32 codebook_index);
+  const DiagGmm& GetCodebook(int32 codebook_index) const;
 
-  TiedGmm& GetTiedPdf(int32 pdf_index);
-  const TiedGmm& GetTiedPdf(int32 pdf_index) const;
+  TiedGmm& GetTiedPdf(int32 tied_pdf_index);
+  const TiedGmm& GetTiedPdf(int32 tied_pdf_index) const;
 
-  int32 GetPdfIdOfTiedPdf(int32 pdf_index) const;
+  int32 GetCodebookIndexOfTiedPdf(int32 tied_pdf_index) const;
 
  private:
   std::vector<DiagGmm*> densities_;
@@ -105,26 +97,34 @@ class AmTiedDiagGmm {
 };
 
 inline BaseFloat AmTiedDiagGmm::LogLikelihood(
-    const TiedGmmPerFrameVars &per_frame_vars,
-    const int32 pdf_index) const {
-  TiedGmm *tied = tied_densities_[pdf_index];
+                   int32 tied_pdf_index,
+                   TiedGmmPerFrameVars *per_frame_vars) const {
+  TiedGmm *tied = tied_densities_[tied_pdf_index];
 
-  int32 pdfid = tied->pdf_index();
-  Vector<BaseFloat> *svq = per_frame_vars.svq[pdfid];
+  int32 i = tied->codebook_index();
 
-  return tied->LogLikelihood(per_frame_vars.c(pdfid), *svq);
+  // get the svq vector
+  Vector<BaseFloat> *svq = per_frame_vars->svq[i];
+  
+  // refresh the svq values
+  if (!per_frame_vars->current[i]) {
+	per_frame_vars->c(i) = ComputePerFrameVars(per_frame_vars->x, i, svq);
+	per_frame_vars->current[i] = true;
+  }
+
+  return tied->LogLikelihood(per_frame_vars->c(i), *svq);
 }
 
-inline DiagGmm& AmTiedDiagGmm::GetPdf(int32 pdf_index) {
-  KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
-               && (densities_[pdf_index] != NULL));
-  return *(densities_[pdf_index]);
+inline DiagGmm& AmTiedDiagGmm::GetCodebook(int32 codebook_index) {
+  KALDI_ASSERT((static_cast<size_t>(codebook_index) < densities_.size())
+               && (densities_[codebook_index] != NULL));
+  return *(densities_[codebook_index]);
 }
 
-inline const DiagGmm& AmTiedDiagGmm::GetPdf(int32 pdf_index) const {
-  KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
-               && (densities_[pdf_index] != NULL));
-  return *(densities_[pdf_index]);
+inline const DiagGmm& AmTiedDiagGmm::GetCodebook(int32 codebook_index) const {
+  KALDI_ASSERT((static_cast<size_t>(codebook_index) < densities_.size())
+               && (densities_[codebook_index] != NULL));
+  return *(densities_[codebook_index]);
 }
 
 inline TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) {
@@ -139,10 +139,11 @@ inline const TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) const {
   return *(tied_densities_[tied_pdf_index]);
 }
 
-inline int32 AmTiedDiagGmm::GetPdfIdOfTiedPdf(int32 pdf_index) const {
-  KALDI_ASSERT((static_cast<size_t>(pdf_index) < tied_densities_.size())
-               && (tied_densities_[pdf_index] != NULL));
-  return tied_densities_[pdf_index]->pdf_index();
+inline int32 AmTiedDiagGmm::GetCodebookIndexOfTiedPdf(int32 tied_pdf_index) 
+  const {
+  KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
+               && (tied_densities_[tied_pdf_index] != NULL));
+  return tied_densities_[tied_pdf_index]->codebook_index();
 }
 
 }  // namespace kaldi

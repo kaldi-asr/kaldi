@@ -22,12 +22,13 @@ using std::vector;
 
 namespace kaldi {
 
-BaseFloat DecodableAmTiedDiagGmm::LogLikelihoodZeroBased(int32 frame, int32 pdf_index) {
+BaseFloat DecodableAmTiedDiagGmm::LogLikelihoodZeroBased(int32 frame, 
+                                                         int32 pdf_index) {
   KALDI_ASSERT(frame >= 0 && frame < NumFrames());
   KALDI_ASSERT(pdf_index >= 0 && pdf_index < NumIndices());
 
   if (log_like_cache_[pdf_index].hit_time == frame) {
-    return log_like_cache_[pdf_index].log_like;  // return cached value, if found
+    return log_like_cache_[pdf_index].log_like;
   }
 
   const VectorBase<BaseFloat> &data = feature_matrix_.Row(frame);
@@ -38,12 +39,13 @@ BaseFloat DecodableAmTiedDiagGmm::LogLikelihoodZeroBased(int32 frame, int32 pdf_
   }
 
   if (frame != previous_frame_) {
-    // different frame, evaluate all codebooks
+    // different frame, prepare the per-frame-vars
     acoustic_model_.ComputePerFrameVars(data, &per_frame_vars_);
     previous_frame_ = frame;
   }
 
-  BaseFloat loglike = acoustic_model_.LogLikelihood(per_frame_vars_, pdf_index);
+  BaseFloat loglike = acoustic_model_.LogLikelihood(pdf_index, 
+                                                    &per_frame_vars_);
   
   if (KALDI_ISNAN(loglike) || KALDI_ISINF(loglike))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";

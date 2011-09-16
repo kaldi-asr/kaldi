@@ -27,37 +27,45 @@
 namespace kaldi {
 
 /** \struct TiedGmmPerFrameVars
- *  Holds the per-frame derived variables, e.g. the posteriors of the soft vector quantizer (svq)
+ *  Holds the per-frame derived variables, namely the current feature vector,
+ *  posteriors of the soft vector quantizer (svq) and an indicator if the
+ *  latter are current w.r.t. the feature vector.
  */
 struct TiedGmmPerFrameVars {
   TiedGmmPerFrameVars() {
-    // nop
+    current = NULL;
   }
 
   ~TiedGmmPerFrameVars() {
+	delete [] current;
     DeletePointers(&svq);
   }
 
-  void Setup(int32 dim, int32 num_gauss) {
+  /// Initialize the TiedGmmPerFrameVars to the given feature dim and number of
+  /// codebooks
+  void Setup(int32 dim, int32 num_codebooks) {
     x.Resize(dim);
-    c.Resize(num_gauss);
+    c.Resize(num_codebooks);
+
+    if (current)
+		delete [] current;
+	
+	current = new bool [num_codebooks];
+	for (int32 i = 0; i < num_codebooks; ++i)
+      current[i] = false;
 
     if (svq.size() > 0)
       DeletePointers(&svq);
 
-    svq.resize(num_gauss, NULL);
+    svq.resize(num_codebooks, NULL);
   }
 
-  /// Resize the loglikelihood vector of the given pdf
-  void ResizeSvq(int32 pdf_index, int32 num_gauss) {
-    if (svq[pdf_index] != NULL)
-      delete svq[pdf_index];
+  /// Resize the loglikelihood vector of the given codebook
+  void ResizeSvq(int32 codebook_index, int32 num_gauss) {
+    if (svq[codebook_index] != NULL)
+      delete svq[codebook_index];
 
-    svq[pdf_index] = new Vector<BaseFloat>(num_gauss);
-  }
-
-  void Clear() {
-    DeletePointers(&svq);
+    svq[codebook_index] = new Vector<BaseFloat>(num_gauss);
   }
 
   /// data vector associated with svq values
@@ -65,6 +73,9 @@ struct TiedGmmPerFrameVars {
 
   /// offsets of the svq
   Vector<BaseFloat> c;
+
+  /// cache indicator if the requested SVQ is already computed
+  bool *current;
 
   /// soft vector quantizer -- store the posteriors of the codebook(s)
   std::vector<Vector<BaseFloat> *> svq;
@@ -79,7 +90,7 @@ class TiedGmm {
   TiedGmm() { }
 
   /// Resizes arrays to this dim. Does not initialize data.
-  void Setup(int32 pdf_index, int32 nMix);
+  void Setup(int32 codebook_index, int32 nMix);
 
   /// Returns the number of mixture components in the GMM
   int32 NumGauss() const { return weights_.Dim(); }
@@ -101,10 +112,10 @@ class TiedGmm {
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const TiedGmm *source);
 
-  /// Split the tied GMM weights based on the split sequence of the mixture
+  /// Split the tied GMM weights based on the split sequence of the codebook
   void Split(std::vector<int32> *sequence);
 
-  /// Merge the tied GMM weights based on the merge sequence of the mixture
+  /// Merge the tied GMM weights based on the merge sequence of the codebook
   void Merge(std::vector<int32> *sequence);
 
   void Write(std::ostream &rOut, bool binary) const;
@@ -112,7 +123,7 @@ class TiedGmm {
 
   /// Const accessors
   const Vector<BaseFloat>& weights() const { return weights_; }
-  const int32& pdf_index() const { return pdf_index_; }
+  const int32& codebook_index() const { return codebook_index_; }
 
   /// Mutators for both float or double
   template<class Real>
@@ -122,10 +133,12 @@ class TiedGmm {
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
 
-  void SetPdfIndex(int32 pdf_index) { pdf_index_ = pdf_index; }
+  void SetCodebookIndex(int32 codebook_index) { 
+	codebook_index_ = codebook_index; 
+  }
 
  private:
-  int32 pdf_index_;  ///< index of the respective codebook (within the AM)
+  int32 codebook_index_;       ///< index of the codebook in the AM
   Vector<BaseFloat> weights_;  ///< weights (not log).
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(TiedGmm);

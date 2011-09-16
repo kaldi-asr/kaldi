@@ -44,10 +44,10 @@ void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) 
     int32 pdfid = (*tied_to_pdf)[i];
 
     // make sure we have this codebook
-    KALDI_ASSERT(pdfid < am_gmm->NumPdfs());
+    KALDI_ASSERT(pdfid < am_gmm->NumCodebooks());
 
     // link to codebook and allocate uniform weights
-    tied->Setup(pdfid, am_gmm->GetPdf(pdfid).NumGauss());
+    tied->Setup(pdfid, am_gmm->GetCodebook(pdfid).NumGauss());
     am_gmm->AddTiedPdf(*tied);
   }
 
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
         bool binary_in;
         Input ki(po.GetArg(i), &binary_in);
         cb.Read(ki.Stream(), binary_in);
-        am_gmm.AddPdf(cb);
+        am_gmm.AddCodebook(cb);
       }
     } else {
       tied_to_pdf.resize(ctx_dep.NumPdfs(), 0);

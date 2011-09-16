@@ -38,23 +38,21 @@ struct MleTiedGmmOptions {
   BaseFloat min_gaussian_occupancy;
 
   /// smoothing weight to smooth the newly estimated parameters with the old
-  BaseFloat smoothing_weight;
+  BaseFloat interpolation_weight;
 
-  bool smooth_weights;
-  bool smooth_means;
-  bool smooth_variances;
+  bool interpolate_weights;
+  bool interpolate_means;
+  bool interpolate_variances;
 
   MleTiedGmmOptions() {
-    /// floor = (1/numgauss) * weight
-    min_gaussian_weight     = 0.01;
+    min_gaussian_weight     = 0.01; ///< floor = weight / numgauss
     min_gaussian_occupancy  = 3.0;
 
-    // apis stuff
-    smoothing_weight    = 0.5;
+    interpolation_weight    = 0.5;  ///< interpolation with prior iteration
 
-    smooth_weights   = false;
-    smooth_means     = false;
-    smooth_variances = false;
+    interpolate_weights   = false;
+    interpolate_means     = false;
+    interpolate_variances = false;
   }
 
   void Register(ParseOptions *po) {
@@ -64,19 +62,21 @@ struct MleTiedGmmOptions {
                  "components (floor = weight / num_comp)");
     po->Register("min-tied-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum occupancy to update a tied Gaussian.");
-    po->Register("smoothing-weight", &smoothing_weight,
-                 module+"smoothing weight (0 < w < 1) to smooth new = rho x old"
-                 " + (1-rho) x new; high rho means strong impact of source");
-    po->Register("interpolate-weights", &smooth_weights,
-                 module+"Interpolate tied mixture weights?");
-    po->Register("interpolate-means", &smooth_means,
-                 module+"Interpolate codebook means?");
-    po->Register("interpolate-variances", &smooth_variances,
-                 module+"Interpolate codebook variances?");
+    po->Register("interpolation-weight", &interpolation_weight,
+                 module+"Interpolate new estimate with prior estimate "
+				 "new = weigth x prior-est + (1-weight) x new-est");
+    po->Register("interpolate-weights", &interpolate_weights,
+                 module+"Interpolate tied mixture weights with prior "
+				 "iteration.");
+    po->Register("interpolate-means", &interpolate_means,
+                 module+"Interpolate codebook means with prior iteration.");
+    po->Register("interpolate-variances", &interpolate_variances,
+                 module+"Interpolate codebook variances with prior "
+				 "iteration.");
   }
 
-  bool smooth() const {
-    return smooth_weights || smooth_means || smooth_variances;
+  bool interpolate() const {
+    return interpolate_weights || interpolate_means || interpolate_variances;
   }
 };
 
@@ -114,12 +114,18 @@ class AccumTiedGmm {
   /// Propagate the sufficient statistics to the target accumulator
   void Propagate(AccumTiedGmm *target) const;
 
-  /// Interpolate the local model depending on the occupancies
-  /// rho' <- rho / (rho + gamma)
+  /// Interpolate this accumulator with the source depending on the occupancies
+  /// rho' <- rho / (rho + occupancy_.Sum())
   /// this <- rho' x source + (1-rho') x this
-  /// i.e., if gamma is high, rho vanishes, and the current stats are kept; if
-  /// gamma is zero, the stats are completely replaced by the source's.
-  void Interpolate(BaseFloat rho, const AccumTiedGmm *source);
+  /// i.e., if the occupancy is high, rho' vanishes, and the local stats are
+  /// kept; if gamma is zero, the stats are completely replaced by the source.
+  /// Note that this does not preserve the occupancies and thus may distort
+  /// the estimate.
+  void Interpolate1(BaseFloat rho, const AccumTiedGmm &source);
+
+  /// Interpolate this accumulator with the source but preserve the 
+  /// occupancies (different from Interpolate1)
+  void Interpolate2(BaseFloat rho, const AccumTiedGmm &source);
 
   // Accessors
   const GmmFlagsType Flags() const { return flags_; }

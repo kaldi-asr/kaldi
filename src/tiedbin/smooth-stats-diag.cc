@@ -40,16 +40,13 @@ int main(int argc, char *argv[]) {
         " smooth-stats-diag tree tree.map 12.acc 12.acc.s\n";
     ParseOptions po(usage);
 
-    bool propagate = true;
-    bool interpolate = true;
-
+    bool preserve_counts = false;
     bool print_diversity = false;
 
     BaseFloat rho = 10.;
 
-    po.Register("rho", &rho, "Interpolation factor, rho(i) = rho / (rho + gamma(i)");
-    po.Register("propagate", &propagate, "Propagate the sufficient statistics");
-    po.Register("interpolate", &interpolate, "Interpolate the sufficient statistics");
+    po.Register("rho", &rho, "Interpolation factor (see tied-gmm.h: Interpolate{1,2})");
+    po.Register("preserve-counts", &preserve_counts, "Preserve the counts, uses Interpolate2");
     po.Register("print-diversity", &print_diversity, "Print the diversity of the nodes, i.e. the childrens' codebooks");
 
     po.Read(argc, argv);
@@ -64,16 +61,6 @@ int main(int argc, char *argv[]) {
       tied_to_pdf_file = po.GetArg(2),
       acc_in_filename = po.GetArg(3),
       acc_out_filename = po.GetArg(4);
-
-    if (interpolate && !propagate) {
-      propagate = true;
-      cout << "Activating propagation due to requested interpolation." << endl;
-    }
-
-    if (!propagate) {
-      cout << "Nothing to do. Bye." << endl;
-      return 0;
-    }
 
     ContextDependency ctx_dep;  // the tree.
     {
@@ -191,43 +178,46 @@ int main(int argc, char *argv[]) {
       cout << endl;
     }
 
-    if (interpolate) {
-      cout << "Interpolating, rho=" << rho << endl;
+    cout << "Interpolating, rho=" << rho << endl;
 
-      // interpolate down, beginning from the top
-      int32 k = trace.size() - 1;
-      for (vector<std::set<int32> >::reverse_iterator rit = trace.rbegin(), rend = trace.rend();
-           rit != rend; ++rit, --k) {
-        cout << (k + num_leaves) << " <==";
+    // interpolate down, beginning from the top
+    int32 k = trace.size() - 1;
+    for (vector<std::set<int32> >::reverse_iterator rit = trace.rbegin(), rend = trace.rend();
+         rit != rend; ++rit, --k) {
+      cout << (k + num_leaves) << " <==";
 
-        // no interpolation on diverse nodes
-        if (diversity[k].size() > 1) {
-          cout << " (null -- diverse node, sizeof diversity = " << diversity[k].size() << endl;
-          continue;
-        }
-
-        // the root will have some trace, but we're not propagating over the root
-        if (interim[k] == NULL) {
-          cout<< " (null -- skipping; sizeof trace = " << rit->size() << ")" << endl;
-          continue;
-        }
-
-        for (std::set<int32>::iterator it = (*rit).begin(), end = (*rit).end();
-             it != end; ++it) {
-          int32 t = *it;
-          if (t < num_leaves) {
-            // this will be a pdf accumulator
-            cout << " " << t;
-            acc.GetTiedAcc(t).Interpolate(rho, interim[k]);
-          } else {
-            // this will be an interim accumulator
-            cout << " interim:" << t;
-            interim[t-num_leaves]->Interpolate(rho, interim[k]);
-          }
-        }
-
-        cout << endl;
+      // no interpolation on diverse nodes
+      if (diversity[k].size() > 1) {
+        cout << " (null -- diverse node, sizeof diversity = " << diversity[k].size() << endl;
+        continue;
       }
+
+      // the root will have some trace, but we're not propagating over the root
+      if (interim[k] == NULL) {
+        cout<< " (null -- skipping; sizeof trace = " << rit->size() << ")" << endl;
+        continue;
+      }
+
+      for (std::set<int32>::iterator it = (*rit).begin(), end = (*rit).end();
+           it != end; ++it) {
+        int32 t = *it;
+        if (t < num_leaves) {
+          // this will be a pdf accumulator
+          cout << " " << t;
+          if (preserve_counts)
+            acc.GetTiedAcc(t).Interpolate2(rho, *interim[k]);
+           else
+             acc.GetTiedAcc(t).Interpolate1(rho, *interim[k]);
+        } else {
+          // this will be an interim accumulator
+          cout << " interim:" << t;
+          if (preserve_counts)
+            interim[t-num_leaves]->Interpolate2(rho, *interim[k]);
+          else
+            interim[t-num_leaves]->Interpolate1(rho, *interim[k]);
+        }
+      }
+      cout << endl;
     }
 
     {

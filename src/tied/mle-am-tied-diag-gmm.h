@@ -40,24 +40,18 @@ class AccumAmTiedDiagGmm {
 
   void SetZero(GmmFlagsType flags);
 
-  /// Accumulate stats for a single GMM in the model; returns log likelihood.
-  BaseFloat Accumulate(const AmTiedDiagGmm &model,
-                       const TiedGmmPerFrameVars &per_frame_vars,
-                       int32 pdf_index,
-                       BaseFloat frame_posterior);
+  /// Accumulate stats for single GMM in the model and the respective
+  /// codebook; returns log likelihood
+  /// This will evaluate the associated codebook
+  BaseFloat AccumulateForTied(const AmTiedDiagGmm &model,
+                              const VectorBase<BaseFloat> &data,
+                              int32 tied_pdf_index,
+                              BaseFloat frame_posterior);
 
-  /// Accumulate stats for single GMM in the model; returns log likelihood
-  /// This will evaluate the associated codebook; use Accumulate for
-  /// pre-computed codebook scores
-  BaseFloat AccumulateForGmm(const AmTiedDiagGmm &model,
-                             const VectorBase<BaseFloat> &data,
-                             int32 pdf_index,
-                             BaseFloat frame_posterior);
-
-  /// Accumulate for a certain codebook (pdf_index) and tied gmm
+  /// Accumulate for a certain codebook (codebook_index) and tied gmm
   /// (tied_pdf_index) given the data and posteriors
   void AccumulateFromPosteriors(const VectorBase<BaseFloat> &data,
-                                int32 pdf_index,
+                                int32 codebook_index,
                                 int32 tied_pdf_index,
                                 const VectorBase<BaseFloat> &posteriors);
 
@@ -75,8 +69,8 @@ class AccumAmTiedDiagGmm {
   int32 NumTiedAccs() { return tied_gmm_accumulators_.size(); }
   int32 NumTiedAccs() const { return tied_gmm_accumulators_.size(); }
 
-  AccumDiagGmm& GetDiagAcc(int32 index) const;
-  AccumTiedGmm& GetTiedAcc(int32 pdf_index) const;
+  AccumDiagGmm& GetDiagAcc(int32 codebook_index) const;
+  AccumTiedGmm& GetTiedAcc(int32 tied_pdf_index) const;
 
  private:
   /// MLE accumulators and update methods for the GMMs
@@ -94,8 +88,10 @@ void MleAmTiedDiagGmmUpdate(const MleDiagGmmOptions &config_diag,
                             const AccumAmTiedDiagGmm &amtieddiaggmm_acc,
                             GmmFlagsType flags,
                             AmTiedDiagGmm *model,
-                            BaseFloat *obj_change_out,
-                            BaseFloat *count_out);
+                            BaseFloat *obj_change_out_cb,
+                            BaseFloat *count_out_cb,
+							BaseFloat *obj_change_out_tied,
+                            BaseFloat *cout_out_tied);
 
 }  // End namespace kaldi
 
