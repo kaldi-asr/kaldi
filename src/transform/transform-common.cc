@@ -143,7 +143,7 @@ bool ComposeTransforms(const Matrix<BaseFloat> &a, const Matrix<BaseFloat> &b,
       Matrix<BaseFloat> b_ext(b.NumRows()+1, b.NumCols());
       SubMatrix<BaseFloat> b_part(b_ext, 0, b.NumRows(), 0, b.NumCols());
       b_part.CopyFromMat(b);
-      b_part(b.NumRows(), b.NumCols()-1) = 1.0;  // so the last row is 0 0 0 0 ... 0 1
+      b_ext(b.NumRows(), b.NumCols()-1) = 1.0;  // so the last row is 0 0 0 0 ... 0 1
       c->Resize(a.NumRows(), b.NumCols());
       c->AddMatMat(1.0, a, kNoTrans, b_ext, kNoTrans, 0.0);  // c = a * b_ext.
     } else {  // extend b by 1 row and column with all zeros except a 1 on diagonal.
