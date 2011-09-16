@@ -121,7 +121,15 @@ fi
 
 
 echo "Initializing model"
-tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+if [ $max_leaves_first -gt 999 ]; then
+  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???,????} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+elif [ $max_leaves_first -gt 99 ]; then
+  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+elif [ $max_leaves_first -gt 9 ]; then
+  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+else
+  tied-full-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.? $dir/1.mdl 2> $dir/init_model.log || exit 1;
+fi
 
 rm $dir/treeacc
 
