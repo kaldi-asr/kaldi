@@ -46,8 +46,6 @@ srcdir=$3
 dir=$4
 
 
-model=$srcdir/final.mdl
-
 
 mkdir -p $dir
 cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;  # Create copy of the tree and model and occs...

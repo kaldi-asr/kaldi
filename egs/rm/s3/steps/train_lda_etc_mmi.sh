@@ -86,7 +86,7 @@ cat $dir/train.tra | awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n")
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and 
 # final.mdl from $alidir; the output HCLG.fst goes in $dir/graph.
 
-scripts/mkgraph.sh $dir/lang $alidir $dir/graph || exit 1;
+scripts/mkgraph.sh $dir/lang $alidir $dir/dgraph || exit 1;
 
 echo "Making denominator lattices"
 
@@ -95,7 +95,7 @@ rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
     --word-symbol-table=$lang/words.txt \
-    $alidir/final.mdl $dir/graph/HCLG.fst "${featspart[$n]}" "ark:|gzip -c >$dir/lat$n.gz" \
+    $alidir/final.mdl $dir/dgraph/HCLG.fst "${featspart[$n]}" "ark:|gzip -c >$dir/lat$n.gz" \
      2>$dir/decode_den.$n.log || touch $dir/.error &
 done
 wait
@@ -138,7 +138,7 @@ while [ $x -lt $num_iters ]; do
   impr=`grep Overall $dir/update.$x.log | awk '{print $10;}'`
   impr=`perl -e "print ($impr * $acwt);"` # auxf impr normalized by multiplying by
   # kappa, so it's comparable to an objective-function change.
-  echo On iter $x, objf was $diff, auxf improvement was $impr
+  echo On iter $x, objf was $diff, auxf improvement was $impr | tee $dir/objf.$x.log
 
   x=$[$x+1]
 done
