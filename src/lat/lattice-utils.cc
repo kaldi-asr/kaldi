@@ -21,7 +21,7 @@ using std::pair;
 #include <map>
 using std::map;
 #include <vector>
-using std::vector;
+
 
 #include "lat/lattice-utils.h"
 #include "hmm/transition-model.h"
@@ -83,10 +83,10 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
 
   int32 num_states = lat.NumStates();
   vector<int32> state_times;
-  int32 max_time = LatticeStateTimes(lat, &state_times);
+  int32 max_time = LatticeStateTimes(lat, &state_times);  
   vector< vector<int32> > active_states(max_time + 1);
-  // the +1 is needed since time is indexed from 0
-
+  // the +1 is needed since time is indexed from 0.
+  
   vector<double> state_alphas(num_states, kLogZeroDouble),
       state_betas(num_states, kLogZeroDouble);
   state_alphas[0] = 0.0;
@@ -98,8 +98,9 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
     active_states[cur_time].push_back(state);
 
     if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
-      state_betas[state] = 0.0;
-      tot_forward_prob = LogAdd(tot_forward_prob, state_alphas[state]);
+      BaseFloat final_loglike = -(lat.Final(state).Value1() + lat.Final(state).Value2());
+      state_betas[state] = final_loglike;
+      tot_forward_prob = LogAdd(tot_forward_prob, state_alphas[state] + final_loglike);
     } else {
       ForwardNode(lat, state, &state_alphas);
     }
@@ -134,12 +135,13 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
 
 
 void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
-                         const vector<int32> &sil_phones,
-                         vector< map<int32, int32> > *active_phones) {
-  KALDI_ASSERT(IsSortedAndUniq(sil_phones));
+                         const vector<int32> &silence_phones,
+                         vector< std::set<int32> > *active_phones) {
+  KALDI_ASSERT(IsSortedAndUniq(silence_phones));
   vector<int32> state_times;
   int32 num_states = lat.NumStates();
   int32 max_time = LatticeStateTimes(lat, &state_times);
+  active_phones->clear();
   active_phones->resize(max_time);
   for (int32 state = 0; state < num_states; ++state) {
     int32 cur_time = state_times[state];
@@ -148,12 +150,69 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
       const LatticeArc& arc = aiter.Value();
       if (arc.ilabel != 0) {  // Non-epsilon arc
         int32 phone = trans.TransitionIdToPhone(arc.ilabel);
-        if (!std::binary_search(sil_phones.begin(), sil_phones.end(), phone))
-          (*active_phones)[cur_time][phone] = state;
+        if (!std::binary_search(silence_phones.begin(),
+                                silence_phones.end(), phone))
+          (*active_phones)[cur_time].insert(phone);
       }
     }  // end looping over arcs
   }  // end looping over states
 }
+
+bool LatticeBoost(const TransitionModel &trans,
+                  const std::vector<std::set<int32> > &active_phones,
+                  const std::vector<int32> &silence_phones,
+                  BaseFloat b,
+                  BaseFloat max_silence_error,
+                  Lattice *lat) {
+
+  kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted)) {
+    if (fst::TopSort(lat) == false) {
+      KALDI_WARN << "Cycles detected in lattice";
+      return false;
+    }
+  }
+  
+  KALDI_ASSERT(IsSortedAndUniq(silence_phones));
+  KALDI_ASSERT(max_silence_error >= 0.0 && max_silence_error <= 1.0);
+  vector<int32> state_times;
+  int32 num_states = lat->NumStates();
+  LatticeStateTimes(*lat, &state_times);
+  for (int32 state = 0; state < num_states; ++state) {
+    int32 cur_time = state_times[state];
+    if (cur_time < 0 || cur_time > active_phones.size()) {
+      KALDI_WARN << "Lattice is too long for active_phones: mismatched den and num lattices/alignments?";
+      return false;
+    }
+    for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
+         aiter.Next()) {
+      LatticeArc arc = aiter.Value();
+      if (arc.ilabel != 0) {  // Non-epsilon arc
+        if (arc.ilabel < 0 || arc.ilabel > trans.NumTransitionIds()) {
+          KALDI_WARN << "Lattice has out-of-range transition-ids: lattice/model mismatch?";
+          return false;
+        }
+        int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+        BaseFloat frame_error;
+        if (active_phones[cur_time].count(phone) == 1) {
+          frame_error = 0.0;
+        } else { // an error...
+          if (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))
+            frame_error = max_silence_error;
+          else
+            frame_error = 1.0;
+        }
+        BaseFloat delta_cost = -b * frame_error; // negative cost if
+        // frame is wrong, to boost likelihood of arcs with errors on them.
+        // Add this cost to the graph part.        
+        arc.weight.SetValue1(arc.weight.Value1() + delta_cost);
+        aiter.SetValue(arc);
+      }
+    }
+  }
+  return true;
+}
+
 
 
 int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
@@ -277,9 +336,9 @@ void ForwardNode(const Lattice &lat, int32 state,
     const LatticeArc& arc = aiter.Value();
     double graph_score = arc.weight.Value1(),
         am_score = arc.weight.Value2(),
-        arc_score = (*state_alphas)[state] - am_score - graph_score;
+        arc_loglike = (*state_alphas)[state] - am_score - graph_score;
     (*state_alphas)[arc.nextstate] = LogAdd((*state_alphas)[arc.nextstate],
-                                            arc_score);
+                                            arc_loglike);
   }
 }
 
@@ -299,10 +358,10 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
         const LatticeArc& arc = aiter.Value();
         if (arc.nextstate == state) {
           KALDI_ASSERT(arc.ilabel == 0);
-          double arc_score = (*state_betas)[state] - arc.weight.Value1()
+          double arc_loglike = (*state_betas)[state] - arc.weight.Value1()
               - arc.weight.Value2();
           (*state_betas)[(*st_it)] = LogAdd((*state_betas)[(*st_it)],
-                                            arc_score);
+                                            arc_loglike);
         }
       }
     }
@@ -322,9 +381,9 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
         KALDI_ASSERT(key != 0);
         double graph_score = arc.weight.Value1(),
             am_score = arc.weight.Value2(),
-            arc_score = (*state_betas)[state] - graph_score - am_score;
+            arc_loglike = (*state_betas)[state] - graph_score - am_score;
         (*state_betas)[(*st_it)] = LogAdd((*state_betas)[(*st_it)],
-                                          arc_score);
+                                          arc_loglike);
         double gamma = std::exp(state_alphas[(*st_it)] - graph_score - am_score
                                 + (*state_betas)[state] - tot_forward_prob);
         if (post->find(key) == post->end())  // New label found at prev_time
@@ -347,9 +406,9 @@ void ForwardNodeMpe(const Lattice &lat, const TransitionModel &tr,
     const LatticeArc& arc = aiter.Value();
     double graph_score = arc.weight.Value1(),
         am_score = arc.weight.Value2(),
-        arc_score = (*state_alphas)[state].first - am_score - graph_score;
+        arc_loglike = (*state_alphas)[state].first - am_score - graph_score;
     (*state_alphas)[arc.nextstate].first =
-        LogAdd((*state_alphas)[arc.nextstate].first, arc_score);
+        LogAdd((*state_alphas)[arc.nextstate].first, arc_loglike);
     double frame_acc = 0.0;
     if (arc.ilabel != 0) {
       int32 phone = tr.TransitionIdToPhone(arc.ilabel);

@@ -43,10 +43,32 @@ int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 /// of the lattice.
 BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post);
 
-
+/// Given a lattice, and a transition model to map pdf-ids to phones,
+/// outputs for each frame the set of phones active on that frame.  If
+/// sil_phones (which must be sorted and uniq) is nonempty, it excludes
+/// phones in this list.
 void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
                          const std::vector<int32> &sil_phones,
-                         std::vector< std::map<int32, int32> > *active_phones);
+                         std::vector<std::set<int32> > *active_phones);
+
+/// Boosts LM probabilities by b * [#frame errors]; equivalently, adds
+/// -b*[#frame errors] to the graph-component of the cost of each arc/path.
+/// There is a frame error if a particular transition-id on a particular frame
+/// corresponds to a phone not appearining in active_phones for that frame.
+/// This is used in "margin-inspired" discriminative training, esp. Boosted MMI.
+/// The TransitionModel is used to map transition-ids in the lattice
+/// input-side to phones; the phones appearing in
+/// "silence_phones" are treated specially in that we replace the frame error f
+/// (either zero or 1) for a frame, with the minimum of f or max_silence_error.
+/// For the normal recipe, max_silence_error would be zero.
+/// Returns true on success, false if there was some kind of mismatch.
+/// At input, silence_phones must be sorted and unique.
+bool LatticeBoost(const TransitionModel &trans,
+                  const std::vector<std::set<int32> > &active_phones,
+                  const std::vector<int32> &silence_phones,
+                  BaseFloat b,
+                  BaseFloat max_silence_error,
+                  Lattice *lat);
 
 /// This function takes a reference lattice
 int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
