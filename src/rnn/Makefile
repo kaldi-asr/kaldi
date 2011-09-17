@@ -4,7 +4,7 @@ include ../kaldi.mk
 
 EXTRA_CXXFLAGS = -Wno-sign-compare
 
-BINFILES = rnn-rescore
+BINFILES = rnn-rescore rnn-rescore-kaldi
 
 OBJFILES = rnnlm.o
 
