@@ -104,6 +104,11 @@ steps/align_lda_mllt.sh --graphs "ark,s,cs:gunzip -c exp/tri2b/graphs.fsts.gz|" 
 steps/train_lda_etc_mmi.sh data/train data/lang exp/tri2b_ali exp/tri3a &
 local/decode.sh steps/decode_lda_mllt.sh exp/tri3a/decode
 
+# Do the same with boosting.
+steps/train_lda_etc_mmi.sh --boost 0.05 data/train data/lang exp/tri2b_ali exp/tri3b &
+local/decode.sh steps/decode_lda_mllt.sh exp/tri3a/decode
+
+
 # Do LDA+MLLT+SAT
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d/decode
@@ -156,7 +161,7 @@ local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/s
 local/decode_combine.sh steps/decode_combine.sh exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode
 local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/decode exp/combine_sgmm4f_tri3d/decode
 
-for x in exp/*/decode*; do grep WER $x/wer_* | scripts/best_wer.sh; done
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
 
 exp/combine_1_2a/decode/wer_7:%WER 3.399027 [ 426 / 12533, 55 ins, 94 del, 277 sub ]
 exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 1.731429 [ 217 / 12533, 30 ins, 43 del, 144 sub ]

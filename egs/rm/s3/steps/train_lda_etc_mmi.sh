@@ -26,6 +26,12 @@
 # alignments, models and transforms from an LDA+MLLT system:
 #  ali, final.mdl, final.mat
 
+b=0 # boosting constant, for boosted MMI. 
+if [ $1 == "--boost" ]; then # e.g. "--boost 0.05"
+   shift;
+   b=$1;
+   shift;
+fi
 
 if [ $# != 4 ]; then
    echo "Usage: steps/train_lda_etc_mmi.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
@@ -45,6 +51,7 @@ acwt=0.1
 beam=20
 latticebeam=10
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+silphonelist=`cat $lang/silphones.csl`
 
 mkdir -p $dir
 cp $alidir/tree $alidir/final.mat $dir # Will use the same tree and transforms as in the baseline.
@@ -95,8 +102,9 @@ rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
     --word-symbol-table=$lang/words.txt \
-    $alidir/final.mdl $dir/dgraph/HCLG.fst "${featspart[$n]}" "ark:|gzip -c >$dir/lat$n.gz" \
-     2>$dir/decode_den.$n.log || touch $dir/.error &
+    $alidir/final.mdl $dir/dgraph/HCLG.fst "${featspart[$n]}" \
+    "ark:|lattice-boost-ali --b=$b --silence-phones=$silphonelist $alidir/final.mdl ark:- ark,s,cs:$alidir/ali ark:- | gzip -c >$dir/lat$n.gz" \
+      2>$dir/decode_den.$n.log || touch $dir/.error &
 done
 wait
 if [ -f $dir/.error ]; then
