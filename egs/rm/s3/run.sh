@@ -28,12 +28,10 @@ local/rm_data_prep.sh /mnt/matylda2/data/RM/
 local/rm_format_data.sh
 
 # mfccdir should be some place with a largish disk where you
-# want to store MFCC features. 
+# want to store MFCC features.
 mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfcc
-
-steps/make_mfcc.sh data/train exp/make_mfcc/train $mfccdir 4
-for test in mar87 oct87 feb89 oct89 feb91 sep92; do
-  steps/make_mfcc.sh data/test_$test exp/make_mfcc/test_$test $mfccdir 4
+for x in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb89 test_sep92; do
+  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
 done
 
 scripts/subset_data_dir.sh data/train 1000 data/train.1k

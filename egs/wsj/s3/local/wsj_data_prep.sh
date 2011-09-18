@@ -119,6 +119,8 @@ spoken_noise_word="<SPOKEN_NOISE>";
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
    cat $x.trans2 | $local/oov2unk.pl lexicon.txt $spoken_noise_word | sort  > $x.txt  || exit 1 # the .txt is the final transcript.
 done
+
+
  
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
