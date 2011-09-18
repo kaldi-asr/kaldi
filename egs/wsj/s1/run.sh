@@ -490,3 +490,11 @@ done
 # cat exp/decode_tri2a_tgpr_eval92/scoring/hyp.sys
 
 
+# notes on timing of alignment... trying it in tri2a for 500 utts.  Took
+# [with retry-beam=40]
+# the results below seem to show that beam = 6 is the fastest...
+# of course this assumes the retry-beam is 40.
+# 20.9 sec @ beam = 7
+# 13.8 sec @ beam = 6
+# 14.4 sec @ beam = 5
+# 14.4 sec @ beam = 4
