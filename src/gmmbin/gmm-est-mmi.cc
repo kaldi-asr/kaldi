@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     po.Register("update-flags", &update_flags_str, "Which GMM parameters to "
                 "update: subset of mvwt.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
-        "occupancies to.");
+                "occupancies to.");
     //tcfg.Register(&po);
     mmi_opts.Register(&po);
 
@@ -88,10 +88,8 @@ int main(int argc, char *argv[]) {
       num_transition_accs.Read(is.Stream(), binary);
       mmi_accs.ReadDen(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
-
     
-
-   
+       
     {  // Update GMMs.
       BaseFloat auxf_impr_gauss, auxf_impr_weights, count;
       int32 num_floored;
