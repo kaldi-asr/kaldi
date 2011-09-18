@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Accumulate stats for GMM training (reading in posteriors).\n"
         "Usage:  gmm-acc-stats [options] <model-in> <feature-rspecifier> <posteriors-rspecifier> <stats-out>\n"
         "e.g.: \n"
-        " gmm-acc-stats 1.mdl 1.ali scp:train.scp ark:1.post 1.acc\n";
+        " gmm-acc-stats 1.mdl 1.post scp:train.scp ark:1.post 1.acc\n";
 
     ParseOptions po(usage);
     bool binary = false;

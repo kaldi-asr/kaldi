@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
 
-    KALDI_LOG << "After processing all lattices: average log-likelihood = "
+    KALDI_LOG << "Overall average log-like/frame is "
               << (total_like/total_time) << " over " << total_time
               << " frames.";
     KALDI_LOG << "Done " << n_done << " lattices.";
