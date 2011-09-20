@@ -1204,9 +1204,9 @@ void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
   Vector<double> prior(state_occs);
   KALDI_ASSERT(prior.Sum() != 0.0);
   prior.Scale(1.0 / prior.Sum()); // Normalize.
-  SpMatrix<float> H(phn_space_dim); // The same as H_sm in some other code.
+  SpMatrix<BaseFloat> H(phn_space_dim); // The same as H_sm in some other code.
   for(int32 i = 0; i < num_gauss; ++i) {
-    SpMatrix<float> Hi(phn_space_dim);
+    SpMatrix<BaseFloat> Hi(phn_space_dim);
     Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
     H.AddSp(prior(i), Hi);
   }
