@@ -33,6 +33,8 @@ if [ $# != 1 ]; then
   exit 1; 
 fi 
 
+export LC_ALL=C
+
 RMROOT=$1
 
 mkdir -p data/local
