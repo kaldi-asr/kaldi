@@ -173,9 +173,12 @@ int main(int argc, char *argv[]) {
                       << tot_weight <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << utt << " avg. like is "
+                    << (tot_like_this_file/tot_weight)
+                    << " over " << tot_weight <<" frames.";
+        }
       }
     }
     KALDI_LOG << "Overall like per frame (Gaussian only) = "
