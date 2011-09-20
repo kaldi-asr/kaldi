@@ -30,51 +30,49 @@ exit 1;
 # Another example set of command line arguments is
 # /ais/gobi2/speech/WSJ/*/??-{?,??}.?.   These must be absolute,
 # not relative, pathnames.
-local/wsj_data_prep.sh  /mnt/matylda2/data/WSJ?/??-{?,??}.?
+local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.?
+
+local/wsj_prepare_dict.sh
 
 local/wsj_format_data.sh
 
+# Now make MFCC features.
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features.
+mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_wsj_mfcc
+for x in eval_nov92 eval_nov93 dev_nov93 train_si284; do 
+ steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
+done
+
+
+mkdir data/train_si84
+for x in feats.scp text utt2spk wav.scp; do
+  head -7138 data/train_si284/$x > data/train_si84/$x
+done
+scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt
+scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender
+
+# Now make subset with half of si-84.
+scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2k
+
+steps/train_mono.sh data/train_si84_2k data/lang exp/mono
+
+# add --no-queue --num-jobs 4 after "scripts/decode.sh" below, if you don't have
+# qsub (i.e. Sun Grid Engine) on your system.  The number of jobs to use depends
+# on how many CPUs and how much memory you have, on the local machine.  If you do
+# have qsub on your system, you will probably have to edit steps/decode.sh anyway
+# to change the queue options... or if you have a different queueing system,
+# you'd have to modify the script to use that.
+
+(scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
+ scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
+ scripts/decode.sh exp/decode_mono_tgpr_eval93 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov93.scp 
+) &
 
 
 ##########
 # 
-# Old run.sh is from here.
-
-# (1) To get the CMU dictionary, do:
-svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/
-# got this at revision 10966 in the last tests done before releasing v1.0.
-# can add -r 10966 for strict compatibility.
-
-
-#(2) Dictionary preparation:
-
-mkdir -p data
-
-# Make phones symbol-table (adding in silence and verbal and non-verbal noises at this point).
-# We are adding suffixes _B, _E, _S for beginning, ending, and singleton phones.
-
-cat cmudict/cmudict.0.7a.symbols | perl -ane 's:\r::; print;' | \
- awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; N=4; } 
-           {printf("%s %d\n", $1, N++); }
-           {printf("%s_B %d\n", $1, N++); }
-           {printf("%s_E %d\n", $1, N++); }
-           {printf("%s_S %d\n", $1, N++); } ' >data/phones.txt
-
-
-# First make a version of the lexicon without the silences etc, but with the position-markers.
-# Remove the comments from the cmu lexicon and remove the (1), (2) from words with multiple 
-# pronunciations.
-
-grep -v ';;;' cmudict/cmudict.0.7a | perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; print; }' \
- | perl -ane '@A=split(" ",$_); $w = shift @A; @A>0||die;
-   if(@A==1) { print "$w $A[0]_S\n"; } else { print "$w $A[0]_B ";
-     for($n=1;$n<@A-1;$n++) { print "$A[$n] "; } print "$A[$n]_E\n"; } ' \
-  > data/lexicon_nosil.txt
-
-# Add to cmudict the silences, noises etc.
-
-(echo '!SIL SIL'; echo '<s> '; echo '</s> '; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
- cat - data/lexicon_nosil.txt  > data/lexicon.txt
+# Old run.sh is from here [parts of it not yet incorporated]
 
 
 silphones="SIL SPN NSN";
@@ -89,12 +87,6 @@ echo $ndisambig > data/lex_ndisambig
 # Next, create a phones.txt file that includes the disambiguation symbols.
 # the --include-zero includes the #0 symbol we pass through from the grammar.
 scripts/add_disambig.pl --include-zero data/phones.txt $ndisambig > data/phones_disambig.txt
-
-# Make the words symbol-table; add the disambiguation symbol #0 (we use this in place of epsilon
-# in the grammar FST).
-cat data/lexicon.txt | awk '{print $1}' | sort | uniq  | \
- awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
-  > data/words.txt
 
 
 #(3)
@@ -115,8 +107,6 @@ cd data_prep
 
 
 cd ..
-
-
 
 # Here is where we select what data to train on.
 # use all the si284 data.

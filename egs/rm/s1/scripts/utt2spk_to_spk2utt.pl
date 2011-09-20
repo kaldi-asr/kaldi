@@ -14,7 +14,13 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+# converts an utt2spk file to a spk2utt file.
+# Takes input from the stdin or from a file argument;
+# output goes to the standard out.
 
+if ( @ARGV > 1 ) {
+    die "Usage: utt2spk_to_spk2utt.pl [ utt2spk ] > spk2utt";
+}
 
 while(<>){ 
     @A = split(" ", $_);

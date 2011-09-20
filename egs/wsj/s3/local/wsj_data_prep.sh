@@ -75,7 +75,7 @@ cat links/13-34.1/wsj1/doc/indices/si_tr_s.ndx \
 # is h1_p0. 
 
 # Nov'92 (333 utts)
-# These index files have a slightly different  format;
+# These index files have a slightly different format;
 # have to add .wv1
 cat links/11-13.1/wsj0/doc/indices/test/nvp/si_et_20.ndx | \
   $local/ndx2flist.pl $* |  awk '{printf("%s.wv1\n", $1)}' | \
@@ -103,23 +103,13 @@ for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
    cat ${x}_sph.scp | awk '{print $1}' | $local/find_transcripts.pl  dot_files.flist > $x.trans1
 done
 
-# Do some initial normalization steps.
+# Do some basic normalization steps.  At this point we don't remove OOVs--
+# that will be done inside the training scripts, as we'd like to make the
+# data-preparation stage independent of the specific lexicon used.
 noiseword="<NOISE>";
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
-   cat $x.trans1 | $local/normalize_transcript.pl $noiseword > $x.trans2 || exit 1
+   cat $x.trans1 | $local/normalize_transcript.pl $noiseword | sort > $x.txt || exit 1;
 done
-
-if [ ! -f lexicon.txt ]; then
-   echo "You need to get data/local/lexicon.txt before running wsj_data_prep.sh "
-   echo "(first run wsj_prepare_dict.sh)"
-   exit 1
-fi
-# Convert OOVs to <SPOKEN_NOISE>
-spoken_noise_word="<SPOKEN_NOISE>";
-for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
-   cat $x.trans2 | $local/oov2unk.pl lexicon.txt $spoken_noise_word | sort  > $x.txt  || exit 1 # the .txt is the final transcript.
-done
-
 
  
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
@@ -139,8 +129,8 @@ cat links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb20onp.z | \
  perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' | \
  gzip -c -f > lm_tg.arpa.gz
 
-prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tg_pruned.arpa
-gzip -f lm_tg_pruned.arpa
+prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa
+gzip -f lm_tgpr.arpa
 
 # Make the utt2spk and spk2utt files.
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
@@ -162,7 +152,7 @@ if [ ! -f wsj0-train-spkrinfo.txt ]; then
 fi
 # Note: wsj0-train-spkrinfo.txt doesn't seem to be on the disks but the
 # LDC put it on the web.  Perhaps it was accidentally omitted from the
-# disks.  I put it in the repository.
+# disks.  
 
 cat links/11-13.1/wsj0/doc/spkrinfo.txt \
     links/13-32.1/wsj1/doc/evl_spok/spkrinfo.txt \
@@ -172,3 +162,4 @@ cat links/11-13.1/wsj0/doc/spkrinfo.txt \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
    awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender.map
 
+echo "Data preparation succeeded"
