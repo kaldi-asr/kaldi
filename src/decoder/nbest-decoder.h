@@ -134,13 +134,17 @@ class NBestDecoder {
     return false;
   }
 
-  bool GetNBestLattice(fst::MutableFst<CompactLatticeArc> *fst_out, bool *was_final) {
+  bool GetNBestLattice(fst::MutableFst<CompactLatticeArc> *fst_out,
+                        bool *was_final, int32 *nbest, BaseFloat *nbest_beam) {
     // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
-    // nothing was available.  It returns true if it got output (thus, fst_out
-    // will be nonempty).
-    DEBUG_OUT1("GetBestPath")
+    // nothing was available.  It returns number of paths if it got output
+    // (thus, fst_out will be nonempty), otherwise zero.
+    DEBUG_OUT1("GetNBestPaths")
+    int n_paths = 0;
+    BaseFloat worst_final = 0.0,
+              best_final = std::numeric_limits<BaseFloat>::infinity();
     *was_final = ReachedFinal();
     Elem *last_toks = toks_.Clear(); // P <- C , C = {}
     Token *tok = token_store_.CreateTok(0, NULL);
@@ -179,12 +183,18 @@ class NBestDecoder {
     last_toks = toks_.Clear(); // just tokens in super end state this time
     if (last_toks->val == NULL) return false;  // No output.
     // go through tokens in imaginary super end state
-    for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
+    for (Elem *e = last_toks, *e_tail = NULL; e != NULL; e = e_tail) {
       Token *best_tok = e->val;
       DEBUG_OUT1("n-best final token: " << best_tok->unique
                  << " path weight:" << best_tok->c << "," << best_tok->ca)
       BaseFloat amscore = best_tok->ca.Value(),
                 lmscore = best_tok->c.Value() - amscore;
+      if (isinf(amscore) || isinf(lmscore)) {
+        KALDI_WARN << "infinity token! probably too narrow beam to retrieve n best";
+        e_tail = e->tail;
+        toks_.Delete(e);
+        continue; // skip that token
+      }
       LatticeWeight path_w(lmscore, amscore);
       CompactLatticeWeight path_weight(path_w, vector<int32>());
 
@@ -221,7 +231,13 @@ class NBestDecoder {
       fst_out->SetFinal(cur_state, path_weight);
       e_tail = e->tail;
       toks_.Delete(e);
+      n_paths++;
+      BaseFloat p_score = amscore + lmscore;
+      if (p_score > worst_final) worst_final = p_score;
+      if (p_score < best_final) best_final = p_score;
     }
+    if (nbest_beam) *nbest_beam = worst_final - best_final;
+    if (nbest) *nbest = n_paths;
 
     DEBUG_OUT3("tokens created: " << tnumber << " deleted: " << dtnumber)
     DEBUG_OUT3("seqtokens created: " << snumber << " deleted: " << dsnumber)
