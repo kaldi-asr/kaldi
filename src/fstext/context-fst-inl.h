@@ -101,7 +101,9 @@ ContextFstImpl<Arc, LabelT>::ContextFstImpl(Label subsequential_symbol,  // epsi
     assert(subsequential_symbol != 0
            && disambig_syms_.count(subsequential_symbol) == 0
            && phone_syms_.count(subsequential_symbol) == 0);
-    assert(!phone_syms.empty() && phone_syms_.count(0) == 0);
+    if (phone_syms.empty())
+      KALDI_WARN << "Context FST created but there are no phone symbols: probably input FST was empty.";
+    assert(phone_syms_.count(0) == 0);
     assert(disambig_syms_.count(0) == 0);
     for (size_t i = 0; i < phone_syms.size(); i++)
       assert(disambig_syms_.count(phone_syms[i]) == 0);
@@ -480,7 +482,7 @@ inline void ComposeContext(vector<int32> &disambig_syms_in,
   for (size_t i = 0; i < all_syms.size(); i++)
     if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(), all_syms[i]))
       phones.push_back(all_syms[i]);
-
+  
   // Get subsequential symbol that does not clash with
   // any disambiguation symbol or symbol in the FST.
   int32 subseq_sym = 1;

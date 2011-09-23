@@ -291,7 +291,7 @@ class FasterDecoder {
     // int32 n = 0, np = 0;
 
     // the tokens are now owned here, in last_toks, and the hash is empty.
-    // 'owned' is a complex thing here; the point is we need to call DeleteElem
+    // 'owned' is a complex thing here; the point is we need to call TokenDelete
     // on each elem 'e' to let toks_ know we're done with them.
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {  // loop this way
       // n++;

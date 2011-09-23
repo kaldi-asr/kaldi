@@ -106,6 +106,8 @@ if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   fi
 fi
 
+# keep a copy of the lexicon with HCLG.
+cp $lang/words.txt $dir/
 
 # to make const fst:
 # fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst

@@ -25,57 +25,74 @@
 # acoustic weights, in order to explore a range of different
 # weights.
 
+if [ -f ./path.sh ]; then . ./path.sh; fi
 
-if [ $# != 4 ]; then
-   echo "Usage: steps/decode_deltas.sh <model-dir> <data-dir> <lang-dir> <decode-dir>"
-   echo " e.g.: steps/decode_deltas.sh exp/mono data/test_feb89 data/lang_test exp/mono/decode/feb89"
+numjobs=1
+jobid=0
+if [ "$1" == "-j" ]; then
+  shift;
+  numjobs=$1;
+  jobid=$2;
+  shift; shift;
+  if [ $jobid -ge $numjobs ]; then
+     echo "Invalid job number, $jobid >= $numjobs";
+     exit 1;
+  fi
+fi
+
+if [ $# != 3 ]; then
+   echo "Usage: steps/decode_deltas.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: steps/decode_deltas.sh -j 8 0 exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_dev93_tgpr"
    exit 1;
 fi
 
-srcdir=$1
+
+graphdir=$1
 data=$2
-lang=$3
-dir=$4
-graphdir=$srcdir/graph
+dir=$3
+srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 
 mkdir -p $dir
 
-if [ -f path.sh ]; then . path.sh; fi
+requirements="$data/feats.scp $srcdir/final.mdl $graphdir/HCLG.fst"
+for f in $requirements; do
+  if [ ! -f $f ]; then
+     echo "decode_deltas.sh: no such file $f";
+     exit 1;
+  fi
+done
 
-if [ ! -f $srcdir/final.mdl ]; then
-   echo No model file $srcdir/final.mdl
-   exit 1;
-fi
+# Make the split .scp files...
 
-if [[ ! -f $graphdir/HCLG.fst || $graphdir/HCLG.fst -ot $srcdir/final.mdl ]]; then
-   echo "Graph $graphdir/HCLG.fst does not exist or is too old."
-   exit 1;
-fi
+scripts/split_scp.pl -j $numjobs $jobid --utt2spk=$data/utt2spk $data/feats.scp > $dir/$jobid.scp
+scripts/split_scp.pl -j $numjobs $jobid --utt2spk=$data/utt2spk $data/utt2spk > $dir/$jobid.utt2spk
+scripts/utt2spk_to_spk2utt.pl $dir/$jobid.utt2spk > $dir/$jobid.spk2utt
+
+
 
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark:compute-cmvn-stats --spk2utt=ark:$dir/$job.spk2utt scp:$dir/$job.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$dir/$job.utt2spk ark:- scp:$dir/$job.scp ark:- | add-deltas ark:- ark:- |"
 
-# For Resource Management, we use beam of 20 and acwt of 1/10.
-# More normal, LVCSR setups would have a beam of 13 and acwt of 1/15 or so.
-# If you decode with a beam of 20 on an LVCSR setup it will be very slow.
 
-gmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.gz" \
+gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
+  --word-symbol-table=$graphdir/words.txt \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
   ark,t:$dir/test.tra ark,t:$dir/test.ali \
-     2> $dir/decode.log || exit 1;
+     2> $dir/decode$jobid.log || exit 1;
 
-# In this setup there are no non-scored words, so
-# scoring is simple.
 
-# Now rescore lattices with various acoustic scales, and compute the WER.
-for inv_acwt in 4 5 6 7 8 9 10; do
-  acwt=`perl -e "print (1.0/$inv_acwt);"`
-  lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$lang/words.txt \
-     "ark:gunzip -c $dir/lat.gz|" ark,t:$dir/${inv_acwt}.tra \
-     2>$dir/rescore_${inv_acwt}.log
+# # In this setup there are no non-scored words, so
+# # scoring is simple.
 
-  scripts/sym2int.pl --ignore-first-field $lang/words.txt $data/text | \
-   compute-wer --mode=present ark:-  ark,p:$dir/${inv_acwt}.tra \
-    >& $dir/wer_${inv_acwt}
-done
+# # Now rescore lattices with various acoustic scales, and compute the WER.
+# for inv_acwt in 4 5 6 7 8 9 10; do
+#   acwt=`perl -e "print (1.0/$inv_acwt);"`
+#   lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
+#      "ark:gunzip -c $dir/lat.gz|" ark,t:$dir/${inv_acwt}.tra \
+#      2>$dir/rescore_${inv_acwt}.log
+
+#   scripts/sym2int.pl --ignore-first-field $graphdir/words.txt $data/text | \
+#    compute-wer --mode=present ark:-  ark,p:$dir/${inv_acwt}.tra \
+#     >& $dir/wer_${inv_acwt}
+# done

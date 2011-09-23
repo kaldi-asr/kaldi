@@ -59,7 +59,7 @@ steps/train_mono.sh data/train_si84_2k data/lang exp/mono
 
 scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono exp/mono/graph_tgpr
 
-scripts/decode.sh steps/decode_deltas.sh data/dev_nov93 exp/mono/graph_tgpr exp/mono/decode_eval92 
+scripts/decode.sh steps/decode_deltas.sh data/dev_nov93 exp/mono/graph_tgpr exp/mono/decode_dev93
 
 # exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
 
