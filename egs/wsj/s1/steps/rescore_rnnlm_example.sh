@@ -35,9 +35,10 @@ echo "Compiling LM fst"
     grep -v '</s> <s>' | \
     grep -v '</s> </s>' | \
     arpa2fst - | fstprint | \
-    scripts/remove_oovs.pl data/oovs_srilm.3g.kn.gz.txt | \
+    scripts/remove_oovs.pl data/oovs_tg.txt | \
     scripts/eps2disambig.pl |  fstcompile --isymbols=$WORDSYM --osymbols=$WORDSYM \
-     --keep_isymbols=false --keep_osymbols=false > $TMP/G.fst
+     --keep_isymbols=false --keep_osymbols=false | \
+   fstproject --project_output=true > $TMP/G.fst
 
 echo "Extracting $NBEST best"
 

@@ -52,7 +52,7 @@ fi
 # CMVN stats-- we make them part of a pipe.
 feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
 
-# For Resource Management, we use beam of 25 and acwt of 1/10.
+# For Resource Management, we use beam of 20 and acwt of 1/10.
 # More normal, LVCSR setups would have a beam of 13 and acwt of 1/15 or so.
 # If you decode with a beam of 20 on an LVCSR setup it will be very slow.
 

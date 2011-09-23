@@ -2,13 +2,13 @@
 
 #
 if [ -f WSJ.tar.gz ]; then
-  tar xzf WSJ.tar.gz
+  echo "data archive found!"
 else
-  echo "if you have access to it copy the data tar ball"
-  echo "cp /homes/kazi/kombrink/WSJ.tar.gz ."
-  echo "then you can run this script successfully!"
-  exit 1
+  echo "trying to download the data archive using wget"
+  wget http://www.fit.vutbr.cz/~kombrink/personal/rnn-kaldi/WSJ.tar.gz
 fi;
+
+tar xzf WSJ.tar.gz
 
 N=10
 S=0.0625

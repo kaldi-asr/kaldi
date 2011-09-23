@@ -91,7 +91,7 @@ while [ $x -lt $numiters ]; do
   fi
   gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
   gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
-  rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs
+  rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs 2>/dev/null
   if [ $x -le $maxiterinc ]; then
      numgauss=$[$numgauss+$incgauss];
   fi

@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
 
     if (po.NumArgs() != 4) {
       po.PrintUsage();
-      KALDI_EXIT << "Wrong arguments!";
+      exit(1);
     }
 
     std::string wordsymtab_filename = po.GetArg(1),
