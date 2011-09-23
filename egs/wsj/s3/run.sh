@@ -57,6 +57,12 @@ scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2k
 
 steps/train_mono.sh data/train_si84_2k data/lang exp/mono
 
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono exp/mono/graph_tgpr
+
+scripts/decode.sh steps/decode_deltas.sh data/dev_nov93 exp/mono/graph_tgpr exp/mono/decode_eval92 
+
+# exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
+
 # add --no-queue --num-jobs 4 after "scripts/decode.sh" below, if you don't have
 # qsub (i.e. Sun Grid Engine) on your system.  The number of jobs to use depends
 # on how many CPUs and how much memory you have, on the local machine.  If you do
