@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
                       << " files is " << (tot_like/tot_frames);
       }
     }
-    KALDI_LOG << "Done " << num_done << " files, average likelihood per "
+    KALDI_LOG << "Done " << num_done << " files.";
+    KALDI_LOG << "Overall likelihood per "
               << "frame = " << (tot_like/tot_frames) << " over " << tot_frames
               << "frames.";
 
@@ -114,7 +115,7 @@ int main(int argc, char *argv[]) {
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs to " << accs_wxfilename;
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

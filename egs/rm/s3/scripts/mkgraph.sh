@@ -105,3 +105,8 @@ if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
     fstisstochastic $dir/HCLG.fst || echo "Final HCLG is not stochastic."
   fi
 fi
+
+
+# to make const fst:
+# fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
+
