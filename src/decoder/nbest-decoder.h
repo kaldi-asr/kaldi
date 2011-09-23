@@ -189,7 +189,7 @@ class NBestDecoder {
                  << " path weight:" << best_tok->c << "," << best_tok->ca)
       BaseFloat amscore = best_tok->ca.Value(),
                 lmscore = best_tok->c.Value() - amscore;
-      if (isinf(amscore) || isinf(lmscore)) {
+      if (KALDI_ISINF(amscore) || KALDI_ISINF(lmscore)) {
         KALDI_WARN << "infinity token! probably too narrow beam to retrieve n best";
         e_tail = e->tail;
         toks_.Delete(e);
