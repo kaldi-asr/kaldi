@@ -42,14 +42,14 @@ fi
 for inv_acwt in 9 10 11 12 13 14 15 16; do 
    acwt=`perl -e "print (1.0/$inv_acwt);"`
    lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$symtab \
-      "ark:gunzip -c $dir/lat.gz|" ark,t:$dir/${inv_acwt}.tra \
+      "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/${inv_acwt}.tra \
       2>$dir/rescore_${inv_acwt}.log
      
    trans=$data/text
 
    cat $trans | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
 
-   cat $dir/rescore_${inv_acwt}.log | \
+   cat $dir/${inv_acwt}.tra | \
     scripts/int2sym.pl --ignore-first-field $symtab | \
     sed 's:<s>::' | sed 's:</s>::' | sed 's:<UNK>::g' | \
     compute-wer --text --mode=present ark:$dir/test_trans.filt  ark,p:-   >& $dir/wer_$inv_acwt

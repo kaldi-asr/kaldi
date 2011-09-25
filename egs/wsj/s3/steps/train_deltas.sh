@@ -20,61 +20,62 @@
 # exp/mono), supplied as an argument, which is assumed to be built using
 # the same type of features.
 
-if [ $# != 4 ]; then
-   echo "Usage: steps/train_deltas.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1"
+if [ $# != 6 ]; then
+   echo "Usage: steps/train_deltas.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_deltas.sh 2000 10000 data/train_si84_half data/lang exp/mono_ali exp/tri1"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
-data=$1
-lang=$2
-alidir=$3
-dir=$4
+numleaves=$1
+totgauss=$2
+data=$3
+lang=$4
+alidir=$5
+dir=$6
 
-if [ ! -f $alidir/final.mdl -o ! -f $alidir/ali ]; then
-  echo "Error: alignment dir $alidir does not contain final.mdl and ali"
+if [ ! -f $alidir/final.mdl -o ! -f $alidir/0.ali.gz -o ! -f $alidir/3.ali.gz ]; then
+  echo "Error: alignment dir $alidir does not contain final.mdl and {0,1,2,3}.ali.gz"
   exit 1;
 fi
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-realign_iters="5 10 15 20";  
+realign_iters="10 20 30";
+oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
+grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
 silphonelist=`cat $lang/silphones.csl`
-numiters=25    # Number of iterations of training
-maxiterinc=15 # Last iter to increase #Gauss on.
-numleaves=1800 # target num-leaves in tree building.
-numgauss=$[$numleaves + $numleaves/2];  # starting num-Gauss.
-     # Initially mix up to avg. 1.5 Gauss/state ( a bit more
-     # than this, due to state clustering... then slowly mix 
-     # up to final amount.
-totgauss=9000 # Target #Gaussians
+numiters=35    # Number of iterations of training
+maxiterinc=25 # Last iter to increase #Gauss on.
+numgauss=$numleaves
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 
 
 mkdir -p $dir
 
+if [ ! -f $data/split4 -o $data/split4 -ot $data/feats.scp ]; then
+  scripts/split_data.sh $data 4
+fi
 
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/?.cmvn|\" scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
+for n in 0 1 2 3; do
+  featspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+done
 
 
-
+# The next stage assumes we won't need the context of silence, which
+# assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
 acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-   ark:$alidir/ali $dir/treeacc 2> $dir/acc.tree.log  || exit 1;
-
+   "ark:gunzip -c $alidir/?.ali.gz|" $dir/treeacc 2> $dir/acc_tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
-
-cat $lang/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
-cluster-phones $dir/treeacc $dir/phones.list $dir/questions.txt 2> $dir/questions.log || exit 1;
-scripts/int2sym.pl $lang/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
+# preparing questions, roots file...
+scripts/sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
+cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/questions.log || exit 1;
+scripts/sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
 compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
-
-# Have to make silence root not-shared because we will not split it.
-scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split \
-    > $dir/roots.txt 2>$dir/roots.log || exit 1;
-
+scripts/sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
 echo "Building tree"
 build-tree --verbose=1 --max-leaves=$numleaves \
@@ -87,33 +88,53 @@ gmm-init-model  --write-occs=$dir/1.occs  \
 gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
    2>$dir/mixup.log || exit 1;
 
-#rm $dir/treeacc
+rm $dir/treeacc
 
-# Convert alignments generated from monophone model, to use as initial alignments.
+# Convert alignments in $alidir, to use as initial alignments.
+# This assumes that $alidir was split in 4 pieces, just like the
+# current dir.
 
-convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree ark:$alidir/ali ark:$dir/cur.ali 2>$dir/convert.log 
-  # Debug step only: convert back and check they're the same.
-  convert-ali $dir/1.mdl $alidir/final.mdl $alidir/tree ark:$dir/cur.ali ark:- \
-   2>/dev/null | cmp - $alidir/ali || exit 1; 
+echo "Converting old alignments"
+for n in 0 1 2 3; do
+  convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
+   "ark:gunzip -c $alidir/$n.ali.gz|" "ark:|gzip -c >$dir/$n.ali.gz" \
+    2>$dir/convert$n.log  || exit 1;
+done
 
-# Make training graphs
+# Make training graphs (this is split in 4 parts).
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
-  "ark:scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text |" \
-  "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1;
+rm $dir/.error 2>/dev/null
+for n in 0 1 2 3; do
+  compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+    "ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt < $data/split4/$n/text |" \
+    "ark:|gzip -c >$dir/$n.fsts.gz"  2>$dir/compile_graphs$n.log  || touch $dir/.error&
+done
+wait;
+[ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
 
 x=1
 while [ $x -lt $numiters ]; do
    echo Pass $x
    if echo $realign_iters | grep -w $x >/dev/null; then
      echo "Aligning data"
-     gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
-             "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-             ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
+     for n in 0 1 2 3; do
+       gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/$x.mdl \
+              "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
+              "ark:|gzip -c >$dir/$n.ali.gz" 2> $dir/align.$x.$n.log || touch $dir/.error &
+     done
+     wait;
+     [ -f $dir/.error ] && echo "Error aligning data on iteration $x" && exit 1;
    fi
-   gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
-   gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
-   rm $dir/$x.mdl $dir/$x.acc
+   for n in 0 1 2 3; do
+     gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
+       "ark:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc \
+      2>$dir/acc.$x.$n.log  || touch $dir/.error &
+   done
+   wait;
+   [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
+   gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
+      "gmm-sum-accs - $dir/$x.{0,1,2,3}.acc |" $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
+   rm $dir/$x.mdl $dir/$x.{0,1,2,3}.acc
    rm $dir/$x.occs 
    if [[ $x -le $maxiterinc ]]; then 
       numgauss=$[$numgauss+$incgauss];

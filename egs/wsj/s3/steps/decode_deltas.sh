@@ -72,11 +72,11 @@ scripts/utt2spk_to_spk2utt.pl $dir/$jobid.utt2spk > $dir/$jobid.spk2utt
 
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$dir/$job.spk2utt scp:$dir/$job.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$dir/$job.utt2spk ark:- scp:$dir/$job.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark:compute-cmvn-stats --spk2utt=ark:$dir/$jobid.spk2utt scp:$dir/$jobid.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$dir/$jobid.utt2spk ark:- scp:$dir/$jobid.scp ark:- | add-deltas ark:- ark:- |"
 
 
 gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
-  --word-symbol-table=$graphdir/words.txt \
+  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
   ark,t:$dir/test.tra ark,t:$dir/test.ali \
      2> $dir/decode$jobid.log || exit 1;

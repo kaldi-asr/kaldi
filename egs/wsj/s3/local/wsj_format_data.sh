@@ -88,9 +88,25 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt 0.5 SIL | \
 # triphone system.  extra_questions.txt is some pre-defined extra questions about
 # position and stress that split apart the categories we created in phonesets.txt.
 # in extra_questions.txt there is also a question about silence phones, since we 
+# didn't include that in our
 
-local/make_shared_phones.sh < data/lang/phones.txt > data/lang/phonesets.txt
+local/make_shared_phones.sh < data/lang/phones.txt > data/lang/phonesets_mono.txt
+grep -v SIL data/lang/phonesets_mono.txt > data/lang/phonesets_cluster.txt
 local/make_extra_questions.sh < data/lang/phones.txt > data/lang/extra_questions.txt
+
+( # Creating the "roots file" for building the context-dependent systems...
+  # we share the roots across all the versions of each real phone.  We also
+  # share the states of the 3 forms of silence.  "not-shared" here means the
+  # states are distinct p.d.f.'s... normally we would automatically split on
+  # the HMM-state but we're not making silences context dependent.
+  echo 'not-shared not-split SIL SPN NSN';
+  cat data/lang/phones.txt | grep -v eps | grep -v SIL | grep -v SPN | grep -v NSN | awk '{print $1}' | \
+    perl -e 'while(<>){ m:([A-Za-z]+)(\d*)(_.)?: || die "Bad line $_"; 
+            $phone=$1; $stress=$2; $position=$3;
+      if($phone eq $curphone){ print " $phone$stress$position"; }
+      else { if(defined $curphone){ print "\n"; } $curphone=$phone; 
+            print "shared split $phone$stress$position";  }} print "\n"; '
+) > data/lang/roots.txt
 
 silphonelist=`cat data/lang/silphones.csl | sed 's/:/ /g'`
 nonsilphonelist=`cat data/lang/nonsilphones.csl | sed 's/:/ /g'`

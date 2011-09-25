@@ -87,8 +87,8 @@ class FasterDecoder {
     toks_.Insert(start_state, new Token(dummy_arc, NULL));
     ProcessNonemitting(std::numeric_limits<float>::max());
     for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
-      BaseFloat adaptive_beam = ProcessEmitting(decodable, frame);
-      ProcessNonemitting(adaptive_beam);
+      BaseFloat weight_cutoff = ProcessEmitting(decodable, frame);
+      ProcessNonemitting(weight_cutoff);
     }
   }
 
@@ -263,7 +263,7 @@ class FasterDecoder {
     BaseFloat weight_cutoff = GetCutoff(last_toks, &tok_cnt,
                                         &adaptive_beam, &best_elem);
     PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
-
+    
     // This is the cutoff we use after adding in the log-likes (i.e.
     // for the next frame).  This is a bound on the cutoff we will use
     // on the next frame.
@@ -275,8 +275,8 @@ class FasterDecoder {
       StateId state = best_elem->key;
       Token *tok = best_elem->val;
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
+           !aiter.Done();
+           aiter.Next()) {
         Arc arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
           arc.weight = Times(arc.weight,
@@ -313,6 +313,8 @@ class FasterDecoder {
               Token *new_tok = new Token(arc, tok);
               new_tok->weight_a = amscore;
               Elem *e_found = toks_.Find(arc.nextstate);
+              if (new_weight + adaptive_beam < next_weight_cutoff)
+                next_weight_cutoff = new_weight + adaptive_beam;
               if (e_found == NULL) {
                 toks_.Insert(arc.nextstate, new_tok);
               } else {
@@ -331,21 +333,15 @@ class FasterDecoder {
       Token::TokenDelete(e->val);
       toks_.Delete(e);
     }
-    //  std::cerr << n << ', ' << np << ', ' <<adaptive_beam<<' ';
-    return adaptive_beam;
+    return next_weight_cutoff;
   }
 
-  void ProcessNonemitting(BaseFloat adaptive_beam) {
-    // Processes nonemitting arcs for one frame.  Propagates within
-    // cur_toks_.
+  // TODO: first time we go through this, could avoid using the queue.
+  void ProcessNonemitting(BaseFloat cutoff) {
+    // Processes nonemitting arcs for one frame. 
     assert(queue_.empty());
-    float best_weight = 1.0e+10;
-    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
       queue_.push_back(e->key);
-      best_weight = std::min(best_weight, e->val->weight.Value());
-    }
-    BaseFloat cutoff = best_weight + adaptive_beam;
-
     while (!queue_.empty()) {
       StateId state = queue_.back();
       queue_.pop_back();

@@ -55,12 +55,12 @@ scripts/sym2int.pl --map-oov "$oov_sym" --ignore-first-field $lang/words.txt \
 
 echo "Initializing monophone system."
 
-if [ -f $lang/phonesets.txt ]; then
-  echo "Using shared phones from $lang/phonesets.txt"
-  # In recipes with stress ans position markers, this pools together
+if [ -f $lang/phonesets_mono.txt ]; then
+  echo "Using shared phones from $lang/phonesets_mono.txt"
+  # In recipes with stress and position markers, this pools together
   # the stats for the different versions of the same phone (also for 
   # the various silence phones).
-  scripts/sym2int.pl $lang/phones.txt $lang/phonesets.txt > $dir/phonesets.int
+  scripts/sym2int.pl $lang/phones.txt $lang/phonesets_mono.txt > $dir/phonesets.int
   shared_phones_opt="--shared-phones=$dir/phonesets.int"
 fi
 

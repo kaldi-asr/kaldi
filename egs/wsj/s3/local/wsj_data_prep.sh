@@ -121,21 +121,21 @@ done
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
 
-cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z  lm_bg.arpa.gz
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z  lm_bg.arpa.gz || exit 1;
 chmod u+w lm_bg.arpa.gz
 # trigram would be:
 
 cat links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb20onp.z | \
  perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' | \
- gzip -c -f > lm_tg.arpa.gz
+ gzip -c -f > lm_tg.arpa.gz || exit 1;
 
-prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa
-gzip -f lm_tgpr.arpa
+prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa || exit 1;
+gzip -f lm_tgpr.arpa || exit 1;
 
 # Make the utt2spk and spk2utt files.
 for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
    cat ${x}_sph.scp | awk '{print $1}' | perl -ane 'chop; m:^...:; print "$_ $&\n";' > $x.utt2spk
-   cat $x.utt2spk | $scripts/utt2spk_to_spk2utt.pl > $x.spk2utt
+   cat $x.utt2spk | $scripts/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
 done
 
 

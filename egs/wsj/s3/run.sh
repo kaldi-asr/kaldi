@@ -52,14 +52,19 @@ done
 scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt
 scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender
 
-# Now make subset with half of si-84.
+# Now make subset with 2k utterances from si-84.
 scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2k
+
+# Now make subset with half of the data from si-84.
+scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
 
 steps/train_mono.sh data/train_si84_2k data/lang exp/mono
 
 scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono exp/mono/graph_tgpr
 
-scripts/decode.sh steps/decode_deltas.sh data/dev_nov93 exp/mono/graph_tgpr exp/mono/decode_dev93
+scripts/decode.sh steps/decode_deltas.sh exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_tgpr_dev93
+
+steps/align_deltas.sh data/train_si84_half data/lang exp/mono exp/mono_ali
 
 # exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
 
