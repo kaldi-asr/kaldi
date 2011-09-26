@@ -157,9 +157,9 @@ than weights, where a cost is a floating point number that typically represents 
 log-probability.  A WFST has a set of states with one distinguished
 start state\footnote{This is the formulation that corresponds best with the toolkit we use.},
 each state has a final-cost (or $\infty$ for non-final states);
-and there is a set of arcs, where each arc $a$ has a previous-state $p[a]$, a next-state $n[a]$, a
-weight $w[a]$ (just think of this as a cost for now), an input label $i[a]$ and an output
-label $o[a]$.  In $\HCLG$, the input labels are the identifiers of context-dependent
+and there is a set of arcs, where each arc has a weight,
+weight (just think of this as a cost for now), an input label and an output
+label.  In $\HCLG$, the input labels are the identifiers of context-dependent
 HMM states, and the output labels represent words.  For both the input and output
 symbols, the special label $\epsilon$ may appear meaning ``no label is present.''
 
@@ -219,7 +219,7 @@ be concerned with the accuracy of the information in the lattice (e.g. that the
 scores and alignments are correct) and the completeness of such information (e.g.
 that no high-scoring word-sequences are missing).  The simplest
 way to formalize these concerns is to express them in terms of a lattice 
-pruning beam $\alpha > 0$ (interpret $\alpha$ as a natural logarithm).
+pruning beam $\alpha > 0$ (interpret this as a log likelihood difference).
 \begin{itemize}
   \item The lattice should have a path for every word sequence within $\alpha$ of the best-scoring one.
   \item The scores and alignments in the lattice should be accurate.
@@ -429,10 +429,10 @@ that we will describe below.
 
 The resulting lattice $L$ is a deterministic, acyclic weighted acceptor with the 
 words as the labels, and the graph and acoustic costs and the alignments
-encoded into the weights.  Of course, the costs and alignments are not in any
-sense ``synchronized'' with the words.
+encoded into the weights.  The costs and alignments are not ``synchronized'' 
+with the words.
 
-\section{Details of our $\epsilon$ removal and determinization algorithm}
+\section{Details of our determinization algorithm}
 \label{sec:details}
 
 We implemented $\epsilon$ removal and determinization as a single algorithm 
