@@ -438,9 +438,8 @@ with the words.
 We implemented $\epsilon$ removal and determinization as a single algorithm 
 because $\epsilon$-removal using the traditional approach would greatly
 increase the size of the state-level lattice (this is mentioned 
-in~\cite{efficient_general}).  Rather than using completely generic
-code as is usually done in OpenFst~\cite{openfst} which our code is based on,
-we implemented it in a fairly specialized way for this case.  The issue
+in~\cite{efficient_general}).  Our algorithm uses data-structures
+specialized for the particular type of weight we are using.  The issue
 is that the determinization process often has to append a single symbol to
 a string of symbols (for the state alignments), and the easiest way to
 do this in ``generic'' code would involve copying the whole sequence each time.
@@ -467,22 +466,7 @@ to following through the $\epsilon$ arcs, i.e. it only contains the states
 that we reached by following non-$\epsilon$ arcs from a previous determinized
 state.  We maintain a separate map from the initial representation to
 the output state index; think of this as a ``lookaside buffer'' that helps us
-avoid the expense of following $\epsilon$ arcs.  Note that formally
-proving the correctness of this algorithm would be a big project, but we
-are able to test correctness in a randomized way; this is easy because we
-can test WFSA equivalence and we can test whether a WFSA is deterministic.
-
-We should note that although the determinization algorithm
-is guaranteed to terminate (since the state-level lattice is acyclic), it can
-sometimes exhaust memory, i.e. in practice it can ``blow up'' for particular 
-inputs.  Our observation is that in cases where it significantly expands
-the input, this tends to be reversed by pruning after determinization.
-We currently make our software robust to this phenomenon by 
-pre-specifying a maximum number of states for a lattice, and if the
-determinization exceeds this threshold, we prune with a tighter beam
-and try again.  In the future we may implement a form of determinization that
-includes an efficient form of pruning.
-
+avoid the expense of following $\epsilon$ arcs. 
 
 
 %% The algorithm for $\epsilon$-removal and determinization is also optimized
