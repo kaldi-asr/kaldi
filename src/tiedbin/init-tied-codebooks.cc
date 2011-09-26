@@ -108,6 +108,7 @@ int main(int argc, char *argv[]) {
     BaseFloat perturb = 0.01;
     int min_num_gaussians = 3;
     bool full = false;
+	BaseFloat power = 0.2;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -122,6 +123,7 @@ int main(int argc, char *argv[]) {
                 "per codebook");
     po.Register("full", &full, "Write full covariance models with covariances "
                 "set to the min variance");
+	po.Register("power", &power, "Power to allocate Gaussians to codebooks");
 
     po.Read(argc, argv);
 
@@ -203,7 +205,12 @@ int main(int argc, char *argv[]) {
            end = tied_to_pdf.end(); it != end; ++it, ++i) {
         comp[*it].push_back(i);
         occs[*it] += leafs[i]->weights()(0);
-        tot_occ += leafs[i]->weights()(0);
+      }
+
+      // we will attribute the Gaussians according to a power law
+	  for (int32 i = 0; i < num_pdf; ++i) {
+        occs[i] = pow(occs[i], power);
+		tot_occ += occs[i];
       }
     }
 
