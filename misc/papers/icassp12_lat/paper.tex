@@ -83,10 +83,10 @@
 \makeatletter
 \def\name#1{\gdef\@name{#1\\}}
 \makeatother
-\name{ Daniel Povey$^1$, Mirko Hannemann$^2$,  \\
+\name{ Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
   {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^5$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
   {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Ngoc Thang Vu}$^8$, {Korbinian Reidhammer}$^9$, {Karel Vesel\'{y}}$^2$
-    \thanks{Thanks here}}
+    \thanks{Thanks here.. remember Sanjeev.}}
 %\makeatletter
 %\def\name#1{\gdef\@name{#1\\}}
 %\makeatother
@@ -133,17 +133,17 @@ for each word sequence.
 
 \section{Introduction}
 
-The word ``lattice'' is used in the speech recognition literature to mean some
-kind of compact representation of the most likely transcriptions of an utterance,
-in the form of a graph structure and normally including score and alignment
-information in addition to the word labels.  See 
-for example~\cite{efficient_general,ney_word_graph,odell_thesis,saon2005anatomy}.
+In Section~\ref{sec:wfst} we give a Weighted Finite State Transducer
+(WFST) interpretation of the speech-recognition decoding problem, in order
+to introduce notation for the rest of the paper.  In Section~\ref{sec:lattices}
+we define the lattice generation problem, and review previous work.
+In Section~\ref{sec:overview} we give an overview of our method,
+and in Section~\ref{sec:details} we summarize some aspects of a determinization
+algorithm that we use in our method.  In Section~\ref{sec:exp} we give
+experimental results, and in Section~\ref{sec:conc} we conclude.
 
-[more history + context here]
-
-
-
-\section{Decoding with WFSTs}
+\section{WFSTs and the decoding problem}
+\label{sec:wfst}
 
 The graph creation process we use in our toolkit, Kaldi~\cite{kaldi_paper},
 is very close to the standard recipe described in~\cite{wfst},
@@ -151,7 +151,7 @@ where the Weighted Finite State Transducer (WFST) decoding graph is
 \begin{equation}
   \HCLG = \min(\det(H \circ C \circ L \circ G)),
 \end{equation}
-where $\circ$ is WFST composisition (note: view $\HCLG$ as a single symbol).  
+where $\circ$ is WFST composisition (note: view $\HCLG$ as a single symbol).
 For concreteness we will speak of ``costs'' rather
 than weights, where a cost is a floating point number that typically represents a negated
 log-probability.  A WFST has a set of states with one distinguished
@@ -196,7 +196,10 @@ Since the beam pruning is a part of any practical search procedure and cannot
 easily be avoided, we will define the desired outcome of lattice generation in terms
 of the visited subset $B$ of the search graph $S$.
 
-\section{Defining lattices and the lattice generation problem}
+\section{The lattice generation problem, and previous work}
+\label{sec:lattices}
+
+\subsection{Lattices, and the lattice generation problem}
 
 There is no generally accepted single definition of a lattice.  In~\cite{efficient_general}
 and~\cite{sak2010fly}, it is defined as a labeled, weighted, directed acyclic graph
@@ -247,7 +250,7 @@ We note that by ``word-sequence'' we mean a sequence of whatever symbols are on 
 output of $\HCLG$.  In our experiments these symbols represent words, but not including
 silence, which we represent via alternative paths in $L$.
 
-\section{Previous lattice generation methods}
+\subsection{Previous lattice generation methods}
 
 Lattice generation algorithms tend to be closely linked to a particular type of decoder,
 but are often justified by the same kinds of ideas.
@@ -298,6 +301,7 @@ that would be within the lattice-generation beam.  In addition, this algorithm w
 complex to implement efficiently.
 
 \section{Overview of our algorithm}
+\label{sec:overview}
 
 \subsection{Version without alignments}
 
@@ -429,6 +433,7 @@ encoded into the weights.  Of course, the costs and alignments are not in any
 sense ``synchronized'' with the words.
 
 \section{Details of our $\epsilon$ removal and determinization algorithm}
+\label{sec:details}
 
 We implemented $\epsilon$ removal and determinization as a single algorithm 
 because $\epsilon$-removal using the traditional approach would greatly
