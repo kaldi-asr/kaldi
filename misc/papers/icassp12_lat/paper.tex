@@ -83,25 +83,22 @@
 \makeatletter
 \def\name#1{\gdef\@name{#1\\}}
 \makeatother
-\name{ Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
-  {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^5$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
-  {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Ngoc Thang Vu}$^8$, {Korbinian Reidhammer}$^9$, {Karel Vesel\'{y}}$^2$
-    \thanks{Thanks here.. remember Sanjeev.}}
-%\makeatletter
-%\def\name#1{\gdef\@name{#1\\}}
-%\makeatother
 
+\name{ \em Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
+  \em {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^5$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
+  \em {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Ngoc Thang Vu}$^8$, {Korbinian Reidhammer}$^9$, {Karel Vesel\'{y}}$^2$
+    \thanks{Thanks here.. remember Sanjeev.} }
 
 %%% TODO: fix thanks.
 %\thanks{Arnab Ghoshal was supported by the European Community's Seventh Framework 
 % Programme under grant agreement no. 213850 (SCALE); BUT researchers were partially 
 %supported by Czech MPO project No. FR-TI1/034.}}
        
-\address{$^1$ Microsoft Research, Redmond, WA, {\normalsize \tt dpovey@microsoft.com} \\
-         $^2$ Brno University of Technology, Czech Republic, {\normalsize \tt ihannema@fit.vutbr.cz} \\
-         $^3$ CRIM, Montreal, Canada \ \  $^4$ SRI International, Menlo Park, CA, USA \\
-         $^5$ University of Edinburgh, U.K. \ \  $^6$  IDIAP, Martigny, Switzerland  \\
-         $^6$ Shanghai Jiao Tong University, China \ \ $^7$ Karlsruhe Institute of Technology, Germany \\
+\address{$^1$ Microsoft Research, Redmond, WA, {\normalsize \tt dpovey@microsoft.com} \\ 
+         $^2$ Brno University of Technology, Czech Republic, {\normalsize \tt ihannema@fit.vutbr.cz} \\ 
+         $^3$ CRIM, Montreal, Canada \ \  $^4$ SRI International, Menlo Park, CA, USA \\ 
+         $^5$ University of Edinburgh, U.K. \ \  $^6$  IDIAP, Martigny, Switzerland  \\ 
+         $^6$ Shanghai Jiao Tong University, China \ \ $^7$ Karlsruhe Institute of Technology, Germany \\ 
          $^9$ Friedrich Alexander University of Erlangen-Nurnberg, Germany}
 
  
@@ -117,8 +114,7 @@
 \begin{abstract}
 We describe a lattice generation method that is exact, i.e. it satisfies all the 
 natural properties we would want from a lattice of alternative transcriptions of
-an utterance.  This method is also quite efficient; it does not 
-introduce substantial overhead above one-best decoding.  Our method is
+an utterance.  This method does not introduce substantial overhead above one-best decoding.  Our method is
 most directly applicable when using WFST decoders where the WFST is
 expanded down to the HMM-state level.  It outputs
 lattices that include state-level alignments as well as word labels.
@@ -136,7 +132,8 @@ for each word sequence.
 In Section~\ref{sec:wfst} we give a Weighted Finite State Transducer
 (WFST) interpretation of the speech-recognition decoding problem, in order
 to introduce notation for the rest of the paper.  In Section~\ref{sec:lattices}
-we define the lattice generation problem, and review previous work.
+we define the lattice generation problem, and in Section~\ref{sec:previous}
+we review previous work.
 In Section~\ref{sec:overview} we give an overview of our method,
 and in Section~\ref{sec:details} we summarize some aspects of a determinization
 algorithm that we use in our method.  In Section~\ref{sec:exp} we give
@@ -196,10 +193,9 @@ Since the beam pruning is a part of any practical search procedure and cannot
 easily be avoided, we will define the desired outcome of lattice generation in terms
 of the visited subset $B$ of the search graph $S$.
 
-\section{The lattice generation problem, and previous work}
+\section{The lattice generation problem}
 \label{sec:lattices}
 
-\subsection{Lattices, and the lattice generation problem}
 
 There is no generally accepted single definition of a lattice.  In~\cite{efficient_general}
 and~\cite{sak2010fly}, it is defined as a labeled, weighted, directed acyclic graph
@@ -210,8 +206,7 @@ scores), and in~\cite{saon2005anatomy}, state-level alignments are also produced
 In our work here we will be producing state-level alignments; in fact, the input-symbols
 on our graph, which we call {\em transition-ids}, are slightly more fine-grained
 than acoustic states and contain sufficient information to reconstruct the phone
-sequence.  Hence, our lattices contain at least as much information as any prior work
-we cite.
+sequence.  
 
 There is, as far as we know, no generally accepted problem statement
 for lattice generation, but all the the authors we cited seem to
@@ -231,7 +226,7 @@ Let the lattice be $L$.  The way we would like to state this requirement is:
 \begin{itemize}
   \item For every path in $L$, the score and alignment corresponds to 
    the best-scoring path in in $B$ for the corresponding word
-   sequence\footnote{Or one of the best-scoring paths, in case of a tie}.
+   sequence\footnote{Or one of the best-scoring paths, in case of a tie.}.
 \end{itemize}
 The way we actually have to state the requirement in order to get an efficient procedure is:
 \begin{itemize}
@@ -242,23 +237,23 @@ The way we actually have to state the requirement in order to get an efficient p
 \end{itemize}
 The issue is that we want to be able to prune $B$ before generating a lattice from it,
 but doing so could cause paths not within $\alpha$ of the best one to be lost, so we have
-to weaken the condition.  In fact this weakening is of very little consequence, since regardless
+to weaken the condition.  This is no great loss, since regardless
 of pruning, any word-sequence not within $\alpha$ of the best one could be omitted altogether, 
 which is the same as being assigned a cost of $\infty$).
-
-We note that by ``word-sequence'' we mean a sequence of whatever symbols are on the
+By ``word-sequence'' we mean a sequence of whatever symbols are on the
 output of $\HCLG$.  In our experiments these symbols represent words, but not including
 silence, which we represent via alternative paths in $L$.
 
-\subsection{Previous lattice generation methods}
+\section{Previous lattice generation methods}
+\label{sec:previous}
 
-Lattice generation algorithms tend to be closely linked to a particular type of decoder,
+Lattice generation algorithms tend to be closely linked to particular types of decoder,
 but are often justified by the same kinds of ideas.
 A common assumption underlying lattice generation methods is the {\em word-pair assumption}
 of~\cite{ney_word_graph}.  This is the notion that the time boundary between a pair of words
 is not affected by the identity of any earlier words.  In a decoder in which there is
-a different copy of the lexical tree for each preceding word, this assumption is automatically
-satisfied, and if the word-pair assumption holds, in order to generate an accurate lattice it is
+a different copy of the lexical tree for each preceding word, 
+assuming the word-pair assumption holds, in order to generate an accurate lattice it is
 sufficient to store a single Viterbi back-pointer at the word level; the entire set of
 such back-pointers contains enough information to generate the lattice.  Authors who have used
 this type of lattice generation method~\cite{ney_word_graph,odell_thesis} have generally
@@ -275,20 +270,20 @@ not have a unique one-word history, but the authors of~\cite{efficient_general}
 were able to satisfy a similar condition at the phone level.  Their method was
 to store a single Viterbi back-pointer at the phone level; use this to 
 create a phone-level latice; prune the resulting
-lattice; project it to leave only word labels; and then convert this into a word-level
-lattice via epsilon removal and determinization.
+lattice; project it to leave only word labels; and then remove $\epsilon$
+symbols and determinize.
 Note that the form of pruning referred to here is not the same as beam pruning as
 it takes account of both the forward and backward parts of the cost.
 The paper also reported experiments with a different method that did not require any
 phone-pair assumption; these experiments showed that the more
 efficient method that relied on the phone-pair assumption
-had almost the same the lattice oracle error rate as the other method.  However, the 
+had almost the same lattice oracle error rate as their more efficient method.  However, the 
 experiments did not evaluate how much impact the assumption had on the accuracy of the scores, 
 and this information could be important in some applications.
 
 The lattice generation algorithm that was described in~\cite{saon2005anatomy}
 is applicable to WFSTs expanded down to the $H$ level (i.e. $\HCLG$),
-so the input symbols represent context-dependent states.  It keeps both score and 
+so the input symbols represent context-dependent states.  It keeps both scores and 
 state-level alignment information.  In some sense this algorithm also relies
 on the word-pair assumption, but since the copies of the lexical tree in the decoding
 graph do not have unique word histories, the resulting algorithm has to be quite
@@ -296,9 +291,8 @@ different.  Viterbi back-pointers at the word level are used, but the algorithm 
 of not just a single back-pointer in each state, but the $N$ best back-pointers for the $N$ top-scoring distinct
 preceding.  Therefore, this algorithm has more in common with the sentence N-best
 algorithm than with the Viterbi algorithm.  By limiting $N$ to be quite small (e.g. $N{=}5$)
-the algorithm was made efficient, but this is at the cost of possibly losing word sequences
-that would be within the lattice-generation beam.  In addition, this algorithm was quite
-complex to implement efficiently.
+the algorithm was made efficient, but at the cost of losing word sequences
+that would be within the lattice-generation beam.
 
 \section{Overview of our algorithm}
 \label{sec:overview}
@@ -357,12 +351,12 @@ like generating output from the lattice with different acoustic scaling factors.
 We refer to these two costs as the graph cost and the acoustic cost, since the cost
 in $\HCLG$ is not just the language model cost but also contains components
 arising from transition probabilities and pronunciation probabilities.  We implement
-this by using a semiring that contains two real numbers (one for the graph and one
-for the acoustic costs); it keeps track of the two costs separately, but its
+this by using a semiring that contains two real numbers, one for the graph and one
+for the acoustic costs; it keeps track of the two costs separately, but its
 $\oplus$ operation returns whichever pair has the lowest sum of costs (graph plus acoustic).
 
 Formally, if each weight is a pair $(a,b)$, then $(a,b) \otimes (c,d) = (a{+}c, b{+}d)$,
-and $(a,b) \oplus (c,d)$ is equal to $(a,b)$ if $a{+}b < c{+}d$ or if $a{+}b = c{f}+d$ and $a{-}b < c{-}d$,
+and $(a,b) \oplus (c,d)$ is equal to $(a,b)$ if $a{+}b < c{+}d$ or if $a{+}b = c{+}d$ and $a{-}b < c{-}d$,
 and otherwise is equal to $(c,d)$.  This is equivalent to the lexicographic semiring 
 of~\cite{roark2011lexicographic}, on the pair $((a{+}b),(a{-}b))$.
 
@@ -377,16 +371,16 @@ First, let us define $Q = \inv(P)$, i.e. $Q$ is the inverted, pruned state-level
 where the input symbols are the words and the output symbols are the p.d.f. labels.
 We want to process $Q$ in such a way that we keep only the best path through it
 for each word sequence, and get the corresponding alignment.  This is possible
-by defining an appropriate semiring and then doing normal determinization.  Firstly, 
-let us ignore the fact that we are keeping track of separate graph and acoustic costs, 
+by defining an appropriate semiring and then doing normal determinization.  We shall
+ignore the fact that we are keeping track of separate graph and acoustic costs, 
 to avoid complicating the present discussion.  
 
 We will define a semiring in which symbol sequences are encoded into the weights.
 Let a weight be a pair $(c, s)$, where $c$ is a cost and $s$ is a sequence of symbols.
 We define the $\otimes$ operation as $(c, s) \otimes (c', s') = (c+c', (s,s'))$, where
 $(s,s')$ is $s$ and $s'$ appended together.  We define the $\oplus$ operation so that
-it returns whichever pair has the smallest weight: that is, $(c,s) \oplus (c',s')$ 
-equals $(c,s)$ if $c < c'$, and $(c',s')$ if $c > c'$.  If the weights are identical,
+it returns whichever pair has the smallest cost: that is, $(c,s) \oplus (c',s')$ 
+equals $(c,s)$ if $c < c'$, and $(c',s')$ if $c > c'$.  If the costs are identical,
 we cannot arbitrarily return the first pair because this would not satisfy the semiring
 axioms.  In this case, we return the pair with the shorter string part, and if
 the lengths are the same, whichever string appears first in dictionary order. 
@@ -394,10 +388,9 @@ the lengths are the same, whichever string appears first in dictionary order.
 Let $E$ be an encoding of the inverted state-level lattice $Q$ 
 as described above, with the same number of states and arcs; $E$ is an acceptor, with its symbols
 equal to the input symbol (word) on the corresponding arc of $Q$, and
-the weights on the arcs of $E$ containing both the the weight and the output symbol (p.d.f.)
-on the corresponding arcs of $Q$.  Let $D = \mathrm{det}(\mathrm{rmeps}(E))$.
-
-In the case we are interested in, determinization
+the weights on the arcs of $E$ containing both the the weight and the output symbol (p.d.f.),
+if any, on the corresponding arcs of $Q$.  Let $D = \mathrm{det}(\mathrm{rmeps}(E))$.
+Determinization
 will always succeed because $E$ is acyclic (as long as the original decoding
 graph $\HCLG$ has no $\epsilon$-input cycles).  Because $D$ is deterministic
 and $\epsilon$-free, it has only one path for each word sequence. 
@@ -441,7 +434,7 @@ increase the size of the state-level lattice (this is mentioned
 in~\cite{efficient_general}).  Our algorithm uses data-structures
 specialized for the particular type of weight we are using.  The issue
 is that the determinization process often has to append a single symbol to
-a string of symbols (for the state alignments), and the easiest way to
+a string of symbols, and the easiest way to
 do this in ``generic'' code would involve copying the whole sequence each time.
 Instead we use a data structure that enables this to be done in linear
 time (it involves a hash table).  
@@ -535,7 +528,7 @@ supplied with the WSJ database, and rescore them with the trigram language model
 \label{sec:conc}
 %\vspace*{-0.05in}
 
-Conclusions here
+Conclusions here [mention does not rely on word-pair assumption]
 
 %\vspace*{-0.1in}
 \bibliographystyle{IEEEbib}
