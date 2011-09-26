@@ -1,0 +1,252 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% File:     spconf.sty          (LaTeX Document style option "spconf")
+%
+% Usage:    \documentclass{article}
+%           \usepackage{spconf}
+%
+%           Or for LaTeX 2.09:
+% Usage:    \documentstyle[...,spconf,...]{article}
+%
+% Purpose:
+%
+% Style file for Signal Processing Society Conferences (ICASSP, ICIP).
+% Features:
+%    - correct page size (175mm x 226mm)
+%    - twocolumn format
+%    - boldfaced, numbered, and centered section headings
+%    - correct subsection and subsubsection headings
+%    - use \title{xx} for title, will be typeset all uppercase
+%    - use \name{xx} for author name(s) only, will be typeset in italics
+%    - use \address{xx} for one address of all authors
+%    - use \twoauthors{author1}{address1}{author2}{address2}
+%         for two (or more) authors with two separate addresses
+%    - note: no need for \author nor \date
+%    - optional: can use \thanks{xx} within \name or \twoauthors,
+%         asterisk is not printed after name nor in footnote
+%    - optional: can use \sthanks{xx} after each name within \name or
+%         \twoauthors if different thanks for each author,
+%         footnote symbol will appear for each name and footnote
+%    - optional: use \ninept to typeset text in 9 pt; default is 10pt.
+%
+% Example of use for one or more authors at a common address and
+%    common support. For distinct support acknowledgments,
+%    use \sthanks{xx} after each name.
+%
+%                 \documentclass{article}
+%                 \usepackage{spconf}
+%                 \title{Title of the paper}
+%                 \name{George P. Burdell and John Q. Professor
+%                       \thanks{This work was supported by...}}
+%                 \address{Common address, department \\
+%                          City, etc \\
+%                          optional e-mail address}
+%
+%                 \begin{document}
+%  OPTIONAL -->   \ninept            <-- OPTIONAL, for nine pt only
+%                 \maketitle
+%                 \begin{abstract}
+%                 This is the abstract for my paper.
+%                 \end{abstract}
+%                         .
+%                 Insert text of paper
+%                         .
+%                 \end{document}
+%
+% Example of use for two authors at two distinct addresses with only
+%    one support acknowledgment. For distinct support acknowledgments,
+%    use \sthanks{xx} after each name.
+%
+%                 \documentclass{article}
+%                 \usepackage{spconf}
+%                 \title{Title of the paper}
+%                 \twoauthors{John Doe
+%                       \thanks{This work was supported by...}}
+%                            {Doe's address, department \\
+%                             City, etc \\
+%                             optional e-mail address}
+%                            {Judy Smith}
+%                            {Smith's address, department \\
+%                             City, etc \\
+%                             optional e-mail address}
+%
+%                 \begin{document}
+%  OPTIONAL -->   \ninept            <-- OPTIONAL, for nine pt only
+%                 \maketitle
+%                 \begin{abstract}
+%                 This is the abstract for my paper.
+%                 \end{abstract}
+%                         .
+%                 Insert text of paper
+%                         .
+%                 \end{document}
+%
+% Preprint Option (Only for preprints, not for submissions!):
+%    - can create a preprint titlepage footer by using the
+%         "preprint" option with the \usepackage{spconf} command
+%    - use \copyrightnotice{\copyright xx} for copyright information
+%    - use \toappear{To appear in xx} for publication name
+% Example of preprint use:
+%
+%                 \documentclass{article}
+%                 \usepackage[preprint]{spconf}
+%                         .
+%                 \copyrightnotice{\copyright\ IEEE 2000}
+%                 \toappear{To appear in {\it Proc.\ ICASSP2000,
+%                    June 05-09, 2000, Istanbul, Turkey}}
+%
+%
+% PLEASE REPORT ANY BUGS
+%
+% Author:  Stephen Martucci  -- stephen.martucci@ieee.org
+%
+% Date:    3 May 2000
+%
+% Updated: Lance Cotton, Ulf-Dietrich Braumann, 11 May 2006
+% Change:  Added keywords/Index Terms section
+% Change:  Added \emergencystretch=11pt, Lance Cotton, 26-Sept-2007
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% These commands change default text fonts to the scalable PostScript
+% fonts Times, Helvetica, and Courier. However, they do not change
+% the default math fonts. After conversion to PDF, text will look good
+% at any scale but math symbols and equations may not.
+% If instead you use the PostScript Type 1 implementation of the
+% Computer Modern fonts from the American Mathematical Society, which
+% will make all fonts (text and math) scalable, comment out the
+% following three lines. Those fonts use the same metrics as the Knuth
+% Computer Modern fonts and therefore no font redefinition is needed.
+\renewcommand{\sfdefault}{phv}
+\renewcommand{\rmdefault}{ptm}
+\renewcommand{\ttdefault}{pcr}
+
+%\oddsidemargin  -0.31in
+%\evensidemargin -0.31in
+\oddsidemargin  -6.2truemm
+\evensidemargin -6.2truemm
+
+\topmargin 0truept
+\headheight 0truept
+\headsep 0truept
+%\footheight 0truept
+%\footskip 0truept
+\textheight 229truemm
+\textwidth 178truemm
+
+\twocolumn
+\columnsep 6truemm
+\pagestyle{empty}
+
+\emergencystretch=11pt
+
+\def\ninept{\def\baselinestretch{.95}\let\normalsize\small\normalsize}
+
+\def\maketitle{\par
+ \begingroup
+ \def\thefootnote{}
+ \def\@makefnmark{\hbox
+ {$^{\@thefnmark}$\hss}}
+ \if@twocolumn
+ \twocolumn[\@maketitle]
+ \else \newpage
+ \global\@topnum\z@ \@maketitle \fi\@thanks
+ \endgroup
+ \setcounter{footnote}{0}
+ \let\maketitle\relax
+ \let\@maketitle\relax
+ \gdef\thefootnote{\arabic{footnote}}\gdef\@@savethanks{}%
+ \gdef\@thanks{}\gdef\@author{}\gdef\@title{}\let\thanks\relax}
+
+\def\@maketitle{\newpage
+ \null
+ \vskip 2em \begin{center}
+ {\large \bf \@title \par} \vskip 1.5em {\large \lineskip .5em
+\begin{tabular}[t]{c}\@name \\ \@address
+ \end{tabular}\par} \end{center}
+ \par
+ \vskip 1.5em}
+
+\def\title#1{\gdef\@title{\uppercase{#1}}}
+\def\name#1{\gdef\@name{{\em #1}\\}}
+\def\address#1{\gdef\@address{#1}}
+\gdef\@title{\uppercase{title of paper}}
+\gdef\@name{{\em Name of author}\\}
+\gdef\@address{Address - Line 1 \\
+               Address - Line 2 \\
+               Address - Line 3}
+
+\let\@@savethanks\thanks
+\def\thanks#1{\gdef\thefootnote{}\@@savethanks{#1}}
+\def\sthanks#1{\gdef\thefootnote{\fnsymbol{footnote}}\@@savethanks{#1}}
+
+\def\twoauthors#1#2#3#4{\gdef\@address{}
+   \gdef\@name{\begin{tabular}{@{}c@{}}
+        {\em #1} \\ \\
+        #2\relax
+   \end{tabular}\hskip 1in\begin{tabular}{@{}c@{}}
+        {\em #3} \\ \\
+        #4\relax
+\end{tabular}}}
+
+\def\@sect#1#2#3#4#5#6[#7]#8{
+   \refstepcounter{#1}\edef\@svsec{\csname the#1\endcsname.\hskip 0.6em}
+       \begingroup \ifnum #2=1\bf\centering
+          {\interlinepenalty \@M
+             \@svsec\uppercase{#8}\par}\else\ifnum #2=2\bf
+          \noindent{\interlinepenalty \@M \@svsec #8\par}\else\it
+          \noindent{\interlinepenalty \@M
+             \@svsec #8\par}\fi\fi\endgroup
+       \csname #1mark\endcsname{#7}\addcontentsline
+         {toc}{#1}{\protect\numberline{\csname the#1\endcsname} #7}
+     \@tempskipa #5\relax
+     \@xsect{\@tempskipa}}
+
+\def\abstract{\begin{center}
+{\bf ABSTRACT\vspace{-.5em}\vspace{0pt}}
+\end{center}}
+\def\endabstract{\par}
+
+% Keyword section, added by Lance Cotton, adapted from IEEEtrans, corrected by Ulf-Dietrich Braumann
+\def\keywords{\vspace{.5em}
+{\bfseries\textit{Index Terms}---\,\relax%
+}}
+\def\endkeywords{\par} 
+
+\def\copyrightnotice#1{\gdef\@copyrightnotice{#1}}
+\let\@copyrightnotice\relax
+\def\toappear#1{\gdef\@toappear{#1}}\let\@toappear\relax
+
+\newif\if@preprint\@preprintfalse
+\@namedef{ds@preprint}{\global\@preprinttrue}
+\@options
+\def\ps@preprint{\def\mypage{}\let\@mkboth\@gobbletwo\def\@oddhead{}
+  \def\@oddfoot{\rlap{\@toappear}\hfil\mypage\hfil
+    \llap{\@copyrightnotice}
+    \gdef\mypage{\thepage}\gdef\@toappear{}\gdef\@copyrightnotice{}}}
+
+\if@preprint\ps@preprint
+\else\ps@empty\flushbottom\fi
+
+\def\thebibliography#1{\section{References}\list
+ {[\arabic{enumi}]}{\settowidth\labelwidth{[#1]}\leftmargin\labelwidth
+ \advance\leftmargin\labelsep
+ \usecounter{enumi}}
+ \def\newblock{\hskip .11em plus .33em minus .07em}
+ \sloppy\clubpenalty4000\widowpenalty4000
+ \sfcode`\.=1000\relax}
+\let\endthebibliography=\endlist
+
+\long\def\@makecaption#1#2{
+ \vskip 10pt
+ \setbox\@tempboxa\hbox{#1. #2}
+ \ifdim \wd\@tempboxa >\hsize #1. #2\par \else \hbox
+to\hsize{\hfil\box\@tempboxa\hfil}
+ \fi}
+
+\def\fnum@figure{{\bf Fig.\ \thefigure}}
+\def\fnum@table{{\bf Table \thetable}}
+
+\flushbottom
+
+%%%% EOF

@@ -1,0 +1,885 @@
+% Template for SLT-2006 paper; to be used with:
+%          spconf.sty  - ICASSP/ICIP LaTeX style file, and
+%          IEEEbib.bst - IEEE bibliography style file.
+% --------------------------------------------------------------------------
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,bm,epsfig}
+\usepackage{color}
+\usepackage{multirow}
+
+\definecolor{MidGray}{rgb}{0.3, 0.3, 0.3}
+\definecolor{Pink}{rgb}{1.0, 0.4, 0.4}
+\definecolor{Red}{rgb}{0.9, 0.1, 0.1}
+
+% Example definitions.
+% --------------------
+
+%%%%%%
+% Begin Dan's math definitions.
+%%%%%%
+\def\Re{{\mathbb{R}}}
+\def\x{{\mathbf x}}
+\def\a{{\mathbf a}}
+\def\U{{\mathbf U}}
+\def\HCLG{{\mathit{HCLG}}}
+\def\bDelta{{\mathbf \Delta}}
+\def\V{{\mathbf V}}
+\def\u{{\mathbf u}}
+\def\s{{\mathbf s}}
+\def\t{{\mathbf t}}
+\def\G{{\mathbf G}}
+\def\F{{\mathbf F}}
+\def\r{{\mathbf r}}
+\def\semicolonsep{\,;\,}
+\def\tr{{\operatorname{tr}\,}}
+\def\z{{\mathbf z}}
+\def\y{{\mathbf y}}
+\def\Y{{\mathbf Y}}
+\def\Z{{\mathbf Z}}
+\def\gammatilde{{\gamma}}  %% This was \tilde{\gamma} in the tutorial, mapping to \gamma2 to preserve the distinction in the latex source in case later I want to resurrect that.
+\def\R{{\mathbf R}}
+\def\D{{\mathbf D}}
+\def\half{ {\textstyle {\frac{1}{2}}} }
+\def\L{{\mathbf L}}
+\def\P{{\mathbf P}}
+\def\Q{{\mathbf Q}}
+\def\B{{\mathbf B}}
+\def\S{{\mathbf S}}
+\def\T{{\mathbf T}}
+\def\K{{\mathbf K}}
+\def\H{{\mathbf H}}
+\def\g{{\mathbf g}}
+\def\I{{\mathbf I}}
+\def\btheta{{\mathbf\theta}}
+\def\calN{{\cal N}}
+\def\calQ{{\cal Q}}
+\def\diag{{\mathrm{diag}}}
+\def\pre{{\mathrm{pre}}}
+\def\inv{{\mathrm{inv}}}
+\def\calT{{\cal T}}
+\def\bmu{{\bm \mu}} % mathbf does not work for lowercase greek letters!  But mathbf looks better than bm in most other cases so I only use bm here.
+\def\bSigma{{\mathbf \Sigma}}
+\def\M{{\mathbf M}}
+\def\N{{\mathbf N}}
+\def\bv{{\mathbf v}}
+\def\w{{\mathbf w}}
+\def\W{{\mathbf W}}
+\def\A{{\mathbf A}}
+\def\o{{\mathbf o}}
+\def\b{{\mathbf b}}
+\def\p{{\mathbf p}}
+%%\newcommand\refeqn[1]{(\ref{#1})}
+
+%%%%%%
+% End Dan's math definitions.
+%%%%%%
+
+
+% Title.
+% ------
+\title{Generating exact lattices in a WFST framework}
+
+
+\makeatletter
+\def\name#1{\gdef\@name{#1\\}}
+\makeatother
+\name{ Daniel Povey$^1$, Mirko Hannemann$^2$,  \\
+  {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^6$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
+  {Petr Motl\'{i}\v{c}ek}$^7$, {Yanmin Qian}$^8$, {Ngoc Thang Vu}$^9$, {Korbinian Reidhammer}$^10$, {Karel Vesel\'{y}}$^2$
+    \thanks{Thanks here}}
+%\makeatletter
+%\def\name#1{\gdef\@name{#1\\}}
+%\makeatother
+
+
+%%% TODO: fix thanks.
+%\thanks{Arnab Ghoshal was supported by the European Community's Seventh Framework 
+% Programme under grant agreement no. 213850 (SCALE); BUT researchers were partially 
+%supported by Czech MPO project No. FR-TI1/034.}}
+       
+\address{$^1$ Microsoft Research, Redmond, WA, {\normalsize \tt dpovey@microsoft.com} \\
+         $^2$ Brno University of Technology, Czech Republic, {\normalsize \tt \{karafiat,schwarzp\}@fit.vutbr.cz} \\
+         $^3$ Saarland University, {\normalsize \tt arnab.ghoshal@lsv.uni-saarland.de} }
+
+ 
+\begin{document}
+
+
+\ninept  
+%
+\maketitle
+%
+\pagestyle{plain} % was set to empty in spconf.sty... this makes page number appear.
+
+\begin{abstract}
+We describe a lattice generation method that is exact, i.e. it satisfies all the 
+natural properties we would want from a lattice of alternative transcriptions of
+an utterance.  This method is also quite efficient; it does not 
+introduce substantial overhead above one-best decoding.  Our method is
+most directly applicable when using fully-expanded WFST decoders, i.e. decoders that use a
+WFST-based decoding graph that is expanded down to the HMM-state level.  It outputs
+lattices that include state-level alignments as well as word labels.
+The general idea is to create a state-level lattice during decoding, and to do
+a special form of determinization that retains only the best-scoring path
+for each word sequence.
+\end{abstract}
+
+\begin{keywords}
+  Speech Recognition, Lattice Generation
+\end{keywords}
+
+\section{Introduction}
+
+The word ``lattice'' is used in the speech recognition literature to mean some
+kind of compact representation of the most likely transcriptions of an utterance,
+in the form of a graph structure and normally including score and alignment
+information in addition to the word labels.  See 
+for example~\cite{efficient_general,ney_word_graph,odell_thesis,saon2005anatomy}.
+
+[more history + context here]
+
+
+
+\section{Decoding with WFSTs}
+
+The graph creation process we use in our toolkit, Kaldi~\cite{kaldi_paper},
+is very close to the standard recipe described in~\cite{wfst},
+where the Weighted Finite State Transducer (WFST) decoding graph is
+\begin{equation}
+  \HCLG = \min(\det(H \circ C \circ L \circ G)),
+\end{equation}
+where $\circ$ is WFST composisition (note: view $\HCLG$ as a single symbol).  
+For concreteness we will speak of ``costs'' rather
+than weights, where a cost is a floating point number that typically represents a negated
+log-probability.  A WFST has a set of states with one distinguished
+start state\footnote{This is the formulation that corresponds best with the toolkit we use.},
+each state has a final-cost (or $\infty$ for non-final states);
+and there is a set of arcs, where each arc $a$ has a previous-state $p[a]$, a next-state $n[a]$, a
+weight $w[a]$ (just think of this as a cost for now), an input label $i[a]$ and an output
+label $o[a]$.  In $\HCLG$, the input labels are the identifiers of context-dependent
+HMM states, and the output labels represent words.  For both the input and output
+symbols, the special label $\epsilon$ may appear meaning ``no label is present.''
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[height=2.1in,angle=270]{figures/acceptor_utterance.eps}
+  \caption{Acceptor $U$ describing the acoustic scores of an utterance}
+\label{fig:acceptor}
+\end{center}
+\end{figure}
+
+Imagine we have an utterance, of length $T$, and want to ``decode'' it (i.e. find
+the most likely word sequence, and the corresponding alignment).  A WFST
+interpretation of the decoding problem is as follows.  We construct an
+acceptor, or WFSA, as in Fig.~\ref{fig:acceptor} (an acceptor is represented as a
+WFST with identical input and output symbols).  It has $T{+}1$ states,
+and an arc for each combination of (time, context-dependent HMM state).  The
+costs on these arcs are the negated and scaled acoustic log-likelihoods.
+Call this acceptor $U$.  Define
+\begin{equation}
+   S \equiv U \circ \HCLG,
+\end{equation}
+which is the {\em search graph} for this utterance.  It has approximately $T+1$ times
+more states than $\HCLG$ itself.  The decoding problem is equivalent to finding
+the best path through $S$.  The input symbol sequence for this best path represents
+the state-level alignment, and the output symbol sequence is the corresponding
+sentence.  In practice we do not do a full search of $S$, but use beam pruning.
+Let $B$ be the searched subset of $S$, containing a subset of the states and arcs
+of $S$ obtained by some heuristic pruning procedure.  Then in practice, 
+when we do Viterbi decoding with beam-pruning, we are finding the best path through $B$. 
+
+Since the beam pruning is a part of any practical search procedure and cannot
+easily be avoided, we will define the desired outcome of lattice generation in terms
+of the visited subset $B$ of the search graph $S$.
+
+\section{Defining lattices and the lattice generation problem}
+
+There is no generally accepted single definition of a lattice.  In~\cite{efficient_general}
+and~\cite{sak2010fly}, it is defined as a labeled, weighted, directed acyclic graph
+(i.e. a WFSA, with word labels).  In~\cite{ney_word_graph}, time information
+is also included.  In the HTK lattice format~\cite{htkbook}, phone-level time alignments 
+are also supported (along with separate language model, acoustic and pronunciation-probability 
+scores), and in~\cite{saon2005anatomy}, state-level alignments are also produced.
+In our work here we will be producing state-level alignments; in fact, the input-symbols
+on our graph, which we call {\em transition-ids}, are slightly more fine-grained
+than acoustic states and contain sufficient information to reconstruct the phone
+sequence.  Hence, our lattices contain at least as much information as any prior work
+we cite.
+
+There is, as far as we know, no generally accepted problem statement
+for lattice generation, but all the the authors we cited seem to
+be concerned with the accuracy of the information in the lattice (e.g. that the
+scores and alignments are correct) and the completeness of such information (e.g.
+that no high-scoring word-sequences are missing).  The simplest
+way to formalize these concerns is to express them in terms of a lattice 
+pruning beam $\alpha > 0$ (interpret $\alpha$ as a natural logarithm).
+\begin{itemize}
+  \item The lattice should have a path for every word sequence within $\alpha$ of the best-scoring one.
+  \item The scores and alignments in the lattice should be accurate.
+  \item The lattice should not contain duplicate paths with the same word sequence.
+\end{itemize}
+Actually, this definition is not completely formalized-- we have left
+the second condition (accuracy of scores and alignments) a little vague.
+Let the lattice be $L$.  The way we would like to state this requirement is:
+\begin{itemize}
+  \item For every path in $L$, the score and alignment corresponds to 
+   the best-scoring path in in $B$ for the corresponding word
+   sequence\footnote{Or one of the best-scoring paths, in case of a tie}.
+\end{itemize}
+The way we actually have to state the requirement in order to get an efficient procedure is:
+\begin{itemize}
+  \item For every word-sequence in $B$ within $\alpha$ of the best one, the score and alignment
+    for the corresponding path in $L$ is accurate.
+  \item All scores and alignments in $L$ correspond to actual paths through $B$ (but not always
+   necessarily the best ones).
+\end{itemize}
+The issue is that we want to be able to prune $B$ before generating a lattice from it,
+but doing so could cause paths not within $\alpha$ of the best one to be lost, so we have
+to weaken the condition.  In fact this weakening is of very little consequence, since regardless
+of pruning, any word-sequence not within $\alpha$ of the best one could be omitted altogether, 
+which is the same as being assigned a cost of $\infty$).
+
+We note that by ``word-sequence'' we mean a sequence of whatever symbols are on the
+output of $\HCLG$.  In our experiments these symbols represent words, but not including
+silence, which we represent via alternative paths in $L$.
+
+\section{Previous lattice generation methods}
+
+Lattice generation algorithms tend to be closely linked to a particular type of decoder,
+but are often justified by the same kinds of ideas.
+A common assumption underlying lattice generation methods is the {\em word-pair assumption}
+of~\cite{ney_word_graph}.  This is the notion that the time boundary between a pair of words
+is not affected by the identity of any earlier words.  In a decoder in which there is
+a different copy of the lexical tree for each preceding word, this assumption is automatically
+satisfied, and if the word-pair assumption holds, in order to generate an accurate lattice it is
+sufficient to store a single Viterbi back-pointer at the word level; the entire set of
+such back-pointers contains enough information to generate the lattice.  Authors who have used
+this type of lattice generation method~\cite{ney_word_graph,odell_thesis} have generally
+not been able to evaluate how correct the word-pair assumption is in practice, but it seems
+unlikely to cause problems.  Such methods are not applicable for us anyway, as we
+use a WFST based decoder in which each copy of the lexical tree does not have a unique
+one-word history.
+
+The lattice generation method described in~\cite{efficient_general} 
+is applicable to decoders that use WFSTs~\cite{wfst}
+expanded down to the $C$ level (i.e. $CLG$), so the input symbols represent
+context-dependent phones.  In their WFST based decoding networks, states did
+not have a unique one-word history, but they were able to satisfy a similar 
+condition at the phone level.  Their method was
+to store a single Viterbi back-pointer at the phone level; use this to 
+create a phone-level latice; prune the resulting
+lattice; project it to leave only word labels; and then convert this into a word-level
+lattice via epsilon removal and determinization.
+Note that the form of pruning referred to here is not the same as beam pruning as
+it takes account of both the forward and backward parts of the cost.
+The paper also reported experiments with a different method that did not requir any
+phone-pair assumption; these experiments showed that the more
+efficient method that relied on the phone-pair assumption 
+had a minimal impact on the lattice oracle error rate.  However, the 
+experiments did not evaluate how much impact the assumption had on the accuracy of the scores, 
+and this information could be important in some applications.
+
+The lattice generation algorithm that was described in~\cite{saon2005anatomy} (although not
+in very great detail) is applicable to WFSTs expanded down to the $H$ level (i.e. $\HCLG$),
+so the input symbols represent context-dependent states.  It keeps both score and 
+state-level alignment information.  In some sense this algorithm also relies
+on the word-pair assumption, but since the copies of the lexical tree in the decoding
+graph do not have unique word histories, the resulting algorithm has to be quite
+different.  Viterbi back-pointers at the word level are used, but in each state
+is stored not just the best back-pointer but the $N$ best back-pointers for the $N$ top-scoring distinct
+preceding.  Therefore, this algorithm has more in common with the sentence N-best
+algorithm than with the Viterbi algorithm.  By limiting $N$ to be quite small (e.g. $N{=}5$)
+the algorithm was made efficient, but this is at the cost of possibly losing word sequences
+that would be within the lattice-generation beam.  In addition, this algorithm was quite
+complex to implement efficiently.
+
+\section{Overview of our algorithm}
+
+\subsection{Version without alignments}
+
+In order to explain our algorithm in the easiest way, we will first explain how it would
+be if we did not keep the alignment information, and were storing only a single cost
+(i.e. the total acoustic plus language-model cost).  This is just for didactic purposes;
+in fact, we have not implemented this simple version.
+In this case our algorithm would be quite similar
+to~\cite{efficient_general}, except working at the state level rather than the phone level.
+We actually store forward rather than backward pointers: for each active state on each
+frame, we create a forward link record for each active arc out of that state; this points
+to the record for the destination state of the arc on the next frame (or on 
+the current frame, for $\epsilon$-input
+arcs).   As in~\cite{efficient_general}, at the end of the utterance
+we prune the resulting graph to discard any paths that are not within the beam $\alpha$ of the best cost. 
+Let the pruned graph be $P$, i.e.
+\begin{equation}
+  P = \mathrm{prune}(B, \alpha),
+\end{equation}
+where $B$ is the un-pruned state-level lattice.
+We project on the output labels (keeping only the word labels), and remove $\epsilon$
+labels and determinize.  In fact, we use a determinization algorithm that does $\epsilon$
+removal itself.
+
+As in~\cite{efficient_general}, to save memory we actually do the pruning
+periodically rather than waiting for the end of the file (we do it every 25 frames).
+Our method is equivalent to their method of linking all currently active states to a ``dummy''
+final state and then pruning in the normal way.  However, we implement it in such a way
+that the pruning algorithm does not always have to go back to the beginning of the utterance.
+For each still-active state, we store the cost difference between the best path including that
+state, and the best overall path.  This quantity does not always change between different
+iterations of calling the pruning algorithm, and when we detect that these quantities are 
+unchanged for a particular frame, the pruning algorithm can stop going backward in time.
+
+After the determinization phase, we prune again using the beam $\alpha$.  This is needed because
+the determinization process can introduce a lot of unlikely arcs.  In fact, for particular
+utterances the determinization process can cause the lattice to expand enough to
+exhaust memory.  To deal with this, we currently just detect when determinization
+has produced more than a pre-set maximum number of states, then we prune with a tighter
+beam and try again.  In future we may try more sophisticated methods such as a
+determinization algorithm that does pruning itself.
+
+This ``simple'' version of the algorithm produces an acyclic, deterministic
+WFSA with words as labels.  This is sufficient for applications such as language-model
+rescoring.
+
+
+\subsection{Keeping separate graph and acoustic costs}
+
+A fairly trivial extension of the algorithm described above is to store separately
+the acoustic costs and the costs arising from $\HCLG$.  This enables us to do things
+like generating output from the lattice with different acoustic scaling factors.
+We refer to these two costs as the graph cost and the acoustic cost, since the cost
+in $\HCLG$ is not just the language model cost but also contains components
+arising from transition probabilities and pronunciation probabilities.  We implement
+this by using a semiring that contains two real numbers (one for the graph and one
+for the acoustic costs); it keeps track of the two costs separately, but its
+$\oplus$ operation returns whichever pair has the lowest sum of costs (graph plus acoustic).
+
+Formally, if each weight is a pair $(a,b)$, then $(a,b) \otimes (c,d) = (a{+}c, b{+}d)$,
+and $(a,b) \oplus (c,d)$ is equal to $(a,b)$ if $a{+}b < c{+}d$ or if $a{+}b = c{f}+d$ and $a{-}b < c{-}d$,
+and otherwise is equal to $(c,d)$.  This is equivalent to the lexicographic semiring 
+of~\cite{roark2011lexicographic}, on the pair $((a{+}b),(a{-}b))$.
+
+\subsection{Keeping state-level alignments}
+
+It is useful for various purposes, e.g. discriminative training and certain kinds of
+acoustic rescoring, to keep the state-level alignments in the lattices.  We will now
+explain how we can make the alignments ``piggyback'' on top of the computation
+defined above, by encoding them in a special semiring.
+
+First, let us define $Q = \inv(P)$, i.e. $Q$ is the inverted, pruned state-level lattice,
+so that the input symbols are the words and the output symbols are the p.d.f. labels.
+We want to process $Q$ in such a way that we keep only the best path through it
+for each word sequence, and get the corresponding alignment.  This is possible
+by defining an appropriate semiring and then doing normal determinization.  Firstly, 
+let us ignore the fact that we are keeping track of separate graph and acoustic costs, 
+to avoid complicating the present discussion.  
+
+We will define a semiring in which symbol sequences are encoded into the weights.
+Let a weight be a pair $(c, s)$, where $c$ is a cost and $s$ is a sequence of symbols.
+We define the $\otimes$ operation as $(c, s) \otimes (c', s') = (c+c', (s,s'))$, where
+$(s,s')$ is $s$ and $s'$ appended together.  We define the $\oplus$ operation so that
+it returns whichever pair has the smallest weight: that is, $(c,s) \oplus (c',s')$ 
+equals $(c,s)$ if $c < c'$, and $(c',s')$ if $c > c'$.  If the weights are identical,
+we cannot arbitrarily return the first pair because this would not satisfy the semiring
+axioms.  In this case, we return the pair with the shorter string part, and if
+the lengths are the same, whichever string appears first in dictionary order.  These
+details do not have any practical effect on the behavior of the final algorithm in any
+normal situation, but are required to satisfy the semiring axioms.
+
+Suppose we have a WFST $Q$ representing a state-level lattice, with words
+as its input symbols and p.d.f.'s as its output symbols.  Let $E$ be an encoding of $Q$ with the 
+same number of states and arcs; $E$ is an acceptor, with its symbols
+equal to the input symbol on the corresponding arc of $Q$, and
+the weights on the arcs of $E$ containing both the the weight and the output symbol
+on the corresponding arcs of $Q$.  Let $D = \mathrm{det}(\mathrm{rmeps}(E))$.
+
+In the case we are interested in, determinization
+will always succeed because $E$ is acyclic (as long as the original decoding
+graph $\HCLG$ has no $\epsilon$-input cycles).  Because $D$ is deterministic
+and $\epsilon$-free, it has only one path for each word sequence. 
+Determinization preserves equivalence,
+and equivalence is defined in such a way that the $\oplus$-sum of the
+weights of all the paths through $E$ with a particular word-sequence, must be the same
+as the weight of the corresponding path through $D$ with that word-sequence.
+It is clear from the definition of $\oplus$ that this path through
+$D$ has the cost and alignment of the lowest-cost path through $E$ that has the
+same word-sequence on it.  
+
+\subsection{Summary of our algorithm}
+
+We now summarize the lattice generation algorithm.  During decoding, we create a data-structure
+corresponding to a full state-level lattice.  That is, for every arc of $\HCLG$ we traverse
+on every frame, we create a separate arc in the state-level lattice.  These arcs
+contain the acoustic and graph costs separately.  We prune the state-level graph using
+a beam $\alpha$; we do this periodically (every 25 frames) but this is equivalent to
+doing it just once at the end (similar to~\cite{efficient_general}).  Let the pruned
+state-level lattice that we get after pruning it at the end of the utterance be $P$.
+
+Let $Q = \inv(P)$, and let $E$ be an encoded version of $Q$ as described above (with the
+state labels as part of the weights).  The final lattice we output is
+\begin{equation}
+   L = \mathrm{prune}(\mathrm{det}(\mathrm{rmeps}(E)), \alpha) .
+\end{equation}
+The determinization and epsilon removal are done together by a single algorithm
+that we will describe below.
+
+The resulting lattice $L$ is a deterministic, acyclic weighted acceptor with the 
+words as the labels, and the graph and acoustic costs and the alignments
+encoded into the weights.  Of course, the costs and alignments are not in any
+sense ``synchronized'' with the words.
+
+\section{Details of our implementation}
+
+\subsection{Epsilon removal and determinization}
+
+We implemented $\epsilon$ removal and determinization as a single algorithm 
+because $\epsilon$-removal using the traditional approach would greatly
+increase the size of the state-level lattice (this is mentioned 
+in~\cite{efficient_general}).  Rather than using completely generic
+code as is usually done in OpenFst~\cite{openfst} which our code is based on,
+we implemented it in a fairly specialized way for this case.  The issue
+is that the determinization process often has to append a single symbol to
+a string of symbols (for the state alignments), and the easiest way to
+do this in ``generic'' code would involve copying the whole sequence each time.
+Instead we use a data structure that enables this to be done in linear
+time (it involves a hash table).  
+
+We will briefly describe another unique aspect of our
+algorithm.  Determinization algorithms involve weighted subsets of states,
+of the form
+\begin{equation}
+   S = \{ (s_1, w_1), (s_2, w_2), \ldots \} .
+\end{equation}
+Let this weighted subset, as it appears in a conventional determinization
+algorithm with epsilon removal, be the {\em canonical representation} of a state.
+A typical determinization algorithm would maintain a map from this representation
+to a state index.  We define a {\em minimial representation} of a state
+to be like the canonical representation, but only keeping states that
+are either final, or have non-$\epsilon$ arcs out of them.  We maintain
+a map from the minimal representation to the state index.  We can
+show that this algorithm is still correct (it will tend to give output
+with fewer states, i.e. more minimal).  As an optimization for speed, we also define
+the {\em initial representation} to be the same type of subset, but prior
+to following through the $\epsilon$ arcs, i.e. it only contains the states
+that we reached by following non-$\epsilon$ arcs from a previous determinized
+state.  We maintain a separate map from the initial representation to
+the output state index; think of this as a ``lookaside buffer'' that helps us
+avoid the expense of following $\epsilon$ arcs.  Note that formally
+proving the correctness of this algorithm would be a big project, but we
+are able to test correctness in a randomized way; this is easy because we
+can test WFSA equivalence and we can test whether a WFSA is deterministic.
+
+We should note that although the determinization algorithm
+is guaranteed to terminate (since the state-level lattice is acyclic), it can
+sometimes exhaust memory, i.e. in practice it can ``blow up'' for particular 
+inputs.  Our observation is that in cases where it significantly expands
+the input, this tends to be reversed by pruning after determinization.
+We currently make our software robust to this phenomenon by 
+pre-specifyin a maximum number of states for a lattice, and if the
+determinization exceeds this threshold, we prune with a tighter beam
+and try again.  In the future we may implement a form of determinization that
+includes an efficient form of pruning.
+
+
+
+%% The algorithm for $\epsilon$-removal and determinization is also optimized
+%% for our particular case.  We will first explain what a generic $\epsilon$-removal
+%% and determinization algorithm would look like.  We will explain this using
+%% generic weights.  Let us use the notation
+%% \begin{equation}
+%%    S = \{ (s_1, w_1), (s_2, w_2), \ldots \}
+%% \end{equation}
+%% for a weighted subset of states in the original FST.  Each subset $S$ corresponds
+%% to a state in the determinized FST, i.e. we maintain a map $m(S) \rightarrow s$
+%% where $s$ is a state number in the output (in practice there are tolerances
+%% involved in this map when the weights contain floating-point numbers).  We need
+%% to normalize these subsets to remove any ``common part'' of the weights.  We
+%% need to define an associative and commutative ``common divisor'' operation 
+%% on weights (call this $\boxplus$; it can be the same as $\oplus$ for many semirings),
+%% that gives us the normalizer for a pair of weights.
+%% We must be able to  left-divide each individual weight by the result of this operation, i.e.
+%% if $c = a \boxplus b$, then we need to be able to solve $a = c a'$ and $b = c b'$ for $a'$ and $b'$.
+%% Here, $a'$ and $b'$ become the ``normalized weights''.  Also $\otimes$-multiplication
+%% must be left-distributive over this operation, which ensures the right kind of
+%% ``uniqueness'' of the normalization operation.  In the particular case of interest
+%% $w$ is a pair $(w', s)$ of a ``base-weight'' and a string $s$, and the 
+%% operation $(a,s) \boxplus (b,t)$ returns $(a\oplus b, u)$ where $u$ is the longest
+%% common prefix of $s$ and $t$ and $a\oplus b$ essentially returns the minimum cost.
+
+%% For the determinization algorithm, we define
+%% $\mathrm{normalizer}(S)$ to be the $\boxplus$-sum of the weights in the subset $S$,
+%% and $\mathrm{normalize}(S)$ to be $S$ with each weight left-divided by 
+%% $\mathrm{normalizer}(S)$.  We also need to define an operation that ``follows through''
+%% $\epsilon$ transitions.  Call this $\mathrm{follow-eps}(S)$ 
+
+
+
+
+%% The key characteristic of our method is that unlike all previously reported 
+%% methods that we are aware of (with the sole exception of the inefficient method used 
+%% as a baseline in~\cite{efficient_general}), our method is exact even if the word-pair 
+%% assumption is invalid.  In addition, we are able to generate a lattice with full
+%% state-level alignment information, which would not be possible using the approaches
+%% used in~\cite{efficient_general}.  Our algorithm also does not need to store $N$
+%% back-pointers like the lattice-generation algorithm previously reported in~\cite{saon2005anatomy}
+%% for $H$-level WFSTs (i.e. fully-expanded WFSTs).  
+
+
+\section{Experimental results}
+\label{sec:exp}
+
+We report experimental results on the Wall Street Journal database of
+read speech.  
+Our system is a standard mixture-of-Gaussians system trained on the SI-284
+training data; we test on the November 1992 evaluation data.  
+For these experiments we generate lattices with the bigram language model
+supplied with the WSJ database, and rescore them with the trigram language model.
+
+
+
+We report experiments on CallHome English and Switchboard.  
+
+Our Callhome English setup is as described in~\cite{ubmconf,ubmpaper}.  
+We used PLP features with ceptral mean and variance normalization.  We tested 
+with the trigram LM built as described in~\cite{ubmpaper}.
+
+
+%% [dan's results, not included, used arnab's.]
+%%svatava:er: showwer_nist test_arnab_nosmooth_floor02_vecs_rerun/*/*/*0.0.ctm.filt.dtl
+%%3/4:48.7% 3/8:48.3% 4/4:47.9% 4/8:47.5% 5/4:47.3% 5/8:47.2% 6/4:47.2% 6/8:46.9% 7/4:47.0% 7/8:46.8% 8/4:46.6% 8/8:46.5%
+%%svatava:er: showwer_nist test_symmetric_rerun/*/*/*0.0.ctm.filt.dtl
+%%3/4:47.3% 3/8:47.0% 4/4:46.5% 4/8:46.4% 5/4:46.3% 5/8:46.1% 6/4:45.8% 6/8:45.8% 7/4:46.9% 7/8:45.0% 8/4:45.0% 8/8:45.1%
+
+%%3/4:47.3% 3/8:47.1% 4/4:46.6% 4/8:46.3% 5/4:46.3% 5/8:46.1% 6/4:45.8% 6/8:45.9%
+
+\begin{table}[h]
+ \renewcommand\arraycolsep{-0.1in}
+  \begin{tabular}{|rcccccc|}           \hline 
+  GMM:            &  \multicolumn{6}{c|}{    52.5                          }   \\ \hline  % from csl paper
+                  &   \multicolumn{6}{c|}{ \#Substates    }                \\
+                  &  2700  &  4k    &  6k  & 9k   &  12k   &  16k    \\  \hline
+% in /homes/eva/q/qghoshal/work/a3.0
+% showwer_nist 05_test_sgmm_danupdate/*/*/decode_s10.0_p0.0_3gram.ctm.filt.dtl
+  SGMM:             & 48.8   & 48.2 & 48.0  & 47.7  &{\bf 47.4}   &  47.5  \\
+% in /homes/eva/q/qghoshal/work/a3.1
+% showwer_nist t05_test_sgmm_danupdate/*/*/decode_s10.0_p0.0_3gram.ctm.filt.dtl
+  +spk-vecs:        & 47.6   & 47.0  & 46.4  & 46.4  & 46.1  &{\bf  45.9} \\
+% showwer_nist 05_test_sgmm+spkvecs+wts/*/*/decode_s10.0_p0.0_perspk_3gram.ctm.filt.dtl
+  +symmetric,exact: & 46.3    & 45.6 &  45.2  & 44.8  & 44.5 &{\bf 44.4}  \\ 
+% ./bin/showwer_nist
+%05_test_sgmm+spkvecs+wts-inexact/*/*/decode_s10.0_p0.0_perspk_3gram.ctm.filt.dtl
+%3/8:46.5% 4/8:45.6% 5/8:45.0% 6/8:44.6% 7/8:44.4%
++symmetric,inexact & 46.5    & 45.6  &  45.0  & 44.6  & {\bf 44.4}&           \\ \hline
+  \end{tabular}
+   \caption{CallHome English: WERs without CMLLR adaptation }
+% \vspace*{-0.2in}
+ \label{tab:callhome:nocmllr}
+\end{table}
+
+
+Table~\ref{tab:callhome:nocmllr} shows experiments without CMLLR adaptation; the only
+normalization is cepstral mean and variance normalization.  Using the symmetric
+model reduced WER from 45.9\% to 44.4\%, a 1.5\% absolute improvement.   The inexact
+update gave the same improvement as the exact update.
+
+\begin{table}[h]
+ \renewcommand\arraycolsep{-0.1in}
+  \begin{tabular}{|l|cccccc|}           \hline 
+  GMM:            &  \multicolumn{6}{c|}{    49.7                             }   \\ 
+  +SAT:           &  \multicolumn{6}{c|}{    46.0                             }   \\ \hline 
+                  &   \multicolumn{6}{c|}{ \#Substates    }                \\
+                  &  2700  &  4k    &  6k   & 9k     &  12k       &  16k    \\  \cline{2-7}
+% in /homes/eva/q/qghoshal/work/a3.0
+% showwer_nist 05_test_sgmm_danupdate/*/*/decode_s10.0_p0.0_3gram.ctm.filt.dtl
+  SGMM+spk-vecs:  & 46.5    & 45.5  & 45.2   & 45.4  & 44.8        & {\bf 44.7} \\
+ +symmetric,exact & 44.9    & 44.4  &  44.1  & 43.2  & {\bf 42.8}  & 42.9      \\ 
+%./bin/showwer_nist
+%06_test_cmllr+spkvecs+wts-inexact/*/*/decode_s10.0_p0.0_perspk_3gram.ctm.filt.dtl
++symmetric,inexact& 45.2    & 44.1  &  43.5  &  43.4  & {\bf 43.3} &           \\ \hline
+  \end{tabular}
+   \caption{CallHome English: WERs with CMLLR adaptation}
+% \vspace*{-0.2in}
+ \label{tab:callhome:cmllr}
+\end{table}
+
+
+Table~\ref{tab:callhome:cmllr} shows experiments with CMLLR adaptation.  The exact
+update gives 1.9\% absolute improvement and the inexact update gives 1.4\% absolute
+improvement.  Note that these are the same models as the previous table, tested with
+CMLLR, and we attribute the difference between the exact and inexact models on this 
+setup to statistical noise; further experiments will have to tell us whether, in general,
+there is a difference between the exact and inexact updates.  
+
+%%Note that Speaker Adaptive Training (SAT) gives a large improvement for the
+%%baseline GMM-based model, but we do not do this for our model: as reported
+%%in~\cite{ubmpaper}, we did not get an improvement from SAT with the SGMM; we
+%%are unsure why SAT gave an unusually large gain for the baseline model.
+
+
+
+
+
+\begin{table}[h]
+ \renewcommand\arraycolsep{-0.1in}
+  \begin{tabular}{|l|ccccccc|}           \hline 
+ \multirow{2}{*}{GMM}
+            &     \multicolumn{7}{c|}{\#Gauss per state}     \\
+            &   20  &  26    &   32  &  34    &   36    &   38   & 40   \\  \cline{2-8}
+ -          &       & 36.8   & 36.6  & 36.4   &  36.4   &  36.4  & 36.4  \\  
+ CMLLR      &       & 34.8   & 34.5  & 34.4   & 34.3    & 34.5   & 34.3  \\
+ STC        &       & 35.4   & 35.3  &        &  35.2   &        &      \\
+    +CMLLR  &       & 33.1   & 32.9  &        &  32.9   &        &      \\ \hline
+ \multirow{2}{*}{SGMM} 
+            &    \multicolumn{7}{c|}{\#Substates}                      \\
+            & 30k   &  40k  &   50k  &  75k   &  100k  &  150k  & 200k \\  \cline{2-8}
+ unadapted  &  35.7 & 35.7  &  35.1  & 34.7   & 34.3   &  33.9  & 33.7  \\ 
+  CMLLR     &       &       &  32.2  &        &        &        &       \\
+ +spk-vecs  &  32.0 & 31.7  &  31.4  & 31.2   & 30.8   &        &       \\ 
+\hspace{-0.08in}
+ +symmetric\hspace{-0.1in} &  31.9& 31.7   & 31.3   & 31.0   & 30.6   &        &       \\ \hline
+  \end{tabular}
+   \caption{Switchboard: WERs, with VTLN}
+% \vspace*{-0.2in}
+ \label{tab:switchboard:vtln}
+\end{table}
+
+
+
+\begin{table}[h]
+ \renewcommand\arraycolsep{-0.1in}
+  \begin{tabular}{|l|cccccc|}           \hline 
+ \multirow{2}{*}{GMM}
+            &     \multicolumn{6}{c|}{\#Gauss per state}     \\
+            &       &        &       &        &   36    &         \\  \cline{2-7}
+ -          &       &        &       &        &  39.2   &        \\  
+ CMLLR      &       &        &       &        &  37.0   &        \\
+ STC        &       &        &       &        &  38.0   &        \\
+ +CMLLR     &       &        &       &        &  35.2   &         \\ \hline
+ \multirow{2}{*}{SGMM} 
+            &    \multicolumn{6}{c|}{\#Substates}                      \\
+            & 30k   &  40k  &   50k  &  75k   &  100k  &         \\  \cline{2-7}
+ unadapted  &  37.9 & 37.5  &  37.1  & 36.6   &  36.3  &          \\ \hline
+CMLLR+spk-vecs&33.9 & 33.5  &  33.4  &        &        &          \\
+ +symmetric & 33.8  & 33.0  &  33.2  &        &        &          \\ \hline
+  \end{tabular}
+   \caption{Switchboard: WERs, no VTLN}
+% \vspace*{-0.2in}
+ \label{tab:switchboard:novtln}
+\end{table}
+
+
+
+%% \begin{table}[h]
+%%  \renewcommand\arraycolsep{-0.1in}
+%%   \begin{tabular}{|l|ccccccc|}           \hline 
+%%             &     \multicolumn{7}{c|}{\#Gauss per state}     \\
+%%             &  16   &   26   &  32   &   36   & 40       &      &    \\  \cline{2-8}
+%%   GMM:      &  37.8 & 36.8   & 36.6  & 36.4   &  36.4    &      &     \\  
+%% +STC:       &       &        & 35.6  &        &          &       &     \\ \hline
+%%             &    \multicolumn{7}{c|}{\#Substates}                      \\
+%%             & 30k   &  40k  &   50k  &  75k   &  100k  &  150k  & 200k \\  \cline{2-8}
+%%   SGMM:     &  35.7 & 35.7  &  35.1  & 34.7   & 34.3   &  33.9  & 33.7  \\ \hline
+%%   \end{tabular}
+%%    \caption{Switchboard: WERs, unadapted (except for VTLN)}
+%% % \vspace*{-0.2in}
+%%  \label{tab:switchboard:unadapted}
+%% \end{table}
+
+Next we discuss Switchboard experiments.  Our Switchboard system was trained on
+278 hours of data from Switchboard I and II, and CallHome English.  Models were
+tested on the Hub5 Eval01 test set (just over 6 hours long).  We used PLP
+features with cepstral mean and variance normalization, and Vocal Tract Length
+Normalization (VTLN).  The bigram language model used during decoding was taken
+from the AMI RT'07 system described in~\cite{NIST:2007}; we used a recognition
+lexicon of 50K words.  Our baseline GMM models were built with
+HTK~\cite{htkbook}.  Tables~\ref{tab:switchboard:vtln}
+and~\ref{tab:switchboard:novtln} show results with VTLN, and without VTLN,
+respectively.  We did the baseline experiments with Constrained MLLR (CMLLR; a.k.a. fMLLR), 
+and Semi-tied Covariance (STC; a.k.a. MLLT).  With the SGMMs, 
+we used the exact update for the $\u_i$ quantities in the symmetric case.  
+In both cases the symmetric extension to the model gives a much smaller
+improvement than on the CallHome setup.  We are not sure of the reason for this.
+Note that we do not show Speaker Adapted Training (SAT) results for the GMM baseline
+because we did not see an improvement (we tried SAT after STC which would anyway
+reduce the gains).  
+
+
+%%Table~\ref{tab:switchboard:unadapted}
+%%shows experiments without adaptation except for VTLN (i.e. no ``speaker vectors'' or
+%%CMLLR).  The GMM line with ``+STC'' includes a global semi-tied covariance transform (STC),
+%%also known as a Maximum Likelihood Linear Transform (MLLT).
+%%The SGMM is 1.9\% absolute (5.3\% relative) better than the best GMM baseline.
+
+
+%% \begin{table}[h]
+%%  \renewcommand\arraycolsep{-0.1in}
+%%   \begin{tabular}{|l|ccccc|}           \hline 
+%%                 &     \multicolumn{5}{c|}{\#Gauss per state}     \\
+%%                 &  16   &   26   &  32   &   36   &   40       \\  \cline{2-6}
+%%       GMM:      &       & 34.8   & 34.5  & 34.3   & 34.3       \\  \hline
+%%      +STC:      &       &        & 34.1  &        &           \\  \hline
+%%                 &    \multicolumn{5}{c|}{\#Substates}                      \\
+%%                 & 30k   &  40k  &   50k  &  75k   &  100k   \\  \cline{2-6}
+%%  SGMM+spk-vecs: &  33.0 & 32.5  &  32.0  & 31.7   & 31.4     \\ 
+%%  +symmetric:    &  32.9 & 32.3  &  31.9  & 31.7   & 31.3     \\ \hline
+%%   \end{tabular}
+%%    \caption{Switchboard: WERs, adapted (all with VTLN+CMLLR)}
+%% % \vspace*{-0.2in}
+%%  \label{tab:switchboard:adapted}
+%% \end{table}
+
+
+%%Table~\ref{tab:switchboard:adapted} shows adapted results on Switchboard; these all include
+%%CMLLR, and the SGMM systems also use speaker vectors.  Comparing the best GMM number with the best SGMM
+%%number (with the symmetric model), we get 2.8\% absolute improvement (8.2\% relative).  Based on
+%%other experiments on a slightly different setup, we believe that Speaker Adapative Training would
+%%improve the baseline by about 0.3\% absolute.
+
+%% The unexpected thing in Table~\ref{tab:switchboard:adapted} is that the symmetric modification gave 
+%% us almost no improvement.  Although it is common to get slightly different results on different
+%% datasets, we are not accustomed to seeing such large differences. 
+
+Table~\ref{tab:likes} compares
+the average acoustic likelihood in the three passes of decoding, which reveals the effect of the
+symmetric modification on the likelihood.  The ``baseline'' rows are the SGMM with speaker vectors 
+and CMLLR, but without the symmetric modification.  As expected, the likelihood before adaptation
+is slightly worse (because there is a mismatch between the models, which were adaptively trained,
+and the data), but it gets better after adaptation.  In both cases the likelihood improvement per
+frame, after adaptation, was about 0.1 (in natural-logarithm units).  This makes it 
+hard to interpret the differences in results between the CallHome and Switchboard setups, because
+the effect on the likelihoods is so similar.  We intend to do further experiments on other
+data-sets to find which results are more typical.
+
+
+% see ~/er/RESULTS.icassp11 on BUT systems.
+\begin{table}[h]
+ \renewcommand\arraycolsep{-0.1in}
+  \begin{tabular}{|cr|ccc|}           \hline 
+           &              &   \multicolumn{3}{c|}{ Decoding pass }           \\
+           &              &   1         &     2       &          3            \\  
+           &              & {\footnotesize (no-adapt)}  &{\footnotesize  +spk-vecs}  & {\footnotesize +CMLLR}         \\  \hline
+  Call     &{\footnotesize SGMM+spk-vecs}&  -65.44     &   -63.62    &  -62.56              \\ 
+  Home     & {\footnotesize +symmetric}    &  -65.57     &   -63.50    &  -62.45            \\ \hline
+  Switch-  & {\footnotesize SGMM+spk-vecs}&  -60.07     &  -57.78     &  -58.86             \\
+  board    & {\footnotesize +symmetric}    &  -60.17     &  -57.68     &  -56.76            \\ \hline
+  \end{tabular}
+   \caption{Acoustic likelihoods on the three test-time decoding passes}
+% \vspace*{-0.2in}
+ \label{tab:likes}
+\end{table}
+
+
+
+%% Baseline:
+%% merlin:er: grep Per test_arnab*rerun/8/8/decode_fixed_s10.0_p0.0/*.log  | perl -e ' $n=0;while(<>) { @A=split(`` ``,$_); $n=($n%3)+1; $t{$n} += $A[4]; $tt{$n} += $A[6]; } for($n=1;$n<=3;$n++) { $f=$t{$n}/\
+%% $tt{$n}; print ``pass $n: $f over $tt{$n} frames\n''; }'
+%% pass 1: -65.441097461703 over 655612 frames
+%% pass 2: -63.6198843852782 over 655612 frames
+%% pass 3: -62.5628536429138 over 655612 frames
+
+%% Experiment:
+%% merlin:er: grep Per test_symmetric_rerun/8/8/decode_fixed_s10.0_p0.0/*.log  | perl -e ' $n=0;while(<>) { @A=split(`` ``,$_); $n=($n%3)+1; $t{$n} += $A[4]; $tt{$n} += $A[6]; } for($n=1;$n<=3;$n++) { $f=$t{\
+%% $n}/$tt{$n}; print ``pass $n: $f over $tt{$n} frames\n''; }'
+%% pass 1: -65.5657124102808 over 655612 frames
+%% pass 2: -63.5015519090499 over 655612 frames
+%% pass 3: -62.4537370786898 over 655612 frames
+%%  Martin's setup:
+%% cd /mnt/matylda3/karafiat/SGMM/exp/ctstrain04.v0.xwrd.sn.4.vtln
+
+
+%% Baseline:
+%% merlin:ctstrain04.v0.xwrd.sn.4.vtln: dir=output_sgmm_full_400gz_arnabcmllr39_icassp/hmm7.8.s50000; for x in $dir/asr_out*.log.gz; do gunzip -c $x ; done | grep Per  | perl -e ' $n=0;while(<>) { @A=split\
+%% (`` ``,$_); $n=($n%3)+1; $t{$n} += $A[4]; $tt{$n} += $A[6]; } for($n=1;$n<=3;$n++) { $f=$t{$n}/$tt{$n}; print ``pass $n: $f over $tt{$n} frames\n''; }'
+%% pass 1: -60.0675595633454 over 2228237 frames
+%% pass 2: -57.7841323235589 over 2228237 frames
+%% pass 3: -56.8589936376831 over 2228237 frames
+
+%% Experiment:
+%% merlin:ctstrain04.v0.xwrd.sn.4.vtln: dir=output_sgmm_full_400gz_arnabcmllr39_sym_icassp/hmm7.8.s50000; for x in $dir/asr_out*.log.gz; do gunzip -c $x ; done | grep Per  | perl -e ' $n=0;while(<>) { @A=s\
+%% plit(`` ``,$_); $n=($n%3)+1; $t{$n} += $A[4]; $tt{$n} += $A[6]; } for($n=1;$n<=3;$n++) { $f=$t{$n}/$tt{$n}; print ``pass $n: $f over $tt{$n} frames\n''; }'
+%% pass 1: -60.1726961158082 over 2228237 frames
+%% pass 2: -57.681438551532 over 2228237 frames
+%% pass 3: -56.7608517686853 over 2228237 frames
+
+
+
+
+
+
+
+%\vspace*{-0.075in}
+\section{Conclusions}
+\label{sec:conc}
+%\vspace*{-0.05in}
+
+We have described a modification to the Subspace Gaussian Mixture Model which we
+call the Symmetric SGMM.  This is a very natural extension which removes an
+asymmetry in the way the Gaussian mixture weights were previously computed.  The
+extra computation is minimal but the memory used for the acoustic model is nearly
+doubled.  Our experimental results were inconsistent: on one setup we got a large
+improvement of 1.5\% absolute, and on another setup it was much smaller. 
+
+We would also like to report our progress on releasing open-source software that
+supports the SGMM modeling approach.  An official announcement, with additional
+co-authors, will follow within the next year.  We are developing an open-source
+(Apache-licensed) C++ speech recognition toolkit that uses the OpenFst
+library~\cite{openfst}.  Most aspects of the toolkit are not related directly to
+SGMMs, but SGMMs will be one of the acoustic models the toolkit natively
+supports.  Most likely the toolkit will already have been released by the time this 
+is published.
+
+%\vspace*{-0.1in}
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+
+\end{document}
+
+
+steps/decode_tri3a_latgen.sh
+acwt=0.0625
+beam=[15.0-7.0]
+max_active=15000
+lat_beam=[10.0-1.0]
+max_arcs=50000 (75000 for lat_beam 10.0)
+model=exp/tri3a/final.mdl
+graph=exp/graph_tri3a_bg_left/HCLG.fst
+
+scp=data/eval_nov92.scp
+
+333 utterances
+87 utterances contain OOV
+42 utterances contain annotated noise (actually some more, but listed as OOV utterances here)
+
+5641 tokens (some scripts count 5700 with 59 noise annotations)
+107 OOV tokens
+1.88% OOV token rate
+
+253204 frames (2532 seconds)
+
+19976 words in decoding vocabulary and LM (not counting <s>,</s>,<unk>)
+
+average lattice link density per frame:
+have a wide range over files: for example beam=15.0, lat_beam=9.0:
+ranging from 1.5 to 167
+
+running on blades, using 64bit version with double float and lattice-simple-decoder
+
+decoding with bigram LM:
+decoding WER:      11.51%
+ins/del/sub:       118/57/474   
+utterances wrong:  227          
+
+experiment: changing lattice beam:
+
+decoding beam:     15.0         15.0       15.0       15.0       15.0         15.0        15.0        15.0        15.0         15.0        15.0
+lattice beam:      10.0          9.0        8.0        7.0        6.0          5.0         4.0         3.0         2.0          1.0         0.0
+avg. link density: 23.56        16.0       10.82       7.26       4.91         3.38        2.38        1.77        1.4          1.17        1.0
+realtime factor:    3.61         3.17       2.59       2.41       2.34         2.98 ?      3.21 ?      1.89        3.12 ?       1.78        --
+
+oracle WER:         2.62%        2.78%      2.85%      3.08%      3.35%        3.86%       4.52%       5.46%       6.98%        8.62%      11.51%
+ins/del/sub:       22/0/126     25/0/132   29/0/132   31/1/142   38/5/146     51/11/156   57/15/183   64/20/224   76/32/286    89/40/357   118/57/474
+oracle utt wrong:  93           96         96         101        105          116         129         147         168          191         227
+
+rescoring WER(15):  9.59%        9.59%      9.59%      9.59%      9.56%        9.59%       9.61%       9.70%       9.80%       10.21%      11.51%
+ins/del/sub:       117/36/388                                    116/36/387   117/35/389  115/35/392  111/38/398  108/39/406   113/42/421  118/57/474
+rescore utt wrong: 205                                           204          204         204         202         205          212         227
