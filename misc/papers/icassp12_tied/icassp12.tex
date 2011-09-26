@@ -23,13 +23,14 @@
 \name{
 K.~Riedhammer$^1$,
 T.~Bocklet$^1$,
-A.~Ghoshal$^2$,
-D.~Povey$^3$
+A.~Ghoshal$^{2,3}$,
+D.~Povey$^4$
 }
 \address{
 $^1$Pattern Recognition Lab, University of Erlangen-Nuremberg, \sc{Germany}\\
 $^2$Spoken Language Systems, Saarland University, \sc{Germany}\\
-$^3$Microsoft Research, Redmond, WA, {\sc USA}\\
+$^3$Centre for Speech Technology Research, University of Edinburgh, UK\\
+$^4$Microsoft Research, Redmond, WA, {\sc USA}\\
 {\small\tt korbinian.riedhammer@informatik.uni-erlangen.de}
 }
 
@@ -39,19 +40,17 @@ $^3$Microsoft Research, Redmond, WA, {\sc USA}\\
 \maketitle
 
 \begin{abstract}
-In the past decade, semi-continuous hidden Markov models (HMMs) have not attracted 
-much attention in the speech recognition community. The strongly growing amount
-of training data and continuous improvements of the initialization and training
-procedures led to the impression that continuous HMMs are the best choice of
-acoustic model.
+In the past decade, semi-continuous hidden Markov models (SC-HMMs) have not 
+attracted much attention in the speech recognition community. Growing amounts 
+of training data and increasing sophistication of model estimation led to the 
+impression that continuous HMMs are the best choice of acoustic model.
 %
-However, recent work on tasks involving cross-lingual speech recognition and
-languages with little training data faced the same the old problem -- millions
-of parameters require a large amount of (unavailable) training data -- thus people are
-investigating methods of reducing the number of parameters while maintaining or
+However, recent work on recognition of under-resourced languages faces the same the old problem of estimating a large number of parameters from limited amounts 
+of labeled speech.
+This has led to a renewed interest in methods of reducing the number of parameters while maintaining or 
 extending the modeling capabilities of continuous models.
 %
-In this work, we compare continuous, semi-continuous, two-level tree based 
+In this work, we compare continuous, semi-continuous, %two-level tree based 
 multiple-codebook semi-continuous with full covariance matrices and subspace Gaussian
 mixture models.
 %
@@ -69,7 +68,7 @@ In the past years, semi-continuous hidden Markov models (SC-HMMs) \cite{huang198
 have not attracted much attention in the automatic speech recognition (ASR) community. 
 Most major frameworks (e.g.~CMU {\sc Sphinx} or HTK) more or less retired
 semi-continuous models in favor of continuous models, which performed 
-considerably better with the growing amount of training data available.
+considerably better with the growing amount of available training data.
 %
 However, topics like cross-lingual model initialization and model training
 for languages with little training data became more and more popular recently,
@@ -87,22 +86,19 @@ continuous system, increasing the number of states not only requires more
 Gaussians to be estimated, but also implies that the training data for each
 state is reduced.
 %
-This is the probably strongest advantage of semi-continuous models: While the
-codebook Gaussians are always estimated on the whole data set, the only state
-specific variables are the weights of the Gaussians, i.e.~increasing the number
-of states only slightly increases the number of parameters, and the Gaussian
-means and variances are still estimated using all the data; the reduced number
-of Gaussian parameters for a large data set also allows to robustly estimate
-full covariances.
+This is where semi-continuous models hold an advanatge: the only state specific 
+variables are the weights of the Gaussians, while the codebook Gaussians 
+themselves are always estimated on the whole data set. In other words, increasing the number of states leads to only modest increase in the total number of 
+parameters. The Gaussian means and variances are estimated using all of the available data, making it possible to robustly estimate even full covariance matrices.
 %
-This allows to reliably estimate arbitrary large phonetic context 
-(``polyphones''), that showed good performance for the recognition of 
-spontaneous  speech \cite{schukattalamazzini1994srf,schukattalamazzini1995as} 
-while having a rather small number of parameters.
+This also allows to reliably estimate arbitrarily large phonetic context 
+(``polyphones''), which has been shown to achieve good performance for the 
+recognition of spontaneous  speech \cite{schukattalamazzini1994srf,schukattalamazzini1995as} 
+while having a relatively small number of parameters.
 %
 Further advantages of the shared codebook Gaussians are that they need to be 
 evaluated only once per frame, and that the codebook can be initialized, trained
-and adapted in a solely acoustic way.
+and adapted using even untranscribed speech.
 
 The idea of semi-continuous models can be extended to multiple codebooks; by
 assigning certain groups of states to specific codebooks, one can find a
@@ -161,17 +157,19 @@ of leaves by around 20\%.
 
 \subsection{Continuous Models}
 For continuous models, every leaf of the tree is assigned an separate
-Gaussian mixture model. We initialize the mixtures with a single component
-each, and subsequently allocate more components by splitting components every 
-iteration until a certain total number of components is reached (in this case
-about 9000). We allocate the Gaussians proportional to a small power (e.g.~0.2) 
-of the state's occupation count.
-Formally, the emission probability of tree leaf $j$ is computed as
+Gaussian mixture model. Formally, the emission probability of tree leaf $j$ is 
+computed as
 \begin{equation}
 p(\x | j) = \sum_{i=1}^{N_j} c_{ji} \nv(\x; \m_{ji}, \k_{ji}) 
 \end{equation}
 where $N_j$ is the number of Gaussians assigned to $s_j$, and the $\m_{ji}$ and
 $\k_{ji}$ are the means and covariance matrices of the mixtures.
+
+We initialize the mixtures with a single component each, and subsequently 
+allocate more components by splitting components at every iteration until a 
+pre-determined number of components is reached (in this case 9000). We allocate 
+the Gaussians proportional to a small power (e.g.~0.2) of the state's 
+occupation count.
 
 \subsection{Semi-continuous Models}
 The idea of semi-continuous models is to have a large number of Gaussians that
@@ -460,13 +458,13 @@ The results on the different test sets on the WSJ data are displayed in
 Tab.~\ref{tab:res_rm}.
 
 \section{Summary}
-In this article, we evaluated semi-continuous and two-level tree based
-semi-continuous acoustic models of the {\sc Kaldi} toolkit in the context of
-both continuous and SGMM models.
+In this article, we compared two types of semi-continuous hidden Markov models, 
+one using a single codebook and the other using multiple codebooks based 
+on a two-level phonetic decision tree, with both continuous HMMs and SGMMs.
 %
 While the first could not produce convincing results, the two-level tree 
-based multiple-codebook architecture shows promising performance, especially for 
-little training data. 
+based multiple-codebook architecture shows promising performance, especially 
+with limited training data. 
 
 Although the current performance is below the state-of-the-art, the
 rather simple theory and computational complexity, paired with the possibility
