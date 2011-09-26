@@ -119,8 +119,8 @@ We describe a lattice generation method that is exact, i.e. it satisfies all the
 natural properties we would want from a lattice of alternative transcriptions of
 an utterance.  This method is also quite efficient; it does not 
 introduce substantial overhead above one-best decoding.  Our method is
-most directly applicable when using fully-expanded WFST decoders, i.e. decoders that use a
-WFST-based decoding graph that is expanded down to the HMM-state level.  It outputs
+most directly applicable when using WFST decoders where the WFST is
+expanded down to the HMM-state level.  It outputs
 lattices that include state-level alignments as well as word labels.
 The general idea is to create a state-level lattice during decoding, and to do
 a special form of determinization that retains only the best-scoring path
@@ -189,8 +189,8 @@ the best path through $S$.  The input symbol sequence for this best path represe
 the state-level alignment, and the output symbol sequence is the corresponding
 sentence.  In practice we do not do a full search of $S$, but use beam pruning.
 Let $B$ be the searched subset of $S$, containing a subset of the states and arcs
-of $S$ obtained by some heuristic pruning procedure.  Then in practice, 
-when we do Viterbi decoding with beam-pruning, we are finding the best path through $B$. 
+of $S$ obtained by some heuristic pruning procedure.  
+When we do Viterbi decoding with beam-pruning, we are finding the best path through $B$. 
 
 Since the beam pruning is a part of any practical search procedure and cannot
 easily be avoided, we will define the desired outcome of lattice generation in terms
@@ -267,30 +267,30 @@ one-word history.
 The lattice generation method described in~\cite{efficient_general} 
 is applicable to decoders that use WFSTs~\cite{wfst}
 expanded down to the $C$ level (i.e. $CLG$), so the input symbols represent
-context-dependent phones.  In their WFST based decoding networks, states did
-not have a unique one-word history, but they were able to satisfy a similar 
-condition at the phone level.  Their method was
+context-dependent phones.  In WFST based decoding networks, states normally do
+not have a unique one-word history, but the authors of~\cite{efficient_general}
+were able to satisfy a similar condition at the phone level.  Their method was
 to store a single Viterbi back-pointer at the phone level; use this to 
 create a phone-level latice; prune the resulting
 lattice; project it to leave only word labels; and then convert this into a word-level
 lattice via epsilon removal and determinization.
 Note that the form of pruning referred to here is not the same as beam pruning as
 it takes account of both the forward and backward parts of the cost.
-The paper also reported experiments with a different method that did not requir any
+The paper also reported experiments with a different method that did not require any
 phone-pair assumption; these experiments showed that the more
-efficient method that relied on the phone-pair assumption 
-had a minimal impact on the lattice oracle error rate.  However, the 
+efficient method that relied on the phone-pair assumption
+had almost the same the lattice oracle error rate as the other method.  However, the 
 experiments did not evaluate how much impact the assumption had on the accuracy of the scores, 
 and this information could be important in some applications.
 
-The lattice generation algorithm that was described in~\cite{saon2005anatomy} (although not
-in very great detail) is applicable to WFSTs expanded down to the $H$ level (i.e. $\HCLG$),
+The lattice generation algorithm that was described in~\cite{saon2005anatomy}
+is applicable to WFSTs expanded down to the $H$ level (i.e. $\HCLG$),
 so the input symbols represent context-dependent states.  It keeps both score and 
 state-level alignment information.  In some sense this algorithm also relies
 on the word-pair assumption, but since the copies of the lexical tree in the decoding
 graph do not have unique word histories, the resulting algorithm has to be quite
-different.  Viterbi back-pointers at the word level are used, but in each state
-is stored not just the best back-pointer but the $N$ best back-pointers for the $N$ top-scoring distinct
+different.  Viterbi back-pointers at the word level are used, but the algorithm keeps track
+of not just a single back-pointer in each state, but the $N$ best back-pointers for the $N$ top-scoring distinct
 preceding.  Therefore, this algorithm has more in common with the sentence N-best
 algorithm than with the Viterbi algorithm.  By limiting $N$ to be quite small (e.g. $N{=}5$)
 the algorithm was made efficient, but this is at the cost of possibly losing word sequences
@@ -304,9 +304,9 @@ complex to implement efficiently.
 In order to explain our algorithm in the easiest way, we will first explain how it would
 be if we did not keep the alignment information, and were storing only a single cost
 (i.e. the total acoustic plus language-model cost).  This is just for didactic purposes;
-in fact, we have not implemented this simple version.
+we have not implemented this simple version.
 In this case our algorithm would be quite similar
-to~\cite{efficient_general}, except working at the state level rather than the phone level.
+to~\cite{efficient_general}, except at the state level rather than the phone level.
 We actually store forward rather than backward pointers: for each active state on each
 frame, we create a forward link record for each active arc out of that state; this points
 to the record for the destination state of the arc on the next frame (or on 
@@ -318,8 +318,8 @@ Let the pruned graph be $P$, i.e.
   P = \mathrm{prune}(B, \alpha),
 \end{equation}
 where $B$ is the un-pruned state-level lattice.
-We project on the output labels (keeping only the word labels), and remove $\epsilon$
-labels and determinize.  In fact, we use a determinization algorithm that does $\epsilon$
+We project on the output labels (i.e. we keep only the word labels), then remove $\epsilon$
+arcs and determinize.  In fact, we use a determinization algorithm that does $\epsilon$
 removal itself.
 
 As in~\cite{efficient_general}, to save memory we actually do the pruning
@@ -370,7 +370,7 @@ explain how we can make the alignments ``piggyback'' on top of the computation
 defined above, by encoding them in a special semiring.
 
 First, let us define $Q = \inv(P)$, i.e. $Q$ is the inverted, pruned state-level lattice,
-so that the input symbols are the words and the output symbols are the p.d.f. labels.
+where the input symbols are the words and the output symbols are the p.d.f. labels.
 We want to process $Q$ in such a way that we keep only the best path through it
 for each word sequence, and get the corresponding alignment.  This is possible
 by defining an appropriate semiring and then doing normal determinization.  Firstly, 
@@ -385,15 +385,12 @@ it returns whichever pair has the smallest weight: that is, $(c,s) \oplus (c',s'
 equals $(c,s)$ if $c < c'$, and $(c',s')$ if $c > c'$.  If the weights are identical,
 we cannot arbitrarily return the first pair because this would not satisfy the semiring
 axioms.  In this case, we return the pair with the shorter string part, and if
-the lengths are the same, whichever string appears first in dictionary order.  These
-details do not have any practical effect on the behavior of the final algorithm in any
-normal situation, but are required to satisfy the semiring axioms.
+the lengths are the same, whichever string appears first in dictionary order. 
 
-Suppose we have a WFST $Q$ representing a state-level lattice, with words
-as its input symbols and p.d.f.'s as its output symbols.  Let $E$ be an encoding of $Q$ with the 
-same number of states and arcs; $E$ is an acceptor, with its symbols
-equal to the input symbol on the corresponding arc of $Q$, and
-the weights on the arcs of $E$ containing both the the weight and the output symbol
+Let $E$ be an encoding of the inverted state-level lattice $Q$ 
+as described above, with the same number of states and arcs; $E$ is an acceptor, with its symbols
+equal to the input symbol (word) on the corresponding arc of $Q$, and
+the weights on the arcs of $E$ containing both the the weight and the output symbol (p.d.f.)
 on the corresponding arcs of $Q$.  Let $D = \mathrm{det}(\mathrm{rmeps}(E))$.
 
 In the case we are interested in, determinization
@@ -431,9 +428,7 @@ words as the labels, and the graph and acoustic costs and the alignments
 encoded into the weights.  Of course, the costs and alignments are not in any
 sense ``synchronized'' with the words.
 
-\section{Details of our implementation}
-
-\subsection{Epsilon removal and determinization}
+\section{Details of our $\epsilon$ removal and determinization algorithm}
 
 We implemented $\epsilon$ removal and determinization as a single algorithm 
 because $\epsilon$-removal using the traditional approach would greatly
@@ -478,7 +473,7 @@ sometimes exhaust memory, i.e. in practice it can ``blow up'' for particular
 inputs.  Our observation is that in cases where it significantly expands
 the input, this tends to be reversed by pruning after determinization.
 We currently make our software robust to this phenomenon by 
-pre-specifyin a maximum number of states for a lattice, and if the
+pre-specifying a maximum number of states for a lattice, and if the
 determinization exceeds this threshold, we prune with a tighter beam
 and try again.  In the future we may implement a form of determinization that
 includes an efficient form of pruning.
