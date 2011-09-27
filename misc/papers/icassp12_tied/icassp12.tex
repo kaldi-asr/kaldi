@@ -367,7 +367,7 @@ were tuned to the test set.
   Gaussians in 1480 tree leaves
 \item
   {\em semi}: semi-continuous triphone system using 768 full covariance
-  Gaussians in 2500 tree leaves, but no smoothing (explanations below).
+  Gaussians in 2500 tree leaves, no smoothing (explanations later).
 \item
   {\em 2lvl}: two-level tree based semi-continuous triphone system using
   3072 full covariance Gaussians in 208 codebooks ($4/14.7/141$ min/average/max
@@ -479,7 +479,7 @@ Another observation from Tab.~\ref{tab:rm_diagfull} is that the smoothing
 parameters need to be carefully calibrated. While the inter-iteration smoothing
 helps in most cases, the intra-iteration smoothing coefficient $\rho$ strongly
 depends on the type and number of Gaussians, which is due to the direct influence
-of $\rho$ in Eq.~\ref{eq:intra}.
+of $\rho$ on the counts in Eq.~\ref{eq:intra}.
 
 \subsection{WSJ}
 
@@ -540,6 +540,8 @@ reduce computational effort in both training and decoding.
 %\section{REFERENCES}
 %\label{sec:ref}
 
+% Korbinian: We might need that ;)
+%\footnotesize
 \bibliographystyle{IEEEbib}
 \bibliography{refs-eig,refs}
 
