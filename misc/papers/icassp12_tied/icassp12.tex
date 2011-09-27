@@ -379,25 +379,32 @@ were tuned to the test set.
 
 \subsection{WSJ}
 % TODO fix the WSJ train/dev/eval description
-For the WSJ data set, we trained on the SI-284 training set, tuned on dev
-and tested on eval92,93.
+%% Korbinian: For now, I inserted results on si84/half, using cmvn (tri2c),
+%             the si284 take just too long for the submission.
+%For the WSJ data set, we trained on the SI-284 training set, tuned on dev
+%and tested on eval92,93.
+To get an intuition of the performance on the WSJ data set, we trained on 
+half of the SI-84 training set using settings similar to the RM experiments; 
+we tested on the eval '92 and eval '93 data sets.
 As the classic semi-continuous system did not yield good performance on the
 RM data both in terms of run-time and performance, we omit it for the WSJ
 experiments.
 %
-% TODO Korbinian: There are more expts ongoing, they should be done by 
-%                 tomorrow! I will also fill in the details below then.
+% TODO Korbinian: I hope the SI-284 experiments finish soon enough while the 
+%                 submission is still open. For now, I describe SI-84/half.
 \begin{itemize}
 \item
   {\em cont}: continuous triphone system using 10000 diagonal covariance
   Gaussians in 1576 tree leaves.
-%\item
-%  {\em semi}: semi-continuous triphone system using 768 full covariance
-%  Gaussians in 2500 tree leaves, but no smoothing (explanations below).
+%% TODO Korbinian: For now, I use the same setting as in RM, to evade the
+%                  tuning on the dev set. Also, no semi system, too slow
+%                  and bad performance on RM.
 \item
-  {\em 2lvl}: two-level tree based semi-continuous triphone system using
-  4096 full covariance Gaussians in 208 codebooks ( min/average/max
-  components),  tree leaves, $\rho = $ and $\varrho = $.
+    {\em 2lvl}: same configuration as for RM (no further tuning).
+%\item
+%  {\em 2lvl}: two-level tree based semi-continuous triphone system using
+%  4096 full covariance Gaussians in 208 codebooks ( min/average/max
+%  components),  tree leaves, $\rho = $ and $\varrho = $.
 \item
   {\em sgmm}: subspace Gaussian mixture model triphone system using a 400 
   full-covariance Gaussian background model and 2361 tree leaves.
@@ -434,7 +441,7 @@ different acoustic models on the RM data set.
 The results on the different test sets on the RM data are displayed in 
 Tab.~\ref{tab:res_rm}. The classic semi-continuous system shows the worst 
 performance of the four. Possible explanations are an insufficient number
-of Gaussians paired overfitting of the weights to a little number of 
+of Gaussians paired with overfitting of the weights to a little number of 
 components. Unfortunately, this could not be eased with the interpolations
 and larger numbers of Gaussians would unacceptably increase the computational 
 load due to the full covariance matrices.
@@ -467,7 +474,7 @@ and $\varrho = 0.2$ if active.
 \end{table}
 
 Keeping the number of codebooks and leaves as well as the smoothing parameters
-$rho$ and $\varrho$ of {\em 2lvl} constant, we experiment with the number of
+$\rho$ and $\varrho$ of {\em 2lvl} constant, we experiment with the number of
 Gaussians and type of covariance; the results are displayed in 
 Tab.~\ref{tab:rm_diagfull}.
 Interestingly, the full covariances make a strong difference: Using the same
@@ -489,19 +496,16 @@ of $\rho$ on the counts in Eq.~\ref{eq:intra}.
 \begin{center}
 \begin{tabular}{|l||c|c|c|c|c|c||c|}
 \hline
-~          &    dev & eval92 & eval93 & {\em avg} \\ \hline\hline
-{\em cont} &        &  13.17 &  18.61 &     15.23 \\ \hline
-% Korbinian: no semi-continuous for WSJ, takes too long to compute; will do it
-%            for the journal, though.
-%{\em semi} &        &        &        &           \\ \hline 
+~          & eval '92 & eval '93 & {\em avg} \\ \hline\hline
+{\em cont} &    12.75 &    17.10 &     14.39 \\ \hline % si-84/half, cmvn
 
 % tri2-2lvl-208-3072-4000-0-0-0-0 !! no cmvn !!
 %{\em 2lvl} &  13.95 &  21.61 &     16.85 \\ \hline
 
 % tri2-2lvl-208-4096-6000-0-1-35-0.2 !! no cmvn !!
-{\em 2lvl} &        &  12.83 &  21.61 &     16.16 \\ \hline
+{\em 2lvl} &    12.83 &    21.61 &     16.16 \\ \hline
 
-{\em sgmm} &        &  10.76 &  17.82 &     13.44 \\ \hline
+{\em sgmm} &    10.76 &    17.82 &     13.44 \\ \hline % si-84/half, cmvn
 \end{tabular}
 \end{center}
 \caption{\label{tab:res_wsj}
@@ -510,9 +514,16 @@ different acoustic models on the WSJ data.
 }
 \end{table}
 
-% TODO Korbinian: This needs some more text once the above table is filled
 The results on the different test sets on the WSJ data are displayed in
 Tab.~\ref{tab:res_rm}.
+% TODO Korbinian: The following is for the si-84/half results, as currently
+%                 in the table.
+Using the parameters calibrated on the RM test data, the {\em 2lvl} system
+performance is not as good as of the continuous or GMM systems, but still
+in a similar range. Once the number of Gaussians and leaves, as well as the
+smoothing parameters are tuned on the development set, we expect the error
+rates to be in between the continuous and SGMM systems, as seen on the RM 
+data.
 
 \section{Summary}
 In this article, we compared continuous models and SGMM to 
