@@ -87,7 +87,8 @@
 \name{ \em Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
   \em {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^5$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
   \em {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Ngoc Thang Vu}$^8$, {Korbinian Riedhammer}$^9$, {Karel Vesel\'{y}}$^2$
-    \thanks{Thanks here.. remember Sanjeev.} }
+    \thanks{Thanks to Sanjeev Khudanpur for his help in preparing the paper}}
+
 
 %%% TODO: fix thanks.
 %\thanks{Arnab Ghoshal was supported by the European Community's Seventh Framework 
@@ -165,8 +166,10 @@ symbols, the special label $\epsilon$ may appear meaning ``no label is present.'
 \begin{center}
 \includegraphics[height=2.1in,angle=270]{figures/acceptor_utterance.eps}
   \caption{Acceptor $U$ describing the acoustic scores of an utterance}
+\vspace*{-0.2in}
 \label{fig:acceptor}
 \end{center}
+
 \end{figure}
 
 Imagine we have an utterance, of length $T$, and want to ``decode'' it (i.e. find
@@ -452,8 +455,8 @@ to a state index.  We define a {\em minimial representation} of a state
 to be like the canonical representation, but only keeping states that
 are either final, or have non-$\epsilon$ arcs out of them.  We maintain
 a map from the minimal representation to the state index.  We can
-show that this algorithm is still correct (it will tend to give output
-with fewer states, i.e. more minimal).  As an optimization for speed, we also define
+show that this algorithm is still correct (it will tend to give more
+minimal output).   As an optimization for speed, we also define
 the {\em initial representation} to be the same type of subset, but prior
 to following through the $\epsilon$ arcs, i.e. it only contains the states
 that we reached by following non-$\epsilon$ arcs from a previous determinized
@@ -513,14 +516,42 @@ read speech.
 Our system is a standard mixture-of-Gaussians system trained on the SI-284
 training data; we test on the November 1992 evaluation data.  
 For these experiments we generate lattices with the bigram language model
-supplied with the WSJ database, and rescore them with the trigram language model.
+supplied with the WSJ database, and for rescoring experiments we
+use the trigram language model.  The acoustic scale was $1/16$ for first-pass
+decoding and $1/15$ for LM rescoring.  
+
+For simplicity, our results were all obtained using a decoder that
+does not support a ``maximum active states'' option, so the only variables
+to consider are the beam used in the Viterbi beam search, and the separate
+beam $\alpha$ used for lattice generation.
 
 
+\begin{figure}
+\centering
+   \includegraphics[width=0.9\columnwidth]{figures/latbeam.eps} 
+ \vspace*{-0.1in}
+ 
+   \caption{\vspace*{-0.2in} Varying lattice beam $\alpha$ (Viterbi pruning beam fixed at 15) }
+  \label{fig:latbeam}
+\end{figure}
 
+Figure~\ref{fig:latbeam} shows how various quantities change as we vary
+$\alpha$, with the Viterbi beam fixed at 15.  Note that we get all the improvement from
+LM rescoring by increasing $\alpha$ to 4.  The time taken by our algorithm started to increase rapidly after about
+$\alpha=8$, so a value of $\alpha$ anywhere between about 4 and 8 is sufficient for LM rescoring 
+and still does not slow down decoding too much.
+Note that out of vocabularly words (OOVs) provide a floor on the lattice oracle error rate.
+Of the 333 test utterances, 87 contained an OOV word, yet only 93 sentences had oracle errors
+with $\alpha=10$.  Figure~\ref{fig:viterbibeam} shows the effect of varying the
+Viterbi decoding beam, while leaving $\alpha$ fixed at 7.  
 
-
-
-
+\begin{figure}
+\centering
+   \includegraphics[width=0.9\columnwidth]{figures/decodebeam.eps} 
+ \vspace*{-0.1in}
+    \caption{\vspace*{-0.2in} Varying Viterbi pruning beam (lattice beam $\alpha$ fixed at 7) }
+  \label{fig:viterbibeam}
+\end{figure}
 
 
 %\vspace*{-0.075in}
@@ -528,7 +559,11 @@ supplied with the WSJ database, and rescore them with the trigram language model
 \label{sec:conc}
 %\vspace*{-0.05in}
 
-Conclusions here [mention does not rely on word-pair assumption]
+We have described a lattice generation method that is to our knowledge the first
+efficient method not to rely on the word-pair assumption of~\cite{ney_word_graph}.
+It includes an ingenious way of obtaining state-level alignment information
+via determinization in a specially designed semiring. 
+
 
 %\vspace*{-0.1in}
 \bibliographystyle{IEEEbib}

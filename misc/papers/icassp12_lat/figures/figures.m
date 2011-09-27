@@ -1,3 +1,4 @@
+# run this in octave
 
 figure(1)
 hold off
