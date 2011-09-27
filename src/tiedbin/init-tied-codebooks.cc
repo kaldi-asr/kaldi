@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     BaseFloat perturb = 0.01;
     int min_num_gaussians = 3;
     bool full = false;
-	BaseFloat power = 0.2;
+	BaseFloat power = 1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
