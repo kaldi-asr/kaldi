@@ -428,7 +428,7 @@ experiments.
 %{\em tri1/cont} &  0.96 &  2.76 &  2.69 &  3.61 &  3.30 &  6.33 & 3.64 \\ \hline\hline
 {\em cont} &  1.08 &  2.48 &  2.69 &  3.46 &  2.66 &  5.90 & 3.38 \\ \hline
 {\em semi} &  1.80 &  3.19 &  4.72 &  4.62 &  4.15 &  6.88 & 4.66 \\ \hline 
-{\em 2lvl} &  0.48 &  1.70 &  2.46 &  3.35 &  1.89 &  5.31 & {\bf 2.90} \\ \hline
+{\em 2lvl} &  0.48 &  1.70 &  2.46 &  3.35 &  1.89 &  5.31 & 2.90 \\ \hline
 {\em sgmm} &  0.48 &  2.20 &  2.62 &  2.50 &  1.93 &  5.12 & 2.78 \\ \hline
 \end{tabular}
 \end{center}
@@ -496,21 +496,20 @@ of $\rho$ on the counts in Eq.~\ref{eq:intra}.
 \begin{center}
 \begin{tabular}{|l||c|c|c|c|c|c||c|}
 \hline
-~          & eval '92 & eval '93 & {\em avg} \\ \hline\hline
-{\em cont} &    12.75 &    17.10 &     14.39 \\ \hline % si-84/half, cmvn
-
-% tri2-2lvl-208-3072-4000-0-0-0-0 !! no cmvn !!
-%{\em 2lvl} &  13.95 &  21.61 &     16.85 \\ \hline
-
-% tri2-2lvl-208-4096-6000-0-1-35-0.2 !! no cmvn !!
-{\em 2lvl} &    12.83 &    21.61 &     16.16 \\ \hline
-
-{\em sgmm} &    10.76 &    17.82 &     13.44 \\ \hline % si-84/half, cmvn
+~                & eval '92 & eval '93 & {\em avg} \\ \hline\hline
+% all experiments si-84/half, cmvn
+{\em cont}       &    12.75 &    17.10 &     14.39 \\ \hline
+{\em 2lvl/none}  &    12.92 &    17.85 &     14.79 \\ \hline
+{\em 2lvl/intra} &    13.03 &    17.56 &     14.61 \\ \hline
+{\em 2lvl/inter} &    12.80 &    17.59 &     14.61 \\ \hline
+{\em 2lvl/both}  &    13.01 &    17.59 &     14.75 \\ \hline
+{\em sgmm}       &    11.72 &    14.25 &     12.68 \\ \hline
 \end{tabular}
 \end{center}
 \caption{\label{tab:res_wsj}
 Detailed recognition results in \% WER for the '92 and '93 test sets using 
-different acoustic models on the WSJ data.
+different acoustic models on the WSJ data; the {\em 2lvl} system was trained
+with and without the different interpolations.
 }
 \end{table}
 
@@ -520,24 +519,31 @@ Tab.~\ref{tab:res_rm}.
 %                 in the table.
 Using the parameters calibrated on the RM test data, the {\em 2lvl} system
 performance is not as good as of the continuous or GMM systems, but still
-in a similar range. Once the number of Gaussians and leaves, as well as the
-smoothing parameters are tuned on the development set, we expect the error
-rates to be in between the continuous and SGMM systems, as seen on the RM 
-data.
+in a similar range while using about the same number of leaves but about a
+third of the Gaussians.
+Once the number of Gaussians and leaves, as well as the smoothing parameters 
+are tuned on the development set, we expect the error rates to be in between 
+the continuous and SGMM systems, as seen on the RM data.
 
 \section{Summary}
-In this article, we compared continuous models and SGMM to 
+In this article, we compared continuous and SGMM models to 
 two types of semi-continuous hidden Markov models, one using a single codebook 
 and the other using multiple codebooks based on a two-level phonetic decision tree.
 %
 While the first could not produce convincing results, the multiple-codebook 
 architecture shows promising performance, especially for limited training data. 
+%
+% TODO This sentence only for SI-84/half experiments
+The experiments on the WSJ data need to be extended to the full training set, and
+the parameter settings calibrated on the development set.
 
 Although the current performance is below the state-of-the-art, the
 rather simple theory and low computational complexity, paired with the possibility
-of solely acoustic adaptation make two-level tree based semi-continuous acoustic
-models an attractive alternative to low-resource applications -- both in terms
-of computational power and training data.
+of solely acoustic adaptation make multiple-codebook semi-continuous acoustic
+models an attractive alternative for low-resource applications -- both in terms
+of computational power and training data; especially for embedded applications,
+where the codebook evaluation can be implemented in hardware, thus eliminating
+the time difference in evaluating full and diagonal covariance Gaussians.
 %
 The take home message from the experiments is that the choice of acoustic model
 should be made based on a resource constraint (number of Gaussians, available
@@ -552,7 +558,7 @@ reduce computational effort in both training and decoding.
 %\label{sec:ref}
 
 % Korbinian: We might need that ;)
-%\footnotesize
+\footnotesize
 \bibliographystyle{IEEEbib}
 \bibliography{refs-eig,refs}
 
