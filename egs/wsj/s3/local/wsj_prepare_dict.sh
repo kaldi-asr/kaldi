@@ -55,7 +55,7 @@ grep -v ';;;' data/local/cmudict/cmudict.0.7a | \
 
 # Add to cmudict the silences, noises etc.
 
-(echo '!SIL SIL'; echo '<s> '; echo '</s> '; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
+(echo '!SIL SIL'; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
  cat - data/local/lexicon_nosil.txt  > data/local/lexicon.txt || exit 1;
 
 echo "Dictionary preparation succeeded"

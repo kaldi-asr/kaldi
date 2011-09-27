@@ -57,7 +57,10 @@ while(<>) {
                     die "sym2int.pl: invalid map-oov option $map_oov (undefined symbol)";
                 }
                 if ($num_warning++ < $max_warning) {
-                    print STDERR "sym2int.pl: replacing $a with $map_oov [warning $max_warning times]\n";
+                    print STDERR "sym2int.pl: replacing $a with $map_oov\n";
+                    if ($num_warning == $max_warning) {
+                        print STDERR "sym2int.pl: not warning for OOVs any more times\n";
+                    }
                 }
                 $i = $sym2int{$map_oov};
             } elsif($ignore_oov) {

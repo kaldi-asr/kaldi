@@ -17,9 +17,12 @@
 
 $ignore_oov = 0;
 $ignore_first_field = 0;
-for($x = 0; $x < 2; $x++) {
-    if($ARGV[0] eq "--ignore-oov") { $ignore_oov = 1; shift @ARGV; }
+for($x = 0; $x < 3; $x++) {
+    # Note: it will just print OOVS unmodified if you specify --ignore-oov.
+    # Else will complain and put nothing out.
+    if($ARGV[0] eq "--ignore-oov") { $ignore_oov = 1; shift @ARGV; } 
     if($ARGV[0] eq "--ignore-first-field") { $ignore_first_field = 1; shift @ARGV; }
+    if($ARGV[0] eq "--map-oov") { shift @ARGV; $map_oov = shift @ARGV; }
 }
 
 $symtab = shift @ARGV;
@@ -33,6 +36,9 @@ while(<F>) {
     $sym2int{$A[0]} = $A[1] + 0;
 }
 
+$num_warning = 0;
+$max_warning = 20;
+$error = 0;
 while(<>) {
     @A = split(" ", $_);
     if(@A == 0) {
@@ -42,18 +48,35 @@ while(<>) {
         $key = shift @A;
         print $key . " ";
     }
+    @B = ();
     foreach $a (@A) {
         $i = $sym2int{$a};
         if(!defined ($i)) {
-            if($ignore_oov) {
-                print $a . " " ;
+            if (defined $map_oov) {
+                if (!defined $sym2int{$map_oov}) {
+                    die "sym2int.pl: invalid map-oov option $map_oov (undefined symbol)";
+                }
+                if ($num_warning++ < $max_warning) {
+                    print STDERR "sym2int.pl: replacing $a with $map_oov\n";
+                    if ($num_warning == $max_warning) {
+                        print STDERR "sym2int.pl: not warning for OOVs any more times\n";
+                    }
+                }
+                $i = $sym2int{$map_oov};
+            } elsif($ignore_oov) {
+                $i = $a; # just print them out unmodified..
             } else {
                 die "sym2int.pl: undefined symbol $a\n";
             }
         }
-        print $i . " ";
+        push @B, $i;
     }
+    print join(" ", @B);
     print "\n";
 }
+
+if($error) { exit(1); }
+else { exit(0); }
+
 
 

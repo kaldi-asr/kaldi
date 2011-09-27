@@ -58,7 +58,7 @@ while(<>) {
 }
 
 foreach $w (keys %in_arpa) {
-    if(!defined $seen{$w}) {
+    if(!defined $seen{$w} && $w ne "<s>" && $w ne "</s>") {
         print "$w\n";
     }
 }

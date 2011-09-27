@@ -63,8 +63,30 @@ steps/train_mono.sh data/train_si84_2k data/lang exp/mono
 scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono exp/mono/graph_tgpr
 
 scripts/decode.sh steps/decode_deltas.sh exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_tgpr_dev93
+scripts/decode.sh steps/decode_deltas.sh exp/mono/graph_tgpr data/eval_nov92 exp/mono/decode_tgpr_eval92
 
 steps/align_deltas.sh data/train_si84_half data/lang exp/mono exp/mono_ali
+
+steps/train_deltas.sh 2000 10000 data/train_si84_half data/lang exp/mono_ali exp/tri1
+
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
+
+scripts/decode.sh steps/decode_deltas.sh exp/tri1/graph_tgpr data/eval_nov92 exp/tri1/decode_tgpr_eval92
+scripts/decode.sh steps/decode_deltas.sh exp/tri1/graph_tgpr data/dev_nov93 exp/tri1/decode_tgpr_dev93
+
+# Align tri1 system with si84 data.
+steps/align_deltas.sh data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84
+
+# Train tri2a, which is deltas + delta-deltas, on si84 data.
+steps/train_deltas.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
+scripts/decode.sh steps/decode_deltas.sh exp/tri2a/graph_tgpr data/eval_nov92 exp/tri2a/decode_tgpr_eval92
+scripts/decode.sh steps/decode_deltas.sh exp/tri2a/graph_tgpr data/dev_nov93 exp/tri2a/decode_tgpr_dev93
+
+
+# Train tri2b, which is LDA+MLLT, on si84 data.
+steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
 
 # exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
 
@@ -518,3 +540,6 @@ done
 # 13.8 sec @ beam = 6
 # 14.4 sec @ beam = 5
 # 14.4 sec @ beam = 4
+
+#How I moved stuff to log/ dir:
+#for x in train_lda_mllt.sh train_deltas.sh; do cat $x | perl -ane 's:dir/(\S+)\.log:dir/log/$1.log:; print; ' | sed 's:mkdir -p $dir:mkdir -p $dir/log:' > tmpf; cp tmpf $x; done

@@ -42,6 +42,7 @@ fi
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="10 20 30";
+mllt_iters="2 4 6 12";
 oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
 grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
 silphonelist=`cat $lang/silphones.csl`
@@ -49,7 +50,8 @@ numiters=35    # Number of iterations of training
 maxiterinc=25 # Last iter to increase #Gauss on.
 numgauss=$numleaves
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-
+randprune=4.0 # This is approximately the ratio by which we will speed up the
+              # LDA and MLLT calculations via randomized pruning.
 
 mkdir -p $dir/log
 
@@ -57,17 +59,37 @@ if [ ! -f $data/split4 -o $data/split4 -ot $data/feats.scp ]; then
   scripts/split_data.sh $data 4
 fi
 
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/?.cmvn|\" scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
+# feats0 is all the feats, transformed with 0.mat-- just needed for tree accumulation.
+feats0="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
+
+# featspart[n] gets overwritten later in the script.
 for n in 0 1 2 3; do
-  featspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+  splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
+  featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/0.mat ark:- ark:- |"
 done
 
+
+echo "Accumulating LDA statistics."
+
+rm $dir/.error 2>/dev/null
+
+for n in 0 1 2 3; do
+( ali-to-post "ark:gunzip -c $alidir/$n.ali.gz|" ark:- | \
+   weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | \
+   acc-lda --rand-prune=$randprune $alidir/final.mdl "${splicedfeatspart[$n]}" ark,s,cs:- \
+     $dir/lda.$n.acc ) 2>$dir/log/lda_acc.$n.log || touch $dir/.error &
+done
+wait
+[ -f $dir/.error ] && echo "Error accumulating LDA stats" && exit 1;
+est-lda $dir/0.mat $dir/lda.*.acc 2>$dir/log/lda_est.log || exit 1; # defaults to dim=40
+rm $dir/lda.*.acc
+cur_lda=$dir/0.mat
 
 # The next stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
-acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-   "ark:gunzip -c $alidir/?.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log  || exit 1;
+acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats0" \
+  "ark:gunzip -c $alidir/?.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
 # preparing questions, roots file...
@@ -125,6 +147,24 @@ while [ $x -lt $numiters ]; do
      wait;
      [ -f $dir/.error ] && echo "Error aligning data on iteration $x" && exit 1;
    fi
+   if echo $mllt_iters | grep -w $x >/dev/null; then
+     echo "Estimating MLLT"
+     for n in 0 1 2 3; do
+      ( ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- | \
+         weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
+         gmm-acc-mllt --rand-prune=$randprune --binary=false $dir/$x.mdl \
+           "${featspart[$n]}" ark:- $dir/$x.$n.macc ) 2> $dir/log/macc.$x.$n.log || touch $dir/.error &
+       featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/$x.mat ark:- ark:- |"       
+     done
+     wait
+     [ -f $dir/.error ] && echo "Error accumulating MLLT stats on iter $x" && exit 1;
+     est-mllt $dir/$x.mat.new $dir/$x.{0,1,2,3}.macc 2> $dir/log/mupdate.$x.log || exit 1;
+     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \
+       2> $dir/log/transform_means.$x.log || exit 1;
+     compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
+     cur_lda=$dir/$x.mat
+     rm $dir/$x.*.macc
+   fi
    for n in 0 1 2 3; do
      gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
        "ark:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc \
@@ -142,6 +182,7 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
+( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs;
+  ln -s `basename $cur_lda` final.mat )
 
 echo Done

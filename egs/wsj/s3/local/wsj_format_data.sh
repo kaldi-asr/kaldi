@@ -28,7 +28,7 @@
 
 echo "Preparing train and test data"
 
-for x in train_si284 eval_nov92 eval_nov93 dev_nov93; do 
+for x in train_si284 test_eval92 test_eval93 test_dev93; do 
   mkdir -p data/$x
   cp data/local/${x}_wav.scp data/$x/wav.scp
   cp data/local/$x.txt data/$x/text
@@ -140,6 +140,18 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt 0.5 SIL '#'$ndisambi
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
    fstarcsort --sort_type=olabel > data/lang_test/L_disambig.fst
 
+
+# Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the
+# beginning and end of words, on the input side)... useful if we
+# ever need to e.g. create ctm's-- these are used to work out the
+# word boundaries.
+cat data/local/lexicon.txt | \
+ awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+ scripts/make_lexicon_fst.pl - 0.5 SIL | \
+ fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
+  --keep_isymbols=false --keep_osymbols=false | \
+ fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
+
 # Next, for each type of language model, create the corresponding FST
 # and the corresponding lang_test directory.
 
@@ -159,14 +171,14 @@ for lm_suffix in bg tgpr tg; do
   # stuff in it with multiple <s>'s in the history.  Encountered some other similar
   # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
   # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG.
+  # determinization failures of CLG [ends up being epsilon cycles].
   gunzip -c data/local/lm_${lm_suffix}.arpa.gz | \
     grep -v '<s> <s>' | \
     grep -v '</s> <s>' | \
     grep -v '</s> </s>' | \
     arpa2fst - | fstprint | \
     scripts/remove_oovs.pl data/local/oovs_${lm_suffix}.txt | \
-    scripts/eps2disambig.pl | fstcompile --isymbols=$test/words.txt \
+    scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$test/words.txt \
       --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false \
       > $test/G.fst
   fstisstochastic $test/G.fst

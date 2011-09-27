@@ -40,31 +40,38 @@ open(L, "<$lexfn") || die "Error opening lexicon $lexfn";
 
 
 
+sub is_sil {
+    # Return true (1) if provided with a phone-sequence
+    # that means silence.
+    # @_ is the parameters of the function
+    # This function returns true if @_ equals ( $silphone )
+    # or something of the form ( "#0", $silphone, "#1" )
+    # where the "#0" and "#1" are disambiguation symbols.
+    return ( @_ == 1 && $_[0] eq $silphone ||
+             (@_ == 3 && $_[1] eq $silphone &&
+              $_[0] =~ m/^\#\d+$/ &&
+              $_[0] =~ m/^\#\d+$/));
+}
+
 if( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state which is numbered zero.
     $loopstate = 0;
     $nexststate = 1; # next unallocated state.
     while(<L>) {
         @A = split(" ", $_);
         $w = shift @A;
-        if(@A == 0) { # For empty words (<s> and </s>) insert no optional
-                      # silence (not needed as adjacent words supply it)....
-                      # actually we only hit this case for the lexicon without disambig
-                      # symbols but doesn't ever matter as training transcripts don't have <s> or </s>.
-            print "$loopstate\t$loopstate\t<eps>\t$w\n";
-        } else {
-            $s = $loopstate;
-            $word_or_eps = $w;
-            while (@A > 0) {
-                $p = shift @A;
-                if(@A > 0) {
-                    $ns = $nextstate++;
-                } else {
-                    $ns = $loopstate;
-                }
-                print "$s\t$ns\t$p\t$word_or_eps\n";
-                $word_or_eps = "<eps>";
-                $s = $ns;
-            }            
+
+        $s = $loopstate;
+        $word_or_eps = $w;
+        while (@A > 0) {
+            $p = shift @A;
+            if(@A > 0) {
+                $ns = $nextstate++;
+            } else {
+                $ns = $loopstate;
+            }
+            print "$s\t$ns\t$p\t$word_or_eps\n";
+            $word_or_eps = "<eps>";
+            $s = $ns;
         }
     }
     print "$loopstate\t0\n"; # final-cost.
@@ -87,34 +94,27 @@ if( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state
     while(<L>) {
         @A = split(" ", $_);
         $w = shift @A;
-        if(@A == 0) { # For empty words (<s> and </s>) insert no optional
-                      # silence (not needed as adjacent words supply it)....
-                      # actually we only hit this case for the lexicon without disambig
-                      # symbols but doesn't ever matter as training transcripts don't have <s> or </s>.
-            print "$loopstate\t$loopstate\t<eps>\t$w\n";
-        } else { 
-            $is_silence_word = (@A == 1 && $A[0] eq $silphone); # boolean.
-            $s = $loopstate;
-            $word_or_eps = $w;
-            while (@A > 0) {
-                $p = shift @A;
-                if(@A > 0) {
-                    $ns = $nextstate++;
-                    print "$s\t$ns\t$p\t$word_or_eps\n";
-                    $word_or_eps = "<eps>";
-                    $s = $ns;
+
+        $s = $loopstate;
+        $word_or_eps = $w;
+        while (@A > 0) {
+            $p = shift @A;
+            if(@A > 0) {
+                $ns = $nextstate++;
+                print "$s\t$ns\t$p\t$word_or_eps\n";
+                $word_or_eps = "<eps>";
+                $s = $ns;
+            } else {
+                if(!is_sil(@A)){
+                    # This is non-deterministic but relatively compact,
+                    # and avoids epsilons.
+                    print "$s\t$loopstate\t$p\t$word_or_eps\t$nosilcost\n";
+                    print "$s\t$silstate\t$p\t$word_or_eps\t$silcost\n";
                 } else {
-                    if(! $is_silence_word) {  
-                        # This is non-deterministic but relatively compact,
-                        # and avoids epsilons.
-                        print "$s\t$loopstate\t$p\t$word_or_eps\t$nosilcost\n";
-                        print "$s\t$silstate\t$p\t$word_or_eps\t$silcost\n";
-                    } else {
-                        # no point putting opt-sil after silence word.
-                        print "$s\t$loopstate\t$p\t$word_or_eps\n";
-                    }
-                    $word_or_eps = "<eps>";
+                    # no point putting opt-sil after silence word.
+                    print "$s\t$loopstate\t$p\t$word_or_eps\n";
                 }
+                $word_or_eps = "<eps>";
             }
         }            
     }

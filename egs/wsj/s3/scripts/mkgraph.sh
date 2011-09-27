@@ -74,7 +74,7 @@ grep '#' $lang/phones_disambig.txt | awk '{print $2}' > $lang/tmp/disambig_phone
 
 clg=$lang/tmp/CLG_${N}_${P}.fst
 
-if [[ ! -f $clg || $clg -ot $lang/LG.fst ]]; then
+if [[ ! -f $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/tmp/disambig_phones.list \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.list \
@@ -82,7 +82,8 @@ if [[ ! -f $clg || $clg -ot $lang/LG.fst ]]; then
   fstisstochastic $clg  || echo "warning: CLG not stochastic."
 fi
 
-if [[ ! -f $dir/Ha.fst || $dir/Ha.fst -ot $model ]]; then
+if [[ ! -f $dir/Ha.fst || $dir/Ha.fst -ot $model  \
+    || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
   make-h-transducer --disambig-syms-out=$dir/disambig_tid.list \
     --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst  || exit 1;

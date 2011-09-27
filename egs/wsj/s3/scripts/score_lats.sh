@@ -50,8 +50,7 @@ for inv_acwt in 9 10 11 12 13 14 15 16; do
    cat $trans | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
 
    cat $dir/${inv_acwt}.tra | \
-    scripts/int2sym.pl --ignore-first-field $symtab | \
-    sed 's:<s>::' | sed 's:</s>::' | sed 's:<UNK>::g' | \
+    scripts/int2sym.pl --ignore-first-field $symtab | sed 's:<UNK>::g' | \
     compute-wer --text --mode=present ark:$dir/test_trans.filt  ark,p:-   >& $dir/wer_$inv_acwt
 done
 

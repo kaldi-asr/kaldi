@@ -61,6 +61,21 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
    --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > data/lang/L.fst
 
+
+# Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the
+# beginning and end of words, on the input side)... useful if we
+# ever need to e.g. create ctm's-- these are used to work out the
+# word boundaries.
+
+cat data/local/lexicon.txt | \
+ awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+ scripts/make_lexicon_fst.pl - 0.5 sil | \
+ fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
+  --keep_isymbols=false --keep_osymbols=false | \
+ fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
+
+# L_disambig.fst has the disambiguation symbols (c.f. Mohri's papers)
+
 scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob sil '#'$ndisambig | \
    fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel \

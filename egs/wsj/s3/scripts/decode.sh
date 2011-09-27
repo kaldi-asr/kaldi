@@ -68,6 +68,9 @@ if [ "$num_jobs" == "" ]; then # Figure out num-jobs.
 fi
 
 echo "Decoding with num-jobs = $num_jobs"
+if [[ $num_jobs -gt 1 || ! -d $data/split$num_jobs || $data/split$num_jobs -ot $data/feats.scp ]]; then
+  scripts/split_data.sh $data $num_jobs
+fi
 
 n=0
 while [ $n -lt $num_jobs ]; do

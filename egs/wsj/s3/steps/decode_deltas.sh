@@ -54,7 +54,13 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 
 mkdir -p $dir
 
-requirements="$data/feats.scp $srcdir/final.mdl $graphdir/HCLG.fst"
+if [ $numjobs -gt 1 ]; then
+  mydata=$data/split$numjobs/$jobid
+else
+  mydata=$data
+fi
+
+requirements="$mydata/feats.scp $srcdir/final.mdl $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -f $f ]; then
      echo "decode_deltas.sh: no such file $f";
@@ -62,37 +68,13 @@ for f in $requirements; do
   fi
 done
 
-# Make the split .scp files...
-
-scripts/split_scp.pl -j $numjobs $jobid --utt2spk=$data/utt2spk $data/feats.scp > $dir/$jobid.scp
-scripts/split_scp.pl -j $numjobs $jobid --utt2spk=$data/utt2spk $data/utt2spk > $dir/$jobid.utt2spk
-scripts/utt2spk_to_spk2utt.pl $dir/$jobid.utt2spk > $dir/$jobid.spk2utt
-
-
 
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$dir/$jobid.spk2utt scp:$dir/$jobid.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$dir/$jobid.utt2spk ark:- scp:$dir/$jobid.scp ark:- | add-deltas ark:- ark:- |"
-
+feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | add-deltas ark:- ark:- |"
 
 gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
-  ark,t:$dir/test.tra ark,t:$dir/test.ali \
      2> $dir/decode$jobid.log || exit 1;
 
-
-# # In this setup there are no non-scored words, so
-# # scoring is simple.
-
-# # Now rescore lattices with various acoustic scales, and compute the WER.
-# for inv_acwt in 4 5 6 7 8 9 10; do
-#   acwt=`perl -e "print (1.0/$inv_acwt);"`
-#   lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
-#      "ark:gunzip -c $dir/lat.gz|" ark,t:$dir/${inv_acwt}.tra \
-#      2>$dir/rescore_${inv_acwt}.log
-
-#   scripts/sym2int.pl --ignore-first-field $graphdir/words.txt $data/text | \
-#    compute-wer --mode=present ark:-  ark,p:$dir/${inv_acwt}.tra \
-#     >& $dir/wer_${inv_acwt}
-# done

@@ -79,17 +79,17 @@ cat links/13-34.1/wsj1/doc/indices/si_tr_s.ndx \
 # have to add .wv1
 cat links/11-13.1/wsj0/doc/indices/test/nvp/si_et_20.ndx | \
   $local/ndx2flist.pl $* |  awk '{printf("%s.wv1\n", $1)}' | \
-  sort > eval_nov92.flist
+  sort > test_eval92.flist
 
 # Nov'93: (213 utts)
 # Have to replace a wrong disk-id.
 cat links/13-32.1/wsj1/doc/indices/wsj1/eval/h1_p0.ndx | \
   sed s/13_32_1/13_33_1/ | \
-  $local/ndx2flist.pl $* | sort > eval_nov93.flist
+  $local/ndx2flist.pl $* | sort > test_eval93.flist
 
 # Dev-set for Nov'93 (503  utts)
 cat links/13-34.1/wsj1/doc/indices/h1_p0.ndx | \
-  $local/ndx2flist.pl $* | sort > dev_nov93.flist
+  $local/ndx2flist.pl $* | sort > test_dev93.flist
 
 # Dev-set for Nov'93 (503 utts)
 # links/13-34.1/wsj1/doc/indices/h1_p0.ndx
@@ -98,7 +98,7 @@ cat links/13-34.1/wsj1/doc/indices/h1_p0.ndx | \
 for x in $*; do find -L $x -iname '*.dot'; done > dot_files.flist
 
 # Convert the transcripts into our format (no normalization yet)
-for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
    $local/flist2scp.pl $x.flist | sort > ${x}_sph.scp
    cat ${x}_sph.scp | awk '{print $1}' | $local/find_transcripts.pl  dot_files.flist > $x.trans1
 done
@@ -107,13 +107,13 @@ done
 # that will be done inside the training scripts, as we'd like to make the
 # data-preparation stage independent of the specific lexicon used.
 noiseword="<NOISE>";
-for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
    cat $x.trans1 | $local/normalize_transcript.pl $noiseword | sort > $x.txt || exit 1;
 done
 
  
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
-for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
 done
 
@@ -133,7 +133,7 @@ prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa || exit 1;
 gzip -f lm_tgpr.arpa || exit 1;
 
 # Make the utt2spk and spk2utt files.
-for x in train_si84 train_si284 eval_nov92 eval_nov93 dev_nov93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
    cat ${x}_sph.scp | awk '{print $1}' | perl -ane 'chop; m:^...:; print "$_ $&\n";' > $x.utt2spk
    cat $x.utt2spk | $scripts/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
 done

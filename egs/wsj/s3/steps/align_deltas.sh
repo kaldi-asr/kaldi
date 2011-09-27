@@ -48,6 +48,8 @@ lang=$2
 srcdir=$3
 dir=$4
 
+oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
+grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
 
 
 mkdir -p $dir
@@ -88,7 +90,7 @@ else
   for n in 0 1 2 3; do
     feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
     # compute integer form of transcripts.
-    tra="ark:scripts/sym2int.pl --ignore-first-field $lang/words.txt $data/split4/$n/text|";
+    tra="ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split4/$n/text|";
     gmm-align $scale_opts --beam=10 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
         "$feats" "$tra" "ark:|gzip -c >$dir/$n.ali.gz" 2> $dir/align$n.log || touch $dir/.error &
   done
