@@ -51,8 +51,8 @@ of transcribed speech.
 This has led to a renewed interest in methods of reducing the number of parameters 
 while maintaining or extending the modeling capabilities of continuous models.
 %
-In this work, we compare continuous, classic and multiple-codebook semi-continuous,
-with full covariance matrices, and subspace Gaussian mixture models.
+In this work, we compare classic and multiple-codebook semi-continuous models 
+that use full covariance matrices with continuous HMMs and subspace Gaussian mixture models.
 %
 Experiments using on the RM and WSJ corpora show that a semi-continuous system
 can still yield competitive results while using fewer Gaussian components.
@@ -135,7 +135,7 @@ We also describe the phonetic decision-tree building process, which is
 necessary background for how we build the multiple-codebook systems.
 
 \subsection{Acoustic-Phonetic Decision Tree Building}
-The acoustic-phonetic decision tree provides the link between phones
+The acoustic-phonetic decision tree provides a mapping between phones
 in context and emission probability density functions (pdfs). 
 %
 The statistics for the tree clustering consist of the 
@@ -201,18 +201,14 @@ Gaussians and to match the desired number of components. In a final step,
 5 EM iterations are used to improve the goodness of fit to the acoustic 
 training data.
 
-\subsection{Two-level Tree based Multiple-Codebook Semi-continuous Models}
+\subsection{Multiple-Codebook Semi-continuous Models}
 A style of system that lies between the semi-continuous and continuous types of
 systems is one based on a two-level tree; this is described in~\cite{prasad2004t2b}
 as a state-clustered tied-mixture (SCTM) system. The way we implement this is
 to first build the decision tree used for phonetic clustering to a relatively
-coarse level (e.g.~100); and to then split more finely (e.g.~2500), but for
-each new leaf, remember which leaf of the original tree it corresponds to.
-Each leaf of the first tree corresponds to a codebook of Gaussians, i.e.~the 
-Gaussian parameters are tied at this level.  For this type of system we do not
-apply any post-clustering.
-The leaves of the second tree contain the weights, and these leaves correspond 
-to the actual context-dependent HMM states.  
+coarse level (e.g.~100 leaves). Each leaf of this tree corresponds to a codebook of Gaussians, i.e.~the Gaussian parameters are tied at this level. The leaves 
+of this tree are then split further to give a more fine-grained clustering (e.g.~2500 leaves), where for each new leaf we remember which codebook it corresponds to. The leaves of this second tree correspond to the actual context-dependent HMM states and contain the weights.
+For this type of system we do not apply any post-clustering.
 
 The way we formalize this is that the context-dependent states $j$ each have 
 a corresponding codebook indexed $k$, and the function $m(j) \rightarrow k$ 
@@ -277,8 +273,8 @@ are without adaptation.
 %
 \subsection{Intra-Iteration Smoothing}
 Although an increasing number of tree leaves does not imply a huge increase in
-parameters, the sufficient statistics for the individual leaves will be
-sparser, especially for little training data.
+parameters, the estimation of weights at the individual leaves suffer from data 
+fragmentation, especially when training models with small amounts of data.
 The {\em intra-iteration} smoothing is motivated by the fact that tree leaves
 that share the root are similar, thus, if the sufficient statistics of the
 weights of a leaf $j$ are very small, they should be interpolated with the 
@@ -286,15 +282,15 @@ statistics of closely related leaf nodes.
 To do so, we first propagate all sufficient statistics up the tree so that the
 statistics of any node is the sum of its children's statistics.
 Second, the statistics of each node and leaf are interpolated top-down with 
-their parent's using an interpolation weight $\rho$ in
+their parent's statistics using an interpolation weight $\tau$:
 \begin{equation} \label{eq:intra}
 \hat\gamma_{ji} \leftarrow 
-  \underbrace{\left(\gamma_{ji} + \frac{\rho}{\left( \sum_k \gamma_{p(j),k} \right) + \epsilon} \, \gamma_{p(j),i}\right)}_{\mathrel{\mathop{:}}= \bar\gamma_{ji}}
+  \underbrace{\left(\gamma_{ji} + \frac{\tau}{\left( \sum_k \gamma_{p(j),k} \right) + \epsilon} \, \gamma_{p(j),i}\right)}_{\mathrel{\mathop{:}}= \bar\gamma_{ji}}
   \cdot 
-  \underbrace{\frac{\sum_k \gamma_{jk}}{\sum_k \bar\gamma_{jk}}}_\text{normalization}
+  \underbrace{\frac{\sum_k \gamma_{jk}}{\sum_k \bar\gamma_{jk}}}_\text{normalization},
 \end{equation}
-where $\gamma_{ji}$ is the accumulator of weight $i$ in tree leaf $j$
-and $p(j)$ is the mapping to the parent node of $j$.
+where $\gamma_{ji}$ is the occupancy of the $i$ component in tree leaf $j$
+and $p(j)$ is the parent node of $j$.
 %
 For two-level tree based models, the propagation and interpolation cannot
 be applied across different codebooks. 
@@ -318,16 +314,14 @@ tree structure.
 
 \subsection{Inter-Iteration Smoothing}
 Another typical problem that arises when training semi-continuous models is
-that the weights tend to converge on a local optimum over the iterations. 
+that the weights tend to converge to a local optimum over the iterations. 
 This is due to the fact that the codebook parameters change rather slowly 
 as the statistics are collected from all respective tree leaves, but the 
 leaf specific weights converge much faster.
 %
-To compensate for this, we smooth the newly estimated {\em parameters} 
-$\Theta^{(i+1)}$ with the ones from the prior iteration using an interpolation
-weight $\varrho$
+To compensate for this, we smooth the newly estimated parameters $\Theta^{(i+1)}$ with the ones from the prior iteration using an interpolation weight $\rho$
 \begin{equation}
-\hat\Theta^{(i+1)} \leftarrow (1 - \varrho) \, \Theta^{(i+1)} + \varrho \, \Theta^{(i)} % \quad .
+\hat\Theta^{(i+1)} \leftarrow (1 - \rho) \, \Theta^{(i+1)} + \rho \, \Theta^{(i)} % \quad .
 \end{equation}
 which leads to an exponentially decreasing impact of the initial parameter set.
 
@@ -359,7 +353,7 @@ the decoding, we use a regular 3-gram estimated using the IRSTLM toolkit
 For the RM data set, we train on the speaker independent training and development 
 set (about 4000 utterances) and test on the six DARPA test runs Mar and Oct '87,
 Feb and Oct '89, Feb '91 and Sep '92 (about 1500 utterances total).  The parameters 
-were tuned to the test set.
+are tuned to the test set since RM has no hold-out data set. We use the following system identifiers in Table~\ref{tab:res_rm}:
 %
 \begin{itemize}
 \item
@@ -371,7 +365,7 @@ were tuned to the test set.
 \item
   {\em 2lvl}: two-level tree based semi-continuous triphone system using
   3072 full covariance Gaussians in 208 codebooks ($4/14.7/141$ min/average/max
-  components), 2500 tree leaves, $\rho = 35$ and $\varrho = 0.2$.
+  components), 2500 tree leaves, $\tau = 35$ and $\rho = 0.2$.
 \item
   {\em sgmm}: subspace Gaussian mixture model triphone system using a 400 
   full-covariance Gaussian background model and 2016 tree leaves.
@@ -388,7 +382,8 @@ half of the SI-84 training set using settings similar to the RM experiments;
 we tested on the eval '92 and eval '93 data sets.
 As the classic semi-continuous system did not yield good performance on the
 RM data both in terms of run-time and performance, we omit it for the WSJ
-experiments.
+experiments. Results corresponding to the following systems are presented in 
+Table~\ref{tab:res_wsj}:
 %
 % TODO Korbinian: I hope the SI-284 experiments finish soon enough while the 
 %                 submission is still open. For now, I describe SI-84/half.
@@ -404,7 +399,7 @@ experiments.
 %\item
 %  {\em 2lvl}: two-level tree based semi-continuous triphone system using
 %  4096 full covariance Gaussians in 208 codebooks ( min/average/max
-%  components),  tree leaves, $\rho = $ and $\varrho = $.
+%  components),  tree leaves, $\tau = $ and $\rho = $.
 \item
   {\em sgmm}: subspace Gaussian mixture model triphone system using a 400 
   full-covariance Gaussian background model and 2361 tree leaves.
@@ -439,7 +434,7 @@ different acoustic models on the RM data set.
 \end{table}
 
 The results on the different test sets on the RM data are displayed in 
-Tab.~\ref{tab:res_rm}. The classic semi-continuous system shows the worst 
+Table~\ref{tab:res_rm}. The classic semi-continuous system shows the worst 
 performance of the four. Possible explanations are an insufficient number
 of Gaussians paired with overfitting of the weights to a little number of 
 components. Unfortunately, this could not be eased with the interpolations
@@ -468,25 +463,25 @@ diagonal   &      9216 & 3.22 & 3.09 & 3.28 & 3.20 \\ \hline
 Average \% WER of the multiple-codebook semi-continuous model using different 
 numbers diagonal and full covariance Gaussians, and different smoothings 
 on the RM data. 
-Settings are 208 codebooks, 2500 context dependent states; $\rho = 35$ 
-and $\varrho = 0.2$ if active.
+Settings are 208 codebooks, 2500 context dependent states; $\tau = 35$ 
+and $\rho = 0.2$ if active.
 }
 \end{table}
 
 Keeping the number of codebooks and leaves as well as the smoothing parameters
-$\rho$ and $\varrho$ of {\em 2lvl} constant, we experiment with the number of
+$\tau$ and $\rho$ of {\em 2lvl} constant, we experiment with the number of
 Gaussians and type of covariance; the results are displayed in 
-Tab.~\ref{tab:rm_diagfull}.
+Table~\ref{tab:rm_diagfull}.
 Interestingly, the full covariances make a strong difference: Using the same
 number of Gaussians, full covariances lead to a significant improvement.
 On the other hand, a substantial increase of the number of diagonal Gaussians 
 leads to a similar performance as the regular continuous system.
 %
-Another observation from Tab.~\ref{tab:rm_diagfull} is that the smoothing
+Another observation from Table~\ref{tab:rm_diagfull} is that the smoothing
 parameters need to be carefully calibrated. While the inter-iteration smoothing
-helps in most cases, the intra-iteration smoothing coefficient $\rho$ strongly
+helps in most cases, the intra-iteration smoothing coefficient $\tau$ strongly
 depends on the type and number of Gaussians, which is due to the direct influence
-of $\rho$ on the counts in Eq.~\ref{eq:intra}.
+of $\tau$ on the counts in equation~\ref{eq:intra}.
 
 \subsection{WSJ}
 
@@ -514,7 +509,7 @@ with and without the different interpolations.
 \end{table}
 
 The results on the different test sets on the WSJ data are displayed in
-Tab.~\ref{tab:res_rm}.
+Table~\ref{tab:res_rm}.
 % TODO Korbinian: The following is for the si-84/half results, as currently
 %                 in the table.
 Using the parameters calibrated on the RM test data, the {\em 2lvl} system
