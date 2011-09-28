@@ -324,6 +324,13 @@ $\Theta^{(i+1)}$ with the ones from the prior iteration using an interpolation w
 \hat\Theta^{(i)} \leftarrow (1 - \rho) \, \Theta^{(i)} + \rho \, \Theta^{(i-1)} % \quad .
 \end{equation}
 which leads to an exponentially decreasing impact of the initial parameter set.
+We implemented this for all the parameters but found it only helped when
+applied to just the weights,
+which is consistent with our interpretation that stopping the weights from overfitting
+too fast allows the Gaussians to ``move farther'' than they otherwise would from
+the initial estimate.  We note that other practitioners have also used mechanisms that
+prevent the weights from changing too fast~\footnote{James Droppo, personal communication} and
+have found that this improved results.
 
 %----%<------------------------------------------------------------------------
 
