@@ -70,7 +70,7 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
 cat data/local/lexicon.txt | \
  awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
  scripts/make_lexicon_fst.pl - 0.5 sil | \
- fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
+ fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
   --keep_isymbols=false --keep_osymbols=false | \
  fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
 
