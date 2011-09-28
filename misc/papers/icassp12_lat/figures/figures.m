@@ -1,10 +1,6 @@
 # run this in octave
 
-figure(1)
-hold off
-markersize = 8;
-labelsz = 23;
-#set(0,"Defaulttextfontsize",labelsz) 
+
 
 
 %beam = [15.0         15.0       15.0       15.0       15.0         15.0        15.0        15.0        15.0         15.0]
@@ -20,6 +16,8 @@ rescore_err =[ 9.59         9.59       9.59       9.59       9.56         9.59  
 rescore_utt_wrong = [205          205          205        205       204          204         204         202         205          212 ];;
 
 labelsz = 27;
+figure(1)
+hold off
 
 set(1,"Defaulttextfontsize",labelsz) 
 set(1,"Defaultaxesfontsize",labelsz) 
@@ -29,10 +27,12 @@ plot(latbeam, density)
 xlabel('Lattice beam');
 ylabel('Lattice density');
 subplot(2,2,2)
-plot(latbeam, oracle);
+plot(latbeam, baseline_err, 'kx');
 hold on
-plot(latbeam, baseline_err, '.');
+plot(latbeam, oracle);
 hold off
+set(gca(), "ylim", [2.5, 14.0]);
+legend('One-best WER','Oracle WER')
 xlabel('Lattice beam');
 ylabel('Oracle WER');
 subplot(2, 2, 3);
@@ -65,18 +65,18 @@ plot(decode_beam, density)
 xlabel('Decoding beam');
 ylabel('Lattice density');
 subplot(2,2,2)
-plot(decode_beam, oracle);
+plot(decode_beam, wer, 'kx');
 hold on
-plot(decode_beam, wer, 'k+');
-legend('Oracle WER', 'One-best WER')
+plot(decode_beam, oracle);
+legend('One-best WER', 'Oracle WER')
 xlabel('Decoding beam');
 ylabel('WER, oracle');
 hold off
 subplot(2, 2, 3);
-plot(decode_beam, rescore);
+plot(decode_beam, wer, 'kx');
 hold on
-plot(decode_beam, wer, 'k+');
-legend('Rescored WER', 'One-best WER')
+plot(decode_beam, rescore);
+legend('One-best WER', 'Rescored WER')
 xlabel('Decoding beam');
 ylabel('WER, rescoring with trigram LM');
 hold off
@@ -86,5 +86,6 @@ xlabel('Decoding beam');
 ylabel('Real time factor');
 
 print -F:23  -deps 'decodebeam.eps'
+
 
 

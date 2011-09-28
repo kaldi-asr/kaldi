@@ -87,7 +87,7 @@
 \name{ \em Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
   \em {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^4$, {Arnab Ghoshal}$^5$, {Milos Janda}$^2$, {Stefan Kombrink}$^2$, \\
   \em {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Ngoc Thang Vu}$^8$, {Korbinian Riedhammer}$^9$, {Karel Vesel\'{y}}$^2$
-    \thanks{Thanks to Sanjeev Khudanpur for his help in preparing the paper}}
+    \thanks{Thanks to Sanjeev Khudanpur for his help in preparing the paper, and to Honza Cernocky, Renata Kohlova, Martin Karafiat and Tomas Mikolov for their help relating to the Kaldi'11 workshop at BUT.}}
 
 
 %%% TODO: fix thanks.
@@ -149,14 +149,14 @@ where the Weighted Finite State Transducer (WFST) decoding graph is
 \begin{equation}
   \HCLG = \min(\det(H \circ C \circ L \circ G)),
 \end{equation}
-where $\circ$ is WFST composisition (note: view $\HCLG$ as a single symbol).
+where $\circ$ is WFST composition (note: view $\HCLG$ as a single symbol).
 For concreteness we will speak of ``costs'' rather
 than weights, where a cost is a floating point number that typically represents a negated
 log-probability.  A WFST has a set of states with one distinguished
 start state\footnote{This is the formulation that corresponds best with the toolkit we use.},
 each state has a final-cost (or $\infty$ for non-final states);
-and there is a set of arcs, where each arc has a weight,
-weight (just think of this as a cost for now), an input label and an output
+and there is a set of arcs, where each arc has a weight
+(just think of this as a cost for now), an input label and an output
 label.  In $\HCLG$, the input labels are the identifiers of context-dependent
 HMM states, and the output labels represent words.  For both the input and output
 symbols, the special label $\epsilon$ may appear meaning ``no label is present.''
@@ -412,18 +412,16 @@ corresponding to a full state-level lattice.  That is, for every arc of $\HCLG$ 
 on every frame, we create a separate arc in the state-level lattice.  These arcs
 contain the acoustic and graph costs separately.  We prune the state-level graph using
 a beam $\alpha$; we do this periodically (every 25 frames) but this is equivalent to
-doing it just once at the end (similar to~\cite{efficient_general}).  Let the pruned
-state-level lattice that we get after pruning it at the end of the utterance be $P$.
+doing it just once at the end, as in~\cite{efficient_general}.  Let the 
+final pruned state-level lattice be $P$.
 
 Let $Q = \inv(P)$, and let $E$ be an encoded version of $Q$ as described above (with the
-state labels as part of the weights).  The final lattice we output is
+state labels as part of the weights).  The final lattice is
 \begin{equation}
    L = \mathrm{prune}(\mathrm{det}(\mathrm{rmeps}(E)), \alpha) .
 \end{equation}
 The determinization and epsilon removal are done together by a single algorithm
-that we will describe below.
-
-The resulting lattice $L$ is a deterministic, acyclic weighted acceptor with the 
+that we will describe below.  $L$ is a deterministic, acyclic weighted acceptor with the 
 words as the labels, and the graph and acoustic costs and the alignments
 encoded into the weights.  The costs and alignments are not ``synchronized'' 
 with the words.
@@ -519,8 +517,7 @@ For these experiments we generate lattices with the bigram language model
 supplied with the WSJ database, and for rescoring experiments we
 use the trigram language model.  The acoustic scale was $1/16$ for first-pass
 decoding and $1/15$ for LM rescoring.  
-
-For simplicity, our results were all obtained using a decoder that
+For simplicity we used a decoder that
 does not support a ``maximum active states'' option, so the only variables
 to consider are the beam used in the Viterbi beam search, and the separate
 beam $\alpha$ used for lattice generation.
@@ -540,9 +537,10 @@ $\alpha$, with the Viterbi beam fixed at 15.  Note that we get all the improveme
 LM rescoring by increasing $\alpha$ to 4.  The time taken by our algorithm started to increase rapidly after about
 $\alpha=8$, so a value of $\alpha$ anywhere between about 4 and 8 is sufficient for LM rescoring 
 and still does not slow down decoding too much.
-Note that out of vocabularly words (OOVs) provide a floor on the lattice oracle error rate.
-Of the 333 test utterances, 87 contained an OOV word, yet only 93 sentences had oracle errors
-with $\alpha=10$.  Figure~\ref{fig:viterbibeam} shows the effect of varying the
+Out of vocabularly words (OOVs) provide a floor on the lattice oracle error rate:
+of 333 test utterances, 87 contained at least one OOV word, yet only 93 sentences (6 more) had oracle errors
+with $\alpha=10$.  Lattice density is defined as the average number of arcs crossing each frame.
+Figure~\ref{fig:viterbibeam} shows the effect of varying the
 Viterbi decoding beam, while leaving $\alpha$ fixed at 7.  
 
 \begin{figure}
