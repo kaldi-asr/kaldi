@@ -1,7 +1,7 @@
 PAPER=icassp12
 
 all: $(PAPER).pdf
-	cp $(PAPER).pdf ~/desktop/2012_icassp_semicont.pdf || true
+	#cp $(PAPER).pdf ~/desktop/2012_icassp_semicont.pdf || true
 
 ifeq ($(shell uname), Darwin)
 $(PAPER).pdf: $(PAPER).tex $(PAPER).bbl
