@@ -56,6 +56,8 @@ that use full covariance matrices with continuous HMMs and subspace Gaussian mix
 %
 Experiments using on the RM and WSJ corpora show that a semi-continuous system
 can still yield competitive results while using fewer Gaussian components.
+Our best semi-continous systems included full-covariance codebook Gaussians,
+multiple codebooks, and smoothing of the weight parameters.
 \end{abstract}
 
 \begin{keywords}
@@ -64,66 +66,62 @@ automatic speech recognition, acoustic modeling
 
 \section{Introduction}
 \label{sec:intro}
-In the past years, semi-continuous hidden Markov models (SC-HMMs) \cite{huang1989shm}
-have not attracted much attention in the automatic speech recognition (ASR) community. 
-Most major frameworks (e.g.~CMU {\sc Sphinx} or HTK) more or less retired
+In the past years, semi-continuous hidden Markov models (SC-HMMs) \cite{huang1989shm},
+in which the Gaussian means and variances are shared among all the HMM states
+and only the weights differ, have not attracted much attention in the automatic 
+speech recognition (ASR) community. 
+Most major frameworks (e.g.~CMU {\sc Sphinx} or HTK) have more or less retired
 semi-continuous models in favor of continuous models, which performed 
 considerably better with the growing amount of available training data.
-%
-However, topics like cross-lingual model initialization and model training
-for languages with little training data became more and more popular recently,
-along with efforts on how to reduce the number of parameters of a continuous
-system while maintaining or even extending the modeling capabilities and thus
-the robustness and performance.
-%
-Typical techniques to reduce the number of parameters for continuous
-systems include generalizations of the phonetic context modeling to reduce the 
-number of states or state-tying to reduce the number of Gaussians.
 
-It is well known that context dependent states significantly improve the
-recognition performance (e.g.,~from monophone to triphone). However, 
-increasing the number of states of a continuous system not only requires more 
-Gaussians to be estimated, but also implies that the training data for each state 
-is reduced.
-%
-This is where semi-continuous models hold an advantage: the only state specific 
-variables are the weights of the Gaussians, while the codebook Gaussians 
-themselves are always estimated on the whole data set. 
-In other words, increasing the number of states leads to only modest increase 
-in the total number of parameters. The Gaussian means and variances are estimated 
-using all of the available data, making it possible to robustly estimate even full 
-covariance matrices.
-%
-This also allows to reliably estimate arbitrarily large phonetic context 
-(``polyphones''), which has been shown to achieve good performance for the 
-recognition of spontaneous  speech \cite{schukattalamazzini1994srf,schukattalamazzini1995as} 
-while having a relatively small number of parameters.
-%
-Further advantages of using codebook Gaussians are that they need to be 
-evaluated only once per frame, and that the codebook can be initialized, trained
-and adapted using even untranscribed speech.
+We were motivated by a number of factors to look again at semi-continuous models.
+One is that we are interested in applications where there may be a small amount
+of training data (or a small amount of in-domain training data), and since
+in semi-continuous models the amount of state-specific parameters is relatively
+small, we felt that they might have an advantage there.  We were also interested
+in improving the open-source speech recognition toolkit {\sc Kaldi}~\cite{povey2011tks},
+and felt that since a multiple-codebook form of semi-continous models is, to
+our knowledge, currently being used in a state-of-the-art system~\cite{prasad2004t2b},
+we should implement this type of model.  We also wanted to experiment with
+the style of semi-continous system described 
+in \cite{schukattalamazzini1994srf,schukattalamazzini1995as}, particularly the smoothing
+techniques, and see how these compare against a more conventional system.
+Lastly, we felt that it would be interesting to compare semi-continous
+models with Subspace Gaussian Mixture Models (SGMMs)~\cite{povey2011sgm}, since
+there are obvious similarities.
 
-Semi-continuous models can be extended to multiple codebooks; by
-assigning certain groups of states to specific codebooks, one can find a
-hybrid between a continuous and semi-continuous models that combine the strength
-of state-specific Gaussians with reliable parameter estimation \cite{prasad2004t2b}.
+In the experiments we report here we have not been able to match the performance of
+a standard diagonal GMM based system using a traditional semi-continuous system;
+however, using a two-level tree and multiple codebooks similar to~\cite{prasad2004t2b},
+we were able to get better performance than a traditional system (although not
+as good as SGMMs).  For both traditional and multiple-codebook configurations,
+we saw better results with full-covariance codebook Gaussians than with diagonal.
+We investigated smoothing the statistics for weight estimation using the decision
+tree, and saw only modest improvements.
+We note that the software used to do the experiments is part of the {\sc Kaldi} speech
+recognition toolkit~\cite{povey2011tks} and is freely available for download, along with the
+example scripts to reproduce these results.
 
-Extending the idea of sharing parameters, subspace Gaussian mixture models
-\cite{povey2011sgm} assign state specific weights and means, while the latter
-are derived from the means of a shared codebook (universal background model, UBM)
-using a state, phone or speaker specific transformation, thus limiting the state
-Gaussians to a subspace of the UBM.
+In Section~\ref{sec:am} we describe the traditional and tied-mixture models,
+as well as the multiple-codebook variant of the tied system, and describe some
+details of our implementation, such as how we build the two-level tree.
+In Section~\ref{sec:smooth} we describe two different forms of smoothing of the statistics,
+which we experiment with here.  
+In Section~\ref{sec:sys} we describe the systems we used (we are using
+the Resource Management and Wall Street Journal databases);
+in Section~\ref{sec:results} we give experimental results, and we
+summarize in Section~\ref{sec:summary}.
 
 % TODO Fix the number of hours for RM and WSJ SI-284
-In this article, we experiment with classic SC-HMMs and two-level tree based 
-multiple-codebook SC-HMMs which are, in terms of parameter sharing, somewhere in 
-between continuous and subspace Gaussian mixture models; 
-we compare the above four types of acoustic models on a small (Resource Management, RM, 5 hours)
-and medium sized corpus (Wall Street Journal, WSJ, 17 hours) of read English while keeping acoustic 
-frontend, training and decoding unchanged. 
-The software is part of the {\sc Kaldi} speech recognition toolkit 
-\cite{povey2011tks} and is freely available for download, along with the
-example scripts to reproduce the presented experiments.
+%In this article, we experiment with classic SC-HMMs and two-level tree based 
+%multiple-codebook SC-HMMs which are, in terms of parameter sharing, somewhere in 
+%between continuous and subspace Gaussian mixture models; 
+%we compare the above four types of acoustic models on a small (Resource Management, RM, 5 hours)
+%pand medium sized corpus (Wall Street Journal, WSJ, 17 hours) of read English while keeping acoustic 
+%frontend, training and decoding unchanged. 
+%The software is part of the {\sc Kaldi} speech recognition toolkit 
+%\cite{povey2011tks} and is freely available for download, along with the
+%example scripts to reproduce the presented experiments.
 
 
 \section{Acoustic Modeling}
@@ -135,33 +133,34 @@ We also describe the phonetic decision-tree building process, which is
 necessary background for how we build the multiple-codebook systems.
 
 \subsection{Acoustic-Phonetic Decision Tree Building}
-The acoustic-phonetic decision tree provides a mapping between phones
-in context and emission probability density functions (pdfs). 
+The acoustic-phonetic decision tree provides a mapping from
+a phonetic context window (e.g. a triphone), together with a HMM-state index, 
+to an emission probability density function (pdf). 
 %
 The statistics for the tree clustering consist of the 
 sufficient statistics needed to estimate a Gaussian for each seen combination 
-of (phonetic context, HMM-state).  These statistics are based on a Viterbi 
+of (phonetic context window, HMM-state).  These statistics are based on a Viterbi 
 alignment of a previously built system.  The roots
-of the decision can be configured; for the RM experiments, these correspond to
+of the decision trees can be configured; for the RM experiments, these correspond to
 the phones in the system, and on Wall Street Journal, they
 correspond to the ``real phones'', i.e. grouping different stress and
 position-marked versions of the same phone together.  
 
 The splitting procedure can ask questions not only about the context phones,
-but also about the central phone and the HMM state; the phonetic questions are 
+but also about the central phone and the HMM state; the questions about phones are 
 derived from an automatic clustering procedure.  The splitting procedure is
 greedy and optimizes the likelihood of the data given a single Gaussian in each
 tree leaf; this is subject to a fixed variance floor to avoid problems caused
 by singleton counts and numerical roundoff.  We typically split up to a 
 specified number of leaves and then cluster the resulting leaves as long as the
 likelihood loss due to combining them is less than the likelihood improvement
-on the final split of the tree-building process; we typically restrict this 
-clustering to avoid combining leaves across different subtrees (e.g., from 
+on the final split of the tree-building process; and we restrict this 
+clustering to disallow combining leaves across different subtrees (e.g., from 
 different monophones).  The post-clustering process typically reduces the number 
 of leaves by around 20\%.
 
 \subsection{Continuous Models}
-For continuous models, every leaf of the tree is assigned an separate
+For continuous models, every leaf of the tree is assigned a separate
 Gaussian mixture model. Formally, the emission probability of tree leaf $j$ is 
 computed as
 \begin{equation}
@@ -270,6 +269,7 @@ can be found in \cite{povey2011sgm}. Note that the experiments in this article
 are without adaptation.
 
 \section{Smoothing Techniques for Semi-continuous Models}
+\label{sec:smooth}
 %
 \subsection{Intra-Iteration Smoothing}
 Although an increasing number of tree leaves does not imply a huge increase in
@@ -327,7 +327,9 @@ which leads to an exponentially decreasing impact of the initial parameter set.
 
 %----%<------------------------------------------------------------------------
 
-\section{Systems Description}
+\section{System Descriptions}
+\label{sec:sys}
+
 The experiments presented in this article are computed on the DARPA Resource 
 Management Continuous Speech Corpus (RM) \cite{price1993rm} and the Wall Street
 Journal Corpus \cite{garofalo2007wsj}.
@@ -344,16 +346,19 @@ to speed up the convergence of the models.
 %
 The details of the model training can also be found in the {\sc Kaldi} recipes.
 
-On the acoustic frontend, we extract 13 Mel-frequency cepstral coefficients,
-compute deltas and delta-deltas, and apply cepstral mean normalization. For
-the decoding, we use a regular 3-gram estimated using the IRSTLM toolkit 
-\cite{federico2008iao}.
+On the acoustic frontend, we extract 13 Mel-frequency cepstral coefficients (MFCCs),
+apply cepstral mean normalization, and compute deltas and delta-deltas.  For
+decoding, we use the language models supplied with those corpora; for RM this
+is a word-pair grammar, and for WSJ we use the bigram version of the language
+models supplied with the data set.
 
 \subsection{Resource Management}
 For the RM data set, we train on the speaker independent training and development 
 set (about 4000 utterances) and test on the six DARPA test runs Mar and Oct '87,
 Feb and Oct '89, Feb '91 and Sep '92 (about 1500 utterances total).  The parameters 
-are tuned to the test set since RM has no hold-out data set. We use the following system identifiers in Table~\ref{tab:res_rm}:
+are tuned to this joint test set since there was not enough data to hold out a
+development set and still get meaningful results.
+We use the following system identifiers in Table~\ref{tab:res_rm}:
 %
 \begin{itemize}
 \item
@@ -377,11 +382,12 @@ are tuned to the test set since RM has no hold-out data set. We use the followin
 %             the si284 take just too long for the submission.
 %For the WSJ data set, we trained on the SI-284 training set, tuned on dev
 %and tested on eval92,93.
-To get an intuition of the performance on the WSJ data set, we trained on 
+
+Due to time constraints, we trained on 
 half of the SI-84 training set using settings similar to the RM experiments; 
 we tested on the eval '92 and eval '93 data sets.
 As the classic semi-continuous system did not yield good performance on the
-RM data both in terms of run-time and performance, we omit it for the WSJ
+RM data both in terms of run-time and performance, we omitted it for the WSJ
 experiments. Results corresponding to the following systems are presented in 
 Table~\ref{tab:res_wsj}:
 %
@@ -408,6 +414,7 @@ Table~\ref{tab:res_wsj}:
 %----%<------------------------------------------------------------------------
 
 \section{Results}
+\label{sec:results}
 
 %------%<----------------------------------------------------------------------
 \subsection{RM}
@@ -435,15 +442,11 @@ different acoustic models on the RM data set.
 
 The results on the different test sets on the RM data are displayed in 
 Table~\ref{tab:res_rm}. The classic semi-continuous system shows the worst 
-performance of the four. Possible explanations are an insufficient number
-of Gaussians paired with overfitting of the weights to a little number of 
-components. Unfortunately, this could not be eased with the interpolations
-and larger numbers of Gaussians would unacceptably increase the computational 
-load due to the full covariance matrices.
+performance of the four, which serves to confirm the conventional wisdom
+about the superiority of continous systems.
+The two-level tree based multiple-codebook system performance lies in between the 
+continuous and SGMM system.
 
-The two-level tree based multiple-codebook system performance lies within the 
-continuous and SGMM system, which goes along with the modeling capabilities 
-and the rather little training data. 
 
 %------%<----------------------------------------------------------------------
 % Now let's talk about the diag/full cov and interpolations
@@ -477,11 +480,13 @@ number of Gaussians, full covariances lead to a significant improvement.
 On the other hand, a substantial increase of the number of diagonal Gaussians 
 leads to a similar performance as the regular continuous system.
 %
-Another observation from Table~\ref{tab:rm_diagfull} is that the smoothing
-parameters need to be carefully calibrated. While the inter-iteration smoothing
-helps in most cases, the intra-iteration smoothing coefficient $\tau$ strongly
-depends on the type and number of Gaussians, which is due to the direct influence
-of $\tau$ on the counts in equation~\ref{eq:intra}.
+The effect of the two smoothing methods using $\tau$ and $\rho$ is not
+clear from Table~\ref{tab:rm_diagfull}, i.e. the results are not always
+consistent.  While the inter-iteration smoothing with $\rho$
+helps in most cases, the intra-iteration smoothing coefficient $\tau$ 
+shows an inconsistent effect.  In the future we may abandon this type of
+smoothing or investigate other smoothing methods. 
+
 
 \subsection{WSJ}
 
@@ -513,7 +518,7 @@ Table~\ref{tab:res_rm}.
 % TODO Korbinian: The following is for the si-84/half results, as currently
 %                 in the table.
 Using the parameters calibrated on the RM test data, the {\em 2lvl} system
-performance is not as good as of the continuous or GMM systems, but still
+performance is not as good as the continuous or GMM systems, but still
 in a similar range while using about the same number of leaves but about a
 third of the Gaussians.
 Once the number of Gaussians and leaves, as well as the smoothing parameters 
@@ -521,33 +526,34 @@ are tuned on the development set, we expect the error rates to be in between
 the continuous and SGMM systems, as seen on the RM data.
 
 \section{Summary}
-In this article, we compared continuous and SGMM models to 
+\label{sec:summary}
+
+In this article, we compared continuous and SGMM models with
 two types of semi-continuous hidden Markov models, one using a single codebook 
-and the other using multiple codebooks based on a two-level phonetic decision tree.
-%
-While the first could not produce convincing results, the multiple-codebook 
-architecture shows promising performance, especially for limited training data. 
-%
-% TODO This sentence only for SI-84/half experiments
-The experiments on the WSJ data need to be extended to the full training set, and
-the parameter settings calibrated on the development set.
+and the other using multiple codebooks based on a two-level phonetic decision tree,
+similar to~\cite{prasad2004t2b}.
+Using the single-codebook system we were not able to obtain competitive
+results, but using a multiple-codebook system 
+we were able to get better results than a traditional system.  Interestingly,
+for both the single-codebook or multiple-codebook systems, we saw better
+results with full rather than diagonal covariances.  
 
-Although the current performance is below the state-of-the-art, the
-rather simple theory and low computational complexity, paired with the possibility
-of solely acoustic adaptation make multiple-codebook semi-continuous acoustic
-models an attractive alternative for low-resource applications -- both in terms
-of computational power and training data; especially for embedded applications,
-where the codebook evaluation can be implemented in hardware, thus eliminating
-the time difference in evaluating full and diagonal covariance Gaussians.
-%
-The take home message from the experiments is that the choice of acoustic model
-should be made based on a resource constraint (number of Gaussians, available
-compute power), and that both continuous and semi-continuous models can do the job.
+Our best multiple-codebook results reported here incorporate two different forms of 
+smoothing, one using the decision tree to interpolate count statistics among closely
+related leaves, and one smoothing the weights across iterations to encourage 
+convergence to a better local optimum.  In future work we intend to further investigate
+these smoothing procedures and clarify how important they are.
 
-For future work, effect of adaptation and especially discriminative training
-with respect to the codebook architecture need to be explored.
-Furthermore, the SGMM framework can be extended to two-level architecture to 
-reduce computational effort in both training and decoding.
+If we continue to see good results from these types of systems, 
+we may investigate ways to speed up the Gaussian computation for the 
+full-covariance multiple-codebook tied mixture systems (e.g. using
+diagonal Gaussians in a pre-pruning phase, as in SGMMs).  To get state-of-the-art
+error rates we would also have to 
+implement linear-transform estimation (e.g. Constrained MLLR for adaptation)
+for these types of models.  We also intend to investigate the interaction of these
+methods with discriminative training and system combination; and we will
+consider extending the SGMM framework to a two-level architecture similar to
+the one we used here.
 
 %\section{REFERENCES}
 %\label{sec:ref}

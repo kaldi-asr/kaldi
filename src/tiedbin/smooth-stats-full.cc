@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
           cout << " " << t;
           if (preserve_counts)
             acc.GetTiedAcc(t).Interpolate2(rho, *interim[k]);
-           else
+          else
              acc.GetTiedAcc(t).Interpolate1(rho, *interim[k]);
         } else {
           // this will be an interim accumulator
@@ -234,5 +234,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
 

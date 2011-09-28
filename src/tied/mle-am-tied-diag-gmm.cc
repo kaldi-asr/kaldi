@@ -246,8 +246,8 @@ void MleAmTiedDiagGmmUpdate(
     KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho="
               << wt << "): "
               << (config_tied.interpolate_weights ? "weights " : "")
-              << (config_tied.interpolate_weights ? "means " : "")
-              << (config_tied.interpolate_weights ? "variances" : "");
+              << (config_tied.interpolate_means ? "means " : "")
+              << (config_tied.interpolate_variances ? "variances" : "");
 
     // tied pdfs (weights)
     if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
