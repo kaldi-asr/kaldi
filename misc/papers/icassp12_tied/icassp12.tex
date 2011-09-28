@@ -1,5 +1,5 @@
 \documentclass{article}
-\usepackage{spconf,amsmath,amssymb,graphicx,ngerman,bm}
+\usepackage{bm,spconf,amsmath,amssymb,graphicx,ngerman}
 \selectlanguage{USenglish}
 
 % Example definitions.
@@ -74,7 +74,7 @@ semi-continuous models in favor of continuous models, which performed
 considerably better with the growing amount of available training data.
 
 We were motivated by a number of factors to look again at semi-continuous models.
-One is that we are interested in applications where there may be a small amount
+One is that we are interested in applications where there is a small amount
 of training data (or a small amount of in-domain training data), and since
 in semi-continuous models the amount of state-specific parameters is relatively
 small, we felt that they might have an advantage there.  We were also interested
@@ -170,7 +170,7 @@ $\k_{ji}$ are the means and covariance matrices of the mixtures.
 
 We initialize the mixtures with a single component each, and subsequently 
 allocate more components by splitting components at every iteration until a 
-pre-determined number of components is reached (in this case 9000). We allocate 
+pre-determined total number of components is reached. We allocate 
 the Gaussians proportional to a small power (e.g.~0.2) of the state's 
 occupation count.
 
@@ -179,7 +179,7 @@ The idea of semi-continuous models is to have a large number of Gaussians that
 are shared by every tree leaf using individual weights, thus the emission 
 probability of tree leaf $j$ can be computed as
 \begin{equation}
-p(\x | j) = \sum_{i=1}^{N} c_{ji} \nv(\x; \m_i, \k_i) 
+p(\x | j) = \sum_{i=1}^{N} c_{ji} \; \nv(\x; \m_i, \k_i) 
 \end{equation}
 where $c_{ji}$ is the weight of mixture $i$ for leaf $j$. As the means
 and covariances are shared, increasing the number of states only implies
@@ -222,8 +222,8 @@ associated with $j$.
 Similar to the traditional semi-continuous codebook initialization, we start
 from the tree statistics and distribute the Gaussians to the respective codebooks
 using the tree mapping to obtain preliminary codebooks.
-The target size $N_k$ of codebook $k$ is determined with respect to a power
-of the occupancies of the respective leaves as
+The target size $N_k$ of codebook $k$ is determined with respect to 
+the occupancies of the respective leaves as
 \begin{equation}
 N_k = N_0 + \frac
 %% power rule, maybe some other day...
@@ -250,14 +250,14 @@ merging the components.
 The idea of subspace Gaussian mixture models (SGMM) is, similar to 
 semi-continuous models, to reduce the number of parameters by selecting the
 Gaussians from a subspace spanned by a universal background model (UBM)
-and state specific transformations. In principle, the SGMM emission pdfs can
+and state specific transformations.   The SGMM emission pdfs can
 be computed as
 \begin{eqnarray}
 p(\x | j) & = & \sum_{i=1}^{N} c_{ji} \nv(\x; \m_{ji}, \k_i) \\
 \m_{ji}    & = & \M_i \v_j \\
 c_{ji}     & = & \frac{\exp \w_i^T \v_j}{\sum_l^N \exp \w_l^T \v_j}
 \end{eqnarray}
-where the covariance matrices $\k_i$ are shared between all leafs $j$. The
+where the covariance matrices $\k_i$ are shared between all leaves $j$. The
 weights $w_{ji}$ and means $\m_{ji}$ are derived from $\v_j$ together with
 $\M_i$ and $\w_i$. The term ``subspace'' indicates that the parameters of the
 mixtures are limited to a subspace of the entire space of parameters of
@@ -294,7 +294,7 @@ and $p(j)$ is the parent node of $j$.
 For two-level tree based models, the propagation and interpolation cannot
 be applied across different codebooks. 
 %
-A similar yet different interpolation scheme without normalization was used in 
+A similar interpolation scheme without normalization was used in 
 \cite{schukattalamazzini1994srf,schukattalamazzini1995as} along with a different
 tree structure.
 
@@ -313,14 +313,15 @@ tree structure.
 
 \subsection{Inter-Iteration Smoothing}
 Another typical problem that arises when training semi-continuous models is
-that the weights tend to converge to a local optimum over the iterations. 
-This is due to the fact that the codebook parameters change rather slowly 
-as the statistics are collected from all respective tree leaves, but the 
-leaf specific weights converge much faster.
+that the weights tend to converge to a poor local optimum over the iterations. 
+Our intuition is that the weights tend to overfit to the Gaussian parameters
+in such a way that the model quickly converges with the
+GMM parameters very close to the initialization point.
 %
-To compensate for this, we smooth the newly estimated parameters $\Theta^{(i+1)}$ with the ones from the prior iteration using an interpolation weight $\rho$
+To try to counteract this effect, we smooth the newly estimated parameters 
+$\Theta^{(i+1)}$ with the ones from the prior iteration using an interpolation weight $\rho$
 \begin{equation}
-\hat\Theta^{(i+1)} \leftarrow (1 - \rho) \, \Theta^{(i+1)} + \rho \, \Theta^{(i)} % \quad .
+\hat\Theta^{(i)} \leftarrow (1 - \rho) \, \Theta^{(i)} + \rho \, \Theta^{(i-1)} % \quad .
 \end{equation}
 which leads to an exponentially decreasing impact of the initial parameter set.
 
@@ -329,7 +330,7 @@ which leads to an exponentially decreasing impact of the initial parameter set.
 \section{System Descriptions}
 \label{sec:sys}
 
-The experiments presented in this article are computed on the DARPA Resource 
+The experiments presented in this article used the DARPA Resource 
 Management Continuous Speech Corpus (RM) \cite{price1993rm} and the Wall Street
 Journal Corpus \cite{garofalo2007wsj}.
 
@@ -345,7 +346,7 @@ to speed up the convergence of the models.
 %
 The details of the model training can also be found in the {\sc Kaldi} recipes.
 
-On the acoustic frontend, we extract 13 Mel-frequency cepstral coefficients (MFCCs),
+For the acoustic frontend, we extract 13 Mel-frequency cepstral coefficients (MFCCs),
 apply cepstral mean normalization, and compute deltas and delta-deltas.  For
 decoding, we use the language models supplied with those corpora; for RM this
 is a word-pair grammar, and for WSJ we use the bigram version of the language
