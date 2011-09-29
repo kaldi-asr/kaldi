@@ -111,7 +111,6 @@ exp/decode_sgmme_fmllr/wer:Average WER is 2.266018 (284 / 12533)
 
 
 
-
 #### Note: stuff below this line may be out of date / not computed
 # with most recent version of toolkit.
 # note: when changing (phn,spk) dimensions from (40,39) -> (30,30),

@@ -15,9 +15,9 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# Decoding script that works with a GMM model and delta-delta plus
-# cepstral mean subtraction features.  Used, for example, to decode
-# mono/ and tri1/
+# Decoding script that works with a GMM model and the baseline
+# [e.g. MFCC] features plus cepstral mean subtraction plus
+# LDA+MLLT or similar transform.
 # This script just generates lattices for a single broken-up
 # piece of the data.
 
@@ -37,8 +37,8 @@ if [ "$1" == "-j" ]; then
 fi
 
 if [ $# != 3 ]; then
-   echo "Usage: steps/decode_deltas.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_deltas.sh -j 8 0 exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_dev93_tgpr"
+   echo "Usage: steps/decode_lda_mllt.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: steps/decode_lda_mllt.sh -j 8 0 exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_dev93_tgpr"
    exit 1;
 fi
 
@@ -56,10 +56,10 @@ else
   mydata=$data
 fi
 
-requirements="$mydata/feats.scp $srcdir/final.mdl $graphdir/HCLG.fst"
+requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -f $f ]; then
-     echo "decode_deltas.sh: no such file $f";
+     echo "decode_lda_mllt.sh: no such file $f";
      exit 1;
   fi
 done
@@ -67,7 +67,7 @@ done
 
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \

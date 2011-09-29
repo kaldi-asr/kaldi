@@ -87,6 +87,14 @@ scripts/decode.sh steps/decode_deltas.sh exp/tri2a/graph_tgpr data/dev_nov93 exp
 # Train tri2b, which is LDA+MLLT, on si84 data.
 steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
+scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/eval_nov92 exp/tri2b/decode_tgpr_eval92
+scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/dev_nov93 exp/tri2b/decode_tgpr_dev93
+
+# Align tri2b system with si84 data.
+steps/align_lda_mllt.sh data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
+
+
+steps/train_lda_et.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
 
 # exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
 

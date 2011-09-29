@@ -205,8 +205,8 @@ defaultfeats="$basefeats transform-feats $dir/B.mat ark:- ark:- |"
 rm $dir/$x.acc2
 
 # The following files may be useful for display purposes.
-for n in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
-  cat $dir/warps/$n.warp | scripts/process_warps.pl $data/spk2gender > $dir/warps/$n.warp_info
+for y in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+  cat $dir/warps/$y.warp | scripts/process_warps.pl $data/spk2gender > $dir/warps/$y.warp_info
 done
 
 ( cd $dir; rm final.mdl 2>/dev/null; 
