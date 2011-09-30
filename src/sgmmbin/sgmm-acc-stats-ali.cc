@@ -166,9 +166,12 @@ int main(int argc, char *argv[]) {
                       << alignment.size() <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << utt << " avg. like is "
+                    << (tot_like_this_file/alignment.size())
+                    << " over " << alignment.size() <<" frames.";
+        }
       }
     }
     KALDI_LOG << "Overall like per frame (Gaussian only) = "

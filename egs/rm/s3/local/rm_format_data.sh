@@ -59,40 +59,51 @@ silprob=0.5  # same prob as word
 scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
   fstcompile --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | \
-   fstarcsort --sort_type=olabel > data/lang/L.fst || exit 1;
+   fstarcsort --sort_type=olabel > data/lang/L.fst
+
+
+# Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the
+# beginning and end of words, on the input side)... useful if we
+# ever need to e.g. create ctm's-- these are used to work out the
+# word boundaries.
+
+cat data/local/lexicon.txt | \
+ awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+ scripts/make_lexicon_fst.pl - 0.5 sil | \
+ fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
+  --keep_isymbols=false --keep_osymbols=false | \
+ fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
+
+# L_disambig.fst has the disambiguation symbols (c.f. Mohri's papers)
 
 scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob sil '#'$ndisambig | \
    fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel \
-    > data/lang_test/L_disambig.fst || exit 1;
-
-for x in L_disambig.fst phones_disambig.txt; do
-  cp data/lang_test/$x data/lang || exit 1;
-done
+    > data/lang_test/L_disambig.fst
 
 fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
-    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst || exit 1;
+    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst
 
 # Checking that G is stochastic [note, it wouldn't be for an Arpa]
-fstisstochastic data/lang_test/G.fst || exit 1;
+fstisstochastic data/lang_test/G.fst || echo Error: G is not stochastic
 
 # Checking that G.fst is determinizable.
-fstdeterminize data/lang_test/G.fst /dev/null || exit 1;
+fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
 
 # Checking that L_disambig.fst is determinizable.
-fstdeterminize data/lang_test/L_disambig.fst /dev/null || exit 1;
+fstdeterminize data/lang_test/L_disambig.fst /dev/null || echo Error determinizing L.
 
 # Checking that disambiguated lexicon times G is determinizable
 fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
-   fstdeterminize >/dev/null || exit 1;
+   fstdeterminize >/dev/null || echo Error
 
 # Checking that LG is stochastic:
 fsttablecompose data/lang/L.fst data/lang_test/G.fst | \
-   fstisstochastic || exit 1;
+   fstisstochastic || echo Error: LG is not stochastic.
 
 # Checking that L_disambig.G is stochastic:
 fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
-   fstisstochastic || exit 1;
+   fstisstochastic || echo Error: LG is not stochastic.
 
 
 ## Check lexicon.

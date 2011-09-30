@@ -30,9 +30,9 @@
 # "test_scp" is e.g. data/test_nov93.scp.
 # "test_spk2utt" is e.g. data/test_nov93.spk2utt
 
-# If you include as the last argument the "spk2utt" file, it will assume
+# If you include the --per-spk option it will assume
 # you are doing some speaker adaptation and require the data to be broken up
-# by speaker; it will put the split-ut spk2utt and utt2spk files in the
+# by speaker; it will put the split-up spk2utt and utt2spk files in the
 # decoding directory (e.g. test1.spk2utt and test1.utt2spk).
 # option will ensure that the splitting-up is done on a per-speaker basis and
 # will put files like test1.spk2utt and test1.utt2spk in the decode_dir directory.

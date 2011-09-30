@@ -7,6 +7,7 @@
 =====
 minor:
  remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
+ Make sure scripts don't depend on . being on PATH
  Make ApplySoftMax() function more efficient (does two exp()'s per element)
  possibly change the way lattice-compose works to remove properties hack.
 

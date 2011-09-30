@@ -152,8 +152,8 @@ int main(int argc, char *argv[]) {
         sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
 
         tot_t += tot_weight;
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Accumulated SGMM stats over " << tot_t << " frames.";
+        if (num_done % 50 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances";
       }
     }
     KALDI_LOG << "Overall number of frames is " << tot_t;

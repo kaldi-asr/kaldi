@@ -482,6 +482,17 @@ done
 )&
 
 
+# +GD
+steps/train_ubm3f.sh || exit 1;
+steps/train_sgmm3f.sh || exit 1;
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3f/tree exp/sgmm3f/final.mdl exp/graph_sgmm3f_tg_pruned || exit 1;
+for year in 92 93; do
+  scripts/decode.sh --per-spk exp/decode_sgmm3f_tgpr_eval${year} exp/graph_sgmm3f_tg_pruned/HCLG.fst steps/decode_sgmm3f.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+done
+)&
+
+
 
 # see RESULTS for results...
 

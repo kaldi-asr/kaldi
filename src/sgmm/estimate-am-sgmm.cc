@@ -1726,7 +1726,7 @@ void MleSgmmSpeakerAccs::Update(BaseFloat min_count,
   if (v_s->Dim() != T) v_s->Resize(T);  // will set it to zero.
 
   if (tot_gamma < min_count) {
-    KALDI_WARN << "Updating speaker accs, count is " << tot_gamma
+    KALDI_WARN << "Updating speaker vectors, count is " << tot_gamma
                << " < " << min_count << "not updating.";
     if (objf_impr_out) *objf_impr_out = 0.0;
     if (count_out) *count_out = 0.0;

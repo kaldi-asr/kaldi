@@ -202,9 +202,10 @@ int main(int argc, char *argv[]) {
               (have_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
           
           Matrix<BaseFloat> transformed_feats(feats);
-          for (int32 r = 0; r < transformed_feats.NumRows(); r++)
-            ApplyAffineTransform(fmllr_xform, &transformed_feats.Row(r));
-          
+          for (int32 r = 0; r < transformed_feats.NumRows(); r++) {
+            SubVector<BaseFloat> row(transformed_feats, r);
+            ApplyAffineTransform(fmllr_xform, &row);
+          }
           AccumulateForUtterance(feats, transformed_feats, *gselect, sgmm_opts,
                                  post, trans_model, am_sgmm, spk_vars,
                                  logdet, &spk_stats);
@@ -266,10 +267,10 @@ int main(int argc, char *argv[]) {
         spk_stats.SetZero();
 
         Matrix<BaseFloat> transformed_feats(feats);
-        for (int32 r = 0; r < transformed_feats.NumRows(); r++)
-          ApplyAffineTransform(fmllr_xform, &transformed_feats.Row(r));
-        
-
+        for (int32 r = 0; r < transformed_feats.NumRows(); r++) {
+          SubVector<BaseFloat> row(transformed_feats, r);
+          ApplyAffineTransform(fmllr_xform, &row);
+        }
         bool have_gselect  = !gselect_rspecifier.empty()
             && gselect_reader.HasKey(utt)
             && gselect_reader.Value(utt).size() == feats.NumRows();

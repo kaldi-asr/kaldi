@@ -234,7 +234,7 @@ fi
 if [ $ok_sclite -eq 0 ]; then
    echo "sclite:  Success"
 else
-   echo "sclite:  Failure [optional anyway]"
+   echo "sclite:  Failure [optional anyway.. see INSTALL for more help]"
 fi
 if [ $ok_openfst -eq 0 ]; then
    echo "openfst: Success"

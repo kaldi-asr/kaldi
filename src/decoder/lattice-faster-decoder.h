@@ -131,19 +131,11 @@ class LatticeFasterDecoder {
     // numbering, which we have to correct for when we call it.
     for (int32 frame = 1; !decodable->IsLastFrame(frame-2); frame++) {
       active_toks_.resize(frame+1); // new column
-      // prev_toks_.clear();
-      // cur_toks_.swap(prev_toks_);
-      // Elem *last_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+
       ProcessEmitting(decodable, frame);
-      // BaseFloat adaptive_beam = ProcessEmitting(decodable, frame);
       
-      // Important to call PruneCurrentTokens before ProcessNonemitting, or
-      // we would get dangling forward pointers.
-      // Anyway, ProcessNonemitting uses the beam.
-      //PruneCurrentTokens(config_.beam, &cur_toks_);
-      PruneCurrentTokens();
       ProcessNonemitting(frame);
-      // ProcessNonemitting(frame, adaptive_beam);
+
       if (decodable->IsLastFrame(frame-1))
         PruneActiveTokensFinal(frame);
       else if (frame % config_.prune_interval == 0)
@@ -638,14 +630,13 @@ class LatticeFasterDecoder {
                   << " to " << num_toks_;
   }
   
-/*
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem) {
-    DEBUG_OUT1("GetCufoff")
-    BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
+    BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
+    // positive == high cost == bad.
     size_t count = 0;
-    if (opts_.max_active == std::numeric_limits<int32>::max()) {
+    if (config_.max_active == std::numeric_limits<int32>::max()) {
       for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
         BaseFloat w = static_cast<BaseFloat>(e->val->tot_cost);
         if (w < best_weight) {
@@ -654,9 +645,8 @@ class LatticeFasterDecoder {
         }
       }
       if (tok_count != NULL) *tok_count = count;
-      if (adaptive_beam != NULL) *adaptive_beam = opts_.beam;
-      DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << best_weight + opts_.beam << " adaptive:" << *adaptive_beam)
-      return best_weight + opts_.beam;
+      if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
+      return best_weight + config_.beam;
     } else {
       tmp_array_.clear();
       for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
@@ -668,35 +658,32 @@ class LatticeFasterDecoder {
         }
       }
       if (tok_count != NULL) *tok_count = count;
-      if (tmp_array_.size() <= static_cast<size_t>(opts_.max_active)) {
-        if (adaptive_beam) *adaptive_beam = opts_.beam;
-        DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << best_weight + opts_.beam << " adaptive:" << *adaptive_beam)
-        return best_weight + opts_.beam;
+      if (tmp_array_.size() <= static_cast<size_t>(config_.max_active)) {
+        if (adaptive_beam) *adaptive_beam = config_.beam;
+        return best_weight + config_.beam;
       } else {
         // the lowest elements (lowest costs, highest likes)
         // will be put in the left part of tmp_array.
         std::nth_element(tmp_array_.begin(),
-                         tmp_array_.begin()+opts_.max_active,
+                         tmp_array_.begin()+config_.max_active,
                          tmp_array_.end());
         // return the tighter of the two beams.
-        BaseFloat ans = std::min(best_weight + opts_.beam,
-                                 *(tmp_array_.begin()+opts_.max_active));
+        BaseFloat ans = std::min(best_weight + config_.beam,
+                                 *(tmp_array_.begin()+config_.max_active));
         if (adaptive_beam)
-          *adaptive_beam = std::min(opts_.beam,
-                                    ans - best_weight + opts_.beam_delta);
-        DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << ans << " adaptive:" << *adaptive_beam)
+          *adaptive_beam = std::min(config_.beam,
+                                    ans - best_weight + config_.beam_delta);
         return ans;
       }
     }
   }
-*/
-  // ProcessEmitting returns the likelihood cutoff used.
-//  BaseFloat ProcessEmitting(DecodableInterface *decodable, int32 frame) {
+
   void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
     // Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
 
-    Elem *last_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
-/*   size_t tok_cnt;
+/*
+  Elem *last_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+  size_t tok_cnt;
    BaseFloat adaptive_beam;
    Elem *best_elem = NULL;
    BaseFloat weight_cutoff = GetCutoff(last_toks, &tok_cnt,
@@ -755,10 +742,8 @@ class LatticeFasterDecoder {
                   Token::TokenDelete(new_tok);
                 }
               }
-            } else {
-              DEBUG_OUT2("prune")
+              }
             }
-          }
         } // for all arcs
       } // if token not pruned
       e_tail = e->tail;
@@ -766,42 +751,68 @@ class LatticeFasterDecoder {
       toks_.Delete(e);
     }
 */
-    BaseFloat cutoff = std::numeric_limits<BaseFloat>::infinity();
+    Elem *last_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+    Elem *best_elem = NULL;
+    BaseFloat adaptive_beam;
+    size_t tok_cnt;
+    BaseFloat cur_cutoff = GetCutoff(last_toks, &tok_cnt, &adaptive_beam, &best_elem);
+    PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.    
+    
+    BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
     // pruning "online" before having seen all tokens
 
+   // First process the best token to get a hopefully
+   // reasonably tight bound on the next cutoff.
+   if (best_elem) {
+      StateId state = best_elem->key;
+      Token *tok = best_elem->val;
+      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+           !aiter.Done();
+           aiter.Next()) {
+        Arc arc = aiter.Value();
+        if (arc.ilabel != 0) {  // propagate..
+          arc.weight = Times(arc.weight,
+                             Weight(-decodable->LogLikelihood(frame-1, arc.ilabel)));
+          BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+          if (new_weight + adaptive_beam < next_cutoff)
+            next_cutoff = new_weight + adaptive_beam;
+        }
+      }
+    }
+
+    
     // the tokens are now owned here, in last_toks, and the hash is empty.
     // 'owned' is a complex thing here; the point is we need to call DeleteElem
     // on each elem 'e' to let toks_ know we're done with them.
     // for (unordered_map<StateId, Token*>::iterator iter = prev_toks_.begin(); iter != prev_toks_.end(); ++iter) {
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
       // loop this way because we delete "e" as we go.
-      //StateId state = iter->first;
-      //Token *tok = iter->second;
       StateId state = e->key;
       Token *tok = e->val;
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
-        const Arc &arc = aiter.Value();
-        if (arc.ilabel != 0) {  // propagate..
-          BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
-              graph_cost = arc.weight.Value(),
-              cur_cost = tok->tot_cost,
-              tot_cost = cur_cost + ac_cost + graph_cost;
-          if (tot_cost > cutoff) continue;
-          else if (tot_cost + config_.beam < cutoff)
-            cutoff = tot_cost + config_.beam; // prune by best current token
-          // AddToken adds the next_tok to hash of toks_ (if not already present).
-          Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
-          // true: emitting, NULL: no change indicator needed
+      if (tok->tot_cost <=  cur_cutoff) {
+        for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+             !aiter.Done();
+             aiter.Next()) {
+          const Arc &arc = aiter.Value();
+          if (arc.ilabel != 0) {  // propagate..
+            BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
+                graph_cost = arc.weight.Value(),
+                cur_cost = tok->tot_cost,
+                tot_cost = cur_cost + ac_cost + graph_cost;
+            if (tot_cost > next_cutoff) continue;
+            else if (tot_cost + config_.beam < next_cutoff)
+              next_cutoff = tot_cost + config_.beam; // prune by best current token
+            // AddToken adds the next_tok to hash of toks_ (if not already present).
+            Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
+            // true: emitting, NULL: no change indicator needed
           
-          // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-          tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
-                                       graph_cost, ac_cost, tok->links);
-        }
-      } // for all arcs
+            // Add ForwardLink from tok to next_tok (put on head of list tok->links)
+            tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
+                                         graph_cost, ac_cost, tok->links);
+          }
+        } // for all arcs
+      }
       e_tail = e->tail;
-      // Token::TokenDelete(e->val);
       toks_.Delete(e); // delete Elem
     }
 //    return adaptive_beam;
@@ -878,8 +889,6 @@ class LatticeFasterDecoder {
     } // while queue not empty
   }
 
-  // unordered_map<StateId, Token*> cur_toks_;
-  // unordered_map<StateId, Token*> prev_toks_;
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -929,50 +938,6 @@ class LatticeFasterDecoder {
     }
     active_toks_.clear();
     KALDI_ASSERT(num_toks_ == 0);
-  }
-
-  // PruneCurrentTokens deletes the tokens from the "toks" map/list, but not
-  // from the active_toks_ list, which could cause dangling forward pointers
-  // (will delete it during regular pruning operation).
-  //void PruneCurrentTokens(BaseFloat beam, unordered_map<StateId, Token*> *toks) {
-  void PruneCurrentTokens() {
-    Elem *cur_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
-    //if (toks->empty()) {
-    if (cur_toks == NULL) {
-      KALDI_VLOG(2) <<  "No tokens to prune.\n";
-      return;
-    }
-    //BaseFloat best_cost = 1.0e+10;  // positive == high cost == bad.
-    BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
-    //for (unordered_map<StateId, Token*>::iterator iter = toks->begin(); iter != toks->end(); ++iter) {
-    for (Elem *e = cur_toks; e != NULL;  e = e->tail) {
-      // for pruning with current best token
-      // best_cost = std::min(best_cost, iter->second->tot_cost);
-      best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));
-    }
-    BaseFloat cutoff = best_cost + config_.beam;
-
-    // PossiblyResizeHash(tok_cnt); ???
-    
-    //std::vector<StateId> retained;
-    size_t retained = 0;
-    //for (unordered_map<StateId, Token*>::iterator iter = toks->begin(); iter != toks->end(); ++iter) {
-    for (Elem *e = cur_toks; e != NULL;  e = e->tail) {
-      //if (iter->second->tot_cost < cutoff)
-      if (e->val->tot_cost < cutoff) {
-        //retained.push_back(iter->first);
-        toks_.Insert(e->key, e->val);  // build new hash
-        retained++;
-      }
-    }
-    KALDI_VLOG(2) <<  "Pruned to "<< retained <<" toks.\n";
-    
-    // unordered_map<StateId, Token*> tmp;
-    //for (size_t i = 0; i < retained.size(); i++) {
-    //  tmp[retained[i]] = (*toks)[retained[i]];
-    //}
-    //KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
-    // tmp.swap(*toks);
   }
 };
 

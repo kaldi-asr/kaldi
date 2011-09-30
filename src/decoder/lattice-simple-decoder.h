@@ -673,7 +673,7 @@ class LatticeSimpleDecoder {
     // but in the baseline code, turning this vector into a set to fix this
     // problem did not improve overall speed.
     std::vector<StateId> queue;
-    float best_cost = std::numeric_limits<BaseFloat>::infinity();
+    BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
     for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
          iter != cur_toks_.end();
          ++iter) {

@@ -154,7 +154,9 @@ int main(int argc, char *argv[]) {
 
       fst::VectorFst<CompactLatticeArc> decoded;  // output FST.
       bool was_final;
-      if (decoder.GetNBestLattice(&decoded, &was_final)) {
+      int32 nbest;
+      BaseFloat nbest_beam;
+      if (decoder.GetNBestLattice(&decoded, &was_final, &nbest, &nbest_beam)) {
         if (!was_final) {
           if (allow_partial) {
             KALDI_WARN << "Decoder did not reach end-state, "
@@ -169,6 +171,7 @@ int main(int argc, char *argv[]) {
           }
         }
         num_success++;
+        KALDI_LOG << "retrieved:" << nbest << " tokens, effective beam:" << nbest_beam;
 
 //        std::cout << "n-best paths:\n";
 //        fst::FstPrinter<CompactLatticeArc> fstprinter(decoded, NULL, NULL, NULL, false, true);

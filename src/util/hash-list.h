@@ -79,7 +79,7 @@ template<class I, class T> class HashList {
   /// it is part of the internal list owned by this object, but the user is
   /// free to modify the "val" element.
   inline Elem *Find(I key);
-
+  
   /// Insert inserts a new element into the hashtable/stored list.  By calling this,
   /// the user asserts that it is not already present (e.g. Find was called and
   /// returned NULL).  With current code, calling this if an element already exists will

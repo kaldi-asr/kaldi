@@ -510,6 +510,17 @@ template<class Arc> class DeterminizerStar {
           } else {  // one is already there.  Add weights.
             if (iter->second.string != next_elem.string) {
               std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
+              { // Print some debugging information.  Can be helpful to debug
+                // the inputs when FSTs are mysteriously non-functional.
+                vector<Label> tmp_seq;
+                repository_.SeqOfId(iter->second.string, &tmp_seq);
+                std::cerr << "First string: ";
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\nSecond string: ";
+                repository_.SeqOfId(next_elem.string, &tmp_seq);
+                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
+                std::cerr << "\n";
+              }
               throw std::runtime_error("Non-functional FST: cannot determinize.\n");
             }
             Weight weight = Plus(iter->second.weight, next_elem.weight);

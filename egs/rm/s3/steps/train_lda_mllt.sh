@@ -127,7 +127,7 @@ while [ $x -lt $numiters ]; do
          "$feats" ark:- $dir/$x.macc ) 2> $dir/macc.$x.log  || exit 1;
 
      est-mllt $dir/$x.mat.new $dir/$x.macc 2> $dir/mupdate.$x.log || exit 1;
-     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$[$x+1].mdl 2> $dir/transform_means.$x.log || exit 1;
+     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl 2> $dir/transform_means.$x.log || exit 1;
      compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
      cur_lda=$dir/$x.mat
 

@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    KALDI_LOG << "Average log-likelihood per frame is " << (tot_like/frame_count)
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count<< " frames.";
     KALDI_LOG << "Done " << num_success << ", could not find transcripts for "
               << num_no_transcript << ", other errors on " << num_other_error;

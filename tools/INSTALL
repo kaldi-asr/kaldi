@@ -131,9 +131,12 @@ make install
 
 ####
 
-(5) sclite [OPTIONAL!]
-This can be helpful helpful for scoring but the default scoring scripts do not
-use it (they use our own Kaldi-based scorer).
+(5) sclite [OPTIONAL!]  This can be helpful helpful for scoring but the default
+scoring scripts do not use it (they use our own Kaldi-based scorer). 
+
+If you get a bug about strncasecmp, you have to modify the file 'sctk-4.0/src/rfilter1/makefile'.
+There is a comment in there about setting OPTIONS to be empty.  Do that and it
+should compile. [Do this after "make config" but before "make install"].
 
 Install instructions for sclite/sctk.
 This was obtained as follows:

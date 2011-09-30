@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
-        Matrix<float> feat(feat_reader.Value());
+        Matrix<BaseFloat> feat(feat_reader.Value());
         ApplyCmvn(cmvn_stats, norm_vars, &feat);
         feat_writer.Write(utt, feat);
       }

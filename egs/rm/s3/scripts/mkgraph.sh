@@ -74,7 +74,7 @@ grep '#' $lang/phones_disambig.txt | awk '{print $2}' > $lang/tmp/disambig_phone
 
 clg=$lang/tmp/CLG_${N}_${P}.fst
 
-if [[ ! -f $clg || $clg -ot $lang/LG.fst ]]; then
+if [[ ! -f $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/tmp/disambig_phones.list \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.list \
@@ -105,3 +105,8 @@ if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
     fstisstochastic $dir/HCLG.fst || echo "Final HCLG is not stochastic."
   fi
 fi
+
+
+# to make const fst:
+# fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
+
