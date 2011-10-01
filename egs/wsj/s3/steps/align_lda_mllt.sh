@@ -17,7 +17,7 @@
 # To be run from ..
 
 # This script does training-data alignment given a model built using 
-# CMN + delta + delta-delta features.  It splits the data into
+# [e.g. MFCC] + CMN + LDA + MLLT features.  It splits the data into
 # four chunks and does everything in parallel on the same machine.
 # Its output, all in its own
 # experimental directory, is {0,1,2,3}.cmvn {0,1,2,3}.ali, tree, final.mdl ,
@@ -75,7 +75,7 @@ rm $dir/.error 2>/dev/null
 echo "Aligning data from $data"
 if $oldgraphs; then 
   for n in 0 1 2 3; do
-    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat |"
+    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     if [ ! -f $srcdir/$n.fsts.gz ]; then
        echo You specified --use-graphs but no such file $srcdir/$n.fsts.gz
        exit 1;
@@ -88,11 +88,12 @@ if $oldgraphs; then
   [ -f $dir/.error ] && echo error doing alignment && exit 1;
 else
   for n in 0 1 2 3; do
-    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat |"
+    feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     # compute integer form of transcripts.
     tra="ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split4/$n/text|";
-    gmm-align $scale_opts --beam=10 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
-        "$feats" "$tra" "ark:|gzip -c >$dir/$n.ali.gz" 2> $dir/align$n.log || touch $dir/.error &
+    ( compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- | \
+      gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl ark:- \
+        "$feats" "ark:|gzip -c >$dir/$n.ali.gz" ) 2> $dir/align$n.log || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;

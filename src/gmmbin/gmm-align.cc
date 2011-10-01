@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, gopts);
 
     lex_fst = NULL;  // we gave ownership to gc.
-
+    
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorReader transcript_reader(transcript_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);

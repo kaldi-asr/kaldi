@@ -91,8 +91,11 @@ else
     feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
     # compute integer form of transcripts.
     tra="ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split4/$n/text|";
-    gmm-align $scale_opts --beam=10 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
-        "$feats" "$tra" "ark:|gzip -c >$dir/$n.ali.gz" 2> $dir/align$n.log || touch $dir/.error &
+    # We could just use gmm-align in the next line, but it's less efficient as it compiles the
+    # training graphs one by one.
+    ( compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- | \
+      gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl ark:- \
+        "$feats" "ark:|gzip -c >$dir/$n.ali.gz" ) 2> $dir/align$n.log || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;

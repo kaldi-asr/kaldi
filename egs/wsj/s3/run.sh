@@ -91,10 +91,28 @@ scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/eval_nov92 
 scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/dev_nov93 exp/tri2b/decode_tgpr_dev93
 
 # Align tri2b system with si84 data.
-steps/align_lda_mllt.sh data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
+steps/align_lda_mllt.sh --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
 
 
 steps/train_lda_et.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr
+scripts/decode.sh steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_tgpr_dev93
+
+scripts/decode.sh steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_tgpr_dev93_2pass
+
+# From 2b system, train 3b which is LDA + MLLT + SAT.
+steps/train_lda_mllt_sat.sh 2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/dev_nov93 exp/tri3b/decode_tgpr_dev93
+
+# From 3b system, align all si284 data.
+steps/align_lda_mllt_sat.sh data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
+
+steps/train_lda_etc_quick.sh  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
+
+### END  ###
+
+
 
 # exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
 

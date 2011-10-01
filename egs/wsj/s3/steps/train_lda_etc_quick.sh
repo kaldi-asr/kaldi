@@ -15,11 +15,18 @@
 # limitations under the License.
 
 # To be run from ..
-# Triphone model training, with LDA + MLLT.
+# This script trains a model on top of LDA + [something] features, where
+# [something] may be MLLT, or ET, or MLLT + SAT.  Any speaker-specific
+# transforms are expected to be located in the alignment directory. 
+# This script never re-estimates any transforms, it just does model 
+# training.  To make this faster, it initializes the model from the
+# old system's model, i.e. for each p.d.f., it takes the best-match pdf
+# from the old system (based on overlap of tree-stats counts), and 
+# uses that GMM to initialize the current GMM.
 
 if [ $# != 6 ]; then
-   echo "Usage: steps/train_lda_mllt.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
+   echo "Usage: steps/train_lda_etc_quick.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_lda_etc_quick.sh 2500 15000 data/train_si284 data/lang exp/tri3c_ali_si84 exp/tri4c"
    exit 1;
 fi
 
@@ -32,23 +39,23 @@ lang=$4
 alidir=$5
 dir=$6
 
-if [ ! -f $alidir/final.mdl -o ! -f $alidir/0.ali.gz -o ! -f $alidir/3.ali.gz ]; then
-  echo "Error: alignment dir $alidir does not contain final.mdl and {0,1,2,3}.ali.gz"
+if [ ! -f $alidir/final.mdl -o ! -f $alidir/0.ali.gz -o ! -f $alidir/3.ali.gz -o ! -f $alidir/final.mat ]; then
+  echo "Error: alignment dir $alidir does not contain one of final.mdl, {0,1,2,3}.ali.gz, or final.mat"
   exit 1;
 fi
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-realign_iters="10 20 30";
-mllt_iters="2 4 6 12";
+realign_iters="10 15"; # Only realign twice.
+
 oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
 grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
 silphonelist=`cat $lang/silphones.csl`
-numiters=35    # Number of iterations of training
-maxiterinc=25 # Last iter to increase #Gauss on.
-numgauss=$numleaves
+numiters=20    # Number of iterations of training
+maxiterinc=15 # Last iter to increase #Gauss on.
+numgauss=$[totgauss/2] # Start with half the total number of Gaussians.  We won't have
+  # to mix up much probably, as we're initializing with the old (already mixed-up) pdf's.  
+if [ $numgauss -lt $numleaves ]; then numgauss=$numleaves; fi
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-randprune=4.0 # This is approximately the ratio by which we will speed up the
-              # LDA and MLLT calculations via randomized pruning.
 
 mkdir -p $dir/log
 
@@ -56,36 +63,30 @@ if [ ! -f $data/split4 -o $data/split4 -ot $data/feats.scp ]; then
   scripts/split_data.sh $data 4
 fi
 
-# feats0 is all the feats, transformed with 0.mat-- just needed for tree accumulation.
-feats0="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
+cp $alidir/final.mat $dir/
+
+sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 # featspart[n] gets overwritten later in the script.
 for n in 0 1 2 3; do
-  splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
-  featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/0.mat ark:- ark:- |"
+  sifeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 done
 
+if [ -f $alidir/0.trans ]; then
+  feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.trans|\" ark:- ark:- |"
+  for n in 0 1 2 3; do
+    featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
+  done
+else
+  feats="$sifeats"
+  for n in 0 1 2 3; do featspart[$n]="${sifeatspart[$n]}"; done
+fi
 
-echo "Accumulating LDA statistics."
-
-rm $dir/.error 2>/dev/null
-
-for n in 0 1 2 3; do
-( ali-to-post "ark:gunzip -c $alidir/$n.ali.gz|" ark:- | \
-   weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | \
-   acc-lda --rand-prune=$randprune $alidir/final.mdl "${splicedfeatspart[$n]}" ark,s,cs:- \
-     $dir/lda.$n.acc ) 2>$dir/log/lda_acc.$n.log || touch $dir/.error &
-done
-wait
-[ -f $dir/.error ] && echo "Error accumulating LDA stats" && exit 1;
-est-lda $dir/0.mat $dir/lda.*.acc 2>$dir/log/lda_est.log || exit 1; # defaults to dim=40
-rm $dir/lda.*.acc
-cur_lda=$dir/0.mat
 
 # The next stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
-acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats0" \
+acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
   "ark:gunzip -c $alidir/?.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
@@ -101,13 +102,22 @@ build-tree --verbose=1 --max-leaves=$numleaves \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $lang/topo $dir/tree  2> $dir/log/train_tree.log || exit 1;
 
+# The gmm-init-model command (with more than the normal # of command-line args)
+# will initialize the p.d.f.'s to the p.d.f.'s in the alignment model.
+# Note: we first mix-down to $totgauss and then mix-up to $numgauss=$totgauss/2.
+# The order of this has nothing to do with the order of the command-line parameters,
+# it's how the gmm-mixup program works.  The mix-down phase is to get rid of any
+# Gaussians that would be over the final target; the mix-up phase is to get up to
+# the initial target.
+
 gmm-init-model  --write-occs=$dir/1.occs  \
-    $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
+  $dir/tree $dir/treeacc $lang/topo $dir/tmp.mdl $alidir/tree $alidir/final.mdl  \
+  2>$dir/log/init_model.log || exit 1;
 
-gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
-   2>$dir/log/mixup.log || exit 1;
+gmm-mixup --mix-down=$totgauss --mix-up=$numgauss $dir/tmp.mdl $dir/1.occs $dir/1.mdl \
+   2>> $dir/log/init_model.log || exit 1;
 
-rm $dir/treeacc
+rm $dir/tmp.mdl $dir/treeacc
 
 # Convert alignments in $alidir, to use as initial alignments.
 # This assumes that $alidir was split in 4 pieces, just like the
@@ -124,9 +134,9 @@ done
 echo "Compiling training graphs"
 rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
-  compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+  compile-train-graphs --batch-size=750 $dir/tree $dir/1.mdl  $lang/L.fst  \
     "ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt < $data/split4/$n/text |" \
-    "ark:|gzip -c >$dir/$n.fsts.gz"  2>$dir/log/compile_graphs$n.log  || touch $dir/.error&
+    "ark:|gzip -c >$dir/$n.fsts.gz"  2>$dir/log/compile_graphs$n.log  || touch $dir/.error &
 done
 wait;
 [ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
@@ -143,24 +153,6 @@ while [ $x -lt $numiters ]; do
      done
      wait;
      [ -f $dir/.error ] && echo "Error aligning data on iteration $x" && exit 1;
-   fi
-   if echo $mllt_iters | grep -w $x >/dev/null; then
-     echo "Estimating MLLT"
-     for n in 0 1 2 3; do
-      ( ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- | \
-         weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- | \
-         gmm-acc-mllt --rand-prune=$randprune --binary=false $dir/$x.mdl \
-           "${featspart[$n]}" ark:- $dir/$x.$n.macc ) 2> $dir/log/macc.$x.$n.log || touch $dir/.error &
-       featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/$x.mat ark:- ark:- |"       
-     done
-     wait
-     [ -f $dir/.error ] && echo "Error accumulating MLLT stats on iter $x" && exit 1;
-     est-mllt $dir/$x.mat.new $dir/$x.{0,1,2,3}.macc 2> $dir/log/mupdate.$x.log || exit 1;
-     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \
-       2> $dir/log/transform_means.$x.log || exit 1;
-     compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
-     cur_lda=$dir/$x.mat
-     rm $dir/$x.*.macc
    fi
    for n in 0 1 2 3; do
      gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
@@ -179,7 +171,27 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs;
-  ln -s `basename $cur_lda` final.mat )
+if [ "$feats" -ne "$sifeats" ]; then
+  # we have speaker-specific transforms, so need to estimate an alignment model.
+  # Accumulate stats for "alignment model" which is as the model but with
+  # the default features (shares Gaussian-level alignments).
+  echo "Estimating alignment model."
+  for n in 0 1 2 3; do
+   ( ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:-  | \
+     gmm-acc-stats-twofeats $dir/$x.mdl "${featspart[$n]}" "${sifeatspart[$n]}" \
+       ark:- $dir/$x.$n.acc2 ) 2>$dir/acc_alimdl.log || touch $dir/.error &
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error accumulating alignment statistics." && exit 1;
+  # Update model.
+  gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false $dir/$x.mdl \
+    "gmm-sum-accs - $dir/$x.*.acc2|" $dir/$x.alimdl \
+     2>$dir/log/est_alimdl.log  || exit 1;
+  rm $dir/$x.*.acc2
+  cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl
+fi
+
+
+( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs; )
 
 echo Done

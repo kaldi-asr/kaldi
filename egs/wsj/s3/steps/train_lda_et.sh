@@ -15,10 +15,9 @@
 # limitations under the License.
 
 # To be run from ..
-# Triphone model training, using delta-delta features and cepstral
-# mean normalization.  It starts from an existing directory (e.g.
-# exp/mono), supplied as an argument, which is assumed to be built using
-# the same type of features.
+# Triphone model training, using cepstral mean normalization, plus
+# splice-9-frames and LDA, plus MLLT/STC. 
+
 
 if [ $# != 6 ]; then
    echo "Usage: steps/train_lda_et.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <ali-dir> <exp-dir>"
@@ -252,7 +251,7 @@ wait;
 # Update model.
 gmm-est --write-occs=$dir/final.occs --remove-low-count-gaussians=false $dir/$x.mdl \
   "gmm-sum-accs - $dir/$x.*.acc2|" $dir/$x.alimdl \
-    2>$dir/est_alimdl.log  || exit 1;
+    2>$dir/log/est_alimdl.log  || exit 1;
 rm $dir/$x.*.acc2
 
 # The following files may be useful for display purposes.
@@ -265,5 +264,6 @@ done
   ln -s $x.occs final.occs;
   ln -s $x.alimdl final.alimdl
   ln -s $[$numiters_et-1].trans final.trans )
+# we already have final.mat
 
 echo Done

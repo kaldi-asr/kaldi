@@ -56,8 +56,6 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
 
   VectorFst<StdArc> *ans = new VectorFst<StdArc>;
 
-  // Create a mini-FST with a superfinal state [in case we have emitting
-  // final-states, which we usually will.]
   typedef StdArc Arc;
   typedef Arc::Weight Weight;
   typedef Arc::StateId StateId;

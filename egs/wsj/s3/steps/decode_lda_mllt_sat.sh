@@ -17,7 +17,7 @@
 
 # Decoding script that works with a GMM model and the baseline
 # [e.g. MFCC] features plus cepstral mean subtraction plus
-# LDA + ET (exponential transform) features.  This script first
+# LDA + MLLT + fMLLR features.  This script first
 # generates a pruned state-level lattice without adaptation,
 # then does acoustic rescoring on this lattice to generate
 # a new lattice; it determinizes and prunes this ready for
@@ -40,8 +40,8 @@ if [ "$1" == "-j" ]; then
 fi
 
 if [ $# != 3 ]; then
-   echo "Usage: steps/decode_lda_et.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_lda_et.sh -j 10 0 exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_dev93_tgpr"
+   echo "Usage: steps/decode_lda_mllt_sat.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: steps/decode_lda_mllt_sat.sh -j 10 0 exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_dev93_tgpr"
    exit 1;
 fi
 
@@ -62,7 +62,7 @@ else
   mydata=$data
 fi
 
-requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $srcdir/final.alimdl $srcdir/final.et $graphdir/HCLG.fst"
+requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $srcdir/final.alimdl $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -f $f ]; then
      echo "decode_lda_mllt.sh: no such file $f";
@@ -71,8 +71,7 @@ for f in $requirements; do
 done
 
 
-# basefeats is the feats with the "default" ET transform, which corresponds
-# to the alignment model...
+# basefeats is the speaker independent features.
 basefeats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 # Generate a state-level lattice for rescoring, so we don't have to redo the search
@@ -87,15 +86,15 @@ gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-sc
    lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$basefeats" ark:- ark:- | \
-   gmm-est-et --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl $srcdir/final.et "$basefeats" \
-       ark,s,cs:- ark:$dir/et.$jobid.ark ark,t:$dir/$jobid.warp ) \
-    2> $dir/et.$jobid.log || exit 1;
+   gmm-est-fmllr-gpost --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$basefeats" \
+       ark,s,cs:- ark:$dir/$jobid.trans ) \
+    2> $dir/fmllr.$jobid.log || exit 1;
 
 # Now rescore the state-level lattices with the adapted features and the
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
 
-feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/et.$jobid.ark ark:- ark:- |"
+feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.trans ark:- ark:- |"
 
 gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.$jobid.gz|" "$feats" \
  "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=6.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \

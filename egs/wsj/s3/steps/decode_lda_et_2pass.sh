@@ -75,31 +75,27 @@ done
 # to the alignment model...
 basefeats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-# Generate a state-level lattice for rescoring, so we don't have to redo the search
-# after ET.
 gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
-  --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.alimdl $graphdir/HCLG.fst "$basefeats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
    2> $dir/decode_pass1.$jobid.log || exit 1;
 
-(  lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
-     "ark:gunzip -c $dir/pre_lat.$jobid.gz|" ark:- | \
-   lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
+( lattice-to-post --acoustic-scale=$acwt "ark:gunzip -c $dir/pre_lat.$jobid.gz|" ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$basefeats" ark:- ark:- | \
    gmm-est-et --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl $srcdir/final.et "$basefeats" \
        ark,s,cs:- ark:$dir/et.$jobid.ark ark,t:$dir/$jobid.warp ) \
     2> $dir/et.$jobid.log || exit 1;
 
-# Now rescore the state-level lattices with the adapted features and the
-# corresponding model.  Prune and determinize the lattices to limit
-# their size.
+# Decode againn with the new features.
 
 feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/et.$jobid.ark ark:- ark:- |"
 
-gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.$jobid.gz|" "$feats" \
- "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=6.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
-  2>$dir/rescore.$jobid.log || exit 1;
+
+gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
+  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
+   2> $dir/decode_pass2.$jobid.log || exit 1;
 
 rm $dir/pre_lat.$jobid.gz
 
