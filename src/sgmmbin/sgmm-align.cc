@@ -213,9 +213,12 @@ int main(int argc, char *argv[]) {
           assert(words == transcript);
           alignment_writer.Write(utt, alignment);
           num_success ++;
-          KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows()) << " over "
-                    << features.NumRows() << " frames.";
+          if (num_success % 50  == 0) {
+            KALDI_LOG << "Processed " << num_success << " utterances, "
+                      << "log-like per frame for " << utt << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+          }
         } else {
           KALDI_WARN << "Did not successfully decode file " << utt << ", len = "
                      << (features.NumRows());

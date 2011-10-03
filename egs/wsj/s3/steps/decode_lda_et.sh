@@ -65,7 +65,7 @@ fi
 requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $srcdir/final.alimdl $srcdir/final.et $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -f $f ]; then
-     echo "decode_lda_mllt.sh: no such file $f";
+     echo "decode_lda_et.sh: no such file $f";
      exit 1;
   fi
 done

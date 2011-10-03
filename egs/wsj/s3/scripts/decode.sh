@@ -86,7 +86,7 @@ while [ $n -lt $num_jobs ]; do
      # this script retries once in case of failure.
      chmod +x $scriptfile
      sleep 1; # Wait a bit for the file system to sync up...
-     ( $cmd || ( cp $dir/decode${n}.log{,.first_try}; echo "Retrying command for part $n"; $cmd ) ) &
+     ( $cmd || ( cp $dir/decode${n}.log{,.first_try} 2>/dev/null; echo "Retrying command for part $n"; $cmd ) ) &
   else
     $script $graphdir $dir $n $extra_args &
   fi

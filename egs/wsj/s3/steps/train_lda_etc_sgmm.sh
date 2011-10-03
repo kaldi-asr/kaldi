@@ -15,18 +15,15 @@
 # limitations under the License.
 
 # To be run from ..
-# This script trains a model on top of LDA + [something] features, where
-# [something] may be MLLT, or ET, or MLLT + SAT.  Any speaker-specific
+# This script trains an SGMM with speaker vectors on top of LDA + [something] 
+# features, where [something] may be MLLT, or ET, or MLLT + SAT.  Any speaker-specific
 # transforms are expected to be located in the alignment directory. 
-# This script never re-estimates any transforms, it just does model 
-# training.  To make this faster, it initializes the model from the
-# old system's model, i.e. for each p.d.f., it takes the best-match pdf
-# from the old system (based on overlap of tree-stats counts), and 
-# uses that GMM to initialize the current GMM.
+# This script never re-estimates any transforms, it just does (SGMM) model 
+# training. 
 
 if [ $# != 6 ]; then
-   echo "Usage: steps/train_lda_etc_quick.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_lda_etc_quick.sh 2500 15000 data/train_si284 data/lang exp/tri3c_ali_si284 exp/tri4c"
+   echo "Usage: steps/train_lda_etc_quick.sh <num-leaves> <tot-substates> <phone-dim> <spk-dim> <data-dir> <lang-dir> <ali-dir> <ubm> <exp-dir>"
+   echo " e.g.: steps/train_lda_etc_quick.sh 2500 15000 50 40 data/train_si284 data/lang exp/tri3c_ali_si84 exp/ubm4c/final.ubm exp/sgmm4c"
    exit 1;
 fi
 
@@ -171,7 +168,7 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-if [ "$feats" != "$sifeats" ]; then
+if [ "$feats" -ne "$sifeats" ]; then
   # we have speaker-specific transforms, so need to estimate an alignment model.
   # Accumulate stats for "alignment model" which is as the model but with
   # the default features (shares Gaussian-level alignments).
@@ -188,7 +185,7 @@ if [ "$feats" != "$sifeats" ]; then
     "gmm-sum-accs - $dir/$x.*.acc2|" $dir/$x.alimdl \
      2>$dir/log/est_alimdl.log  || exit 1;
   rm $dir/$x.*.acc2
-  ( cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl )
+  cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl
 fi
 
 

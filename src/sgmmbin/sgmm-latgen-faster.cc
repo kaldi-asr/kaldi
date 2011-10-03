@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-latgen-simple.cc
+// sgmmbin/sgmm-latgen-faster.cc
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
 
@@ -23,13 +23,13 @@ using std::string;
 #include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/lattice-simple-decoder.h"
+#include "decoder/lattice-faster-decoder.h"
 #include "decoder/decodable-am-sgmm.h"
 #include "util/timer.h"
 
 namespace kaldi {
 // Takes care of output.  Returns total like.
-double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
+double ProcessDecodedOutput(const LatticeFasterDecoder &decoder,
                             const fst::SymbolTable *word_syms,
                             std::string utt,
                             double acoustic_scale,
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using SGMM-based model.\n"
-        "Usage:  sgmm-latgen-simple [options] <model-in> <fst-in> "
+        "Usage:  sgmm-latgen-faster [options] <model-in> <fst-in> "
         "<features-rspecifier> <lattices-wspecifier> [<words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
     string word_syms_filename, gselect_rspecifier, spkvecs_rspecifier,
         utt2spk_rspecifier;
 
-    LatticeSimpleDecoderConfig decoder_opts;
+    LatticeFasterDecoderConfig decoder_opts;
     SgmmGselectConfig sgmm_opts;
     decoder_opts.Register(&po);    
     sgmm_opts.Register(&po);
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
-    LatticeSimpleDecoder decoder(*decode_fst, decoder_opts);
+    LatticeFasterDecoder decoder(*decode_fst, decoder_opts);
     
     Timer timer;
     const std::vector<std::vector<int32> > empty_gselect;

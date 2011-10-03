@@ -244,6 +244,12 @@ void AmSgmm::InitializeFromFullGmm(const FullGmm &full_gmm,
         << " to " << full_gmm.Dim() + 1;
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
+  if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
+    KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
+               << full_gmm.Dim() << "]. Changing from " << spk_subspace_dim
+               << " to " << full_gmm.Dim() + 1;
+    spk_subspace_dim = full_gmm.Dim();
+  }
   w_.Resize(0, 0);
   N_.clear();
   c_.clear();
@@ -457,15 +463,21 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
 }
 
 void AmSgmm::IncreasePhoneSpaceDim(int32 target_dim,
-                                          const Matrix<BaseFloat> &norm_xform) {
+                                   const Matrix<BaseFloat> &norm_xform) {
   KALDI_ASSERT(!M_.empty());
   int32 initial_dim = PhoneSpaceDim(),
       feat_dim = FeatureDim();
   KALDI_ASSERT(norm_xform.NumRows() == feat_dim);
 
+  if (target_dim < initial_dim)
+    KALDI_ERR << "You asked to increase phn dim to a value lower than the "
+              << " current dimension, " << target_dim << " < " << initial_dim;
+
   if (target_dim > initial_dim + feat_dim) {
-    KALDI_ERR << "Cannot increase phone subspace dimensionality from " <<
-        initial_dim << " to " << target_dim;
+    KALDI_WARN << "Cannot increase phone subspace dimensionality from "
+               << initial_dim << " to " << target_dim << ", increasing to "
+               << initial_dim + feat_dim;
+    target_dim = initial_dim + feat_dim;
   }
 
   if (initial_dim < target_dim) {
@@ -507,9 +519,15 @@ void AmSgmm::IncreaseSpkSpaceDim(int32 target_dim,
   if (N_.size() == 0)
     N_.resize(NumGauss());
 
+  if (target_dim < initial_dim)
+    KALDI_ERR << "You asked to increase spk dim to a value lower than the "
+              << " current dimension, " << target_dim << " < " << initial_dim;
+
   if (target_dim > initial_dim + feat_dim) {
-    KALDI_ERR << "Cannot increase speaker subspace dimensionality from " <<
-        initial_dim << " to " << target_dim;
+    KALDI_WARN << "Cannot increase speaker subspace dimensionality from "
+               << initial_dim << " to " << target_dim << ", increasing to "
+               << initial_dim + feat_dim;
+    target_dim = initial_dim + feat_dim;
   }
 
   if (initial_dim < target_dim) {

@@ -109,6 +109,22 @@ scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/dev_nov
 steps/align_lda_mllt_sat.sh data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
 
 steps/train_lda_etc_quick.sh  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/dev_nov93 exp/tri4b/decode_tgpr_dev93
+
+# Train UBM, for SGMM system on top of LDA+MLLT.
+steps/train_ubm_lda_etc.sh 400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c
+steps/train_sgmm_lda_etc.sh 3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c/final.ubm exp/sgmm3c
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
+scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/dev_nov93 exp/sgmm3c/decode_tgpr_dev93
+
+# Train SGMM system on top of LDA+MLLT+SAT.
+steps/align_lda_mllt_sat.sh data/train_si84 data/lang exp/tri3b exp/tri3b_ali_si84
+steps/train_ubm_lda_etc.sh 400 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b
+steps/train_sgmm_lda_etc.sh 3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b/final.ubm exp/sgmm4b
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
+scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4b/graph_tgpr data/dev_nov93 exp/sgmm4b/decode_tgpr_dev93
+
 
 ### END  ###
 
