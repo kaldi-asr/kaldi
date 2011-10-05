@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "Usage:  fstmakecontextfst phones_symtab subseq_sym ilabels_output_file [out.fst]\n"
         "E.g.:   fstmakecontextfst phones.txt 42 ilabels.sym > C.fst\n";
 
-    bool binary = false;  // binary output to ilabels_output_file.
+    bool binary = true;  // binary output to ilabels_output_file.
     std::string disambig_list_infile;
     std::string disambig_list_outfile;
     int32 N = 3;

@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-align tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;

@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
         "   gmm-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;

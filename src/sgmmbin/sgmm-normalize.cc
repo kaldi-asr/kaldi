@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "  f  6 7 8 9 10\n"
         "Usage: sgmm-normalize [options] <model-in> <gaussians-rspecifier> <model-out>\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");

@@ -40,7 +40,7 @@ local/wsj_format_data.sh
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_wsj_mfcc
-for x in eval_nov92 eval_nov93 dev_nov93 train_si284; do 
+for x in test_eval92 test_eval93 test_dev93 train_si284; do 
  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
 done
 
@@ -52,85 +52,135 @@ done
 scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt
 scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender
 
-# Now make subset with 2k utterances from si-84.
-scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2k
+# Now make subset with the shortest 2k utterances from si-84.
+scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2kshort
 
 # Now make subset with half of the data from si-84.
 scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
 
-steps/train_mono.sh data/train_si84_2k data/lang exp/mono
+decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 
-scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono exp/mono/graph_tgpr
+steps/train_mono.sh data/train_si84_2kshort data/lang exp/mono0a
 
-scripts/decode.sh steps/decode_deltas.sh exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_tgpr_dev93
-scripts/decode.sh steps/decode_deltas.sh exp/mono/graph_tgpr data/eval_nov92 exp/mono/decode_tgpr_eval92
+(
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92
+)&
 
-steps/align_deltas.sh data/train_si84_half data/lang exp/mono exp/mono_ali
+# This queue option will be supplied to all alignment
+# and training scripts.  Note: you have to supply the same num-jobs
+# to the alignment and training scripts, as the archives are split
+# up in this way.
 
-steps/train_deltas.sh 2000 10000 data/train_si84_half data/lang exp/mono_ali exp/tri1
+
+steps/align_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade"\
+   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali
+
+steps/train_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1
 
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
 
-scripts/decode.sh steps/decode_deltas.sh exp/tri1/graph_tgpr data/eval_nov92 exp/tri1/decode_tgpr_eval92
-scripts/decode.sh steps/decode_deltas.sh exp/tri1/graph_tgpr data/dev_nov93 exp/tri1/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93
 
 # Align tri1 system with si84 data.
-steps/align_deltas.sh data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84
+steps/align_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84
+
 
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
-steps/train_deltas.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a
+steps/train_deltas.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
-scripts/decode.sh steps/decode_deltas.sh exp/tri2a/graph_tgpr data/eval_nov92 exp/tri2a/decode_tgpr_eval92
-scripts/decode.sh steps/decode_deltas.sh exp/tri2a/graph_tgpr data/dev_nov93 exp/tri2a/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93
 
 
 # Train tri2b, which is LDA+MLLT, on si84 data.
-steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
+steps/train_lda_mllt.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
-scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/eval_nov92 exp/tri2b/decode_tgpr_eval92
-scripts/decode.sh steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/dev_nov93 exp/tri2b/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
 
 # Align tri2b system with si84 data.
-steps/align_lda_mllt.sh --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
+steps/align_lda_mllt.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
 
-
-steps/train_lda_et.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
+# Train LDA+ET system.
+steps/train_lda_et.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr
-scripts/decode.sh steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_tgpr_dev93
-
-scripts/decode.sh steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_tgpr_dev93_2pass
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93_2pass
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
 steps/train_lda_mllt_sat.sh 2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
-scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/dev_nov93 exp/tri3b/decode_tgpr_dev93
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93
 
 # From 3b system, align all si284 data.
-steps/align_lda_mllt_sat.sh data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
+steps/align_lda_mllt_sat.sh   --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
 
-steps/train_lda_etc_quick.sh  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
+steps/train_lda_etc_quick.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
-scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/dev_nov93 exp/tri4b/decode_tgpr_dev93
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
 
 # Train UBM, for SGMM system on top of LDA+MLLT.
-steps/train_ubm_lda_etc.sh 400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c
-steps/train_sgmm_lda_etc.sh 3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c/final.ubm exp/sgmm3c
+steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+  400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c
+# Align that data with 20 splits..
+steps/align_lda_mllt.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84_10
+steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+   3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84_10 exp/ubm3c/final.ubm exp/sgmm3c
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
-scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/dev_nov93 exp/sgmm3c/decode_tgpr_dev93
+scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+ 
 
 # Train SGMM system on top of LDA+MLLT+SAT.
 steps/align_lda_mllt_sat.sh data/train_si84 data/lang exp/tri3b exp/tri3b_ali_si84
 steps/train_ubm_lda_etc.sh 400 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b
 steps/train_sgmm_lda_etc.sh 3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b/final.ubm exp/sgmm4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
-scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4b/graph_tgpr data/dev_nov93 exp/sgmm4b/decode_tgpr_dev93
+scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
 
+# Align 2b system with si284 data and num-jobs = 20; we'll train an LDA+MLLT+SAT system on si284 from this.
+steps/align_lda_mllt.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+  data/train_si284 data/lang exp/tri2b exp/tri2b_ali_si284_20
+
+steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+  4200 40000 data/train_si284 data/lang exp/tri2b_ali_si284_20 exp/tri3d
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri3d exp/tri3d/graph_tgpr
+scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d/graph_tgpr data/test_dev93 exp/tri3d/decode_tgpr_dev93
+
+# align tri3d models with all the data.
+steps/align_lda_mllt_sat.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+  --use-graphs data/train_si284 data/lang exp/tri3d exp/tri3d_ali_si284
+# Try another phase of normal training on top of the tri3d models...
+(
+ steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+  4200 40000 data/train_si284 data/lang exp/tri3d_ali_si284 exp/tri4d  && \
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri4d exp/tri4d/graph_tgpr && \
+  scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d/graph_tgpr data/test_dev93 exp/tri4d/decode_tgpr_dev93
+) &
+
+# Do the same with the "quick" retraining.
+(
+ steps/train_lda_etc_quick.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+  4200 40000 data/train_si284 data/lang exp/tri3d_ali_si284 exp/tri4e && \
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri4e exp/tri4e/graph_tgpr && \
+  scripts/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4e/graph_tgpr data/test_dev93 exp/tri4e/decode_tgpr_dev93
+) &
 
 ### END  ###
 
 
 
-# exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
+# exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/test_eval92.scp 
 
 # add --no-queue --num-jobs 4 after "scripts/decode.sh" below, if you don't have
 # qsub (i.e. Sun Grid Engine) on your system.  The number of jobs to use depends
@@ -140,8 +190,8 @@ scripts/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4b/graph_tgpr data/dev_no
 # you'd have to modify the script to use that.
 
 (scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_mono_tgpr_eval93 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_mono_tgpr_eval93 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/test_eval93.scp 
 ) &
 
 
@@ -191,7 +241,7 @@ cp data_prep/train_si284.spk2utt data/train.spk2utt
 cp data_prep/train_si284.utt2spk data/train.utt2spk
 cp data_prep/spk2gender.map data/
 
-for x in eval_nov92 dev_nov93 eval_nov93; do 
+for x in test_eval92 test_dev93 test_eval93; do 
   cp data_prep/$x.spk2utt data/
   cp data_prep/$x.utt2spk data/
   cp data_prep/$x.txt data/
@@ -269,27 +319,27 @@ steps/train_mono.sh || exit 1;
 # you'd have to modify the script to use that.
 
 (scripts/mkgraph.sh --mono data/G_tg_pruned.fst exp/mono/tree exp/mono/final.mdl exp/graph_mono_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_mono_tgpr_eval93 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_mono_tgpr_eval92 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_mono_tgpr_eval93 exp/graph_mono_tg_pruned/HCLG.fst steps/decode_mono.sh data/test_eval93.scp 
 ) &
 
 steps/train_tri1.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri1/tree exp/tri1/final.mdl exp/graph_tri1_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri1_tgpr_eval92 exp/graph_tri1_tg_pruned/HCLG.fst steps/decode_tri1.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri1_tgpr_eval93 exp/graph_tri1_tg_pruned/HCLG.fst steps/decode_tri1.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri1_tgpr_eval92 exp/graph_tri1_tg_pruned/HCLG.fst steps/decode_tri1.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri1_tgpr_eval93 exp/graph_tri1_tg_pruned/HCLG.fst steps/decode_tri1.sh data/test_eval93.scp 
 ) &
 
 steps/train_tri2a.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_tg_pruned || exit 1;
   for year in 92 93; do
-   scripts/decode.sh exp/decode_tri2a_tgpr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
-   scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh exp/decode_tri2a_tgpr_dfmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
+   scripts/decode.sh exp/decode_tri2a_tgpr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/test_eval${year}.scp 
+   scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/test_eval${year}.scp 
+   scripts/decode.sh exp/decode_tri2a_tgpr_dfmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/test_eval${year}.scp 
+   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/test_eval${year}.scp 
+   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr_fmllr.sh data/test_eval${year}.scp 
+   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/test_eval${year}.scp 
  done
 
 )&
@@ -298,21 +348,21 @@ steps/train_tri2a.sh || exit 1;
 (
  scripts/mkgraph.sh data/G_bg.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_bg || exit 1;
  for year in 92 93; do
-  scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/eval_nov${year}.scp 
-  scripts/latoracle.sh exp/decode_tri2a_bg_latgen_eval${year} data/eval_nov${year}.txt exp/decode_tri2a_bg_latoracle_eval${year}
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_eval${year} 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_pruned_eval${year} 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_bg_eval${year} 
+  scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/test_eval${year}.scp 
+  scripts/latoracle.sh exp/decode_tri2a_bg_latgen_eval${year} data/test_eval${year}.txt exp/decode_tri2a_bg_latoracle_eval${year}
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst data/test_eval${year}.txt exp/decode_tri2a_bg_rescore_tg_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/test_eval${year}.txt exp/decode_tri2a_bg_rescore_tg_pruned_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst data/test_eval${year}.txt exp/decode_tri2a_bg_rescore_bg_eval${year} 
  done
 
  for year in 92 93; do
-  scripts/decode.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen_beam15.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_tri2a_tgpr_beam15_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_beam15.sh data/eval_nov${year}.scp 
+  scripts/decode.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen_beam15.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_tri2a_tgpr_beam15_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_beam15.sh data/test_eval${year}.scp 
 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_tg_eval${year} 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_tg_pruned_eval${year} 
-  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg15_rescore_bg_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg.fst data/test_eval${year}.txt exp/decode_tri2a_bg15_rescore_tg_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/test_eval${year}.txt exp/decode_tri2a_bg15_rescore_tg_pruned_eval${year} 
+  scripts/latrescore.sh exp/decode_tri2a_bg_latgen_beam15_eval${year} data/G_bg.fst data/G_bg.fst data/test_eval${year}.txt exp/decode_tri2a_bg15_rescore_bg_eval${year} 
  done
  )&
 
@@ -323,25 +373,25 @@ steps/train_tri3a.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_tg_pruned || exit 1;
 for year in 92 93; do
- scripts/decode.sh exp/decode_tri3a_tgpr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a.sh data/eval_nov${year}.scp 
+ scripts/decode.sh exp/decode_tri3a_tgpr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a.sh data/test_eval${year}.scp 
 # per-speaker fMLLR
-scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_fmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp
+scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_fmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/test_eval${year}.scp
 # per-utterance fMLLR
-scripts/decode.sh exp/decode_tri3a_tgpr_uttfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp 
+scripts/decode.sh exp/decode_tri3a_tgpr_uttfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/test_eval${year}.scp 
 # per-speaker diagonal fMLLR
-scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_dfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
+scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_dfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/test_eval${year}.scp 
 # per-utterance diagonal fMLLR
-scripts/decode.sh exp/decode_tri3a_tgpr_uttdfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
+scripts/decode.sh exp/decode_tri3a_tgpr_uttdfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/test_eval${year}.scp 
 done
 )&
 
 # also doing tri3a with bigram
 (
  scripts/mkgraph.sh data/G_bg.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_bg || exit 1;
- scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov93.scp 
- scripts/decode.sh exp/decode_tri3a_bg_latgen_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a_latgen.sh data/eval_nov92.scp 
- scripts/latrescore.sh exp/decode_tri3a_bg_latgen_eval92 data/G_bg.fst data/G_tg.fst data/eval_nov92.txt exp/decode_tri3a_bg_rescore_tg_eval92 
+ scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/test_eval93.scp 
+ scripts/decode.sh exp/decode_tri3a_bg_latgen_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a_latgen.sh data/test_eval92.scp 
+ scripts/latrescore.sh exp/decode_tri3a_bg_latgen_eval92 data/G_bg.fst data/G_tg.fst data/test_eval92.txt exp/decode_tri3a_bg_rescore_tg_eval92 
 )&
 
 
@@ -351,10 +401,10 @@ done
 steps/train_tri2b.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2b/tree exp/tri2b/final.mdl exp/graph_tri2b_tg_pruned || exit 1;
   for year in 92 93; do
- scripts/decode.sh exp/decode_tri2b_tgpr_utt_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b.sh data/eval_nov${year}.scp 
- scripts/decode.sh --per-spk exp/decode_tri2b_tgpr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b.sh data/eval_nov${year}.scp 
- scripts/decode.sh exp/decode_tri2b_tgpr_utt_fmllr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b_fmllr.sh data/eval_nov${year}.scp 
- scripts/decode.sh --per-spk exp/decode_tri2b_tgpr_fmllr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b_fmllr.sh data/eval_nov${year}.scp 
+ scripts/decode.sh exp/decode_tri2b_tgpr_utt_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b.sh data/test_eval${year}.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2b_tgpr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b.sh data/test_eval${year}.scp 
+ scripts/decode.sh exp/decode_tri2b_tgpr_utt_fmllr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b_fmllr.sh data/test_eval${year}.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2b_tgpr_fmllr_eval${year} exp/graph_tri2b_tg_pruned/HCLG.fst steps/decode_tri2b_fmllr.sh data/test_eval${year}.scp 
 done
 
 ) &
@@ -362,32 +412,32 @@ done
 # Cepstral Mean Normalization (CMN)
 steps/train_tri2c.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2c/tree exp/tri2c/final.mdl exp/graph_tri2c_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2c_tgpr_utt_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov92.scp 
- scripts/decode.sh --per-spk exp/decode_tri2c_tgpr_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri2c_tgpr_utt_eval93 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov93.scp 
- scripts/decode.sh --per-spk exp/decode_tri2c_tgpr_eval93 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2c_tgpr_utt_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/test_eval92.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2c_tgpr_eval92 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri2c_tgpr_utt_eval93 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/test_eval93.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2c_tgpr_eval93 exp/graph_tri2c_tg_pruned/HCLG.fst steps/decode_tri2c.sh data/test_eval93.scp 
 )&
 
 
 # MLLT/STC
 steps/train_tri2d.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2d/tree exp/tri2d/final.mdl exp/graph_tri2d_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2d_tgpr_eval92 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri2d_tgpr_eval93 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2d_tgpr_eval92 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri2d_tgpr_eval93 exp/graph_tri2d_tg_pruned/HCLG.fst steps/decode_tri2d.sh data/test_eval93.scp 
  )&
 
 # Splice+LDA
 steps/train_tri2e.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2e/tree exp/tri2e/final.mdl exp/graph_tri2e_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2e_tgpr_eval92 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri2e_tgpr_eval93 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2e_tgpr_eval92 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri2e_tgpr_eval93 exp/graph_tri2e_tg_pruned/HCLG.fst steps/decode_tri2e.sh data/test_eval93.scp 
  )&
 
 # Splice+LDA+MLLT
 steps/train_tri2f.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2f/tree exp/tri2f/final.mdl exp/graph_tri2f_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2f_tgpr_eval92 exp/graph_tri2f_tg_pruned/HCLG.fst steps/decode_tri2f.sh data/eval_nov92.scp  
- scripts/decode.sh exp/decode_tri2f_tgpr_eval93 exp/graph_tri2f_tg_pruned/HCLG.fst steps/decode_tri2f.sh data/eval_nov93.scp  
+ scripts/decode.sh exp/decode_tri2f_tgpr_eval92 exp/graph_tri2f_tg_pruned/HCLG.fst steps/decode_tri2f.sh data/test_eval92.scp  
+ scripts/decode.sh exp/decode_tri2f_tgpr_eval93 exp/graph_tri2f_tg_pruned/HCLG.fst steps/decode_tri2f.sh data/test_eval93.scp  
 )&
 
 # Linear VTLN (+ regular VTLN)
@@ -396,13 +446,13 @@ steps/train_tri2g.sh
  scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2g/tree exp/tri2g/final.mdl exp/graph_tri2g_tg_pruned || exit 1;
 
 for year in 92 93; do
- scripts/decode.sh exp/decode_tri2g_tgpr_utt_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g.sh data/eval_nov${year}.scp  
- scripts/decode.sh exp/decode_tri2g_tgpr_utt_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag.sh data/eval_nov${year}.scp  
- scripts/decode.sh --wav exp/decode_tri2g_tgpr_utt_vtln_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_vtln_diag.sh data/eval_nov${year}.scp  
- scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_diag_fmllr_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag_fmllr.sh data/eval_nov${year}.scp  
- scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g.sh data/eval_nov${year}.scp  
- scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag.sh data/eval_nov${year}.scp  
- scripts/decode.sh --wav --per-spk exp/decode_tri2g_tgpr_vtln_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_vtln_diag.sh data/eval_nov${year}.scp  
+ scripts/decode.sh exp/decode_tri2g_tgpr_utt_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g.sh data/test_eval${year}.scp  
+ scripts/decode.sh exp/decode_tri2g_tgpr_utt_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag.sh data/test_eval${year}.scp  
+ scripts/decode.sh --wav exp/decode_tri2g_tgpr_utt_vtln_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_vtln_diag.sh data/test_eval${year}.scp  
+ scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_diag_fmllr_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag_fmllr.sh data/test_eval${year}.scp  
+ scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g.sh data/test_eval${year}.scp  
+ scripts/decode.sh --per-spk exp/decode_tri2g_tgpr_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_diag.sh data/test_eval${year}.scp  
+ scripts/decode.sh --wav --per-spk exp/decode_tri2g_tgpr_vtln_diag_eval${year} exp/graph_tri2g_tg_pruned/HCLG.fst steps/decode_tri2g_vtln_diag.sh data/test_eval${year}.scp  
 done
 
 )&
@@ -410,22 +460,22 @@ done
 # Splice+HLDA
 steps/train_tri2h.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2h/tree exp/tri2h/final.mdl exp/graph_tri2h_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2h_tgpr_eval92 exp/graph_tri2h_tg_pruned/HCLG.fst steps/decode_tri2h.sh data/eval_nov92.scp  
- scripts/decode.sh exp/decode_tri2h_tgpr_eval93 exp/graph_tri2h_tg_pruned/HCLG.fst steps/decode_tri2h.sh data/eval_nov93.scp  
+ scripts/decode.sh exp/decode_tri2h_tgpr_eval92 exp/graph_tri2h_tg_pruned/HCLG.fst steps/decode_tri2h.sh data/test_eval92.scp  
+ scripts/decode.sh exp/decode_tri2h_tgpr_eval93 exp/graph_tri2h_tg_pruned/HCLG.fst steps/decode_tri2h.sh data/test_eval93.scp  
 )&
 
 # Triple-deltas + HLDA
 steps/train_tri2i.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2i/tree exp/tri2i/final.mdl exp/graph_tri2i_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2i_tgpr_eval92 exp/graph_tri2i_tg_pruned/HCLG.fst steps/decode_tri2i.sh data/eval_nov92.scp  
- scripts/decode.sh exp/decode_tri2i_tgpr_eval93 exp/graph_tri2i_tg_pruned/HCLG.fst steps/decode_tri2i.sh data/eval_nov93.scp  
+ scripts/decode.sh exp/decode_tri2i_tgpr_eval92 exp/graph_tri2i_tg_pruned/HCLG.fst steps/decode_tri2i.sh data/test_eval92.scp  
+ scripts/decode.sh exp/decode_tri2i_tgpr_eval93 exp/graph_tri2i_tg_pruned/HCLG.fst steps/decode_tri2i.sh data/test_eval93.scp  
 )&
 
 # Splice + HLDA
 steps/train_tri2j.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2j/tree exp/tri2j/final.mdl exp/graph_tri2j_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2j_tgpr_eval92 exp/graph_tri2j_tg_pruned/HCLG.fst steps/decode_tri2j.sh data/eval_nov92.scp
- scripts/decode.sh exp/decode_tri2j_tgpr_eval93 exp/graph_tri2j_tg_pruned/HCLG.fst steps/decode_tri2j.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2j_tgpr_eval92 exp/graph_tri2j_tg_pruned/HCLG.fst steps/decode_tri2j.sh data/test_eval92.scp
+ scripts/decode.sh exp/decode_tri2j_tgpr_eval93 exp/graph_tri2j_tg_pruned/HCLG.fst steps/decode_tri2j.sh data/test_eval93.scp 
  )&
 
 
@@ -433,9 +483,9 @@ steps/train_tri2j.sh
 steps/train_tri2k.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2k/tree exp/tri2k/final.mdl exp/graph_tri2k_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh exp/decode_tri2k_tgpr_utt_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/eval_nov$year.scp 
-  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/eval_nov$year.scp 
-  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_fmllr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k_fmllr.sh data/eval_nov$year.scp 
+  scripts/decode.sh exp/decode_tri2k_tgpr_utt_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/test_eval$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k.sh data/test_eval$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri2k_tgpr_fmllr_eval$year exp/graph_tri2k_tg_pruned/HCLG.fst steps/decode_tri2k_fmllr.sh data/test_eval$year.scp 
  done
  )&
 
@@ -443,19 +493,19 @@ steps/train_tri2k.sh
 steps/train_tri3k.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri3k/tree exp/tri3k/final.mdl exp/graph_tri3k_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh exp/decode_tri3k_tgpr_utt_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k.sh data/eval_nov$year.scp 
-  scripts/decode.sh --per-spk exp/decode_tri3k_tgpr_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k.sh data/eval_nov$year.scp 
-  scripts/decode.sh --per-spk exp/decode_tri3k_tgpr_fmllr_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k_fmllr.sh data/eval_nov$year.scp 
+  scripts/decode.sh exp/decode_tri3k_tgpr_utt_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k.sh data/test_eval$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri3k_tgpr_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k.sh data/test_eval$year.scp 
+  scripts/decode.sh --per-spk exp/decode_tri3k_tgpr_fmllr_eval$year exp/graph_tri3k_tg_pruned/HCLG.fst steps/decode_tri3k_fmllr.sh data/test_eval$year.scp 
  done
  )&
 
 # LDA+MLLT+SAT
 steps/train_tri2l.sh
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2l/tree exp/tri2l/final.mdl exp/graph_tri2l_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_tri2l_tgpr_utt_eval92 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri2l_tgpr_utt_eval93 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/eval_nov93.scp 
- scripts/decode.sh --per-spk exp/decode_tri2l_tgpr_eval92 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/eval_nov92.scp 
- scripts/decode.sh --per-spk exp/decode_tri2l_tgpr_eval93 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri2l_tgpr_utt_eval92 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_tri2l_tgpr_utt_eval93 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/test_eval93.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2l_tgpr_eval92 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/test_eval92.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2l_tgpr_eval93 exp/graph_tri2l_tg_pruned/HCLG.fst steps/decode_tri2l.sh data/test_eval93.scp 
  )&
 
 
@@ -467,14 +517,14 @@ steps/train_tri2m.sh
  scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2m/tree exp/tri2m/final.mdl exp/graph_tri2m_tg_pruned || exit 1;
 
 for year in 92 93; do
- scripts/decode.sh exp/decode_tri2m_tgpr_utt_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m.sh data/eval_nov${year}.scp  
- scripts/decode.sh exp/decode_tri2m_tgpr_utt_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag.sh data/eval_nov${year}.scp  
- scripts/decode.sh --wav exp/decode_tri2m_tgpr_utt_vtln_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_vtln_diag.sh data/eval_nov${year}.scp  
+ scripts/decode.sh exp/decode_tri2m_tgpr_utt_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m.sh data/test_eval${year}.scp  
+ scripts/decode.sh exp/decode_tri2m_tgpr_utt_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag.sh data/test_eval${year}.scp  
+ scripts/decode.sh --wav exp/decode_tri2m_tgpr_utt_vtln_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_vtln_diag.sh data/test_eval${year}.scp  
 
- scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m.sh data/eval_nov${year}.scp 
- scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_diag_fmllr_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag_fmllr.sh data/eval_nov${year}.scp  
- scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag.sh data/eval_nov${year}.scp  
- scripts/decode.sh --wav --per-spk exp/decode_tri2m_tgpr_vtln_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_vtln_diag.sh data/eval_nov${year}.scp  
+ scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m.sh data/test_eval${year}.scp 
+ scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_diag_fmllr_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag_fmllr.sh data/test_eval${year}.scp  
+ scripts/decode.sh --per-spk exp/decode_tri2m_tgpr_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_diag.sh data/test_eval${year}.scp  
+ scripts/decode.sh --wav --per-spk exp/decode_tri2m_tgpr_vtln_diag_eval${year} exp/graph_tri2m_tg_pruned/HCLG.fst steps/decode_tri2m_vtln_diag.sh data/test_eval${year}.scp  
 done
 
 )&
@@ -486,17 +536,17 @@ train_ubm2a.sh || exit 1;
 steps/train_sgmm2a.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2a/tree exp/sgmm2a/final.mdl exp/graph_sgmm2a_tg_pruned || exit 1;
- scripts/decode.sh exp/decode_sgmm2a_tgpr_eval92 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_sgmm2a_tgpr_eval93 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/eval_nov93.scp )&
+ scripts/decode.sh exp/decode_sgmm2a_tgpr_eval92 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/test_eval92.scp 
+ scripts/decode.sh exp/decode_sgmm2a_tgpr_eval93 exp/graph_sgmm2a_tg_pruned/HCLG.fst steps/decode_sgmm2a.sh data/test_eval93.scp )&
 
 # + speaker vectors
 steps/train_sgmm2b.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2b/tree exp/sgmm2b/final.mdl exp/graph_sgmm2b_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm2b_fmllr_tgpr_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm2b_tgpr_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_sgmm2b_tgpr_utt_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm2b_fmllr_tgpr_eval${year} exp/graph_sgmm2b_tg_pruned/HCLG.fst steps/decode_sgmm2b_fmllr.sh data/test_eval${year}.scp 
  done
 )&
 
@@ -507,9 +557,9 @@ steps/train_sgmm2d.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2d/tree exp/sgmm2d/final.mdl exp/graph_sgmm2d_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh --per-spk exp/decode_sgmm2d_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_sgmm2d_tgpr_utt_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm2d_fmllr_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm2d_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_sgmm2d_tgpr_utt_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm2d_fmllr_tgpr_eval${year} exp/graph_sgmm2d_tg_pruned/HCLG.fst steps/decode_sgmm2d_fmllr.sh data/test_eval${year}.scp 
  done
 )&
 
@@ -519,9 +569,9 @@ steps/train_sgmm2e.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm2e/tree exp/sgmm2e/final.mdl exp/graph_sgmm2e_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh --per-spk exp/decode_sgmm2e_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
-  scripts/decode.sh exp/decode_sgmm2e_tgpr_utt_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm2e_fmllr_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm2e_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/test_eval${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh exp/decode_sgmm2e_tgpr_utt_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm2e_fmllr_tgpr_eval${year} exp/graph_sgmm2e_tg_pruned/HCLG.fst steps/decode_sgmm2e_fmllr.sh data/test_eval${year}.scp 
  done
 )&
 
@@ -532,9 +582,9 @@ steps/train_sgmm3b.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3b/tree exp/sgmm3b/final.mdl exp/graph_sgmm3b_tg_pruned || exit 1;
  for year in 92 93; do 
-  scripts/decode.sh --per-spk exp/decode_sgmm3b_tgpr_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_sgmm3b_tgpr_utt_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm3b_fmllr_tgpr_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b_fmllr.sh data/eval_nov${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm3b_tgpr_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_sgmm3b_tgpr_utt_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm3b_fmllr_tgpr_eval${year} exp/graph_sgmm3b_tg_pruned/HCLG.fst steps/decode_sgmm3b_fmllr.sh data/test_eval${year}.scp 
  done
 )&
 
@@ -544,11 +594,11 @@ steps/train_sgmm3c.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3c/tree exp/sgmm3c/final.mdl exp/graph_sgmm3c_tg_pruned || exit 1;
  for year in 92 93; do
-  scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/eval_nov${year}.scp 
-  scripts/decode.sh exp/decode_sgmm3c_tgpr_utt_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_norm.sh data/eval_nov${year}.scp 
-  scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr_norm.sh data/eval_nov${year}.scp
+  scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/test_eval${year}.scp 
+  scripts/decode.sh exp/decode_sgmm3c_tgpr_utt_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk exp/decode_sgmm3c_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_norm.sh data/test_eval${year}.scp 
+  scripts/decode.sh --per-spk  exp/decode_sgmm3c_fmllr_tgpr_norm_eval${year} exp/graph_sgmm3c_tg_pruned/HCLG.fst steps/decode_sgmm3c_fmllr_norm.sh data/test_eval${year}.scp
  done
 )&
 
@@ -559,9 +609,9 @@ steps/train_sgmm3e.sh || exit 1;
 
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3e/tree exp/sgmm3e/final.mdl exp/graph_sgmm3e_tg_pruned || exit 1;
 for year in 92 93; do
-  scripts/decode.sh --per-spk exp/decode_sgmm3e_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
-  scripts/decode.sh exp/decode_sgmm3e_tgpr_utt_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
-  scripts/decode.sh --per-spk  exp/decode_sgmm3e_fmllr_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e_fmllr.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh --per-spk exp/decode_sgmm3e_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/test_eval${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh exp/decode_sgmm3e_tgpr_utt_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e.sh data/test_eval${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+  scripts/decode.sh --per-spk  exp/decode_sgmm3e_fmllr_tgpr_eval${year} exp/graph_sgmm3e_tg_pruned/HCLG.fst steps/decode_sgmm3e_fmllr.sh data/test_eval${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
 done
 )&
 
@@ -570,7 +620,7 @@ done
 # see RESULTS for results...
 
 # For an e.g. of scoring with sclite: do e.g.
-# scripts/score_sclite.sh exp/decode_tri2a_tgpr_eval92 data/eval_nov92.txt
+# scripts/score_sclite.sh exp/decode_tri2a_tgpr_eval92 data/test_eval92.txt
 # cat exp/decode_tri2a_tgpr_eval92/scoring/hyp.sys
 
 

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "   compose-transforms ark:1.trans ark:2.trans ark:3.trans\n";
 
     bool b_is_affine = false;
-    bool binary = false;
+    bool binary = true;
     std::string utt2spk_rspecifier;
     ParseOptions po(usage);
 

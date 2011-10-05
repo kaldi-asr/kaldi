@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     float var_floor = 0.01;
     string ci_phones_str;
     int N = 3;

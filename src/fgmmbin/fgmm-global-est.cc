@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         "Estimate a full-covariance GMM from the accumulated stats.\n"
         "Usage:  fgmm-global-est [options] <model-in> <stats-in> <model-out>\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     int32 mixup = 0;
     kaldi::BaseFloat perturb_factor = 0.01;
 

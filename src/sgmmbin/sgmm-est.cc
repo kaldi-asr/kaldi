@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Estimate SGMM model parameters from accumulated stats.\n"
         "Usage: sgmm-est [options] <model-in> <stats-in> <model-out>\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     std::string update_flags_str = "vMNwcSt";
     std::string write_flags_str = "gsnu";
     kaldi::TransitionUpdateConfig tcfg;

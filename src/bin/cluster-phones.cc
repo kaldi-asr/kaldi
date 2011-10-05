@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     // Format of questions.txt output is similar, but with more lines (and the same phone
     // may appear on multiple lines).
 
-    // bool binary = false;
+    // bool binary = true;
     int32 P = 1;
     std::string hmm_position_list_str = "1";  // 1 is just the central position of 3.
     std::string mode = "questions";

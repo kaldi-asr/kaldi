@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-train-lvtln-special 5 5.lvtln 6.lvtln scp:train.scp scp:train_warp095.scp ark:nosil.post\n";
 
-    bool binary = false;
+    bool binary = true;
     bool normalize_var = false;
     bool normalize_covar = false;
     ParseOptions po(usage);

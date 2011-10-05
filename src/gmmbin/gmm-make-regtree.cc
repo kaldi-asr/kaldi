@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     std::string occs_in_filename;
     std::string sil_phones_str;
-    bool binary_write = false;
+    bool binary_write = true;
     int32 max_leaves = 1;
     kaldi::ParseOptions po(usage);
     po.Register("state-occs", &occs_in_filename, "File containing state occupancies (use --write-occs in gmm-est)");

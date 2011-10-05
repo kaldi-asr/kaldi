@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         " model topology.\n"
         "Usage: sgmm-init [options] <topology-in> <tree-in> <ubm-in> <sgmm-out>\n";
     
-    bool binary = false;
+    bool binary = true;
     int32 phn_space_dim = 0, spk_space_dim = 0;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");

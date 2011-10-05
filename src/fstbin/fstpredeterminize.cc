@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
         "Usage:  fstpredeterminize disambig_out.list [in.fst [out.fst] ]\n";
 
     // no options.
-    // bool binary = false;
+    // bool binary = true;
     int32 first_disambig = 0;
     std::string prefix = "#";
     ParseOptions po(usage);

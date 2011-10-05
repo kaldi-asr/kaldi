@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     std::string disambig_list_infile;
     std::string disambig_list_outfile;
     int32 N = 3;

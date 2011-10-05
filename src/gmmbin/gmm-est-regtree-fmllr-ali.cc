@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
     po.Register("binary", &binary, "Write output in binary mode");

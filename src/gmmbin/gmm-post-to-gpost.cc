@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         " gmm-post-to-gpost 1.mdl scp:train.scp ark:1.post ark:1.gpost\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat rand_prune = 0.0;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune, "Randomized pruning of posteriors less than this");

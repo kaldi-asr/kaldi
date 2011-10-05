@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
         "training.\n"
         "Usage: fgmm-global-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
 
-    bool binary = false;
+    bool binary = true;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

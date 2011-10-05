@@ -25,15 +25,15 @@
 
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
-numjobs=1
+nj=1
 jobid=0
 if [ "$1" == "-j" ]; then
   shift;
-  numjobs=$1;
+  nj=$1;
   jobid=$2;
   shift; shift;
-  if [ $jobid -ge $numjobs ]; then
-     echo "Invalid job number, $jobid >= $numjobs";
+  if [ $jobid -ge $nj ]; then
+     echo "Invalid job number, $jobid >= $nj";
      exit 1;
   fi
 fi
@@ -56,8 +56,8 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 
 mkdir -p $dir
 
-if [ $numjobs -gt 1 ]; then
-  mydata=$data/split$numjobs/$jobid
+if [ $nj -gt 1 ]; then
+  mydata=$data/split$nj/$jobid
 else
   mydata=$data
 fi
@@ -70,10 +70,12 @@ for f in $requirements; do
   fi
 done
 if [ ! -z "$olddir" ]; then # "$olddir" nonempty..
-  if [ ! -f $olddir/0.trans -o ! -f $olddir/$[$numjobs-1].trans ]; then
-    echo "Expect files $olddir/0.trans to $olddir/$[$numjobs-1].trans to exist"
-    exit 1
-  fi
+  for n in `get_splits.pl $nj`; do
+    if [ ! -f $olddir/$n.trans ]; then
+      echo "Expect file $olddir/$n.trans to exist"
+      exit 1
+    fi
+  done
 fi
 
 feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"

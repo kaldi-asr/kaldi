@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
         "or (initializing GMMs with old model):\n"
         "  gmm-init-model tree treeacc topo tree 1.mdl prev/tree prev/30.mdl\n";
 
-    bool binary = false;
+    bool binary = true;
     std::string occs_out_filename;
 
     ParseOptions po(usage);

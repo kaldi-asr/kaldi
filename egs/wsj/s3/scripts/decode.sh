@@ -14,34 +14,30 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
-qsub_opts="-l ram_free=1200M,mem_free=1200M"
-queue=all.q@@blade # Change this in the script if you need something different.
-use_queue=true
-num_jobs=  # If not set, will set it equal to the number of
-           # speakers in the test set.
-
-
-for n in 1 2 3 4; do
-   if [ "$1" == "--qsub-opts" ]; then
-      shift; 
-      qsub_opts=$1
-      shift;
-   fi
-   if [ "$1" == "--num-jobs" ]; then
-      shift; 
-      num_jobs=$1
-      shift;
-   fi
-   if [ "$1" == "--no-queue" ]; then
-      shift; 
-      use_queue=false
-   fi
+orig_args="$*"
+. path.sh
+# will set nj to #spkrs (if using queue) or 4 (if not), if
+# not set by the user.
+nj=
+cmd=scripts/run.pl
+for x in 1 2; do
+  if [ $1 == "--num-jobs" ]; then
+     shift
+     nj=$1
+     shift
+  fi
+  if [ $1 == "--cmd" ]; then
+     shift
+     cmd=$1
+     shift
+     [ -z "$cmd" ] && echo "Empty argument to --cmd option" && exit 1;
+  fi  
 done
 
+
 if [ $# -lt 4 ]; then
-   echo "Usage: scripts/decode.sh [--qsub-opts opts] [--no-queue] [--num-jobs n]  <decode_script> <graph-dir> <data-dir> <decode-dir> [extra-args...]"
-   exit 1;
+  echo "Usage: scripts/decode.sh [--cmd scripts/queue.sh opts..] [--num-jobs n] <decode_script> <graph-dir> <data-dir> <decode-dir> [extra-args...]"
+  exit 1;
 fi
 
 script=$1
@@ -63,38 +59,27 @@ for file in $graph $script $scp $data/utt2spk; do
   fi 
 done
 
-if [ "$num_jobs" == "" ]; then # Figure out num-jobs.
-  num_jobs=`scripts/utt2spk_to_spk2utt.pl $data/utt2spk | wc -l`
-fi
-
-echo "Decoding with num-jobs = $num_jobs"
-if [[ $num_jobs -gt 1 || ! -d $data/split$num_jobs || $data/split$num_jobs -ot $data/feats.scp ]]; then
-  scripts/split_data.sh $data $num_jobs
-fi
-
-n=0
-while [ $n -lt $num_jobs ]; do
-  if [ $use_queue == "true" ]; then
-     mkdir -p $dir/qlog
-     scriptfile=$dir/decode$n.sh
-    ( echo '#!/bin/bash' 
-      echo "cd ${PWD}"
-      echo "$script -j $num_jobs $n $graphdir $data $dir $extra_args" ) > $scriptfile
-     # -sync y causes the qsub to wait till the job is done. 
-     # Then the wait statement below waits for all the jobs to finish.
-     cmd=" qsub $qsub_opts -sync y  -q ${queue} -o $dir/qlog/log.$n -e $dir/qlog/err.$n  $scriptfile "
-     # this script retries once in case of failure.
-     chmod +x $scriptfile
-     sleep 1; # Wait a bit for the file system to sync up...
-     ( $cmd || ( cp $dir/decode${n}.log{,.first_try} 2>/dev/null; echo "Retrying command for part $n"; $cmd ) ) &
-  else
-    $script $graphdir $dir $n $extra_args &
+if [ "$nj" == "" ]; then # Figure out num-jobs; user did not specify.
+  cmd1=`echo $cmd | awk '{print $1;}'`
+  if [ `basename $cmd1` == run.pl ]; then
+    nj=4
+  else # running on queue...
+    nj=`scripts/utt2spk_to_spk2utt.pl $data/utt2spk | wc -l`
   fi
-  n=$[$n+1]
+fi
+
+echo "Decoding with num-jobs = $nj"
+if [[ $nj -gt 1 || ! -d $data/split$nj || $data/split$nj -ot $data/feats.scp ]]; then
+  scripts/split_data.sh $data $nj
+fi
+
+rm $dir/.error 2>/dev/null
+for n in `scripts/get_splits.pl $nj`; do
+  $cmd $dir/part$n.log \
+    $script -j $nj $n $graphdir $data $dir $extra_args || touch $dir/.error &
 done
 
 wait
-
+[ -f $dir/.error ] && echo "Error in decoding script: command line was decode.sh $orig_args" && exit 1;
 
 scripts/score_lats.sh $dir $graphdir/words.txt $data
-

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-mllt 1.mdl scp:train.scp ark:1.post 1.macc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat rand_prune = 0.25;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune, "Randomized pruning parameter to speed up accumulation");

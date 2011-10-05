@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
               "regtree-in features-rspecifier transforms-rspecifier "
               "words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
     

@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "  MLLT or LDA transform, if any, and\n"
         "  gmm-transform-means to apply <mllt-mat-out> to GMM means.\n";
 
-    bool binary = false;  // write in binary if true.
+    bool binary = true;  // write in binary if true.
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");

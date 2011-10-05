@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         " align-equal 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:equal.ali\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-stats-twofeats 1.mdl 1.ali scp:train.scp scp:train_new.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 

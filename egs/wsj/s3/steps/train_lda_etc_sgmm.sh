@@ -69,7 +69,8 @@ for n in 0 1 2 3; do
   sifeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 done
 
-if [ -f $alidir/0.trans ]; then
+n=`get_splits.pl $nj | awk '{print $1}'`
+if [ -f $alidir/$n.trans ]; then
   feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.trans|\" ark:- ark:- |"
   for n in 0 1 2 3; do
     featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split4/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
@@ -84,7 +85,7 @@ fi
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
 acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-  "ark:gunzip -c $alidir/?.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log  || exit 1;
+  "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log  || exit 1;
 
 echo "Computing questions for tree clustering"
 # preparing questions, roots file...

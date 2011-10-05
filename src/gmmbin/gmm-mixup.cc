@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "e.g. of changing to binary model format:\n"
         " gmm-mixup 1.mdl dontcare 2.mdl\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     TransitionUpdateConfig tcfg;
     int32 mixup = 0;
     int32 mixdown = 0;

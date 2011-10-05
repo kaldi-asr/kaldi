@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "Decode, reading log-likelihoods (of transition-ids or whatever symbol is on the graph) as matrices\n"
         "Usage:   decode-faster [options] fst-in loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat acoustic_scale = 0.1;
     bool allow_partial = true;
     std::string word_syms_filename;

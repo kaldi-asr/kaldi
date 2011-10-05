@@ -29,9 +29,16 @@
 # the supplied number of utterances for each speaker (typically
 # you would supply a much smaller number in this case).
 
+# If you give the --shortest option [not compatible with the
+# --per-spk option], it will give you the n shortest utterances.
+
 perspk=false
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
+  shift;
+fi
+if [ "$1" == "--shortest" ]; then
+  shortest=true;
   shift;
 fi
 
@@ -49,6 +56,7 @@ if [ ! -f $srcdir/feats.scp ]; then
   echo "subset_data_dir.sh: no such file $srcdir/feats.scp" 
   exit 1;
 fi
+
 
 
 ## scripting note: $perspk evaluates to true or false
@@ -72,11 +80,21 @@ else
     echo "subset_data_dir.sh: cannot subset to more utterances than you originally had."
     exit 1;
   fi 
-
   mkdir -p $destdir || exit 1;
 
-  # create feats.scp
-  scripts/subset_scp.pl $numutt $srcdir/feats.scp > $destdir/feats.scp || exit 1;
+  ## scripting note: $shortest evaluates to true or false
+  ## so this becomes the command true or false.
+  if $shortest; then
+    # select the n shortest utterances.
+    . path.sh
+    feat-to-len scp:$srcdir/feats.scp ark,t:$destdir/tmp.len || exit 1;
+    sort -n -k2 $destdir/tmp.len | awk '{print $1}' | head -$numutt >$destdir/tmp.uttlist
+    scripts/filter_scp.pl $destdir/tmp.uttlist $srcdir/feats.scp >$destdir/feats.scp
+    rm $destdir/tmp.uttlist $destdir/tmp.len
+  else
+    # create feats.scp
+    scripts/subset_scp.pl $numutt $srcdir/feats.scp > $destdir/feats.scp || exit 1;
+  fi
  
   if [ -f $srcdir/wav.scp ]; then
     scripts/filter_scp.pl $destdir/feats.scp $srcdir/wav.scp > $destdir/wav.scp || exit 1;

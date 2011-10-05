@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Usage:  gmm-est [options] <model-in> <stats-in> <model-out>\n"
         "e.g.: gmm-est 1.mdl 1.acc 2.mdl\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     TransitionUpdateConfig tcfg;
     int32 mixup = 0;
     int32 mixdown = 0;

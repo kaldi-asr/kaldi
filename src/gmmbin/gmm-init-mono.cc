@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-init-mono topo 39 mono.mdl mono.tree\n";
 
-    bool binary = false;
+    bool binary = true;
     std::string train_feats;
     std::string shared_phones_rxfilename;
     ParseOptions po(usage);
