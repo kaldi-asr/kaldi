@@ -49,7 +49,7 @@ alidir=$5
 dir=$6
 
 if [ ! -f $alidir/final.mdl ]; then
-  echo "Error: alignment dir $alidir does not contain final.mdl
+  echo "Error: alignment dir $alidir does not contain final.mdl"
   exit 1;
 fi
 

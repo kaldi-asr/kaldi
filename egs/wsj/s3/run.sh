@@ -99,7 +99,7 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgp
 # Train tri2b, which is LDA+MLLT, on si84 data.
 steps/train_lda_mllt.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
    2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
 
