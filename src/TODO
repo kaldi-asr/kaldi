@@ -6,6 +6,8 @@
 
 =====
 minor:
+ make it possible to sum tree accs.
+ change sgmm code so gselect is no longer optional [only in discrim/?]
  remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
  Make sure scripts don't depend on . being on PATH
  Make ApplySoftMax() function more efficient (does two exp()'s per element)

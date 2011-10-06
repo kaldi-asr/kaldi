@@ -20,12 +20,6 @@ exit 1;
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 
-# might want to run this script on a machine that has plenty of memory.
-
-# To get the CMU dictionary, do:
-svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/
-# got this at revision 10966 in the last tests done before releasing v1.0.
-# can add -r 10966 for strict compatibility.
 
 
 # Data prep
@@ -35,6 +29,7 @@ local/swbd_p1_format_data.sh
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
-mfccdir=/mnt/matylda6/ijanda/kaldi_swbd_mfcc
+#mfccdir=/mnt/matylda6/ijanda/kaldi_swbd_mfcc
+mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_swbd_mfcc
 
 steps/make_mfcc_segs.sh data/train exp/make_mfcc/train $mfccdir 8

@@ -39,8 +39,8 @@ mkdir -p data/local
 cd data/local
 
 # Audio data directory check
-if [ ! -d $SWBD_DIR/data ]; then
-  echo "Error: run.sh requires a directory argument that contains data directory"
+if [ ! -d $SWBD_DIR ]; then
+  echo "Error: run.sh requires a directory argument"
   exit 1; 
 fi  
 
@@ -63,11 +63,14 @@ fi
 
 # find sph audio files
 (
-  find $SWBD_DIR/data -iname '*.sph';
+  find $SWBD_DIR -iname '*.sph';
 ) > train_sph.flist
 
+if [ `cat train_sph.flist | wc -l` -ne 2435 ]; then
+  echo Warning: expected 2435 data data files, found `cat train_sph.flist | wc -l`
+fi
 
-# (1a) Transctptions preparation
+# (1a) Transcriptions preparation
 # make basic transcription file (add segments info)
 awk '{name=substr($1,1,6);gsub("^sw","sw0",name); side=substr($1,7,1);stime=$2;etime=$3;
 printf("%s-%s_%06.0f-%06.0f", name, side, int(100*stime+0.5), int(100*etime+0.5));
@@ -76,9 +79,12 @@ for(i=4;i<=NF;i++) printf " " toupper($i); printf "\n"}' swb_ms98_transcriptions
 # test if trans. file is sorted
 ../../scripts/is_sorted.sh swb.transc
 
-# noise mapping (<NOISE> and <SPOKEN_NOISE>)
-$DIR/scripts/noise_mapping.awk swb.transc > swb.filt.transc
+# Remove SILENCE.
+# Note: we have [NOISE], [VOCALIZED-NOISE], [LAUGHTER], [SILENCE].
+# removing [SILENCE] and giving phones to the other three (NSN, SPN, LAU). 
+# There is also a silence phone, SIL.
 
+cat swb.transc | perl -e 's:\b\[SILENCE]\b::g; print; ' > swb.filt.transc
 
 #(2a) Dictionary preparation:
 # Pre-processing (Upper-case, remove comments)
@@ -92,7 +98,7 @@ cat swb.filt.transc | $DIR/scripts/oov2unk.pl lex.text " " 2> oovs.old.txt >/dev
 
 $DIR/scripts/dct2phones.awk lex.text | sort | \
 perl -ane 's:\r::; print;' | \
-awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; N=4; } 
+awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; print "LAU 4"; N=5; } 
            {printf("%s %d\n", $1, N++); }
            {printf("%s_B %d\n", $1, N++); }
            {printf("%s_E %d\n", $1, N++); }
@@ -113,7 +119,7 @@ grep -v ';;;' lex.text | perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; print; }
  cat - lexicon_nosil.txt  > lexicon.txt
 
 
-silphones="SIL SPN NSN";
+silphones="SIL SPN NSN LAU";
 # Generate colon-separated lists of silence and non-silence phones.
 $DIR/scripts/silphones.pl phones.txt "$silphones" silphones.csl nonsilphones.csl
 
@@ -140,15 +146,7 @@ cat swb.filt.transc | $DIR/scripts/oov2unk.pl lexicon.txt $spoken_noise_word 2> 
 # (1c) Make segment files from transcript
 
 # I) list of all segments
-$DIR/scripts/make_segments.awk train.txt > segments_all
-
-# II) list of segments without SPOKEN_NOISE
-awk '($0 !~ /<SPOKEN_NOISE>/) {print}' train.txt > train_filt_noise.txt
-$DIR/scripts/make_segments.awk train_filt_noise.txt > segments_filt_noise
-
-# III) list of segments only with SPOKEN_NOISE
-awk '($0 ~ /<SPOKEN_NOISE>/) {print}' train.txt > train_only_noise.txt
-$DIR/scripts/make_segments.awk train_only_noise.txt > segments_only_noise
+$DIR/scripts/make_segments.awk train.txt > segments
 
 awk '{name = $0; gsub(".sph$","",name); gsub(".*/","",name); print(name " " $0)}' train_sph.flist > train_sph.scp 
 
@@ -161,7 +159,7 @@ cat train_sph.scp | awk '{printf("%s-A '$sph2pipe' -f wav -p -c 1 %s |\n", $1, $
 sort > train_wav.scp #side A - channel 1, side B - channel 2
 
 
-cat segments_all | awk '{spk=substr($1,4,6); print $1 " " spk}' > train.utt2spk
+cat segments | awk '{spk=substr($1,4,6); print $1 " " spk}' > train.utt2spk
 cat train.utt2spk | sort -k 2 | $DIR/scripts/utt2spk_to_spk2utt.pl > train.spk2utt
 
 echo SWBD_data_prep Succeeded.

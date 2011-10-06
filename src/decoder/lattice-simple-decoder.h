@@ -39,7 +39,8 @@ struct LatticeSimpleDecoderConfig {
   BaseFloat beam;
   BaseFloat lattice_beam;
   int32 prune_interval;
-  bool determinize_lattice;
+  bool determinize_lattice; // not inspected by this class... used in
+  // command-line program.
   bool prune_lattice;
   int32 max_arcs;
   int32 max_loop;

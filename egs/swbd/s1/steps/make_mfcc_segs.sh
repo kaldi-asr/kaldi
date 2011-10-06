@@ -35,7 +35,7 @@ mkdir -p $mfccdir || exit 1;
 mkdir -p $logdir || exit 1;
 
 scp=$data/wav.scp
-segments=$data/segments_all  
+segments=$data/segments
 config=conf/mfcc.conf
 required="$scp $segments $config"
 

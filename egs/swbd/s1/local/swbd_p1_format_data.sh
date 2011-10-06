@@ -109,7 +109,8 @@ cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
    sed "s:SILENCEPHONES:$silphonelist:" > data/lang/topo 
 
 for x in phones.txt words.txt silphones.csl nonsilphones.csl topo; do
-   cp data/lang/$x data/lang_test/$x || exit 1;
+   cp data/lang/$x data/lang_test/$x  || exit 1;
 done
 
-echo SWBD_format_data succeeded.
+echo swbd_p1_format_data succeeded.
+
