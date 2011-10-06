@@ -1,10 +1,12 @@
 About the Switchboard corpus
 
     This is conversational telephone speech collected as 2-channel, 8kHz-sampled
-    data.  We are using just the Switchboard-1 training data.
-    Available from the LDC as catalog number LDC93S3A (it may be possible to
-    get the same data using combinations of other catalog numbers, but this
-    is the one we used).
+    data.  We are using just the Switchboard-1 Phase 1 training data.
+    The catalog number LDC97S62 (Switchboard-1 Release 2) corresponds, we believe,
+    to what we have.  We also use the Mississippi State transcriptions, which
+    we download separately from
+    http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
+
 
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments.

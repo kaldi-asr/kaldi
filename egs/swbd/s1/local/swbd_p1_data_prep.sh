@@ -17,11 +17,13 @@
 
 # To be run from one directory above this script.
 
-## The input is the SWITCHBOARD directory
-# The script's argument is a directory which has this subdirectories:
-# data	docs
+## The input is some directory containing the switchboard-1 release 2
+## corpus (LDC97S62).  Note: we don't make many assumptions about how
+## you unpacked this.  We are just doing a "find" command to locate
+## the .sph files.
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
+
 . path.sh
 
 #check existing directories

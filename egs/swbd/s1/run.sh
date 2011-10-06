@@ -29,9 +29,9 @@ svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/
 
 
 # Data prep
-local/SWBD_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
+local/swbd_p1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 
-local/SWBD_format_data.sh
+local/swbd_p1_format_data.sh
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
