@@ -198,7 +198,7 @@ if [ "$feats" != "$sifeats" ]; then
   # the default features (shares Gaussian-level alignments).
   echo "Estimating alignment model."
   for n in `get_splits.pl $nj`; do
-    $cmd $dir/acc_alimdl.log \
+    $cmd $dir/acc_alimdl.$n.log \
       ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:-  \| \
         gmm-acc-stats-twofeats $dir/$x.mdl "${featspart[$n]}" "${sifeatspart[$n]}" \
           ark:- $dir/$x.$n.acc2 || touch $dir/.error &

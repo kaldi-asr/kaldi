@@ -286,9 +286,7 @@ done
 
 ( cd $dir; 
   ln -s $x.mdl final.mdl; 
-  ln -s $x.occs final.occs;
-  ln -s $x.alimdl final.alimdl
-  ln -s $[$numiters_et-1].trans final.trans )
-# we already have final.mat
+  ln -s $x.alimdl final.alimdl )
+# we already have final.mat and final.occs and final.et
 
 echo Done
