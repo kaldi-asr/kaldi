@@ -51,13 +51,13 @@ if [ ! -d swb_ms98_transcriptions ]; then
    wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
    tar -xf switchboard_word_alignments.tar.gz
 else
-  echo "Directory with transcriptions exist, skipping downloading"
+  echo "Directory with transcriptions exists, skipping downloading"
 fi
 
 
 # Option A: SWBD dictionary file check
 if [ ! -f swb_ms98_transcriptions/sw-ms98-dict.text ]; then
-   echo  "SWBD dictionary file does not exists"
+   echo  "SWBD dictionary file does not exist"
    exit 1;
 fi
 
@@ -73,32 +73,47 @@ fi
 # (1a) Transcriptions preparation
 # make basic transcription file (add segments info)
 awk '{name=substr($1,1,6);gsub("^sw","sw0",name); side=substr($1,7,1);stime=$2;etime=$3;
-printf("%s-%s_%06.0f-%06.0f", name, side, int(100*stime+0.5), int(100*etime+0.5));
-for(i=4;i<=NF;i++) printf " " toupper($i); printf "\n"}' swb_ms98_transcriptions/*/*/*-trans.text > swb.transc 
+ printf("%s-%s_%06.0f-%06.0f", name, side, int(100*stime+0.5), int(100*etime+0.5));
+ for(i=4;i<=NF;i++) printf " " toupper($i); printf "\n"}' \
+  swb_ms98_transcriptions/*/*/*-trans.text  > transcripts1.txt
 
 # test if trans. file is sorted
-../../scripts/is_sorted.sh swb.transc
+../../scripts/is_sorted.sh transcripts1.txt
 
 # Remove SILENCE.
 # Note: we have [NOISE], [VOCALIZED-NOISE], [LAUGHTER], [SILENCE].
-# removing [SILENCE] and giving phones to the other three (NSN, SPN, LAU). 
-# There is also a silence phone, SIL.
+# removing [SILENCE], and the <B_ASIDE> and <E_ASIDE> markers that mark
+# speech to somone; we will give phones to the other three (NSN, SPN, LAU). 
+# There will also be a silence phone, SIL.
 
-cat swb.transc | perl -e 's:\b\[SILENCE]\b::g; print; ' > swb.filt.transc
+cat transcripts1.txt | perl -ane 's:\s\[SILENCE\](\s|$):$1:g; s/<B_ASIDE>//g; s/<E_ASIDE>//g; print; ' | \
+  awk '{if(NF > 1) { print; } } ' > transcripts2.txt
 
 #(2a) Dictionary preparation:
 # Pre-processing (Upper-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {$0=toupper($0); print}' swb_ms98_transcriptions/sw-ms98-dict.text | sort | awk '($0 !~ /^[:space:]*$/) {print}'> lex.text
+awk 'BEGIN{getline}($0 !~ /^#/) {$0=toupper($0); print}' \
+  swb_ms98_transcriptions/sw-ms98-dict.text | sort | awk '($0 !~ /^[:space:]*$/) {print}' \
+   > lexicon1.txt
 
-# Get OOVs
-cat swb.filt.transc | $DIR/scripts/oov2unk.pl lex.text " " 2> oovs.old.txt >/dev/null  || exit 1 #get file oovs.old.txt
+# Get OOV list.
+# oovs.old.txt is used just for debugging.  should be empty except for
+# [NOISE], [VOCALIZED-NOISE], [LAUGHTER]
+cat transcripts1.txt | $DIR/scripts/oov2unk.pl lexicon1.txt " " \
+   2> oovs.old.txt >/dev/null  || exit 1 #get file oovs.old.txt
+
+
+
+# Now modify both the lexicon and trancsripts to
+
+
 
 # Make phones symbol-table (adding in silence and verbal and non-verbal noises at this point).
 # We are adding suffixes _B, _E, _S for beginning, ending, and singleton phones.
 
-$DIR/scripts/dct2phones.awk lex.text | sort | \
-perl -ane 's:\r::; print;' | \
-awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; print "LAU 4"; N=5; } 
+
+$DIR/local/dct2phones.awk lexicon1.txt | sort | \
+  perl -ane 's:\r::; print;' | \
+  awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; print "LAU 4"; N=5; } 
            {printf("%s %d\n", $1, N++); }
            {printf("%s_B %d\n", $1, N++); }
            {printf("%s_E %d\n", $1, N++); }
@@ -106,18 +121,64 @@ awk 'BEGIN{print "<eps> 0"; print "SIL 1"; print "SPN 2"; print "NSN 3"; print "
 
 
 # First make a version of the lexicon without the silences etc, but with the position-markers.
-# Remove the comments from the cmu lexicon and remove the (1), (2) from words with multiple 
+# Remove the comments from the lexicon and remove the (1), (2) from words with multiple 
 # pronunciations.
-grep -v ';;;' lex.text | perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; print; }' \
+cat lexicon1.txt \
  | perl -ane '@A=split(" ",$_); $w = shift @A; @A>0||die;
    if(@A==1) { print "$w $A[0]_S\n"; } else { print "$w $A[0]_B ";
      for($n=1;$n<@A-1;$n++) { print "$A[$n] "; } print "$A[$n]_E\n"; } ' \
-  > lexicon_nosil.txt
+  > lexicon2.txt
 
-# Add to cmudict the silences, noises etc.
-(echo '!SIL SIL'; echo '<s> '; echo '</s> '; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
- cat - lexicon_nosil.txt  > lexicon.txt
+# Add to the lexicon the silences, noises etc.
+(echo '!SIL SIL'; echo '[VOCALIZED-NOISE] SPN'; echo '[NOISE] NSN'; echo '[LAUGHTER] LAU' ) | \
+ cat - lexicon2.txt  > lexicon3.txt
 
+
+# Get lexicon mapping.  That is-- for each word in the lexicon, we map it
+# to a new written form.  The transformations we do are:
+# remove laughter markings, e.g.
+# [LAUGHTER-STORY] -> STORY
+# Remove partial-words, e.g.
+# -[40]1K W AH N K EY
+# becomes -1K
+# and
+# -[AN]Y IY
+# becomes
+# -Y
+# -[A]B[OUT]- B
+# becomes
+# -B-
+# Also, curly braces, which appear to be used for "nonstandard"
+# words or non-words, are removed, e.g. 
+# {WOLMANIZED} W OW L M AX N AY Z D
+# -> WOLMANIZED
+# Also, mispronounced words, e.g.
+#  [YEAM/YEAH] Y AE M
+# are changed to just e.g. YEAM, i.e. the orthography
+# of the mispronounced version.
+# Note-- this is only really to be used in training.  The main practical
+# reason is to avoid having tons of disambiguation symbols, which
+# we otherwise would get because there are many partial words with
+# the same phone sequences (most problematic: S).
+# Also, map
+# THEM_1 EH M -> THEM
+# so that multiple pronunciations just have alternate entries
+# in the lexicon.
+
+cat lexicon3.txt | awk '{print $1}' | \
+  $DIR/local/word_map.pl | sort | uniq > word_map;
+
+# Now apply word map to the transcriptions and lexicon.
+$DIR/scripts/compose_maps.pl transcripts2.txt word_map >transcripts3.txt
+
+cp transcripts3.txt train.txt # This is the final transcripts...
+
+cat lexicon3.txt | perl -e 'open(W, "<word_map")||die;
+  while(<W>){ @A=split; $map{$A[0]} = $A[1]; }
+  while(<>) { @A=split; $A[0] = $map{$A[0]}; print join(" ", @A) . "\n"; } ' \
+  | sort | uniq > lexicon4.txt
+
+cp lexicon4.txt lexicon.txt # This is the final lexicon.
 
 silphones="SIL SPN NSN LAU";
 # Generate colon-separated lists of silence and non-silence phones.
@@ -137,16 +198,13 @@ cat lexicon.txt | awk '{print $1}' | sort | uniq  | \
  awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
   > words.txt
 
-# (1b) Continue trans preparation 
-#Convert real OOVs to <SPOKEN_NOISE>
-spoken_noise_word="<SPOKEN_NOISE>";
-cat swb.filt.transc | $DIR/scripts/oov2unk.pl lexicon.txt $spoken_noise_word 2> oovs.txt | sort > train.txt || exit 1 # the .txt is the final transcript.
-
+## (1b) Continue trans preparation 
+## Convert real OOVs to <SPOKEN_NOISE>
 
 # (1c) Make segment files from transcript
 
 # I) list of all segments
-$DIR/scripts/make_segments.awk train.txt > segments
+$DIR/local/make_segments.awk train.txt > segments
 
 awk '{name = $0; gsub(".sph$","",name); gsub(".*/","",name); print(name " " $0)}' train_sph.flist > train_sph.scp 
 
@@ -162,4 +220,4 @@ sort > train_wav.scp #side A - channel 1, side B - channel 2
 cat segments | awk '{spk=substr($1,4,6); print $1 " " spk}' > train.utt2spk
 cat train.utt2spk | sort -k 2 | $DIR/scripts/utt2spk_to_spk2utt.pl > train.spk2utt
 
-echo SWBD_data_prep Succeeded.
+echo Switchboard phase 1 data preparation succeeded.

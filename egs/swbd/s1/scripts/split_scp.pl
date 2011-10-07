@@ -36,17 +36,51 @@
 # Note that you can use this script to split the utt2spk file itself,
 # e.g. split_scp.pl --utt2spk=utt2spk utt2spk utt2spk.1 utt2spk.2 ...
 
-if(@ARGV < 2 ) {
-    die "Usage: split_scp.pl [--utt2spk=<utt2spk_file>] in.scp out1.scp out2.scp ... ";
+# You can also call the scripts like:
+# split_scp.pl -j 3 0 scp scp.0
+# [note: with this option, it assumes zero-based indexing of the split parts,
+# i.e. the second number must be 0 <= n < num-jobs.]
+
+$num_jobs = 0;
+$job_id = 0;
+$utt2spk_file = "";
+
+for ($x = 1; $x <= 2; $x++) {
+    if ($ARGV[0] eq "-j") {
+        shift @ARGV;
+        $num_jobs = shift @ARGV;
+        $job_id = shift @ARGV;
+        if ($num_jobs <= 0 || $job_id < 0 || $job_id >= $num_jobs) {
+            die "Invalid num-jobs and job-id: $num_jobs and $job_id";
+        }
+    }
+    if ($ARGV[0] =~ "--utt2spk=(.+)") {
+        $utt2spk_file=$1;
+        shift;
+    }
 }
 
-if($ARGV[0] =~ m:^-:) {  # We have the --utt2spk option...
-    $opt = shift @ARGV;
-    @A = split("=", $opt);
-    if(@A != 2 || $A[0] ne "--utt2spk") {
-        die "split_scp.pl: invalid option $ARGV[0]";
+if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2))) {
+    die "Usage: split_scp.pl [--utt2spk=<utt2spk_file>] in.scp out1.scp out2.scp ... \n" .
+        " or: split_scp.pl -j num-jobs job-id [--utt2spk=<utt2spk_file>] in.scp [out.scp]\n" .
+        " ... where 0 <= job-id < num-jobs.";
+}
+   
+$inscp = shift @ARGV;
+if ($num_jobs == 0) { # without -j option
+    @OUTPUTS = @ARGV;
+} else {
+    for ($j = 0; $j < $num_jobs; $j++) {
+        if ($j == $job_id) { 
+            if (@ARGV > 0) { push @OUTPUTS, $ARGV[0]; }
+            else { push @OUTPUTS, "-"; }
+        } else {
+            push @OUTPUTS, "/dev/null";
+        }
     }
-    $utt2spk_file = $A[1];
+} 
+
+if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     open(U, "<$utt2spk_file") || die "Failed to open utt2spk file $utt2spk_file";
     while(<U>) {
         @A = split;
@@ -54,7 +88,6 @@ if($ARGV[0] =~ m:^-:) {  # We have the --utt2spk option...
         ($u,$s) = @A;
         $utt2spk{$u} = $s;
     }
-    $inscp = shift @ARGV;
     open(I, "<$inscp") || die "Opening input scp file $inscp";
     @spkrs = ();
     while(<I>) {
@@ -75,18 +108,17 @@ if($ARGV[0] =~ m:^-:) {  # We have the --utt2spk option...
     # First allocate spks to files by allocating an approximately
     # equal number of speakers.
     $numspks = @spkrs;  # number of speakers.
-    $numscps = @ARGV; # number of output files.
-    $spksperscp = int( ($numspks+($numscps-1)) / $numscps); # the +$(numscps-1) forces rounding up.
+    $numscps = @OUTPUTS; # number of output files.
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
-        for($n = $spksperscp * $scpidx; 
-            $n < $numspks && $n < $spksperscp*($scpidx+1); 
-            $n++) {
-            $spk = $spkrs[$n];
-            push @{$scparray[$scpidx]}, $spk;
-            $scpcount[$scpidx] += $spk_count{$spk};
-        }
     }
+    for ($spkidx = 0; $spkidx < $numspks; $spkidx++) {
+        $scpidx = int(($spkidx*$numscps) / $numspks);
+        $spk = $spkrs[$spkidx];
+        push @{$scparray[$scpidx]}, $spk;
+        $scpcount[$scpidx] += $spk_count{$spk};
+    }
+
     # Now will try to reassign beginning + ending speakers
     # to different scp's and see if it gets more balanced.
     # Suppose objf we're minimizing is sum_i (num utts in scp[i] - average)^2.
@@ -137,27 +169,27 @@ if($ARGV[0] =~ m:^-:) {  # We have the --utt2spk option...
     }
     # Now print out the files...
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
-        $scpfn = $ARGV[$scpidx];
+        $scpfn = $OUTPUTS[$scpidx];
         open(F, ">$scpfn") || die "Could not open scp file $scpfn for writing.";
         $count = 0;
         if(@{$scparray[$scpidx]} == 0) {
-            print STDERR "Warning: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)";
+            print STDERR "Warning: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
+        } else {
+            foreach $spk ( @{$scparray[$scpidx]} ) {
+                print F $spk_data{$spk};
+                $count += $spk_count{$spk};
+            }
+            if($count != $scpcount[$scpidx]) { die "Count mismatch [code error]"; }
         }
-        foreach $spk ( @{$scparray[$scpidx]} ) {
-            print F $spk_data{$spk};
-            $count += $spk_count{$spk};
-        }
-        if($count != $scpcount[$scpidx]) { die "Count mismatch [code error]"; }
         close(F);
     }
 } else { 
    # This block is the "normal" case where there is no --utt2spk 
    # option and we just break into equal size chunks.
 
-    $inscp = shift @ARGV;
     open(I, "<$inscp") || die "Opening input scp file $inscp";
 
-    $numscps = @ARGV;  # size of array.
+    $numscps = @OUTPUTS;  # size of array.
     @F = ();
     while(<I>) {
         push @F, $_;
@@ -168,8 +200,8 @@ if($ARGV[0] =~ m:^-:) {  # We have the --utt2spk option...
     }
     $linesperscp = int( ($numlines+($numscps-1)) / $numscps); # the +$(numscps-1) forces rounding up.
 # [just doing int() rounds down].
-    for($scpidx = 0; $scpidx < @ARGV; $scpidx++) {
-        $scpfile = $ARGV[$scpidx];
+    for($scpidx = 0; $scpidx < @OUTPUTS; $scpidx++) {
+        $scpfile = $OUTPUTS[$scpidx];
         open(O, ">$scpfile") || die "Opening output scp file $scpfile";
         for($n = $linesperscp * $scpidx; $n < $numlines && $n < $linesperscp*($scpidx+1); $n++) {
             print O $F[$n];

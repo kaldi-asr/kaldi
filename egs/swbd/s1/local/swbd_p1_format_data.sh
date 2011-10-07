@@ -50,6 +50,7 @@ silphones="SIL SPN NSN"; # This would in general be a space-separated list of al
 # Generate colon-separated lists of silence and non-silence phones.
 scripts/silphones.pl data/lang/phones.txt "$silphones" data/lang/silphones.csl \
   data/lang/nonsilphones.csl
+echo "[VOCALIZED-NOISE]" > data/lang/oov.txt
 
 ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon_disambig.txt`
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
@@ -62,6 +63,7 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob SIL  | \
    --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > data/lang/L.fst
 
+echo "This script is not finished!"
 exit 1;
 
 # test lexicon - not ready yet !!!

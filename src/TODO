@@ -5,6 +5,8 @@
     report problems.
 
 =====
+dan's TODO:
+ check out Stefan's code for nnet rescoring.  finish biglm stuff.
 minor:
  make it possible to sum tree accs.
  document the --cmd options in wsj/s3 scripts

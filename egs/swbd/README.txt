@@ -12,4 +12,5 @@ Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
   s1: 
-   [adding first version of scripts.  This is a draft.]
+   [adding first version of scripts.  This is a draft.
+   Note: this is closest to the s3/ script for WSJ.]
