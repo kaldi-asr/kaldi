@@ -102,9 +102,11 @@ class DiagGmm {
   void Read(std::istream &rIn, bool binary);
 
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags = kGmmAll); 
+  void Interpolate(BaseFloat rho, const DiagGmm &source, 
+                   GmmFlagsType flags = kGmmAll); 
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const FullGmm *source, GmmFlagsType flags = kGmmAll); 
+  void Interpolate(BaseFloat rho, const FullGmm &source, 
+                   GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const {

@@ -87,13 +87,13 @@ BaseFloat TiedGmm::ComponentPosteriors(BaseFloat c,
 }
 
 /// this = rho x source + (1-rho) x this
-void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm *source) {
-  KALDI_ASSERT(NumGauss() == source->NumGauss());
+void TiedGmm::Interpolate(BaseFloat rho, const TiedGmm &source) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
   KALDI_ASSERT(rho > 0.0 && rho < 1.0);
 
   // interpolate
   weights_.Scale(1.0 - rho);
-  weights_.AddVec(rho, source->weights_);
+  weights_.AddVec(rho, source.weights_);
 
   // renorm to sum to one
   weights_.Scale(1.0 / weights_.Sum());

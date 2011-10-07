@@ -110,7 +110,7 @@ class TiedGmm {
                                 Vector<BaseFloat> *posteriors) const;
 
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const TiedGmm *source);
+  void Interpolate(BaseFloat rho, const TiedGmm &source);
 
   /// Split the tied GMM weights based on the split sequence of the codebook
   void Split(std::vector<int32> *sequence);

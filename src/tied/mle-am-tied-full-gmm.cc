@@ -257,19 +257,19 @@ void MleAmTiedFullGmmUpdate(
     // smooth the weights for tied...
     if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
       for (int32 i = 0; i < model->NumTiedPdfs(); ++i)
-        model->GetTiedPdf(i).Interpolate(wt, &(oldm->GetTiedPdf(i)));
+        model->GetTiedPdf(i).Interpolate(wt, oldm->GetTiedPdf(i));
     }
 
     // ...and mean/var for codebooks
     if ((flags & kGmmMeans) && config_tied.interpolate_means) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, &(oldm->GetCodebook(i)), 
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
 		                                  kGmmMeans);
     }
 
     if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, &(oldm->GetCodebook(i)), 
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
 		                                  kGmmVariances);
     }
 

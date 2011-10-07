@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include <vector>
+#include <sstream>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -27,8 +28,6 @@
 using namespace kaldi;
 
 using std::vector;
-using std::cout;
-using std::endl;
 
 int main(int argc, char *argv[]) {
   try {
@@ -43,9 +42,9 @@ int main(int argc, char *argv[]) {
     bool preserve_counts = false;
     bool print_diversity = false;
 
-    BaseFloat rho = 10.;
+    BaseFloat tau = 10.;
 
-    po.Register("rho", &rho, "Interpolation factor (see tied-gmm.h: Interpolate{1,2})");
+    po.Register("tau", &tau, "Interpolation factor (see tied-gmm.h: Interpolate{1,2})");
     po.Register("preserve-counts", &preserve_counts, "Preserve the counts, uses Interpolate2");
     po.Register("print-diversity", &print_diversity, "Print the diversity of the nodes, i.e. the childrens' codebooks");
 
@@ -127,11 +126,13 @@ int main(int argc, char *argv[]) {
       int32 k = diversity.size() - 1;
       for (vector<std::set<int32> >::reverse_iterator rit = diversity.rbegin(), rend = diversity.rend();
            rit != rend; ++rit, --k) {
-        cout << "node=" << (k+num_leaves) << " pdf-ids [ ";
+        std::stringstream sstr;
+        sstr << "node=" << (k+num_leaves) << " pdf-ids [ ";
         for (std::set<int32>::iterator si = (*rit).begin(), se = (*rit).end();
              si != se; ++si)
-          cout << *si << " ";
-        cout << "]" << endl;
+          sstr << *si << " ";
+        sstr << "]";
+        KALDI_LOG << sstr.str();
       }
     }
 
@@ -140,21 +141,22 @@ int main(int argc, char *argv[]) {
     vector<std::set<int32> > trace(p.size() - num_leaves);
     vector<AccumTiedGmm *> interim(p.size() - num_leaves, NULL);
 
-    cout << "Propagating " << num_leaves << " leaves" << endl;
+    KALDI_LOG << "Propagating " << num_leaves << " leaves";
     for (int32 i = 0; i < num_leaves; ++i) {
       AccumTiedGmm &a = acc.GetTiedAcc(i);
-      cout << "tied-id=" << i << " occ=" << a.occupancy().Sum() << " ==>" << std::flush;
+      std::stringstream sstr;
+      sstr << "tied-id=" << i << " occ=" << a.occupancy().Sum() << " ==>";
       int32 cur = i, par = p[i] ;
 
       // walk up, as long as the parent is a diverse node or the root node
       while (cur != par) {
         int32 k = par - num_leaves;
         if (diversity[k].size() != 1) {
-          cout << " stop -- div = [";
+          sstr << " stop -- div = [";
           for (std::set<int32>::iterator si = diversity[k].begin(),
                se = diversity[k].end(); si != se; ++si)
-            cout << " " << (*si);
-          cout << " ]" << endl;
+            sstr << " " << (*si);
+          sstr << " ]";
           break;
         }
 
@@ -164,10 +166,10 @@ int main(int argc, char *argv[]) {
 
         // add accumulator
         if (interim[k] == NULL) {
-          cout << " alloc:" << par;
+          sstr << " alloc:" << par;
           interim[k] = new AccumTiedGmm(a);
         } else {
-          cout << " " << par;
+          sstr << " " << par;
           a.Propagate(interim[k]);
         }
 
@@ -175,26 +177,29 @@ int main(int argc, char *argv[]) {
         par = p[cur];
       }
 
-      cout << endl;
+      KALDI_LOG << sstr.str();
     }
 
-    cout << "Interpolating, rho=" << rho << endl;
+    KALDI_LOG << "Interpolating, tau=" << tau;
 
     // interpolate down, beginning from the top
     int32 k = trace.size() - 1;
     for (vector<std::set<int32> >::reverse_iterator rit = trace.rbegin(), rend = trace.rend();
          rit != rend; ++rit, --k) {
-      cout << (k + num_leaves) << " <==";
+      std::stringstream sstr;
+      sstr << (k + num_leaves) << " <==";
 
       // no interpolation on diverse nodes
       if (diversity[k].size() > 1) {
-        cout << " (null -- diverse node, sizeof diversity = " << diversity[k].size() << endl;
+        sstr << " (null -- diverse node, sizeof diversity = " << diversity[k].size();
+        KALDI_LOG << sstr.str();
         continue;
       }
 
       // the root will have some trace, but we're not propagating over the root
       if (interim[k] == NULL) {
-        cout<< " (null -- skipping; sizeof trace = " << rit->size() << ")" << endl;
+        sstr << " (null -- skipping; sizeof trace = " << rit->size() << ")";
+        KALDI_LOG << sstr.str();
         continue;
       }
 
@@ -203,21 +208,22 @@ int main(int argc, char *argv[]) {
         int32 t = *it;
         if (t < num_leaves) {
           // this will be a pdf accumulator
-          cout << " " << t;
+          sstr << " " << t;
           if (preserve_counts)
-            acc.GetTiedAcc(t).Interpolate2(rho, *interim[k]);
-          else
-             acc.GetTiedAcc(t).Interpolate1(rho, *interim[k]);
+            acc.GetTiedAcc(t).Interpolate2(tau, *interim[k]);
+           else
+             acc.GetTiedAcc(t).Interpolate1(tau, *interim[k]);
         } else {
           // this will be an interim accumulator
-          cout << " interim:" << t;
+          sstr << " interim:" << t;
           if (preserve_counts)
-            interim[t-num_leaves]->Interpolate2(rho, *interim[k]);
+            interim[t-num_leaves]->Interpolate2(tau, *interim[k]);
           else
-            interim[t-num_leaves]->Interpolate1(rho, *interim[k]);
+            interim[t-num_leaves]->Interpolate1(tau, *interim[k]);
         }
       }
-      cout << endl;
+      
+      KALDI_LOG << sstr.str();
     }
 
     {
@@ -226,7 +232,7 @@ int main(int argc, char *argv[]) {
       acc.Write(os.Stream(), binary_accu);
     }
 
-    cout << "Wrote " << acc_out_filename << endl;
+    KALDI_LOG << "Wrote " << acc_out_filename;
 
     return 0;
   } catch(const std::exception& e) {
@@ -234,4 +240,5 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
+
 

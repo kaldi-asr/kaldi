@@ -115,17 +115,17 @@ class AccumTiedGmm {
   void Propagate(AccumTiedGmm *target) const;
 
   /// Interpolate this accumulator with the source depending on the occupancies
-  /// rho' <- rho / (rho + occupancy_.Sum())
-  /// this <- rho' x source + (1-rho') x this
-  /// i.e., if the occupancy is high, rho' vanishes, and the local stats are
+  /// tau' <- tau / (tau + occupancy_.Sum())
+  /// this <- tau' x source + (1-tau') x this
+  /// i.e., if the occupancy is high, tau' vanishes, and the local stats are
   /// kept; if gamma is zero, the stats are completely replaced by the source.
   /// Note that this does not preserve the occupancies and thus may distort
   /// the estimate.
-  void Interpolate1(BaseFloat rho, const AccumTiedGmm &source);
+  void Interpolate1(BaseFloat tau, const AccumTiedGmm &source);
 
   /// Interpolate this accumulator with the source but preserve the 
   /// occupancies (different from Interpolate1)
-  void Interpolate2(BaseFloat rho, const AccumTiedGmm &source);
+  void Interpolate2(BaseFloat tau, const AccumTiedGmm &source);
 
   // Accessors
   const GmmFlagsType Flags() const { return flags_; }

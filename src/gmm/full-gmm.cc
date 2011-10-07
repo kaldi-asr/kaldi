@@ -493,26 +493,27 @@ std::ostream & operator <<(std::ostream & out_stream,
 }
 
 /// this = rho x source + (1-rho) x this
-void FullGmm::Interpolate(BaseFloat rho, const FullGmm *source, GmmFlagsType flags) {
-  KALDI_ASSERT(NumGauss() == source->NumGauss());
-  KALDI_ASSERT(Dim() == source->Dim());
+void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
   FullGmmNormal us(*this);
-  FullGmmNormal them(*source);
+  FullGmmNormal them(source);
 
   if (flags & kGmmWeights) {
-    us.weights_.Scale(1. - rho);
+    us.weights_.Scale(1.0 - rho);
     us.weights_.AddVec(rho, them.weights_);
-    us.weights_.Scale(1. / us.weights_.Sum());
+    us.weights_.Scale(1.0 / us.weights_.Sum());
   }
 
   if (flags & kGmmMeans) {
-    us.means_.Scale(1. - rho);
+    us.means_.Scale(1.0 - rho);
     us.means_.AddMat(rho, them.means_);
   }
 
   if (flags & kGmmVariances) {
     for (int32 i = 0; i < NumGauss(); ++i) {
-      us.vars_[i].Scale(1. - rho);
+      us.vars_[i].Scale(1.0 - rho);
       us.vars_[i].AddSp(rho, them.vars_[i]);
     }
   }

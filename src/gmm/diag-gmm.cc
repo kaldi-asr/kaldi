@@ -511,26 +511,27 @@ void DiagGmm::RemoveComponents(const std::vector<int32> &gauss_in,
   }
 }
 
-void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm *source, GmmFlagsType flags) {
-  KALDI_ASSERT(NumGauss() == source->NumGauss());
-  KALDI_ASSERT(Dim() == source->Dim());
+void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
 
   DiagGmmNormal us(*this);
-  DiagGmmNormal them(*source);
+  DiagGmmNormal them(source);
 
   if (flags & kGmmWeights) {
-    us.weights_.Scale(1. - rho);
+    us.weights_.Scale(1.0 - rho);
     us.weights_.AddVec(rho, them.weights_);
-    us.weights_.Scale(1. / us.weights_.Sum());
+    us.weights_.Scale(1.0 / us.weights_.Sum());
   }
 
   if (flags & kGmmMeans) {
-    us.means_.Scale(1. - rho);
+    us.means_.Scale(1.0 - rho);
     us.means_.AddMat(rho, them.means_);
   }
 
   if (flags & kGmmVariances) {
-    us.vars_.Scale(1. - rho);
+    us.vars_.Scale(1.0 - rho);
     us.vars_.AddMat(rho, them.vars_);
   }
 
@@ -538,20 +539,21 @@ void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm *source, GmmFlagsType fla
   ComputeGconsts();
 }
 
-void DiagGmm::Interpolate(BaseFloat rho, const FullGmm *source, GmmFlagsType flags) {
-  KALDI_ASSERT(NumGauss() == source->NumGauss());
-  KALDI_ASSERT(Dim() == source->Dim());
+void DiagGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
   DiagGmmNormal us(*this);
-  FullGmmNormal them(*source);
+  FullGmmNormal them(source);
 
   if (flags & kGmmWeights) {
-    us.weights_.Scale(1. - rho);
+    us.weights_.Scale(1.0 - rho);
     us.weights_.AddVec(rho, them.weights_);
-    us.weights_.Scale(1. / us.weights_.Sum());
+    us.weights_.Scale(1.0 / us.weights_.Sum());
   }
 
   if (flags & kGmmMeans) {
-    us.means_.Scale(1. - rho);
+    us.means_.Scale(1.0 - rho);
     us.means_.AddMat(rho, them.means_);
   }
 
