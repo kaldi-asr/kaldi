@@ -83,6 +83,8 @@ steps/train_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
 
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg
 
 # Align tri1 system with si84 data.
 steps/align_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
@@ -119,6 +121,8 @@ steps/train_lda_mllt_sat.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \

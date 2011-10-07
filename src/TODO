@@ -7,6 +7,7 @@
 =====
 minor:
  make it possible to sum tree accs.
+ document the --cmd options in wsj/s3 scripts
  change sgmm code so gselect is no longer optional [only in discrim/?]
  remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
  Make sure scripts don't depend on . being on PATH
