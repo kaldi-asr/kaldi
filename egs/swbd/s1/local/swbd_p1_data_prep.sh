@@ -78,7 +78,7 @@ awk '{name=substr($1,1,6);gsub("^sw","sw0",name); side=substr($1,7,1);stime=$2;e
   swb_ms98_transcriptions/*/*/*-trans.text  > transcripts1.txt
 
 # test if trans. file is sorted
-../../scripts/is_sorted.sh transcripts1.txt
+../../local/is_sorted.sh transcripts1.txt || exit 1;
 
 # Remove SILENCE.
 # Note: we have [NOISE], [VOCALIZED-NOISE], [LAUGHTER], [SILENCE].
