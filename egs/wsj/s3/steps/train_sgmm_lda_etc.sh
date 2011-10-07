@@ -58,8 +58,7 @@ mkdir -p $dir || exit 1;
 cp $alidir/final.mat $dir/final.mat || exit 1;
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
-grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
+oov_sym=`cat $lang/oov.txt`
 
 numiters=25   # Total number of iterations
 numiters_alimdl=3 # Number of iterations for estimating alignment model.

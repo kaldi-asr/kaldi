@@ -58,7 +58,11 @@ scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2kshort
 # Now make subset with half of the data from si-84.
 scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
 
+# you can change these commands to just run.pl to make them run
+# locally, but in that case you should change the num-jobs to
+# the #cpus on your machine or fewer.
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
+train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
 
 steps/train_mono.sh data/train_si84_2kshort data/lang exp/mono0a
 
@@ -74,10 +78,10 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tg
 # up in this way.
 
 
-steps/align_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade"\
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
    data/train_si84_half data/lang exp/mono0a exp/mono0a_ali
 
-steps/train_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
     2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1
 
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
@@ -87,37 +91,37 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_tes
   data/lang_test_tgpr/words.txt data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg
 
 # Align tri1 system with si84 data.
-steps/align_deltas.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84
 
 
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
-steps/train_deltas.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93
 
 
 # Train tri2b, which is LDA+MLLT, on si84 data.
-steps/train_lda_mllt.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_lda_mllt.sh --num-jobs 10 --cmd "$train_cmd" \
    2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
 
 # Align tri2b system with si84 data.
-steps/align_lda_mllt.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
   --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
 
 # Train LDA+ET system.
-steps/train_lda_et.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_lda_et.sh --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93_2pass
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_lda_mllt_sat.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93
@@ -125,31 +129,31 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_tes
   data/lang_test_tgpr/words.txt data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg
 
 # From 3b system, align all si284 data.
-steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
 
-steps/train_lda_etc_quick.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_lda_etc_quick.sh --num-jobs 10 --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
 
 # Train UBM, for SGMM system on top of LDA+MLLT.
-steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
   400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c
-steps/align_lda_mllt.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/align_lda_mllt.sh --num-jobs 10 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84_10
-steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
    3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84_10 exp/ubm3c/final.ubm exp/sgmm3c
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
  
 
 # Train SGMM system on top of LDA+MLLT+SAT.
-steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri3b exp/tri3b_ali_si84
-steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
   400 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b
-steps/train_sgmm_lda_etc.sh  --num-jobs 10 --cmd "queue.pl -q all.q@@blade" \
+steps/train_sgmm_lda_etc.sh  --num-jobs 10 --cmd "$train_cmd" \
   3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b/final.ubm exp/sgmm4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
@@ -159,13 +163,26 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
 # Align 3b system with si284 data and num-jobs = 20; we'll train an LDA+MLLT+SAT system on si284 from this.
 # This is 4c.  c.f. 4b which is "quick" training.
 
-steps/align_lda_mllt_sat.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+steps/align_lda_mllt_sat.sh --num-jobs 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284_20
-steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "queue.pl -q all.q@@blade" \
+steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "$train_cmd" \
   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/tri4c
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri4c exp/tri4c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
   data/test_dev93 exp/tri4c/decode_tgpr_dev93
+
+# Train SGMM on top of LDA+MLLT+SAT, on all SI-284 data.  C.f. 4b which was
+# just on SI-84.
+steps/train_ubm_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
+  600 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/ubm4c
+steps/train_sgmm_lda_etc.sh  --num-jobs 20 --cmd "$train_cmd" \
+  5500 25000 50 40 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/ubm4c/final.ubm exp/sgmm4c
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4c exp/sgmm4c/graph_tgpr
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
+    exp/sgmm4c/graph_tgpr data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/sgmm4c/decode_tgpr_dev93_tg
+
 
 
 

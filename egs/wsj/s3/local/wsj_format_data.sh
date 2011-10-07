@@ -59,8 +59,8 @@ ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 echo $ndisambig > data/local/lex_ndisambig
 
 
-# (1) Put into data/lang, phones.txt, silphones.csl, nonsilphones.csl, words.txt
-
+# (1) Put into data/lang, phones.txt, silphones.csl, nonsilphones.csl, words.txt,
+#   oov.txt
 cp data/local/phones.txt data/lang # we could get these from the lexicon, but prefer to
  # do it like this so we get all the possible begin/middle/end versions of phones even
  # if they don't appear.  This is so if we extend the lexicon later, we could use the
@@ -80,6 +80,10 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt 0.5 SIL | \
   fstcompile --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt \
   --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > data/lang/L.fst
+
+# The file oov.txt contains a word that we will map any OOVs to during
+# training.
+echo "<SPOKEN_NOISE>" > data/lang/oov.txt
 
 # (2)
 # Create phonesets.txt and extra_questions.txt ...

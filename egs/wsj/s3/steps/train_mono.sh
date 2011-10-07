@@ -54,7 +54,7 @@ numgauss=300 # Initial num-Gauss (must be more than #states=3*phones).
 totgauss=1000 # Target #Gaussians.  
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
-oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
+oov_sym=`cat $lang/oov.txt`
 
 mkdir -p $dir/log
 if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then

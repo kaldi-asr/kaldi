@@ -64,8 +64,7 @@ lang=$2
 srcdir=$3
 dir=$4
 
-oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
-grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
+oov_sym=`cat $lang/oov.txt`
 
 
 mkdir -p $dir
