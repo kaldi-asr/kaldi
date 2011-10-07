@@ -21,9 +21,10 @@
 # exp/mono), supplied as an argument, which is assumed to be built using
 # the same type of features.
 
-if [ $# != 9 ]; then
-   echo "Usage: steps/train_semi_diag.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> <num-gaussians> <num-tree-leaves> <smooth-type> <rho-stats> <rho-reest>"
-   echo " e.g.: steps/train_semi_diag.sh data/train data/lang exp/tri1_ali exp/tri1-semi 256 1800 1 10 0"
+if [[ $# != 9 && $# != 4 ]]; then
+   echo "Usage: steps/train_semi_diag.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> [ <num-gaussians> <num-tree-leaves> <smooth-type> <tau> <rho> ]"
+   echo " e.g.: steps/train_semi_diag.sh data/train data/lang exp/tri1_ali exp/tri1-semi-default"
+   echo " e.g.: steps/train_semi_diag.sh data/train data/lang exp/tri1_ali exp/tri1-semi 256 1800 0 10 0.5"
    exit 1;
 fi
 
@@ -43,26 +44,39 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
 silphonelist=`cat $lang/silphones.csl`
 numiters=25     # Number of iterations of training
-max_leaves=$6   # target num-leaves in tree building.
-totgauss=$5     # Target total #Gaussians in codebooks
 
-smooth_type=$7  # (0, regular, Interpolate1) (1, preserve counts, Interpolate2)
-rho_stats=$8    # set to > 0 to activate prop/interp of suff. stats. (weights only)
-rho_iters=$9    # set to > 0 to actiavte smoothing of new model with prior model (weights only)
+# default parameters
+max_leaves=2500
+totgauss=512
+smooth_type=0
+tau=0
+rho=0.5
 
 emiters=5       # number of initial EM iterations on codebook
 emsize=1000     # number of training data for the EM iterations
 
-psmoothing=""   # will be filled, if parameter smoothing was requested
-if [ "$rho_iters" != "0" ]; then
-  psmoothing="--smoothing-weight=$rho_iters --interpolate-weights"
+inter=""           # will be filled, if parameter smoothing was requested
+preserve_counts="" # will be filled, if preserve-counts
+
+if [ $# == 9 ]; then
+  max_leaves=$6   # target num-leaves in tree building.
+  totgauss=$5     # Target total #Gaussians in codebooks
+
+  smooth_type=$7  # (0, regular Interpolate1) (1, preserve-counts, Interpolate2)
+  tau=$8          # set to > 0 to activate prop/interp of suff. stats. (weights only)
+  rho=$9          # set to > 0 to actiavte smoothing of new model with prior model (weights only)
 fi
 
-ssmoothing=""
+# inter-iteration smoothing?
+if [ "$rho" != "0" ]; then
+  inter="--interpolation-weight=$rho --interpolate-weights"
+fi
+
+# preserve counts for intra-interation smoothing?
 if [ "$smooth_type" == "0" ]; then
-   ssmoothing=""
+  preserve_counts=""
 elif [ "$smooth_type" == "1" ]; then
-  ssmoothing="--preserve-counts"
+  preserve_counts="--preserve-counts"
 else
   echo "Invalid smoothing type $smooth_type"
   exit 1
@@ -70,6 +84,19 @@ fi
 
 mkdir -p $dir
 
+# write out the params we're using, just for the record
+echo "Training started: `date`
+$0 $@
+max_leaves=$max_leaves
+totgauss=$totgauss
+smooth_type=$smooth_type
+tau=$tau
+rho=$rho
+intra=$intra
+preserve_counts=$preserve_counts" > $dir/.params
+
+
+# regular features, with mean normalization
 feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
 
 # compute integer form of transcripts.
@@ -106,23 +133,26 @@ echo "]" >> $dir/tree.map
 
 echo "Initializing codebooks"
 init-ubm --ubm-numcomps=$totgauss \
-	$alidir/final.mdl $alidir/final.occs $dir/ubm-full || exit 1;
+	$alidir/final.mdl $alidir/final.occs $dir/ubm-diag || exit 1;
 
 # we should do some initial iterations on the codebook
 if [ $emiters -gt 0 ]; then
   scripts/subset_scp.pl $emsize $data/feats.scp > $dir/em.scp
   emfeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$dir/em.scp ark:- | add-deltas ark:- ark:- |"
   echo "Performing $emiters EM iterations on initial codebook"
-  mv $dir/ubm-full $dir/ubm-full.0
+  mv $dir/ubm-diag $dir/ubm-diag.0
   for i in `seq 1 $emiters`; do
-    fgmm-global-acc-stats $dir/ubm-full.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log
-    fgmm-global-est --remove-low-count-gaussians=false $dir/ubm-full.$[$i-1] $dir/em.$i.acc $dir/ubm-full.$i 2> $dir/est.$i.log
+    fgmm-global-acc-stats $dir/ubm-diag.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log || exit 1;
+    fgmm-global-est --remove-low-count-gaussians=false $dir/ubm-diag.$[$i-1] $dir/em.$i.acc $dir/ubm-diag.$i 2> $dir/est.$i.log || exit 1;
   done
-  ln -s ubm-full.$emiters $dir/ubm-full
+  mv ubm-diag.$emiters $dir/ubm-diag
 fi
 
+# we won't need the old ubms
+rm $dir/ubm-diag.*
+
 echo "Initializing model"
-tied-full-gmm-init-model $dir/tree $lang/topo $dir/ubm-full $dir/1.mdl 2> $dir/init_model.log || exit 1;
+tied-diag-gmm-init-model $dir/tree $lang/topo $dir/ubm-diag $dir/1.mdl 2> $dir/init_model.log || exit 1;
 
 rm $dir/treeacc
 
@@ -143,21 +173,26 @@ while [ $x -lt $numiters ]; do
    echo Pass $x
    if echo $realign_iters | grep -w $x >/dev/null; then
      echo "Aligning data"
-     tied-full-gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
+     tied-diag-gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
              "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
              ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
    fi
-   tied-full-gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
+
+   tied-diag-gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc \
+     2> $dir/acc.$x.log  || exit 1;
 
    # suff. stats smoothing?
-   if [ "$rho_stats" != "0" ]; then
-	 smooth-stats-full $ssmoothing --rho=$rho_stats $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp 2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
-	 mv $dir/$x.acc.tmp $dir/$x.acc
+   if [ "$tau" != "0" ]; then
+     smooth-stats-diag $preserve_counts --tau=$tau $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp \
+       2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
+     mv $dir/$x.acc.tmp $dir/$x.acc
    fi
 
-   tied-full-gmm-est $psmoothing --write-occs=$dir/$x.occs $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
+   tied-diag-gmm-est $inter --write-occs=$dir/$[$x+1].occs $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl \
+     2> $dir/update.$x.log || exit 1;
    
-   #rm $dir/$x.mdl $dir/$x.acc
+   rm $dir/$x.mdl $dir/$x.acc
+   rm $dir/$x.occs
    x=$[$x+1];
 done
 

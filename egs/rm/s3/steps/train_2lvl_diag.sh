@@ -21,9 +21,12 @@
 # exp/mono), supplied as an argument, which is assumed to be built using
 # the same type of features.
 
-if [ $# != 11 ]; then
-   echo "Usage: steps/train_2lvl_diag.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> <num-codebooks> <num-gaussians> <num-tree-leaves> <init-type> <smooth-type> <rho-stats> <rho-reest>"
-   echo " e.g.: steps/train_2lvl_diag.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl-diag 100 1024 1800 0 1 10 0"
+# this training scripts assumes tri1 alignments to start from
+
+if [[ $# != 4 && $# != 10 ]]; then
+   echo "Usage: steps/train_2lvl_diag.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> [ <num-codebooks> <num-gaussians> <num-tree-leaves> <smooth-type> <tau> <rho> ]"
+   echo " e.g.: steps/train_2lvl_diag.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl-default"
+   echo " e.g.: steps/train_2lvl_diag.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 100 1024 1800 0 10 0.5"
    exit 1;
 fi
 
@@ -43,33 +46,57 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="5 10 15 20";  
 silphonelist=`cat $lang/silphones.csl`
 numiters=25          # Number of iterations of training
-max_leaves_first=$5  # Number of codebooks
-max_leaves_second=$7 # target num-leaves in tree building.
-totgauss=$6          # Target total #Gaussians in codebooks
+
+# default parameters
+max_leaves_first=78
+max_leaves_second=2500
+totgauss=2048
+smooth_type=0
+tau=0
+rho=0.5
 mingauss=3           # minimum size of codebook
+power=1
 
-init_style=$8        # (0, init-tied-codebooks) (1, tied-lbg)
+inter=""
+preserve_counts=""
 
-smooth_type=$9       # (0, regular, Interpolate1) (1, preserve counts, Interpolate2)
-rho_stats=${10}      # set to > 0 to activate prop/interp of suff. stats. (weights only)
-rho_iters=${11}      # set to > 0 to actiavte smoothing of new model with prior model (weights only)
-
-psmoothing=""
-if [ "$rho_iters" != "0" ]; then
-  psmoothing="--smoothing-weight=$rho_iters --interpolate-weights"
+if [ $# == 10 ]; then
+  max_leaves_first=$5  # Number of codebooks
+  max_leaves_second=$7 # target num-leaves in tree building.
+  totgauss=$6          # Target total #Gaussians in codebooks
+  smooth_type=$8       # (0, regular Interpolate1) (1, preserve-counts, Interpolate2)
+  tau=$9               # set to > 0 to activate smoothing of suff. stats. (weights only)
+  rho=${10}            # set to > 0 to actiavte smoothing of new model with prior model (weights only)
 fi
 
-ssmoothing=""
+# interpolation between iterations requested?
+if [ "$rho" != "0" ]; then
+  inter="--interpolation-weight=$rho --interpolate-weights"
+fi
+
+# smothing of stats requested?
 if [ "$smooth_type" == "0" ]; then
-  ssmoothing=""
+  preserve_counts=""
 elif [ "$smooth_type" == "1" ]; then
-  ssmoothing="--preserve-counts"
+  preserve_counts="--preserve-counts"
 else
   echo "Invalid smoothing type $smooth_type"
   exit 1
 fi
 
 mkdir -p $dir
+
+# write out the params we're using, just for the record
+echo "Training started: `date`
+$0 $@
+max_leaves_first=$max_leaves_first
+max_leaves_second=$max_leaves_second
+totgauss=$totgauss
+smooth_type=$smooth_type
+tau=$tau
+rho=$rho
+intra=$intra
+preserve_counts=$preserve_counts" > $dir/.params
 
 feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
 
@@ -91,42 +118,39 @@ compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compil
 scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split \
     > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
-# build tree, make sure to disable the leaf clustering
+# build the 2-lvl tree, make sure to not cluster the leaves!
 echo "Building tree"
 build-tree-two-level --verbose=1 --cluster-leaves=false \
     --max-leaves_first=$max_leaves_first \
-	--max-leaves_second=$max_leaves_second \
+    --max-leaves_second=$max_leaves_second \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $lang/topo $dir/tree $dir/tree.map 2> $dir/train_tree.log || exit 1;
 
 # codebook initialization as desired...
-if [ $init_style == 0 ]; then
-  echo "Initializing codebooks based on tree stats"
-  init-tied-codebooks --split-gaussians=true --full=false --min-gauss=$mingauss --max-gauss=$totgauss \
-    $dir/tree $dir/treeacc $dir/ubm-diag $dir/tree.map 2> $dir/init-tied-codebooks.err > $dir/init-tied-codebooks.out || exit 1;
-elif [ $init_style == 1 ]; then
-  echo "Initializing codebooks by LBG on (ali<->features)"
-  tied-lbg --full=false --min-gauss=$mingauss --max-gauss=$totgauss --remove-low-count-gaussians=false --interim-em=5 \
-    $alidir/tree $dir/tree $lang/topo "$feats" ark:$alidir/ali $dir/ubm-diag $dir/tree.map 2> $dir/tied-lbg.err > $dir/tied-lbg.out || exit 1;
-else
-  echo "Invalid codebook initialization: $init_style"
-  exit 1
-fi
-
-
-echo "Initializing model"
-echo "Initializing model"
-if [ $max_leaves_first -gt 999 ]; then
-  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???,????} $dir/1.mdl 2> $dir/init_model.log || exit 1;
-elif [ $max_leaves_first -gt 99 ]; then
-  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
-elif [ $max_leaves_first -gt 9 ]; then
-  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.{?,??} $dir/1.mdl 2> $dir/init_model.log || exit 1;
-else
-  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-full.? $dir/1.mdl 2> $dir/init_model.log || exit 1;
-fi
+echo "Initializing codebooks"
+init-tied-codebooks --power=$power --split-gaussians=true --diag=true --min-gauss=$mingauss --max-gauss=$totgauss \
+    $dir/tree $dir/treeacc $dir/ubm-diag $dir/tree.map 2> $dir/init-tied-codebooks.err || exit 1;
 
 rm $dir/treeacc
+
+echo "Initializing model"
+if [ $max_leaves_first -gt 99999 ]; then
+  echo "Too many codebooks, adjust training script"
+  exit 1
+elif [ $max_leaves_first -gt 9999 ]; then
+  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-diag.{?,??,???,????,?????} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+elif [ $max_leaves_first -gt 999 ]; then
+  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-diag.{?,??,???,????} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+elif [ $max_leaves_first -gt 99 ]; then
+  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-diag.{?,??,???} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+elif [ $max_leaves_first -gt 9 ]; then
+  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-diag.{?,??} $dir/1.mdl 2> $dir/init_model.log || exit 1;
+else
+  tied-diag-gmm-init-model $dir/tree $lang/topo $dir/tree.map $dir/ubm-diag.? $dir/1.mdl 2> $dir/init_model.log || exit 1;
+fi
+
+# we don't need these any more
+rm $dir/ubm-diag.*
 
 # Convert alignments generated from cont/triphone model, to use as initial alignments.
 
@@ -149,17 +173,19 @@ while [ $x -lt $numiters ]; do
              "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
              ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
    fi
+   
    tied-diag-gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
 
    # suff. stats smoothing?
-   if [ "$rho_stats" != "0" ]; then
-	 smooth-stats-diag $ssmoothing --rho=$rho_stats $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp 2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
+   if [ "$tau" != "0" ]; then
+	 smooth-stats-diag $ssmoothing --tau=$tau $dir/tree $dir/tree.map $dir/$x.acc $dir/$x.acc.tmp 2> $dir/smooth.$x.err > $dir/smooth.$x.out || exit 1;
 	 mv $dir/$x.acc.tmp $dir/$x.acc
    fi
 
-   tied-diag-gmm-est $psmoothing --write-occs=$dir/$x.occs $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
+   tied-diag-gmm-est $intra --write-occs=$dir/$[$x+1].occs $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
    
-   #rm $dir/$x.mdl $dir/$x.acc
+   rm $dir/$x.mdl $dir/$x.acc
+   rm $dir/$x.occs
    x=$[$x+1];
 done
 
