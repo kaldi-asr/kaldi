@@ -213,6 +213,6 @@ if [ "$feats" != "$sifeats" ]; then
 fi
 
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs; )
+( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl )
 
 echo Done

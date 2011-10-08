@@ -32,6 +32,7 @@
 # If you give the --shortest option [not compatible with the
 # --per-spk option], it will give you the n shortest utterances.
 
+shortest=false
 perspk=false
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
