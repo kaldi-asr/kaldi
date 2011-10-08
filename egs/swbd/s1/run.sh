@@ -31,5 +31,21 @@ local/swbd_p1_format_data.sh
 # want to store MFCC features. 
 #mfccdir=/mnt/matylda6/ijanda/kaldi_swbd_mfcc
 mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_swbd_mfcc
+cmd="queue.pl -q all.q@@blade" # remove the option if no queue.
+local/make_mfcc_segs.sh --num-jobs 10 --cmd "$cmd" data/train exp/make_mfcc/train $mfccdir
 
-steps/make_mfcc_segs.sh data/train exp/make_mfcc/train $mfccdir 8
+# Now-- there are 264k utterances, and we want to start the monophone training
+# on relatively short utterances (easier to align), but not only the very shortest
+# ones (mostly uh-huh).  So take the 100k shortest ones, and then take 10k random
+# utterances from those.
+scripts/subset_data_dir.sh --shortest data/train 100000 data/train_100kshort
+scripts/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
+local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
+
+( . path.sh;
+  cp data/train_10k_nodup/feats.scp{,.bak} 
+  mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_swbd_mfcc
+  copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_swbd_10k_nodup.ark,$mfccdir/kaldi_swbd_10k_nodup.scp \
+  && cp $mfccdir/kaldi_swbd_10k_nodup.scp data/train_10k_nodup/feats.scp
+)
+  

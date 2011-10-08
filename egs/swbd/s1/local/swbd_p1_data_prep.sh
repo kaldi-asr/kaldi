@@ -1,19 +1,5 @@
 #!/bin/bash
 #
-# Copyright 2010-2011 Microsoft Corporation
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-# MERCHANTABLITY OR NON-INFRINGEMENT.
-# See the Apache 2 License for the specific language governing permissions and
-# limitations under the License.
 
 # To be run from one directory above this script.
 
@@ -98,7 +84,7 @@ awk 'BEGIN{getline}($0 !~ /^#/) {$0=toupper($0); print}' \
 # Get OOV list.
 # oovs.old.txt is used just for debugging.  should be empty except for
 # [NOISE], [VOCALIZED-NOISE], [LAUGHTER]
-cat transcripts1.txt | $DIR/scripts/oov2unk.pl lexicon1.txt " " \
+cat transcripts1.txt | $DIR/local/oov2unk.pl lexicon1.txt " " \
    2> oovs.old.txt >/dev/null  || exit 1 #get file oovs.old.txt
 
 
