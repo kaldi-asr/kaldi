@@ -38,18 +38,21 @@ texts=""
 for n in `scripts/get_splits.pl $numsplit`; do
    mkdir -p $data/split$numsplit/$n
    feats="$feats $data/split$numsplit/$n/feats.scp"
-   wavs="$wavs $data/split$numsplit/$n/wavs.scp"
+   wavs="$wavs $data/split$numsplit/$n/wav.scp"
    texts="$texts $data/split$numsplit/$n/text"
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
 done
 
 scripts/split_scp.pl --utt2spk=$data/utt2spk $data/utt2spk $utt2spks
 scripts/split_scp.pl --utt2spk=$data/utt2spk $data/feats.scp $feats
-scripts/split_scp.pl --utt2spk=$data/utt2spk $data/wav.scp $wavs
-scripts/split_scp.pl --utt2spk=$data/utt2spk $data/text $texts
+[ -f $data/wav.scp ] && \
+  scripts/split_scp.pl --utt2spk=$data/utt2spk $data/wav.scp $wavs
+[ -f $data/text ] && \
+ scripts/split_scp.pl --utt2spk=$data/utt2spk $data/text $texts
 
 for n in `scripts/get_splits.pl $numsplit`; do
    scripts/utt2spk_to_spk2utt.pl $data/split$numsplit/$n/utt2spk > $data/split$numsplit/$n/spk2utt
    # for completeness, also split the spk2gender file
-   scripts/filter_scp.pl $data/split$numsplit/$n/spk2utt $data/spk2gender > $data/split$numsplit/$n/spk2gender
+   [ -f $data/spk2gender ] && \
+     scripts/filter_scp.pl $data/split$numsplit/$n/spk2utt $data/spk2gender > $data/split$numsplit/$n/spk2gender
 done

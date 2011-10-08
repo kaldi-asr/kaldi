@@ -64,7 +64,8 @@ scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
 
-steps/train_mono.sh data/train_si84_2kshort data/lang exp/mono0a
+steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
+  data/train_si84_2kshort data/lang exp/mono0a
 
 (
 scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr

@@ -103,7 +103,7 @@ wait
 echo "Aligning data equally (pass 0)"
 
 for n in `get_splits.pl $nj`; do
-  $cmd $dir/log/acc.0.$n.log \
+  $cmd $dir/log/align.0.$n.log \
     align-equal-compiled "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" ark,t,f:-  \| \
       gmm-acc-stats-ali --binary=true $dir/0.mdl "${featspart[$n]}" ark:- \
         $dir/0.$n.acc || touch $dir/.error &
@@ -127,15 +127,16 @@ while [ $x -lt $numiters ]; do
   if echo $realign_iters | grep -w $x >/dev/null; then
     echo "Aligning data"
     for n in `get_splits.pl $nj`; do
+     $cmd $dir/log/align.$x.$n.log \
       gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$[$beam*4] $dir/$x.mdl \
         "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" "ark,t:|gzip -c >$dir/$n.ali.gz" \
-        2> $dir/log/align.$x.$n.log || touch $dir/.error &
+         || touch $dir/.error &
     done
     wait
     [ -f $dir/.error ] && echo "Error in pass $x alignment" && exit 1;
   fi
   for n in `get_splits.pl $nj`; do
-    $cmd $dir/log/acc.$x.log \
+    $cmd $dir/log/acc.$x.$n.log \
       gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" "ark:gunzip -c $dir/$n.ali.gz|" \
         $dir/$x.$n.acc || touch $dir/.error &
   done
