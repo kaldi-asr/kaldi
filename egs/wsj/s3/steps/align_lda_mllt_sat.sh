@@ -42,6 +42,7 @@ for x in 1 2 3; do
   if [ $1 == "--cmd" ]; then
      shift
      cmd=$1
+     [ "$cmd" == "" ] && echo "Empty string given to --cmd option" && exit 1;
      shift
   fi  
 done
@@ -67,7 +68,7 @@ cp $srcdir/{tree,final.mdl,final.alimdl,final.mat,final.occs} $dir || exit 1;  #
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 

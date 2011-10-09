@@ -48,9 +48,11 @@ class AmDiagGmm {
   // to work out targets for each state (according to power-of-occupancy rule),
   // and any state less than its target gets mixed up.  If some states
   // were over their target, this may take the #Gauss over the target.
+  // we enforce a min-count on Gaussians while splitting (don't split
+  // if it would take it below min-count).
   void SplitByCount(const Vector<BaseFloat> &state_occs,
                     int32 target_components, float perturb_factor,
-                    BaseFloat power);
+                    BaseFloat power, BaseFloat min_count);
 
 
   // In SplitByCount we use the "target_components" and "power"
@@ -59,7 +61,7 @@ class AmDiagGmm {
   // were under their target, this may take the #Gauss below the target.
   void MergeByCount(const Vector<BaseFloat> &state_occs,
                     int32 target_components,
-                    BaseFloat power);
+                    BaseFloat power, BaseFloat min_count);
 
   /// Sets the gconsts for all the PDFs. Returns the total number of Gaussians
   /// over all PDFs that are "invalid" e.g. due to zero weights or variances.
@@ -98,6 +100,7 @@ class AmDiagGmm {
   void ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
                             int32 target_components,
                             BaseFloat power,
+                            BaseFloat min_count,
                             std::vector<int32> *targets) const;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmDiagGmm);

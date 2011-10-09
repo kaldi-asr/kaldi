@@ -57,7 +57,7 @@ realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 oov_sym=`cat $lang/oov.txt`
 
 mkdir -p $dir/log
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   split_data.sh $data $nj
 fi
 

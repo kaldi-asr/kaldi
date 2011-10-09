@@ -70,7 +70,7 @@ incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 mkdir -p $dir/log
 cp $alidir/final.mat $dir/
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   split_data.sh $data $nj
 fi
 
@@ -109,8 +109,9 @@ feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transdir/*
 # The next stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
-acc-tree-stats --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-  "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc 2> $dir/log/acc_tree.log || exit 1;
+$cmd $dir/log/acc_tree.log \
+ acc-tree-stats --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
+   "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc || exit 1;
 
 echo "Computing questions for tree clustering"
 # preparing questions, roots file...
@@ -121,9 +122,10 @@ compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/co
 sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
 echo "Building tree"
-build-tree --verbose=1 --max-leaves=$numleaves \
+$cmd  $dir/log/train_tree.log \
+ build-tree --verbose=1 --max-leaves=$numleaves \
    $dir/treeacc $dir/roots.txt \
-   $dir/questions.qst $lang/topo $dir/tree  2> $dir/log/train_tree.log || exit 1;
+   $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
 gmm-init-model  --write-occs=$dir/1.occs  \
    $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;

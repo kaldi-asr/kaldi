@@ -114,6 +114,7 @@ struct CountStats {
 void AmDiagGmm::ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
                                      int32 target_components,
                                      BaseFloat power,
+                                     BaseFloat min_count,
                                      std::vector<int32> *targets) const {
   KALDI_ASSERT(static_cast<int32>(state_occs.Dim()) == NumPdfs());
 
@@ -133,8 +134,20 @@ void AmDiagGmm::ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
        num_gauss < target_components;
       ++num_gauss) {
     CountStats state_to_split = split_queue.top();
+    if (state_to_split.occupancy == 0) {
+      KALDI_WARN << "Could not split up to " << target_components
+                 << " due to min-count = " << min_count
+                 << " (or no counts at all)\n";
+      break;
+    }
     split_queue.pop();
-    state_to_split.num_components++;
+    BaseFloat orig_occ = state_occs(state_to_split.pdf_index);
+    if ((state_to_split.num_components+1) * min_count >= orig_occ) {
+      state_to_split.occupancy = 0; // min-count active -> disallow splitting
+      // this state any more by setting occupancy = 0.
+    } else {
+      state_to_split.num_components++;
+    }
     split_queue.push(state_to_split);
   }
 
@@ -151,10 +164,12 @@ void AmDiagGmm::ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
 
 void AmDiagGmm::SplitByCount(const Vector<BaseFloat> &state_occs,
                              int32 target_components,
-                             float perturb_factor, BaseFloat power) {
+                             float perturb_factor, BaseFloat power,
+                             BaseFloat min_count) {
   int32 gauss_at_start = NumGauss();
   std::vector<int32> targets;
-  ComputeTargetNumPdfs(state_occs, target_components, power, &targets);
+  ComputeTargetNumPdfs(state_occs, target_components, power,
+                       min_count, &targets);
 
   for (int32 i = 0; i < NumPdfs(); i++) {
     if (densities_[i]->NumGauss() < targets[i])
@@ -163,18 +178,21 @@ void AmDiagGmm::SplitByCount(const Vector<BaseFloat> &state_occs,
 
   KALDI_LOG << "Split " << NumPdfs() << " states with target = "
             << target_components << ", power = " << power
-            << ", and perturb_factor = " << perturb_factor
-            << ", split from " << gauss_at_start << " to "
+            << ", perturb_factor = " << perturb_factor
+            << " and min_count = " << min_count
+            << ", split #Gauss from " << gauss_at_start << " to "
             << NumGauss();
 }
 
 
 void AmDiagGmm::MergeByCount(const Vector<BaseFloat> &state_occs,
                              int32 target_components,
-                             BaseFloat power) {
+                             BaseFloat power,
+                             BaseFloat min_count) {
   int32 gauss_at_start = NumGauss();
   std::vector<int32> targets;
-  ComputeTargetNumPdfs(state_occs, target_components, power, &targets);
+  ComputeTargetNumPdfs(state_occs, target_components,
+                       power, min_count, &targets);
 
   for (int32 i = 0; i < NumPdfs(); i++) {
     if (targets[i] == 0) targets[i] = 1;  // can't merge below 1.
@@ -184,6 +202,7 @@ void AmDiagGmm::MergeByCount(const Vector<BaseFloat> &state_occs,
 
   KALDI_LOG << "Merged " << NumPdfs() << " states with target = "
             << target_components << ", power = " << power
+            << " and min_count = " << min_count
             << ", merged from " << gauss_at_start << " to "
             << NumGauss();
 }

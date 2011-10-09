@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
     BaseFloat objf_impr, count;
     mllt_accs.Update(&mat, &objf_impr, &count);
 
-    KALDI_LOG << "Updated MLLT, total objf impr is " << (objf_impr/count)
-              << " over " << count << " frames, logdet is "
+    KALDI_LOG << "Overall objective function improvement for MLLT is "
+              << (objf_impr/count) << " over " << count << " frames, logdet is "
               << mat.LogDet();
 
     Output ko(mllt_out_filename, binary);

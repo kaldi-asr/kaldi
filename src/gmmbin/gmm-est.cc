@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;
     BaseFloat power = 0.2;
+    BaseFloat min_count = 20.0;
     std::string update_flags_str = "mvwt";
     std::string occs_out_filename;
 
@@ -47,6 +48,8 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("mix-up", &mixup, "Increase number of mixture components to "
                 "this overall target.");
+    po.Register("min-count", &min_count,
+                "Minimum per-Gaussian count enforced while mixing up and down.");
     po.Register("mix-down", &mixdown, "If nonzero, merge mixture components to this "
                 "target.");
     po.Register("power", &power, "If mixing up, power to allocate Gaussians to"
@@ -115,14 +118,16 @@ int main(int argc, char *argv[]) {
         state_occs(i) = gmm_accs.GetAcc(i).occupancy().Sum();
 
       if (mixdown != 0)
-        am_gmm.MergeByCount(state_occs, mixup, power);
+        am_gmm.MergeByCount(state_occs, mixdown, power, min_count);
 
       if (mixup != 0)
-        am_gmm.SplitByCount(state_occs, mixup, perturb_factor, power);
+        am_gmm.SplitByCount(state_occs, mixup, perturb_factor,
+                            power, min_count);
 
       if (!occs_out_filename.empty()) {
-        kaldi::Output ko(occs_out_filename, binary_write);
-        state_occs.Write(ko.Stream(), binary_write);
+        bool binary = false; // write this in text mode-- useful to look at.
+        kaldi::Output ko(occs_out_filename, binary);
+        state_occs.Write(ko.Stream(), binary);
       }
     }
 

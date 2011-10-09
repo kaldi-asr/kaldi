@@ -49,7 +49,7 @@ dir=$5
 
 mkdir -p $dir/log
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 

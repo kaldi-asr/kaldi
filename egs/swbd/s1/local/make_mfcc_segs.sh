@@ -49,7 +49,7 @@ name=`basename $data`
 mkdir -p $mfccdir || exit 1;
 mkdir -p $logdir || exit 1;
 
-scp=$data/wav.scp
+scp=$data/wav_sides.scp
 segments=$data/segments
 config=conf/mfcc.conf
 required="$scp $segments $config"

@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
                             mat,
                             &tree_stats);
         num_done++;
+        if (num_done % 1000 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances.";
       }
     }
 

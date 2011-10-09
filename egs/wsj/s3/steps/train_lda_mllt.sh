@@ -66,7 +66,7 @@ randprune=4.0 # This is approximately the ratio by which we will speed up the
 
 mkdir -p $dir/log
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 

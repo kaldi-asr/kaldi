@@ -73,7 +73,7 @@ void TestSplitStates(const AmDiagGmm &am_gmm) {
     occs(i) = std::fabs(kaldi::RandGauss()) * (kaldi::RandUniform()+1);
   AmDiagGmm *am_gmm1 = new AmDiagGmm();
   am_gmm1->CopyFromAmDiagGmm(am_gmm);
-  am_gmm1->SplitByCount(occs, target_comp, 0.01, 0.2);
+  am_gmm1->SplitByCount(occs, target_comp, 0.01, 0.2, 0.0);
 
   int32 dim = am_gmm.Dim();
   kaldi::Vector<BaseFloat> feat(dim);

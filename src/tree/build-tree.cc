@@ -189,11 +189,18 @@ EventMap *BuildTree(Questions &qopts,
     cluster_thresh = smallest_split;
   }
 
-  BaseFloat normalizer = SumNormalizer(stats), impr_normalized = impr / normalizer;
-
-  KALDI_VLOG(1) <<  "After decision tree split, num-leaves = "<< num_leaves
+  BaseFloat normalizer = SumNormalizer(stats), impr_normalized = impr / normalizer,
+      normalizer_filt = SumNormalizer(filtered_stats),
+      impr_normalized_filt = impr / normalizer_filt;
+  
+  KALDI_VLOG(1) <<  "After decision tree split, num-leaves = " << num_leaves
                 << ", like-impr = " << impr_normalized << " per frame over "
                 << normalizer << " frames.";
+ 
+  KALDI_VLOG(1) <<  "Including just phones that were split, improvement is " 
+                << impr_normalized_filt << " per frame over "
+                << normalizer_filt << " frames.";
+  
 
   if (cluster_thresh != 0.0) {   // Cluster the tree.
     BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree_split);
@@ -213,8 +220,12 @@ EventMap *BuildTree(Questions &qopts,
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
 
     KALDI_VLOG(1) << "BuildTree: objf change due to clustering "
-                  << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
+                  << ((objf_after_cluster-objf_before_cluster) / normalizer)
+                   << " per frame.";
+    KALDI_VLOG(1) << "Normalizing over only split phones, this is: "
+                  << ((objf_after_cluster-objf_before_cluster) / normalizer_filt)
                   << " per frame.";
+
     KALDI_VLOG(1) <<  "BuildTreeClustered: num-leaves now "<< num_leaves;
     delete tree_clustered;
     delete tree_split;

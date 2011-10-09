@@ -125,9 +125,14 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/gra
 steps/train_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
+  data/test_dev93 exp/tri3b/decode_tgpr_dev93
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
   data/lang_test_tgpr/words.txt data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
+  data/test_eval92 exp/tri3b/decode_tgpr_eval92
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
@@ -159,6 +164,8 @@ steps/train_sgmm_lda_etc.sh  --num-jobs 10 --cmd "$train_cmd" \
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
     exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
+    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
 
 
 # Align 3b system with si284 data and num-jobs = 20; we'll train an LDA+MLLT+SAT system on si284 from this.
@@ -183,6 +190,12 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
     exp/sgmm4c/graph_tgpr data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
   data/lang_test_tgpr/words.txt data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/sgmm4c/decode_tgpr_dev93_tg
+
+# decode the above with nov'92 too
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
+    exp/sgmm4c/graph_tgpr data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/sgmm4c/decode_tgpr_eval92_tg
 
 
 

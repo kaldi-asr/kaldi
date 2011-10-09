@@ -68,7 +68,7 @@ $dir = "$dir/q";
 if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
 $base = basename($logfile);
 # Replace trailing .log with .sh
-$base =~ s:\.[a-z]+$:.sh: || die "Could not make sense of log-file name: $logfile";
+$base =~ s:\.[a-z]+$:.sh: || die "Could not make sense of log-file name (expect a suffix e.g. .log): $logfile";
 $shfile = "$dir/$base";
 open(S, ">$shfile") || die "Could not write to script file $shfile";
 
@@ -94,6 +94,20 @@ close(S) || die "Could not close script file $shfile";
 #
 system "$qsub_cmd";
 if ($? == 0) { exit(0); }
+$errmsg = `tail -2 $dir/queue.log`;
+if ($errmsg =~ m/containes/) { # the error message "range_list containes no elements"
+  # seems to be encountered due to a bug in grid engine... since this appears to be 
+  # intermittent, we try a bunch of times, with sleeps in between, if this happens.
+  print STDERR "Command writing to $logfile failed, apparently due to queue bug " .
+      " (range_list containes no elements)... will try again a few times.\n";
+  for ($x = 1; $x < 10; $x++) {
+      print STDERR "[$x/10]";
+      sleep(10.0);
+      system "$qsub_cmd";
+      if ($? == 0) { exit(0); }
+  }
+}
+
 print STDERR "Command writing to $logfile failed; trying again\n";
 system "mv $logfile $logfile.bak";
 system "$qsub_cmd";

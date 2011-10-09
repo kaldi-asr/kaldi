@@ -67,7 +67,7 @@ randprune=4.0
 
 mkdir -p $dir/log $dir/warps
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 

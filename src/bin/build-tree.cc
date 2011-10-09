@@ -152,6 +152,16 @@ int main(int argc, char *argv[]) {
                        cluster_thresh,
                        P);
 
+    { // This block is to warn about low counts.
+      std::vector<BuildTreeStatsType> split_stats;
+      SplitStatsByMap(stats, *to_pdf,
+                      &split_stats);
+      for (size_t i = 0; i < split_stats.size(); i++)
+        if (SumNormalizer(split_stats[i]) < 100.0)
+          KALDI_VLOG(1) << "For pdf-id " << i << ", low count "
+                        << SumNormalizer(split_stats[i]);
+    }
+    
     ContextDependency ctx_dep(N, P, to_pdf);  // takes ownership
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;

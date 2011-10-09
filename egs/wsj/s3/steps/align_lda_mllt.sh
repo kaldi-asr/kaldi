@@ -71,7 +71,7 @@ cp $srcdir/{tree,final.mdl,final.mat,final.occs} $dir || exit 1;  # Create copy 
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
-if [ ! -f $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   split_data.sh $data $nj
 fi
 

@@ -38,6 +38,10 @@ void ReadSharedPhonesList(std::string rxfilename, std::vector<std::vector<int32>
     if (!SplitStringToIntegers(line, " \t\r", true, &(list_out->back())))
       KALDI_ERR << "Bad line in shared phones list: " << line << " (reading "
                 << PrintableRxfilename(rxfilename) << ")";
+    std::sort(list_out->rbegin()->begin(), list_out->rbegin()->end());
+    if (!IsSortedAndUniq(*(list_out->rbegin())))
+      KALDI_ERR << "Bad line in shared phones list (repeated phone): " << line
+                << " (reading " << PrintableRxfilename(rxfilename) << ")";
   }
 }
 

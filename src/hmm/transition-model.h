@@ -184,10 +184,10 @@ class TransitionModel {
               BaseFloat *count_out);
 
   /// Print will print the transition model in a human-readable way, for purposes of human
-  /// inspection.  The "stats" are optional (they are indexed by pdf-id).
+  /// inspection.  The "occs" are optional (they are indexed by pdf-id).
   void Print(std::ostream &os,
              const std::vector<std::string> &phone_names,
-             const Vector<double> *stats = NULL);
+             const Vector<double> *occs = NULL);
 
 
   void InitStats(Vector<double> *stats) const { stats->Resize(NumTransitionIds()+1); }

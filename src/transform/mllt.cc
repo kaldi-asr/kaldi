@@ -115,9 +115,9 @@ void MlltAccs::Update(double beta,
       tot_objf_impr += objf_after - objf_before;
     }
     if (p < 10 || p % 10 == 0)
-      KALDI_LOG << "MLLT objective improvement per frame on " << p
+      KALDI_LOG << "MLLT objective improvement per frame by " << p
                 << "'th iteration is " << (tot_objf_impr/beta) << " per frame "
-                << "over " << beta << " frames, by iteration " << p;
+                << "over " << beta << " frames.";
   }
   if (objf_impr_out)
     *objf_impr_out = tot_objf_impr;
