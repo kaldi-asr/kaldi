@@ -176,23 +176,35 @@ void MleTiedGmmUpdate(const MleTiedGmmOptions &config,
 
     // update weights
     std::vector<int32> floored_weights;
+    std::vector<int32> untouched_weights;
+    BaseFloat pmass = 0.0, umass = 0.0;
     for (int32 g = 0; g < num_comp; g++) {
       double wt = tiedgmm_acc.occupancy()(g) / occ_sum;
 
       if (wt < floor) {
-        // KALDI_WARN << "Weight of component " << g << " too small
-        // (" << wt << "), flooring to min_gaussian_weight";
+        // floor the weight, but remember the added prob mass
+        pmass += (floor - wt);
         wt = floor;
         floored_weights.push_back(g);
+      } else {
+        umass += wt;
+        untouched_weights.push_back(g);
       }
 
       tied->SetComponentWeight(g, wt);
     }
 
     if (floored_weights.size() > 0) {
-      // to correct for the min weights
-      // we need to re-normalize the weights
+      // As we floored a couple of weights, we need to subtract the added
+      // probability mass from the remaining ones. Do this with respect
+      // to their size.
       Vector<BaseFloat> w(tied->weights());
+
+      for (std::vector<int32>::iterator it = untouched_weights.begin(),
+           end = untouched_weights.end(); it != end; ++it) {
+        w(*it) = w(*it) - pmass * w(*it) / umass;
+      }
+
       w.Scale(1.0 / w.Sum());
       tied->SetWeights(w);
 
