@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2011 Milos Janda
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,28 +27,29 @@
 $dict = shift @ARGV;
 open(F, "<$dict") || die "Died opening dictionary file $dict\n";
 while(<F>){
-   @A = split(" ", $_);
-   $word = shift @A;
-   $seen{$word} = 1;
+    @A = split(" ", $_);
+    $word = shift @A;
+    $seen{$word} = 1;
 }
 $spoken_noise_word = shift @ARGV;
 
 while(<STDIN>) {
-   @A = split(" ", $_);
-   $utt = shift @A;
-   print $utt;
-   foreach $a (@A) {
-       if(defined $seen{$a}) {
-           print " $a";
-       } else  { 
-           $oov{$a}++;
-           print " $spoken_noise_word";
-       }
-   }
-   print "\n";
+    @A = split(" ", $_);
+    $utt = shift @A;
+    print $utt;
+    foreach $a (@A) {
+        if(defined $seen{$a}) {
+            print " $a";
+        } else  { 
+            $oov{$a}++;
+            print " $spoken_noise_word";
+        }
+    }
+    print "\n";
 }
 
 
 foreach $w (sort { $oov{$a} <=> $oov{$b} } keys %oov) {
     print STDERR "$w $oov{$w}\n";
 }
+

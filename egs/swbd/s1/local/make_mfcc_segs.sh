@@ -16,8 +16,24 @@
 
 # To be run from .. (one directory up from here)
 
-if [ $# != 4 ]; then
-   echo "usage: make_mfcc.sh <data-dir> <log-dir> <abs-path-to-mfccdir> <num-cpus>";
+cmd="scripts/run.pl"
+nj=4
+for x in 1 2; do
+  if [ $1 == "--cmd" ]; then
+    shift
+    cmd="$1";
+    shift;
+    [ "$cmd" == "" ] && echo Empty value given to --cmd option && exit 1;
+  fi
+  if [ $1 == "--num-jobs" ]; then
+     shift
+     nj=$1
+     shift
+  fi
+done
+
+if [ $# != 3 ]; then
+   echo "usage: make_mfcc.sh <data-dir> <log-dir> <abs-path-to-mfccdir>";
    exit 1;
 fi
 
@@ -26,7 +42,6 @@ if [ -f path.sh ]; then . path.sh; fi
 data=$1
 logdir=$2
 mfccdir=$3
-ncpus=$4
 
 # use "name" as part of name of the archive.
 name=`basename $data`
@@ -34,8 +49,8 @@ name=`basename $data`
 mkdir -p $mfccdir || exit 1;
 mkdir -p $logdir || exit 1;
 
-scp=$data/wav.scp
-segments=$data/segments_all  
+scp=$data/wav_sides.scp
+segments=$data/segments
 config=conf/mfcc.conf
 required="$scp $segments $config"
 
@@ -51,20 +66,20 @@ done
 # The "for" loop in this style is a special construct.
 
 split_segments=""
-for ((n=1; n<=ncpus; n++)); do
+for ((n=1; n<=nj; n++)); do
    split_segments="$split_segments $logdir/segments$n"
 done
 
 scripts/split_scp.pl $segments $split_segments || exit 1;
 
 rm $logdir/.error 2>/dev/null
-for ((n=1; n<=ncpus; n++)); do
+for ((n=1; n<=nj; n++)); do
   log=$logdir/make_mfcc.$n.log
-
-  extract-segments scp:$scp $logdir/segments${n} ark:- | \
-  compute-mfcc-feats  --sample-frequency=8000 --verbose=2 --config=$config ark:- \
+  $cmd $log \
+  extract-segments scp:$scp $logdir/segments${n} ark:- \| \
+  compute-mfcc-feats --verbose=2 --config=$config ark:- \
   ark,scp:$mfccdir/raw_mfcc_$name.$n.ark,$mfccdir/raw_mfcc_$name.$n.scp \
-  2> $log || touch $logdir/.error &
+   || touch $logdir/.error &
 done
 wait;
 
@@ -76,7 +91,7 @@ fi
 
 # concatenate the .scp files together.
 rm $data/feats.scp 2>/dev/null
-for ((n=1; n<=ncpus; n++)); do
+for ((n=1; n<=nj; n++)); do
   cat $mfccdir/raw_mfcc_$name.$n.scp >> $data/feats.scp
 done
 
