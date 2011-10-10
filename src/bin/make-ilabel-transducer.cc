@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         " make-ilabel-transducer old_ilabel_info 1.tree 1.mdl new_ilabel_info > convert.fst\n";
     ParseOptions po(usage);
 
-    bool binary = false;
+    bool binary = true;
     std::string disambig_wxfilename;
     std::string old2new_map_wxfilename;
     po.Register("write-disambig-syms", &disambig_wxfilename, "List of disambiguation symbols after the remapping");

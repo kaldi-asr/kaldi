@@ -109,17 +109,16 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     # equal number of speakers.
     $numspks = @spkrs;  # number of speakers.
     $numscps = @OUTPUTS; # number of output files.
-    $spksperscp = int( ($numspks+($numscps-1)) / $numscps); # the +$(numscps-1) forces rounding up.
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
-        for($n = $spksperscp * $scpidx; 
-            $n < $numspks && $n < $spksperscp*($scpidx+1); 
-            $n++) {
-            $spk = $spkrs[$n];
-            push @{$scparray[$scpidx]}, $spk;
-            $scpcount[$scpidx] += $spk_count{$spk};
-        }
     }
+    for ($spkidx = 0; $spkidx < $numspks; $spkidx++) {
+        $scpidx = int(($spkidx*$numscps) / $numspks);
+        $spk = $spkrs[$spkidx];
+        push @{$scparray[$scpidx]}, $spk;
+        $scpcount[$scpidx] += $spk_count{$spk};
+    }
+
     # Now will try to reassign beginning + ending speakers
     # to different scp's and see if it gets more balanced.
     # Suppose objf we're minimizing is sum_i (num utts in scp[i] - average)^2.

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-hlda 1.mdl 1.hlda \"ark:splice-feats scp:train.scp |\" ark:1.post 1.hacc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat speedup = 1.0;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("speedup", &speedup, "Proportion of data to accumulate full HLDA stats with");

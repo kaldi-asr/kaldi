@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "  MLLT or LDA transform, if any, and\n"
         "  gmm-transform-means to apply <mllt-mat-out> to GMM means.\n";
 
-    bool binary = false;  // write in binary if true.
+    bool binary = true;  // write in binary if true.
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
     BaseFloat objf_impr, count;
     mllt_accs.Update(&mat, &objf_impr, &count);
 
-    KALDI_LOG << "Updated MLLT, total objf impr is " << (objf_impr/count)
-              << " over " << count << " frames, logdet is "
+    KALDI_LOG << "Overall objective function improvement for MLLT is "
+              << (objf_impr/count) << " over " << count << " frames, logdet is "
               << mat.LogDet();
 
     Output ko(mllt_out_filename, binary);

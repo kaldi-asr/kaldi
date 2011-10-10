@@ -37,17 +37,20 @@ int main(int argc, char *argv[]) {
         "e.g. of changing to binary model format:\n"
         " gmm-mixup 1.mdl dontcare 2.mdl\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     TransitionUpdateConfig tcfg;
     int32 mixup = 0;
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;
     BaseFloat power = 0.2;
-
+    BaseFloat min_count = 20.0;
+    
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("mix-up", &mixup, "Increase number of mixture components to "
                 "this overall target.");
+    po.Register("min-count", &min_count,
+                "Minimum count enforced while mixing up.");
     po.Register("mix-down", &mixdown, "If nonzero, merge mixture components to this "
                 "target.");
     po.Register("power", &power, "If mixing up, power to allocate Gaussians to"
@@ -89,10 +92,11 @@ int main(int argc, char *argv[]) {
                    << " does not match num-pdfs " << am_gmm.NumPdfs();
 
       if (mixdown != 0)
-        am_gmm.MergeByCount(occs, mixup, power);
+        am_gmm.MergeByCount(occs, mixdown, power, min_count);
 
       if (mixup != 0)
-        am_gmm.SplitByCount(occs, mixup, perturb_factor, power);
+        am_gmm.SplitByCount(occs, mixup, perturb_factor,
+                            power, min_count);
     }
 
     {

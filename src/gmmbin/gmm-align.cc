@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-align tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, gopts);
 
     lex_fst = NULL;  // we gave ownership to gc.
-
+    
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorReader transcript_reader(transcript_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);

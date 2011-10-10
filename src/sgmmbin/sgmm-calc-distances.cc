@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         "Only works properly if a single substate per state.\n"
         "Usage: sgmm-calc-distances [options] model-in occs-in distances-out\n";
 
-    bool binary = false;
+    bool binary = true;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

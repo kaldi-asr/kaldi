@@ -107,8 +107,10 @@ if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   fi
 fi
 
-# keep a copy of the lexicon with HCLG.
+# keep a copy of the lexicon and a list of silence phones with HCLG...
+# this means we can decode without refrence to the $lang directory.
 cp $lang/words.txt $dir/
+cp $lang/silphones.csl $dir/
 
 # to make const fst:
 # fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst

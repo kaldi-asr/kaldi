@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         " align-equal-compiled 1.mdl 1.fsts scp:train.scp ark:equal.ali\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 

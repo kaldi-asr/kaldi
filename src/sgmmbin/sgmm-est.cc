@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Estimate SGMM model parameters from accumulated stats.\n"
         "Usage: sgmm-est [options] <model-in> <stats-in> <model-out>\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
     std::string update_flags_str = "vMNwcSt";
     std::string write_flags_str = "gsnu";
     kaldi::TransitionUpdateConfig tcfg;
@@ -50,11 +50,11 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("split-substates", &split_substates, "Increase number of "
-        "substates to this overall target.");
+                "substates to this overall target.");
     po.Register("increase-phn-dim", &increase_phn_dim, "Increase phone-space "
-        "dimension to this overall target.");
+                "dimension as far as allowed towards this target.");
     po.Register("increase-spk-dim", &increase_spk_dim, "Increase speaker-space "
-        "dimension to this overall target.");
+                "dimension as far as allowed towards this target.");
     po.Register("remove-speaker-space", &remove_speaker_space, "Remove speaker-specific "
                 "projections N");
     po.Register("power", &power, "Exponent for substate occupancies used while"

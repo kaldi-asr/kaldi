@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "e.g.: fgmm-global-acc-stats 1.mdl scp:train.scp 1.acc\n";
 
     kaldi::ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     int32 diag_gmm_nbest = 0;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("diag-gmm-nbest", &diag_gmm_nbest, "If nonzero, prune likelihood computation withdiagonal version of GMM, to this many indices.");

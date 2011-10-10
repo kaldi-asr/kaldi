@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "   compose-transforms ark:1.trans ark:2.trans ark:3.trans\n";
 
     bool b_is_affine = false;
-    bool binary = false;
+    bool binary = true;
     std::string utt2spk_rspecifier;
     ParseOptions po(usage);
 
@@ -168,6 +168,10 @@ int main(int argc, char *argv[]) {
         b.Read(ki.Stream(), binary_in);
       }
       Matrix<BaseFloat> c;
+      if (!b_is_affine && a.NumRows() == a.NumCols()+1 && a.NumRows() == b.NumRows()
+          && a.NumCols() == b.NumCols())
+        KALDI_WARN << "It looks like you are trying to compose two affine transforms"
+                   << ", but you omitted the --b-is-affine option.";
       if (!ComposeTransforms(a, b, b_is_affine, &c)) exit (1);
 
       Output ko(transform_c_fn, binary);

@@ -19,8 +19,9 @@
 # This script does training-data alignment given a model built using 
 # CMN + delta + delta-delta features.  It splits the data into
 # four chunks and does everything in parallel on the same machine.
-# Its output, all in its own
-# experimental directory, is {0,1,2,3}.cmvn {0,1,2,3}.ali, tree, final.mdl 
+# Its output, all in its own experimental directory, is (assuming
+# you don't change the #jobs with --num-job option),
+# {0,1,2,3}.cmvn {0,1,2,3}.ali.gz, tree, final.mdl 
 # and final.occs (the last three are just copied from the source directory). 
 
 
@@ -28,16 +29,31 @@
 # are available (i.e. if they were built with the same data).
 # These must be split into four pieces.
 
+nj=4
+cmd=scripts/run.pl
 oldgraphs=false
-if [ "$1" == --use-graphs ]; then
-   shift;
-   oldgraphs=true
-fi
+for x in 1 2 3; do
+  if [ "$1" == --use-graphs ]; then
+    shift;
+    oldgraphs=true
+  fi
+  if [ $1 == "--num-jobs" ]; then
+     shift
+     nj=$1
+     shift
+  fi
+  if [ $1 == "--cmd" ]; then
+     shift
+     cmd=$1
+     shift
+  fi  
+done
 
 
 if [ $# != 4 ]; then
    echo "Usage: steps/align_deltas.sh <data-dir> <lang-dir> <src-dir> <exp-dir>"
    echo " e.g.: steps/align_deltas.sh data/train data/lang exp/tri1 exp/tri1_ali"
+   echo "Current command line: $*"
    exit 1;
 fi
 
@@ -48,8 +64,7 @@ lang=$2
 srcdir=$3
 dir=$4
 
-oov_sym="<SPOKEN_NOISE>" # Map OOVs to this in training.
-grep SPOKEN_NOISE $lang/words.txt >/dev/null || echo "Warning: SPOKEN_NOISE not in dictionary"
+oov_sym=`cat $lang/oov.txt`
 
 
 mkdir -p $dir
@@ -57,13 +72,13 @@ cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;  # Create copy of the tre
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
-if [ ! -f $data/split4 -o $data/split4 -ot $data/feats.scp ]; then
-  scripts/split_data.sh $data 4
+if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
+  scripts/split_data.sh $data $nj
 fi
 
 echo "Computing cepstral mean and variance statistics"
-for n in 0 1 2 3; do
-  compute-cmvn-stats --spk2utt=ark:$data/split4/$n/spk2utt scp:$data/split4/$n/feats.scp \
+for n in `get_splits.pl $nj`; do # Do this locally; it's fast.
+  compute-cmvn-stats --spk2utt=ark:$data/split$nj/$n/spk2utt scp:$data/split$nj/$n/feats.scp \
       ark:$dir/$n.cmvn 2>$dir/cmvn$n.log || exit 1;
 done
 
@@ -74,25 +89,30 @@ done
 rm $dir/.error 2>/dev/null
 echo "Aligning data from $data"
 if $oldgraphs; then 
-  for n in 0 1 2 3; do
-    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+  for n in `get_splits.pl $nj`; do
+    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
     if [ ! -f $srcdir/$n.fsts.gz ]; then
        echo You specified --use-graphs but no such file $srcdir/$n.fsts.gz
        exit 1;
     fi
-    gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl \
-     "ark:gunzip -c $srcdir/$n.fsts.gz|" "$feats" "ark:|gzip -c >$dir/$n.ali.gz" \
-        2> $dir/align$n.log || touch $dir/.error &
+    $cmd $dir/align$n.log \
+      gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl \
+        "ark:gunzip -c $srcdir/$n.fsts.gz|" "$feats" "ark:|gzip -c >$dir/$n.ali.gz" \
+         || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;
 else
-  for n in 0 1 2 3; do
-    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split4/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+  for n in `get_splits.pl $nj`; do
+    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
     # compute integer form of transcripts.
-    tra="ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split4/$n/text|";
-    gmm-align $scale_opts --beam=10 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
-        "$feats" "$tra" "ark:|gzip -c >$dir/$n.ali.gz" 2> $dir/align$n.log || touch $dir/.error &
+    tra="ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split$nj/$n/text|";
+    # We could just use gmm-align in the next line, but it's less efficient as it compiles the
+    # training graphs one by one.
+    $cmd $dir/align$n.log \
+      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+        gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl ark:- \
+          "$feats" "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;

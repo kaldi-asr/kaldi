@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Usage:  fstmakedisambigsyms N symtab.txt [out.list] \n";
 
     // no options.
-    // bool binary = false;
+    // bool binary = true;
     ParseOptions po(usage);
     // po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

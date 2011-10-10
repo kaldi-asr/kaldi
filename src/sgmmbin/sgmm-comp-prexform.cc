@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         "SGMMs, and write to a model file, after the SGMM.\n"
         "Usage: sgmm-comp-prexform [options] <sgmm-in> <occs-in> <sgmm-out>\n";
 
-    bool binary = false;
+    bool binary = true;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

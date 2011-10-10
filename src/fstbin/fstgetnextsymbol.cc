@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Usage:  fstgetnextsymbol symtab.txt\n";
 
     // no options.
-    // bool binary = false;
+    // bool binary = true;
     ParseOptions po(usage);
     // po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     float var_floor = 0.01;
     string ci_phones_str;
     int N = 3;
@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
                             mat,
                             &tree_stats);
         num_done++;
+        if (num_done % 1000 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances.";
       }
     }
 

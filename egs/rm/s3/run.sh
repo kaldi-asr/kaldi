@@ -30,7 +30,7 @@ local/rm_format_data.sh
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfcc
-for x in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb89 test_sep92; do
+for x in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92; do
   steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
 done
 

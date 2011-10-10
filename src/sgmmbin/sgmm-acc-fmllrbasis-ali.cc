@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-acc-fmllrbasis-ali 1.mdl scp:train.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary_write = false;
+    bool binary_write = true;
     std::string gselect_rspecifier, spkvecs_rspecifier, silphones_str;
     BaseFloat sil_weight = 0.0;
     kaldi::SgmmGselectConfig sgmm_opts;

@@ -81,6 +81,8 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
     if (!decoder.GetRawLattice(&fst)) 
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
+    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
+    // disconnected states there, but we seem to.
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
     lattice_writer->Write(utt, fst);

@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "Usage: sgmm-est-fmllrbasis [options] <model-in> <model-out> "
         "<stats-in1> [stats-in2 ...]\n";
 
-    bool binary = false;
+    bool binary = true;
     int32 num_bases = 50;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode.");

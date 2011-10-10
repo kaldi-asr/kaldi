@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
         "Estimate LDA transform using stats obtained with acc-lda.\n"
         "Usage:  est-lda [options] <lda-matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
 
-    bool binary = false;
+    bool binary = true;
     int32 dim = 40;
     std::string full_matrix_wxfilename;
     ParseOptions po(usage);

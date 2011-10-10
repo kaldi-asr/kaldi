@@ -405,7 +405,9 @@ int32 TransitionModel::TransitionIdToHmmState(int32 trans_id) const {
 
 void TransitionModel::Print(std::ostream &os,
                             const std::vector<std::string> &phone_names,
-                            const Vector<double> *stats) {
+                            const Vector<double> *occs) {
+  if (occs != NULL)
+    KALDI_ASSERT(occs->Dim() == NumPdfs());
   for (int32 tstate = 1; tstate < NumTransitionStates(); tstate++) {
     const Triple &triple = triples_[tstate-1];
     KALDI_ASSERT(static_cast<size_t>(triple.phone) < phone_names.size());
@@ -417,7 +419,7 @@ void TransitionModel::Print(std::ostream &os,
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);
       os << " Transition-id = " << tid << " p = " << p;
-      if (stats != NULL) os << " count of pdf = " << (*stats)(triple.pdf);
+      if (occs != NULL) os << " count of pdf = " << (*occs)(triple.pdf);
       // now describe what it's a transition to.
       if (IsSelfLoop(tid)) os << " [self-loop]\n";
       else {

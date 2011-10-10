@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         "feature-rspecifier transcriptions-rspecifier alignments-wspecifier\n"
         "e.g.: sgmm-align 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
@@ -213,9 +213,12 @@ int main(int argc, char *argv[]) {
           assert(words == transcript);
           alignment_writer.Write(utt, alignment);
           num_success ++;
-          KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows()) << " over "
-                    << features.NumRows() << " frames.";
+          if (num_success % 50  == 0) {
+            KALDI_LOG << "Processed " << num_success << " utterances, "
+                      << "log-like per frame for " << utt << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+          }
         } else {
           KALDI_WARN << "Did not successfully decode file " << utt << ", len = "
                      << (features.NumRows());

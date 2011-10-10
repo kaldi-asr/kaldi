@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     std::string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to utterance-list map");
     po.Register("binary", &binary, "write in binary mode (applies only to global CMN/CVN)");
     po.Read(argc, argv);

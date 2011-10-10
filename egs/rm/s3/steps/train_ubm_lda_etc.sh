@@ -15,7 +15,8 @@
 # limitations under the License.
 
 
-# Train UBM from a trained HMM/GMM system [with splice+LDA+MLLT features]
+# Train UBM from a trained HMM/GMM system [with splice+LDA+[MLLT/ET/MLLT+SAT] features]
+# Alignment directory is used for the CMN and transforms.
 
 if [ $# != 4 ]; then
    echo "Usage: steps/train_ubm_lda_mllt.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"

@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "to a single full-covariance GMM.\n"
         "Usage: init-ubm [options] <model-file> <state-occs> <gmm-out>\n";
 
-    bool binary_write = false, fullcov_ubm = true;
+    bool binary_write = true, fullcov_ubm = true;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("fullcov-ubm", &fullcov_ubm, "Write out full covariance UBM.");

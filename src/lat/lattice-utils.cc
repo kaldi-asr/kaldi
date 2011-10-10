@@ -33,8 +33,9 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted))
     KALDI_ERR << "Input lattice must be topologically sorted.";
-
+  KALDI_ASSERT(lat.Start() == 0);
   int32 num_states = lat.NumStates();
+  times->clear();
   times->resize(num_states, -1);
   (*times)[0] = 0;
   for (int32 state = 0; state < num_states; ++state) {

@@ -17,7 +17,7 @@
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
 if [ $# -ne 3 ]; then
-   echo "Usage: scripts/decode.sh <decode-dir> <word-symbol-table> <data-dir>"
+   echo "Usage: scripts/score_lats.sh <decode-dir> <word-symbol-table> <data-dir>"
    exit 1;
 fi
 
@@ -28,10 +28,6 @@ data=$3
 if [ ! -f $symtab ]; then
   echo No such word symbol table file $symtab
   exit 1;
-fi
-if [ ! -f $dir/lat.0.gz ]; then
-  echo Could not find lattices in $dir/lat.0.gz
-  exit 1
 fi
 if [ ! -f $data/text ]; then
   echo Could not find transcriptions in $data/text
@@ -53,5 +49,4 @@ for inv_acwt in 9 10 11 12 13 14 15 16; do
     scripts/int2sym.pl --ignore-first-field $symtab | sed 's:<UNK>::g' | \
     compute-wer --text --mode=present ark:$dir/test_trans.filt  ark,p:-   >& $dir/wer_$inv_acwt
 done
-
 

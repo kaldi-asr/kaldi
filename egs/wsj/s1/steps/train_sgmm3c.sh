@@ -257,6 +257,6 @@ rm $dir/$x.?.aliacc
 ( cd $dir; rm final.alimdl 2>/dev/null; ln -s $x.alimdl final.alimdl; )
 
 # Compute normalized models
-sgmm-normalize $dir/final.mdl $preselectmap $dir/final.mdl.norm 2>$dir/normalize.log
-sgmm-normalize $dir/final.alimdl $preselectmap $dir/final.alimdl.norm 2>>$dir/normalize.log
+sgmm-normalize $dir/final.mdl ark:$preselectmap $dir/final.mdl.norm 2>$dir/normalize.log
+sgmm-normalize $dir/final.alimdl ark:$preselectmap $dir/final.alimdl.norm 2>>$dir/normalize.log
 

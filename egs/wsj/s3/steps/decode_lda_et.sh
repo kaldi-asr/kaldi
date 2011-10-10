@@ -40,8 +40,8 @@ if [ "$1" == "-j" ]; then
 fi
 
 if [ $# != 3 ]; then
-   echo "Usage: steps/decode_lda_mllt.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_lda_mllt.sh -j 8 0 exp/mono/graph_tgpr data/dev_nov93 exp/mono/decode_dev93_tgpr"
+   echo "Usage: steps/decode_lda_et.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: steps/decode_lda_et.sh -j 10 0 exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_dev93_tgpr"
    exit 1;
 fi
 
@@ -49,6 +49,9 @@ fi
 graphdir=$1
 data=$2
 dir=$3
+acwt=0.08333 # Just used for adaptation and beam-pruning..
+silphonelist=`cat $graphdir/silphones.csl`
+
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 
 mkdir -p $dir
@@ -59,21 +62,45 @@ else
   mydata=$data
 fi
 
-requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $graphdir/HCLG.fst"
+requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $srcdir/final.alimdl $srcdir/final.et $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -f $f ]; then
-     echo "decode_lda_mllt.sh: no such file $f";
+     echo "decode_lda_et.sh: no such file $f";
      exit 1;
   fi
 done
 
 
-# We only do one decoding pass, so there is no point caching the
-# CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+# basefeats is the feats with the "default" ET transform, which corresponds
+# to the alignment model...
+basefeats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
-  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
-     2> $dir/decode$jobid.log || exit 1;
+# Generate a state-level lattice for rescoring, so we don't have to redo the search
+# after ET.
+gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
+  --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  $srcdir/final.alimdl $graphdir/HCLG.fst "$basefeats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
+   2> $dir/decode_pass1.$jobid.log || exit 1;
 
+(  lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
+     "ark:gunzip -c $dir/pre_lat.$jobid.gz|" ark:- | \
+   lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
+   weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
+   gmm-post-to-gpost $srcdir/final.alimdl "$basefeats" ark:- ark:- | \
+   gmm-est-et --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl $srcdir/final.et "$basefeats" \
+       ark,s,cs:- ark:$dir/et.$jobid.ark ark,t:$dir/$jobid.warp ) \
+    2> $dir/et.$jobid.log || exit 1;
+
+# Now rescore the state-level lattices with the adapted features and the
+# corresponding model.  Prune and determinize the lattices to limit
+# their size.
+
+feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/et.$jobid.ark ark:- ark:- |"
+
+gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.$jobid.gz|" "$feats" \
+ "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=6.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
+  2>$dir/rescore.$jobid.log || exit 1;
+
+rm $dir/pre_lat.$jobid.gz
+
+# The top-level decoding script will rescore "lat.$jobid.gz" to get the final output.

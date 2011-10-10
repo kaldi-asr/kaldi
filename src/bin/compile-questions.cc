@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         "Usage:  compile-questions [options] <topo> <questions-text-file> <questions-out>\n"
         "e.g.: \n"
         " compile-questions questions.txt questions.qst\n";
-    bool binary = false;
+    bool binary = true;
     int32 P = 1, N = 3;
     int32 num_iters_refine = 0;
 

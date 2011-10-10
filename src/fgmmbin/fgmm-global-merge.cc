@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         "  sizes of each individual GMM.\n"
         "Usage: fgmm-global-merge [options] fgmm-out sizes-file-out fgmm-in1 fgmm-in2 ...\n";
 
-    bool binary = false;
+    bool binary = true;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

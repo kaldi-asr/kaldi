@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-acc-stats 1.mdl 1.ali scp:train.scp 'ark:ali-to-post 1.ali ark:-|' 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
     std::string update_flags_str = "vMNwcSt";
     BaseFloat rand_prune = 1.0e-05;

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     std::string normalize_type = "";
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall objf impr per frame = "
               << (tot_objf_impr / tot_count) << " over " << tot_count
               << " frames.";
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
