@@ -141,11 +141,11 @@ rm $dir/treeacc
 
 echo "Converting old alignments"
 for n in `get_splits.pl $nj`; do
-  $cmd $dir/log/convert$n.log \
-    convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
-    "ark:gunzip -c $alidir/$n.ali.gz|" "ark:|gzip -c >$dir/$n.ali.gz" || exit 1;
+  convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
+  "ark:gunzip -c $alidir/$n.ali.gz|" "ark:|gzip -c >$dir/$n.ali.gz" \
+   2>$dir/log/convert$n.log || exit 1;
 done
-
+                  
 # Make training graphs.
 echo "Compiling training graphs"
 rm $dir/.error 2>/dev/null
