@@ -55,9 +55,6 @@ local/decode.sh steps/decode_deltas.sh exp/tri1/decode
 steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
     data/train data/lang exp/tri1 exp/tri1_ali
 
-# 2level full-cov training...
-steps/train-2lvl.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 100 1024 1800 0 0 0
-
 # train tri2a [delta+delta-deltas]
 steps/train_deltas.sh data/train data/lang exp/tri1_ali exp/tri2a
 # decode tri2a
@@ -70,7 +67,7 @@ local/decode.sh steps/decode_deltas.sh exp/tri2a/decode
 #   type of suff-stats interpolation (0 regular, 1 preserves counts)
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
-steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1-semi 4096 1800 1 10 0
+steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1-semi 1024 2500 1 35 0.2
 local/decode.sh steps/decode_tied_full.sh exp/tri1-semi
 
 # Train a 2-lvl semi-continuous model using {diag,full} densities
@@ -81,7 +78,7 @@ local/decode.sh steps/decode_tied_full.sh exp/tri1-semi
 #   type of suff-stats interpolation (0 regular, 1 preserves counts)
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
-steps/train_2lvl_full.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 104 2048 2500 0 1 10 0
+steps/train_2lvl_full.sh data/train data/lang exp/tri1_ali exp/tri1-2lvl 104 2048 2500 1 10 0.2
 local/decode.sh steps/decode_tied_full.sh exp/tri1-2lvl
 
 # train tri2b [LDA+MLLT]
