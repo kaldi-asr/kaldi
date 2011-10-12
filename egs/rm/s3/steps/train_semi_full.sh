@@ -142,10 +142,10 @@ if [ $emiters -gt 0 ]; then
   echo "Performing $emiters EM iterations on initial codebook"
   mv $dir/ubm-full $dir/ubm-full.0
   for i in `seq 1 $emiters`; do
-    fgmm-global-acc-stats $dir/ubm-full.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log || exit 1;
+    fgmm-global-acc-stats --diag-gmm-nbest=15 $dir/ubm-full.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log || exit 1;
     fgmm-global-est --remove-low-count-gaussians=false $dir/ubm-full.$[$i-1] $dir/em.$i.acc $dir/ubm-full.$i 2> $dir/est.$i.log || exit 1;
   done
-  mv ubm-full.$emiters $dir/ubm-full
+  mv $dir/ubm-full.$emiters $dir/ubm-full
 fi
 
 # we won't need the old ubms
