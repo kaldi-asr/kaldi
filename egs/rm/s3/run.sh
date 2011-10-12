@@ -147,7 +147,7 @@ local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/dec
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
 steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1_semi 4096 1800 1 10 0
-local/decode.sh steps/decode_tied_full.sh exp/tri1_semi
+local/decode.sh steps/decode_tied_full.sh exp/tri1_semi/decode
 
 ### From here is semi-continuous experiments. ###
 
@@ -163,7 +163,7 @@ steps/train_2lvl.sh data/train data/lang exp/tri1_ali exp/tri1_2lvl 100 1024 180
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
 steps/train_2lvl_full.sh data/train data/lang exp/tri1_ali exp/tri1_2lvl 104 2048 2500 0 1 10 0
-local/decode.sh steps/decode_tied_full.sh exp/tri1_2lvl
+local/decode.sh steps/decode_tied_full.sh exp/tri1_2lvl/decode
 
 
 
