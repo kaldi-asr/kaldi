@@ -17,7 +17,7 @@
 // limitations under the License.
 
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "util/kaldi-io.h"
 
 namespace kaldi {
@@ -62,12 +62,12 @@ void UnitTestDiagGmmGenerate() {
   BaseFloat objf_change_tot = 0.0, objf_change, count;
   for (int32 j = 0; j < niters; j++) {
     MleDiagGmmOptions opts;
-    MlEstimateDiagGmm stats(gmm, kGmmAll);  // all update flags.
+    AccumDiagGmm stats(gmm, kGmmAll);  // all update flags.
     for (int32 i = 0; i < npoints; i++) {
       SubVector<BaseFloat> row(rand_points, i);
       stats.AccumulateFromDiag(gmm, row, 1.0);
     }
-    stats.Update(opts, kGmmAll, &gmm, &objf_change, &count);
+    MleDiagGmmUpdate(opts, stats, kGmmAll, &gmm, &objf_change, &count);
     objf_change_tot += objf_change;
   }
   AssertEqual(count, npoints, 1e-6);

@@ -142,7 +142,9 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt 0.5 SIL '#'$ndisambi
    fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
    --keep_isymbols=false --keep_osymbols=false |   \
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
-   fstarcsort --sort_type=olabel > data/lang_test/L_disambig.fst
+   fstarcsort --sort_type=olabel > data/lang_test/L_disambig.fst || exit 1;
+
+cp data/lang_test/L_disambig.fst data/lang/
 
 
 # Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the

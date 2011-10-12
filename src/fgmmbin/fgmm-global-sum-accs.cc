@@ -16,7 +16,7 @@
 
 #include "util/common-utils.h"
 #include "gmm/full-gmm.h"
-#include "gmm/estimate-full-gmm.h"
+#include "gmm/mle-full-gmm.h"
 
 
 int main(int argc, char *argv[]) {
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string stats_out_filename = po.GetArg(1);
-    kaldi::MlEstimateFullGmm gmm_accs;
+    kaldi::AccumFullGmm gmm_accs;
 
     for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);

@@ -67,10 +67,14 @@ gmm-decode-faster --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/wor
   $srcdir/final.alimdl $graphdir/HCLG.fst "$sifeats" ark,t:$dir/pass1.tra ark,t:$dir/pass1.ali \
      2> $dir/decode_pass1.log || exit 1;
 
+
+adaptmdl=$srcdir/final.mdl # Compute fMLLR transforms with this model.
+[ -f $srcdir/final.adaptmdl ] && adaptmdl=$srcdir/final.adaptmdl # e.g. in MMI-trained systems
+
 ( ali-to-post ark:$dir/pass1.ali ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$sifeats" ark:- ark:- | \
-   gmm-est-fmllr-gpost --spk2utt=ark:$data/spk2utt $srcdir/final.mdl "$sifeats" \
+   gmm-est-fmllr-gpost --spk2utt=ark:$data/spk2utt $adaptmdl "$sifeats" \
        ark,s,cs:- ark:$dir/trans.ark ) \
      2> $dir/trans.log || exit 1;
 

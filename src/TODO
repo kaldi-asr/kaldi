@@ -8,11 +8,13 @@
 dan's TODO:
  check out Stefan's code for nnet rescoring.  finish biglm stuff.
 minor:
+ add void Check(); function to most config classes.
  make it possible to sum tree accs.
  normalize binaries so they never take summed accs (unless sum-accs program)
  remove mix-up, mix-down options from gmm-est (have separate program)
  make questions on disk be in text form (use sym2int.pl etc.)... same
    for transcripts while decoding.
+ maybe move UBM clustering somewhere else [from am-diag-gmm]?
  document the --cmd options in wsj/s3 scripts
  change sgmm code so gselect is no longer optional [only in discrim/?]
  remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.

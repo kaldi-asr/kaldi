@@ -1,4 +1,4 @@
-// gmm/estimate-full-gmm-test.cc
+// gmm/mle-full-gmm-test.cc
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
 //                      Microsoft Corporation;   Yanmin Qian;  Georg Stemmer
@@ -18,8 +18,9 @@
 
 #include "gmm/full-gmm.h"
 #include "gmm/diag-gmm.h"
-#include "gmm/estimate-full-gmm.h"
-#include "gmm/estimate-diag-gmm.h"
+#include "gmm/model-common.h"
+#include "gmm/mle-full-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 #include "util/stl-utils.h"
 #include "util/kaldi-io.h"
 
@@ -27,15 +28,15 @@ using namespace kaldi;
 
 void TestComponentAcc(const FullGmm &gmm, const Matrix<BaseFloat> &feats) {
   MleFullGmmOptions config;
-  MlEstimateFullGmm est_atonce;    // updates all components
-  MlEstimateFullGmm est_compwise;  // updates single components
+  AccumFullGmm est_atonce;    // updates all components
+  AccumFullGmm est_compwise;  // updates single components
 
   // Initialize estimators
-  est_atonce.ResizeAccumulators(gmm.NumGauss(), gmm.Dim(), kGmmAll);
-  est_atonce.ZeroAccumulators(kGmmAll);
-  est_compwise.ResizeAccumulators(gmm.NumGauss(),
+  est_atonce.Resize(gmm.NumGauss(), gmm.Dim(), kGmmAll);
+  est_atonce.SetZero(kGmmAll);
+  est_compwise.Resize(gmm.NumGauss(),
       gmm.Dim(), kGmmAll);
-  est_compwise.ZeroAccumulators(kGmmAll);
+  est_compwise.SetZero(kGmmAll);
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {
@@ -52,8 +53,8 @@ void TestComponentAcc(const FullGmm &gmm, const Matrix<BaseFloat> &feats) {
   gmm_atonce.Resize(gmm.NumGauss(), gmm.Dim());
   gmm_compwise.Resize(gmm.NumGauss(), gmm.Dim());
 
-  est_atonce.Update(config, kGmmAll, &gmm_atonce, NULL, NULL);
-  est_compwise.Update(config, kGmmAll, &gmm_compwise, NULL, NULL);
+  MleFullGmmUpdate(config, est_atonce, kGmmAll, &gmm_atonce, NULL, NULL);
+  MleFullGmmUpdate(config, est_compwise, kGmmAll, &gmm_compwise, NULL, NULL);
 
   // the two ways of updating should result in the same model
   double loglike0 = 0.0;
@@ -143,17 +144,16 @@ void test_flags_driven_update(const FullGmm &gmm,
                               const Matrix<BaseFloat> &feats,
                               GmmFlagsType flags) {
   MleFullGmmOptions config;
-  MlEstimateFullGmm est_gmm_allp;   // updates all params
+  AccumFullGmm est_gmm_allp;   // updates all params
   // let's trust that all-params update works
-  MlEstimateFullGmm est_gmm_somep;  // updates params indicated by flags
+  AccumFullGmm est_gmm_somep;  // updates params indicated by flags
 
   // warm-up estimators
-  est_gmm_allp.ResizeAccumulators(gmm.NumGauss(),
-    gmm.Dim(), kGmmAll);
-  est_gmm_allp.ZeroAccumulators(kGmmAll);
-  est_gmm_somep.ResizeAccumulators(gmm.NumGauss(),
-    gmm.Dim(), flags);
-  est_gmm_somep.ZeroAccumulators(flags);
+  est_gmm_allp.Resize(gmm.NumGauss(), gmm.Dim(), kGmmAll);
+  est_gmm_allp.SetZero(kGmmAll);
+  
+  est_gmm_somep.Resize(gmm.NumGauss(), gmm.Dim(), flags);
+  est_gmm_somep.SetZero(flags);
 
   // accumulate estimators
   for (int32 i = 0; i < feats.NumRows(); ++i) {
@@ -166,10 +166,10 @@ void test_flags_driven_update(const FullGmm &gmm,
   gmm_all_update.CopyFromFullGmm(gmm);   // init with orig. model
   gmm_some_update.CopyFromFullGmm(gmm);  // init with orig. model
 
-  est_gmm_allp.Update(config, kGmmAll, &gmm_all_update, NULL, NULL);
-  est_gmm_somep.Update(config, flags, &gmm_some_update, NULL, NULL);
+  MleFullGmmUpdate(config, est_gmm_allp, kGmmAll, &gmm_all_update, NULL, NULL);
+  MleFullGmmUpdate(config, est_gmm_somep, flags, &gmm_some_update, NULL, NULL);
 
-  if (est_gmm_allp.NumGauss() != gmm.NumGauss()) {
+  if (gmm_all_update.NumGauss() != gmm.NumGauss()) {
     KALDI_WARN << "Unable to pass test_update_flags() test because of "
       "component removal during Update() call (this is normal)";
     return;
@@ -193,6 +193,7 @@ void test_flags_driven_update(const FullGmm &gmm,
       vars[i].InvertDouble();
     gmm_all_update.SetInvCovars(vars);
   }
+  gmm_some_update.ComputeGconsts();
   gmm_all_update.ComputeGconsts();
 
   // now both models gmm_all_update, gmm_all_update have the same params updated
@@ -208,28 +209,28 @@ void test_flags_driven_update(const FullGmm &gmm,
     loglike2 += static_cast<double>(
       gmm_some_update.LogLikelihood(feats.Row(i)));
   }
-
+  KALDI_LOG << "loglike1 = " << loglike1 << " loglike2 = " << loglike2;
   AssertEqual(loglike1, loglike2, 0.01);
 }
 
 void
-test_io(const FullGmm &gmm, const MlEstimateFullGmm &est_gmm, bool binary,
+test_io(const FullGmm &gmm, const AccumFullGmm &est_gmm, bool binary,
         const Matrix<BaseFloat> &feats) {
   std::cout << "Testing I/O, binary = " << binary << '\n';
 
   est_gmm.Write(Output("tmp_stats", binary).Stream(), binary);
 
   bool binary_in;
-  MlEstimateFullGmm est_gmm2;
-  est_gmm2.ResizeAccumulators(est_gmm.NumGauss(),
-    est_gmm.Dim(), kGmmAll);
+  AccumFullGmm est_gmm2;
+  est_gmm2.Resize(gmm.NumGauss(),
+    gmm.Dim(), kGmmAll);
   Input ki("tmp_stats", &binary_in);
   est_gmm2.Read(ki.Stream(), binary_in, false);  // not adding
 
   Input ki2("tmp_stats", &binary_in);
   est_gmm2.Read(ki2.Stream(), binary_in, true);  // adding
 
-  est_gmm2.ScaleAccumulators(0.5, kGmmAll);
+  est_gmm2.Scale(0.5, kGmmAll);
     // 0.5 -> make it same as what it would have been if we read just once.
     // [may affect it due to removal of components with small counts].
 
@@ -238,8 +239,8 @@ test_io(const FullGmm &gmm, const MlEstimateFullGmm &est_gmm, bool binary,
   FullGmm gmm2;
   gmm1.CopyFromFullGmm(gmm);
   gmm2.CopyFromFullGmm(gmm);
-  est_gmm.Update(config, est_gmm.Flags(), &gmm1, NULL, NULL);
-  est_gmm2.Update(config, est_gmm2.Flags(), &gmm2, NULL, NULL);
+  MleFullGmmUpdate(config, est_gmm, est_gmm.Flags(), &gmm1, NULL, NULL);
+  MleFullGmmUpdate(config, est_gmm2, est_gmm2.Flags(), &gmm2, NULL, NULL);
 
   BaseFloat loglike1 = 0.0;
   BaseFloat loglike2 = 0.0;
@@ -352,12 +353,35 @@ UnitTestEstimateFullGmm() {
   gmm->SetInvCovarsAndMeans(invcovars, means);
   gmm->ComputeGconsts();
 
+  {
+    KALDI_LOG << "Testing natural<>normal conversion";
+    FullGmmNormal ngmm(*gmm);
+    FullGmm rgmm;
+    rgmm.Resize(1, dim);
+    ngmm.CopyToFullGmm(&rgmm, kGmmAll);
+    
+    // check contents
+    KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
+    KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
+    double prec_m = 1e-3;
+    double prec_v = 1e-3;
+    for (int32 d = 0; d < dim; ++d) {
+      KALDI_ASSERT(ApproxEqual(means.Row(0)(d), ngmm.means_.Row(0)(d), prec_m));
+      KALDI_ASSERT(ApproxEqual(gmm->means_invcovars().Row(0)(d), rgmm.means_invcovars().Row(0)(d), prec_v));
+      for (int32 d2 = d; d2 < dim; ++d2) {
+        KALDI_ASSERT(ApproxEqual(covar(d, d2), ngmm.vars_[0](d, d2), prec_v));
+        KALDI_ASSERT(ApproxEqual(gmm->inv_covars()[0](d, d2), rgmm.inv_covars()[0](d, d2), prec_v));
+      }
+    }
+    KALDI_LOG << "OK";
+  } 
+
   MleFullGmmOptions config;
   GmmFlagsType flags_all = kGmmAll;
 
 
-  MlEstimateFullGmm est_gmm;
-  est_gmm.ResizeAccumulators(gmm->NumGauss(), gmm->Dim(), flags_all);
+  AccumFullGmm est_gmm;
+  est_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags_all);
 
   // iterate
   int32 iteration = 0;
@@ -366,9 +390,9 @@ UnitTestEstimateFullGmm() {
 
   while (iteration < maxiterations) {
     // First, resize accums for the case of component splitting
-    est_gmm.ResizeAccumulators(gmm->NumGauss(),
+    est_gmm.Resize(gmm->NumGauss(),
       gmm->Dim(), flags_all);
-    est_gmm.ZeroAccumulators(flags_all);
+    est_gmm.SetZero(flags_all);
     double loglike = 0.0;
     double loglike_test = 0.0;
     for (int32 i = 0; i < counter; i++) {
@@ -397,7 +421,7 @@ UnitTestEstimateFullGmm() {
     }
 
     BaseFloat obj, count;
-    est_gmm.Update(config, flags_all, gmm, &obj, &count);
+    MleFullGmmUpdate(config, est_gmm, flags_all, gmm, &obj, &count);
     KALDI_LOG << "ML objective function change = " << (obj/count)
               << " per frame, over " << (count) << " frames.";
 
@@ -410,11 +434,15 @@ UnitTestEstimateFullGmm() {
     }
 
     if (iteration == 5) {  // run following tests with not too overfitted model
-      std::cout << "Testing flags-driven updates" << '\n';
+      std::cout << "Testing flags-driven updates kGmmAll" << '\n';
       test_flags_driven_update(*gmm, feats, kGmmAll);
+      std::cout << "Testing flags-driven updates kGmmWeights" << '\n';
       test_flags_driven_update(*gmm, feats, kGmmWeights);
+      std::cout << "Testing flags-driven kGmmMeans" << '\n';
       test_flags_driven_update(*gmm, feats, kGmmMeans);
+      std::cout << "Testing flags-driven kGmmVariances" << '\n';
       test_flags_driven_update(*gmm, feats, kGmmVariances);
+      std::cout << "Testing flags-driven kGmmWeights | kGmmMeans" << '\n';
       test_flags_driven_update(*gmm, feats, kGmmWeights | kGmmMeans);
       std::cout << "Testing component-wise accumulation" << '\n';
       TestComponentAcc(*gmm, feats);
@@ -425,9 +453,9 @@ UnitTestEstimateFullGmm() {
 
   {  // I/O tests
     GmmFlagsType flags_all = kGmmAll;
-    est_gmm.ResizeAccumulators(gmm->NumGauss(),
+    est_gmm.Resize(gmm->NumGauss(),
       gmm->Dim(), flags_all);
-    est_gmm.ZeroAccumulators(flags_all);
+    est_gmm.SetZero(flags_all);
     float loglike = 0.0;
     for (int32 i = 0; i < counter; i++) {
       loglike += est_gmm.AccumulateFromFull(*gmm, feats.Row(i), 1.0F);

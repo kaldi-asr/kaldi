@@ -248,6 +248,20 @@ void UbmClusteringOptions::Register(ParseOptions *po) {
       "Variance floor used in bottom-up state clustering.");
 }
 
+void UbmClusteringOptions::Check() {
+  if (ubm_numcomps > intermediate_numcomps)
+    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps
+              << " > --intermediate-numcomps=" << intermediate_numcomps;
+  if (ubm_numcomps <= 0)
+    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps;
+  if (cluster_varfloor <= 0)
+    KALDI_ERR << "Invalid parameters: --cluster-varfloor="
+              << cluster_varfloor;
+  if (reduce_state_factor <= 0 || reduce_state_factor > 1)
+    KALDI_ERR << "Invalid parameters: --reduce-state-factor="
+              << reduce_state_factor;
+}
+
 void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
                            const UbmClusteringOptions &opts,

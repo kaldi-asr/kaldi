@@ -22,15 +22,21 @@
 #include<vector>
 
 #include "base/kaldi-common.h"
+#include "model-common.h"
 #include "matrix/matrix-lib.h"
 
 namespace kaldi {
 
 class FullGmm;
+class DiagGmmNormal;
 
 /** \class DiagGmm Definition for Gaussian Mixture Model with diagonal covariances
  */
 class DiagGmm {
+
+ /// this makes it a little easier to modify the internals
+ friend class DiagGmmNormal;
+
  public:
   /// Empty constructor.
   DiagGmm() : valid_gconsts_(false) { }
@@ -83,11 +89,24 @@ class DiagGmm {
   /// Generates a random data-point from this distribution.
   void Generate(VectorBase<BaseFloat> *output);
 
-  void Split(int32 target_components, float perturb_factor);
-  void Merge(int32 target_components);
+  /// Split the components and remember the order in which the components were 
+  /// split
+  void Split(int32 target_components, float perturb_factor, 
+             std::vector<int32> *history = NULL);
+
+  /// Merge the components and remember the order in which the components were 
+  /// merged (flat list of pairs)
+  void Merge(int32 target_components, std::vector<int32> *history = NULL);
 
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
+
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const DiagGmm &source, 
+                   GmmFlagsType flags = kGmmAll); 
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const FullGmm &source, 
+                   GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const {
@@ -98,6 +117,12 @@ class DiagGmm {
   const Matrix<BaseFloat>& means_invvars() const { return means_invvars_; }
   const Matrix<BaseFloat>& inv_vars() const { return inv_vars_; }
   bool valid_gconsts() const { return valid_gconsts_; }
+
+  /// Removes single component from model
+  void RemoveComponent(int32 gauss, bool renorm_weights);
+
+  /// Removes multiple components from model; "gauss" must not have dups.
+  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
 
   /// Mutators for both float or double
   template<class Real>
@@ -131,13 +156,7 @@ class DiagGmm {
   void SetComponentInvVar(int32 gauss, const VectorBase<Real>& in);
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
-
-  /// Removes single component from model
-  void RemoveComponent(int32 gauss, bool renorm_weights);
-
-  /// Removes multiple components from model; "gauss" must not have dups.
-  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
-
+  
   /// Accessor for single component mean
   template<class Real>
   void GetComponentMean(int32 gauss, VectorBase<Real>* out) const;

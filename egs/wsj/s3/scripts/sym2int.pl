@@ -54,7 +54,7 @@ while(<>) {
         if(!defined ($i)) {
             if (defined $map_oov) {
                 if (!defined $sym2int{$map_oov}) {
-                    die "sym2int.pl: invalid map-oov option $map_oov (undefined symbol)";
+                    die "sym2int.pl: invalid map-oov option $map_oov (symbol not defined in $symtab)";
                 }
                 if ($num_warning++ < $max_warning) {
                     print STDERR "sym2int.pl: replacing $a with $map_oov\n";

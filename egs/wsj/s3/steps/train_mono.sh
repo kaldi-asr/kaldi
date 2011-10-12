@@ -153,7 +153,7 @@ while [ $x -lt $numiters ]; do
   x=$[$x+1]
 done
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
+( cd $dir; rm final.{mdl,occs} 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
 
 # Print out summary of the warning messages.
 for x in $dir/log/*.log; do 

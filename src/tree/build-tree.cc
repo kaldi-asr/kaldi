@@ -147,7 +147,8 @@ EventMap *BuildTree(Questions &qopts,
          && do_split.size() == phone_sets.size());
 
   for (size_t i = 0; i < do_split.size(); i++)
-    if (do_split[i])
+    if (do_split[i]) // you could remove this check and the code would still
+      // work.
       KALDI_ASSERT(share_roots[i] && "We don't support splitting non-shared roots.");
 
   // the inputs will be further checked in GetStubMap.
@@ -158,7 +159,7 @@ EventMap *BuildTree(Questions &qopts,
                                    phone2num_pdf_classes,
                                    share_roots,
                                    &num_leaves);
-  KALDI_VLOG(1) <<  "BuildTree: before building trees, map has "<< num_leaves << " leaves.";
+  KALDI_LOG <<  "BuildTree: before building trees, map has "<< num_leaves << " leaves.";
 
 
   BaseFloat impr;
@@ -174,22 +175,22 @@ EventMap *BuildTree(Questions &qopts,
 
   assert(IsSortedAndUniq(nonsplit_phones));
   BuildTreeStatsType filtered_stats;
-  if (!nonsplit_phones.empty())
-    FilterStatsByKey(stats, P, nonsplit_phones, false,  // retain only those not
-                     // in "nonsplit_phones"
-                     &filtered_stats);
+  FilterStatsByKey(stats, P, nonsplit_phones, false,  // retain only those not
+                   // in "nonsplit_phones"
+                   &filtered_stats);
 
   EventMap *tree_split = SplitDecisionTree(*tree_stub,
-                                           nonsplit_phones.empty() ? stats : filtered_stats,
+                                           filtered_stats,
                                            qopts, thresh, max_leaves,
                                            &num_leaves, &impr, &smallest_split);
-
+  
   if (cluster_thresh < 0.0) {
-    KALDI_VLOG(1) <<  "Setting clustering threshold to smallest split " << smallest_split;
+    KALDI_LOG <<  "Setting clustering threshold to smallest split " << smallest_split;
     cluster_thresh = smallest_split;
   }
 
-  BaseFloat normalizer = SumNormalizer(stats), impr_normalized = impr / normalizer,
+  BaseFloat normalizer = SumNormalizer(stats),
+      impr_normalized = impr / normalizer,
       normalizer_filt = SumNormalizer(filtered_stats),
       impr_normalized_filt = impr / normalizer_filt;
   
@@ -212,21 +213,21 @@ EventMap *BuildTree(Questions &qopts,
                                                               cluster_thresh,
                                                               *tree_stub,
                                                               &num_removed);
-    KALDI_VLOG(1) <<  "BuildTree: removed "<< num_removed << " leaves.";
+    KALDI_LOG <<  "BuildTree: removed "<< num_removed << " leaves.";
 
     int32 num_leaves = 0;
     EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
 
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
 
-    KALDI_VLOG(1) << "BuildTree: objf change due to clustering "
+    KALDI_VLOG(1) << "Objf change due to clustering "
                   << ((objf_after_cluster-objf_before_cluster) / normalizer)
                    << " per frame.";
     KALDI_VLOG(1) << "Normalizing over only split phones, this is: "
                   << ((objf_after_cluster-objf_before_cluster) / normalizer_filt)
                   << " per frame.";
+    KALDI_VLOG(1) <<  "Num-leaves is now "<< num_leaves;
 
-    KALDI_VLOG(1) <<  "BuildTreeClustered: num-leaves now "<< num_leaves;
     delete tree_clustered;
     delete tree_split;
     delete tree_stub;
@@ -235,6 +236,171 @@ EventMap *BuildTree(Questions &qopts,
     delete tree_stub;
     return tree_split;
   }
+}
+
+
+// This function, called from BuildTreeTwoLevel, computes the mapping from the
+// leaves of the big tree to the leaves of the small tree.  It does this by
+// working out which stats correspond to which leaf of the big tree, then
+// mapping those stats to the leaves of the small tree and seeing where they go.
+// It only works of all leaves of the big tree have stats-- but they should have
+// stats, or there would have been an error in tree building.
+
+static void ComputeTreeMapping(const EventMap &small_tree,
+                               const EventMap &big_tree,
+                               const BuildTreeStatsType &stats,
+                               std::vector<int32> *leaf_map) {
+  std::vector<BuildTreeStatsType> split_stats_small; // stats split by small tree
+  int32 num_leaves_big = big_tree.MaxResult() + 1,
+      num_leaves_small = small_tree.MaxResult() + 1;
+  SplitStatsByMap(stats, small_tree, &split_stats_small);
+  KALDI_ASSERT(split_stats_small.size() <= num_leaves_small);
+  leaf_map->clear();
+  leaf_map->resize(num_leaves_big, -1); // fill with -1.
+
+  std::vector<int32> small_leaves_unseen; // a list of small leaves that had no stats..
+  // this is used as a workaround for when there are no stats at leaves...
+  // it's really an error condition and it will cause errors later (e.g. when
+  // you initialize your model), but at this point we will try to handle it
+  // gracefully.
+  
+  for (size_t i = 0; i < num_leaves_small; i++) {
+    if (i >= split_stats_small.size() || split_stats_small[i].empty()) {
+      KALDI_WARN << "No stats mapping to " << i << " in small tree. "
+                 << "Continuing but this is a serious error.";
+      small_leaves_unseen.push_back(i);
+    } else {
+      for (size_t j = 0; j < split_stats_small[i].size(); j++) {
+        int32 leaf = 0; // = 0 to keep compiler happy.  Leaf in big tree.
+        bool ok = big_tree.Map(split_stats_small[i][j].first, &leaf);
+        if (!ok)
+          KALDI_ERR << "Could not map stats with big tree: probable code error.";
+        if (leaf < 0 || leaf >= num_leaves_big)
+          KALDI_ERR << "Leaf out of range: " << leaf << " vs. " << num_leaves_big;
+        if ((*leaf_map)[leaf] != -1 && (*leaf_map)[leaf] != i)
+          KALDI_ERR << "Inconsistent mapping for big tree: "
+                    << i << " vs. " << (*leaf_map)[leaf];
+        (*leaf_map)[leaf] = i;
+      }
+    }
+  }
+  // Now make sure that all leaves in the big tree have a leaf in the small tree
+  // assigned to them.  If not we try to clean up... this should never normally
+  // happen and if it does it's due to trying to assign tree roots to unseen phones,
+  // which will anyway cause an error in a later stage of system building.
+  for (size_t leaf = 0; leaf < num_leaves_big; leaf++) {
+    int32 small_leaf = (*leaf_map)[leaf];
+    if (small_leaf == -1) {
+      KALDI_WARN << "In ComputeTreeMapping, could not get mapping from leaf "
+                 << leaf;
+      if (!small_leaves_unseen.empty()) {
+        small_leaf = small_leaves_unseen.back();
+        KALDI_WARN << "Assigning it to unseen small-tree leaf " << small_leaf;
+        small_leaves_unseen.pop_back();
+        (*leaf_map)[leaf] = small_leaf;
+      } else {
+        KALDI_WARN << "Could not find any unseen small-tree leaf to assign "
+                   << "it to.  Making it zero, but this is bad. ";
+        (*leaf_map)[leaf] = 0;
+      }
+    } else if (small_leaf < 0 || small_leaf >= num_leaves_small)
+      KALDI_ERR << "Leaf in leaf mapping out of range: for big-map leaf "
+                << leaf << ", mapped to " << small_leaf << ", vs. "
+                << num_leaves_small;
+  }
+}
+
+
+EventMap *BuildTreeTwoLevel(Questions &qopts,
+                            const std::vector<std::vector<int32> > &phone_sets,
+                            const std::vector<int32> &phone2num_pdf_classes,
+                            const std::vector<bool> &share_roots,
+                            const std::vector<bool> &do_split,
+                            const BuildTreeStatsType &stats,
+                            int32 max_leaves_first,
+                            int32 max_leaves_second,
+                            bool cluster_leaves,
+                            int32 P,
+                            std::vector<int32> *leaf_map) {
+
+  KALDI_LOG << "****BuildTreeTwoLevel: building first level tree";
+  EventMap *first_level_tree = BuildTree(qopts, phone_sets,
+                                         phone2num_pdf_classes,
+                                         share_roots, do_split, stats, 0.0,
+                                         max_leaves_first, 0.0, P);
+  KALDI_ASSERT(first_level_tree != NULL);
+  KALDI_LOG << "****BuildTreeTwoLevel: done building first level tree";
+
+  
+  std::vector<int32> nonsplit_phones;
+  for (size_t i = 0; i < phone_sets.size(); i++)
+    if (!do_split[i])
+      nonsplit_phones.insert(nonsplit_phones.end(), phone_sets[i].begin(), phone_sets[i].end());
+  std::sort(nonsplit_phones.begin(), nonsplit_phones.end());
+
+  assert(IsSortedAndUniq(nonsplit_phones));
+  BuildTreeStatsType filtered_stats;
+  FilterStatsByKey(stats, P, nonsplit_phones, false,  // retain only those not
+                   // in "nonsplit_phones"
+                   &filtered_stats);
+  
+  int32 num_leaves = first_level_tree->MaxResult() + 1,
+      old_num_leaves = num_leaves;
+
+  BaseFloat smallest_split = 0.0;
+
+  BaseFloat impr;
+  EventMap *tree = SplitDecisionTree(*first_level_tree,
+                                     filtered_stats,
+                                     qopts, 0.0, max_leaves_second,
+                                     &num_leaves, &impr, &smallest_split);
+  
+  KALDI_LOG << "Building second-level tree: increased #leaves from "
+                << old_num_leaves << " to " << num_leaves << ", smallest split was "
+                << smallest_split;
+  
+  BaseFloat normalizer = SumNormalizer(stats),
+      impr_normalized = impr / normalizer;
+  
+  KALDI_LOG <<  "After second decision tree split, num-leaves = "
+                << num_leaves << ", like-impr = " << impr_normalized
+                << " per frame over " << normalizer << " frames.";
+
+
+  if (cluster_leaves) {  // Cluster the leaves of the tree.
+    KALDI_LOG << "Clustering leaves of larger.";
+    BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree);
+
+    // Now do the clustering.
+    int32 num_removed = 0;
+    EventMap *tree_clustered = ClusterEventMapRestrictedByMap(*tree,
+                                                              stats,
+                                                              smallest_split,
+                                                              *first_level_tree,
+                                                              &num_removed);
+    KALDI_LOG <<  "BuildTreeTwoLevel: removed " << num_removed << " leaves.";
+    
+    int32 num_leaves = 0;
+    EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
+
+    BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
+    
+    KALDI_LOG << "Objf change due to clustering "
+                  << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
+                  << " per frame.";
+    KALDI_LOG <<  "Num-leaves now "<< num_leaves;
+    delete tree;
+    delete tree_clustered;
+    tree = tree_renumbered;
+  }
+
+  ComputeTreeMapping(*first_level_tree,
+                     *tree,
+                     stats,
+                     leaf_map);
+
+  delete first_level_tree;
+  return tree;
 }
 
 
@@ -374,7 +540,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
 
   for (int32 i = 0; static_cast<size_t>(i) < summed_stats.size(); i++) {  // A check.
     if (summed_stats[i] != NULL &&
-       !binary_search(phones.begin(), phones.end(), i)) {
+        !binary_search(phones.begin(), phones.end(), i)) {
       KALDI_WARN << "Phone "<< i << " is present in stats but is not in phone list [make sure you intended this].";
     }
   }

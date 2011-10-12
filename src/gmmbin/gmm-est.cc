@@ -20,7 +20,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    kaldi::GmmFlagsType acc_flags =
+    kaldi::GmmFlagsType update_flags =
         StringToGmmFlags(update_flags_str);    
 
     std::string model_in_filename = po.GetArg(1),
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> transition_accs;
-    MlEstimateAmDiagGmm gmm_accs;
+    AccumAmDiagGmm gmm_accs;
     {
       bool binary;
       Input is(stats_filename, &binary);
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
       gmm_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
-    if (acc_flags & kGmmTransitions) {  // Update transition model.
+    if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
       trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      gmm_accs.Update(gmm_opts, acc_flags, &am_gmm, &objf_impr, &count);
+      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags, &am_gmm, &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";

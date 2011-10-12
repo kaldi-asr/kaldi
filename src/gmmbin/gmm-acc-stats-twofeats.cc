@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 
 
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
     int32 new_dim = 0;
-    MlEstimateAmDiagGmm gmm_accs;
+    AccumAmDiagGmm gmm_accs;
     // will initialize once we know new_dim.
 
     double tot_like = 0.0;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat2 = feature2_reader.Value(key);
         if (new_dim == 0) {
           new_dim = mat2.NumCols();
-          gmm_accs.InitAccumulators(am_gmm, new_dim, kGmmAll);
+          gmm_accs.Init(am_gmm, new_dim, kGmmAll);
         }
         const Posterior &posterior = posteriors_reader.Value(key);
 
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
-    
+
     {
       Output ko(accs_wxfilename, binary);
       transition_accs.Write(ko.Stream(), binary);

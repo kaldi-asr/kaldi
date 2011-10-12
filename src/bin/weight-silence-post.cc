@@ -58,9 +58,9 @@ int main(int argc, char *argv[]) {
                  << silence_weight_str << '"';
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_EXIT << "weight-silence-posteriors: Invalid silence-phones string " << silence_phones_str;
+      KALDI_EXIT << "Invalid silence-phones string " << silence_phones_str;
     if (silence_phones.empty())
-      KALDI_WARN <<"weight-silence-posteriors: no silence phones, this will have no effect";
+      KALDI_WARN <<"No silence phones, this will have no effect";
     ConstIntegerSet<int32> silence_set(silence_phones);  // faster lookup.
 
     TransitionModel trans_model;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
       }
       posterior_writer.Write(posterior_reader.Key(), new_post);
     }
-    KALDI_LOG << "weight-silence-posteriors: processed " << num_posteriors << " posteriors.";
+    KALDI_LOG << "Done " << num_posteriors << " posteriors.";
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

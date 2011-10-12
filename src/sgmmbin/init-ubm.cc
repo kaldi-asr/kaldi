@@ -47,7 +47,8 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
+    ubm_opts.Check();
+    
     std::string model_in_filename = po.GetArg(1),
         occs_in_filename = po.GetArg(2),
         gmm_out_filename = po.GetArg(3);

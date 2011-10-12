@@ -1,7 +1,7 @@
-// gmm/estimate-diag-gmm.h
+// gmm/mle-diag-gmm.h
 
 // Copyright 2009-2011  Saarland University;  Georg Stemmer;
-//                      Microsoft Corporation;  Jan Silovsky
+//                      Microsoft Corporation;  Jan Silovsky; Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
 // limitations under the License.
 
 
-#ifndef KALDI_GMM_ESTIMATE_DIAG_GMM_H_
-#define KALDI_GMM_ESTIMATE_DIAG_GMM_H_ 1
+#ifndef KALDI_GMM_MLE_DIAG_GMM_H_
+#define KALDI_GMM_MLE_DIAG_GMM_H_ 1
 
 #include "gmm/diag-gmm.h"
+#include "gmm/diag-gmm-normal.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 
@@ -64,30 +65,30 @@ struct MleDiagGmmOptions {
   }
 };
 
-/** Class for computing the maximum-likelihood estimates of the parameters of
- *  a Gaussian mixture model.
- */
-class MlEstimateDiagGmm {
+class AccumDiagGmm {
  public:
-  MlEstimateDiagGmm(): dim_(0), num_comp_(0), flags_(0) { }
-  explicit MlEstimateDiagGmm(const DiagGmm &gmm, GmmFlagsType flags) {
-    ResizeAccumulators(gmm, flags);
+  AccumDiagGmm(): dim_(0), num_comp_(0), flags_(0) { }
+  explicit AccumDiagGmm(const DiagGmm &gmm, GmmFlagsType flags) {
+    Resize(gmm, flags);
   }
   // provide copy constructor.
-  explicit MlEstimateDiagGmm(const MlEstimateDiagGmm &other);
+  explicit AccumDiagGmm(const AccumDiagGmm &other);
+
+  void Read(std::istream &in_stream, bool binary, bool add);
+  void Write(std::ostream &out_stream, bool binary) const;
 
   /// Allocates memory for accumulators
-  void ResizeAccumulators(int32 num_comp, int32 dim, GmmFlagsType flags);
+  void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
   /// Calls ResizeAccumulators with arguments based on gmm
-  void ResizeAccumulators(const DiagGmm &gmm, GmmFlagsType flags);
+  void Resize(const DiagGmm &gmm, GmmFlagsType flags);
+
   /// Returns the number of mixture components
   int32 NumGauss() const { return num_comp_; }
   /// Returns the dimensionality of the feature vectors
   int32 Dim() const { return dim_; }
 
-  void ZeroAccumulators(GmmFlagsType flags);
-
-  void ScaleAccumulators(BaseFloat f, GmmFlagsType flags);
+  void SetZero(GmmFlagsType flags);
+  void Scale(BaseFloat f, GmmFlagsType flags);
 
   /// Accumulate for a single component, given the posterior
   void AccumulateForComponent(const VectorBase<BaseFloat>& data,
@@ -103,49 +104,68 @@ class MlEstimateDiagGmm {
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
-  void Update(const MleDiagGmmOptions &config,
-              GmmFlagsType flags,
-              DiagGmm *gmm,
-              BaseFloat *obj_change_out,
-              BaseFloat *count_out) const;
+  /// Smooths the accumulated counts by adding 'tau' extra frames. An example
+  /// use for this is I-smoothing for MMIE.
+  void SmoothStats(BaseFloat tau);
 
-  BaseFloat MlObjective(const DiagGmm& gmm) const;
+  /// Smooths the accumulated counts using some other accumulator. Performs
+  /// a weighted sum of the current accumulator with the given one. An example
+  /// use for this is I-smoothing for MPE. Both accumulators must have the same
+  /// dimension and number of components.
+  void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
 
-  void Read(std::istream &in_stream, bool binary, bool add);
-  void Write(std::ostream &out_stream, bool binary) const;
+  /// Smooths the accumulated counts using the parameters of a given model.
+  /// An example use of this is MAP-adaptation. The model must have the
+  /// same dimension and number of components as the current accumulator.
+  void SmoothWithModel(BaseFloat tau, const DiagGmm& src_gmm);
 
   // Accessors
   const GmmFlagsType Flags() const { return flags_; }
-  Vector<double>& occupancy() { return occupancy_; }
   const Vector<double>& occupancy() const { return occupancy_; }
+  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
+  const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
 
  private:
-  static int32 FloorVariance(const MleDiagGmmOptions &config,
-                             VectorBase<BaseFloat> *var);
-
   int32 dim_;
   int32 num_comp_;
   /// Flags corresponding to the accumulators that are stored.
   GmmFlagsType flags_;
-  /// Accumulators
+
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   Matrix<double> variance_accumulator_;
-
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
-
-  // Disallow assignment operator.
-  MlEstimateDiagGmm &operator = (const MlEstimateDiagGmm &other);
 };
 
-inline void MlEstimateDiagGmm::ResizeAccumulators(const DiagGmm &gmm,
-                                                  GmmFlagsType flags) {
-  ResizeAccumulators(gmm.NumGauss(), gmm.Dim(), flags);
+
+/// Returns "augmented" version of flags: e.g. if just updating means, need
+/// weights too.
+GmmFlagsType AugmentGmmFlags(GmmFlagsType f);
+
+
+inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
+  Resize(gmm.NumGauss(), gmm.Dim(), flags);
 }
+
+/// for computing the maximum-likelihood estimates of the parameters of
+/// a Gaussian mixture model.
+/// Update using the DiagGmm: exponential form
+void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
+                      const AccumDiagGmm &diaggmm_acc,
+                      GmmFlagsType flags,
+                      DiagGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out);
+
+/// Calc using the DiagGMM exponential form
+BaseFloat MlObjective(const DiagGmm& gmm,
+                      const AccumDiagGmm &diaggmm_acc);
+
+int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
+                           VectorBase<double> *var);
+int32 FloorVariance(const BaseFloat min_variance,
+                           VectorBase<double> *var);
 
 }  // End namespace kaldi
 
 
-#endif  // KALDI_GMM_ESTIMATE_DIAG_GMM_H_
+#endif  // KALDI_GMM_MLE_DIAG_GMM_H_

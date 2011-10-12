@@ -51,8 +51,8 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
       return true;
     } else { // failed to determinize..
       KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                 << "reached), reducing lattice-beam to " << cur_beam
-                 << " and re-trying.";
+                 << "reached), reducing lattice-beam to "
+                 << (cur_beam*beam_ratio) << " and re-trying.";
       for (; i < num_loops; i++) {
         cur_beam *= beam_ratio;
         Lattice pruned_lat(lat);
@@ -62,7 +62,7 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
           KALDI_WARN << "Pruning did not have an effect on the original "
                      << "lattice size; reducing beam to "
                      << cur_beam << " and re-trying.";
-        }
+        } else break;
       }
     }
   }

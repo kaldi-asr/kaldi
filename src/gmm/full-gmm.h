@@ -22,16 +22,22 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
+#include "gmm/model-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
 
 namespace kaldi {
 
 class DiagGmm;
+class FullGmmNormal;
 
 /** \class Definition for Gaussian Mixture Model with full covariances
   */
 class FullGmm {
+ 
+ /// this makes it a little easier to modify the internals
+ friend class FullGmmNormal;
+
  public:
   /// Empty constructor.
   FullGmm() : valid_gconsts_(false) {}
@@ -72,10 +78,21 @@ class FullGmm {
   /// zero weights or variances.
   int32 ComputeGconsts();
 
-  void Split(int32 target_components, float perturb_factor);
-  void Merge(int32 target_components);
+  /// Merge the components and remember the order in which the components were 
+  /// merged (flat list of pairs)
+  void Split(int32 target_components, float perturb_factor, 
+             std::vector<int32> *history = NULL);
+
+  /// Merge the components and remember the order in which the components were 
+  /// merged (flat list of pairs)
+  void Merge(int32 target_components, std::vector<int32> *history = NULL);
+
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
+  
+  /// this = rho x source + (1-rho) x this
+  void Interpolate(BaseFloat rho, const FullGmm &source, 
+                   GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
   const Vector<BaseFloat>& gconsts() const { return gconsts_; }
@@ -83,6 +100,7 @@ class FullGmm {
   const Matrix<BaseFloat>& means_invcovars() const { return means_invcovars_; }
   const std::vector<SpMatrix<BaseFloat> >& inv_covars() const {
     return inv_covars_; }
+
   /// Non-const accessors
   Matrix<BaseFloat>& means_invcovars() { return means_invcovars_; }
   std::vector<SpMatrix<BaseFloat> >& inv_covars() { return inv_covars_; }
@@ -94,6 +112,7 @@ class FullGmm {
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>
   void SetMeans(const Matrix<Real>& m);
+  
   /// Use SetInvCovarsAndMeans if updating both means and (inverse) covariances
   template<class Real>
   void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> >& invcovars,
@@ -121,10 +140,10 @@ class FullGmm {
 
   /// Mutators for single component, supports float or double
   /// Removes single component from model
-  void RemoveComponent(int32 gauss);
+  void RemoveComponent(int32 gauss, bool renorm_weights);
 
   /// Removes multiple components from model; "gauss" must not have dups.
-  void RemoveComponents(const std::vector<int32> &gauss);
+  void RemoveComponents(const std::vector<int32> &gauss, bool renorm_weights);
 
   /// Accessor for component mean
   template<class Real>

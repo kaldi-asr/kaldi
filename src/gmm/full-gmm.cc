@@ -19,6 +19,7 @@
 #include <limits>
 
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm.h"
 #include "util/stl-utils.h"
 
@@ -115,7 +116,8 @@ int32 FullGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void FullGmm::Split(int32 target_components, float perturb_factor) {
+void FullGmm::Split(int32 target_components, float perturb_factor, 
+                    std::vector<int32> *history) {
   if (target_components <= NumGauss() || NumGauss() == 0) {
     KALDI_ERR << "Cannot split from " << NumGauss() <<  " to "
               << target_components << " components";
@@ -150,6 +152,11 @@ void FullGmm::Split(int32 target_components, float perturb_factor) {
         max_idx = i;
       }
     }
+
+    // remember history
+    if (history != NULL)
+      history->push_back(max_idx);
+
     weights_(max_idx) /= 2;
     weights_(current_components) = weights_(max_idx);
     Vector<BaseFloat> rand_vec(dim);
@@ -167,7 +174,7 @@ void FullGmm::Split(int32 target_components, float perturb_factor) {
   ComputeGconsts();
 }
 
-void FullGmm::Merge(int32 target_components) {
+void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
         << target_components << ")";
@@ -276,6 +283,12 @@ void FullGmm::Merge(int32 target_components) {
 
     // make sure that different components will be merged
     assert(max_i != max_j);
+
+    // remember history
+    if (history != NULL) {
+      history->push_back(max_i);
+      history->push_back(max_j);
+    }
 
     // Merge components
     BaseFloat w1 = weights_(max_i), w2 = weights_(max_j);
@@ -427,26 +440,28 @@ BaseFloat FullGmm::ComponentPosteriors(const VectorBase<BaseFloat> &data,
   return log_sum;
 }
 
-void FullGmm::RemoveComponent(int32 gauss) {
+void FullGmm::RemoveComponent(int32 gauss, bool renorm_weights) {
   KALDI_ASSERT(gauss < NumGauss());
 
   weights_.RemoveElement(gauss);
   gconsts_.RemoveElement(gauss);
   means_invcovars_.RemoveRow(gauss);
   inv_covars_.erase(inv_covars_.begin() + gauss);
-  BaseFloat sum_weights = weights_.Sum();
-  weights_.Scale(1/sum_weights);
-  valid_gconsts_ = false;
+  if (renorm_weights) {
+    BaseFloat sum_weights = weights_.Sum();
+    weights_.Scale(1.0/sum_weights);
+    valid_gconsts_ = false;
+  }
 }
 
-void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in) {
+void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in, bool renorm_weights) {
   std::vector<int32> gauss(gauss_in);
   std::sort(gauss.begin(), gauss.end());
   KALDI_ASSERT(IsSortedAndUniq(gauss));
   // If efficiency is later an issue, will code this specially (unlikely,
   // except for quite large GMMs).
   for (size_t i = 0; i < gauss.size(); i++) {
-    RemoveComponent(gauss[i]);
+    RemoveComponent(gauss[i], renorm_weights);
     for (size_t j = i + 1; j < gauss.size(); j++)
       gauss[j]--;
   }
@@ -475,6 +490,36 @@ std::ostream & operator <<(std::ostream & out_stream,
                            const kaldi::FullGmm &gmm) {
   gmm.Write(out_stream, false);
   return out_stream;
+}
+
+/// this = rho x source + (1-rho) x this
+void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
+  FullGmmNormal us(*this);
+  FullGmmNormal them(source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(1.0 - rho);
+    us.weights_.AddVec(rho, them.weights_);
+    us.weights_.Scale(1.0 / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(1.0 - rho);
+    us.means_.AddMat(rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    for (int32 i = 0; i < NumGauss(); ++i) {
+      us.vars_[i].Scale(1.0 - rho);
+      us.vars_[i].AddSp(rho, them.vars_[i]);
+    }
+  }
+
+  us.CopyToFullGmm(this);
+  ComputeGconsts();
 }
 
 void FullGmm::Read(std::istream &in_stream, bool binary) {

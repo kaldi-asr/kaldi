@@ -1,7 +1,8 @@
-// gmm/estimate-full-gmm.h
+// gmm/mle-full-gmm.h
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
-//                      Microsoft Corporation
+//                      Microsoft Corporation; 
+//                      Univ. Erlangen Nuremberg, Korbinian Riedhammer
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@
 
 #include "gmm/model-common.h"
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
+#include "gmm/mle-diag-gmm.h"  // for AugmentGmmFlags()
 
 namespace kaldi {
 
@@ -66,28 +69,32 @@ struct MleFullGmmOptions {
 /** Class for computing the maximum-likelihood estimates of the parameters of
  *  a Gaussian mixture model.
  */
-class MlEstimateFullGmm {
+class AccumFullGmm {
  public:
-  MlEstimateFullGmm(): dim_(0), num_comp_(0), flags_(0) { }
-  explicit MlEstimateFullGmm(const FullGmm &gmm, GmmFlagsType flags) {
-    ResizeAccumulators(gmm, flags);
+  AccumFullGmm(): dim_(0), num_comp_(0), flags_(0) { }
+  explicit AccumFullGmm(const FullGmm &gmm, GmmFlagsType flags) {
+    Resize(gmm, flags);
   }
   // provide copy constructor.
-  explicit MlEstimateFullGmm(const MlEstimateFullGmm &other);
+  explicit AccumFullGmm(const AccumFullGmm &other);
+
+  void Read(std::istream &in_stream, bool binary, bool add);
+  void Write(std::ostream &out_stream, bool binary) const;
 
   /// Allocates memory for accumulators
-  void ResizeAccumulators(int32 num_components, int32 dim,
-                          GmmFlagsType flags);
-  /// Calls ResizeAccumulators with arguments based on gmm_ptr_
-  void ResizeAccumulators(const FullGmm &gmm, GmmFlagsType flags);
+  void Resize(int32 num_components, int32 dim, GmmFlagsType flags);
+  /// Calls Resize with arguments based on gmm_ptr_
+  void Resize(const FullGmm &gmm, GmmFlagsType flags);
+  
+  void ResizeVarAccumulator(int32 num_comp, int32 dim);
   /// Returns the number of mixture components
   int32 NumGauss() const { return num_comp_; }
   /// Returns the dimensionality of the feature vectors
   int32 Dim() const { return dim_; }
 
-  void ZeroAccumulators(GmmFlagsType flags);
+  void SetZero(GmmFlagsType flags);
 
-  void ScaleAccumulators(BaseFloat f, GmmFlagsType flags);  // scale stats.
+  void Scale(BaseFloat f, GmmFlagsType flags);  // scale stats.
 
   /// Accumulate for a single component, given the posterior
   void AccumulateForComponent(const VectorBase<BaseFloat>& data,
@@ -109,22 +116,13 @@ class MlEstimateFullGmm {
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
-  /// Const version of the update which preserves the accumulators
-  void Update(const MleFullGmmOptions &config, GmmFlagsType f, FullGmm *gmm,
-              BaseFloat *obj_change_out, BaseFloat *count_out) const;
-
-  BaseFloat MlObjective(const FullGmm& gmm) const;
-
-  void Read(std::istream &in_stream, bool binary, bool add);
-  void Write(std::ostream &out_stream, bool binary) const;
+  /// Accessors  
   const GmmFlagsType Flags() const { return flags_; }
+  const Vector<double>& occupancy() const { return occupancy_; }
+  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
+  const std::vector<SpMatrix<double> >& covariance_accumulator() const { return covariance_accumulator_; }
 
  private:
-  /// Non-const version of Update that is used internally. This destroys
-  /// the accumulators at the end.
-  void UpdateInternal(const MleFullGmmOptions &config, GmmFlagsType flags,
-                      FullGmm *gmm);
-
   int32 dim_;
   int32 num_comp_;
   GmmFlagsType flags_;
@@ -132,28 +130,26 @@ class MlEstimateFullGmm {
   Vector<double> occupancy_;
   Matrix<double> mean_accumulator_;
   std::vector<SpMatrix<double> > covariance_accumulator_;
-
-  /// Resizes arrays to this dim. Does not initialize data.
-  void ResizeVarAccumulator(int32 nMix, int32 dim);
-
-  /// Returns "augmented" version of flags: e.g. if just updating means, need
-  /// weights too.
-  static GmmFlagsType AugmentFlags(GmmFlagsType f);
-
-  /// Removes Gaussian component, returns total components after removal
-  int32 RemoveComponent(int32 comp);
-
-  // Disallow assignment: make this private.
-  MlEstimateFullGmm &operator= (const MlEstimateFullGmm &other);
 };
 
-inline void MlEstimateFullGmm::ResizeAccumulators(const FullGmm &gmm,
-                                                  GmmFlagsType flags) {
-  ResizeAccumulators(gmm.NumGauss(), gmm.Dim(), flags);
+inline void AccumFullGmm::Resize(const FullGmm &gmm, GmmFlagsType flags) {
+  Resize(gmm.NumGauss(), gmm.Dim(), flags);
 }
 
+/// for computing the maximum-likelihood estimates of the parameters of
+/// a Gaussian mixture model.
+/// Update using the DiagGmm: exponential form
+void MleFullGmmUpdate(const MleFullGmmOptions &config,
+            const AccumFullGmm &fullgmm_acc,
+            GmmFlagsType flags,
+            FullGmm *gmm,
+            BaseFloat *obj_change_out,
+            BaseFloat *count_out);
+
+/// Calc using the DiagGMM exponential form
+BaseFloat MlObjective(const FullGmm& gmm,
+                      const AccumFullGmm &fullgmm_acc);
 
 }  // End namespace kaldi
-
 
 #endif  // KALDI_GMM_ESTIMATE_FULL_GMM_H_

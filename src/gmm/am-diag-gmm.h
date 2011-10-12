@@ -175,6 +175,7 @@ struct UbmClusteringOptions {
         : ubm_numcomps(ncomp), reduce_state_factor(red),
           intermediate_numcomps(interm_comps), cluster_varfloor(vfloor) {}
   void Register(ParseOptions *po);
+  void Check();
 };
 
 /** Clusters the Gaussians in an acoustic model to a single GMM with specified

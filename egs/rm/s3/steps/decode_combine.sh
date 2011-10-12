@@ -41,7 +41,7 @@ if [[ ! -f $indir1/lat.gz || ! -f $indir2/lat.gz ]]; then
 fi
 
 lattice-compose "ark:gunzip -c $indir1/lat.gz|" "ark:gunzip -c $indir2/lat.gz|" \
-  "ark:|gzip -c > $dir/lat.gz" > $dir/compose.log
+  "ark:|gzip -c > $dir/lat.gz" 2> $dir/compose.log
 
 
 # Now rescore lattices with various acoustic scales, and compute the WER.

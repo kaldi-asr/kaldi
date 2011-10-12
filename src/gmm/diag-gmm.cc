@@ -22,7 +22,9 @@
 #include <vector>
 
 #include "gmm/diag-gmm.h"
+#include "gmm/diag-gmm-normal.h"
 #include "gmm/full-gmm.h"
+#include "gmm/full-gmm-normal.h"
 
 namespace kaldi {
 
@@ -113,7 +115,7 @@ int32 DiagGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void DiagGmm::Split(int32 target_components, float perturb_factor) {
+void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<int32> *history) {
   if (target_components < NumGauss() || NumGauss() == 0) {
     KALDI_ERR << "Cannot split from "  << NumGauss() << " to "
               << target_components  << " components";
@@ -148,6 +150,11 @@ void DiagGmm::Split(int32 target_components, float perturb_factor) {
         max_idx = i;
       }
     }
+
+    // remember what component was split
+    if (history != NULL)
+      history->push_back(max_idx);
+
     weights_(max_idx) /= 2;
     weights_(current_components) = weights_(max_idx);
     Vector<BaseFloat> rand_vec(dim);
@@ -167,10 +174,10 @@ void DiagGmm::Split(int32 target_components, float perturb_factor) {
   ComputeGconsts();
 }
 
-void DiagGmm::Merge(int32 target_components) {
+void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
-        << target_components << ")";
+              << target_components << "), #Gauss = " << NumGauss();
   }
   if (NumGauss() == target_components) {
     KALDI_WARN << "No components merged, as target (" << target_components
@@ -273,6 +280,12 @@ void DiagGmm::Merge(int32 target_components) {
 
     // make sure that different components will be merged
     assert(max_i != max_j);
+
+    // remember the merge candidates
+    if (history != NULL) {
+      history->push_back(max_i);
+      history->push_back(max_j);
+    }
 
     // Merge components
     BaseFloat w1 = weights_(max_i), w2 = weights_(max_j);
@@ -498,6 +511,65 @@ void DiagGmm::RemoveComponents(const std::vector<int32> &gauss_in,
   }
 }
 
+void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
+
+  DiagGmmNormal us(*this);
+  DiagGmmNormal them(source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(1.0 - rho);
+    us.weights_.AddVec(rho, them.weights_);
+    us.weights_.Scale(1.0 / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(1.0 - rho);
+    us.means_.AddMat(rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    us.vars_.Scale(1.0 - rho);
+    us.vars_.AddMat(rho, them.vars_);
+  }
+
+  us.CopyToDiagGmm(this);
+  ComputeGconsts();
+}
+
+void DiagGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+                          GmmFlagsType flags) {
+  KALDI_ASSERT(NumGauss() == source.NumGauss());
+  KALDI_ASSERT(Dim() == source.Dim());
+  DiagGmmNormal us(*this);
+  FullGmmNormal them(source);
+
+  if (flags & kGmmWeights) {
+    us.weights_.Scale(1.0 - rho);
+    us.weights_.AddVec(rho, them.weights_);
+    us.weights_.Scale(1.0 / us.weights_.Sum());
+  }
+
+  if (flags & kGmmMeans) {
+    us.means_.Scale(1.0 - rho);
+    us.means_.AddMat(rho, them.means_);
+  }
+
+  if (flags & kGmmVariances) {
+    for (int32 i = 0; i < NumGauss(); ++i) {
+      us.vars_.Scale(1. - rho);
+      Vector<double> diag(Dim());
+      for (int32 j = 0; j < Dim(); ++j)
+        diag(j) = them.vars_[i](j, j);
+      us.vars_.Row(i).AddVec(rho, diag);
+    }
+  }
+
+  us.CopyToDiagGmm(this);
+  ComputeGconsts();
+}
 
 void DiagGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!valid_gconsts_)

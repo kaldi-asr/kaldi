@@ -7,7 +7,7 @@ include ../kaldi.mk
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
            lattice-lmrescore lattice-scale lattice-union lattice-to-post \
            lattice-determinize lattice-oracle string-to-lattice lattice-rmali \
-           lattice-compose
+           lattice-compose lattice-boost-ali lattice-copy
 
 OBJFILES =
 
@@ -17,7 +17,8 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
+	../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 
 
