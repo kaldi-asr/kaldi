@@ -200,6 +200,3 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_tes
 
 # Getting results:
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
-#TEMP:
-train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-steps/make_denlats_lda_etc.sh --num-jobs 10 --cmd "$train_cmd"
