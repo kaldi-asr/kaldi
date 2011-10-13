@@ -76,9 +76,9 @@ cat $data/text | \
    || exit 1;
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
-# it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and 
+# it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
 # final.mdl from $alidir; the output HCLG.fst goes in $dir/graph.
-  
+
 scripts/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 
 if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
@@ -88,7 +88,7 @@ fi
 n=`get_splits.pl $nj | awk '{print $1}'`
 if [ -f $alidir/$n.trans ]; then
   use_trans=true
-  echo Using transforms from directory $dir
+  echo Using transforms from directory $alidir
 else
   echo No transforms present in alignment directory: assuming speaker independent.
   use_trans=false
@@ -100,11 +100,8 @@ for n in `get_splits.pl $nj`; do
   featspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
   $use_trans && featspart[$n]="${featspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
 
-  # Puttings slightly more conservative max-arcs and max-loop, to keep
-  # determinization from using too much memory.
   $cmd $dir/decode_den.$n.log \
-    gmm-latgen-faster --max-arcs=25000 --max-loop=100000 \
-     --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
+    gmm-latgen-faster --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
     --max-active=$maxactive --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
     $dir/dengraph/HCLG.fst "${featspart[$n]}" "ark:|gzip -c >$dir/lat.$n.gz" \
       || touch $dir/.error &

@@ -1,1 +1,54 @@
 
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
+
+
+
+# monophone, deltas, half of SI-84
+exp/mono0a/decode_tgpr_dev93/wer_10:%WER 34.37 [ 2830 / 8234, 264 ins, 494 del, 2072 sub ]
+exp/mono0a/decode_tgpr_eval92/wer_9:%WER 24.97 [ 1409 / 5643, 146 ins, 184 del, 1079 sub ]
+
+# triphone, deltas, half of SI-84
+exp/tri1/decode_tgpr_dev93/wer_16:%WER 19.87 [ 1636 / 8234, 281 ins, 184 del, 1171 sub ]
+exp/tri1/decode_tgpr_dev93_tg/wer_16:%WER 19.16 [ 1578 / 8234, 289 ins, 162 del, 1127 sub ]
+
+# triphone, deltas, SI-84
+exp/tri2a/decode_tgpr_dev93/wer_14:%WER 17.77 [ 1463 / 8234, 271 ins, 135 del, 1057 sub ]
+exp/tri2a/decode_tgpr_eval92/wer_16:%WER 11.94 [ 674 / 5643, 130 ins, 59 del, 485 sub ]
+
+# triphone, LDA+MLLT, SI-84
+exp/tri2b/decode_tgpr_dev93/wer_16:%WER 17.42 [ 1434 / 8234, 274 ins, 144 del, 1016 sub ]
+exp/tri2b/decode_tgpr_eval92/wer_16:%WER 11.24 [ 634 / 5643, 147 ins, 39 del, 448 sub ]
+
+# +MMI
+exp/tri2b_mmi/decode_tgpr_eval92/wer_15:%WER 10.72 [ 605 / 5643, 134 ins, 37 del, 434 sub ]
+exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_14:%WER 10.72 [ 605 / 5643, 137 ins, 36 del, 432 sub ]
+exp/tri2b_mmib/decode_tgpr_eval92/wer_16:%WER 10.67 [ 602 / 5643, 127 ins, 37 del, 438 sub ]
+
+# LDA+ET, SI-84 [note: this is speaker adaptive, so better to compare with SAT numbers
+# which would be better than this when adapting on entire speaker]
+exp/tri2c/decode_tgpr_dev93/wer_16:%WER 16.19 [ 1333 / 8234, 251 ins, 139 del, 943 sub ]
+exp/tri2c/decode_tgpr_dev93_2pass/wer_16:%WER 15.99 [ 1317 / 8234, 246 ins, 134 del, 937 sub ]
+
+# LDA+MLLT+SAT, SI-84
+exp/tri3b/decode_tgpr_dev93/wer_16:%WER 15.14 [ 1247 / 8234, 259 ins, 118 del, 870 sub ]
+exp/tri3b/decode_tgpr_dev93_tg/wer_16:%WER 14.36 [ 1182 / 8234, 263 ins, 107 del, 812 sub ] # rescoring w/ tg LM
+exp/tri3b/decode_tgpr_eval92/wer_16:%WER 10.24 [ 578 / 5643, 137 ins, 38 del, 403 sub ]
+exp/tri3b/decode_tgpr_eval92_tg/wer_14:%WER 9.71 [ 548 / 5643, 144 ins, 28 del, 376 sub ] # rescoring w/ tg LM
+
+# LDA+MLLT+SAT, SI-284, quick retraining from 3b
+exp/tri4b/decode_tgpr_dev93/wer_15:%WER 12.89 [ 1061 / 8234, 231 ins, 93 del, 737 sub ]
+
+# +MMI
+exp/tri4b_mmi/decode_tgpr_dev93/wer_16:%WER 11.79 [ 971 / 8234, 203 ins, 87 del, 681 sub ]
+exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_16:%WER 11.63 [ 958 / 8234, 199 ins, 88 del, 671 sub ]
+
+# LDA+MLLT+SAT, SI-284, full retraining starting from 3b [c.f. 4b]
+exp/tri4c/decode_tgpr_dev93/wer_16:%WER 12.82 [ 1056 / 8234, 207 ins, 97 del, 752 sub ]
+
+exp/sgmm3c/decode_tgpr_dev93/wer_11:%WER 14.02 [ 1153 / 8224, 218 ins, 108 del, 827 sub ] [PARTIAL]
+exp/sgmm4b/decode_tgpr_dev93/wer_15:%WER 12.89 [ 1061 / 8234, 190 ins, 128 del, 743 sub ]
+exp/sgmm4c/decode_tgpr_dev93/wer_12:%WER 11.10 [ 912 / 8213, 180 ins, 94 del, 638 sub ] [PARTIAL]
+exp/sgmm4c/decode_tgpr_dev93_tg/wer_11:%WER 10.31 [ 847 / 8213, 185 ins, 80 del, 582 sub ] [PARTIAL]
+exp/sgmm4c/decode_tgpr_eval92/wer_13:%WER 7.53 [ 425 / 5643, 88 ins, 29 del, 308 sub ]
+exp/sgmm4c/decode_tgpr_eval92_tg/wer_13:%WER 7.14 [ 403 / 5643, 93 ins, 22 del, 288 sub ]

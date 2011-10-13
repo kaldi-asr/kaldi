@@ -149,10 +149,32 @@ template<class IntType> class LatticeStringRepository {
     SetType tmp;
     tmp.swap(set_);
   }
+
+  // Rebuild will rebuild this object, guaranteeing only
+  // to preserve the Entry values that are in the vector pointed
+  // to (this list does not have to be unique).  The point of
+  // this is to save memory.
+  void Rebuild(const std::vector<const Entry*> &to_keep) {
+    SetType tmp_set;
+    for (typename std::vector<const Entry*>::const_iterator
+             iter = to_keep.begin();
+         iter != to_keep.end(); ++iter)
+      RebuildHelper(*iter, &tmp_set);
+    // Now delete all elems not in tmp_set.
+    for (typename SetType::iterator iter = set_.begin();
+         iter != set_.end(); ++iter) {
+      if (tmp_set.count(*iter) == 0)
+        delete (*iter); // delete the Entry; not needed.
+    }
+    set_.swap(tmp_set);
+  }
   
   ~LatticeStringRepository() { Destroy(); }
- private:
-  
+  int32 MemSize() const {
+    return set_.size() * sizeof(Entry) * 2; // this is a lower bound
+    // on the size this structure might take.
+  }
+ private:  
   class EntryKey { // Hash function object.
    public:
     inline size_t operator()(const Entry *entry) const {
@@ -167,6 +189,17 @@ template<class IntType> class LatticeStringRepository {
     }
   };
   typedef unordered_set<const Entry*, EntryKey, EntryEqual> SetType;
+
+  void RebuildHelper(const Entry *to_add, SetType *tmp_set) {
+    if (to_add == NULL) return;
+    else {
+      typename SetType::iterator iter = tmp_set->find(to_add);
+      if (iter == tmp_set->end()) { // not in tmp_set.
+        tmp_set->insert(to_add);
+        RebuildHelper(to_add->parent, tmp_set); // make sure parent there.
+      }
+    }
+  }
   
   DISALLOW_COPY_AND_ASSIGN(LatticeStringRepository);
   SetType set_;
@@ -330,7 +363,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   // keeping a reference or pointer to ifst_.
   LatticeDeterminizer(const Fst<Arc> &ifst,
                       DeterminizeLatticeOptions opts):
-      num_arcs_(0), ifst_(ifst.Copy()), opts_(opts),
+      num_arcs_(0), num_elems_(0), ifst_(ifst.Copy()), opts_(opts),
       equal_(opts_.delta), determinized_(false),
       minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
     Initialize();
@@ -361,6 +394,68 @@ template<class Weight, class IntType> class LatticeDeterminizer {
   ~LatticeDeterminizer() {
     FreeMostMemory(); // rest is deleted by destructors.
   }
+  void RebuildRepository() { // rebuild the string repository,    
+    // freeing stuff we don't need.. we call this when memory usage
+    // passes a supplied threshold.  We need to accumulate all the
+    // strings we need the repository to "remember", then tell it
+    // to clean the repository.
+    std::vector<StringId> needed_strings;
+    for (size_t i = 0; i < output_arcs_.size(); i++)
+      for (size_t j = 0; j < output_arcs_[i].size(); j++)
+        needed_strings.push_back(output_arcs_[i][j].string);
+
+    // the following loop covers strings present in minimal_hash_
+    // which are also accessible via output_states_.
+    for (size_t i = 0; i < output_states_.size(); i++)
+      for (size_t j = 0; j < output_states_[i]->size(); j++)
+        needed_strings.push_back((*(output_states_[i]))[j].string);
+
+    // the following loop covers strings present in initial_hash_.
+    for (typename InitialSubsetHash::const_iterator
+             iter = initial_hash_.begin();
+         iter != initial_hash_.end(); ++iter) {
+      const vector<Element> &vec = *(iter->first);
+      Element elem = iter->second;
+      for (size_t i = 0; i < vec.size(); i++)
+        needed_strings.push_back(vec[i].string);
+      needed_strings.push_back(elem.string);
+    }
+
+    std::sort(needed_strings.begin(), needed_strings.end());
+    needed_strings.erase(std::unique(needed_strings.begin(),
+                                     needed_strings.end()),
+                         needed_strings.end()); // uniq the strings.
+    repository_.Rebuild(needed_strings);
+  }
+  
+  bool CheckMemoryUsage() {
+    int32 repo_size = repository_.MemSize(),
+        arcs_size = num_arcs_ * sizeof(TempArc),
+        elems_size = num_elems_ * sizeof(Element),
+        total_size = repo_size + arcs_size + elems_size;
+    if (total_size > opts_.max_mem) { // We passed the memory threshold.
+      // This is usually due to the repository getting large, so we
+      // clean this out.
+      RebuildRepository();
+      int32 new_repo_size = repository_.MemSize(),
+          new_total_size = new_repo_size + arcs_size + elems_size;
+
+      KALDI_VLOG(2) << "Rebuilt repository in determinize-lattice: repository shrank from "
+                    << repo_size << " to " << new_repo_size << " bytes (approximately)";
+      
+      if (new_total_size > static_cast<int32>(opts_.max_mem * 0.8)) {
+        // Rebuilding didn't help enough-- we need a margin to stop
+        // having to rebuild too often.
+        KALDI_WARN << "Failure in determinize-lattice: size exceeds maximum "
+                   << opts_.max_mem << " bytes; (repo,arcs,elems) = ("
+                   << repo_size << "," << arcs_size << "," << elems_size
+                   << "), after rebuilding, repo size was " << new_repo_size;
+        return false;
+      }
+    }
+    return true;
+  }
+  
   // Returns true on success.  Can fail for out-of-memory
   // or max-states related reasons.
   bool Determinize(bool *debug_ptr) {
@@ -374,15 +469,18 @@ template<class Weight, class IntType> class LatticeDeterminizer {
         queue_.pop_back();
         ProcessState(out_state);
         if (debug_ptr && *debug_ptr) Debug();  // will exit.
-        if(opts_.max_arcs > 0 && num_arcs_ > opts_.max_arcs) {
-          std::cerr << "Lattice determinization aborted since passed "
-                    << opts_.max_arcs << " arcs.\n";
-          return false;
-        }
+        if (!CheckMemoryUsage()) return false;
       }
       return (determinized_ = true);
     } catch (std::bad_alloc) {
-      std::cerr << "Memory allocation error doing lattice determinization\n";
+      int32 repo_size = repository_.MemSize(),
+          arcs_size = num_arcs_ * sizeof(TempArc),
+          elems_size = num_elems_ * sizeof(Element),
+          total_size = repo_size + arcs_size + elems_size;
+      KALDI_WARN << "Memory allocation error doing lattice determinization; using "
+          << total_size << " bytes (max = " << opts_.max_mem
+          << " (repo,arcs,elems) = ("
+          << repo_size << "," << arcs_size << "," << elems_size << ")";
       return (determinized_ = false);
     } catch (std::runtime_error) {
       std::cerr << "Caught exception doing lattice determinization\n";
@@ -529,6 +627,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     OutputStateId ans = static_cast<OutputStateId>(output_arcs_.size());
     vector<Element> *subset_ptr = new vector<Element>(subset);
     output_states_.push_back(subset_ptr);
+    num_elems_ += subset_ptr->size();
     output_arcs_.push_back(vector<TempArc>());
     minimal_hash_[subset_ptr] = ans;
     queue_.push_back(ans);
@@ -578,6 +677,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     vector<Element> *initial_subset_ptr = new vector<Element>(subset_in);
     elem.state = ans;
     initial_hash_[initial_subset_ptr] = elem;
+    num_elems_ += initial_subset_ptr->size(); // keep track of memory usage.
     return ans;
   }
 
@@ -651,7 +751,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     while (queue.size() != 0) {
       Element elem = queue.front();
       queue.pop_front();
-
+      
       // The next if-statement is a kind of optimization.  It's to prevent us
       // unnecessarily repeating the processing of a state.  "cur_subset" always
       // contains only one Element with a particular state.  The issue is that
@@ -662,7 +762,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       if(replaced_elems && cur_subset[elem.state] != elem)
         continue;
       if(opts_.max_loop > 0 && counter++ > opts_.max_loop) {
-        std::cerr << "Lattice determinization aborted since looped more than "
+        KALDI_ERR << "Lattice determinization aborted since looped more than "
                   << opts_.max_loop << " times during epsilon closure.\n";
         throw std::runtime_error("looped more than max-arcs times in lattice determinization");
       }
@@ -1087,8 +1187,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                                             // View pointers as owned in
                                             // minimal_hash_.
   vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.
-  int num_arcs_;
 
+  int num_arcs_; // keep track of memory usage: number of arcs in output_arcs_
+  int num_elems_; // keep track of memory usage: number of elems in output_states_
+  
   const Fst<Arc> *ifst_;
   DeterminizeLatticeOptions opts_;
   SubsetKey hasher_;  // object that computes keys-- has no data members.

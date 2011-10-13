@@ -142,6 +142,7 @@ steps/train_lda_etc_quick.sh --num-jobs 10 --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92
 
 # Train UBM, for SGMM system on top of LDA+MLLT.
 steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
@@ -196,6 +197,8 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
     exp/sgmm4c/graph_tgpr data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
   data/lang_test_tgpr/words.txt data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/sgmm4c/decode_tgpr_eval92_tg
+
+
 
 
 # Getting results:

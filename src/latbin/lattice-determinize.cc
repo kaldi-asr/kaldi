@@ -28,13 +28,15 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
                                bool prune,
                                BaseFloat beam,
                                BaseFloat beam_ratio,
-                               int32 max_arcs,
+                               int32 max_mem,
                                int32 max_loop,
+                               BaseFloat delta,
                                int32 num_loops,
                                CompactLattice *clat) {
   fst::DeterminizeLatticeOptions lat_opts;
-  lat_opts.max_arcs = max_arcs;
+  lat_opts.max_mem = max_mem;
   lat_opts.max_loop = max_loop;
+  lat_opts.delta = delta;
   BaseFloat cur_beam = beam;
   for (int32 i = 0; i < num_loops;) { // we increment i below.
 
@@ -103,14 +105,16 @@ int main(int argc, char *argv[]) {
     BaseFloat beam = 10.0;
     BaseFloat beam_ratio = 0.9;
     int32 num_loops = 20;
-    int32 max_arcs = 50000;
-    int32 max_loop = 200000;
+    int32 max_mem = 50000000; // 50 MB
+    int32 max_loop = 500000;
+    BaseFloat delta = fst::kDelta;
     bool prune;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used to handle determinization failures, set --prune=false to disable routine pruning");
+    po.Register("delta", &delta, "Tolerance used in determinization");
     po.Register("prune", &prune, "If true, prune determinized lattices with the --beam option.");
-    po.Register("max-arcs", &max_arcs, "Maximum number of arcs (before pruning)-- used to control memory usage during determinization");
+    po.Register("max-mem", &max_mem, "Maximum approximate memory usage in determinization (real usage might be twice this)");
     po.Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
     po.Register("beam-ratio", &beam_ratio, "Ratio by which to decrease beam if we reach the max-arcs.");
     po.Register("num-loops", &num_loops, "Number of times to decrease beam by beam-ratio if determinization fails.");
@@ -149,8 +153,8 @@ int main(int argc, char *argv[]) {
 
       CompactLattice clat;
       if (DeterminizeLatticeWrapper(lat, key, prune,
-                                    beam, beam_ratio, max_arcs, max_loop,
-                                    num_loops, &clat)) {
+                                    beam, beam_ratio, max_mem, max_loop,
+                                    delta, num_loops, &clat)) {
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &clat);
         compact_lattice_writer.Write(key, clat);
         n_done++;

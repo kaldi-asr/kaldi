@@ -45,7 +45,7 @@ struct LatticeFasterDecoderConfig {
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
   bool prune_lattice;
-  int32 max_arcs;
+  int32 max_mem; // max memory usage in determinization
   int32 max_loop;
   BaseFloat beam_ratio;
   BaseFloat beam_delta; // has nothing to do with beam_ratio
@@ -56,8 +56,8 @@ struct LatticeFasterDecoderConfig {
                                 prune_interval(25),
                                 determinize_lattice(true),
                                 prune_lattice(true),
-                                max_arcs(50000),
-                                max_loop(200000),
+                                max_mem(50000000), // 50 MB (probably corresponds to 100 really)
+                                max_loop(500000),
                                 beam_ratio(0.9),
                                 beam_delta(0.5),
                                 hash_ratio(2.0) { }
@@ -68,7 +68,7 @@ struct LatticeFasterDecoderConfig {
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
     po->Register("prune-lattice", &prune_lattice, "If true, prune lattice using the lattice-beam (recommended)");
-    po->Register("max-arcs", &max_arcs, "Maximum number of arcs (before pruning) in a lattice-- used to control memory usage during determinization");
+    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be double this)");
     po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
     po->Register("beam-ratio", &beam_ratio, "Ratio by which to decrease lattice-beam if we reach the max-arcs.");
     po->Register("beam-delta", &beam_delta, "Increment used in decoding");
@@ -232,7 +232,7 @@ class LatticeFasterDecoder {
     Invert(&raw_fst); // make it so word labels are on the input.
     BaseFloat cur_beam = config_.lattice_beam;
     fst::DeterminizeLatticeOptions lat_opts;
-    lat_opts.max_arcs = config_.max_arcs;
+    lat_opts.max_mem = config_.max_mem;
     lat_opts.max_loop = config_.max_loop;
     for (int32 i = 0; i < 20; i++) {
       if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {

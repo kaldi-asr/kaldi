@@ -91,11 +91,11 @@ local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d/decode
 steps/align_lda_mllt_sat.sh --graphs "ark,s,cs:gunzip -c exp/tri3d/graphs.fsts.gz|" \
     data/train data/lang exp/tri3d exp/tri3d_ali
 
-# MMI on top of that.
+# MMI on top of tri3d
 steps/train_lda_etc_mmi.sh data/train data/lang exp/tri3d_ali exp/tri4a 
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4a/decode
 
-# Try another pass on top of that.
+# Try another pass of training on top of 3d
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri3d_ali exp/tri4d
 scripts/mkgraph.sh data/lang_test exp/tri4d exp/tri4d/graph
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d/decode
