@@ -129,6 +129,7 @@ done
 # Note: we previously echoed the # of disambiguation symbols to data/local/lex_ndisambig.
 scripts/add_disambig.pl --include-zero data/lang_test/phones.txt \
    `cat data/local/lex_ndisambig` > data/lang_test/phones_disambig.txt
+cp data/lang_test/phones_disambig.txt data/lang # Needed for MMI.
 
 
 # Create the lexicon FST with disambiguation symbols, and put it in lang_test.
@@ -144,6 +145,7 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt 0.5 SIL '#'$ndisambi
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
    fstarcsort --sort_type=olabel > data/lang_test/L_disambig.fst || exit 1;
 
+# Copy into data/lang/ also, where it will be needed for discriminative training.
 cp data/lang_test/L_disambig.fst data/lang/
 
 
