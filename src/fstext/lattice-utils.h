@@ -27,8 +27,10 @@ namespace fst {
 
 // The template ConvertLattice does conversions to and from
 // LatticeWeight FSTs and CompactLatticeWeight FSTs, and
-// between float and double.  It's used in the I/O code
-// for lattices.
+// between float and double, and to convert from LatticeWeight
+// to StdWeight.  It's used in the I/O code for lattices,
+// and for converting lattices to standard FSTs (e.g. for creating
+// decoding graphs from lattices).
 
 
 /**
@@ -53,7 +55,8 @@ void ConvertLattice(
    ilabels and olabels should be identical).  If invert=false, the labels on
    "ifst" become the ilabels on "ofst" and the strings in the weights of "ifst"
    becomes the olabels.  If invert=true [default], this is reversed (useful for speech
-   recognition lattices).
+   recognition lattices; our standard non-compact format has the words on the output side to
+   match HCLG).
 */
 template<class Weight, class Int>
 void ConvertLattice(

@@ -9,9 +9,13 @@ dan's TODO:
  check out Stefan's code for nnet rescoring.  finish biglm stuff.
 minor:
  add void Check(); function to most config classes.
+ Consider adding "see also" line to "usage" messages.
+ make fstbin/ programs "proper" Kaldi programs, e.g. change
+   cerr to KALDI_ERR.  Consider doing same in fstext/
  make it possible to sum tree accs.
  normalize binaries so they never take summed accs (unless sum-accs program)
  remove mix-up, mix-down options from gmm-est (have separate program)
+ possibly remove gmm-align (modifiy scripts accordingly).
  make questions on disk be in text form (use sym2int.pl etc.)... same
    for transcripts while decoding.
  maybe move UBM clustering somewhere else [from am-diag-gmm]?
@@ -21,6 +25,7 @@ minor:
  Make sure scripts don't depend on . being on PATH
  Make ApplySoftMax() function more efficient (does two exp()'s per element)
  possibly change the way lattice-compose works to remove properties hack.
+ change name of one of the lattice-utils.{h,cc} files...
 
 gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
 

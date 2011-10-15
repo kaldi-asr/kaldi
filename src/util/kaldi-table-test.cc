@@ -329,8 +329,7 @@ void UnitTestTableSequentialInt32(bool binary) {
   bool ans;
   Int32Writer bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -362,8 +361,7 @@ void UnitTestTableSequentialBool(bool binary) {
   bool ans;
   BoolWriter bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -396,8 +394,7 @@ void UnitTestTableSequentialDouble(bool binary) {
   bool ans;
   DoubleWriter bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -437,8 +434,7 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
   bool ans;
   DoubleWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -481,8 +477,7 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   bool ans;
   Int32VectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -518,8 +513,7 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
   bool ans;
   Int32PairVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -560,8 +554,7 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
   bool ans;
   Int32VectorVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -605,8 +598,7 @@ void UnitTestTableSequentialInt32Script(bool binary) {
   bool ans;
   Int32Writer bw(binary ? "b,scp:tmp.scp" : "t,scp:tmp.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -642,8 +634,7 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
   bool ans;
   DoubleMatrixWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], *(v[i]));
-    assert(ans);
+    bw.Write(k[i], *(v[i]));
   }
   ans = bw.Close();
   assert(ans);
@@ -690,8 +681,7 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
   bool ans;
   BaseFloatVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], *(v[i]));
-    assert(ans);
+    bw.Write(k[i], *(v[i]));
   }
   ans = bw.Close();
   assert(ans);
@@ -755,8 +745,7 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
   DoubleWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
   // "flush" option in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -828,8 +817,7 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   DoubleMatrixWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
   // "flush" option in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);

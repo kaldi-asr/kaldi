@@ -948,8 +948,31 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
                 << "arcs.";
 }
 
+inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
+  if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
+  // for compatibility with OpenFst conventions.
+  kaldi::Input ki(rxfilename);
+  fst::FstHeader hdr;
+  if (!hdr.Read(ki.Stream(), rxfilename))
+    KALDI_ERR << "Reading FST: error reading FST header from"
+              << kaldi::PrintableRxfilename(rxfilename);
+  FstReadOptions ropts("<unspecified>", &hdr);
+  VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
+  if (!fst)
+    KALDI_ERR << "Could not read fst from "
+              << kaldi::PrintableRxfilename(rxfilename);
+  return fst;
+}
 
-
+inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
+                          std::string wxfilename) {
+  if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,
+  // for compatibility with OpenFst conventions.
+  bool write_binary = true, write_header = false;
+  kaldi::Output ko(wxfilename, write_binary, write_header);
+  FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
+  fst.Write(ko.Stream(), wopts);
+}
 
 
 } // namespace fst.

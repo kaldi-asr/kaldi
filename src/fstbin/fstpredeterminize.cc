@@ -64,24 +64,11 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string disambig_out_filename = po.GetArg(1);
-    if (disambig_out_filename == "-")
-      disambig_out_filename = "";
+    std::string disambig_out_filename = po.GetArg(1),
+        fst_in_filename = po.GetOptArg(2),
+        fst_out_filename = po.GetOptArg(3);
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(2);
-    if (fst_in_filename == "-") fst_in_filename = "";
-
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(3);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstisstochastic: could not read input fst from " <<
-          (fst_in_filename != "" ? fst_in_filename : "standard input") << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     std::vector<StdArc::Label> syms;
 
@@ -89,8 +76,8 @@ int main(int argc, char *argv[]) {
     if (first_disambig == 0)
       first_disambig = next_sym;
     else if (first_disambig < next_sym) {
-      std::cerr << "fstpredeterminize: warning: invalid first_disambig option given "
-                <<first_disambig<<" < "<<next_sym<<", using "<<next_sym<<'\n';
+      KALDI_WARN << "fstpredeterminize: warning: invalid first_disambig option given "
+                 << first_disambig << " < " << next_sym << ", using " << next_sym;
       first_disambig = next_sym;
     }
     PreDeterminize(fst, static_cast<StdArc::Label>(first_disambig), &syms);
@@ -101,15 +88,12 @@ int main(int argc, char *argv[]) {
           (disambig_out_filename == "" ? "standard output" : disambig_out_filename.c_str())
                 << '\n';
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstpredeterminize: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

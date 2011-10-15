@@ -21,18 +21,27 @@ namespace kaldi {
 
 
 TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
-                                               const ContextDependency &ctx_dep,  // Does not maintain reference to this.
-                                               fst::VectorFst<fst::StdArc> *lex_fst,
-                                               const TrainingGraphCompilerOptions &opts):
-    trans_model_(trans_model), ctx_dep_(ctx_dep), lex_fst_(lex_fst), opts_(opts) {
+                                             const ContextDependency &ctx_dep,  // Does not maintain reference to this.
+                                             fst::VectorFst<fst::StdArc> *lex_fst,
+                                             const std::vector<int32> &disambig_syms,
+                                             const TrainingGraphCompilerOptions &opts):
+    trans_model_(trans_model), ctx_dep_(ctx_dep), lex_fst_(lex_fst),
+    disambig_syms_(disambig_syms), opts_(opts) {
   using namespace fst;
-
   const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
 
   assert(!phone_syms.empty());
   assert(IsSortedAndUniq(phone_syms));
-
+  SortAndUniq(&disambig_syms_);
+  for (int32 i = 0; i < disambig_syms_.size(); i++)
+    if (std::binary_search(phone_syms.begin(), phone_syms.end(),
+                           disambig_syms_[i]))
+      KALDI_ERR << "Disambiguation symbol " << disambig_syms_[i]
+                << " is also a phone.";
+  
   int32 subseq_symbol = 1 + phone_syms.back();
+  if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
+    subseq_symbol = 1 + disambig_syms_.back();
 
   {
     int32 N = ctx_dep.ContextWidth(),
@@ -49,16 +58,20 @@ TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
   }
 }
 
+bool TrainingGraphCompiler::CompileGraphFromText(
+    const std::vector<int32> &transcript,
+    fst::VectorFst<fst::StdArc> *out_fst) {
+  using namespace fst;
+  VectorFst<StdArc> word_fst;
+  MakeLinearAcceptor(transcript, &word_fst);
+  return CompileGraph(word_fst, out_fst);
+}
 
-bool TrainingGraphCompiler::CompileGraph(const std::vector<int32> &transcript,
+bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word_fst,
                                          fst::VectorFst<fst::StdArc> *out_fst) {
   using namespace fst;
   assert(lex_fst_ !=NULL);
   assert(out_fst != NULL);
-
-  VectorFst<StdArc> word_fst;
-  MakeLinearAcceptor(transcript, &word_fst);
-
 
   VectorFst<StdArc> phone2word_fst;
   // TableCompose more efficient than compose.
@@ -68,14 +81,14 @@ bool TrainingGraphCompiler::CompileGraph(const std::vector<int32> &transcript,
 
   ContextFst<StdArc> *cfst = NULL;
   {  // make cfst [ it's expanded on the fly ]
-    std::vector<int32> disambig_syms;  // empty.
-    std::vector<int32> phones_disambig_syms;  // also empty.
     const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
     int32 subseq_symbol = phone_syms.back() + 1;
+    if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
+      subseq_symbol = 1 + disambig_syms_.back();
 
     cfst = new ContextFst<StdArc>(subseq_symbol,
                                   phone_syms,
-                                  phones_disambig_syms,
+                                  disambig_syms_,
                                   ctx_dep_.ContextWidth(),
                                   ctx_dep_.CentralPosition());
   }
@@ -90,22 +103,31 @@ bool TrainingGraphCompiler::CompileGraph(const std::vector<int32> &transcript,
   HTransducerConfig h_cfg;
   h_cfg.trans_prob_scale = opts_.trans_prob_scale;
 
-  std::vector<int32> disambig_syms_out;
+  std::vector<int32> disambig_syms_h; // disambiguation symbols on
+  // input side of H.
   VectorFst<StdArc> *H = GetHTransducer(cfst->ILabelInfo(),
                                         ctx_dep_,
                                         trans_model_,
                                         h_cfg,
-                                        &disambig_syms_out);
-  assert(disambig_syms_out.empty());
-
+                                        &disambig_syms_h);
+  
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
-
+  
   assert(trans2word_fst.Start() != kNoStateId);
 
   // Epsilon-removal and determinization combined. This will fail if not determinizable.
   DeterminizeStarInLog(&trans2word_fst);
 
+  if (!disambig_syms_h.empty()) {
+    RemoveSomeInputSymbols(disambig_syms_h, &trans2word_fst);
+    // we elect not to remove epsilons after this phase, as it is
+    // a little slow.
+    if (opts_.rm_eps)
+      RemoveEpsLocal(&trans2word_fst);
+  }
+
+  
   // Encoded minimization.
   MinimizeEncoded(&trans2word_fst);
 
@@ -122,37 +144,50 @@ bool TrainingGraphCompiler::CompileGraph(const std::vector<int32> &transcript,
 }
 
 
-bool TrainingGraphCompiler::CompileGraphs(const std::vector<std::vector<int32> > &transcripts,
-                                          std::vector<fst::VectorFst<fst::StdArc>* > *out_fsts) {
+bool TrainingGraphCompiler::CompileGraphsFromText(
+    const std::vector<std::vector<int32> > &transcripts,
+    std::vector<fst::VectorFst<fst::StdArc>*> *out_fsts) {
+  using namespace fst;
+  std::vector<const VectorFst<StdArc>* > word_fsts(transcripts.size());
+  for (size_t i = 0; i < transcripts.size(); i++) {
+    VectorFst<StdArc>* word_fst = new VectorFst<StdArc>();
+    MakeLinearAcceptor(transcripts[i], word_fst);
+    word_fsts[i] = word_fst;
+  }    
+  bool ans = CompileGraphs(word_fsts, out_fsts);
+  for (size_t i = 0; i < transcripts.size(); i++)
+    delete word_fsts[i];
+  return ans;
+}
+
+bool TrainingGraphCompiler::CompileGraphs(
+    const std::vector<const fst::VectorFst<fst::StdArc>* > &word_fsts,
+    std::vector<fst::VectorFst<fst::StdArc>* > *out_fsts) {
 
   using namespace fst;
   assert(lex_fst_ !=NULL);
   assert(out_fsts != NULL && out_fsts->empty());
-  if (transcripts.empty()) return true;
-  out_fsts->resize(transcripts.size(), NULL);
+  out_fsts->resize(word_fsts.size(), NULL);
+  if (word_fsts.empty()) return true;
 
   ContextFst<StdArc> *cfst = NULL;
   {  // make cfst [ it's expanded on the fly ]
-    std::vector<int32> disambig_syms;  // empty.
-    std::vector<int32> phones_disambig_syms;  // also empty.
     const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
     int32 subseq_symbol = phone_syms.back() + 1;
+    if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
+      subseq_symbol = 1 + disambig_syms_.back();
 
     cfst = new ContextFst<StdArc>(subseq_symbol,
                                   phone_syms,
-                                  phones_disambig_syms,
+                                  disambig_syms_,
                                   ctx_dep_.ContextWidth(),
                                   ctx_dep_.CentralPosition());
   }
 
-  for (size_t i = 0; i < transcripts.size(); i++) {
-    const std::vector<int32> &transcript = transcripts[i];
-    VectorFst<StdArc> word_fst;
-    MakeLinearAcceptor(transcript, &word_fst);
-
+  for (size_t i = 0; i < word_fsts.size(); i++) {
     VectorFst<StdArc> phone2word_fst;
     // TableCompose more efficient than compose.
-    TableCompose(*lex_fst_, word_fst, &phone2word_fst, &lex_cache_);
+    TableCompose(*lex_fst_, *(word_fsts[i]), &phone2word_fst, &lex_cache_);
 
     assert(phone2word_fst.Start() != kNoStateId);
 
@@ -170,13 +205,12 @@ bool TrainingGraphCompiler::CompileGraphs(const std::vector<std::vector<int32> >
   HTransducerConfig h_cfg;
   h_cfg.trans_prob_scale = opts_.trans_prob_scale;
 
-  std::vector<int32> disambig_syms_out;
+  std::vector<int32> disambig_syms_h;
   VectorFst<StdArc> *H = GetHTransducer(cfst->ILabelInfo(),
                                         ctx_dep_,
                                         trans_model_,
                                         h_cfg,
-                                        &disambig_syms_out);
-  assert(disambig_syms_out.empty());
+                                        &disambig_syms_h);
 
   for (size_t i = 0; i < out_fsts->size(); i++) {
     VectorFst<StdArc> &ctx2word_fst = *((*out_fsts)[i]);
@@ -184,6 +218,13 @@ bool TrainingGraphCompiler::CompileGraphs(const std::vector<std::vector<int32> >
     TableCompose(*H, ctx2word_fst, &trans2word_fst);
 
     DeterminizeStarInLog(&trans2word_fst);
+
+    if (!disambig_syms_h.empty()) {
+      RemoveSomeInputSymbols(disambig_syms_h, &trans2word_fst);
+      if (opts_.rm_eps)
+        RemoveEpsLocal(&trans2word_fst);
+    }
+    
     // Encoded minimization.
     MinimizeEncoded(&trans2word_fst);
 

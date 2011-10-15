@@ -36,7 +36,7 @@ fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
                                       << filename;
 
   fst::FstHeader hdr;
-  if (!hdr.Read(ki.Stream(), "<unknown>")) {
+  if (!hdr.Read(ki.Stream(), filename)) {
     KALDI_ERR << "Reading FST: error reading FST header.";
   }
   if (hdr.ArcType() != fst::StdArc::Type()) {

@@ -51,27 +51,17 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
-
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(2);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
-
+    std::string fst_in_filename = po.GetOptArg(1),
+        fst_out_filename = po.GetOptArg(2);
+    
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
+    
     MinimizeEncoded(fst, delta);
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstminimizeencoded: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
+
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

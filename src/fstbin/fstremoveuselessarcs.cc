@@ -44,7 +44,8 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Remove useless arcs from an FST (those which will never be on a best path for any input sequence; also removes ties)."
+        "Remove useless arcs from an FST (those which will never be on a best "
+        "path for any input sequence; also removes ties)."
         "\n"
         "Usage:  fstremoveuselessarcs [in.fst [out.fst] ]\n";
 
@@ -56,31 +57,19 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetOptArg(1),
+        fst_out_filename = po.GetOptArg(2);
 
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(2);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     RemoveUselessArcs(fst);
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstremoveuselessarcs: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

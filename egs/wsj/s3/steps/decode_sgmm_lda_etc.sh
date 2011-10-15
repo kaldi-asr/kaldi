@@ -40,7 +40,7 @@ fi
 
 if [ $# -lt 3 -o $# -gt 4 ]; then
    echo "Usage: steps/decode_sgmm_lda_etc.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir> [<old-decode-dir>]"
-   echo " e.g.: steps/decode_sgmm_lda_etc.sh -j 10 0 exp/sgmm3c/graph_tgpr data/dev_nov93 exp/sgmm3c/decode_dev93_tgpr exp/tri2b/decode_dev93_tgpr"
+   echo " e.g.: steps/decode_sgmm_lda_etc.sh -j 10 0 exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_dev93_tgpr exp/tri2b/decode_dev93_tgpr"
    exit 1;
 fi
 

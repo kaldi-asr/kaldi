@@ -596,6 +596,10 @@ template<class Holder> class TableWriterImplBase {
 
   // Write returns true on success, false on failure, but
   // some errors may not be detected till we call Close().
+  // It throws (via KALDI_ERR) if called wrongly.  We could
+  // have just thrown on all errors, since this is what
+  // TableWriter does; it was designed this way because originally
+  // TableWriter::Write returned an exit status.
   virtual bool Write(const std::string &key, const T &value) = 0;
 
   // Flush will flush any archive; it does not return error status,
@@ -1111,16 +1115,12 @@ bool TableWriter<Holder>::Open(const std::string &wspecifier) {
 }
 
 template<class Holder>
-bool TableWriter<Holder>::Write(const std::string &key, const T &value) const {
+void TableWriter<Holder>::Write(const std::string &key,
+                                const T &value) const {
   CheckImpl();
-  return impl_->Write(key, value);
-}
-
-template<class Holder>
-void TableWriter<Holder>::WriteThrow(const std::string &key,
-                                     const T &value) const {
-  if (!Write(key, value))
-    KALDI_ERR << "Error in TableWriter::Write";  // More specific warning will have
+  if (!impl_->Write(key, value))
+    KALDI_ERR << "Error in TableWriter::Write";
+  // More specific warning will have
   // been printed in the Write function.
 }
 

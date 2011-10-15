@@ -42,7 +42,6 @@ fi
 
 script=$1
 graphdir=$2
-graph=$graphdir/HCLG.fst
 data=$3
 dir=$4
 # Make "dir" an absolute pathname.
@@ -52,12 +51,20 @@ shift;shift;shift;shift;
 # Remaining args will be supplied to decoding script.
 extra_args=$* 
 
-for file in $graph $script $scp $data/utt2spk; do
+for file in $script $scp $data/utt2spk; do
   if [ ! -f $file ]; then
      echo "decode.sh: no such file $file"
      exit 1
   fi 
 done
+
+if [ ! -f $graphdir/HCLG.fst -a ! -f $graphdir/G.fst ]; then
+  # Note: most scripts expect HCLG.fst in graphdir, but the
+  # "*_fromlats.sh" script(s) require(s) a "lang" dir in that
+  # position
+  echo No such file: $graphdir/HCLG.fst or $graphdir/G.fst
+  exit 1;
+fi
 
 if [ "$nj" == "" ]; then # Figure out num-jobs; user did not specify.
   cmd1=`echo $cmd | awk '{print $1;}'`

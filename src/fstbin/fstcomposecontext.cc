@@ -88,15 +88,18 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = true;
-    std::string disambig_list_infile;
-    std::string disambig_list_outfile;
-    int32 N = 3;
-    int32 P = 1;
-    po.Register("binary", &binary, "If true, output ilabels-output-file in binary format");
-    po.Register("read-disambig-syms", &disambig_list_infile, "List of disambiguation symbols on input of in.fst");
-    po.Register("write-disambig-syms", &disambig_list_outfile, "List of disambiguation symbols on input of out.fst");
+    std::string disambig_rxfilename,
+        disambig_wxfilename;
+    int32 N = 3, P = 1;
+    po.Register("binary", &binary,
+                "If true, output ilabels-output-file in binary format");
+    po.Register("read-disambig-syms", &disambig_rxfilename,
+                "List of disambiguation symbols on input of in.fst");
+    po.Register("write-disambig-syms", &disambig_wxfilename,
+                "List of disambiguation symbols on input of out.fst");
     po.Register("context-size", &N, "Size of phone context window");
-    po.Register("central-position", &P, "Designated central position in context window");
+    po.Register("central-position", &P,
+                "Designated central position in context window");
 
     po.Read(argc, argv);
 
@@ -105,39 +108,22 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string ilabels_out_filename = po.GetArg(1);
-    if (ilabels_out_filename == "-") ilabels_out_filename == "";
+    std::string ilabels_out_filename = po.GetArg(1),
+        fst_in_filename = po.GetOptArg(2),
+        fst_out_filename = po.GetOptArg(3);
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(2);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(3);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstcomposecontext: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
-
-    if ( (disambig_list_outfile != "") && (disambig_list_infile == "") ) {
-      std::cerr << "fstcomposecontext: cannot specify --write-disambig-syms if "
+    if ( (disambig_wxfilename != "") && (disambig_rxfilename == "") )
+      KALDI_ERR << "fstcomposecontext: cannot specify --write-disambig-syms if "
           "not specifying --read-disambig-syms\n";
-    }
 
     std::vector<int32> disambig_in;
-    if (disambig_list_infile != "") {
-      if (disambig_list_infile == "-") disambig_list_infile = "";
-      if (!ReadIntegerVectorSimple(disambig_list_infile, &disambig_in)) {
-        std::cerr << "fstcomposecontext: Could not read disambiguation symbols from "
-                  << (disambig_list_infile == "" ? "standard input" : disambig_list_infile)
-                  << '\n';
-        return 1;
-      }
-    }
-
+    if (disambig_rxfilename != "")
+      if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_in))
+        KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
+                  << PrintableRxfilename(disambig_rxfilename);
+    
     std::vector<std::vector<int32> > ilabels;
     VectorFst<StdArc> composed_fst;
 
@@ -147,29 +133,24 @@ int main(int argc, char *argv[]) {
     WriteILabelInfo(Output(ilabels_out_filename, binary).Stream(),
                     binary, ilabels);
 
-    if (disambig_list_outfile != "") {
+    if (disambig_wxfilename != "") {
       std::vector<int32> disambig_out;
       for (size_t i = 0; i < ilabels.size(); i++)
         if (ilabels[i].size() == 1 && ilabels[i][0] <= 0)
           disambig_out.push_back(static_cast<int32>(i));
-      if (!WriteIntegerVectorSimple(disambig_list_outfile, disambig_out)) {
+      if (!WriteIntegerVectorSimple(disambig_wxfilename, disambig_out)) {
         std::cerr << "fstcomposecontext: Could not write disambiguation symbols to "
-                  << (disambig_list_outfile == "" ? "standard input" : disambig_list_outfile)
-                  << '\n';
+                  << PrintableWxfilename(disambig_wxfilename) << '\n';
         return 1;
       }
     }
 
-    if (! composed_fst.Write(fst_out_filename) ) {
-      std::cerr << "fstcomposecontext: error writing the output to "<<
-          (fst_out_filename != "" ? fst_out_filename : "standard output") << '\n';
-      return 1;
-    }
+    WriteFstKaldi(composed_fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

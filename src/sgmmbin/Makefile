@@ -3,7 +3,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali \
+BINFILES = init-ubm sgmm-align-compiled sgmm-acc-stats-ali \
            sgmm-sum-accs sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect \
            sgmm-est-fmllr sgmm-acc-stats sgmm-est-spkvecs sgmm-post-to-gpost \
            sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost sgmm-comp-prexform \

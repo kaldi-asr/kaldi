@@ -40,15 +40,17 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-align tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:1.ali\n";
     ParseOptions po(usage);
-    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
+    std::string disambig_rxfilename;
     TrainingGraphCompilerOptions gopts;
-    po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
     po.Register("retry-beam", &retry_beam, "Decoding beam for second try at alignment");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("read-disambig-syms", &disambig_rxfilename, "File containing "
+                "list of disambiguation symbols in phone symbol table");
+
     gopts.Register(&po);
     po.Read(argc, argv);
 
@@ -96,7 +98,14 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, gopts);
+    std::vector<int32> disambig_syms;    
+    if (disambig_rxfilename != "")
+      if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_syms))
+        KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
+                  << disambig_rxfilename;
+    
+    TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, disambig_syms,
+                             gopts);
 
     lex_fst = NULL;  // we gave ownership to gc.
     
@@ -115,7 +124,7 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &transcript = transcript_reader.Value(key);
 
         VectorFst<StdArc> decode_fst;
-        if (!gc.CompileGraph(transcript, &decode_fst)) {
+        if (!gc.CompileGraphFromText(transcript, &decode_fst)) {
           KALDI_WARN << "Problem creating decoding graph for utterance " <<
               key <<" [serious error]";
           num_other_error++;

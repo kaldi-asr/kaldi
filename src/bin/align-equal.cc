@@ -39,8 +39,9 @@ int main(int argc, char *argv[]) {
         " align-equal 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:equal.ali\n";
 
     ParseOptions po(usage);
-    bool binary = true;
-    po.Register("binary", &binary, "Write output in binary mode");
+    std::string disambig_rxfilename;
+    po.Register("read-disambig-syms", &disambig_rxfilename, "File containing "
+                "list of disambiguation symbols in phone symbol table");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 6) {
@@ -82,9 +83,16 @@ int main(int argc, char *argv[]) {
 
     TrainingGraphCompilerOptions gc_opts(1.0, true);  // true -> Dan style graph.
 
+    std::vector<int32> disambig_syms;
+    if (disambig_rxfilename != "")
+      if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_syms))
+        KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
+                  << disambig_rxfilename;
+    
     TrainingGraphCompiler gc(trans_model,
                              ctx_dep,
                              lex_fst,
+                             disambig_syms,
                              gc_opts);
 
     lex_fst = NULL;  // we gave ownership to gc.
@@ -108,7 +116,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         VectorFst<StdArc> decode_fst;
-        if (!gc.CompileGraph(transcript, &decode_fst)) {
+        if (!gc.CompileGraphFromText(transcript, &decode_fst)) {
           KALDI_WARN << "Problem creating decoding graph for utterance "
                      << key <<" [serious error]";
           other_error++;

@@ -22,6 +22,7 @@
 #include "util/text-utils.h"
 #include "fstext/rand-fst.h"
 #include "time.h"
+#include "fstext/fstext-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -38,30 +39,24 @@ int main(int argc, char *argv[]) {
 
 
     kaldi::ParseOptions po(usage);
-    po.Register("allow-empty", &opts.allow_empty, "If true, we may generate an empty FST.");
+    po.Register("allow-empty", &opts.allow_empty,
+                "If true, we may generate an empty FST.");
 
     if (po.NumArgs() > 1) {
       po.PrintUsage();
       exit(1);
     }
 
-
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(1);
-    if (fst_out_filename == "-") fst_out_filename = "";
+    std::string fst_out_filename = po.GetOptArg(1);
 
     VectorFst <StdArc> *rand_fst = RandFst<StdArc>(opts);
 
-    if (! rand_fst->Write(fst_out_filename) ) {
-      std::cerr << "fsttablecompose: error writing the output to "<<
-          (fst_out_filename != "" ? fst_out_filename : "standard output") << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*rand_fst, fst_out_filename);
     delete rand_fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

@@ -17,9 +17,7 @@
 
 
 #include "base/kaldi-common.h"
-#include "util/kaldi-io.h"
-#include "util/parse-options.h"
-#include "util/text-utils.h"
+#include "util/common-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/determinize-star.h"
 #include "fstext/fstext-utils.h"
@@ -83,44 +81,56 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
-
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(2);
-    if (fst_out_filename == "-") fst_out_filename = "";
+    std::string fst_in_str = po.GetOptArg(1),
+        fst_out_str = po.GetOptArg(2);
 
     // This enables us to get traceback info from determinization that is
     // not seeming to terminate.
 #ifndef _MSC_VER
     signal(SIGUSR1, signal_handler);
 #endif
+    if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
+      // Normal case: just files.
+      VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_str);
 
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from "
-                << fst_in_filename << '\n';
-      return 1;
+      ArcSort(fst, ILabelCompare<StdArc>());  // improves speed.
+      if (use_log) {
+        DeterminizeStarInLog(fst, delta, &debug_location, max_states);
+      } else {
+        VectorFst<StdArc> det_fst;
+        DeterminizeStar(*fst, &det_fst, delta, &debug_location, max_states);
+        *fst = det_fst;  // will do shallow copy and then det_fst goes
+        // out of scope anyway.
+      }
+      WriteFstKaldi(*fst, fst_out_str);
+      delete fst;
+    } else { // Dealing with archives.
+      SequentialTableReader<VectorFstHolder> fst_reader(fst_in_str);
+      TableWriter<VectorFstHolder> fst_writer(fst_out_str);
+      for (; !fst_reader.Done(); fst_reader.Next()) {
+        std::string key = fst_reader.Key();
+        VectorFst<StdArc> fst(fst_reader.Value());
+        fst_reader.FreeCurrent();
+        ArcSort(&fst, ILabelCompare<StdArc>()); // improves speed.
+        try {
+          if (use_log) {
+            DeterminizeStarInLog(&fst, delta, &debug_location, max_states);
+          } else {
+            VectorFst<StdArc> det_fst;
+            DeterminizeStar(fst, &det_fst, delta, &debug_location, max_states);
+            fst = det_fst;  // will do shallow copy and then det_fst goes out
+            // of scope anyway.
+          }
+          fst_writer.Write(key, fst);
+        } catch (const std::runtime_error e) {
+          KALDI_WARN << "Error during determinization for key " << key;
+        }
+      }
     }
-
-    ArcSort(fst, ILabelCompare<StdArc>());  // helps DeterminizeStar to be faster.      
-    if (use_log) {
-      DeterminizeStarInLog(fst, delta, &debug_location, max_states);
-    } else {
-      VectorFst<StdArc> det_fst;
-      DeterminizeStar(*fst, &det_fst, delta, &debug_location, max_states);
-      *fst = det_fst;  // will do shallow copy and then det_fst goes out of scope anyway.
-    }
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstdeterminizestar: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
-    delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

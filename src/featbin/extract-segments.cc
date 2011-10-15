@@ -173,8 +173,7 @@ int main(int argc, char *argv[]) {
        */
       SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1, start_samp, end_samp-start_samp);
       WaveData segment_wave(samp_freq, segment_matrix);
-      if(!writer.Write(segment, segment_wave)) // write segment 
-        KALDI_ERR << "Failed to write segment: processling line " << line;
+      writer.Write(segment, segment_wave); // write segment in wave format.
       num_success++;
     }
     KALDI_LOG << "Successfully processed " << num_success << " lines out of "

@@ -137,7 +137,8 @@ local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/dec
 
 
 
-# Some extra experiments with tied-mixture systems:
+### From here is semi-continuous experiments. ###
+### Note: this is not yet working.***
 
 # Train a classic semi-continuous model using {diag,full} densities
 # the numeric parameters following exp/tri1-semi are: 
@@ -148,8 +149,6 @@ local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/dec
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
 steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1_semi 4096 1800 1 10 0
 local/decode.sh steps/decode_tied_full.sh exp/tri1_semi/decode
-
-### From here is semi-continuous experiments. ###
 
 # 2level full-cov training...
 steps/train_2lvl.sh data/train data/lang exp/tri1_ali exp/tri1_2lvl 100 1024 1800 0 0 0

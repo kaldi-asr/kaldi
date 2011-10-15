@@ -26,6 +26,8 @@
 #include "fstext/determinize-star.h"
 #include "fstext/remove-eps-local.h"
 #include "../base/kaldi-common.h" // for error reporting macros.
+#include "../util/text-utils.h" // for SplitStringToVector
+#include "fst/script/print-impl.h"
 
 namespace fst {
 
@@ -351,11 +353,30 @@ class VectorFstHolder {
   VectorFstHolder(): t_(NULL) { }
 
   static bool Write(std::ostream &os, bool binary, const T &t) {
-    if (!binary)
-      KALDI_ERR << "Cannot currently write Fsts in text mode\n";
-
-    // No binary header.
-    return t.Write(os, FstWriteOptions());
+    if (!binary) {
+      // Text-mode output.  Note: we expect that t.InputSymbols() and
+      // t.OutputSymbols() would always return NULL.  The corresponding input
+      // routine would not work if the FST actually had symbols attached.
+      // Write a newline after the key, so the first line of the FST appears
+      // on its own line.
+      os << '\n';
+      bool acceptor = false, write_one = false;
+      FstPrinter<StdArc> printer(t, t.InputSymbols(), t.OutputSymbols(),
+                                 NULL, acceptor, write_one);
+      printer.Print(&os, "<unknown>");
+      if (os.fail())
+        KALDI_WARN << "Stream failure detected.\n";
+      // Write another newline as a terminating character.  The read routine will
+      // detect this [this is a Kaldi mechanism, not somethig in the original
+      // OpenFst code].
+      os << '\n';
+      return os.good();
+    } else {
+      // Binary-mode writing.  No binary header; the Read function
+      // knows it is text mode if it sees a space sa the 1st character
+      // (the leading \n).
+      return t.Write(os, FstWriteOptions());
+    }
   }
 
   void Copy(const T &t) {  // copies it into the holder.
@@ -366,9 +387,111 @@ class VectorFstHolder {
   // Reads into the holder.
   bool Read(std::istream &is) {
     Clear();
-    // We don't have access to the filename here..
-    t_ = VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)"[unknown]"));
-    return (t_ != NULL);
+    int c = is.peek();
+    if (c == -1) {
+      KALDI_WARN << "End of stream detected reading Fst";
+      return false;
+    } else if (isspace(c)) { // The text form of the FST begins
+      // with space (normally, '\n'), so this means it's text (the binary form
+      // cannot begin with space because it starts with the FST Type() which is not
+      // space).
+      // The next line would normally consume the \r on Windows, plus any
+      // extra spaces that might have got in there somehow.
+      while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
+      if (is.peek() == '\n') is.get(); // consume the newline.
+      else { // saw spaces but no newline.. this is not expected.
+        KALDI_WARN << "Reading FST: unexpected sequence of spaces "
+                   << " at file position " << is.tellg();
+        return false;
+      }
+      using std::string;
+      using std::vector;
+      using kaldi::SplitStringToIntegers;
+      using kaldi::ConvertStringToInteger;
+      typedef TropicalWeight Weight;
+      typedef StdArc Arc;
+      typedef Arc::StateId StateId;
+      t_ = new VectorFst<Arc>();
+      string line;
+      size_t nline = 0;
+      string separator = FLAGS_fst_field_separator + "\r\n";      
+      while (std::getline(is, line)) {
+        nline++;
+        vector<string> col;
+        // on Windows we'll write in text and read in binary mode.
+        kaldi::SplitStringToVector(line, separator.c_str(), &col);
+        if (col.size() == 0) break; // Empty line is a signal to stop, in our
+        // archive format.
+        if (col.size() > 5) {
+          KALDI_WARN << "Bad line in FST: " << line;
+          delete t_;
+          t_ = NULL;
+          return false;
+        }
+        StateId s;
+        if (!ConvertStringToInteger(col[0], &s)) {
+          KALDI_WARN << "Bad line in FST: " << line;
+          delete t_;
+          t_ = NULL;
+          return false;
+        }
+        while (s >= t_->NumStates())
+          t_->AddState();
+        if (nline == 1) t_->SetStart(s);
+
+        bool ok = true;
+        Arc arc;
+        Weight w;
+        StateId d = s;
+        switch (col.size()) {
+          case 1 :
+            t_->SetFinal(s, Weight::One());
+            break;
+          case 2:
+            if (!StrToWeight(col[1], true, &w)) ok = false;
+            else t_->SetFinal(s, w);
+            break;
+          case 3: // 3 columns not ok for Lattice format; it's not an acceptor.
+            ok = false; 
+            break;
+          case 4:
+            ok = ConvertStringToInteger(col[1], &arc.nextstate) &&
+                ConvertStringToInteger(col[2], &arc.ilabel) &&
+                ConvertStringToInteger(col[3], &arc.olabel);
+            if (ok) {
+              d = arc.nextstate;
+              arc.weight = Weight::One();
+              t_->AddArc(s, arc);
+            }
+            break;
+          case 5:
+            ok = ConvertStringToInteger(col[1], &arc.nextstate) &&
+                ConvertStringToInteger(col[2], &arc.ilabel) &&
+                ConvertStringToInteger(col[3], &arc.olabel) &&
+                StrToWeight(col[4], false, &arc.weight);
+            if (ok) {
+              d = arc.nextstate;
+              t_->AddArc(s, arc);
+            }
+            break;
+          default:
+            ok = false;
+        }
+        while (d >= t_->NumStates())
+          t_->AddState();
+        if (!ok) {
+          KALDI_WARN << "Bad line in FST: " << line;          
+          delete t_;
+          t_ = NULL;
+          return false;
+        }
+      }
+      return true;
+    } else { // Binary-mode reading.
+      // We don't have access to the filename here..
+      t_ = VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)"[unknown]"));
+      return (t_ != NULL);
+    }
   }
 
   // It's a binary format, so must read in binary mode (linefeed translation
@@ -392,6 +515,15 @@ class VectorFstHolder {
   // No destructor.  Assignment and
   // copy constructor take their default implementations.
  private:
+  static bool StrToWeight(const std::string &s, bool allow_zero, TropicalWeight *w) {
+    std::istringstream strm(s);
+    strm >> *w;
+    if (!strm || (!allow_zero && *w == TropicalWeight::Zero())) {
+      return false;
+    }
+    return true;
+  }
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(VectorFstHolder);
   T *t_;
 };
@@ -409,6 +541,14 @@ class VectorFstHolder {
 template<class Arc>
 void RemoveUselessArcs(MutableFst<Arc> *fst);
 
+// Read an FST using Kaldi I/O mechanisms (pipes, etc.)
+// On error, throws using KALDI_ERR.
+inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename);
+
+// Write an FST using Kaldi I/O mechanisms.
+// On error, throws using KALDI_ERR.
+inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
+                          std::string wxfilename);
 
 
 

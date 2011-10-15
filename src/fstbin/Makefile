@@ -14,7 +14,7 @@ TESTFILES =
 
 OBJFILES = 
 
-BINFILES = fstgetnextsymbol fstmakedisambigsyms fstpredeterminize fstdeterminizestar  \
+BINFILES = fstpredeterminize fstdeterminizestar  \
            fstrmsymbols fstisstochastic fstminimizeencoded fstoptimize fstmakecontextfst \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \

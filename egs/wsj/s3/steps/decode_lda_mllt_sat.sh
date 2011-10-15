@@ -41,7 +41,7 @@ fi
 
 if [ $# != 3 ]; then
    echo "Usage: steps/decode_lda_mllt_sat.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
-   echo " e.g.: steps/decode_lda_mllt_sat.sh -j 10 0 exp/tri2c/graph_tgpr data/dev_nov93 exp/tri2c/decode_dev93_tgpr"
+   echo " e.g.: steps/decode_lda_mllt_sat.sh -j 10 0 exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_dev93_tgpr"
    exit 1;
 fi
 

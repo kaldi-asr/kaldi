@@ -159,8 +159,7 @@ int main(int argc, char *argv[]) {
           features.Row(i).AddVec(-1.0, mean);
       }
       if (output_format == "kaldi") {
-        if (!kaldi_writer.Write(utt, features))
-          KALDI_ERR << "Write error writing Kaldi features.";
+        kaldi_writer.Write(utt, features);
       } else {
         std::pair<Matrix<BaseFloat>, HtkHeader> p;
         p.first.Resize(features.NumRows(), features.NumCols());
@@ -173,8 +172,7 @@ int main(int argc, char *argv[]) {
           (mfcc_opts.use_energy ? 0100 : 020000) // energy; otherwise c0
         };
         p.second = header;
-        if (!htk_writer.Write(utt, p))
-          KALDI_ERR << "Write error writing HTK features.";
+        htk_writer.Write(utt, p);
       }
       if(num_utts % 10 == 0)
         KALDI_LOG << "Processed " << num_utts << " utterances";

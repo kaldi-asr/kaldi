@@ -1,4 +1,4 @@
-// bin/compile-train-graphs.cc
+// bin/compile-train-graphs-fsts.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -33,16 +33,24 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Creates training graphs (without transition-probabilities, by default)\n"
-        "\n"
-        "Usage:   compile-train-graphs [options] tree-in model-in lexicon-fst-in transcriptions-rspecifier graphs-wspecifier\n"
+        "This version takes FSTs as inputs (e.g., representing a separate weighted\n"
+        "grammar for each utterance)\n"
+        "Note: the lexicon should contain disambiguation symbols and you should\n"
+        "supply the --read-disambig-syms option which is the filename of a list\n"
+        "of disambiguation symbols.\n"
+        "Warning: you probably want to set the --transition-scale and --self-loop-scale\n"
+        "options; the defaults (zero) are probably not appropriate.\n"
+        "Usage:   compile-train-graphs-fsts [options] tree-in model-in lexicon-fst-in "
+        " graphs-rspecifier graphs-wspecifier\n"
         "e.g.: \n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra ark:graphs.fsts\n";
+        " compile-train-graphs-fsts --read-disambig-syms=disambig.list\\\n"
+        "   tree 1.mdl lex.fst ark:train.fsts ark:graphs.fsts\n";
     ParseOptions po(usage);
 
     TrainingGraphCompilerOptions gopts;
     int32 batch_size = 250;
     gopts.trans_prob_scale = 0.0;  // Change the default to 0.0 since we will generally add the
-    // transition probs in the alignment phase (since they change eacm time)
+    // transition probs in the alignment phase (since they change each time)
     gopts.self_loop_scale = 0.0;  // Ditto for self-loop probs.
     std::string disambig_rxfilename;
     gopts.Register(&po);
@@ -63,7 +71,7 @@ int main(int argc, char *argv[]) {
     std::string tree_rxfilename = po.GetArg(1);
     std::string model_rxfilename = po.GetArg(2);
     std::string lex_rxfilename = po.GetArg(3);
-    std::string transcript_rspecifier = po.GetArg(4);
+    std::string fsts_rspecifier = po.GetArg(4);
     std::string fsts_wspecifier = po.GetArg(5);
 
     ContextDependency ctx_dep;  // the tree.
@@ -98,24 +106,29 @@ int main(int argc, char *argv[]) {
       if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_syms))
         KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
                   << disambig_rxfilename;
-    
+    if (disambig_syms.empty())
+      KALDI_WARN << "You supplied no disambiguation symbols; note, these are "
+                 << "typically necessary when compiling graphs from FSTs (i.e. "
+                 << "supply L_disambig.fst and the list of disambig syms with\n"
+                 << "--read-disambig-syms)";
     TrainingGraphCompiler gc(trans_model, ctx_dep, lex_fst, disambig_syms, gopts);
 
     lex_fst = NULL;  // we gave ownership to gc.
 
-    SequentialInt32VectorReader transcript_reader(transcript_rspecifier);
+    SequentialTableReader<fst::VectorFstHolder> fst_reader(fsts_rspecifier);
     TableWriter<fst::VectorFstHolder> fst_writer(fsts_wspecifier);
-
+    
     int num_succeed = 0, num_fail = 0;
 
     if (batch_size == 1) {  // We treat batch_size of 1 as a special case in order
       // to test more parts of the code.
-      for (; !transcript_reader.Done(); transcript_reader.Next()) {
-        std::string key = transcript_reader.Key();
-        const std::vector<int32> &transcript = transcript_reader.Value();
+      for (; !fst_reader.Done(); fst_reader.Next()) {
+        std::string key = fst_reader.Key();
+        const VectorFst<StdArc> &grammar = fst_reader.Value(); // weighted
+        // grammar for this utterance.
         VectorFst<StdArc> decode_fst;
 
-        if (!gc.CompileGraphFromText(transcript, &decode_fst)) {
+        if (!gc.CompileGraph(grammar, &decode_fst)) {
           KALDI_WARN << "Problem creating decoding graph for utterance "
                      << key << " [serious error]";
           decode_fst.DeleteStates();  // Just make it empty.
@@ -126,23 +139,24 @@ int main(int argc, char *argv[]) {
       }
     } else {
       std::vector<std::string> keys;
-      std::vector<std::vector<int32> > transcripts;
-      while (!transcript_reader.Done()) {
+      std::vector<const VectorFst<StdArc>*> grammars; // word grammars.
+      while (!fst_reader.Done()) {
         keys.clear();
-        transcripts.clear();
-        for (; !transcript_reader.Done() &&
-                static_cast<int32>(transcripts.size()) < batch_size;
-            transcript_reader.Next()) {
-          keys.push_back(transcript_reader.Key());
-          transcripts.push_back(transcript_reader.Value());
+        grammars.clear();
+        for (; !fst_reader.Done() &&
+                static_cast<int32>(grammars.size()) < batch_size;
+            fst_reader.Next()) {
+          keys.push_back(fst_reader.Key());
+          grammars.push_back(new VectorFst<StdArc>(fst_reader.Value()));
         }
         std::vector<fst::VectorFst<fst::StdArc>* > fsts;
-        if (!gc.CompileGraphsFromText(transcripts, &fsts)) {
+        if (!gc.CompileGraphs(grammars, &fsts))
           KALDI_ERR << "Not expecting CompileGraphs to fail.";
-        }
         assert(fsts.size() == keys.size());
-        for (size_t i = 0; i < fsts.size(); i++)
+        for (size_t i = 0; i < fsts.size(); i++) {
+          delete grammars[i];
           fst_writer.Write(keys[i], *(fsts[i]));
+        }
         num_succeed += fsts.size();
         DeletePointers(&fsts);
       }

@@ -63,7 +63,7 @@ lang=$2
 alidir=$3
 denlatdir=$4
 srcdir=$5 # may be same model as in alidir, but may not be, e.g.
-         # if you want to test MMI with different #iters.
+      # if you want to test MMI with different #iters.
 dir=$6
 silphonelist=`cat $lang/silphones.csl`
 mkdir -p $dir/log
@@ -77,7 +77,7 @@ cp $srcdir/final.mat $srcdir/tree $dir
 n=`get_splits.pl $nj | awk '{print $1}'`
 if [ -f $alidir/$n.trans ]; then
   use_trans=true
-  echo Using transforms from directory $dir
+  echo Using transforms from directory $alidir
 else
   echo No transforms present in alignment directory: assuming speaker independent.
   use_trans=false

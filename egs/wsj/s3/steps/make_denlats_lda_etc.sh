@@ -15,8 +15,8 @@
 
 nj=4
 cmd=scripts/run.pl
-beam=16.0 # was 13
-latticebeam=8.0 # was 7
+beam=13.0
+latticebeam=7.0
 acwt=0.1
 maxactive=5000
 

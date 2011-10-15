@@ -39,18 +39,20 @@ int main(int argc, char *argv[]) {
         "E.g.:   fstmakecontextfst phones.txt 42 ilabels.sym > C.fst\n";
 
     bool binary = true;  // binary output to ilabels_output_file.
-    std::string disambig_list_infile;
-    std::string disambig_list_outfile;
-    int32 N = 3;
-    int32 P = 1;
-
+    std::string disambig_rxfilename, disambig_wxfilename;
+    int32 N = 3, P = 1;
+    
     OptimizeConfig cfg;
     ParseOptions po(usage);
-    po.Register("read-disambig-syms", &disambig_list_infile, "List of disambiguation symbols to read");
-    po.Register("write-disambig-syms", &disambig_list_outfile, "List of disambiguation symbols to write");
+    po.Register("read-disambig-syms", &disambig_rxfilename,
+                "List of disambiguation symbols to read");
+    po.Register("write-disambig-syms", &disambig_wxfilename,
+                "List of disambiguation symbols to write");
     po.Register("context-size", &N, "Size of phonetic context window");
-    po.Register("central-position", &P, "Designated central position in context window");
-    po.Register("binary", &binary, "Write ilabels output file in binary Kaldi format");
+    po.Register("central-position", &P,
+                "Designated central position in context window");
+    po.Register("binary", &binary,
+                "Write ilabels output file in binary Kaldi format");
 
     po.Read(argc, argv);
 
@@ -81,20 +83,15 @@ int main(int argc, char *argv[]) {
       delete phones_symtab;
     }
 
-    if ( (disambig_list_outfile != "") && (disambig_list_infile == "") ) {
-      std::cerr << "fstmakecontextfst: cannot specify --write-disambig-syms if "
+    if ( (disambig_wxfilename != "") && (disambig_rxfilename == "") )
+      KALDI_ERR << "fstmakecontextfst: cannot specify --write-disambig-syms if "
           "not specifying --read-disambig-syms\n";
-    }
-
+    
     std::vector<int32> disambig_in;
-    if (disambig_list_infile != "") {
-      if (disambig_list_infile == "-") disambig_list_infile = "";
-      if (!ReadIntegerVectorSimple(disambig_list_infile, &disambig_in)) {
-        std::cerr << "fstcomposecontext: Could not read disambiguation symbols from "
-                  << (disambig_list_infile == "" ? "standard input" : disambig_list_infile)
-                  << '\n';
-        return 1;
-      }
+    if (disambig_rxfilename != "") {
+      if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_in))
+        KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
+                  << PrintableRxfilename(disambig_rxfilename);
     }
 
     if (std::binary_search(phone_syms.begin(), phone_syms.end(), subseq_sym)
@@ -110,29 +107,25 @@ int main(int argc, char *argv[]) {
 
     VectorFst<StdArc> vfst(cfst);  // Copy the fst to a VectorFst.
 
-    if (! vfst.Write(fst_out_filename) )
-      KALDI_EXIT << "fstmakecontextfst: error writing the output to "<<fst_out_filename;
-
+    WriteFstKaldi(vfst, fst_out_filename);
+    
     const std::vector<std::vector<int32> >  &ilabels = cfst.ILabelInfo();
     WriteILabelInfo(Output(ilabels_out_filename, binary).Stream(),
                     binary, ilabels);
 
-    if (disambig_list_outfile != "") {
+    if (disambig_wxfilename != "") {
       std::vector<int32> disambig_out;
       for (size_t i = 0; i < ilabels.size(); i++)
         if (ilabels[i].size() == 1 && ilabels[i][0] <= 0)
           disambig_out.push_back(static_cast<int32>(i));
-      if (!WriteIntegerVectorSimple(disambig_list_outfile, disambig_out)) {
-        std::cerr << "fstcomposecontext: Could not write disambiguation symbols to "
-                  << (disambig_list_outfile == "" ? "standard input" : disambig_list_outfile)
-                  << '\n';
-        return 1;
-      }
+      if (!WriteIntegerVectorSimple(disambig_wxfilename, disambig_out))
+        KALDI_ERR << "fstcomposecontext: Could not write disambiguation symbols to "
+                  << PrintableWxfilename(disambig_wxfilename);
     }
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 
