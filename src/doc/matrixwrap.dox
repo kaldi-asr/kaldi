@@ -117,7 +117,7 @@ namespace kaldi {
 	\endverbatim
 	For 32-bit systems you will need to use "-b 32" option. Also, on x86 machines 
 	using gcc, you need to pass the mahcine's clock rate to the configure script 
-	by using the -D c -DPentiumCPS=<MHz> flags. You can find the CPU clock rate 
+	by using the -D c -DPentiumCPS=\<MHz\> flags. You can find the CPU clock rate 
 	from /proc/cpuinfo on Linux systems. Otherwise, you can use the wall timer 
 	using the -D c -DWALL flags (for example, on Windows systems).
 	

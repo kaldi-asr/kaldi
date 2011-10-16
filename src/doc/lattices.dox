@@ -27,9 +27,13 @@ namespace kaldi {
  a particular utterance.  In order to understand lattices properly you have to understand decoding
  graphs in the WFST framework (see \ref graph).  
  In this section we summarize the issues relating to Kaldi lattices, and in the rest of this page
- we will explain them more precisely.
- There are two representations of lattices in Kaldi.  
+ we will explain them more precisely.  The reader may also want to read the paper
+ <a href=https://sites.google.com/site/dpovey/2012_icassp_lattices.pdf?attredirects=0> 
+"Generating exact lattices in the WFST framework", D. Povey, M. Hannemann et. al, ICASSP 2012 (submitted)</a>,
+ which provides more context as to how our lattices relate to previously published algorithms.
+ This page gives more focus to the programming aspects. 
 
+ There are two representations of lattices in Kaldi.  
  The first representation is the Lattice type.  This is an FST whose weight type contains two
  floating point weights (the graph cost and the acoustic cost), whose input
  symbols are \ref transition_model_identifiers "transition-ids" (these are roughly like
@@ -315,6 +319,9 @@ utterance up to the current point), but in fact it is more like linear,
 because we can detect when all the "delta" values of tokens for a particular
 frame have not changed, and we can stop going backward in time.  We expect that
 for very long utterances, we will normally prune backward for only a second or two.
+Even if it were not for this feature, the algorithm would be dominated by a linear-time
+component in practical cases, because the vast majority of tokens are deleted the
+first time they are visited by the algorithm.
 
 We note that there are a couple of complexities in our implementation of this.  One
 is that because we have forward links, while the pruning algorithm goes backward in
@@ -325,6 +332,8 @@ final frame specially, because we need to take into account the final
 probabilities.
 
 
+\subsection lattices_generation Getting the raw lattice, and converting it into the final form.
+
 When we have reached the end of the utterance, we produce the lattice in two phases.
 The first phase is to create the
 "raw lattice".  This is a state-level FST that is pruned using the lattice-delta
@@ -333,9 +342,16 @@ word sequence.  Creation of the "raw lattice" is very trivial, and consists of
 taking our token and link structures and translating them into OpenFst
 structures.  If we are asked for the best path (e.g. for getting the transcript),
 we would just run OpenFst's ShortestPath algorithm on this raw lattice.  If we
-are asked for the lattice, there are two options.  The first option is: the
-decoder supports outputting the raw state-level lattice directly, but we don't particularly
-recommend this or see a use for it.  Let's assume instead that we're outputting
+are asked for the lattice, there are two options.  
+
+The first option is: the
+decoder supports outputting the raw state-level lattice directly (set --determinize-lattice=false);
+this is mostly useful if you are going to do acoustic rescoring with a system built with the
+same tree.  Afterwards you would probably want to determinize the lattice using the
+lattice-determinize program, before storing the lattices on disk for an extended time
+(as the raw state-level lattices are quite large).
+
+Let's assume instead that we're outputting
 the determinized lattice (the second option).  The determinized lattice is supposed to have only one
 path through it for every word sequence that is allowed in the original raw
 lattice.  We can acheive this by creating a CompactLattice, removing epsilons and

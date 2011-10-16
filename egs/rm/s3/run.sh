@@ -121,8 +121,6 @@ local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri3d/dec
 local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri4a/decode exp/combine_sgmm4f_tri4a/decode
 
 
-
-
 ### From here is semi-continuous experiments. ###
 ### Note: this is not yet working.***
 
@@ -133,7 +131,7 @@ local/decode_combine.sh steps/decode_combine.sh exp/sgmm4f/decode/ exp/tri4a/dec
 #   type of suff-stats interpolation (0 regular, 1 preserves counts)
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
-steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1_semi 4096 1800 1 10 0
+steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1_semi 1024 2500 1 35 0.2
 local/decode.sh steps/decode_tied_full.sh exp/tri1_semi/decode
 
 # 2level full-cov training...

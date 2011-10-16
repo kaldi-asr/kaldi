@@ -61,7 +61,7 @@ There is one TopologyEntry in this particular HmmTopology object, and it covers
 phones 1 through 8 (so in this example there are just eight phones and they all
 share the same topology).  There are three emitting states; each has a self-loop
 and a transition to the next state.  There is also a fourth, non-emitting state,
-state 3 (there is no <PdfClass> entry for it) which has no transitions out of it.  This is
+state 3 (there is no \<PdfClass\> entry for it) which has no transitions out of it.  This is
 a standard feature of these topology entries; Kaldi treats the first state (state
 zero) as the start state, and the last state, which should always be nonemitting and
 have no transitions out of it, has final-probability one.  You
@@ -69,7 +69,7 @@ can treat the transition-probability to the last state as equivalent to the
 "final-probability" in a HMM.  
 All of emitting the states in this particular example can have different pdf's in 
 them (since the PdfClass numbers are all distinct).  We can enforce tying by
-making the <PdfClass> numbers the same.
+making the \<PdfClass\> numbers the same.
 The probabilities given in the HmmTopology object are those that are used to
 initialize training; the trained probabilities are specific to the
 context-dependent HMMs and are stored in the TransitionModel object.  The
@@ -77,7 +77,7 @@ TransitionModel stores the HmmTopology object as a class member, but be aware
 that the transition probabilities in the HmmTopology object are generally not
 used after initializing the TransitionModel object.  There is an exception to
 this, however; for nonemitting states that are non-final (i.e. those that have
-transitions out of them but no <PdfClass> entry), Kaldi does not train the
+transitions out of them but no \<PdfClass\> entry), Kaldi does not train the
 transition probabilities and instead it uses the probabilities given in the 
 HmmTopology object.  The decision not to support trainable transition probabilities
 for non-emitting states simplifies our training mechanisms, and since it is not
@@ -101,7 +101,7 @@ transition modeling but wanted to leave the acoustic model otherwise the same.
 Another function of the pdf-class is to specify nonemitting states.  If the
 pdf-class for some HMM state is set to the constant \ref kNoPdf = -1, then the
 HMM state is nonemitting (it has no associated pdf).  This can be achieved
-simply by omitting the <PdfClass> tag and associated number, in the text form of the object.
+simply by omitting the \<PdfClass\> tag and associated number, in the text form of the object.
 
 The set of pdf-classes for a particular prototype HMM is expected to start
 from zero and be contiguous (e.g. 0, 1, 2).  This is for the convenience of
