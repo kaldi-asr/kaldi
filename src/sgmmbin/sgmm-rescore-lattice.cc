@@ -23,7 +23,7 @@
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
