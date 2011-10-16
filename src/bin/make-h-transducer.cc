@@ -93,13 +93,13 @@ int main(int argc, char *argv[]) {
       if (disambig_out_filename == "-")
         disambig_out_filename = "";
       if (! WriteIntegerVectorSimple(disambig_out_filename, disambig_syms_out))
-        KALDI_EXIT << "Could not write disambiguation symbols to "
+        KALDI_ERR << "Could not write disambiguation symbols to "
                    << (disambig_out_filename == "" ?
                        "standard output" : disambig_out_filename);
     }
 
     if (! H->Write(fst_out_filename) )
-      KALDI_EXIT << "make-h-transducer: error writing FST to "
+      KALDI_ERR << "make-h-transducer: error writing FST to "
                  << (fst_out_filename == "" ?
                      "standard output" : fst_out_filename);
 

@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     else if (normalize_type == "diag") norm_type = kEtNormalizeDiag;
     else if (normalize_type == "none") norm_type = kEtNormalizeNone;
     else
-      KALDI_EXIT << "Invalid option --normalize-type=" << normalize_type;
+      KALDI_ERR << "Invalid option --normalize-type=" << normalize_type;
 
     std::string et_wxfilename = po.GetArg(1);
 

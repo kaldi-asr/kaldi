@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::vector<int32> > questions;  // sets of phones.
     if (!ReadIntegerVectorVectorSimple(questions_rxfilename, &questions))
-      KALDI_EXIT << "Could not read questions from "
+      KALDI_ERR << "Could not read questions from "
                  << PrintableRxfilename(questions_rxfilename);
     for (size_t i = 0; i < questions.size(); i++) {
       std::sort(questions[i].begin(), questions[i].end());

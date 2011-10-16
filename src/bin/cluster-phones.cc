@@ -83,17 +83,17 @@ int main(int argc, char *argv[]) {
     std::vector<int32> hmm_position_list;
     if (!SplitStringToIntegers(hmm_position_list_str, ":", false, &hmm_position_list)
        || hmm_position_list.empty()) {
-      KALDI_EXIT << "Invalid hmm-position-list string [expecting colon-separated list of integers]: " 
+      KALDI_ERR << "Invalid hmm-position-list string [expecting colon-separated list of integers]: " 
                  << hmm_position_list_str;
     }
 
     std::vector<std::vector< int32> > phone_sets;
     if (!ReadIntegerVectorVectorSimple(phone_sets_rxfilename, &phone_sets))
-      KALDI_EXIT << "Could not read phone sets from "
+      KALDI_ERR << "Could not read phone sets from "
                  << PrintableRxfilename(phone_sets_rxfilename);
 
     if (phone_sets.size() == 0)
-      KALDI_EXIT << "No phone sets in phone sets file ";
+      KALDI_ERR << "No phone sets in phone sets file ";
 
     std::vector<std::vector<int32> > phone_sets_out;
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (!WriteIntegerVectorVectorSimple(phone_sets_wxfilename, phone_sets_out))
-      KALDI_EXIT << "Error writing questions to "
+      KALDI_ERR << "Error writing questions to "
                  << PrintableWxfilename(phone_sets_wxfilename);
     else
       KALDI_LOG << "Wrote questions to "<<phone_sets_wxfilename;

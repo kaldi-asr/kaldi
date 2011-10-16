@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.
     {
       std::ifstream is(lex_rxfilename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open lexicon FST " << (std::string)lex_rxfilename;
+      if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_rxfilename;
       lex_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_rxfilename));
       if (lex_fst == NULL)

@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
     // read the dictionary
     fst::SymbolTable *word_syms = NULL;
     if (!(word_syms = fst::SymbolTable::ReadText(wordsymtab_filename)))
-      KALDI_EXIT << "Could not read symbol table from file " << wordsymtab_filename;
+      KALDI_ERR << "Could not read symbol table from file " << wordsymtab_filename;
 
     // read as regular lattice-- this is the form we need it in for efficient pruning.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) {
     RNN::int64 n_paths_out = 0;
 
     if (acoustic_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
     // set lambda/oov penalty
     myRNN.SetLambda(lambda); 

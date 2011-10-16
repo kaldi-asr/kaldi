@@ -54,11 +54,11 @@ int main(int argc, char *argv[]) {
 
     BaseFloat silence_weight = 0.0;
     if (!ConvertStringToReal(silence_weight_str, &silence_weight))
-      KALDI_EXIT << "Invalid silence-weight parameter: expected float, got \""
+      KALDI_ERR << "Invalid silence-weight parameter: expected float, got \""
                  << silence_weight_str << '"';
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_EXIT << "Invalid silence-phones string " << silence_phones_str;
+      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
     if (silence_phones.empty())
       KALDI_WARN <<"No silence phones, this will have no effect";
     ConstIntegerSet<int32> silence_set(silence_phones);  // faster lookup.

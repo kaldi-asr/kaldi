@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     if (word_syms_filename != "") {
       word_syms = fst::SymbolTable::ReadText(word_syms_filename);
       if (!word_syms)
-        KALDI_EXIT << "Could not read symbol table from file "<<word_syms_filename;
+        KALDI_ERR << "Could not read symbol table from file "<<word_syms_filename;
     }
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
     VectorFst<StdArc> *decode_fst = NULL;
     {
       std::ifstream is(fst_in_filename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
+      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     VectorFst<StdArc> *gminus_fst = NULL;
     {
       std::ifstream is(gminus_fst_in_filename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
+      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
         << gminus_fst_in_filename;
       gminus_fst =
       VectorFst<StdArc>::Read(is, fst::FstReadOptions(gminus_fst_in_filename));
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     VectorFst<StdArc> *gprime_fst = NULL;
     {
       std::ifstream is(gprime_fst_in_filename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
+      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
         << gprime_fst_in_filename;
       gprime_fst =
       VectorFst<StdArc>::Read(is, fst::FstReadOptions(gprime_fst_in_filename));

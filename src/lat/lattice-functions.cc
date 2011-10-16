@@ -1,4 +1,4 @@
-// lat/lattice-utils.cc
+// lat/lattice-functions.cc
 
 // Copyright 2009-2011   Saarland University
 // Author: Arnab Ghoshal
@@ -31,7 +31,7 @@ using std::tr1::unordered_map;
 
 
 
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 #include "hmm/transition-model.h"
 #include "util/stl-utils.h"
 

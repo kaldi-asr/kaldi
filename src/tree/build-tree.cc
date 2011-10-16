@@ -722,13 +722,13 @@ void ReadRootsFile(std::istream &is,
     std::string shared;
     ss >> shared;
     if (ss.fail() && shared != "shared" && shared != "not-shared")
-      KALDI_EXIT << "Bad line in roots file: line "<< line_number << ": " << line;
+      KALDI_ERR << "Bad line in roots file: line "<< line_number << ": " << line;
     is_shared_root->push_back(shared == "shared");
 
     std::string split;
     ss >> split;
     if (ss.fail() && shared != "split" && shared != "not-split")
-      KALDI_EXIT << "Bad line in roots file: line "<< line_number << ": " << line;
+      KALDI_ERR << "Bad line in roots file: line "<< line_number << ": " << line;
     is_split_root->push_back(split == "split");
 
     phone_sets->push_back(std::vector<int32>());
@@ -739,12 +739,12 @@ void ReadRootsFile(std::istream &is,
     std::sort(phone_sets->back().begin(), phone_sets->back().end());
     if (!IsSortedAndUniq(phone_sets->back()) || phone_sets->back().empty()
        || phone_sets->back().front() <= 0)
-      KALDI_EXIT << "Bad line in roots file [empty, or contains non-positive "
+      KALDI_ERR << "Bad line in roots file [empty, or contains non-positive "
                  << " or duplicate phone-ids]: line " << line_number << ": "
                  << line;
   }
   if (phone_sets->empty())
-    KALDI_EXIT << "Empty roots file ";
+    KALDI_ERR << "Empty roots file ";
 }
 
 

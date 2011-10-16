@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     if (sil_phones_str != "") {
       std::vector<int32> sil_phones;
       if (!kaldi::SplitStringToIntegers(sil_phones_str, ":", false, &sil_phones))
-        KALDI_EXIT << "invalid sil-phones option " << sil_phones_str;
+        KALDI_ERR << "invalid sil-phones option " << sil_phones_str;
       std::sort(sil_phones.begin(), sil_phones.end());
       bool ans = GetPdfsForPhones(trans_model, sil_phones, &sil_pdfs);
       if (!ans)

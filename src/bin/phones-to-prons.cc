@@ -98,11 +98,11 @@ int main(int argc, char *argv[]) {
     
     if (!ConvertStringToInteger(word_start_sym_str, &word_start_sym)
         || word_start_sym <= 0)
-      KALDI_EXIT << "Invalid word start symbol (expecting integer >= 0): "
+      KALDI_ERR << "Invalid word start symbol (expecting integer >= 0): "
                  << word_start_sym_str;
     if (!ConvertStringToInteger(word_end_sym_str, &word_end_sym)
         || word_end_sym <= 0 || word_end_sym == word_start_sym)
-      KALDI_EXIT << "Invalid word end symbol (expecting integer >= 0"
+      KALDI_ERR << "Invalid word end symbol (expecting integer >= 0"
                  << ", different from word start symbol): "
                  << word_end_sym_str;
 

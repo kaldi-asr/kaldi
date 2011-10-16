@@ -1,4 +1,4 @@
-// lat/lattice-utils.h
+// lat/lattice-functions.h
 
 // Copyright 2009-2011   Saarland University
 // Author: Arnab Ghoshal
@@ -17,8 +17,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_LAT_LATTICE_UTILS_H_
-#define KALDI_LAT_LATTICE_UTILS_H_
+#ifndef KALDI_LAT_LATTICE_FUNCTIONS_H_
+#define KALDI_LAT_LATTICE_FUNCTIONS_H_
 
 #include <vector>
 #include <map>
@@ -80,4 +80,4 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post);
 
 }  // namespace kaldi
 
-#endif  // KALDI_LAT_LATTICE_UTILS_H_
+#endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

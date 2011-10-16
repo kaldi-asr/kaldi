@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     {  // read phone symbol table.
       std::ifstream is(phones_symtab_filename.c_str());
       phones_symtab = fst::SymbolTable::ReadText(is, phones_symtab_filename);
-      if (!phones_symtab) KALDI_EXIT << "Could not read phones symbol-table file "<<phones_symtab_filename;
+      if (!phones_symtab) KALDI_ERR << "Could not read phones symbol-table file "<<phones_symtab_filename;
     }
 
     fst::SymbolTable *clg_symtab =
@@ -96,10 +96,10 @@ int main(int argc, char *argv[]) {
 
     if (clg_symtab_filename == "") {
       if (!clg_symtab->WriteText(std::cout))
-        KALDI_EXIT << "Cannot write symbol table to standard output.";
+        KALDI_ERR << "Cannot write symbol table to standard output.";
     } else {
       if (!clg_symtab->WriteText(clg_symtab_filename))
-        KALDI_EXIT << "Cannot open symbol table file "<<clg_symtab_filename<<" for writing.";
+        KALDI_ERR << "Cannot open symbol table file "<<clg_symtab_filename<<" for writing.";
     }
     delete clg_symtab;
     delete phones_symtab;

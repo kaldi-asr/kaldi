@@ -74,11 +74,11 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *lex_fst = NULL;
     {
       std::ifstream is(lex_in_filename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open lexicon FST " << (std::string)lex_in_filename;
+      if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_in_filename;
       lex_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_in_filename));
       if (lex_fst == NULL)
-        KALDI_EXIT << "Could not open lexicon FST "<<lex_in_filename;
+        KALDI_ERR << "Could not open lexicon FST "<<lex_in_filename;
     }
 
     TrainingGraphCompilerOptions gc_opts(1.0, true);  // true -> Dan style graph.

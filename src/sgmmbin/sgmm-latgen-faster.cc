@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     bool determinize = decoder_opts.determinize_lattice;    
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
            : lattice_writer.Open(lattice_wspecifier)))
-      KALDI_EXIT << "Could not open table for writing lattices: "
+      KALDI_ERR << "Could not open table for writing lattices: "
                  << lattice_wspecifier;
     
     Int32VectorWriter words_writer(words_wspecifier);
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *decode_fst = NULL;
     {
       std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
+      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));

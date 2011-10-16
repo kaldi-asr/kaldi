@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
       std::ifstream is(phones_symtab_filename.c_str());
       phones_symtab = fst::SymbolTable::ReadText(is, phones_symtab_filename);
       if (!phones_symtab || phones_symtab->NumSymbols() == 0)
-        KALDI_EXIT << "Error opening symbol table file "<<phones_symtab_filename;
+        KALDI_ERR << "Error opening symbol table file "<<phones_symtab_filename;
     }
 
 

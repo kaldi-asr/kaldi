@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     int64 n_paths_out = 0;
 
     if (acoustic_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();

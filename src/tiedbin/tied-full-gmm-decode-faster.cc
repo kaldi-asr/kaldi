@@ -32,7 +32,7 @@ using namespace kaldi;
 fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
   Input ki(filename); // use ki.Stream() instead of is.
-  if (!ki.Stream().good()) KALDI_EXIT << "Could not open decoding-graph FST "
+  if (!ki.Stream().good()) KALDI_ERR << "Could not open decoding-graph FST "
                                       << filename;
 
   fst::FstHeader hdr;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);

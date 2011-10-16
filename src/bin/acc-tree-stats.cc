@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
       SplitStringToIntegers(ci_phones_str, ":", false, &ci_phones);
       std::sort(ci_phones.begin(), ci_phones.end());
       if (!IsSortedAndUniq(ci_phones) || ci_phones[0] == 0) {
-        KALDI_EXIT << "Invalid set of ci_phones: "<<ci_phones_str;
+        KALDI_ERR << "Invalid set of ci_phones: "<<ci_phones_str;
       }
     }
 

@@ -71,19 +71,6 @@ class KaldiVlogMessage {
   ~KaldiVlogMessage() { stream() << '\n'; }
 };
 
-// class KaldiExitMessage is invoked from the KALDI_EXIT macro.
-// It prints the message to std::cerr and exits.  It does not print
-// line-number information etc. (the idea is that this is generally called
-// from main() where this doesn't help much).
-class KaldiExitMessage {
- public:
-  KaldiExitMessage() {}
-  inline std::ostream &stream() { return std::cerr; }
-  ~KaldiExitMessage() {
-    stream() << '\n';
-    exit(1);
-  }
-};
 
 // class KaldiErrorMessage is invoked from the KALDI_ERROR macro.
 // The destructor throws an exception.
@@ -112,7 +99,7 @@ class KaldiErrorMessage {
 #define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
 #define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 
 #define KALDI_LOG kaldi::KaldiLogMessage(__func__, __FILE__, __LINE__).stream()
-#define KALDI_EXIT kaldi::KaldiExitMessage().stream()
+
 #define KALDI_VLOG(v) if (v <= kaldi::g_kaldi_verbose_level)     \
            kaldi::KaldiVlogMessage(__func__, __FILE__, __LINE__, v).stream()
 

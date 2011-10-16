@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
     int32 subseq_sym;
     if (!ConvertStringToInteger(po.GetArg(1), &subseq_sym))
-      KALDI_EXIT << "Invalid subsequential symbol "<<po.GetArg(1);
+      KALDI_ERR << "Invalid subsequential symbol "<<po.GetArg(1);
 
     std::string fst_in_filename = po.GetOptArg(2);
 

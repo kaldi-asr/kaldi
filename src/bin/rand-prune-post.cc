@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
     BaseFloat rand_prune = 0.0;
     if (!ConvertStringToReal(rand_prune_str, &rand_prune) || rand_prune < 0.0)
-      KALDI_EXIT << "Invalid rand_prune parameter: expected float, got \""
+      KALDI_ERR << "Invalid rand_prune parameter: expected float, got \""
                  << rand_prune_str << '"';
     
     int32 num_posteriors = 0;

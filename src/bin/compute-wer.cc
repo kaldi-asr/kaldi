@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     if (mode != "strict"
        && mode != "present"
        && mode != "all") {
-      KALDI_EXIT << "--mode option invalid: expected \"present\"|\"all\"|\"strict\", got "<<mode;
+      KALDI_ERR << "--mode option invalid: expected \"present\"|\"all\"|\"strict\", got "<<mode;
     }
 
 

@@ -12,6 +12,8 @@ minor:
  Consider adding "see also" line to "usage" messages.
  make fstbin/ programs "proper" Kaldi programs, e.g. change
    cerr to KALDI_ERR.  Consider doing same in fstext/
+ Modify reading-in function for vectors, matrices, etc., so they
+   successfully read in -inf and -nan.
  make it possible to sum tree accs.
  normalize binaries so they never take summed accs (unless sum-accs program)
  remove mix-up, mix-down options from gmm-est (have separate program)
@@ -21,7 +23,6 @@ minor:
  maybe move UBM clustering somewhere else [from am-diag-gmm]?
  document the --cmd options in wsj/s3 scripts
  change sgmm code so gselect is no longer optional [only in discrim/?]
- remove KALDI_EXIT and modify KALDI_ERR macro to behave like it.
  Make sure scripts don't depend on . being on PATH
  Make ApplySoftMax() function more efficient (does two exp()'s per element)
  possibly change the way lattice-compose works to remove properties hack.

@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     std::string class_idx_str = po.GetArg(1);
     int32 class_idx;
     if (!ConvertStringToInteger(class_idx_str, &class_idx))
-      KALDI_EXIT << "Expected integer first argument: got " << class_idx_str;
+      KALDI_ERR << "Expected integer first argument: got " << class_idx_str;
 
     std::string lvtln_rxfilename = po.GetArg(2),
         lvtln_wxfilename = po.GetArg(3),

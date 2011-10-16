@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     fst::SymbolTable *syms = fst::SymbolTable::ReadText(phones_symtab_filename);
     if (!syms)
-      KALDI_EXIT << "Could not read symbol table from file "
+      KALDI_ERR << "Could not read symbol table from file "
                  << phones_symtab_filename;
     std::vector<std::string> names(syms->NumSymbols());
     for (size_t i = 0; i < syms->NumSymbols(); i++)

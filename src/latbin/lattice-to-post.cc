@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (acoustic_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
     std::string lats_rspecifier = po.GetArg(1),
         posteriors_wspecifier = po.GetArg(2);

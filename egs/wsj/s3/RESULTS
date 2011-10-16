@@ -1,4 +1,6 @@
 
+# Note: also see RESULTS_2 which is more up-to-date.
+# These results will be finalized soon.
 
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
 

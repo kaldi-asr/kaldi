@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
         Input is(questions_filename, &binary_in);
         qo.Read(is.Stream(), binary_in);
       } catch (const std::exception &e) {
-        KALDI_EXIT << "Error reading questions file "<<questions_filename<<", error is: " << e.what();
+        KALDI_ERR << "Error reading questions file "<<questions_filename<<", error is: " << e.what();
       }
     }
 
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
           unseen_phones.push_back(all_phones[i]);
       for (size_t i = 0; i < phones_vec.size(); i++)
         if (!std::binary_search(all_phones.begin(), all_phones.end(), phones_vec[i]))
-          KALDI_EXIT << "Phone "<< (phones_vec[i]) << " appears in stats but is not listed in roots file.";
+          KALDI_ERR << "Phone "<< (phones_vec[i]) << " appears in stats but is not listed in roots file.";
       if (!unseen_phones.empty()) {
         std::ostringstream ss;
         for (size_t i = 0; i < unseen_phones.size(); i++)

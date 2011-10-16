@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     RandomAccessTokenReader utt2spk_reader;
     if (utt2spk_rspecifier != "") {
       if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_EXIT << "Error upening utt2spk map from "
+        KALDI_ERR << "Error upening utt2spk map from "
                    << utt2spk_rspecifier;
     }
 

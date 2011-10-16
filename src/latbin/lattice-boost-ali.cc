@@ -19,7 +19,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     
     std::vector<int32> silence_phones;
     if (!kaldi::SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_EXIT << "Invalid silence-phones string " << silence_phones_str;
+      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
     kaldi::SortAndUniq(&silence_phones);
     if (silence_phones.empty())
       KALDI_WARN <<"No silence phones specified, make sure this is what you intended.";

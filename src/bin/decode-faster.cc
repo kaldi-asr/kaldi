@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     if (word_syms_filename != "") {
       word_syms = fst::SymbolTable::ReadText(word_syms_filename);
       if (!word_syms)
-        KALDI_EXIT << "Could not read symbol table from file "<<word_syms_filename;
+        KALDI_ERR << "Could not read symbol table from file "<<word_syms_filename;
     }
 
     SequentialBaseFloatMatrixReader loglikes_reader(loglikes_rspecifier);

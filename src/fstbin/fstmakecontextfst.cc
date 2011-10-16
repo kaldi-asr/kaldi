@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     std::string phones_symtab_filename = po.GetArg(1);
     int32 subseq_sym;
     if (!ConvertStringToInteger(po.GetArg(2), &subseq_sym))
-      KALDI_EXIT << "Invalid subsequential symbol " << po.GetArg(2);
+      KALDI_ERR << "Invalid subsequential symbol " << po.GetArg(2);
     std::string ilabels_out_filename = po.GetArg(3);
     std::string fst_out_filename = po.GetOptArg(4);
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
       {  // read phone symbol table.
         std::ifstream is(phones_symtab_filename.c_str());
         phones_symtab = fst::SymbolTable::ReadText(is, phones_symtab_filename);
-        if (!phones_symtab) KALDI_EXIT << "Could not read phones symbol-table file "<<phones_symtab_filename;
+        if (!phones_symtab) KALDI_ERR << "Could not read phones symbol-table file "<<phones_symtab_filename;
       }
       GetSymbols(*phones_symtab,
                  false,  // don't include eps,
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     if (std::binary_search(phone_syms.begin(), phone_syms.end(), subseq_sym)
        ||std::binary_search(disambig_in.begin(), disambig_in.end(), subseq_sym))
-      KALDI_EXIT << "Invalid subsequential symbol "<<(subseq_sym)<<", already a phone or disambiguation symbol.";
+      KALDI_ERR << "Invalid subsequential symbol "<<(subseq_sym)<<", already a phone or disambiguation symbol.";
 
 
     ContextFst<StdArc, int32> cfst(subseq_sym,
