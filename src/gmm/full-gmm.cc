@@ -373,6 +373,7 @@ BaseFloat FullGmm::merged_components_logdet(BaseFloat w1, BaseFloat w2,
   return merged_logdet;
 }
 
+// returns the component of the log-likelihood due to this mixture
 BaseFloat FullGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &data,
                                           int32 comp_id) const {
   if (!valid_gconsts_)
@@ -407,10 +408,7 @@ void FullGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->Resize(gconsts_.Dim(), kUndefined);
   loglikes->CopyFromVec(gconsts_);
   int32 dim = Dim();
-  if (data.Dim() != dim) {
-    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
-  }
+  KALDI_ASSERT(dim == data.Dim());  
   SpMatrix<BaseFloat> data_sq(dim);  // Initialize and make zero
   data_sq.AddVec2(1.0, data);
   // The following enables an optimization below: TraceSpSpLower, which is
@@ -426,6 +424,29 @@ void FullGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
     (*loglikes)(mix) -= TraceSpSpLower(data_sq, inv_covars_[mix]);
   }
 }
+
+void FullGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
+                                      const std::vector<int32> &indices,
+                                      Vector<BaseFloat> *loglikes) const {
+  int32 dim = Dim();
+  KALDI_ASSERT(dim == data.Dim());  
+  int32 num_indices = static_cast<int32>(indices.size());  
+  loglikes->Resize(num_indices, kUndefined);
+  
+  SpMatrix<BaseFloat> data_sq(dim);  // Initialize and make zero
+  data_sq.AddVec2(1.0, data);
+  // The following enables an optimization below: TraceSpSpLower, which is
+  // just like a dot product internally.
+  data_sq.ScaleDiag(0.5);
+
+  for (int32 i = 0; i < num_indices; i++) {
+    int32 idx = indices[i];
+    (*loglikes)(i) = gconsts_(idx)
+        + VecVec(means_invcovars_.Row(idx), data)
+        - TraceSpSpLower(data_sq, inv_covars_[idx]);
+  }
+}
+
 
 // Gets likelihood of data given this. Also provides per-Gaussian posteriors.
 BaseFloat FullGmm::ComponentPosteriors(const VectorBase<BaseFloat> &data,

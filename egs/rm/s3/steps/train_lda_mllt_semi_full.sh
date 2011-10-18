@@ -21,10 +21,9 @@
 # exp/mono), supplied as an argument, which is assumed to be built using
 # the same type of features.
 
-if [[ $# != 9 && $# != 4 ]]; then
-   echo "Usage: steps/train_semi_full.sh <data-dir> <lang-dir> <ali-dir> <exp-dir> [ <num-gaussians> <num-tree-leaves> <smooth-type> <tau> <rho> ]"
-   echo " e.g.: steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1-semi-default"
-   echo " e.g.: steps/train_semi_full.sh data/train data/lang exp/tri1_ali exp/tri1-semi 256 1800 0 10 0.5"
+if [[ $# != 9 ]]; then
+   echo "Usage: steps/train_lda_mllt_semi_full.sh <data-dir> <lang-dir> <ali-dir> <ubm> <exp-dir> <num-tree-leaves> <smooth-type> <tau> <rho>"
+   echo " e.g.: steps/train_lda_mllt_semi_full.sh data/train data/lang exp/tri2b_ali exp/ubm3f/final.ubm exp/tiedfull3f 2500 1 35 0.2"
    exit 1;
 fi
 
@@ -33,10 +32,21 @@ if [ -f path.sh ]; then . path.sh; fi
 data=$1
 lang=$2
 alidir=$3
-dir=$4
+ubm=$4
+dir=$5
+max_leaves=$6   # target num-leaves in tree building.
+smooth_type=$7  # (0, regular Interpolate1) (1, preserve-counts, Interpolate2)
+tau=$8          # set to > 0 to activate prop/interp of suff. stats. (weights only)
+rho=$9          # set to > 0 to actiavte smoothing of new model with prior 
+                # model (weights only)
 
-if [ ! -f $alidir/final.mdl -o ! -f $alidir/ali ]; then
-  echo "Error: alignment dir $alidir does not contain final.mdl and ali"
+if [ ! -f $ubm ]; then
+  echo "No such file $ubm"
+  exit 1;
+fi
+
+if [ ! -f $alidir/final.mdl -o ! -f $alidir/ali -o ! -f $alidir/final.mat ]; then
+  echo "Error: alignment dir $alidir does not contain final.mdl and ali and final.mat"
   exit 1;
 fi
 
@@ -45,27 +55,10 @@ realign_iters="5 10 15 20";
 silphonelist=`cat $lang/silphones.csl`
 numiters=25     # Number of iterations of training
 
-# default parameters
-max_leaves=2500
-totgauss=512
-smooth_type=0
-tau=0
-rho=0.5
-
-emiters=5       # number of initial EM iterations on codebook
-emsize=1000     # number of training data for the EM iterations
 
 inter=""           # will be filled, if parameter smoothing was requested
 preserve_counts="" # will be filled, if preserve-counts
 
-if [ $# == 9 ]; then
-  max_leaves=$6   # target num-leaves in tree building.
-  totgauss=$5     # Target total #Gaussians in codebooks
-
-  smooth_type=$7  # (0, regular Interpolate1) (1, preserve-counts, Interpolate2)
-  tau=$8          # set to > 0 to activate prop/interp of suff. stats. (weights only)
-  rho=$9          # set to > 0 to actiavte smoothing of new model with prior model (weights only)
-fi
 
 # inter-iteration smoothing?
 if [ "$rho" != "0" ]; then
@@ -88,20 +81,16 @@ mkdir -p $dir
 echo "Training started: `date`
 $0 $@
 max_leaves=$max_leaves
-totgauss=$totgauss
 smooth_type=$smooth_type
 tau=$tau
 rho=$rho
 intra=$intra
 preserve_counts=$preserve_counts" > $dir/.params
 
+cp $alidir/final.mat $dir/
 
 # regular features, with mean normalization
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
-
-# compute integer form of transcripts.
-scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
-  || exit 1;
+feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 echo "Accumulating tree stats"
 acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
@@ -131,30 +120,8 @@ for i in `seq 1 $max_leaves`; do
 done
 echo "]" >> $dir/tree.map
 
-# This creates a mixture of full-cov Gaussians.
-echo "Initializing codebooks"
-init-ubm --ubm-numcomps=$totgauss \
-    --intermediate-numcomps=$[$totgauss*2] \
-	$alidir/final.mdl $alidir/final.occs $dir/ubm-full || exit 1;
-
-# we should do some initial iterations on the codebook
-if [ $emiters -gt 0 ]; then
-  scripts/subset_scp.pl $emsize $data/feats.scp > $dir/em.scp
-  emfeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/cmvn.ark scp:$dir/em.scp ark:- | add-deltas ark:- ark:- |"
-  echo "Performing $emiters EM iterations on initial codebook"
-  mv $dir/ubm-full $dir/ubm-full.0
-  for i in `seq 1 $emiters`; do
-    fgmm-global-acc-stats $dir/ubm-full.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log || exit 1;
-    fgmm-global-est --remove-low-count-gaussians=false $dir/ubm-full.$[$i-1] $dir/em.$i.acc $dir/ubm-full.$i 2> $dir/est.$i.log || exit 1;
-  done
-  mv $dir/ubm-full.$emiters $dir/ubm-full
-fi
-
-# we won't need the old ubms
-rm $dir/ubm-full.*
-
 echo "Initializing model"
-tied-full-gmm-init-model $dir/tree $lang/topo $dir/ubm-full $dir/1.mdl 2> $dir/init_model.log || exit 1;
+tied-full-gmm-init-model $dir/tree $lang/topo $ubm $dir/1.mdl 2> $dir/init_model.log || exit 1;
 
 rm $dir/treeacc
 
@@ -167,20 +134,31 @@ convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree ark:$alidir/ali ark:$dir/cur.
 
 # Make training graphs
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst ark:$dir/train.tra \
-    "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1;
+compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst \
+  "ark:scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text |" \
+   "ark:|gzip -c >$dir/graphs.fsts.gz"  2>$dir/compile_graphs.log  || exit 1;
+
+# Make gselect objects (for speed)
+
+( gmm-gselect --n=50 "fgmm-global-to-gmm $ubm - |" "$feats" ark:- | \
+  fgmm-gselect --n=10 --gselect=ark:- $ubm "$feats" \
+  "ark,t:|gzip -c >$dir/gselect.gz" )  2>$dir/gselect.log || exit 1;
+
+gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.gz|"
 
 x=1
 while [ $x -lt $numiters ]; do
    echo Pass $x
    if echo $realign_iters | grep -w $x >/dev/null; then
      echo "Aligning data"
-     tied-full-gmm-align-compiled $scale_opts --beam=8 --retry-beam=40 $dir/$x.mdl \
-             "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-             ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
+     tied-full-gmm-align-compiled $scale_opts --beam=8 \
+       --retry-beam=40 $dir/$x.mdl "$gselect_opt" \
+       "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
+        ark:$dir/cur.ali 2> $dir/align.$x.log || exit 1;
    fi
 
-   tied-full-gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc \
+   tied-full-gmm-acc-stats-ali "$gselect_opt" --binary=false \
+       $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc \
      2> $dir/acc.$x.log  || exit 1;
 
    # suff. stats smoothing?

@@ -1,4 +1,4 @@
-// fgmmbin/fgmm-global-est.cc
+// gmmbin/gmm-global-est.cc
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
 
@@ -17,18 +17,19 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/full-gmm.h"
-#include "gmm/mle-full-gmm.h"
+#include "gmm/diag-gmm.h"
+#include "gmm/mle-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    typedef int32 int32;
-    MleFullGmmOptions gmm_opts;
+    typedef kaldi::int32 int32;
+
+    MleDiagGmmOptions gmm_opts;
 
     const char *usage =
-        "Estimate a full-covariance GMM from the accumulated stats.\n"
-        "Usage:  fgmm-global-est [options] <model-in> <stats-in> <model-out>\n";
+        "Estimate a diagonal-covariance GMM from the accumulated stats.\n"
+        "Usage:  gmm-global-est [options] <model-in> <stats-in> <model-out>\n";
 
     bool binary_write = true;
     int32 mixup = 0;
@@ -55,14 +56,14 @@ int main(int argc, char *argv[]) {
         stats_filename = po.GetArg(2),
         model_out_filename = po.GetArg(3);
 
-    FullGmm fgmm;
+    DiagGmm gmm;
     {
       bool binary_read;
       Input is(model_in_filename, &binary_read);
-      fgmm.Read(is.Stream(), binary_read);
+      gmm.Read(is.Stream(), binary_read);
     }
 
-    AccumFullGmm gmm_accs;
+    AccumDiagGmm gmm_accs;
     {
       bool binary;
       Input is(stats_filename, &binary);
@@ -71,19 +72,20 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      MleFullGmmUpdate(gmm_opts, gmm_accs, StringToGmmFlags(update_flags_str),
-                       &fgmm, &objf_impr, &count);
+      MleDiagGmmUpdate(gmm_opts, gmm_accs,
+                       StringToGmmFlags(update_flags_str),
+                       &gmm, &objf_impr, &count);
       KALDI_LOG << "Overall objective function improvement is "
                 << (objf_impr/count) << " per frame over "
                 <<  (count) <<  " frames.";
     }
 
     if (mixup != 0)
-      fgmm.Split(mixup, perturb_factor);
+      gmm.Split(mixup, perturb_factor);
 
     {
       Output os(model_out_filename, binary_write);
-      fgmm.Write(os.Stream(), binary_write);
+      gmm.Write(os.Stream(), binary_write);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;

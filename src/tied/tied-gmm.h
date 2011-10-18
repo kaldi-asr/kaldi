@@ -32,53 +32,33 @@ namespace kaldi {
  *  latter are current w.r.t. the feature vector.
  */
 struct TiedGmmPerFrameVars {
-  TiedGmmPerFrameVars() {
-    current = NULL;
-  }
-
-  ~TiedGmmPerFrameVars() {
-	delete [] current;
-    DeletePointers(&svq);
-  }
 
   /// Initialize the TiedGmmPerFrameVars to the given feature dim and number of
   /// codebooks
   void Setup(int32 dim, int32 num_codebooks) {
     x.Resize(dim);
     c.Resize(num_codebooks);
-
-    if (current)
-		delete [] current;
-	
-	current = new bool [num_codebooks];
-	for (int32 i = 0; i < num_codebooks; ++i)
-      current[i] = false;
-
-    if (svq.size() > 0)
-      DeletePointers(&svq);
-
-    svq.resize(num_codebooks, NULL);
+    current.clear();
+	current.resize(num_codebooks, false);
+    svq.resize(num_codebooks);
   }
 
   /// Resize the loglikelihood vector of the given codebook
   void ResizeSvq(int32 codebook_index, int32 num_gauss) {
-    if (svq[codebook_index] != NULL)
-      delete svq[codebook_index];
-
-    svq[codebook_index] = new Vector<BaseFloat>(num_gauss);
+    svq[codebook_index].Resize(num_gauss);
   }
 
-  /// data vector associated with svq values
+  /// Feature vector
   Vector<BaseFloat> x;
 
   /// offsets of the svq
   Vector<BaseFloat> c;
 
   /// cache indicator if the requested SVQ is already computed
-  bool *current;
+  std::vector<bool> current;
 
   /// soft vector quantizer -- store the posteriors of the codebook(s)
-  std::vector<Vector<BaseFloat> *> svq;
+  std::vector<Vector<BaseFloat> > svq;
 };
 
 /** \class TiedGmm
@@ -100,15 +80,15 @@ class TiedGmm {
 
   /// Returns the log-likelihood of a data point (vector) given the tied GMM
   /// component scores
-  /// caveat: The argument contains the svq scores, /NOT/ the data!
+  /// Note: the argument contains the svq scores, *not* the data!
   BaseFloat LogLikelihood(BaseFloat c, const VectorBase<BaseFloat> &svq) const;
 
   /// Computes the posterior probabilities of all Gaussian components and
-  /// returns loglike
-  /// caveat: The argument contains the svq scores, /NOT/ the data!
+  /// returns loglike.
+  /// Note: the argument contains the svq scores, *not* the data!  
   BaseFloat ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
                                 Vector<BaseFloat> *posteriors) const;
-
+  
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const TiedGmm &source);
 

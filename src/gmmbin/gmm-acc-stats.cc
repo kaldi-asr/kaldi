@@ -36,7 +36,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = true;
+    std::string update_flags_str = "mvwt"; // note: t is ignored, we acc
+    // transition stats regardless.
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("update-flags", &update_flags_str, "Which GMM parameters will be "
+                "updated: subset of mvwt.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -64,7 +68,8 @@ int main(int argc, char *argv[]) {
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
     AccumAmDiagGmm gmm_accs;
-    gmm_accs.Init(am_gmm, kGmmAll);
+
+    gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
 
     double tot_like = 0.0;
     double tot_t = 0.0;

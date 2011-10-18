@@ -1,4 +1,4 @@
-// fgmmbin/fgmm-global-acc-stats.cc
+// gmmbin/gmm-global-acc-stats.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
@@ -30,9 +30,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Accumulate stats for training a full-covariance GMM.\n"
-        "Usage:  fgmm-global-acc-stats [options] <model-in> <feature-rspecifier> "
+        "Usage:  gmm-global-acc-stats [options] <model-in> <feature-rspecifier> "
         "<stats-out>\n"
-        "e.g.: fgmm-global-acc-stats 1.mdl scp:train.scp 1.acc\n";
+        "e.g.: gmm-global-acc-stats 1.mdl scp:train.scp 1.acc\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -54,15 +54,15 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(2),
         accs_wxfilename = po.GetArg(3);
 
-    FullGmm fgmm;
+    DiagGmm gmm;
     {
       bool binary_read;
       Input is(model_filename, &binary_read);
-      fgmm.Read(is.Stream(), binary_read);
+      gmm.Read(is.Stream(), binary_read);
     }
 
-    AccumFullGmm fgmm_accs;
-    fgmm_accs.Resize(fgmm, StringToGmmFlags(update_flags_str));
+    AccumDiagGmm gmm_accs;
+    gmm_accs.Resize(gmm, StringToGmmFlags(update_flags_str));
     
     double tot_like = 0.0;
     double tot_frames = 0.0;
@@ -97,14 +97,14 @@ int main(int argc, char *argv[]) {
           int32 gselect_size = this_gselect.size();
           KALDI_ASSERT(gselect_size > 0);
           Vector<BaseFloat> loglikes;
-          fgmm.LogLikelihoodsPreselect(data, this_gselect, &loglikes);
+          gmm.LogLikelihoodsPreselect(data, this_gselect, &loglikes);
           file_like += loglikes.ApplySoftMax();
           for (int32 j = 0; j < loglikes.Dim(); j++)
-            fgmm_accs.AccumulateForComponent(data, this_gselect[j], loglikes(j));
+            gmm_accs.AccumulateForComponent(data, this_gselect[j], loglikes(j));
         }
       } else { // no gselect..
         for (int32 i = 0; i < file_frames; i++)
-          file_like += fgmm_accs.AccumulateFromFull(fgmm, mat.Row(i), 1.0);
+          file_like += gmm_accs.AccumulateFromDiag(gmm, mat.Row(i), 1.0);
       }
       KALDI_VLOG(1) << "File '" << key << "': Average likelihood = "
                     << (file_like/file_frames) << " over "
@@ -120,11 +120,11 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files.";
     KALDI_LOG << "Overall likelihood per "
               << "frame = " << (tot_like/tot_frames) << " over " << tot_frames
-              << " frames.";
+              << "frames.";
 
     {
       Output ko(accs_wxfilename, binary);
-      fgmm_accs.Write(ko.Stream(), binary);
+      gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs to " << accs_wxfilename;
     return (num_done != 0 ? 0 : 1);

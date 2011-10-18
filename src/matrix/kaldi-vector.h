@@ -116,6 +116,7 @@ class VectorBase {
   void Abs();
 
   /// Apply soft-max to vector and return normalizer (log sum of exponentials).
+  /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
   Real ApplySoftMax();
 
   /// Take all  elements of vector to a power.

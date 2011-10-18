@@ -33,7 +33,8 @@ class DecodableAmTiedFullGmm : public DecodableInterface {
   DecodableAmTiedFullGmm(const AmTiedFullGmm &am,
                          const TransitionModel &tm,
                          const Matrix<BaseFloat> &feats)
-      : acoustic_model_(am), feature_matrix_(feats), trans_model_(tm) {
+      : acoustic_model_(am), feature_matrix_(feats), trans_model_(tm),
+        previous_frame_(-1){
     ResetLogLikeCache();
     acoustic_model_.SetupPerFrameVars(&per_frame_vars_);
   }

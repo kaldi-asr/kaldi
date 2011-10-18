@@ -104,7 +104,7 @@ inline BaseFloat AmTiedDiagGmm::LogLikelihood(
   int32 i = tied->codebook_index();
 
   // get the svq vector
-  Vector<BaseFloat> *svq = per_frame_vars->svq[i];
+  Vector<BaseFloat> *svq = &(per_frame_vars->svq[i]);
   
   // refresh the svq values
   if (!per_frame_vars->current[i]) {

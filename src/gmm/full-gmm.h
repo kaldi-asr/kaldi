@@ -63,6 +63,15 @@ class FullGmm {
   void LogLikelihoods(const VectorBase<BaseFloat> &data,
                       Vector<BaseFloat>* loglikes) const;
 
+  /// Outputs the per-component log-likelihoods of a subset
+  /// of mixture components.  Note: indices.size() will
+  /// equal loglikes->Dim() at output.  loglikes[i] will 
+  /// correspond to the log-likelihood of the Gaussian
+  /// indexed indices[i].
+  void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
+                               const std::vector<int32> &indices,
+                               Vector<BaseFloat> *loglikes) const;
+
   /// Computes the posterior probabilities of all Gaussian components given
   /// a data point. Returns the log-likehood of the data given the GMM.
   BaseFloat ComponentPosteriors(const VectorBase<BaseFloat> &data,

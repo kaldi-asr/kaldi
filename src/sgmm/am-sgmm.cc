@@ -1070,7 +1070,6 @@ void AmSgmm::ComputePerSpkDerivedVars(SgmmPerSpkDerivedVars *vars) const {
   }
 }
 
-
 BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
                                     const VectorBase<BaseFloat> &data,
                                     std::vector<int32> *gselect) const {
@@ -1091,8 +1090,8 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
     BaseFloat thresh = ptr[num_gauss-config.diag_gmm_nbest];
     for (int32 g = 0; g < num_gauss; g++)
       if (loglikes(g) >= thresh)  // met threshold for diagonal phase.
-        pruned_pairs.push_back(std::make_pair(
-                               full_ubm_.ComponentLogLikelihood(data, g), g));
+        pruned_pairs.push_back(
+            std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
   } else {
     Vector<BaseFloat> loglikes(num_gauss);
     full_ubm_.LogLikelihoods(data, &loglikes);
@@ -1110,6 +1109,9 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());
+  // Make sure pruned Gaussians appear from best to worst.
+  std::sort(pruned_pairs.begin(), pruned_pairs.end(),
+            std::greater<std::pair<BaseFloat,int32> >());
   for (size_t i = 0; i < pruned_pairs.size(); i++) {
     loglikes_tmp(i) = pruned_pairs[i].first;
     (*gselect)[i] = pruned_pairs[i].second;
@@ -1138,7 +1140,8 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
     diag_ubm_.LogLikelihoodsPreselect(data, preselect, &loglikes);
     Vector<BaseFloat> loglikes_copy(loglikes);
     BaseFloat *ptr = loglikes_copy.Data();
-    std::nth_element(ptr, ptr+num_preselect-config.diag_gmm_nbest, ptr+num_preselect);
+    std::nth_element(ptr, ptr+num_preselect-config.diag_gmm_nbest,
+                     ptr+num_preselect);
     BaseFloat thresh = ptr[num_preselect-config.diag_gmm_nbest];
     for (int32 p = 0; p < num_preselect; p++) {
       if (loglikes(p) >= thresh) { // met threshold for diagonal phase.
@@ -1162,6 +1165,9 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
     pruned_pairs.erase(pruned_pairs.begin(),
                        pruned_pairs.end() - config.full_gmm_nbest);
   }
+  // Make sure pruned Gaussians appear from best to worst.
+  std::sort(pruned_pairs.begin(), pruned_pairs.end(),
+            std::greater<std::pair<BaseFloat,int32> >());
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());

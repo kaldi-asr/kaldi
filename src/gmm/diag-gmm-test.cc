@@ -158,6 +158,19 @@ void UnitTestDiagGmm() {
     gmm2.ComputeGconsts();
     BaseFloat loglike_gmm2 = gmm2.LogLikelihood(feat);
     AssertEqual(loglike1, loglike_gmm2);
+    {
+      Vector<BaseFloat> loglikes;
+      gmm2.LogLikelihoods(feat, &loglikes);
+      AssertEqual(loglikes.LogSumExp(), loglike_gmm2);
+    }
+    {
+      std::vector<int32> indices;
+      for (int32 i = 0; i < gmm2.NumGauss(); i++)
+        indices.push_back(i);
+      Vector<BaseFloat> loglikes;
+      gmm2.LogLikelihoodsPreselect(feat, indices, &loglikes);
+      AssertEqual(loglikes.LogSumExp(), loglike_gmm2);
+    }
 
     // single component mean accessor + mutator
     DiagGmm gmm3;

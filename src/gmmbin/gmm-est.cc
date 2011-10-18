@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     }
 
     kaldi::GmmFlagsType update_flags =
-        StringToGmmFlags(update_flags_str);    
+        StringToGmmFlags(update_flags_str);
 
     std::string model_in_filename = po.GetArg(1),
         stats_filename = po.GetArg(2),

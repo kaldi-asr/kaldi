@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
     BaseFloat trans_prob_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
+    std::string gselect_rspecifier;
 
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
@@ -57,6 +58,7 @@ int main(int argc, char *argv[]) {
     po.Register("transition-scale", &trans_prob_scale, "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
+    po.Register("gselect", &gselect_rspecifier, "rspecifier for gaussian-selection information (to speed up computation)");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -82,6 +84,7 @@ int main(int argc, char *argv[]) {
 
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     int num_success = 0, num_no_feat = 0, num_other_error = 0;
@@ -123,7 +126,7 @@ int main(int argc, char *argv[]) {
         // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
 
         DecodableAmTiedFullGmmScaled gmm_decodable(am_gmm, trans_model, features,
-                                               acoustic_scale);
+                                                   acoustic_scale);
         decoder.Decode(&gmm_decodable);
 
         VectorFst<LatticeArc> decoded;  // linear FST.

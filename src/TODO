@@ -9,6 +9,7 @@ dan's TODO:
  check out Stefan's code for nnet rescoring.  finish biglm stuff.
 minor:
  add void Check(); function to most config classes.
+ Put 'using namespace kaldi;' in all main()'s and remove kaldi::
  Consider adding "see also" line to "usage" messages.
  make fstbin/ programs "proper" Kaldi programs, e.g. change
    cerr to KALDI_ERR.  Consider doing same in fstext/

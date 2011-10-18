@@ -9,7 +9,7 @@ BINFILES = init-ubm sgmm-align-compiled sgmm-acc-stats-ali \
            sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost sgmm-comp-prexform \
            sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
            sgmm-calc-distances sgmm-normalize sgmm-latgen-simple \
-           sgmm-latgen-faster sgmm-rescore-lattice
+           sgmm-latgen-faster sgmm-rescore-lattice sgmm-copy sgmm-write-ubm
 
 OBJFILES =
 

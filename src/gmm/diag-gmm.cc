@@ -429,13 +429,8 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
 void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
                                       const std::vector<int32> &indices,
                                       Vector<BaseFloat> *loglikes) const {
-  KALDI_ASSERT(IsSortedAndUniq(indices) && !indices.empty()
-               && indices.back() < NumGauss());
-  
-  if (static_cast<int32>(data.Dim()) != Dim()) {
-    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
-  }
+  KALDI_ASSERT(data.Dim() == Dim());  
+
   Vector<BaseFloat> data_sq(data);
   data_sq.ApplyPow(2.0);
   
