@@ -39,7 +39,7 @@ namespace kaldi {
 */
 class MlltAccs {
  public:
-  MlltAccs() { }
+  MlltAccs(): rand_prune_(0.0), beta_(0.0) { }
 
   /// Need rand_prune >= 0.
   /// The larger it is, the faster it will be.  Zero is exact.
