@@ -69,6 +69,20 @@ struct HTransducerConfig {
 };
 
 
+struct HmmCacheHash {
+  int operator () (const std::pair<int32,std::vector<int32> >&p) const {
+    VectorHasher<int32> v;
+    int32 prime = 103049;
+    return prime*p.first + v(p.second);
+  }
+};
+
+/// HmmCacheType is a map from (central-phone, sequence of pdf-ids) to FST, used
+/// as cache in GetHmmAsFst, as an optimization.
+typedef unordered_map<std::pair<int32,std::vector<int32> >,
+                      fst::VectorFst<fst::StdArc>*,
+                      HmmCacheHash> HmmCacheType;
+
 
 /// Called by GetHTransducer() and probably will not need to be called directly;
 /// it creates the FST corresponding to the phone.  Does not include self-loops;
@@ -83,11 +97,17 @@ struct HTransducerConfig {
 ///         the mappings to transition-ids and also the transition
 ///         probabilities.
 ///   @param config Configuration object, see \ref HTransducerConfig.
+///   @param cache Object used as a lookaside buffer to save computation;
+///       if it finds that the object it needs is already there, it will
+///       just return a pointer value from "cache"-- not that this means
+///       you have to be careful not to delete things twice.
 
-fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> context_window,
-                                         const ContextDependencyInterface &ctx_dep,
-                                         const TransitionModel &trans_model,
-                                         const HTransducerConfig &config);
+fst::VectorFst<fst::StdArc> *GetHmmAsFst(
+    std::vector<int32> context_window,
+    const ContextDependencyInterface &ctx_dep,
+    const TransitionModel &trans_model,
+    const HTransducerConfig &config,
+    HmmCacheType *cache = NULL);
 
 /// Included mainly as a form of documentation, not used in any other code
 /// currently.  Creates the FST with self-loops, and with fewer options.

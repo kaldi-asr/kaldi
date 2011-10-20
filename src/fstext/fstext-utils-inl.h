@@ -607,36 +607,57 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
   ans->SetStart(loop_state);
   ans->SetFinal(loop_state, Weight::One());
 
+  // "cache" is used as an optimization when some of the pointers in "fsts"
+  // may have the same value.
+  unordered_map<const ExpandedFst<Arc> *, Arc> cache;
+  
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
     const ExpandedFst<Arc> *fst = fsts[i];
     if (fst == NULL) continue;
+    { // optimization with cache: helpful if some members of "fsts" may
+      // contain the same pointer value (e.g. in GetHTransducer).
+      typename unordered_map<const ExpandedFst<Arc> *, Arc>::iterator
+          iter = cache.find(fst);
+      if (iter != cache.end()) {
+        Arc arc = iter->second;
+        arc.olabel = i;
+        ans->AddArc(0, arc);
+        continue;
+      }
+    }
+    
     assert(fst->Properties(kAcceptor, true) == kAcceptor);  // expect acceptor.
 
     StateId fst_num_states = fst->NumStates();
     StateId fst_start_state = fst->Start();
-
+    
     if (fst_start_state == kNoStateId)
       continue;  // empty fst.
-
+    
     bool share_start_state =
         fst->Properties(kInitialAcyclic, true) == kInitialAcyclic
         && fst->NumArcs(fst_start_state) == 1
         && fst->Final(fst_start_state) == Weight::Zero();
-
+    
     vector<StateId> state_map(fst_num_states);  // fst state -> ans state
     for (StateId s = 0; s < fst_num_states; s++) {
       if (s == fst_start_state && share_start_state) state_map[s] = loop_state;
       else state_map[s] = ans->AddState();
     }
-    if (!share_start_state)
-      ans->AddArc(0, Arc(0, i, Weight::One(), state_map[fst_start_state]));
+    if (!share_start_state) {
+      Arc arc(0, i, Weight::One(), state_map[fst_start_state]);
+      cache[fst] = arc;
+      ans->AddArc(0, arc);
+    }
     for (StateId s = 0; s < fst_num_states; s++) {
       // Add arcs out of state s.
       for (ArcIterator<ExpandedFst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         Label olabel = (s == fst_start_state && share_start_state ? i : 0);
-        ans->AddArc(state_map[s],
-                    Arc(arc.ilabel, olabel, arc.weight, state_map[arc.nextstate]));
+        Arc newarc(arc.ilabel, olabel, arc.weight, state_map[arc.nextstate]);
+        ans->AddArc(state_map[s], newarc);
+        if (s == fst_start_state && share_start_state)
+          cache[fst] = newarc;
       }
       if (fst->Final(s) != Weight::Zero()) {
         assert(!(s == fst_start_state && share_start_state));

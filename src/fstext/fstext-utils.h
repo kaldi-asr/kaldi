@@ -261,7 +261,10 @@ void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fs
 /// it has an arc out whose output-symbol is i and which goes to a
 /// sub-graph whose input language is equivalent to fsts[i], where the
 /// final-state becomes a transition to the loop-state.  Each fst in "fsts"
-/// should be an acceptor.  The fst MakeLoopFst returns is output-deterministic.
+/// should be an acceptor.  The fst MakeLoopFst returns is output-deterministic,
+/// but not output-epsilon free necessarily, and arcs are sorted on output label.
+/// Note: if some of the pointers in the input vector "fsts" have the same
+/// value, "MakeLoopFst" uses this to speed up the computation.
 
 /// Formally: suppose I is the set of indexes i such that fsts[i] != NULL.
 /// Let L[i] be the language that the acceptor fsts[i] accepts.

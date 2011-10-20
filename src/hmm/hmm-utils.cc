@@ -25,10 +25,12 @@ namespace kaldi {
 
 
 
-fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
-                                         const ContextDependencyInterface &ctx_dep,
-                                         const TransitionModel &trans_model,
-                                         const HTransducerConfig &config) {
+fst::VectorFst<fst::StdArc> *GetHmmAsFst(
+    std::vector<int32> phone_window,
+    const ContextDependencyInterface &ctx_dep,
+    const TransitionModel &trans_model,
+    const HTransducerConfig &config,    
+    HmmCacheType *cache) {
   using namespace fst;
 
   if (config.reverse) ReverseVector(&phone_window);  // phone_window represents backwards
@@ -54,6 +56,32 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   const HmmTopology &topo = trans_model.GetTopo();
   const HmmTopology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
 
+  // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
+  // and be contiguous).
+  std::vector<int32> pdfs(topo.NumPdfClasses(phone));
+  for (int32 pdf_class = 0;
+       pdf_class < static_cast<int32>(pdfs.size());
+       pdf_class++) {
+    if ( ! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class])) ) {
+      std::ostringstream ctx_ss;
+      for (size_t i = 0; i < phone_window.size(); i++)
+        ctx_ss << phone_window[i] << ' ';
+      KALDI_ERR << "GetHmmAsFst: context-dependency object could not produce "
+                << "an answer: pdf-class = " << pdf_class << " ctx-window = "
+                << ctx_ss.str() << ".  This probably points "
+          "to either a coding error in some graph-building process, "
+          "a mismatch of topology with context-dependency object, the "
+          "wrong FST being passed on a command-line, or something of "
+          " that general nature.";
+    }
+  }
+  std::pair<int32,std::vector<int32> > cache_index(phone, pdfs);
+  if (cache != NULL) {
+    HmmCacheType::iterator iter = cache->find(cache_index);
+    if (iter != cache->end())
+      return iter->second;
+  }
+  
   VectorFst<StdArc> *ans = new VectorFst<StdArc>;
 
   typedef StdArc Arc;
@@ -70,23 +98,13 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   ans->SetFinal(final, Weight::One());
 
   for (int32 hmm_state = 0;
-      hmm_state < static_cast<int32>(entry.size());
-      hmm_state++) {
+       hmm_state < static_cast<int32>(entry.size());
+       hmm_state++) {
     int32 pdf_class = entry[hmm_state].pdf_class, pdf;
     if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state.
     else {
-      if ( ! ctx_dep.Compute(phone_window, pdf_class, &pdf) ) {
-        std::ostringstream ctx_ss;
-        for (size_t i = 0; i < phone_window.size(); i++)
-          ctx_ss << phone_window[i] << ' ';
-        KALDI_ERR << "GetHmmAsFst: context-dependency object could not produce "
-                  << "an answer: pdf-class = " << pdf_class << " ctx-window = "
-                  << ctx_ss.str() << ".  This probably points "
-            "to either a coding error in some graph-building process, "
-            "a mismatch of topology with context-dependency object, the "
-            "wrong FST being passed on a command-line, or something of "
-            " that general nature.";
-      }
+      KALDI_ASSERT(pdf_class < static_cast<int32>(pdfs.size()));
+      pdf = pdfs[pdf_class];
     }
     int32 trans_idx;
     for (trans_idx = 0;
@@ -136,7 +154,8 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   // We waited till after the possible weight-pushing steps,
   // because weight-pushing needs "real" weights in order to work.
   ApplyProbabilityScale(config.trans_prob_scale, ans);
-
+  if (cache != NULL)
+    (*cache)[cache_index] = ans;
   return ans;
 }
 
@@ -232,7 +251,9 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
                                              const HTransducerConfig &config,
                                              std::vector<int32> *disambig_syms_left) {
   assert(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
-
+  HmmCacheType cache;
+  // "cache" is an optimization that prevents GetHmmAsFst repeating work
+  // unnecessarily.
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Weight Weight;
@@ -273,16 +294,15 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
       VectorFst<Arc> *fst = GetHmmAsFst(phone_window,
                                         ctx_dep,
                                         trans_model,
-                                        config);
+                                        config,
+                                        &cache);
       fsts[j] = fst;
     }
   }
 
   VectorFst<Arc> *ans = MakeLoopFst(fsts);
-  {  // make sure output is olabel sorted.
-    fst::OLabelCompare<fst::StdArc> olabel_comp;
-    fst::ArcSort(ans, olabel_comp);
-  }
+  SortAndUniq(&fsts); // remove duplicate pointers, which we will have
+  // in general, since we used the cache.
   DeletePointers(&fsts);
   return ans;
 }
