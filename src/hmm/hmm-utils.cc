@@ -47,7 +47,9 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   if (phone == 0) {  // error.  Error message depends on whether reversed.
     if (config.reverse)
       KALDI_ERR << "phone == 0.  Possibly you are trying to get a reversed "
-          "FST, but forgot to initialize the ContextFst object with P as N-1-P.";
+          "FST with a non-central \"central position\" P (i.e. asymmetric "
+          "context), but forgot to initialize the ContextFst object with P "
+          "as N-1-P (or it could be a simpler problem)";
     else
       KALDI_ERR << "phone == 0.  Some mismatch happened, or there is "
           "a code error.";

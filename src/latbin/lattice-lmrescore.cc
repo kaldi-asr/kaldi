@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
         fst_rxfilename = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-
     VectorFst<LatticeArc> lm_fst;
 
     {

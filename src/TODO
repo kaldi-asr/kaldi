@@ -6,8 +6,14 @@
 
 =====
 dan's TODO:
- check out Stefan's code for nnet rescoring.  finish biglm stuff.
+major:
+ look at Stefan's code for nnet rescoring.  
+ finalize biglm stuff.
+
+
 minor:
+ change UBM-building in WSJ to match RM, and test the effect of this.
+ Maybe test SGMMs, with Gaussian alignments fixed to UBM for first few iters.
  add void Check(); function to most config classes.
  Put 'using namespace kaldi;' in all main()'s and remove kaldi::
  Consider adding "see also" line to "usage" messages.
