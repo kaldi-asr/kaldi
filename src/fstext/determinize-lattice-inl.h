@@ -433,7 +433,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
         arcs_size = num_arcs_ * sizeof(TempArc),
         elems_size = num_elems_ * sizeof(Element),
         total_size = repo_size + arcs_size + elems_size;
-    if (total_size > opts_.max_mem) { // We passed the memory threshold.
+    if (opts_.max_mem > 0 && total_size > opts_.max_mem) { // We passed the memory threshold.
       // This is usually due to the repository getting large, so we
       // clean this out.
       RebuildRepository();
