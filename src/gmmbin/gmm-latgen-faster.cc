@@ -60,6 +60,7 @@ bool DecodeUtterance(LatticeFasterDecoder &decoder, // not const but is really a
   }
 
   double likelihood;
+  LatticeWeight weight;
   int32 num_frames;
   { // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;
@@ -69,7 +70,6 @@ bool DecodeUtterance(LatticeFasterDecoder &decoder, // not const but is really a
 
     std::vector<int32> alignment;
     std::vector<int32> words;
-    LatticeWeight weight;
     GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
     num_frames = alignment.size();
     if (words_writer->IsOpen())
@@ -111,6 +111,8 @@ bool DecodeUtterance(LatticeFasterDecoder &decoder, // not const but is really a
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "
             << num_frames << " frames.";
+  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
+                << weight.Value1() << " + " << weight.Value2();
   *like_ptr = likelihood;
   return true;
 }

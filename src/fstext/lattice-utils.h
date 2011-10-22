@@ -181,13 +181,13 @@ bool CompactLatticeHasAlignment(
     const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &fst);
 
 
-/// Class LatticeToStdMapper maps a normal arc (StdArc)
+/// Class StdToLatticeMapper maps a normal arc (StdArc)
 /// to a LatticeArc by putting the StdArc weight as the first
 /// element of the LatticeWeight.  Useful when doing LM
 /// rescoring.
 
 template<class Int>
-class LatticeToStdMapper {
+class StdToLatticeMapper {
   typedef LatticeWeightTpl<Int> LatticeWeight;
   typedef ArcTpl<LatticeWeight> LatticeArc;
  public:

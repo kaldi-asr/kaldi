@@ -138,10 +138,14 @@ private:
   // (recursively and cumulating the weights) until an arc with input ilabel is found.
   // If called with input ilabel equal to epsilon, treats it as any other label
   // (i.e. matches it only with epsilon labels).
-  bool GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel,
-	                       Arc *oarc, 
-						   typename DeterministicOnDemandFstImpl<Arc>::Weight iweight);
-
+  static bool GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel,
+                                  Arc *oarc, Weight iweight = Weight::One());
+  
+  // private helper method for GetFinal().  If current state is final returns it;
+  // else follows epsilons recursively till it finds a final state and returns the
+  // first one it finds (or Zero() if none found).
+  Weight GetFinalFromNonDetFst(const Fst<Arc>* fst, StateId s);
+  
   // state management for composition
   typedef std::pair<StateId,StateId> StatePair;
 

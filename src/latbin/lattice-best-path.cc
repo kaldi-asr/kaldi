@@ -92,8 +92,9 @@ int main(int argc, char *argv[]) {
         std::vector<int32> words;
         LatticeWeight weight;
         GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
-        KALDI_LOG << "For utterance " << key << ", best cost " <<
-            (weight.Value1() + weight.Value2());
+        KALDI_LOG << "For utterance " << key << ", best cost "
+                  << weight.Value1() << " + " << weight.Value2() << " = "
+                  << (weight.Value1() + weight.Value2());
         if (transcriptions_wspecifier != "")
           transcriptions_writer.Write(key, words);
         if (alignments_wspecifier != "")

@@ -89,4 +89,11 @@ done
 wait
 [ -f $dir/.error ] && echo "Error in decoding script: command line was decode.sh $orig_args" && exit 1;
 
-scripts/score_lats.sh $dir $graphdir/words.txt $data
+if ls $dir/lat.*.gz >&/dev/null; then
+  scripts/score_lats.sh $dir $graphdir/words.txt $data || exit 1;
+elif ls $dir/*.txt >&/dev/null; then
+  scripts/score_text.sh $dir $data || exit 1;
+else
+  echo "No output found in $dir, not scoring.";
+  exit 1;
+fi

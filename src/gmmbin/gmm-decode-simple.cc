@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
+    using fst::ReadFstKaldi;
 
     const char *usage =
         "Decode features using GMM-based model.\n"
@@ -74,14 +75,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(is.Stream(), binary);
     }
 
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      Input ki(fst_in_filename.c_str());
-      decode_fst =
-          VectorFst<StdArc>::Read(ki.Stream(), fst::FstReadOptions(fst_in_filename));
-      if (decode_fst == NULL) // fst code will warn.
-        exit(1);
-    }
+    VectorFst<StdArc> *decode_fst = ReadFstKaldi(fst_in_filename);
 
     Int32VectorWriter words_writer(words_wspecifier);
 

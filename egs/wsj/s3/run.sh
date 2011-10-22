@@ -110,6 +110,19 @@ scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
 
+# Now, with dev93, compare lattice rescoring with biglm decoding,
+# going from tgpr to tg. [note: when I ran this, it was:
+#exp/tri2b/decode_tgpr_dev93_tg_biglm/wer:%WER 17.84 [ 1469 / 8234, 340 ins, 110 del, 1019 sub ]
+#exp/tri2b/decode_tgpr_dev93_tg/wer_12:%WER 18.29 [ 1506 / 8234, 361 ins, 107 del, 1038 sub ]
+# The difference is presumably due to better pruning in biglm.  The pruning
+# seems to be a bit too narrow in the current scripts (got at least 0.7% absolute
+# improvement from loosening beams from their current values).
+
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_biglm.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst
+scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
+  data/lang_test_tgpr/words.txt data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg
+
+
 # Demonstrate 'cross-tree' lattice rescoring where we create utterance-specific
 # decoding graphs from one system's lattices and rescore with another system.
 # Note: we could easily do this with the trigram LM, unpruned, but for comparability

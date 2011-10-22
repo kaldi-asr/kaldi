@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
+    using fst::ReadFstKaldi;
 
     const char *usage =
         "Add lm_scale * [cost of best path through LM FST] to graph-cost of\n"
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
     
-    po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs; frequently 1.0 or -1.0");
     
     po.Read(argc, argv);
 
@@ -56,19 +57,13 @@ int main(int argc, char *argv[]) {
     VectorFst<LatticeArc> lm_fst;
 
     {
-      VectorFst<StdArc> *std_lm_fst = NULL; 
-      Input ki(fst_rxfilename);
-      std_lm_fst = VectorFst<StdArc>::Read(
-          ki.Stream(),
-          fst::FstReadOptions(fst_rxfilename));
-      if (std_lm_fst == NULL)
-        exit(1);
-
+      VectorFst<StdArc> *std_lm_fst = ReadFstKaldi(fst_rxfilename);
+      
       // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
       // with all the cost on the first member of the pair (since it's a graph
       // weight).
-      fst::LatticeToStdMapper<BaseFloat> mapper;
-      fst::MapFst<StdArc, LatticeArc, fst::LatticeToStdMapper<BaseFloat> >
+      fst::StdToLatticeMapper<BaseFloat> mapper;
+      fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
           mapped_fst(*std_lm_fst, mapper);
       lm_fst = mapped_fst;
     }

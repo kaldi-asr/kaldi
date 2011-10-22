@@ -193,7 +193,7 @@ class LatticeFasterDecoder {
       if (f == 0 && ofst->NumStates() > 0)
         ofst->SetStart(ofst->NumStates()-1);
     }
-    KALDI_VLOG(2) << "init:" << num_toks_/2 + 3 << " buckets:" << tok_map.bucket_count() << " load:" << tok_map.load_factor() << " max:" << tok_map.max_load_factor();
+    KALDI_VLOG(3) << "init:" << num_toks_/2 + 3 << " buckets:" << tok_map.bucket_count() << " load:" << tok_map.load_factor() << " max:" << tok_map.max_load_factor();
     // Now create all arcs.
     StateId cur_state = 0; // we rely on the fact that we numbered these
     // consecutively (AddState() returns the numbers in order..)
@@ -604,7 +604,7 @@ class LatticeFasterDecoder {
         active_toks_[frame+1].must_prune_tokens = false;
       }
     }
-    KALDI_VLOG(1) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
+    KALDI_VLOG(3) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
   }
 
@@ -627,7 +627,7 @@ class LatticeFasterDecoder {
       PruneTokensForFrame(frame+1);
     }
     PruneTokensForFrame(0); 
-    KALDI_VLOG(1) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
+    KALDI_VLOG(3) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
   }
   
