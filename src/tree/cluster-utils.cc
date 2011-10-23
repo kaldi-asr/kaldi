@@ -842,9 +842,7 @@ class RefineClusterer {
   point_info &GetInfo(int32 point, int32 idx) {
     assert(point < num_points_ && idx < cfg_.top_n);
     int32 i = point*cfg_.top_n + idx;
-#ifdef KALDI_PARANOID
-    assert(i < static_cast<int32>(info_.size()));
-#endif
+    KALDI_PARANOID_ASSERT(i < static_cast<int32>(info_.size()));
     return info_[i];
   }
 

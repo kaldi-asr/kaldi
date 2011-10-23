@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
 
     const char *usage =
         "Decode features using GMM-based model.\n"
+        "User supplies LM used to generate decoding graph, and desired LM;\n"
+        "this decoder applies the difference during decoding\n"
         "Usage:  gmm-decode-biglm-faster [options] model-in fst-in oldlm-fst-in newlm-fst-in features-rspecifier words-wspecifier [alignments-wspecifier [lattice-wspecifier]]\n";
     ParseOptions po(usage);
     bool allow_partial = true;    
@@ -148,12 +150,9 @@ int main(int argc, char *argv[])
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
-    fst::DeterministicOnDemandFst<fst::StdArc>* lm_diff_fst =
-        new fst::DeterministicOnDemandFst<fst::StdArc>(*old_lm_fst,*new_lm_fst);
-    BiglmFasterDecoder decoder(*decode_fst, *lm_diff_fst, decoder_opts);
 
     Timer timer;
-
+    
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
       Matrix<BaseFloat> features (feature_reader.Value());
@@ -163,6 +162,8 @@ int main(int argc, char *argv[])
         num_fail++;
         continue;
       }
+      fst::DeterministicOnDemandFst<StdArc> lm_diff_fst(*old_lm_fst, *new_lm_fst);
+      BiglmFasterDecoder decoder(*decode_fst, lm_diff_fst, decoder_opts);
 
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
@@ -236,7 +237,6 @@ int main(int argc, char *argv[])
     delete decode_fst;
     delete old_lm_fst;
     delete new_lm_fst;
-    delete lm_diff_fst;    
     return (num_success != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

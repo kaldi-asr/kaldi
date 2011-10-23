@@ -24,6 +24,7 @@
 #include <sstream>
 
 #include "base/kaldi-types.h"
+#include "base/kaldi-utils.h"
 
 /* Important that this file does not depend on any other kaldi headers. */
 
@@ -95,6 +96,15 @@ class KaldiErrorMessage {
 #else
 #define KALDI_ASSERT(cond)
 #endif
+// also see KALDI_COMPILE_TIME_ASSERT, defined in base/kaldi-utils.h,
+// and KALDI_ASSERT_IS_INTEGER_TYPE and KALDI_ASSERT_IS_FLOATING_TYPE,
+// also defined there.
+#ifdef KALDI_PARANOID // some more expensive asserts only checked if this defined
+#define KALDI_PARANOID_ASSERT(cond) \
+  if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+#else
+#define KALDI_PARANOID_ASSERT(cond)
+#endif
 
 #define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
 #define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 
@@ -109,9 +119,6 @@ inline bool IsKaldiError(const std::string &str) {
 
 void KaldiAssertFailure_(const char *func, const char *file,
                          int32 line, const char *cond_str);
-
-// Note that there is also the macro KALDI_COMPILE_TIME_ASSERT,
-// defined in base/kaldi-utils.h
 
 /// @} end "addtogroup error_group"
 

@@ -1,6 +1,6 @@
 // decoder/biglm-faster-decoder.h
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011 Microsoft Corporation,  Gilles Boulianne
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_FASTER_DECODER_H_
-#define KALDI_DECODER_FASTER_DECODER_H_
+#ifndef KALDI_DECODER_BIGLM_FASTER_DECODER_H_
+#define KALDI_DECODER_BIGLM_FASTER_DECODER_H_
 
 #include "util/stl-utils.h"
 #include "util/parse-options.h"
@@ -24,40 +24,26 @@
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
+#include "decoder/faster-decoder.h" // for options class
 #include "fstext/deterministic-fst.h"
-
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
 
 namespace kaldi {
 
 // the same as FasterDecoderOptions for now.
-struct BiglmFasterDecoderOptions {
-  BaseFloat beam;
-  int32 max_active;
-  BaseFloat beam_delta;
-  BaseFloat hash_ratio;
-  BiglmFasterDecoderOptions(): beam(16.0),
-                               max_active(std::numeric_limits<int32>::max()),
-                               beam_delta(0.5), hash_ratio(2.0) { }
-  void Register(ParseOptions *po, bool full) {  /// if "full", use obscure
-    /// options too.
-    /// Depends on program.
-    po->Register("beam", &beam, "Decoder beam");
-    po->Register("max-active", &max_active, "Decoder max active states.");
-    if (full) {
-      po->Register("beam-delta", &beam_delta,
-                   "Increment used in decoder [obscure setting]");
-      po->Register("hash-ratio", &hash_ratio,
-                   "Setting used in decoder to control hash behavior");
-    }
-  }
-};
+typedef FasterDecoderOptions BiglmFasterDecoderOptions;
 
+/** This is as FasterDecoder, but does online composition between
+    HCLG and the "difference language model", which is a deterministic
+    FST that represents the difference between the language model you want
+    and the language model you compiled HCLG with.  The class
+    DeterministicOnDemandFst follows through the epsilons in G for you
+    (assuming G is a standard backoff language model) and makes it look
+    like a determinized FST.  Actually, in practice,
+    DeterministicOnDemandFst operates in a mode where it composes two
+    G's together; one has negated likelihoods and works by removing the
+    LM probabilities that you made HCLG with, and one is the language model
+    you want to use.
+*/
 class BiglmFasterDecoder {
  public:
   typedef fst::StdArc Arc;
@@ -66,7 +52,7 @@ class BiglmFasterDecoder {
   // A PairId will be constructed as: (StateId in fst) + (StateId in lm_diff_fst) << 32;
   typedef uint64 PairId;
   typedef Arc::Weight Weight;
-
+  
   // This constructor is the same as for FasterDecoder, except the second
   // argument (lm_diff_fst) is new; it's an FST (actually, a
   // DeterministicOnDemandFst) that represents the difference in LM scores
@@ -345,13 +331,16 @@ class BiglmFasterDecoder {
     // reasonably tight bound on the next cutoff.
     if (best_elem) {
       PairId state_pair = best_elem->key;
-      StateId state = PairToState(state_pair); // state in "fst"
+      StateId state = PairToState(state_pair),
+          lm_state = PairToLmState(state_pair);
       Token *tok = best_elem->val;
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
            !aiter.Done();
            aiter.Next()) {
-        const Arc &arc = aiter.Value();
+        Arc arc = aiter.Value();        
         if (arc.ilabel != 0) {  // we'd propagate..
+          PropagateLm(lm_state, &arc); // may affect "arc.weight".
+          // We don't need the return value (the new LM state).
           BaseFloat ac_cost = - decodable->LogLikelihood(frame, arc.ilabel),
               new_weight = arc.weight.Value() + tok->weight_.Value() + ac_cost;
           if (new_weight + adaptive_beam < next_weight_cutoff)
@@ -369,7 +358,7 @@ class BiglmFasterDecoder {
       // n++;
       // because we delete "e" as we go.
       PairId state_pair = e->key;
-      StateId state = PairToState(state_pair), // state in "fst"
+      StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
       Token *tok = e->val;
       if (tok->weight_.Value() < weight_cutoff) {  // not pruned.
@@ -381,11 +370,11 @@ class BiglmFasterDecoder {
           Arc arc = aiter.Value();
           if (arc.ilabel != 0) {  // propagate.
             StateId next_lm_state = PropagateLm(lm_state, &arc);
-            PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
             Weight ac_weight(-decodable->LogLikelihood(frame, arc.ilabel));
             BaseFloat new_weight = arc.weight.Value() + tok->weight_.Value()
                 + ac_weight.Value();
             if (new_weight < next_weight_cutoff) {  // not pruned..
+              PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
               Token *new_tok = new Token(arc, ac_weight, tok);
               Elem *e_found = toks_.Find(next_pair);
               if (new_weight + adaptive_beam < next_weight_cutoff)
@@ -431,8 +420,9 @@ class BiglmFasterDecoder {
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
            !aiter.Done();
            aiter.Next()) {
-        Arc arc = aiter.Value();
-        if (arc.ilabel == 0) {  // propagate nonemitting only...
+        const Arc &arc_ref = aiter.Value();
+        if (arc_ref.ilabel == 0) {  // propagate nonemitting only...
+          Arc arc(arc_ref);
           StateId next_lm_state = PropagateLm(lm_state, &arc);
           PairId next_pair = ConstructPair(arc.nextstate, next_lm_state);
           Token *new_tok = new Token(arc, tok);

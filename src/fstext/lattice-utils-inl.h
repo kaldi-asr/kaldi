@@ -72,9 +72,7 @@ void ConvertLattice(
          !iter.Done();
          iter.Next()) {
       const Arc &arc = iter.Value();
-#ifdef KALDI_PARANOID
-      assert(arc.weight != Weight::Zero());
-#endif
+      KALDI_PARANOID_ASSERT(arc.weight != Weight::Zero());
       // note: zero-weight arcs not allowed anyway so weight should not be zero,
       // but no harm in checking.
       CompactArc compact_arc(arc.olabel, arc.olabel,
@@ -181,9 +179,7 @@ void ConvertLattice(
          !iter.Done();
          iter.Next()) {
       ArcIn arc = iter.Value();
-#ifdef KALDI_PARANOID
-      assert(arc.weight != WeightIn::Zero());
-#endif
+      KALDI_PARANOID_ASSERT(arc.weight != WeightIn::Zero());
       ArcOut oarc;
       ConvertLatticeWeight(arc.weight, &oarc.weight);
       oarc.ilabel = arc.ilabel;

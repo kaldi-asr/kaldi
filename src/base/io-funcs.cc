@@ -30,9 +30,7 @@ void WriteBasicType<bool>(std::ostream &os, bool binary, bool b) {
 
 template<>
 void ReadBasicType<bool>(std::istream &is, bool binary, bool *b) {
-#ifdef KALDI_PARANOID
-  assert(b != NULL);
-#endif
+  KALDI_PARANOID_ASSERT(b != NULL);
   if (!binary) is >> std::ws;  // eat up whitespace.
   char c = is.peek();
   if (c == 'T') {
@@ -71,9 +69,7 @@ void WriteBasicType<double>(std::ostream &os, bool binary, double f) {
 
 template<>
 void ReadBasicType<float>(std::istream &is, bool binary, float *f) {
-#ifdef KALDI_PARANOID
-  assert(f != NULL);
-#endif
+  KALDI_PARANOID_ASSERT(f != NULL);
   if (binary) {
     double d;
     int c = is.peek();
@@ -98,9 +94,7 @@ void ReadBasicType<float>(std::istream &is, bool binary, float *f) {
 
 template<>
 void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
-#ifdef KALDI_PARANOID
-  assert(d != NULL);
-#endif
+  KALDI_PARANOID_ASSERT(d != NULL);
   if (binary) {
     float f;
     int c = is.peek();

@@ -18,7 +18,8 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-rescore-lattice gmm-decode-biglm-faster fmpe-gmm-model-diffs-est \
            fmpe-gmm-acc-stats-gpost fmpe-gmm-sum-accs fmpe-init-gmms fmpe-gmm-est \
            gmm-est-mmi gmm-latgen-faster gmm-copy \
-           gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect
+           gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \
+           gmm-latgen-biglm-faster
 
 OBJFILES =
 

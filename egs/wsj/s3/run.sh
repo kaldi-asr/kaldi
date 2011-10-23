@@ -111,14 +111,16 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_t
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
 
 # Now, with dev93, compare lattice rescoring with biglm decoding,
-# going from tgpr to tg. [note: when I ran this, it was:
-#exp/tri2b/decode_tgpr_dev93_tg_biglm/wer:%WER 17.84 [ 1469 / 8234, 340 ins, 110 del, 1019 sub ]
-#exp/tri2b/decode_tgpr_dev93_tg/wer_12:%WER 18.29 [ 1506 / 8234, 361 ins, 107 del, 1038 sub ]
-# The difference is presumably due to better pruning in biglm.  The pruning
+# going from tgpr to tg.  Note: results are not the same, even though they should
+# be, and I believe this is due to the beams not being wide enough.  The pruning
 # seems to be a bit too narrow in the current scripts (got at least 0.7% absolute
 # improvement from loosening beams from their current values).
 
+# Note: if you are running this soon after it's created and not from scratch, you
+# may have to rerun local/wsj_format_data.sh before the command below (a rmepsilon
+# stage in there that's necessary).
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_biglm.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst
+# baseline via LM rescoring of lattices.
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst \
   data/lang_test_tgpr/words.txt data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg
 

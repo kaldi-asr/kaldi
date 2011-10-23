@@ -168,7 +168,7 @@ private:
   typedef unordered_map<StatePair, StateId, StatePairKey, StatePairEqual> StateMap;  // map to composed StateId
 
   StateMap state_map_;   // map from state in fst1 and fst2 to composed state
-  std::vector<StatePair> composedState_;               // indexed by composed StateId 
+  std::vector<StatePair> composed_state_;               // indexed by composed StateId 
 
   // add composed state to internal data
   StateId AddComposedState(StateId s1, StateId s2) {
@@ -177,8 +177,8 @@ private:
     StateId cs;
     if (mit == state_map_.end()) {
       // new, add it
-      cs = composedState_.size();
-      composedState_.push_back(sp);
+      cs = composed_state_.size();
+      composed_state_.push_back(sp);
       state_map_[sp] = cs;
       //cerr << "Adding composed state ("<<s1<<","<<s2<<") = "<<cs<<endl;
     } else {

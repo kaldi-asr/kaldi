@@ -59,19 +59,15 @@ class VectorBase {
 
   /// Indexing  operator (const).
   inline Real operator() (MatrixIndexT i) const {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
-#endif
     return *(data_ + i);
   }
 
   /// Indexing operator (non-const).
   inline Real & operator() (MatrixIndexT i) {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
-#endif
     return *(data_ + i);
   }
 

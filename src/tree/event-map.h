@@ -271,9 +271,7 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   /// This constructor takes ownership of the "yes" and "no" arguments.
   SplitEventMap(EventKeyType key, const std::vector<EventValueType> &yes_set,
                 EventMap *yes, EventMap *no): key_(key), yes_set_(yes_set), yes_(yes), no_(no) {
-#ifdef KALDI_PARANOID
-    assert(IsSorted(yes_set));
-#endif
+    KALDI_PARANOID_ASSERT(IsSorted(yes_set));
     assert(yes_ != NULL && no_ != NULL);
   }
 

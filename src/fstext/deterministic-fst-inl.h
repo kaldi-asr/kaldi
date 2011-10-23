@@ -75,7 +75,7 @@ typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl
       // composition
       StateId s1 = fst1_->Start(), s2 = fst2_->Start();
       if (s1 == kNoStateId || s2 == kNoStateId) return kNoStateId;
-      if (composedState_.size()==0) AddComposedState(s1,s2);
+      if (composed_state_.size()==0) AddComposedState(s1,s2);
     } else {
       // single FST case
       s = fst1_->Start();
@@ -126,7 +126,7 @@ DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
     // Work out final-state weight.
     Weight w;
     if (fst2_){
-      StatePair sp = composedState_[s];
+      StatePair sp = composed_state_[s];
       w = Times(GetFinalFromNonDetFst(fst1_, sp.first),
                 GetFinalFromNonDetFst(fst2_, sp.second));
     } else {
@@ -214,7 +214,8 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oar
   // otherwise compute the arc and set cache info
   if (fst2_) {
     // composition case
-    StatePair sp = composedState_[s];
+    KALDI_PARANOID_ASSERT(static_cast<size_t>(s) < composed_state_.size());
+    StatePair sp = composed_state_[s];
     Arc arc1, arc2;
     bool r1 = GetArcFromNonDetFst(fst1_, sp.first, ilabel, &arc1); 
     if (!r1) {

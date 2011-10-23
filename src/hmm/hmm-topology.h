@@ -38,10 +38,7 @@ namespace kaldi {
  // state as an exit probability).
  // Note also that it's valid to omit the "<PdfClass>" entry of the <State>, which
  // will mean we won't have a pdf on that state [non-emitting state].  This is equivalent
- // to setting the <PdfClass> to -1.  We do this for the final state.
- // This won't generally be that useful, but could be used for handling things
- // like "short pause" [however, note that transitions out of nonemitting states
- // are not trainable].
+ // to setting the <PdfClass> to -1.  We do this normally just for the final state.
  // The Topology object can have multiple <TopologyEntry> blocks.
  // This is useful if there are multiple types of topology in the system.
 

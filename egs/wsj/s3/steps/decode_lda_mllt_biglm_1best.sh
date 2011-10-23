@@ -75,8 +75,9 @@ feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.sc
 oldlm_cmd="fstproject --project_output=true $oldlm | fstarcsort --sort_type=ilabel |"
 newlm_cmd="fstproject --project_output=true $newlm | fstarcsort --sort_type=ilabel |"
 
-gmm-latgen-biglm-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 \
-  --acoustic-scale=0.083333 --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+gmm-decode-biglm-faster --max-active=7000 --beam=13.0 --acoustic-scale=0.083333 \
+  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$oldlm_cmd" "$newlm_cmd" "$feats" \
- "ark:|gzip -c > $dir/lat.$jobid.gz"   2> $dir/decode$jobid.log || exit 1;
+  "ark,t:|scripts/int2sym.pl --ignore-first-field $graphdir/words.txt > $dir/$jobid.txt" \
+     2> $dir/decode$jobid.log || exit 1;
 

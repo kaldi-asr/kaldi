@@ -187,8 +187,8 @@ for lm_suffix in bg tgpr tg; do
     arpa2fst - | fstprint | \
     scripts/remove_oovs.pl data/local/oovs_${lm_suffix}.txt | \
     scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false \
-      > $test/G.fst
+      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+     fstrmepsilon > $test/G.fst
   fstisstochastic $test/G.fst
  # The output is like:
  # 9.14233e-05 -0.259833

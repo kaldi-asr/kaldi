@@ -138,13 +138,13 @@ class TransitionModel {
   bool IsSelfLoop(int32 trans_id) const;  // return true if this trans_id corresponds to a self-loop.
 
   /// Returns the total number of transition-ids (note, these are one-based).
-  int32 NumTransitionIds() const { return id2state_.size()-1; }
+  inline int32 NumTransitionIds() const { return id2state_.size()-1; }
 
   /// Returns the number of transition-indices for a particular transition-state.
   /// Note: "Indices" is the plural of "index".   Index is not the same as "id",
   /// here.  A transition-index is a zero-based offset into the transitions
   /// out of a particular transition state.
-  int32 NumTransitionIndices(int32 trans_state) const;
+  inline int32 NumTransitionIndices(int32 trans_state) const;
 
   /// Returns the total number of transition-states (note, these are one-based).
   int32 NumTransitionStates() const { return triples_.size(); }

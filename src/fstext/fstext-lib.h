@@ -31,4 +31,5 @@
 #include "lattice-weight.h"
 #include "lattice-utils.h"
 #include "determinize-lattice.h"
+#include "deterministic-fst.h"
 #endif
