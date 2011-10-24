@@ -151,7 +151,7 @@ class KaldiDecoder {
 
     inline void Delete(WordLink *wordlink) {
       // delete wordlink: either decrease reference count or put to linked list
-      DEBUG_CMD(assert(wordlink->refs>0))
+      DEBUG_CMD(KALDI_ASSERT(wordlink->refs>0))
       wordlink->refs--;
       DEBUG_OUT3("dec:" << wordlink->unique << " (" << wordlink->refs << "x)")
       if (wordlink->refs > 0) return;
@@ -205,7 +205,7 @@ class KaldiDecoder {
     }
     void Clear() {
       DEBUG_OUT1("wordlinks created: " << wlnumber << " deleted: " << dwlnumber)
-      DEBUG_CMD(assert(wlnumber == dwlnumber))
+      DEBUG_CMD(KALDI_ASSERT(wlnumber == dwlnumber))
       // check that all wordlinks are freed
       for (size_t i = 0; i < allocated_.size(); i++) delete[] allocated_[i];
       allocated_.clear();
@@ -234,7 +234,7 @@ class KaldiDecoder {
     inline void Delete(Token *token) {
       // delete token: put to linked list
       DEBUG_OUT3( "kill token:" << token->unique << ":" << token->state)
-      DEBUG_CMD(assert(token->state != fst::kNoStateId))
+      DEBUG_CMD(KALDI_ASSERT(token->state != fst::kNoStateId))
       DEBUG_CMD(token->state = fst::kNoStateId)
       DEBUG_CMD(dtnumber++)
       // clean up unused wordlinks recursively backwards
@@ -306,7 +306,7 @@ class KaldiDecoder {
     }
     void Clear() {
       DEBUG_OUT1("tokens created: " << tnumber << " deleted: " << dtnumber)
-      DEBUG_CMD(assert(tnumber == dtnumber))
+      DEBUG_CMD(KALDI_ASSERT(tnumber == dtnumber))
       // check that all tokens are freed
       for (size_t i = 0; i < allocated_.size(); i++) delete[] allocated_[i];
       allocated_.clear();
@@ -368,9 +368,9 @@ class KaldiDecoder {
       }
     }
     void AssertQueueEmpty() {
-      assert(queue_.size() == 0);
+      KALDI_ASSERT(queue_.size() == 0);
       for(std::vector<int>::iterator it = color_.begin(); 
-          it != color_.end(); ++it) { assert(*it == kWhite); }
+          it != color_.end(); ++it) { KALDI_ASSERT(*it == kWhite); }
     }
     //**** functions for the recursive depth first visitor
     inline void Touch(StateId state) { // mark kGray: for detecting self-loops
@@ -393,8 +393,8 @@ class KaldiDecoder {
       queue_.push_back(state);         // remember inverse mapping
     }
     inline void Enqueue(StateId state) { // put state on priority queue
-      DEBUG_CMD(assert(state < color_.size()))
-      DEBUG_CMD(assert(color_[state] >= kBlack))
+      DEBUG_CMD(KALDI_ASSERT(state < color_.size()))
+      DEBUG_CMD(KALDI_ASSERT(color_[state] >= kBlack))
       color_[state] = kQueue; // the state must be in queue_
     }
     inline int GetKey(StateId state) { // retrieve state color
@@ -414,7 +414,7 @@ class KaldiDecoder {
         color_[state] = kWhite;  // reset all states
         if (color == kQueue) {
           Token *ans = hash_[state];
-          DEBUG_CMD(assert(ans->state == state))
+          DEBUG_CMD(KALDI_ASSERT(ans->state == state))
           hash_[state] = NULL;
           return ans;
         }
@@ -426,7 +426,7 @@ class KaldiDecoder {
     inline size_t HashSize() { return hash_.size(); }
     inline Token *HashLookup(StateId state) {
       // retrieves token for state or creates a new one if necessary
-      DEBUG_CMD(assert(hash_.size() > state)) // checked by Resize(AllocateLists)
+      DEBUG_CMD(KALDI_ASSERT(hash_.size() > state)) // checked by Resize(AllocateLists)
       if (hash_[state]) {
         return hash_[state];  // return corresponding token
       } else {  // create new token for state
@@ -519,15 +519,15 @@ class KaldiDecoder {
       queue_.clear();
     }
     void AssertNextEmpty() {
-      //DEBUG_CMD(assert(next_size_ == 0))      
-      assert(members_next_->size() == 0);
+      //DEBUG_CMD(KALDI_ASSERT(next_size_ == 0))      
+      KALDI_ASSERT(members_next_->size() == 0);
       int i = 0;
       for (typename std::vector<Token*>::iterator it = hash_.begin();
           it != hash_.end(); ++it) {
         if (*it) { DEBUG_OUT1("failed:" << i << ":" << (*it)->state)
           //*it = NULL;
         }
-        assert(*it == NULL);
+        KALDI_ASSERT(*it == NULL);
         i++;
       }
     }
@@ -551,7 +551,7 @@ class KaldiDecoder {
 
 
  public:
-  KaldiDecoder(KaldiDecoderOptions opts);
+  KaldiDecoder(const KaldiDecoderOptions opts);
   ~KaldiDecoder();
 
   // functions to set decoder options
@@ -649,6 +649,7 @@ class KaldiDecoder {
   Weight beam_threshold_;                // cut-off after evaluating PDFs
   std::vector<BaseFloat> scores_;        // used in pruning
   // it's a class member to avoid internal new/delete
+  KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiDecoder);
 };  // class KaldiDecoder
 
 };  // namespace kaldi
