@@ -71,6 +71,7 @@ $base = basename($logfile);
 $base =~ s:\.[a-z]+$:.sh: || die "Could not make sense of log-file name (expect a suffix e.g. .log): $logfile";
 $shfile = "$dir/$base";
 open(S, ">$shfile") || die "Could not write to script file $shfile";
+`chmod +x $shfile`;
 
 $qsub_cmd = "qsub -sync y -j y -o $logfile $qsub_opts $shfile >>$dir/queue.log 2>&1";
 #

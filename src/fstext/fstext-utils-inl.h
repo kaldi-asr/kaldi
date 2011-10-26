@@ -969,6 +969,81 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
                 << "arcs.";
 }
 
+template<class Arc>
+void PhiCompose(const Fst<Arc> &fst1,
+                const Fst<Arc> &fst2,
+                typename Arc::Label phi_label,
+                MutableFst<Arc> *ofst) {
+  KALDI_ASSERT(phi_label != kNoLabel); // just use regular compose in this case.
+  typedef Fst<Arc> F;
+  typedef PhiMatcher<SortedMatcher<F> > PM;
+  CacheOptions base_opts;
+  base_opts.gc_limit = 0; // Cache only the last state for fastest copy.
+  // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
+  // The matcher for fst1 doesn't matter; we'll use fst2's matcher.
+  ComposeFstImplOptions<SortedMatcher<F>, PM> impl_opts(base_opts);
+  // false is something called phi_loop which is something I don't
+  // fully understand, but I don't think we want it.
+
+  // These pointers are taken ownership of by ComposeFst.
+  PM *phi_matcher =
+      new PM(fst2, MATCH_INPUT, phi_label, false);
+  SortedMatcher<F> *sorted_matcher =
+      new SortedMatcher<F>(fst1, MATCH_NONE); // tell it
+  // not to use this matcher, as this would mean we would
+  // not follow phi transitions.
+  impl_opts.matcher1 = sorted_matcher;
+  impl_opts.matcher2 = phi_matcher;
+  *ofst = ComposeFst<Arc>(fst1, fst2, impl_opts);
+  Connect(ofst);
+}
+
+template<class Arc>
+void PropagateFinalInternal(
+    typename Arc::Label phi_label,
+    typename Arc::StateId s,
+    MutableFst<Arc> *fst) {
+  typedef typename Arc::Weight Weight;
+  if (fst->Final(s) == Weight::Zero()) {
+    // search for phi transition.  We assume there
+    // is just one-- phi nondeterminism is not allowed
+    // anyway.
+    int num_phis = 0;
+    for (ArcIterator<Fst<Arc> > aiter(*fst, s);
+         !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      if (arc.ilabel == phi_label) {
+        num_phis++;
+        if (arc.nextstate == s) continue; // don't expect
+        // phi loops but ignore them anyway.
+        
+        // If this recurses infinitely, it means there
+        // are loops of phi transitions, which there should
+        // not be in a normal backoff LM.  We could make this
+        // routine work for this case, but currently there is
+        // no need.
+        PropagateFinalInternal(phi_label, arc.nextstate, fst);
+        if (fst->Final(arc.nextstate) != Weight::Zero())
+          fst->SetFinal(s, Times(fst->Final(arc.nextstate), arc.weight));
+      }
+      KALDI_ASSERT(num_phis <= 1 && "Phi nondeterminism found");
+    }
+  }
+}
+
+template<class Arc>
+void PropagateFinal(typename Arc::Label phi_label,
+                    MutableFst<Arc> *fst) {
+  typedef typename Arc::StateId StateId;
+  if (fst->Properties(kIEpsilons, true)) // just warn.
+    KALDI_WARN << "PropagateFinal: this may not work as desired "
+        "since your FST has input epsilons.";
+  StateId num_states = fst->NumStates();
+  for (StateId s = 0; s < num_states; s++)
+    PropagateFinalInternal(phi_label, s, fst);
+}
+
+
 inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
   // for compatibility with OpenFst conventions.

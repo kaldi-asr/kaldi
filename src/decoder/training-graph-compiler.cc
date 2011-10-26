@@ -101,7 +101,7 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   assert(ctx2word_fst.Start() != kNoStateId);
 
   HTransducerConfig h_cfg;
-  h_cfg.trans_prob_scale = opts_.trans_prob_scale;
+  h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on
   // input side of H.
@@ -203,7 +203,7 @@ bool TrainingGraphCompiler::CompileGraphs(
   }
 
   HTransducerConfig h_cfg;
-  h_cfg.trans_prob_scale = opts_.trans_prob_scale;
+  h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h;
   VectorFst<StdArc> *H = GetHTransducer(cfst->ILabelInfo(),

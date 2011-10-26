@@ -54,25 +54,23 @@ int main(int argc, char *argv[]) {
         fst_rxfilename = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
 
-    VectorFst<LatticeArc> lm_fst;
 
-    {
-      VectorFst<StdArc> *std_lm_fst = ReadFstKaldi(fst_rxfilename);
-      
-      // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
-      // with all the cost on the first member of the pair (since it's a graph
-      // weight).
-      fst::StdToLatticeMapper<BaseFloat> mapper;
-      fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
-          mapped_fst(*std_lm_fst, mapper);
-      lm_fst = mapped_fst;
+
+    VectorFst<StdArc> *std_lm_fst = ReadFstKaldi(fst_rxfilename);    
+    if (std_lm_fst->Properties(fst::kILabelSorted, true) == 0) {
+      // Make sure LM is sorted on ilabel.
+      fst::ILabelCompare<StdArc> ilabel_comp;
+      fst::ArcSort(std_lm_fst, ilabel_comp);
     }
 
-    { // Make sure LM is sorted on ilabel.
-      fst::ILabelCompare<LatticeArc> ilabel_comp;
-      fst::ArcSort(&lm_fst, ilabel_comp);
-    }
-
+    // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
+    // with all the cost on the first member of the pair (since it's a graph
+    // weight).
+    fst::StdToLatticeMapper<BaseFloat> mapper;
+    fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
+        lm_fst(*std_lm_fst, mapper);
+    delete std_lm_fst;
+    
     // The next fifteen or so lines are a kind of optimization and
     // can be ignored if you just want to understand what is going on.
     // Change the options for TableCompose to match the input
@@ -111,7 +109,7 @@ int main(int argc, char *argv[]) {
 
         
         Lattice composed_lat;
-        // Could just do, more simply: Compose(Lat, lm_fst, &composed_lat);
+        // Could just do, more simply: Compose(lat, lm_fst, &composed_lat);
         // and not have lm_compose_cache at all.
         // The command below is faster, though; it's constant not
         // logarithmic in vocab size.
@@ -122,7 +120,7 @@ int main(int argc, char *argv[]) {
         DeterminizeLattice(composed_lat, &determinized_lat);
         fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_lat);
         if (determinized_lat.Start() == fst::kNoStateId) {
-          KALDI_WARN << "Empty lattice for key " << key << " (incompatible LM?)";
+          KALDI_WARN << "Empty lattice for utterance " << key << " (incompatible LM?)";
           n_fail++;
         } else {
           compact_lattice_writer.Write(key, determinized_lat);

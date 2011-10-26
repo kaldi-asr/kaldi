@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     TrainingGraphCompilerOptions gopts;
     int32 batch_size = 250;
-    gopts.trans_prob_scale = 0.0;  // Change the default to 0.0 since we will generally add the
+    gopts.transition_scale = 0.0;  // Change the default to 0.0 since we will generally add the
     // transition probs in the alignment phase (since they change each time)
     gopts.self_loop_scale = 0.0;  // Ditto for self-loop probs.
     std::string disambig_rxfilename;

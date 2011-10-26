@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         {  // Add transition-probs to the FST.
           std::vector<int32> disambig_syms;  // empty.
           AddTransitionProbs(trans_model, disambig_syms,
-                             gopts.trans_prob_scale, gopts.self_loop_scale,
+                             gopts.transition_scale, gopts.self_loop_scale,
                              &decode_fst);
         }
 

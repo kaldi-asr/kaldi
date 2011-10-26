@@ -48,13 +48,13 @@ int main(int argc, char *argv[]) {
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
-    BaseFloat trans_prob_scale = 1.0;
+    BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
     po.Register("retry-beam", &retry_beam, "Decoding beam for second try at alignment");
-    po.Register("transition-scale", &trans_prob_scale, "Transition-probability scale [relative to acoustics]");
+    po.Register("transition-scale", &transition_scale, "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
     po.Read(argc, argv);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
         {  // Add transition-probs to the FST.
           std::vector<int32> disambig_syms;  // empty.
           AddTransitionProbs(trans_model, disambig_syms,
-                             trans_prob_scale, self_loop_scale,
+                             transition_scale, self_loop_scale,
                              &decode_fst);
         }
 

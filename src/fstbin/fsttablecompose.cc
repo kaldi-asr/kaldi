@@ -52,10 +52,12 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Composition algorithm [between two FSTs of standard type, in tropical\n"
-        "semiring] that is more efficient for certain cases\n"
+        "semiring] that is more efficient for certain cases-- in particular,\n"
+        "where one of the FSTs (the left one, if --match-side=left) has large\n"
+        "out-degree\n"
         "\n"
-        "Usage:  fsttablecompose in1.fst in2.fst [out.fst]\n";
-
+        "Usage:  fsttablecompose (fst1-rxfilename|fst1-rspecifier) "
+        "(fst2-rxfilename|fst2-rspecifier) [(out-rxfilename|out-rspecifier)]\n";
 
     ParseOptions po(usage);
 
@@ -76,8 +78,7 @@ int main(int argc, char *argv[]) {
     } else if (match_side == "right") {
       opts.table_match_type = MATCH_INPUT;
     } else {
-      std::cerr << "Invalid match-side option: " << match_side << '\n';
-      return 1;
+      KALDI_ERR << "Invalid match-side option: " << match_side << '\n';
     }
 
     if (compose_filter == "alt_sequence") {
@@ -89,8 +90,7 @@ int main(int argc, char *argv[]) {
     } else  if (compose_filter == "sequence") {
       opts.filter_type = SEQUENCE_FILTER;
     } else {
-      std::cerr << "Invalid compose-filter option: " << compose_filter << '\n';
-      return 1;
+      KALDI_ERR << "Invalid compose-filter option: " << compose_filter << '\n';
     }
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
@@ -102,6 +102,10 @@ int main(int argc, char *argv[]) {
         fst2_in_str = po.GetArg(2),
         fst_out_str = po.GetOptArg(3);
 
+
+    // Note: the "table" in is_table_1 and similar variables has nothing
+    // to do with the "table" in "fsttablecompose"; is_table_1 relates to
+    // whether we are dealing with a single FST or a whole set of FSTs.
     bool is_table_1 =
         (ClassifyRspecifier(fst1_in_str, NULL, NULL) != kNoRspecifier),
         is_table_2 =
@@ -115,12 +119,7 @@ int main(int argc, char *argv[]) {
       VectorFst<StdArc> *fst1 = ReadFstKaldi(fst1_in_str);
       
       VectorFst<StdArc> *fst2 = ReadFstKaldi(fst2_in_str);
-      if (!fst2) {
-        std::cerr << "fsttablecompose: could not read fst2 from " <<
-            (fst2_in_str == "" ? "standard input" : fst2_in_str) << '\n';
-        return 1;
-      }
-
+      
       VectorFst<StdArc> composed_fst;
 
       TableCompose(*fst1, *fst2, &composed_fst, opts);
@@ -148,7 +147,7 @@ int main(int argc, char *argv[]) {
       return (n_done != 0 ? 0 : 1);
     } else {
       KALDI_ERR << "The combination of tables/non-tables and match-type that you "
-                << "supplied is not currently supported.  Please implement this, "
+                << "supplied is not currently supported.  Either implement this, "
                 << "ask the maintainers to implement it, or call this program "
                 << "differently.";
     }

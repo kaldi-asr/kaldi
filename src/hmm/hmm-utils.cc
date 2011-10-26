@@ -155,7 +155,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   // Now apply probability scale.
   // We waited till after the possible weight-pushing steps,
   // because weight-pushing needs "real" weights in order to work.
-  ApplyProbabilityScale(config.trans_prob_scale, ans);
+  ApplyProbabilityScale(config.transition_scale, ans);
   if (cache != NULL)
     (*cache)[cache_index] = ans;
   return ans;
@@ -769,19 +769,19 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
 // Returns the scaled, but not negated, log-prob, with the given scaling factors.
 static BaseFloat GetScaledTransitionLogProb(const TransitionModel &trans_model,
                                             int32 trans_id,
-                                            BaseFloat trans_prob_scale,
+                                            BaseFloat transition_scale,
                                             BaseFloat self_loop_scale) {
-  if (trans_prob_scale == self_loop_scale) {
-    return trans_model.GetTransitionLogProb(trans_id) * trans_prob_scale;
+  if (transition_scale == self_loop_scale) {
+    return trans_model.GetTransitionLogProb(trans_id) * transition_scale;
   } else {
     if (trans_model.IsSelfLoop(trans_id)) {
       return self_loop_scale * trans_model.GetTransitionLogProb(trans_id);
     } else {
       int32 trans_state = trans_model.TransitionIdToTransitionState(trans_id);
       return self_loop_scale * trans_model.GetNonSelfLoopLogProb(trans_state)
-          + trans_prob_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
+          + transition_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
       // This could be simplified to
-      // (self_loop_scale - trans_prob_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
+      // (self_loop_scale - transition_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
       // + trans_model.GetTransitionLogProb(trans_id);
       // this simplifies if self_loop_scale == 0.0
     }
@@ -792,7 +792,7 @@ static BaseFloat GetScaledTransitionLogProb(const TransitionModel &trans_model,
 
 void AddTransitionProbs(const TransitionModel &trans_model,
                         const std::vector<int32> &disambig_syms,  // may be empty
-                        BaseFloat trans_prob_scale,
+                        BaseFloat transition_scale,
                         BaseFloat self_loop_scale,
                         fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
@@ -809,7 +809,7 @@ void AddTransitionProbs(const TransitionModel &trans_model,
       if (l >= 1 && l <= num_tids) {  // a transition-id.
         BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
                                                                l,
-                                                               trans_prob_scale,
+                                                               transition_scale,
                                                                self_loop_scale);
         arc.weight = Times(arc.weight, TropicalWeight(-scaled_log_prob));
       } else if (l != 0) {
@@ -817,6 +817,36 @@ void AddTransitionProbs(const TransitionModel &trans_model,
                                arc.ilabel))
           KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
                     << " on graph input side.";
+      }
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+void AddTransitionProbs(const TransitionModel &trans_model,
+                        BaseFloat transition_scale,
+                        BaseFloat self_loop_scale,
+                        Lattice *lat) {
+  using namespace fst;
+  int num_tids = trans_model.NumTransitionIds();
+  for (fst::StateIterator<Lattice> siter(*lat);
+       !siter.Done();
+       siter.Next()) {
+    for (MutableArcIterator<Lattice> aiter(lat, siter.Value());
+         !aiter.Done();
+         aiter.Next()) {
+      LatticeArc arc = aiter.Value();
+      LatticeArc::Label l = arc.ilabel;
+      if (l >= 1 && l <= num_tids) {  // a transition-id.
+        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
+                                                               l,
+                                                               transition_scale,
+                                                               self_loop_scale);
+        // cost is negated log prob.
+        arc.weight.SetValue1(arc.weight.Value1() - scaled_log_prob);
+      } else if (l != 0) {
+        KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                  << " on lattice input side.";
       }
       aiter.SetValue(arc);
     }

@@ -167,6 +167,23 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
   }  // end looping over states
 }
 
+void ConvertLatticeToPhones(const TransitionModel &trans,
+                            Lattice *lat) {
+  typedef LatticeArc Arc;
+  int32 num_states = lat->NumStates();
+  for (int32 state = 0; state < num_states; ++state) {
+    for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
+        aiter.Next()) {
+      Arc arc(aiter.Value());
+      arc.olabel = 0; // remove any word.
+      if (arc.ilabel != 0 // has a transition-id on input..
+          && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
+        arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
+      aiter.SetValue(arc);
+    }  // end looping over arcs
+  }  // end looping over states
+}
+
 bool LatticeBoost(const TransitionModel &trans,
                   const std::vector<std::set<int32> > &active_phones,
                   const std::vector<int32> &silence_phones,

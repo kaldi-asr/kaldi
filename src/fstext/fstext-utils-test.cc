@@ -580,7 +580,6 @@ void TestRemoveUselessArcs() {
 
 
 
-
 } // end namespace fst
 
 

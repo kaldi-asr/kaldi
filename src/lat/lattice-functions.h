@@ -51,6 +51,18 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
                          const std::vector<int32> &sil_phones,
                          std::vector<std::set<int32> > *active_phones);
 
+/// Given a lattice, and a transition model to map pdf-ids to phones,
+/// replace the output symbols (presumably words), with phones; we
+/// use the TransitionModel to work out the phone sequence.  Note
+/// that the phone labels are not exactly aligned with the phone
+/// boundaries.  We put a phone label to coincide with any transition
+/// to the final, nonemitting state of a phone (this state always exists,
+/// we ensure this in HmmTopology::Check()).  This would be the last
+/// transition-id in the phone if reordering is not done (but typically
+/// we do reorder).
+void ConvertLatticeToPhones(const TransitionModel &trans_model,
+                            Lattice *lat);
+
 /// Boosts LM probabilities by b * [#frame errors]; equivalently, adds
 /// -b*[#frame errors] to the graph-component of the cost of each arc/path.
 /// There is a frame error if a particular transition-id on a particular frame

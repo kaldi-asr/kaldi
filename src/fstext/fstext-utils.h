@@ -544,6 +544,40 @@ class VectorFstHolder {
 template<class Arc>
 void RemoveUselessArcs(MutableFst<Arc> *fst);
 
+
+// PhiCompose is a version of composition where
+// the right hand FST (fst2) is treated as a backoff
+// LM, with the phi symbol (e.g. #0) treated as a
+// "failure transition", only taken when we don't
+// have a match for the requested symbol.
+template<class Arc>
+void PhiCompose(const Fst<Arc> &fst1,
+                const Fst<Arc> &fst2,
+                typename Arc::Label phi_label,
+                MutableFst<Arc> *fst);
+
+// PropagateFinal propagates final-probs through
+// "phi" transitions (note that here, phi_label may
+// be epsilon if you want).  If you have a backoff LM
+// with special symbols ("phi") on the backoff arcs
+// instead of epsilon, you may use PhiCompose to compose
+// with it, but this won't do the right thing w.r.t.
+// final probabilities.  You should first call PropagateFinal
+// on the FST with phi's i it (fst2 in PhiCompose above),
+// to fix this.  If a state does not have a final-prob,
+// but has a phi transition, it makes the state's final-prob
+// (phi-prob * final-prob-of-dest-state), and does this
+// recursively i.e. follows phi transitions on the dest state
+// first.  It behaves as if there were a super-final state
+// with a special symbol leading to it, from each currently
+// final state.  Note that this may not behave as desired
+// if there are epsilons in your FST; it might be better
+// to remove those before calling this function.
+
+template<class Arc>
+void PropagateFinal(typename Arc::Label phi_label,
+                    MutableFst<Arc> *fst);
+
 // Read an FST using Kaldi I/O mechanisms (pipes, etc.)
 // On error, throws using KALDI_ERR.
 inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename);

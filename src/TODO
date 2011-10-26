@@ -12,6 +12,7 @@ major:
 
 
 minor:
+ add combination scripts for wsj/s3
  look into why results not reproducible?   check if reproducible?
  change UBM-building in WSJ to match RM, and test the effect of this.
  Maybe test SGMMs, with Gaussian alignments fixed to UBM for first few iters.
@@ -33,8 +34,6 @@ minor:
  change sgmm code so gselect is no longer optional [only in discrim/?]
  Make sure scripts don't depend on . being on PATH
  Make ApplySoftMax() function more efficient (does two exp()'s per element)
- possibly change the way lattice-compose works to remove properties hack.
- change name of one of the lattice-utils.{h,cc} files...
 
 gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
 

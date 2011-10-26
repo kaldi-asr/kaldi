@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     int32 max_mem = 50000000; // 50 MB
     int32 max_loop = 500000;
     BaseFloat delta = fst::kDelta;
-    bool prune;
+    bool prune = false;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used to handle determinization failures, set --prune=false to disable routine pruning");

@@ -93,9 +93,9 @@ void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
   fst::ConvertLattice(ilat, ofst); 
   // remove weights, project to output, sort according to input arg
   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>()); 
-  fst::Project(ofst, fst::PROJECT_OUTPUT);  // for some reason the words are on the output side  
+  fst::Project(ofst, fst::PROJECT_OUTPUT);  // The words are on the output side  
   MapWildCards(wildcards,ofst);
-  fst::RmEpsilon(ofst);          // don't tolerate epsilons as they screw up tallying of errors vs arcs
+  fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to tally errors
   fst::ArcSort(ofst, fst::StdILabelCompare());
 }
 

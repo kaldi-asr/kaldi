@@ -27,21 +27,21 @@ namespace kaldi {
 
 struct TrainingGraphCompilerOptions {
 
-  BaseFloat trans_prob_scale;
+  BaseFloat transition_scale;
   BaseFloat self_loop_scale;
   bool rm_eps;
   bool reorder;  // (Dan-style graphs)
 
-  explicit TrainingGraphCompilerOptions(BaseFloat trans_prob_scale = 1.0,
+  explicit TrainingGraphCompilerOptions(BaseFloat transition_scale = 1.0,
                                         BaseFloat self_loop_scale = 1.0,
                                         bool b = true) :
-      trans_prob_scale(trans_prob_scale),
+      transition_scale(transition_scale),
       self_loop_scale(self_loop_scale),
       rm_eps(false),
       reorder(b) { }
 
   void Register(ParseOptions *po) {
-    po->Register("transition-scale", &trans_prob_scale, "Scale of transition "
+    po->Register("transition-scale", &transition_scale, "Scale of transition "
                  "probabilities (excluding self-loops)");
     po->Register("self-loop-scale", &self_loop_scale, "Scale of self-loop vs. "
                  "non-self-loop probability mass ");
