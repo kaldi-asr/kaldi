@@ -685,8 +685,8 @@ class KaldiDecoder {
 
   /**
    * @brief creates new token, computes score/penalties, update word links
-   * @param token, arc
-   * @return new token, if arc should be followed, otherwise NULL
+   * @param source, dest
+   * @return true, if arc should will be followed
    */
   inline bool PassTokenThroughArc(Token *source, Token *dest);
 
