@@ -28,7 +28,7 @@
 
 echo "Preparing train and test data"
 
-for x in train_si284 test_eval92 test_eval93 test_dev93; do 
+for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do 
   mkdir -p data/$x
   cp data/local/${x}_wav.scp data/$x/wav.scp
   cp data/local/$x.txt data/$x/text
@@ -122,7 +122,6 @@ for f in phones.txt words.txt L.fst silphones.csl nonsilphones.csl topo; do
 done
 
 
-
 # (3),
 # In lang_test, create a phones.txt file that includes the disambiguation symbols.
 # the --include-zero includes the #0 symbol we pass through from the grammar.
@@ -165,7 +164,7 @@ cat data/local/lexicon.txt | \
 
 echo Preparing language models for test
 
-for lm_suffix in bg tgpr tg; do
+for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
   test=data/lang_test_${lm_suffix}
   mkdir -p $test
   for f in phones.txt words.txt phones_disambig.txt L.fst L_disambig.fst \

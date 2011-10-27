@@ -81,24 +81,43 @@ cat links/11-13.1/wsj0/doc/indices/test/nvp/si_et_20.ndx | \
   $local/ndx2flist.pl $* |  awk '{printf("%s.wv1\n", $1)}' | \
   sort > test_eval92.flist
 
+# Nov'92 (330 utts, 5k vocab)
+cat links/11-13.1/wsj0/doc/indices/test/nvp/si_et_05.ndx | \
+  $local/ndx2flist.pl $* |  awk '{printf("%s.wv1\n", $1)}' | \
+  sort > test_eval92_5k.flist
+
 # Nov'93: (213 utts)
 # Have to replace a wrong disk-id.
 cat links/13-32.1/wsj1/doc/indices/wsj1/eval/h1_p0.ndx | \
   sed s/13_32_1/13_33_1/ | \
   $local/ndx2flist.pl $* | sort > test_eval93.flist
 
-# Dev-set for Nov'93 (503  utts)
+# Nov'93: (213 utts, 5k)
+cat links/13-32.1/wsj1/doc/indices/wsj1/eval/h2_p0.ndx | \
+  sed s/13_32_1/13_33_1/ | \
+  $local/ndx2flist.pl $* | sort > test_eval93_5k.flist
+
+# Dev-set for Nov'93 (503 utts)
 cat links/13-34.1/wsj1/doc/indices/h1_p0.ndx | \
   $local/ndx2flist.pl $* | sort > test_dev93.flist
 
+# Dev-set for Nov'93 (513 utts, 5k vocab)
+cat links/13-34.1/wsj1/doc/indices/h2_p0.ndx | \
+  $local/ndx2flist.pl $* | sort > test_dev93_5k.flist
+
 # Dev-set for Nov'93 (503 utts)
 # links/13-34.1/wsj1/doc/indices/h1_p0.ndx
+
+# Dev-set Hub 1,2 (503, 913 utterances)
+find links/13-16.1/WSJ1/SI_DT_20 -print | grep ".WV1" | sort | sed s:links:/mnt/matylda2/data/WSJ1: > dev_dt_20.flist
+find links/13-16.1/WSJ1/SI_DT_05 -print | grep ".WV1" | sort | sed s:links:/mnt/matylda2/data/WSJ1: > dev_dt_05.flist
+
 
 # Finding the transcript files:
 for x in $*; do find -L $x -iname '*.dot'; done > dot_files.flist
 
 # Convert the transcripts into our format (no normalization yet)
-for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
    $local/flist2scp.pl $x.flist | sort > ${x}_sph.scp
    cat ${x}_sph.scp | awk '{print $1}' | $local/find_transcripts.pl  dot_files.flist > $x.trans1
 done
@@ -107,24 +126,33 @@ done
 # that will be done inside the training scripts, as we'd like to make the
 # data-preparation stage independent of the specific lexicon used.
 noiseword="<NOISE>";
-for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
    cat $x.trans1 | $local/normalize_transcript.pl $noiseword | sort > $x.txt || exit 1;
 done
 
  
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
-for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
 done
 
+# Make the utt2spk and spk2utt files.
+for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
+   cat ${x}_sph.scp | awk '{print $1}' | perl -ane 'chop; m:^...:; print "$_ $&\n";' > $x.utt2spk
+   cat $x.utt2spk | $scripts/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
+done
+
+
+#in case we want to limit lm's on most frequent words, copy lm training word frequency list
+cp links/13-32.1/wsj1/doc/lng_modl/vocab/wfl_64.lst .
 
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
 
-cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z  lm_bg.arpa.gz || exit 1;
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z lm_bg.arpa.gz || exit 1;
 chmod u+w lm_bg.arpa.gz
-# trigram would be:
 
+# trigram would be:
 cat links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb20onp.z | \
  perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' | \
  gzip -c -f > lm_tg.arpa.gz || exit 1;
@@ -132,11 +160,19 @@ cat links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb20onp.z | \
 prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa || exit 1;
 gzip -f lm_tgpr.arpa || exit 1;
 
-# Make the utt2spk and spk2utt files.
-for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93; do
-   cat ${x}_sph.scp | awk '{print $1}' | perl -ane 'chop; m:^...:; print "$_ $&\n";' > $x.utt2spk
-   cat $x.utt2spk | $scripts/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
-done
+# repeat for 5k language models
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb05onp.z  lm_bg_5k.arpa.gz || exit 1;
+chmod u+w lm_bg_5k.arpa.gz
+
+# trigram would be: !only closed vocabulary here!
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb05cnp.z lm_tg_5k.arpa.gz || exit 1;
+chmod u+w lm_tg_5k.arpa.gz
+gunzip lm_tg_5k.arpa.gz
+tail -n 4328839 lm_tg_5k.arpa | gzip -c -f > lm_tg_5k.arpa.gz
+rm lm_tg_5k.arpa
+
+prune-lm --threshold=1e-7 lm_tg_5k.arpa.gz lm_tgpr_5k.arpa || exit 1;
+gzip -f lm_tgpr_5k.arpa || exit 1;
 
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then
@@ -161,5 +197,6 @@ cat links/11-13.1/wsj0/doc/spkrinfo.txt \
    ./wsj0-train-spkrinfo.txt  | \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
    awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender.map
+
 
 echo "Data preparation succeeded"
