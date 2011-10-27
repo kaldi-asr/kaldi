@@ -21,7 +21,7 @@ namespace kaldi {
 /**
   \page lattices Lattices in Kaldi
 
- \section lattices_intro Introdutction
+ \section lattices_intro Introduction
 
  A lattice is a representation of the alternative word-sequences that are "sufficiently likely" for
  a particular utterance.  In order to understand lattices properly you have to understand decoding
@@ -471,8 +471,10 @@ programs.
 \verbatim
  lattice-lmrescore --lm-scale=1.0 ark:nolm.lats G_new.fst ark:out.lats
 \endverbatim
-What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this.
-Actually, first we will describe the simple version that is not exactly what
+Note that there are other ways to do this; see 
+the documentation for lattice-compose below.
+What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
+actually, we will first first escribe the simple version that is not exactly what
 happens.  Suppose that we are given an LM-scale S and a LM G.fst.  
 We first multiply all the costs in G.fst by S.  Then for each lattice,
 we compose it on the right with G, lattice-determinize it (to keep only the
@@ -532,6 +534,261 @@ to the LatticeWeight weight type.
 \endverbatim
  This program calls OpenFst's Union() function, then lattice-determinizes to
  ensure there is only one path for each word sequence, then write the lattice out.
+ There are actually not many situations where lattice union makes sense (e.g.
+ it does not make much sense to do the union over lattices computed with different
+ features or models).
+
+ \subsection lattices_operations_compose Lattice composition
+
+ The program lattice-compose works in several modes.  One composes lattices
+ with other lattices.  This is done in the transducer form, i.e. viewing
+ a lattice as a transducer from transition-ids to words.  It would typically
+  be done after first projecting one of the sets of lattices on the output
+ (to get a word to word transducer).  Typical usage might be:
+\verbatim
+  lattice-project ark:1.lats ark:-  | \
+    lattice-compose ark:- ark:2.lats ark:3.lats
+\endverbatim
+ Now, 3.lats would have the sum of the scores in
+ 1.lats and 2.lats, on its paths.  You can accomplish the same thing in "one package"
+ by using the program lattice-interp (see next section).
+
+ Another mode is to compose a set of lattices with a fixed FST.
+ The FST is converted dynamically into a lattice for this purpose;
+ the FST weights are interpreted as the "graph part" of the lattice weights,
+ i.e. as the first part of the tuple.  An example of the use of
+ this is to convert a lattice to phones, and then compose with
+ a lexicon to convert back to words, for example:
+\verbatim
+ lattice-to-phone-lattice final.mdl ark:1.lats ark:- | \
+   lattice-compose ark:- ark:Ldet.fst ark:words.lats
+\endverbatim
+ This is a simplified example; you'd do further processing
+ to remove the original "graph scores" from the lattices and
+ add back in the grammar and transition scores.  Also, 
+ Ldet.fst is a specially processed version of the lexicon:
+ the lexicon with disambiguation symbols (but without the
+ loop that converts \#0 to \#0 to pass through the language
+ model disambiguation symbol), determinized and with the
+ disambiguation symbols then removed.
+
+ The mode described above can also be useful for language model
+ rescoring; however, it also comes in a different version, 
+ illustrated below (this is useful for adding in LM scores to lattices, assuming
+ we had removed the old LM scores):
+\verbatim
+  lattice-compose --phi-label=13461 ark:1.lats G.fst ark:2.lats
+\endverbatim
+ Here, G.fst would be the grammar including the special "backoff symbol"
+ \#0 on the input side, and 13461 is the numeric label of the backoff symbol.
+This form of composition treats the backoff symbol as a failure transition
+ (using OpenFst's PhiMatcher), which is only taken in case the
+ requested label did not exist: thus, we treat G.fst as a backoff 
+ language model.  This form of composition is more exact than
+ turning the \#0 into epsilon and compsoing normally, because it
+ prevents us taking backoff arcs when a non-backoff arc exists
+ (which amounts to a misinterpretation of the language model).
+ Actually, what the program lattice-compose has to do is a little more
+ complicated than just invoking Compose with OpenFst's PhiMatcher, because
+ of the way final-probabilities are treated.  Because Compose doesn't use
+ the matcher when computing final probabilities, we can fail to take the
+ backoff arc when computing final probabilities.   Therefore the
+ lattice-compose program has to modify the final probabilities 
+ by "following through" the phi arcs, before calling the composition 
+ algorithm.  Note that this problem would not exist if we had the end-of-sentence
+ symbol as a label in G, but in some scripts we prefer to remove it.
+Note also that "phi composition" would not work properly in general, if
+the FST with phi's in it had epsilons on that same side.  Thus, it makes
+sense to remove epsilons from G first.
+
+ \subsection lattices_operations_interp Lattice interpolation
+
+ The program lattice-interp interpolates two sets of lattices together,
+ with a scaling factor.  An example command line is:
+\verbatim
+  lattice-interp --alpha=0.4 ark:1.lats ark:2.lats ark:3.lats
+\endverbatim
+which amounts to putting a weight of 0.4 on the scores of 1.lats and
+of 0.6 on the scores of 2.lats.  It keeps the alignments, if any, present
+in the first archive.  Note that this program will not output
+any lattice if the composition is empty because the two lattices
+had no paths in common, so the final archive may
+have "gaps" in it.  You have to build in some mechanism to produce
+output for such utterances, into your decoding scripts (e.g. 
+see egs/rm/s3/steps/decode_combine.sh).  The behavior of this
+program can be simulated by combining the programs
+lattice-scale, lattice-project and lattice-compose.
+  
+ \subsection lattices_operations_phones Conversion of lattices to phones
+
+  The program lattice-to-phone-lattice removes the word labels from the
+ output side of a lattice and puts in their place phone labels.  These
+ are worked out from the transition-ids on the input side.  Note that the phone labels are
+ not exactly aligned with the phone boundaries (as a rule, FSTs have
+ no real concept of alignment between input and output symbols).
+ Typical usage is:
+\verbatim
+  lattice-to-phones final.mdl ark:1.lats ark:phones.lats
+\endverbatim
+
+ \subsection lattices_operations_project Lattice projection
+ 
+  Projection is an FST operation that turns an FST into an acceptor, either
+  by copying the output symbols to the input, or the input symbols to the output,
+ so they are both the same.  The default for lattice-project is to copy the
+ word labels to the input side (this is useful when doing interpolation
+ of the scores of lattices).  An example is:
+\verbatim
+  lattice-project ark:1.lats ark:- | \
+     lattice-compose ark:- ark:2.lats ark:3.lats
+\endverbatim
+
+ \subsection lattices_operations_equivalent Lattice equivalence testing  
+
+  The program lattice-equivalent is mostly useful as a debugging tool.  It 
+ tests the equivalence of sets of lattices.  It returns with exit status 0
+ only if all pairs of lattices in two supplied tables (e.g. archives) are
+ equivalent.  It uses a randomized equivalence testing algorithm to do this.
+ A typical usage is:
+\verbatim
+  lattice-equivalent ark:1.lats ark:2.lats || echo "Not equivalent!"
+\endverbatim
+ Optional arguments include --num-paths (the number of paths used in the
+ randomized testing algorithm) and --delta, the score difference at which
+ scores are considered different for purposes of equivalence testing.
+
+ \subsection lattices_operations_rmali Removing alignments from lattices
+
+ The program lattice-rmali removes the alignment information (i.e. the
+ transition-ids) from the input side of the lattices.  This is mainly useful
+ if you will not need that information (e.g. you only need the lattices for
+  language model rescoring), and you want to save disk space.  An example is:
+\verbatim
+  lattice-rmali ark:in.lats ark:word.lats
+\endverbatim
+
+ \subsection lattices_operations_boost Error boosting in lattices
+
+ The program lattice-boost-ali is used in boosted MMI training.  It reads in
+ a lattice and an alignment (both as tables, e.g. archives), and outputs the
+ lattices with the language model scores (i.e. the graph part of the scores)
+ boosted by the parameter b times the number of frame-level phone errors on that
+ path.  Typical usage is:
+\verbatim
+  lattice-boost-ali --silence-phones=1:2:3 --b=0.1 final.mdl ark:1.lats \
+   ark:1.ali ark:boosted.lats
+\endverbatim
+The silence phones are treated specially: wherever they appear in the lattices,
+they are assigned zero error, i.e. they are not counted as errors
+(this behavior can be controlled with the --max-silence option).    Note that
+this special treatment of silence has been adopted from MPE training where it
+appeared to help; we have not investigated its exact effect on boosted MMI.
+
+ \subsection lattices_operations_post Computing posteriors from lattices
+
+  The program lattice-to-post computes, from a lattice, per-frame posterior
+ probabilities of the transition-ids in the lattice.  This is done by a standard
+ forward-backward type of algorithm.  Since, by convention, we store lattices
+ without any acoustic scaling, it will normally be necessary to supply an
+ acoustic scale to be used in the forward-backward algorithm.  It also accepts
+ a language model scale, but the default (1.0) will often be most appropriate.  
+  An example of
+ using this program is:
+\verbatim
+  lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:- | \
+    gmm-acc-stats 10.mdl "$feats" ark:- 1.acc
+\endverbatim
+
+ \subsection lattices_operations_det Determinization of lattices
+
+  The program lattice-determinize implements lattice-determinization, which
+ essentially consists of keeping, for each word-sequence in the lattice, only
+ the best-scoring sequence of transition-ids.  In general this process is
+ sensitive to the acoustic scale (because "best-scoring" depends on the scale),
+ but if the lattice has previously been determinized and then has only been processed
+ in a "word-level" way, i.e. each word-sequence still has only one transition-id
+ sequence, then the acoustic scale doesn't matter.   The only time the acoustic
+ scale is likely to matter is if you generate state-level lattices, e.g. you
+ do lattice generation with --determinize-lattice=false.  
+ This program has other options, that are mostly related to what to do if
+ determinization "blows up", i.e. exhausts memory, but in general you can just
+ leave these at their default values.   These are mostly there because a previous
+ version of the determinization tended to exhaust memory.
+ You may want to set --prune=true if you want
+ to do pruning as part of the same program, but be careful that this only makes sense
+ if you have set the acoustic scale to an appropriate value; you might also want to
+ set the --beam option in that case.
+
+ A typical usage is:
+\verbatim
+   lattice-determinize ark:1.lats ark:det.lats
+\endverbatim
+or:
+\verbatim
+   lattice-determinize --acoustic-scale=0.08333 ark:state_level.lats ark:1.lats
+\endverbatim
+ Note that lattices produced by lattice generation programs will be default already
+ be determinized, so it only makes sense to do determinization if you have just done
+ an operation like composition that makes lattices nondeterministic, or if you
+ have given --determinize-lattice=false to the lattice generation program to create
+ state-level lattices.
+
+ \subsection lattices_operations_oracle Computing oracle WERs from lattices
+
+ The program lattice-oracle takes two tables: the first of lattices, the second
+ of transcriptions (C++ representation: vector<int32>), and outputs the oracle
+ word-sequence of the lattices; it prints out the corresponding WERs in its 
+ logging output.  This is done by constructing an "edit-distance FST" and
+ composing this with unweighted acceptors constructed from the lattice and
+ from the reference.
+
+  An example (this script fragment assumes the newer, s3-style script) is:
+\verbatim
+ cat $data/text | \
+  sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g'  | \
+  scripts/sym2int.pl --ignore-first-field $lang/words.txt | \
+  lattice-oracle --word-symbol-table=$lang/words.txt  \
+    "ark:gunzip -c $dir/lats.pruned.gz|" ark:- ark,t:$dir/oracle.tra \
+    2>$dir/oracle.log
+\endverbatim
+
+ \subsection lattices_operations_tprob Adding transition probabilities to lattices
+
+ The program lattice-add-trans-probs adds in the (negated) transition probabilities  to the
+ costs of a lattice.  This is useful in forms of lattice rescoring where the original
+ "graph costs" are discarded and reconstructed from scratch.  A typical usage is:
+\verbatim
+  lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=0.1 \
+      final.mdl ark:1.lats ark:2.lats
+\endverbatim
+  See \ref hmm_scale for more explanation about these scaling factors.
+
+  \subsection lattices_operations_to_fst Converting lattices to FSTs
+
+ The program lattice-to-fst converts an table of lattices into a table of
+ FSTs, in the same format used by the code that compiles the training
+  graphs.  The resulting FSTs will be weighted word acceptors (although
+ in current use of this program we apply a scale of zero so there are
+ actually no weights).  These may be used as input to the program 
+ compile-train-graphs-fsts to produce decoding graphs that only include
+ the paths present in the lattice.  The main use of this is to do
+ lattice rescoring across different models that don't share the same tree.
+ An example of usage is:
+\verbatim
+  lattice-to-fst --lm-scale=0.0 --acoustic-scale=0.0 ark:1.lats ark:1.words
+\endverbatim 
+ 
+
+ \subsection lattices_operations_copy Copying lattices
+
+  The program lattice-copy simply copies a table (e.g. archive) of lattices.
+ This is mostly useful if you want to view binary FSTs in text form.  For
+ example:
+\verbatim
+  lattice-copy ark:1.lats ark,t:- | head -50
+\endverbatim
+
+
 
 */
 

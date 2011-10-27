@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "Turn lattices into normal FSTs, retaining only the word labels\n"
-        "By default, removes all weights and also epsilons (confiugure with\n"
+        "By default, removes all weights and also epsilons (configure with\n"
         "with --acoustic-scale, --lm-scale and --rm-eps)\n"
         "Usage: lattice-to-fst [options] lattice-rspecifier fsts-wspecifier\n"
         " e.g.: lattice-to-fst  ark:1.lats ark:1.fsts\n";

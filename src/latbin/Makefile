@@ -6,7 +6,7 @@ include ../kaldi.mk
 
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
            lattice-lmrescore lattice-scale lattice-union lattice-to-post \
-           lattice-determinize lattice-oracle string-to-lattice lattice-rmali \
+           lattice-determinize lattice-oracle lattice-rmali \
            lattice-compose lattice-boost-ali lattice-copy lattice-to-fst \
            lattice-to-phone-lattice lattice-interp lattice-project \
            lattice-add-trans-probs

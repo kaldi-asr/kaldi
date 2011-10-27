@@ -129,7 +129,7 @@ void CreateEditDistance(const fst::StdVectorFst &fst1,
     }
   }
   pfst->SetFinal(0,fst::StdArc::Weight::One());
-  fst::ArcSort(pfst, fst::StdILabelCompare());
+  fst::ArcSort(pfst, fst::StdOLabelCompare());
 }
 
 void CountErrors(fst::StdVectorFst &fst,
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Finds the path having the smallest edit-distance between two lattices.\n"
         "For efficiency put the smallest lattices first (for example reference strings).\n"
-        "Usage: lattice-oracle [options] reference-lattice-rspecifier test-lattice-rspecifier transcriptions-wspecifier\n"
+        "Usage: lattice-oracle [options] test-lattice-rspecifier reference-rspecifier transcriptions-wspecifier\n"
         " e.g.: lattice-oracle ark:ref.lats ark:1.lats ark:1.tra\n";
         
     ParseOptions po(usage);
@@ -211,13 +211,14 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string lats_rspecifier1 = po.GetArg(1),
-          lats_rspecifier2 = po.GetArg(2),
-          transcriptions_wspecifier = po.GetOptArg(3);
+    std::string lats_rspecifier = po.GetArg(1),
+        reference_rspecifier = po.GetArg(2),
+        transcriptions_wspecifier = po.GetOptArg(3);
 
     // will read input as  lattices
-    SequentialLatticeReader lattice_reader1(lats_rspecifier1);
-    RandomAccessLatticeReader lattice_reader2(lats_rspecifier2);
+    SequentialLatticeReader lattice_reader(lats_rspecifier);
+    RandomAccessInt32VectorReader reference_reader(reference_rspecifier);
+
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
@@ -233,26 +234,27 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0, n_fail = 0;
     unsigned int tot_corr=0, tot_subs=0, tot_ins=0, tot_del=0, tot_words=0;
 
-    for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
-      std::string key = lattice_reader1.Key();
-      const Lattice lat1 = lattice_reader1.Value();
+    for (; !lattice_reader.Done(); lattice_reader.Next()) {
+      std::string key = lattice_reader.Key();
+      const Lattice &lat = lattice_reader.Value();
       cerr << "Lattice "<<key<<" read."<<endl;
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> fst1;
-      ConvertLatticeToUnweightedAcceptor(lat1,wild_syms,&fst1);
+      ConvertLatticeToUnweightedAcceptor(lat,wild_syms,&fst1);
       CheckFst(fst1, "fst1_", key);
-
+      
       // TODO: map certain symbols (using an FST created with CreateMapFst())
       
-      if (!lattice_reader2.HasKey(key)) {
-        KALDI_ERR << "No 2nd lattice present for utterance " << key;
+      if (!reference_reader.HasKey(key)) {
+        KALDI_WARN << "No reference present for utterance " << key;
+        n_fail++;
+        continue;
       }
-      const Lattice lat2 = lattice_reader2.Value(key);
-      
-      // remove all while creating a normal FST
+      const std::vector<int32> &reference = reference_reader.Value(key);
       VectorFst<StdArc> fst2;
-      ConvertLatticeToUnweightedAcceptor(lat2,wild_syms,&fst2);
+      MakeLinearAcceptor(reference, &fst2);
+      
       CheckFst(fst2, "fst2_", key);
             
       // recreate edit distance fst if necessary
@@ -261,15 +263,15 @@ int main(int argc, char *argv[]) {
       
       // compose with edit distance transducer
       VectorFst<StdArc> composedFst;
-      fst::Compose(fst1, editDistanceFst, &composedFst);
+      fst::Compose(editDistanceFst, fst2, &composedFst);
       CheckFst(composedFst, "composed_", key);
       
-      // make sure composed FST in output sorted
-      fst::ArcSort(&composedFst, fst::StdOLabelCompare());
+      // make sure composed FST is input sorted
+      fst::ArcSort(&composedFst, fst::StdILabelCompare());
       
       // compose with previous result
       VectorFst<StdArc> resultFst;
-      fst::Compose(composedFst, fst2, &resultFst);
+      fst::Compose(fst1, composedFst, &resultFst);
       CheckFst(resultFst, "result_", key);
       
       // find out best path
@@ -289,19 +291,19 @@ int main(int argc, char *argv[]) {
         KALDI_LOG << "%WER "<<(100.*toterrs)/totwords<<" [ "<<toterrs<<" / "<<totwords<<", "<<ins<<" ins, "<<del<<" del, "<<subs<<" sub ]";
         tot_corr += corr; tot_subs += subs; tot_ins += ins; tot_del += del; tot_words += totwords;     
         
-        std::vector<int32> alignment;
-        std::vector<int32> words;
+        std::vector<int32> oracle_words;
+        std::vector<int32> reference_words;
         fst::StdArc::Weight weight;
-        GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
+        GetLinearSymbolSequence(best_path, &oracle_words, &reference_words, &weight);
         KALDI_LOG << "For utterance " << key << ", best cost " << weight;
         if (transcriptions_wspecifier != "")
-          transcriptions_writer.Write(key, words);
+          transcriptions_writer.Write(key, oracle_words);
         if (word_syms != NULL) {
           std::cerr << key << ' ';
-          for (size_t i = 0; i < words.size(); i++) {
-            std::string s = word_syms->Find(words[i]);
+          for (size_t i = 0; i < oracle_words.size(); i++) {
+            std::string s = word_syms->Find(oracle_words[i]);
             if (s == "")
-              KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+              KALDI_ERR << "Word-id " << oracle_words[i] <<" not in symbol table.";
             std::cerr << s << ' ';
           }
           std::cerr << '\n';

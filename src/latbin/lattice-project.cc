@@ -53,24 +53,34 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
-
-    // Read and write as regular lattice-- this is probably the form
-    // it will be read in when processed further (e.g. by lattice-compose).
-    SequentialLatticeReader lattice_reader(lats_rspecifier);
     LatticeWriter lattice_writer(lats_wspecifier); 
-
     int32 n_done = 0; // there is no failure mode, barring a crash.
-
-    for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
-      Lattice lat = lattice_reader.Value();
-      lattice_reader.FreeCurrent();
-      fst::Project(&lat,
-                   project_output ? fst::PROJECT_OUTPUT : fst::PROJECT_INPUT);
-      lattice_writer.Write(key, lat);
-      n_done++;
+      
+    if (project_output) {
+      SequentialCompactLatticeReader clat_reader(lats_rspecifier);
+      for (; !clat_reader.Done(); clat_reader.Next()) {
+        CompactLattice clat = clat_reader.Value();
+        std::string key = clat_reader.Key();
+        clat_reader.FreeCurrent();
+        RemoveAlignmentsFromCompactLattice(&clat);
+        Lattice lat;
+        ConvertLattice(clat, &lat);
+        fst::Project(&lat, fst::PROJECT_OUTPUT); // project on words.        
+        lattice_writer.Write(key, lat);
+        n_done++;
+      }
+    } else {
+      // Read and write as regular lattice.
+      SequentialLatticeReader lattice_reader(lats_rspecifier);
+      for (; !lattice_reader.Done(); lattice_reader.Next()) {
+        std::string key = lattice_reader.Key();
+        Lattice lat = lattice_reader.Value();
+        lattice_reader.FreeCurrent();
+        fst::Project(&lat, fst::PROJECT_INPUT);
+        lattice_writer.Write(key, lat);
+        n_done++;
+      }
     }
-    
     KALDI_LOG << "Done projecting " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {

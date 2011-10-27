@@ -34,18 +34,15 @@ mkdir -p $dir
 # Create reference transcriptions and lattices
 
 cat $transcript | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
-cat $dir/test_trans.filt | \
-  scripts/sym2int.pl --ignore-first-field data/words.txt | \
-  string-to-lattice "ark:$dir/test_trans.lats" 2>$dir/reference.${param}.log
 
-lattice-oracle --word-symbol-table=data/words.txt \
-     "ark:$dir/test_trans.lats" "ark:gunzip -c $dir/lats.pruned.gz|" "ark,t:$dir/oracle_${param}.tra"  \
-        2>$dir/oracle.${param}.log
+( cat $dir/test_trans.filt | \
+  scripts/sym2int.pl --ignore-first-field data/words.txt | \
+  lattice-oracle --word-symbol-table=data/words.txt \
+  "ark:gunzip -c $dir/lats.pruned.gz|" ark:- "ark,t:$dir/oracle_${param}.tra" )  \
+      2>$dir/oracle.${param}.log
   
 # the ,p option lets it score partial output without dying..
 cat $dir/oracle_${param}.tra | \
 scripts/int2sym.pl --ignore-first-field data/words.txt | \
 sed 's:<s>::' | sed 's:</s>::' | sed 's:<UNK>::g' | \
 compute-wer --text --mode=present ark:$dir/test_trans.filt  ark,p:- >& $dir/wer_${param}
-
-

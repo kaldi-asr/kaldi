@@ -461,9 +461,7 @@ class CompactLatticeWeightTpl {
   }
 
   static uint64 Properties() {
-    return kLeftSemiring | kRightSemiring | kPath | kIdempotent
-        | kCommutative; // It's not really commutative; this
-    // is a hack to get composition to work.
+    return kLeftSemiring | kRightSemiring | kPath | kIdempotent;
   }
 
   // This is used in OpenFst for binary I/O.  This is OpenFst-style,
