@@ -180,8 +180,13 @@ void UnitTestEstimateMmieDiagGmm() {
    std::cout << "MEANX: " << gmm->weights() << '\n'; 
 
    // binary write
-   mmie_gmm.Write(Output("tmp_stats", false).Stream(), false);
+   {
+     Output ko("tmp_stats", false);
+     mmie_gmm.Write(ko.Stream(), false);
+     ko.Stream().flush();
+   }
 
+   
    // binary read
    bool binary_in;
    Input ki("tmp_stats", &binary_in);

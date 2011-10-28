@@ -28,8 +28,8 @@ exit 1;
 # The next command line is an example; you have to give the script
 # command-line arguments corresponding to the WSJ disks from LDC.  
 # Another example set of command line arguments is
-# /ais/gobi2/speech/WSJ/*/??-{?,??}.?.   These must be absolute,
-# not relative, pathnames.
+# /ais/gobi2/speech/WSJ/*/??-{?,??}.?
+#  These must be absolute,  not relative, pathnames.
 local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.?
 
 local/wsj_prepare_dict.sh

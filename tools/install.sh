@@ -217,7 +217,7 @@ else
    echo "sph2pipe:Failure"
 fi
 if [ $ok_atlas -eq 0 ]; then
-   echo "ATLAS:   Success"
+   echo "ATLAS:   Success [note: we install just the headers; do ./install_atlas.sh if ../src/configure fails.]"
 else
    echo "ATLAS:   Failure"
 fi

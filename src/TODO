@@ -29,6 +29,7 @@ minor:
  possibly remove gmm-align (modifiy scripts accordingly).
  make questions on disk be in text form (use sym2int.pl etc.)... same
    for transcripts while decoding.
+ at kaldi-matrix.cc:1198, make it read in -nan and -inf
  maybe move UBM clustering somewhere else [from am-diag-gmm]?
  document the --cmd options in wsj/s3 scripts
  change sgmm code so gselect is no longer optional [only in discrim/?]
