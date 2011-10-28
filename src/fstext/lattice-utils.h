@@ -206,6 +206,31 @@ class StdToLatticeMapper {
   uint64 Properties(uint64 props) { return props; }
 };
 
+
+/// Class LatticeToStdMapper maps a LatticeArc to a normal arc (StdArc)
+/// by adding the elements of the LatticeArc weight.
+
+template<class Int>
+class LatticeToStdMapper {
+  typedef LatticeWeightTpl<Int> LatticeWeight;
+  typedef ArcTpl<LatticeWeight> LatticeArc;
+ public:
+  StdArc operator()(const LatticeArc &arc) {
+    return StdArc(arc.ilabel, arc.olabel,
+                  StdArc::Weight(arc.weight.Value1() + arc.weight.Value2()),
+                  arc.nextstate);
+  }
+  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
+
+  MapSymbolsAction InputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  // I believe all properties are preserved.
+  uint64 Properties(uint64 props) { return props; }
+};
+
+
 template<class Weight, class Int>
 void PruneCompactLattice(
     Weight beam,
