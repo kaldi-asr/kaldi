@@ -109,8 +109,8 @@ cat links/13-34.1/wsj1/doc/indices/h2_p0.ndx | \
 # links/13-34.1/wsj1/doc/indices/h1_p0.ndx
 
 # Dev-set Hub 1,2 (503, 913 utterances)
-find links/13-16.1/WSJ1/SI_DT_20 -print | grep ".WV1" | sort | sed s:links:/mnt/matylda2/data/WSJ1: > dev_dt_20.flist
-find links/13-16.1/WSJ1/SI_DT_05 -print | grep ".WV1" | sort | sed s:links:/mnt/matylda2/data/WSJ1: > dev_dt_05.flist
+find `readlink links/13-16.1`/WSJ1/SI_DT_20 -print | grep ".WV1" | sort > dev_dt_20.flist
+find `readlink links/13-16.1`/WSJ1/SI_DT_05 -print | grep ".WV1" | sort > dev_dt_05.flist
 
 
 # Finding the transcript files:
