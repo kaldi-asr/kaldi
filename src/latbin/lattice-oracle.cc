@@ -25,20 +25,7 @@ namespace kaldi {
 using std::vector;
 using std::set;
 
-typedef vector<fst::StdArc::Label> LabelVector;
 typedef set<fst::StdArc::Label> LabelSet; 
-
-LabelVector *GetSymbolSet(const fst::StdVectorFst &fst, bool inputSide) {
-  LabelVector *lv = new LabelVector();
-  for (fst::StateIterator<fst::StdVectorFst> siter(fst); !siter.Done(); siter.Next()) {
-    fst::StdArc::StateId s = siter.Value();
-    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, s); !aiter.Done();  aiter.Next()) {
-      const fst::StdArc &arc = aiter.Value();
-      lv->push_back(inputSide ? arc.ilabel : arc.olabel);
-    }
-  }  
-  return lv;
-}
 
 void ReadSymbolList(const std::string &filename,
                     fst::SymbolTable *word_syms,
@@ -102,34 +89,39 @@ void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
 void CreateEditDistance(const fst::StdVectorFst &fst1,
                         const fst::StdVectorFst &fst2,
                         fst::StdVectorFst *pfst) {
-  fst::StdArc::Weight corrCost(0.0);
-  fst::StdArc::Weight subsCost(1.0);
-  fst::StdArc::Weight insCost(1.0);
-  fst::StdArc::Weight delCost(1.0);
+  using namespace fst;
+  typedef StdArc StdArc;
+  typedef StdArc::Weight Weight;
+  typedef StdArc::Label Label;
+  Weight corrCost(0.0);
+  Weight subsCost(1.0);
+  Weight insCost(1.0);
+  Weight delCost(1.0);
 
   // create set of output symbols in fst1
-  LabelVector *fst1syms = GetSymbolSet(fst1,false);
-  
-  // create set of input symbols in fst2
-  LabelVector *fst2syms = GetSymbolSet(fst2,true);
+  std::vector<Label> fst1syms, fst2syms;
+  GetOutputSymbols(fst1, false /*no epsilons*/, &fst1syms);
+  GetInputSymbols(fst2, false /*no epsilons*/, &fst2syms);
 
   pfst->AddState();
   pfst->SetStart(0);
-  for (LabelVector::iterator it=fst1syms->begin(); it<fst1syms->end(); it++) {
-    pfst->AddArc(0,fst::StdArc(*it,0,delCost,0));    // deletions
-  }
-  for (LabelVector::iterator it=fst2syms->begin(); it<fst2syms->end(); it++) {
-    pfst->AddArc(0,fst::StdArc(0,*it,insCost,0));    // insertions
-  }
+  for (size_t i = 0; i < fst1syms.size(); i++) 
+    pfst->AddArc(0, StdArc(fst1syms[i], 0, delCost, 0)); // deletions
+  
+  for (size_t i = 0; i < fst2syms.size(); i++)
+    pfst->AddArc(0, StdArc(0, fst2syms[i], insCost, 0));  // insertions
+ 
   // stupid implementation O(N^2)
-  for (LabelVector::iterator it1=fst1syms->begin(); it1<fst1syms->end(); it1++) {
-    for (LabelVector::iterator it2=fst2syms->begin(); it2<fst2syms->end(); it2++) {
-      fst::StdArc::Weight cost( (*it1) == (*it2) ? corrCost : subsCost);
-      pfst->AddArc(0,fst::StdArc((*it1),(*it2),cost,0));    // substitutions
+  for (size_t i = 0; i < fst1syms.size(); i++) {
+    Label label1 = fst1syms[i];
+    for (size_t j = 0; j < fst2syms.size(); j++) {
+      Label label2 = fst2syms[j];
+      Weight cost( label1 == label2 ? corrCost : subsCost);
+      pfst->AddArc(0, StdArc(label1, label2, cost, 0)); // substitutions
     }
   }
-  pfst->SetFinal(0,fst::StdArc::Weight::One());
-  fst::ArcSort(pfst, fst::StdOLabelCompare());
+  pfst->SetFinal(0, Weight::One());
+  ArcSort(pfst, StdOLabelCompare());
 }
 
 void CountErrors(fst::StdVectorFst &fst,
@@ -138,12 +130,13 @@ void CountErrors(fst::StdVectorFst &fst,
                  unsigned int *ins,
                  unsigned int *del,
                  unsigned int *totwords) {
- 
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Weight Weight;
    *corr = *subs = *ins = *del = *totwords = 0;
 
   // go through the first complete path in fst (there should be only one)
-  fst::StdArc::StateId src = fst.Start(); 
-  while (fst.Final(src)== fst::StdArc::Weight::Zero()) { // while not final
+  StateId src = fst.Start(); 
+  while (fst.Final(src)== Weight::Zero()) { // while not final
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst,src); !aiter.Done(); aiter.Next()) {
       fst::StdArc arc = aiter.Value();
       if (arc.ilabel == 0 && arc.olabel == 0) {
@@ -167,7 +160,7 @@ void CountErrors(fst::StdVectorFst &fst,
 bool CheckFst(fst::StdVectorFst &fst, string name, string key) {
 
 #ifdef DEBUG
-  fst::StdArc::StateId numstates = fst.NumStates();
+  StateId numstates = fst.NumStates();
   cerr << " "<<name<<" has "<<numstates<<" states"<<endl;
   std::stringstream ss; ss <<name<<key<<".fst";
   fst.Write(ss.str());
@@ -187,6 +180,8 @@ int main(int argc, char *argv[]) {
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
+    typedef fst::StdArc::Weight Weight;
+    typedef fst::StdArc::StateId StateId;
 
     const char *usage =
         "Finds the path having the smallest edit-distance between two lattices.\n"
@@ -228,8 +223,11 @@ int main(int argc, char *argv[]) {
         << word_syms_filename;
 
     LabelSet wild_syms;
-    if (wild_syms_filename != "") 
+    if (wild_syms_filename != "") {
+      KALDI_ASSERT(word_syms != NULL && "--wildcard-symbols-list option "
+                   "requires --word-symbol-table option");
       ReadSymbolList(wild_syms_filename, word_syms, &wild_syms);
+    }
     
     int32 n_done = 0, n_fail = 0;
     unsigned int tot_corr=0, tot_subs=0, tot_ins=0, tot_del=0, tot_words=0;
@@ -293,7 +291,7 @@ int main(int argc, char *argv[]) {
         
         std::vector<int32> oracle_words;
         std::vector<int32> reference_words;
-        fst::StdArc::Weight weight;
+        Weight weight;
         GetLinearSymbolSequence(best_path, &oracle_words, &reference_words, &weight);
         KALDI_LOG << "For utterance " << key << ", best cost " << weight;
         if (transcriptions_wspecifier != "")
@@ -313,7 +311,7 @@ int main(int argc, char *argv[]) {
     }
     if (word_syms) delete word_syms;
     unsigned int tot_errs = tot_subs + tot_del + tot_ins;
-    KALDI_LOG << "%WER "<<(100.*tot_errs)/tot_words<<" [ "<<tot_errs<<" / "<<tot_words<<", "<<tot_ins<<" ins, "<<tot_del<<" del, "<<tot_subs<<" sub ]";
+    KALDI_LOG << "Overall %WER "<<(100.*tot_errs)/tot_words<<" [ "<<tot_errs<<" / "<<tot_words<<", "<<tot_ins<<" ins, "<<tot_del<<" del, "<<tot_subs<<" sub ]";
     KALDI_LOG << "Scored " << n_done << " lattices, "<<n_fail<<" not present in hyp.";
   } catch(const std::exception& e) {
     std::cerr << e.what();

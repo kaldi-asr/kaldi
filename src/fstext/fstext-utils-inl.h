@@ -82,7 +82,7 @@ void GetOutputSymbols(const Fst<Arc> &fst,
   }
 
   // Remove epsilon, if instructed.
-  if (!include_eps && !all_syms.empty() && all_syms.front() == 0)
+  if (!include_eps && !all_syms.empty() && *all_syms.begin() == 0)
     all_syms.erase(0);
   assert(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);

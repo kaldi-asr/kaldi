@@ -52,7 +52,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,
                      vector<I> *symbols);
 
-/// GetInputSymbols gets the list of symbols on the output of fst
+/// GetOutputSymbols gets the list of symbols on the output of fst
 /// (including epsilon, if include_eps == true)
 template<class Arc, class I>
 void GetOutputSymbols(const Fst<Arc> &fst,
