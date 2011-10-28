@@ -138,10 +138,9 @@ fi
     echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
     exit 1
   else
-    bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
-    gzip -f sctk-2.4.0-20091110-0958.tar || exit 1
-
-    tar -xovzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
+    #  Note: the "j" option for tar tells it that we're using
+    # a bzip'd archive (like "z" is for gzip).
+    tar -xovjf sctk-2.4.0-20091110-0958.tar.bz2  || exit 1
     cd sctk-2.4.0
     make config || exit 1
     make all || exit 1
