@@ -34,12 +34,24 @@ scripts/split_scp.pl $dir/train.scp  $dir/train{1,2,3}.scp
 
 rm -f $dir/.error
 
+# First do Gaussian selection to 50 components, which will be used
+# as the initial screen for all further passes.
+for n in 1 2 3; do
+  feats="ark:add-deltas scp:$dir/train${n}.scp ark:- |"
+  gmm-gselect --n=50 "fgmm-global-to-gmm $dir/0.ubm - |" "$feats" \
+     "ark:|gzip -c >$dir/gselect_diag.$n.gz" 2>$dir/gselect_diag.$n.log &
+done
+wait;
+[ -f $dir/.error ] && echo "Error doing GMM selection" && exit 1;
+
 for x in 0 1 2 3; do
     echo "Pass $x"
     for n in 1 2 3; do
       feats="ark:add-deltas scp:$dir/train${n}.scp ark:- |"
-      fgmm-global-acc-stats --diag-gmm-nbest=15 --binary=false --verbose=2 $dir/$x.ubm "$feats" \
-        $dir/$x.$n.acc 2> $dir/acc.$x.$n.log  || touch $dir/.error &
+    ( gmm-gselect "--gselect=ark:gunzip -c $dir/gselect_diag.$n.gz|" \
+        "fgmm-global-to-gmm $dir/$x.ubm - |" "$feats" ark:- | \
+      fgmm-global-acc-stats --gselect=ark:- $dir/$x.ubm "$feats" \
+        $dir/$x.$n.acc ) 2> $dir/acc.$x.$n.log  || touch $dir/.error &
     done
     wait;
     [ -f $dir/.error ] && echo "Error accumulating stats" && exit 1;
@@ -48,6 +60,7 @@ for x in 0 1 2 3; do
     rm $dir/$x.{1,2,3}.acc $dir/$x.ubm
 done
 
+rm $dir/gselect_diag.*.gz
 rm $dir/final.ubm 2>/dev/null
 ln -s 4.ubm $dir/final.ubm
 

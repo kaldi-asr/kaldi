@@ -48,13 +48,26 @@ scripts/split_scp.pl $dir/train_f.scp  $dir/train_f{1,2}.scp
 
 rm -f $dir/.error
 
+for n in 1 2; do
+  for g in m f; do
+    feats="ark:splice-feats scp:$dir/train_${g}${n}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt \"ark:$trans\" ark:- ark:- |"
+    gmm-gselect --n=50 "fgmm-global-to-gmm $dir/0.$g.ubm - |" "$feats" \
+      "ark:|gzip -c >$dir/gselect_diag.$g.$n.gz" 2>$dir/gselect_diag.$g.$n.log &
+  done
+done
+wait;
+
+
+
 for x in 0 1 2 3; do
     echo "Pass $x"
     for n in 1 2; do
       for g in m f; do
         feats="ark:splice-feats scp:$dir/train_${g}${n}.scp ark:- | transform-feats $mat ark:- ark:- | transform-feats $utt2spk_opt \"ark:$trans\" ark:- ark:- |"
-        fgmm-global-acc-stats --diag-gmm-nbest=15 --binary=false --verbose=2 $dir/$x.$g.ubm "$feats" \
-          $dir/$x.$g.$n.acc 2> $dir/acc.$x.$g.$n.log  || touch $dir/.error &
+      ( gmm-gselect "--gselect=ark:gunzip -c $dir/gselect_diag.$g.$n.gz|" \
+          "fgmm-global-to-gmm $dir/$x.$g.ubm - |" "$feats" ark:- | \
+        fgmm-global-acc-stats --gselect=ark:- $dir/$x.$g.ubm "$feats" \
+          $dir/$x.$g.$n.acc ) 2> $dir/acc.$x.$g.$n.log  || touch $dir/.error &
       done
     done
     wait;
@@ -66,7 +79,9 @@ for x in 0 1 2 3; do
     done
 done
 
+rm $dir/gselect_diag.*.gz
 rm $dir/final.?.ubm 2>/dev/null
+
 ln -s 4.m.ubm $dir/final.m.ubm
 ln -s 4.f.ubm $dir/final.f.ubm
 
