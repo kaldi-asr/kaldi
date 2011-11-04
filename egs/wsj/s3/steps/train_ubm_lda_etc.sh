@@ -71,10 +71,10 @@ fi
 echo "Clustering model $alidir/final.mdl to get initial UBM"
 # typically: --intermediate-numcomps=2000 --ubm-numcomps=400
 
-#$cmd $dir/log/cluster.log \
-#  init-ubm --intermediate-numcomps=$intermediate --ubm-numcomps=$numcomps \
-#   --verbose=2 --fullcov-ubm=true $alidir/final.mdl $alidir/final.occs \
-#    $dir/0.ubm   || exit 1;
+$cmd $dir/log/cluster.log \
+  init-ubm --intermediate-numcomps=$intermediate --ubm-numcomps=$numcomps \
+   --verbose=2 --fullcov-ubm=true $alidir/final.mdl $alidir/final.occs \
+    $dir/0.ubm   || exit 1;
 
 rm $dir/.error 2>/dev/null
 # First do Gaussian selection to 50 components, which will be used
@@ -104,5 +104,7 @@ for x in 0 1 2 3; do
   rm $dir/$x.*.acc $dir/$x.ubm
 done
 
+rm $dir/gselect_diag.*.gz
+rm $dir/final.ubm 2>/dev/null
 mv $dir/4.ubm $dir/final.ubm || exit 1;
 
