@@ -8,14 +8,16 @@
 # The "fgpr" LM is a locally estimated one (4-gram, pruned)
 . path.sh || exit 1;
 dict_srcdir=data/local/dict_larger_prep/
-lm_srcdir=data/local/lm/4gram-mincount
-lang=data/lang_test_bd_fgpr
-lang_unpruned=data/lang_test_bd_fg
+lm_srcdir_3g=data/local/lm/3gram-mincount
+lm_srcdir_4g=data/local/lm/4gram-mincount
+lang=data/lang_test_bd_tg
+
 mkdir -p $lang
 
 [ ! -f $dict_srcdir/lexicon.txt ] && \
    echo "First run wsj_prepare_local_dict.sh" && exit 1;
-[ ! -f $lm_srcdir/lm_pr7.0.gz -o ! -f $lm_srcdir/lm_unpruned.gz ] && \
+[   ! -f $lm_srcdir_4g/lm_pr7.0.gz -o ! -f $lm_srcdir_4g/lm_unpruned.gz \
+ -o ! -f $lm_srcdir_3g/lm_pr6.0.gz -o ! -f $lm_srcdir_3g/lm_unpruned.gz ] && \
    echo "First run wsj_train_lms.sh" && exit 1;
 
 
@@ -97,13 +99,13 @@ cat $dict_srcdir/lexicon.txt | \
 
 echo "Preparing language models for test"
 
-# Note: at this point, $lang=="data/lang_test_bd_fgpr", we put a pruned 4-gram model
+# Note: at this point, $lang=="data/lang_test_bd_tg", we put an unpruned 3-gram model
 # there.
 
 echo "Checking there are no OOVs" # there shouldn't be in this LM.
 # If you have an LM with OOVs you'd have to put back the command
 # "remove_oovs.pl" below, as it is used in wsj_format_data.sh.
-gunzip -c $lm_srcdir/lm_pr7.0.gz | \
+gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   scripts/find_arpa_oovs.pl $lang/words.txt | cmp - /dev/null || \
  exit 1;   
 
@@ -113,7 +115,7 @@ gunzip -c $lm_srcdir/lm_pr7.0.gz | \
 # broken.  But we'll leave this in the script just in case it gets modified
 # later.
 # Note: ~1.5M N-grams.
-gunzip -c $lm_srcdir/lm_pr7.0.gz | \
+gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   grep -v '<s> <s>' | \
   grep -v '</s> <s>' | \
   grep -v '</s> </s>' | \
@@ -123,17 +125,38 @@ gunzip -c $lm_srcdir/lm_pr7.0.gz | \
      fstrmepsilon > $lang/G.fst || exit 1;
   fstisstochastic $lang/G.fst
 
-mkdir -p $lang_unpruned
+mkdir -p data/lang_test_bd_tgpr
 cp $lang/* $lang_unpruned
 # Be careful: this time we dispense with the grep -v '<s> <s>' so this might
 # not work for LMs generated from all toolkits.
-gunzip -c $lm_srcdir/lm_unpruned.gz | \
+gunzip -c $lm_srcdir_3g/lm_pr6.0.gz | \
   arpa2fst - | fstprint | \
     scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
       --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon > $lang_unpruned/G.fst || exit 1;
-  fstisstochastic $lang_unpruned/G.fst
+     fstrmepsilon > data/lang_test_bd_tgpr/G.fst || exit 1;
+  fstisstochastic data/lang_test_bd_tgpr/G.fst
 
+mkdir -p data/lang_test_bd_fg
+cp $lang/* data/lang_test_bd_fg
+# Be careful: this time we dispense with the grep -v '<s> <s>' so this might
+# not work for LMs generated from all toolkits.
+gunzip -c $lm_srcdir_4g/lm_unpruned.gz | \
+  arpa2fst - | fstprint | \
+    scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
+      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+     fstrmepsilon > data/lang_test_bd_fg/G.fst || exit 1;
+  fstisstochastic data/lang_test_bd_fg/G.fst
+
+mkdir -p data/lang_test_bd_fgpr
+cp $lang/* data/lang_test_bd_fgpr
+# Be careful: this time we dispense with the grep -v '<s> <s>' so this might
+# not work for LMs generated from all toolkits.
+gunzip -c $lm_srcdir_4g/lm_pr7.0.gz | \
+  arpa2fst - | fstprint | \
+    scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
+      --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+     fstrmepsilon > data/lang_test_bd_fgpr/G.fst || exit 1;
+  fstisstochastic data/lang_test_bd_fgpr/G.fst
 
 # The commands below are just diagnostic tests.
  mkdir -p tmpdir.g
@@ -144,7 +167,6 @@ gunzip -c $lm_srcdir/lm_unpruned.gz | \
  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' && 
    echo "Language model has cycles with empty words" && exit 1
   rm -r tmpdir.g
-
 
 
 

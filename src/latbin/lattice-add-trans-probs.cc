@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
       clat_writer.Write(lattice_reader.Key(), clat);
       n_done++;
     }
-    KALDI_LOG << "Done adding transition probabilities " << n_done << " lattices.";
+    KALDI_LOG << "Done adding transition probabilities to " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

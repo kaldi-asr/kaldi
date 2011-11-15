@@ -33,10 +33,17 @@ exp/tri2c/decode_tgpr_dev93/wer_16:%WER 16.19 [ 1333 / 8234, 251 ins, 139 del, 9
 exp/tri2c/decode_tgpr_dev93_2pass/wer_16:%WER 15.99 [ 1317 / 8234, 246 ins, 134 del, 937 sub ]
 
 # LDA+MLLT+SAT, SI-84
-exp/tri3b/decode_tgpr_dev93/wer_16:%WER 15.14 [ 1247 / 8234, 259 ins, 118 del, 870 sub ]
-exp/tri3b/decode_tgpr_dev93_tg/wer_16:%WER 14.36 [ 1182 / 8234, 263 ins, 107 del, 812 sub ] # rescoring w/ tg LM
-exp/tri3b/decode_tgpr_eval92/wer_16:%WER 10.24 [ 578 / 5643, 137 ins, 38 del, 403 sub ]
-exp/tri3b/decode_tgpr_eval92_tg/wer_14:%WER 9.71 [ 548 / 5643, 144 ins, 28 del, 376 sub ] # rescoring w/ tg LM
+exp/tri3b/decode_tgpr_dev93/wer_16:%WER 15.51 [ 1277 / 8234, 263 ins, 123 del, 891 sub ]
+exp/tri3b/decode_tgpr_dev93_tg/wer_16:%WER 14.55 [ 1198 / 8234, 258 ins, 116 del, 824 sub ]
+exp/tri3b/decode_tgpr_eval92/wer_14:%WER 10.86 [ 613 / 5643, 160 ins, 32 del, 421 sub ]
+exp/tri3b/decode_tgpr_eval92_tg/wer_13:%WER 10.15 [ 573 / 5643, 158 ins, 30 del, 385 sub ]
+
+# Big-dict and our own LM (trigram, pruned)
+exp/tri3b/decode_bd_tgpr_eval92/wer_15:%WER 8.05 [ 454 / 5643, 81 ins, 43 del, 330 sub ]
+# and rescoring with trigram and 4-gram LMs:
+exp/tri3b/decode_bd_tgpr_eval92_tg/wer_16:%WER 7.51 [ 424 / 5643, 78 ins, 46 del, 300 sub ]
+exp/tri3b/decode_bd_tgpr_eval92_fg/wer_16:%WER 7.32 [ 413 / 5643, 76 ins, 43 del, 294 sub ]
+
 
 # LDA+MLLT+SAT, SI-284, quick retraining from 3b
 exp/tri4b/decode_tgpr_dev93/wer_15:%WER 12.89 [ 1061 / 8234, 231 ins, 93 del, 737 sub ]

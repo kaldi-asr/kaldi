@@ -63,6 +63,14 @@ gunzip -c $dir/train_nounk.gz | awk -v wmap=$dir/word_map 'BEGIN{while((getline<
 # easily generate it again if needed.
 rm $dir/train_nounk.gz 
 
+train_lm.sh --arpa --lmtype 3gram-mincount $dir
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 141.444826
+# 7.8 million N-grams.
+
+prune_lm.sh --arpa 6.0 $dir/3gram-mincount/
+# 1.45 million N-grams.
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 165.394139
+
 train_lm.sh --arpa --lmtype 4gram-mincount $dir
 #Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 126.734180
 # 10.3 million N-grams.

@@ -55,6 +55,7 @@ if [ "$mode" == 4 ]; then
 fi
 
 
+rm $dir/.error 2>/dev/null
 
 for lat in $indir/lat.*.gz; do
   number=`basename $lat | cut -d. -f2`;
@@ -63,7 +64,8 @@ for lat in $indir/lat.*.gz; do
     1) # 1 is inexact, the original way of doing it.
   $cmd $outdir/rescorelm.$number.log \
     lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $lat|" "$oldlmcommand" ark:-  \| \
-    lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$newlat" &
+    lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$newlat" \
+        || touch $dir/.error &
    ;;
    2)  # 2 is equivalent to 1, but using more basic operations, combined.
   $cmd $outdir/rescorelm.$number.log \
@@ -74,7 +76,7 @@ for lat in $indir/lat.*.gz; do
     lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
     lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \| \
     lattice-determinize ark:- ark:- \| \
-    gzip -c \>$newlat &
+    gzip -c \>$newlat || touch $dir/.error &
     ;;
   3) # 3 is "exact" in that we remove the old LM scores accepting any path
      # through G.fst (which is what we want as that happened in lattice 
@@ -88,7 +90,7 @@ for lat in $indir/lat.*.gz; do
     lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
     lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
     lattice-determinize ark:- ark:- \| \
-    gzip -c \>$newlat &
+    gzip -c \>$newlat || touch $dir/.error &
   ;;
   4) # 4 is also exact (like 3), but instead of subtracting the old LM-scores,
      # it removes the old graph scores entirely and adds in the lexicon,
@@ -104,12 +106,13 @@ for lat in $indir/lat.*.gz; do
    lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \
    lattice-add-trans-probs --transition-scale=1.0 --self-loop-scale=0.1 \
          $mdl ark:- ark:- \| \
-     gzip -c \>$newlat &
+     gzip -c \>$newlat  || touch $dir/.error &
   ;;
   esac
 done
 
 wait
+[ -f $dir/.error ] && echo Error doing LM rescoring && exit 1
 rm $outdir/Ldet.fst 2>/dev/null
 scripts/score_lats.sh $outdir $newlang/words.txt $data
 
