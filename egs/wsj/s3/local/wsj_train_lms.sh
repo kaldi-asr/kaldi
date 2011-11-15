@@ -1,227 +1,189 @@
 #!/bin/bash
 
+# This script trains LMs on the WSJ LM-training data.
+# It requires that you have already run wsj_extend_dict.sh,
+# to get the larger-size dictionary including all of CMUdict
+# plus any OOVs and possible acronyms that we could easily 
+# derive pronunciations for.
 
-if [ $# -ne 1 -o `basename $1` != 13-32.1 ]; then
-  echo "Usage: local/wsj_train_lms.sh /foo/bar/13-32.1/"
+
+# This script takes no command-line arguments
+
+dir=data/local/lm
+srcdir=data/local/dict_larger
+mkdir -p $dir
+export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
+( # First make sure the kaldi_lm toolkit is installed.
+ cd ../../../tools
+ if [ -d kaldi_lm ]; then
+   echo Not installing the kaldi_lm toolkit since it is already there.
+ else
+   echo Downloading and installing the kaldi_lm tools
+   if [ ! -f kaldi_lm.tar.gz ]; then
+     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
+   fi
+   tar -xvzf kaldi_lm.tar.gz || exit 1;
+   cd kaldi_lm
+   make || exit 1;
+   echo Done making the kaldi_lm tools
+ fi
+) || exit 1;
+
+
+
+if [ ! -f $srcdir/cleaned.gz -o ! -f $srcdir/wordlist.final ]; then
+  echo "Expecting files $srcdir/cleaned.gz and $srcdir/wordlist.final to exist";
+  echo "You need to run local/wsj_extend_dict.sh before running this script."
+  exit 1;
 fi
 
-srcdir=$1
-mkdir -p data/local/lm
-cd data/local/lm
-# e.g. srcdir=/mnt/matylda2/data/WSJ1/13-32.1/
-# Convert to uppercase, remove XML-like markings.
-echo "Getting training data [this should take at least a few seconds; if not, there's a problem]"
-gunzip -c $srcdir/wsj1/doc/lng_modl/lm_train/np_data/{87,88,89}/*.z \
-  | awk '/^</{next}{print toupper($0)}'  | gzip -c > cleaned.gz
+# Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
+echo "Getting training data with OOV words repalaced with <UNK> (train_nounk.gz)"
+gunzip -c $srcdir/cleaned.gz | awk -v w=$srcdir/wordlist.final \
+  'BEGIN{while((getline<w)>0) v[$1]=1;}
+  {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "<UNK> ";print ""}'|sed 's/ $//g' \
+  | gzip -c > $dir/train_nounk.gz
+
+# Get unigram counts (without bos/eos, but this doens't matter here, it's
+# only to get the word-map, which treats them specially & doesn't need their
+# counts).
+# Add a 1-count for each word in word-list by including that in the data,
+# so all words appear.
+gunzip -c $dir/train_nounk.gz | cat - $srcdir/wordlist.final | \
+  awk '{ for(x=1;x<=NF;x++) count[$x]++; } END{for(w in count){print count[w], w;}}' | \
+ sort -nr > $dir/unigram.counts
+
+# Get "mapped" words-- a character encoding of the words that makes the common words very short.
+cat $dir/unigram.counts  | awk '{print $2}' | get_word_map.pl "<s>" "</s>" "<UNK>" > $dir/word_map
+
+gunzip -c $dir/train_nounk.gz | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]=$2;}
+  { for(n=1;n<=NF;n++) { printf map[$n]; if(n<NF){ printf " "; } else { print ""; }}}' | gzip -c >$dir/train.gz
+
+# To save disk space, remove the un-mapped training data.  We could
+# easily generate it again if needed.
+rm $dir/train_nounk.gz 
+
+train_lm.sh --arpa --lmtype 4gram-mincount $dir
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 126.734180
+# 10.3 million N-grams.
+
+prune_lm.sh --arpa 7.0 $dir/4gram-mincount
+# 1.50 million N-grams
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 155.663757
 
 
-# get unigram counts
-echo "Getting unigram counts"
-gunzip -c cleaned.gz | tr -s ' ' '\n' | sort | uniq -c | sort -nr > unigrams
+exit 0
 
-[ ! -f ../cmudict/cmudict.0.7a ] && echo "CMU dict not in expected place" && exit 1;
+### Below here, this script is showing various commands that 
+## were run during LM tuning.
 
-cat unigrams | \
-perl -e ' open(F, "<../cmudict/cmudict.0.7a") || die "Cmudict not found";
-  while(<F>){ if (! m/^;;/){  @A=split(" ", $_); $seen{$A[0]} = 1; } }
-  open(O, ">oov.counts");
-  while(<>) {
-    ($count,$word) = split(" ", $_);
-    if (defined $seen{$word}) { print "$word\n"; } else { print O $_; }
-  } ' > vocab.intersect
+train_lm.sh --arpa --lmtype 3gram-mincount $dir
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 141.444826
+# 7.8 million N-grams.
 
-echo "Most frequent unseen unigrams are: "
-head oov.counts
+prune_lm.sh --arpa 3.0 $dir/3gram-mincount/
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 156.408740
+# 2.5 million N-grams.
 
- 
-  '
-  awk 'BEGIN{while(getline<"unigrams")vc[$2]=$1;}{if ($1 in vc)print $1;}'|sort|uniq > vocab.intersect
+prune_lm.sh --arpa 6.0 $dir/3gram-mincount/
+# 1.45 million N-grams.
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 165.394139
 
+train_lm.sh --arpa --lmtype 4gram-mincount $dir
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 126.734180
+# 10.3 million N-grams.
 
-. path.sh || exit 1;
+prune_lm.sh --arpa 3.0 $dir/4gram-mincount
+#Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 143.206294
+# 2.6 million N-grams.
 
-echo "Preparing train and test data"
+prune_lm.sh --arpa 4.0 $dir/4gram-mincount
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 146.927717
+# 2.15 million N-grams.
 
-for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do 
-  mkdir -p data/$x
-  cp data/local/${x}_wav.scp data/$x/wav.scp
-  cp data/local/$x.txt data/$x/text
-  cp data/local/$x.spk2utt data/$x/spk2utt
-  cp data/local/$x.utt2spk data/$x/utt2spk
-  scripts/filter_scp.pl data/$x/spk2utt data/local/spk2gender.map > data/$x/spk2gender
-done
+prune_lm.sh --arpa 5.0 $dir/4gram-mincount
+# 1.86 million N-grams
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 150.162023
 
-echo "Preparing word lists etc."
+prune_lm.sh --arpa 7.0 $dir/4gram-mincount
+# 1.50 million N-grams
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 155.663757
 
-# Create the "lang" directory for training... we'll copy this same setup
-# to be used in test too, and also add the G.fst.
-# Note: the lexicon.txt and lexicon_disambig.txt are not used directly by
-# the training scripts, so we put these in data/local/.
-
-# TODO: make sure we properly handle the begin/end symbols in the lexicon,
-
-# lang_test will contain common things we'll put in lang_test_{bg,tgpr,tg}
-mkdir -p data/lang data/lang_test
+train_lm.sh --arpa --lmtype 3gram $dir
+# Perplexity over 228518.000000 words (excluding 478.000000 OOVs) is 135.692866
+# 20.0 million N-grams
 
 
-# (0), this is more data-preparation than data-formatting;
-# add disambig symbols to the lexicon in data/local/lexicon.txt
-# and produce data/local/lexicon_disambig.txt
 
-ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon_disambig.txt`
-ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
-echo $ndisambig > data/local/lex_ndisambig
+#################
+# You could finish the script here if you wanted.
+# Below is to show how to do baselines with SRILM.
+#  You'd have to install the SRILM toolkit first.
 
+heldout_sent=10000 # Don't change this if you want result to be comparable with
+    # kaldi_lm results
+sdir=$dir/srilm # in case we want to use SRILM to double-check perplexities.
+mkdir -p $sdir
+gunzip -c $srcdir/cleaned.gz | head -$heldout_sent > $sdir/cleaned.heldout
+gunzip -c $srcdir/cleaned.gz | tail -n +$heldout_sent > $sdir/cleaned.train
+(echo "<s>"; echo "</s>" ) | cat - $srcdir/wordlist.final > $sdir/wordlist.final.s
 
-# (1) Put into data/lang, phones.txt, silphones.csl, nonsilphones.csl, words.txt,
-#   oov.txt
-cp data/local/phones.txt data/lang # we could get these from the lexicon, but prefer to
- # do it like this so we get all the possible begin/middle/end versions of phones even
- # if they don't appear.  This is so if we extend the lexicon later, we could use the
- # same phones.txt (which is "baked into" the model and can't be changed after you build it).
+# 3-gram:
+ngram-count -text $sdir/cleaned.train -order 3 -limit-vocab -vocab $sdir/wordlist.final.s -unk \
+  -map-unk "<UNK>" -kndiscount -interpolate -lm $sdir/srilm.o3g.kn.gz
+ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/cleaned.heldout # consider -debug 2
+#file data/local/lm/srilm/cleaned.heldout: 10000 sentences, 218996 words, 478 OOVs
+#0 zeroprobs, logprob= -491456 ppl= 141.457 ppl1= 177.437
 
-silphones="SIL SPN NSN";
-# Generate colon-separated lists of silence and non-silence phones.
-scripts/silphones.pl data/lang/phones.txt "$silphones" data/lang/silphones.csl data/lang/nonsilphones.csl
+# Trying 4-gram:
+ngram-count -text $sdir/cleaned.train -order 4 -limit-vocab -vocab $sdir/wordlist.final.s -unk \
+  -map-unk "<UNK>" -kndiscount -interpolate -lm $sdir/srilm.o4g.kn.gz
+ngram -order 4 -lm $sdir/srilm.o4g.kn.gz -ppl $sdir/cleaned.heldout 
+#file data/local/lm/srilm/cleaned.heldout: 10000 sentences, 218996 words, 478 OOVs
+#0 zeroprobs, logprob= -480939 ppl= 127.233 ppl1= 158.822
 
-cat data/local/lexicon.txt | awk '{print $1}' | sort | uniq  | \
- awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
-  > data/lang/words.txt
+#3-gram with pruning:
+ngram-count -text $sdir/cleaned.train -order 3 -limit-vocab -vocab $sdir/wordlist.final.s -unk \
+  -prune 0.0000001 -map-unk "<UNK>" -kndiscount -interpolate -lm $sdir/srilm.o3g.pr7.kn.gz
+ngram -lm $sdir/srilm.o3g.pr7.kn.gz -ppl $sdir/cleaned.heldout 
+#file data/local/lm/srilm/cleaned.heldout: 10000 sentences, 218996 words, 478 OOVs
+#0 zeroprobs, logprob= -510828 ppl= 171.947 ppl1= 217.616
+# Around 2.25M N-grams.
+# Note: this is closest to the experiment done with "prune_lm.sh --arpa 3.0 $dir/3gram-mincount/"
+# above, which gave 2.5 million N-grams and a perplexity of 156.
 
-# Create the basic L.fst without disambiguation symbols, for use
-# in training. 
-scripts/make_lexicon_fst.pl data/local/lexicon.txt 0.5 SIL | \
-  fstcompile --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt \
-  --keep_isymbols=false --keep_osymbols=false | \
-   fstarcsort --sort_type=olabel > data/lang/L.fst
+# Note: all SRILM experiments above fully discount all singleton 3 and 4-grams.
+# You can use -gt3min=0 and -gt4min=0 to stop this (this will be comparable to
+# the kaldi_lm experiments above without "-mincount".
 
-# The file oov.txt contains a word that we will map any OOVs to during
-# training.
-echo "<SPOKEN_NOISE>" > data/lang/oov.txt
+##  From here is how to train with
+# IRSTLM.  This is not really working at the moment.
+export IRSTLM=../../../tools/irstlm/
 
-# (2)
-# Create phonesets.txt and extra_questions.txt ...
-# phonesets.txt is sets of phones that are shared when building the monophone system
-# and when asking questions based on an automatic clustering of phones, for the
-# triphone system.  extra_questions.txt is some pre-defined extra questions about
-# position and stress that split apart the categories we created in phonesets.txt.
-# in extra_questions.txt there is also a question about silence phones, since we 
-# didn't include that in our
+idir=$dir/irstlm
+mkdir $idir
+gunzip -c $srcdir/cleaned.gz | tail -n +$heldout_sent | $IRSTLM/scripts/add-start-end.sh | \
+  gzip -c > $idir/train.gz
 
-local/make_shared_phones.sh < data/lang/phones.txt > data/lang/phonesets_mono.txt
-grep -v SIL data/lang/phonesets_mono.txt > data/lang/phonesets_cluster.txt
-local/make_extra_questions.sh < data/lang/phones.txt > data/lang/extra_questions.txt
-
-( # Creating the "roots file" for building the context-dependent systems...
-  # we share the roots across all the versions of each real phone.  We also
-  # share the states of the 3 forms of silence.  "not-shared" here means the
-  # states are distinct p.d.f.'s... normally we would automatically split on
-  # the HMM-state but we're not making silences context dependent.
-  echo 'not-shared not-split SIL SPN NSN';
-  cat data/lang/phones.txt | grep -v eps | grep -v SIL | grep -v SPN | grep -v NSN | awk '{print $1}' | \
-    perl -e 'while(<>){ m:([A-Za-z]+)(\d*)(_.)?: || die "Bad line $_"; 
-            $phone=$1; $stress=$2; $position=$3;
-      if($phone eq $curphone){ print " $phone$stress$position"; }
-      else { if(defined $curphone){ print "\n"; } $curphone=$phone; 
-            print "shared split $phone$stress$position";  }} print "\n"; '
-) > data/lang/roots.txt
-
-silphonelist=`cat data/lang/silphones.csl | sed 's/:/ /g'`
-nonsilphonelist=`cat data/lang/nonsilphones.csl | sed 's/:/ /g'`
-cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
-   sed "s:SILENCEPHONES:$silphonelist:" > data/lang/topo
-
-for f in phones.txt words.txt L.fst silphones.csl nonsilphones.csl topo; do
-  cp data/lang/$f data/lang_test
-done
+$IRSTLM/bin/dict -i=WSJ.cleaned.irstlm.txt -o=dico -f=y -sort=no
+ cat dico | gawk 'BEGIN{while (getline<"vocab.20k.nooov") v[$1]=1; print "DICTIONARY 0 "length(v);}FNR>1{if ($1 in v)\
+{print $0;}}' > vocab.irstlm.20k
 
 
-# (3),
-# In lang_test, create a phones.txt file that includes the disambiguation symbols.
-# the --include-zero includes the #0 symbol we pass through from the grammar.
-# Note: we previously echoed the # of disambiguation symbols to data/local/lex_ndisambig.
-scripts/add_disambig.pl --include-zero data/lang_test/phones.txt \
-   `cat data/local/lex_ndisambig` > data/lang_test/phones_disambig.txt
-cp data/lang_test/phones_disambig.txt data/lang # Needed for MMI.
+$IRSTLM/bin/build-lm.sh -i "gunzip -c $idir/train.gz" -o $idir/lm_3gram.gz  -p yes \
+  -n 3 -s improved-kneser-ney -b yes
+# Testing perplexity with SRILM tools:
+ngram -lm $idir/lm_3gram.gz  -ppl $sdir/cleaned.heldout 
+#data/local/lm/irstlm/lm_3gram.gz: line 162049: warning: non-zero probability for <unk> in closed-vocabulary LM
+#file data/local/lm/srilm/cleaned.heldout: 10000 sentences, 218996 words, 0 OOVs
+#0 zeroprobs, logprob= -513670 ppl= 175.041 ppl1= 221.599
+
+# Perplexity is very bad (should be ~141, since we used -p option,
+# not 175),
+# but adding -debug 3 to the command line shows that
+# the IRSTLM LM does not seem to sum to one properly, so it seems that
+# it produces an LM that isn't interpretable in the normal way as an ARPA
+# LM.
 
 
-# Create the lexicon FST with disambiguation symbols, and put it in lang_test.
-# There is an extra
-# step where we create a loop "pass through" the disambiguation symbols
-# from G.fst.  
-phone_disambig_symbol=`grep \#0 data/lang_test/phones_disambig.txt | awk '{print $2}'`
-word_disambig_symbol=`grep \#0 data/lang_test/words.txt | awk '{print $2}'`
 
-scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt 0.5 SIL '#'$ndisambig | \
-   fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
-   --keep_isymbols=false --keep_osymbols=false |   \
-   fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
-   fstarcsort --sort_type=olabel > data/lang_test/L_disambig.fst || exit 1;
-
-# Copy into data/lang/ also, where it will be needed for discriminative training.
-cp data/lang_test/L_disambig.fst data/lang/
-
-
-# Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the
-# beginning and end of words, on the input side)... useful if we
-# ever need to e.g. create ctm's-- these are used to work out the
-# word boundaries.
-cat data/local/lexicon.txt | \
- awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
- scripts/make_lexicon_fst.pl - 0.5 SIL | \
- fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
-  --keep_isymbols=false --keep_osymbols=false | \
- fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
-
-# Next, for each type of language model, create the corresponding FST
-# and the corresponding lang_test directory.
-
-echo Preparing language models for test
-
-for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
-  test=data/lang_test_${lm_suffix}
-  mkdir -p $test
-  for f in phones.txt words.txt phones_disambig.txt L.fst L_disambig.fst \
-     silphones.csl nonsilphones.csl; do
-    cp data/lang_test/$f $test
-  done
-  gunzip -c data/local/lm_${lm_suffix}.arpa.gz | \
-   scripts/find_arpa_oovs.pl $test/words.txt  > data/local/oovs_${lm_suffix}.txt
-
-  # grep -v '<s> <s>' because the LM seems to have some strange and useless
-  # stuff in it with multiple <s>'s in the history.  Encountered some other similar
-  # things in a LM from Geoff.  Removing all "illegal" combinations of <s> and </s>,
-  # which are supposed to occur only at being/end of utt.  These can cause 
-  # determinization failures of CLG [ends up being epsilon cycles].
-  gunzip -c data/local/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    scripts/remove_oovs.pl data/local/oovs_${lm_suffix}.txt | \
-    scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon > $test/G.fst
-  fstisstochastic $test/G.fst
- # The output is like:
- # 9.14233e-05 -0.259833
- # we do expect the first of these 2 numbers to be close to zero (the second is
- # nonzero because the backoff weights make the states sum to >1).
- # Because of the <s> fiasco for these particular LMs, the first number is not
- # as close to zero as it could be.
-
-  # Everything below is only for diagnostic.
-  # Checking that G has no cycles with empty words on them (e.g. <s>, </s>);
-  # this might cause determinization failure of CLG.
-  # #0 is treated as an empty word.
-  mkdir -p tmpdir.g
-  awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }} END{print "0 0 #0 #0"; print "0";}' \
-    < data/local/lexicon.txt  >tmpdir.g/select_empty.fst.txt
-  fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt tmpdir.g/select_empty.fst.txt | \
-   fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > tmpdir.g/empty_words.fst
-  fstinfo tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' && 
-    echo "Language model has cycles with empty words" && exit 1
-  rm -r tmpdir.g
-done
-
-echo "Succeeded in formatting data."

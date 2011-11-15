@@ -92,7 +92,7 @@ echo "<SPOKEN_NOISE>" > data/lang/oov.txt
 # triphone system.  extra_questions.txt is some pre-defined extra questions about
 # position and stress that split apart the categories we created in phonesets.txt.
 # in extra_questions.txt there is also a question about silence phones, since we 
-# didn't include that in our
+# don't include them in our automatically generated clustering of phones.
 
 local/make_shared_phones.sh < data/lang/phones.txt > data/lang/phonesets_mono.txt
 grep -v SIL data/lang/phonesets_mono.txt > data/lang/phonesets_cluster.txt
@@ -133,7 +133,7 @@ cp data/lang_test/phones_disambig.txt data/lang # Needed for MMI.
 
 # Create the lexicon FST with disambiguation symbols, and put it in lang_test.
 # There is an extra
-# step where we create a loop "pass through" the disambiguation symbols
+# step where we create a loop to "pass through" the disambiguation symbols
 # from G.fst.  
 phone_disambig_symbol=`grep \#0 data/lang_test/phones_disambig.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 data/lang_test/words.txt | awk '{print $2}'`

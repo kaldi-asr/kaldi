@@ -36,6 +36,20 @@ local/wsj_prepare_dict.sh
 
 local/wsj_format_data.sh
 
+# We suggest to run the next three commands in the background,
+# as they are not a precondition for the system building and
+# most of the tests: these commands build a dictionary
+# containing many of the OOVs in the WSJ LM training data,
+# and an LM trained directly on that data (i.e. not just
+# copying the arpa files from the disks from LDC).
+(
+ local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
+ local/wsj_prepare_local_dict.sh && \
+ local/wsj_train_lms.sh && \
+ local/wsj_format_data_local.sh
+) &
+
+
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
@@ -68,7 +82,7 @@ steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a
 
 (
-scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr
+scripts/mkgraph.sh --mono data/lang_test_fgpr exp/mono0a exp/mono0a/graph_fgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92
 )&
@@ -169,6 +183,11 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/gra
   data/test_eval92 exp/tri3b/decode_tgpr_eval92
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
   data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg
+
+# Trying the larger dictionary ("big-dict"/bd) + locally produced LM.
+scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_bd_tgpr \
+  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
