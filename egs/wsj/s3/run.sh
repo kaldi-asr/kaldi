@@ -82,7 +82,7 @@ steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a
 
 (
-scripts/mkgraph.sh --mono data/lang_test_fgpr exp/mono0a exp/mono0a/graph_fgpr
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92
 )&

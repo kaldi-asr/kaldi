@@ -80,7 +80,7 @@ cat $dir/unigrams | awk -v dict=$dir/dict.cmu \
   'BEGIN{while(getline<dict) seen[$1]=1;} {if(!seen[$2]){print;}}' \
    > $dir/oov.counts
 
-echo "Most frequent unseen unigrams d are: "
+echo "Most frequent unseen unigrams are: "
 head $dir/oov.counts
 
 # Prune away singleton counts, and remove things with numbers in
@@ -143,14 +143,16 @@ cat $dir/dict.acronyms $dir/dict.oovs | sort | uniq > $dir/dict.oovs_merged
 awk '{print $1}' $dir/dict.oovs_merged | uniq > $dir/oovlist.handled
 sort $dir/oovlist | diff - $dir/oovlist.handled  | grep -v 'd' | sed 's:< ::' > $dir/oovlist.not_handled
 
-echo "**Top OOVs we handled are:**"; 
-head $dir/oovlist.handled
-echo "**Top OOVs we didn't handle are as follows (not: they are mostly misspellings):**"; 
-head $dir/oovlist.not_handled
 
 # add_counts.pl attaches to original counts to the list of handled/not-handled OOVs
 add_counts.pl $dir/oov.counts $dir/oovlist.handled | sort -nr > $dir/oovlist.handled.counts
 add_counts.pl $dir/oov.counts $dir/oovlist.not_handled | sort -nr > $dir/oovlist.not_handled.counts
+
+echo "**Top OOVs we handled are:**"; 
+head $dir/oovlist.handled.counts
+echo "**Top OOVs we didn't handle are as follows (note: they are mostly misspellings):**"; 
+head $dir/oovlist.not_handled.counts
+
 
 echo "Count of OOVs we handled is `awk '{x+=$1} END{print x}' $dir/oovlist.handled.counts`"
 echo "Count of OOVs we couldn't handle is `awk '{x+=$1} END{print x}' $dir/oovlist.not_handled.counts`"
