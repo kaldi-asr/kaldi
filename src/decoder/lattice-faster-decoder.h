@@ -74,7 +74,7 @@ struct LatticeFasterDecoderConfig {
 
 
 /** A bit more optimized version of the lattice decoder.
-   See \ref lattice_generation \ref decoders_faster and \ref decoders_simple
+   See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
     for more information.
  */
 class LatticeFasterDecoder {

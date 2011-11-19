@@ -22,7 +22,6 @@
 #include "tree/context-dep.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
-#include "tree/context-dep.h"
 #include "tree/clusterable-classes.h"
 #include "util/text-utils.h"
 
@@ -206,7 +205,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    std::cerr << "Wrote tree\n";
+    KALDI_LOG << "Wrote tree\n";
 
     DeleteBuildTreeStats(&stats);
   } catch(const std::exception& e) {
