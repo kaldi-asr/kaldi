@@ -17,10 +17,10 @@ cat $wali | \
        ($word,$dur) = split(" ", $a); 
        $dur *= 0.01;
        if ($word != 0) {
-         print "$utt 1 $word $time $dur $word\n"; 
+         print "$utt 1 $time $dur $word\n"; 
        }
        $time =$time + $dur;
-     } ' | scripts/int2sym.pl --field 6 $symtab
+     } ' | scripts/int2sym.pl --field 5 $symtab
 
 
 
