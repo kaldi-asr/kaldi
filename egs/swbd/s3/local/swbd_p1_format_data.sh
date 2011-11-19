@@ -1,21 +1,20 @@
-#!/bin/bash
+#!/bin/bash 
 #
 
 if [ -f path.sh ]; then . path.sh; fi
 
-
-#data_list="train test"
-data_list="train"
-
-for x in lang lang_test $data_list; do
+silprob=0.5
+for x in lang lang_test train; do
   mkdir -p data/$x
 done
+
+arpa_lm=data/local/lm/3gram-mincount/lm_unpruned.gz
 
 # Copy stuff into its final location:
 
 
 
-for x in $data_list; do
+for x in train; do 
   cp data/local/$x.spk2utt data/$x/spk2utt || exit 1;
   cp data/local/$x.utt2spk data/$x/utt2spk || exit 1;
   # Don't call it wav.scp because that's reserved for the wav file
@@ -24,7 +23,6 @@ for x in $data_list; do
   cp data/local/${x}.txt data/$x/text || exit 1;
   cp data/local/segments* data/$x || exit 1;
 done
-
 
 
 cp data/local/words.txt data/lang/words.txt
@@ -69,31 +67,77 @@ cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
 
 ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon_disambig.txt`
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
-scripts/add_disambig.pl data/lang/phones.txt $ndisambig > data/lang_test/phones_disambig.txt
+scripts/add_disambig.pl --include-zero data/lang/phones.txt $ndisambig > data/lang_test/phones_disambig.txt
 
 
-silprob=0.5  # same prob as word
 scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob SIL  | \
   fstcompile --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > data/lang/L.fst
 
-echo "This script is not finished!"
-exit 1;
-
-# test lexicon - not ready yet !!!
-#scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob SIL '#'$ndisambig | \
-#   fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
-#   --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel \
-#    > data/lang_test/L_disambig.fst
+for x in topo L.fst words.txt phones.txt silphones.csl nonsilphones.csl; do
+  cp data/lang/$x data/lang_test
+done
 
 
-# G is not ready yet !!!
-fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
-    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst
 
-# Checking that G is stochastic [note, it wouldn't be for an Arpa]
-fstisstochastic data/lang_test/G.fst || echo Error: G is not stochastic
+# Create L_align.fst, which is as L.fst but with alignment symbols (#1 and #2 at the
+# beginning and end of words, on the input side)... needed to discover the 
+# word boundaries in alignments, when we need to create ctm-format output.
+
+cat data/local/lexicon.txt | \
+ awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+ scripts/make_lexicon_fst.pl - $silprob SIL | \
+ fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
+  --keep_isymbols=false --keep_osymbols=false | \
+ fstarcsort --sort_type=olabel > data/lang_test/L_align.fst
+
+
+# Make lexicon with disambiguation symbols.  We need to
+# add self-loops to "pass through" the #0 symbol from the 
+# backoff language model.
+phone_disambig_symbol=`grep \#0 data/lang_test/phones_disambig.txt | awk '{print $2}'`
+word_disambig_symbol=`grep \#0 data/lang_test/words.txt | awk '{print $2}'`
+
+scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob SIL '#'$ndisambig | \
+   fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang_test/words.txt \
+   --keep_isymbols=false --keep_osymbols=false | \
+   fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
+   fstarcsort --sort_type=olabel \
+    > data/lang_test/L_disambig.fst
+
+# Copy into data/lang/ also, where it will be needed for discriminative training.
+cp data/lang_test/L_disambig.fst data/lang/
+
+
+# grep -v '<s> <s>' etc. is only for future-proofing this script.  Our
+# LM doesn't have these "invalid combinations".  These can cause 
+# determinization failures of CLG [ends up being epsilon cycles].
+# Note: remove_oovs.pl takes a list of words in the LM that aren't in
+# our word list.  Since our LM doesn't have any, we just give it
+# /dev/null [we leave it in the script to show how you'd do it].
+gunzip -c "$arpa_lm" | \
+   grep -v '<s> <s>' | \
+   grep -v '</s> <s>' | \
+   grep -v '</s> </s>' | \
+   arpa2fst - | fstprint | \
+   scripts/remove_oovs.pl /dev/null | \
+   scripts/eps2disambig.pl | scripts/s2eps.pl | fstcompile --isymbols=data/lang_test/words.txt \
+     --osymbols=data/lang_test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+    fstrmepsilon > data/lang_test/G.fst
+  fstisstochastic data/lang_test/G.fst
+
+
+
+echo  "Checking how stochastic G is (the first of these numbers should be small):"
+fstisstochastic data/lang_test/G.fst 
+
+## Check lexicon.
+## just have a look and make sure it seems sane.
+echo "First few lines of lexicon FST:"
+fstprint   --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst  | head
+
+echo Performing further checks
 
 # Checking that G.fst is determinizable.
 fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
@@ -102,32 +146,17 @@ fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
 fstdeterminize data/lang_test/L_disambig.fst /dev/null || echo Error determinizing L.
 
 # Checking that disambiguated lexicon times G is determinizable
+# Note: we do this with fstdeterminizestar not fstdeterminize, as
+# fstdeterminize was taking forever (presumbaly relates to a bug
+# in this version of OpenFst that makes determinization slow for
+# some case).
 fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
-   fstdeterminize >/dev/null || echo Error
+   fstdeterminizestar >/dev/null || echo Error
 
 # Checking that LG is stochastic:
 fsttablecompose data/lang/L.fst data/lang_test/G.fst | \
    fstisstochastic || echo Error: LG is not stochastic.
 
-# Checking that L_disambig.G is stochastic:
-fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
-   fstisstochastic || echo Error: LG is not stochastic.
-
-
-## Check lexicon.
-## just have a look and make sure it seems sane.
-echo "First few lines of lexicon FST:"
-fstprint   --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst  | head
-
-
-silphonelist=`cat data/lang/silphones.csl | sed 's/:/ /g'`
-nonsilphonelist=`cat data/lang/nonsilphones.csl | sed 's/:/ /g'`
-cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
-   sed "s:SILENCEPHONES:$silphonelist:" > data/lang/topo 
-
-for x in phones.txt words.txt silphones.csl nonsilphones.csl topo; do
-   cp data/lang/$x data/lang_test/$x  || exit 1;
-done
 
 echo swbd_p1_format_data succeeded.
 

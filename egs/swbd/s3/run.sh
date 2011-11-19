@@ -27,12 +27,22 @@ local/swbd_p1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 
 local/swbd_p1_format_data.sh
 
+# Data preparation and formatting for eval2000 (note: the "text" file
+# is not very much preprocessed; for actual WER reporting we'll use
+# sclite.
+local/eval2000_data_prep.sh /mnt/matylda2/data/HUB5_2000/ /mnt/matylda2/data/HUB5_2000/
+
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
 #mfccdir=/mnt/matylda6/ijanda/kaldi_swbd_mfcc
 mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_swbd_mfcc
 cmd="queue.pl -q all.q@@blade" # remove the option if no queue.
 local/make_mfcc_segs.sh --num-jobs 10 --cmd "$cmd" data/train exp/make_mfcc/train $mfccdir
+# after this, the next command will remove the small number of utterances
+# that couldn't be extracted for some reason (e.g. too short; no such file).
+scripts/fix_data_dir.sh data/train
+
+local/make_mfcc_segs.sh --num-jobs 4 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
 
 # Now-- there are 264k utterances, and we want to start the monophone training
 # on relatively short utterances (easier to align), but not only the very shortest
@@ -93,11 +103,34 @@ steps/align_lda_mllt.sh  --num-jobs 30 --cmd "$train_cmd" \
 steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 20000 data/train_100k_nodup data/lang exp/tri3a_ali exp/tri4a
 
+scripts/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
+scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4a/graph \
+  data/eval2000 exp/tri4a/decode_eval2000
+
 steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4a exp/tri4a_ali_all_nodup
 
 # Note: up to this point we probably had too many leaves.
 steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 150000 data/train_nodup data/lang exp/tri4a_ali_all_nodup exp/tri5a
+
+
+scripts/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
+scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
+  data/eval2000 exp/tri5a/decode_eval2000
+
+# Align the 5a system; we'll train an SGMM system on top of 
+# LDA+MLLT+SAT, and use 5a system for 1st pass.
+steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
+  data/train_nodup data/lang exp/tri5a exp/tri5a_ali_all_nodup
+
+steps/train_ubm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+  700 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a
+steps/train_sgmm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+   4500 40000 41 40 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a/final.ubm exp/sgmm6a
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm6a exp/sgmm6a/graph_tgpr
+# have to match num-jobs with 5a decode.
+scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
+   exp/sgmm6a/graph_tgpr data/eval2000 exp/sgmm6a/decode_eval2000 exp/tri5a/decode_eval2000
 
 

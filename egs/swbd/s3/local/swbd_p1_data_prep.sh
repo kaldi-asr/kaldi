@@ -14,7 +14,7 @@
 
 #check existing directories
 if [ $# != 1 ]; then
-   echo "Usage: ./run.sh /path/to/SWBD"
+   echo "Usage: swbd_p1_data_prep.sh /path/to/SWBD"
    exit 1; 
 fi 
 
@@ -89,13 +89,8 @@ cat transcripts1.txt | $DIR/local/oov2unk.pl lexicon1.txt " " \
 
 
 
-# Now modify both the lexicon and trancsripts to
-
-
-
 # Make phones symbol-table (adding in silence and verbal and non-verbal noises at this point).
 # We are adding suffixes _B, _E, _S for beginning, ending, and singleton phones.
-
 
 $DIR/local/dct2phones.awk lexicon1.txt | sort | \
   perl -ane 's:\r::; print;' | \
@@ -116,7 +111,8 @@ cat lexicon1.txt \
   > lexicon2.txt
 
 # Add to the lexicon the silences, noises etc.
-(echo '!SIL SIL'; echo '[VOCALIZED-NOISE] SPN'; echo '[NOISE] NSN'; echo '[LAUGHTER] LAU' ) | \
+(echo '!SIL SIL'; echo '[VOCALIZED-NOISE] SPN'; echo '[NOISE] NSN'; echo '[LAUGHTER] LAU';
+ echo '<UNK> SPN' ) | \
  cat - lexicon2.txt  > lexicon3.txt
 
 
@@ -184,26 +180,25 @@ cat lexicon.txt | awk '{print $1}' | sort | uniq  | \
  awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
   > words.txt
 
-## (1b) Continue trans preparation 
-## Convert real OOVs to <SPOKEN_NOISE>
 
 # (1c) Make segment files from transcript
+#segments file format is: utt-id side-id start-time end-time, e.g.:
+#sw02001-A_000098-001156 sw02001-A 0.98 11.56
 
-# I) list of all segments
-$DIR/local/make_segments.awk train.txt > segments
+awk '{ segment=$1; split(segment,S,"[_-]"); side=S[2]; audioname=S[1];startf=S[3];endf=S[4];
+   print segment " " audioname "-" side " " startf/100 " " endf/100}' <train.txt > segments
 
-awk '{name = $0; gsub(".sph$","",name); gsub(".*/","",name); print(name " " $0)}' train_sph.flist > train_sph.scp 
+awk '{name = $0; gsub(".sph$","",name); gsub(".*/","",name); print(name " " $0)}' train_sph.flist > train_sph.scp
 
 sph2pipe=`cd ../../../../..; echo $PWD/tools/sph2pipe_v2.5/sph2pipe`
-if [ ! -f $sph2pipe ]; then
-   echo "Could not find the sph2pipe program at $sph2pipe";
-   exit 1;
-fi
-cat train_sph.scp | awk '{printf("%s-A '$sph2pipe' -f wav -p -c 1 %s |\n", $1, $2); printf("%s-B '$sph2pipe' -f wav -p -c 2 %s |\n", $1, $2);}' | \
-sort > train_wav.scp #side A - channel 1, side B - channel 2
+[ ! -f $sph2pipe ] && echo "Could not find the sph2pipe program at $sph2pipe" && exit 1;
 
+cat train_sph.scp | awk -v sph2pipe=$sph2pipe '{printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 
+    printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);}' | \
+   sort > train_wav.scp #side A - channel 1, side B - channel 2
 
 cat segments | awk '{spk=substr($1,4,6); print $1 " " spk}' > train.utt2spk
 cat train.utt2spk | sort -k 2 | $DIR/scripts/utt2spk_to_spk2utt.pl > train.spk2utt
 
 echo Switchboard phase 1 data preparation succeeded.
+
