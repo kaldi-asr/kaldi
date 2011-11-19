@@ -1050,7 +1050,7 @@ inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   kaldi::Input ki(rxfilename);
   fst::FstHeader hdr;
   if (!hdr.Read(ki.Stream(), rxfilename))
-    KALDI_ERR << "Reading FST: error reading FST header from"
+    KALDI_ERR << "Reading FST: error reading FST header from "
               << kaldi::PrintableRxfilename(rxfilename);
   FstReadOptions ropts("<unspecified>", &hdr);
   VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
