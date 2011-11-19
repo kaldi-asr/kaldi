@@ -14,8 +14,8 @@ use Cwd;
 # . path.sh
 # ( my-prog '--opt=foo bar' foo |  other-prog baz ) >& some.log
 # EOF
-# qsub -sync y -j y -o /cur/location/some.log /cur/location/q/some.sh && exit 0;
-# qsub -sync y -j y -o /cur/location/some.log /cur/location/q/some.sh 
+# qrsh -j y -now no -o /cur/location/some.log /cur/location/q/some.sh  && exit 0;
+# qrsh -j y -now no -o /cur/location/some.log /cur/location/q/some.sh 
 #
 # What this means is it creates a .sh file to put the command in,
 # along with changing the directory and setting the path.  It then runs
@@ -73,7 +73,7 @@ $shfile = "$dir/$base";
 open(S, ">$shfile") || die "Could not write to script file $shfile";
 `chmod +x $shfile`;
 
-$qsub_cmd = "qsub -sync y -j y -o $logfile $qsub_opts $shfile >>$dir/queue.log 2>&1";
+$qsub_cmd = "qrsh -j y -now no -o $logfile $qsub_opts $shfile";
 #
 # Write to the script file, and close it.
 #
@@ -95,21 +95,6 @@ close(S) || die "Could not close script file $shfile";
 #
 system "$qsub_cmd";
 if ($? == 0) { exit(0); }
-$errmsgs = `cat $dir/queue.log`;
-if ($errmsgs =~ m/containes/) { # the error message "range_list containes no elements"
-  # seems to be encountered due to a bug in grid engine... since this appears to be 
-  # intermittent, we try a bunch of times, with sleeps in between, if this happens.
-  print STDERR "Command writing to $logfile failed, apparently due to queue bug " .
-      " (range_list containes no elements)... will try again a few times.\n";
-  $delay = 60; # one minute delay initially.
-  for ($x = 1; $x < 10; $x++) {
-      print STDERR "[$x/10]";
-      sleep($delay);
-      $delay += 60*5; # Add 5 minutes to the delay.
-      system "$qsub_cmd";
-      if ($? == 0) { exit(0); }
-  }
-}
 
 print STDERR "Command writing to $logfile failed; trying again\n";
 system "mv $logfile $logfile.bak";

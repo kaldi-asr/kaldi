@@ -56,6 +56,11 @@ loopscale=0.1
 # (note: the [[ ]] brackets make the || type operators work (inside [ ], we
 # would have to use -o instead),  -f means file exists, and -ot means older than).
 
+required="$lang/L.fst $lang/G.fst $lang/phones_disambig.txt $lang/words.txt $lang/silphones.csl $model $tree"
+for f in $required; do
+  [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
+done
+
 mkdir -p $lang/tmp
 if [[ ! -f $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
