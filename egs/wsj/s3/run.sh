@@ -15,9 +15,6 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# Note: this is work in progress!  This will be the new, "cleaner" version
-# of the WSJ scripts.
-
 exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
@@ -67,7 +64,7 @@ scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt
 scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender
 
 # Now make subset with the shortest 2k utterances from si-84.
-scripts/subset_data_dir.sh data/train_si84 2000 data/train_si84_2kshort
+scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort
 
 # Now make subset with half of the data from si-84.
 scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
@@ -104,6 +101,7 @@ scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93
 
 # test various modes of LM rescoring (4 is the default one).
+# This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
 scripts/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode 

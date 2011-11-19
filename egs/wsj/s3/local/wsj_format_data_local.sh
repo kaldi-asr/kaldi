@@ -126,7 +126,7 @@ gunzip -c $lm_srcdir_3g/lm_unpruned.gz | \
   fstisstochastic $lang/G.fst
 
 mkdir -p data/lang_test_bd_tgpr
-cp $lang/* $lang_unpruned
+cp $lang/* data/lang_test_bd_tgpr
 # Be careful: this time we dispense with the grep -v '<s> <s>' so this might
 # not work for LMs generated from all toolkits.
 gunzip -c $lm_srcdir_3g/lm_pr6.0.gz | \
