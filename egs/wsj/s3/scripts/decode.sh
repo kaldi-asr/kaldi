@@ -19,6 +19,7 @@ orig_args="$*"
 # will set nj to #spkrs (if using queue) or 4 (if not), if
 # not set by the user.
 nj=
+lang=
 cmd=scripts/run.pl
 for x in 1 2; do
   if [ $1 == "--num-jobs" ]; then
@@ -32,11 +33,20 @@ for x in 1 2; do
      shift
      [ -z "$cmd" ] && echo "Empty argument to --cmd option" && exit 1;
   fi  
+  if [ $1 == "-l" ]; then
+     shift
+     lang=$1
+     shift
+     [ ! -d "$lang/phones_disambig.txt" -o ! -d "$lang/L_align.fst" ] && \
+      echo "Invalid argument to -l option; expected $lang/phones_disambig.txt and $lang/L_align.fst to exist." \
+      && exit 1;
+  fi  
 done
 
 
 if [ $# -lt 4 ]; then
-  echo "Usage: scripts/decode.sh [--cmd scripts/queue.sh opts..] [--num-jobs n] <decode_script> <graph-dir> <data-dir> <decode-dir> [extra-args...]"
+  echo "Usage: scripts/decode.sh [-l lang-dir] [--cmd scripts/queue.sh opts..] [--num-jobs n] <decode_script> <graph-dir> <data-dir> <decode-dir> [extra-args...]"
+  echo "note: -l option only required if you want to score with sclite (since we need L_align.fst)"
   exit 1;
 fi
 
@@ -90,7 +100,13 @@ wait
 [ -f $dir/.error ] && echo "Error in decoding script: command line was decode.sh $orig_args" && exit 1;
 
 if ls $dir/lat.*.gz >&/dev/null; then
-  scripts/score_lats.sh $dir $graphdir/words.txt $data || exit 1;
+  if [ -n "$lang" ]; then # sclite scoring: $lang directory supplied only for this reason.
+    [ ! -f $data/stm ] && \
+     echo "Expected $data/stm to exist (-l option only for sclite scoring)" && exit 1;
+    scripts/score_lats_ctm.sh $dir $data $lang || exit 1;
+  else
+    scripts/score_lats.sh $dir $graphdir/words.txt $data || exit 1;
+  fi
 elif ls $dir/*.txt >&/dev/null; then
   scripts/score_text.sh $dir $data || exit 1;
 else

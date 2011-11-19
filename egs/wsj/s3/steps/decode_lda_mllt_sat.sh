@@ -33,10 +33,8 @@ if [ "$1" == "-j" ]; then
   numjobs=$1;
   jobid=$2;
   shift; shift;
-  if [ $jobid -ge $numjobs ]; then
-     echo "Invalid job number, $jobid >= $numjobs";
-     exit 1;
-  fi
+  ! scripts/get_splits.pl $numjobs | grep -w $jobid >/dev/null && \
+    echo Invalid job-number $jobid "(num-jobs = $numjobs)" && exit 1;
 fi
 
 if [ $# != 3 ]; then

@@ -14,7 +14,7 @@ srcdir=data/local/dict_larger
 mkdir -p $dir
 export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
 ( # First make sure the kaldi_lm toolkit is installed.
- cd ../../../tools
+ cd ../../../tools || exit 1;
  if [ -d kaldi_lm ]; then
    echo Not installing the kaldi_lm toolkit since it is already there.
  else
