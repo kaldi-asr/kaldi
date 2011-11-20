@@ -37,7 +37,7 @@ newlm=$newlang/G.fst
 ! cmp $oldlang/words.txt $newlang/words.txt && echo "Warning: vocabularies may be incompatible."
 [ ! -f $oldlm ] && echo Missing file $oldlm && exit 1;
 [ ! -f $newlm ] && echo Missing file $newlm && exit 1;
-[ ! ls $indir/lat.*.gz >/dev/null ] && echo "No lattices input directory $indir" && exit 1;
+! ls $indir/lat.*.gz >/dev/null && echo "No lattices input directory $indir" && exit 1;
 
 
 oldlmcommand="fstproject --project_output=true $oldlm |"
