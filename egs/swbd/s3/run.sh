@@ -114,7 +114,6 @@ steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
 steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 150000 data/train_nodup data/lang exp/tri4a_ali_all_nodup exp/tri5a
 
-
 scripts/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
 scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
   data/eval2000 exp/tri5a/decode_eval2000

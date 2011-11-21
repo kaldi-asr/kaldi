@@ -209,14 +209,16 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/gra
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92
 
 # Train and test MMI, and boosted MMI, on tri4b.
-steps/align_lda_mllt_sat.sh --num-jobs 30 --cmd "$train_cmd" \
+# Making num-jobs 40 as want to keep them under 4 hours long (or will fail
+# on regular queue at BUT).
+steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284
-steps/make_denlats_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+steps/make_denlats_lda_etc.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284
-steps/train_lda_etc_mmi.sh --num-jobs 30 --cmd "$train_cmd" \
+steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 exp/tri4b exp/tri4b_mmi
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93
-steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 30 --cmd "$train_cmd" \
+steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 exp/tri4b exp/tri4b_mmi_b0.1
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93
 

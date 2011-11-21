@@ -235,23 +235,13 @@ void AmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   }
 }
 
-
-void UbmClusteringOptions::Register(ParseOptions *po) {
-  std::string module = "UbmClusteringOptions: ";
-  po->Register("ubm-numcomps", &ubm_numcomps, module+
-      "Number of Gaussians components in the final UBM.");
-  po->Register("reduce-state-factor", &reduce_state_factor, module+
-      "Intermediate number of clustered states (as fraction of total states).");
-  po->Register("intermediate-numcomps", &intermediate_numcomps, module+
-      "Intermediate number of merged Gaussian components.");
-  po->Register("cluster-varfloor", &cluster_varfloor, module+
-      "Variance floor used in bottom-up state clustering.");
-}
-
 void UbmClusteringOptions::Check() {
   if (ubm_numcomps > intermediate_numcomps)
     KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps
               << " > --intermediate-numcomps=" << intermediate_numcomps;
+  if (ubm_numcomps > max_am_gauss)
+    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps
+              << " > --max-am-gauss=" << max_am_gauss;
   if (ubm_numcomps <= 0)
     KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps;
   if (cluster_varfloor <= 0)
@@ -266,6 +256,24 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
                            const UbmClusteringOptions &opts,
                            DiagGmm *ubm_out) {
+  if (am.NumGauss() > opts.max_am_gauss) {
+    KALDI_LOG << "ClusterGaussiansToUbm: first reducing num-gauss from " << am.NumGauss()
+              << " to " << opts.max_am_gauss;
+    AmDiagGmm tmp_am;
+    tmp_am.CopyFromAmDiagGmm(am);
+    BaseFloat power = 1.0, min_count = 1.0; // Make the power 1, which I feel
+    // is appropriate to the way we're doing the overall clustering procedure.
+    tmp_am.MergeByCount(state_occs, opts.max_am_gauss, power, min_count);
+    UbmClusteringOptions opts_tmp(opts);
+    if (tmp_am.NumGauss() > opts.max_am_gauss) {
+      KALDI_LOG << "Clustered down to " << tmp_am.NumGauss()
+                << "; will not cluster further";
+      opts_tmp.max_am_gauss = tmp_am.NumGauss();
+    }
+    ClusterGaussiansToUbm(tmp_am, state_occs, opts_tmp, ubm_out);
+    return;
+  }
+  
   int32 num_pdfs = static_cast<int32>(am.NumPdfs()),
       dim = am.Dim(),
       num_clust_states = static_cast<int32>(opts.reduce_state_factor*num_pdfs);
@@ -331,51 +339,6 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
                                    &gauss_clusters_out, NULL);
   for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index)
     DeletePointers(&state_clust_gauss[clust_index]);
-
-//  // Put the remaining Gaussians together for a final bottom-up clustering.
-//  KALDI_VLOG(1) << "Putting " << opts.intermediate_numcomps << " Gaussians "
-//                << "together for a final bottom-up clustering.";
-//  vector<Clusterable*> gauss_cluster_in;
-//  gauss_cluster_in.reserve(opts.intermediate_numcomps);
-//  for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index) {
-//    for (int32 i = gauss_clusters_out[clust_index].size()-1; i >=0; --i) {
-//      GaussClusterable *this_gauss = static_cast<GaussClusterable*>(
-//          gauss_clusters_out[clust_index][i]);
-//      gauss_cluster_in.push_back(this_gauss);
-//    }
-//  }
-//  vector<Clusterable*> final_clusters;
-//  ClusterBottomUp(gauss_cluster_in, kBaseFloatMax, opts.ubm_numcomps,
-//                  &final_clusters, /*get the clustered Gaussians*/
-//                  &state_clusters /*cluster assignments not needed*/);
-//  DeletePointers(&gauss_cluster_in);
-//
-//  KALDI_LOG << "Clustered " << am.NumGauss() << " Gaussians in the model to "
-//            << opts.ubm_numcomps << ". Copying components to UBM.";
-//  Matrix<BaseFloat> tmp_means(opts.ubm_numcomps, dim);
-//  Matrix<BaseFloat> tmp_vars(opts.ubm_numcomps, dim);
-//  Vector<BaseFloat> tmp_weights(opts.ubm_numcomps);
-//  Vector<BaseFloat> tmp_vec(dim);
-//  int32 gauss_index = 0;
-//  for (int32 i = final_clusters.size()-1; i >=0; --i) {
-//    GaussClusterable *this_gauss = static_cast<GaussClusterable*>(
-//        final_clusters[i]);
-//    BaseFloat weight = this_gauss->count();
-//    tmp_weights(gauss_index) = weight;
-//    tmp_vec.CopyFromVec(this_gauss->x_stats());
-//    tmp_vec.Scale(1/weight);
-//    tmp_means.CopyRowFromVec(tmp_vec, gauss_index);
-//    tmp_vec.CopyFromVec(this_gauss->x2_stats());
-//    tmp_vec.Scale(1/weight);
-//    tmp_vec.AddVec2(-1.0, tmp_means.Row(gauss_index));  // x^2 stats to var.
-//    tmp_vars.CopyRowFromVec(tmp_vec, gauss_index);
-//    gauss_index++;
-//  }
-//  tmp_gmm.Resize(opts.ubm_numcomps, dim);
-//  tmp_gmm.SetWeights(tmp_weights);
-//  tmp_gmm.SetInvVarsAndMeans(tmp_vars, tmp_means);
-//  tmp_gmm.ComputeGconsts();
-
 
   // Next, put the remaining clustered Gaussians into a single GMM.
   KALDI_VLOG(1) << "Putting " << opts.intermediate_numcomps << " Gaussians "

@@ -75,9 +75,9 @@ if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
 fi
 
 for n in `get_splits.pl $nj`; do
-  sifeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+  sifeatspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 done
-sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/*.cmvn|' scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/*.cmvn|' scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 # Initial transforms... either find them, or create them.
 n=`get_splits.pl $nj | awk '{print $1}'`

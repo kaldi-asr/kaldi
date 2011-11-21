@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use File::Basename;
 use Cwd;
+use Time::HiRes qw (usleep);
 
 # queue.pl has the same functionality as run.pl, except that
 # it runs the job in question on the queue.  
@@ -73,7 +74,7 @@ $shfile = "$dir/$base";
 open(S, ">$shfile") || die "Could not write to script file $shfile";
 `chmod +x $shfile`;
 
-$qsub_cmd = "qrsh -j y -now no -o $logfile $qsub_opts $shfile";
+$qsub_cmd = "qrsh -now no $qsub_opts $shfile";
 #
 # Write to the script file, and close it.
 #
@@ -90,18 +91,42 @@ print S "## submitted with:\n";
 print S "# $qsub_cmd\n";
 close(S) || die "Could not close script file $shfile";
 
+$num_tries = 2; # Unless we fail with exit status 0 (i.e. the job returns with
+                # exit status 0 but there is no "finished" message at the
+                # end of the log-file), this is how many tries we do.  But
+               # if we get this nasty exit-status-0 thing, which seems to be
+               # unpredictable and relates somehow to the queue system,
+               # we'll try more times and will put delays in.
+$max_tries = 10;      
+$delay = 1; # seconds.  We'll increase this.
+$increment = 30; # increase delay by 30 secs each time.
+for ($try = 1; ; $try++) {
 #
 # Try to run the script file, on the queue.
 #
-system "$qsub_cmd";
-if ($? == 0) { exit(0); }
+  system "$qsub_cmd";
 
-print STDERR "Command writing to $logfile failed; trying again\n";
-system "mv $logfile $logfile.bak";
-system "$qsub_cmd";
-if ($? == 0) { 
-    exit(0); 
-} else {
-    print STDERR "Command writing to $logfile failed second time.  Command is in $shfile\n";
+  # Since we moved from qsub -sync y to qrsh (to work around a bug in
+  # GridEngine), we have had jobs fail yet return zero exit status.
+  # The "tail -1 $logfile" below is to try to catch this.
+  $ret = $?;
+  if ($ret == 0) { ## Check it's really successful: log-file should say "Finished" at end...
+    # but sleep first, for 0.1 seconds; need to wait for file system to sync.
+    usleep(100000);
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+    usleep(500000); # wait another half second and try again, in case file system is syncing slower than that.
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+    sleep(1); # now a full second.
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+  }
+  
+  if ($try < $num_tries || ($ret == 0 && $try < $max_tries)) {
+    print STDERR "Command writing to $logfile failed with exit status $ret [on try $try]; waiting $delay seconds and trying again\n";
+    sleep($delay);
+    $delay += $increment;
+    system "mv $logfile $logfile.bak";
+  } else {
+    print STDERR "Command writing to $logfile failed after $try tries.  Command is in $shfile\n";
     exit(1);
+  }
 }

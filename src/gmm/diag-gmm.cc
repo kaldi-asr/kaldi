@@ -180,9 +180,9 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
               << target_components << "), #Gauss = " << NumGauss();
   }
   if (NumGauss() == target_components) {
-    KALDI_WARN << "No components merged, as target (" << target_components
-               << ") = total.";
-    return;
+    KALDI_VLOG(2) << "No components merged, as target (" << target_components
+                  << ") = total.";
+    return; // Nothing to do.
   }
 
   int32 num_comp = NumGauss(), dim = Dim();

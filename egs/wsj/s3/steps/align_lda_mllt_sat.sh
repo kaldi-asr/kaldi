@@ -108,7 +108,7 @@ rm $dir/.error 2>/dev/null
 echo "Aligning data from $data (with alignment model)"
 
 for n in `get_splits.pl $nj`; do
-  sifeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+  sifeatspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
   featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$dir/$n.trans ark:- ark:- |"
 done
 
@@ -129,7 +129,7 @@ for n in `get_splits.pl $nj`; do
       weight-silence-post 0.0 $silphonelist $dir/final.alimdl ark:- ark:- \| \
       gmm-post-to-gpost $dir/final.alimdl "${sifeatspart[$n]}" ark:- ark:- \| \
       gmm-est-fmllr-gpost --spk2utt=ark:$data/split$nj/$n/spk2utt $dir/final.mdl "${sifeatspart[$n]}" \
-        ark:- ark:$dir/$n.trans || touch $dir/.error &
+        ark,s,cs:- ark:$dir/$n.trans || touch $dir/.error &
 done
 wait;
 [ -f $dir/.error ] && echo Error computing fMLLR transforms && exit 1;

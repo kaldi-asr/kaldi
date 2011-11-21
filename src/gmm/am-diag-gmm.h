@@ -166,15 +166,30 @@ struct UbmClusteringOptions {
   BaseFloat reduce_state_factor;
   int32 intermediate_numcomps;
   BaseFloat cluster_varfloor;
+  int32 max_am_gauss;
 
   UbmClusteringOptions()
       : ubm_numcomps(400), reduce_state_factor(0.2),
-        intermediate_numcomps(4000), cluster_varfloor(0.01) {}
+        intermediate_numcomps(4000), cluster_varfloor(0.01),
+        max_am_gauss(20000) {}
   UbmClusteringOptions(int32 ncomp, BaseFloat red, int32 interm_comps,
                        BaseFloat vfloor)
         : ubm_numcomps(ncomp), reduce_state_factor(red),
           intermediate_numcomps(interm_comps), cluster_varfloor(vfloor) {}
-  void Register(ParseOptions *po);
+  void Register(ParseOptions *po) {
+    std::string module = "UbmClusteringOptions: ";
+    po->Register("max-am-gauss", &max_am_gauss, module+
+                 "We first reduce acoustic model to this max #Gauss before clustering.");
+    po->Register("ubm-numcomps", &ubm_numcomps, module+
+                 "Number of Gaussians components in the final UBM.");
+    po->Register("reduce-state-factor", &reduce_state_factor, module+
+                 "Intermediate number of clustered states (as fraction of total states).");
+    po->Register("intermediate-numcomps", &intermediate_numcomps, module+
+                 "Intermediate number of merged Gaussian components.");
+    po->Register("cluster-varfloor", &cluster_varfloor, module+
+                 "Variance floor used in bottom-up state clustering.");
+  }
+
   void Check();
 };
 

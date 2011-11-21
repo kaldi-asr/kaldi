@@ -75,7 +75,7 @@ fi
 basefeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 
 for n in `get_splits.pl $nj`; do
-  splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
+  splicedfeatspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
   basefeatspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/lda.mat ark:- ark:- |"
   featspart[$n]="${basefeatspart[$n]}" # This gets overwritten later in the script.
 done
