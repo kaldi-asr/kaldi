@@ -34,6 +34,20 @@ wavs=""
 utt2spks=""
 texts=""
 
+nu=`cat $data/utt2spk | wc -l`
+nf=`cat $data/feats.scp | wc -l`
+nt=`cat $data/text | wc -l`
+if [ $nu -ne $nf ]; then
+  echo "split_data.sh: warning, #lines is (utt2spk,feats.scp) is ($nu,$nf); this script "
+  echo " may produce incorrectly split data."
+  echo "use scripts/fix_data_dir.sh to fix this."
+fi
+if [ $nt -ne 0 -a $nu -ne $nt ]; then
+  echo "split_data.sh: warning, #lines is (utt2spk,text) is ($nu,$nt); this script "
+  echo " may produce incorrectly split data."
+  echo "use scripts/fix_data_dir.sh to fix this."
+fi
+
 # `scripts/get_split.pl` returns "0 1 2 3" or "00 01 .. 18 19" or whatever.
 for n in `scripts/get_splits.pl $numsplit`; do
    mkdir -p $data/split$numsplit/$n

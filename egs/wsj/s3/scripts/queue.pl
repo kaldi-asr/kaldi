@@ -119,14 +119,16 @@ for ($try = 1; ; $try++) {
     sleep(1); # now a full second.
     if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
   }
-  
-  if ($try < $num_tries || ($ret == 0 && $try < $max_tries)) {
-    print STDERR "Command writing to $logfile failed with exit status $ret [on try $try]; waiting $delay seconds and trying again\n";
+  $is_bad_alloc =  (system("grep bad_alloc $logfile >/dev/null") == 0 ? 
+                    ", failed due to std::bad_alloc" : "");
+
+  if ($try < $num_tries || (($ret == 0 && !$is_bad_alloc) && $try < $max_tries)) {
+    print STDERR "Command writing to $logfile failed with exit status $ret$is_bad_alloc [on try $try]; waiting $delay seconds and trying again\n";
     sleep($delay);
     $delay += $increment;
     system "mv $logfile $logfile.bak";
   } else {
-    print STDERR "Command writing to $logfile failed after $try tries.  Command is in $shfile\n";
+    print STDERR "Command writing to $logfile failed after $try tries, exit status=$ret$is_bad_alloc.  Command is in $shfile\n";
     exit(1);
   }
 }

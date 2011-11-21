@@ -57,7 +57,7 @@ n1=`get_splits.pl $nj | awk '{print $1}'`
 [ -f $alidir/$n1.trans ] && echo "Using speaker transforms from $alidir"
 
 for n in `get_splits.pl $nj`; do
-  featspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+  featspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
   if [ -f $alidir/$n1.trans ]; then
     featspart[$n]="${featspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
   fi
@@ -91,9 +91,9 @@ for x in 0 1 2 3; do
   echo "Pass $x"
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/acc.$x.$n.log \
-      gmm-gselect "--gselect=ark:gunzip -c $dir/gselect_diag.$n.gz|" \
+      gmm-gselect "--gselect=ark,s,cs:gunzip -c $dir/gselect_diag.$n.gz|" \
         "fgmm-global-to-gmm $dir/$x.ubm - |" "${featspart[$n]}" ark:- \| \
-      fgmm-global-acc-stats --gselect=ark:- $dir/$x.ubm "${featspart[$n]}" \
+      fgmm-global-acc-stats --gselect=ark,s,cs:- $dir/$x.ubm "${featspart[$n]}" \
         $dir/$x.$n.acc || touch $dir/.error &
   done
   wait
