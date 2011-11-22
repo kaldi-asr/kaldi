@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use File::Basename;
 use Cwd;
+use Time::HiRes qw (usleep);
 
 # queue.pl has the same functionality as run.pl, except that
 # it runs the job in question on the queue.  
@@ -14,8 +15,8 @@ use Cwd;
 # . path.sh
 # ( my-prog '--opt=foo bar' foo |  other-prog baz ) >& some.log
 # EOF
-# qsub -sync y -j y -o /cur/location/some.log /cur/location/q/some.sh && exit 0;
-# qsub -sync y -j y -o /cur/location/some.log /cur/location/q/some.sh 
+# qrsh -j y -now no -o /cur/location/some.log /cur/location/q/some.sh  && exit 0;
+# qrsh -j y -now no -o /cur/location/some.log /cur/location/q/some.sh 
 #
 # What this means is it creates a .sh file to put the command in,
 # along with changing the directory and setting the path.  It then runs
@@ -73,7 +74,7 @@ $shfile = "$dir/$base";
 open(S, ">$shfile") || die "Could not write to script file $shfile";
 `chmod +x $shfile`;
 
-$qsub_cmd = "qsub -sync y -j y -o $logfile $qsub_opts $shfile >>$dir/queue.log 2>&1";
+$qsub_cmd = "qrsh -now no $qsub_opts $shfile";
 #
 # Write to the script file, and close it.
 #
@@ -90,33 +91,44 @@ print S "## submitted with:\n";
 print S "# $qsub_cmd\n";
 close(S) || die "Could not close script file $shfile";
 
+$num_tries = 2; # Unless we fail with exit status 0 (i.e. the job returns with
+                # exit status 0 but there is no "finished" message at the
+                # end of the log-file), this is how many tries we do.  But
+               # if we get this nasty exit-status-0 thing, which seems to be
+               # unpredictable and relates somehow to the queue system,
+               # we'll try more times and will put delays in.
+$max_tries = 10;      
+$delay = 1; # seconds.  We'll increase this.
+$increment = 30; # increase delay by 30 secs each time.
+for ($try = 1; ; $try++) {
 #
 # Try to run the script file, on the queue.
 #
-system "$qsub_cmd";
-if ($? == 0) { exit(0); }
-$errmsgs = `cat $dir/queue.log`;
-if ($errmsgs =~ m/containes/) { # the error message "range_list containes no elements"
-  # seems to be encountered due to a bug in grid engine... since this appears to be 
-  # intermittent, we try a bunch of times, with sleeps in between, if this happens.
-  print STDERR "Command writing to $logfile failed, apparently due to queue bug " .
-      " (range_list containes no elements)... will try again a few times.\n";
-  $delay = 60; # one minute delay initially.
-  for ($x = 1; $x < 10; $x++) {
-      print STDERR "[$x/10]";
-      sleep($delay);
-      $delay += 60*5; # Add 5 minutes to the delay.
-      system "$qsub_cmd";
-      if ($? == 0) { exit(0); }
-  }
-}
+  system "$qsub_cmd";
 
-print STDERR "Command writing to $logfile failed; trying again\n";
-system "mv $logfile $logfile.bak";
-system "$qsub_cmd";
-if ($? == 0) { 
-    exit(0); 
-} else {
-    print STDERR "Command writing to $logfile failed second time.  Command is in $shfile\n";
+  # Since we moved from qsub -sync y to qrsh (to work around a bug in
+  # GridEngine), we have had jobs fail yet return zero exit status.
+  # The "tail -1 $logfile" below is to try to catch this.
+  $ret = $?;
+  if ($ret == 0) { ## Check it's really successful: log-file should say "Finished" at end...
+    # but sleep first, for 0.1 seconds; need to wait for file system to sync.
+    usleep(100000);
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+    usleep(500000); # wait another half second and try again, in case file system is syncing slower than that.
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+    sleep(1); # now a full second.
+    if(`tail -1 $logfile` =~ m/Finished/) { exit(0); }
+  }
+  $is_bad_alloc =  (system("grep bad_alloc $logfile >/dev/null") == 0 ? 
+                    ", failed due to std::bad_alloc" : "");
+
+  if ($try < $num_tries || (($ret == 0 && !$is_bad_alloc) && $try < $max_tries)) {
+    print STDERR "Command writing to $logfile failed with exit status $ret$is_bad_alloc [on try $try]; waiting $delay seconds and trying again\n";
+    sleep($delay);
+    $delay += $increment;
+    system "mv $logfile $logfile.bak";
+  } else {
+    print STDERR "Command writing to $logfile failed after $try tries, exit status=$ret$is_bad_alloc.  Command is in $shfile\n";
     exit(1);
+  }
 }

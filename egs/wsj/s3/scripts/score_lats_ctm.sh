@@ -29,7 +29,7 @@ wend=`grep "#2" $lang/phones_disambig.txt | head -1 | awk '{print $2}'`
 [ ! -n "$wend" ] && echo "Error with word-end symbol (bad phones_disambig.txt?)" && exit 1
 
 rm $dir/.error 2>/dev/null
-for group in "9 10 11" "12 13 14" "15 16"; do # do it in batches of up to 3.
+for group in "9 10 11" "12 13 14" "15 16"; do # do the rescoring in batches of up to 3.
   for inv_acwt in $group; do
    (    
     mkdir -p $dir/score_${inv_acwt}
@@ -39,25 +39,29 @@ for group in "9 10 11" "12 13 14" "15 16"; do # do it in batches of up to 3.
     lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$symtab \
      "ark:gunzip -c $dir/lat.*.gz|" "ark,t:|gzip -c >$dir/score_${inv_acwt}/tra.gz" \
       "ark,t:|gzip -c >$dir/score_${inv_acwt}/ali.gz" 2>$dir/score_${inv_acwt}/rescore.log || exit 1;
-
+   ) &
+  done
+  wait
+  [ -f $dir/.error ] && \
+     echo "score_lats_ctm.sh: error rescoring lattices; look into logs in $dir/score_*/rescore.log for more details"  && \
+     exit 1;
+  for inv_acwt in $group; do
     name=`basename $data` # e.g. "eval2000"
-
     # Create ctm this pipe first creates a ctm that's relative to the utterance-ids,
     # and then makes it relative to the conversation sides).
-   ( ali-to-phones $model "ark:gunzip -c $dir/score_${inv_acwt}/ali.gz|" ark:- | \
+   ! ( ali-to-phones $model "ark:gunzip -c $dir/score_${inv_acwt}/ali.gz|" ark:- | \
      phones-to-prons $lang/L_align.fst $wbegin $wend ark:- "ark:gunzip -c $dir/score_${inv_acwt}/tra.gz|" ark,t:- | \
      prons-to-wordali ark:- \
     "ark:ali-to-phones --write-lengths $model 'ark:gunzip -c $dir/score_${inv_acwt}/ali.gz|' ark,t:- |" ark,t:- | \
      scripts/wali_to_ctm.sh - $lang/words.txt $data/segments | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
-     grep -v -E '<UNK>' )  > $dir/score_${inv_acwt}/$name.ctm  2>$dir/score_${inv_acwt}/log || exit 1;
+     grep -v -E '<UNK>' )  > $dir/score_${inv_acwt}/$name.ctm  2>$dir/score_${inv_acwt}/log && \
+      echo "score_lats_ctm.sh: error generating ctm, see $dir/score_${inv_acwt}/log" && exit 1;
    
-    $hubscr -V -l english -h hub5 -g $data/glm -r $data/stm $dir/score_${inv_acwt}/${name}.ctm \
-       >&$dir/score_${inv_acwt}/sclite.log || exit 1
-   ) || (echo status is $? && touch $dir/.error) &
+    ! $hubscr -V -l english -h hub5 -g $data/glm -r $data/stm $dir/score_${inv_acwt}/${name}.ctm \
+       >&$dir/score_${inv_acwt}/sclite.log && \
+      echo "score_lats_ctm.sh: error doing sclite scoring, see $dir/score_${inv_acwt}/sclite.log" \
+      && exit 1
   done
-  wait
-  [ -f $dir/.error ] && echo "Error in scoring script, look into logs in $dir/score_*/ for more details" \
-     && exit 1
 done
 
 exit 0
