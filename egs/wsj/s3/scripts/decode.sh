@@ -37,7 +37,7 @@ for x in 1 2; do
      shift
      lang=$1
      shift
-     [ ! -d "$lang/phones_disambig.txt" -o ! -d "$lang/L_align.fst" ] && \
+     [ ! -f "$lang/phones_disambig.txt" -o ! -f "$lang/L_align.fst" ] && \
       echo "Invalid argument to -l option; expected $lang/phones_disambig.txt and $lang/L_align.fst to exist." \
       && exit 1;
   fi  
