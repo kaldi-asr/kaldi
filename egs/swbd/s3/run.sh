@@ -43,6 +43,7 @@ local/make_mfcc_segs.sh --num-jobs 10 --cmd "$cmd" data/train exp/make_mfcc/trai
 scripts/fix_data_dir.sh data/train
 
 local/make_mfcc_segs.sh --num-jobs 4 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
+scripts/fix_data_dir.sh data/eval2000
 
 # Now-- there are 264k utterances, and we want to start the monophone training
 # on relatively short utterances (easier to align), but not only the very shortest
@@ -104,8 +105,8 @@ steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 20000 data/train_100k_nodup data/lang exp/tri3a_ali exp/tri4a
 
 scripts/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
-scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4a/graph \
-  data/eval2000 exp/tri4a/decode_eval2000
+scripts/decode.sh -l data/lang_test --num-jobs 10 --cmd "$decode_cmd" \
+ steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/eval2000 exp/tri4a/decode_eval2000
 
 steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4a exp/tri4a_ali_all_nodup
@@ -115,8 +116,8 @@ steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 150000 data/train_nodup data/lang exp/tri4a_ali_all_nodup exp/tri5a
 
 scripts/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
-scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
-  data/eval2000 exp/tri5a/decode_eval2000
+scripts/decode.sh -l data/lang_test --num-jobs 10 --cmd "$decode_cmd" \
+  steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000
 
 # Align the 5a system; we'll train an SGMM system on top of 
 # LDA+MLLT+SAT, and use 5a system for 1st pass.
@@ -133,3 +134,4 @@ scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh
    exp/sgmm6a/graph_tgpr data/eval2000 exp/sgmm6a/decode_eval2000 exp/tri5a/decode_eval2000
 
 
+for x in exp/*/decode_*; do [ -d $x ] && grep Mean  $x/score_*/*.sys | scripts/best_wer.sh; done

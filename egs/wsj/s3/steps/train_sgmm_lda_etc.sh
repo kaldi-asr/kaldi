@@ -215,7 +215,7 @@ while [ $x -lt $numiters ]; do
      $cmd $dir/log/acc.$x.$n.log \
        sgmm-acc-stats ${spkvecs_opt[$n]} --utt2spk=ark:$data/split$nj/$n/utt2spk \
          --update-flags=$flags "${gselect_opt[$n]}" --rand-prune=$randprune \
-         $dir/$x.mdl "${featspart[$n]}" "ark:ali-to-post 'ark:gunzip -c $dir/$n.ali.gz|' ark:-|" \
+         $dir/$x.mdl "${featspart[$n]}" "ark,s,cs:ali-to-post 'ark:gunzip -c $dir/$n.ali.gz|' ark:-|" \
          $dir/$x.$n.acc || touch $dir/.error &
    done
    wait;

@@ -176,7 +176,7 @@ while [ $x -lt $numiters ]; do
    for n in `get_splits.pl $nj`; do
      $cmd $dir/log/acc.$x.$n.log \
        gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
-         "ark:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
+         "ark,s,cs:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
    done
    wait;
    [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
@@ -200,7 +200,7 @@ if [ "$feats" != "$sifeats" ]; then
     $cmd $dir/acc_alimdl.$n.log \
       ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:-  \| \
         gmm-acc-stats-twofeats $dir/$x.mdl "${featspart[$n]}" "${sifeatspart[$n]}" \
-          ark:- $dir/$x.$n.acc2 || touch $dir/.error &
+          ark,s,cs:- $dir/$x.$n.acc2 || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo "Error accumulating alignment statistics." && exit 1;

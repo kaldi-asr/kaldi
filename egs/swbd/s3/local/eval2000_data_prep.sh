@@ -103,6 +103,3 @@ done
 echo Data preparation and formatting completed for Eval 2000
 echo "(but not MFCC extraction)"
 
-
-
-
