@@ -9,9 +9,13 @@ OPENFST_LDLIBS =
 include ../kaldi.mk
 
 
-TESTFILES = 
+TESTFILES = cuda-matrix-test 
 
-OBJFILES = cu-device.o cu-matrix.o cu-vector.o cu-stlvector.o cu-math.o
+OBJFILES = cu-device.o cu-matrix.o 
+ifeq ($(CUDA), true)
+  OBJFILES += cu-kernels.o
+endif
+OBJFILES += cu-vector.o cu-stlvector.o cu-math.o
 ifeq ($(CUDA), true)
   OBJFILES += cu-kernels.o
 endif
@@ -22,14 +26,14 @@ all:  $(LIBFILE) $(TESTFILES)
 
 #implicit rules for kerenls
 %.o : %.cu
-	export PATH=$(CUDATK)/bin:$(PATH); $(CUDATK)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+	export PATH=$(CUDATKDIR)/bin:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
 
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
+$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 
 # Rule below would expand to, e.g.:

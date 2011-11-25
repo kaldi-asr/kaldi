@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
+#include "cudamatrix/cu-device.h"
 
 
 int main(int argc, char *argv[]) {
@@ -156,7 +157,9 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << xent.Report();
 
+#if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
+#endif
 
 
     return 0;

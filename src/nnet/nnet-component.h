@@ -57,6 +57,7 @@ class Component {
     kUpdatableComponent = 0x0100, 
     kBiasedLinearity,
     kSharedLinearity, 
+    kKrylovLinearity,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 

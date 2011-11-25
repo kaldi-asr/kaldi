@@ -138,7 +138,9 @@ int main(int argc, char *argv[]) {
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
     KALDI_LOG << "Done " << num_done << " files";
 
+#if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
+#endif
 
     return 0;
   } catch(const std::exception& e) {

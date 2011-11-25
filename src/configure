@@ -45,6 +45,8 @@ do
     MKLLIBDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
     --mathlib=*)
     MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+    --cudatk-dir=*)
+    CUDATKDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
     *)  echo "Unknown argument: $1, exiting"; exit 1 ;;
    esac
 done
@@ -147,6 +149,43 @@ else
     failure "Unsupported linear algebra library '$MATHLIB'"
 fi
 
+
+
+function linux_configure_cuda {
+  #check for CUDA toolkit in the system
+  if [ ! $CUDATKDIR ]; then
+    if [ -f /usr/local/share/cuda/bin/nvcc ]; then
+      CUDATKDIR=/usr/local/share/cuda/
+    elif [ -f /usr/local/cuda/bin/nvcc ]; then
+      CUDATKDIR=/usr/local/cuda/
+    fi
+  fi
+
+  if [ $CUDATKDIR ]; then
+    if [ ! -f $CUDATKDIR/bin/nvcc ]; then
+      failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
+    fi
+    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
+    echo >> kaldi.mk
+    echo "#Next section enables CUDA for compilation" >> kaldi.mk
+    echo CUDA = true >> kaldi.mk
+    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
+
+    if [ "`uname -m`" == "x86_64" ]; then
+      if [ "`hostname -d`" == "fit.vutbr.cz" ]; then
+        #BUT machines by default compile 32bits
+        cat makefiles/linux_cuda.mk >> kaldi.mk 
+      else
+        cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
+      fi
+    else
+      cat makefiles/linux_cuda.mk >> kaldi.mk
+    fi
+  else
+    echo "CUDA will not be used! If you have already installed cuda drivers and cuda toolkit, try using --cudatk-dir=... option"
+  fi
+}
+
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASLIBDIR = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
@@ -206,7 +245,9 @@ function linux_configure_static {
 
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  linux_configure_cuda
   echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+
   exit 0;
 }
 
@@ -258,6 +299,7 @@ function linux_configure_dynamic {
 
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk  
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  linux_configure_cuda
   echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -296,6 +338,8 @@ if [ "`uname`" == "Linux"  ]; then
       # TODO(arnab): enable CLAPACK options for Linux
     fi
 
+
+
    # We're using ATLAS, but first try to find where the libraries are located.
    # First we look for the static libraries.
    # We're looking for four libraries, all in the same directory, named libcblas.a,
@@ -311,5 +355,5 @@ if [ "`uname`" == "Linux"  ]; then
      linux_atlas_failure "Failed to configure ATLAS lbiraries";
 fi
 
-
-failure Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers.
+echo "failure Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers."
+exit 1
