@@ -11,11 +11,7 @@ include ../kaldi.mk
 
 TESTFILES = cuda-matrix-test 
 
-OBJFILES = cu-device.o cu-matrix.o 
-ifeq ($(CUDA), true)
-  OBJFILES += cu-kernels.o
-endif
-OBJFILES += cu-vector.o cu-stlvector.o cu-math.o
+OBJFILES = cu-device.o cu-matrix.o cu-vector.o cu-stlvector.o cu-math.o
 ifeq ($(CUDA), true)
   OBJFILES += cu-kernels.o
 endif
