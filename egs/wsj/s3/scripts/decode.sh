@@ -103,7 +103,7 @@ if ls $dir/lat.*.gz >&/dev/null; then
   if [ -n "$lang" ]; then # sclite scoring: $lang directory supplied only for this reason.
     [ ! -f $data/stm ] && \
      echo "Expected $data/stm to exist (-l option only for sclite scoring)" && exit 1;
-    scripts/score_lats_ctm.sh $dir $data $lang || exit 1;
+    scripts/score_lats_ctm.sh $dir $lang $data || exit 1;
   else
     scripts/score_lats.sh $dir $graphdir/words.txt $data || exit 1;
   fi
