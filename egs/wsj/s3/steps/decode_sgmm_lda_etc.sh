@@ -16,7 +16,7 @@
 # limitations under the License.
 
 # Decoding script that works with an SGMM model... note: this script 
-# assumes you have speaker vectors [for no vectors, see decode_sgmm_novec_lda_etc.sh,
+# assumes you are using speaker vectors [for no vectors, see decode_sgmm_novec_lda_etc.sh,
 # if it exists already].
 # It works on top of LDA + [something] features; if this includes
 # speaker-specific transforms, you have to provide an "old" decoding directory
@@ -32,10 +32,6 @@ if [ "$1" == "-j" ]; then
   nj=$1;
   jobid=$2;
   shift; shift;
-  if [ $jobid -ge $nj ]; then
-     echo "Invalid job number, $jobid >= $nj";
-     exit 1;
-  fi
 fi
 
 if [ $# -lt 3 -o $# -gt 4 ]; then
@@ -50,7 +46,7 @@ data=$2
 dir=$3
 olddir=$4
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
-silphonelist=`cat $graphdir/silphones.csl`
+silphonelist=`cat $graphdir/silphones.csl` || exit 1
 
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 

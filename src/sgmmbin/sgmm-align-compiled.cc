@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
           num_other_error++;
           continue;
         }
-
+        
         {  // Add transition-probs to the FST.
           std::vector<int32> disambig_syms;  // empty.
           AddTransitionProbs(trans_model, disambig_syms,
@@ -171,8 +171,7 @@ int main(int argc, char *argv[]) {
                                              features, *gselect, log_prune, acoustic_scale);
 
         decoder.Decode(&sgmm_decodable);
-        KALDI_LOG << "Length of file is " << features.NumRows();
-
+        
         VectorFst<LatticeArc> decoded;  // linear FST.
         bool ans = decoder.ReachedFinal() // consider only final states.
             && decoder.GetBestPath(&decoded);  

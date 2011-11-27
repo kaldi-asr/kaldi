@@ -318,6 +318,7 @@ BaseFloat TransitionModel::GetNonSelfLoopLogProb(int32 trans_state) const {
 
 BaseFloat TransitionModel::GetTransitionLogProbIgnoringSelfLoops(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0);
+  KALDI_PARANOID_ASSERT(!IsSelfLoop(trans_id));
   return log_probs_(trans_id) - GetNonSelfLoopLogProb(TransitionIdToTransitionState(trans_id));
 }
 

@@ -112,11 +112,19 @@ if ($errmsgs =~ m/containes/) { # the error message "range_list containes no ele
 }
 
 print STDERR "Command writing to $logfile failed; trying again\n";
-system "mv $logfile $logfile.bak";
+system "mv $logfile $logfile.bak.1";
 system "$qsub_cmd";
 if ($? == 0) { 
     exit(0); 
-} else {
-    print STDERR "Command writing to $logfile failed second time.  Command is in $shfile\n";
-    exit(1);
 }
+
+print STDERR "Command writing to $logfile failed; trying one last time\n";
+system "mv $logfile $logfile.bak.2";
+system "$qsub_cmd";
+if ($? == 0) { 
+    exit(0); 
+}
+
+print STDERR "Command writing to $logfile failed on the third time.  Command is in $shfile\n";
+exit(1);
+

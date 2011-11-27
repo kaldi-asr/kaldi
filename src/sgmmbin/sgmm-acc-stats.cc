@@ -66,6 +66,15 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    // Initialize the readers before the model, as the model can
+    // be large, and we don't want to call fork() after reading it if
+    // virtual memory may be low.
+    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+    
     AmSgmm am_sgmm;
     TransitionModel trans_model;
     {
@@ -82,15 +91,6 @@ int main(int argc, char *argv[]) {
 
     double tot_like = 0.0;
     double tot_t = 0;
-
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
-      KALDI_ERR << "Unable to open stream for gaussian-selection indices";
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
-
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
     kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 

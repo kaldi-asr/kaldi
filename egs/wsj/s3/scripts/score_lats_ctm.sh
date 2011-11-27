@@ -54,7 +54,7 @@ for group in "9 10 11" "12 13 14" "15 16"; do # do the rescoring in batches of u
      prons-to-wordali ark:- \
     "ark:ali-to-phones --write-lengths $model 'ark:gunzip -c $dir/score_${inv_acwt}/ali.gz|' ark,t:- |" ark,t:- | \
      scripts/wali_to_ctm.sh - $lang/words.txt $data/segments | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
-     grep -v -E '<UNK>' )  > $dir/score_${inv_acwt}/$name.ctm  2>$dir/score_${inv_acwt}/log && \
+     grep -v -E '<UNK>|%HESITATION' )  > $dir/score_${inv_acwt}/$name.ctm  2>$dir/score_${inv_acwt}/log && \
       echo "score_lats_ctm.sh: error generating ctm, see $dir/score_${inv_acwt}/log" && exit 1;
    
     ! $hubscr -V -l english -h hub5 -g $data/glm -r $data/stm $dir/score_${inv_acwt}/${name}.ctm \

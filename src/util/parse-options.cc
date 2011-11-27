@@ -256,8 +256,9 @@ int ParseOptions::Read(int argc, const char* const argv[]) {
   if (print_args_) {  // if the user did not suppress this with --print-args = false....
     std::ostringstream strm;
     for (int j = 0; j < argc; j++)
-      std::cerr << Escape(argv[j]) << " ";
-    std::cerr << '\n' << std::flush;
+      strm << Escape(argv[j]) << " ";
+    strm << '\n';
+    std::cerr << strm.str() << std::flush;
   }
   return i;
 }
@@ -273,13 +274,14 @@ void ParseOptions::PrintUsage(bool print_command_line) {
   }
   std::cerr << '\n';
   if (print_command_line) {
-    std::cerr << "Command line was: ";
+    std::ostringstream strm;
+    strm << "Command line was: ";
     for (int j = 0; j < argc_; j++)
-      std::cerr << Escape(argv_[j]) << " ";
-    std::cerr << '\n';
+      strm << Escape(argv_[j]) << " ";
+    strm << '\n';
+    std::cerr << strm.str() << std::flush;
   }
 }
-
 
 void ParseOptions::PrintConfig(std::ostream& os) {
   os << '\n' << "[[ Configuration of UI-Registered options ]]"

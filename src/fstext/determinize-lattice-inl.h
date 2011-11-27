@@ -365,8 +365,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                       DeterminizeLatticeOptions opts):
       num_arcs_(0), num_elems_(0), ifst_(ifst.Copy()), opts_(opts),
       equal_(opts_.delta), determinized_(false),
-      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
-    Initialize();
+      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {    
   }
 
   // frees all except output_arcs_, which contains the important info
@@ -464,6 +463,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // in "output_arcs_".  Must be called after Initialize().  To get the
     // output, call one of the Output routines.
     try {
+      InitializeDeterminization(); // some start-up tasks.
       while (!queue_.empty()) {
         OutputStateId out_state = queue_.back();
         queue_.pop_back();
@@ -1135,7 +1135,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     return IsIsymbolOrFinal(state); // will only recurse once.
   }
   
-  void Initialize() {    
+  void InitializeDeterminization() {    
     if(ifst_->Properties(kExpanded, false) != 0) { // if we know the number of
       // states in ifst_, it might be a bit more efficient
       // to pre-size the hashes so we're not constantly rebuilding them.

@@ -148,6 +148,9 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/
 # with the experiments above we do it with the pruned one.
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats exp/tri2a/decode_tgpr_dev93
 
+#Try with no transition probs-- this seemed to help for Swbd.  Helps ~0.1% here.  Script not checked in.
+#scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats_notrans.sh data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats_notrans exp/tri2a/decode_tgpr_dev93
+
 # Align tri2b system with si84 data.
 steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
   --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
@@ -228,7 +231,11 @@ steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
 steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
    3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c/final.ubm exp/sgmm3c
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr \
+  data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+# Decoding via lattice rescoring of lats from regular model. [ a bit worse].
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh data/lang_test_tgpr \
+  data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_fromlats exp/tri2b/decode_tgpr_dev93
  
 
 # Train SGMM system on top of LDA+MLLT+SAT.
@@ -283,8 +290,14 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_b
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
   data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_tg
 
-
-
+# Decode sgmm4c with the "big-dict" decoding graph; here, we avoid doing a full
+# re-decoding but limit ourselves from the lattices from the "big-dict" decoding
+# of exp/tri3b.  Note that these results are not quite comparable to those
+# above because we use the better, "big-dict" decoding of tri3b.  We go direct to
+# 4-gram.
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+ data/lang_test_bd_fg data/test_eval92 exp/sgmm4c/decode_bd_fg_eval92_fromlats \
+  exp/tri3b/decode_bd_tgpr_eval92
 
 # Getting results:
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done

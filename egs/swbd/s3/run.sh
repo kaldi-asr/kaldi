@@ -116,7 +116,7 @@ steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
   4000 150000 data/train_nodup data/lang exp/tri4a_ali_all_nodup exp/tri5a
 
 scripts/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
-scripts/decode.sh -l data/lang_test --num-jobs 10 --cmd "$decode_cmd" \
+scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000
 
 # Align the 5a system; we'll train an SGMM system on top of 
@@ -128,10 +128,19 @@ steps/train_ubm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
   700 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a
 steps/train_sgmm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
    4500 40000 41 40 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a/final.ubm exp/sgmm6a
-scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm6a exp/sgmm6a/graph_tgpr
+scripts/mkgraph.sh data/lang_test exp/sgmm6a exp/sgmm6a/graph
 # have to match num-jobs with 5a decode.
-scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
-   exp/sgmm6a/graph_tgpr data/eval2000 exp/sgmm6a/decode_eval2000 exp/tri5a/decode_eval2000
+scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
+   exp/sgmm6a/graph data/eval2000 exp/sgmm6a/decode_eval2000 exp/tri5a/decode_eval2000
 
+
+# with wider beams [didn't help]... this script not in repository
+#scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_w.sh \
+#   exp/sgmm6a/graph data/eval2000 exp/sgmm6a/decode_eval2000_w exp/tri5a/decode_eval2000
+
+# This decoding script doesn't do a full re-decoding but is limited to the lattices
+# from the baseline decoding.
+scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+   data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats exp/tri5a/decode_eval2000
 
 for x in exp/*/decode_*; do [ -d $x ] && grep Mean  $x/score_*/*.sys | scripts/best_wer.sh; done

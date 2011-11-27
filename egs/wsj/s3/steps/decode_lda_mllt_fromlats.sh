@@ -49,10 +49,6 @@ if [ "$1" == "-j" ]; then
   numjobs=$1;
   jobid=$2;
   shift; shift;
-  if [ $jobid -ge $numjobs ]; then
-     echo "Invalid job number, $jobid >= $numjobs";
-     exit 1;
-  fi
 fi
 
 if [ $# != 4 ]; then
@@ -90,14 +86,15 @@ done
 # CMVN stats-- we make them part of a pipe.
 feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-grep \# $lang/phones_disambig.txt | awk '{print $2}' > $dir/disambig.list
-
+# Note: we limit the batch-size to 75 to prevent memory blowup.
+# In the normal decoding scripts there are only about 50 utterances
+# per batch anyway.
 
 ( lattice-to-fst "ark:gunzip -c $olddir/lat.$jobid.gz|" ark:- | \
   fsttablecompose "fstproject --project_output=true $lang/G.fst | fstarcsort |" ark:- ark:- | \
   fstdeterminizestar ark:- ark:- | \
-  compile-train-graphs-fsts --read-disambig-syms=$dir/disambig.list $scale_opts \
-    $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- |  \
+  compile-train-graphs-fsts --read-disambig-syms="grep \# $lang/phones_disambig.txt | awk '{print \$2}'|" \
+    --batch-size=75 $scale_opts $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- |  \
   gmm-latgen-faster --max-active=7000 --beam=20.0 --lattice-beam=7.0 --acoustic-scale=0.083333 \
     --allow-partial=true --word-symbol-table=$lang/words.txt \
     $srcdir/final.mdl ark:- "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" ) \

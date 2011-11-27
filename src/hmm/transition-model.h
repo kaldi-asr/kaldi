@@ -124,7 +124,8 @@ class TransitionModel {
   int32 TransitionStateToPhone(int32 trans_state) const;
   int32 TransitionStateToHmmState(int32 trans_state) const;
   int32 TransitionStateToPdf(int32 trans_state) const;
-  int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id
+  int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
+  // this state doesn't have a self-loop.
 
   inline int32 TransitionIdToPdf(int32 trans_id) const;
   int32 TransitionIdToPhone(int32 trans_id) const;

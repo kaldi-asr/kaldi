@@ -33,10 +33,6 @@ if [ "$1" == "-j" ]; then
   numjobs=$1;
   jobid=$2;
   shift; shift;
-  if [ $jobid -ge $numjobs ]; then
-     echo "Invalid job number, $jobid >= $numjobs";
-     exit 1;
-  fi
 fi
 
 if [ $# != 3 ]; then

@@ -191,7 +191,6 @@ int main(int argc, char *argv[]) {
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
 
-
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.

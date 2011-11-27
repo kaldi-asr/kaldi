@@ -16,7 +16,8 @@
 
 nj=4
 cmd=scripts/run.pl
-for x in 1 2; do
+stage=-5
+for x in `seq 3`; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
@@ -25,6 +26,11 @@ for x in 1 2; do
   if [ $1 == "--cmd" ]; then
      shift
      cmd=$1
+     shift
+  fi  
+  if [ $1 == "--stage" ]; then # stage to start training from, typically same as the iter you have a .mdl file;
+     shift                     # in case it failed part-way.  
+     stage=$1
      shift
   fi  
 done
@@ -103,100 +109,113 @@ if [ ! -f $ubm ]; then
   exit 1;
 fi
 
-# Get stats to build the tree.
-echo "Accumulating tree stats"
-$cmd $dir/log/acc_tree.log \
- acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" "ark:gunzip -c $alidir/*ali.gz|" \
-  $dir/treeacc || exit 1;
 
+if [ $stage -le -5 ]; then
+  # Get stats to build the tree.
+  echo "Accumulating tree stats"
+  $cmd $dir/log/acc_tree.log \
+   acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" "ark:gunzip -c $alidir/*ali.gz|" \
+    $dir/treeacc || exit 1;
+fi
 
-echo "Computing questions for tree clustering"
-# preparing questions, roots file...
-sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
-cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
-sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
-compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
-sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
+if [ $stage -le -4 ]; then
+  echo "Computing questions for tree clustering"
+  # preparing questions, roots file...
+  sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
+  cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
+  sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
+  compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
-echo "Building tree"
-$cmd $dir/log/train_tree.log \
-  build-tree --verbose=1 --max-leaves=$numleaves \
-    $dir/treeacc $dir/roots.txt \
-    $dir/questions.qst $lang/topo $dir/tree || exit 1;
+  echo "Building tree"
+  $cmd $dir/log/train_tree.log \
+    build-tree --verbose=1 --max-leaves=$numleaves \
+      $dir/treeacc $dir/roots.txt \
+      $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
+  # the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
 
-# the sgmm-init program accepts a GMM, so we just create a temporary GMM "0.gmm"
+  $cmd $dir/log/init_gmm.log \
+    gmm-init-model  --write-occs=$dir/0.occs  \
+      $dir/tree $dir/treeacc $lang/topo $dir/0.gmm || exit 1;
 
-$cmd $dir/log/init_gmm.log \
-  gmm-init-model  --write-occs=$dir/0.occs  \
-    $dir/tree $dir/treeacc $lang/topo $dir/0.gmm || exit 1;
+  # The next line is a bit of a hack to work out the feature dim.  The program
+  # feat-to-len returns the #rows of each matrix, which for the transform matrix,
+  # is the feature dim.
+  featdim=`feat-to-len "scp:echo foo $alidir/final.mat|" ark,t:- 2>/dev/null | awk '{print $2}'`
 
+  # Note: if phndim and/or spkdim are higher than you can initialize with,
+  # sgmm-init will just make them as high as it can (later we'll increase)
 
-# The next line is a bit of a hack to work out the feature dim.  The program
-# feat-to-len returns the #rows of each matrix, which for the transform matrix,
-# is the feature dim.
-featdim=`feat-to-len "scp:echo foo $alidir/final.mat|" ark,t:- 2>/dev/null | awk '{print $2}'`
+  $cmd $dir/log/init_sgmm.log \
+    sgmm-init --phn-space-dim=$phndim --spk-space-dim=$spkdim $lang/topo $dir/tree $ubm \
+      $dir/0.mdl || exit 1;
 
-
-
-# Note: if phndim and/or spkdim are higher than you can initialize with,
-# sgmm-init will just make them as high as it can (later we'll increase)
-
-$cmd $dir/log/init_sgmm.log \
-  sgmm-init --phn-space-dim=$phndim --spk-space-dim=$spkdim $lang/topo $dir/tree $ubm \
-    $dir/0.mdl || exit 1;
+fi
 
 rm $dir/.error 2>/dev/null
-echo "Doing Gaussian selection"
-for n in `get_splits.pl $nj`; do
-  $cmd $dir/log/gselect$n.log \
-    sgmm-gselect $dir/0.mdl "${featspart[$n]}" "ark,t:|gzip -c > $dir/$n.gselect.gz" \
-   || touch $dir/.error &
-done
-wait;
-[ -f $dir/.error ] && echo "Error doing Gaussian selection" && exit 1;
 
-echo "Converting alignments"  # don't bother parallelizing; very fast.
-for n in `get_splits.pl $nj`; do
-  convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/$n.ali.gz|" \
-     "ark:|gzip -c >$dir/$n.ali.gz" 2>$dir/log/convert$n.log 
-done
+if [ $stage -le -3 ]; then
+  echo "Doing Gaussian selection"
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/gselect$n.log \
+      sgmm-gselect $dir/0.mdl "${featspart[$n]}" "ark,t:|gzip -c > $dir/$n.gselect.gz" \
+     || touch $dir/.error &
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error doing Gaussian selection" && exit 1;
+fi
 
-echo "Compiling training graphs"
-for n in `get_splits.pl $nj`; do
-  $cmd $dir/log/compile_graphs$n.log \
-    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst  \
-     "ark:sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt < $data/split$nj/$n/text |" \
-     "ark:|gzip -c >$dir/$n.fsts.gz" || touch $dir/.error &
-done
-wait;
-[ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
+
+if [ $stage -le -2 ]; then
+  echo "Converting alignments"  # don't bother parallelizing; very fast.
+  for n in `get_splits.pl $nj`; do
+    convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/$n.ali.gz|" \
+       "ark:|gzip -c >$dir/$n.ali.gz" 2>$dir/log/convert$n.log 
+  done
+fi
+
+if [ $stage -le -1 ]; then
+  echo "Compiling training graphs"
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/compile_graphs$n.log \
+      compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst  \
+       "ark:sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt < $data/split$nj/$n/text |" \
+       "ark:|gzip -c >$dir/$n.fsts.gz" || touch $dir/.error &
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
+fi
 
 x=0
 while [ $x -lt $numiters ]; do
    echo "Pass $x ... "
    if echo $realign_iters | grep -w $x >/dev/null; then
-      echo "Aligning data"
-      for n in `get_splits.pl $nj`; do
-        $cmd $dir/log/align.$x.$n.log  \
-          sgmm-align-compiled ${spkvecs_opt[$n]} $scale_opts "${gselect_opt[$n]}" \
-             --utt2spk=ark:$data/split$nj/$n/utt2spk --beam=8 --retry-beam=40 \
-             $dir/$x.mdl "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
-             "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
-      done
-      wait;
-      [ -f $dir/.error ] && echo "Error realigning data on iter $x" && exit 1;
+      if [ $stage -le $x ]; then
+        echo "Aligning data"
+        for n in `get_splits.pl $nj`; do
+          $cmd $dir/log/align.$x.$n.log  \
+            sgmm-align-compiled ${spkvecs_opt[$n]} $scale_opts "${gselect_opt[$n]}" \
+               --utt2spk=ark:$data/split$nj/$n/utt2spk --beam=8 --retry-beam=40 \
+               $dir/$x.mdl "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
+               "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
+        done
+        wait;
+        [ -f $dir/.error ] && echo "Error realigning data on iter $x" && exit 1;
+      fi
    fi
    if [ $spkdim -gt 0 ] && echo $spkvec_iters | grep -w $x >/dev/null; then
      for n in `get_splits.pl $nj`; do
-       $cmd $dir/log/spkvecs.$x.$n.log \
-         ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- \| \
-           weight-silence-post 0.01 $silphonelist $dir/$x.mdl ark:- ark:- \| \
-           sgmm-est-spkvecs --spk2utt=ark:$data/split$nj/$n/spk2utt \
-             ${spkvecs_opt[$n]} "${gselect_opt[$n]}" \
-             --rand-prune=$randprune $dir/$x.mdl \
-          "${featspart[$n]}" ark,s,cs:- ark:$dir/tmp$n.vecs  \
-         && mv $dir/tmp$n.vecs $dir/$n.vecs || touch $dir/.error &
+       if [ $stage -le $x ]; then
+         $cmd $dir/log/spkvecs.$x.$n.log \
+           ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- \| \
+             weight-silence-post 0.01 $silphonelist $dir/$x.mdl ark:- ark:- \| \
+             sgmm-est-spkvecs --spk2utt=ark:$data/split$nj/$n/spk2utt \
+               ${spkvecs_opt[$n]} "${gselect_opt[$n]}" \
+               --rand-prune=$randprune $dir/$x.mdl \
+            "${featspart[$n]}" ark,s,cs:- ark:$dir/tmp$n.vecs  \
+           && mv $dir/tmp$n.vecs $dir/$n.vecs || touch $dir/.error &
+       fi
        spkvecs_opt[$n]="--spk-vecs=ark:$dir/$n.vecs"
      done
      wait;
@@ -211,28 +230,32 @@ while [ $x -lt $numiters ]; do
      flags=vMwcS
    fi
 
-   for n in `get_splits.pl $nj`; do
-     $cmd $dir/log/acc.$x.$n.log \
-       sgmm-acc-stats ${spkvecs_opt[$n]} --utt2spk=ark:$data/split$nj/$n/utt2spk \
-         --update-flags=$flags "${gselect_opt[$n]}" --rand-prune=$randprune \
-         $dir/$x.mdl "${featspart[$n]}" "ark,s,cs:ali-to-post 'ark:gunzip -c $dir/$n.ali.gz|' ark:-|" \
-         $dir/$x.$n.acc || touch $dir/.error &
-   done
-   wait;
-   [ -f $dir/.error ] && echo "Error accumulating stats on iter $x" && exit 1;     
+   if [ $stage -le $x ]; then
+     for n in `get_splits.pl $nj`; do
+       $cmd $dir/log/acc.$x.$n.log \
+         sgmm-acc-stats ${spkvecs_opt[$n]} --utt2spk=ark:$data/split$nj/$n/utt2spk \
+           --update-flags=$flags "${gselect_opt[$n]}" --rand-prune=$randprune \
+           $dir/$x.mdl "${featspart[$n]}" "ark,s,cs:ali-to-post 'ark:gunzip -c $dir/$n.ali.gz|' ark:-|" \
+           $dir/$x.$n.acc || touch $dir/.error &
+     done
+     wait;
+     [ -f $dir/.error ] && echo "Error accumulating stats on iter $x" && exit 1;     
+   fi
 
    add_dim_opts=
    if echo $add_dim_iters | grep -w $x >/dev/null; then
      add_dim_opts="--increase-phn-dim=$phndim --increase-spk-dim=$spkdim"
    fi
 
-   $cmd $dir/log/update.$x.log \
-     sgmm-est --update-flags=$flags --split-substates=$numsubstates $add_dim_opts \
-       --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.*.acc|" \
-     $dir/$[$x+1].mdl || exit 1;
+   if [ $stage -le $x ]; then
+     $cmd $dir/log/update.$x.log \
+       sgmm-est --update-flags=$flags --split-substates=$numsubstates $add_dim_opts \
+         --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.*.acc|" \
+       $dir/$[$x+1].mdl || exit 1;
 
-   rm $dir/$x.mdl $dir/$x.*.acc
-   rm $dir/$x.occs 
+     rm $dir/$x.mdl $dir/$x.*.acc
+     rm $dir/$x.occs 
+   fi
    if [ $x -lt $maxiterinc ]; then
      numsubstates=$[$numsubstates+$incsubstates]
    fi
@@ -260,20 +283,23 @@ if [ $spkdim -gt 0 ]; then
     else
       flags=vMwcS
     fi
-    for n in `get_splits.pl $nj`; do
-      $cmd $dir/log/acc_ali.$y.$n.log \
-        ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- \| \
-          sgmm-post-to-gpost ${spkvecs_opt[$n]} "${gselect_opt[$n]}" \
-            --utt2spk=ark:$data/split$nj/$n/utt2spk $dir/$x.mdl "${featspart[$n]}" ark,s,cs:- ark:- \| \
-          sgmm-acc-stats-gpost --update-flags=$flags  $cur_alimdl "${featspart[$n]}" \
-            ark,s,cs:- $dir/$y.$n.aliacc || touch $dir/.error &
-    done
-    wait;
-    [ -f $dir/.error ] && echo "Error accumulating stats for alignment model on iter $y" && exit 1;
-    $cmd $dir/log/update_ali.$y.log \
-       sgmm-est --update-flags=$flags --remove-speaker-space=true $cur_alimdl \
-       "sgmm-sum-accs - $dir/$y.*.aliacc|" $dir/$[$y+1].alimdl || exit 1;
-    # [ $y -gt 0 ]  && rm $dir/$y.alimdl
+    if [ $stage -le $[$y+100] ]; then
+      for n in `get_splits.pl $nj`; do
+        $cmd $dir/log/acc_ali.$y.$n.log \
+          ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- \| \
+            sgmm-post-to-gpost ${spkvecs_opt[$n]} "${gselect_opt[$n]}" \
+              --utt2spk=ark:$data/split$nj/$n/utt2spk $dir/$x.mdl "${featspart[$n]}" ark,s,cs:- ark:- \| \
+            sgmm-acc-stats-gpost --update-flags=$flags  $cur_alimdl "${featspart[$n]}" \
+              ark,s,cs:- $dir/$y.$n.aliacc || touch $dir/.error &
+      done
+      wait;
+      [ -f $dir/.error ] && echo "Error accumulating stats for alignment model on iter $y" && exit 1;
+      $cmd $dir/log/update_ali.$y.log \
+         sgmm-est --update-flags=$flags --remove-speaker-space=true $cur_alimdl \
+         "sgmm-sum-accs - $dir/$y.*.aliacc|" $dir/$[$y+1].alimdl || exit 1;
+      rm $dir/$y.*.aliacc || exit 1;
+      [ $y -gt 0 ]  && rm $dir/$y.alimdl
+    fi
     cur_alimdl=$dir/$[$y+1].alimdl
     y=$[$y+1]
   done

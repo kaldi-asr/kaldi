@@ -28,6 +28,8 @@ using std::string;
 #include "util/timer.h"
 
 namespace kaldi {
+
+
 // Takes care of output.  Returns total like.
 double ProcessDecodedOutput(const LatticeFasterDecoder &decoder,
                             const fst::SymbolTable *word_syms,
@@ -90,8 +92,84 @@ double ProcessDecodedOutput(const LatticeFasterDecoder &decoder,
   return likelihood;
 }
 
+// the reference arguments at the beginning are not const as the style guide
+// requires, but are best viewed as inputs.
+bool ProcessUtterance(LatticeFasterDecoder &decoder,
+                      const AmSgmm &am_sgmm,
+                      const TransitionModel &trans_model,
+                      const SgmmGselectConfig &sgmm_opts,
+                      double log_prune,
+                      double acoustic_scale,
+                      const Matrix<BaseFloat> &features,
+                      RandomAccessTokenReader &utt2spk_reader,
+                      RandomAccessInt32VectorVectorReader &gselect_reader,
+                      RandomAccessBaseFloatVectorReader &spkvecs_reader,
+                      const fst::SymbolTable *word_syms,
+                      const std::string &utt,
+                      bool determinize,
+                      bool allow_partial,
+                      Int32VectorWriter *alignment_writer,
+                      Int32VectorWriter *words_writer,
+                      CompactLatticeWriter *compact_lattice_writer,
+                      LatticeWriter *lattice_writer,
+                      double *like_ptr) { // puts utterance's like in like_ptr on success.
+  using fst::VectorFst;
+  std::string utt_or_spk;  
+  if (utt2spk_reader.IsOpen()) {
+    if (!utt2spk_reader.HasKey(utt)) {
+      KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
+                 << "skipping this utterance.";
+      return false;
+    } else { utt_or_spk = utt2spk_reader.Value(utt); }
+  } else { utt_or_spk = utt; }
+
+  SgmmPerSpkDerivedVars spk_vars;
+  if (spkvecs_reader.IsOpen()) {
+    if (spkvecs_reader.HasKey(utt_or_spk)) {
+      spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+      am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
+    } else {
+      KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk << ", not decoding this utterance";
+      return false; // We could use zero, but probably the user would want to know about this
+      // (this would normally be a script error or some kind of failure).
+    }
+  }
+  bool has_gselect = false;
+  if (gselect_reader.IsOpen()) {
+    has_gselect = gselect_reader.HasKey(utt)
+        && gselect_reader.Value(utt).size() == features.NumRows();
+    if (!has_gselect)
+      KALDI_WARN << "No Gaussian-selection info available for utterance "
+                 << utt << " (or wrong size)";
+  }
+  std::vector<std::vector<int32> > empty_gselect;
+  const std::vector<std::vector<int32> > *gselect =
+      (has_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
+  DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
+                                       trans_model, features, *gselect,
+                                       log_prune, acoustic_scale);
+  if (!decoder.Decode(&sgmm_decodable)) {
+    KALDI_WARN << "Failed to decode file " << utt;
+    return false;
+  }
+  if (!decoder.ReachedFinal()) {
+    if (allow_partial) {
+      KALDI_WARN << "Outputting partial output for utterance " << utt
+                 << " since no final-state reached\n";
+    } else {
+      KALDI_WARN << "Not producing output for utterance " << utt
+                 << " since no final-state reached and "
+                 << "--allow-partial=false.\n";
+      return false;
+    }
+  }
+  *like_ptr = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
+                                   determinize, alignment_writer, words_writer,
+                                   compact_lattice_writer, lattice_writer);
+  return true;
 }
 
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -103,7 +181,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using SGMM-based model.\n"
-        "Usage:  sgmm-latgen-faster [options] <model-in> <fst-in> "
+        "Usage:  sgmm-latgen-faster [options] <model-in> (<fst-in>|<fsts-rspecifier>) "
         "<features-rspecifier> <lattices-wspecifier> [<words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
@@ -120,7 +198,7 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale,
         "Scaling factor for acoustic likelihoods");
     po.Register("log-prune", &log_prune,
-        "Pruning beam used to reduce number of exp() evaluations.");
+                "Pruning beam used to reduce number of exp() evaluations.");
     po.Register("word-symbol-table", &word_syms_filename,
         "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial,
@@ -139,7 +217,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string model_in_filename = po.GetArg(1),
-        fst_in_filename = po.GetArg(2),
+        fst_in_str = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
@@ -173,113 +251,95 @@ int main(int argc, char *argv[]) {
                    << word_syms_filename;
 
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
-
     RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
-    
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-
-    // It's important that we initialize decode_fst after feature_reader, as it
-    // can prevent crashes on systems installed without enough virtual memory.
-    // It has to do with what happens on UNIX systems if you call fork() on a
-    // large process: the page-table entries are duplicated, which requires a
-    // lot of virtual memory.
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
-                                << fst_in_filename;
-      decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
-      if (decode_fst == NULL)  // fst code will warn.
-        exit(1);
-    }
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
-    LatticeFasterDecoder decoder(*decode_fst, decoder_opts);
-    
+
     Timer timer;
-    const std::vector<std::vector<int32> > empty_gselect;
-
-    for (; !feature_reader.Done(); feature_reader.Next()) {
-      string utt = feature_reader.Key();
-      Matrix<BaseFloat> features(feature_reader.Value());
-      feature_reader.FreeCurrent();
-      if (features.NumRows() == 0) {
-        KALDI_WARN << "Zero-length utterance: " << utt;
-        num_fail++;
-        continue;
+        
+    if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) { // a single FST.
+      SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+      // It's important that we initialize decode_fst after feature_reader, as it
+      // can prevent crashes on systems installed without enough virtual memory.
+      // It has to do with what happens on UNIX systems if you call fork() on a
+      // large process: the page-table entries are duplicated, which requires a
+      // lot of virtual memory.
+      VectorFst<StdArc> *decode_fst = NULL;
+      {
+        std::ifstream is(fst_in_str.c_str(), std::ifstream::binary);
+        if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
+                                  << fst_in_str;
+        decode_fst =
+            VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_str));
+        if (decode_fst == NULL)  // fst code will warn.
+          exit(1);
       }
+      timer.Reset(); // exclude graph loading time.
+      
+      {
+        LatticeFasterDecoder decoder(*decode_fst, decoder_opts);
+    
+        const std::vector<std::vector<int32> > empty_gselect;
 
-      string utt_or_spk;
-      if (utt2spk_rspecifier.empty()) utt_or_spk = utt;
-      else {
-        if (!utt2spk_reader.HasKey(utt)) {
-          KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                     << "skipping this utterance.";
+        for (; !feature_reader.Done(); feature_reader.Next()) {
+          string utt = feature_reader.Key();
+          const Matrix<BaseFloat> &features(feature_reader.Value());
+          if (features.NumRows() == 0) {
+            KALDI_WARN << "Zero-length utterance: " << utt;
+            num_fail++;
+            continue;
+          }
+          double like;
+          if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
+                               features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
+                               utt, determinize, allow_partial,
+                               &alignment_writer, &words_writer, &compact_lattice_writer,
+                               &lattice_writer, &like)) {
+            tot_like += like;
+            frame_count += features.NumRows();
+            KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+            num_success++;
+          } else { num_fail++; }
+        }
+      }
+      delete decode_fst; // only safe to do this after decoder goes out of scope.
+    } else { // We have different FSTs for different utterances.
+      SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      for (; !fst_reader.Done(); fst_reader.Next()) {
+        std::string utt = fst_reader.Key();
+        if (!feature_reader.HasKey(utt)) {
+          KALDI_WARN << "Not decoding utterance " << utt
+                     << " because no features available.";
           num_fail++;
           continue;
-        } else {
-          utt_or_spk = utt2spk_reader.Value(utt);
         }
-      }
-
-      SgmmPerSpkDerivedVars spk_vars;
-      if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt_or_spk)) {
-          spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
-          am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
-        } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
-        }
-      }  // else spk_vars is "empty"
-
-      bool has_gselect = false;
-      if (gselect_reader.IsOpen()) {
-        has_gselect = gselect_reader.HasKey(utt)
-                      && gselect_reader.Value(utt).size() == features.NumRows();
-        if (!has_gselect)
-          KALDI_WARN << "No Gaussian-selection info available for utterance "
-                     << utt << " (or wrong size)";
-      }
-      const std::vector<std::vector<int32> > *gselect =
-          (has_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
-
-      DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
-                                           trans_model, features, *gselect,
-                                           log_prune, acoustic_scale);
-
-      if (!decoder.Decode(&sgmm_decodable)) {
-        KALDI_WARN << "Failed to decode file " << utt;
-        num_fail++;
-        continue;
-      }
-
-      frame_count += features.NumRows();
-      double like;
-      if (!decoder.ReachedFinal()) {
-        if (allow_partial) {
-          KALDI_WARN << "Outputting partial output for utterance " << utt
-                     << " since no final-state reached\n";
+        const Matrix<BaseFloat> &features = feature_reader.Value(utt);
+        if (features.NumRows() == 0) {
+          KALDI_WARN << "Zero-length utterance: " << utt;
           num_fail++;
-        } else {
-          KALDI_WARN << "Not producing output for utterance " << utt
-                     << " since no final-state reached and "
-                     << "--allow-partial=false.\n";
           continue;
         }
+        LatticeFasterDecoder decoder(fst_reader.Value(), decoder_opts);
+        double like;
+        if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
+                             features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
+                             utt, determinize, allow_partial,
+                             &alignment_writer, &words_writer, &compact_lattice_writer,
+                             &lattice_writer, &like)) {
+          tot_like += like;
+          frame_count += features.NumRows();
+          KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+                    << (like / features.NumRows()) << " over "
+                    << features.NumRows() << " frames.";
+          num_success++;
+        } else { num_fail++; }
       }
-      like = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
-                                  determinize, &alignment_writer, &words_writer,
-                                  &compact_lattice_writer, &lattice_writer);
-      tot_like += like;
-      KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-                << (like / features.NumRows()) << " over "
-                << features.NumRows() << " frames.";
-      num_success++;
     }
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken [excluding initialization] "<< elapsed
@@ -291,7 +351,6 @@ int main(int argc, char *argv[]) {
               << " over " << frame_count << " frames.";
 
     if (word_syms) delete word_syms;
-    delete decode_fst;
     if (num_success != 0)
       return 0;
     else
