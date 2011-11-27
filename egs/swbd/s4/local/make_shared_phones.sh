@@ -28,7 +28,10 @@ if [ $# != 0 ]; then
    exit 1;
 fi
 
-echo "SIL NSN SPN LAU"
+echo SIL
+echo NSN
+echo SPN
+echo LAU
 
 # This script reads from the standard input.
 grep -v eps | grep -v -E 'SIL|NSN|SPN|LAU' | awk '{print $1}' | \

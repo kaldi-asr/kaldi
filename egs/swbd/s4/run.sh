@@ -19,7 +19,7 @@ exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
-# should run this on a machine that has sufficient memory.
+
 
 
 # Data prep

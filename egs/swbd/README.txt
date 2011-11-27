@@ -11,6 +11,14 @@ About the Switchboard corpus
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
-  s1: 
-   [adding first version of scripts.  This is a draft.
-   Note: this is closest to the s3/ script for WSJ.]
+  s3: 
+   Adding first version of scripts.  Only the earliest stages of
+   this are finished.
+   Note: this is closest to the s3/ scripts for WSJ.
+
+  s4:
+   This is currently unfinished; I had to commit it due to
+   certain SVN limitations.  Changing the topology of the
+   silence phones after finding a problem with the
+   transition-probs.
+
