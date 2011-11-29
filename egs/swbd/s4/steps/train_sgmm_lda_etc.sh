@@ -222,12 +222,12 @@ while [ $x -lt $numiters ]; do
      [ -f $dir/.error ] && echo "Error computing speaker vectors on iter $x" && exit 1;     
    fi  
    if [ $x -eq 0 ]; then
-     flags=vwcSt # On first iter, don't update M or N.
+     flags=vwcS # On first iter, don't update M or N.
    elif [ $spkdim -gt 0 -a $[$x%2] -eq 1 -a $x -ge `echo $spkvec_iters | awk '{print $1}'` ]; then 
      # Update N if we have spk-space and x is even, and we're at least at 1st spkvec iter.
-     flags=vNwcSt
+     flags=vNwcS
    else # Else update M but not N.
-     flags=vMwcSt
+     flags=vMwcS
    fi
 
    if [ $stage -le $x ]; then
@@ -281,7 +281,7 @@ if [ $spkdim -gt 0 ]; then
     if [ $y -eq 0 ]; then
       flags=MwcS # First time don't update v...
     else
-      flags=vMwcS # don't update transitions-- will probably share graph with normal model.
+      flags=vMwcS
     fi
     if [ $stage -le $[$y+100] ]; then
       for n in `get_splits.pl $nj`; do

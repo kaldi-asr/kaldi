@@ -1,0 +1,9 @@
+
+# Note: WER is second number from the right.
+
+for x in exp/*/decode_*; do [ -d $x ] && grep Mean $x/score_*/*.sys | scripts/best_wer.sh; done
+
+exp/tri4a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     |    Mean    | 54.4  524.3 | 52.1   33.1   14.8    4.5   52.4   75.3 |
+exp/tri5a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   68.6      21.5        9.9        3.3       34.6       67.9   |
+
+# [waiting for fixed SGMM results]

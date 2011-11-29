@@ -108,7 +108,7 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob SIL '#'$ndi
 
 # Copy into data/lang/ also, where it will be needed for discriminative training.
 cp data/lang_test/L_disambig.fst data/lang/
-
+cp data/lang_test/phones_disambig.txt data/lang/
 
 # grep -v '<s> <s>' etc. is only for future-proofing this script.  Our
 # LM doesn't have these "invalid combinations".  These can cause 

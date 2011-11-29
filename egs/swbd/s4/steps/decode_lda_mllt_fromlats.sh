@@ -44,20 +44,12 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 numjobs=1
 jobid=0
-scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
-
-for n in 1 2; do
-  if [ "$1" == "-j" ]; then
-    shift;
-    numjobs=$1; 
-    jobid=$2;
-    shift; shift;
-  fi
-  if [ "$1" == "--scale-opts" ]; then
-     scale_opts="$2";
-     shift; shift;
-  fi
-done
+if [ "$1" == "-j" ]; then
+  shift;
+  numjobs=$1;
+  jobid=$2;
+  shift; shift;
+fi
 
 if [ $# != 4 ]; then
    echo "Usage: steps/decode_lda_mllt_fromlats.sh [-j num-jobs job-number] <lang> <data-dir> <decode-dir> <old-decode-dir>"
@@ -71,6 +63,7 @@ data=$2
 dir=$3
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 olddir=$4
+scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 
 mkdir -p $dir
 

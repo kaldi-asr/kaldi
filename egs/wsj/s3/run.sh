@@ -146,10 +146,8 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/
 # decoding graphs from one system's lattices and rescore with another system.
 # Note: we could easily do this with the trigram LM, unpruned, but for comparability
 # with the experiments above we do it with the pruned one.
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats exp/tri2a/decode_tgpr_dev93
-
-#Try with no transition probs-- this seemed to help for Swbd.  Helps ~0.1% here.  Script not checked in.
-#scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats_notrans.sh data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats_notrans exp/tri2a/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh data/lang_test_tgpr \
+  data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats exp/tri2a/decode_tgpr_dev93
 
 # Align tri2b system with si84 data.
 steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
@@ -299,5 +297,5 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  data/lang_test_bd_fg data/test_eval92 exp/sgmm4c/decode_bd_fg_eval92_fromlats \
   exp/tri3b/decode_bd_tgpr_eval92
 
-# Getting results:
+# Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done

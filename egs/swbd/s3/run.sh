@@ -75,6 +75,7 @@ local/remove_dup_utts.sh 300 data/train data/train_nodup
 
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+long_cmd="queue.pl -q long.q@@blade -l ram_free=700M,mem_free=700M"
 
 steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_10k_nodup data/lang exp/mono0a
@@ -127,7 +128,7 @@ steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
 steps/train_ubm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
   700 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a
 steps/train_sgmm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
-   4500 40000 41 40 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a/final.ubm exp/sgmm6a
+   4500 40000 50 40 data/train_nodup data/lang exp/tri5a_ali_all_nodup exp/ubm6a/final.ubm exp/sgmm6a
 scripts/mkgraph.sh data/lang_test exp/sgmm6a exp/sgmm6a/graph
 # have to match num-jobs with 5a decode.
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
@@ -143,4 +144,23 @@ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/deco
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
    data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats exp/tri5a/decode_eval2000
 
-for x in exp/*/decode_*; do [ -d $x ] && grep Mean  $x/score_*/*.sys | scripts/best_wer.sh; done
+
+# MMI starting from the system in tri5a.
+steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
+  data/train data/lang exp/tri5a exp/tri5a_ali
+
+steps/make_denlats_lda_etc.sh --num-jobs 40 --cmd "$long_cmd" \
+  data/train data/lang exp/tri5a_ali exp/tri5a_denlats
+steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
+  data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi
+scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh \
+   exp/tri5a/graph data/test_eval2000 exp/tri5a_mmi/decode_eval2000 exp/tri5a/decode_eval2000
+steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
+  data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi_b0.1
+scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri5a/graph \
+   data/test_eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 exp/tri5a/decode_eval2000
+
+
+# getting results (see RESULTS file)
+for x in exp/*/decode_*; do [ -d $x ] && grep Mean $x/score_*/*.sys | scripts/best_wer.sh; done
+

@@ -45,6 +45,11 @@ exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.87 [ 557 / 5643, 136 ins, 38 del, 
  exp/tri3b/decode_bd_tgpr_eval92_fg/wer_16:%WER 6.84 [ 386 / 5643, 66 ins, 43 del, 277 sub ]
  exp/tri3b/decode_bd_tgpr_eval92_tg/wer_16:%WER 7.04 [ 397 / 5643, 62 ins, 46 del, 289 sub ]
 
+# sgmm3c is SGMM on top of LDA+MLLT.
+# In this case decoding from lattices is worse, presumably because the lattices used
+# (tri2b) had a bad WER (17.78%).
+exp/sgmm3c/decode_tgpr_dev93/wer_12:%WER 13.74 [ 1131 / 8234, 214 ins, 111 del, 806 sub ]
+exp/sgmm3c/decode_tgpr_dev93_fromlats/wer_13:%WER 15.74 [ 1296 / 8234, 275 ins, 115 del, 906 sub ]
 
 
 # LDA+MLLT+SAT, SI-284, quick retraining from 3b
@@ -60,17 +65,22 @@ exp/tri4c/decode_tgpr_dev93/wer_16:%WER 12.92 [ 1064 / 8234, 224 ins, 94 del, 74
 
 
 # sgmm4b is LDA+MLLT+SAT, on just SI-84 data.
-exp/sgmm4b/decode_tgpr_dev93/wer_14:%WER 13.29 [ 1094 / 8234, 213 ins, 124 del, 757 sub ]
-exp/sgmm4b/decode_tgpr_eval92/wer_12:%WER 8.79 [ 496 / 5643, 122 ins, 30 del, 344 sub ]
+## broken results, need to fix: [RE transitions]
+#exp/sgmm4b/decode_tgpr_dev93/wer_14:%WER 13.29 [ 1094 / 8234, 213 ins, 124 del, 757 sub ]
+#exp/sgmm4b/decode_tgpr_eval92/wer_12:%WER 8.79 [ 496 / 5643, 122 ins, 30 del, 344 sub ]
 
 # sgmm4c is the same, but on all SI-284 data.
-exp/sgmm4c/decode_tgpr_dev93/wer_12:%WER 11.19 [ 921 / 8234, 185 ins, 91 del, 645 sub ]
-exp/sgmm4c/decode_tgpr_dev93_tg/wer_10:%WER 10.64 [ 876 / 8234, 197 ins, 81 del, 598 sub ]
-exp/sgmm4c/decode_tgpr_eval92/wer_10:%WER 8.17 [ 461 / 5643, 123 ins, 25 del, 313 sub ]
-exp/sgmm4c/decode_tgpr_eval92_tg/wer_12:%WER 7.51 [ 424 / 5643, 108 ins, 22 del, 294 sub ]
+exp/sgmm4c/decode_tgpr_dev93/wer_11:%WER 10.74 [ 884 / 8234, 183 ins, 79 del, 622 sub ]
+exp/sgmm4c/decode_tgpr_eval92/wer_13:%WER 7.76 [ 438 / 5643, 103 ins, 23 del, 312 sub ]
+
+# rescoring with full trigram LM.
+exp/sgmm4c/decode_tgpr_dev93_tg/wer_11:%WER 10.03 [ 826 / 8234, 177 ins, 75 del, 574 sub ]
+exp/sgmm4c/decode_tgpr_eval92_tg/wer_12:%WER 7.07 [ 399 / 5643, 97 ins, 21 del, 281 sub ]
 
  # using big-dict.
- exp/sgmm4c/decode_bd_tgpr_eval92/wer_11:%WER 5.35 [ 302 / 5643, 51 ins, 28 del, 223 sub ]
- exp/sgmm4c/decode_bd_tgpr_eval92_fg/wer_11:%WER 4.70 [ 265 / 5643, 46 ins, 18 del, 201 sub ]
- exp/sgmm4c/decode_bd_tgpr_eval92_tg/wer_11:%WER 4.91 [ 277 / 5643, 44 ins, 23 del, 210 sub ]
+ exp/sgmm4c/decode_bd_fg_eval92_fromlats/wer_13:%WER 6.13 [ 346 / 5643, 64 ins, 36 del, 246 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92/wer_11:%WER 5.16 [ 291 / 5643, 42 ins, 25 del, 224 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92_tg/wer_10:%WER 4.75 [ 268 / 5643, 42 ins, 19 del, 207 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92_fg/wer_14:%WER 4.39 [ 248 / 5643, 34 ins, 23 del, 191 sub ]
+
 

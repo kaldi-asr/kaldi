@@ -15,18 +15,12 @@ nj=1
 jobid=0
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 
-for n in 1 2; do
-  if [ "$1" == "-j" ]; then
-    shift;
-    nj=$1; 
-    jobid=$2;
-    shift; shift;
-  fi
-  if [ "$1" == "--scale-opts" ]; then
-     scale_opts="$2";
-     shift; shift;
-  fi
-done
+if [ "$1" == "-j" ]; then
+  shift;
+  nj=$1;
+  jobid=$2;
+  shift; shift;
+fi
 
 if [ $# -ne 4 ]; then
    echo "Usage: steps/decode_sgmm_lda_etc_fromlats.sh [-j num-jobs job-number] <lang-dir> <data-dir> <decode-dir> <old-decode-dir>"

@@ -20,17 +20,11 @@ orig_args="$*"
 # not set by the user.
 nj=
 lang=
-opts=
 cmd=scripts/run.pl
 for x in 1 2; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
-     shift
-  fi
-  if [ $1 == "--opts" ]; then
-     shift
-     opts="$1"
      shift
   fi
   if [ $1 == "--cmd" ]; then
@@ -99,7 +93,7 @@ fi
 rm $dir/.error 2>/dev/null
 for n in `scripts/get_splits.pl $nj`; do
   $cmd $dir/part$n.log \
-    $script $opts -j $nj $n $graphdir $data $dir $extra_args || touch $dir/.error &
+    $script -j $nj $n $graphdir $data $dir $extra_args || touch $dir/.error &
 done
 
 wait
