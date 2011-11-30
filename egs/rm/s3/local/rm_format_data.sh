@@ -53,7 +53,7 @@ scripts/silphones.pl data/lang/phones.txt "$silphones" data/lang/silphones.csl \
 ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon_disambig.txt`
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 scripts/add_disambig.pl data/lang/phones.txt $ndisambig > data/lang_test/phones_disambig.txt
-
+cp data/lang_test/phones_disambig.txt data/lang/ # needed for MMI.
 
 silprob=0.5  # same prob as word
 scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
@@ -80,6 +80,8 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob sil '#'$ndi
    fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel \
     > data/lang_test/L_disambig.fst
+
+cp data/lang_test/L_disambig.fst data/lang/  # Needed for MMI training.
 
 fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
     --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst

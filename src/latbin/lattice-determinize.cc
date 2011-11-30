@@ -36,7 +36,6 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
   lat_opts.max_arcs = max_arcs;
   lat_opts.max_loop = max_loop;
   BaseFloat cur_beam = beam;
-  
   for (int32 i = 0; i < num_loops;) { // we increment i below.
 
     if (lat.Start() == fst::kNoStateId) {
@@ -51,8 +50,8 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
       return true;
     } else { // failed to determinize..
       KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                 << "reached), reducing lattice-beam to " << cur_beam
-                 << " and re-trying.";
+                 << "reached), reducing lattice-beam to "
+                 << (cur_beam*beam_ratio) << " and re-trying.";
       for (; i < num_loops; i++) {
         cur_beam *= beam_ratio;
         Lattice pruned_lat(lat);
@@ -62,6 +61,13 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
           KALDI_WARN << "Pruning did not have an effect on the original "
                      << "lattice size; reducing beam to "
                      << cur_beam << " and re-trying.";
+        } else if (DeterminizeLattice(pruned_lat, clat, lat_opts, NULL)) {
+          if (prune)
+            fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), clat);
+          return true;
+        } else {
+          KALDI_WARN << "Determinization failed again; reducing beam again to "
+                     << (cur_beam*beam_ratio) << " and re-trying.";
         }
       }
     }

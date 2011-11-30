@@ -76,9 +76,9 @@ int main(int argc, char *argv[]) {
     }
 
     {  // update the Fmpe projection matrix
-      BaseFloat *obj_change_out, *count_out;
+      BaseFloat obj_change_out, count_out;
       fmpe_updater.ComputeAvgStandardDeviation(am_gmm);
-      fmpe_updater.Update(fmpe_accs, obj_change_out, count_out);
+      fmpe_updater.Update(fmpe_accs, &obj_change_out, &count_out);
     }
 
     {
