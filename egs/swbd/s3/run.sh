@@ -149,16 +149,16 @@ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/deco
 steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a exp/tri5a_ali
 
-steps/make_denlats_lda_etc.sh --num-jobs 40 --cmd "$long_cmd" \
+steps/make_denlats_lda_etc.sh --num-jobs 40 --num-split 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats
 steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh \
-   exp/tri5a/graph data/test_eval2000 exp/tri5a_mmi/decode_eval2000 exp/tri5a/decode_eval2000
+   exp/tri5a/graph data/eval2000 exp/tri5a_mmi/decode_eval2000 exp/tri5a/decode_eval2000
 steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi_b0.1
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri5a/graph \
-   data/test_eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 exp/tri5a/decode_eval2000
+   data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 exp/tri5a/decode_eval2000
 
 
 # getting results (see RESULTS file)
