@@ -45,6 +45,9 @@ exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.87 [ 557 / 5643, 136 ins, 38 del, 
  exp/tri3b/decode_bd_tgpr_eval92_fg/wer_16:%WER 6.84 [ 386 / 5643, 66 ins, 43 del, 277 sub ]
  exp/tri3b/decode_bd_tgpr_eval92_tg/wer_16:%WER 7.04 [ 397 / 5643, 62 ins, 46 del, 289 sub ]
 
+ # note: with 20k Gaussians, it's a bit better [14.95->14.72]
+ exp/tri3b_20k/decode_tgpr_dev93/wer_16:%WER 14.72 [ 1212 / 8234, 239 ins, 117 del, 856 sub ]
+
 # sgmm3c is SGMM on top of LDA+MLLT.
 # In this case decoding from lattices is worse, presumably because the lattices used
 # (tri2b) had a bad WER (17.78%).

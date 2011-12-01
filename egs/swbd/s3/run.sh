@@ -145,11 +145,17 @@ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/deco
    data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats exp/tri5a/decode_eval2000
 
 
+scripts/decode.sh -l data/lang_test --opts '--scale-opts "--transition-scale=1.0 --self-loop-scale=0.0"' \
+    --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+   data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats_0selfloop exp/tri5a/decode_eval2000
+   
+
+
 # MMI starting from the system in tri5a.
 steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a exp/tri5a_ali
 
-steps/make_denlats_lda_etc.sh --num-jobs 40 --num-split 40 --cmd "$train_cmd" \
+steps/make_denlats_lda_etc.sh --num-jobs 40 --sub-split 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats
 steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi

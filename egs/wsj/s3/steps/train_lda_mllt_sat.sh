@@ -188,11 +188,10 @@ while [ $x -lt $numiters ]; do
      done
      wait
      [ -f $dir/.error ] && echo "Error estimating or composing fMLLR transforms on iter $x" && exit 1;
-     transdir=$dir # This is now used as the place where the "current" transforms are.
      for n in `get_splits.pl $nj`; do
-       featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$transdir/$n.trans ark:- ark:- |"
+       featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$dir/$n.trans ark:- ark:- |"
      done
-     feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transdir/*.trans|' ark:- ark:- |" # not used, but in case...
+     feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $dir/*.trans|' ark:- ark:- |" # not used, but in case...
    fi
    for n in `get_splits.pl $nj`; do
      $cmd $dir/log/acc.$x.$n.log \

@@ -22,7 +22,7 @@ nj=
 lang=
 opts=
 cmd=scripts/run.pl
-for x in 1 2; do
+for x in 1 2 3 4; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1

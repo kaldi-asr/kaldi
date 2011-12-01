@@ -197,7 +197,13 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_b
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg
 
-
+# The following two steps, which are a kind of side-branch, try mixing up
+( # from the 3b system.  This is to demonstrate that script.
+steps/mixup_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
+  20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
+  data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93
+)
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
