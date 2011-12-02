@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
         const CompactLattice &clat = compact_lattice_reader.Value(key);
         CompactLattice clat_out;
         Difference(clat, transcript_fst, &clat_out);
-        //Difference(transcript_fst, transcript_fst, &transcript_fst);
+        //!important, guarantee the result FST non-empty
+        KALDI_ASSERT(clat_out.Start() != fst::kNoStateId); 
         compact_lattice_writer.Write(key, clat_out);
         n_removed++;
       } else {
