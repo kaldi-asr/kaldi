@@ -289,7 +289,15 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/gra
   75000 data/train_si284 exp/tri4c_50k exp/tri3b_ali_si284_20 exp/tri4c_75k
  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
   data/test_dev93 exp/tri4c_75k/decode_tgpr_dev93
+
+ steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
+  100000 data/train_si284 exp/tri4c_75k exp/tri3b_ali_si284_20 exp/tri4c_100k
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
+  data/test_dev93 exp/tri4c_100k/decode_tgpr_dev93
 )
+
+
+
 
 # Train SGMM on top of LDA+MLLT+SAT, on all SI-284 data.  C.f. 4b which was
 # just on SI-84.

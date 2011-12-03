@@ -65,12 +65,20 @@ exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_15:%WER 11.82 [ 973 / 8234, 204 ins, 86
 
 # LDA+MLLT+SAT, SI-284, full retraining starting from 3b [c.f. 4b]
 exp/tri4c/decode_tgpr_dev93/wer_16:%WER 12.92 [ 1064 / 8234, 224 ins, 94 del, 746 sub ]
-
+ # Mixing up further:
+ exp/tri4c_50k/decode_tgpr_dev93/wer_16:%WER 12.67 [ 1043 / 8234, 218 ins, 94 del, 731 sub ]
+ exp/tri4c_75k/decode_tgpr_dev93/wer_13:%WER 12.10 [ 996 / 8234, 225 ins, 82 del, 689 sub ]
+ exp/tri4c_100k/decode_tgpr_dev93/wer_15:%WER 11.89 [ 979 / 8234, 211 ins, 87 del, 681 sub ]
 
 # sgmm4b is LDA+MLLT+SAT, on just SI-84 data.
-## broken results, need to fix: [RE transitions]
-#exp/sgmm4b/decode_tgpr_dev93/wer_14:%WER 13.29 [ 1094 / 8234, 213 ins, 124 del, 757 sub ]
-#exp/sgmm4b/decode_tgpr_eval92/wer_12:%WER 8.79 [ 496 / 5643, 122 ins, 30 del, 344 sub ]
+exp/sgmm4b/decode_tgpr_dev93/wer_14:%WER 12.69 [ 1045 / 8234, 204 ins, 104 del, 737 sub ]
+exp/sgmm4b/decode_tgpr_eval92/wer_11:%WER 8.63 [ 487 / 5643, 125 ins, 26 del, 336 sub ]
+ # mixing up a bit more:
+ exp/sgmm4b_12500/decode_tgpr_eval92/wer_11:%WER 8.56 [ 483 / 5643, 122 ins, 25 del, 336 sub ]
+ exp/sgmm4b_15000/decode_tgpr_eval92/wer_13:%WER 8.72 [ 492 / 5643, 120 ins, 28 del, 344 sub ]
+ # increasing subspace dim to 50.
+ exp/sgmm4b_50/decode_tgpr_eval92/wer_14:%WER 8.45 [ 477 / 5643, 110 ins, 27 del, 340 sub ]
+
 
 # sgmm4c is the same, but on all SI-284 data.
 exp/sgmm4c/decode_tgpr_dev93/wer_11:%WER 10.74 [ 884 / 8234, 183 ins, 79 del, 622 sub ]
