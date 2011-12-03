@@ -59,9 +59,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary_read;
-      Input is(model_in_rxfilename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_rxfilename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     int32 dim = am_gmm.Dim();
@@ -97,9 +97,9 @@ int main(int argc, char *argv[]) {
     }
 
     {
-      Output os(model_out_wxfilename, binary);
-      trans_model.Write(os.Stream(), binary);
-      am_gmm.Write(os.Stream(), binary);
+      Output ko(model_out_wxfilename, binary);
+      trans_model.Write(ko.Stream(), binary);
+      am_gmm.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written model to " << model_out_wxfilename;
     return 0;

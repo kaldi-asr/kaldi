@@ -96,22 +96,22 @@ int main(int argc, char *argv[]) {
     TransitionModel old_trans_model;
     {
       bool binary;
-      Input is(old_model_filename, &binary);
-      old_trans_model.Read(is.Stream(), binary);
+      Input ki(old_model_filename, &binary);
+      old_trans_model.Read(ki.Stream(), binary);
     }
 
     TransitionModel new_trans_model;
     {
       bool binary;
-      Input is(new_model_filename, &binary);
-      new_trans_model.Read(is.Stream(), binary);
+      Input ki(new_model_filename, &binary);
+      new_trans_model.Read(ki.Stream(), binary);
     }
 
     ContextDependency new_ctx_dep;  // the tree.
     {
       bool binary;
-      Input is(new_tree_filename, &binary);
-      new_ctx_dep.Read(is.Stream(), binary);
+      Input ki(new_tree_filename, &binary);
+      new_ctx_dep.Read(ki.Stream(), binary);
     }
 
     int num_success = 0, num_fail = 0;

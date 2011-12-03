@@ -58,15 +58,15 @@ int main(int argc, char *argv[]) {
     FullGmm fgmm;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      fgmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      fgmm.Read(ki.Stream(), binary_read);
     }
 
     AccumFullGmm gmm_accs;
     {
       bool binary;
-      Input is(stats_filename, &binary);
-      gmm_accs.Read(is.Stream(), binary, true /* add accs, doesn't matter */);
+      Input ki(stats_filename, &binary);
+      gmm_accs.Read(ki.Stream(), binary, true /* add accs, doesn't matter */);
     }
 
     {  // Update GMMs.
@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
       fgmm.Split(mixup, perturb_factor);
 
     {
-      Output os(model_out_filename, binary_write);
-      fgmm.Write(os.Stream(), binary_write);
+      Output ko(model_out_filename, binary_write);
+      fgmm.Write(ko.Stream(), binary_write);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;

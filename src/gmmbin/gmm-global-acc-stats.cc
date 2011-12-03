@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
     DiagGmm gmm;
     {
       bool binary_read;
-      Input is(model_filename, &binary_read);
-      gmm.Read(is.Stream(), binary_read);
+      Input ki(model_filename, &binary_read);
+      gmm.Read(ki.Stream(), binary_read);
     }
 
     AccumDiagGmm gmm_accs;

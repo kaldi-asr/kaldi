@@ -192,6 +192,7 @@ class AmSgmm {
   BaseFloat ComponentPosteriors(const SgmmPerFrameDerivedVars &per_frame_vars,
                                 int32 state, Matrix<BaseFloat> *post) const;
 
+
   /// Increases the total number of substates bases on the state occupancies.
   void SplitSubstates(const Vector<BaseFloat> &state_occupancies,
                       int32 target_nsubstates, BaseFloat perturb,

@@ -154,8 +154,8 @@ int main(int argc, char *argv[]) {
     {
       bool binary_in;
       GaussClusterable gc;  // dummy needed to provide type.
-      Input is(stats_filename, &binary_in);
-      ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
+      Input ki(stats_filename, &binary_in);
+      ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
     KALDI_LOG << "Number of separate statistics is " << stats.size();
 

@@ -90,13 +90,13 @@ int main(int argc, char *argv[]) {
     for (int i = 3, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
-      Input is(stats_in_filename, &binary_read);
+      Input ki(stats_in_filename, &binary_read);
       if(i==3) {
-        fgmm.Read(is.Stream(), binary_read);
+        fgmm.Read(ki.Stream(), binary_read);
         sizes_ko.Stream() << fgmm.NumGauss() << ' ';
       } else {
         FullGmm fgmm2;
-        fgmm2.Read(is.Stream(), binary_read);
+        fgmm2.Read(ki.Stream(), binary_read);
         sizes_ko.Stream() << fgmm2.NumGauss() << ' ';
         MergeFullGmm(fgmm2, &fgmm);
       }

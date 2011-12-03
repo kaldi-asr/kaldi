@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
     FullGmm fgmm;
     {
       bool binary_read;
-      Input is(model_filename, &binary_read);
-      fgmm.Read(is.Stream(), binary_read);
+      Input ki(model_filename, &binary_read);
+      fgmm.Read(ki.Stream(), binary_read);
     }
 
     AccumFullGmm fgmm_accs;

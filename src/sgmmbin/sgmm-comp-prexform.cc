@@ -48,16 +48,16 @@ int main(int argc, char *argv[]) {
     kaldi::TransitionModel trans_model;
     {
       bool binary_read;
-      kaldi::Input is(sgmm_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      sgmm_in.Read(is.Stream(), binary_read);
+      kaldi::Input ki(sgmm_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      sgmm_in.Read(ki.Stream(), binary_read);
     }
 
     kaldi::Vector<kaldi::BaseFloat> occs;
     {
       bool binary_read;
-      kaldi::Input is(occs_filename, &binary_read);
-      occs.Read(is.Stream(), binary_read);
+      kaldi::Input ki(occs_filename, &binary_read);
+      occs.Read(ki.Stream(), binary_read);
     }
 
     kaldi::SgmmFmllrGlobalParams fmllr_globals;
@@ -66,10 +66,10 @@ int main(int argc, char *argv[]) {
                                  &fmllr_globals.mean_scatter_);
 
     {
-      kaldi::Output os(sgmm_out_filename, binary);
-      trans_model.Write(os.Stream(), binary);
-      sgmm_in.Write(os.Stream(), binary, kaldi::kSgmmWriteAll);
-      fmllr_globals.Write(os.Stream(), binary);
+      kaldi::Output ko(sgmm_out_filename, binary);
+      trans_model.Write(ko.Stream(), binary);
+      sgmm_in.Write(ko.Stream(), binary, kaldi::kSgmmWriteAll);
+      fmllr_globals.Write(ko.Stream(), binary);
     }
 
     KALDI_LOG << "Written model to " << sgmm_out_filename;

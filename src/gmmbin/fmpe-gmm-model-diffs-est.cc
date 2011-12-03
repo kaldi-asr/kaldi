@@ -57,28 +57,28 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     Vector<double> transition_ebw_accs;
 //    AccumAmEbwDiagGmm gmm_ebw_accs;  // TODO wait Arnab to finish the AccumAmEbwDiagGmm Class, then make it active
     {
       bool binary;
-      Input is(ebw_stats_in_filename, &binary);
-      transition_ebw_accs.Read(is.Stream(), binary);
+      Input ki(ebw_stats_in_filename, &binary);
+      transition_ebw_accs.Read(ki.Stream(), binary);
       // TODO wait Arnab to finish the AccumAmEbwDiagGmm Class, then make it active
- //     gmm_ebw_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
+ //     gmm_ebw_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
     Vector<double> transition_mle_accs;
     AccumAmDiagGmm gmm_mle_accs;
     {
       bool binary;
-      Input is(mle_stats_in_filename, &binary);
-      transition_mle_accs.Read(is.Stream(), binary);
-      gmm_mle_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
+      Input ki(mle_stats_in_filename, &binary);
+      transition_mle_accs.Read(ki.Stream(), binary);
+      gmm_mle_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
     std::vector<FmpeAccumModelDiff*> model_diffs;
@@ -91,14 +91,14 @@ int main(int argc, char *argv[]) {
 
     // Write out the model diffs
     {
-      kaldi::Output os(model_diffs_out_filename, binary);
-      WriteMarker(os.Stream(), binary, "<DIMENSION>");
-      WriteBasicType(os.Stream(), binary, static_cast<int32>(am_gmm.Dim()));
-      WriteMarker(os.Stream(), binary, "<NUMPDFS>");
-      WriteBasicType(os.Stream(), binary, static_cast<int32>(model_diffs.size()));
+      kaldi::Output ko(model_diffs_out_filename, binary);
+      WriteMarker(ko.Stream(), binary, "<DIMENSION>");
+      WriteBasicType(ko.Stream(), binary, static_cast<int32>(am_gmm.Dim()));
+      WriteMarker(ko.Stream(), binary, "<NUMPDFS>");
+      WriteBasicType(ko.Stream(), binary, static_cast<int32>(model_diffs.size()));
       for (std::vector<FmpeAccumModelDiff*>::const_iterator it = model_diffs.begin(),
         end = model_diffs.end(); it != end; ++it) {
-        (*it)->Write(os.Stream(), binary);
+        (*it)->Write(ko.Stream(), binary);
       }
     }
 

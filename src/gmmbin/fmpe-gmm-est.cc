@@ -57,23 +57,23 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     FmpeAccs fmpe_accs(fmpe_opts);
     {
       bool binary;
-      Input is(stats_filename, &binary);
-      fmpe_accs.Read(is.Stream(), binary, true);  // true == add; doesn't matter here.
+      Input ki(stats_filename, &binary);
+      fmpe_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
 
     FmpeUpdater fmpe_updater(fmpe_accs);
     {
       bool binary;
-      Input is(fmpe_proj_mat_in_filename, &binary);
-      fmpe_updater.Read(is.Stream(), binary);
+      Input ki(fmpe_proj_mat_in_filename, &binary);
+      fmpe_updater.Read(ki.Stream(), binary);
     }
 
     {  // update the Fmpe projection matrix

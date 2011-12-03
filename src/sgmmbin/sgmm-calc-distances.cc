@@ -47,24 +47,24 @@ int main(int argc, char *argv[]) {
     AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
+      Input ki(model_in_filename, &binary);
       TransitionModel trans_model;
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
     
     Vector<BaseFloat> occs;
     {
       bool binary;
-      Input is(occs_in_filename, &binary);
-      occs.Read(is.Stream(), binary);
+      Input ki(occs_in_filename, &binary);
+      occs.Read(ki.Stream(), binary);
     }
 
     Matrix<BaseFloat> dists(am_sgmm.NumPdfs(), am_sgmm.NumPdfs());
     AmSgmmFunctions::ComputeDistances(am_sgmm, occs, &dists);
 
-    Output os(distances_out_filename, binary);
-    dists.Write(os.Stream(), binary);
+    Output ko(distances_out_filename, binary);
+    dists.Write(ko.Stream(), binary);
 
     KALDI_LOG << "Wrote distances to " << distances_out_filename;
   } catch(const std::exception& e) {

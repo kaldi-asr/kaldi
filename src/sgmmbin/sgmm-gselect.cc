@@ -57,10 +57,10 @@ int main(int argc, char *argv[]) {
     AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_filename, &binary);
+      Input ki(model_filename, &binary);
       TransitionModel trans_model;
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     double tot_like = 0.0;

@@ -224,7 +224,7 @@ while [ $x -lt $numiters ]; do
    if [ $x -eq 0 ]; then
      flags=vwcSt # On first iter, don't update M or N.
    elif [ $spkdim -gt 0 -a $[$x%2] -eq 1 -a $x -ge `echo $spkvec_iters | awk '{print $1}'` ]; then 
-     # Update N if we have spk-space and x is even, and we're at least at 1st spkvec iter.
+     # Update N if we have spk-space and x is odd, and we're at least at 1st spkvec iter.
      flags=vNwcSt
    else # Else update M but not N.
      flags=vMwcSt

@@ -126,7 +126,7 @@ $cmd $dir/log/mixup.log \
   gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl || exit 1;
 
 $cmd $dir/log/init_et.log \
-  gmm-init-et --normalize-type=$normtype --binary=false --dim=40 $dir/1.et || exit 1
+  gmm-init-et --normalize-type=$normtype  --dim=40 $dir/1.et || exit 1
 
 rm $dir/treeacc
 
@@ -189,7 +189,7 @@ while [ $x -lt $numiters ]; do
 
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/acc.$x.$n.log \
-      gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
+      gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
         "ark:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
   done
   wait;

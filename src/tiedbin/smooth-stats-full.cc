@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;  // the tree.
     {
       bool binary;
-      Input is(tree_in_filename, &binary);
-      ctx_dep.Read(is.Stream(), binary);
+      Input ki(tree_in_filename, &binary);
+      ctx_dep.Read(ki.Stream(), binary);
     }
 
     // read in tied->pdf map
@@ -89,9 +89,9 @@ int main(int argc, char *argv[]) {
     bool binary_accu;
     AccumAmTiedFullGmm acc;
     {
-      Input is(acc_in_filename, &binary_accu);
-      trans_accs.Read(is.Stream(), binary_accu);
-      acc.Read(is.Stream(), binary_accu, false);
+      Input ki(acc_in_filename, &binary_accu);
+      trans_accs.Read(ki.Stream(), binary_accu);
+      acc.Read(ki.Stream(), binary_accu, false);
     }
 
     int32 num_leaves;
@@ -227,9 +227,9 @@ int main(int argc, char *argv[]) {
     }
 
     {
-      Output os(acc_out_filename, binary_accu);
-      trans_accs.Write(os.Stream(), binary_accu);
-      acc.Write(os.Stream(), binary_accu);
+      Output ko(acc_out_filename, binary_accu);
+      trans_accs.Write(ko.Stream(), binary_accu);
+      acc.Write(ko.Stream(), binary_accu);
     }
 
     KALDI_LOG << "Wrote " << acc_out_filename;

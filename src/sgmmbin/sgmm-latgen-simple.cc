@@ -149,9 +149,9 @@ int main(int argc, char *argv[]) {
     kaldi::AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     CompactLatticeWriter compact_lattice_writer;

@@ -59,15 +59,15 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     {
       bool binary;
-      Input is(tree_in_filename, &binary);
-      ctx_dep.Read(is.Stream(), binary);
+      Input ki(tree_in_filename, &binary);
+      ctx_dep.Read(ki.Stream(), binary);
     }
 
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
     }
 
     // need VectorFst because we will change it by adding subseq symbol.

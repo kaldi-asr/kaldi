@@ -69,17 +69,17 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;  // the tree.
     {
       bool binary;
-      Input is(tree_rxfilename, &binary);
-      ctx_dep.Read(is.Stream(), binary);
+      Input ki(tree_rxfilename, &binary);
+      ctx_dep.Read(ki.Stream(), binary);
     }
 
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_rxfilename, &binary);
-      trans_model.Read(is.Stream(), binary);
+      Input ki(model_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
       // AmDiagGmm am_gmm;
-      // am_gmm.Read(is.Stream(), binary);
+      // am_gmm.Read(ki.Stream(), binary);
     }
 
     // need VectorFst because we will change it by adding subseq symbol.

@@ -142,9 +142,9 @@ int main(int argc, char *argv[]) {
 
     TransitionModel trans_model(ctx_dep, topo);
     {
-      Output os(model_out_filename, binary);
-      trans_model.Write(os.Stream(), binary);
-      am_gmm.Write(os.Stream(), binary);
+      Output ko(model_out_filename, binary);
+      trans_model.Write(ko.Stream(), binary);
+      am_gmm.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Wrote tree and model.";
 

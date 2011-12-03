@@ -261,9 +261,9 @@ void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
     new_fmllr->Write(Output("tmpf", binary).Stream(), binary);
     RegtreeFmllrDiagGmm *fmllr_read = new RegtreeFmllrDiagGmm();
     bool binary_in;
-    Input is("tmpf", &binary_in);
+    Input ki("tmpf", &binary_in);
     std::cout << "Reading the transform from disk.\n";
-    fmllr_read->Read(is.Stream(), binary_in);
+    fmllr_read->Read(ki.Stream(), binary_in);
     fmllr_read->Validate();
 
     // transform features

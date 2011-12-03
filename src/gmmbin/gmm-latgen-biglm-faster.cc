@@ -170,9 +170,9 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     VectorFst<StdArc> *old_lm_fst = ReadFstKaldi(old_lm_fst_rxfilename);

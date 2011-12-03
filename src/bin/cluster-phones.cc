@@ -76,8 +76,8 @@ int main(int argc, char *argv[]) {
     {  // Read tree stats.
       bool binary_in;
       GaussClusterable gc;  // dummy needed to provide type.
-      Input is(stats_rxfilename, &binary_in);
-      ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
+      Input ki(stats_rxfilename, &binary_in);
+      ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
 
     std::vector<int32> hmm_position_list;

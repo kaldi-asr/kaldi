@@ -58,16 +58,16 @@ int main(int argc, char *argv[]) {
     kaldi::TransitionModel trans_model;
     {
       bool binary_read;
-      kaldi::Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      kaldi::Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     kaldi::Vector<BaseFloat> state_occs;
     if (occs_in_filename != "") {
       bool binary_read;
-      kaldi::Input is(occs_in_filename, &binary_read);
-      state_occs.Read(is.Stream(), binary_read);
+      kaldi::Input ki(occs_in_filename, &binary_read);
+      state_occs.Read(ki.Stream(), binary_read);
     } else {
       KALDI_LOG << "--state-occs option not provided so using constant occupancies.";
       state_occs.Resize(am_gmm.NumPdfs());
@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
     regtree.BuildTree(state_occs, sil_pdfs, am_gmm, max_leaves);
     // Write out the regression tree
     {
-      kaldi::Output os(tree_out_filename, binary_write);
-      regtree.Write(os.Stream(), binary_write);
+      kaldi::Output ko(tree_out_filename, binary_write);
+      regtree.Write(ko.Stream(), binary_write);
     }
 
     KALDI_LOG << "Written regression tree to " << tree_out_filename;

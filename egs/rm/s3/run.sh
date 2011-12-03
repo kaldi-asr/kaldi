@@ -86,7 +86,6 @@ local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri4d/decode
 
 # Next, SGMM system-- train SGMM system with speaker vectors, on top 
 # of LDA+MLLT features.
-
 steps/train_ubm_lda_etc.sh 400 data/train data/lang exp/tri2b_ali exp/ubm3d
 steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri2b_ali exp/ubm3d/final.ubm exp/sgmm3d
 
@@ -106,8 +105,8 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3e/decode exp/tri2c/decode
 # Now train SGMM system on top of LDA+MLLT+SAT
 steps/train_ubm_lda_etc.sh 400 data/train data/lang exp/tri3d_ali exp/ubm4f
 steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri3d_ali exp/ubm4f/final.ubm exp/sgmm4f
-
 local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode
+
 
 # Decode with fMLLR
 . path.sh

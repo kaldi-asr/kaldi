@@ -251,9 +251,15 @@ steps/train_sgmm_lda_etc.sh  --num-jobs 10 --cmd "$train_cmd" \
   3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b/final.ubm exp/sgmm4b
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+  exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+  exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+
+ # Trying further mixing-up of this system [increase #substates]:
+  steps/mixup_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
+     12500 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_12500
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
+    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_12500/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
 
 
 # Align 3b system with si284 data and num-jobs = 20; we'll train an LDA+MLLT+SAT system on si284 from this.
@@ -266,6 +272,19 @@ steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "$train_cmd" \
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri4c exp/tri4c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
   data/test_dev93 exp/tri4c/decode_tgpr_dev93
+
+
+( # Try mixing up the tri4c system further.
+ steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
+  50000 data/train_si284 exp/tri4c exp/tri3b_ali_si284_20 exp/tri4c_50k
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
+  data/test_dev93 exp/tri4c_50k/decode_tgpr_dev93
+
+ steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
+  75000 data/train_si284 exp/tri4c_50k exp/tri3b_ali_si284_20 exp/tri4c_75k
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
+  data/test_dev93 exp/tri4c_75k/decode_tgpr_dev93
+)
 
 # Train SGMM on top of LDA+MLLT+SAT, on all SI-284 data.  C.f. 4b which was
 # just on SI-84.

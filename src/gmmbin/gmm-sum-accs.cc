@@ -45,16 +45,16 @@ int main(int argc, char *argv[]) {
     for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
-      kaldi::Input is(stats_in_filename, &binary_read);
-      transition_accs.Read(is.Stream(), binary_read, true /*add read values*/);
-      gmm_accs.Read(is.Stream(), binary_read, true /*add read values*/);
+      kaldi::Input ki(stats_in_filename, &binary_read);
+      transition_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
+      gmm_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
     }
 
     // Write out the accs
     {
-      kaldi::Output os(stats_out_filename, binary);
-      transition_accs.Write(os.Stream(), binary);
-      gmm_accs.Write(os.Stream(), binary);
+      kaldi::Output ko(stats_out_filename, binary);
+      transition_accs.Write(ko.Stream(), binary);
+      gmm_accs.Write(ko.Stream(), binary);
     }
 
     KALDI_LOG << "Written stats to " << stats_out_filename;

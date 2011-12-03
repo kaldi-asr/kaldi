@@ -116,8 +116,8 @@ int main(int argc, char *argv[]) {
     {
       bool binary_in;
       GaussClusterable gc;  // dummy needed to provide type.
-      Input is(stats_filename, &binary_in);
-      ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
+      Input ki(stats_filename, &binary_in);
+      ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
     std::cerr << "Number of separate statistics is " << stats.size() << '\n';
 
@@ -125,8 +125,8 @@ int main(int argc, char *argv[]) {
     {
       bool binary_in;
       try {
-        Input is(questions_filename, &binary_in);
-        qo.Read(is.Stream(), binary_in);
+        Input ki(questions_filename, &binary_in);
+        qo.Read(ki.Stream(), binary_in);
       } catch (const std::exception &e) {
         KALDI_ERR << "Error reading questions file "<<questions_filename<<", error is: " << e.what();
       }
@@ -166,8 +166,8 @@ int main(int argc, char *argv[]) {
     to_pdf = NULL;
 
     {
-      Output os(tree_out_filename, binary);
-      ctx_dep.Write(os.Stream(), binary);
+      Output ko(tree_out_filename, binary);
+      ctx_dep.Write(ko.Stream(), binary);
     }
 
     {  // This block is just doing some checks.

@@ -553,10 +553,10 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   if (update_options_.renormalize_V)
     RenormalizeV(accs, model, H_sm);
 
-  KALDI_LOG << "*Auxiliary function improvement, combining all parameters, is "
+  KALDI_LOG << "*Overall auxf improvement, combining all parameters, is "
             << (tot_impr);
 
-  KALDI_LOG << "***Total data likelihood is "
+  KALDI_LOG << "***Overall data likelihood is "
             << (accs.total_like_/accs.total_frames_)
             << " over " << (accs.total_frames_) << " frames.";
 

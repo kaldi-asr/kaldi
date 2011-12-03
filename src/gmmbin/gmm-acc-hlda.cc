@@ -60,16 +60,16 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Matrix<BaseFloat> cur_transform;
     {
       bool binary;
-      Input is(cur_transform_filename, &binary);
-      cur_transform.Read(is.Stream(), binary);
+      Input ki(cur_transform_filename, &binary);
+      cur_transform.Read(ki.Stream(), binary);
       KALDI_ASSERT(cur_transform.NumRows() == am_gmm.Dim() &&
                    "Transform num-rows must match model dim (need truncated transform)");
     }

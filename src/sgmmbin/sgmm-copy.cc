@@ -48,15 +48,15 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     {
-      Output os(model_out_filename, binary_write);
-      trans_model.Write(os.Stream(), binary_write);
-      am_sgmm.Write(os.Stream(), binary_write, kSgmmWriteAll);
+      Output ko(model_out_filename, binary_write);
+      trans_model.Write(ko.Stream(), binary_write);
+      am_sgmm.Write(ko.Stream(), binary_write, kSgmmWriteAll);
     }
     
     

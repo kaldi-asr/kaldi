@@ -3,7 +3,7 @@ use File::Basename;
 use Cwd;
 
 # queue.pl has the same functionality as run.pl, except that
-# it runs the job in question on the queue.  
+# it runs the job in question on the queue (Sun GridEngine).
 # Suppose from the directory /cur/location, you run the command:
 #  queue.pl somedir/some.log my-prog "--opt=foo bar" foo \|  other-prog baz
 # and queue.pl will do something roughly equivalent to the following:
@@ -30,6 +30,19 @@ use Cwd;
 # following them, and give them to qsub.  E.g. if you call
 #  queue.pl -l ram_free=600M,mem_free=600M foo bar
 # it will pass the first two arguments to qsub.
+#
+#
+# Note: queue.pl calls Sun GridEngine (qsub).  Sometimes you'll get errors about
+# "range_list containes no elements".  queue.pl tries to deal with this bug in
+# GridEngine as gracefully as it can, but it will still sometimes cause failures
+# and will limit the number of jobs you can run.  The fix is to ask your queue
+# administrator to change your queue configuration as follows:
+# $ qconf -mconf
+# add MAX_DYN_EC=500 to "qmaster_params"
+# save buffer
+# exit
+
+
 
 $qsub_opts = "";
 while ($ARGV[0] =~ m:^-:) {
@@ -100,7 +113,8 @@ if ($errmsgs =~ m/containes/) { # the error message "range_list containes no ele
   # seems to be encountered due to a bug in grid engine... since this appears to be 
   # intermittent, we try a bunch of times, with sleeps in between, if this happens.
   print STDERR "Command writing to $logfile failed, apparently due to queue bug " .
-      " (range_list containes no elements)... will try again a few times.\n";
+      " (range_list containes no elements)... will try again a few times.\n"; # See comments
+  # at top of this program for more info about how to fix this.
   $delay = 60; # one minute delay initially.
   for ($x = 1; $x < 10; $x++) {
       print STDERR "[$x/10]";

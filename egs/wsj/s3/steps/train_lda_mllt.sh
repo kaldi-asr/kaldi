@@ -169,14 +169,14 @@ while [ $x -lt $numiters ]; do
        $cmd $dir/log/macc.$x.$n.log \
          ali-to-post "ark:gunzip -c $dir/$n.ali.gz|" ark:- \| \
            weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- \| \
-           gmm-acc-mllt --rand-prune=$randprune --binary=false $dir/$x.mdl \
+           gmm-acc-mllt --rand-prune=$randprune  $dir/$x.mdl \
              "${featspart[$n]}" ark:- $dir/$x.$n.macc || touch $dir/.error &
        featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/$x.mat ark:- ark:- |"       
      done
      wait
      [ -f $dir/.error ] && echo "Error accumulating MLLT stats on iter $x" && exit 1;
      est-mllt $dir/$x.mat.new $dir/$x.*.macc 2> $dir/log/mupdate.$x.log || exit 1;
-     gmm-transform-means --binary=false $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \
+     gmm-transform-means  $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \
        2> $dir/log/transform_means.$x.log || exit 1;
      compose-transforms --print-args=false $dir/$x.mat.new $cur_lda $dir/$x.mat || exit 1;
      cur_lda=$dir/$x.mat
@@ -185,7 +185,7 @@ while [ $x -lt $numiters ]; do
    ## The main accumulation phase.. ##
    for n in `get_splits.pl $nj`; do 
      $cmd $dir/log/acc.$x.$n.log \
-       gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
+       gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
          "ark,s,cs:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
    done
    wait;

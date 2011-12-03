@@ -67,15 +67,20 @@ fi
 
 for n in `get_splits.pl $nj`; do
   sifeatspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+  featspart[$n]="${sifeatspart[$n]}"
 done
+
+ln.pl $olddir/*.fsts.gz $dir  # Link FSTs.
 
 # Adjust the features to reflect any transforms we may have in $olddir.
 first=`get_splits.pl $nj | awk '{print $1}'`
 if [ -f $olddir/$first.trans ]; then
+  ln.pl $olddir/*.trans $dir # Link transforms, in case we do something that requires them.
+  # This program "ln.pl" uses relative links, in case we move the whole directory tree.
   have_trans=true
-  echo Using transforms in $olddir
+  echo "Using transforms in $olddir (linking to $dir)"
   for n in `get_splits.pl $nj`; do
-    featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$olddir/$n.trans ark:- ark:- |"
+    featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$dir/$n.trans ark:- ark:- |"
   done
 else
   have_trans=false
@@ -97,11 +102,11 @@ for x in `seq 0 $niters`; do  # Do five iterations of E-M; on 3rd iter, realign.
   if [ $x -eq 2 ]; then
     echo Realigning data on iteration $x
     for n in `get_splits.pl $nj`; do
-      [ ! -f $olddir/$n.fsts.gz ] && echo Expecting FSTs to exist: no such file $olddir/$n.fsts.gz \
+      [ ! -f $dir/$n.fsts.gz ] && echo Expecting FSTs to exist: no such file $dir/$n.fsts.gz \
         && exit 1;
       $cmd $dir/log/align.$x.$n.log \
         gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/$x.mdl \
-          "ark:gunzip -c $olddir/$n.fsts.gz|" "${featspart[$n]}" \
+          "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
           "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
     done
     wait
@@ -111,16 +116,16 @@ for x in `seq 0 $niters`; do  # Do five iterations of E-M; on 3rd iter, realign.
   echo "Accumulating statistics"
   for n in `get_splits.pl $nj`; do  
      $cmd $dir/log/acc.$x.$n.log \
-      gmm-acc-stats-ali --binary=false $dir/$x.mdl "${featspart[$n]}" \
+      gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
         "ark,s,cs:gunzip -c $dir_for_alignments/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
-   done
-   wait;
-   [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-   $cmd $dir/log/update.$x.log \
-     gmm-est --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
-       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
-   rm $dir/$x.mdl $dir/$x.*.acc
-   rm $dir/$x.occs 
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
+  $cmd $dir/log/update.$x.log \
+    gmm-est --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
+      "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
+  rm $dir/$x.mdl $dir/$x.*.acc
+  rm $dir/$x.occs  2>/dev/null
 done
 x=$[$niters+1]
 rm $dir/final.mdl $dir/final.occs 2>/dev/null

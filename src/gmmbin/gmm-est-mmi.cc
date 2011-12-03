@@ -68,9 +68,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     Vector<double> num_transition_accs;
@@ -78,15 +78,15 @@ int main(int argc, char *argv[]) {
     MmieAccumAmDiagGmm mmi_accs;
     {
       bool binary;
-      Input is(num_stats_filename, &binary);
-      num_transition_accs.Read(is.Stream(), binary);
-      mmi_accs.ReadNum(is.Stream(), binary, true);  // true == add; doesn't matter here.
+      Input ki(num_stats_filename, &binary);
+      num_transition_accs.Read(ki.Stream(), binary);
+      mmi_accs.ReadNum(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
     {
       bool binary;
-      Input is(den_stats_filename, &binary);
-      num_transition_accs.Read(is.Stream(), binary);
-      mmi_accs.ReadDen(is.Stream(), binary, true);  // true == add; doesn't matter here.
+      Input ki(den_stats_filename, &binary);
+      num_transition_accs.Read(ki.Stream(), binary);
+      mmi_accs.ReadDen(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
     
        

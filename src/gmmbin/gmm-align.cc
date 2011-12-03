@@ -75,17 +75,17 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     {
       bool binary;
-      Input is(tree_in_filename, &binary);
-      ctx_dep.Read(is.Stream(), binary);
+      Input ki(tree_in_filename, &binary);
+      ctx_dep.Read(ki.Stream(), binary);
     }
 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.

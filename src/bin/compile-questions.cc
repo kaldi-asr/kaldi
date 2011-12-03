@@ -135,8 +135,8 @@ int main(int argc, char *argv[]) {
     qo.SetQuestionsOf(kPdfClass, pdfclass_opts);
 
     {
-      Output os(questions_out_filename, binary);
-      qo.Write(os.Stream(), binary);
+      Output ko(questions_out_filename, binary);
+      qo.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Wrote questions to "<<questions_out_filename;
   } catch(const std::exception& e) {

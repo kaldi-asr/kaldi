@@ -156,9 +156,9 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     VectorFst<StdArc> *decode_fst = NULL;

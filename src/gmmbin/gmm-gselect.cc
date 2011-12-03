@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     DiagGmm gmm;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      gmm.Read(ki.Stream(), binary);
     }
     KALDI_ASSERT(num_gselect > 0);
     int32 num_gauss = gmm.NumGauss();

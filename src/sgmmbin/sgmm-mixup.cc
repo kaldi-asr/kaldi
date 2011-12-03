@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est.cc
+// sgmmbin/sgmm-mixup.cc
 
 // Copyright 2009-2011  Saarland University
 // Author:  Arnab Ghoshal
@@ -30,14 +30,20 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     const char *usage =
-        "Estimate SGMM model parameters from accumulated stats.\n"
-        "Usage: sgmm-est [options] <model-in> <stats-in> <model-out>\n";
-
+        "Increase number of sub-states or dimensions in SGMM\n"
+        "Usage: sgmm-mixup [options] <model-in> <model-out>\n"
+        "E.g. of mixing up:\n"
+        " sgmm-mixup --read-occs=1.occs --num-substates=10000 1.mdl 2.mdl\n"
+        "E.g. of increasing phonetic dim:\n"
+        " sgmm-mixup --increase-phn-dim=50 1.mdl 2.mdl\n"
+        "E.g. of increasing speaker dim:\n"
+        " sgmm-mixup --increase-spk-dim=50 1.mdl 2.mdl\n"
+        "E.g. of removing speaker space:\n"
+        " sgmm-mixup --remove-speaker-space 1.mdl 2.mdl\n"
+        "These modes may be combined.\n";
+    
     bool binary_write = true;
-    std::string update_flags_str = "vMNwcSt";
     std::string write_flags_str = "gsnu";
-    kaldi::TransitionUpdateConfig tcfg;
-    kaldi::MleAmSgmmOptions sgmm_opts;
     int32 split_substates = 0;
     int32 increase_phn_dim = 0;
     int32 increase_spk_dim = 0;
@@ -45,7 +51,7 @@ int main(int argc, char *argv[]) {
     BaseFloat perturb_factor = 0.01;
     BaseFloat power = 0.2;
     BaseFloat max_cond = 100;
-    std::string occs_out_filename;
+    std::string occs_in_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -63,26 +69,19 @@ int main(int argc, char *argv[]) {
                 "state vectors while splitting substates.");
     po.Register("max-cond-split", &max_cond, "Max condition number of smoothing "
                 "matrix used in substate splitting.");
-    po.Register("write-occs", &occs_out_filename, "File to write state "
-                "occupancies to.");
-    po.Register("update-flags", &update_flags_str, "Which SGMM parameters to "
-                "update: subset of vMNwcSt.");
     po.Register("write-flags", &write_flags_str, "Which SGMM parameters to "
                 "write: subset of gsnu");
-    tcfg.Register(&po);
-    sgmm_opts.Register(&po);
-
+    po.Register("read-occs", &occs_in_filename, "Read occupancies from this file "
+                "(required for mixing up)");
+    
     po.Read(argc, argv);
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
     std::string model_in_filename = po.GetArg(1),
-        stats_filename = po.GetArg(2),
-        model_out_filename = po.GetArg(3);
+        model_out_filename = po.GetArg(2);
 
-    kaldi::SgmmUpdateFlagsType update_flags =
-        StringToSgmmUpdateFlags(update_flags_str);
     kaldi::SgmmWriteFlagsType write_flags =
         StringToSgmmWriteFlags(write_flags_str);
     
@@ -95,44 +94,20 @@ int main(int argc, char *argv[]) {
       am_sgmm.Read(ki.Stream(), binary);
     }
 
-    Vector<double> transition_accs;
-    MleAmSgmmAccs sgmm_accs;
-    {
-      bool binary;
-      Input ki(stats_filename, &binary);
-      transition_accs.Read(ki.Stream(), binary);
-      sgmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
-    }
-
-    if (update_flags & kSgmmTransitions) {  // Update transition model.
-      BaseFloat objf_impr, count;
-      trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
-      KALDI_LOG << "Transition model update: average " << (objf_impr/count)
-                << " log-like improvement per frame over " << (count)
-                << " frames.";
-    }
-
-    sgmm_accs.Check(am_sgmm, true); // Will check consistency and print some diagnostics.
-
-    {  // Update SGMM.
-      kaldi::MleAmSgmmUpdater sgmm_updater(sgmm_opts);
-      sgmm_updater.Update(sgmm_accs, &am_sgmm, update_flags);
-    }
-
-    if (split_substates != 0 || !occs_out_filename.empty()) {  // get state occs
+    if (split_substates != 0) {
+      if (occs_in_filename.empty())
+        KALDI_ERR << "The --split-substates option requires the --read-occs option";
+      
       Vector<BaseFloat> state_occs;
-      sgmm_accs.GetStateOccupancies(&state_occs);
-
-      if (split_substates != 0) {
-        am_sgmm.SplitSubstates(state_occs, split_substates, perturb_factor,
-                               power, max_cond);
-        am_sgmm.ComputeDerivedVars();  // recompute normalizers...
+      {
+        bool binary_in;
+        kaldi::Input ki(occs_in_filename, &binary_in);
+        state_occs.Read(ki.Stream(), binary_in);
       }
-
-      if (!occs_out_filename.empty()) {
-        kaldi::Output ko(occs_out_filename, binary_write);
-        state_occs.Write(ko.Stream(), binary_write);
-      }
+      
+      am_sgmm.SplitSubstates(state_occs, split_substates, perturb_factor,
+                             power, max_cond);
+      am_sgmm.ComputeDerivedVars();  // recompute normalizers...
     }
 
     if (increase_phn_dim != 0 || increase_spk_dim != 0) {
@@ -145,6 +120,7 @@ int main(int argc, char *argv[]) {
       if (increase_spk_dim != 0)
         am_sgmm.IncreaseSpkSpaceDim(increase_spk_dim, norm_xform);
     }
+    
     if (remove_speaker_space) {
       KALDI_LOG << "Removing speaker space (projections N_)";
       am_sgmm.RemoveSpeakerSpace();
@@ -155,7 +131,6 @@ int main(int argc, char *argv[]) {
       trans_model.Write(ko.Stream(), binary_write);
       am_sgmm.Write(ko.Stream(), binary_write, write_flags);
     }
-    
     
     KALDI_LOG << "Written model to " << model_out_filename;
     return 0;
