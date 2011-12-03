@@ -154,11 +154,6 @@ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/deco
    data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats exp/tri5a/decode_eval2000
 
 
-scripts/decode.sh -l data/lang_test --opts '--scale-opts "--transition-scale=1.0 --self-loop-scale=0.0"' \
-    --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
-   data/lang_test data/eval2000 exp/sgmm6a/decode_eval2000_fromlats_0selfloop exp/tri5a/decode_eval2000
-   
-
 
 # MMI starting from the system in tri5a.
 steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
@@ -175,6 +170,12 @@ steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri5a/graph \
    data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 exp/tri5a/decode_eval2000
 
+ # Mixing up tri5a.
+
+ steps/mixup_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+  175000 data/train_nodup exp/tri5a exp/tri4a_ali_all_nodup exp/tri5a_175k && \
+ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
+  data/eval2000 exp/tri5a_175k/decode_eval2000
   
 
 
