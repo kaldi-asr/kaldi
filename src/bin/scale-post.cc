@@ -76,8 +76,9 @@ int main(int argc, char *argv[]) {
       }
       posterior_writer.Write(key, posterior);
     }
-    KALDI_LOG << "The number of total scaled posteriors is " << num_scaled;
-    KALDI_WARN << "The number of utterance without scores is " << num_no_score;
+    KALDI_LOG << "Scale " << num_scaled << " posteriors;  " << num_no_score
+              << " had no scores.";
+    return (num_scaled != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
