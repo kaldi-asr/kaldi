@@ -120,6 +120,15 @@ scripts/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000
 
+( # Try mixing up from the 5a system to see if more Gaussians helps.
+ steps/mixup_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+  175000 data/train_nodup exp/tri5a exp/tri4a_ali_all_nodup exp/tri5a_175k
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
+  data/eval2000 exp/tri5a_175k/decode_eval2000
+)
+
+
+
 # Align the 5a system; we'll train an SGMM system on top of 
 # LDA+MLLT+SAT, and use 5a system for 1st pass.
 steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
@@ -165,6 +174,9 @@ steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
   data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a exp/tri5a_mmi_b0.1
 scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri5a/graph \
    data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 exp/tri5a/decode_eval2000
+
+  
+
 
 
 # getting results (see RESULTS file)

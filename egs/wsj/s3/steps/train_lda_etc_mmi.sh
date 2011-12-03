@@ -30,8 +30,9 @@ nj=4
 boost=0.0
 cmd=scripts/run.pl
 acwt=0.1
+stage=0
 
-for x in 1 2 3; do
+for x in `seq 8`; do
   if [ $1 == "--num-jobs" ]; then
     shift; nj=$1; shift
   fi
@@ -47,6 +48,9 @@ for x in 1 2 3; do
   fi  
   if [ $1 == "--acwt" ]; then
     shift; acwt=$1; shift
+  fi  
+  if [ $1 == "--stage" ]; then
+    shift; stage=$1; shift
   fi  
 done
 
@@ -102,35 +106,38 @@ while [ $x -lt $niters ]; do
   # on all iterations, even though it shouldn't be necessary on the zeroth
   # (but we want this script to work even if $srcdir doesn't contain the
   # model used to generate the lattice).
-  for n in `get_splits.pl $nj`; do  
-    $cmd $dir/log/acc_den.$x.$n.log \
-      gmm-rescore-lattice $cur_mdl "${latspart[$n]}" "${featspart[$n]}" ark:- \| \
-      lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-      gmm-acc-stats $cur_mdl "${featspart[$n]}" ark:- $dir/den_acc.$x.$n.acc \
-       || touch $dir/.error &
-  done 
-  wait
-  [ -f $dir/.error ] && echo Error accumulating den stats on iter $x && exit 1;
-  $cmd $dir/log/den_acc_sum.$x.log \
-    gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
-  rm $dir/den_acc.$x.*.acc
+  if [ $stage -le $x ]; then
+    for n in `get_splits.pl $nj`; do  
+      $cmd $dir/log/acc_den.$x.$n.log \
+        gmm-rescore-lattice $cur_mdl "${latspart[$n]}" "${featspart[$n]}" ark:- \| \
+        lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
+        gmm-acc-stats $cur_mdl "${featspart[$n]}" ark:- $dir/den_acc.$x.$n.acc \
+         || touch $dir/.error &
+    done 
+    wait
+    [ -f $dir/.error ] && echo Error accumulating den stats on iter $x && exit 1;
+    $cmd $dir/log/den_acc_sum.$x.log \
+      gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
+    rm $dir/den_acc.$x.*.acc
 
-  echo "Iteration $x: getting numerator stats."
-  for n in `get_splits.pl $nj`; do  
-    $cmd $dir/log/acc_num.$x.$n.log \
-      gmm-acc-stats-ali $cur_mdl "${featspart[$n]}" "ark:gunzip -c $alidir/$n.ali.gz|" \
-        $dir/num_acc.$x.$n.acc || touch $dir/.error &
-  done
-  wait;
-  [ -f $dir/.error ] && echo Error accumulating num stats on iter $x && exit 1;
-  $cmd $dir/log/num_acc_sum.$x.log \
-    gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
-  rm $dir/num_acc.$x.*.acc
+    echo "Iteration $x: getting numerator stats."
+    for n in `get_splits.pl $nj`; do  
+      $cmd $dir/log/acc_num.$x.$n.log \
+        gmm-acc-stats-ali $cur_mdl "${featspart[$n]}" "ark:gunzip -c $alidir/$n.ali.gz|" \
+          $dir/num_acc.$x.$n.acc || touch $dir/.error &
+    done
+    wait;
+    [ -f $dir/.error ] && echo Error accumulating num stats on iter $x && exit 1;
+    $cmd $dir/log/num_acc_sum.$x.log \
+      gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
+    rm $dir/num_acc.$x.*.acc
 
-  $cmd $dir/log/update.$x.log \
-    gmm-est-mmi $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl \
-    || exit 1;
-
+    $cmd $dir/log/update.$x.log \
+      gmm-est-mmi $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl \
+      || exit 1;
+  else 
+    echo "not doing this iteration because --stage=$stage"
+  fi
   cur_mdl=$dir/$[$x+1].mdl
 
   # Some diagnostics
