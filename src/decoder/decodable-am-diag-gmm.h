@@ -42,7 +42,7 @@ namespace kaldi {
 class DecodableAmDiagGmmUnmapped : public DecodableInterface {
  public:
   DecodableAmDiagGmmUnmapped(const AmDiagGmm &am,
-                                const Matrix<BaseFloat> &feats)
+                             const Matrix<BaseFloat> &feats)
       : acoustic_model_(am), feature_matrix_(feats),
         previous_frame_(-1), data_squared_(feats.NumCols()) {
     ResetLogLikeCache();
@@ -84,11 +84,11 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
 };
 
 
-class DecodableAmDiagGmm : public DecodableAmDiagGmmUnmapped {
+class DecodableAmDiagGmm: public DecodableAmDiagGmmUnmapped {
  public:
   DecodableAmDiagGmm(const AmDiagGmm &am,
-                       const TransitionModel &tm,
-                       const Matrix<BaseFloat> &feats)
+                     const TransitionModel &tm,
+                     const Matrix<BaseFloat> &feats)
       : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm) {}
 
   // Note, frames are numbered from zero.
@@ -105,12 +105,12 @@ class DecodableAmDiagGmm : public DecodableAmDiagGmmUnmapped {
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmm);
 };
 
-class DecodableAmDiagGmmScaled : public DecodableAmDiagGmmUnmapped {
+class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
  public:
   DecodableAmDiagGmmScaled(const AmDiagGmm &am,
-                              const TransitionModel &tm,
-                              const Matrix<BaseFloat> &feats,
-                              BaseFloat scale)
+                           const TransitionModel &tm,
+                           const Matrix<BaseFloat> &feats,
+                           BaseFloat scale)
       : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm),
         scale_(scale) {}
 
@@ -129,7 +129,7 @@ class DecodableAmDiagGmmScaled : public DecodableAmDiagGmmUnmapped {
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmScaled);
 };
 
-class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
+class DecodableAmDiagGmmRegtreeFmllr: public DecodableAmDiagGmmUnmapped {
  public:
   DecodableAmDiagGmmRegtreeFmllr(const AmDiagGmm &am,
                                  const TransitionModel &tm,
@@ -169,7 +169,7 @@ class DecodableAmDiagGmmRegtreeFmllr : public DecodableAmDiagGmmUnmapped {
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmRegtreeFmllr);
 };
 
-class DecodableAmDiagGmmRegtreeMllr : public DecodableAmDiagGmmUnmapped {
+class DecodableAmDiagGmmRegtreeMllr: public DecodableAmDiagGmmUnmapped {
  public:
   DecodableAmDiagGmmRegtreeMllr(const AmDiagGmm &am,
                                 const TransitionModel &tm,

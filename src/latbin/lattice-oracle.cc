@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
         "Finds the path having the smallest edit-distance between two lattices.\n"
         "For efficiency put the smallest lattices first (for example reference strings).\n"
         "Usage: lattice-oracle [options] test-lattice-rspecifier reference-rspecifier transcriptions-wspecifier\n"
-        " e.g.: lattice-oracle ark:ref.lats ark:1.lats ark:1.tra\n";
+        " e.g.: lattice-oracle ark:ref.lats ark:1.tra ark:2.tra\n";
         
     ParseOptions po(usage);
     
