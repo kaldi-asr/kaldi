@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     //TransitionUpdateConfig tcfg;
     std::string occs_out_filename;
     std::string update_flags_str = "mvwt";
+    std::string i_smooth_stats_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode"
@@ -45,6 +46,8 @@ int main(int argc, char *argv[]) {
                 "update: subset of mvwt.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
                 "occupancies to.");
+    po.Register("i-smooth-stats", &i_smooth_stats_filename, "File to read "
+                "i smooth stats from.");
     //tcfg.Register(&po);
     mmi_opts.Register(&po);
 
@@ -88,8 +91,15 @@ int main(int argc, char *argv[]) {
       num_transition_accs.Read(is.Stream(), binary);
       mmi_accs.ReadDen(is.Stream(), binary, true);  // true == add; doesn't matter here.
     }
-    
-       
+      
+    if (!i_smooth_stats_filename.empty()) {
+      mmi_opts.has_i_smooth_stats = true;
+      bool binary;
+      Input is(i_smooth_stats_filename, &binary);
+      num_transition_accs.Read(is.Stream(), binary); // not sure here.. probably useless.
+      mmi_accs.ReadISmooth(is.Stream(), binary, true);
+    }
+ 
     {  // Update GMMs.
       BaseFloat auxf_impr_gauss, auxf_impr_weights, count;
       int32 num_floored;
@@ -119,5 +129,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
