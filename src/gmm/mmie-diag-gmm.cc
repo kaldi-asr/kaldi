@@ -159,13 +159,14 @@ void MmieAccumDiagGmm::Scale(BaseFloat f, GmmFlagsType flags) {
 void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(
     const AccumDiagGmm& num_acc,
     const AccumDiagGmm& den_acc,
-    const MmieDiagGmmOptions& opts){
+    const MmieDiagGmmOptions& opts,
+    const AccumDiagGmm& i_smooth_acc){
   
   //KALDI_ASSERT(num_acc.NumGauss() == den_acc.NumGauss && num_acc.Dim() == den_acc.Dim());
   //std::cout << "NumGauss: " << num_acc.NumGauss() << " " << den_acc.NumGauss() << " " << num_comp_ << '\n';
   KALDI_ASSERT(num_acc.NumGauss() == num_comp_ && num_acc.Dim() == dim_);
   KALDI_ASSERT(den_acc.NumGauss() == num_comp_ && den_acc.Dim() == dim_);
-  
+  KALDI_ASSERT(i_smooth_acc.NumGauss() == num_comp_ && i_smooth_acc.Dim() == dim_);
   
   // no subracting occs, just copy them to local vars
   num_occupancy_.CopyFromVec(num_acc.occupancy());
@@ -177,17 +178,21 @@ void MmieAccumDiagGmm::SubtractAccumulatorsISmoothing(
   mean_accumulator_.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
   variance_accumulator_.CopyFromMat(num_acc.variance_accumulator(), kNoTrans);
 
+  // Copy I- smoothing stats
+  Vector<double> i_smooth_occupancy(i_smooth_acc.occupancy()); 
+  Matrix<double> i_smooth_mean_accumulator(i_smooth_acc.mean_accumulator());
+  Matrix<double> i_smooth_variance_accumulator(i_smooth_acc.variance_accumulator());
   // I- smoothing
   for (int32 g = 0; g < num_comp_; g++) {
-    double occ = num_occupancy_(g);
+    double occ = i_smooth_occupancy(g);
     if (occ >= 0.0) {
       occupancy_(g) += opts.i_smooth_tau; // Add I-smoothing to occupancy_, but
       // *not* to num_occupancy_, which remains the original count before
       // I-smoothing, and which we use to update the weights.
       mean_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ,
-                                      mean_accumulator_.Row(g));
+                                      i_smooth_mean_accumulator.Row(g));
       variance_accumulator_.Row(g).AddVec(opts.i_smooth_tau/occ,
-                                          variance_accumulator_.Row(g));
+                                      i_smooth_variance_accumulator.Row(g));
     }
   }  
   // Subtract den from smoothed num
@@ -241,6 +246,7 @@ bool MmieAccumDiagGmm::EBWUpdateGaussian(
                                       ((*var)(i) + mean_diff*mean_diff)
                                       / orig_var(i));
         new_auxf += (occ+D) * -0.5 * (log((*var)(i)) + 1.0);
+        
       }
       *auxf_impr = new_auxf - old_auxf;
     }
@@ -316,8 +322,16 @@ void MmieAccumDiagGmm::Update(const MmieDiagGmmOptions &config,
         if (count_out) *count_out += num_occupancy_(g);
         // the EBWUpdateGaussian function only updates the
         // appropriate parameters according to the flags.
+        // variance flooring
+        //for (int32 i = 0; i < var.Dim(); i++) {
+        //  if (var(i) < config.min_variance) {
+        //    var(i) = config.min_variance;
+        //    KALDI_WARN << " flooring variance with value = " << var(i); 
+        //  }
+        //}
         diaggmmnormal.means_.CopyRowFromVec(mean, g);
         diaggmmnormal.vars_.CopyRowFromVec(var, g);
+        
         break;
       } else {
         // small step
