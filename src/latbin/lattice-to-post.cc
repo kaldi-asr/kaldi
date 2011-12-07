@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
                 "Scaling factor for \"graph costs\" (including LM costs)");
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
@@ -51,12 +51,15 @@ int main(int argc, char *argv[]) {
       KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
 
     std::string lats_rspecifier = po.GetArg(1),
-        posteriors_wspecifier = po.GetArg(2);
+        posteriors_wspecifier = po.GetArg(2),
+        scores_wspecifier = po.GetOptArg(3);
 
     // Read as regular lattice
     kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
 
     kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
+
+    kaldi::BaseFloatWriter scores_writer(scores_wspecifier);
 
     int32 n_done = 0;
     double total_like = 0.0, lat_like;
@@ -85,6 +88,9 @@ int main(int argc, char *argv[]) {
                     << lat.NumStates() << " states and " << fst::NumArcs(lat)
                     << " arcs. Average log-likelihood = " << (lat_like/lat_time)
                     << " over " << lat_time << " frames.";
+
+      if (scores_writer.IsOpen()) 
+        scores_writer.Write(key, lat_like);
 
       posterior_writer.Write(key, post);
       n_done++;
