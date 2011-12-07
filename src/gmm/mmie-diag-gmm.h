@@ -35,9 +35,12 @@ namespace kaldi {
 struct MmieDiagGmmOptions : public MleDiagGmmOptions {
   BaseFloat i_smooth_tau;
   BaseFloat ebw_e;
+  //this boolean indicates whether we have extra Ismoothing stats in
+  bool has_i_smooth_stats;
   MmieDiagGmmOptions() : MleDiagGmmOptions() {
     i_smooth_tau = 100.0;
     ebw_e = 2.0;
+    has_i_smooth_stats = false;
   }
   void Register(ParseOptions *po) {
     std::string module = "MmieDiagGmmOptions: ";
@@ -91,7 +94,8 @@ class MmieAccumDiagGmm {
   /// and applies I-smoothing to the numerator accs, if needed.
   void SubtractAccumulatorsISmoothing(const AccumDiagGmm& num_acc,
                                       const AccumDiagGmm& den_acc,
-                                      const MmieDiagGmmOptions& opts);
+                                      const MmieDiagGmmOptions& opts,
+                                      const AccumDiagGmm& i_smooth_acc);
 
   /// Does EBW update on one diagonal Gaussian; returns true if resulting
   /// variance was all positive.
