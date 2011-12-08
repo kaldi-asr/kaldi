@@ -3,7 +3,7 @@
 \mode<presentation>{\usetheme{kaldi1}}
 \usepackage[english]{babel}
 \usepackage[latin1]{inputenc}
-\usepackage{amsmath,amsthm, amssymb, latexsym}
+\usepackage{amsmath,amsthm, amssymb, latexsym, listings}
 %\usepackage{times}\usefonttheme{professionalfonts}  % obsolete
 %\usefonttheme[onlymath]{serif}
 \boldmath
@@ -50,11 +50,11 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
-\begin{frame}
+\begin{frame}[fragile]
   \begin{columns}
     % ---------------------------------------------------------%
     % Set up a column 
-    \begin{column}{.49\textwidth}
+    \begin{column}{.33\textwidth}
       \begin{beamercolorbox}[center,wd=\textwidth]{postercolumn}
         \begin{minipage}[T]{.95\textwidth}  % tweaks the width, makes a new \textwidth
           \parbox[t][\columnheight]{\textwidth}{ % must be some better way to set the the height, width and textwidth simultaneously
@@ -81,24 +81,21 @@
               \vskip-1ex
             \end{block}
             \vfill
-            \begin{block}{Feature Extraction}
+            \begin{block}{Standard ASR techniques supported in Kaldi}
               \begin{itemize}
-              \item 
+              \item Acoustic front-end supports MFCC and PLP features, with 
+                cepstral mean and variance normalization, LDA, STC/MLLT, HLDA,
+                VTLN, etc.
+              \item HMM/GMM acoustic models 
+              \item No language modeling code, but support converting ARPA 
+                format LMs to FSTSs.
               \end{itemize}
             \end{block}
             \vfill
-            \begin{block}{Acoustic Modeling}
+            \begin{block}{Features unique to Kaldi}
               \begin{itemize}
-              \item 
-              \end{itemize}
-            \end{block}
-            \vfill
-            \begin{block}{Phonetic Decision Trees}
-              \begin{itemize}
-              \item 
-              \item 
-              \item 
-              \item 
+              \item SGMM acoustic models
+              \item Exponential transform
               \end{itemize}
             \end{block}
           }
@@ -110,7 +107,35 @@
 
     % ---------------------------------------------------------%
     % Set up a column 
-    \begin{column}{.49\textwidth}
+    \begin{column}{.33\textwidth}
+      \begin{beamercolorbox}[center,wd=\textwidth]{postercolumn}
+        \begin{minipage}[T]{.95\textwidth} % tweaks the width, makes a new \textwidth
+          \parbox[t][\columnheight]{\textwidth}{ % must be some better way to set the the height, width and textwidth simultaneously
+            % Since all columns are the same length, it is all nice and tidy.  You have to get the height empirically
+            % ---------------------------------------------------------%
+            % fill each column with content
+            
+            \begin{block}{The Kaldi Decoder}
+% \begin{verbatim}
+% class DecodableInterface {
+%  public:
+%   virtual float LogLikelihood(int frame, int index) = 0;
+%   virtual bool IsLastFrame(int frame) = 0;
+%   virtual int NumIndices() = 0;
+%   virtual ~DecodableInterface() {}
+% };
+% \end{verbatim}
+            \end{block}
+          }
+        \end{minipage}
+      \end{beamercolorbox}
+    \end{column}
+    % ---------------------------------------------------------%
+    % end the column
+
+    % ---------------------------------------------------------%
+    % Set up a column 
+    \begin{column}{.33\textwidth}
       \begin{beamercolorbox}[center,wd=\textwidth]{postercolumn}
         \begin{minipage}[T]{.95\textwidth} % tweaks the width, makes a new \textwidth
           \parbox[t][\columnheight]{\textwidth}{ % must be some better way to set the the height, width and textwidth simultaneously
