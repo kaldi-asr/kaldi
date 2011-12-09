@@ -1,0 +1,31 @@
+
+\documentclass{article}
+\begin{document}
+
+\begin{verbatim}
+## Example of WSJ system building.
+local/wsj_data_prep.sh /mnt/speech_data/WSJ?/??-{?,??}.?
+local/wsj_prepare_dict.sh
+local/wsj_format_data.sh
+mfccdir=/mnt/my_storage/kaldi_wsj_mfcc
+for x in test_eval92 test_eval93 test_dev93 train_si284; do 
+ steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
+done
+# skipped some data-subsetting commands here.
+# This setup would use GridEngine.
+decode_cmd="queue.pl -q queue_name -l ram_free=1200M,mem_free=1200M"
+train_cmd="queue.pl -q queue_name -l ram_free=700M,mem_free=700M"
+
+steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
+  data/train_si84_2kshort data/lang exp/mono0a
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali
+steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1
+# ... 
+\end{verbatim}
+\vspace{0.4in}
+
+
+\end{document}
+

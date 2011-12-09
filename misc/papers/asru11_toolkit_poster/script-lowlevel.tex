@@ -1,0 +1,46 @@
+
+\documentclass{article}
+\begin{document}
+
+\begin{verbatim}
+for n in `get_splits.pl $nj`; do
+  featspart[$n]="ark:apply-cmvn --norm-vars=false \
+   --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn \
+   scp:$data/split$nj/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+done
+# tree building, graph compilation omitted.
+while [ $x -lt $numiters ]; do
+   echo "Iteration $x"
+   if echo $realign_iters | grep -w $x >/dev/null; then
+     echo "Aligning data"
+     for n in `get_splits.pl $nj`; do
+       $cmd $dir/log/align.$x.$n.log \
+         gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 \
+           $dir/$x.mdl "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
+           "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
+     done
+     wait;
+     [ -f $dir/.error ] && echo "Alignment error on iteration $x" && exit 1;
+   fi
+   for n in `get_splits.pl $nj`; do
+     $cmd $dir/log/acc.$x.$n.log \
+     gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
+      "ark,s,cs:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
+   done
+   wait;
+   [ -f $dir/.error ] && echo "Accumulation error on iteration $x" && exit 1;
+   $cmd $dir/log/update.$x.log \
+     gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
+       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
+   rm $dir/$x.mdl $dir/$x.*.acc
+   rm $dir/$x.occs 
+   if [[ $x -le $maxiterinc ]]; then 
+      numgauss=$[$numgauss+$incgauss];
+   fi
+   x=$[$x+1];
+done
+\end{verbatim}
+\vspace{0.4in}
+
+
+\end{document}
