@@ -34,6 +34,11 @@ AccumDiagGmm& MmieAccumAmDiagGmm::GetDenAcc(int32 index) const {
   return *(den_accumulators_[index]);
 }
 
+/// Reads accumulators of I-Smooth 
+AccumDiagGmm& MmieAccumAmDiagGmm::GetISmoothAcc(int32 index) const {
+  assert(index >= 0 && index < static_cast<int32>(i_smooth_accumulators_.size()));
+  return *(i_smooth_accumulators_[index]);
+}
 
 MmieAccumAmDiagGmm::~MmieAccumAmDiagGmm() {
   DeletePointers(&num_accumulators_);
@@ -142,6 +147,35 @@ void MmieAccumAmDiagGmm::ReadDen(std::istream& in_stream, bool binary,
   }
 }
 
+void MmieAccumAmDiagGmm::ReadISmooth(std::istream& in_stream, bool binary,
+                               bool add) {
+  int32 num_pdfs;
+  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ReadBasicType(in_stream, binary, &num_pdfs);
+  KALDI_ASSERT(num_pdfs > 0);
+  if (!add || (add && i_smooth_accumulators_.empty())) {
+    i_smooth_accumulators_.resize(num_pdfs, NULL);
+    for (std::vector<AccumDiagGmm*>::iterator it = i_smooth_accumulators_.begin(),
+             end = i_smooth_accumulators_.end(); it != end; ++it) {
+      if (*it != NULL) delete *it;
+      *it = new AccumDiagGmm();
+      (*it)->Read(in_stream, binary, add);
+    }
+
+
+  } else {
+    if (i_smooth_accumulators_.size() != static_cast<size_t> (num_pdfs))
+      KALDI_ERR << "Adding DEN accumulators but num-pdfs do not match: "
+                << (i_smooth_accumulators_.size()) << " vs. "
+                << (num_pdfs);
+
+    for (std::vector<AccumDiagGmm*>::iterator it = i_smooth_accumulators_.begin(),
+             end = i_smooth_accumulators_.end(); it != end; ++it)
+      (*it)->Read(in_stream, binary, add);
+
+  }
+}
+
 void MmieAccumAmDiagGmm::WriteNum(std::ostream& out_stream, bool binary) const {
   int32 num_pdfs = num_accumulators_.size();
   WriteMarker(out_stream, binary, "<NUMPDFS>");
@@ -187,7 +221,10 @@ void MmieAmDiagGmmUpdate(const MmieDiagGmmOptions &config,
      mmie_gmm.Resize(am_gmm->GetPdf(i).NumGauss(), am_gmm->GetPdf(i).Dim(), flags);
      mmie_gmm.SubtractAccumulatorsISmoothing(mmieamdiaggmm_acc.GetNumAcc(i),
                                              mmieamdiaggmm_acc.GetDenAcc(i),
-                                             config);
+                                             config,
+                                             config.has_i_smooth_stats ?
+                                             mmieamdiaggmm_acc.GetISmoothAcc(i):
+                                             mmieamdiaggmm_acc.GetNumAcc(i));
      mmie_gmm.Update(config, flags, &(am_gmm->GetPdf(i)),
                      &tmp_auxf_change_gauss, &tmp_auxf_change_weights,
                      &tmp_count, &tmp_num_floored);
