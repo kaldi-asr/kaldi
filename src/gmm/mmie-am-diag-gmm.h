@@ -36,9 +36,10 @@ class MmieAccumAmDiagGmm {
 
   void ReadNum(std::istream &in_stream, bool binary, bool add);
   void ReadDen(std::istream &in_stream, bool binary, bool add);
+  void ReadISmooth(std::istream &in_stream, bool binary, bool add);
   void WriteNum(std::ostream &out_stream, bool binary) const;
   void WriteDen(std::ostream &out_stream, bool binary) const;
-
+  //
   /// Initializes accumulators for each GMM based on the number of components
   /// and dimension.
   void Init(const AmDiagGmm &model, GmmFlagsType flags);
@@ -52,16 +53,17 @@ class MmieAccumAmDiagGmm {
 
   AccumDiagGmm& GetNumAcc(int32 index) const;
   AccumDiagGmm& GetDenAcc(int32 index) const;
+  AccumDiagGmm& GetISmoothAcc(int32 index) const;
 
   void CopyToNumAcc(int32 index);
   BaseFloat TotNumCount();
   BaseFloat TotDenCount();
+
  private:
   /// MMIE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> num_accumulators_;
   std::vector<AccumDiagGmm*> den_accumulators_;
-
-
+  std::vector<AccumDiagGmm*> i_smooth_accumulators_;
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(MmieAccumAmDiagGmm);
 };

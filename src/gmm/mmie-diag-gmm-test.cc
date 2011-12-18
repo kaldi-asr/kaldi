@@ -172,7 +172,7 @@ void UnitTestEstimateMmieDiagGmm() {
         << gmm->NumGauss() << '\n';
 
   
-   mmie_gmm.SubtractAccumulatorsISmoothing(num, den, config);
+   mmie_gmm.SubtractAccumulatorsISmoothing(num, den, config, num);
    BaseFloat auxf_gauss, auxf_weight, count;
    //Vector<double> mean_hlp(dim);
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
