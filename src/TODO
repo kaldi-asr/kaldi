@@ -12,6 +12,7 @@ major:
 
 
 minor:
+ Refactor UBM-building code "ClusterGaussiansToUbm"
  add combination scripts for wsj/s3
  look into why results not reproducible?   check if reproducible?
  change UBM-building in WSJ to match RM, and test the effect of this.

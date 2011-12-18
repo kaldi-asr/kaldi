@@ -173,9 +173,10 @@ struct UbmClusteringOptions {
         intermediate_numcomps(4000), cluster_varfloor(0.01),
         max_am_gauss(20000) {}
   UbmClusteringOptions(int32 ncomp, BaseFloat red, int32 interm_comps,
-                       BaseFloat vfloor)
+                       BaseFloat vfloor, int32 max_am_gauss)
         : ubm_numcomps(ncomp), reduce_state_factor(red),
-          intermediate_numcomps(interm_comps), cluster_varfloor(vfloor) {}
+          intermediate_numcomps(interm_comps), cluster_varfloor(vfloor),
+          max_am_gauss(max_am_gauss) {}
   void Register(ParseOptions *po) {
     std::string module = "UbmClusteringOptions: ";
     po->Register("max-am-gauss", &max_am_gauss, module+
@@ -206,7 +207,7 @@ struct UbmClusteringOptions {
  */
 void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
-                           const UbmClusteringOptions &opts,
+                           UbmClusteringOptions opts,
                            DiagGmm *ubm_out);
 
 }  // namespace kaldi

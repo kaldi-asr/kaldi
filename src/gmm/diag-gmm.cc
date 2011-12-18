@@ -175,6 +175,7 @@ void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<i
 }
 
 void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
+  
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
               << target_components << "), #Gauss = " << NumGauss();
@@ -265,7 +266,7 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
     // Search for the least significant change in likelihood
     // (maximum of negative delta_likes)
     BaseFloat max_delta_like = -std::numeric_limits<BaseFloat>::max();
-    int32 max_i = 0, max_j = 0;
+    int32 max_i = -1, max_j = -1;
     for (int32 i = 0; i < NumGauss(); ++i) {
       if (discarded_component[i]) continue;
       for (int32 j = 0; j < i; ++j) {
@@ -277,9 +278,9 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
         }
       }
     }
-
+    
     // make sure that different components will be merged
-    assert(max_i != max_j);
+    KALDI_ASSERT(max_i != max_j && max_i != -1 && max_j != -1);
 
     // remember the merge candidates
     if (history != NULL) {
@@ -383,7 +384,7 @@ BaseFloat DiagGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &data,
     KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
   if (static_cast<int32>(data.Dim()) != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
+        << "mismatch" << (data.Dim()) << " vs. "<< (Dim());
   }
   BaseFloat loglike;
   Vector<BaseFloat> data_sq(data);
@@ -414,7 +415,7 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->CopyFromVec(gconsts_);
   if (static_cast<int32>(data.Dim()) != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
+        << "mismatch" << (data.Dim()) << " vs. "<< (Dim());
   }
   Vector<BaseFloat> data_sq(data);
   data_sq.ApplyPow(2.0);

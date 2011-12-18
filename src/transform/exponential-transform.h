@@ -95,6 +95,10 @@ class ExponentialTransform {
   /// that we have.
   void GetDefaultTransform(Matrix<BaseFloat> *transform) const;
 
+  void GetATransform(Matrix<BaseFloat> *transform) const {
+    transform->CopyFromMat(A_);
+  }
+
   /// Make B unit; this can be useful for combining the B part of the
   /// transform with MLLT.
   void MakeBUnit() { B_.SetUnit(); }

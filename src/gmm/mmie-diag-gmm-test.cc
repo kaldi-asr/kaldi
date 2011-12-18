@@ -132,12 +132,7 @@ void UnitTestEstimateMmieDiagGmm() {
     
   mmie_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
 
-
-// iterate
   size_t iteration = 0;
-  float lastloglike = 0.0;
-  int32 lastloglike_nM = 0;
-
   while (iteration < maxiterations) {
     Vector<BaseFloat> featvec_num(dim);
     Vector<BaseFloat> featvec_den(dim);

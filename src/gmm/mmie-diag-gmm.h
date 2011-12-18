@@ -33,16 +33,20 @@ namespace kaldi {
  *  needed in the estimation process.
  */
 struct MmieDiagGmmOptions : public MleDiagGmmOptions {
-  BaseFloat i_smooth_tau;
+  BaseFloat i_smooth_tau;  
   BaseFloat ebw_e;
+  BaseFloat min_count_weight_update;
   MmieDiagGmmOptions() : MleDiagGmmOptions() {
     i_smooth_tau = 100.0;
     ebw_e = 2.0;
+    min_count_weight_update = 10.0;
   }
   void Register(ParseOptions *po) {
     std::string module = "MmieDiagGmmOptions: ";
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
+    po->Register("min-count-weight-update", &min_count_weight_update,
+                 module+"Minimum state-level numerator count required to do the weight update");
     po->Register("min-variance", &min_variance,
                  module+"Variance floor (absolute variance).");
     po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,

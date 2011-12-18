@@ -329,7 +329,8 @@ void MmieAccumDiagGmm::Update(const MmieDiagGmmOptions &config,
   }
 
   // Now update weights...
-  if (flags & kGmmWeights) {
+  if (flags & kGmmWeights && num_comp > 1 &&
+      num_occupancy_.Sum() > config.min_count_weight_update) {
     double weight_auxf_at_start = 0.0, weight_auxf_at_end = 0.0;
     Vector<double> weights(diaggmmnormal.weights_);
     for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.

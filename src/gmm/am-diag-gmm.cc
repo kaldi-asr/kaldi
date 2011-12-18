@@ -254,7 +254,7 @@ void UbmClusteringOptions::Check() {
 
 void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
-                           const UbmClusteringOptions &opts,
+                           UbmClusteringOptions opts,
                            DiagGmm *ubm_out) {
   if (am.NumGauss() > opts.max_am_gauss) {
     KALDI_LOG << "ClusterGaussiansToUbm: first reducing num-gauss from " << am.NumGauss()
@@ -264,13 +264,13 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
     BaseFloat power = 1.0, min_count = 1.0; // Make the power 1, which I feel
     // is appropriate to the way we're doing the overall clustering procedure.
     tmp_am.MergeByCount(state_occs, opts.max_am_gauss, power, min_count);
-    UbmClusteringOptions opts_tmp(opts);
+
     if (tmp_am.NumGauss() > opts.max_am_gauss) {
       KALDI_LOG << "Clustered down to " << tmp_am.NumGauss()
                 << "; will not cluster further";
-      opts_tmp.max_am_gauss = tmp_am.NumGauss();
+      opts.max_am_gauss = tmp_am.NumGauss();
     }
-    ClusterGaussiansToUbm(tmp_am, state_occs, opts_tmp, ubm_out);
+    ClusterGaussiansToUbm(tmp_am, state_occs, opts, ubm_out);
     return;
   }
   
@@ -330,6 +330,13 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
     }
   }
 
+  if (opts.intermediate_numcomps > am.NumGauss()) {
+    KALDI_WARN << "Intermediate numcomps " << opts.intermediate_numcomps
+               << " is more than num-gauss " << am.NumGauss()
+               << ", reducing it to " << am.NumGauss();
+    opts.intermediate_numcomps = am.NumGauss();
+  }
+    
   KALDI_VLOG(1) << "Merging from " << am.NumGauss() << " Gaussians in the "
                 << "acoustic model, down to " << opts.intermediate_numcomps
                 << " Gaussians.";
@@ -353,6 +360,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
       GaussClusterable *this_cluster = static_cast<GaussClusterable*>(
           gauss_clusters_out[clust_index][i]);
       BaseFloat weight = this_cluster->count();
+      KALDI_ASSERT(weight > 0);
       tmp_weights(gauss_index) = weight;
       tmp_vec.CopyFromVec(this_cluster->x_stats());
       tmp_vec.Scale(1/weight);
@@ -372,8 +380,13 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
   tmp_gmm.SetInvVarsAndMeans(tmp_vars, tmp_means);
 
   // Finally, cluster to the desired number of Gaussians in the UBM.
-  tmp_gmm.Merge(opts.ubm_numcomps);
-  KALDI_VLOG(1) << "Merged down to " << tmp_gmm.NumGauss() << " Gaussians.";
+  if (opts.ubm_numcomps < tmp_gmm.NumGauss()) {
+    tmp_gmm.Merge(opts.ubm_numcomps);
+    KALDI_VLOG(1) << "Merged down to " << tmp_gmm.NumGauss() << " Gaussians.";
+  } else {
+    KALDI_WARN << "Not merging Gaussians since " << opts.ubm_numcomps
+               << " < " << tmp_gmm.NumGauss();
+  }
   ubm_out->CopyFromDiagGmm(tmp_gmm);
 }
 
