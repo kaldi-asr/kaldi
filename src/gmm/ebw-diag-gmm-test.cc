@@ -1,4 +1,4 @@
-// gmm/mmie-diag-gmm-test.cc
+// gmm/ebw-diag-gmm-test.cc
 
 // Copyright 2009-2011  Petr Motlicek
 
@@ -18,7 +18,7 @@
 
 
 #include "gmm/diag-gmm.h"
-#include "gmm/mmie-diag-gmm.h" 
+#include "gmm/ebw-diag-gmm.h" 
 #include "util/kaldi-io.h"
 
 
@@ -116,11 +116,17 @@ void UnitTestEstimateMmieDiagGmm() {
   gmm->ComputeGconsts();
 
 
-  MmieAccumDiagGmm mmie_gmm;
+  EbwOptions ebw_opts;
+  EbwWeightOptions ebw_weight_opts;
 
-  MmieDiagGmmOptions  config;
-  config.min_variance = 0.01;
-  GmmFlagsType flags = kGmmAll;  // Should later try reducing this.
+  int r = rand() % 16;
+  GmmFlagsType flags = (r%2 == 0 ? kGmmMeans : 0)
+      + ((r/2)%2 == 0 ? kGmmVariances : 0)
+      + ((r/4)%2 == 0 ? kGmmWeights : 0);
+  double tau = (r/8)%2 == 0 ? 100 : 0.0;
+  
+  if ((flags & kGmmVariances) && !(flags & kGmmMeans))
+    return; // Don't do this case: not supported in the update equations.
   
   AccumDiagGmm num;
   AccumDiagGmm den;
@@ -130,9 +136,8 @@ void UnitTestEstimateMmieDiagGmm() {
   den.Resize(gmm->NumGauss(), gmm->Dim(), flags);
   den.SetZero(flags);
     
-  mmie_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
-
   size_t iteration = 0;
+  double last_log_like_diff;
   while (iteration < maxiterations) {
     Vector<BaseFloat> featvec_num(dim);
     Vector<BaseFloat> featvec_den(dim);
@@ -140,8 +145,6 @@ void UnitTestEstimateMmieDiagGmm() {
     num.SetZero(flags);
     den.Resize(gmm->NumGauss(), gmm->Dim(), flags);
     den.SetZero(flags);
-    mmie_gmm.Resize(gmm->NumGauss(), gmm->Dim(), flags);
-  
   
     double loglike_num = 0.0;
     double loglike_den = 0.0;
@@ -166,41 +169,40 @@ void UnitTestEstimateMmieDiagGmm() {
         << std::scientific << loglike_den << " number of components: "
         << gmm->NumGauss() << '\n';
 
-  
-   mmie_gmm.SubtractAccumulatorsISmoothing(num, den, config);
+    double loglike_diff = loglike_num - loglike_den;
+    if (iteration > 0) {
+      KALDI_LOG << "Objective changed " << last_log_like_diff
+                << " to " << loglike_diff;
+      if (loglike_diff < last_log_like_diff)
+        KALDI_WARN << "Objective decreased (flags = "
+                   << GmmFlagsToString(flags) << ", tau = " << tau << " )";
+    }
+    last_log_like_diff = loglike_diff;
+    
+   AccumDiagGmm num_smoothed(num);
+   num_smoothed.SmoothStats(tau); // Apply I-smoothing.
+   
    BaseFloat auxf_gauss, auxf_weight, count;
-   //Vector<double> mean_hlp(dim);
-   //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
-   //std::cout << "MEANX: " << mean_hlp << '\n'; 
    std::cout << "MEANX: " << gmm->weights() << '\n'; 
 
-   // binary write
-   {
-     Output ko("tmp_stats", false);
-     mmie_gmm.Write(ko.Stream(), false);
-     ko.Stream().flush();
-   }
-
-   
-   // binary read
-   bool binary_in;
-   Input ki("tmp_stats", &binary_in);
-   mmie_gmm.Read(ki.Stream(), binary_in, false);  // false = not adding.
-
    int32 num_floored;
-   mmie_gmm.Update(config, flags, gmm, &auxf_gauss, &auxf_weight, &count,
-                   &num_floored);
+   UpdateEbwDiagGmm(num_smoothed, den, flags, ebw_opts,
+                    gmm, &auxf_gauss, &count, &num_floored);
+
+   if (flags & kGmmWeights) {
+     UpdateEbwWeightsDiagGmm(num, den, ebw_weight_opts, gmm, &auxf_weight,
+                             &count);
+   }
+   
    //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
    //std::cout << "MEANY: " << mean_hlp << '\n'; 
-   std::cout << "MEANY: " << gmm->weights() << '\n'; 
+   std::cout << "MEANY: " << gmm->weights() << '\n';
 
 
    if ((iteration % 3 == 1) && (gmm->NumGauss() * 2 <= maxcomponents)) {
       gmm->Split(gmm->NumGauss() * 2, 0.001);
       std::cout << "Ngauss, Ndim: " << gmm->NumGauss() << " " << gmm->Dim() << '\n'; 
-   
    }
-
 
    iteration++;
   }
@@ -210,8 +212,8 @@ void UnitTestEstimateMmieDiagGmm() {
 
 
 int main() {
-  // repeat the test 5 times
-  for (int i = 0; i < 5; ++i) {
+  // repeat the test 20 times
+  for (int i = 0; i < 20; ++i) {
     kaldi::UnitTestEstimateMmieDiagGmm();
   }
   std::cout << "Test OK.\n";

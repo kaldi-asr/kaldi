@@ -185,16 +185,10 @@ BaseFloat AccumDiagGmm::AccumulateFromDiag(const DiagGmm &gmm,
 
 // Careful: this wouldn't be valid if it were used to update the
 // Gaussian weights.
+// Note: if we have zero stats for something, we don't smooth.
 void AccumDiagGmm::SmoothStats(BaseFloat tau) {
-  Vector<double> smoothing_vec(occupancy_);
-  smoothing_vec.InvertElements();
-  smoothing_vec.Scale(static_cast<double>(tau));
-  smoothing_vec.Add(1.0);
-  // now smoothing_vec = (tau + occ) / occ
-
-  mean_accumulator_.MulRowsVec(smoothing_vec);
-  variance_accumulator_.MulRowsVec(smoothing_vec);
-  occupancy_.Add(static_cast<double>(tau));
+  AccumDiagGmm tmp_accum(*this);
+  SmoothWithAccum(tau, tmp_accum);
 }
 
 
@@ -206,11 +200,14 @@ void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
   KALDI_ASSERT(src_acc.NumGauss() == num_comp_ && src_acc.Dim() == dim_);
   for (int32 i = 0; i < num_comp_; i++) {
     if (src_acc.occupancy_(i) != 0.0) { // can only smooth if src was nonzero...
-      occupancy_(i) += tau;
-      mean_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
-                                      src_acc.mean_accumulator_.Row(i));
-      variance_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
-                                          src_acc.variance_accumulator_.Row(i));
+      if (flags_ & kGmmWeights)
+        occupancy_(i) += tau;
+      if (flags_ & kGmmMeans)
+        mean_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                        src_acc.mean_accumulator_.Row(i));
+      if (flags_ & kGmmVariances)
+        variance_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                            src_acc.variance_accumulator_.Row(i));
     } else
       KALDI_WARN << "Could not smooth since source acc had zero occupancy.";
   }
@@ -224,12 +221,14 @@ void AccumDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm& gmm) {
   gmm.GetMeans(&means);
   gmm.GetVars(&vars);
 
-  mean_accumulator_.AddMat(tau, means);
+  if (flags_ & kGmmMeans)
+    mean_accumulator_.AddMat(tau, means);
   means.ApplyPow(2.0);
   vars.AddMat(1.0, means, kNoTrans);
-  variance_accumulator_.AddMat(tau, vars);
-
-  occupancy_.Add(tau);
+  if (flags_ & kGmmVariances)
+    variance_accumulator_.AddMat(tau, vars);
+  if (flags_ & kGmmWeights)
+    occupancy_.Add(tau);
 }
 
 AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)

@@ -1,4 +1,4 @@
-// gmm/mle-diag-gmm.cc
+// gmm/ebw-diag-gmm.cc
 
 // Copyright 2009-2011  Arnab Ghoshal, Petr Motlicek
 
@@ -24,179 +24,273 @@
 
 namespace kaldi {
 
-void AccumEbwDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
-  int32 dimension, num_components;
-  GmmFlagsType flags;
-  std::string token;
+// This function is used inside the EBW update routines.
+// returns true if all variances were positive.
+static bool EBWUpdateGaussian(
+    BaseFloat D,
+    GmmFlagsType flags,
+    const VectorBase<double> &orig_mean,
+    const VectorBase<double> &orig_var,
+    const VectorBase<double> &x_stats,
+    const VectorBase<double> &x2_stats,
+    double occ,
+    VectorBase<double> *mean,
+    VectorBase<double> *var,
+    double *auxf_impr) {
+  if (! (flags&(kGmmMeans|kGmmVariances)) || occ <= 0.0) { // nothing to do.
+    if (auxf_impr) *auxf_impr = 0.0;
+    mean->CopyFromVec(orig_mean);
+    var->CopyFromVec(orig_var);
+    return true; 
+  }    
+  KALDI_ASSERT(!( (flags&kGmmVariances) && !(flags&kGmmMeans))
+               && "We didn't make the update cover this case sensibly (update vars not means)");
+  
+  mean->SetZero();
+  var->SetZero();
+  mean->AddVec(D, orig_mean);
+  var->AddVec2(D, orig_mean);
+  var->AddVec(D, orig_var);
+  mean->AddVec(1.0, x_stats);
+  var->AddVec(1.0, x2_stats);
+  BaseFloat scale = 1.0 / (occ + D);
+  mean->Scale(scale);
+  var->Scale(scale);
+  var->AddVec2(-1.0, *mean);
+  
+  if (!(flags&kGmmVariances)) var->CopyFromVec(orig_var);
+  if (!(flags&kGmmMeans)) mean->CopyFromVec(orig_mean);
 
-  ExpectMarker(in_stream, binary, "<GMMEBWACCS>");
-  ExpectMarker(in_stream, binary, "<VECSIZE>");
-  ReadBasicType(in_stream, binary, &dimension);
-  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
-  ReadBasicType(in_stream, binary, &num_components);
-  ExpectMarker(in_stream, binary, "<FLAGS>");
-  ReadBasicType(in_stream, binary, &flags);
-
-  if (add) {
-    if ((NumGauss() != 0 || Dim() != 0 || Flags() != 0)) {
-      if (num_components != NumGauss() || dimension != Dim()
-          || flags != Flags()) {
-        KALDI_ERR << "Dimension or flags mismatch: " << NumGauss() << ", "
-                  << Dim() << ", " << Flags() << " vs. " << num_components
-                  << ", " << dimension << ", " << flags;
+  // Return false if any NaN's.
+  for (int32 i = 0; i < mean->Dim(); i++) {
+    double m =  ((*mean)(i)), v = ((*var)(i));
+    if (m!=m || v!=v || m-m != 0 || v-v != 0) {
+      return false;
+    }
+  }
+  
+  if (var->Min() > 0.0) {
+    if (auxf_impr != NULL) {
+      // work out auxf improvement.  
+      BaseFloat old_auxf = 0.0, new_auxf = 0.0;
+      int32 dim = orig_mean.Dim();
+      for (int32 i = 0; i < dim; i++) {
+        BaseFloat mean_diff = (*mean)(i) - orig_mean(i);
+        old_auxf += (occ+D) * -0.5 * (log(orig_var(i)) +
+                                      ((*var)(i) + mean_diff*mean_diff)
+                                      / orig_var(i));
+        new_auxf += (occ+D) * -0.5 * (log((*var)(i)) + 1.0);
+        
       }
-    } else {
-      Resize(num_components, dimension, flags);
+      *auxf_impr = new_auxf - old_auxf;
     }
+    return true;
+  } else return false;
+}
+
+// Update Gaussian parameters only (no weights)
+void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if used.
+                      const AccumDiagGmm &den_stats,
+                      GmmFlagsType flags,
+                      const EbwOptions &opts,
+                      DiagGmm *gmm,
+                      BaseFloat *auxf_change_out,
+                      BaseFloat *count_out,
+                      int32 *num_floored_out) {
+  GmmFlagsType acc_flags = num_stats.Flags();
+  if (flags & ~acc_flags)
+    KALDI_ERR << "Incompatible flags: you requested to update flags \""
+              << GmmFlagsToString(flags) << "\" but accumulators have only \""
+              << GmmFlagsToString(acc_flags) << '"';
+  
+  // It could be that the num stats actually contain the difference between
+  // num and den (for mean and var stats), and den stats only have the weights.
+  bool den_has_stats;
+  if (den_stats.Flags() != acc_flags) {
+    den_has_stats = false;
+    if (den_stats.Flags() != kGmmWeights) 
+      KALDI_ERR << "Incompatible flags: num stats have flags \""
+                << GmmFlagsToString(acc_flags) << "\" vs. den stats \""
+                << GmmFlagsToString(den_stats.Flags()) << '"';
   } else {
-    Resize(num_components, dimension, flags);
+    den_has_stats = true;
   }
+  int32 num_comp = num_stats.NumGauss();
+  int32 dim = num_stats.Dim();
+  KALDI_ASSERT(num_stats.NumGauss() == den_stats.NumGauss());
+  KALDI_ASSERT(num_stats.Dim() == gmm->Dim());
+  KALDI_ASSERT(gmm->NumGauss() == num_comp);
+  
+  if ( !(flags & (kGmmMeans | kGmmVariances)) ) {
+    return; // Nothing to update.
+  }
+  
+  // copy DiagGMM model and transform this to the normal case
+  DiagGmmNormal diaggmmnormal;
+  gmm->ComputeGconsts();
+  diaggmmnormal.CopyFromDiagGmm(*gmm);
 
-  ReadMarker(in_stream, binary, &token);
-  while (token != "</GMMEBWACCS>") {
-    if (token == "<NUM_OCCUPANCY>") {
-      num_occupancy_.Read(in_stream, binary, add);
-    } else if (token == "<DEN_OCCUPANCY>") {
-      den_occupancy_.Read(in_stream, binary, add);
-    } else if (token == "<MEANACCS>") {
-      mean_accumulator_.Read(in_stream, binary, add);
-    } else if (token == "<DIAGVARACCS>") {
-      variance_accumulator_.Read(in_stream, binary, add);
-    } else {
-      KALDI_ERR << "Unexpected token '" << token << "' in model file ";
+  // go over all components
+  Vector<double> mean(dim), var(dim), mean_stats(dim), var_stats(dim);
+
+  for (int32 g = 0; g < num_comp; g++) {
+    BaseFloat num_count = num_stats.occupancy()(g),
+        den_count = den_stats.occupancy()(g);
+    if (num_count == 0.0 && den_count == 0.0) {
+      KALDI_VLOG(2) << "Not updating Gaussian " << g << " since counts are zero";
+      continue;
     }
-    ReadMarker(in_stream, binary, &token);
-  }
-}
-
-void AccumEbwDiagGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<GMMEBWACCS>");
-  WriteMarker(out_stream, binary, "<VECSIZE>");
-  WriteBasicType(out_stream, binary, dim_);
-  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
-  WriteBasicType(out_stream, binary, num_comp_);
-  WriteMarker(out_stream, binary, "<FLAGS>");
-  WriteBasicType(out_stream, binary, flags_);
-
-  // convert into BaseFloat before writing things
-  Vector<BaseFloat> num_occupancy_bf(num_occupancy_.Dim());
-  Vector<BaseFloat> den_occupancy_bf(den_occupancy_.Dim());
-  Matrix<BaseFloat> mean_accumulator_bf(mean_accumulator_.NumRows(),
-      mean_accumulator_.NumCols());
-  Matrix<BaseFloat> variance_accumulator_bf(variance_accumulator_.NumRows(),
-      variance_accumulator_.NumCols());
-  num_occupancy_bf.CopyFromVec(num_occupancy_);
-  den_occupancy_bf.CopyFromVec(den_occupancy_);
-  mean_accumulator_bf.CopyFromMat(mean_accumulator_);
-  variance_accumulator_bf.CopyFromMat(variance_accumulator_);
-
-  WriteMarker(out_stream, binary, "<NUM_OCCUPANCY>");
-  num_occupancy_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<DEN_OCCUPANCY>");
-  den_occupancy_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<MEANACCS>");
-  mean_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<DIAGVARACCS>");
-  variance_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</GMMEBWACCS>");
-}
-
-
-void AccumEbwDiagGmm::Resize(int32 num_comp, int32 dim, GmmFlagsType flags) {
-  KALDI_ASSERT(num_comp > 0 && dim > 0);
-  num_comp_ = num_comp;
-  dim_ = dim;
-  flags_ = AugmentGmmFlags(flags);
-  num_occupancy_.Resize(num_comp);
-  den_occupancy_.Resize(num_comp);
-  if (flags_ & kGmmMeans)
-    mean_accumulator_.Resize(num_comp, dim);
-  else
-    mean_accumulator_.Resize(0, 0);
-  if (flags_ & kGmmVariances)
-    variance_accumulator_.Resize(num_comp, dim);
-  else
-    variance_accumulator_.Resize(0, 0);
-}
-
-void AccumEbwDiagGmm::SetZero(GmmFlagsType flags) {
-  if (flags & ~flags_)
-    KALDI_ERR << "Flags in argument do not match the active accumulators";
-  if (flags & kGmmWeights) {
-    num_occupancy_.SetZero();
-    den_occupancy_.SetZero();
-  }
-  if (flags & kGmmMeans) mean_accumulator_.SetZero();
-  if (flags & kGmmVariances) variance_accumulator_.SetZero();
-}
-
-
-void AccumEbwDiagGmm::Scale(BaseFloat f, GmmFlagsType flags) {
-  if (flags & ~flags_)
-    KALDI_ERR << "Flags in argument do not match the active accumulators";
-  double d = static_cast<double>(f);
-  if (flags & kGmmWeights) {
-    num_occupancy_.Scale(d);
-    den_occupancy_.SetZero();
-  }
-  if (flags & kGmmMeans) mean_accumulator_.Scale(d);
-  if (flags & kGmmVariances) variance_accumulator_.Scale(d);
-}
-
-void AccumEbwDiagGmm::AccumulateFromPosteriors(
-    const VectorBase<BaseFloat>& data,
-    const VectorBase<BaseFloat>& pos_post,
-    const VectorBase<BaseFloat>& neg_post) {
-  assert(static_cast<int32>(data.Dim()) == Dim());
-  assert(static_cast<int32>(pos_post.Dim()) == NumGauss());
-  Vector<double> pos_post_d(pos_post),
-      neg_post_d(neg_post);  // Copy with type-conversion
-
-  // accumulate
-  num_occupancy_.AddVec(1.0, pos_post_d);
-  num_occupancy_.AddVec(1.0, neg_post_d);
-  if (flags_ & kGmmMeans) {
-    Vector<double> data_d(data);  // Copy with type-conversion
-    // TODO(arnab): we need to decide whether the neg posts have negative value
-    mean_accumulator_.AddVecVec(1.0, pos_post_d, data_d);
-    mean_accumulator_.AddVecVec(-1.0, neg_post_d, data_d);
-    if (flags_ & kGmmVariances) {
-      data_d.ApplyPow(2.0);
-      variance_accumulator_.AddVecVec(1.0, pos_post_d, data_d);
-      variance_accumulator_.AddVecVec(-1.0, neg_post_d, data_d);
+    mean_stats.CopyFromVec(num_stats.mean_accumulator().Row(g));
+    if (den_has_stats)
+      mean_stats.AddVec(-1.0, den_stats.mean_accumulator().Row(g));
+    if (flags & kGmmVariances) {
+      var_stats.CopyFromVec(num_stats.variance_accumulator().Row(g));
+      if (den_has_stats)
+        var_stats.AddVec(-1.0, den_stats.variance_accumulator().Row(g));
     }
+    double D = opts.E * den_count / 2; // E*gamma_den/2 where E = 2;
+    // We initialize to half the value of D that would be dictated by
+    // E; this is part of the strategy used to ensure that the value of
+    // D we use is at least twice the value that would ensure positive
+    // variances.
+
+    int32 iter, max_iter = 100;
+    for (iter = 0; iter < max_iter; iter++) { // will normally break from the loop
+      // the first time.
+      if (EBWUpdateGaussian(D, flags,
+                            diaggmmnormal.means_.Row(g),
+                            diaggmmnormal.vars_.Row(g),
+                            mean_stats, var_stats, num_count-den_count,
+                            &mean, &var, NULL)) {
+        // Succeeded in getting all +ve vars at this value of D.
+        // So double D and commit changes.
+        D *= 2.0;
+        double auxf_impr = 0.0;
+        EBWUpdateGaussian(D, flags,
+                          diaggmmnormal.means_.Row(g),
+                          diaggmmnormal.vars_.Row(g),
+                          mean_stats, var_stats, num_count-den_count,
+                          &mean, &var, &auxf_impr);
+        
+        if (auxf_change_out) *auxf_change_out += auxf_impr;
+        if (count_out) *count_out += den_count; // The idea is that for MMI, this will
+        // reflect the actual #frames trained on (the numerator one would be I-smoothed).
+        // In general (e.g. for MPE), we won't know the #frames.
+        diaggmmnormal.means_.CopyRowFromVec(mean, g);
+        diaggmmnormal.vars_.CopyRowFromVec(var, g);
+        break;
+      } else {
+        // small step
+        D *= 1.1; 
+      }
+    }
+    if (iter > 0 && num_floored_out != NULL) *num_floored_out++;
+    if (iter == max_iter) KALDI_WARN << "Dropped off end of loop, recomputing D. (unexpected.)";
   }
-}
-
-void AccumEbwDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
-  KALDI_ASSERT(src_acc.NumGauss() == num_comp_ && src_acc.Dim() == dim_);
-  double tau_d = static_cast<double>(tau);
-  num_occupancy_.AddVec(tau_d, src_acc.occupancy());
-  mean_accumulator_.AddMat(tau_d, src_acc.mean_accumulator(), kNoTrans);
-  variance_accumulator_.AddMat(tau_d, src_acc.variance_accumulator(), kNoTrans);
+  // copy to natural representation according to flags.
+  diaggmmnormal.CopyToDiagGmm(gmm, flags);
+  gmm->ComputeGconsts();
 }
 
 
-void AccumEbwDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm& gmm) {
-  KALDI_ASSERT(gmm.NumGauss() == num_comp_ && gmm.Dim() == dim_);
-  Matrix<double> means(num_comp_, dim_);
-  Matrix<double> vars(num_comp_, dim_);
-  gmm.GetMeans(&means);
-  gmm.GetVars(&vars);
+void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-smoothing
+                             const AccumDiagGmm &den_stats,
+                             const EbwWeightOptions &opts,
+                             DiagGmm *gmm,
+                             BaseFloat *auxf_change_out,
+                             BaseFloat *count_out) {
 
-  mean_accumulator_.AddMat(tau, means);
-  means.ApplyPow(2.0);
-  vars.AddMat(1.0, means, kNoTrans);
-  variance_accumulator_.AddMat(tau, vars);
+  DiagGmmNormal diaggmmnormal;
+  gmm->ComputeGconsts();
+  diaggmmnormal.CopyFromDiagGmm(*gmm);
 
-  num_occupancy_.Add(tau);
+  Vector<double> weights(diaggmmnormal.weights_),
+      num_occs(num_stats.occupancy()),
+      den_occs(den_stats.occupancy());
+  if (num_occs.Sum() + den_occs.Sum() < opts.min_num_count_weight_update) {
+    KALDI_LOG << "Not updating weights for this state because total count is "
+              << num_occs.Sum() + den_occs.Sum() << " < "
+              << opts.min_num_count_weight_update;
+    return;
+  }
+  KALDI_ASSERT(weights.Dim() == num_occs.Dim() && num_occs.Dim() == den_occs.Dim());
+  if (weights.Dim() == 1) return; // Nothing to do: only one mixture.
+  double weight_auxf_at_start = 0.0, weight_auxf_at_end = 0.0;
+
+  int32 num_comp = weights.Dim();
+  for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.
+    weight_auxf_at_start +=
+        num_occs(g) * log (weights(g))
+        - den_occs(g) * weights(g) / diaggmmnormal.weights_(g);
+  }
+  for (int32 iter = 0; iter < 50; iter++) {
+    Vector<double> k_jm(num_comp); // c.f. eq. 4.35
+    double max_m = 0.0;
+    for (int32 g = 0; g < num_comp; g++)
+      max_m = std::max(max_m, den_occs(g)/diaggmmnormal.weights_(g));
+    for (int32 g = 0; g < num_comp; g++)
+      k_jm(g) = max_m - den_occs(g)/diaggmmnormal.weights_(g);
+    for (int32 g = 0; g < num_comp; g++) // c.f. eq. 4.34
+      weights(g) = num_occs(g) + k_jm(g)*weights(g);
+    weights.Scale(1.0 / weights.Sum()); // c.f. eq. 4.34 (denominator)
+  }
+  for (int32 g = 0; g < num_comp; g++) {   // weight flooring.
+    if (weights(g) < opts.min_gaussian_weight)
+      weights(g) = opts.min_gaussian_weight;
+  }
+  weights.Scale(1.0 / weights.Sum()); // renormalize after flooring..
+  // floor won't be exact now but doesn't really matter.
+
+  for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.
+    weight_auxf_at_end +=
+        num_occs(g) * log (weights(g))
+        - den_occs(g) * weights(g) / diaggmmnormal.weights_(g);
+  }
+
+  if (auxf_change_out)
+    *auxf_change_out += weight_auxf_at_end - weight_auxf_at_start;
+  if (count_out)
+    *count_out += num_occs.Sum(); // only really valid for MMI.
+
+  diaggmmnormal.weights_.CopyFromVec(weights);
+
+  // copy to natural representation
+  diaggmmnormal.CopyToDiagGmm(gmm, kGmmAll);
+  gmm->ComputeGconsts();
 }
 
-AccumEbwDiagGmm::AccumEbwDiagGmm(const AccumEbwDiagGmm &other)
-    : dim_(other.dim_), num_comp_(other.num_comp_),
-      flags_(other.flags_), num_occupancy_(other.num_occupancy_),
-      den_occupancy_(other.den_occupancy_),
-      mean_accumulator_(other.mean_accumulator_),
-      variance_accumulator_(other.variance_accumulator_) {}
+void UpdateEbwAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smoothing, if used.
+                        const AccumAmDiagGmm &den_stats,
+                        GmmFlagsType flags,
+                        const EbwOptions &opts,
+                        AmDiagGmm *am_gmm,
+                        BaseFloat *auxf_change_out,
+                        BaseFloat *count_out,
+                        int32 *num_floored_out) {
+  KALDI_ASSERT(num_stats.NumAccs() == den_stats.NumAccs()
+               && num_stats.NumAccs() == am_gmm->NumPdfs());
+
+  for (int32 pdf = 0; pdf < num_stats.NumAccs(); pdf++)
+    UpdateEbwDiagGmm(num_stats.GetAcc(pdf), den_stats.GetAcc(pdf), flags,
+                     opts, &(am_gmm->GetPdf(pdf)), auxf_change_out,
+                     count_out, num_floored_out);
+}                     
+
+
+void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smoothing, if used.
+                               const AccumAmDiagGmm &den_stats,
+                               const EbwWeightOptions &opts,
+                               AmDiagGmm *am_gmm,
+                               BaseFloat *auxf_change_out,
+                               BaseFloat *count_out) {
+  KALDI_ASSERT(num_stats.NumAccs() == den_stats.NumAccs()
+               && num_stats.NumAccs() == am_gmm->NumPdfs());
+
+  for (int32 pdf = 0; pdf < num_stats.NumAccs(); pdf++)
+    UpdateEbwWeightsDiagGmm(num_stats.GetAcc(pdf), den_stats.GetAcc(pdf),
+                            opts, &(am_gmm->GetPdf(pdf)), auxf_change_out,
+                            count_out);
+}                     
+
 
 }  // End of namespace kaldi

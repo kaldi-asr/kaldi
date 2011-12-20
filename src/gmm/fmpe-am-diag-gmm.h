@@ -129,9 +129,10 @@ class FmpeAccumModelDiff {
   /// the MPE training, including the numerator and denominator accumulators
   /// and applies I-smoothing to the numerator accs, if needed,
   /// which using mle_acc.
-  void ComputeModelParaDiff(const DiagGmm& diag_gmm,
-                              const AccumEbwDiagGmm& ebw_acc,
-                              const AccumDiagGmm& mle_acc);
+  void ComputeModelParaDiff(const DiagGmm &diag_gmm,
+                            const AccumDiagGmm &num_acc,
+                            const AccumDiagGmm &den_acc,
+                            const AccumDiagGmm &mle_acc);
 
 
  private:

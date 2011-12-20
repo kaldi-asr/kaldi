@@ -145,7 +145,7 @@ if [ $emiters -gt 0 ]; then
     fgmm-global-acc-stats $dir/ubm-diag.$[$i-1] "$emfeats" $dir/em.$i.acc 2> $dir/em.$i.log || exit 1;
     fgmm-global-est --remove-low-count-gaussians=false $dir/ubm-diag.$[$i-1] $dir/em.$i.acc $dir/ubm-diag.$i 2> $dir/est.$i.log || exit 1;
   done
-  mv ubm-diag.$emiters $dir/ubm-diag
+  mv $dir/ubm-diag.$emiters $dir/ubm-diag
 fi
 
 # we won't need the old ubms

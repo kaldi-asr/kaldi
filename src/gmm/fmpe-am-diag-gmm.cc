@@ -96,11 +96,14 @@ void FmpeAccumModelDiff::SetZero() {
 }
 
 void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
-                                              const AccumEbwDiagGmm& ebw_acc,
+                                              const AccumDiagGmm& num_acc,
+                                              const AccumDiagGmm& den_acc,
                                               const AccumDiagGmm& mle_acc) {
-  KALDI_ASSERT(ebw_acc.NumGauss() == num_comp_ && ebw_acc.Dim() == dim_);
+  KALDI_ASSERT(num_acc.NumGauss() == num_comp_ && num_acc.Dim() == dim_);
+  KALDI_ASSERT(den_acc.NumGauss() == num_comp_); // den_acc.Dim() may not be defined,
+  // if we used the "compressed form" of accs where den only has counts.
   KALDI_ASSERT(mle_acc.NumGauss() == num_comp_ && mle_acc.Dim() == dim_);
-
+  
   Matrix<double> mean_diff_tmp(num_comp_, dim_);
   Matrix<double> var_diff_tmp(num_comp_, dim_);
   Matrix<double> mat_tmp(num_comp_, dim_);
@@ -108,13 +111,15 @@ void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
   Matrix<double> means_invvars(num_comp_, dim_);
   Matrix<double> inv_vars(num_comp_, dim_);
 
-  occ_diff.CopyFromVec(ebw_acc.num_occupancy());
-  occ_diff.AddVec(-1.0, ebw_acc.den_occupancy());
+  occ_diff.CopyFromVec(num_acc.occupancy());
+  occ_diff.AddVec(-1.0, den_acc.occupancy());
 
   means_invvars.CopyFromMat(diag_gmm.means_invvars(), kNoTrans);
   inv_vars.CopyFromMat(diag_gmm.inv_vars(), kNoTrans);
   /// compute the means differentials first
-  mean_diff_tmp.CopyFromMat(ebw_acc.mean_accumulator(), kNoTrans);
+  mean_diff_tmp.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
+  if (den_acc.Flags() & kGmmMeans) // probably will be false.
+    mean_diff_tmp.AddMat(-1.0, den_acc.mean_accumulator(), kNoTrans);
   mean_diff_tmp.MulElements(inv_vars);
 
   mat_tmp.CopyFromMat(means_invvars, kNoTrans);
@@ -126,11 +131,16 @@ void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
   mean_diff_accumulator_.CopyFromMat(mean_diff_tmp, kNoTrans);
 
   /// compute the vars differentials second
-  var_diff_tmp.CopyFromMat(ebw_acc.variance_accumulator(), kNoTrans);
-  var_diff_tmp.MulElements(inv_vars);
-  var_diff_tmp.MulElements(inv_vars);
+  var_diff_tmp.CopyFromMat(num_acc.variance_accumulator(), kNoTrans);
+  if (den_acc.Flags() & kGmmVariances) // probably will be false.
+    var_diff_tmp.AddMat(-1.0, den_acc.variance_accumulator(), kNoTrans);
 
-  mat_tmp.CopyFromMat(ebw_acc.mean_accumulator(), kNoTrans);
+  var_diff_tmp.MulElements(inv_vars);
+  var_diff_tmp.MulElements(inv_vars);
+                      
+  mat_tmp.CopyFromMat(num_acc.mean_accumulator(), kNoTrans);
+  if (den_acc.Flags() & kGmmMeans) // probably will be false.
+    mat_tmp.AddMat(-1.0, den_acc.mean_accumulator(), kNoTrans);
   mat_tmp.MulElements(inv_vars);
   mat_tmp.MulElements(means_invvars);
 

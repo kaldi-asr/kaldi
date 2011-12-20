@@ -33,6 +33,9 @@ typedef uint16 GmmFlagsType;  ///< Bitwise OR of the above flags.
 /// flags.
 GmmFlagsType StringToGmmFlags(std::string str);
 
+/// Convert GMM flags to string
+std::string GmmFlagsToString(GmmFlagsType gmm_flags);
+
 // Make sure that the flags make sense, i.e. if there is variance
 // accumulation that there is also mean accumulation
 GmmFlagsType AugmentGmmFlags(GmmFlagsType flags);

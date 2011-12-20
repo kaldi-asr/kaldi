@@ -72,8 +72,18 @@ class AccumAmDiagGmm {
 
   int32 NumAccs() const { return gmm_accumulators_.size(); }
 
+  BaseFloat TotCount() const;
+
   const AccumDiagGmm& GetAcc(int32 index) const;
 
+  AccumDiagGmm& GetAcc(int32 index);
+
+  // The next three functions are mostly useful in discriminative training.
+  // They call the corresponding functions in class AccumDiagGmm.
+  void SmoothStats(BaseFloat tau);
+  void SmoothWithAccum(BaseFloat tau, const AccumAmDiagGmm& src_accs);
+  void SmoothWithModel(BaseFloat tau, const AmDiagGmm& src_gmm);
+  
  private:
   /// MLE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> gmm_accumulators_;
@@ -85,8 +95,8 @@ class AccumAmDiagGmm {
 /// for computing the maximum-likelihood estimates of the parameters of
 /// an acoustic model that uses diagonal Gaussian mixture models as emission densities.
 void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config, const AccumAmDiagGmm &amdiaggmm_acc,
-            GmmFlagsType flags, AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
-            BaseFloat *count_out);
+                        GmmFlagsType flags, AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
+                        BaseFloat *count_out);
 
 }  // End namespace kaldi
 

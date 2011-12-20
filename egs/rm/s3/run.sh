@@ -132,7 +132,6 @@ echo "semi-continuous code not finalized" && exit 1;
 #   rho-stats, rho value for the smoothing of the statistics (0 for no smoothing)
 #   rho-iters, rho value to interpolate the parameters with the last iteration (0 for no interpolation)
 
-
 steps/train_ubm_lda_etc.sh 1024 data/train data/lang exp/tri2b_ali exp/ubm3f
 steps/train_lda_mllt_semi_full.sh data/train data/lang exp/tri2b_ali exp/ubm3f/final.ubm exp/tiedfull3f 2500 1 35 0.2
 

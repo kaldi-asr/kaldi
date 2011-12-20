@@ -28,6 +28,7 @@
 niters=4
 nj=4
 boost=0.0
+tau=100
 cmd=scripts/run.pl
 acwt=0.1
 stage=0
@@ -133,8 +134,9 @@ while [ $x -lt $niters ]; do
     rm $dir/num_acc.$x.*.acc
 
     $cmd $dir/log/update.$x.log \
-      gmm-est-mmi $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl \
-      || exit 1;
+      gmm-est-gaussians-ebw $cur_mdl "gmm-ismooth-stats --tau=$tau $dir/num_acc.$x.acc $dir/num_acc.$x.acc -|" \
+        $dir/den_acc.$x.acc - \| \
+      gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
   else 
     echo "not doing this iteration because --stage=$stage"
   fi
@@ -144,7 +146,7 @@ while [ $x -lt $niters ]; do
   den=`grep Overall $dir/log/acc_den.$x.*.log  | grep lattice-to-post | awk '{p+=$7*$9; nf+=$9;} END{print p/nf;}'`
   num=`grep Overall $dir/log/acc_num.$x.*.log  | grep gmm-acc-stats-ali | awk '{p+=$11*$13; nf+=$13;} END{print p/nf}'`
   diff=`perl -e "print ($num * $acwt - $den);"`
-  impr=`grep Overall $dir/log/update.$x.log | awk '{print $10;}'`
+  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10;}'`
   impr=`perl -e "print ($impr * $acwt);"` # auxf impr normalized by multiplying by
   # kappa, so it's comparable to an objective-function change.
   echo On iter $x, objf was $diff, auxf improvement was $impr | tee $dir/objf.$x.log

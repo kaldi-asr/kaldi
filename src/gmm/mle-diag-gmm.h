@@ -105,15 +105,15 @@ class AccumDiagGmm {
                                BaseFloat frame_posterior);
 
   /// Smooths the accumulated counts by adding 'tau' extra frames. An example
-  /// use for this is I-smoothing for MMIE.
+  /// use for this is I-smoothing for MMIE.   Calls SmoothWithAccum.
   void SmoothStats(BaseFloat tau);
 
-  /// Smooths the accumulated counts using some other accumulator. Performs
-  /// a weighted sum of the current accumulator with the given one. An example
-  /// use for this is I-smoothing for MPE. Both accumulators must have the same
-  /// dimension and number of components.
+  /// Smooths the accumulated counts using some other accumulator. Performs a
+  /// weighted sum of the current accumulator with the given one. An example use
+  /// for this is I-smoothing for MMI and MPE. Both accumulators must have the
+  /// same dimension and number of components.
   void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
-
+  
   /// Smooths the accumulated counts using the parameters of a given model.
   /// An example use of this is MAP-adaptation. The model must have the
   /// same dimension and number of components as the current accumulator.

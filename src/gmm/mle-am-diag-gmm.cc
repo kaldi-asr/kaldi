@@ -27,6 +27,11 @@ const AccumDiagGmm& AccumAmDiagGmm::GetAcc(int32 index) const {
   return *(gmm_accumulators_[index]);
 }
 
+AccumDiagGmm& AccumAmDiagGmm::GetAcc(int32 index) {
+  assert(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
+  return *(gmm_accumulators_[index]);
+}
+
 AccumAmDiagGmm::~AccumAmDiagGmm() {
   DeletePointers(&gmm_accumulators_);
 }
@@ -133,6 +138,33 @@ void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
       gmm_accumulators_.begin(), end = gmm_accumulators_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);
   }
+}
+
+void AccumAmDiagGmm::SmoothStats(BaseFloat tau) {
+  int32 num_pdfs = gmm_accumulators_.size();
+  for (int32 i = 0; i < num_pdfs; i++)
+    gmm_accumulators_[i]->SmoothStats(tau);
+}
+
+void AccumAmDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumAmDiagGmm &src_accs) {
+  int32 num_pdfs = gmm_accumulators_.size();
+  KALDI_ASSERT(num_pdfs == src_accs.NumAccs());
+  for (int32 i = 0; i < num_pdfs; i++)
+    gmm_accumulators_[i]->SmoothWithAccum(tau, src_accs.GetAcc(i));
+}
+
+void AccumAmDiagGmm::SmoothWithModel(BaseFloat tau, const AmDiagGmm &src_model) {
+  int32 num_pdfs = gmm_accumulators_.size();
+  KALDI_ASSERT(num_pdfs == src_model.NumPdfs());
+  for (int32 i = 0; i < num_pdfs; i++)
+    gmm_accumulators_[i]->SmoothWithModel(tau, src_model.GetPdf(i));
+}
+
+BaseFloat AccumAmDiagGmm::TotCount() const {
+  BaseFloat ans = 0.0;
+  for (int32 pdf = 0; pdf < NumAccs(); pdf++)
+    ans += gmm_accumulators_[pdf]->occupancy().Sum();
+  return ans;
 }
 
 void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config,

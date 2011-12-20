@@ -22,76 +22,79 @@
 #include "gmm/diag-gmm.h"
 #include "gmm/diag-gmm-normal.h"
 #include "gmm/mle-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 
 namespace kaldi {
 
-class AccumEbwDiagGmm {
- public:
-  AccumEbwDiagGmm(): dim_(0), num_comp_(0), flags_(0) {}
-  explicit AccumEbwDiagGmm(const DiagGmm &gmm, GmmFlagsType flags) {
-    Resize(gmm.NumGauss(), gmm.Dim(), flags);
+// Options for Extended Baum-Welch Gaussian update.
+struct EbwOptions {
+  BaseFloat E;
+  EbwOptions(): E(2.0) { }
+  void Register(ParseOptions *po) {
+    std::string module = "EbwOptions: ";
+    po->Register("E", &E, module+"Constant E for Extended Baum-Welch (EBW) update");
   }
-  // provide copy constructor.
-  explicit AccumEbwDiagGmm(const AccumEbwDiagGmm &other);
-
-  void Read(std::istream &in_stream, bool binary, bool add);
-  void Write(std::ostream &out_stream, bool binary) const;
-
-  /// Allocates memory for accumulators
-  void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
-
-  /// Returns the number of mixture components
-  int32 NumGauss() const { return num_comp_; }
-  /// Returns the dimensionality of the feature vectors
-  int32 Dim() const { return dim_; }
-
-  void SetZero(GmmFlagsType flags);
-  void Scale(BaseFloat f, GmmFlagsType flags);
-
-  // TODO(arnab): maybe it's better to acc using a single posterior, but we
-  // need to know which occ stats to add to. Create 2 functions instead?
-  /// Accumulate for all components, given the posteriors.
-  void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& pos_posts,
-                                const VectorBase<BaseFloat>& neg_posts);
-
-
-  // TODO(arnab): we could keep the smoothing functions here as well. For
-  // example, MPE stats will be directly accumulated as EBW stats and they
-  // need to be smoothed. For MMIE, the numerator accumulator can be smoothed
-  // before doing the subtraction.
-
-  /// Smooths the accumulated counts using some other accumulator. Performs
-  /// a weighted sum of the current accumulator with the given one. An example
-  /// use for this is I-smoothing for MPE. Both accumulators must have the same
-  /// dimension and number of components.
-  void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
-
-  /// Smooths the accumulated counts using the parameters of a given model.
-  /// An example use of this is MAP-adaptation. The model must have the
-  /// same dimension and number of components as the current accumulator.
-  void SmoothWithModel(BaseFloat tau, const DiagGmm& src_gmm);
-
-  // Accessors
-  const GmmFlagsType Flags() const { return flags_; }
-  const Vector<double>& num_occupancy() const { return num_occupancy_; }
-  const Vector<double>& den_occupancy() const { return den_occupancy_; }
-  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
-  const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
-
- private:
-  int32 dim_;
-  int32 num_comp_;
-  /// Flags corresponding to the accumulators that are stored.
-  GmmFlagsType flags_;
-
-  Vector<double> num_occupancy_;
-  Vector<double> den_occupancy_;
-  Matrix<double> mean_accumulator_;
-  Matrix<double> variance_accumulator_;
 };
+
+struct EbwWeightOptions {
+  BaseFloat min_num_count_weight_update; // minimum numerator count at state level, before we update.
+  BaseFloat min_gaussian_weight;
+  EbwWeightOptions(): min_num_count_weight_update(10.0),
+                      min_gaussian_weight(1.0e-05) { }
+  void Register(ParseOptions *po) {
+    std::string module = "EbwWeightOptions: ";
+    po->Register("min-num-count-weight-update", &min_num_count_weight_update,
+                 module+"Minimum numerator count required at "
+                 "state level before we update the weights.");
+    po->Register("min-gaussian-weight", &min_gaussian_weight,
+                 module+"Minimum Gaussian weight allowed in EBW update of weights");
+  }
+};
+
+
+// Update Gaussian parameters only (no weights)
+// The pointer parameters auxf_change_out etc. are incremented, not set.
+void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if used.
+                      const AccumDiagGmm &den_stats,
+                      GmmFlagsType flags,
+                      const EbwOptions &opts,
+                      DiagGmm *gmm,
+                      BaseFloat *auxf_change_out,
+                      BaseFloat *count_out,
+                      int32 *num_floored_out);
+
+// The pointer parameters auxf_change_out etc. are incremented, not set.
+void UpdateEbwAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smoothing, if used.
+                        const AccumAmDiagGmm &den_stats,
+                        GmmFlagsType flags,
+                        const EbwOptions &opts,
+                        AmDiagGmm *am_gmm,
+                        BaseFloat *auxf_change_out,
+                        BaseFloat *count_out,
+                        int32 *num_floored_out);
+
+// Updates the weights using the EBW-like method described in Dan Povey's thesis
+// (this method has no tunable parameters).
+// The pointer parameters auxf_change_out etc. are incremented, not set.
+void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-smoothing
+                             const AccumDiagGmm &den_stats,
+                             const EbwWeightOptions &opts,
+                             DiagGmm *gmm,
+                             BaseFloat *auxf_change_out,
+                             BaseFloat *count_out);
+
+// The pointer parameters auxf_change_out etc. are incremented, not set.
+void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // should have no I-smoothing
+                               const AccumAmDiagGmm &den_stats,
+                               const EbwWeightOptions &opts,
+                               AmDiagGmm *amA_gmm,
+                               BaseFloat *auxf_change_out,
+                               BaseFloat *count_out);
+
+// For I-smoothing functions, see mle-am-diag-gmm.h
+
 
 }  // End namespace kaldi
 

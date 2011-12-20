@@ -36,11 +36,24 @@ GmmFlagsType StringToGmmFlags(std::string str) {
   return flags;
 }
 
+std::string GmmFlagsToString(GmmFlagsType flags) {
+  std::string ans;
+  if (flags & kGmmMeans) ans += "m";
+  if (flags & kGmmVariances) ans += "v";
+  if (flags & kGmmWeights) ans += "w";
+  if (flags & kGmmTransitions) ans += "t";
+  return ans;
+}
+
 GmmFlagsType AugmentGmmFlags(GmmFlagsType flags) {
 KALDI_ASSERT((flags & ~kGmmAll) == 0);  // make sure only valid flags are present.
   if (flags & kGmmVariances) flags |= kGmmMeans;
   if (flags & kGmmMeans) flags |= kGmmWeights;
-  KALDI_ASSERT(flags & kGmmWeights);  // make sure zero-stats will be accumulated
+  if (!(flags & kGmmWeights)) {
+    KALDI_WARN << "Adding in kGmmWeights (\"w\") to empty flags.";
+    flags |= kGmmWeights; // Just add this in regardless:
+    // if user wants no stats, this will stop programs from crashing due to dim mismatches.
+  }
   return flags;
 }
 

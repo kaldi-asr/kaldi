@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
       state_occs.Resize(gmm_accs.NumAccs());
       for (int i = 0; i < gmm_accs.NumAccs(); i++)
         state_occs(i) = gmm_accs.GetAcc(i).occupancy().Sum();
-
+      
       if (mixdown != 0)
         am_gmm.MergeByCount(state_occs, mixdown, power, min_count);
 

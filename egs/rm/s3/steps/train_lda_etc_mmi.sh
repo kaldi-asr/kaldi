@@ -27,6 +27,8 @@
 #  ali, final.mdl, final.mat
 
 boost=0 # boosting constant, for boosted MMI. 
+tau=100 # Tau value.
+
 if [ $1 == "--boost" ]; then # e.g. "--boost 0.05"
    shift;
    boost=$1;
@@ -136,14 +138,16 @@ while [ $x -lt $num_iters ]; do
   # Get numerator stats...
   gmm-acc-stats-ali $dir/$x.mdl "$feats" ark:$alidir/ali $dir/num_acc.$x.acc \
    2>$dir/acc_num.$x.log || exit 1;
-  # Update.
-  gmm-est-mmi $dir/$x.mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl \
+
+  ( gmm-est-gaussians-ebw $dir/$x.mdl "gmm-ismooth-stats --tau=$tau $dir/num_acc.$x.acc $dir/num_acc.$x.acc -|" \
+         $dir/den_acc.$x.acc - | \
+   gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl ) \
     2>$dir/update.$x.log || exit 1;
 
   den=`grep Overall $dir/acc_den.$x.log  | grep lattice-to-post | awk '{print $7}'`
   num=`grep Overall $dir/acc_num.$x.log  | grep gmm-acc-stats-ali | awk '{print $11}'`
   diff=`perl -e "print ($num * $acwt - $den);"`
-  impr=`grep Overall $dir/update.$x.log | awk '{print $10;}'`
+  impr=`grep Overall $dir/update.$x.log | head -1 | awk '{print $10;}'`
   impr=`perl -e "print ($impr * $acwt);"` # auxf impr normalized by multiplying by
   # kappa, so it's comparable to an objective-function change.
   echo On iter $x, objf was $diff, auxf improvement was $impr | tee $dir/objf.$x.log

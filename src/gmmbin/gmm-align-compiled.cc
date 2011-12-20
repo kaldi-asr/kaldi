@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
     std::string fst_rspecifier = po.GetArg(2);
     std::string feature_rspecifier = po.GetArg(3);
     std::string alignment_wspecifier = po.GetArg(4);
+    std::string scores_wspecifier = po.GetOptArg(5);
 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
@@ -87,6 +88,7 @@ int main(int argc, char *argv[]) {
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
+    BaseFloatWriter scores_writer(scores_wspecifier);
 
     int num_success = 0, num_no_feat = 0, num_other_error = 0;
     BaseFloat tot_like = 0.0;
@@ -150,8 +152,10 @@ int main(int argc, char *argv[]) {
           frame_count += features.NumRows();
 
           GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-          BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
+          BaseFloat like = -(weight.Value1()+weight.Value2()) / acoustic_scale;
           tot_like += like;
+          if (scores_writer.IsOpen())
+            scores_writer.Write(key, -(weight.Value1()+weight.Value2()));
           alignment_writer.Write(key, alignment);
           num_success ++;
           if (num_success % 50  == 0) {
