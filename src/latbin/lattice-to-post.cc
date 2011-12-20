@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Do forward-backward and collect posteriors over lattices.\n"
-        "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier\n"
+        "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier [loglikes-wspecifier]\n"
         " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n";
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
@@ -52,14 +52,14 @@ int main(int argc, char *argv[]) {
 
     std::string lats_rspecifier = po.GetArg(1),
         posteriors_wspecifier = po.GetArg(2),
-        scores_wspecifier = po.GetOptArg(3);
+        loglikes_wspecifier = po.GetOptArg(3);
 
     // Read as regular lattice
     kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
 
     kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
 
-    kaldi::BaseFloatWriter scores_writer(scores_wspecifier);
+    kaldi::BaseFloatWriter loglikes_writer(loglikes_wspecifier);
 
     int32 n_done = 0;
     double total_like = 0.0, lat_like;
@@ -88,9 +88,9 @@ int main(int argc, char *argv[]) {
                     << lat.NumStates() << " states and " << fst::NumArcs(lat)
                     << " arcs. Average log-likelihood = " << (lat_like/lat_time)
                     << " over " << lat_time << " frames.";
-
-      if (scores_writer.IsOpen()) 
-        scores_writer.Write(key, lat_like);
+      
+      if (loglikes_writer.IsOpen()) 
+        loglikes_writer.Write(key, lat_like);
 
       posterior_writer.Write(key, post);
       n_done++;

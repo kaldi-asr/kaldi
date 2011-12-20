@@ -78,12 +78,6 @@ class AccumAmDiagGmm {
 
   AccumDiagGmm& GetAcc(int32 index);
 
-  // The next three functions are mostly useful in discriminative training.
-  // They call the corresponding functions in class AccumDiagGmm.
-  void SmoothStats(BaseFloat tau);
-  void SmoothWithAccum(BaseFloat tau, const AccumAmDiagGmm& src_accs);
-  void SmoothWithModel(BaseFloat tau, const AmDiagGmm& src_gmm);
-  
  private:
   /// MLE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> gmm_accumulators_;

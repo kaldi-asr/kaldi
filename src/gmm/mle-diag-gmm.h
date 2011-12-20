@@ -104,6 +104,18 @@ class AccumDiagGmm {
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
+
+  /// Increment the stats for this component by the specified amount
+  /// (not all parts may be taken, depending on flags).
+  /// Note: x_stats and x2_stats are assumed to already be multiplied by "occ"
+  void AddStatsForComponent(int32 comp_id,
+                            double occ,
+                            const VectorBase<double> &x_stats,
+                            const VectorBase<double> &x2_stats);
+
+  /// Increment with stats from this other accumulator (times scale)
+  void Add(double scale, const AccumDiagGmm &acc);
+
   /// Smooths the accumulated counts by adding 'tau' extra frames. An example
   /// use for this is I-smoothing for MMIE.   Calls SmoothWithAccum.
   void SmoothStats(BaseFloat tau);
@@ -125,6 +137,7 @@ class AccumDiagGmm {
   const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
   const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
 
+  
  private:
   int32 dim_;
   int32 num_comp_;

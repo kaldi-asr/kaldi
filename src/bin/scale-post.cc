@@ -26,8 +26,9 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;  
 
     const char *usage =
-        "scale the posterior \n"
-        "Usage: score-post scale-rspecifier post-rspecifier post-wspecifier\n";
+        "Scale posteriors with either a global scale, or a different scale for "
+        " each utterance.\n"
+        "Usage: scale-post post-rspecifier (scale-rspecifier|scale) post-wspecifier\n";
     
     ParseOptions po(usage); 
     po.Read(argc, argv);
@@ -37,12 +38,22 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
       
-    std::string scale_rspecifier = po.GetArg(1);
-    std::string post_rspecifier = po.GetArg(2);
-    std::string post_wspecifier = po.GetArg(3);
-  
-    kaldi::RandomAccessBaseFloatReader scale_reader(scale_rspecifier);
+    std::string post_rspecifier = po.GetArg(1),
+        scale_or_scale_rspecifier = po.GetArg(2),
+        post_wspecifier = po.GetArg(3);
+
+    double global_scale = 0.0;
+    if (ClassifyRspecifier(scale_or_scale_rspecifier, NULL, NULL) == kNoRspecifier) {
+      // treat second arg as a floating-point scale.
+      if (!ConvertStringToReal(scale_or_scale_rspecifier, &global_scale))
+        KALDI_ERR << "Bad second argument " << scale_or_scale_rspecifier
+                  << " (expected scale or scale rspecifier)";
+      scale_or_scale_rspecifier = ""; // So the archive won't be opened.
+    }
+
+
     kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
+    kaldi::RandomAccessBaseFloatReader scale_reader(scale_or_scale_rspecifier);
     kaldi::PosteriorWriter posterior_writer(post_wspecifier); 
 
     int32 num_scaled = 0, num_no_scale = 0;  
@@ -51,10 +62,11 @@ int main(int argc, char *argv[]) {
       std::string key = posterior_reader.Key();
       kaldi::Posterior posterior = posterior_reader.Value();
       posterior_reader.FreeCurrent();
-      if (!scale_reader.HasKey(key)) {
+      if (scale_or_scale_rspecifier != "" && !scale_reader.HasKey(key)) {
         num_no_scale++;
       } else {
-        BaseFloat post_scale = scale_reader.Value(key);
+        BaseFloat post_scale = (scale_or_scale_rspecifier == "" ? global_scale
+                                : scale_reader.Value(key));
         for (size_t i = 0; i < posterior.size(); i++) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             posterior[i][j].second = posterior[i][j].second * post_scale;  	 

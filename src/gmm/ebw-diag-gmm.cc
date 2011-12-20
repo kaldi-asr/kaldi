@@ -292,5 +292,68 @@ void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smooth
                             count_out);
 }                     
 
+void IsmoothStatsDiagGmm(const AccumDiagGmm &src_stats,
+                         double tau,
+                         AccumDiagGmm *dst_stats) {
+  KALDI_ASSERT(src_stats.NumGauss() == dst_stats->NumGauss());
+  int32 dim = src_stats.Dim(), num_gauss = src_stats.NumGauss();
+  for (int32 g = 0; g < num_gauss; g++) {
+    double occ = src_stats.occupancy()(g);
+    if (occ != 0.0) { // can only do this for nonzero occupancies...
+      Vector<double> x_stats(dim), x2_stats(dim);
+      if (dst_stats->Flags() & kGmmMeans)
+        x_stats.CopyFromVec(src_stats.mean_accumulator().Row(g));
+      if (dst_stats->Flags() & kGmmVariances)
+        x2_stats.CopyFromVec(src_stats.variance_accumulator().Row(g));
+      x_stats.Scale(tau / occ);
+      x2_stats.Scale(tau / occ);
+      dst_stats->AddStatsForComponent(g, tau, x_stats, x2_stats);
+    }
+  }
+}
+
+/// Creates stats from the GMM.  Resizes them as needed.
+void DiagGmmToStats(const DiagGmm &gmm,
+                    GmmFlagsType flags,
+                    double state_occ,
+                    AccumDiagGmm *dst_stats) {
+  dst_stats->Resize(gmm, AugmentGmmFlags(flags));
+  int32 num_gauss = gmm.NumGauss(), dim = gmm.Dim();
+  DiagGmmNormal gmmnormal(gmm);
+  Vector<double> x_stats(dim), x2_stats(dim);
+  for (int32 g = 0; g < num_gauss; g++) {
+    double occ = state_occ * gmmnormal.weights_(g);
+    x_stats.SetZero();
+    x_stats.AddVec(occ, gmmnormal.means_.Row(g));
+    x2_stats.SetZero();
+    x2_stats.AddVec2(occ, gmmnormal.means_.Row(g));
+    x2_stats.AddVec(occ, gmmnormal.vars_.Row(g));
+    dst_stats->AddStatsForComponent(g, occ, x_stats, x2_stats);
+  }
+}
+
+void IsmoothStatsAmDiagGmm(const AccumAmDiagGmm &src_stats,
+                           double tau,
+                           AccumAmDiagGmm *dst_stats) {
+  int num_pdfs = src_stats.NumAccs();
+  KALDI_ASSERT(num_pdfs == dst_stats->NumAccs());
+  for (int32 pdf = 0; pdf < num_pdfs; pdf++)
+    IsmoothStatsDiagGmm(src_stats.GetAcc(pdf), tau, &(dst_stats->GetAcc(pdf)));
+}
+
+void IsmoothStatsAmDiagGmmFromModel(const AmDiagGmm &src_model,
+                                    double tau,
+                                    AccumAmDiagGmm *dst_stats) {
+  int num_pdfs = src_model.NumPdfs();
+  KALDI_ASSERT(num_pdfs == dst_stats->NumAccs());
+  for (int32 pdf = 0; pdf < num_pdfs; pdf++) {
+    AccumDiagGmm tmp_stats;
+    double occ = 1.0; // its value doesn't matter.
+    DiagGmmToStats(src_model.GetPdf(pdf), kGmmAll, occ, &tmp_stats);
+    IsmoothStatsDiagGmm(tmp_stats, tau, &(dst_stats->GetAcc(pdf)));
+  }
+}
+
+
 
 }  // End of namespace kaldi

@@ -1,4 +1,4 @@
-// bin/scale-post.cc
+// bin/compute-mce-scale.cc
 
 // Copyright 2009-2011 Chao Weng 
 
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "compute the scale of MCE, which is used to scale posteriors\n"
-        "Usage: computer-mce-scale [option] num-score-rspecifier "
+        "Usage: compute-mce-scale [option] num-score-rspecifier "
         "den-score-rspecifier out-scale-wspecifier\n";
     
     ParseOptions po(usage);
@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
     kaldi::BaseFloatWriter scale_writer(scale_wspecifier);
    
     int32 num_scaled = 0, num_no_score = 0;
-
+    double tot_sigmoid = 0.0;
+    
     for (; !num_score_reader.Done(); num_score_reader.Next()) {
       std::string key = num_score_reader.Key();
       kaldi::BaseFloat num_score = num_score_reader.Value();
@@ -58,18 +59,30 @@ int main(int argc, char *argv[]) {
       if (!den_score_reader.HasKey(key)) {
         num_no_score++;
       } else {
-        //calculat the sigmoid scaling factor for MCE
-        // = \alpha * sigmoid(num - den) * (1 - sigmoid(num - den))
+        //calculate the sigmoid scaling factor for MCE
+        // Note: the derivative is:
+        //  \alpha * sigmoid(num - den) * (1 - sigmoid(num - den))
+        // but the make the scale be:
+        //  4 * sigmoid(num - den) * (1 - sigmoid(num - den))
+        // which is just multiplying by 4/alpha; this means
+        // that the maximum value the scale can have is 1, which
+        // means it's more comparable with MMI/MPE.
         BaseFloat den_score = den_score_reader.Value(key);
         BaseFloat score_difference = mce_alpha * (num_score - den_score) + mce_beta;
         BaseFloat sigmoid_difference = 1.0 / (1.0 + exp(score_difference));
-        BaseFloat scale = mce_alpha * sigmoid_difference * (1 - sigmoid_difference);
+        // It might be more natural to make the scale
+        //
+        BaseFloat scale = 4.0 * sigmoid_difference * (1 - sigmoid_difference);
         scale_writer.Write(key, scale);
-        num_scaled++; 
+        num_scaled++;
+        tot_sigmoid += sigmoid_difference;
       }    
     }
     KALDI_LOG << num_scaled << " scales generated; " << num_no_score
-              << " had no num/den scores."; 
+              << " had no num/den scores.";
+    KALDI_LOG << "Overall MCE objective function per utterance is "
+              << (tot_sigmoid/num_scaled) << " over "
+              << num_scaled << " utterance.  [Note: should go down]";
     return (num_scaled != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

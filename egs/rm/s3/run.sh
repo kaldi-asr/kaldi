@@ -65,6 +65,11 @@ local/decode.sh steps/decode_lda_mllt.sh exp/tri3a/decode
 steps/train_lda_etc_mmi.sh --boost 0.05 data/train data/lang exp/tri2b_ali exp/tri3b 
 local/decode.sh steps/decode_lda_mllt.sh exp/tri3b/decode
 
+# An experiment with MCE.
+steps/train_lda_etc_mce.sh data/train data/lang exp/tri2b_ali exp/tri3c
+local/decode.sh steps/decode_lda_mllt.sh exp/tri3c/decode
+
+
 
 # Do LDA+MLLT+SAT
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d

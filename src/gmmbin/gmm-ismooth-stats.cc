@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
         transition_accs.Read(ki.Stream(), binary);
         stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
-      stats.SmoothStats(tau);
+      IsmoothStatsAmDiagGmm(stats, tau, &stats);
       Output ko(stats_out_filename, binary_write);
       transition_accs.Write(ko.Stream(), binary_write);
       stats.Write(ko.Stream(), binary_write);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
         dst_transition_accs.Read(ki.Stream(), binary);
         dst_stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
-      dst_stats.SmoothWithModel(tau, am_gmm);
+      IsmoothStatsAmDiagGmmFromModel(am_gmm, tau, &dst_stats);
       Output ko(stats_out_filename, binary_write);
       dst_transition_accs.Write(ko.Stream(), binary_write);
       dst_stats.Write(ko.Stream(), binary_write);
@@ -106,7 +106,8 @@ int main(int argc, char *argv[]) {
         dst_transition_accs.Read(ki.Stream(), binary);
         dst_stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
-      dst_stats.SmoothWithAccum(tau, src_stats);
+      IsmoothStatsAmDiagGmm(src_stats, tau, &dst_stats);
+      
       Output ko(stats_out_filename, binary_write);
       dst_transition_accs.Write(ko.Stream(), binary_write);
       dst_stats.Write(ko.Stream(), binary_write);

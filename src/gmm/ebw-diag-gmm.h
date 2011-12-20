@@ -89,11 +89,32 @@ void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-
 void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // should have no I-smoothing
                                const AccumAmDiagGmm &den_stats,
                                const EbwWeightOptions &opts,
-                               AmDiagGmm *amA_gmm,
+                               AmDiagGmm *am_gmm,
                                BaseFloat *auxf_change_out,
                                BaseFloat *count_out);
 
-// For I-smoothing functions, see mle-am-diag-gmm.h
+/// I-Smooth the stats.  src_stats and dst_stats do not have to be different.
+void IsmoothStatsDiagGmm(const AccumDiagGmm &src_stats,
+                         double tau,
+                         AccumDiagGmm *dst_stats);
+
+/// Creates stats from the GMM.  Resizes them as needed.
+void DiagGmmToStats(const DiagGmm &gmm,
+                    GmmFlagsType flags,
+                    double state_occ,
+                    AccumDiagGmm *dst_stats);
+
+/// Smooth "dst_stats" with "src_stats".  They don't have to be
+/// different.
+void IsmoothStatsAmDiagGmm(const AccumAmDiagGmm &src_stats,
+                           double tau,
+                           AccumAmDiagGmm *dst_stats);
+
+/// This version of the I-smoothing function takes a model as input.
+void IsmoothStatsAmDiagGmmFromModel(const AmDiagGmm &src_model,
+                                    double tau,
+                                    AccumAmDiagGmm *dst_stats);
+
 
 
 }  // End namespace kaldi

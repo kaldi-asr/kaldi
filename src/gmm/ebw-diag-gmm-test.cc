@@ -180,7 +180,7 @@ void UnitTestEstimateMmieDiagGmm() {
     last_log_like_diff = loglike_diff;
     
    AccumDiagGmm num_smoothed(num);
-   num_smoothed.SmoothStats(tau); // Apply I-smoothing.
+   IsmoothStatsDiagGmm(num, tau, &num_smoothed); // Apply I-smoothing.
    
    BaseFloat auxf_gauss, auxf_weight, count;
    std::cout << "MEANX: " << gmm->weights() << '\n'; 

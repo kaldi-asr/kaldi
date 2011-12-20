@@ -140,25 +140,6 @@ void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
   }
 }
 
-void AccumAmDiagGmm::SmoothStats(BaseFloat tau) {
-  int32 num_pdfs = gmm_accumulators_.size();
-  for (int32 i = 0; i < num_pdfs; i++)
-    gmm_accumulators_[i]->SmoothStats(tau);
-}
-
-void AccumAmDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumAmDiagGmm &src_accs) {
-  int32 num_pdfs = gmm_accumulators_.size();
-  KALDI_ASSERT(num_pdfs == src_accs.NumAccs());
-  for (int32 i = 0; i < num_pdfs; i++)
-    gmm_accumulators_[i]->SmoothWithAccum(tau, src_accs.GetAcc(i));
-}
-
-void AccumAmDiagGmm::SmoothWithModel(BaseFloat tau, const AmDiagGmm &src_model) {
-  int32 num_pdfs = gmm_accumulators_.size();
-  KALDI_ASSERT(num_pdfs == src_model.NumPdfs());
-  for (int32 i = 0; i < num_pdfs; i++)
-    gmm_accumulators_[i]->SmoothWithModel(tau, src_model.GetPdf(i));
-}
 
 BaseFloat AccumAmDiagGmm::TotCount() const {
   BaseFloat ans = 0.0;

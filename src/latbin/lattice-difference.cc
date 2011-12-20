@@ -1,4 +1,4 @@
-// latbin/lattice-rmnum.cc
+// latbin/lattice-difference.cc
 
 // Copyright 2009-2011 Chao Weng 
 
@@ -30,11 +30,12 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "remove transcription word sequence from denominator lattice\n"
-        "Mainly for the denominator lattice for MCE.\n"    
-        "Usage: lattice-difference [option] transcriptions-rspecifier"
-        " lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-rmnum ark:train.tra ark:den.lats ark:den_mce.lats\n"; 
+        "Compute FST difference on lattices (remove sequences in first lattice\n"
+        " that appear in second lattice)\n"
+        "Useful for the denominator lattice for MCE.\n"    
+        "Usage: lattice-difference [options] "
+        "lattice1-rspecifier lattice2-rspecifier lattice-wspecifier\n"
+        " e.g.: lattice-difference ark:den.lats ark:num.lats ark:den_mce.lats\n"; 
 
     ParseOptions po(usage);
     po.Read(argc, argv);
@@ -44,45 +45,52 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
   
-    std::string transcript_rspecifier = po.GetArg(1);
-    std::string lats_rspecifier = po.GetArg(2);
+    std::string lats1_rspecifier = po.GetArg(1);
+    std::string lats2_rspecifier = po.GetArg(2);
     std::string lats_wspecifier = po.GetArg(3);
 
-    SequentialInt32VectorReader transcript_reader(transcript_rspecifier);
-    RandomAccessCompactLatticeReader compact_lattice_reader(lats_rspecifier);
+
+    SequentialCompactLatticeReader compact_lattice_reader1(lats1_rspecifier);
+    RandomAccessCompactLatticeReader compact_lattice_reader2(lats2_rspecifier);
     
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
-    int32 n_removed = 0, n_no_lat = 0, n_only_transcription = 0;
+    int32 n_done = 0, n_no_lat = 0, n_only_transcription = 0;
 
-    for (; !transcript_reader.Done(); transcript_reader.Next()) {
-      std::string key = transcript_reader.Key();
-      const std::vector<int32> &transcript = transcript_reader.Value();
-      CompactLattice transcript_fst;
-      MakeLinearAcceptor(transcript, &transcript_fst);
-      if (compact_lattice_reader.HasKey(key)) {
-        const CompactLattice &clat = compact_lattice_reader.Value(key);
+    for (; !compact_lattice_reader1.Done(); compact_lattice_reader1.Next()) {
+      std::string key = compact_lattice_reader1.Key();
+      const CompactLattice &clat1 =  compact_lattice_reader1.Value();
+      if (compact_lattice_reader2.HasKey(key)) {
+        CompactLattice clat2 (compact_lattice_reader2.Value(key));
+        // "Difference" requires clat2 to be unweighted, deterministic and epsilon-free.
+        // So we remove the weights, remove epsilons and determinize.
+        RemoveWeights(&clat2);
+        RmEpsilon(&clat2);
+        { CompactLattice clat_tmp(clat2); Determinize(clat_tmp, &clat2); }
+        
         CompactLattice clat_out;
-        Difference(clat, transcript_fst, &clat_out);
+        Difference(clat1, clat2, &clat_out);
         if (clat_out.Start() == 0) {
           compact_lattice_writer.Write(key, clat_out);
-          n_removed++; 
+          n_done++; 
         } else {
-          //fall in the case the lattice only contains transcription 
+          // In this case, the lattice only contains the transcription
+          KALDI_WARN << "Skipping utterance " << key
+                     << " because difference is empty.";
           n_only_transcription++;
         }
       } else {
         KALDI_WARN << "No lattice found for utterance " << key << " in "
-                   << lats_rspecifier;
+                   << lats2_rspecifier;
         n_no_lat++;
       }
     }
     
-    KALDI_LOG << "Total " << n_removed << "lattices written."
+    KALDI_LOG << "Total " << n_done << "lattices written."
               << n_only_transcription
-              << " lattices contain only transcription Missing lattices in "
-              << n_no_lat << " cases.";
-    return (n_removed != 0 ? 0 : 1);
+              << " lattices contain only transcription; "
+              << n_no_lat << " missing lattices in second archive ";
+    return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
