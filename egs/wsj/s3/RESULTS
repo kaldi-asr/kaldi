@@ -28,7 +28,10 @@ exp/tri2b/decode_tgpr_eval92/wer_16:%WER 11.18 [ 631 / 5643, 145 ins, 52 del, 43
 
 # +MMI
 exp/tri2b_mmi/decode_tgpr_eval92/wer_14:%WER 10.79 [ 609 / 5643, 148 ins, 42 del, 419 sub ]
+#  +boosting
 exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.65 [ 601 / 5643, 126 ins, 47 del, 428 sub ]
+# +MCE
+exp/tri2b_mce/decode_tgpr_eval92/wer_15:%WER 10.90 [ 615 / 5643, 142 ins, 42 del, 431 sub ]
 
 # LDA+ET, SI-84 [note: this is speaker adaptive, so better to compare with SAT numbers
 # which would be better than this when adapting on entire speaker]
