@@ -17,7 +17,7 @@ exp/tri3a/decode/wer_7:%WER 3.502753 [ 439 / 12533, 75 ins, 83 del, 281 sub ]
 # LDA+MLLT+boosted MMI [note: errors are not identical, although WER is same]
 exp/tri3b/decode/wer_7:%WER 3.454879 [ 433 / 12533, 75 ins, 80 del, 278 sub ]
 # LDA+MLLT+MCE
-exp/tri3c/decode/wer_6:%WER 3.263385 [ 409 / 12533, 69 ins, 69 del, 271 sub ]
+exp/tri3c/decode/wer_7:%WER 3.183595 [ 399 / 12533, 62 ins, 79 del, 258 sub ]
 # LDA+MLLT+SAT
 exp/tri3d/decode/wer_5:%WER 2.555298 [ 320 / 12523, 43 ins, 60 del, 217 sub ]
 # LDA+MLLT+SAT+MMI

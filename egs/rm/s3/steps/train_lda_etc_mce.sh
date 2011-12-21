@@ -54,7 +54,8 @@ num_iters=4
 acwt=0.1
 beam=20
 latticebeam=10
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts_noac="--transition-scale=1.0 --self-loop-scale=0.1"
+scale_opts="$scale_opts_noac --acoustic-scale=0.1"
 silphonelist=`cat $lang/silphones.csl`
 
 mkdir -p $dir
@@ -118,7 +119,7 @@ if [ $stage -le -3 ]; then
     tra="ark:scripts/sym2int.pl --ignore-first-field $lang/words.txt < $dir/text$n |"
     # Note: we use gmm-latgen-faster as the command-line interface of gmm-latgen-simple
     # doesn't currently support FSTs as input.
-    ( compile-train-graphs $dir/tree $alidir/final.mdl  $dir/lang/LG.fst "$tra" ark:- | \
+    ( compile-train-graphs $scale_opts_noac $dir/tree $alidir/final.mdl  $dir/lang/LG.fst "$tra" ark:- | \
      gmm-latgen-faster --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
       --word-symbol-table=$lang/words.txt $alidir/final.mdl ark:- "${featspart[$n]}" \
       "ark:|gzip -c >$dir/numlat$n.gz" ) 2>$dir/decode_num.$n.log || touch $dir/.error &
