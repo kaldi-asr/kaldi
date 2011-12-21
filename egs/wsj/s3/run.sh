@@ -163,11 +163,10 @@ steps/train_lda_etc_mmi.sh --num-jobs 10 --boost 0.1 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi_b0.1
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92
 
-steps/train_lda_etc_mce.sh data/train_si84 data/lang \
- exp/tri2b_ali_si84 exp/tri2b_mce
-
- scripts/decode.sh --num-jobs 10 --cmd "$train_cmd" steps/decode_lda_mllt.sh \
-   exp/tri3a/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92
+steps/train_lda_etc_mce.sh --cmd "$train_cmd" --num-jobs 10 data/train_si84 data/lang \
+ exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mce
+ scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92
 
 # Train LDA+ET system.
 steps/train_lda_et.sh --num-jobs 10 --cmd "$train_cmd" \
