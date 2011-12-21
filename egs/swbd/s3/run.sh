@@ -23,7 +23,10 @@ exit 1;
 
 
 # Data prep
+
 local/swbd_p1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
+
+local/swbd_p1_train_lms.sh
 
 local/swbd_p1_format_data.sh
 
