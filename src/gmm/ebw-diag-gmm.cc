@@ -270,6 +270,10 @@ void UpdateEbwAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smoothing, if
   KALDI_ASSERT(num_stats.NumAccs() == den_stats.NumAccs()
                && num_stats.NumAccs() == am_gmm->NumPdfs());
 
+  if (auxf_change_out) *auxf_change_out = 0.0;
+  if (count_out) *count_out = 0.0;
+  if (num_floored_out) *num_floored_out = 0.0;
+
   for (int32 pdf = 0; pdf < num_stats.NumAccs(); pdf++)
     UpdateEbwDiagGmm(num_stats.GetAcc(pdf), den_stats.GetAcc(pdf), flags,
                      opts, &(am_gmm->GetPdf(pdf)), auxf_change_out,
@@ -286,6 +290,9 @@ void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smooth
   KALDI_ASSERT(num_stats.NumAccs() == den_stats.NumAccs()
                && num_stats.NumAccs() == am_gmm->NumPdfs());
 
+  if (auxf_change_out) *auxf_change_out = 0.0;
+  if (count_out) *count_out = 0.0;
+  
   for (int32 pdf = 0; pdf < num_stats.NumAccs(); pdf++)
     UpdateEbwWeightsDiagGmm(num_stats.GetAcc(pdf), den_stats.GetAcc(pdf),
                             opts, &(am_gmm->GetPdf(pdf)), auxf_change_out,

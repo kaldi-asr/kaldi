@@ -65,7 +65,6 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
                       BaseFloat *count_out,
                       int32 *num_floored_out);
 
-// The pointer parameters auxf_change_out etc. are incremented, not set.
 void UpdateEbwAmDiagGmm(const AccumAmDiagGmm &num_stats, // with I-smoothing, if used.
                         const AccumAmDiagGmm &den_stats,
                         GmmFlagsType flags,
@@ -85,7 +84,6 @@ void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-
                              BaseFloat *auxf_change_out,
                              BaseFloat *count_out);
 
-// The pointer parameters auxf_change_out etc. are incremented, not set.
 void UpdateEbwWeightsAmDiagGmm(const AccumAmDiagGmm &num_stats, // should have no I-smoothing
                                const AccumAmDiagGmm &den_stats,
                                const EbwWeightOptions &opts,
