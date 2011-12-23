@@ -197,6 +197,56 @@ BaseFloat AccumDiagGmm::AccumulateFromDiag(const DiagGmm &gmm,
   return log_like;
 }
 
+
+// Careful: this wouldn't be valid if it were used to update the
+// Gaussian weights.
+void AccumDiagGmm::SmoothStats(BaseFloat tau) {
+  Vector<double> smoothing_vec(occupancy_);
+  smoothing_vec.InvertElements();
+  smoothing_vec.Scale(static_cast<double>(tau));
+  smoothing_vec.Add(1.0);
+  // now smoothing_vec = (tau + occ) / occ
+
+  mean_accumulator_.MulRowsVec(smoothing_vec);
+  variance_accumulator_.MulRowsVec(smoothing_vec);
+  occupancy_.Add(static_cast<double>(tau));
+}
+
+
+// want to add tau "virtual counts" of each Gaussian from "src_acc"
+// to each Gaussian in this acc.
+// Careful: this wouldn't be valid if it were used to update the
+// Gaussian weights.
+void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
+  KALDI_ASSERT(src_acc.NumGauss() == num_comp_ && src_acc.Dim() == dim_);
+  for (int32 i = 0; i < num_comp_; i++) {
+    if (src_acc.occupancy_(i) != 0.0) { // can only smooth if src was nonzero...
+      occupancy_(i) += tau;
+      mean_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                      src_acc.mean_accumulator_.Row(i));
+      variance_accumulator_.Row(i).AddVec(tau / src_acc.occupancy_(i),
+                                          src_acc.variance_accumulator_.Row(i));
+    } else
+      KALDI_WARN << "Could not smooth since source acc had zero occupancy.";
+  }
+}
+
+
+void AccumDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm& gmm) {
+  KALDI_ASSERT(gmm.NumGauss() == num_comp_ && gmm.Dim() == dim_);
+  Matrix<double> means(num_comp_, dim_);
+  Matrix<double> vars(num_comp_, dim_);
+  gmm.GetMeans(&means);
+  gmm.GetVars(&vars);
+
+  mean_accumulator_.AddMat(tau, means);
+  means.ApplyPow(2.0);
+  vars.AddMat(1.0, means, kNoTrans);
+  variance_accumulator_.AddMat(tau, vars);
+
+  occupancy_.Add(tau);
+}
+
 AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)
     : dim_(other.dim_), num_comp_(other.num_comp_),
       flags_(other.flags_), occupancy_(other.occupancy_),

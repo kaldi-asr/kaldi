@@ -68,7 +68,6 @@ int main(int argc, char *argv[]) {
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
     AccumAmDiagGmm gmm_accs;
-
     gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
 
     double tot_like = 0.0;

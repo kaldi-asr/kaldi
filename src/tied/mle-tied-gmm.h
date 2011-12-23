@@ -45,10 +45,10 @@ struct MleTiedGmmOptions {
   bool interpolate_variances;
 
   MleTiedGmmOptions() {
-    min_gaussian_weight     = 0.01; ///< floor = weight / numgauss
+    min_gaussian_weight     = 0.01;  ///< floor = weight / numgauss
     min_gaussian_occupancy  = 3.0;
 
-    interpolation_weight    = 0.5;  ///< interpolation with prior iteration
+    interpolation_weight    = 0.5;   ///< interpolation with prior iteration
 
     interpolate_weights   = false;
     interpolate_means     = false;
@@ -64,15 +64,15 @@ struct MleTiedGmmOptions {
                  module+"Minimum occupancy to update a tied Gaussian.");
     po->Register("interpolation-weight", &interpolation_weight,
                  module+"Interpolate new estimate with prior estimate "
-				 "new = weigth x prior-est + (1-weight) x new-est");
+                 "new = weigth x prior-est + (1-weight) x new-est");
     po->Register("interpolate-weights", &interpolate_weights,
                  module+"Interpolate tied mixture weights with prior "
-				 "iteration.");
+                 "iteration.");
     po->Register("interpolate-means", &interpolate_means,
                  module+"Interpolate codebook means with prior iteration.");
     po->Register("interpolate-variances", &interpolate_variances,
                  module+"Interpolate codebook variances with prior "
-				 "iteration.");
+                 "iteration.");
   }
 
   bool interpolate() const {
@@ -123,7 +123,7 @@ class AccumTiedGmm {
   /// the estimate.
   void Interpolate1(BaseFloat tau, const AccumTiedGmm &source);
 
-  /// Interpolate this accumulator with the source but preserve the 
+  /// Interpolate this accumulator with the source but preserve the
   /// occupancies (different from Interpolate1)
   void Interpolate2(BaseFloat tau, const AccumTiedGmm &source);
 

@@ -66,10 +66,10 @@ class AmTiedFullGmm {
 
   /// Computes the individual codebook per frame variables
   BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
-                                int32 codebook_index, 
-								Vector<BaseFloat> *svq) const;
+                                int32 codebook_index,
+                                Vector<BaseFloat> *svq) const;
 
-  BaseFloat LogLikelihood(int32 tied_pdf_index, 
+  BaseFloat LogLikelihood(int32 tied_pdf_index,
                           TiedGmmPerFrameVars *per_frame_vars) const;
 
   void Read(std::istream &in_stream, bool binary);
@@ -98,7 +98,7 @@ class AmTiedFullGmm {
 
 inline BaseFloat AmTiedFullGmm::LogLikelihood(
                    int32 tied_pdf_index,
-				   TiedGmmPerFrameVars *per_frame_vars) const {
+                   TiedGmmPerFrameVars *per_frame_vars) const {
   TiedGmm *tied = tied_densities_[tied_pdf_index];
 
   int32 i = tied->codebook_index();
@@ -139,7 +139,8 @@ inline const TiedGmm& AmTiedFullGmm::GetTiedPdf(int32 tied_pdf_index) const {
   return *(tied_densities_[tied_pdf_index]);
 }
 
-inline int32 AmTiedFullGmm::GetCodebookIndexOfTiedPdf(int32 tied_pdf_index) const {
+inline int32 AmTiedFullGmm::GetCodebookIndexOfTiedPdf(int32 tied_pdf_index)
+  const {
   KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
                && (tied_densities_[tied_pdf_index] != NULL));
   return tied_densities_[tied_pdf_index]->codebook_index();

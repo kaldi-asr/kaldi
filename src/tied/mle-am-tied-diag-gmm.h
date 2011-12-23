@@ -90,7 +90,7 @@ void MleAmTiedDiagGmmUpdate(const MleDiagGmmOptions &config_diag,
                             AmTiedDiagGmm *model,
                             BaseFloat *obj_change_out_cb,
                             BaseFloat *count_out_cb,
-							BaseFloat *obj_change_out_tied,
+                            BaseFloat *obj_change_out_tied,
                             BaseFloat *cout_out_tied);
 
 }  // End namespace kaldi

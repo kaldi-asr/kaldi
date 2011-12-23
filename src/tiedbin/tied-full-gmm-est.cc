@@ -61,9 +61,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    kaldi::GmmFlagsType update_flags =
-        StringToGmmFlags(update_flags_str);    
-    
+    kaldi::GmmFlagsType update_flags = StringToGmmFlags(update_flags_str);
+
     std::string model_in_filename = po.GetArg(1),
         stats_filename = po.GetArg(2),
         model_out_filename = po.GetArg(3);
@@ -97,9 +96,9 @@ int main(int argc, char *argv[]) {
     {  // Update GMMs.
       BaseFloat objf_impr, count;
       BaseFloat objf_impr_t, count_t;
-      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, update_flags, 
-	                         &am_gmm, &objf_impr, &count, &objf_impr_t, 
-							 &count_t);
+      MleAmTiedFullGmmUpdate(gmm_opts, tied_opts, gmm_accs, update_flags,
+                             &am_gmm, &objf_impr, &count, &objf_impr_t,
+                             &count_t);
 
       KALDI_LOG << "codebook update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "

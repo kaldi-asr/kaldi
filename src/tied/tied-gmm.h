@@ -32,14 +32,13 @@ namespace kaldi {
  *  latter are current w.r.t. the feature vector.
  */
 struct TiedGmmPerFrameVars {
-
   /// Initialize the TiedGmmPerFrameVars to the given feature dim and number of
   /// codebooks
   void Setup(int32 dim, int32 num_codebooks) {
     x.Resize(dim);
     c.Resize(num_codebooks);
     current.clear();
-	current.resize(num_codebooks, false);
+    current.resize(num_codebooks, false);
     svq.resize(num_codebooks);
   }
 
@@ -85,10 +84,10 @@ class TiedGmm {
 
   /// Computes the posterior probabilities of all Gaussian components and
   /// returns loglike.
-  /// Note: the argument contains the svq scores, *not* the data!  
+  /// Note: the argument contains the svq scores, *not* the data!
   BaseFloat ComponentPosteriors(BaseFloat c, const VectorBase<BaseFloat> &svq,
                                 Vector<BaseFloat> *posteriors) const;
-  
+
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const TiedGmm &source);
 
@@ -113,8 +112,8 @@ class TiedGmm {
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
 
-  void SetCodebookIndex(int32 codebook_index) { 
-	codebook_index_ = codebook_index; 
+  void SetCodebookIndex(int32 codebook_index) {
+    codebook_index_ = codebook_index;
   }
 
  private:

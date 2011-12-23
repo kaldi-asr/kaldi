@@ -30,7 +30,7 @@ AccumDiagGmm& AccumAmTiedDiagGmm::GetDiagAcc(int32 codebook_index) const {
 }
 
 AccumTiedGmm& AccumAmTiedDiagGmm::GetTiedAcc(int32 tied_pdf_index) const {
-  KALDI_ASSERT(tied_pdf_index >= 0 && tied_pdf_index 
+  KALDI_ASSERT(tied_pdf_index >= 0 && tied_pdf_index
                < static_cast<int32>(tied_gmm_accumulators_.size()));
   return *(tied_gmm_accumulators_[tied_pdf_index]);
 }
@@ -182,8 +182,8 @@ void MleAmTiedDiagGmmUpdate(
             AmTiedDiagGmm *model,
             BaseFloat *obj_change_out_cb,
             BaseFloat *count_out_cb,
-			BaseFloat *obj_change_out_tied,
-			BaseFloat *count_out_tied) {
+            BaseFloat *obj_change_out_tied,
+            BaseFloat *count_out_tied) {
   KALDI_ASSERT(model != NULL);
   KALDI_ASSERT(acc.NumDiagAccs() == model->NumCodebooks());
   KALDI_ASSERT(acc.NumTiedAccs() == model->NumTiedPdfs());
@@ -207,7 +207,7 @@ void MleAmTiedDiagGmmUpdate(
   // reestimate the codebooks
   for (size_t i = 0; i < acc.NumDiagAccs(); i++) {
     // enforce no weights update
-	MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags & ~kGmmWeights,
+    MleDiagGmmUpdate(config_diag, acc.GetDiagAcc(i), flags & ~kGmmWeights,
                      &(model->GetCodebook(i)), p_obj, p_count);
 
     KALDI_VLOG(1) << "MleDiagGmmUpdate pdf " << i << " delta-obj="
@@ -241,7 +241,7 @@ void MleAmTiedDiagGmmUpdate(
 
   // interpolate new model with old: new <- wt*est + (1-est)old
   if (config_tied.interpolate()) {
-	BaseFloat wt = config_tied.interpolation_weight;
+    BaseFloat wt = config_tied.interpolation_weight;
 
     KALDI_LOG << "Smoothing MLE estimate with prior iteration, (rho="
               << wt << "): "
@@ -258,14 +258,14 @@ void MleAmTiedDiagGmmUpdate(
     // codebooks
     if ((flags & kGmmMeans) && config_tied.interpolate_means) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
-		                                  kGmmMeans);
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
+                                          kGmmMeans);
     }
 
     if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
-		                                  kGmmVariances);
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
+                                          kGmmVariances);
     }
 
     delete oldm;

@@ -28,7 +28,8 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Accumulate stats for tied GMM training.\n"
-        "Usage:  tied-full-gmm-acc-stats-ali [options] <model-in> <feature-rspecifier> <alignments-rspecifier> <stats-out>\n"
+        "Usage:  tied-full-gmm-acc-stats-ali [options] <model-in> "
+        "<feature-rspecifier> <alignments-rspecifier> <stats-out>\n"
         "e.g.: \n"
         " tied-full-gmm-acc-stats-ali 1.mdl 1.ali scp:train.scp ark:1.ali 1.acc\n";
 
@@ -47,7 +48,6 @@ int main(int argc, char *argv[]) {
         alignments_rspecifier = po.GetArg(3),
         accs_wxfilename = po.GetArg(4);
 
-    using namespace kaldi;
     typedef kaldi::int32 int32;
 
     AmTiedFullGmm am_gmm;
@@ -80,7 +80,8 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &alignment = alignments_reader.Value(key);
 
         if (alignment.size() != mat.NumRows()) {
-          KALDI_WARN << "Alignments has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
+          KALDI_WARN << "Alignments has wrong size "<< (alignment.size())
+                     << " vs. "<< (mat.NumRows());
           num_other_error++;
           continue;
         }
@@ -92,8 +93,8 @@ int main(int argc, char *argv[]) {
           int32 tid = alignment[i],  // transition identifier.
               pdf_id = trans_model.TransitionIdToPdf(tid);
           trans_model.Accumulate(1.0, tid, &transition_accs);
-
-          tot_like_this_file += gmm_accs.AccumulateForTied(am_gmm, mat.Row(i), pdf_id, 1.0);
+          tot_like_this_file += gmm_accs.AccumulateForTied(am_gmm, mat.Row(i),
+                                                           pdf_id, 1.0);
         }
         KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/alignment.size()) << " over "
@@ -118,8 +119,10 @@ int main(int argc, char *argv[]) {
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";
-    if (num_done != 0) return 0;
-    else return 1;
+    if (num_done != 0)
+      return 0;
+    else
+      return 1;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

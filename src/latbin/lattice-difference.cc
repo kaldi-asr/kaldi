@@ -49,7 +49,6 @@ int main(int argc, char *argv[]) {
     std::string lats2_rspecifier = po.GetArg(2);
     std::string lats_wspecifier = po.GetArg(3);
 
-
     SequentialCompactLatticeReader compact_lattice_reader1(lats1_rspecifier);
     RandomAccessCompactLatticeReader compact_lattice_reader2(lats2_rspecifier);
     

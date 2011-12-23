@@ -24,7 +24,7 @@ namespace kaldi {
 using std::vector;
 
 AccumFullGmm& AccumAmTiedFullGmm::GetFullAcc(int32 codebook_index) const {
-  KALDI_ASSERT(codebook_index >= 0 && 
+  KALDI_ASSERT(codebook_index >= 0 &&
                codebook_index < static_cast<int32>(gmm_accumulators_.size()));
   return *(gmm_accumulators_[codebook_index]);
 }
@@ -73,8 +73,8 @@ BaseFloat AccumAmTiedFullGmm::AccumulateForTied(
             const VectorBase<BaseFloat> &data,
             int32 tied_pdf_index,
             BaseFloat frame_posterior) {
-  KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < 
-                 tied_gmm_accumulators_.size());
+  KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) <
+               tied_gmm_accumulators_.size());
   const TiedGmm &tied = model.GetTiedPdf(tied_pdf_index);
 
   int32 i = tied.codebook_index();
@@ -183,7 +183,7 @@ void MleAmTiedFullGmmUpdate(
        AmTiedFullGmm *model,
        BaseFloat *obj_change_out_cb,
        BaseFloat *count_out_cb,
-	   BaseFloat *obj_change_out_tied,
+       BaseFloat *obj_change_out_tied,
        BaseFloat *count_out_tied) {
   KALDI_ASSERT(model != NULL);
   KALDI_ASSERT(acc.NumFullAccs() == model->NumCodebooks());
@@ -223,10 +223,10 @@ void MleAmTiedFullGmmUpdate(
 
   // only reestimate the tied Gmms if we have a weight update requested
   if (flags & kGmmWeights) {
-	tmp_obj_change = 0.0;
-	tmp_count = 0.0;
-	p_obj = (obj_change_out_tied != NULL) ? &tmp_obj_change : NULL;
-	p_count = (count_out_tied != NULL) ? &tmp_count : NULL;
+    tmp_obj_change = 0.0;
+    tmp_count = 0.0;
+    p_obj = (obj_change_out_tied != NULL) ? &tmp_obj_change : NULL;
+    p_count = (count_out_tied != NULL) ? &tmp_count : NULL;
 
     // reestimate the tied gmms
     for (int32 i = 0; i < acc.NumTiedAccs(); i++) {
@@ -246,13 +246,13 @@ void MleAmTiedFullGmmUpdate(
 
   // smooth new model with old: new <- wt*est + (1-est)old
   if (config_tied.interpolate()) {
-	BaseFloat wt = config_tied.interpolation_weight;
+    BaseFloat wt = config_tied.interpolation_weight;
 
     KALDI_LOG << "Interpolating MLE estimate with prior iteration, (rho="
               << wt << "): "
-			  << (config_tied.interpolate_weights ? "weights " : "")
-			  << (config_tied.interpolate_weights ? "means " : "")
-			  << (config_tied.interpolate_weights ? "variances" : "");
+              << (config_tied.interpolate_weights ? "weights " : "")
+              << (config_tied.interpolate_weights ? "means " : "")
+              << (config_tied.interpolate_weights ? "variances" : "");
 
     // smooth the weights for tied...
     if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
@@ -263,14 +263,14 @@ void MleAmTiedFullGmmUpdate(
     // ...and mean/var for codebooks
     if ((flags & kGmmMeans) && config_tied.interpolate_means) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
-		                                  kGmmMeans);
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
+                                          kGmmMeans);
     }
 
     if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
       for (int32 i = 0; i < model->NumCodebooks(); ++i)
-        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i), 
-		                                  kGmmVariances);
+        model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
+                                          kGmmVariances);
     }
 
     delete oldm;

@@ -75,7 +75,8 @@ void AmTiedFullGmm::AddTiedPdf(const TiedGmm &tied) {
 }
 
 /// Set the codebook index of the designated tied pdf
-void AmTiedFullGmm::ReplaceCodebook(int32 tied_pdf_index, int32 new_codebook_index) {
+void AmTiedFullGmm::ReplaceCodebook(int32 tied_pdf_index,
+                                    int32 new_codebook_index) {
   KALDI_ASSERT(static_cast<size_t>(new_codebook_index) < densities_.size());
   KALDI_ASSERT(static_cast<size_t>(tied_pdf_index) < tied_densities_.size());
 
@@ -138,7 +139,7 @@ void AmTiedFullGmm::SetupPerFrameVars(
   // allocate the svqs
   for (int32 i = 0; i < NumCodebooks(); ++i) {
     per_frame_vars->ResizeSvq(i, GetCodebook(i).NumGauss());
-	per_frame_vars->current[i] = false;
+    per_frame_vars->current[i] = false;
   }
 }
 
@@ -150,12 +151,12 @@ void AmTiedFullGmm::ComputePerFrameVars(
 
   // set the currency indicators to false
   for (int32 i = 0; i < NumCodebooks(); ++i)
-	per_frame_vars->current[i] = false;
+    per_frame_vars->current[i] = false;
 }
 
 BaseFloat AmTiedFullGmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                              int32 codebook_index,
-											 Vector<BaseFloat> *svq) const {
+                                             Vector<BaseFloat> *svq) const {
   // get loglikes
   densities_[codebook_index]->LogLikelihoods(data, svq);
 

@@ -124,11 +124,11 @@ void AccumTiedGmm::Interpolate1(BaseFloat tau, const AccumTiedGmm &source) {
 
 // see description in header file
 void AccumTiedGmm::Interpolate2(BaseFloat tau, const AccumTiedGmm &source) {
-   KALDI_ASSERT(num_comp_ == source.num_comp_);
-   BaseFloat old_sum = occupancy_.Sum();
-   occupancy_.AddVec(tau / (source.occupancy_.Sum() + 1.0e-10),
-                            source.occupancy_);
-   occupancy_.Scale(old_sum / occupancy_.Sum());
+  KALDI_ASSERT(num_comp_ == source.num_comp_);
+  BaseFloat old_sum = occupancy_.Sum();
+  occupancy_.AddVec(tau / (source.occupancy_.Sum() + 1.0e-10),
+                    source.occupancy_);
+  occupancy_.Scale(old_sum / occupancy_.Sum());
 }
 
 AccumTiedGmm::AccumTiedGmm(const AccumTiedGmm &other)

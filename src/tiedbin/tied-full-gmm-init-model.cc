@@ -55,7 +55,6 @@ void InitAmTiedFullGmm(AmTiedFullGmm *am_gmm, const vector<int32> *tied_to_pdf) 
 
   am_gmm->ComputeGconsts();
 }
-
 }
 
 int main(int argc, char *argv[]) {
@@ -67,7 +66,8 @@ int main(int argc, char *argv[]) {
         "Initialize a tied mixture model with fullonal mixture codebooks. If\n"
         "using more than one codebook, you need to specify a map file, mapping\n"
         "the tree leaves to the codebook ids as a vector, e.g. \"[ 0 0 1 1 \"]\n"
-        "Usage:  tied-full-gmm-init-model [options] <tree> <topo>  [<diag-ubm0> | <tree-map> <diag-ubm> ...] <model-out>\n"
+        "Usage:  tied-full-gmm-init-model [options] <tree> <topo>  [<diag-ubm0> "
+        "| <tree-map> <diag-ubm> ...] <model-out>\n"
         "e.g.: \n"
         "  tied-full-gmm-init-model tree topo tree.map full0.ubm full1.ubm 1.mdl\n";
 

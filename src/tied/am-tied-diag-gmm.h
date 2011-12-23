@@ -67,7 +67,7 @@ class AmTiedDiagGmm {
   /// Evaluate the target codebook and save the scores to svq
   BaseFloat ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                 int32 codebook_index,
-								Vector<BaseFloat> *svq) const;
+                                Vector<BaseFloat> *svq) const;
 
   BaseFloat LogLikelihood(int32 tied_pdf_index,
                           TiedGmmPerFrameVars *per_frame_vars) const;
@@ -105,11 +105,11 @@ inline BaseFloat AmTiedDiagGmm::LogLikelihood(
 
   // get the svq vector
   Vector<BaseFloat> *svq = &(per_frame_vars->svq[i]);
-  
+
   // refresh the svq values
   if (!per_frame_vars->current[i]) {
-	per_frame_vars->c(i) = ComputePerFrameVars(per_frame_vars->x, i, svq);
-	per_frame_vars->current[i] = true;
+    per_frame_vars->c(i) = ComputePerFrameVars(per_frame_vars->x, i, svq);
+    per_frame_vars->current[i] = true;
   }
 
   return tied->LogLikelihood(per_frame_vars->c(i), *svq);
@@ -139,7 +139,7 @@ inline const TiedGmm& AmTiedDiagGmm::GetTiedPdf(int32 tied_pdf_index) const {
   return *(tied_densities_[tied_pdf_index]);
 }
 
-inline int32 AmTiedDiagGmm::GetCodebookIndexOfTiedPdf(int32 tied_pdf_index) 
+inline int32 AmTiedDiagGmm::GetCodebookIndexOfTiedPdf(int32 tied_pdf_index)
   const {
   KALDI_ASSERT((static_cast<size_t>(tied_pdf_index) < tied_densities_.size())
                && (tied_densities_[tied_pdf_index] != NULL));
