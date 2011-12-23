@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
       } else {
         vector<vector<int32> > gselect(gselect_reader.Value());
         for (size_t i = 0; i < gselect.size(); i++)
-          if (static_cast<int32>(gselect[i].size()) < num_gselect)
+          if (static_cast<int32>(gselect[i].size()) > num_gselect)
             gselect[i].resize(num_gselect); // keep 1st n elements.
         gselect_writer.Write(utt, gselect);
       }
