@@ -27,12 +27,19 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 nj=1
 jobid=0
-if [ "$1" == "-j" ]; then
-  shift;
-  nj=$1;
-  jobid=$2;
-  shift; shift;
-fi
+first_pass_gselect=0   # 0 means, use the default #gauss for SGMMs in first pass.
+for n in `seq 2`; do
+  if [ "$1" == "-j" ]; then
+    shift;
+    nj=$1;
+    jobid=$2;
+    shift; shift;
+  fi
+  if [ "$1" == "--first-pass-gselect" ]; then
+    first_pass_gselect=$2;
+    shift; shift;
+  fi
+done
 
 if [ $# -lt 3 -o $# -gt 4 ]; then
    echo "Usage: steps/decode_sgmm_lda_etc.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir> [<old-decode-dir>]"
@@ -84,6 +91,7 @@ feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.sc
 sgmm-gselect $srcdir/final.mdl "$feats" "ark:|gzip -c > $dir/$jobid.gselect.gz" \
     2>$dir/gselect$jobid.log || exit 1;
 gselect_opt="--gselect=ark:gunzip -c $dir/$jobid.gselect.gz|"
+gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark:- |"
 
 
 # Generate a state-level lattice for rescoring, with the alignment model and no speaker
@@ -91,7 +99,7 @@ gselect_opt="--gselect=ark:gunzip -c $dir/$jobid.gselect.gz|"
 
 sgmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
   --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  "$gselect_opt" $srcdir/final.alimdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
+  "$gselect_opt_1stpass" $srcdir/final.alimdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
    2> $dir/decode_pass1.$jobid.log || exit 1;
 
 ( lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \

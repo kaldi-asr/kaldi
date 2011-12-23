@@ -242,6 +242,11 @@ steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr \
   data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+
+# Decode using 3 Gaussians (not 15) for gselect in 1st pass, for fast decoding.
+scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \
+  steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_gs3
+
 # Decoding via lattice rescoring of lats from regular model. [ a bit worse].
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh data/lang_test_tgpr \
   data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_fromlats exp/tri2b/decode_tgpr_dev93
@@ -326,6 +331,10 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
 scripts/mkgraph.sh data/lang_test_bd_tgpr exp/sgmm4c exp/sgmm4c/graph_bd_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm4c/graph_bd_tgpr \
   data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+# The same with Gaussian selection pruned down, for speed.
+scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \
+   steps/decode_sgmm_lda_etc.sh exp/sgmm4c/graph_bd_tgpr \
+  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_gs3 exp/tri3b/decode_tgpr_eval92
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
   data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_fg
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
@@ -339,6 +348,7 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_b
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  data/lang_test_bd_fg data/test_eval92 exp/sgmm4c/decode_bd_fg_eval92_fromlats \
   exp/tri3b/decode_bd_tgpr_eval92
+
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done

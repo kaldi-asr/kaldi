@@ -56,6 +56,9 @@ exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.87 [ 557 / 5643, 136 ins, 38 del, 
 # (tri2b) had a bad WER (17.78%).
 exp/sgmm3c/decode_tgpr_dev93/wer_12:%WER 13.74 [ 1131 / 8234, 214 ins, 111 del, 806 sub ]
 exp/sgmm3c/decode_tgpr_dev93_fromlats/wer_13:%WER 15.74 [ 1296 / 8234, 275 ins, 115 del, 906 sub ]
+# faster decoding via more aggressive Gaussian selection in 1st pass [15->3];
+#  speed goes from ~1.1xRT -> ~0.8xRT
+exp/sgmm3c/decode_tgpr_dev93_gs3/wer_12:%WER 13.86 [ 1141 / 8234, 219 ins, 111 del, 811 sub ] 
 
 
 # LDA+MLLT+SAT, SI-284, quick retraining from 3b
@@ -94,7 +97,7 @@ exp/sgmm4c/decode_tgpr_eval92_tg/wer_12:%WER 7.07 [ 399 / 5643, 97 ins, 21 del, 
  # using big-dict.
  exp/sgmm4c/decode_bd_fg_eval92_fromlats/wer_13:%WER 6.13 [ 346 / 5643, 64 ins, 36 del, 246 sub ]
  exp/sgmm4c/decode_bd_tgpr_eval92/wer_11:%WER 5.16 [ 291 / 5643, 42 ins, 25 del, 224 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92_gs3/wer_11:%WER 5.21 [ 294 / 5643, 42 ins, 26 del, 226 sub ] [faster decoding, ~1.3xRT -> 0.6xRT]
  exp/sgmm4c/decode_bd_tgpr_eval92_tg/wer_10:%WER 4.75 [ 268 / 5643, 42 ins, 19 del, 207 sub ]
  exp/sgmm4c/decode_bd_tgpr_eval92_fg/wer_14:%WER 4.39 [ 248 / 5643, 34 ins, 23 del, 191 sub ]
-
 
