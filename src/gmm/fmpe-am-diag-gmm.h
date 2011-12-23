@@ -23,7 +23,6 @@
 
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
-#include "gmm/mmie-diag-gmm.h"
 #include "gmm/ebw-diag-gmm.h"
 
 namespace kaldi {

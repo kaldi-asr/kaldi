@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
     kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
 
     kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
-
     kaldi::BaseFloatWriter loglikes_writer(loglikes_wspecifier);
 
     int32 n_done = 0;

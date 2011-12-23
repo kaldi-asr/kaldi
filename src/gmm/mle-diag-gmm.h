@@ -104,7 +104,6 @@ class AccumDiagGmm {
                                const VectorBase<BaseFloat>& data,
                                BaseFloat frame_posterior);
 
-
   /// Increment the stats for this component by the specified amount
   /// (not all parts may be taken, depending on flags).
   /// Note: x_stats and x2_stats are assumed to already be multiplied by "occ"
@@ -125,7 +124,7 @@ class AccumDiagGmm {
   /// for this is I-smoothing for MMI and MPE. Both accumulators must have the
   /// same dimension and number of components.
   void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
-  
+
   /// Smooths the accumulated counts using the parameters of a given model.
   /// An example use of this is MAP-adaptation. The model must have the
   /// same dimension and number of components as the current accumulator.
@@ -137,7 +136,6 @@ class AccumDiagGmm {
   const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
   const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
 
-  
  private:
   int32 dim_;
   int32 num_comp_;

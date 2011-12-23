@@ -175,7 +175,6 @@ void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<i
 }
 
 void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
-  
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
               << target_components << "), #Gauss = " << NumGauss();

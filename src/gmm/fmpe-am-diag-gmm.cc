@@ -103,7 +103,7 @@ void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
   KALDI_ASSERT(den_acc.NumGauss() == num_comp_); // den_acc.Dim() may not be defined,
   // if we used the "compressed form" of accs where den only has counts.
   KALDI_ASSERT(mle_acc.NumGauss() == num_comp_ && mle_acc.Dim() == dim_);
-  
+
   Matrix<double> mean_diff_tmp(num_comp_, dim_);
   Matrix<double> var_diff_tmp(num_comp_, dim_);
   Matrix<double> mat_tmp(num_comp_, dim_);
