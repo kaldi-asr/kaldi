@@ -89,8 +89,8 @@ int main(int argc, char *argv[]) {
       
  
     {  // Update GMMs.
-      BaseFloat auxf_impr = 0.0, count = 0.0;
-      int32 num_floored = 0;
+      BaseFloat auxf_impr, count;
+      int32 num_floored;
       UpdateEbwAmDiagGmm(num_stats, den_stats, update_flags, ebw_opts, &am_gmm,
                           &auxf_impr, &count, &num_floored);
       KALDI_LOG << "Num count " << num_stats.TotCount() << ", den count "

@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
     
     if (update_flags & kGmmWeights) {  // Update weights.
-      BaseFloat auxf_impr = 0.0, count = 0.0;
+      BaseFloat auxf_impr, count;
       UpdateEbwWeightsAmDiagGmm(num_stats, den_stats, ebw_weight_opts, &am_gmm,
                                 &auxf_impr, &count);
       KALDI_LOG << "Num count " << num_stats.TotCount() << ", den count "
