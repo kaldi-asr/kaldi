@@ -142,6 +142,9 @@ fi
     # a bzip'd archive (like "z" is for gzip).
     tar -xovjf sctk-2.4.0-20091110-0958.tar.bz2  || exit 1
     cd sctk-2.4.0
+    for x in src/asclite/core/recording.{h,cpp}; do # Fix a compilation error that can occur with newer compiler versions.
+      sed 's/Filter::Filter/::Filter/' $x > tmpf; mv tmpf $x;
+    done
     make config || exit 1
     make all || exit 1
     # Not doing the checks, they don't always succeed and it
