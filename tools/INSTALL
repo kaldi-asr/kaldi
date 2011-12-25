@@ -156,6 +156,9 @@ gzip sctk-2.4.0-20091110-0958.tar
 
 tar -xovzf sctk-2.4.0-20091110-0958.tar.gz 
 cd sctk-2.4.0
+for x in src/asclite/core/recording.{h,cpp}; do # Fix a compilation error that can occur with newer compiler versions.
+  sed 's/Filter::Filter/::Filter/' $x > tmpf; mv tmpf $x;
+done
 make config
 make all
 make check
