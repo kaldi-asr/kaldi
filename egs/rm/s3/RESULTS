@@ -19,23 +19,24 @@ exp/tri3b/decode/wer_7:%WER 3.454879 [ 433 / 12533, 75 ins, 80 del, 278 sub ]
 # LDA+MLLT+MCE
 exp/tri3c/decode/wer_7:%WER 3.183595 [ 399 / 12533, 62 ins, 79 del, 258 sub ]
 # LDA+MLLT+SAT
-exp/tri3d/decode/wer_5:%WER 2.555298 [ 320 / 12523, 43 ins, 60 del, 217 sub ]
+exp/tri3d/decode/wer_6:%WER 2.553259 [ 320 / 12533, 43 ins, 63 del, 214 sub ]
 # LDA+MLLT+SAT+MMI
-exp/tri4a/decode/wer_5:%WER 2.515372 [ 315 / 12523, 42 ins, 59 del, 214 sub ]
+exp/tri4a/decode/wer_6:%WER 2.473470 [ 310 / 12533, 43 ins, 62 del, 205 sub ]
 # LDA+MLLT+SAT, extra phase of builting on top of 3d (no help)
-exp/tri4d/decode/wer_5:%WER 2.569217 [ 322 / 12533, 48 ins, 54 del, 220 sub ]
+exp/tri4d/decode/wer_5:%WER 2.800606 [ 351 / 12533, 47 ins, 68 del, 236 sub ]
 # LDA+MLLT + SGMM with speaker vectors
 exp/sgmm3d/decode/wer_4:%WER 2.186228 [ 274 / 12533, 41 ins, 42 del, 191 sub ]
 # LDA+ET + SGMM with speaker vectors.
 exp/sgmm3e/decode/wer_5:%WER 2.242081 [ 281 / 12533, 44 ins, 47 del, 190 sub ]
 # LDA+MLLT+SAT + SGMM with speaker vectors.
-exp/sgmm4f/decode/wer_4:%WER 2.218144 [ 278 / 12533, 63 ins, 42 del, 173 sub ]
+exp/sgmm4f/decode/wer_5:%WER 2.226123 [ 279 / 12533, 56 ins, 49 del, 174 sub ]
 # + FMLLR on top of it all.
-exp/sgmm4f/decode_fmllr/wer_6:%WER 2.170270 [ 272 / 12533, 41 ins, 59 del, 172 sub ]
+exp/sgmm4f/decode_fmllr/wer_6:%WER 2.202186 [ 276 / 12533, 39 ins, 59 del, 178 sub ]
 
 # System combination via lattices: combine tri1 and tri2a
 exp/combine_1_2a/decode/wer_6:%WER 3.518711 [ 441 / 12533, 62 ins, 97 del, 282 sub ]
 # System combination via lattices: combine sgmm4f and tri3d.
-exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 2.066544 [ 259 / 12533, 39 ins, 51 del, 169 sub ]
+exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 2.082502 [ 261 / 12533, 36 ins, 48 del, 177 sub ]
 # System combination via lattices: combine sgmm4f and tri4a.
-exp/combine_sgmm4f_tri4a/decode/wer_5:%WER 2.074523 [ 260 / 12533, 42 ins, 50 del, 168 sub ]
+exp/combine_sgmm4f_tri4a/decode/wer_5:%WER 2.082502 [ 261 / 12533, 37 ins, 49 del, 175 sub ]
+
