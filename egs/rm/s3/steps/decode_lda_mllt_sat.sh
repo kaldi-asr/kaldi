@@ -59,32 +59,68 @@ compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,t:$dir/cm
 
 sifeats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-# For Resource Management, we use beam of 30 and acwt of 1/7.
+# For Resource Management, we use beam of 20 and acwt of 0.1 by default
+# (we tune over the accoustic weight during lattice rescoring).
 # More normal, LVCSR setups would have a beam of 13 and acwt of 1/15 or so.
 # If you decode with a beam of 20 on an LVCSR setup it will be very slow.
 
-gmm-decode-faster --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
-  $srcdir/final.alimdl $graphdir/HCLG.fst "$sifeats" ark,t:$dir/pass1.tra ark,t:$dir/pass1.ali \
-     2> $dir/decode_pass1.log || exit 1;
+# This first pass decoding is quite fast; it's just done to get an initial estimate of the
+# of the fMLLR transform.
 
+gmm-latgen-simple --beam=15.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
+  $srcdir/final.alimdl $graphdir/HCLG.fst "$sifeats" "ark:|gzip -c >$dir/pre_lat1.gz" \
+     2> $dir/decode_pass1.log || exit 1;
 
 adaptmdl=$srcdir/final.mdl # Compute fMLLR transforms with this model.
 [ -f $srcdir/final.adaptmdl ] && adaptmdl=$srcdir/final.adaptmdl # e.g. in MMI-trained systems
 
-( ali-to-post ark:$dir/pass1.ali ark:- | \
+(  gunzip -c $dir/pre_lat1.gz | \
+   lattice-to-post --acoustic-scale=0.1 ark:- ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$sifeats" ark:- ark:- | \
    gmm-est-fmllr-gpost --spk2utt=ark:$data/spk2utt $adaptmdl "$sifeats" \
-       ark,s,cs:- ark:$dir/trans.ark ) \
-     2> $dir/trans.log || exit 1;
+       ark,s,cs:- ark:$dir/pre_trans.ark ) \
+    2> $dir/fmllr1.log || exit 1;
 
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/trans.ark ark:- ark:- |"
+pre_feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/pre_trans.ark ark:- ark:- |"
 
-# Second pass decoding...
+# Second pass decoding and lattice generation...
+# here we're generating a state-level lattice, which allows for more exact
+# acoustic lattice rescoring.
+# Do this with SAT features with an initial, rough estimation from the SI decoding.
+
 gmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.gz" \
-  ark,t:$dir/pass2.tra ark,t:$dir/pass2.ali  2> $dir/decode_pass2.log || exit 1;
+   --determinize-lattice=false --allow-partial=true \
+  $adaptmdl $graphdir/HCLG.fst "$pre_feats" "ark:|gzip -c > $dir/pre_lat2.gz" \
+  2> $dir/decode_pass2.log || exit 1;
 
+# Estimate the fMLLR transform once more.
+
+( lattice-determinize --acoustic-scale=0.1 --prune=true --beam=4.0 \
+     "ark:gunzip -c $dir/pre_lat2.gz|" ark:- | \
+   lattice-to-post --acoustic-scale=0.1 ark:- ark:- | \
+   weight-silence-post 0.0 $silphonelist $adaptmdl ark:- ark:- | \
+   gmm-est-fmllr --spk2utt=ark:$data/spk2utt $adaptmdl "$pre_feats" \
+      ark,s,cs:- ark:$dir/trans.tmp.ark ) \
+    2> $dir/fmllr2.log || exit 1;
+
+rm $dir/pre_lat1.gz
+
+compose-transforms --b-is-affine=true ark:$dir/trans.tmp.ark ark:$dir/pre_trans.ark \
+    ark:$dir/trans.ark 2>$dir/compose_transforms.log || exit 1;
+#rm $dir/pre_trans.ark $dir/trans.tmp.ark || exit 1;
+
+feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk ark:$dir/trans.ark ark:- ark:- |"
+
+# Now rescore the state-level lattices with the adapted features and the
+# corresponding model.  Prune and determinize the lattices to limit
+# their size.
+
+gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat2.gz|" "$feats" \
+ "ark:|lattice-determinize --acoustic-scale=0.1 --prune=true --beam=10.0 ark:- ark:- | gzip -c > $dir/lat.gz" \
+  2>$dir/rescore.log || exit 1;
+
+rm $dir/pre_lat2.gz
 
 # Now rescore lattices with various acoustic scales, and compute the WERs.
 for inv_acwt in 4 5 6 7 8 9 10; do

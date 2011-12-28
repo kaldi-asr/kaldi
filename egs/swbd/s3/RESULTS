@@ -3,20 +3,25 @@
 
 for x in exp/*/decode_*; do [ -d $x ] && grep Mean $x/score_*/*.sys | scripts/best_wer.sh; done
 
-exp/tri4a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     |    Mean    | 54.4  524.3 | 52.1   33.1   14.8    4.5   52.4   75.3 |
-exp/tri5a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   68.6      21.5        9.9        3.3       34.6       67.9   |
+exp/tri4a/decode_eval2000/score_16/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   52.9      32.0       15.1        4.1       51.1       74.4   |
+
+exp/tri5a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   69.6      20.9        9.5        3.3       33.7       67.2   |
 
  # as tri5a but mixed up further (150k -> 175k Gaussians); WER 34.6->34.2
+ exp/tri5a_175k/decode_eval2000/score_16/eval2000.ctm.filt.sys:|      Mean      |   54.4       524.3   |   69.2        25.2        5.6        53.5       84.3        89.2   |
+ # PROBLEM.
+ # old:
  exp/tri5a_175k/decode_eval2000/score_14/eval2000.ctm.filt.sys:     |    Mean    | 54.4  524.3 | 69.1   21.2    9.7    3.3   34.2   67.6 |
 
-# MMI trained from tri5a (WER 34.6->31.8)
-exp/tri5a_mmi/decode_eval2000/score_12/eval2000.ctm.filt.sys:|      Mean      |   54.4       524.3   |   71.4       19.8         8.8        3.2       31.8        65.9   |
+# MMI trained from tri5a (WER 33.7->31.4)
+exp/tri5a_mmi/decode_eval2000/score_12/eval2000.ctm.filt.sys:|      Mean      |   54.4       524.3   |   71.9       19.4         8.7        3.3       31.4        65.4   |
 
-# Boosted MMI, b=0.1 [WER 31.3, vs. 31.8 for regular MMI]
-exp/tri5a_mmi_b0.1/decode_eval2000/score_12/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   71.8        19.2        9.0         3.1        31.3        65.5    |
+# Boosted MMI, b=0.1 [WER 31.0, vs. 31.4 for regular MMI]
+exp/tri5a_mmi_b0.1/decode_eval2000/score_11/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   72.4        19.2        8.4         3.4        31.0        65.1    |
 
 # SGMM [direct decoding].  Note: speed is about the same as tri5a, as tri5a has a lot of Gaussians.
-exp/sgmm6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   71.4       20.9        7.7        4.0       32.7       67.7   |
+exp/sgmm6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   71.0       21.0        8.0        4.0       33.1       68.0   |
+
 
  # Decoding this via lattice rescoring of tri5a lattices.
- exp/sgmm6a/decode_eval2000_fromlats/score_10/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   70.5        20.9         8.7         3.8        33.3        67.5    |
+ exp/sgmm6a/decode_eval2000_fromlats/score_10/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   71.1        20.4         8.4         3.9        32.7        67.6    |

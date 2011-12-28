@@ -126,8 +126,8 @@ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
 ( # Try mixing up from the 5a system to see if more Gaussians helps.
  steps/mixup_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
   175000 data/train_nodup exp/tri5a exp/tri4a_ali_all_nodup exp/tri5a_175k
- scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri5a/graph \
-  data/eval2000 exp/tri5a_175k/decode_eval2000
+ scripts/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
+   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a_175k/decode_eval2000
 )
 
 

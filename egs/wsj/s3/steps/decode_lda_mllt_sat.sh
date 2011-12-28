@@ -17,25 +17,39 @@
 
 # Decoding script that works with a GMM model and the baseline
 # [e.g. MFCC] features plus cepstral mean subtraction plus
-# LDA + MLLT + fMLLR features.  This script first
-# generates a pruned state-level lattice without adaptation,
-# then does acoustic rescoring on this lattice to generate
-# a new lattice; it determinizes and prunes this ready for
-# further rescoring (e.g. with new LMs, or varying the acoustic
-# scale).
+# LDA + MLLT + fMLLR features.  
+# This version of the script first does a tight-beam decoding
+# with the "alignment model" to get a first estimate of the SAT
+# transform, then generates a state-level lattice with the SAT
+# model and re-estimates the SAT transform, before doing the
+# final decoding.
 
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
+
+beam1=10.0
+beam2=13.0
 numjobs=1
 jobid=0
-if [ "$1" == "-j" ]; then
-  shift;
-  numjobs=$1;
-  jobid=$2;
-  shift; shift;
-  ! scripts/get_splits.pl $numjobs | grep -w $jobid >/dev/null && \
-    echo Invalid job-number $jobid "(num-jobs = $numjobs)" && exit 1;
-fi
+
+for x in `seq 3`; do
+  if [ "$1" == "-j" ]; then
+    shift;
+    numjobs=$1;
+    jobid=$2;
+    shift; shift;
+    ! scripts/get_splits.pl $numjobs | grep -w $jobid >/dev/null && \
+      echo Invalid job-number $jobid "(num-jobs = $numjobs)" && exit 1;
+  fi
+  if [ "$1" == "--beam1" ]; then
+    beam1=$2
+    shift; shift;
+  fi
+  if [ "$1" == "--beam2" ]; then
+    beam2=$2
+    shift; shift;
+  fi
+done
 
 if [ $# != 3 ]; then
    echo "Usage: steps/decode_lda_mllt_sat.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
@@ -72,32 +86,60 @@ done
 # basefeats is the speaker independent features.
 basefeats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-# Generate a state-level lattice for rescoring, so we don't have to redo the search
-# after ET.
-gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
-  --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $srcdir/final.alimdl $graphdir/HCLG.fst "$basefeats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
+# The first-pass decoding uses the speaker-independent features and the
+# alignment model, and a very tight beam.  We generate a small lattice as
+# we won't be rescoring it, we'll just get the posteriors from it to get
+# the first estimate of the transform.
+
+gmm-latgen-faster --max-active=7000 --beam=$beam1 --lattice-beam=3.0 --acoustic-scale=$acwt  \
+  --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  $srcdir/final.alimdl $graphdir/HCLG.fst "$basefeats" "ark:|gzip -c > $dir/pre_lat1.$jobid.gz" \
    2> $dir/decode_pass1.$jobid.log || exit 1;
 
-(  lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
-     "ark:gunzip -c $dir/pre_lat.$jobid.gz|" ark:- | \
+(  gunzip -c $dir/pre_lat1.$jobid.gz | \
    lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$basefeats" ark:- ark:- | \
    gmm-est-fmllr-gpost --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$basefeats" \
-       ark,s,cs:- ark:$dir/$jobid.trans ) \
-    2> $dir/fmllr.$jobid.log || exit 1;
+       ark,s,cs:- ark:$dir/$jobid.pre_trans ) \
+    2> $dir/fmllr1.$jobid.log || exit 1;
+
+
+feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.pre_trans ark:- ark:- |"
+
+# Generate a state-level lattice for rescoring, using the 1st-pass estimated SAT
+# transform.
+
+gmm-latgen-faster --max-active=7000 --beam=$beam2 --lattice-beam=6.0 --acoustic-scale=$acwt  \
+  --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat2.$jobid.gz" \
+   2> $dir/decode_pass2.$jobid.log || exit 1;
+
+# Do another pass of estimating the transform.
+
+(  lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
+     "ark:gunzip -c $dir/pre_lat2.$jobid.gz|" ark:- | \
+   lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
+   weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- | \
+   gmm-est-fmllr --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$feats" \
+      ark,s,cs:- ark:$dir/$jobid.trans.tmp ) \
+    2> $dir/fmllr2.$jobid.log || exit 1;
+
+compose-transforms --b-is-affine=true ark:$dir/$jobid.trans.tmp ark:$dir/$jobid.pre_trans \
+    ark:$dir/$jobid.trans 2>$dir/compose_transforms.$jobid.log || exit 1;
+#rm $dir/$jobid.pre_trans $dir/$jobid.trans.tmp || exit 1;
+
+feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.trans ark:- ark:- |"
 
 # Now rescore the state-level lattices with the adapted features and the
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
 
-feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.trans ark:- ark:- |"
-
-gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.$jobid.gz|" "$feats" \
+gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat2.$jobid.gz|" "$feats" \
  "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=6.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
   2>$dir/rescore.$jobid.log || exit 1;
 
-rm $dir/pre_lat.$jobid.gz
+rm $dir/pre_lat1.$jobid.gz
+rm $dir/pre_lat2.$jobid.gz
 
 # The top-level decoding script will rescore "lat.$jobid.gz" to get the final output.

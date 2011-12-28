@@ -270,7 +270,8 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
      12500 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_12500
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
     exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_12500/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
- # note: taking it up to 150k made it worse again [8.63->8.56->8.72]
+ # note: taking it up to 150k made it worse again [8.63->8.56->8.72 ... this was before some
+ # decoding-script changes so these results not the same as in RESULTS file.]
   # increasing phone dim but not #substates..
   steps/mixup_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" --increase-phone-dim 50 \
     10000 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_50
