@@ -1,9 +1,11 @@
 # Note: RESULTS_2 is same results as run by Mirko, but
 # at the current time is less up to date.
-
+# The suffixes on the "wer" numbers are the inverses of the acoustic
+# scales.  Here, we show the best number on each test set.
+# [really, these scales should be tuned on a dev set, but we think it's
+# fine to compare the WERs obtained this way to each other.]
 
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
-
 
 
 # monophone, deltas, half of SI-84

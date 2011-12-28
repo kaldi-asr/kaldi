@@ -16,6 +16,36 @@
 
 # To be run from ..
 # Triphone model training, with LDA + MLLT.
+# LDA means: on each frame we splice 9 adjacent frames of the raw
+# MFCC features together to get 9x13 = 117-dimensional feature vectors.
+# Then we do LDA, where the classes correspond to the "pdf-ids" 
+# (i.e. the distinct pdf's of the baseline system, typically several
+# thousand, corresponding to the leaves of the phonetic-context tree).
+# The stats for this consist of one or two symmetric 117x117 matrices,
+# plus 117-dimensional means for each of the several thousand classes.
+# We actually have some randomized sub-sampling going on too (see "randprune" 
+# parameter), to speed it up (the 117-dimensional outer products are
+# a bit slow).  
+# The LDA gives us 40x117 matrix, and corresponding 40-dimensional
+# features.  These features will contain most of the inter-class variation
+# in the original features, and will be globally decorrelated.
+
+# Then we do 
+# MLLT (Maximum Likelihood Linear Transform; search for Gopinath), 
+# also known as STC (semi-tied covariance-- search for Gales; our 
+# version is the "global" version)... probably the best reference is
+# M. Gales, "Maximum likelihood linear transformations for HMM-based speech recognition",
+# Computer Speech and Language.
+# The idea here is to find a square matrix-valued feature transformation
+# that will maximize the likelihood of the data given the 
+# mixture-of-diagonal-Gaussian models [after appropriately taking into
+# account the Jacobian of the transformation matrix].  We just multiply
+# this on the left of the original LDA matrix, so at the end of this whole procedure
+# we have just one matrix.
+# The variable "mllt_iters" specifies on which iterations of overall training
+# we do an iteration of MLLT matrix estimation, and the variable
+# "realign_iters" specifies on which iterations we re-do the Viterbi aligments.
+# [All Kaldi training is based on Viterbi state-level aligments].
 
 nj=4
 cmd=scripts/run.pl

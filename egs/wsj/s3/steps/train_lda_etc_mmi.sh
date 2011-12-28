@@ -24,6 +24,25 @@
 # old system's model, i.e. for each p.d.f., it takes the best-match pdf
 # from the old system (based on overlap of tree-stats counts), and 
 # uses that GMM to initialize the current GMM.
+# Basically we are doing 4 iterations of Extended Baum-Welch (EBW)
+# estimation, as described in Dan Povey's thesis, with a few differences:
+# (i) we have the option of "boosting", as in "Boosted MMI", which increases
+# the likelihood of arcs in the denominator lattice proportional to how
+# many phones are "wrong" (i.e. different from the corresponding phone
+# in the numerator alignment). 
+#  (ii) The lattices have fixed state-level
+# alignments, so there is no forward-backward going on within phones (the only
+# forward-backward is a lattice-level forward-backward with fixed Viterbi
+# alignments).
+# (iii) There are no numerator lattices, only state-level numerator alignments.
+# In Kaldi, the concept of a lattice is to have, for each output-symbol sequence
+# (i.e. word sequence), only the best state-level alignment.  This implies 
+# only keeping the best pronunciations, and optional-silences, for each word
+# sequence, which  means the numerator lattice (if present) could only 
+# contain one path.  Thus, there's no point using the lattice format for
+# the numerator (however, in the MCE recipe we do use lattices, as we need
+# the correct scores with LM information in that case).
+
 
 niters=4
 nj=4

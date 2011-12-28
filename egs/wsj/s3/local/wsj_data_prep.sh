@@ -18,6 +18,37 @@
 # Call this script from one level above, e.g. from the s3/ directory.  It puts
 # its output in data/local/.
 
+# This script takes as arguments the locations of the WSJ disks from 
+# LDC, and creates various files in data/local/, e.g. lists of files,
+# and transcripts.  This script also does some transcript normalization,
+# and maps back and forth between speaker-ids and utterance-ids.
+# Most of these files are not used directly by Kaldi tools; the 
+# script wsj_format_data.sh creates things that are directly
+# used by Kaldi.
+# The following illustrates some of the file formats:
+# head -1 train_si284*    
+# ==> train_si284.flist <==
+# /mnt/matylda2/data/WSJ0/11-1.1/wsj0/si_tr_s/011/011c0201.wv1
+
+# ==> train_si284.spk2utt <==
+# 011 011c0201 011c0202 011c0203 011c0204 011c0205 011c0206 011c0207 011c0208 011c0209 011c020a 011c020b 011c020c 011c020d 011c020e 011c020f 011c020g 011c020h 011c020i 011c020j 011c020k 011c020l 011c020m 011c020n 011c020o 011c020p 011c020q 011c020r 011c020s 011c020t 011c020u 011c020v 011c020w 011c020x 011c020y 011c020z 011c0210 011c0211 011c0212 011c0213 011c0214 011c0215 011c0216 011c0217 011c0218 011c0219 011c021a 011c021b 011c021c 011c021d 011c021e 011o0301 011o0302 011o0303 011o0304 011o0305 011o0306 011o0307 011o0308 011o0309 011o030a 011o030b 011o030c 011o030d 011o030e 011o030f 011o030g 011o030h 011o030i 011o030j 011o030k 011o030l 011o030m 011o030n 011o030o 011o030p 011o030q 011o030r 011o030s 011o030t 011o030u 011o030v 011o030w 011o030x 011o030y 011o030z 011o0310 011o0311 011o0312 011o0313 011o0314 011o0315 011o0316 011o0317 011o0318 011o0319 011o031a 011o031b 011o031c 011o031d 011o031e 011o031f
+
+# ==> train_si284.trans1 <==
+# 011c0201 The sale of the hotels is part of Holiday\'s strategy to sell off assets and concentrate on property management 
+
+# ==> train_si284.txt <==
+# 011c0201 THE SALE OF THE HOTELS IS PART OF HOLIDAY'S STRATEGY TO SELL OFF ASSETS AND CONCENTRATE ON PROPERTY MANAGEMENT
+
+# ==> train_si284.utt2spk <==
+# 011c0201 011
+
+# ==> train_si284_sph.scp <==
+# 011c0201 /mnt/matylda2/data/WSJ0/11-1.1/wsj0/si_tr_s/011/011c0201.wv1
+
+# ==> train_si284_wav.scp <==
+# 011c0201 /homes/eva/q/qpovey/sourceforge/kaldi/trunk/tools/sph2pipe_v2.5/sph2pipe -f wav /mnt/matylda2/data/WSJ0/11-1.1/wsj0/si_tr_s/011/011c0201.wv1 |
+
+
 if [ $# -lt 4 ]; then
    echo "Too few arguments to wsj_data_prep.sh: need a list of WSJ directories ending e.g. 11-13.1"
    exit 1;

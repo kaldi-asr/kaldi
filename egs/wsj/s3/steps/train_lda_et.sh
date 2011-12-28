@@ -16,7 +16,16 @@
 
 # To be run from ..
 # Triphone model training, using cepstral mean normalization, plus
-# splice-9-frames and LDA, plus MLLT/STC. 
+# splice-9-frames and LDA (see comment in train_lda_mllt.sh),
+# plus the "exponential transform"... this is a special case of
+# Constrained MLLR (CMLLR), i.e. it is a speaker-specific transform, 
+# but it has many fewer speaker-specific parameters than generic
+# CMLLR.  It is intended to substitute for Vocal Tract Length
+# Normalization (VTLN).  See a paper by D. Povey et. al in Proc. ASRU 2011.
+# Note: this only really helps when run on a per-utterance basis;
+# if we're able to adapt per speaker, it's best just to run 
+# Speaker Adapted Training (SAT), which means applying CMLLR in
+# training time.... see train_lda_mllt_sat.sh
 
 nj=4
 cmd=scripts/run.pl

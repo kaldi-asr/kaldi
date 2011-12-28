@@ -14,9 +14,11 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
 # Train UBM from a trained HMM/GMM system [with splice+LDA+[MLLT/ET/MLLT+SAT] features]
 # Alignment directory is used for the CMN and transforms.
+# A UBM is just a single mixture of Gaussians (full-covariance, in our case), that's trained
+# on all the data.  This will later be used in Subspace Gaussian Mixture Model (SGMM)
+# training.
 
 nj=4
 cmd=scripts/run.pl

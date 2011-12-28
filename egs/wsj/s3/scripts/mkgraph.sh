@@ -15,6 +15,17 @@
 # limitations under the License.
 
 
+# This script creates a fully expanded decoding graph (HCLG) that represents
+# all the language-model, pronunciation dictionary (lexicon), context-dependency,
+# and HMM structure in our model.  The output is a Finite State Transducer
+# that has word-ids on the output, and pdf-ids on the input (these are indexes
+# that resolve to Gaussian Mixture Models).  
+# See
+#  http://kaldi.sourceforge.net/graph_recipe_test.html
+# (this is compiled from this repository using Doxygen,
+# the source for this part is in src/doc/graph_recipe_test.dox)
+
+
 N=3
 P=1
 clean=false

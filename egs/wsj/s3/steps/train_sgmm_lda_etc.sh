@@ -14,6 +14,10 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+# This is Subspace Gaussian Mixture Model (SGMM) training--
+# see "The subspace Gaussian mixture model--A structured model for speech recognition"
+# by D. Povey et al, Computer Speech and Language, 2011.
+
 nj=4
 cmd=scripts/run.pl
 stage=-5

@@ -58,6 +58,14 @@ ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 echo $ndisambig > data/local/lex_ndisambig
 
+# Format of lexicon_disambig.txt:
+#!SIL    SIL
+#<SPOKEN_NOISE>  SPN #1
+#<UNK>   SPN #2
+#<NOISE> NSN
+#!EXCLAMATION-POINT      EH2_B K S K L AH0 M EY1 SH AH0 N P OY2 N T_E
+#"CLOSE-QUOTE    K_B L OW1 Z K W OW1 T_E
+
 
 # (1) Put into data/lang, phones.txt, silphones.csl, nonsilphones.csl, words.txt,
 #   oov.txt
@@ -73,6 +81,13 @@ scripts/silphones.pl data/lang/phones.txt "$silphones" data/lang/silphones.csl d
 cat data/local/lexicon.txt | awk '{print $1}' | sort | uniq  | \
  awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
   > data/lang/words.txt
+
+# format of data/lang/words.txt:
+#<eps> 0
+#!EXCLAMATION-POINT 1
+#!SIL 2
+#"CLOSE-QUOTE 3
+#...
 
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 
