@@ -103,12 +103,11 @@ int main(int argc, char *argv[]) {
           continue;
         }
         for (int32 i = 0; i < mat.NumRows(); i++) {
-          int32 this_num_gselect = num_gselect;
           int32 preselect_sz = preselect[i].size();
-          if (preselect_sz < num_gselect && !warned_size) {
-            this_num_gselect = preselect_sz;
+          int32 this_num_gselect = std::min(num_gselect, preselect_sz);
+          if (preselect_sz <= num_gselect && !warned_size) {
             warned_size = true;
-            KALDI_WARN << "Preselect size is less than final size, "
+            KALDI_WARN << "Preselect size is less or equal to than final size, doing nothing: "
                        << preselect_sz << " < " <<  num_gselect
                        << " [won't warn again]";
           }
