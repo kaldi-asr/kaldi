@@ -73,9 +73,7 @@ grep -v ';;' $tdir/2000_hub5_eng_eval_tr/reference/hub5e00.english.000405.stm | 
 # We'll use the stm file for sclite scoring.  There seem to be various errors
 # in the stm file that upset hubscr.pl, and we fix them here.
 cat $tdir/2000_hub5_eng_eval_tr/reference/hub5e00.english.000405.stm | \
-  sed 's:((:(:'  | sed s:<B_ASIDE>::g | sed s:<E_ASIDE>::g | 
-
->  $dir/stm
+  sed 's:((:(:'  | sed 's:<B_ASIDE>::g' | sed 's:<E_ASIDE>::g' >  $dir/stm
 cp $tdir/2000_hub5_eng_eval_tr/reference/en20000405_hub5.glm  $dir/glm
 
 
