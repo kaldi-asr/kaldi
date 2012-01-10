@@ -8,6 +8,7 @@ OPENFST_LDLIBS =
 
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
 
 TESTFILES = cuda-matrix-test 
 

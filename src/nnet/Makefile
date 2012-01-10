@@ -4,6 +4,8 @@ all:
 
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+
 TESTFILES = nnet-test
 
 OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o

@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     for (;!feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       if (!posterior_reader.HasKey(utt)) {
-        KALDI_WARN << "No feaures for utterance " << utt;
+        KALDI_WARN << "No features for utterance " << utt;
         num_fail++;
         continue;
       }
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     Output ko(acc_wxfilename, binary);
     lda.Write(ko.Stream(), binary);
     KALDI_LOG << "Written statistics.";
-    return (num_done != 0);
+    return (num_done == 0);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

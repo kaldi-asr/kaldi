@@ -157,6 +157,8 @@ template<typename _ElemT>
 void CuVector<_ElemT>::SetZero() {
   #if HAVE_CUDA==1
   if(CuDevice::Instantiate().Enabled()) { 
+    KALDI_ASSERT(dim_>0);
+    KALDI_ASSERT(data_!=NULL);
     Timer tim;
     cuSafeCall(cudaMemset(data_, 0, dim_*sizeof(_ElemT)));
     CuDevice::Instantiate().AccuProfile("CuVector::SetZero",tim.Elapsed());

@@ -3,6 +3,8 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+
 BINFILES = nnet-train-xent-hardlab-perutt nnet-forward
 
 OBJFILES =
