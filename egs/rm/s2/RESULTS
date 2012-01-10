@@ -8,6 +8,7 @@
 exp/decode_mono/wer: 
 - Average WER is 14.234421 (1784 / 12533) 
 - Monophone system, subset
+
 exp/decode_nnet_mono_trans/wer:
 - Average WER is 20.290433 (2543 / 12533)
 - Monophone transition targets, subset
@@ -42,6 +43,35 @@ exp/nnet_tri2a_s3:
 - tuned_acwt:0.215558
 
 
+######################################################################
+# 1464-PDFs GMM
+exp/tri1:
+- Average WER is 4.492141 (563 / 12533) 
+- w/o fmllr
+exp/tri2a:
+- Average WER is 4.252773 (533 / 12533) 
+- w/o fmllr 
+
+# 1464-PDFs MLP, 1 hidden layer
+exp/nnet_tri2a_s1a:
+- Average WER is 4.923003 (617 / 12533) 
+- w/o prior division
+- acwt:0.22
+exp/nnet_tri2a_s1b:
+- Average WER is 4.220857 (529 / 12533) 
+- + division by prior
+- acwt:0.22
+exp/nnet_tri2a_s2: 
+- Average WER is 4.117131 (516 / 12533) 
+- + splice 11 frames
+- tuned_acwt:0.222136
+exp/nnet_tri2a_s3:
+- Average WER is 3.829889 (480 / 12533) 
+- + speaker-wise CMVN 
+- tuned_acwt:0.197081
+
+
+
 For further improvements we should:
 * use more parameters
 * use more target classes
@@ -56,8 +86,7 @@ GPGPU toolkit and convert it back to Kaldi format.
 
 
 ######################################################################
-#Training time with ATLAS on welda2
-#??? optimizations ???
+#Training time with GTX285
 exp/mono:real    6m3.101s
 exp/nnet_mono_trans:real	25m37.175s
 exp/nnet_mono_pdf:real	17m13.133s
@@ -68,4 +97,3 @@ exp/tri2a:real	19m46.379s
 exp/nnet_tri2a_s1: real 253m12.008s
 exp/nnet_tri2a_s2: real	265m36.880s
 exp/nnet_tri2a_s3: real	171m46.545s
-exp/nnet_tri2a_s4: real	198m8.982s
