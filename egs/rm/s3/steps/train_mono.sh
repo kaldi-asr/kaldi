@@ -14,22 +14,23 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
 # To be run from ..
+# Flat start and monophone training, with delta-delta features.
 # This script applies cepstral mean normalization (per speaker),
 # unlike the corresponding script in s1/
 
 if [ $# != 3 ]; then
    echo "Usage: steps/train_mono.sh <data-dir> <lang-dir> <exp-dir>"
    echo " e.g.: steps/train_mono.sh data/train.1k data/lang exp/mono"
+   exit 1;
 fi
-
-if [ -f path.sh ]; then . path.sh; fi
 
 
 data=$1
 lang=$2
 dir=$3
+
+if [ -f path.sh ]; then . path.sh; fi
 
 # Configuration:
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
@@ -44,7 +45,7 @@ mkdir -p $dir
 echo "Computing cepstral mean and variance statistics"
 
 compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp \
-     ark:$dir/cmvn.ark 2>$dir/cmvn.log
+     ark:$dir/cmvn.ark 2>$dir/cmvn.log || exit 1;
 
 feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/cmvn.ark scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
 

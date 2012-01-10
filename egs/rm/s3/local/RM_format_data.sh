@@ -24,7 +24,7 @@ if [ -f path.sh ]; then . path.sh; fi
 
 data_list="train test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92"
 
-for x in lang $data_list; do
+for x in lang lang_test $data_list; do
   mkdir -p data/$x
 done
 
@@ -51,7 +51,7 @@ scripts/silphones.pl data/lang/phones.txt "$silphones" data/lang/silphones.csl \
 
 ndisambig=`scripts/add_lex_disambig.pl data/local/lexicon.txt data/local/lexicon_disambig.txt`
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
-scripts/add_disambig.pl data/lang/phones.txt $ndisambig > data/lang/phones_disambig.txt
+scripts/add_disambig.pl data/lang/phones.txt $ndisambig > data/lang_test/phones_disambig.txt
 
 
 silprob=0.5  # same prob as word
@@ -61,27 +61,34 @@ scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
    fstarcsort --sort_type=olabel > data/lang/L.fst
 
 scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob sil '#'$ndisambig | \
-   fstcompile --isymbols=data/lang/phones_disambig.txt --osymbols=data/lang/words.txt \
+   fstcompile --isymbols=data/lang_test/phones_disambig.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel \
-    > data/lang/L_disambig.fst
+    > data/lang_test/L_disambig.fst
 
 fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
-    --keep_osymbols=false data/local/G.txt > data/lang/G.fst
+    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst
 
 # Checking that G is stochastic [note, it wouldn't be for an Arpa]
-fstisstochastic data/lang/G.fst || echo Error: G is not stochastic
+fstisstochastic data/lang_test/G.fst || echo Error: G is not stochastic
 
 # Checking that G.fst is determinizable.
-fstdeterminize data/lang/G.fst /dev/null || echo Error determinizing G.
+fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
 
 # Checking that L_disambig.fst is determinizable.
-fstdeterminize data/lang/L_disambig.fst /dev/null || echo Error determinizing L.
+fstdeterminize data/lang_test/L_disambig.fst /dev/null || echo Error determinizing L.
 
 # Checking that disambiguated lexicon times G is determinizable
-fsttablecompose data/lang/L_disambig.fst data/lang/G.fst | fstdeterminize >/dev/null || echo Error
+fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
+   fstdeterminize >/dev/null || echo Error
 
 # Checking that LG is stochastic:
-fsttablecompose data/lang/L.fst data/lang/G.fst | fstisstochastic || echo Error: LG is not stochastic.
+fsttablecompose data/lang/L.fst data/lang_test/G.fst | \
+   fstisstochastic || echo Error: LG is not stochastic.
+
+# Checking that L_disambig.G is stochastic:
+fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
+   fstisstochastic || echo Error: LG is not stochastic.
+
 
 ## Check lexicon.
 ## just have a look and make sure it seems sane.
@@ -94,6 +101,8 @@ nonsilphonelist=`cat data/lang/nonsilphones.csl | sed 's/:/ /g'`
 cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
    sed "s:SILENCEPHONES:$silphonelist:" > data/lang/topo 
 
+for x in phones.txt words.txt silphones.csl nonsilphones.csl topo; do
+   cp data/lang/$x data/lang_test/$x || exit 1;
+done
+
 echo RM_format_data succeeded.
-
-
