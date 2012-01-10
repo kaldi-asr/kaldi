@@ -54,7 +54,7 @@ void CuDevice::PrintProfile() {
 
 
 std::string CuDevice::GetFreeMemory() {
-  unsigned int mem_free, mem_total;
+  size_t mem_free, mem_total;
   cuMemGetInfo(&mem_free, &mem_total);
   std::ostringstream os;
   os << "Free:" << mem_free/(1024*1024) << "MB "
