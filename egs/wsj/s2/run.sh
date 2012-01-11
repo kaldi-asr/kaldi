@@ -255,7 +255,7 @@ steps/reduce_pdf_count.sh
 
 ###### TRAIN MLP WITH tri3a ALIGNMENTS ######
 ###### reduced number of PDFs 
-time steps/train_nnet_tri3a_s1.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s1.sh
 
 # decode with pruned trigram
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/reduce_pdf_count/tree exp/reduce_pdf_count/final.mdl exp/graph_nnet_tri3a_s1_tg_pruned || exit 1;
@@ -280,7 +280,7 @@ done
 
 ###### TRAIN MLP WITH tri3a ALIGNMENTS ######
 ###### full number of PDFs (3349)
-time steps/train_nnet_tri3a_s2.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s2.sh
 
 # decode with pruned trigram
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_nnet_tri3a_s2_tg_pruned || exit 1;
@@ -300,7 +300,7 @@ done
 ###### full number of PDFs (3349)
 
 # train the MLP
-steps/train_nnet-bn_tri3a_s4b.net.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet-bn_tri3a_s4b.net.sh
 # train the GMMs with LDA+MLLT
 steps/train_nnet-bn_tri3a_s4b_tri2j.gmm.sh
 # decode with pruned trigram
