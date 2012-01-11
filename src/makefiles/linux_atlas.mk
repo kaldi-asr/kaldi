@@ -13,8 +13,8 @@ $(error ATLASLIBS not defined.)
 endif
 
 
-CXXFLAGS = -msse -Wall -I.. \
-      -DKALDI_DOUBLEPRECISION=0 -msse2 -DHAVE_POSIX_MEMALIGN \
+CXXFLAGS = -msse -msse2 -Wall -I.. \
+      -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_ATLAS -I$(ATLASINC) \

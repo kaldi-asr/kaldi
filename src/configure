@@ -7,6 +7,17 @@
 # remove the options -g -O0 -DKALDI_PARANOID, or edit the 
 # -DKALDI_DOUBLE_PRECISION option (to be 1 not 0),
 
+function rel2abs {
+  local retval=`cd $1 2>/dev/null && pwd || exit 1`
+  echo $retval
+}
+
+function read_dirname {
+  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
+  local retval=`rel2abs $dir_name`
+  echo $retval
+}
+
 ##   First do some checks.  These verify that all the things are
 ##   here that should be here.
 if [ "`basename $PWD`" != "src" ]; then
@@ -16,8 +27,8 @@ fi
 
 ## Default locations for FST and linear algebra libraries.
 MATHLIB='ATLAS'
-ATLASROOT=../tools/ATLAS/
-FSTROOT=../tools/openfst
+ATLASROOT=`rel2abs ../tools/ATLAS/`
+FSTROOT=`rel2abs ../tools/openfst`
 
 function usage {
   echo 'Usage: ./configure [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
@@ -29,13 +40,13 @@ do
   case "$1" in
   --help) usage; exit 0 ;;
   --atlas-root=*) 
-  ATLASROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  ATLASROOT=`read_dirname $1`; shift ;;
   --fst-root=*)
-  FSTROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  FSTROOT=`read_dirname $1`; shift ;;
   --mkl-root=*)
-  MKLROOT=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  MKLROOT=`read_dirname $1`; shift ;;
   --mkl-libdir=*)
-  MKLLIBDIR=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  MKLLIBDIR=`read_dirname $1`; shift ;;
   --mathlib=*)
   MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
