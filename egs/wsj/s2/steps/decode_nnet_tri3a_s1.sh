@@ -29,7 +29,7 @@ fi
 
 . path.sh || exit 1;
 
-acwt=0.0625
+acwt=0.155
 beam=13.0
 max_active=7000
 model=exp/reduce_pdf_count/final.mdl

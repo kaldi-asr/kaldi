@@ -13,7 +13,7 @@ mkdir -p $dir/{log,nnet}
 
 ###### SELECT FEATURES ######
 # This one uses all the SI-284 data. 
-cat data/train.scp | scripts/shuffle_list.pl ${seed:-666} > $dir/train.scp
+cat data/train.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
 
 N=$(cat $dir/train.scp | wc -l)
 CV=$((N/10))

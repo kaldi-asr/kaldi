@@ -204,22 +204,22 @@ steps/train_tri2a.sh || exit 1;
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_tg_pruned || exit 1;
   for year in 92 93; do
    scripts/decode.sh exp/decode_tri2a_tgpr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
-   scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh exp/decode_tri2a_tgpr_dfmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr_fmllr.sh data/eval_nov${year}.scp 
-   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
+#   scripts/decode.sh exp/decode_tri2a_tgpr_fmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
+#   scripts/decode.sh exp/decode_tri2a_tgpr_dfmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
+#   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_fmllr.sh data/eval_nov${year}.scp 
+#   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_fmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr_fmllr.sh data/eval_nov${year}.scp 
+#   scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_dfmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_dfmllr.sh data/eval_nov${year}.scp 
  done
 
 )&
 
 # also doing tri2a with bigram
-(
- scripts/mkgraph.sh data/G_bg.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_bg || exit 1;
- for year in 92 93; do
-  scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
- done
-)&
+#(
+# scripts/mkgraph.sh data/G_bg.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_bg || exit 1;
+# for year in 92 93; do
+#  scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
+# done
+#)&
 
 steps/train_tri3a.sh || exit 1;
 
@@ -227,22 +227,22 @@ steps/train_tri3a.sh || exit 1;
 for year in 92 93; do
  scripts/decode.sh exp/decode_tri3a_tgpr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a.sh data/eval_nov${year}.scp 
 # per-speaker fMLLR
-scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_fmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp
+#scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_fmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp
 # per-utterance fMLLR
-scripts/decode.sh exp/decode_tri3a_tgpr_uttfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp 
+#scripts/decode.sh exp/decode_tri3a_tgpr_uttfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_fmllr.sh data/eval_nov${year}.scp 
 # per-speaker diagonal fMLLR
-scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_dfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
+#scripts/decode.sh --per-spk exp/decode_tri3a_tgpr_dfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
 # per-utterance diagonal fMLLR
-scripts/decode.sh exp/decode_tri3a_tgpr_uttdfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
+#scripts/decode.sh exp/decode_tri3a_tgpr_uttdfmllr_eval${year} exp/graph_tri3a_tg_pruned/HCLG.fst steps/decode_tri3a_diag_fmllr.sh data/eval_nov${year}.scp 
 done
 )&
 
 # also doing tri3a with bigram
-(
- scripts/mkgraph.sh data/G_bg.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_bg || exit 1;
- scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov93.scp 
-)&
+#(
+# scripts/mkgraph.sh data/G_bg.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_bg || exit 1;
+# scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov92.scp 
+# scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov93.scp 
+#)&
 
 
 
@@ -255,7 +255,7 @@ steps/reduce_pdf_count.sh
 
 ###### TRAIN MLP WITH tri3a ALIGNMENTS ######
 ###### reduced number of PDFs 
-time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s1.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s1.sh $PWD/exp/nnet_tri3a_s1
 
 # decode with pruned trigram
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/reduce_pdf_count/tree exp/reduce_pdf_count/final.mdl exp/graph_nnet_tri3a_s1_tg_pruned || exit 1;
@@ -268,11 +268,11 @@ for year in 92 93; do
 done
 )&
 # also doing nnet_tri3a_s1 with bigram
-(
- scripts/mkgraph.sh data/G_bg.fst exp/reduce_pdf_count/tree exp/reduce_pdf_count/final.mdl exp/graph_nnet_tri3a_s1_bg || exit 1;
- scripts/decode.sh exp/decode_nnet_tri3a_s1_bg_eval92 exp/graph_nnet_tri3a_s1_bg/HCLG.fst steps/decode_nnet_tri3a_s1.sh data/eval_nov92.scp 
- scripts/decode.sh exp/decode_nnet_tri3a_s1_bg_eval93 exp/graph_nnet_tri3a_s1_bg/HCLG.fst steps/decode_nnet_tri3a_s1.sh data/eval_nov93.scp 
-)&
+#(
+# scripts/mkgraph.sh data/G_bg.fst exp/reduce_pdf_count/tree exp/reduce_pdf_count/final.mdl exp/graph_nnet_tri3a_s1_bg || exit 1;
+# scripts/decode.sh exp/decode_nnet_tri3a_s1_bg_eval92 exp/graph_nnet_tri3a_s1_bg/HCLG.fst steps/decode_nnet_tri3a_s1.sh data/eval_nov92.scp 
+# scripts/decode.sh exp/decode_nnet_tri3a_s1_bg_eval93 exp/graph_nnet_tri3a_s1_bg/HCLG.fst steps/decode_nnet_tri3a_s1.sh data/eval_nov93.scp 
+#)&
 
 
 
@@ -280,7 +280,7 @@ done
 
 ###### TRAIN MLP WITH tri3a ALIGNMENTS ######
 ###### full number of PDFs (3349)
-time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s2.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet_tri3a_s2.sh $PWD/exp/nnet_tri3a_s2
 
 # decode with pruned trigram
 (scripts/mkgraph.sh data/G_tg_pruned.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_nnet_tri3a_s2_tg_pruned || exit 1;
@@ -300,7 +300,7 @@ done
 ###### full number of PDFs (3349)
 
 # train the MLP
-time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet-bn_tri3a_s4b.net.sh
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q long.q@@pco203" steps/train_nnet-bn_tri3a_s4b.net.sh $PWD/exp/nnet-bn_tri3a_s4b_net
 # train the GMMs with LDA+MLLT
 steps/train_nnet-bn_tri3a_s4b_tri2j.gmm.sh
 # decode with pruned trigram
