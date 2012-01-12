@@ -40,7 +40,7 @@ for($pdf = 0; $pdf < $numpdfs; $pdf++) {
     print "  <WEIGHTS> FV $nm [ ";
     for($n = 0; $n < $nm; $n++) {  print "$weight{$pdf,$n} "; }
     print "]\n";
-    print "  <MEANS_INVVARS> FM $nm $dim [\n";
+    print "  <MEANS_INVVARS>  [\n";
     for($n = 0; $n < $nm; $n++) { 
         for($d = 0; $d < $dim; $d++) {
             $val = $mean{$pdf,$n,$d} / $var{$pdf,$n,$d};
@@ -49,7 +49,7 @@ for($pdf = 0; $pdf < $numpdfs; $pdf++) {
         print "\n";
     }
     print "   ]\n";
-    print "  <INV_VARS> FM $nm $dim [\n";
+    print "  <INV_VARS>  [\n";
     for($n = 0; $n < $nm; $n++) { 
         for($d = 0; $d < $dim; $d++) {
             $val = 1.0 / $var{$pdf,$n,$d};
