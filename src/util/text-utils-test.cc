@@ -184,6 +184,9 @@ void TestIsToken() {
   assert(!IsToken("ab "));
   assert(!IsToken(" ab"));
   assert(!IsToken("a b"));
+  assert(IsToken("\231")); // typical non-ASCII printable character, something with
+  // an accent.
+  assert(!IsToken("\377")); // character 255, which is a form of space.
   assert(IsToken("a-b,c,d=ef"));
   assert(!IsToken("a\nb"));
   assert(!IsToken("a\tb"));
