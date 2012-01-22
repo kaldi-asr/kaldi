@@ -106,6 +106,7 @@ for mode in 1 2 3 4; do
 scripts/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode 
 done
+scripts/walign_lats.sh data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned
 
 # Align tri1 system with si84 data.
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
@@ -168,6 +169,7 @@ steps/train_lda_etc_mce.sh --cmd "$train_cmd" --num-jobs 10 data/train_si84 data
  scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92
 
+
 # Train LDA+ET system.
 steps/train_lda_et.sh --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
@@ -193,7 +195,6 @@ scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_bd_tgpr \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92
 
-
 scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_bd_tgpr \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92
@@ -204,11 +205,12 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_b
 
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
-steps/mixup_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-  20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
-  data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93
+ steps/mixup_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
+   20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
+   data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93
 )
+
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
