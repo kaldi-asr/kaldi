@@ -57,11 +57,11 @@ struct WordBoundaryInfoOpts {
   void Register(ParseOptions *po) {
     po->Register("wbegin-phones", &wbegin_phones, "Colon-separated list of "
                  "numeric ids of phones that begin a word");
-    po->Register("wend-phones", &wbegin_phones, "Colon-separated list of "
+    po->Register("wend-phones", &wend_phones, "Colon-separated list of "
                  "numeric ids of phones that end a word");
-    po->Register("winternal-phones", &wbegin_phones, "Colon-separated list "
+    po->Register("winternal-phones", &winternal_phones, "Colon-separated list "
                  "of numeric ids of phones that are internal to a word");
-    po->Register("wbegin-and-end-phones", &wbegin_phones, "Colon-separated "
+    po->Register("wbegin-and-end-phones", &wbegin_and_end_phones, "Colon-separated "
                  "list of numeric ids of phones that are used for "
                  "single-phone words.");
     po->Register("silence-phones", &silence_phones, "Colon-separated list of "

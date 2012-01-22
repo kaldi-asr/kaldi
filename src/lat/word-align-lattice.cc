@@ -112,18 +112,12 @@ class LatticeWordAligner {
     }
 
     // Just need an arbitrary complete order.
-    bool operator < (const ComputationState &other) const {
-      // note: std::vector::opearator < is lexicographical order.
-      if (transition_ids_ < other.transition_ids_) return true;
-      else if (transition_ids_ > other.transition_ids_) return false;
-      else if (word_labels_ < other.word_labels_) return true;
-      else if (word_labels_ > other.word_labels_) return false;
-      else return (Compare(weight_, other.weight_) == -1);
-      // The Compare function returns -1, 0 or 1 depending on the
-      // ordering between the weights.  Not defined for general
-      // weights, only for the lattice weights.      
+    bool operator == (const ComputationState &other) const {
+      return (transition_ids_ == other.transition_ids_
+              && word_labels_ == other.word_labels_
+              && weight_ == other.weight_);
     }
-
+    
     ComputationState(): weight_(LatticeWeight::One()) { } // initial state.
     ComputationState(const ComputationState &other):
         transition_ids_(other.transition_ids_), word_labels_(other.word_labels_),
@@ -148,17 +142,15 @@ class LatticeWordAligner {
       // 102763 is just an arbitrary prime number 
     }
   };
-  struct TupleCompare {
+  struct TupleEqual {
     bool operator () (const Tuple &state1, const Tuple &state2) const {
-      // treat this like operator <.
-      if (state1.input_state < state2.input_state) return true; // state1 < state2
-      else if (state1.input_state > state2.input_state) return false; // state1 > state2
-      else return (state1.comp_state < state2.comp_state); // calls operator <
-      // of class ComputationState.
+      // treat this like operator ==
+      return (state1.input_state == state2.input_state
+              && state1.comp_state == state2.comp_state);
     }
   };
   
-  typedef unordered_map<Tuple, StateId, TupleHash, TupleCompare> MapType;
+  typedef unordered_map<Tuple, StateId, TupleHash, TupleEqual> MapType;
 
   StateId GetStateForTuple(const Tuple &tuple, bool add_to_queue) {
     MapType::iterator iter = map_.find(tuple);
@@ -177,7 +169,7 @@ class LatticeWordAligner {
     // ProcessFinal is only called if the input_state has
     // final-prob of One().  [else it should be zero.  This
     // is because we called CreateSuperFinal().]
-    // Also it's only
+    
     if (tuple.comp_state.IsEmpty()) { // computation state doesn't have
       // anything pending.
       std::vector<int32> empty_vec;
@@ -196,6 +188,7 @@ class LatticeWordAligner {
       // lattice will have no output arcs (and unit final-prob), so there will be
       // no complications with processing the arcs from this state (there won't
       // be any).
+      KALDI_ASSERT(output_state != lat_arc.nextstate);
       lat_out_->AddArc(output_state, lat_arc);
     }
   }
@@ -212,11 +205,13 @@ class LatticeWordAligner {
     // anything further.  This is a chosen behavior similar to the
     // epsilon-sequencing rules encoded by the filters in
     // composition.
-    CompactLatticeArc lat_arc;    
+    CompactLatticeArc lat_arc;
+    Tuple tuple2(tuple); //temp
     if (tuple.comp_state.OutputArc(info_, tmodel_, &lat_arc, &error_)) {
       // note: this function changes the tuple (when it returns true).
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,
       // if not already present.
+      KALDI_ASSERT(output_state != lat_arc.nextstate);
       lat_out_->AddArc(output_state, lat_arc);
     } else {
       // when there's nothing to output, we'll process arcs from the input-state.
@@ -240,6 +235,7 @@ class LatticeWordAligner {
         // if not already present.
         // We add an epsilon arc here (as the input and output happens
         // separately)... the epsilons will get removed later.
+        KALDI_ASSERT(next_output_state != output_state);
         lat_out_->AddArc(output_state,
                          CompactLatticeArc(0, 0,
                                            CompactLatticeWeight::One(),
@@ -278,7 +274,7 @@ class LatticeWordAligner {
   // and partial-words, with epsilons, if we wanted epsilons.
   void RemoveEpsilonsFromLattice() {
     // Remove epsilon arcs from output lattice.
-    RmEpsilon(lat_out_, true); // true = connect.
+    //RmEpsilon(lat_out_, true); // true = connect.
     std::vector<int32> syms_to_remove;
     if (info_in_.partial_word_label == 0)
       syms_to_remove.push_back(info_.partial_word_label);
@@ -434,9 +430,10 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
   // Eat up the transition-ids of this word-begin phone until we get to the
   // "final" transition-id.  [there may be self-loops following this though,
   // if reorder==true]
-  for (i = 1; i < len && !tmodel.IsFinal(transition_ids_[i]); i++);
+  for (i = 0; i < len && !tmodel.IsFinal(transition_ids_[i]); i++);
   if (i == len) return false;
-  if (info.reorder)
+  i++; // Skip over this final-transition.
+  if (info.reorder) // Skip over any reordered self-loops for this final-transition
     for (; i < len && tmodel.IsSelfLoop(transition_ids_[i]); i++);
   if (i == len) return false;
   if (tmodel.TransitionIdToPhone(transition_ids_[i-1]) != begin_phone
@@ -479,7 +476,7 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
     if (tmodel.IsFinal(transition_ids_[i])) break;
   }
   if (i == len) return false;
-
+  i++;
   // We got to the final-transition of the final phone;
   // if reorder==true, continue eating up the self-loop.
   if (info.reorder == true)
@@ -522,7 +519,7 @@ static bool IsPlausibleWord(const WordBoundaryInfo &info,
        (std::binary_search(info.wbegin_phones.begin(),
                            info.wbegin_phones.end(), first_phone) &&
         std::binary_search(info.wend_phones.begin(),
-                           info.wend_phones.end(), first_phone))) {
+                           info.wend_phones.end(), last_phone))) {
     if (! info.reorder) {
       return (tmodel.IsFinal(transition_ids.back()));
     } else {
@@ -544,7 +541,7 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
     // and failed, so this means we didn't see the end of that
     // word. 
     int32 word = word_labels_[0];
-    if (! *error && IsPlausibleWord(info, tmodel, transition_ids_)) {
+    if (! *error && !IsPlausibleWord(info, tmodel, transition_ids_)) {
       *error = true;
       KALDI_WARN << "Invalid word at end of lattice [partial lattice, forced out?]";
     }
@@ -645,8 +642,7 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoOpts &opts) {
               << opts.winternal_phones;
   if (!kaldi::SplitStringToIntegers(opts.silence_phones, ":",
                                     false,
-                                    &silence_phones)
-      || silence_phones.empty())      
+                                    &silence_phones)) // we let this one be empty.
     KALDI_ERR << "Invalid argument to --silence-phones option: "
               << opts.silence_phones;
 
@@ -729,8 +725,8 @@ class WordAlignedLatticeTester {
   }
  private:
   void TestArc(const CompactLatticeArc &arc) {
-    if (! TestArcSilence(arc, was_ok_) || TestArcNormalWord(arc) || TestArcOnePhoneWord(arc)
-        || TestArcEmpty(arc) || (!was_ok_ && TestArcPartialWord(arc)))
+    if (! (TestArcSilence(arc, was_ok_) || TestArcNormalWord(arc) || TestArcOnePhoneWord(arc)
+           || TestArcEmpty(arc) || (!was_ok_ && TestArcPartialWord(arc))))
       KALDI_ERR << "Invalid arc in aligned CompactLattice: "
                 << arc.ilabel << " " << arc.olabel << " " << arc.nextstate
                 << " " << arc.weight;
@@ -834,13 +830,22 @@ class WordAlignedLatticeTester {
     if (!std::binary_search(info_.wend_phones.begin(),
                             info_.wend_phones.end(),
                             final_phone)) return false; // not word-ending.
-    for (size_t j = 0; j < tids.size(); j++)
+    for (size_t j = i; j < tids.size(); j++) // make sure only this final phone till end.
       if (tmodel_.TransitionIdToPhone(tids[j]) != final_phone)
         return false; // Other phones after final phone.
-    for (size_t j = 0; j < tids.size(); j++) {
+    for (size_t j = i; j < tids.size(); j++) {
       if (tmodel_.IsFinal(tids[j])) { // Found "final transition"..   Note:
         // may be "reordered" with its self loops.
         if (!info_.reorder) return (j+1 == tids.size());
+        else {
+          // Make sure the only thing that follows this is self-loops
+          // of the final transition-state.
+          for (size_t k=j+1; k<tids.size(); k++)
+            if (tmodel_.TransitionIdToTransitionState(tids[k])
+                != tmodel_.TransitionIdToTransitionState(tids[j])
+                || !tmodel_.IsSelfLoop(tids[k])) return false;
+          return true;
+        }
       }
     }
     return false; // Found no final phone.
@@ -866,7 +871,8 @@ class WordAlignedLatticeTester {
       RemoveSomeInputSymbols(to_remove, &aligned_lat);
       Project(&aligned_lat, fst::PROJECT_INPUT);
     }
-    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/,
+
+    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, rand()/*seed*/,
                         200/*path length (max?)*/))
       KALDI_ERR << "Equivalence test failed (testing word-alignment of lattices.)";
   }

@@ -33,11 +33,11 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Create word-aligned lattices (in which the arcs correspond with\n"
-        "word boundaries\n"
+        "word boundaries)\n"
         "Usage: lattice-word-align [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-word-align --silence-phones=1:2 --wbegin-phones=2:6:10:14\\\n"
-        "   --wend-phones=3:7:11:15 --winternal-phones=4:8:12:16 --wbegin-and-end-phones=5:9:13:17\\\n"
-        "   --silence-label=2 --partial-word-label=16342\\\n"
+        " e.g.: lattice-word-align --silence-phones=1:2 --wbegin-phones=2:6:10:14 \\\n"
+        "   --wend-phones=3:7:11:15 --winternal-phones=4:8:12:16 --wbegin-and-end-phones=5:9:13:17 \\\n"
+        "   --silence-label=2 --partial-word-label=16342 \\\n"
         "   final.mdl ark:1.lats ark:aligned.lats\n";
       
     ParseOptions po(usage);
@@ -106,15 +106,21 @@ int main(int argc, char *argv[]) {
           }
         }
       } else {
-        n_ok++;
-        compact_lattice_writer.Write(key, aligned_lat);
+        if (aligned_lat.Start() == fst::kNoStateId) {
+          n_err_nowrite++;
+          KALDI_WARN << "Empty aligned lattice for " << key;
+        } else {
+          n_ok++;
+          KALDI_LOG << "Aligned lattice for " << key;
+          compact_lattice_writer.Write(key, aligned_lat);
+        }
       }
     }
     int32 n_done = n_ok + n_err_write + n_err_nowrite;
     KALDI_LOG << "Done " << n_done << " lattices: " << n_ok << " OK, "
               << n_err_write << " in error but written anyway, "
               << n_err_nowrite << "in error and not written.";
-    return (n_done != 0 ? 0 : 1);
+    return (n_ok != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

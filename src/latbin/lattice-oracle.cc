@@ -297,11 +297,18 @@ int main(int argc, char *argv[]) {
         if (transcriptions_wspecifier != "")
           transcriptions_writer.Write(key, oracle_words);
         if (word_syms != NULL) {
-          std::cerr << key << ' ';
+          std::cerr << key << " (oracle) ";
           for (size_t i = 0; i < oracle_words.size(); i++) {
             std::string s = word_syms->Find(oracle_words[i]);
             if (s == "")
               KALDI_ERR << "Word-id " << oracle_words[i] <<" not in symbol table.";
+            std::cerr << s << ' ';
+          }
+          std::cerr << '\n' << key << " (reference) ";
+          for (size_t i = 0; i < reference_words.size(); i++) {
+            std::string s = word_syms->Find(reference_words[i]);
+            if (s == "")
+              KALDI_ERR << "Word-id " << reference_words[i] <<" not in symbol table.";
             std::cerr << s << ' ';
           }
           std::cerr << '\n';
