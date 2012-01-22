@@ -274,7 +274,7 @@ class LatticeWordAligner {
   // and partial-words, with epsilons, if we wanted epsilons.
   void RemoveEpsilonsFromLattice() {
     // Remove epsilon arcs from output lattice.
-    //RmEpsilon(lat_out_, true); // true = connect.
+    RmEpsilon(lat_out_, true); // true = connect.
     std::vector<int32> syms_to_remove;
     if (info_in_.partial_word_label == 0)
       syms_to_remove.push_back(info_.partial_word_label);
