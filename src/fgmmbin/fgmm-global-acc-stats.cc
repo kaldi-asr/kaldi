@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
           for (int32 j = 0; j < loglikes.Dim(); j++)
             fgmm_accs.AccumulateForComponent(data, this_gselect[j], loglikes(j));
         }
-      } else { // no gselect..
+      } else { // no gselect...
         for (int32 i = 0; i < file_frames; i++)
           file_like += fgmm_accs.AccumulateFromFull(fgmm, mat.Row(i), 1.0);
       }

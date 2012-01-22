@@ -7,7 +7,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 
 TESTFILES = kaldi-lattice-test
 
-OBJFILES = kaldi-lattice.o lattice-functions.o
+OBJFILES = kaldi-lattice.o lattice-functions.o word-align-lattice.o
 
 LIBFILE = kaldi-lat.a
 

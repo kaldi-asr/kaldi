@@ -42,27 +42,18 @@ namespace fst {
    except starting from states that have exactly one arc exiting them (and are
    not final).  [In the normal definition of determinized, epsilon-input labels
    are not allowed at all, whereas in Mohri's definition, epsilons are treated
-   as ordinairy symbols].  The determinized* definition is intended to simulate
+   as ordinary symbols].  The determinized* definition is intended to simulate
    the effect of allowing strings of output symbols at each state.
 
    The algorithm implemented here takes an Fst<Arc>, and a pointer to a
    MutableFst<Arc> where it puts its output.  The weight type is assumed to be a
-   float-weight.  Unlike the determinization algorithm in fst/determinize.h,
-   this algorithm does *not* require the input to have epsilons removed.
-   However, this algorithm may fail if the input has epsilon cycles under
+   float-weight.  It does epsilon removal and determinization.
+   This algorithm may fail if the input has epsilon cycles under
    certain circumstances (i.e. the semiring is non-idempotent, e.g. the log
-   semiring, or there are negative cost epsilon cycles).  In general it is
-   recommended to run PreDeterminize (see PreDeterminize.h) prior to
-   determinization, which inserts extra symbols as necessary to ensure the FST
-   is "compactly" determinize*-able.  Compactly determinizable means, roughly
-   speaking, that determinization will not increase the number of states
-   (although we don't treat the states with epsilon input-symbols on arcs
-   leaving them as proper states for these purposes).  More precisely, compactly
-   determinizable means that each state is represented exactly once in a
-   determinized state.
-
-   This implementation is much less fancy than the one in fst/determinize.h, and does not
-   have an "on-demand" version.
+   semiring, or there are negative cost epsilon cycles).  
+   
+   This implementation is much less fancy than the one in fst/determinize.h, and
+   does not have an "on-demand" version.
 
    The algorithm is a fairly normal determinization algorithm.  We keep in
    memory the subsets of states, together with their leftover strings and their

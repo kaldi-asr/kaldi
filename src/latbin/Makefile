@@ -9,7 +9,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
            lattice-determinize lattice-oracle lattice-rmali \
            lattice-compose lattice-boost-ali lattice-copy lattice-to-fst \
            lattice-to-phone-lattice lattice-interp lattice-project \
-           lattice-add-trans-probs lattice-difference
+           lattice-add-trans-probs lattice-difference lattice-word-align
 
 
 OBJFILES =

@@ -28,7 +28,7 @@ namespace fst {
 // The template ConvertLattice does conversions to and from
 // LatticeWeight FSTs and CompactLatticeWeight FSTs, and
 // between float and double, and to convert from LatticeWeight
-// to StdWeight.  It's used in the I/O code for lattices,
+// to TropicalWeight.  It's used in the I/O code for lattices,
 // and for converting lattices to standard FSTs (e.g. for creating
 // decoding graphs from lattices).
 
