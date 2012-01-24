@@ -13,6 +13,7 @@ lang=$2
 data=$3
 
 model=$dir/../final.mdl # assume model one level up from decoding dir.
+symtab=$lang/words.txt
 
 hubscr=../../../tools/sctk-2.4.0/bin/hubscr.pl 
 export PATH=$PATH:`dirname $hubscr`
