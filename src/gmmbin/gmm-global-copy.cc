@@ -1,4 +1,5 @@
-// gmmbin/gmm-global-sum-accs.cc
+// gmmbin/gmm-global-copy.cc
+
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,50 +15,50 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/full-gmm.h"
-#include "gmm/mle-full-gmm.h"
-
+#include "gmm/diag-gmm.h"
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Sum multiple accumulated stats files for diagonal-covariance GMM "
-        "training.\n"
-        "Usage: gmm-global-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
+        "Copy a diagonal-covariance GMM\n"
+        "Usage:  gmm-global-copy [options] <model-in> <model-out>\n"
+        "e.g.: gmm-global-copy --binary=false 1.model - | less";
 
-    bool binary = true;
-    kaldi::ParseOptions po(usage);
-    po.Register("binary", &binary, "Write output in binary mode");
+    bool binary_write = true;
+    ParseOptions po(usage);
+    po.Register("binary", &binary_write, "Write output in binary mode");
+
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string stats_out_filename = po.GetArg(1);
-    kaldi::AccumDiagGmm gmm_accs;
+    std::string model_in_filename = po.GetArg(1),
+        model_out_filename = po.GetArg(2);
 
-    for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
-      std::string stats_in_filename = po.GetArg(i);
-      bool binary_read;
-      kaldi::Input ki(stats_in_filename, &binary_read);
-      gmm_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
-    }
-
-    // Write out the accs
+    DiagGmm gmm;
     {
-      kaldi::Output ko(stats_out_filename, binary);
-      gmm_accs.Write(ko.Stream(), binary);
+      bool binary_read;
+      Input ki(model_in_filename, &binary_read);
+      gmm.Read(ki.Stream(), binary_read);
+    }
+    {
+      Output ko(model_out_filename, binary_write);
+      gmm.Write(ko.Stream(), binary_write);
     }
 
-    KALDI_LOG << "Written stats to " << stats_out_filename;
+    KALDI_LOG << "Written model to " << model_out_filename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
+
 

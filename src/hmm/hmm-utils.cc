@@ -570,7 +570,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
-                  BaseFloat self_loop_scale ,
+                  BaseFloat self_loop_scale,
                   bool reorder,  // true->dan-style, false->lukas-style.
                   fst::VectorFst<fst::StdArc> *fst) {
   assert(fst->Start() != fst::kNoStateId);

@@ -24,6 +24,7 @@
 #include "base/kaldi-common.h"
 #include "model-common.h"
 #include "matrix/matrix-lib.h"
+#include "tree/cluster-utils.h"
 
 namespace kaldi {
 
@@ -41,6 +42,15 @@ class DiagGmm {
   /// Empty constructor.
   DiagGmm() : valid_gconsts_(false) { }
 
+  explicit DiagGmm(const DiagGmm &gmm): valid_gconsts_(false) { CopyFromDiagGmm(gmm); }
+
+  DiagGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }
+  
+  // Constructor that allows us to merge GMMs with weights.  Weights must
+  // sum to one, or this GMM will not be properly normalized (we don't check this).
+  // Weights must be positive (we check this).
+  explicit DiagGmm(const std::vector<std::pair<BaseFloat, const DiagGmm*> > &gmms);
+  
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
 
@@ -98,6 +108,13 @@ class DiagGmm {
   /// merged (flat list of pairs)
   void Merge(int32 target_components, std::vector<int32> *history = NULL);
 
+
+  /// Merge the components to a specified target #components: this
+  // version uses a different approach based on K-means.
+  void MergeKmeans(int32 target_components,
+                   ClusterKMeansOptions cfg = ClusterKMeansOptions());
+                   
+  
   void Write(std::ostream &rOut, bool binary) const;
   void Read(std::istream &rIn, bool binary);
 
@@ -182,7 +199,8 @@ class DiagGmm {
                                      const VectorBase<BaseFloat> &s1,
                                      const VectorBase<BaseFloat> &s2) const;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(DiagGmm);
+ private:
+  const DiagGmm &operator=(DiagGmm &other); // Disallow assignment.
 };
 
 /// ostream operator that calls DiagGMM::Write()

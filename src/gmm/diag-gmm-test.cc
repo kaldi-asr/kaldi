@@ -239,6 +239,57 @@ void UnitTestDiagGmm() {
     float loglike2 = gmm2.LogLikelihood(feat);
     AssertEqual(loglike1, loglike2, 0.01);
   }
+
+
+  {  // split and merge test for 1 component GMM, this time using K-means algorithm.
+    DiagGmm gmm1;
+    Vector<BaseFloat> weights1(1);
+    Matrix<BaseFloat> means1(1, dim), vars1(1, dim), invvars1(1, dim);
+    weights1(0) = 1.0;
+    means1.CopyFromMat(means.Range(0, 1, 0, dim));
+    vars1.CopyFromMat(vars.Range(0, 1, 0, dim));
+    invvars1.CopyFromMat(vars1);
+    invvars1.InvertElements();
+    gmm1.Resize(1, dim);
+    gmm1.SetWeights(weights1);
+    gmm1.SetInvVarsAndMeans(invvars1, means1);
+    gmm1.ComputeGconsts();
+    DiagGmm gmm2;
+    gmm2.CopyFromDiagGmm(gmm1);
+    gmm2.Split(2, 0.001);
+    gmm2.MergeKmeans(1);
+    float loglike1 = gmm1.LogLikelihood(feat);
+    float loglike2 = gmm2.LogLikelihood(feat);
+    AssertEqual(loglike1, loglike2, 0.01);
+  }
+
+    {  // Duplicate Gaussians using initializer that takes a vector, and
+      // check like is unchanged.
+    DiagGmm gmm1;
+    Vector<BaseFloat> weights1(1);
+    Matrix<BaseFloat> means1(1, dim), vars1(1, dim), invvars1(1, dim);
+    weights1(0) = 1.0;
+    means1.CopyFromMat(means.Range(0, 1, 0, dim));
+    vars1.CopyFromMat(vars.Range(0, 1, 0, dim));
+    invvars1.CopyFromMat(vars1);
+    invvars1.InvertElements();
+    gmm1.Resize(1, dim);
+    gmm1.SetWeights(weights1);
+    gmm1.SetInvVarsAndMeans(invvars1, means1);
+    gmm1.ComputeGconsts();
+
+    std::vector<std::pair<BaseFloat, const DiagGmm*> > vec;
+    vec.push_back(std::make_pair(0.4, (const DiagGmm*)(&gmm1)));
+    vec.push_back(std::make_pair(0.6, (const DiagGmm*)(&gmm1)));
+    
+    DiagGmm gmm2(vec);
+
+    float loglike1 = gmm1.LogLikelihood(feat);
+    float loglike2 = gmm2.LogLikelihood(feat);
+    AssertEqual(loglike1, loglike2, 0.01);
+  }
+
+
 }
 
 }  // end namespace kaldi

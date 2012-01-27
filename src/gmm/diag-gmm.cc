@@ -25,6 +25,7 @@
 #include "gmm/diag-gmm-normal.h"
 #include "gmm/full-gmm.h"
 #include "gmm/full-gmm-normal.h"
+#include "tree/clusterable-classes.h"
 
 namespace kaldi {
 
@@ -172,6 +173,94 @@ void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<i
     current_components++;
   }
   ComputeGconsts();
+}
+
+// Initializer that allows us to merge GMMs.
+DiagGmm::DiagGmm(const std::vector<std::pair<BaseFloat, const DiagGmm*> > &gmms):
+    valid_gconsts_(false) {
+  if (gmms.empty()) return; // GMM will be empty.
+  else {
+    int32 num_gauss = 0, dim = gmms[0].second->Dim();
+    for (size_t i = 0; i < gmms.size(); i++)
+      num_gauss += gmms[i].second->NumGauss();
+    Resize(num_gauss, dim);
+    int32 cur_gauss = 0;
+    for (size_t i = 0; i < gmms.size(); i++) {
+      BaseFloat weight = gmms[i].first;
+      KALDI_ASSERT(weight > 0.0);
+      const DiagGmm &gmm = *(gmms[i].second);
+      for (int32 g = 0; g < gmm.NumGauss(); g++, cur_gauss++) {
+        means_invvars_.Row(cur_gauss).CopyFromVec(gmm.means_invvars().Row(g));
+        inv_vars_.Row(cur_gauss).CopyFromVec(gmm.inv_vars().Row(g));
+        weights_(cur_gauss) = weight * gmm.weights()(g);
+      }
+    }
+    KALDI_ASSERT(cur_gauss == NumGauss());
+    ComputeGconsts();
+  }
+}
+
+
+void DiagGmm::MergeKmeans(int32 target_components,
+                          ClusterKMeansOptions cfg) {
+  if (target_components <= 0 || NumGauss() < target_components) {
+    KALDI_ERR << "Invalid argument for target number of Gaussians (="
+              << target_components << "), #Gauss = " << NumGauss();
+  }
+  if (NumGauss() == target_components) {
+    KALDI_VLOG(2) << "No components merged, as target (" << target_components
+                  << ") = total.";
+    return; // Nothing to do.
+  }
+  double min_var = 1.0e-10;
+  std::vector<Clusterable*> clusterable_vec;
+  for (int32 g = 0; g < NumGauss(); g++) {
+    if (weights_(g) == 0) {
+      KALDI_WARN << "Not using zero-weight Gaussians in clustering.";
+      continue;
+    }
+    Vector<BaseFloat> x_stats(Dim()),
+        x2_stats(Dim());
+    BaseFloat count = weights_(g);
+
+    SubVector<BaseFloat> inv_var(inv_vars_, g),
+        mean_invvar(means_invvars_, g);
+    x_stats.AddVecDivVec(1.0, mean_invvar, inv_var, count); // x_stats is now mean.
+    x2_stats.CopyFromVec(inv_var); 
+    x2_stats.InvertElements(); // x2_stats is now var.
+    x2_stats.AddVec2(1.0, x_stats); // x2_stats is now var + mean^2
+    x_stats.Scale(count); // x_stats is now scaled by count.
+    x2_stats.Scale(count); // x2_stats is now scaled by count.
+    clusterable_vec.push_back(new GaussClusterable(x_stats, x2_stats, min_var, count));
+  }
+  if (clusterable_vec.size() <= target_components) {
+    KALDI_WARN << "Not doing clustering phase since lost too many Gaussians due to zero weight."
+        "Warning: zero-weight Gaussians are still there.";
+    DeletePointers(&clusterable_vec);    
+    return;
+  } else {
+    std::vector<Clusterable*> clusters;
+    ClusterKMeans(clusterable_vec,
+                  target_components,
+                  &clusters, NULL, cfg);
+    Resize(clusters.size(), Dim());
+    for (int32 g = 0; g < static_cast<int32>(clusters.size()); g++) {
+      GaussClusterable *gc = static_cast<GaussClusterable*>(clusters[g]);
+      weights_(g) = gc->count();
+      SubVector<BaseFloat> inv_var(inv_vars_, g),
+          mean_invvar(means_invvars_, g);
+      inv_var.CopyFromVec(gc->x2_stats());
+      inv_var.Scale(1.0 / gc->count()); // inv_var is now the var + mean^2
+      mean_invvar.CopyFromVec(gc->x_stats());
+      mean_invvar.Scale(1.0 / gc->count()); // mean_invvar is now the mean.
+      inv_var.AddVec2(-1.0, mean_invvar); // subtract mean^2; inv_var is now the var
+      inv_var.InvertElements(); // inv_var is now the inverse var.
+      mean_invvar.MulElements(inv_var); // mean_invvar is now the mean * inverse var.
+    }
+    ComputeGconsts();    
+    DeletePointers(&clusterable_vec);
+    DeletePointers(&clusters);
+  }
 }
 
 void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {

@@ -89,14 +89,14 @@ void FullGmmNormal::CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags) {
       if (!(flags & kGmmMeans)) {
         Vector<BaseFloat> mean_times_inv(dim);
         Vector<BaseFloat> mhelp(oldg.means_.Row(i));
-        mean_times_inv.AddSpVec(1.0, fullgmm->inv_covars_[i], mhelp, 0.f);
+        mean_times_inv.AddSpVec(1.0, fullgmm->inv_covars_[i], mhelp, 0.0f);
         fullgmm->means_invcovars_.Row(i).CopyFromVec(mean_times_inv);
       }
     }
 
     if (flags & kGmmMeans) {
       Vector<BaseFloat> mean_times_inv(dim), mean(means_.Row(i));
-      mean_times_inv.AddSpVec(1.0, fullgmm->inv_covars_[i], mean, 0.f);
+      mean_times_inv.AddSpVec(1.0, fullgmm->inv_covars_[i], mean, 0.0f);
       fullgmm->means_invcovars_.Row(i).CopyFromVec(mean_times_inv);
     }
   }

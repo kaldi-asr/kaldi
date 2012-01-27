@@ -19,7 +19,9 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            fmpe-gmm-acc-stats-gpost fmpe-gmm-sum-accs fmpe-init-gmms fmpe-gmm-est \
            gmm-est-gaussians-ebw gmm-est-weights-ebw gmm-latgen-faster gmm-copy \
            gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \
-           gmm-latgen-biglm-faster gmm-ismooth-stats
+           gmm-latgen-biglm-faster gmm-ismooth-stats gmm-global-get-frame-likes \
+           gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
+           gmm-global-copy gmm-align-compiled-plusphones
 
 OBJFILES =
 

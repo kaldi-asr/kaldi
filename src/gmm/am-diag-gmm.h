@@ -210,6 +210,9 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            UbmClusteringOptions opts,
                            DiagGmm *ubm_out);
 
+
+
+
 }  // namespace kaldi
 
 /// @} DiagGmm

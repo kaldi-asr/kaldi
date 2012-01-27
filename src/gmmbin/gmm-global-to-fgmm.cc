@@ -1,5 +1,6 @@
-// gmmbin/gmm-global-sum-accs.cc
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation
+// gmmbin/gmm-global-to-fgmm.cc
+
+// Copyright 2009-2011  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,40 +22,41 @@
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Sum multiple accumulated stats files for diagonal-covariance GMM "
-        "training.\n"
-        "Usage: gmm-global-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
-
+        "Convert single diagonal-covariance GMM to single full-covariance GMM.\n"
+        "Usage: gmm-global-to-fgmm [options] 1.gmm 1.fgmm\n";
+        
     bool binary = true;
-    kaldi::ParseOptions po(usage);
+    ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string stats_out_filename = po.GetArg(1);
-    kaldi::AccumDiagGmm gmm_accs;
-
-    for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
-      std::string stats_in_filename = po.GetArg(i);
-      bool binary_read;
-      kaldi::Input ki(stats_in_filename, &binary_read);
-      gmm_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
-    }
-
-    // Write out the accs
+    std::string gmm_rxfilename = po.GetArg(1),
+        fgmm_wxfilename = po.GetArg(2);
+    
+    DiagGmm gmm;
+    
     {
-      kaldi::Output ko(stats_out_filename, binary);
-      gmm_accs.Write(ko.Stream(), binary);
+      bool binary_read;
+      Input ki(gmm_rxfilename, &binary_read);
+      gmm.Read(ki.Stream(), binary_read);
     }
 
-    KALDI_LOG << "Written stats to " << stats_out_filename;
+    FullGmm fgmm;
+    fgmm.CopyFromDiagGmm(gmm);
+    {
+      Output ko(fgmm_wxfilename, binary);
+      fgmm.Write(ko.Stream(), binary);
+    }
+    KALDI_LOG << "Written full GMM to " << fgmm_wxfilename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;

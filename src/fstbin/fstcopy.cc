@@ -1,4 +1,4 @@
-// fgmmbin/fgmm-global-to-gmm.cc
+// fstbin/fstcopy.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 
@@ -15,50 +15,48 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+
+#include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/full-gmm.h"
-#include "gmm/mle-full-gmm.h"
+#include "fst/fstlib.h"
+#include "fstext/table-matcher.h"
+#include "fstext/fstext-utils.h"
 
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    typedef kaldi::int32 int32;
+    using namespace fst;
+    using kaldi::int32;
 
     const char *usage =
-        "Convert single full-covariance GMM to single diagonal-covariance GMM.\n"
-        "Usage: fgmm-global-to-gmm [options] 1.fgmm 1.gmm\n";
-        
-    bool binary = true;
+        "Copy tables/archives of FSTs, index by utterance-id\n"
+        "\n"
+        "Usage: fstcopy <fst-rspecifier> <fst-wspecifier>\n";
+
     ParseOptions po(usage);
-    po.Register("binary", &binary, "Write output in binary mode");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
-
-    std::string fgmm_rxfilename = po.GetArg(1),
-        gmm_wxfilename = po.GetArg(2);
     
-    FullGmm fgmm;
-    
-    {
-      bool binary_read;
-      Input ki(fgmm_rxfilename, &binary_read);
-      fgmm.Read(ki.Stream(), binary_read);
-    }
+    std::string fst_rspecifier = po.GetArg(1),
+        fst_wspecifier = po.GetArg(2);
 
-    DiagGmm gmm;
-    gmm.CopyFromFullGmm(fgmm);
-    {
-      Output ko(gmm_wxfilename, binary);
-      gmm.Write(ko.Stream(), binary);
-    }
-    KALDI_LOG << "Written diagonal GMM to " << gmm_wxfilename;
+    SequentialTableReader<VectorFstHolder> fst_reader(fst_rspecifier);
+    TableWriter<VectorFstHolder> fst_writer(fst_wspecifier);
+    int32 n_done = 0;
+    
+    for (; !fst_reader.Done(); fst_reader.Next(), n_done++)
+      fst_writer.Write(fst_reader.Key(), fst_reader.Value());
+
+    KALDI_LOG << "Copied " << n_done << " FSTs.";
+    return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
-    std::cerr << e.what() << '\n';
+    std::cerr << e.what();
     return -1;
   }
 }

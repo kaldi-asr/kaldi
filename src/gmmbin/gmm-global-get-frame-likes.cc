@@ -1,4 +1,4 @@
-// gmmbin/gmm-global-acc-stats.cc
+// gmmbin/gmm-global-get-frame-likes.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
@@ -29,22 +29,16 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Accumulate stats for training a diagonal-covariance GMM.\n"
-        "Usage:  gmm-global-acc-stats [options] <model-in> <feature-rspecifier> "
-        "<stats-out>\n"
-        "e.g.: gmm-global-acc-stats 1.mdl scp:train.scp 1.acc\n";
+        "Print out per-frame log-likelihoods for each utterance, as an archive\n"
+        "of vectors of floats.\n"
+        "Usage:  gmm-global-get-frame-likes [options] <model-in> <feature-rspecifier> "
+        "<likes-out-wspecifier>\n"
+        "e.g.: gmm-global-get-frame-likes 1.mdl scp:train.scp ark:1.likes\n";
 
     ParseOptions po(usage);
-    bool binary = true;
-    std::string update_flags_str = "mvw";
-    std::string gselect_rspecifier, weights_rspecifier;
-    po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("update-flags", &update_flags_str, "Which GMM parameters will be "
-                "updated: subset of mvw.");
+    std::string gselect_rspecifier;
     po.Register("gselect", &gselect_rspecifier, "rspecifier for gselect objects "
                 "to limit the #Gaussians accessed on each frame.");
-    po.Register("weights", &weights_rspecifier, "rspecifier for a vector of floats "
-                "for each utterance, that's a per-frame weight.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -54,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     std::string model_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
-        accs_wxfilename = po.GetArg(3);
+        likes_wspecifier = po.GetArg(3);
 
     DiagGmm gmm;
     {
@@ -63,38 +57,18 @@ int main(int argc, char *argv[]) {
       gmm.Read(ki.Stream(), binary_read);
     }
 
-    AccumDiagGmm gmm_accs;
-    gmm_accs.Resize(gmm, StringToGmmFlags(update_flags_str));
-    
-    double tot_like = 0.0, tot_weight = 0.0;
+    double tot_like = 0.0, tot_frames = 0.0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
-    RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
+    BaseFloatVectorWriter likes_writer(likes_wspecifier);
     int32 num_done = 0, num_err = 0;
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       int32 file_frames = mat.NumRows();
-      BaseFloat file_like = 0.0,
-          file_weight = 0.0; // total of weights of frames (will each be 1 unless
-      // --weights option supplied.
-      Vector<BaseFloat> weights;
-      if (weights_rspecifier != "") { // We have per-frame weighting.
-        if (!weights_reader.HasKey(key)) {
-          KALDI_WARN << "No per-frame weights available for utterance " << key;
-          num_err++;
-          continue;
-        }
-        weights = weights_reader.Value(key);
-        if (weights.Dim() != file_frames) {
-          KALDI_WARN << "Weights for utterance " << key << " have wrong dim "
-                     << weights.Dim() << " vs. " << file_frames;
-          num_err++;
-          continue;
-        }
-      }
+      Vector<BaseFloat> likes(file_frames);
       
       if (gselect_rspecifier != "") {
         if (!gselect_reader.HasKey(key)) {
@@ -113,47 +87,29 @@ int main(int argc, char *argv[]) {
         }
         
         for (int32 i = 0; i < file_frames; i++) {
-          BaseFloat weight = (weights.Dim() != 0) ? weights(i) : 1.0;
-          if (weight == 0.0) continue;
-          file_weight += weight;
           SubVector<BaseFloat> data(mat, i);
           const std::vector<int32> &this_gselect = gselect[i];
           int32 gselect_size = this_gselect.size();
           KALDI_ASSERT(gselect_size > 0);
           Vector<BaseFloat> loglikes;
           gmm.LogLikelihoodsPreselect(data, this_gselect, &loglikes);
-          file_like += weight * loglikes.ApplySoftMax();
-          loglikes.Scale(weight);
-          for (int32 j = 0; j < loglikes.Dim(); j++)
-            gmm_accs.AccumulateForComponent(data, this_gselect[j], loglikes(j));
+          likes(i) = loglikes.LogSumExp();
         }
       } else { // no gselect..
-        for (int32 i = 0; i < file_frames; i++) {
-          BaseFloat weight = (weights.Dim() != 0) ? weights(i) : 1.0;
-          if (weight == 0.0) continue;
-          file_weight += weight;
-          file_like += weight *
-              gmm_accs.AccumulateFromDiag(gmm, mat.Row(i), weight);
-        }
+        for (int32 i = 0; i < file_frames; i++)
+          likes(i) = gmm.LogLikelihood(mat.Row(i));
       }
-      KALDI_VLOG(2) << "File '" << key << "': Average likelihood = "
-                    << (file_like/file_weight) << " over "
-                    << file_weight <<" frames.";
-      tot_like += file_like;
-      tot_weight += file_weight;
+
+      tot_like += likes.Sum();
+      tot_frames += file_frames;
+      likes_writer.Write(key, likes);
       num_done++;
     }
-    KALDI_LOG << "Done " << num_done << " files; "
-              << num_err << " with errors.";
+    KALDI_LOG << "Done " << num_done << " files; " << num_err
+              << " with errors.";
     KALDI_LOG << "Overall likelihood per "
-              << "frame = " << (tot_like/tot_weight) << " over " << tot_weight
-              << " (weighted) frames.";
-
-    {
-      Output ko(accs_wxfilename, binary);
-      gmm_accs.Write(ko.Stream(), binary);
-    }
-    KALDI_LOG << "Written accs to " << accs_wxfilename;
+              << "frame = " << (tot_like/tot_frames) << " over " << tot_frames
+              << " frames.";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
       posterior_writer.Write(posterior_reader.Key(), new_post);
     }
     KALDI_LOG << "Done " << num_posteriors << " posteriors.";
+    return (num_posteriors != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

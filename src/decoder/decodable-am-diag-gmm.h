@@ -53,7 +53,8 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 state_index) {
     return LogLikelihoodZeroBased(frame, state_index - 1);
   }
-  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+  int32 NumFrames() { return feature_matrix_.NumRows(); }
+  
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return acoustic_model_.NumPdfs(); }
 

@@ -49,7 +49,7 @@ class DecodableAmSgmm : public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
     return LogLikelihoodZeroBased(frame, trans_model_.TransitionIdToPdf(tid));
   }
-  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+  int32 NumFrames() { return feature_matrix_.NumRows(); }
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
   virtual bool IsLastFrame(int32 frame) {

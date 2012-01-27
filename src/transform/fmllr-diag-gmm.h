@@ -23,6 +23,7 @@
 
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
+#include "gmm/mle-full-gmm.h"
 #include "transform/transform-common.h"
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
@@ -60,6 +61,14 @@ class FmllrDiagGmmAccs: public AffineXformStats {
   FmllrDiagGmmAccs(const FmllrDiagGmmAccs &other):
       AffineXformStats(other) { }
   explicit FmllrDiagGmmAccs(size_t dim) { Init(dim); }
+
+  // The following initializer gives us an efficient way to
+  // compute these stats from full-cov Gaussian statistics
+  // (accumulated from a *diagonal* model (e.g. use
+  // AccumFullGmm::AccumulateFromPosteriors or
+  // AccumulateFromDiag).
+  FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs);
+  
   void Init(size_t dim) { AffineXformStats::Init(dim, dim); }
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
@@ -67,7 +76,7 @@ class FmllrDiagGmmAccs: public AffineXformStats {
                              const VectorBase<BaseFloat>& data,
                              BaseFloat weight);
 
-  /// Accumulate stats for a single Gaussian component in the model.
+  /// Accumulate stats for a GMM, given supplied posteriors.
   void AccumulateFromPosteriors(const DiagGmm &gmm,
                                 const VectorBase<BaseFloat>& data,
                                 const VectorBase<BaseFloat> &posteriors);

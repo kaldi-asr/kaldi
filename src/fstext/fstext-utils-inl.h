@@ -798,7 +798,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
-  if (ifst.Start() == kNoStateId) return false;
+  if (ifst.Start() == kNoStateId) {
+    KALDI_WARN << "Empty input fst.";
+    return false;
+  }
   // First select path through ifst.
   vector<StateId> path;
   vector<size_t> arc_offsets;  // arc taken out of each state.
@@ -832,7 +835,11 @@ bool EqualAlign(const Fst<Arc> &ifst,
     }
   }
 
-  if (num_ilabels > length) return false;  // can't make it shorter by adding self-loops!.
+  if (num_ilabels > length) {
+    KALDI_WARN << "EqualAlign: utterance has too to frames " << length
+               << " to align.";
+    return false;  // can't make it shorter by adding self-loops!.
+  }
 
   StateId num_self_loops = 0;
   vector<ssize_t> self_loop_offsets(path.size());
@@ -842,7 +849,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
       num_self_loops++;
 
   if (num_self_loops == 0
-     && num_ilabels < length) return false;  // no self-loops to make it longer.
+      && num_ilabels < length) {
+    KALDI_WARN << "No self-loops on chosen path; cannot match length.";
+    return false;  // no self-loops to make it longer.
+  }
 
   StateId num_extra = length - num_ilabels;  // Number of self-loops we need.
 

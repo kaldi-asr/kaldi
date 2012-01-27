@@ -72,6 +72,10 @@ struct MleFullGmmOptions {
 class AccumFullGmm {
  public:
   AccumFullGmm(): dim_(0), num_comp_(0), flags_(0) { }
+  AccumFullGmm(int32 num_comp, int32 dim, GmmFlagsType flags):
+      dim_(0), num_comp_(0), flags_(0) {
+    Resize(num_comp, dim, flags);
+  }
   explicit AccumFullGmm(const FullGmm &gmm, GmmFlagsType flags) {
     Resize(gmm, flags);
   }

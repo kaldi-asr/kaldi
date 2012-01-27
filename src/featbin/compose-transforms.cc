@@ -177,7 +177,6 @@ int main(int argc, char *argv[]) {
       Output ko(transform_c_fn, binary);
       c.Write(ko.Stream(), binary);
     }
-    exit(0);
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

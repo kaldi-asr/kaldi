@@ -41,11 +41,11 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
   if (add) {
     if ((NumGauss() != 0 || Dim() != 0 || Flags() != 0)) {
       if (num_components != NumGauss() || dimension != Dim()
-          || flags != Flags()) {
-        KALDI_ERR << "Dimension or flags mismatch: " << NumGauss() << ", "
-                  << Dim() << ", " << Flags() << " vs. " << num_components
-                  << ", " << dimension << ", " << flags;
-      }
+          || flags != Flags())
+        KALDI_ERR << "MlEstimatediagGmm::Read, dimension or flags mismatch, "
+                  << NumGauss() << ", " << Dim() << ", "
+                  << GmmFlagsToString(Flags()) << " vs. " << num_components << ", "
+                  << dimension << ", " << flags;
     } else {
       Resize(num_components, dimension, flags);
     }
@@ -326,7 +326,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   for (int32 i = 0; i < num_gauss; ++i) {
     double occ = diaggmm_acc.occupancy()(i);
     double prob;
-    if (occ_sum > 0.)
+    if (occ_sum > 0.0)
       prob = occ / occ_sum;
     else
       prob = 1.0 / num_gauss;
@@ -340,24 +340,25 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
       Vector<double> oldmean(ngmm.means_.Row(i));
       
       // update mean, then variance, as far as there are accumulators 
-      if ((diaggmm_acc.Flags() & kGmmMeans) || (diaggmm_acc.Flags() & kGmmVariances)) {
+      if (diaggmm_acc.Flags() & kGmmMeans) {
         Vector<double> mean(diaggmm_acc.mean_accumulator().Row(i));
-        mean.Scale(1. / occ);
+        mean.Scale(1.0 / occ);
 
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }
       
       if (diaggmm_acc.Flags() & kGmmVariances) {
+        KALDI_ASSERT(diaggmm_acc.Flags() & kGmmMeans);
         Vector<double> var(diaggmm_acc.variance_accumulator().Row(i));
-        var.Scale(1. / occ);
-        var.AddVec2(-1., ngmm.means_.Row(i));  // subtract squared means.
+        var.Scale(1.0 / occ);
+        var.AddVec2(-1.0, ngmm.means_.Row(i));  // subtract squared means.
      
         // if we intend to only update the variances, we need to compensate by 
         // adding the difference between the new and old mean
-        if (!(flags & kGmmMeans) || !(diaggmm_acc.Flags() & kGmmMeans)) {
-          oldmean.AddVec(-1., ngmm.means_.Row(i));
-          var.AddVec2(1., oldmean);
+        if (!(flags & kGmmMeans)) {
+          oldmean.AddVec(-1.0, ngmm.means_.Row(i));
+          var.AddVec2(1.0, oldmean);
         }
    
         int32 floored;
@@ -390,8 +391,8 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
                        " it is the last Gaussian: i = "
                        : " remove-low-count-gaussians == false: g = ") << i
                    << ", occ = " << diaggmm_acc.occupancy()(i) << ", weight = " << prob;
-        ngmm.weights_(i) = std::max(prob, static_cast<double>(
-                                                config.min_gaussian_weight));
+        ngmm.weights_(i) =
+            std::max(prob, static_cast<double>(config.min_gaussian_weight));
       }
     }
   }

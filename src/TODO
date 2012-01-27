@@ -9,7 +9,7 @@ dan's TODO:
 major:
  look at Stefan's code for nnet rescoring.  
  finalize biglm stuff.
-
+ ? remove occs when doing next version of script, keep tacc?
 
 minor:
  Refactor UBM-building code "ClusterGaussiansToUbm"

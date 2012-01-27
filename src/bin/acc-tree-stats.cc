@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Accumulate stats for GMM training.\n"
+        "Accumulate statistics for phonetic-context tree building.\n"
         "Usage:  acc-tree-stats [options] model-in features-rspecifier alignments-rspecifier [tree-accs-out]\n"
         "e.g.: \n"
         " acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc\n";
@@ -130,7 +130,6 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Accumulated stats for " << num_done << " files, "
               << num_no_alignment << " failed due to no alignment, "
               << num_other_error << " failed for other reasons.";
-    std::cerr << "Wrote stats.\n";
     DeleteBuildTreeStats(&stats);
     if (num_done != 0) return 0;
     else return 1;

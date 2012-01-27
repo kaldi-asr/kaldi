@@ -183,12 +183,11 @@ void AccumFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
   if (add) {
     if ((NumGauss() != 0 || Dim() != 0 || Flags() != 0)) {
       if (num_components != NumGauss() || dimension != Dim()
-          || flags != Flags()) {
+          || flags != Flags())
         KALDI_ERR << "MlEstimatediagGmm::Read, dimension or flags mismatch, "
-            << (NumGauss()) << ", " << (Dim()) << ", "
-            << (Flags()) +" vs. " + (num_components) << ", "
-            << (dimension) << ", " << (flags);
-      }
+                  << NumGauss() << ", " << Dim() << ", "
+                  << GmmFlagsToString(Flags()) << " vs. " << num_components << ", "
+                  << dimension << ", " << flags;
     } else {
       Resize(num_components, dimension, flags);
     }
@@ -310,10 +309,10 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
   for (int32 i = 0; i < num_gauss; ++i) {
     double occ = fullgmm_acc.occupancy()(i);
     double prob;
-    if (occ_sum > 0.)
+    if (occ_sum > 0.0)
       prob = occ / occ_sum;
     else
-      prob = 1. / num_gauss;
+      prob = 1.0 / num_gauss;
     
     if (occ > static_cast<double> (config.min_gaussian_occupancy)
         && prob > static_cast<double> (config.min_gaussian_weight)) {
@@ -324,23 +323,24 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
       Vector<double> oldmean(ngmm.means_.Row(i));
 
       // update mean, then variance, as far as there are accumulators
-      if ((fullgmm_acc.Flags() & kGmmMeans) || (fullgmm_acc.Flags() & kGmmVariances)) {
+      if (fullgmm_acc.Flags() & kGmmMeans) {
         Vector<double> mean(fullgmm_acc.mean_accumulator().Row(i));
-        mean.Scale(1. / occ);
+        mean.Scale(1.0 / occ);
 
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }      
 
       if (fullgmm_acc.Flags() & kGmmVariances) {
+        KALDI_ASSERT(fullgmm_acc.Flags() & kGmmMeans);
         SpMatrix<double> covar(fullgmm_acc.covariance_accumulator()[i]);
-        covar.Scale(1. / occ);
-        covar.AddVec2(-1., ngmm.means_.Row(i));  // subtract squared means.
+        covar.Scale(1.0 / occ);
+        covar.AddVec2(-1.0, ngmm.means_.Row(i));  // subtract squared means.
         // if we intend to only update the variances, we need to compensate by 
         // adding the difference between the new and old mean
-        if (!(flags & kGmmMeans) || !(fullgmm_acc.Flags() & kGmmMeans)) {
-          oldmean.AddVec(-1., ngmm.means_.Row(i));
-          covar.AddVec2(1., oldmean);
+        if (!(flags & kGmmMeans)) {
+          oldmean.AddVec(-1.0, ngmm.means_.Row(i));
+          covar.AddVec2(1.0, oldmean);
         }
 
         // Now flooring etc. of variance's eigenvalues.
@@ -372,8 +372,8 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
                        " it is the last Gaussian: i = "
                        : " remove-low-count-gaussians == false: i = ") << i
                    << ", occ = " << fullgmm_acc.occupancy()(i) << ", weight = " << prob;
-        ngmm.weights_(i) = std::max(prob, static_cast<double>(
-                                                config.min_gaussian_weight));
+        ngmm.weights_(i) =
+            std::max(prob, static_cast<double>(config.min_gaussian_weight));
       }
     }
   }

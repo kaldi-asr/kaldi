@@ -42,6 +42,10 @@ class FullGmm {
   /// Empty constructor.
   FullGmm() : valid_gconsts_(false) {}
 
+  explicit FullGmm(const FullGmm &gmm): valid_gconsts_(false) { CopyFromFullGmm(gmm); }
+
+  FullGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }  
+
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
 
@@ -178,8 +182,7 @@ class FullGmm {
                                      const SpMatrix<BaseFloat> &s1,
                                      const SpMatrix<BaseFloat> &s2) const;
 
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(FullGmm);
+  const FullGmm &operator=(FullGmm &other); // Disallow assignment.
 };
 
 /// ostream operator that calls FullGmm::Write()

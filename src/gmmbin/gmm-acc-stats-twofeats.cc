@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &mat1 = feature1_reader.Value();
         const Matrix<BaseFloat> &mat2 = feature2_reader.Value(key);
+        KALDI_ASSERT(mat1.NumRows() == mat2.NumRows())
         if (new_dim == 0) {
           new_dim = mat2.NumCols();
           gmm_accs.Init(am_gmm, new_dim, kGmmAll);
