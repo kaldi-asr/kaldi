@@ -338,9 +338,9 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
         int32 tid = PairToTransitionId(tstate, tidx);
         counts(tidx) = stats(tid);
       }
-      double tot_count = counts.Sum();
-      count_sum += tot_count;
-      if (tot_count < cfg.mincount) { num_skipped++; }
+      double tstate_tot = counts.Sum();
+      count_sum += tstate_tot;
+      if (tstate_tot < cfg.mincount) { num_skipped++; }
       else {
         Vector<BaseFloat> old_probs(n), new_probs(n);
         for (int32 tidx = 0; tidx < n; tidx++) {
@@ -348,7 +348,7 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
           old_probs(tidx) = new_probs(tidx) = GetTransitionProb(tid);
         }
         for (int32 tidx = 0; tidx < n; tidx++)
-          new_probs(tidx) = counts(tidx) / count_sum;
+          new_probs(tidx) = counts(tidx) / tstate_tot;
         for (int32 i = 0; i < 3; i++) {  // keep flooring+renormalizing for 3 times..
           new_probs.Scale(1.0 / new_probs.Sum());
           for (int32 tidx = 0; tidx < n; tidx++)
