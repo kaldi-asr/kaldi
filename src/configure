@@ -84,7 +84,9 @@ function linux_configure_static {
        ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
     elif [ -f /usr/local/lib/libatlas.a ]; then
        ATLASLIBDIR=/usr/local/lib
-    elif [ -f /usr/lib/sse2/libatlas.a ]; then   
+    elif [ -f /usr/lib64/atlas-sse3/libatlas.a ]; then   
+        ATLASLIBDIR=/usr/lib64/atlas-sse3
+    elif [ -f /usr/lib64/sse2/libatlas.a ]; then   
         ATLASLIBDIR=/usr/lib/sse2
     elif [ -f /usr/lib/libatlas.a ]; then
         ATLASLIBDIR=/usr/lib

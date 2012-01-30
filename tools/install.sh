@@ -103,7 +103,7 @@ fi
     cd irstlm
     # Applying patch to get -write option of interpolate-lm
     # May not work with anything else than revision 398
-	patch -p0 < ../interpolatedwrite-5.60.02.patch
+	patch -N -p0 < ../interpolatedwrite-5.60.02.patch
 
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
