@@ -280,8 +280,10 @@ class LatticeWordAligner {
       syms_to_remove.push_back(info_.partial_word_label);
     if (info_in_.silence_label == 0)
       syms_to_remove.push_back(info_.silence_label);
-    if (!syms_to_remove.empty())
-      RemoveSomeInputSymbols(syms_to_remove, lat_out_);    
+    if (!syms_to_remove.empty()) {
+      RemoveSomeInputSymbols(syms_to_remove, lat_out_);
+      Project(lat_out_, fst::PROJECT_INPUT);      
+    }
   }
   
   bool AlignLattice() {
