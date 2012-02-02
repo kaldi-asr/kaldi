@@ -34,7 +34,7 @@ hold off
 set(gca(), "ylim", [2.5, 14.0]);
 legend('One-best WER','Oracle WER')
 xlabel('Lattice beam');
-ylabel('Oracle WER');
+ylabel('WER');
 subplot(2, 2, 3);
 plot(latbeam, rescore_err);
 xlabel('Lattice beam');
@@ -70,7 +70,7 @@ hold on
 plot(decode_beam, oracle);
 legend('One-best WER', 'Oracle WER')
 xlabel('Decoding beam');
-ylabel('WER, oracle');
+ylabel('WER');
 hold off
 subplot(2, 2, 3);
 plot(decode_beam, wer, 'kx');

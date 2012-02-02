@@ -1,3 +1,4 @@
+% paper # 3887, pw CF8FECE1
 % Note: the original submission was rev. 530... 
 % submitted again at 539 before review..
 % Template for SLT-2006 paper; to be used with:
@@ -89,7 +90,7 @@
 \name{ \em Daniel Povey$^1$, Mirko Hannemann$^{1,2}$,  \\
  \em {Gilles Boulianne}$^3$, {Luk\'{a}\v{s} Burget}$^{2,4}$, {Arnab Ghoshal}$^5$, {Milo\v{s} Janda}$^2$, {Martin Karafi\'{a}t}$^2$, {Stefan Kombrink}$^2$, \\
   \em {Petr Motl\'{i}\v{c}ek}$^6$, {Yanmin Qian}$^7$, {Korbinian Riedhammer}$^9$, {Karel Vesel\'{y}}$^2$, {Ngoc Thang Vu}$^8$
-    \thanks{Thanks to Honza \v{C}ernock\'{y}, Renata Kohlov\'{a}, and Tom\'{a}\v{s} Ka\v{s}p\'{a}rek for their help relating to the Kaldi'11 workshop at BUT, and to Sanjeev Khudanpur for his help in preparing the paper.  Researchers at BUT were partly supported by Technology Agency of the Czech Republic grant No. TA01011328, Czech Ministry of Education project No. MSM0021630528, and Grant Agency of the Czech Republic project No. 102/08/0707.}}
+    \thanks{Thanks to Honza \v{C}ernock\'{y}, Renata Kohlov\'{a}, and Tom\'{a}\v{s} Ka\v{s}p\'{a}rek for their help relating to the Kaldi'11 workshop at BUT, and to Sanjeev Khudanpur for his help in preparing the paper.  Researchers at BUT were partly supported by Technology Agency of the Czech Republic grant No. TA01011328, Czech Ministry of Education project No. MSM0021630528, and Grant Agency of the Czech Republic project No. 102/08/0707.  Arnab Ghoshal was supported by EC FP7 grant 213850 (SCALE), and by EPSRC grant EP/I031022/1 (NST).}}
 
 
 %%% TODO: fix thanks.
@@ -119,18 +120,23 @@ We describe a lattice generation method that is exact, i.e. it satisfies all the
 natural properties we would want from a lattice of alternative transcriptions of
 an utterance.  This method does not introduce substantial overhead above one-best decoding.  Our method is
 most directly applicable when using WFST decoders where the WFST is
-expanded down to the HMM-state level.  It outputs
-lattices that include state-level alignments as well as word labels.
+``fully expanded'', i.e. where the arcs correspond to HMM transitions.  It outputs
+lattices that include HMM-state-level alignments as well as word labels.
 The general idea is to create a state-level lattice during decoding, and to do
 a special form of determinization that retains only the best-scoring path
-for each word sequence.
+for each word sequence.  
+This special determinization algorithm is a solution to the following problem:
+Given a WFST A, compute a WFST B that, for each input-symbol-sequence of A,
+contains just the lowest-cost path through A.
 \end{abstract}
 
 \begin{keywords}
   Speech Recognition, Lattice Generation
 \end{keywords}
 
+\vspace*{-0.075in}
 \section{Introduction}
+\vspace*{-0.05in}
 
 In Section~\ref{sec:wfst} we give a Weighted Finite State Transducer
 (WFST) interpretation of the speech-recognition decoding problem, in order
@@ -142,7 +148,9 @@ and in Section~\ref{sec:details} we summarize some aspects of a determinization
 algorithm that we use in our method.  In Section~\ref{sec:exp} we give
 experimental results, and in Section~\ref{sec:conc} we conclude.
 
+\vspace*{-0.075in}
 \section{WFSTs and the decoding problem}
+\vspace*{-0.05in}
 \label{sec:wfst}
 
 The graph creation process we use in our toolkit, Kaldi~\cite{kaldi_paper},
@@ -157,13 +165,14 @@ and $\circ$ is WFST composition (note: view $\HCLG$ as a single symbol).
 For concreteness we will speak of ``costs'' rather
 than weights, where a cost is a floating point number that typically represents a negated
 log-probability.  A WFST has a set of states with one distinguished
-start state;\footnote{This is the formulation that corresponds best with the toolkit we use.},
+start state\footnote{This is the formulation that corresponds best with the toolkit we use.};
 each state has a final-cost (or $\infty$ for non-final states);
-and there is a set of arcs between the states, where each arc has a weight
-(just think of this as a cost for now), an input label and an output
-label.  In $\HCLG$, the input labels are the identifiers of context-dependent
+and there is a set of arcs between the states, where each arc has an
+input label, an output label, and a weight
+(just think of this as a cost for now).
+In $\HCLG$, the input labels are the identifiers of context-dependent
 HMM states, and the output labels represent words.  For both the input and output
-symbols, the special label $\epsilon$ may appear meaning ``no label is present.''
+labels, the special symbol $\epsilon$ may appear, meaning ``no label is present.''
 
 
 \begin{figure}
@@ -178,17 +187,17 @@ symbols, the special label $\epsilon$ may appear meaning ``no label is present.'
 \end{figure}
 
 Imagine we want to ``decode'' an utterance of $T$ frames, i.e. we want to
-find the most likely word sequence, and the corresponding alignment.  A WFST
+find the most likely word sequence and its corresponding state-level alignment.  A WFST
 interpretation of the decoding problem is as follows.  We construct an
 acceptor, or WFSA, as in Fig.~\ref{fig:acceptor} (an acceptor is represented as a
 WFST with identical input and output symbols).  It has $T{+}1$ states,
 with an arc for each combination of (time, context-dependent HMM state).  The
-costs on these arcs are the negated and scaled acoustic log-likelihoods.
+costs on these arcs correspond to negated and scaled acoustic log-likelihoods.
 Call this acceptor $U$.  Define
 \begin{equation}
    S \equiv U \circ \HCLG,
 \end{equation}
-which is the {\em search graph} for this utterance.  It has approximately $T+1$ times
+which we call the {\em search graph} of the utterance.  It has approximately $T{+}1$ times
 more states than $\HCLG$ itself.  The decoding problem is equivalent to finding
 the best path through $S$.  The input symbol sequence for this best path represents
 the state-level alignment, and the output symbol sequence is the corresponding
@@ -199,9 +208,11 @@ When we do Viterbi decoding with beam-pruning, we are finding the best path thro
 %
 Since the beam pruning is a part of any practical search procedure and cannot
 easily be avoided, we will define the desired outcome of lattice generation in terms
-of the visited subset $B$ of the search graph $S$.
+of the visited subset $B$ of $S$.
 
+\vspace*{-0.075in}
 \section{The lattice generation problem}
+\vspace*{-0.05in}
 \label{sec:lattices}
 
 
@@ -210,7 +221,7 @@ and~\cite{sak2010fly}, it is defined as a labeled, weighted, directed acyclic gr
 (i.e. a WFSA, with word labels).  In~\cite{ney_word_graph}, time information
 is also included.  In the HTK lattice format~\cite{htkbook}, phone-level time alignments 
 are also supported (along with separate language model, acoustic and pronunciation-probability 
-scores), and in~\cite{saon2005anatomy}, state-level alignments are also produced.
+scores), and in~\cite{saon2005anatomy}, HMM-state-level alignments are also produced.
 In our work here we will be producing state-level alignments; in fact, the input-symbols
 on our graph, which we call {\em transition-ids}, are slightly more fine-grained
 than acoustic states and contain sufficient information to reconstruct the phone
@@ -253,7 +264,9 @@ output of $\HCLG$.  In our experiments these output symbols represent words, but
 silences do not appear as output symbols (they are
 represented via alternative paths in $L$).
 
+\vspace*{-0.075in}
 \section{Previous lattice generation methods}
+\vspace*{-0.05in}
 \label{sec:previous}
 
 Lattice generation algorithms tend to be closely linked to particular types of decoder,
@@ -267,9 +280,7 @@ sufficient to store a single Viterbi back-pointer at the word level; the entire 
 such back-pointers contains enough information to generate the lattice.  Authors who have used
 this type of lattice generation method~\cite{ney_word_graph,odell_thesis} have generally
 not been able to evaluate how correct the word-pair assumption is in practice, but it seems
-unlikely to cause problems.  Such methods are not applicable for us anyway, as we
-use a WFST based decoder in which each copy of the lexical tree does not have a unique
-one-word history.
+unlikely to cause problems.  Such methods are not applicable for WFST based decoders anyway.
 
 The lattice generation method described in~\cite{efficient_general} 
 is applicable to decoders that use WFSTs~\cite{wfst}
@@ -302,10 +313,13 @@ algorithm than with the Viterbi algorithm.  By limiting $N$ to be quite small (e
 the algorithm was made efficient, but at the cost of losing word sequences
 that would be within the lattice-generation beam.
 
+\vspace*{-0.075in}
 \section{Overview of our algorithm}
+\vspace*{-0.05in}
 \label{sec:overview}
 
 \subsection{Version without alignments}
+\vspace*{-0.05in}
 
 In order to explain our algorithm in the easiest way, we will first explain how it would
 be if we did not keep the alignment information, and were storing only a single cost
@@ -343,15 +357,15 @@ the determinization process can introduce a lot of unlikely arcs.  In fact, for 
 utterances, the determinization process can cause the lattice to expand enough to
 exhaust memory.  To deal with this, we currently just detect when determinization
 has produced more than a pre-set maximum number of states, then we prune with a tighter
-beam and try again.  In future, we may try more sophisticated methods such as a
-determinization algorithm that does pruning itself.
+beam and try again.
 
 This ``simple'' version of the algorithm produces an acyclic, deterministic
 WFSA with words as labels.  This is sufficient for applications such as language-model
 rescoring.
 
-
+\vspace*{-0.075in}
 \subsection{Keeping separate graph and acoustic costs}
+\vspace*{-0.05in}
 
 A fairly trivial extension of the algorithm described above is to store separately
 the acoustic costs and the costs arising from $\HCLG$.  This enables us to do things
@@ -365,10 +379,11 @@ $\oplus$ operation returns whichever pair has the lowest sum of costs (graph plu
 
 Formally, if each weight is a pair $(a,b)$, then $(a,b) \otimes (c,d) = (a{+}c, b{+}d)$,
 and $(a,b) \oplus (c,d)$ is equal to $(a,b)$ if $a{+}b < c{+}d$ or if $a{+}b = c{+}d$ and $a{-}b < c{-}d$,
-and otherwise is equal to $(c,d)$.  This is equivalent to the lexicographic semiring 
-of~\cite{roark2011lexicographic}, on the pair $((a{+}b),(a{-}b))$.
+and otherwise is equal to $(c,d)$.  This is equivalent to the normal lexicographic semiring (see~\cite{roark2011lexicographic}) on the pair $((a{+}b),(a{-}b))$.
 
+\vspace*{-0.075in}
 \subsection{Keeping state-level alignments}
+\vspace*{-0.05in}
 
 It is useful for various purposes, e.g. discriminative training and certain kinds of
 acoustic rescoring, to keep the state-level alignments in the lattices.  We will now
@@ -410,20 +425,22 @@ It is clear from the definition of $\oplus$ that this path through
 $D$ has the cost and alignment of the lowest-cost path through $E$ that has the
 same word-sequence on it.  
 
+\vspace*{-0.075in}
 \subsection{Summary of our algorithm}
+\vspace*{-0.05in}
 
-We now summarize the lattice generation algorithm.  During decoding, we create a data-structure
+During decoding, we create a data-structure
 corresponding to a full state-level lattice.  That is, for every arc of $\HCLG$, we traverse
 on every frame, we create a separate arc in the state-level lattice.  These arcs
 contain the acoustic and graph costs separately.  We prune the state-level graph using
 a beam $\alpha$; we do this periodically (every 25 frames) but this is equivalent to
 doing it just once at the end, as in~\cite{efficient_general}.  Let the 
 final pruned state-level lattice be $P$.
-
 Let $Q = \inv(P)$, and let $E$ be an encoded version of $Q$ as described above (with the
 state labels as part of the weights).  The final lattice is
+\vspace*{-0.075in}
 \begin{equation}
-   L = \mathrm{prune}(\mathrm{det}(\mathrm{rmeps}(E)), \alpha) .
+   L = \mathrm{prune}(\mathrm{det}(\mathrm{rmeps}(E)), \alpha) . \vspace*{-0.075in}
 \end{equation}
 The determinization and epsilon removal are done together by a single algorithm
 that we will describe below.  $L$ is a deterministic, acyclic weighted acceptor with the 
@@ -431,7 +448,9 @@ words as the labels, and the graph and acoustic costs and the alignments
 encoded into the weights.  The costs and alignments are not ``synchronized'' 
 with the words.
 
+\vspace*{-0.075in}
 \section{Details of our determinization algorithm}
+\vspace*{-0.05in}
 \label{sec:details}
 
 We implemented $\epsilon$ removal and determinization as a single algorithm 
@@ -465,6 +484,24 @@ that we reached by following non-$\epsilon$ arcs from a previous determinized
 state.  We maintain a separate map from the initial representation to
 the output state index; think of this as a ``lookaside buffer'' that helps us
 avoid the expense of following $\epsilon$ arcs. 
+
+%Although we have not written a proof of correctness of this algorithm, we
+%have tested it thoroughly.  This is done by generating random WFSTS,
+%applying this algorithm, and if it terminates, checking that the result
+%is deterministic and is equivalent (in this semiring) to the original WFST
+%represented as an acceptor in this semiring.
+
+Since submitting this paper, we have become aware of~\cite{shafran2011efficient},
+which solves the exact same problem for a different purpose.  They use a semiring
+which is more complicated than ours (the string part of the semiring becomes a
+structured object with parentheses).  They use this semiring instead of the one
+ we describe here, because in our semiring the $\oplus$-sum of two weights 
+does not necessarily left-divide the weights, and this is a problem for 
+a typical determinization algorithm.  We bypass
+this problem by defining a ``common divisor'' operation $\boxplus$ with the
+right properties (it $\oplus$-adds the weight part and returns the longest
+common prefix of the string part).  We use this instead of
+$\oplus$ when finding divisors in the determinization algorithm.
 
 
 %% The algorithm for $\epsilon$-removal and determinization is also optimized
@@ -510,14 +547,25 @@ avoid the expense of following $\epsilon$ arcs.
 %% for $H$-level WFSTs (i.e. fully-expanded WFSTs).  
 
 
+\vspace*{-0.1in}
 \section{Experimental results}
+\vspace*{-0.075in}
 \label{sec:exp}
 
+
+We do not compare with any other algorithms,
+as~\cite{ney_word_graph,odell_thesis,efficient_general} are designed for
+different types of decoders than ours, and the lattices contain less information,
+making comparisons hard to interpret; the algorithm of~\cite{saon2005anatomy} has
+similar requirements and outputs as ours, but besides being inexact, it is bound
+to be slower due to the need to store $N$ back-pointers, so we did not view it as
+worthwhile to do the experiment.
+
 We report experimental results on the Wall Street Journal database of
-read speech.  
+read speech. 
 Our system is a standard mixture-of-Gaussians system trained on the SI-284
 training data; we test on the November 1992 evaluation data.  
-For these experiments, we generate lattices with the bigram language model
+We generated lattices with the bigram language model
 supplied with the WSJ database, and for rescoring experiments we
 use the trigram language model.  The acoustic scale was $1/16$ for first-pass
 decoding and $1/15$ for LM rescoring.  
@@ -526,54 +574,56 @@ does not support a ``maximum active states'' option, so the only variables
 to consider are the beam used in the Viterbi beam search, and the separate
 beam $\alpha$ used for lattice generation.
 
-
-\begin{figure}
+\begin{figure}[t]
 \centering
    \includegraphics[width=0.9\columnwidth]{figures/latbeam.eps} 
  \vspace*{-0.1in}
  
-   \caption{\vspace*{-0.2in} Varying lattice beam $\alpha$ (Viterbi pruning beam fixed at 15) }
-  \vspace{-0.08in}
+   \caption{ { Lattice properties, varying lattice beam $\alpha$ (Viterbi pruning beam fixed at 15)} }
+  \vspace{-0.15in}
   \label{fig:latbeam}
 \end{figure}
 
-Figure~\ref{fig:latbeam} shows how various quantities change as we vary
-$\alpha$, with the Viterbi beam fixed at 15.  Note that we get all the improvement from
-LM rescoring by increasing $\alpha$ to 4.  The time taken by our algorithm started to increase rapidly after about
-$\alpha=8$, so a value of $\alpha$ anywhere between about 4 and 8 is sufficient for LM rescoring 
-and still does not slow down decoding too much.  We do not display the real-time factor of the non-lattice-generating
-decoder on this data (2.26) as it was actually slower than the lattice generating decoder; this is
-presumably due to the overhead of reference counting.
-Out of vocabularly words (OOVs) provide a floor on the lattice oracle error rate:
-of 333 test utterances, 87 contained at least one OOV word, yet only 93 sentences (6 more) had oracle errors
-with $\alpha=10$.  Lattice density is defined as the average number of arcs crossing each frame.
-Figure~\ref{fig:viterbibeam} shows the effect of varying the
-Viterbi decoding beam, while leaving $\alpha$ fixed at 7.  
+Figure~\ref{fig:latbeam} shows how the lattice properties change as we vary
+$\alpha$, with the Viterbi beam fixed at 15; Figure~\ref{fig:viterbibeam} varies
+the Viterbi decoding beam, leaving $\alpha$ fixed at 7.  Lattice density is
+defined as the average number of arcs crossing each frame.  We get all the
+improvement from LM rescoring by increasing $\alpha$ to 4, and time taken
+increases rapidly when $\alpha > 8$, so we recommend roughly $4 < \alpha < 8$ for
+LM rescoring purposes.  We do not display the real-time factor of the
+non-lattice-generating decoder on this data (2.26xRT) as it was actually slower
+than the lattice generating decoder; this is possibly due to the overhead of
+reference counting.  Out of vocabularly words (OOVs) provide a floor on the
+lattice oracle error rate: of 333 test utterances, 87 contained at least one OOV
+word, yet only 93 sentences (6 more) had oracle errors with $\alpha=10$.
 
-\begin{figure}
+
+\begin{figure}[t]
 \centering
    \includegraphics[width=0.9\columnwidth]{figures/decodebeam.eps} 
  \vspace*{-0.1in}
-    \caption{\vspace*{-0.2in} Varying Viterbi pruning beam (lattice beam $\alpha$ fixed at 7) }
+    \caption{ {Lattice properties, varying Viterbi pruning beam (lattice beam $\alpha$ fixed at 7)}}
   \label{fig:viterbibeam}
-  \vspace{-0.08in}
+  \vspace{-0.15in}
 \end{figure}
 
 
-%\vspace*{-0.075in}
+\vspace*{-0.1in}
 \section{Conclusions}
 \label{sec:conc}
-%\vspace*{-0.05in}
+\vspace*{-0.075in}
 
 We have described a lattice generation method that is to our knowledge the first
-efficient method not to rely on the word-pair assumption of~\cite{ney_word_graph}.
-It includes an ingenious way of obtaining state-level alignment information
+efficient method that does not rely on the word-pair assumption of~\cite{ney_word_graph}.
+It includes an ingenious way of obtaining HMM-state-level alignment information
 via determinization in a specially designed semiring. 
 
-
-%\vspace*{-0.1in}
+\vspace*{-0.04in}
+\footnotesize {
+\vspace*{-0.1in}
 \bibliographystyle{IEEEbib}
 \bibliography{refs}
+}
 
 \end{document}
 
