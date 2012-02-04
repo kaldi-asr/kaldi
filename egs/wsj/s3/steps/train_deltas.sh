@@ -59,13 +59,18 @@
 # increases linearly during training [note: logarithmically seems more
 # natural but didn't work as well.]
 
-
+stage=-4
 nj=4
 cmd=scripts/run.pl
 for x in 1 2; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
+     shift
+  fi
+  if [ $1 == "--stage" ]; then
+     shift
+     stage=$1
      shift
   fi
   if [ $1 == "--cmd" ]; then
@@ -111,94 +116,111 @@ if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
 for n in `get_splits.pl $nj`; do
-  featspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
+  featspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | add-deltas ark:- ark:- |"
 done
 
+rm $dir/.error 2>/dev/null
 
+if [ $stage -le -3 ]; then
 # The next stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
-echo "Accumulating tree stats"
-$cmd $dir/log/acc_tree.log \
-  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-    "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc || exit 1;
+  echo "Accumulating tree stats"
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/acc_tree.$n.log \
+      acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
+      "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo Error accumulating tree stats && exit 1;
+  sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
+  rm $dir/*.treeacc
+fi
 
-echo "Computing questions for tree clustering"
+if [ $stage -le -2 ]; then
+  echo "Computing questions for tree clustering"
 # preparing questions, roots file...
-scripts/sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
-cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
-scripts/sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
-compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
-scripts/sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
+  scripts/sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
+  cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
+  scripts/sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
+  compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  scripts/sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
-echo "Building tree"
-$cmd $dir/log/train_tree.log \
-  build-tree --verbose=1 --max-leaves=$numleaves \
+  echo "Building tree"
+  $cmd $dir/log/train_tree.log \
+    build-tree --verbose=1 --max-leaves=$numleaves \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
-gmm-init-model  --write-occs=$dir/1.occs  \
+  gmm-init-model  --write-occs=$dir/1.occs  \
     $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
 
-gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
-   2>$dir/log/mixup.log || exit 1;
+  gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl \
+    2>$dir/log/mixup.log || exit 1;
 
-rm $dir/treeacc
+  rm $dir/treeacc
+fi
 
+
+if [ $stage -le -1 ]; then
 # Convert alignments in $alidir, to use as initial alignments.
 # This assumes that $alidir was split in $nj pieces, just like the
 # current dir.  Just do this locally-- it's very fast.
 
-echo "Converting old alignments"
-for n in `get_splits.pl $nj`; do
-  convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
-   "ark:gunzip -c $alidir/$n.ali.gz|" "ark:|gzip -c >$dir/$n.ali.gz" \
-    2>$dir/log/convert$n.log  || exit 1;
-done
+  echo "Converting old alignments"
+  for n in `get_splits.pl $nj`; do
+    convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
+      "ark:gunzip -c $alidir/$n.ali.gz|" "ark:|gzip -c >$dir/$n.ali.gz" \
+      2>$dir/log/convert$n.log  || exit 1;
+  done
+fi
 
-# Make training graphs (this is split in $nj parts).
-echo "Compiling training graphs"
-rm $dir/.error 2>/dev/null
-for n in `get_splits.pl $nj`; do
-  $cmd $dir/log/compile_graphs$n.log \
-    compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+if [ $stage -le 0 ]; then
+  # Make training graphs (this is split in $nj parts).
+  echo "Compiling training graphs"
+  rm $dir/.error 2>/dev/null
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/compile_graphs$n.log \
+      compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
       "ark:scripts/sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt < $data/split$nj/$n/text |" \
       "ark:|gzip -c >$dir/$n.fsts.gz" || touch $dir/.error &
-done
-wait;
-[ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
+fi
 
 x=1
 while [ $x -lt $numiters ]; do
-   echo Pass $x
-   if echo $realign_iters | grep -w $x >/dev/null; then
-     echo "Aligning data"
-     for n in `get_splits.pl $nj`; do
-       $cmd $dir/log/align.$x.$n.log \
-         gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/$x.mdl \
-           "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
-           "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
-     done
-     wait;
-     [ -f $dir/.error ] && echo "Error aligning data on iteration $x" && exit 1;
-   fi
-   for n in `get_splits.pl $nj`; do
-     $cmd $dir/log/acc.$x.$n.log \
-     gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
-       "ark,s,cs:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
-   done
-   wait;
-   [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-   $cmd $dir/log/update.$x.log \
-     gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
-       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
-   rm $dir/$x.mdl $dir/$x.*.acc
-   rm $dir/$x.occs 
-   if [[ $x -le $maxiterinc ]]; then 
-      numgauss=$[$numgauss+$incgauss];
-   fi
-   x=$[$x+1];
+  echo Pass $x
+  if [ $stage -le $x ]; then
+    if echo $realign_iters | grep -w $x >/dev/null; then
+      echo "Aligning data"
+      for n in `get_splits.pl $nj`; do
+        $cmd $dir/log/align.$x.$n.log \
+          gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/$x.mdl \
+          "ark:gunzip -c $dir/$n.fsts.gz|" "${featspart[$n]}" \
+          "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
+      done
+      wait;
+      [ -f $dir/.error ] && echo "Error aligning data on iteration $x" && exit 1;
+    fi
+    for n in `get_splits.pl $nj`; do
+      $cmd $dir/log/acc.$x.$n.log \
+        gmm-acc-stats-ali  $dir/$x.mdl "${featspart[$n]}" \
+        "ark,s,cs:gunzip -c $dir/$n.ali.gz|" $dir/$x.$n.acc || touch $dir/.error &
+    done
+    wait;
+    [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
+    $cmd $dir/log/update.$x.log \
+      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
+      "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
+    rm $dir/$x.mdl $dir/$x.*.acc
+    rm $dir/$x.occs 
+  fi
+  if [[ $x -le $maxiterinc ]]; then 
+    numgauss=$[$numgauss+$incgauss];
+  fi
+  x=$[$x+1];
 done
 
 ( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )

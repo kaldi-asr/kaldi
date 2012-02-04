@@ -21,6 +21,7 @@
 nj=4
 cmd=scripts/run.pl
 stage=-5
+transformdir=
 for x in `seq 3`; do
   if [ $1 == "--num-jobs" ]; then
      shift
@@ -33,10 +34,13 @@ for x in `seq 3`; do
      shift
   fi  
   if [ $1 == "--stage" ]; then # stage to start training from, typically same as the iter you have a .mdl file;
-     shift                     # in case it failed part-way.  
-     stage=$1
-     shift
+     stage=$2                  # in case it failed part-way.  
+     shift 2
   fi  
+  if [ $1 == "--transform-dir" ]; then
+     transformdir=$2
+     shift 2
+  fi
 done
 
 # Trains SGMM on top of LDA plus [something] features, where the [something]
@@ -63,9 +67,11 @@ lang=$6
 alidir=$7
 ubm=$8
 dir=$9
+[ -z $transformdir ] && transformdir=$alidir # Get transforms from $alidir if 
+ # --transform-dir option not supplied.
 
 mkdir -p $dir || exit 1;
-cp $alidir/final.mat $dir/final.mat || exit 1;
+cp $transformdir/final.mat $dir/final.mat || exit 1;
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 oov_sym=`cat $lang/oov.txt`
@@ -94,16 +100,13 @@ done
 randprune=0.1
 mkdir -p $dir/log 
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/*.cmvn|' scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 n1=`get_splits.pl $nj | awk '{print $1}'`
-if [ -f $alidir/$n1.trans ]; then
-  echo "Using speaker transforms from $alidir"
-  feats="$feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/*.trans|' ark:- ark:- |"
-fi
+[ -f $transformdir/$n1.trans ] && echo "Using speaker transforms from $transformdir"
+
 for n in `get_splits.pl $nj`; do
-  featspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-  if [ -f $alidir/0.trans ]; then
-    featspart[$n]="${featspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
+  featspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$transformdir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+  if [ -f $transformdir/$n1.trans ]; then
+    featspart[$n]="${featspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$transformdir/$n.trans ark:- ark:- |"
   fi
 done
 
@@ -115,11 +118,19 @@ fi
 
 
 if [ $stage -le -5 ]; then
-  # Get stats to build the tree.
+  # This stage assumes we won't need the context of silence, which
+  # assumes something about $lang/roots.txt, but it seems pretty safe.
   echo "Accumulating tree stats"
-  $cmd $dir/log/acc_tree.log \
-   acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" "ark:gunzip -c $alidir/*ali.gz|" \
-    $dir/treeacc || exit 1;
+  rm $dir/.error 2>/dev/null
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/acc_tree.$n.log \
+    acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
+      "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo Error accumulating tree stats && exit 1;
+  sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
+  rm $dir/*.treeacc
 fi
 
 if [ $stage -le -4 ]; then
@@ -146,7 +157,7 @@ if [ $stage -le -4 ]; then
   # The next line is a bit of a hack to work out the feature dim.  The program
   # feat-to-len returns the #rows of each matrix, which for the transform matrix,
   # is the feature dim.
-  featdim=`feat-to-len "scp:echo foo $alidir/final.mat|" ark,t:- 2>/dev/null | awk '{print $2}'`
+  featdim=`feat-to-len "scp:echo foo $transformdir/final.mat|" ark,t:- 2>/dev/null | awk '{print $2}'`
 
   # Note: if phndim and/or spkdim are higher than you can initialize with,
   # sgmm-init will just make them as high as it can (later we'll increase)

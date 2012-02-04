@@ -17,23 +17,28 @@
 
 # Decoding script for LDA + optionally MLLT + [some speaker-specific transforms]
 # This decoding script takes as an argument a previous decoding directory where it
-# can find some transforms.
+# can find some transforms (typically fMLLR).
+# This script does an extra pass of fMLLR estimation and uses it to rescore
+# lattices.  This would typically be used for systems that have been adaptively
+# trained against a simple GMM, but we want to do one more pass in test time,
+# after decoding.
 
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
 numjobs=1
 jobid=0
-beam=13.0
+fmllr_update_type=full
+acwt=0.083333
 for x in `seq 3`; do
   if [ "$1" == "-j" ]; then
     shift;
     numjobs=$1;
     jobid=$2;
-    shift 2;
+   shift; shift;
   fi
-  if [ "$1" == "--beam" ]; then
-    beam=$2;
-    shift 2;
+  if [ "$1" == "--fmllr-update-type" ]; then
+    fmllr_update_type=$2 # full|diag|offset|none
+    shift 2
   fi
 done
 
@@ -50,6 +55,8 @@ data=$2
 dir=$3
 transdir=$4
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
+
+silphonelist=`cat $graphdir/silphones.csl`
 
 mkdir -p $dir
 
@@ -72,8 +79,33 @@ done
 # CMVN stats-- we make them part of a pipe.
 feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$mydata/utt2spk ark:$transdir/$jobid.trans ark:- ark:- |"
 
-gmm-latgen-faster --max-active=7000 --beam=$beam --lattice-beam=6.0 --acoustic-scale=0.083333 \
+gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt \
+   --determinize-lattice=false \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
      2> $dir/decode$jobid.log || exit 1;
+
+
+# Do a pass of estimating the transform.
+
+(  lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
+     "ark:gunzip -c $dir/pre_lat.$jobid.gz|" ark:- | \
+   lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
+   weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- | \
+   gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
+      --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$feats" \
+      ark,s,cs:- ark:$dir/$jobid.trans ) \
+    2> $dir/fmllr.$jobid.log || exit 1;
+
+feats="$feats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.trans ark:- ark:- |"
+
+# Now rescore the state-level lattices with the adapted features and the
+# corresponding model.  Prune and determinize the lattices to limit
+# their size.
+
+gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.$jobid.gz|" "$feats" \
+ "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=8.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
+  2>$dir/rescore.$jobid.log || exit 1;
+
+rm $dir/pre_lat.$jobid.gz
 

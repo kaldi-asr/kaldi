@@ -1,27 +1,19 @@
 
 # Note: WER is second number from the right.
 
-for x in exp/*/decode_*; do [ -d $x ] && grep Mean $x/score_*/*.sys | scripts/best_wer.sh; done
-
-exp/tri4a/decode_eval2000/score_16/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   52.9      32.0       15.1        4.1       51.1       74.4   |
-
-exp/tri5a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   69.6      20.9        9.5        3.3       33.7       67.2   |
-
- # as tri5a but mixed up further (150k -> 175k Gaussians); WER 34.6->34.2
- exp/tri5a_175k/decode_eval2000/score_16/eval2000.ctm.filt.sys:|      Mean      |   54.4       524.3   |   69.2        25.2        5.6        53.5       84.3        89.2   |
- # PROBLEM.
- # old:
- exp/tri5a_175k/decode_eval2000/score_14/eval2000.ctm.filt.sys:     |    Mean    | 54.4  524.3 | 69.1   21.2    9.7    3.3   34.2   67.6 |
-
-# MMI trained from tri5a (WER 33.7->31.4)
-exp/tri5a_mmi/decode_eval2000/score_12/eval2000.ctm.filt.sys:|      Mean      |   54.4       524.3   |   71.9       19.4         8.7        3.3       31.4        65.4   |
-
-# Boosted MMI, b=0.1 [WER 31.0, vs. 31.4 for regular MMI]
-exp/tri5a_mmi_b0.1/decode_eval2000/score_11/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   72.4        19.2        8.4         3.4        31.0        65.1    |
-
-# SGMM [direct decoding].  Note: speed is about the same as tri5a, as tri5a has a lot of Gaussians.
-exp/sgmm6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:|      Mean      |   54.4      524.3   |   71.0       21.0        8.0        4.0       33.1       68.0   |
+for x in exp/*/decode_*; do [ -d $x ] && grep Sum $x/score_*/*.sys | scripts/best_wer.sh; done 2>/dev/null
+for x in exp/*/decode_*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done 2>/dev/null
 
 
- # Decoding this via lattice rescoring of tri5a lattices.
- exp/sgmm6a/decode_eval2000_fromlats/score_10/eval2000.ctm.filt.sys:|      Mean       |   54.4       524.3    |   71.1        20.4         8.4         3.9        32.7        67.6    |
+exp/tri4a/decode_eval2000/score_13/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   66.8      24.1        9.1        3.9       37.1       71.2   |
+exp/tri5a/decode_eval2000/score_15/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   70.0      21.3        8.7        3.3       33.3       68.5   |
+exp/tri6a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   72.3      19.8        7.9        3.3       31.0       67.2   |
+exp/sgmm5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   74.1       19.0        6.8        3.5       29.4       66.9   |
+exp/sgmm5a/decode_eval2000_fromlats/score_10/eval2000.ctm.filt.sys:|   Sum/Avg       |   4459       42989    |   72.3        20.3         7.5         3.7        31.4        68.2    |
+
+
+exp/tri4a/decode_train_dev/wer_14:%WER 37.74 [ 18570 / 49204, 2350 ins, 4463 del, 11757 sub ]
+exp/tri5a/decode_train_dev/wer_15:%WER 33.37 [ 16420 / 49204, 1929 ins, 4160 del, 10331 sub ]
+exp/tri5a_100k/decode_train_dev/wer_14:%WER 32.94 [ 16207 / 49204, 2069 ins, 3946 del, 10192 sub ]
+exp/tri6a/decode_train_dev/wer_14:%WER 31.37 [ 15435 / 49204, 1969 ins, 3758 del, 9708 sub ]
+exp/sgmm5a/decode_train_dev/wer_11:%WER 29.34 [ 14435 / 49204, 1882 ins, 3558 del, 8995 sub ]

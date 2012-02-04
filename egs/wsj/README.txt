@@ -10,7 +10,8 @@ About the Wall Street Journal corpus:
 
 
 Each subdirectory of this directory contains the
-scripts for a sequence of experiments.
+scripts for a sequence of experiments.  Note: s3 is the "default" set of
+scripts at the moment.
 
   s1: This setup is experiments with GMM-based systems with various 
       Maximum Likelihood 
@@ -18,3 +19,6 @@ scripts for a sequence of experiments.
       See a parallel setup in ../rm/s1 
 
   s3: This is the "new-style" recipe.   We recommend to look here first.
+      The recipe uses a subset of the algorithms in s1, but adds
+      cepstral mean subtraction (cms), and also uses more flexible, 
+      general scripts.

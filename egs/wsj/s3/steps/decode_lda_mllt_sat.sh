@@ -31,23 +31,28 @@ beam1=10.0
 beam2=13.0
 numjobs=1
 jobid=0
+fmllr_update_type=full
 
 for x in `seq 3`; do
   if [ "$1" == "-j" ]; then
     shift;
     numjobs=$1;
     jobid=$2;
-    shift; shift;
+    shift 2;
     ! scripts/get_splits.pl $numjobs | grep -w $jobid >/dev/null && \
       echo Invalid job-number $jobid "(num-jobs = $numjobs)" && exit 1;
   fi
+  if [ "$1" == "--fmllr-update-type" ]; then
+    fmllr_update_type=$2  # full|diag|offset|none
+    shift 2;
+  fi
   if [ "$1" == "--beam1" ]; then
     beam1=$2
-    shift; shift;
+    shift 2;
   fi
   if [ "$1" == "--beam2" ]; then
     beam2=$2
-    shift; shift;
+    shift 2;
   fi
 done
 
@@ -100,7 +105,8 @@ gmm-latgen-faster --max-active=7000 --beam=$beam1 --lattice-beam=3.0 --acoustic-
    lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- | \
    gmm-post-to-gpost $srcdir/final.alimdl "$basefeats" ark:- ark:- | \
-   gmm-est-fmllr-gpost --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$basefeats" \
+   gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
+       --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$basefeats" \
        ark,s,cs:- ark:$dir/$jobid.pre_trans ) \
     2> $dir/fmllr1.$jobid.log || exit 1;
 
@@ -121,7 +127,8 @@ gmm-latgen-faster --max-active=7000 --beam=$beam2 --lattice-beam=6.0 --acoustic-
      "ark:gunzip -c $dir/pre_lat2.$jobid.gz|" ark:- | \
    lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
    weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- | \
-   gmm-est-fmllr --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$feats" \
+   gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
+      --spk2utt=ark:$mydata/spk2utt $srcdir/final.mdl "$feats" \
       ark,s,cs:- ark:$dir/$jobid.trans.tmp ) \
     2> $dir/fmllr2.$jobid.log || exit 1;
 
@@ -136,7 +143,7 @@ feats="$basefeats transform-feats --utt2spk=ark:$mydata/utt2spk ark:$dir/$jobid.
 # their size.
 
 gmm-rescore-lattice $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat2.$jobid.gz|" "$feats" \
- "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=6.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
+ "ark:|lattice-determinize --acoustic-scale=$acwt --prune=true --beam=8.0 ark:- ark:- | gzip -c > $dir/lat.$jobid.gz" \
   2>$dir/rescore.$jobid.log || exit 1;
 
 rm $dir/pre_lat1.$jobid.gz

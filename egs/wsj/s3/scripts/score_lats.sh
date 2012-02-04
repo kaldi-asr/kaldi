@@ -39,7 +39,7 @@ trans=$data/text
 
 cat $trans | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
 
-for inv_acwt in 9 10 11 12 13 14 15 16; do 
+for inv_acwt in 9 10 11 12 13 14 15 16 17 18 19 20; do 
    acwt=`perl -e "print (1.0/$inv_acwt);"`
    lattice-best-path --acoustic-scale=$acwt --word-symbol-table=$symtab \
       "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/${inv_acwt}.tra \

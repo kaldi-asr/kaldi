@@ -37,7 +37,7 @@ done
 
 if [ $# != 5 ]; then
    echo "Usage: steps/mixup_lda_etc.sh <num-gauss> <data-dir> <old-exp-dir> <alignment-dir> <exp-dir>"
-   echo "Note: <alignment-dir> is only provided so we can get the CMVN data from there."
+   echo "Note: <alignment-dir> is only provided so we can get the CMVN data (and possibly transforms) from there."
    echo " e.g.: steps/mixup_lda_etc.sh 20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k"
    exit 1;
 fi

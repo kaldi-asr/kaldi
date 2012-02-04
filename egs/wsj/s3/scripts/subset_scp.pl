@@ -14,11 +14,24 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-
 # This program selects a subset of N elements in the scp.
-# It selects them evenly from throughout the scp, in order to
-# avoid selecting too many from the same speaker.
-# It prints them on the standard output.
+
+# By default, it selects them evenly from throughout the scp, in order to avoid
+# selecting too many from the same speaker.  It prints them on the standard
+# output.
+# With the option --first, it just selects the N first utterances.
+
+
+$first = 0;
+$last = 0;
+if ($ARGV[0] eq "--first") {
+  shift;
+  $first = 1;
+}
+if ($ARGV[0] eq "--last") {
+  shift;
+  $last = 1;
+}
 
 if(@ARGV < 2 ) {
     die "Usage: subset_scp.pl N in.scp ";
@@ -55,5 +68,17 @@ sub select_n {
         select_n($start+$halfdiff, $end, $num_needed - $halfneeded);
     }
 }
-select_n(0, $numlines, $N);
 
+if ( ! $first && ! $last) {
+  select_n(0, $numlines, $N);
+} else {
+  if ($first) { # --first option: same as head.
+    for ($n = 0; $n < $N; $n++) {
+      print $F[$n];
+    }
+  } else { # --last option: same as tail.
+    for ($n = @F - $N; $n < @F; $n++) {
+      print $F[$n];
+    }
+  }
+}

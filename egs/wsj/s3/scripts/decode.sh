@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash   
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,25 +24,21 @@ opts=
 cmd=scripts/run.pl
 for x in 1 2 3 4; do
   if [ $1 == "--num-jobs" ]; then
-     shift
-     nj=$1
-     shift
+     nj=$2
+     shift 2
   fi
   if [ $1 == "--opts" ]; then
-     shift
-     opts="$1"
-     shift
+     opts="$2"
+     shift 2
   fi
   if [ $1 == "--cmd" ]; then
-     shift
-     cmd=$1
-     shift
+     cmd=$2
+     shift 2
      [ -z "$cmd" ] && echo "Empty argument to --cmd option" && exit 1;
   fi  
   if [ $1 == "-l" ]; then
-     shift
-     lang=$1
-     shift
+     lang=$2
+     shift 2
      [ ! -f "$lang/phones_disambig.txt" -o ! -f "$lang/L_align.fst" ] && \
       echo "Invalid argument to -l option; expected $lang/phones_disambig.txt and $lang/L_align.fst to exist." \
       && exit 1;
@@ -68,7 +64,7 @@ shift;shift;shift;shift;
 extra_args=$* 
 
 for file in $script $scp $data/utt2spk; do
-  if [ ! -f $file ]; then
+  if [ ! -f "$file" ]; then
      echo "decode.sh: no such file $file"
      exit 1
   fi 

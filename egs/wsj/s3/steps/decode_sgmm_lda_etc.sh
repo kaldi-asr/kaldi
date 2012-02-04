@@ -27,8 +27,9 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 nj=1
 jobid=0
+beam=13.0
 first_pass_gselect=0   # 0 means, use the default #gauss for SGMMs in first pass.
-for n in `seq 2`; do
+for n in `seq 4`; do
   if [ "$1" == "-j" ]; then
     shift;
     nj=$1;
@@ -39,10 +40,14 @@ for n in `seq 2`; do
     first_pass_gselect=$2;
     shift; shift;
   fi
+  if [ "$1" == "--beam" ]; then
+    beam=$2;
+    shift; shift;
+  fi
 done
 
 if [ $# -lt 3 -o $# -gt 4 ]; then
-   echo "Usage: steps/decode_sgmm_lda_etc.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir> [<old-decode-dir>]"
+   echo "Usage: steps/decode_sgmm_lda_etc.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir> [<old-decode-dir/transform-dir>]"
    echo " e.g.: steps/decode_sgmm_lda_etc.sh -j 10 0 exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_dev93_tgpr exp/tri2b/decode_dev93_tgpr"
    exit 1;
 fi
@@ -95,9 +100,9 @@ gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark
 
 
 # Generate a state-level lattice for rescoring, with the alignment model and no speaker
-# vectors.
+# vectors.  We use a smaller number of selected Gaussians for this pass, for speed.
 
-sgmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=$acwt  \
+sgmm-latgen-faster --max-active=7000 --beam=$beam --lattice-beam=6.0 --acoustic-scale=$acwt  \
   --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   "$gselect_opt_1stpass" $srcdir/final.alimdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.$jobid.gz" \
    2> $dir/decode_pass1.$jobid.log || exit 1;

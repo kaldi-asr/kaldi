@@ -25,23 +25,36 @@
 # number of utterances.  (The selected utterances are distributed
 # evenly throughout the file, by the program ./subset_scp.pl).
 
-# If you give the --per-spk option, it will attempt to select
-# the supplied number of utterances for each speaker (typically
-# you would supply a much smaller number in this case).
 
-# If you give the --shortest option [not compatible with the
-# --per-spk option], it will give you the n shortest utterances.
+# There are three options, none compatible with any other.
+
+# If you give the --per-spk option, it will attempt to select the supplied
+# number of utterances for each speaker (typically you would supply a much
+# smaller number in this case).
+
+# If you give the --shortest option, it will give you the n shortest utterances.
+
+# If you give the --first option it will just give you the n first utterances.
 
 shortest=false
 perspk=false
+first_opt=""
+
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
   shift;
-fi
-if [ "$1" == "--shortest" ]; then
+elif [ "$1" == "--shortest" ]; then
   shortest=true;
   shift;
+elif [ "$1" == "--first" ]; then
+  first_opt="--first";
+  shift;
+elif [ "$1" == "--last" ]; then
+  first_opt="--last";
+  shift;
 fi
+
+
 
 if [ $# != 3 ]; then
   echo "Usage: subset_data_dir.sh [--per-spk] <srcdir> <num-utt> <destdir>"
@@ -94,7 +107,7 @@ else
     rm $destdir/tmp.uttlist $destdir/tmp.len
   else
     # create feats.scp
-    scripts/subset_scp.pl $numutt $srcdir/feats.scp > $destdir/feats.scp || exit 1;
+    scripts/subset_scp.pl $first_opt $numutt $srcdir/feats.scp > $destdir/feats.scp || exit 1;
   fi
  
   if [ -f $srcdir/wav.scp ]; then

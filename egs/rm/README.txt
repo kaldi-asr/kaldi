@@ -7,7 +7,8 @@ About the Resource Management corpus:
     is the one we used).
 
 Each subdirectory of this directory contains the
-scripts for a sequence of experiments.
+scripts for a sequence of experiments.  Note: s3 is the "default" set of
+scripts at the moment.
 
   s1: This setup is experiments with GMM-based systems with various 
       Maximum Likelihood 

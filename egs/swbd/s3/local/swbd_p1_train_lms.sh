@@ -50,7 +50,7 @@ cat data/local/train.txt | awk '{for(n=2;n<=NF;n++) print $n; }' | \
 # note: we probably won't really make use of <UNK> as there aren't any OOVs
 cat $dir/unigram.counts  | awk '{print $2}' | get_word_map.pl "<s>" "</s>" "<UNK>" > $dir/word_map
 
-# note: ignore 2nd field of train.txt, it's the utterance-id.
+# note: ignore 1st field of train.txt, it's the utterance-id.
 cat data/local/train.txt | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]=$2;}
   { for(n=2;n<=NF;n++) { printf map[$n]; if(n<NF){ printf " "; } else { print ""; }}}' | gzip -c >$dir/train.gz
 

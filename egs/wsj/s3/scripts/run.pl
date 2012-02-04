@@ -21,7 +21,7 @@ $cmd = "";
 
 foreach $x (@ARGV) { 
     if ($x =~ m/^\S+$/) { $cmd .=  $x . " "; }
-    elsif ($x =~ m:\":) { $cmd .= "'\''$x'\'' "; }
+    elsif ($x =~ m:\":) { $cmd .= "'$x' "; }
     else { $cmd .= "\"$x\" "; } 
 }
 

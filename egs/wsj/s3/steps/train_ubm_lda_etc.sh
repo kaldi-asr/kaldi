@@ -65,6 +65,9 @@ for n in `get_splits.pl $nj`; do
   fi
 done
 
+ngselect1=50
+ngselect2=25
+
 intermediate=2000
 if [ $[$numcomps*2] -gt $intermediate ]; then
   intermediate=$[$numcomps*2];
@@ -83,7 +86,7 @@ rm $dir/.error 2>/dev/null
 # as the initial screen for all further passes.
 for n in `get_splits.pl $nj`; do
   $cmd $dir/log/gselect_diag.$n.log \
-    gmm-gselect --n=50 "fgmm-global-to-gmm $dir/0.ubm - |" "${featspart[$n]}" \
+    gmm-gselect --n=$ngselect1 "fgmm-global-to-gmm $dir/0.ubm - |" "${featspart[$n]}" \
       "ark:|gzip -c >$dir/gselect_diag.$n.gz"  &
 done
 wait
@@ -93,15 +96,17 @@ for x in 0 1 2 3; do
   echo "Pass $x"
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/acc.$x.$n.log \
-      gmm-gselect "--gselect=ark,s,cs:gunzip -c $dir/gselect_diag.$n.gz|" \
+      gmm-gselect --n=$ngselect2 "--gselect=ark,s,cs:gunzip -c $dir/gselect_diag.$n.gz|" \
         "fgmm-global-to-gmm $dir/$x.ubm - |" "${featspart[$n]}" ark:- \| \
       fgmm-global-acc-stats --gselect=ark,s,cs:- $dir/$x.ubm "${featspart[$n]}" \
         $dir/$x.$n.acc || touch $dir/.error &
   done
   wait
   [ -f $dir/.error ] && echo "Error accumulating stats for UBM estimation on pass $x" && exit 1;
+  lowcount_opt="--remove-low-count-gaussians=false"
+  [ $x -eq 3 ] && lowcount_opt=   # Only remove low-count Gaussians on last iter-- keeps gselect info valid.
   $cmd $dir/log/update.$x.log \
-    fgmm-global-est --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
+    fgmm-global-est $lowcount_opt --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
       $dir/$[$x+1].ubm || exit 1;
   rm $dir/$x.*.acc $dir/$x.ubm
 done

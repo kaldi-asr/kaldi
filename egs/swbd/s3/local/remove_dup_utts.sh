@@ -50,3 +50,5 @@ scripts/filter_scp.pl $destdir/text <$srcdir/utt2spk >$destdir/utt2spk
 scripts/utt2spk_to_spk2utt.pl < $destdir/utt2spk > $destdir/spk2utt
 [ -f $srcdir/wav.scp ] && scripts/filter_scp.pl $destdir/feats.scp <$srcdir/wav.scp >$destdir/wav.scp
 [ -f $srcdir/spk2gender ] && scripts/filter_scp.pl $destdir/spk2utt <$srcdir/spk2gender >$destdir/spk2gender
+
+exit 0;

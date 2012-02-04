@@ -16,7 +16,7 @@
 
 # To be run from ..
 # This script trains a model on top of LDA + [something] features, where
-# [something] may be MLLT, or ET, or MLLT + SAT.  Any speaker-specific
+# [something] may be MLLT, or MLLT+ ET, or MLLT + SAT.  Any speaker-specific
 # transforms are expected to be located in the alignment directory. 
 # This script never re-estimates any transforms, it just does model 
 # training.  To make this faster, it initializes the model from the
@@ -79,7 +79,6 @@ fi
 
 cp $alidir/final.mat $dir/
 
-sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 # featspart[n] gets overwritten later in the script.
 for n in `get_splits.pl $nj`; do
@@ -88,22 +87,28 @@ done
 
 n=`get_splits.pl $nj | awk '{print $1}'`
 if [ -f $alidir/$n.trans ]; then
-  feats="$sifeats transform-feats --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.trans|\" ark:- ark:- |"
   for n in `get_splits.pl $nj`; do
     featspart[$n]="${sifeatspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
   done
 else
-  feats="$sifeats"
   for n in `get_splits.pl $nj`; do featspart[$n]="${sifeatspart[$n]}"; done
 fi
 
 
-# The next stage assumes we won't need the context of silence, which
+# This stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
-$cmd $dir/log/acc_tree.log \
-  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" \
-    "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc || exit 1;
+rm $dir/.error 2>/dev/null
+for n in `get_splits.pl $nj`; do
+  $cmd $dir/log/acc_tree.$n.log \
+  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
+    "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
+done
+wait
+[ -f $dir/.error ] && echo Error accumulating tree stats && exit 1;
+sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
+rm $dir/*.treeacc
+
 
 echo "Computing questions for tree clustering"
 # preparing questions, roots file...
@@ -191,7 +196,7 @@ while [ $x -lt $numiters ]; do
    x=$[$x+1];
 done
 
-if [ "$feats" != "$sifeats" ]; then
+if [ -f $alidir/$n.trans ]; then
   # we have speaker-specific transforms, so need to estimate an alignment model.
   # Accumulate stats for "alignment model" which is as the model but with
   # the default features (shares Gaussian-level alignments).

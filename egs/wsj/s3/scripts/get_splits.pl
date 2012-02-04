@@ -9,7 +9,7 @@
 # interact well with bash variable name indexing.
 
 if (@ARGV != 1 || $ARGV[0] !~ m:^\d+$: || $ARGV[0] < 1) {
-    die "Invalid command-line arguments (expect the number of splits)";
+    die "Invalid command-line arguments (expect the number of splits): command line was @ARGV";
 }
 
 $n = $ARGV[0];

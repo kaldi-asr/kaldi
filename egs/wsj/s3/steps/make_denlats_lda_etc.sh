@@ -127,38 +127,41 @@ if [ $subsplit -eq 1 ]; then
   wait
   [ -f $dir/.error ] && echo Error generating denominator lattices && exit 1;
 else # Decode each subset of the data with multiple jobs.
+   # Note: this "sub-splitting" is done per utterance not per speaker,
+   # as when done per speaker, we can get problems with empty subsets and
+   # uneven-sized subsets.
   for n in `get_splits.pl $nj`; do
     if [ -f $dir/.done.$n ]; then
       echo Not processing subset $n because file $dir/.done.$n exists # This is so we
     else # can rerun this script without redoing everything, if we succeeded with some parts.
       nk=$subsplit
       if [ ! -d $data/split$nj/$n/split$nk -o $data/split$nj/$n/split$nk -ot $data/split$nj/feats.scp ]; then      
-        scripts/split_data.sh $data/split$nj/$n $nk || exit 1;
+        scripts/split_data.sh --per-utt $data/split$nj/$n $nk || exit 1;
       fi
-    fi
-    mkdir -p $dir/log$n
-    for o in `get_splits.pl $nk`; do
-      if [ ! -s $data/split$nj/$n/split$nk/$o/feats.scp ]; then
-        echo "Empty subset; no lines in $data/split$nj/$n/split$nk/$o/feats.scp"
-      else 
-        feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/split$nk/$o/utt2spk ark,s,cs:$alidir/$n.cmvn scp:$data/split$nj/$n/split$nk/$o/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-        $use_trans && feats="$feats transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark,s,cs:$alidir/$n.trans ark:- ark:- |"
-        $cmd $dir/log$n/decode_den.$o.log \
-          gmm-latgen-faster --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
-          --max-mem=$maxmem --max-active=$maxactive --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.$n.$o.gz" \
+      mkdir -p $dir/log$n
+      for o in `get_splits.pl $nk`; do
+        if [ ! -s $data/split$nj/$n/split$nk/$o/feats.scp ]; then
+          echo "Empty subset; no lines in $data/split$nj/$n/split$nk/$o/feats.scp"
+        else 
+          feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/split$nk/$o/utt2spk ark,s,cs:$alidir/$n.cmvn scp:$data/split$nj/$n/split$nk/$o/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+          $use_trans && feats="$feats transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark,s,cs:$alidir/$n.trans ark:- ark:- |"
+          $cmd $dir/log$n/decode_den.$o.log \
+            gmm-latgen-faster --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
+            --max-mem=$maxmem --max-active=$maxactive --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
+            $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.$n.$o.gz" \
             || touch $dir/.error &
-      fi
-    done
-    wait
-    [ -f $dir/.error ] && echo Error generating denominator lattices for subset $n && exit 1;
-    echo Merging archives for data subset $n
-    for o in `get_splits.pl $nk`; do
-      gunzip -c $dir/lat.$n.$o.gz || touch $dir/.error;
-    done | gzip -c > $dir/lat.$n.gz || touch $dir/.error;
-    [ -f $dir/.error ] && echo Error merging denominator lattices for subset $n && exit 1;
-    rm $dir/lat.$n.*.gz
-    touch $dir/.done.$n # so we don't re-do it if we run this script again.
+        fi
+      done
+      wait
+      [ -f $dir/.error ] && echo Error generating denominator lattices for subset $n && exit 1;
+      echo Merging archives for data subset $n
+      for o in `get_splits.pl $nk`; do
+        gunzip -c $dir/lat.$n.$o.gz || touch $dir/.error;
+      done | gzip -c > $dir/lat.$n.gz || touch $dir/.error;
+      [ -f $dir/.error ] && echo Error merging denominator lattices for subset $n && exit 1;
+      rm $dir/lat.$n.*.gz
+      touch $dir/.done.$n # so we don't re-do it if we run this script again.
+    fi
   done
 fi
 

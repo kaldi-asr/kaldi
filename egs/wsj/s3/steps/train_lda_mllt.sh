@@ -100,9 +100,6 @@ if [ ! -d $data/split$nj -o $data/split$nj -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $nj
 fi
 
-# feats0 is all the feats, transformed with 0.mat-- just needed for tree accumulation.
-feats0="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk \"ark:cat $alidir/*.cmvn|\" scp:$data/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/0.mat ark:- ark:- |"
-
 # featspart[n] gets overwritten later in the script.
 for n in `get_splits.pl $nj`; do
   splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
@@ -127,12 +124,20 @@ est-lda $dir/0.mat $dir/lda.*.acc 2>$dir/log/lda_est.log || exit 1; # defaults t
 rm $dir/lda.*.acc
 cur_lda=$dir/0.mat
 
+
 # The next stage assumes we won't need the context of silence, which
 # assumes something about $lang/roots.txt, but it seems pretty safe.
 echo "Accumulating tree stats"
-$cmd $dir/log/acc_tree.log \
-  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats0" \
-    "ark:gunzip -c $alidir/*.ali.gz|" $dir/treeacc || exit 1;
+rm $dir/.error 2>/dev/null
+for n in `get_splits.pl $nj`; do
+  $cmd $dir/log/acc_tree.$n.log \
+    acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
+      "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
+done
+wait
+[ -f $dir/.error ] && echo Error accumulating tree stats && exit 1;
+sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
+rm $dir/*.treeacc
 
 echo "Computing questions for tree clustering"
 # preparing questions, roots file...

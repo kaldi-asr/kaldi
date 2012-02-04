@@ -29,7 +29,8 @@
 nj=4
 cmd=scripts/run.pl
 oldgraphs=false
-for x in 1 2 3; do
+fmllr_update_type=full
+for x in `seq 4`; do
   if [ "$1" == --use-graphs ]; then
     shift;
     oldgraphs=true
@@ -45,6 +46,11 @@ for x in 1 2 3; do
      [ "$cmd" == "" ] && echo "Empty string given to --cmd option" && exit 1;
      shift
   fi  
+  if [ $1 == "--fmllr-update-type" ]; then
+     shift
+     fmllr_update_type=$1 # full|diag|offset|none
+     shift
+  fi
 done
 
 if [ $# != 4 ]; then
@@ -64,7 +70,12 @@ oov_sym=`cat $lang/oov.txt`
 silphonelist=`cat $lang/silphones.csl`
 
 mkdir -p $dir
-cp $srcdir/{tree,final.mdl,final.alimdl,final.mat,final.occs} $dir || exit 1;  # Create copy of the tree and models and occs...
+cp $srcdir/{tree,final.mdl,final.mat,final.occs} $dir || exit 1;  # Create copy of the tree and models and occs...
+if [ -f $srcdir/final.alimdl ]; then
+  cp $srcdir/final.alimdl $dir; # will only exist if system was trained with SAT.
+else
+  rm $dir/final.alimdl; ln -s final.mdl $dir/final.alimdl # pretend we have alignment model.
+fi
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
@@ -128,7 +139,8 @@ for n in `get_splits.pl $nj`; do
     ali-to-post "ark:gunzip -c $dir/$n.pre_ali.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $dir/final.alimdl ark:- ark:- \| \
       gmm-post-to-gpost $dir/final.alimdl "${sifeatspart[$n]}" ark:- ark:- \| \
-      gmm-est-fmllr-gpost --spk2utt=ark:$data/split$nj/$n/spk2utt $dir/final.mdl "${sifeatspart[$n]}" \
+      gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
+        --spk2utt=ark:$data/split$nj/$n/spk2utt $dir/final.mdl "${sifeatspart[$n]}" \
         ark,s,cs:- ark:$dir/$n.trans || touch $dir/.error &
 done
 wait;

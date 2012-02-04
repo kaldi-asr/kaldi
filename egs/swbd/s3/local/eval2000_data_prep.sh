@@ -61,6 +61,7 @@ pem=$sdir/english/hub5e_00.pem
 [ ! -f $pem ] && echo "No such file $pem" && exit 1;
 # pem file has lines like: 
 #en_4156 A unknown_speaker 301.85 302.48
+
 grep -v ';;' $pem | awk '{spk=$1"-"$2; utt=sprintf("%s_%06d-%06d",spk,$4*100,$5*100); print utt,spk,$4,$5;}' \
  | sort  > $dir/segments
 
@@ -90,6 +91,10 @@ grep -v IGNORE_TIME_SEGMENT_ $dir/text.all > $dir/text
 # a separate speaker.
 cat $dir/segments | awk '{print $1,$2;}' > $dir/utt2spk  
 scripts/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
+
+
+cp $dir/segments $dir/segments.tmp
+cat $dir/segments.tmp | awk '{x=$3-0.05; if (x<0.0) x=0.0; y=$4+0.05; print $1, $2, x, y; }' > $dir/segments
 
 dest=data/eval2000
 mkdir -p $dest
