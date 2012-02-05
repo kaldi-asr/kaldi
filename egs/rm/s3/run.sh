@@ -1,19 +1,19 @@
 #!/bin/bash
 
-exit 1 # Don't run this... it's to be run line by line from the shell.
+#exit 1 # Don't run this... it's to be run line by line from the shell.
 
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
 #    rm1_audio1  rm1_audio2	rm2_audio
 
-local/rm_data_prep.sh /mnt/matylda2/data/RM/
+local/rm_data_prep.sh ~/data/RM/
 
 local/rm_format_data.sh
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_mfcc
+mfccdir=~/derived_data/kaldi_rm_mfcc
 for x in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92; do
   steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
 done
@@ -113,7 +113,7 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode
 
 
 # Decode with fMLLR
-. path.sh
+. ./path.sh
 sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl}
 local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode
 
