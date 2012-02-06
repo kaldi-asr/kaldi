@@ -13,7 +13,7 @@ all: test_install $(SUBDIRS)
 	echo Done
 
 test_install:
-	[ -d ../tools/openfst-1.2.10 ] || ( echo "You need openfst-1.2.10; cd to ../tools and run ./install.sh"; exit 1 )
+	[ -d ../tools/openfst-1.2.10 ] || ( echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
 
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done

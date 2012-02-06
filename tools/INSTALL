@@ -56,7 +56,7 @@ to configure, if it's not already the default (g++ -v will tell you).
 wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz
 tar -xovzf openfst-1.2.10.tar.gz   
 for dir in openfst-1.2.10/{src/,}include/fst; do
-   ( cd $dir; patch -p0 -N <../../../../openfst.patch ) 
+    ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
 done 
 rm openfst 2>/dev/null # Remove any existing link
 ln -s openfst-1.2.10 openfst
