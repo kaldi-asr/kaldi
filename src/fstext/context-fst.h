@@ -283,9 +283,13 @@ class ContextFst : public Fst<Arc> {
   }
 
   friend class CacheStateIterator<ContextFst<Arc> >;  // so it can see impl_.
- protected:
-  ContextFstImpl<Arc, LabelT> *impl_;  // protected so CacheStateIterator
  private:
+  ContextFstImpl<Arc, LabelT> *impl_;  // protected so CacheStateIterator
+  // Makes visible to friends.
+  ContextFstImpl<Arc, LabelT> *GetImpl() const { return impl_; }
+ // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl(); 
+ // but need to convert to using the ImplToFst stuff.
+
   void operator = (const ContextFstImpl<Arc> &fst);  // disallow
 };
 
@@ -319,7 +323,7 @@ class StateIterator< ContextFst<A> >
     : public CacheStateIterator< ContextFst<A> > {
  public:
   explicit StateIterator(const ContextFst<A> &fst)
-      : CacheStateIterator< ContextFst<A> >(fst) {}
+    : CacheStateIterator< ContextFst<A> >(fst, fst.GetImpl()) {}
 };
 
 
@@ -332,9 +336,9 @@ class ArcIterator< ContextFst<A> >
   typedef typename A::StateId StateId;
 
   ArcIterator(const ContextFst<A> &fst, StateId s)
-      : CacheArcIterator< ContextFst<A> >(fst, s) {
-    if (!fst.impl_->HasArcs(s)) // arcs not already computed.
-      fst.impl_->Expand(s);
+    : CacheArcIterator< ContextFst<A> >(fst.GetImpl(), s) {
+    if (!fst.GetImpl()->HasArcs(s)) // arcs not already computed.
+      fst.GetImpl()->Expand(s);
   }
 
  private:

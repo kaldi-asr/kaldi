@@ -170,23 +170,25 @@ fi
 (
   echo "****(6) Install openfst"
 
-  rm openfst-1.2.7.tar.gz 2>/dev/null
-  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
+  rm openfst-1.2.10.tar.gz 2>/dev/null
+  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz
 
-  if [ ! -e openfst-1.2.7.tar.gz ]; then
-    echo "****download openfst-1.2.7.tar.gz failed."
+  if [ ! -e openfst-1.2.10.tar.gz ]; then
+    echo "****download openfst-1.2.10.tar.gz failed."
     exit 1
   else
-    tar -xovzf openfst-1.2.7.tar.gz   || exit 1
-    cp partition.h minimize.h openfst-1.2.7/src/include/fst
+    tar -xovzf openfst-1.2.10.tar.gz   || exit 1
+    for dir in openfst-1.2.10/{src/,}include/fst; do
+       ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
+    done 
     #ignore errors in the following; it's for robustness in case
     # someone follows these instructions after the installation of openfst.
-    cp partition.h minimize.h openfst-1.2.7/include/fst 2>/dev/null
+    cp partition.h minimize.h openfst-1.2.10/include/fst 2>/dev/null
     # Remove any existing link
     rm openfst 2>/dev/null
-    ln -s openfst-1.2.7 openfst
+    ln -s openfst-1.2.10 openfst
      
-    cd openfst-1.2.7
+    cd openfst-1.2.10
     # Choose the correct configure statement:
 
     # Linux or Darwin:

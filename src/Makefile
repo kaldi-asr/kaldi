@@ -9,8 +9,11 @@ SUBDIRS = base matrix util feat tree optimization gmm tied transform sgmm \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           nnet nnetbin latbin rnn
 
-all: $(SUBDIRS) 
+all: test_install $(SUBDIRS) 
 	echo Done
+
+test_install:
+	[ -d ../tools/openfst-1.2.10 ] || ( echo "You need openfst-1.2.10; cd to ../tools and run ./install.sh"; exit 1 )
 
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done

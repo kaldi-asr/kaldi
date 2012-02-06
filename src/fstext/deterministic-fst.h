@@ -290,9 +290,11 @@ class DeterministicOnDemandFst : public Fst<Arc> {
   }
 
   friend class CacheStateIterator<DeterministicOnDemandFst<Arc> >;  // so it can see impl_.
- protected:
-  DeterministicOnDemandFstImpl<Arc> *impl_;  // protected so CacheStateIterator can see it
  private:
+  // visible to friends:
+  DeterministicOnDemandFstImpl<Arc> *GetImpl() const { return impl_; }
+
+  DeterministicOnDemandFstImpl<Arc> *impl_; 
   void operator = (const DeterministicOnDemandFstImpl<Arc> &fst);  // disallow
 };
 
@@ -303,7 +305,7 @@ class StateIterator< DeterministicOnDemandFst<A> >
     : public CacheStateIterator< DeterministicOnDemandFst<A> > {
  public:
   explicit StateIterator(const DeterministicOnDemandFst<A> &fst)
-      : CacheStateIterator< DeterministicOnDemandFst<A> >(fst) {}
+    : CacheStateIterator< DeterministicOnDemandFst<A> >(fst, fst.GetImpl()) {}
 };
 
 
@@ -316,9 +318,9 @@ class ArcIterator< DeterministicOnDemandFst<A> >
   typedef typename A::StateId StateId;
 
   ArcIterator(const DeterministicOnDemandFst<A> &fst, StateId s)
-      : CacheArcIterator< DeterministicOnDemandFst<A> >(fst, s) {
-    if (!fst.impl_->HasArcs(s)) // arcs not already computed.
-      fst.impl_->Expand(s);
+    : CacheArcIterator< DeterministicOnDemandFst<A> >(fst.GetImpl(), s) {
+    if (!fst.GetImpl()->HasArcs(s)) // arcs not already computed.
+      fst.GetImpl()->Expand(s);
   }
 
  private:

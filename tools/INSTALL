@@ -53,16 +53,15 @@ to configure, if it's not already the default (g++ -v will tell you).
 (on cygwin you may have to install the g++-4.0 package and give the options CXX=g++-4.exe CC=gcc-4.exe to configure).
 
 
-wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
-tar -xovzf openfst-1.2.7.tar.gz   
-cp partition.h minimize.h openfst-1.2.7/src/include/fst
-#ignore errors in the following; it's for robustness in case
-# someone follows these instructions after the installation of openfst.
-cp partition.h minimize.h openfst-1.2.7/include/fst 2>/dev/null
+wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz
+tar -xovzf openfst-1.2.10.tar.gz   
+for dir in openfst-1.2.10/{src/,}include/fst; do
+   ( cd $dir; patch -p0 -N <../../../../openfst.patch ) 
+done 
 rm openfst 2>/dev/null # Remove any existing link
-ln -s openfst-1.2.7 openfst
+ln -s openfst-1.2.10 openfst
  
-cd openfst-1.2.7
+cd openfst-1.2.10
 # Choose the correct configure statement:
 
 Linux or Darwin:
