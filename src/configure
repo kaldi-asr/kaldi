@@ -197,9 +197,11 @@ if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
     failure "Could not find file $FSTROOT/include/fst/fst.h:
     you may not have installed OpenFst.  See ../tools/INSTALL"
 fi
-if ! cmp ../tools/minimize.h $FSTROOT/include/fst/minimize.h ; then
-    echo "**Warning: ../tools/minimize.h and $FSTROOT/include/fst/minimize.h differ: 
-    patch not applied?  FST tools may not work.  See ../tools/INSTALL"
+echo Checking OpenFst library was patched.
+if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
+    echo "**Error: $FSTROOT/include/fst/minimize.h seems not to be patched:"
+    echo "patch not applied?  FST tools will not work in our recipe."
+    exit 1;
 fi
 
 # back up the old one in case we modified it
