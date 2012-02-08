@@ -38,7 +38,7 @@ if [ ! -f $srcdir/cleaned.gz -o ! -f $srcdir/wordlist.final ]; then
 fi
 
 # Get training data with OOV words (w.r.t. our current vocab) replaced with <UNK>.
-echo "Getting training data with OOV words repalaced with <UNK> (train_nounk.gz)"
+echo "Getting training data with OOV words replaced with <UNK> (train_nounk.gz)" 
 gunzip -c $srcdir/cleaned.gz | awk -v w=$srcdir/wordlist.final \
   'BEGIN{while((getline<w)>0) v[$1]=1;}
   {for (i=1;i<=NF;i++) if ($i in v) printf $i" ";else printf "<UNK> ";print ""}'|sed 's/ $//g' \
