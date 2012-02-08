@@ -106,7 +106,7 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
     window_part.Add(-window_part.Sum() / frame_length);
 
   if (log_energy_pre_window != NULL) {
-    BaseFloat energy = VecVec(wave_part, wave_part);
+    BaseFloat energy = VecVec(window_part, window_part);
     *log_energy_pre_window = log(energy);
   }
 
