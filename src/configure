@@ -77,21 +77,28 @@ function linux_atlas_failure { # function we use when we couldn't find
 } 
 
 function linux_configure_static {
-  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse3,/atlas-sse2} \
-      `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-      if [ -f $dir/libatlas.a ]; then
-         ATLASLIBDIR=$dir
-      fi 
-    done
-    if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-      echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
-      return 1;
+  if [ -z $ATLASLIBDIR ]; then
+    if [ -f $ATLASROOT/lib/libatlas.a ]; then
+       ATLASLIBDIR=$ATLASROOT/lib
+    elif [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.a ]; then
+       ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
+    elif [ -f /usr/local/lib/libatlas.a ]; then
+       ATLASLIBDIR=/usr/local/lib
+    elif [ -f /usr/lib64/atlas-sse3/libatlas.a ]; then   
+        ATLASLIBDIR=/usr/lib64/atlas-sse3
+    elif [ -f /usr/lib64/sse2/libatlas.a ]; then   
+        ATLASLIBDIR=/usr/lib/sse2
+    elif [ -f /usr/lib/libatlas.a ]; then
+        ATLASLIBDIR=/usr/lib
+    else
+        echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
+        return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
     echo "Could not find libatlas.a in '$ATLASLIBDIR'"
     return 1;
   fi
+
   echo "Looking for ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
@@ -126,16 +133,20 @@ function linux_configure_static {
 }
 
 function linux_configure_dynamic {
-  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse3,/atlas-sse2} \
-      `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-      if [ -f $dir/libatlas.so ]; then
-         ATLASLIBDIR=$dir
-      fi 
-    done
-    if [ -z $ATLASLIBDIR ]; then
-      echo "Could not find libatlas.so in any of the obvious places."
-      return 1;
+  if [ -z $ATLASLIBDIR ]; then
+    if [ -f $ATLASROOT/lib/libatlas.so ]; then
+       ATLASLIBDIR=$ATLASROOT/lib
+    elif [ -f `pwd`/../tools/ATLAS/build/install/lib/libatlas.so ]; then
+       ATLASLIBDIR=`pwd`/../tools/ATLAS/build/install/lib
+    elif [ -f /usr/local/lib/libatlas.so ]; then
+       ATLASLIBDIR=/usr/local/lib
+    elif [ -f /usr/lib/sse2/libatlas.so ]; then   
+        ATLASLIBDIR=/usr/lib/sse2
+    elif [ -f /usr/lib/libatlas.so ]; then
+        ATLASLIBDIR=/usr/lib
+    else
+        echo "Could not find libatlas.so in any of the obvious places."
+        return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.so ]; then
     echo "Could not find libatlas.so in '$ATLASLIBDIR'"
