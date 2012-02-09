@@ -49,7 +49,7 @@ class DecodableAmSgmm : public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
     return LogLikelihoodZeroBased(frame, trans_model_.TransitionIdToPdf(tid));
   }
-  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+  int32 NumFrames() { return feature_matrix_.NumRows(); }
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
   virtual bool IsLastFrame(int32 frame) {
@@ -60,7 +60,7 @@ class DecodableAmSgmm : public DecodableInterface {
   void ResetLogLikeCache();
 
  protected:
-  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
 
   const AmSgmm &acoustic_model_;
   const SgmmGselectConfig &sgmm_config_;
@@ -137,7 +137,7 @@ class DecodableAmSgmmFmllr : public DecodableAmSgmm {
   }
 
  protected:
-  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
+  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
 
  private:
   Matrix<BaseFloat> fmllr_mat_;

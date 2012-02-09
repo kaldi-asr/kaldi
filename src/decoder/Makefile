@@ -8,7 +8,7 @@ include ../kaldi.mk
 #TESTFILES =  kaldi-decoder-test
 TESTFILES = 
 
-OBJFILES = decodable-am-diag-gmm.o training-graph-compiler.o decodable-am-sgmm.o
+OBJFILES = decodable-am-diag-gmm.o training-graph-compiler.o decodable-am-sgmm.o decodable-am-tied-diag-gmm.o decodable-am-tied-full-gmm.o
 
 LIBFILE = kaldi-decoder.a
 
@@ -22,8 +22,8 @@ $(LIBFILE): $(OBJFILES)
 
 
 $(TESTFILES): $(LIBFILE) ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
-     ../sgmm/kaldi-sgmm.a ../gmm/kaldi-gmm.a ../util/kaldi-util.a \
-     ../base/kaldi-base.a ../matrix/kaldi-matrix.a
+     ../sgmm/kaldi-sgmm.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../util/kaldi-util.a \
+     ../base/kaldi-base.a ../matrix/kaldi-matrix.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -36,7 +36,7 @@ clean:
 	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

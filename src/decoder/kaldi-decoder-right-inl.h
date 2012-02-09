@@ -26,7 +26,7 @@ namespace kaldi {
   //***************************************************************************
   //***************************************************************************
   template<class Decodable, class Fst>
-  KaldiDecoder<Decodable, Fst>::KaldiDecoder(KaldiDecoderOptions opts) :
+  KaldiDecoder<Decodable, Fst>::KaldiDecoder(const KaldiDecoderOptions opts) :
       options_(opts) {
     tokens_ = new TokenStore(&wl_store_);
     tokens_next_ = new TokenStore(&wl_store_);
@@ -47,7 +47,7 @@ namespace kaldi {
   //***************************************************************************
   //***************************************************************************
   template<class Decodable, class Fst>
-  fst::VectorFst<typename fst::StdArc>* KaldiDecoder<Decodable, Fst>::Decode(
+  fst::VectorFst<LatticeArc>* KaldiDecoder<Decodable, Fst>::Decode(
       const Fst &fst, Decodable *decodable) {
     // the decoding main routine
 
@@ -111,24 +111,24 @@ namespace kaldi {
   void KaldiDecoder<Decodable, Fst>::InitDecoding(const Fst &fst,
                                              Decodable *decodable) {
     reconet_ = &fst;  // recognition network FST
-    assert(reconet_ != NULL);
-    assert(reconet_->Start() != fst::kNoStateId);  // gets the initial state
+    KALDI_ASSERT(reconet_ != NULL);
+    KALDI_ASSERT(reconet_->Start() != fst::kNoStateId);  // gets the initial state
     // kNoState means empty FST
     p_decodable_ = decodable;  // acoustic model with features
-    assert(p_decodable_ != NULL);
+    KALDI_ASSERT(p_decodable_ != NULL);
     if ((Weight::Properties() & (fst::kPath | fst::kRightSemiring)) !=
         (fst::kPath | fst::kRightSemiring)) {
       KALDI_ERR << "Weight must have path property and be right distributive: "
                 << Weight::Type();
     }
     // pruning
-    assert(options_.max_active_tokens > 1);
+    KALDI_ASSERT(options_.max_active_tokens > 1);
     scores_.reserve(options_.max_active_tokens * 3);  // a heuristical size
-    assert(options_.beamwidth >= 0.0);
-    assert(options_.beamwidth2 >= 0.0);
+    KALDI_ASSERT(options_.beamwidth >= 0.0);
+    KALDI_ASSERT(options_.beamwidth2 >= 0.0);
     // scoring
-    assert(options_.lm_scale > 0.0);
-    // assert(options_.word_penalty <= 0.0);  // does it have to be >0 or <0?
+    KALDI_ASSERT(options_.lm_scale > 0.0);
+    // KALDI_ASSERT(options_.word_penalty <= 0.0);  // does it have to be >0 or <0?
     DEBUG_OUT2("BeamWidth:" << options_.beamwidth << " LmScale:"
               << options_.lm_scale << " WordPenalty: " << options_.word_penalty)
 
@@ -178,7 +178,7 @@ namespace kaldi {
 
     //int color = active_tokens_.GetKey(s);
     //if (color > kWhite) return color;  // state was already explored
-    DEBUG_CMD(assert(active_tokens_.GetKey(s) == kWhite))
+    DEBUG_CMD(KALDI_ASSERT(active_tokens_.GetKey(s) == kWhite))
     DEBUG_OUT2("visit node:" << s)
         
     // an unexplored state: go through recursively through all arcs
@@ -293,7 +293,7 @@ namespace kaldi {
           DEBUG_OUT2("link: " << arc.nextstate << " " << arc.ilabel << ":"
                     << arc.olabel << "/" << arc.weight)
 
-          DEBUG_CMD(assert(arc.ilabel <= 0))
+          DEBUG_CMD(KALDI_ASSERT(arc.ilabel <= 0))
           // compute new score and if better than old, remember token:
           if (!PassTokenThroughArc(token, arc)) {
           // inside PassTokenThroughArc, we dispatch to queue or active tokens
@@ -484,7 +484,7 @@ namespace kaldi {
         Label mLabel = arc.ilabel;
         DEBUG_OUT2("evaluate state " << token->state << " (" << token->weight
                    << ") : " << mLabel)
-        DEBUG_CMD(assert(mLabel > 0))
+        DEBUG_CMD(KALDI_ASSERT(mLabel > 0))
         BaseFloat score = -p_decodable_->LogLikelihood(frame_index_, mLabel);
         // add negative loglikelihood to previous token score
         token->weight = Times( token->weight, score);
@@ -538,7 +538,7 @@ namespace kaldi {
           DEBUG_OUT2("link: " << arc.nextstate << " " << arc.ilabel << ":"
                     << arc.olabel << "/" << arc.weight)
 
-          DEBUG_CMD(assert(arc.ilabel > 0))
+          DEBUG_CMD(KALDI_ASSERT(arc.ilabel > 0))
           active_tokens_.ResizeHash(arc.nextstate);  // AllocateLists
           // memory allocation for data structures that index on states
 
@@ -627,7 +627,7 @@ namespace kaldi {
     do {
       Token *token = active_tokens_.PopNext();  // remove state
       active_tokens_.HashRemove(token);
-      DEBUG_CMD(assert(active_tokens_.GetKey(token->state) < kBlack))
+      DEBUG_CMD(KALDI_ASSERT(active_tokens_.GetKey(token->state) < kBlack))
       DEBUG_OUT2("pop queue: " << token->state << " weight:" << token->weight)
 
       // compute the best token so far
@@ -652,7 +652,7 @@ namespace kaldi {
 
     // either take final_token or best_token if no final state was reached
     if (final_token_.weight == Weight::Zero()) {  // take only best_token
-      assert(final_token_.previous == NULL &&
+      KALDI_ASSERT(final_token_.previous == NULL &&
              best_token.weight != Weight::Zero() &&
              best_token.previous != NULL);
       final_token_.weight = best_token.weight;
@@ -663,25 +663,22 @@ namespace kaldi {
     }
 
     // build output FST
-    output_arcs_ = new fst::VectorFst<MyArc>;
+    output_arcs_ = new fst::VectorFst<LatticeArc>;
     // output_arcs_->SetOutputSymbols(reconet_->OutputSymbols());
     // in case we'd have symbol tables
 
     // back-track word links in best path
-    assert(final_token_.previous != NULL);
+    KALDI_ASSERT(final_token_.previous != NULL);
     StateId wlstate = output_arcs_->AddState();
-    output_arcs_->SetFinal(wlstate, final_token_.weight);
+    output_arcs_->SetFinal(wlstate, LatticeWeight(final_token_.weight.Value(), 0.0));
     DEBUG_OUT1("set final state of WordLinks:" << wlstate << " total score:"
               << final_token_.weight)
     WordLink *wl = final_token_.previous;
     while (wl != NULL && (wl->olabel >= 0)) {
       StateId new_wlstate = output_arcs_->AddState();
       // add corresponding arc
-      BaseFloat arc_weight = (wl->previous != NULL) ?
-        wl->weight.Value() - wl->previous->weight.Value() : wl->weight.Value();
-      // difference between scores at word labels
       output_arcs_->AddArc(new_wlstate,
-                           MyArc(wl->state, wl->olabel, arc_weight, wlstate));
+                           LatticeArc(wl->state, wl->olabel, LatticeWeight::One(), wlstate));
       std::string word = "";
       // if (reconet_->OutputSymbols())
         // word = reconet_->OutputSymbols()->Find(wl->olabel);

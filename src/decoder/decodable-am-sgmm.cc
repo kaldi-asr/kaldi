@@ -22,12 +22,12 @@ using std::vector;
 
 namespace kaldi {
 
-BaseFloat DecodableAmSgmm::LogLikelihoodZeroBased(int32 frame, int32 state) {
+BaseFloat DecodableAmSgmm::LogLikelihoodZeroBased(int32 frame, int32 pdf_id) {
   KALDI_ASSERT(frame >= 0 && frame < NumFrames());
-  KALDI_ASSERT(state >= 0 && state < NumIndices());
+  KALDI_ASSERT(pdf_id >= 0 && pdf_id < NumIndices());
 
-  if (log_like_cache_[state].hit_time == frame) {
-    return log_like_cache_[state].log_like;  // return cached value, if found
+  if (log_like_cache_[pdf_id].hit_time == frame) {
+    return log_like_cache_[pdf_id].log_like;  // return cached value, if found
   }
 
   const VectorBase<BaseFloat> &data = feature_matrix_.Row(frame);
@@ -49,18 +49,18 @@ BaseFloat DecodableAmSgmm::LogLikelihoodZeroBased(int32 frame, int32 state) {
     previous_frame_ = frame;
   }
 
-  BaseFloat loglike = acoustic_model_.LogLikelihood(per_frame_vars_, state,
+  BaseFloat loglike = acoustic_model_.LogLikelihood(per_frame_vars_, pdf_id,
                                                     log_prune_);
   if (KALDI_ISNAN(loglike) || KALDI_ISINF(loglike))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-  log_like_cache_[state].log_like = loglike;
-  log_like_cache_[state].hit_time = frame;
+  log_like_cache_[pdf_id].log_like = loglike;
+  log_like_cache_[pdf_id].hit_time = frame;
   return loglike;
 }
 
 void DecodableAmSgmm::ResetLogLikeCache() {
-  if (log_like_cache_.size() != acoustic_model_.NumStates()) {
-    log_like_cache_.resize(acoustic_model_.NumStates());
+  if (log_like_cache_.size() != acoustic_model_.NumPdfs()) {
+    log_like_cache_.resize(acoustic_model_.NumPdfs());
   }
   vector<LikelihoodCacheRecord>::iterator it = log_like_cache_.begin(),
       end = log_like_cache_.end();

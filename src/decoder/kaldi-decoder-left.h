@@ -44,8 +44,16 @@
 #include "matrix/matrix-lib.h"
 #include "util/parse-options.h"
 #include "hmm/transition-model.h"
+#include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
 // macros to switch off all debugging messages without runtime cost
+#define DEBUG_STAT(x) x;
+#define DEBUG_STAT2(x,y) x,y;
+#define DEBUG_OUTC(x) KALDI_VLOG(1) << x;
+//#define DEBUG_OUTC(x)
+//#define DEBUG_STAT(x)
+//#define DEBUG_STAT2(x,y)
+
 //#define DEBUG_CMD(x) x;
 //#define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
 //#define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
@@ -165,7 +173,7 @@ class KaldiDecoder {
 
     // functions for fast creation/deletion of temporary links
     inline void FastDelete(Link *link) {  // delete arc: put to linked list
-      DEBUG_CMD(assert(link->state != fst::kNoStateId))
+      DEBUG_CMD(KALDI_ASSERT(link->state != fst::kNoStateId))
       DEBUG_CMD(link->state = fst::kNoStateId)
       // save the unused arc using *next as linked list
       link->next = fast_link_head_;
@@ -206,7 +214,7 @@ class KaldiDecoder {
     // functions for creation/deletion of permanent links
     inline void SlowDelete(Link *link) {
       // delete link: either decrease reference count or put to linked list
-      DEBUG_CMD(assert(link->refs > 0))
+      DEBUG_CMD(KALDI_ASSERT(link->refs > 0))
       link->refs--;
       DEBUG_OUT3("dec:" << link->unique << " (" << link->refs << "x)")
       if (link->refs > 0) return;
@@ -260,7 +268,7 @@ class KaldiDecoder {
       fast_alloc_.clear();
       fast_link_head_ = NULL;
       DEBUG_OUT1("links created: " << lnumber << " deleted: " << dlnumber)
-      DEBUG_CMD(assert(lnumber == dlnumber)) // check that all links are freed
+      DEBUG_CMD(KALDI_ASSERT(lnumber == dlnumber)) // check that all links are freed
       for (size_t i = 0; i < slow_alloc_.size(); i++) delete[] slow_alloc_[i];
       slow_alloc_.clear();
       slow_link_head_ = NULL;
@@ -291,7 +299,7 @@ class KaldiDecoder {
     inline void Delete(Token *token) {
       // delete token: put to linked list
       DEBUG_OUT3( "kill token:" << token->unique << ":" << token->state)
-      DEBUG_CMD(assert(token->state != fst::kNoStateId))
+      DEBUG_CMD(KALDI_ASSERT(token->state != fst::kNoStateId))
       DEBUG_CMD(token->state = fst::kNoStateId)
       DEBUG_CMD(dtnumber++)
       token->state = fst::kNoStateId; // to indicate deleted tokens
@@ -353,7 +361,7 @@ class KaldiDecoder {
     }
     void Clear() {
       DEBUG_OUT1("tokens created: " << tnumber << " deleted: " << dtnumber)
-      DEBUG_CMD(assert(tnumber == dtnumber))
+      DEBUG_CMD(KALDI_ASSERT(tnumber == dtnumber))
       // check that all tokens are freed
       for (size_t i = 0; i < allocated_.size(); i++) delete[] allocated_[i];
       allocated_.clear();
@@ -405,16 +413,16 @@ class KaldiDecoder {
     inline size_t QueueSize() { return queue_.size(); }
     void QueueReset() { // reset states to unvisited, but keep memory allocated
       while (!queue_.empty()) {
-        DEBUG_CMD(assert(queue_.back() != fst::kNoStateId))
+        DEBUG_CMD(KALDI_ASSERT(queue_.back() != fst::kNoStateId))
         //?? queue_.back()->ilabel = fst::kNoStateId;
         queue_.pop_back();
       }
     }
     void AssertQueueEmpty() {
-      assert(queue_.size() == 0);
+      KALDI_ASSERT(queue_.size() == 0);
       for(typename std::vector<Token*>::iterator it = hash_.begin(); 
           it != hash_.end(); ++it) {
-        if (*it) assert((*it)->ilabel == fst::kNoStateId);
+        if (*it) KALDI_ASSERT((*it)->ilabel == fst::kNoStateId);
       }
     }
     inline void Untouch(StateId state) {
@@ -425,7 +433,7 @@ class KaldiDecoder {
     }
     inline void PushQueue(Token *token) { // mark as explored
       DEBUG_OUT2("push queue:" << token->state << ":" << token->ilabel)
-      DEBUG_CMD(assert(token->ilabel < 0)) //emitting (>0) not allowed
+      DEBUG_CMD(KALDI_ASSERT(token->ilabel < 0)) //emitting (>0) not allowed
       token->ilabel = 0; // non-emitting and finished
       queue_.push_back(token->state);
     }
@@ -447,18 +455,18 @@ class KaldiDecoder {
         DEBUG_OUT1("resize hash:" << state + 1 + kDecoderBlock)
         hash_.resize(state + 1 + kDecoderBlock, NULL);  // NULL: not in list
       }
-      //DEBUG_CMD(assert(hash_.size() > state)) // checked by ResizeHash
+      //DEBUG_CMD(KALDI_ASSERT(hash_.size() > state)) // checked by ResizeHash
       if (hash_[state] != NULL) {
         DEBUG_OUT2("hashed:"<<hash_[state]->state<<":"<<hash_[state]->ilabel)
-        DEBUG_CMD(assert(hash_[state]->state == state))
+        DEBUG_CMD(KALDI_ASSERT(hash_[state]->state == state))
         // check that all incoming arcs have the same model!
         DEBUG_CMD(if (ilabel > 0)
-          assert(decodable->TransModel()->TransitionIdToPdf(hash_[state]->ilabel)
+          KALDI_ASSERT(decodable->TransModel()->TransitionIdToPdf(hash_[state]->ilabel)
               == decodable->TransModel()->TransitionIdToPdf(ilabel)))
-        //DEBUG_CMD(if (ilabel > 0) assert(hash_[state]->ilabel == ilabel))
-        DEBUG_CMD(if (ilabel <= 0) assert(hash_[state]->ilabel == 0))
+        //DEBUG_CMD(if (ilabel > 0) KALDI_ASSERT(hash_[state]->ilabel == ilabel))
+        DEBUG_CMD(if (ilabel <= 0) KALDI_ASSERT(hash_[state]->ilabel == 0))
         // this also checks that transducer doesn't contain epsilon loop!
-        // it implies that: assert(hash_[state]->ilabel != fst::kNoLabel)
+        // it implies that: KALDI_ASSERT(hash_[state]->ilabel != fst::kNoLabel)
         return hash_[state];  // return corresponding token
       } else {  // create new token for state
         Token *ans;
@@ -477,20 +485,20 @@ class KaldiDecoder {
       }
     }
     inline Token *HashLookup(StateId state) {  // retrieves token for state
-      DEBUG_CMD(assert(hash_.size() > state)) // checked by ResizeHash
-      DEBUG_CMD(assert(hash_[state] != NULL))
+      DEBUG_CMD(KALDI_ASSERT(hash_.size() > state)) // checked by ResizeHash
+      DEBUG_CMD(KALDI_ASSERT(hash_[state] != NULL))
       return hash_[state];  // return corresponding token
     }
     inline void HashRemove(Token *token) {
-      DEBUG_CMD(assert(hash_.size() > token->state))
-      DEBUG_CMD(assert(hash_[token->state] != NULL))
-      DEBUG_CMD(assert(hash_[token->state]->state == token->state))
+      DEBUG_CMD(KALDI_ASSERT(hash_.size() > token->state))
+      DEBUG_CMD(KALDI_ASSERT(hash_[token->state] != NULL))
+      DEBUG_CMD(KALDI_ASSERT(hash_[token->state]->state == token->state))
       hash_[token->state] = NULL;
     }
     inline void HashRemove(StateId state) {
-      DEBUG_CMD(assert(hash_.size() > state))
-      DEBUG_CMD(assert(hash_[state] != NULL))
-      DEBUG_CMD(assert(hash_[state]->state == state))
+      DEBUG_CMD(KALDI_ASSERT(hash_.size() > state))
+      DEBUG_CMD(KALDI_ASSERT(hash_[state] != NULL))
+      DEBUG_CMD(KALDI_ASSERT(hash_[state]->state == state))
       hash_[state] = NULL;
     }
     inline void ResizeHash(size_t newsize) {  // memory allocation
@@ -508,7 +516,7 @@ class KaldiDecoder {
         if (*it) { DEBUG_OUT1("failed:" << i << ":" << (*it)->state)
           //*it = NULL;
         }
-        //assert(*it == NULL);
+        //KALDI_ASSERT(*it == NULL);
         i++;
       }
     }
@@ -612,7 +620,7 @@ class KaldiDecoder {
 
 
  public:
-  KaldiDecoder(KaldiDecoderOptions opts);
+  KaldiDecoder(const KaldiDecoderOptions opts);
   ~KaldiDecoder();
 
   // functions to set decoder options
@@ -643,7 +651,7 @@ class KaldiDecoder {
 
   // functions in main decoding loop
   /// performs the decoding
-  fst::VectorFst<fst::StdArc>* Decode(const Fst &fst, Decodable *decodable);
+  fst::VectorFst<LatticeArc>* Decode(const Fst &fst, Decodable *decodable);
   // fst: recognition network
   // decodable: acoustic model/features
   // output: linear FST of lattice links in best path
@@ -677,8 +685,8 @@ class KaldiDecoder {
 
   /**
    * @brief creates new token, computes score/penalties, update word links
-   * @param token, arc
-   * @return new token, if arc should be followed, otherwise NULL
+   * @param source, dest
+   * @return true, if arc should will be followed
    */
   inline bool PassTokenThroughArc(Token *source, Token *dest);
 
@@ -692,7 +700,10 @@ class KaldiDecoder {
   const Fst* reconet_;                  // recognition network as FST
   // const fst::SymbolTable *model_list;     // input symbol table
   // const fst::SymbolTable *word_list;     // output symbol table
-  fst::VectorFst<fst::StdArc>* output_arcs_;  // recogn. output as word link FST
+  fst::VectorFst<LatticeArc>* output_arcs_;  // recogn. output as word link FST
+
+  DEBUG_STAT2(unordered_map<Label, int32> models_)
+  DEBUG_STAT(size_t model_cnt_)
 
   // arrays for token passing
   LinkStore link_store_;          // data structure for allocating lattice links
@@ -706,6 +717,7 @@ class KaldiDecoder {
   Weight beam_threshold_;                // cut-off after evaluating PDFs
   std::vector<BaseFloat> scores_;        // used in pruning
   // it's a class member to avoid internal new/delete
+  KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiDecoder);
 };  // class KaldiDecoder
 
 };  // namespace kaldi

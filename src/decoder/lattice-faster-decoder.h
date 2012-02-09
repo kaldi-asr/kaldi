@@ -1,6 +1,6 @@
-// decoder/lattice-simple-decoder.h
+// decoder/lattice-faster-decoder.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation, Mirko Hannemann
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,46 +15,46 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_LATTICE_SIMPLE_DECODER_H_
-#define KALDI_DECODER_LATTICE_SIMPLE_DECODER_H_
+#ifndef KALDI_DECODER_LATTICE_FASTER_DECODER_H_
+#define KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 
 
 #include "util/stl-utils.h"
+#include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 
-#include <algorithm>
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
-
 namespace kaldi {
 
-struct LatticeSimpleDecoderConfig {
+struct LatticeFasterDecoderConfig {
   BaseFloat beam;
+  int32 max_active;
   BaseFloat lattice_beam;
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
   bool prune_lattice;
-  int32 max_mem;
+  int32 max_mem; // max memory usage in determinization
   int32 max_loop;
   BaseFloat beam_ratio;
-  LatticeSimpleDecoderConfig(): beam(16.0),
+  BaseFloat beam_delta; // has nothing to do with beam_ratio
+  BaseFloat hash_ratio;
+  LatticeFasterDecoderConfig(): beam(16.0),
+                                max_active(std::numeric_limits<int32>::max()),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
                                 prune_lattice(true),
-                                max_mem(50000000), // 50 MB (probably corresponds to 100 really) 
+                                max_mem(50000000), // 50 MB (probably corresponds to 100 really)
                                 max_loop(500000),
-                                beam_ratio(0.9) { }
+                                beam_ratio(0.9),
+                                beam_delta(0.5),
+                                hash_ratio(2.0) { }
   void Register(ParseOptions *po) {
     po->Register("beam", &beam, "Decoding beam.");
+    po->Register("max-active", &max_active, "Decoder max active states.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
@@ -62,30 +62,36 @@ struct LatticeSimpleDecoderConfig {
     po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be double this)");
     po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
     po->Register("beam-ratio", &beam_ratio, "Ratio by which to decrease lattice-beam if we reach the max-arcs.");
+    po->Register("beam-delta", &beam_delta, "Increment used in decoding");
+    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control hash behavior");
   }
   void Check() const {
-    KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0
-                 && beam_ratio > 0.0 && beam_ratio < 1.0);
+    KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 
+                 && prune_interval > 0 && beam_ratio > 0.0 && beam_ratio < 1.0
+                 && beam_delta > 0.0 && hash_ratio >= 1.0);
   }
 };
 
 
-/** Simplest possible decoder, included largely for didactic purposes and as a
-    means to debug more highly optimized decoders.  See \ref decoders_simple
+/** A bit more optimized version of the lattice decoder.
+   See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
     for more information.
  */
-class LatticeSimpleDecoder {
+class LatticeFasterDecoder {
  public:
   typedef fst::StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
-  // instantiate this class onece for each thing you have to decode.
-  LatticeSimpleDecoder(const fst::Fst<fst::StdArc> &fst,
-                       const LatticeSimpleDecoderConfig &config):
-      fst_(fst), config_(config), num_toks_(0) { config.Check(); }
-  
-  ~LatticeSimpleDecoder() {
+  // instantiate this class once for each thing you have to decode.
+  LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
+                       const LatticeFasterDecoderConfig &config):
+      fst_(fst), config_(config), num_toks_(0) {
+    config.Check();
+    toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
+  }
+ void SetOptions(const LatticeFasterDecoderConfig &config) { config_ = config; }  
+  ~LatticeFasterDecoder() {
     ClearActiveTokens();
   }
 
@@ -93,8 +99,7 @@ class LatticeSimpleDecoder {
   // a final state).
   bool Decode(DecodableInterface *decodable) {
     // clean up from last time:
-    cur_toks_.clear();
-    prev_toks_.clear();
+    ClearToks(toks_.Clear());
     ClearActiveTokens();
     warned_ = false;
     final_active_ = false;
@@ -103,23 +108,22 @@ class LatticeSimpleDecoder {
     StateId start_state = fst_.Start();
     KALDI_ASSERT(start_state != fst::kNoStateId);
     active_toks_.resize(1);
-    active_toks_[0].toks = 
-        cur_toks_[start_state] = new Token(0.0, 0.0, NULL, NULL);
+    Token *start_tok = new Token(0.0, 0.0, NULL, NULL);
+    active_toks_[0].toks = start_tok;
+    toks_.Insert(start_state, start_tok);
     num_toks_++;
     ProcessNonemitting(0);
+    
     // We use 1-based indexing for frames in this decoder (if you view it in
     // terms of features), but note that the decodable object uses zero-based
     // numbering, which we have to correct for when we call it.
     for (int32 frame = 1; !decodable->IsLastFrame(frame-2); frame++) {
-      active_toks_.resize(frame+1);
-      prev_toks_.clear();
-      cur_toks_.swap(prev_toks_);
+      active_toks_.resize(frame+1); // new column
+
       ProcessEmitting(decodable, frame);
-      // Important to call PruneCurrentTokens before ProcessNonemitting, or
-      // we would get dangling forward pointers.  Anyway, ProcessNonemitting uses
-      // the beam.
-      PruneCurrentTokens(config_.beam, &cur_toks_);
+      
       ProcessNonemitting(frame);
+
       if (decodable->IsLastFrame(frame-1))
         PruneActiveTokensFinal(frame);
       else if (frame % config_.prune_interval == 0)
@@ -159,7 +163,7 @@ class LatticeSimpleDecoder {
     // an extra frame for the start-state).
     int32 num_frames = active_toks_.size() - 1;
     KALDI_ASSERT(num_frames > 0);
-    unordered_map<Token*, StateId> tok_map(num_toks_/2 + 3);
+    unordered_map<Token*, StateId> tok_map(num_toks_/2 + 3); // bucket count
     // First create all states.
     for (int32 f = 0; f <= num_frames; f++) {
       if (active_toks_[f].toks == NULL) {
@@ -176,6 +180,8 @@ class LatticeSimpleDecoder {
       if (f == 0 && ofst->NumStates() > 0)
         ofst->SetStart(ofst->NumStates()-1);
     }
+    KALDI_VLOG(3) << "init:" << num_toks_/2 + 3 << " buckets:" << tok_map.bucket_count() << " load:" << tok_map.load_factor() << " max:" << tok_map.max_load_factor();
+    // Now create all arcs.
     StateId cur_state = 0; // we rely on the fact that we numbered these
     // consecutively (AddState() returns the numbers in order..)
     for (int32 f = 0; f <= num_frames; f++) {
@@ -232,59 +238,6 @@ class LatticeSimpleDecoder {
     return false; // fell off loop-- shouldn't really happen.
   }
   
-  
-  /*
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {  
-    // GetOutput gets the decoding output.  If is_final == true, it limits itself to final states;
-    // otherwise it gets the most likely token not taking into account final-probs.
-    // fst_out will be empty (Start() == kNoStateId) if nothing was available.
-    // It returns true if it got output (thus, fst_out will be nonempty).
-    fst_out->DeleteStates();
-    Token *best_tok = NULL;
-    if (!is_final) {
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter)
-        if (best_tok == NULL || *best_tok < *(iter->second) )
-          best_tok = iter->second;
-    } else {
-      Weight best_weight = Weight::Zero();
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter) {
-        Weight this_weight = Times(iter->second->arc_.weight, fst_.Final(iter->first));
-        if (this_weight != Weight::Zero() &&
-           this_weight.Value() < best_weight.Value()) {
-          best_weight = this_weight;
-          best_tok = iter->second;
-        }
-      }
-    }
-    if (best_tok == NULL) return false;  // No output.
-
-    std::vector<Arc> arcs_reverse;  // arcs in reverse order.
-    for (Token *tok = best_tok; tok != NULL; tok = tok->prev_)
-      arcs_reverse.push_back(tok->arc_);
-    KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
-    arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
-
-    StateId cur_state = fst_out->AddState();
-    fst_out->SetStart(cur_state);
-    for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-      Arc arc = arcs_reverse[i];
-      arc.nextstate = fst_out->AddState();
-      fst_out->AddArc(cur_state, arc);
-      cur_state = arc.nextstate;
-    }
-    if (is_final)
-      fst_out->SetFinal(cur_state, fst_.Final(best_tok->arc_.nextstate));
-    else
-      fst_out->SetFinal(cur_state, Weight::One());
-    RemoveEpsLocal(fst_out);
-    return true;
-    }
-  */
-
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -297,9 +250,9 @@ class LatticeSimpleDecoder {
     BaseFloat acoustic_cost; // acoustic cost (pre-scaled) of traversing link
     ForwardLink *next; // next in singly-linked list of forward links from a
                        // token.
-    ForwardLink(Token *next_tok, Label ilabel, Label olabel,
-                BaseFloat graph_cost, BaseFloat acoustic_cost, 
-                ForwardLink *next):
+    inline ForwardLink(Token *next_tok, Label ilabel, Label olabel,
+                       BaseFloat graph_cost, BaseFloat acoustic_cost, 
+                       ForwardLink *next):
         next_tok(next_tok), ilabel(ilabel), olabel(olabel),
         graph_cost(graph_cost), acoustic_cost(acoustic_cost), 
         next(next) { }
@@ -322,11 +275,10 @@ class LatticeSimpleDecoder {
     
     Token *next; // Next in list of tokens for this frame.
     
-    Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
-          Token *next): tot_cost(tot_cost), extra_cost(extra_cost), links(links),
-                        next(next) { }
-    Token() {}
-    void DeleteForwardLinks() {
+    inline Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
+                 Token *next): tot_cost(tot_cost), extra_cost(extra_cost),
+                 links(links), next(next) { }
+    inline void DeleteForwardLinks() {
       ForwardLink *l = links, *m; 
       while (l != NULL) {
         m = l->next;
@@ -346,37 +298,52 @@ class LatticeSimpleDecoder {
     TokenList(): toks(NULL), must_prune_forward_links(true),
                  must_prune_tokens(true) { }
   };
-  
 
-  // FindOrAddToken either locates a token in cur_toks_, or if necessary inserts a new,
-  // empty token (i.e. with no forward links) for the current frame.  [note: it's
-  // inserted if necessary into cur_toks_ and also into the singly linked list
-  // of tokens active on this frame (whose head is at active_toks_[frame]).
-  //
-  // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
-  // if the token was newly created or the cost changed.
+  typedef HashList<StateId, Token*>::Elem Elem;
+
+  void PossiblyResizeHash(size_t num_toks) {
+    size_t new_sz = static_cast<size_t>(static_cast<BaseFloat>(num_toks)
+                                        * config_.hash_ratio);
+    if (new_sz > toks_.Size()) {
+      toks_.SetSize(new_sz);
+    }
+  }
+
+  // FindOrAddToken either locates a token in hash of toks_,
+  // or if necessary inserts a new, empty token (i.e. with no forward links)
+  // for the current frame.  [note: it's inserted if necessary into hash toks_
+  // and also into the singly linked list of tokens active on this frame
+  // (whose head is at active_toks_[frame]).
   inline Token *FindOrAddToken(StateId state, int32 frame, BaseFloat tot_cost,
                                bool emitting, bool *changed) {
+    // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
+    // if the token was newly created or the cost changed.
     KALDI_ASSERT(frame < active_toks_.size());
     Token *&toks = active_toks_[frame].toks;
-    
-    unordered_map<StateId, Token*>::iterator find_iter = cur_toks_.find(state);
-    if (find_iter == cur_toks_.end()) { // no such token presently.
-      // Create one.
+    Elem *e_found = toks_.Find(state);
+    if (e_found == NULL) { // no such token presently.
       const BaseFloat extra_cost = 0.0;
       // tokens on the currently final frame have zero extra_cost
       // as any of them could end up
       // on the winning path.
       Token *new_tok = new Token (tot_cost, extra_cost, NULL, toks);
+      // NULL: no forward links yet
       toks = new_tok;
       num_toks_++;
-      cur_toks_[state] = new_tok;
+      toks_.Insert(state, new_tok);
       if (changed) *changed = true;
       return new_tok;
     } else {
-      Token *tok = find_iter->second; // There is an existing Token for this state.
-      if (tok->tot_cost > tot_cost) {
+      Token *tok = e_found->val; // There is an existing Token for this state.
+      if (tok->tot_cost > tot_cost) { // replace old token
         tok->tot_cost = tot_cost;
+        // we don't allocate a new token, the old stays linked in active_toks_
+        // we only replace the tot_cost
+        // in the current frame, there are no forward links (and no extra_cost)
+        // only in ProcessNonemitting we have to delete forward links
+        // in case we visit a state for the second time
+        // those forward links, that lead to this replaced token before:
+        // they remain and will hopefully be pruned later (PruneForwardLinks...)
         if (changed) *changed = true;
       } else {
         if (changed) *changed = false;
@@ -385,20 +352,22 @@ class LatticeSimpleDecoder {
     }
   }
   
-  // delta is the amount by which the extra_costs must
-  // change before it sets "extra_costs_changed" to true.  If delta is larger,
-  // we'll tend to go back less far toward the beginning of the file.
+  // prunes outgoing links for all tokens in active_toks_[frame]
+  // it's called by PruneActiveTokens
+  // all links, that have link_extra_cost > lattice_beam are pruned
   void PruneForwardLinks(int32 frame, bool *extra_costs_changed,
                          bool *links_pruned,
                          BaseFloat delta) {
-    // We have to iterate until there is no more change, because the links
-    // are not guaranteed to be in topological order.
+    // delta is the amount by which the extra_costs must change
+    // If delta is larger,  we'll tend to go back less far
+    //    toward the beginning of the file.
+    // extra_costs_changed is set to true if extra_cost was changed for any token
+    // links_pruned is set to true if any link in any token was pruned
 
     *extra_costs_changed = false;
     *links_pruned = false;
     KALDI_ASSERT(frame >= 0 && frame < active_toks_.size());
-    if (active_toks_[frame].toks == NULL ) { // empty list; this should
-      // not happen.
+    if (active_toks_[frame].toks == NULL ) { // empty list; should not happen.
       if (!warned_) {
         KALDI_WARN << "No tokens alive [doing pruning].. warning first "
             "time only for each utterance\n";
@@ -406,19 +375,24 @@ class LatticeSimpleDecoder {
       }
     }
     
-    bool changed = true;
+    // We have to iterate until there is no more change, because the links
+    // are not guaranteed to be in topological order.
+    bool changed = true; // difference new minus old extra cost >= delta ?
     while (changed) {
       changed = false;
       for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
         ForwardLink *link, *prev_link=NULL;
-        // will recompute tok_extra_cost.
+        // will recompute tok_extra_cost for tok.
         BaseFloat tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
+        // tok_extra_cost is the best (min) of link_extra_cost of outgoing links
         for (link = tok->links; link != NULL; ) {
           // See if we need to excise this link...
           Token *next_tok = link->next_tok;
           BaseFloat link_extra_cost = next_tok->extra_cost +
               ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
-               - next_tok->tot_cost);
+               - next_tok->tot_cost); // difference in brackets is >= 0
+          // link_exta_cost is the difference in score between the best paths
+          // through link source state and through link destination state
           KALDI_ASSERT(link_extra_cost == link_extra_cost); // check for NaN
           if (link_extra_cost > config_.lattice_beam) { // excise link
             ForwardLink *next_link = link->next;
@@ -435,29 +409,30 @@ class LatticeSimpleDecoder {
             }
             if (link_extra_cost < tok_extra_cost)
               tok_extra_cost = link_extra_cost;
-            prev_link = link;
+            prev_link = link; // move to next link
             link = link->next;
           }
-        }
+        } // for all outgoing links
         if (fabs(tok_extra_cost - tok->extra_cost) > delta)
-          changed = true;
-        tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
-      }
+          changed = true;  // difference new minus old is bigger than delta
+        tok->extra_cost = tok_extra_cost;
+        // will be +infinity or <= lattice_beam_.
+        // infinity indicates, that no forward link survived pruning
+      } // for all Token on active_toks_[frame]
       if (changed) *extra_costs_changed = true;
 
       // Note: it's theoretically possible that aggressive compiler
       // optimizations could cause an infinite loop here for small delta and
       // high-dynamic-range scores.
-    }
+    } // while changed
   }
 
   // PruneForwardLinksFinal is a version of PruneForwardLinks that we call
-  // on the final frame.  If there are final tokens active, it uses the final-probs
-  // for pruning, otherwise it treats all tokens as final.
+  // on the final frame.  If there are final tokens active, it uses
+  // the final-probs for pruning, otherwise it treats all tokens as final.
   void PruneForwardLinksFinal(int32 frame) {
     KALDI_ASSERT(static_cast<size_t>(frame+1) == active_toks_.size());
-    if (active_toks_[frame].toks == NULL ) // empty list; this should
-      // not happen.
+    if (active_toks_[frame].toks == NULL ) // empty list; should not happen.
       KALDI_WARN << "No tokens alive at end of file\n";
 
     // First go through, working out the best token (do it in parallel
@@ -466,20 +441,19 @@ class LatticeSimpleDecoder {
     const BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
     BaseFloat best_cost_final = infinity,
         best_cost_nofinal = infinity;
-    unordered_map<Token*, StateId> tok_to_state_map;
-
-    unordered_map<StateId, Token*>::iterator iter(cur_toks_.begin());
-    for(; iter != cur_toks_.end(); ++iter) {
-      StateId state = iter->first;
-      Token *tok = iter->second;
-      tok_to_state_map[tok] = state;
-      best_cost_final = std::min(best_cost_final,
-                                 tok->tot_cost + fst_.Final(state).Value());
+    unordered_map<Token*, BaseFloat> tok_to_final_cost;
+    
+    Elem *cur_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
+    for (Elem *e = cur_toks; e != NULL;  e = e->tail) {
+      StateId state = e->key;
+      Token *tok = e->val;
+      BaseFloat final_cost = fst_.Final(state).Value();
+      best_cost_final = std::min(best_cost_final, tok->tot_cost + final_cost);
+      tok_to_final_cost[tok] = final_cost;
       best_cost_nofinal = std::min(best_cost_nofinal, tok->tot_cost);
     }
     final_active_ = (best_cost_final != infinity);
-
-
+    
     // Now go through tokens on this frame, pruning forward links...  may have
     // to iterate a few times until there is no more change, because the list is
     // not in topological order.
@@ -496,7 +470,7 @@ class LatticeSimpleDecoder {
         // and the best such (score+final_prob).
         BaseFloat tok_extra_cost;
         if (final_active_) {
-          BaseFloat final_cost = fst_.Final(tok_to_state_map[tok]).Value();
+          BaseFloat final_cost = tok_to_final_cost[tok];
           tok_extra_cost = (tok->tot_cost + final_cost) - best_cost_final;
         } else 
           tok_extra_cost = tok->tot_cost - best_cost_nofinal;
@@ -530,21 +504,23 @@ class LatticeSimpleDecoder {
         // showed up as having no forward links.  Here, the tok_extra_cost has
         // an extra component relating to the final-prob.
         if(tok_extra_cost > config_.lattice_beam)
-          tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
+          tok_extra_cost = infinity;
+          // to be pruned in PruneTokensForFrame
 
         if (!ApproxEqual(tok->extra_cost, tok_extra_cost, delta))
           changed = true;
         tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
       }
-    }
+    } // while changed
 
-    // Now put surviving Tokens in the final_costs_ hash.
+    // Now put surviving Tokens in the final_costs_ hash, which is a class
+    // member (unlike tok_to_final_costs).
     for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {    
-      if (tok->extra_cost != std::numeric_limits<BaseFloat>::infinity()) {
+      if (tok->extra_cost != infinity) {
         // If the token was not pruned away, 
         if(final_active_) {
-          BaseFloat final_cost = fst_.Final(tok_to_state_map[tok]).Value();
-          if (final_cost != std::numeric_limits<BaseFloat>::infinity())
+          BaseFloat final_cost = tok_to_final_cost[tok];          
+          if (final_cost != infinity)
             final_costs_[tok] = final_cost;
         } else {
           final_costs_[tok] = 0;
@@ -552,11 +528,11 @@ class LatticeSimpleDecoder {
       }
     }
   }
-
   
-  // Prune away any tokens on this frame that have no forward links. [we don't do
-  // this in PruneForwardLinks because it would give us a problem with dangling
-  // pointers].
+  // Prune away any tokens on this frame that have no forward links.
+  // [we don't do this in PruneForwardLinks because it would give us
+  // a problem with dangling pointers].
+  // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame) {
     KALDI_ASSERT(frame >= 0 && frame < active_toks_.size());
     Token *&toks = active_toks_[frame].toks;
@@ -566,122 +542,208 @@ class LatticeSimpleDecoder {
     for (tok = toks; tok != NULL; tok = next_tok) {
       next_tok = tok->next;
       if (tok->extra_cost == std::numeric_limits<BaseFloat>::infinity()) {
-        // Next token is unreachable from end of graph; excise tok from list
-        // and delete tok.
+        // token is unreachable from end of graph; (no forward links survived)
+        // excise tok from list and delete tok.
         if (prev_tok != NULL) prev_tok->next = tok->next;
         else toks = tok->next;
         delete tok;
         num_toks_--;
-      } else {
+      } else { // fetch next Token
         prev_tok = tok;
       }
     }
   }
   
   // Go backwards through still-alive tokens, pruning them.  note: cur_frame is
-  // where cur_toks_ are (so we do not want to mess with it because these tokens
+  // where hash toks_ are (so we do not want to mess with it because these tokens
   // don't yet have forward pointers), but we do all previous frames, unless we
-  // know that we can safely ignore them becaus the frame after them was unchanged.
+  // know that we can safely ignore them because the frame after them was unchanged.
   // delta controls when it considers a cost to have changed enough to continue
-  // going backward and propagating the change.  larger delta -> will recurse less
-  // far.
+  // going backward and propagating the change.
+  // for a larger delta, we will recurse less far back
   void PruneActiveTokens(int32 cur_frame, BaseFloat delta) {
     int32 num_toks_begin = num_toks_;
     for (int32 frame = cur_frame-1; frame >= 0; frame--) {
       // Reason why we need to prune forward links in this situation:
-      // (1) we have never pruned them
-      // (2) we never pruned the forward links on the next frame, which
-      //     
+      // (1) we have never pruned them (new TokenList)
+      // (2) we have not yet pruned the forward links to the next frame,
+      // after any of those tokens have changed their extra_cost.
       if (active_toks_[frame].must_prune_forward_links) {
         bool extra_costs_changed = false, links_pruned = false;
         PruneForwardLinks(frame, &extra_costs_changed, &links_pruned, delta);
-        if (extra_costs_changed && frame > 0)
+        if (extra_costs_changed && frame > 0) // any token has changed extra_cost
           active_toks_[frame-1].must_prune_forward_links = true;
-        if (links_pruned)
+        if (links_pruned) // any link was pruned
           active_toks_[frame].must_prune_tokens = true;
-        active_toks_[frame].must_prune_forward_links = false;
+        active_toks_[frame].must_prune_forward_links = false; // job done
       }
-      if (frame+1 < cur_frame &&
+      if (frame+1 < cur_frame &&      // except for last frame (no forward links)
          active_toks_[frame+1].must_prune_tokens) {
         PruneTokensForFrame(frame+1);
         active_toks_[frame+1].must_prune_tokens = false;
       }
     }
-    KALDI_VLOG(1) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
+    KALDI_VLOG(3) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
   }
 
-  // Version of PruneActiveTokens that we call on the final
-  // frame.  Takes into account the final-prob of tokens.
-  // returns true if there were final states active (else it treats
-  // all states as final while doing the pruning, and returns false--
-  // this can be useful if you want partial lattice output, although
-  // it can be dangerous, depending what you want the lattices for).
-  // final_active_ is set intenally (by PruneForwardLinksFinal),
-  // and final_probs_ (a hash) is also set by PruneForwardLinksFinal.
+  // Version of PruneActiveTokens that we call on the final frame.
+  // Takes into account the final-prob of tokens.
   void PruneActiveTokensFinal(int32 cur_frame) {
+    // returns true if there were final states active
+    // else returns false and treats all states as final while doing the pruning
+    // (this can be useful if you want partial lattice output,
+    // although it can be dangerous, depending what you want the lattices for).
+    // final_active_ and final_probs_ (a hash) are set internally
+    // by PruneForwardLinksFinal
     int32 num_toks_begin = num_toks_;
-    PruneForwardLinksFinal(cur_frame); 
+    PruneForwardLinksFinal(cur_frame); // prune final frame (with final-probs)
+    // sets final_active_ and final_probs_
     for (int32 frame = cur_frame-1; frame >= 0; frame--) {
       bool b1, b2; // values not used.
-      BaseFloat dontcare = 0.0;
+      BaseFloat dontcare = 0.0; // delta of zero means we must always update
       PruneForwardLinks(frame, &b1, &b2, dontcare);
       PruneTokensForFrame(frame+1);
     }
     PruneTokensForFrame(0); 
-    KALDI_VLOG(1) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
+    KALDI_VLOG(3) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
                   << " to " << num_toks_;
   }
   
-  void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
-    // Processes emitting arcs for one frame.  Propagates from
-    // prev_toks_ to cur_toks_.
-    BaseFloat cutoff = std::numeric_limits<BaseFloat>::infinity();
-    for (unordered_map<StateId, Token*>::iterator iter = prev_toks_.begin();
-         iter != prev_toks_.end();
-         ++iter) {
-      StateId state = iter->first;
-      Token *tok = iter->second;
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
-        const Arc &arc = aiter.Value();
-        if (arc.ilabel != 0) {  // propagate..
-          BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
-              graph_cost = arc.weight.Value(),
-              cur_cost = tok->tot_cost,
-              tot_cost = cur_cost + ac_cost + graph_cost;
-          if (tot_cost > cutoff) continue;
-          else if (tot_cost + config_.beam < cutoff)
-            cutoff = tot_cost + config_.beam;
-          // AddToken adds the next_tok to cur_toks_ (if not already present).
-          Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
-          
-          // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-          tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
-                                       graph_cost, ac_cost, tok->links);
+  /// Gets the weight cutoff.  Also counts the active tokens.
+  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
+                      BaseFloat *adaptive_beam, Elem **best_elem) {
+    BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
+    // positive == high cost == bad.
+    size_t count = 0;
+    if (config_.max_active == std::numeric_limits<int32>::max()) {
+      for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
+        BaseFloat w = static_cast<BaseFloat>(e->val->tot_cost);
+        if (w < best_weight) {
+          best_weight = w;
+          if (best_elem) *best_elem = e;
         }
+      }
+      if (tok_count != NULL) *tok_count = count;
+      if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
+      return best_weight + config_.beam;
+    } else {
+      tmp_array_.clear();
+      for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
+        BaseFloat w = e->val->tot_cost;
+        tmp_array_.push_back(w);
+        if (w < best_weight) {
+          best_weight = w;
+          if (best_elem) *best_elem = e;
+        }
+      }
+      if (tok_count != NULL) *tok_count = count;
+      if (tmp_array_.size() <= static_cast<size_t>(config_.max_active)) {
+        if (adaptive_beam) *adaptive_beam = config_.beam;
+        return best_weight + config_.beam;
+      } else {
+        // the lowest elements (lowest costs, highest likes)
+        // will be put in the left part of tmp_array.
+        std::nth_element(tmp_array_.begin(),
+                         tmp_array_.begin()+config_.max_active,
+                         tmp_array_.end());
+        // return the tighter of the two beams.
+        BaseFloat ans = std::min(best_weight + config_.beam,
+                                 *(tmp_array_.begin()+config_.max_active));
+        if (adaptive_beam)
+          *adaptive_beam = std::min(config_.beam,
+                                    ans - best_weight + config_.beam_delta);
+        return ans;
       }
     }
   }
 
-  void ProcessNonemitting(int32 frame) { // note: "frame" is the same as emitting states
-    // just processed.
+  void ProcessEmitting(DecodableInterface *decodable, int32 frame) {
+    // Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
+    Elem *last_toks = toks_.Clear(); // analogous to swapping prev_toks_ / cur_toks_
+    // in simple-decoder.h.  
+    Elem *best_elem = NULL;
+    BaseFloat adaptive_beam;
+    size_t tok_cnt;
+    BaseFloat cur_cutoff = GetCutoff(last_toks, &tok_cnt, &adaptive_beam, &best_elem);
+    PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.    
     
-    // Processes nonemitting arcs for one frame.  Propagates within
-    // cur_toks_.  Note-- this queue structure is is not very optimal as
+    BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
+    // pruning "online" before having seen all tokens
+
+    // First process the best token to get a hopefully
+    // reasonably tight bound on the next cutoff.
+    if (best_elem) {
+      StateId state = best_elem->key;
+      Token *tok = best_elem->val;
+      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+           !aiter.Done();
+           aiter.Next()) {
+        Arc arc = aiter.Value();
+        if (arc.ilabel != 0) {  // propagate..
+          arc.weight = Times(arc.weight,
+                             Weight(-decodable->LogLikelihood(frame-1, arc.ilabel)));
+          BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+          if (new_weight + adaptive_beam < next_cutoff)
+            next_cutoff = new_weight + adaptive_beam;
+        }
+      }
+    }
+
+    
+    // the tokens are now owned here, in last_toks, and the hash is empty.
+    // 'owned' is a complex thing here; the point is we need to call DeleteElem
+    // on each elem 'e' to let toks_ know we're done with them.
+    for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
+      // loop this way because we delete "e" as we go.
+      StateId state = e->key;
+      Token *tok = e->val;
+      if (tok->tot_cost <=  cur_cutoff) {
+        for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+             !aiter.Done();
+             aiter.Next()) {
+          const Arc &arc = aiter.Value();
+          if (arc.ilabel != 0) {  // propagate..
+            BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
+                graph_cost = arc.weight.Value(),
+                cur_cost = tok->tot_cost,
+                tot_cost = cur_cost + ac_cost + graph_cost;
+            if (tot_cost > next_cutoff) continue;
+            else if (tot_cost + config_.beam < next_cutoff)
+              next_cutoff = tot_cost + config_.beam; // prune by best current token
+            Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
+            // true: emitting, NULL: no change indicator needed
+          
+            // Add ForwardLink from tok to next_tok (put on head of list tok->links)
+            tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
+                                         graph_cost, ac_cost, tok->links);
+          }
+        } // for all arcs
+      }
+      e_tail = e->tail;
+      toks_.Delete(e); // delete Elem
+    }
+  }
+
+  // TODO: could possibly add adaptive_beam back as an argument here (was
+  // returned from ProcessEmitting, in faster-decoder.h).
+  void ProcessNonemitting(int32 frame) {
+    // note: "frame" is the same as emitting states just processed.
+    
+    // Processes nonemitting arcs for one frame.  Propagates within toks_.
+    // Note-- this queue structure is is not very optimal as
     // it may cause us to process states unnecessarily (e.g. more than once),
     // but in the baseline code, turning this vector into a set to fix this
     // problem did not improve overall speed.
-    std::vector<StateId> queue;
+
+    KALDI_ASSERT(queue_.empty());
     BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
-    for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-         iter != cur_toks_.end();
-         ++iter) {
-      queue.push_back(iter->first);
-      best_cost = std::min(best_cost, iter->second->tot_cost);
+    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+      queue_.push_back(e->key);
+      // for pruning with current best token
+      best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));
     }
-    if (queue.empty()) {
+    if (queue_.empty()) {
       if (!warned_) {
         KALDI_ERR << "Error in ProcessEmitting: no surviving tokens: frame is "
                   << frame;
@@ -690,15 +752,19 @@ class LatticeSimpleDecoder {
     }
     BaseFloat cutoff = best_cost + config_.beam;
     
-    while (!queue.empty()) {
-      StateId state = queue.back();
-      queue.pop_back();
-      Token *tok = cur_toks_[state];
+    while (!queue_.empty()) {
+      StateId state = queue_.back();
+      queue_.pop_back();
+
+      Token *tok = toks_.Find(state)->val;  // would segfault if state not in toks_ but this can't happen.
+      BaseFloat cur_cost = tok->tot_cost;
+      if (cur_cost > cutoff) // Don't bother processing successors.
+        continue;
       // If "tok" has any existing forward links, delete them,
       // because we're about to regenerate them.  This is a kind
       // of non-optimality (remember, this is the simple decoder),
       // but since most states are emitting it's not a huge issue.
-      tok->DeleteForwardLinks();
+      tok->DeleteForwardLinks(); // necessary when re-visiting
       tok->links = NULL;
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
           !aiter.Done();
@@ -706,39 +772,59 @@ class LatticeSimpleDecoder {
         const Arc &arc = aiter.Value();
         if (arc.ilabel == 0) {  // propagate nonemitting only...
           BaseFloat graph_cost = arc.weight.Value(),
-              cur_cost = tok->tot_cost,
               tot_cost = cur_cost + graph_cost;
           if (tot_cost < cutoff) {
             bool changed;
+
             Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                            false, &changed);
+                                            false, &changed); // false: non-emit
             
             tok->links = new ForwardLink(new_tok, 0, arc.olabel,
                                          graph_cost, 0, tok->links);
             
             // "changed" tells us whether the new token has a different
             // cost from before, or is new [if so, add into queue].
-            if (changed)
-              queue.push_back(arc.nextstate);
+            if (changed) queue_.push_back(arc.nextstate);
           }
         }
-      }
-    }
+      } // for all arcs
+    } // while queue not empty
   }
 
-  unordered_map<StateId, Token*> cur_toks_;
-  unordered_map<StateId, Token*> prev_toks_;
+
+  // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
+  // more than one list (e.g. for current and previous frames), but only one of
+  // them at a time can be indexed by StateId.
+  HashList<StateId, Token*> toks_;
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
+  std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
+  std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
+  // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
-  LatticeSimpleDecoderConfig config_;
+  LatticeFasterDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
   bool warned_;
   bool final_active_; // use this to say whether we found active final tokens
   // on the last frame.
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
-  // of tokens on the last frame-- it's just convenient to storeit this way.
+  // of tokens on the last frame-- it's just convenient to store it this way.
+  
+  // It might seem unclear why we call ClearToks(toks_.Clear()).
+  // There are two separate cleanup tasks we need to do at when we start a new file.
+  // one is to delete the Token objects in the list; the other is to delete
+  // the Elem objects.  toks_.Clear() just clears them from the hash and gives ownership
+  // to the caller, who then has to call toks_.Delete(e) for each one.  It was designed
+  // this way for convenience in propagating tokens from one frame to the next.
+  void ClearToks(Elem *list) {
+    for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
+      // Token::TokenDelete(e->val);
+      e_tail = e->tail;
+      toks_.Delete(e);
+    }
+    toks_.Clear();
+  }
   
   void ClearActiveTokens() { // a cleanup routine, at utt end/begin
     for (size_t i = 0; i < active_toks_.size(); i++) {
@@ -755,40 +841,8 @@ class LatticeSimpleDecoder {
     active_toks_.clear();
     KALDI_ASSERT(num_toks_ == 0);
   }
-
-  // PruneCurrentTokens deletes the tokens from the "toks" map, but not
-  // from the active_toks_ list, which could cause dangling forward pointers
-  // (will delete it during regular pruning operation).
-  void PruneCurrentTokens(BaseFloat beam, unordered_map<StateId, Token*> *toks) {
-    if (toks->empty()) {
-      KALDI_VLOG(2) <<  "No tokens to prune.\n";
-      return;
-    }
-    BaseFloat best_cost = 1.0e+10;  // positive == high cost == bad.
-    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
-        iter != toks->end(); ++iter) {
-      best_cost =
-          std::min(best_cost,
-                   static_cast<BaseFloat>(iter->second->tot_cost));
-    }
-    std::vector<StateId> retained;
-    BaseFloat cutoff = best_cost + beam;
-    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
-        iter != toks->end(); ++iter) {
-      if (iter->second->tot_cost < cutoff)
-        retained.push_back(iter->first);
-    }
-    unordered_map<StateId, Token*> tmp;
-    for (size_t i = 0; i < retained.size(); i++) {
-      tmp[retained[i]] = (*toks)[retained[i]];
-    }
-    KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
-    tmp.swap(*toks);
-  }
 };
 
-
 } // end namespace kaldi.
-
 
 #endif

@@ -44,7 +44,7 @@ class SimpleDecoder {
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
-  // instantiate this class onece for each thing you have to decode.
+  
   SimpleDecoder(const fst::Fst<fst::StdArc> &fst, BaseFloat beam): fst_(fst), beam_(beam) { }
 
   ~SimpleDecoder() {
@@ -297,6 +297,7 @@ class SimpleDecoder {
     KALDI_VLOG(2) <<  "Pruned to " << (retained.size()) << " toks.\n";
     tmp.swap(*toks);
   }
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SimpleDecoder);
 };
 
 
