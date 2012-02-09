@@ -24,8 +24,10 @@ LIBFILE =
 all: $(LIBFILE) $(TESTFILES)
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 # tree and matrix archives needed for test-context-fst
 $(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../util/kaldi-util.a

@@ -14,8 +14,10 @@ all:  $(LIBFILE) $(BINFILES)
 
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 $(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../rnn/rnnlm.a
 

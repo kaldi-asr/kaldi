@@ -15,8 +15,10 @@ all:  $(LIBFILE) $(TESTFILES)
 
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 
 $(TESTFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a
