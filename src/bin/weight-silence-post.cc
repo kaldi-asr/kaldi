@@ -30,9 +30,10 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Apply weight to silences in posteriors\n"
-        "Usage:  weight-silence-post [options] silence-weight silence-phones model posteriors-rspecifier posteriors-wspecifier\n"
+        "Usage:  weight-silence-post [options] <silence-weight> <silence-phones> "
+        "<model> <posteriors-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
-        " weight-silence-post 0.0 1:2:3 1.mdl ark:1.ali ark:1.post\n";
+        " weight-silence-post 0.0 1:2:3 1.mdl ark:1.post ark:nosil.post\n";
 
     ParseOptions po(usage);
 
@@ -45,21 +46,21 @@ int main(int argc, char *argv[]) {
     }
 
 
-    std::string silence_weight_str = po.GetArg(1);
-    std::string silence_phones_str = po.GetArg(2);
-    std::string model_rxfilename = po.GetArg(3);
-    std::string posteriors_rspecifier = po.GetArg(4);
-    std::string posteriors_wspecifier = po.GetArg(5);
+    std::string silence_weight_str = po.GetArg(1),
+        silence_phones_str = po.GetArg(2),
+        model_rxfilename = po.GetArg(3),
+        posteriors_rspecifier = po.GetArg(4),
+        posteriors_wspecifier = po.GetArg(5);
 
     BaseFloat silence_weight = 0.0;
     if (!ConvertStringToReal(silence_weight_str, &silence_weight))
-      KALDI_EXIT << "Invalid silence-weight parameter: expected float, got \""
+      KALDI_ERR << "Invalid silence-weight parameter: expected float, got \""
                  << silence_weight_str << '"';
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_EXIT << "weight-silence-posteriors: Invalid silence-phones string " << silence_phones_str;
+      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
     if (silence_phones.empty())
-      KALDI_WARN <<"weight-silence-posteriors: no silence phones, this will have no effect";
+      KALDI_WARN <<"No silence phones, this will have no effect";
     ConstIntegerSet<int32> silence_set(silence_phones);  // faster lookup.
 
     TransitionModel trans_model;
@@ -96,7 +97,8 @@ int main(int argc, char *argv[]) {
       }
       posterior_writer.Write(posterior_reader.Key(), new_post);
     }
-    KALDI_LOG << "weight-silence-posteriors: processed " << num_posteriors << " posteriors.";
+    KALDI_LOG << "Done " << num_posteriors << " posteriors.";
+    return (num_posteriors != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         " make-ilabel-transducer old_ilabel_info 1.tree 1.mdl new_ilabel_info > convert.fst\n";
     ParseOptions po(usage);
 
-    bool binary = false;
+    bool binary = true;
     std::string disambig_wxfilename;
     std::string old2new_map_wxfilename;
     po.Register("write-disambig-syms", &disambig_wxfilename, "List of disambiguation symbols after the remapping");
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     if (old2new_map_wxfilename != "")
       if (!WriteIntegerVectorSimple(old2new_map_wxfilename, old2new_mapping))
-        KALDI_EXIT << "Error writing map from old to new symbols to "
+        KALDI_ERR << "Error writing map from old to new symbols to "
                    << PrintableWxfilename(old2new_map_wxfilename);
 
     std::vector<std::vector<int32> > new_ilabels;
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         }
       }
       if (! WriteIntegerVectorSimple(disambig_wxfilename, new_disambig)) {
-        KALDI_EXIT << "Could not write disambiguation symbols to "
+        KALDI_ERR << "Could not write disambiguation symbols to "
                    << kaldi::PrintableWxfilename(disambig_wxfilename);
       }
     }
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     CreateMapFst(old2new_mapping, &map_fst);
 
     if (!map_fst.Write(fst_out_filename)) {
-      KALDI_EXIT << "Error writing output fst to "
+      KALDI_ERR << "Error writing output fst to "
                  << (fst_out_filename == "" ? " standard output "
                      : fst_out_filename);
     }

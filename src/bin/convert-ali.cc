@@ -34,13 +34,13 @@ void ReadPhoneMap(std::string phone_map_rxfilename,
   std::vector<std::vector<int32> > vec;  // vector of vectors, each with two elements
   // (if file has right format). first is old phone, second is new phone
   if (!ReadIntegerVectorVectorSimple(phone_map_rxfilename, &vec))
-    KALDI_EXIT << "Error reading phone map from " <<
+    KALDI_ERR << "Error reading phone map from " <<
         PrintableRxfilename(phone_map_rxfilename);
   for (size_t i = 0; i < vec.size(); i++) {
     if (vec[i].size() != 2 || vec[i][0]<=0 || vec[i][1]<=0 ||
        (vec[i][0]<static_cast<int32>(phone_map->size()) &&
         (*phone_map)[vec[i][0]] != -1))
-      KALDI_EXIT << "Error reading phone map from "
+      KALDI_ERR << "Error reading phone map from "
                  <<   PrintableRxfilename(phone_map_rxfilename)
                  << " (bad line " << i << ")";
     if (vec[i][0]>=static_cast<int32>(phone_map->size()))
@@ -96,22 +96,22 @@ int main(int argc, char *argv[]) {
     TransitionModel old_trans_model;
     {
       bool binary;
-      Input is(old_model_filename, &binary);
-      old_trans_model.Read(is.Stream(), binary);
+      Input ki(old_model_filename, &binary);
+      old_trans_model.Read(ki.Stream(), binary);
     }
 
     TransitionModel new_trans_model;
     {
       bool binary;
-      Input is(new_model_filename, &binary);
-      new_trans_model.Read(is.Stream(), binary);
+      Input ki(new_model_filename, &binary);
+      new_trans_model.Read(ki.Stream(), binary);
     }
 
     ContextDependency new_ctx_dep;  // the tree.
     {
       bool binary;
-      Input is(new_tree_filename, &binary);
-      new_ctx_dep.Read(is.Stream(), binary);
+      Input ki(new_tree_filename, &binary);
+      new_ctx_dep.Read(ki.Stream(), binary);
     }
 
     int num_success = 0, num_fail = 0;

@@ -29,9 +29,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Print debugging info from transition model\n"
-        "Usage:  show-transitions phones-symbol-table transition/model-file [ accumulator-file ]\n"
+        "Usage:  show-transitions phones-symbol-table transition/model-file [occs-file]\n"
         "e.g.: \n"
-        " show-transitions phones.txt 1.mdl 1.acc\n";
+        " show-transitions phones.txt 1.mdl 1.occs\n";
 
     ParseOptions po(usage);
 
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     fst::SymbolTable *syms = fst::SymbolTable::ReadText(phones_symtab_filename);
     if (!syms)
-      KALDI_EXIT << "Could not read symbol table from file "
+      KALDI_ERR << "Could not read symbol table from file "
                  << phones_symtab_filename;
     std::vector<std::string> names(syms->NumSymbols());
     for (size_t i = 0; i < syms->NumSymbols(); i++)
@@ -62,16 +62,16 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary_in);
     }
 
-    Vector<double> transition_stats;
+    Vector<double> occs;
     if (accumulator_filename != "") {
       bool binary_in;
       Input ki(accumulator_filename, &binary_in);
-      transition_stats.Read(ki.Stream(), binary_in);
+      occs.Read(ki.Stream(), binary_in);
     }
 
     trans_model.Print(std::cout,
                       names,
-                      (accumulator_filename != "" ? &transition_stats : NULL));
+                      (accumulator_filename != "" ? &occs : NULL));
 
     delete syms;
   } catch(const std::exception& e) {

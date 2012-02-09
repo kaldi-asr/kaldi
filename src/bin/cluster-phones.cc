@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     // Format of questions.txt output is similar, but with more lines (and the same phone
     // may appear on multiple lines).
 
-    // bool binary = false;
+    // bool binary = true;
     int32 P = 1;
     std::string hmm_position_list_str = "1";  // 1 is just the central position of 3.
     std::string mode = "questions";
@@ -76,24 +76,24 @@ int main(int argc, char *argv[]) {
     {  // Read tree stats.
       bool binary_in;
       GaussClusterable gc;  // dummy needed to provide type.
-      Input is(stats_rxfilename, &binary_in);
-      ReadBuildTreeStats(is.Stream(), binary_in, gc, &stats);
+      Input ki(stats_rxfilename, &binary_in);
+      ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
 
     std::vector<int32> hmm_position_list;
     if (!SplitStringToIntegers(hmm_position_list_str, ":", false, &hmm_position_list)
        || hmm_position_list.empty()) {
-      KALDI_EXIT << "Invalid hmm-position-list string [expecting colon-separated list of integers]: " 
+      KALDI_ERR << "Invalid hmm-position-list string [expecting colon-separated list of integers]: " 
                  << hmm_position_list_str;
     }
 
     std::vector<std::vector< int32> > phone_sets;
     if (!ReadIntegerVectorVectorSimple(phone_sets_rxfilename, &phone_sets))
-      KALDI_EXIT << "Could not read phone sets from "
+      KALDI_ERR << "Could not read phone sets from "
                  << PrintableRxfilename(phone_sets_rxfilename);
 
     if (phone_sets.size() == 0)
-      KALDI_EXIT << "No phone sets in phone sets file ";
+      KALDI_ERR << "No phone sets in phone sets file ";
 
     std::vector<std::vector<int32> > phone_sets_out;
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (!WriteIntegerVectorVectorSimple(phone_sets_wxfilename, phone_sets_out))
-      KALDI_EXIT << "Error writing questions to "
+      KALDI_ERR << "Error writing questions to "
                  << PrintableWxfilename(phone_sets_wxfilename);
     else
       KALDI_LOG << "Wrote questions to "<<phone_sets_wxfilename;

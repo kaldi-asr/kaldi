@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "Usage:   decode-faster-mapped [options] model-in fst-in "
         "loglikes-rspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat acoustic_scale = 0.1;
     bool allow_partial = true;
     std::string word_syms_filename;
@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     if (word_syms_filename != "") {
       word_syms = fst::SymbolTable::ReadText(word_syms_filename);
       if (!word_syms)
-        KALDI_EXIT << "Could not read symbol table from file "<<word_syms_filename;
+        KALDI_ERR << "Could not read symbol table from file "<<word_syms_filename;
     }
 
     SequentialBaseFloatMatrixReader loglikes_reader(loglikes_rspecifier);
@@ -91,11 +91,9 @@ int main(int argc, char *argv[]) {
     // lot of virtual memory.
     VectorFst<StdArc> *decode_fst = NULL;
     {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
-                                << fst_in_filename;
+      Input ki(fst_in_filename.c_str());
       decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
+          VectorFst<StdArc>::Read(ki.Stream(), fst::FstReadOptions(fst_in_filename));
       if (decode_fst == NULL) // fst code will warn.
         exit(1);
     }

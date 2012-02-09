@@ -22,6 +22,7 @@
 #include "tree/context-dep.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
+#include "tree/context-dep.h"
 #include "tree/clusterable-classes.h"
 #include "util/text-utils.h"
 
@@ -54,17 +55,20 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Train decision tree\n"
-        "Usage:  build-tree [options] <tree-stats-in> <roots-file> <questions-file> <topo-file> <tree-out>\n"
+        "Trains two-level decision tree.  Outputs the larger tree, and a mapping from the\n"
+        "leaf-ids of the larger tree to those of the smaller tree.  Useful, for instance,\n"
+        "in tied-mixture systems with multiple codebooks.\n"
+        "\n"
+        "Usage:  build-tree-two-level [options] <tree-stats-in> <roots-file> <questions-file> <topo-file> <tree-out> <mapping-out>\n"
         "e.g.: \n"
-        " build-tree treeacc roots.txt 1.qst topo tree\n";
+        " build-tree-two-level treeacc roots.txt 1.qst topo tree tree.map\n";
 
-    bool binary = true;
+    bool binary = false;
     int32 P = 1, N = 3;
 
-    BaseFloat thresh = 300.0;
-    BaseFloat cluster_thresh = -1.0;  // negative means use smallest split in splitting phase as thresh.
-    int32 max_leaves = 0;
+    bool cluster_leaves = true;
+    int32 max_leaves_first = 1000;
+    int32 max_leaves_second = 5000;
     std::string occs_out_filename;
 
     ParseOptions po(usage);
@@ -73,16 +77,16 @@ int main(int argc, char *argv[]) {
                 "acc-tree-stats]");
     po.Register("central-position", &P, "Central position in context window "
                 "[must match acc-tree-stats]");
-    po.Register("max-leaves", &max_leaves, "Maximum number of leaves to be "
-                "used in tree-buliding (if positive)");
-    po.Register("thresh", &thresh, "Log-likelihood change threshold for "
-                "tree-building");
-    po.Register("cluster-thresh", &cluster_thresh, "Log-likelihood change "
-                "threshold for clustering after tree-building");
-
+    po.Register("max-leaves-first", &max_leaves_first, "Maximum number of "
+                "leaves in first-level decision tree.");
+    po.Register("max-leaves-second", &max_leaves_second, "Maximum number of "
+                "leaves in second-level decision tree.");
+    po.Register("cluster-leaves", &cluster_leaves, "If true, do a post-clustering"
+                " of the leaves of the final decision tree.");
+    
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 5) {
+    if (po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
@@ -91,7 +95,8 @@ int main(int argc, char *argv[]) {
         roots_filename = po.GetArg(2),
         questions_filename = po.GetArg(3),
         topo_filename = po.GetArg(4),
-        tree_out_filename = po.GetArg(5);
+        tree_out_filename = po.GetArg(5),
+        map_out_filename = po.GetArg(6);
 
 
     // Following 2 variables derived from roots file.
@@ -138,29 +143,22 @@ int main(int argc, char *argv[]) {
 
     EventMap *to_pdf = NULL;
 
+    std::vector<int32> mapping;
+
     //////// Build the tree. ////////////
 
-    to_pdf = BuildTree(qo,
-                       phone_sets,
-                       phone2num_pdf_classes,
-                       is_shared_root,
-                       is_split_root,
-                       stats,
-                       thresh,
-                       max_leaves,
-                       cluster_thresh,
-                       P);
+    to_pdf = BuildTreeTwoLevel(qo,
+                               phone_sets,
+                               phone2num_pdf_classes,
+                               is_shared_root,
+                               is_split_root,
+                               stats,
+                               max_leaves_first,
+                               max_leaves_second,
+                               cluster_leaves,
+                               P,
+                               &mapping);
 
-    { // This block is to warn about low counts.
-      std::vector<BuildTreeStatsType> split_stats;
-      SplitStatsByMap(stats, *to_pdf,
-                      &split_stats);
-      for (size_t i = 0; i < split_stats.size(); i++)
-        if (SumNormalizer(split_stats[i]) < 100.0)
-          KALDI_VLOG(1) << "For pdf-id " << i << ", low count "
-                        << SumNormalizer(split_stats[i]);
-    }
-    
     ContextDependency ctx_dep(N, P, to_pdf);  // takes ownership
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;
@@ -170,6 +168,11 @@ int main(int argc, char *argv[]) {
       ctx_dep.Write(ko.Stream(), binary);
     }
 
+    {
+      Output ko(map_out_filename, binary);
+      WriteIntegerVector(ko.Stream(), binary, mapping); 
+    }
+    
     {  // This block is just doing some checks.
 
       std::vector<int32> all_phones;
@@ -205,8 +208,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Wrote tree\n";
-
+    std::cerr << "Wrote tree and mapping\n";
+    
     DeleteBuildTreeStats(&stats);
   } catch(const std::exception& e) {
     std::cerr << e.what();

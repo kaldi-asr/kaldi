@@ -39,8 +39,9 @@ int main(int argc, char *argv[]) {
         " align-equal 1.tree 1.mdl lex.fst scp:train.scp ark:train.tra ark:equal.ali\n";
 
     ParseOptions po(usage);
-    bool binary = false;
-    po.Register("binary", &binary, "Write output in binary mode");
+    std::string disambig_rxfilename;
+    po.Register("read-disambig-syms", &disambig_rxfilename, "File containing "
+                "list of disambiguation symbols in phone symbol table");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 6) {
@@ -58,33 +59,40 @@ int main(int argc, char *argv[]) {
     ContextDependency ctx_dep;
     {
       bool binary;
-      Input is(tree_in_filename, &binary);
-      ctx_dep.Read(is.Stream(), binary);
+      Input ki(tree_in_filename, &binary);
+      ctx_dep.Read(ki.Stream(), binary);
     }
 
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
     }
 
     // need VectorFst because we will change it by adding subseq symbol.
     VectorFst<StdArc> *lex_fst = NULL;
     {
       std::ifstream is(lex_in_filename.c_str());
-      if (!is.good()) KALDI_EXIT << "Could not open lexicon FST " << (std::string)lex_in_filename;
+      if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_in_filename;
       lex_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)lex_in_filename));
+          VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_in_filename));
       if (lex_fst == NULL)
-        KALDI_EXIT << "Could not open lexicon FST "<<lex_in_filename;
+        KALDI_ERR << "Could not open lexicon FST "<<lex_in_filename;
     }
 
     TrainingGraphCompilerOptions gc_opts(1.0, true);  // true -> Dan style graph.
 
+    std::vector<int32> disambig_syms;
+    if (disambig_rxfilename != "")
+      if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_syms))
+        KALDI_ERR << "fstcomposecontext: Could not read disambiguation symbols from "
+                  << disambig_rxfilename;
+    
     TrainingGraphCompiler gc(trans_model,
                              ctx_dep,
                              lex_fst,
+                             disambig_syms,
                              gc_opts);
 
     lex_fst = NULL;  // we gave ownership to gc.
@@ -108,7 +116,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         VectorFst<StdArc> decode_fst;
-        if (!gc.CompileGraph(transcript, &decode_fst)) {
+        if (!gc.CompileGraphFromText(transcript, &decode_fst)) {
           KALDI_WARN << "Problem creating decoding graph for utterance "
                      << key <<" [serious error]";
           other_error++;

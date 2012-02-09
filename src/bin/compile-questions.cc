@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         "Usage:  compile-questions [options] <topo> <questions-text-file> <questions-out>\n"
         "e.g.: \n"
         " compile-questions questions.txt questions.qst\n";
-    bool binary = false;
+    bool binary = true;
     int32 P = 1, N = 3;
     int32 num_iters_refine = 0;
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::vector<int32> > questions;  // sets of phones.
     if (!ReadIntegerVectorVectorSimple(questions_rxfilename, &questions))
-      KALDI_EXIT << "Could not read questions from "
+      KALDI_ERR << "Could not read questions from "
                  << PrintableRxfilename(questions_rxfilename);
     for (size_t i = 0; i < questions.size(); i++) {
       std::sort(questions[i].begin(), questions[i].end());
@@ -135,8 +135,8 @@ int main(int argc, char *argv[]) {
     qo.SetQuestionsOf(kPdfClass, pdfclass_opts);
 
     {
-      Output os(questions_out_filename, binary);
-      qo.Write(os.Stream(), binary);
+      Output ko(questions_out_filename, binary);
+      qo.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Wrote questions to "<<questions_out_filename;
   } catch(const std::exception& e) {

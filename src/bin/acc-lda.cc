@@ -36,8 +36,10 @@ int main(int argc, char *argv[]) {
         " ali-to-post ark:1.ali ark:- | lda-acc 1.mdl \"ark:splice-feats scp:train.scp|\"  ark:- ldaacc.1\n";
 
     bool binary = true;
+    BaseFloat rand_prune = 0.0;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning threshold for posteriors");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -53,8 +55,8 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary_read;
-      Input is(model_rxfilename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
+      Input ki(model_rxfilename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
       // discard rest of file.
     }
 
@@ -67,7 +69,7 @@ int main(int argc, char *argv[]) {
     for (;!feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       if (!posterior_reader.HasKey(utt)) {
-        KALDI_WARN << "No features for utterance " << utt;
+        KALDI_WARN << "No feaures for utterance " << utt;
         num_fail++;
         continue;
       }
@@ -94,9 +96,11 @@ int main(int argc, char *argv[]) {
         SubVector<BaseFloat> feat(feats, i);
         for (size_t j = 0; j < post[i].size(); j++) {
           int32 tid = post[i][j].first;
-          BaseFloat weight = post[i][j].second;
-          int32 pdf = trans_model.TransitionIdToPdf(tid);
-          lda.Accumulate(feat, pdf, weight);
+          BaseFloat weight = RandPrune(post[i][j].second, rand_prune);
+          if (weight != 0.0) {
+            int32 pdf = trans_model.TransitionIdToPdf(tid);
+            lda.Accumulate(feat, pdf, weight);
+          }
         }
       }
       num_done++;
@@ -110,7 +114,7 @@ int main(int argc, char *argv[]) {
     Output ko(acc_wxfilename, binary);
     lda.Write(ko.Stream(), binary);
     KALDI_LOG << "Written statistics.";
-    return (num_done == 0);
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

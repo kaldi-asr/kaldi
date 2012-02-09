@@ -33,12 +33,12 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Accumulate stats for GMM training.\n"
+        "Accumulate statistics for phonetic-context tree building.\n"
         "Usage:  acc-tree-stats [options] model-in features-rspecifier alignments-rspecifier [tree-accs-out]\n"
         "e.g.: \n"
         " acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     float var_floor = 0.01;
     string ci_phones_str;
     int N = 3;
@@ -66,15 +66,15 @@ int main(int argc, char *argv[]) {
       SplitStringToIntegers(ci_phones_str, ":", false, &ci_phones);
       std::sort(ci_phones.begin(), ci_phones.end());
       if (!IsSortedAndUniq(ci_phones) || ci_phones[0] == 0) {
-        KALDI_EXIT << "Invalid set of ci_phones: "<<ci_phones_str;
+        KALDI_ERR << "Invalid set of ci_phones: "<<ci_phones_str;
       }
     }
 
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
       // There is more in this file but we don't need it.
     }
 
@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
                             mat,
                             &tree_stats);
         num_done++;
+        if (num_done % 1000 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances.";
       }
     }
 
@@ -122,13 +124,12 @@ int main(int argc, char *argv[]) {
     tree_stats.clear();
 
     {
-      Output os(accs_out_wxfilename, binary);
-      WriteBuildTreeStats(os.Stream(), binary, stats);
+      Output ko(accs_out_wxfilename, binary);
+      WriteBuildTreeStats(ko.Stream(), binary, stats);
     }
     KALDI_LOG << "Accumulated stats for " << num_done << " files, "
               << num_no_alignment << " failed due to no alignment, "
               << num_other_error << " failed for other reasons.";
-    std::cerr << "Wrote stats.\n";
     DeleteBuildTreeStats(&stats);
     if (num_done != 0) return 0;
     else return 1;
