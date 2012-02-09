@@ -24,8 +24,8 @@
 #include "base/kaldi-common.h"
 #include "util/kaldi-io.h"
 #include "matrix/matrix-lib.h"
-#include "nnet/nnet-component.h"
-#include "nnet/nnet-nnet.h"
+#include "nnet_cpu/nnet-component.h"
+#include "nnet_cpu/nnet-nnet.h"
 
 #include <iostream>
 #include <sstream>

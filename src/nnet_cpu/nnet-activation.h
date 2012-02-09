@@ -19,7 +19,7 @@
 #ifndef KALDI_NNET_ACTIVATION_H
 #define KALDI_NNET_ACTIVATION_H
 
-#include "nnet/nnet-component.h"
+#include "nnet_cpu/nnet-component.h"
 namespace kaldi {
 
 class Sigmoid : public Component {

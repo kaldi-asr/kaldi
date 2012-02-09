@@ -20,7 +20,7 @@
 #define KALDI_NNET_BIASEDLINEARITY_H
 
 
-#include "nnet/nnet-component.h"
+#include "nnet_cpu/nnet-component.h"
 
 namespace kaldi {
 

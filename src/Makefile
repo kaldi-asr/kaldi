@@ -7,7 +7,7 @@
 SUBDIRS = base matrix util feat tree optimization gmm tied transform sgmm \
           fstext hmm lm decoder lat \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnet nnetbin latbin rnn
+          nnet_cpu nnetbin_cpu latbin rnn
 
 all: test_install remove_locks $(SUBDIRS) 
 	echo Done

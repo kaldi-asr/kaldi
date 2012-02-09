@@ -1,21 +1,25 @@
 
+
 all:
-EXTRA_CXXFLAGS = -Wno-sign-compare
+
 include ../kaldi.mk
 
-BINFILES = nnet-train-xent-hardlab-perutt nnet-forward rnnlm-train-perseq
+TESTFILES = nnet-test
 
-OBJFILES =
+OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-rnnlm.o
 
-all:  $(BINFILES)
+LIBFILE = kaldi-nnet.a 
+
+all:  $(LIBFILE) $(TESTFILES)
+
+$(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
+	$(AR) -cru $(LIBFILE) $(OBJFILES)
+	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 
-TESTFILES =
-
-
-$(BINFILES): ../nnet/kaldi-nnet.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
-
-
+$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -25,7 +29,7 @@ $(BINFILES): ../nnet/kaldi-nnet.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES) $(BINFILES)
+	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

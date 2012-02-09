@@ -16,7 +16,7 @@
 // limitations under the License.
 
 
-#include "nnet/nnet-rnnlm.h"
+#include "nnet_cpu/nnet-rnnlm.h"
 
 
 ///////////////////// TODO HACK, REWRITE AS INLINE!!!! ///////////////

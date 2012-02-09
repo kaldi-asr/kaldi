@@ -15,10 +15,10 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet/nnet-nnet.h"
-#include "nnet/nnet-component.h"
-#include "nnet/nnet-activation.h"
-#include "nnet/nnet-biasedlinearity.h"
+#include "nnet_cpu/nnet-nnet.h"
+#include "nnet_cpu/nnet-component.h"
+#include "nnet_cpu/nnet-activation.h"
+#include "nnet_cpu/nnet-biasedlinearity.h"
 
 namespace kaldi {
 
