@@ -23,7 +23,9 @@ echo "****(1) Installing sph2pipe"
 
 (
   rm sph2pipe_v2.5.tar.gz 2>/dev/null
-  wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
+  wget -T 10 -t 3 ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz  || \
+    ( echo "Trying back-up server:"; 
+     wget -T 10 -t 3 http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz )
 
   if [ ! -e sph2pipe_v2.5.tar.gz ]; then
     echo "****download of sph2pipe_v2.5.tar.gz failed."
@@ -101,7 +103,7 @@ fi
     cd irstlm
     # Applying patch to get -write option of interpolate-lm
     # May not work with anything else than revision 398
-	patch -p0 < ../interpolatedwrite-5.60.02.patch
+	patch -N -p0 < ../interpolatedwrite-5.60.02.patch
 
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
@@ -136,11 +138,13 @@ fi
     echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
     exit 1
   else
-    bunzip2 sctk-2.4.0-20091110-0958.tar.bz2 || exit 1
-    gzip -f sctk-2.4.0-20091110-0958.tar || exit 1
-
-    tar -xovzf sctk-2.4.0-20091110-0958.tar.gz  || exit 1
+    #  Note: the "j" option for tar tells it that we're using
+    # a bzip'd archive (like "z" is for gzip).
+    tar -xovjf sctk-2.4.0-20091110-0958.tar.bz2  || exit 1
     cd sctk-2.4.0
+    for x in src/asclite/core/recording.{h,cpp}; do # Fix a compilation error that can occur with newer compiler versions.
+      sed 's/Filter::Filter/::Filter/' $x > tmpf; mv tmpf $x;
+    done
     make config || exit 1
     make all || exit 1
     # Not doing the checks, they don't always succeed and it
@@ -166,23 +170,25 @@ fi
 (
   echo "****(6) Install openfst"
 
-  rm openfst-1.2.7.tar.gz 2>/dev/null
-  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.7.tar.gz
+  rm openfst-1.2.10.tar.gz 2>/dev/null
+  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz
 
-  if [ ! -e openfst-1.2.7.tar.gz ]; then
-    echo "****download openfst-1.2.7.tar.gz failed."
+  if [ ! -e openfst-1.2.10.tar.gz ]; then
+    echo "****download openfst-1.2.10.tar.gz failed."
     exit 1
   else
-    tar -xovzf openfst-1.2.7.tar.gz   || exit 1
-    cp partition.h minimize.h openfst-1.2.7/src/include/fst
+    tar -xovzf openfst-1.2.10.tar.gz   || exit 1
+    for dir in openfst-1.2.10/{src/,}include/fst; do
+       ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
+    done 
     #ignore errors in the following; it's for robustness in case
     # someone follows these instructions after the installation of openfst.
-    cp partition.h minimize.h openfst-1.2.7/include/fst 2>/dev/null
+    cp partition.h minimize.h openfst-1.2.10/include/fst 2>/dev/null
     # Remove any existing link
     rm openfst 2>/dev/null
-    ln -s openfst-1.2.7 openfst
+    ln -s openfst-1.2.10 openfst
      
-    cd openfst-1.2.7
+    cd openfst-1.2.10
     # Choose the correct configure statement:
 
     # Linux or Darwin:
@@ -215,7 +221,7 @@ else
    echo "sph2pipe:Failure"
 fi
 if [ $ok_atlas -eq 0 ]; then
-   echo "ATLAS:   Success"
+   echo "ATLAS:   Success [note: we install just the headers; do ./install_atlas.sh if ../src/configure fails.]"
 else
    echo "ATLAS:   Failure"
 fi
@@ -232,7 +238,7 @@ fi
 if [ $ok_sclite -eq 0 ]; then
    echo "sclite:  Success"
 else
-   echo "sclite:  Failure [optional anyway]"
+   echo "sclite:  Failure [optional anyway.. see INSTALL for more help]"
 fi
 if [ $ok_openfst -eq 0 ]; then
    echo "openfst: Success"
