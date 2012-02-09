@@ -329,8 +329,7 @@ void UnitTestTableSequentialInt32(bool binary) {
   bool ans;
   Int32Writer bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -362,8 +361,7 @@ void UnitTestTableSequentialBool(bool binary) {
   bool ans;
   BoolWriter bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -396,8 +394,7 @@ void UnitTestTableSequentialDouble(bool binary) {
   bool ans;
   DoubleWriter bw(binary ? "b,ark:tmpf" : "t,ark:tmpf");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -437,8 +434,7 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
   bool ans;
   DoubleWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -481,8 +477,7 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   bool ans;
   Int32VectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -490,6 +485,42 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
   SequentialInt32VectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
   std::vector<std::string> k2;
   std::vector<std::vector<int32> > v2;
+  for (; !sbr.Done(); sbr.Next()) {
+    k2.push_back(sbr.Key());
+    v2.push_back(sbr.Value());
+  }
+  assert(sbr.Close());
+  assert(k2 == k);
+  assert(v2 == v);
+}
+
+
+// Writing as both and reading as archive.
+void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
+  int32 sz = rand() % 10;
+  std::vector<std::string> k(sz);
+  std::vector<std::vector<std::pair<int32, int32> > > v(sz);
+
+  for (int32 i = 0; i < sz; i++) {
+    k[i] = CharToString( 'a' + static_cast<char>(i));  // This gives us
+    // some single quotes too but it doesn't really matter.
+    if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
+    int32 sz2 = rand() % 5;
+    for (int32 j = 0; j < sz2; j++) 
+      v[i].push_back(std::pair<int32,int32>(rand() % 10, rand() % 10));
+  }
+  
+  bool ans;
+  Int32PairVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
+  for (int32 i = 0; i < sz; i++)  {
+    bw.Write(k[i], v[i]);
+  }
+  ans = bw.Close();
+  assert(ans);
+
+  SequentialInt32PairVectorReader sbr(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
+  std::vector<std::string> k2;
+  std::vector<std::vector<std::pair<int32, int32> > > v2;
   for (; !sbr.Done(); sbr.Next()) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
@@ -523,8 +554,7 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
   bool ans;
   Int32VectorVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -568,8 +598,7 @@ void UnitTestTableSequentialInt32Script(bool binary) {
   bool ans;
   Int32Writer bw(binary ? "b,scp:tmp.scp" : "t,scp:tmp.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -605,8 +634,7 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
   bool ans;
   DoubleMatrixWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], *(v[i]));
-    assert(ans);
+    bw.Write(k[i], *(v[i]));
   }
   ans = bw.Close();
   assert(ans);
@@ -653,8 +681,7 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
   bool ans;
   BaseFloatVectorWriter bw(binary ? "b,ark,scp:tmpf,tmpf.scp" : "t,ark,scp:tmpf,tmpf.scp");
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], *(v[i]));
-    assert(ans);
+    bw.Write(k[i], *(v[i]));
   }
   ans = bw.Close();
   assert(ans);
@@ -718,8 +745,7 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
   DoubleWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
   // "flush" option in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -791,8 +817,7 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   DoubleMatrixWriter bw(binary ? "b,f,ark,scp:tmpf,tmpf.scp" : "t,f,ark,scp:tmpf,tmpf.scp");  // Putting the
   // "flush" option in too, just for good measure..
   for (int32 i = 0; i < sz; i++)  {
-    ans = bw.Write(k[i], v[i]);
-    assert(ans);
+    bw.Write(k[i], v[i]);
   }
   ans = bw.Close();
   assert(ans);
@@ -857,6 +882,7 @@ int main() {
       UnitTestTableSequentialDoubleBoth(b, c);
       UnitTestTableSequentialDoubleMatrixBoth(b, c);
       UnitTestTableSequentialInt32VectorBoth(b, c);
+      UnitTestTableSequentialInt32PairVectorBoth(b, c);
       UnitTestTableSequentialInt32VectorVectorBoth(b, c);
       UnitTestTableSequentialBaseFloatVectorBoth(b, c);
       for (int k = 0; k < 2; k++) {

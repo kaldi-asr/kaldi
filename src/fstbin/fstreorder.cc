@@ -22,6 +22,8 @@
 #include "util/text-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/reorder.h"
+#include "fstext/fstext-utils.h"
+
 
 
 /* Test:
@@ -39,13 +41,15 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Reorder FST states for greater search efficiency [sort arcs by weight then dfs order states]\n"
+        "Reorder FST states for greater search efficiency [sort arcs by weight "
+        "then dfs order states]\n"
         "\n"
         "Usage:  fstreorder [in.fst [out.fst] ]\n";
 
     bool do_arc_sort = true;
     kaldi::ParseOptions po(usage);
-    po.Register("arc-sort", &do_arc_sort, "If true, sort arcs in decreasing order by weight, prior to dfs ordering");
+    po.Register("arc-sort", &do_arc_sort,
+                "If true, sort arcs in decreasing order by weight, prior to dfs ordering");
     po.Read(argc, argv);
 
     if (po.NumArgs() > 2) {
@@ -53,19 +57,10 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetOptArg(1),
+        fst_out_filename = po.GetOptArg(2);
 
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(2);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     if (do_arc_sort)
       WeightArcSort(fst);  // sort arcs by weight.
@@ -73,15 +68,12 @@ int main(int argc, char *argv[]) {
     DfsReorder(*fst, &ordered);  // do depth-first-search ordering of fst nodes.
     *fst = ordered;
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstminimizeencoded: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

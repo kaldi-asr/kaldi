@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "   compose-transforms ark:1.trans ark:2.trans ark:3.trans\n";
 
     bool b_is_affine = false;
-    bool binary = false;
+    bool binary = true;
     std::string utt2spk_rspecifier;
     ParseOptions po(usage);
 
@@ -72,10 +72,10 @@ int main(int argc, char *argv[]) {
     RandomAccessTokenReader utt2spk_reader;
     if (utt2spk_rspecifier != "") {
       if (!(a_is_rspecifier && b_is_rspecifier))
-        KALDI_EXIT << "Error: utt2spk option provided compose transforms but "
+        KALDI_ERR << "Error: utt2spk option provided compose transforms but "
             "at least one of the inputs is a global transform.";
       if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_EXIT << "Error upening utt2spk map from "
+        KALDI_ERR << "Error upening utt2spk map from "
                    << utt2spk_rspecifier;
     }
 
@@ -168,12 +168,15 @@ int main(int argc, char *argv[]) {
         b.Read(ki.Stream(), binary_in);
       }
       Matrix<BaseFloat> c;
+      if (!b_is_affine && a.NumRows() == a.NumCols()+1 && a.NumRows() == b.NumRows()
+          && a.NumCols() == b.NumCols())
+        KALDI_WARN << "It looks like you are trying to compose two affine transforms"
+                   << ", but you omitted the --b-is-affine option.";
       if (!ComposeTransforms(a, b, b_is_affine, &c)) exit (1);
 
       Output ko(transform_c_fn, binary);
       c.Write(ko.Stream(), binary);
     }
-    exit(0);
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

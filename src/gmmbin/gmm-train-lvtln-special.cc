@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " gmm-train-lvtln-special 5 5.lvtln 6.lvtln scp:train.scp scp:train_warp095.scp ark:nosil.post\n";
 
-    bool binary = false;
+    bool binary = true;
     bool normalize_var = false;
     bool normalize_covar = false;
     ParseOptions po(usage);
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     std::string class_idx_str = po.GetArg(1);
     int32 class_idx;
     if (!ConvertStringToInteger(class_idx_str, &class_idx))
-      KALDI_EXIT << "Expected integer first argument: got " << class_idx_str;
+      KALDI_ERR << "Expected integer first argument: got " << class_idx_str;
 
     std::string lvtln_rxfilename = po.GetArg(2),
         lvtln_wxfilename = po.GetArg(3),

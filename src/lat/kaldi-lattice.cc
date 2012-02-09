@@ -111,7 +111,7 @@ class LatticeReader {
     CompactLattice *cfst = new CompactLattice();
     string line;
     size_t nline = 0;
-    string separator = FLAGS_fst_field_separator + "\r\n"; // add \r as
+    string separator = FLAGS_fst_field_separator + "\r\n";
     while (std::getline(is, line)) {
       nline++;
       vector<string> col;
@@ -120,17 +120,19 @@ class LatticeReader {
       if (col.size() == 0) break; // Empty line is a signal to stop, in our
       // archive format.
       if (col.size() > 5) {
-        KALDI_WARN << "FstCompiler: bad line in FST: " << line;
+        KALDI_WARN << "Reading lattice: bad line in FST: " << line;
         if (fst) delete fst;
-        if (cfst) delete cfst;
-        return PairT(NULL, NULL);
+        if (cfst) delete cfst;	
+        return PairT(static_cast<Lattice*>(NULL),
+			         static_cast<CompactLattice*>(NULL));
       }
       StateId s;
       if (!ConvertStringToInteger(col[0], &s)) {
         KALDI_WARN << "FstCompiler: bad line in FST: " << line;
         if (fst) delete fst;
         if (cfst) delete cfst;
-        return PairT(NULL, NULL);
+        return PairT(static_cast<Lattice*>(NULL),
+			         static_cast<CompactLattice*>(NULL));
       }
       if (fst)
         while (s >= fst->NumStates())
@@ -242,7 +244,8 @@ class LatticeReader {
           SplitStringToVector(line, separator.c_str(), &col);
           if (col.empty()) break;
         }
-        return PairT(NULL, NULL);
+        return PairT(static_cast<Lattice*>(NULL), 
+			         static_cast<CompactLattice*>(NULL));
       }
     }
     return PairT(fst, cfst);

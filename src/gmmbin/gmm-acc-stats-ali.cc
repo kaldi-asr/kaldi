@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-stats-ali 1.mdl 1.ali scp:train.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 
@@ -56,15 +56,15 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
-    MlEstimateAmDiagGmm gmm_accs;
-    gmm_accs.InitAccumulators(am_gmm, kGmmAll);
+    AccumAmDiagGmm gmm_accs;
+    gmm_accs.Init(am_gmm, kGmmAll);
 
     double tot_like = 0.0;
     kaldi::int64 tot_t = 0;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
-    
+
     {
       Output ko(accs_wxfilename, binary);
       transition_accs.Write(ko.Stream(), binary);

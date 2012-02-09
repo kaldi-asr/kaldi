@@ -67,6 +67,7 @@ struct RpropOptions {
   /// reasonable defaults
   /// as they can be found in the literature
   RpropOptions(): maximizing(true), max_iter(1500),
+                  min_iter(10),
                   conv_check_interval(100),
                   epsilon(1e-10), eta_inc(1.2), eta_dec(0.5),
                   gamma_max(50), gamma_min(1e-10), gamma_init(0.1) { }
@@ -84,7 +85,7 @@ struct RpropOptions {
 /// Faster Backpropagation Learning: the RPROP Algorithm,
 /// in E.H. Ruspini (Ed.), Proc. of the IEEE International
 /// Conference on Neural Networks, New York, 1993,
-/// pp. 586–591.
+/// pp. 586-591.
 /// "param" contains the initial parameters.
 /// The routine optimizes the vector "param" and
 ///  At exit, "param" contains the optimal parameter.

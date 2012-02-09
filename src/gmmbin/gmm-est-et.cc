@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     std::string normalize_type = "";
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
@@ -67,9 +67,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_rxfilename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     ExponentialTransform et;
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (normalize_type != "") {
-      EtNormalizeType nt;
+      EtNormalizeType nt = kEtNormalizeNone;
       if (normalize_type == "offset") nt = kEtNormalizeOffset;
       else if (normalize_type == "diag") nt = kEtNormalizeDiag;
       else if (normalize_type == "none") nt = kEtNormalizeNone;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           if (!gpost_reader.HasKey(*utt_itr)) {
-            KALDI_WARN << "Did not find aligned transcription for utterance "
+            KALDI_WARN << "Did not find Gaussian posteriors for utterance "
                        << *utt_itr;
             num_no_gpost++;
             continue;
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall objf impr per frame = "
               << (tot_objf_impr / tot_count) << " over " << tot_count
               << " frames.";
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

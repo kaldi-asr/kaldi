@@ -23,8 +23,15 @@
 #include <set>
 #include <string>
 #include <vector>
-
 #include "base/kaldi-common.h"
+
+#ifdef _MSC_VER
+#include <unordered_map>
+#else
+#include <tr1/unordered_map>
+#endif
+using std::tr1::unordered_map;
+
 
 namespace kaldi {
 
@@ -71,9 +78,7 @@ inline bool IsSortedAndUniq(const std::vector<T> &vec) {
 /// Removes duplicate elements from a sorted list.
 template<typename T>
 inline void Uniq(std::vector<T> *vec) {  // must be already sorted.
-#ifdef KALDI_PARANOID
-  assert(IsSorted(*vec));
-#endif
+  KALDI_PARANOID_ASSERT(IsSorted(*vec));
   assert(vec);
   vec->erase(std::unique(vec->begin(), vec->end()), vec->end());
 }

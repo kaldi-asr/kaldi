@@ -37,7 +37,7 @@
     svn update
   \endverbatim
  If "svn update" prints out scary looking messages about conflicts (caused by
- you changing parts of files that were later modified centerally),
+ you changing parts of files that were later modified centrally),
  you may have to resolve the conflicts; for that, we recommend that you
  read about how svn works.
 

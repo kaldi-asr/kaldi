@@ -58,42 +58,26 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string disambig_in_filename = po.GetArg(1);
-    if (disambig_in_filename == "-") disambig_in_filename = "";
+    std::string disambig_rxfilename = po.GetArg(1),
+        fst_rxfilename = po.GetOptArg(2),
+        fst_wxfilename = po.GetOptArg(3);
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(2);
-    if (fst_in_filename == "-") fst_in_filename = "";
-
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(3);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstrmsymbols: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
-
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_rxfilename);
+    
     std::vector<int32> disambig_in;
-    if (!ReadIntegerVectorSimple(disambig_in_filename, &disambig_in)) {
-      std::cerr << "fstrmsymbols: Could not read disambiguation symbols from "
-                << (disambig_in_filename == "" ? "standard input" : disambig_in_filename)
-                << '\n';
-      return 1;
-    }
+    if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_in))
+      KALDI_ERR << "fstrmsymbols: Could not read disambiguation symbols from "
+                << (disambig_rxfilename == "" ? "standard input" : disambig_rxfilename);
 
     RemoveSomeInputSymbols(disambig_in, fst);
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstrmsymbols: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_wxfilename);
+
     delete fst;
+    return 0;    
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

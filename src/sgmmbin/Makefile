@@ -3,12 +3,14 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = init-ubm sgmm-align sgmm-align-compiled sgmm-acc-stats-ali sgmm-sum-accs \
-           sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect  sgmm-acc-stats \
-           sgmm-est-spkvecs sgmm-post-to-gpost sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost \
-           sgmm-comp-prexform sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
-           sgmm-calc-distances sgmm-normalize sgmm-latgen-simple
-
+BINFILES = init-ubm sgmm-align-compiled sgmm-acc-stats-ali \
+           sgmm-sum-accs sgmm-est sgmm-decode-faster sgmm-init sgmm-gselect \
+           sgmm-est-fmllr sgmm-acc-stats sgmm-est-spkvecs sgmm-post-to-gpost \
+           sgmm-acc-stats-gpost sgmm-est-spkvecs-gpost sgmm-comp-prexform \
+           sgmm-est-fmllr-gpost sgmm-acc-fmllrbasis-ali sgmm-est-fmllrbasis \
+           sgmm-calc-distances sgmm-normalize sgmm-latgen-simple \
+           sgmm-latgen-faster sgmm-rescore-lattice sgmm-copy sgmm-write-ubm \
+           sgmm-mixup
 
 OBJFILES =
 
@@ -33,7 +35,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

@@ -53,7 +53,8 @@ void ReadBuildTreeStats(std::istream &is, bool binary,
 /// Convenience function e.g. to work out possible values of the phones from just the stats.
 /// Returns true if key was always defined inside the stats.
 /// May be used with and == NULL to find out of key was always defined.
-bool PossibleValues(EventKeyType key, const BuildTreeStatsType &stats, std::vector<EventValueType> *ans);
+bool PossibleValues(EventKeyType key, const BuildTreeStatsType &stats,
+                    std::vector<EventValueType> *ans);
 
 
 /// Splits stats according to the EventMap, indexing them at output by the
@@ -62,14 +63,16 @@ bool PossibleValues(EventKeyType key, const BuildTreeStatsType &stats, std::vect
 /// objects happens.  Will add to stats in stats_out if non-empty at input.
 /// This function may increase the size of vector stats_out as necessary
 /// to accommodate stats, but will never decrease the size.
-void SplitStatsByMap(const BuildTreeStatsType &stats_in, const EventMap &e, std::vector<BuildTreeStatsType> *stats_out);
+void SplitStatsByMap(const BuildTreeStatsType &stats_in, const EventMap &e,
+                     std::vector<BuildTreeStatsType> *stats_out);
 
 /// SplitStatsByKey splits stats up according to the value of a particular key,
 /// which must be always defined and nonnegative.  Like MapStats.  Pointers to
 /// Clusterable* in stats_out are not newly allocated-- they are the same as the
 /// ones in stats_in.  Generally they will still be owned at stats_in (user can
 /// decide where to allocate ownership).
-void SplitStatsByKey(const BuildTreeStatsType &stats_in, EventKeyType key, std::vector<BuildTreeStatsType> *stats_out);
+void SplitStatsByKey(const BuildTreeStatsType &stats_in, EventKeyType key,
+                     std::vector<BuildTreeStatsType> *stats_out);
 
 
 /// Converts stats from a given context-window (N) and central-position (P) to a
@@ -126,7 +129,8 @@ BaseFloat ObjfGivenMap(const BuildTreeStatsType &stats_in, const EventMap &e);
 ///   the set of stats
 /// if type== kAllKeysUnion (currently probably not so useful since maps will return "undefined"
 ///   if key is not present), it will return the union of all the keys present in the stats.
-void FindAllKeys(const BuildTreeStatsType &stats, AllKeysType keys_type, std::vector<EventKeyType> *keys);  // e.g. type = kAllKeysIntersection
+void FindAllKeys(const BuildTreeStatsType &stats, AllKeysType keys_type,
+                 std::vector<EventKeyType> *keys);
 
 
 /// @}
@@ -152,7 +156,8 @@ inline EventMap *TrivialTree(int32 *num_leaves) {
 /// (key = P-1), or HMM-state position (key == kPdfClass == -1).  Stats used to work out possible
 /// values of the event. "num_leaves" is used to allocate new leaves.   All stats must have
 /// this key defined, or this function will crash.
-EventMap *DoTableSplit(const EventMap &orig, EventKeyType key,  const BuildTreeStatsType &stats, int32 *num_leaves);
+EventMap *DoTableSplit(const EventMap &orig, EventKeyType key,
+                       const BuildTreeStatsType &stats, int32 *num_leaves);
 
 
 /// DoTableSplitMultiple does a complete split on all the keys, in order from keys[0],
@@ -161,7 +166,10 @@ EventMap *DoTableSplit(const EventMap &orig, EventKeyType key,  const BuildTreeS
 /// "num_leaves" is used to allocate new leaves.   All stats must have
 /// the keys defined, or this function will crash.
 /// Returns a newly allocated event map.
-EventMap *DoTableSplitMultiple(const EventMap &orig, const std::vector<EventKeyType> &keys,  const BuildTreeStatsType &stats, int32 *num_leaves);
+EventMap *DoTableSplitMultiple(const EventMap &orig,
+                               const std::vector<EventKeyType> &keys,
+                               const BuildTreeStatsType &stats,
+                               int32 *num_leaves);
 
 
 /// "ClusterEventMapGetMapping" clusters the leaves of the EventMap, with "thresh" a delta-likelihood
@@ -196,7 +204,8 @@ EventMap *ClusterEventMap(const EventMap &e_in, const BuildTreeStatsType &stats,
 /// in "keys" (e.g. typically keys = [ -1, P ]), and only clusters within the
 /// classes defined by that splitting.
 /// Note-- leaves will be non-consecutive at output, use Renumber.
-EventMap *ClusterEventMapRestrictedByKeys(const EventMap &e_in, const BuildTreeStatsType &stats,
+EventMap *ClusterEventMapRestrictedByKeys(const EventMap &e_in,
+                                          const BuildTreeStatsType &stats,
                                           BaseFloat thresh,
                                           const std::vector<EventKeyType> &keys,
                                           int32 *num_removed);
@@ -246,8 +255,8 @@ EventMap *ShareEventMapLeaves(const EventMap &e_in, EventKeyType key,
 /// @param thresh [in] A log-likelihood threshold (e.g. 300) that can be used to
 ///           limit the number of leaves; you can use zero and set max_leaves instead.
 /// @param max_leaves [in] Will stop leaves being split after they reach this number.
-/// @param num_leaves [out] If non-NULL, its contents will be set to the number of leaves
-///             the tree has after splitting.
+/// @param num_leaves [in,out] A pointer used to allocate leaves; always corresponds to the
+///             current number of leaves (is incremented when this is increased).
 /// @param objf_impr_out [out] If non-NULL, will be set to the objective improvement due to splitting
 ///           (not normalized by the number of frames).
 /// @param smallest_split_change_out If non-NULL, will be set to the smallest objective-function

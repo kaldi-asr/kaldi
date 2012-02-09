@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
     po.Register("binary", &binary, "Write output in binary mode");
@@ -63,9 +63,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_rxfilename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     ExponentialTransform et;
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         string spk = spk2utt_reader.Key();
         FmllrDiagGmmAccs accs(dim);
-
+        
         const vector<string> &uttlist = spk2utt_reader.Value();
         for (vector<string>::const_iterator utt_itr = uttlist.begin(),
             itr_end = uttlist.end(); utt_itr != itr_end; ++utt_itr) {

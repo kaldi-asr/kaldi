@@ -318,6 +318,7 @@ BaseFloat TransitionModel::GetNonSelfLoopLogProb(int32 trans_state) const {
 
 BaseFloat TransitionModel::GetTransitionLogProbIgnoringSelfLoops(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0);
+  KALDI_PARANOID_ASSERT(!IsSelfLoop(trans_id));
   return log_probs_(trans_id) - GetNonSelfLoopLogProb(TransitionIdToTransitionState(trans_id));
 }
 
@@ -337,9 +338,9 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
         int32 tid = PairToTransitionId(tstate, tidx);
         counts(tidx) = stats(tid);
       }
-      double tot_count = counts.Sum();
-      count_sum += tot_count;
-      if (tot_count < cfg.mincount) { num_skipped++; }
+      double tstate_tot = counts.Sum();
+      count_sum += tstate_tot;
+      if (tstate_tot < cfg.mincount) { num_skipped++; }
       else {
         Vector<BaseFloat> old_probs(n), new_probs(n);
         for (int32 tidx = 0; tidx < n; tidx++) {
@@ -347,7 +348,7 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
           old_probs(tidx) = new_probs(tidx) = GetTransitionProb(tid);
         }
         for (int32 tidx = 0; tidx < n; tidx++)
-          new_probs(tidx) = counts(tidx) / count_sum;
+          new_probs(tidx) = counts(tidx) / tstate_tot;
         for (int32 i = 0; i < 3; i++) {  // keep flooring+renormalizing for 3 times..
           new_probs.Scale(1.0 / new_probs.Sum());
           for (int32 tidx = 0; tidx < n; tidx++)
@@ -405,7 +406,9 @@ int32 TransitionModel::TransitionIdToHmmState(int32 trans_id) const {
 
 void TransitionModel::Print(std::ostream &os,
                             const std::vector<std::string> &phone_names,
-                            const Vector<double> *stats) {
+                            const Vector<double> *occs) {
+  if (occs != NULL)
+    KALDI_ASSERT(occs->Dim() == NumPdfs());
   for (int32 tstate = 1; tstate < NumTransitionStates(); tstate++) {
     const Triple &triple = triples_[tstate-1];
     KALDI_ASSERT(static_cast<size_t>(triple.phone) < phone_names.size());
@@ -417,7 +420,7 @@ void TransitionModel::Print(std::ostream &os,
       int32 tid = PairToTransitionId(tstate, tidx);
       BaseFloat p = GetTransitionProb(tid);
       os << " Transition-id = " << tid << " p = " << p;
-      if (stats != NULL) os << " count of pdf = " << (*stats)(triple.pdf);
+      if (occs != NULL) os << " count of pdf = " << (*occs)(triple.pdf);
       // now describe what it's a transition to.
       if (IsSelfLoop(tid)) os << " [self-loop]\n";
       else {

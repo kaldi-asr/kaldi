@@ -95,7 +95,7 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
 
 void AmSgmm::Write(std::ostream &out_stream, bool binary,
                    SgmmWriteFlagsType write_params) const {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       feat_dim = FeatureDim(),
       num_gauss = NumGauss();
 
@@ -166,7 +166,7 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
 }
 
 void AmSgmm::Check(bool show_properties) {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       num_gauss = NumGauss(),
       feat_dim = FeatureDim(),
       phn_dim = PhoneSpaceDim(),
@@ -244,6 +244,12 @@ void AmSgmm::InitializeFromFullGmm(const FullGmm &full_gmm,
         << " to " << full_gmm.Dim() + 1;
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
+  if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
+    KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
+               << full_gmm.Dim() << "]. Changing from " << spk_subspace_dim
+               << " to " << full_gmm.Dim() + 1;
+    spk_subspace_dim = full_gmm.Dim();
+  }
   w_.Resize(0, 0);
   N_.clear();
   c_.clear();
@@ -318,7 +324,7 @@ void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
 
 BaseFloat AmSgmm::LogLikelihood(const SgmmPerFrameDerivedVars &per_frame_vars,
                                 int32 j, BaseFloat log_prune) const {
-  KALDI_ASSERT(j < NumStates());
+  KALDI_ASSERT(j < NumPdfs());
   const vector<int32> &gselect = per_frame_vars.gselect;
 
 
@@ -344,7 +350,7 @@ BaseFloat
 AmSgmm::ComponentPosteriors(const SgmmPerFrameDerivedVars &per_frame_vars,
                             int32 j,
                             Matrix<BaseFloat> *post) const {
-  KALDI_ASSERT(j < NumStates());
+  KALDI_ASSERT(j < NumPdfs());
   if (post == NULL) KALDI_ERR << "NULL pointer passed as return argument.";
   const vector<int32> &gselect = per_frame_vars.gselect;
   post->Resize(gselect.size(), NumSubstates(j));
@@ -379,7 +385,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
                                    int32 target_nsubstates, BaseFloat perturb,
                                    BaseFloat power, BaseFloat max_cond) {
   // power == p in document.  target_nsubstates == T in document.
-  KALDI_ASSERT(state_occupancies.Dim() == NumStates());
+  KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
   int32 tot_n_substates_old = 0;
   int32 phn_dim = PhoneSpaceDim();
   std::priority_queue<SubstateCounter> substate_counts;
@@ -387,7 +393,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
   SpMatrix<BaseFloat> sqrt_H_sm;
   Vector<BaseFloat> rand_vec(phn_dim), v_shift(phn_dim);
 
-  for (int32 j = 0; j < NumStates(); j++) {
+  for (int32 j = 0; j < NumPdfs(); j++) {
     // work out the sub-model's prob from the sum of 'c'.;
     BaseFloat gamma_p = pow(state_occupancies(j) * c_[j].Sum(), power);
     substate_counts.push(SubstateCounter(j, NumSubstates(j), gamma_p));
@@ -457,15 +463,21 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
 }
 
 void AmSgmm::IncreasePhoneSpaceDim(int32 target_dim,
-                                          const Matrix<BaseFloat> &norm_xform) {
+                                   const Matrix<BaseFloat> &norm_xform) {
   KALDI_ASSERT(!M_.empty());
   int32 initial_dim = PhoneSpaceDim(),
       feat_dim = FeatureDim();
   KALDI_ASSERT(norm_xform.NumRows() == feat_dim);
 
+  if (target_dim < initial_dim)
+    KALDI_ERR << "You asked to increase phn dim to a value lower than the "
+              << " current dimension, " << target_dim << " < " << initial_dim;
+
   if (target_dim > initial_dim + feat_dim) {
-    KALDI_ERR << "Cannot increase phone subspace dimensionality from " <<
-        initial_dim << " to " << target_dim;
+    KALDI_WARN << "Cannot increase phone subspace dimensionality from "
+               << initial_dim << " to " << target_dim << ", increasing to "
+               << initial_dim + feat_dim;
+    target_dim = initial_dim + feat_dim;
   }
 
   if (initial_dim < target_dim) {
@@ -482,7 +494,7 @@ void AmSgmm::IncreasePhoneSpaceDim(int32 target_dim,
     w_.Resize(tmp_w.NumRows(), target_dim);
     w_.Range(0, tmp_w.NumRows(), 0, tmp_w.NumCols()).CopyFromMat(tmp_w);
 
-    for (int32 j = 0; j < NumStates(); ++j) {
+    for (int32 j = 0; j < NumPdfs(); ++j) {
       // Resize v[j]
       Matrix<BaseFloat> tmp_v_j = v_[j];
       v_[j].Resize(tmp_v_j.NumRows(), target_dim);
@@ -507,9 +519,15 @@ void AmSgmm::IncreaseSpkSpaceDim(int32 target_dim,
   if (N_.size() == 0)
     N_.resize(NumGauss());
 
+  if (target_dim < initial_dim)
+    KALDI_ERR << "You asked to increase spk dim to a value lower than the "
+              << " current dimension, " << target_dim << " < " << initial_dim;
+
   if (target_dim > initial_dim + feat_dim) {
-    KALDI_ERR << "Cannot increase speaker subspace dimensionality from " <<
-        initial_dim << " to " << target_dim;
+    KALDI_WARN << "Cannot increase speaker subspace dimensionality from "
+               << initial_dim << " to " << target_dim << ", increasing to "
+               << initial_dim + feat_dim;
+    target_dim = initial_dim + feat_dim;
   }
 
   if (initial_dim < target_dim) {
@@ -563,8 +581,8 @@ void AmSgmm::ComputeNormalizers() {
 
   double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumStates());
-  for (int32 j = 0; j < NumStates(); ++j) {
+  n_.resize(NumPdfs());
+  for (int32 j = 0; j < NumPdfs(); ++j) {
     Vector<BaseFloat> log_w_jm(NumGauss());
 
     n_[j].Resize(NumGauss(), NumSubstates(j));
@@ -650,8 +668,8 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
 
 //  double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumStates());
-  for (int32 j = 0; j < NumStates(); ++j) {
+  n_.resize(NumPdfs());
+  for (int32 j = 0; j < NumPdfs(); ++j) {
     Vector<BaseFloat> log_w_jm(NumGauss());
 
     n_[j].Resize(NumGauss(), NumSubstates(j));
@@ -709,7 +727,7 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
 void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
     Matrix<BaseFloat> *xform, Matrix<BaseFloat> *inv_xform,
     Vector<BaseFloat> *diag_mean_scatter) const {
-  int32 num_states = NumStates(),
+  int32 num_states = NumPdfs(),
       num_gauss = NumGauss(),
       dim = FeatureDim();
   KALDI_ASSERT(state_occs.Dim() == num_states);
@@ -892,9 +910,9 @@ void AmSgmm::InitializeN(int32 spk_subspace_dim,
   }
 }
 
-// Initializes othe vectors v_{jm}
+// Initializes the vectors v_{jm}
 void AmSgmm::InitializeVecs(int32 num_states) {
-  KALDI_ASSERT(num_states < kMaxSgmmStates);
+  KALDI_ASSERT(num_states >= 0);
   int32 phn_subspace_dim = PhoneSpaceDim();
   KALDI_ASSERT(phn_subspace_dim > 0 && "Initialize M and w first.");
 
@@ -927,13 +945,13 @@ void AmSgmm::ComputeSmoothingTermsFromModel(
     BaseFloat max_cond) const {
   int32 num_gauss = NumGauss();
   BaseFloat tot_sum = 0.0;
-  KALDI_ASSERT(state_occupancies.Dim() == NumStates());
+  KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
   Vector<BaseFloat> w_jm(num_gauss);
   H_sm->Resize(PhoneSpaceDim());
   H_sm->SetZero();
   Vector<BaseFloat> gamma_i(num_gauss);
   gamma_i.SetZero();
-  for (int32 j = 0; j < NumStates(); j++) {
+  for (int32 j = 0; j < NumPdfs(); j++) {
     int32 M_j = NumSubstates(j);
     KALDI_ASSERT(M_j > 0);
     for (int32 m = 0; m < M_j; ++m) {
@@ -1052,7 +1070,6 @@ void AmSgmm::ComputePerSpkDerivedVars(SgmmPerSpkDerivedVars *vars) const {
   }
 }
 
-
 BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
                                     const VectorBase<BaseFloat> &data,
                                     std::vector<int32> *gselect) const {
@@ -1073,8 +1090,8 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
     BaseFloat thresh = ptr[num_gauss-config.diag_gmm_nbest];
     for (int32 g = 0; g < num_gauss; g++)
       if (loglikes(g) >= thresh)  // met threshold for diagonal phase.
-        pruned_pairs.push_back(std::make_pair(
-                               full_ubm_.ComponentLogLikelihood(data, g), g));
+        pruned_pairs.push_back(
+            std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
   } else {
     Vector<BaseFloat> loglikes(num_gauss);
     full_ubm_.LogLikelihoods(data, &loglikes);
@@ -1092,6 +1109,9 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());
+  // Make sure pruned Gaussians appear from best to worst.
+  std::sort(pruned_pairs.begin(), pruned_pairs.end(),
+            std::greater<std::pair<BaseFloat,int32> >());
   for (size_t i = 0; i < pruned_pairs.size(); i++) {
     loglikes_tmp(i) = pruned_pairs[i].first;
     (*gselect)[i] = pruned_pairs[i].second;
@@ -1120,7 +1140,8 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
     diag_ubm_.LogLikelihoodsPreselect(data, preselect, &loglikes);
     Vector<BaseFloat> loglikes_copy(loglikes);
     BaseFloat *ptr = loglikes_copy.Data();
-    std::nth_element(ptr, ptr+num_preselect-config.diag_gmm_nbest, ptr+num_preselect);
+    std::nth_element(ptr, ptr+num_preselect-config.diag_gmm_nbest,
+                     ptr+num_preselect);
     BaseFloat thresh = ptr[num_preselect-config.diag_gmm_nbest];
     for (int32 p = 0; p < num_preselect; p++) {
       if (loglikes(p) >= thresh) { // met threshold for diagonal phase.
@@ -1144,6 +1165,9 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
     pruned_pairs.erase(pruned_pairs.begin(),
                        pruned_pairs.end() - config.full_gmm_nbest);
   }
+  // Make sure pruned Gaussians appear from best to worst.
+  std::sort(pruned_pairs.begin(), pruned_pairs.end(),
+            std::greater<std::pair<BaseFloat,int32> >());
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());
@@ -1196,7 +1220,7 @@ void SgmmGauPost::Read(std::istream &is, bool binary) {
 void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
                                        const Vector<BaseFloat> &state_occs,
                                        MatrixBase<BaseFloat> *dists) {
-  int32 num_states = model.NumStates(),
+  int32 num_states = model.NumPdfs(),
       phn_space_dim = model.PhoneSpaceDim(),
       num_gauss = model.NumGauss();
   KALDI_ASSERT(dists != NULL && dists->NumRows() == num_states
@@ -1204,9 +1228,9 @@ void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
   Vector<double> prior(state_occs);
   KALDI_ASSERT(prior.Sum() != 0.0);
   prior.Scale(1.0 / prior.Sum()); // Normalize.
-  SpMatrix<float> H(phn_space_dim); // The same as H_sm in some other code.
+  SpMatrix<BaseFloat> H(phn_space_dim); // The same as H_sm in some other code.
   for(int32 i = 0; i < num_gauss; ++i) {
-    SpMatrix<float> Hi(phn_space_dim);
+    SpMatrix<BaseFloat> Hi(phn_space_dim);
     Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
     H.AddSp(prior(i), Hi);
   }

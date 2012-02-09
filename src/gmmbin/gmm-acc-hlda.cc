@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-hlda 1.mdl 1.hlda \"ark:splice-feats scp:train.scp |\" ark:1.post 1.hacc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat speedup = 1.0;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("speedup", &speedup, "Proportion of data to accumulate full HLDA stats with");
@@ -60,16 +60,16 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Matrix<BaseFloat> cur_transform;
     {
       bool binary;
-      Input is(cur_transform_filename, &binary);
-      cur_transform.Read(is.Stream(), binary);
+      Input ki(cur_transform_filename, &binary);
+      cur_transform.Read(ki.Stream(), binary);
       KALDI_ASSERT(cur_transform.NumRows() == am_gmm.Dim() &&
                    "Transform num-rows must match model dim (need truncated transform)");
     }

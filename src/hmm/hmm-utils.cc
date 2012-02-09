@@ -25,10 +25,12 @@ namespace kaldi {
 
 
 
-fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
-                                         const ContextDependencyInterface &ctx_dep,
-                                         const TransitionModel &trans_model,
-                                         const HTransducerConfig &config) {
+fst::VectorFst<fst::StdArc> *GetHmmAsFst(
+    std::vector<int32> phone_window,
+    const ContextDependencyInterface &ctx_dep,
+    const TransitionModel &trans_model,
+    const HTransducerConfig &config,    
+    HmmCacheType *cache) {
   using namespace fst;
 
   if (config.reverse) ReverseVector(&phone_window);  // phone_window represents backwards
@@ -45,7 +47,9 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   if (phone == 0) {  // error.  Error message depends on whether reversed.
     if (config.reverse)
       KALDI_ERR << "phone == 0.  Possibly you are trying to get a reversed "
-          "FST, but forgot to initialize the ContextFst object with P as N-1-P.";
+          "FST with a non-central \"central position\" P (i.e. asymmetric "
+          "context), but forgot to initialize the ContextFst object with P "
+          "as N-1-P (or it could be a simpler problem)";
     else
       KALDI_ERR << "phone == 0.  Some mismatch happened, or there is "
           "a code error.";
@@ -54,10 +58,34 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   const HmmTopology &topo = trans_model.GetTopo();
   const HmmTopology::TopologyEntry &entry  = topo.TopologyForPhone(phone);
 
+  // vector of the pdfs, indexed by pdf-class (pdf-classes must start from zero
+  // and be contiguous).
+  std::vector<int32> pdfs(topo.NumPdfClasses(phone));
+  for (int32 pdf_class = 0;
+       pdf_class < static_cast<int32>(pdfs.size());
+       pdf_class++) {
+    if ( ! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class])) ) {
+      std::ostringstream ctx_ss;
+      for (size_t i = 0; i < phone_window.size(); i++)
+        ctx_ss << phone_window[i] << ' ';
+      KALDI_ERR << "GetHmmAsFst: context-dependency object could not produce "
+                << "an answer: pdf-class = " << pdf_class << " ctx-window = "
+                << ctx_ss.str() << ".  This probably points "
+          "to either a coding error in some graph-building process, "
+          "a mismatch of topology with context-dependency object, the "
+          "wrong FST being passed on a command-line, or something of "
+          " that general nature.";
+    }
+  }
+  std::pair<int32,std::vector<int32> > cache_index(phone, pdfs);
+  if (cache != NULL) {
+    HmmCacheType::iterator iter = cache->find(cache_index);
+    if (iter != cache->end())
+      return iter->second;
+  }
+  
   VectorFst<StdArc> *ans = new VectorFst<StdArc>;
 
-  // Create a mini-FST with a superfinal state [in case we have emitting
-  // final-states, which we usually will.]
   typedef StdArc Arc;
   typedef Arc::Weight Weight;
   typedef Arc::StateId StateId;
@@ -72,23 +100,13 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   ans->SetFinal(final, Weight::One());
 
   for (int32 hmm_state = 0;
-      hmm_state < static_cast<int32>(entry.size());
-      hmm_state++) {
+       hmm_state < static_cast<int32>(entry.size());
+       hmm_state++) {
     int32 pdf_class = entry[hmm_state].pdf_class, pdf;
     if (pdf_class == kNoPdf) pdf = kNoPdf;  // nonemitting state.
     else {
-      if ( ! ctx_dep.Compute(phone_window, pdf_class, &pdf) ) {
-        std::ostringstream ctx_ss;
-        for (size_t i = 0; i < phone_window.size(); i++)
-          ctx_ss << phone_window[i] << ' ';
-        KALDI_ERR << "GetHmmAsFst: context-dependency object could not produce "
-                  << "an answer: pdf-class = " << pdf_class << " ctx-window = "
-                  << ctx_ss.str() << ".  This probably points "
-            "to either a coding error in some graph-building process, "
-            "a mismatch of topology with context-dependency object, the "
-            "wrong FST being passed on a command-line, or something of "
-            " that general nature.";
-      }
+      KALDI_ASSERT(pdf_class < static_cast<int32>(pdfs.size()));
+      pdf = pdfs[pdf_class];
     }
     int32 trans_idx;
     for (trans_idx = 0;
@@ -137,8 +155,9 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(std::vector<int32> phone_window,
   // Now apply probability scale.
   // We waited till after the possible weight-pushing steps,
   // because weight-pushing needs "real" weights in order to work.
-  ApplyProbabilityScale(config.trans_prob_scale, ans);
-
+  ApplyProbabilityScale(config.transition_scale, ans);
+  if (cache != NULL)
+    (*cache)[cache_index] = ans;
   return ans;
 }
 
@@ -234,7 +253,9 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
                                              const HTransducerConfig &config,
                                              std::vector<int32> *disambig_syms_left) {
   assert(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
-
+  HmmCacheType cache;
+  // "cache" is an optimization that prevents GetHmmAsFst repeating work
+  // unnecessarily.
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Weight Weight;
@@ -275,16 +296,15 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
       VectorFst<Arc> *fst = GetHmmAsFst(phone_window,
                                         ctx_dep,
                                         trans_model,
-                                        config);
+                                        config,
+                                        &cache);
       fsts[j] = fst;
     }
   }
 
   VectorFst<Arc> *ans = MakeLoopFst(fsts);
-  {  // make sure output is olabel sorted.
-    fst::OLabelCompare<fst::StdArc> olabel_comp;
-    fst::ArcSort(ans, olabel_comp);
-  }
+  SortAndUniq(&fsts); // remove duplicate pointers, which we will have
+  // in general, since we used the cache.
   DeletePointers(&fsts);
   return ans;
 }
@@ -550,7 +570,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
-                  BaseFloat self_loop_scale ,
+                  BaseFloat self_loop_scale,
                   bool reorder,  // true->dan-style, false->lukas-style.
                   fst::VectorFst<fst::StdArc> *fst) {
   assert(fst->Start() != fst::kNoStateId);
@@ -749,19 +769,19 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
 // Returns the scaled, but not negated, log-prob, with the given scaling factors.
 static BaseFloat GetScaledTransitionLogProb(const TransitionModel &trans_model,
                                             int32 trans_id,
-                                            BaseFloat trans_prob_scale,
+                                            BaseFloat transition_scale,
                                             BaseFloat self_loop_scale) {
-  if (trans_prob_scale == self_loop_scale) {
-    return trans_model.GetTransitionLogProb(trans_id) * trans_prob_scale;
+  if (transition_scale == self_loop_scale) {
+    return trans_model.GetTransitionLogProb(trans_id) * transition_scale;
   } else {
     if (trans_model.IsSelfLoop(trans_id)) {
       return self_loop_scale * trans_model.GetTransitionLogProb(trans_id);
     } else {
       int32 trans_state = trans_model.TransitionIdToTransitionState(trans_id);
       return self_loop_scale * trans_model.GetNonSelfLoopLogProb(trans_state)
-          + trans_prob_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
+          + transition_scale * trans_model.GetTransitionLogProbIgnoringSelfLoops(trans_id);
       // This could be simplified to
-      // (self_loop_scale - trans_prob_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
+      // (self_loop_scale - transition_scale) * trans_model.GetNonSelfLoopLogProb(trans_state)
       // + trans_model.GetTransitionLogProb(trans_id);
       // this simplifies if self_loop_scale == 0.0
     }
@@ -772,7 +792,7 @@ static BaseFloat GetScaledTransitionLogProb(const TransitionModel &trans_model,
 
 void AddTransitionProbs(const TransitionModel &trans_model,
                         const std::vector<int32> &disambig_syms,  // may be empty
-                        BaseFloat trans_prob_scale,
+                        BaseFloat transition_scale,
                         BaseFloat self_loop_scale,
                         fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
@@ -789,7 +809,7 @@ void AddTransitionProbs(const TransitionModel &trans_model,
       if (l >= 1 && l <= num_tids) {  // a transition-id.
         BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
                                                                l,
-                                                               trans_prob_scale,
+                                                               transition_scale,
                                                                self_loop_scale);
         arc.weight = Times(arc.weight, TropicalWeight(-scaled_log_prob));
       } else if (l != 0) {
@@ -801,6 +821,91 @@ void AddTransitionProbs(const TransitionModel &trans_model,
       aiter.SetValue(arc);
     }
   }
+}
+
+void AddTransitionProbs(const TransitionModel &trans_model,
+                        BaseFloat transition_scale,
+                        BaseFloat self_loop_scale,
+                        Lattice *lat) {
+  using namespace fst;
+  int num_tids = trans_model.NumTransitionIds();
+  for (fst::StateIterator<Lattice> siter(*lat);
+       !siter.Done();
+       siter.Next()) {
+    for (MutableArcIterator<Lattice> aiter(lat, siter.Value());
+         !aiter.Done();
+         aiter.Next()) {
+      LatticeArc arc = aiter.Value();
+      LatticeArc::Label l = arc.ilabel;
+      if (l >= 1 && l <= num_tids) {  // a transition-id.
+        BaseFloat scaled_log_prob = GetScaledTransitionLogProb(trans_model,
+                                                               l,
+                                                               transition_scale,
+                                                               self_loop_scale);
+        // cost is negated log prob.
+        arc.weight.SetValue1(arc.weight.Value1() - scaled_log_prob);
+      } else if (l != 0) {
+        KALDI_ERR << "AddTransitionProbs: invalid symbol " << arc.ilabel
+                  << " on lattice input side.";
+      }
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+
+// This function takes a phone-sequence with word-start and word-end
+// markers in it, and a word-sequence, and outputs the pronunciations
+// "prons"... the format of "prons" is, each element is a vector,
+// where the first element is the word (or zero meaning no word, e.g.
+// for optional silence introduced by the lexicon), and the remaining
+// elements are the phones in the word's pronunciation.
+// It returns false if it encounters a problem of some kind, e.g.
+// if the phone-sequence doesn't seem to have the right number of
+// words in it.
+bool ConvertPhnxToProns(const std::vector<int32> &phnx,
+                        const std::vector<int32> &words,
+                        int32 word_start_sym,
+                        int32 word_end_sym,
+                        std::vector<std::vector<int32> > *prons) {
+  size_t i = 0, j = 0;
+    
+  while (i < phnx.size()) {
+    if (phnx[i] == 0) return false; // zeros not valid here.
+    if (phnx[i] == word_start_sym) { // start a word...
+      std::vector<int32> pron;
+      if (j >= words.size()) return false; // no word left..
+      if (words[j] == 0) return false; // zero word disallowed.
+      pron.push_back(words[j++]);
+      i++;
+      while (i < phnx.size()) {
+        if (phnx[i] == 0) return false;
+        if (phnx[i] == word_start_sym) return false; // error.
+        if (phnx[i] == word_end_sym) { i++; break; }
+        pron.push_back(phnx[i]);
+        i++;
+      }
+      // check we did see the word-end symbol.
+      if (!(i > 0 && phnx[i-1] == word_end_sym))
+        return false;
+      prons->push_back(pron);
+    } else if (phnx[i] == word_end_sym) {
+      return false;  // error.
+    } else {
+      // start a non-word sequence of phones (e.g. opt-sil).
+      std::vector<int32> pron;
+      pron.push_back(0); // 0 serves as the word-id.
+      while (i < phnx.size()) {
+        if (phnx[i] == 0) return false;
+        if (phnx[i] == word_start_sym) break;
+        if (phnx[i] == word_end_sym) return false; // error.
+        pron.push_back(phnx[i]);
+        i++;
+      }
+      prons->push_back(pron);
+    }
+  }
+  return (j == words.size());
 }
 
 

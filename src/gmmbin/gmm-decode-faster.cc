@@ -25,14 +25,13 @@
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
-//#include "fstext/lattice-utils.h" // for ConvertLattice
 
-using namespace kaldi;
+namespace kaldi {
 
 fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
   Input ki(filename); // use ki.Stream() instead of is.
-  if (!ki.Stream().good()) KALDI_EXIT << "Could not open decoding-graph FST "
+  if (!ki.Stream().good()) KALDI_ERR << "Could not open decoding-graph FST "
                                       << filename;
 
   fst::FstHeader hdr;
@@ -61,14 +60,18 @@ fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   }
 }
 
+}
 
 int main(int argc, char *argv[]) {
   try {
+    using namespace kaldi;
     typedef kaldi::int32 int32;
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier lattice-wspecifier]\n";
+        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier [lattice-wspecifier]]\n"
+        "Note: lattices, if output, will just be linear sequences; use gmm-latgen-faster\n"
+        "  if you want \"real\" lattices.\n";
     ParseOptions po(usage);
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
@@ -89,8 +92,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
-        fst_in_filename = po.GetArg(2),
+    std::string model_rxfilename = po.GetArg(1),
+        fst_rxfilename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         words_wspecifier = po.GetArg(4),
         alignment_wspecifier = po.GetOptArg(5),
@@ -100,30 +103,21 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Int32VectorWriter words_writer(words_wspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
-    bool write_lattices = false;
-    LatticeWriter lattice_writer;
-    if (lattice_wspecifier != "") {
-      if (lattice_writer.Open(lattice_wspecifier)) {
-        write_lattices = true;
-      } else {
-        KALDI_EXIT << "Could not open table for writing lattices: "
-                   << lattice_wspecifier;
-      }
-    }
+    CompactLatticeWriter clat_writer(lattice_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -133,8 +127,8 @@ int main(int argc, char *argv[]) {
     // It has to do with what happens on UNIX systems if you call fork() on a
     // large process: the page-table entries are duplicated, which requires a
     // lot of virtual memory.
-    fst::Fst<fst::StdArc> *decode_fst = ReadNetwork(fst_in_filename);
-
+    fst::Fst<fst::StdArc> *decode_fst = ReadNetwork(fst_rxfilename);
+    
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_success = 0, num_fail = 0;
@@ -177,12 +171,12 @@ int main(int argc, char *argv[]) {
         if (alignment_writer.IsOpen())
           alignment_writer.Write(key, alignment);
           
-        if (write_lattices) {
-          //if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-          //  fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
-          //fst::VectorFst<CompactLatticeArc> decoded1;
-          //ConvertLattice(decoded, &decoded1, true);
-          lattice_writer.Write(key, decoded);
+        if (lattice_wspecifier != "") {
+          if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+            fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
+          fst::VectorFst<CompactLatticeArc> clat;
+          ConvertLattice(decoded, &clat, true);
+          clat_writer.Write(key, clat);
         }
           
         if (word_syms != NULL) {
@@ -200,6 +194,8 @@ int main(int argc, char *argv[]) {
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "
                   << features.NumRows() << " frames.";
+        KALDI_VLOG(2) << "Cost for utterance " << key << " is "
+                      << weight.Value1() << " + " << weight.Value2();
       } else {
         num_fail++;
         KALDI_WARN << "Did not successfully decode utterance " << key
@@ -218,8 +214,7 @@ int main(int argc, char *argv[]) {
 
     if (word_syms) delete word_syms;    
     delete decode_fst;
-    if (num_success != 0) return 0;
-    else return 1;
+    return (num_success != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

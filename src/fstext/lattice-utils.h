@@ -27,8 +27,10 @@ namespace fst {
 
 // The template ConvertLattice does conversions to and from
 // LatticeWeight FSTs and CompactLatticeWeight FSTs, and
-// between float and double.  It's used in the I/O code
-// for lattices.
+// between float and double, and to convert from LatticeWeight
+// to TropicalWeight.  It's used in the I/O code for lattices,
+// and for converting lattices to standard FSTs (e.g. for creating
+// decoding graphs from lattices).
 
 
 /**
@@ -53,7 +55,8 @@ void ConvertLattice(
    ilabels and olabels should be identical).  If invert=false, the labels on
    "ifst" become the ilabels on "ofst" and the strings in the weights of "ifst"
    becomes the olabels.  If invert=true [default], this is reversed (useful for speech
-   recognition lattices).
+   recognition lattices; our standard non-compact format has the words on the output side to
+   match HCLG).
 */
 template<class Weight, class Int>
 void ConvertLattice(
@@ -107,6 +110,15 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(fst, ofst);
 }
 
+template<class Weight, class Int>
+void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<Weight> > > &ifst,
+                    MutableFst<ArcTpl<Weight> > *ofst,
+                    bool invert = true) {
+  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<Weight>, Int> > > fst;
+  ConvertLattice(ifst, &fst);
+  ConvertLattice(fst, ofst, invert);
+}
+
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
 inline vector<vector<double> > DefaultLatticeScale() {
   vector<vector<double> > ans(2);
@@ -125,12 +137,21 @@ inline vector<vector<double> > AcousticLatticeScale(double acwt) {
   return ans;
 }
 
-inline vector<vector<double> > GraphLatticeScale(double acwt) {
+inline vector<vector<double> > GraphLatticeScale(double lmwt) {
   vector<vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
-  ans[0][0] = acwt;
+  ans[0][0] = lmwt;
   ans[1][1] = 1.0;
+  return ans;
+}
+
+inline vector<vector<double> > LatticeScale(double lmwt, double acwt) {
+  vector<vector<double> > ans(2);
+  ans[0].resize(2, 0.0);
+  ans[1].resize(2, 0.0);
+  ans[0][0] = lmwt;
+  ans[1][1] = acwt;
   return ans;
 }
 
@@ -147,13 +168,26 @@ void ScaleLattice(
     const vector<vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst);
 
-/// Class LatticeToStdMapper maps a normal arc (StdArc)
+/// Removes state-level alignments (the strings that are
+/// part of the weights).
+template<class Weight, class Int>
+void RemoveAlignmentsFromCompactLattice(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst);
+
+/// Returns true if lattice has alignments, i.e. it has
+/// any nonempty strings inside its weights.
+template<class Weight, class Int>
+bool CompactLatticeHasAlignment(
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &fst);
+
+
+/// Class StdToLatticeMapper maps a normal arc (StdArc)
 /// to a LatticeArc by putting the StdArc weight as the first
 /// element of the LatticeWeight.  Useful when doing LM
 /// rescoring.
 
 template<class Int>
-class LatticeToStdMapper {
+class StdToLatticeMapper {
   typedef LatticeWeightTpl<Int> LatticeWeight;
   typedef ArcTpl<LatticeWeight> LatticeArc;
  public:
@@ -171,6 +205,31 @@ class LatticeToStdMapper {
   // I believe all properties are preserved.
   uint64 Properties(uint64 props) { return props; }
 };
+
+
+/// Class LatticeToStdMapper maps a LatticeArc to a normal arc (StdArc)
+/// by adding the elements of the LatticeArc weight.
+
+template<class Int>
+class LatticeToStdMapper {
+  typedef LatticeWeightTpl<Int> LatticeWeight;
+  typedef ArcTpl<LatticeWeight> LatticeArc;
+ public:
+  StdArc operator()(const LatticeArc &arc) {
+    return StdArc(arc.ilabel, arc.olabel,
+                  StdArc::Weight(arc.weight.Value1() + arc.weight.Value2()),
+                  arc.nextstate);
+  }
+  MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }
+
+  MapSymbolsAction InputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  MapSymbolsAction OutputSymbolsAction() { return MAP_COPY_SYMBOLS; }
+
+  // I believe all properties are preserved.
+  uint64 Properties(uint64 props) { return props; }
+};
+
 
 template<class Weight, class Int>
 void PruneCompactLattice(

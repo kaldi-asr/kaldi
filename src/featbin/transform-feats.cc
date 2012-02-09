@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     RandomAccessTokenReader utt2spk_reader;
     if (utt2spk_rspecifier != "") {
       if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_EXIT << "Error upening utt2spk map from "
+        KALDI_ERR << "Error upening utt2spk map from "
                    << utt2spk_rspecifier;
     }
 
@@ -96,8 +96,14 @@ int main(int argc, char *argv[]) {
         }
       }
       if (!use_global_transform && !transform_reader.HasKey(utt_or_spk)) {
-        KALDI_WARN << "No fMLLR transform available for key "
-                   << utt << ", producing no output for this utterance";
+        if (utt_or_spk == utt) 
+          KALDI_WARN << "No fMLLR transform available for utterance "
+                     << utt << ", producing no output for this utterance";
+        else
+          KALDI_WARN << "No fMLLR transform available for utterance "
+                     << utt << " [spk = " << utt_or_spk
+                     << "], producing no output for this utterance";
+
         num_error++;
         continue;
       }

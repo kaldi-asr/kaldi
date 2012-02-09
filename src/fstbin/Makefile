@@ -14,11 +14,12 @@ TESTFILES =
 
 OBJFILES = 
 
-BINFILES = fstgetnextsymbol fstmakedisambigsyms fstpredeterminize fstdeterminizestar  \
+BINFILES = fstpredeterminize fstdeterminizestar  \
            fstrmsymbols fstisstochastic fstminimizeencoded fstoptimize fstmakecontextfst \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
-           fstdeterminizelog fstreorder fstremoveuselessarcs
+           fstdeterminizelog fstreorder fstremoveuselessarcs \
+           fstphicompose fstpropfinal fstcopy
 
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 
@@ -35,7 +36,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

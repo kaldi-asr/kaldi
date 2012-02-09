@@ -327,16 +327,17 @@ template<class Arc>
 void TableCompose(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
                   MutableFst<Arc> *ofst,
                   const TableComposeOptions &opts = TableComposeOptions()) {
-  typedef Matcher< Fst<Arc> > M;
   typedef Fst<Arc> F;
   CacheOptions nopts;
   nopts.gc_limit = 0;  // Cache only the last state for fastest copy.
   if (opts.table_match_type == MATCH_OUTPUT) {
+    // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
     ComposeFstImplOptions<TableMatcher<F>, SortedMatcher<F> > impl_opts(nopts);
     impl_opts.matcher1 = new TableMatcher<F>(ifst1, MATCH_OUTPUT, opts);
     *ofst = ComposeFst<Arc>(ifst1, ifst2, impl_opts);
   } else {
     assert(opts.table_match_type == MATCH_INPUT) ;
+    // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.    
     ComposeFstImplOptions<SortedMatcher<F>, TableMatcher<F> > impl_opts(nopts);
     impl_opts.matcher2 = new TableMatcher<F>(ifst2, MATCH_INPUT, opts);
     *ofst = ComposeFst<Arc>(ifst1, ifst2, impl_opts);

@@ -29,6 +29,10 @@ namespace kaldi  {
 
 	/**
 		\page tools Kaldi Tools
+
+            Note: this page is not fully populated.  The intention is to have a list of all
+            Kaldi tools.
+
 			<table border="1" width="100%">
 				<tr>
 					<td width="20%" align="center"><h3>Tools</h3></td><td align="center"><h3>Description</h3></td>

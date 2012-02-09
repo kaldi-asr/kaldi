@@ -81,6 +81,8 @@ double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
     if (!decoder.GetRawLattice(&fst)) 
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
+    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
+    // disconnected states there, but we seem to.
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
     lattice_writer->Write(utt, fst);
@@ -105,7 +107,6 @@ int main(int argc, char *argv[]) {
         "<features-rspecifier> <lattices-wspecifier> [<words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
-    bool determinize = true;
     bool allow_partial = false;
     BaseFloat log_prune = 5.0;
     string word_syms_filename, gselect_rspecifier, spkvecs_rspecifier,
@@ -122,8 +123,6 @@ int main(int argc, char *argv[]) {
         "Pruning beam used to reduce number of exp() evaluations.");
     po.Register("word-symbol-table", &word_syms_filename,
         "Symbol table for words [for debug output]");
-    po.Register("determinize", &determinize, "If true, do "
-                "lattice determinization and output as CompactLattice");
     po.Register("allow-partial", &allow_partial,
                 "Produce output even when final state was not reached");
     po.Register("gselect", &gselect_rspecifier,
@@ -150,16 +149,17 @@ int main(int argc, char *argv[]) {
     kaldi::AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
+    bool determinize = decoder_opts.determinize_lattice;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
            : lattice_writer.Open(lattice_wspecifier)))
-      KALDI_EXIT << "Could not open table for writing lattices: "
+      KALDI_ERR << "Could not open table for writing lattices: "
                  << lattice_wspecifier;
     
     Int32VectorWriter words_writer(words_wspecifier);
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *decode_fst = NULL;
     {
       std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
+      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
                                 << fst_in_filename;
       decode_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));

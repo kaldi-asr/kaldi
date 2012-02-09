@@ -59,7 +59,7 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
     if (DetSign != NULL) {
       int sign = 1;
       for (MatrixIndexT i = 0; i < num_rows_; i++)
-        if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1.0;
+        if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1;
       *DetSign = sign;
     }
     if (LogDet != NULL || DetSign != NULL) {  // Compute log determinant.
@@ -127,7 +127,7 @@ void MatrixBase<double>::Invert(double *LogDet, double *DetSign,
     if (DetSign != NULL) {
       int sign = 1;
       for (MatrixIndexT i = 0; i < num_rows_; i++)
-        if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1.0;
+        if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1;
       *DetSign = sign;
     }
     if (LogDet != NULL || DetSign != NULL) {  // Compute log determinant...
@@ -158,6 +158,7 @@ void MatrixBase<double>::Invert(double *LogDet, double *DetSign,
 }
 
 template<>
+template<>
 void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<float>& ra,
                                   const VectorBase<float>& rb) {
@@ -168,7 +169,7 @@ void MatrixBase<float>::AddVecVec(const float alpha,
 
 template<class Real>
 template<class OtherReal>
-void MatrixBase<Real>::AddVecVec(const OtherReal alpha,
+void MatrixBase<Real>::AddVecVec(const Real alpha,
                                  const VectorBase<OtherReal>& a,
                                  const VectorBase<OtherReal>& b) {
   KALDI_ASSERT(a.Dim() == num_rows_ && b.Dim() == num_cols_);
@@ -183,14 +184,15 @@ void MatrixBase<Real>::AddVecVec(const OtherReal alpha,
 
 // instantiate the template above.
 template
-void MatrixBase<float>::AddVecVec(const double alpha,
+void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<double>& a,
                                   const VectorBase<double>& b);
 template
-void MatrixBase<double>::AddVecVec(const float alpha,
+void MatrixBase<double>::AddVecVec(const double alpha,
                                    const VectorBase<float>& a,
                                    const VectorBase<float>& b);
 
+template<>
 template<>
 void MatrixBase<double>::AddVecVec(const double alpha,
                                    const VectorBase<double>& ra,
@@ -1135,7 +1137,7 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     return;
   } else {  // Text mode.
     std::string str;
-    is >> str;  // get a token
+    is >> str; // get a token
     if (is.fail()) { specific_error << ": Expected \"[\", got EOF"; goto bad; }
     //if ((str.compare("DM") == 0) || (str.compare("FM") == 0)) {  // Back compatibility.
     // is >> str;  // get #rows

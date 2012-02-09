@@ -198,7 +198,7 @@ BaseFloat ClusterKMeans(const std::vector<Clusterable*> &points,
                         int32 num_clust,  // exact number of clusters
                         std::vector<Clusterable*> *clusters_out,  // may be NULL
                         std::vector<int32> *assignments_out,  // may be NULL
-                        ClusterKMeansOptions cfg = ClusterKMeansOptions() );
+                        ClusterKMeansOptions cfg = ClusterKMeansOptions());
 
 struct TreeClusterOptions  {
   ClusterKMeansOptions kmeans_cfg;

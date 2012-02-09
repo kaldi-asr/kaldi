@@ -120,12 +120,14 @@
    
   @section about_status Status of the project
 
-   At the time of writing, the Kaldi project is still in an early stage.  Most of
-   the standard Maximum Likelihood (ML) techniques are included, but the toolkit
-   does not yet support lattice generation or discriminative training, the code
-   is not as polished or as thoroughly tested as we would like it to be, and the
-   documentation is not very complete.  We see it as an ongoing project, and we
-   seek skilled contributors who can help to fill in the gaps.
+ Currently, we have code and scripts for most standard techniques, including all standard
+ linear transforms, MMI, boosted MMI and MCE discriminative training (but not yet MPE or
+ feature-space discriminative training).  We have working recipes for Wall Street Journal
+ and Resource Management, and also for Switchboard (but the Switchboard recipe is not yet
+ giving state-of-the-art results).  These features can be found in the "trunk/" code
+ (see \ref install).  The only version number we currently have is "v1".  We will at some
+ point create a "v2" version that has a stable, finalized version of the techniques 
+ described here.
 
 
 */

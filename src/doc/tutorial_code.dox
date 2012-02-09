@@ -46,7 +46,7 @@
  pipes.  Take a few seconds to glance over util/common-utils.h and see what it
  \#includes.  The reason why
  we segregated a subset of utilities into the base/ directory is so that we could
- minimize the the dependencies of the matrix/ directory (which is useful in
+ minimize the dependencies of the matrix/ directory (which is useful in
  itself);
  the matrix/ directory only depends on the base/ directory.  Look at matrix/Makefile
  and search for base/ to see how this is specified.  Looking at this type of rule

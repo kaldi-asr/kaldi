@@ -35,9 +35,9 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-acc-stats-gpost 1.mdl 1.ali scp:train.scp ark, s, cs:- 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     std::string spkvecs_rspecifier, utt2spk_rspecifier;
-    std::string update_flags_str = "vMNwcS";
+    std::string update_flags_str = "vMNwcSt";
     BaseFloat rand_prune = 1.0e-05;
 
     po.Register("binary", &binary, "Write output in binary mode");
@@ -63,13 +63,20 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    // Initialize the readers before the model, as this can avoid
+    // crashes on systems with low virtual memory.
+    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessSgmmGauPostReader gpost_reader(gpost_rspecifier);
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+
     AmSgmm am_sgmm;
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
@@ -78,14 +85,6 @@ int main(int argc, char *argv[]) {
     sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
 
     double tot_t = 0.0;
-
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessSgmmGauPostReader gpost_reader(gpost_rspecifier);
-
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
-
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-
     kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
     int32 num_done = 0, num_no_posterior = 0, num_other_error = 0;
@@ -152,8 +151,8 @@ int main(int argc, char *argv[]) {
         sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
 
         tot_t += tot_weight;
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Accumulated SGMM stats over " << tot_t << " frames.";
+        if (num_done % 50 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances";
       }
     }
     KALDI_LOG << "Overall number of frames is " << tot_t;

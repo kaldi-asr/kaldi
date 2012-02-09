@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -31,30 +31,34 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Do forward-backward and collect posteriors over lattices.\n"
-        "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier\n"
+        "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier [loglikes-wspecifier]\n"
         " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n";
 
-    kaldi::BaseFloat acoustic_scale = 1.0;
+    kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     kaldi::ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale,
+                "Scaling factor for \"graph costs\" (including LM costs)");
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
 
     if (acoustic_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
     std::string lats_rspecifier = po.GetArg(1),
-        posteriors_wspecifier = po.GetArg(2);
+        posteriors_wspecifier = po.GetArg(2),
+        loglikes_wspecifier = po.GetOptArg(3);
 
     // Read as regular lattice
     kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
 
     kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
+    kaldi::BaseFloatWriter loglikes_writer(loglikes_wspecifier);
 
     int32 n_done = 0;
     double total_like = 0.0, lat_like;
@@ -64,13 +68,11 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       kaldi::Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      if (acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
-
+      if (acoustic_scale != 1.0 || lm_scale != 1.0)
+        fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
+      
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        KALDI_WARN << "Utterance " << key << ": Supplied lattice not "
-                   << "topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
       }
@@ -85,12 +87,15 @@ int main(int argc, char *argv[]) {
                     << lat.NumStates() << " states and " << fst::NumArcs(lat)
                     << " arcs. Average log-likelihood = " << (lat_like/lat_time)
                     << " over " << lat_time << " frames.";
+      
+      if (loglikes_writer.IsOpen()) 
+        loglikes_writer.Write(key, lat_like);
 
       posterior_writer.Write(key, post);
       n_done++;
     }
 
-    KALDI_LOG << "After processing all lattices: average log-likelihood = "
+    KALDI_LOG << "Overall average log-like/frame is "
               << (total_like/total_time) << " over " << total_time
               << " frames.";
     KALDI_LOG << "Done " << n_done << " lattices.";

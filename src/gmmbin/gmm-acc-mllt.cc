@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-mllt 1.mdl scp:train.scp ark:1.post 1.macc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat rand_prune = 0.25;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune, "Randomized pruning parameter to speed up accumulation");
@@ -58,12 +58,12 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
-    MlltAccs mllt_accs(am_gmm.Dim());
+    MlltAccs mllt_accs(am_gmm.Dim(), rand_prune);
 
     double tot_like = 0.0;
     double tot_t = 0.0;

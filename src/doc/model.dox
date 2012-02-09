@@ -68,17 +68,16 @@ namespace kaldi {
   provides access to its members.  It does not handle accumulation or update;
   for that, see below, or class MlEstimateDiagGmm.  The class DiagGmm stores
   its parameters as: inverse variances, and (means times inverse variances).  
-  This means that likelihoods can be computed with simple dot products.  The
-  "gconsts" (i.e. the precomputed constant terms in the likelihood) are
+  This means that likelihoods can be computed with simple dot products.  
+  The "gconsts" (i.e. the precomputed constant terms in the likelihood) are
   different from, say, HTK's gconsts because they depend on the mean also. 
-  
-  Class DiagGmm has accessors that return references to its members (e.g. \ref
-  DiagGmm::gconsts() "gconsts()", \ref DiagGmm::inv_vars() "inv_vars()" and so on;
-  these are lower-case per the style guide, see \ref style.  It also has mutators
-  that set the means, inverse-variances, and so on.  The mutators are a little
-  more complicated than just setting a value because, for example, changing the
-  inverse variance means changing the mean-inverse-variance product also.
-    
+
+  Since it is quite complicated to modify the Gaussian parameters in this form,
+  we also provide a class DiagGmmNormal, which contains the parameters in
+  a more simple and obvious form, and we provide functions to convert back and
+  forth between DiagGmm and DiagGmmNormal representations.  Most of the update
+  code works with the DiagGmmNormal representation.
+
   \subsection model_diag_am GMM-based acoustic model
 
  Class AmDiagGmm represents a collection of DiagGmm objects, indexed by \ref pdf_id "pdf-id".
@@ -96,7 +95,7 @@ namespace kaldi {
  file without needing to know the type of the model.
 
  Class AmDiagGmm is a fairly simple object and does not take the responsibility
- for such things as model estimation (e.g. see MlEstimateAmDiagGmm), or transform
+ for such things as model estimation (e.g. see AccumAmDiagGmm), or transform
  estimation (there are various pieces of code that do this; see \ref transform.
 
  \subsection model_full_gmm Full-covariance GMMs
@@ -118,8 +117,8 @@ namespace kaldi {
  2011.
  The class AmSgmm represents a whole collection of pdf's; there
  is no class that represents a single pdf of the SGMM (as there is for
- GMMs).  Estimation of SGMMs is done (at the C++ level) by class
- \ref MleAmSgmm.  
+ GMMs).  Estimation of SGMMs is handled (at the C++ level) by the classes
+ \ref MleAmSgmmAccs and MleAmSgmmUpdater.  
 
  For example scripts that demonstrate how to
  build an SGMM based system, see egs/rm/s1/steps/train_ubma.sh,

@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Initialize transition model given topo, tree and GMM (used for format conversion from HTK)\n"
         "Usage:  gmm-init-trans <topology-in> <gmm-in> <tree-in> <model-out>\n";
 
-    bool binary = false;
+    bool binary = true;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

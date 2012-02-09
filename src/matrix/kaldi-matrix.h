@@ -82,24 +82,20 @@ class MatrixBase {
   /// Indexing operator, non-const
   /// (only checks sizes if compiled with -DKALDI_PARANOID)
   inline Real&  operator() (MatrixIndexT r, MatrixIndexT c) {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
-                 static_cast<UnsignedMatrixIndexT>(num_rows_) &&
-                 static_cast<UnsignedMatrixIndexT>(c) <
-                 static_cast<UnsignedMatrixIndexT>(num_cols_));
-#endif
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
+                          static_cast<UnsignedMatrixIndexT>(num_rows_) &&
+                          static_cast<UnsignedMatrixIndexT>(c) <
+                          static_cast<UnsignedMatrixIndexT>(num_cols_));
     return *(data_ + r * stride_ + c);
   }
 
   /// Indexing operator, const
   /// (only checks sizes if compiled with -DKALDI_PARANOID)
   inline const Real operator() (MatrixIndexT r, MatrixIndexT c) const {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
-                 static_cast<UnsignedMatrixIndexT>(num_rows_) &&
-                 static_cast<UnsignedMatrixIndexT>(c) <
-                 static_cast<UnsignedMatrixIndexT>(num_cols_));
-#endif
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
+                          static_cast<UnsignedMatrixIndexT>(num_rows_) &&
+                          static_cast<UnsignedMatrixIndexT>(c) <
+                          static_cast<UnsignedMatrixIndexT>(num_cols_));
     return *(data_ + r * stride_ + c);
   }
 
@@ -348,12 +344,8 @@ class MatrixBase {
   void Add(const Real alpha);
 
   /// *this += alpha * a * b^T
-  void AddVecVec(const Real alpha, const VectorBase<Real>& a,
-                 const VectorBase<Real>& b);
-
-  /// *this += alpha * a * b^T
   template<class OtherReal>
-  void AddVecVec(const OtherReal alpha, const VectorBase<OtherReal>& a,
+  void AddVecVec(const Real alpha, const VectorBase<OtherReal>& a,
                  const VectorBase<OtherReal>& b);
 
 

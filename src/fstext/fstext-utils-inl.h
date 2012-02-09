@@ -82,7 +82,7 @@ void GetOutputSymbols(const Fst<Arc> &fst,
   }
 
   // Remove epsilon, if instructed.
-  if (!include_eps && !all_syms.empty() && all_syms.front() == 0)
+  if (!include_eps && !all_syms.empty() && *all_syms.begin() == 0)
     all_syms.erase(0);
   assert(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
@@ -221,10 +221,10 @@ void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
   StateId cur_state = ofst->AddState();
   ofst->SetStart(cur_state);
   for (size_t i = 0; i < labels.size(); i++) {
-    assert(labels[i].size() != NULL);
+    assert(labels[i].size() != 0);
     StateId next_state = ofst->AddState();
     for (size_t j = 0; j < labels[i].size(); j++) {
-      Arc arc(labels[i], labels[i], Weight::One(), next_state);
+      Arc arc(labels[i][j], labels[i][j], Weight::One(), next_state);
       ofst->AddArc(cur_state, arc);
     }
     cur_state = next_state;
@@ -607,36 +607,57 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
   ans->SetStart(loop_state);
   ans->SetFinal(loop_state, Weight::One());
 
+  // "cache" is used as an optimization when some of the pointers in "fsts"
+  // may have the same value.
+  unordered_map<const ExpandedFst<Arc> *, Arc> cache;
+  
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
     const ExpandedFst<Arc> *fst = fsts[i];
     if (fst == NULL) continue;
+    { // optimization with cache: helpful if some members of "fsts" may
+      // contain the same pointer value (e.g. in GetHTransducer).
+      typename unordered_map<const ExpandedFst<Arc> *, Arc>::iterator
+          iter = cache.find(fst);
+      if (iter != cache.end()) {
+        Arc arc = iter->second;
+        arc.olabel = i;
+        ans->AddArc(0, arc);
+        continue;
+      }
+    }
+    
     assert(fst->Properties(kAcceptor, true) == kAcceptor);  // expect acceptor.
 
     StateId fst_num_states = fst->NumStates();
     StateId fst_start_state = fst->Start();
-
+    
     if (fst_start_state == kNoStateId)
       continue;  // empty fst.
-
+    
     bool share_start_state =
         fst->Properties(kInitialAcyclic, true) == kInitialAcyclic
         && fst->NumArcs(fst_start_state) == 1
         && fst->Final(fst_start_state) == Weight::Zero();
-
+    
     vector<StateId> state_map(fst_num_states);  // fst state -> ans state
     for (StateId s = 0; s < fst_num_states; s++) {
       if (s == fst_start_state && share_start_state) state_map[s] = loop_state;
       else state_map[s] = ans->AddState();
     }
-    if (!share_start_state)
-      ans->AddArc(0, Arc(0, i, Weight::One(), state_map[fst_start_state]));
+    if (!share_start_state) {
+      Arc arc(0, i, Weight::One(), state_map[fst_start_state]);
+      cache[fst] = arc;
+      ans->AddArc(0, arc);
+    }
     for (StateId s = 0; s < fst_num_states; s++) {
       // Add arcs out of state s.
       for (ArcIterator<ExpandedFst<Arc> > aiter(*fst, s); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         Label olabel = (s == fst_start_state && share_start_state ? i : 0);
-        ans->AddArc(state_map[s],
-                    Arc(arc.ilabel, olabel, arc.weight, state_map[arc.nextstate]));
+        Arc newarc(arc.ilabel, olabel, arc.weight, state_map[arc.nextstate]);
+        ans->AddArc(state_map[s], newarc);
+        if (s == fst_start_state && share_start_state)
+          cache[fst] = newarc;
       }
       if (fst->Final(s) != Weight::Zero()) {
         assert(!(s == fst_start_state && share_start_state));
@@ -777,7 +798,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
-  if (ifst.Start() == kNoStateId) return false;
+  if (ifst.Start() == kNoStateId) {
+    KALDI_WARN << "Empty input fst.";
+    return false;
+  }
   // First select path through ifst.
   vector<StateId> path;
   vector<size_t> arc_offsets;  // arc taken out of each state.
@@ -811,7 +835,11 @@ bool EqualAlign(const Fst<Arc> &ifst,
     }
   }
 
-  if (num_ilabels > length) return false;  // can't make it shorter by adding self-loops!.
+  if (num_ilabels > length) {
+    KALDI_WARN << "EqualAlign: utterance has too to frames " << length
+               << " to align.";
+    return false;  // can't make it shorter by adding self-loops!.
+  }
 
   StateId num_self_loops = 0;
   vector<ssize_t> self_loop_offsets(path.size());
@@ -821,7 +849,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
       num_self_loops++;
 
   if (num_self_loops == 0
-     && num_ilabels < length) return false;  // no self-loops to make it longer.
+      && num_ilabels < length) {
+    KALDI_WARN << "No self-loops on chosen path; cannot match length.";
+    return false;  // no self-loops to make it longer.
+  }
 
   StateId num_extra = length - num_ilabels;  // Number of self-loops we need.
 
@@ -948,8 +979,106 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
                 << "arcs.";
 }
 
+template<class Arc>
+void PhiCompose(const Fst<Arc> &fst1,
+                const Fst<Arc> &fst2,
+                typename Arc::Label phi_label,
+                MutableFst<Arc> *ofst) {
+  KALDI_ASSERT(phi_label != kNoLabel); // just use regular compose in this case.
+  typedef Fst<Arc> F;
+  typedef PhiMatcher<SortedMatcher<F> > PM;
+  CacheOptions base_opts;
+  base_opts.gc_limit = 0; // Cache only the last state for fastest copy.
+  // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
+  // The matcher for fst1 doesn't matter; we'll use fst2's matcher.
+  ComposeFstImplOptions<SortedMatcher<F>, PM> impl_opts(base_opts);
+  // false is something called phi_loop which is something I don't
+  // fully understand, but I don't think we want it.
+
+  // These pointers are taken ownership of by ComposeFst.
+  PM *phi_matcher =
+      new PM(fst2, MATCH_INPUT, phi_label, false);
+  SortedMatcher<F> *sorted_matcher =
+      new SortedMatcher<F>(fst1, MATCH_NONE); // tell it
+  // not to use this matcher, as this would mean we would
+  // not follow phi transitions.
+  impl_opts.matcher1 = sorted_matcher;
+  impl_opts.matcher2 = phi_matcher;
+  *ofst = ComposeFst<Arc>(fst1, fst2, impl_opts);
+  Connect(ofst);
+}
+
+template<class Arc>
+void PropagateFinalInternal(
+    typename Arc::Label phi_label,
+    typename Arc::StateId s,
+    MutableFst<Arc> *fst) {
+  typedef typename Arc::Weight Weight;
+  if (fst->Final(s) == Weight::Zero()) {
+    // search for phi transition.  We assume there
+    // is just one-- phi nondeterminism is not allowed
+    // anyway.
+    int num_phis = 0;
+    for (ArcIterator<Fst<Arc> > aiter(*fst, s);
+         !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      if (arc.ilabel == phi_label) {
+        num_phis++;
+        if (arc.nextstate == s) continue; // don't expect
+        // phi loops but ignore them anyway.
+        
+        // If this recurses infinitely, it means there
+        // are loops of phi transitions, which there should
+        // not be in a normal backoff LM.  We could make this
+        // routine work for this case, but currently there is
+        // no need.
+        PropagateFinalInternal(phi_label, arc.nextstate, fst);
+        if (fst->Final(arc.nextstate) != Weight::Zero())
+          fst->SetFinal(s, Times(fst->Final(arc.nextstate), arc.weight));
+      }
+      KALDI_ASSERT(num_phis <= 1 && "Phi nondeterminism found");
+    }
+  }
+}
+
+template<class Arc>
+void PropagateFinal(typename Arc::Label phi_label,
+                    MutableFst<Arc> *fst) {
+  typedef typename Arc::StateId StateId;
+  if (fst->Properties(kIEpsilons, true)) // just warn.
+    KALDI_WARN << "PropagateFinal: this may not work as desired "
+        "since your FST has input epsilons.";
+  StateId num_states = fst->NumStates();
+  for (StateId s = 0; s < num_states; s++)
+    PropagateFinalInternal(phi_label, s, fst);
+}
 
 
+inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
+  if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,
+  // for compatibility with OpenFst conventions.
+  kaldi::Input ki(rxfilename);
+  fst::FstHeader hdr;
+  if (!hdr.Read(ki.Stream(), rxfilename))
+    KALDI_ERR << "Reading FST: error reading FST header from "
+              << kaldi::PrintableRxfilename(rxfilename);
+  FstReadOptions ropts("<unspecified>", &hdr);
+  VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(ki.Stream(), ropts);
+  if (!fst)
+    KALDI_ERR << "Could not read fst from "
+              << kaldi::PrintableRxfilename(rxfilename);
+  return fst;
+}
+
+inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
+                          std::string wxfilename) {
+  if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,
+  // for compatibility with OpenFst conventions.
+  bool write_binary = true, write_header = false;
+  kaldi::Output ko(wxfilename, write_binary, write_header);
+  FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
+  fst.Write(ko.Stream(), wopts);
+}
 
 
 } // namespace fst.

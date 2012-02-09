@@ -62,24 +62,16 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetOptArg(1);
 
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstisstochastic: could not read input fst from " <<
-          (fst_in_filename != "" ? fst_in_filename : "standard input") << '\n';
-      return -1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     bool ans;
     StdArc::Weight min, max;
     if (test_in_log)  ans = IsStochasticFstInLog(*fst, delta, &min, &max);
     else ans = IsStochasticFst(*fst, delta, &min, &max);
 
-
-    std::cerr << min.Value() << " " << max.Value() << '\n';
+    std::cout << min.Value() << " " << max.Value() << '\n';
     delete fst;
     if (ans) return 0;  // success;
     else return 1;

@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
+    using fst::ReadFstKaldi;
 
     const char *usage =
         "Decode features using GMM-based model.\n"
@@ -69,21 +70,12 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_EXIT << "Could not open decoding-graph FST "
-                                << fst_in_filename;
-      decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)fst_in_filename));
-      if (decode_fst == NULL) // fst code will warn.
-        exit(1);
-    }
+    VectorFst<StdArc> *decode_fst = ReadFstKaldi(fst_in_filename);
 
     Int32VectorWriter words_writer(words_wspecifier);
 
@@ -92,7 +84,7 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);

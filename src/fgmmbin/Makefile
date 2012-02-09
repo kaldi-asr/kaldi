@@ -3,7 +3,9 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = fgmm-global-acc-stats fgmm-global-sum-accs fgmm-global-est fgmm-global-merge
+BINFILES = fgmm-global-acc-stats fgmm-global-sum-accs fgmm-global-est \
+	fgmm-global-merge fgmm-global-to-gmm fgmm-gselect fgmm-global-get-frame-likes \
+    fgmm-global-acc-stats-twofeats fgmm-global-copy
 
 
 OBJFILES =
@@ -29,7 +31,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

@@ -184,7 +184,7 @@ void MleAmSgmmAccs::Check(const AmSgmm &model,
         feature_dim_ << ", S = " << phn_space_dim_ << ", T = " <<
         spk_space_dim_ << ", I = " << num_gaussians_;
   }
-  KALDI_ASSERT(num_states_ == model.NumStates() && num_states_ > 0);
+  KALDI_ASSERT(num_states_ == model.NumPdfs() && num_states_ > 0);
   KALDI_ASSERT(num_gaussians_ == model.NumGauss() && num_gaussians_ > 0);
   KALDI_ASSERT(feature_dim_ == model.FeatureDim() && feature_dim_ > 0);
   KALDI_ASSERT(phn_space_dim_ == model.PhoneSpaceDim() && phn_space_dim_ > 0);
@@ -275,7 +275,7 @@ void MleAmSgmmAccs::Check(const AmSgmm &model,
 
 void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
                                        SgmmUpdateFlagsType flags) {
-  num_states_ = model.NumStates();
+  num_states_ = model.NumPdfs();
   num_gaussians_ = model.NumGauss();
   feature_dim_ = model.FeatureDim();
   phn_space_dim_ = model.PhoneSpaceDim();
@@ -407,16 +407,8 @@ MleAmSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
 
     for (int32 m = 0; m < num_substates; ++m) {
       // Eq. (39): gamma_{jmi}(t) = p (j, m, i|t)
-      BaseFloat gammat_jmi = posteriors(ki, m);
-
-      if (gammat_jmi < rand_prune_) {
-        // randomized pruning that preserves expectations.
-        if (RandUniform()* rand_prune_ <= gammat_jmi)
-          gammat_jmi = rand_prune_;
-        else
-          gammat_jmi = 0.0;
-      }
-
+      BaseFloat gammat_jmi = RandPrune(posteriors(ki, m), rand_prune_);
+      
       // Accumulate statistics for non-zero gaussian posterior
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
@@ -561,10 +553,10 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   if (update_options_.renormalize_V)
     RenormalizeV(accs, model, H_sm);
 
-  KALDI_LOG << "*Auxiliary function improvement, combining all parameters, is "
+  KALDI_LOG << "*Overall auxf improvement, combining all parameters, is "
             << (tot_impr);
 
-  KALDI_LOG << "***Total data likelihood is "
+  KALDI_LOG << "***Overall data likelihood is "
             << (accs.total_like_/accs.total_frames_)
             << " over " << (accs.total_frames_) << " frames.";
 
@@ -1705,14 +1697,7 @@ MleSgmmSpeakerAccs::AccumulateFromPosteriors(const AmSgmm &model,
     int32 i = gselect[ki];
     for (int32 m = 0; m < num_substates; ++m) {
       // Eq. (39): gamma_{jmi}(t) = p (j, m, i|t)
-      double gammat_jmi = posteriors(ki, m);
-      if (gammat_jmi < rand_prune_) {
-        // randomized pruning that preserves expectations.
-        if (RandUniform()* rand_prune_ <= gammat_jmi)
-          gammat_jmi = rand_prune_;
-        else
-          gammat_jmi = 0.0;
-      }
+      BaseFloat gammat_jmi = RandPrune(posteriors(ki, m), rand_prune_);
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
         model.GetSubstateMean(j, m, i, &mu_jmi);
@@ -1741,7 +1726,7 @@ void MleSgmmSpeakerAccs::Update(BaseFloat min_count,
   if (v_s->Dim() != T) v_s->Resize(T);  // will set it to zero.
 
   if (tot_gamma < min_count) {
-    KALDI_WARN << "Updating speaker accs, count is " << tot_gamma
+    KALDI_WARN << "Updating speaker vectors, count is " << tot_gamma
                << " < " << min_count << "not updating.";
     if (objf_impr_out) *objf_impr_out = 0.0;
     if (count_out) *count_out = 0.0;

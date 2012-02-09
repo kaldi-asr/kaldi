@@ -16,7 +16,7 @@
 
 #include "util/common-utils.h"
 #include "gmm/full-gmm.h"
-#include "gmm/estimate-full-gmm.h"
+#include "gmm/mle-full-gmm.h"
 
 
 int main(int argc, char *argv[]) {
@@ -28,30 +28,30 @@ int main(int argc, char *argv[]) {
         "training.\n"
         "Usage: fgmm-global-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
 
-    bool binary = false;
+    bool binary = true;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3) {
+    if (po.NumArgs() < 2) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string stats_out_filename = po.GetArg(1);
-    kaldi::MlEstimateFullGmm gmm_accs;
+    kaldi::AccumFullGmm gmm_accs;
 
     for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
-      kaldi::Input is(stats_in_filename, &binary_read);
-      gmm_accs.Read(is.Stream(), binary_read, true /*add read values*/);
+      kaldi::Input ki(stats_in_filename, &binary_read);
+      gmm_accs.Read(ki.Stream(), binary_read, true /*add read values*/);
     }
 
     // Write out the accs
     {
-      kaldi::Output os(stats_out_filename, binary);
-      gmm_accs.Write(os.Stream(), binary);
+      kaldi::Output ko(stats_out_filename, binary);
+      gmm_accs.Write(ko.Stream(), binary);
     }
 
     KALDI_LOG << "Written stats to " << stats_out_filename;

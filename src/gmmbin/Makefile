@@ -10,12 +10,18 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-acc-stats gmm-init-lvtln gmm-est-lvtln-trans gmm-train-lvtln-special \
            gmm-acc-mllt gmm-mixup gmm-init-model \
            gmm-acc-hlda gmm-est-hlda gmm-transform-means gmm-init-et gmm-est-et \
-           gmm-et-acc-a gmm-et-est-a gmm-copy-et gmm-et-get-b \
+           gmm-et-acc-a gmm-et-est-a gmm-copy-et gmm-et-get-b gmm-et-get-a \
            gmm-make-regtree gmm-decode-faster-regtree-fmllr gmm-post-to-gpost \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
            gmm-est-regtree-mllr gmm-decode-kaldi gmm-compute-likes \
            gmm-decode-faster-regtree-mllr gmm-et-apply-c gmm-latgen-simple \
-	   gmm-rescore-lattice gmm-decode-biglm-faster 
+           gmm-rescore-lattice gmm-decode-biglm-faster fmpe-gmm-model-diffs-est \
+           fmpe-gmm-acc-stats-gpost fmpe-gmm-sum-accs fmpe-init-gmms fmpe-gmm-est \
+           gmm-est-gaussians-ebw gmm-est-weights-ebw gmm-latgen-faster gmm-copy \
+           gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \
+           gmm-latgen-biglm-faster gmm-ismooth-stats gmm-global-get-frame-likes \
+           gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
+           gmm-global-copy gmm-align-compiled-plusphones
 
 OBJFILES =
 
@@ -40,7 +46,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

@@ -115,9 +115,9 @@ void MlltAccs::Update(double beta,
       tot_objf_impr += objf_after - objf_before;
     }
     if (p < 10 || p % 10 == 0)
-      KALDI_LOG << "MLLT objective improvement per frame on " << p
+      KALDI_LOG << "MLLT objective improvement per frame by " << p
                 << "'th iteration is " << (tot_objf_impr/beta) << " per frame "
-                << "over " << beta << " frames, by iteration " << p;
+                << "over " << beta << " frames.";
   }
   if (objf_impr_out)
     *objf_impr_out = tot_objf_impr;
@@ -140,16 +140,7 @@ void MlltAccs::AccumulateFromPosteriors(const DiagGmm &gmm,
   double this_beta_ = 0.0;
   KALDI_ASSERT(rand_prune_ >= 0.0);
   for (int32 i = 0; i < posteriors.Dim(); i++) {  // for each mixcomp..
-    BaseFloat posterior = posteriors(i);
-    if (posterior < rand_prune_) {
-      KALDI_ASSERT(posterior >= 0.0);
-      // We preserve expectations by setting posterior to rand_prune_
-      // with probability (posterior / rand_prune_).
-      if (RandUniform() < (posterior / rand_prune_))
-        posterior = rand_prune_;
-      else
-        posterior = 0.0;
-    }
+    BaseFloat posterior = RandPrune(posteriors(i), rand_prune_);
     if (posterior == 0.0) continue;
     SubVector<BaseFloat> mean_invvar(means_invvars, i);
     SubVector<BaseFloat> inv_var(inv_vars, i);

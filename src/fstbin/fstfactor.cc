@@ -61,9 +61,10 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    bool push = true;
+    bool push = false;
 
-    po.Register("push", &push, "Push output symbols to initial state before factoring");
+    po.Register("push", &push,
+                "Push output symbols to initial state before factoring");
 
     po.Read(argc, argv);
 
@@ -73,22 +74,11 @@ int main(int argc, char *argv[]) {
     }
 
 
-    std::string fst_in_filename = po.GetArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetArg(1),
+        fst1_out_filename = po.GetArg(2),
+        fst2_out_filename = po.GetArg(3);
 
-    std::string fst1_out_filename = po.GetArg(2);
-    if (fst1_out_filename == "-") fst1_out_filename = "";
-
-    std::string fst2_out_filename = po.GetArg(3);
-    if (fst2_out_filename == "-") fst2_out_filename = "";
-
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstfactor: could not read fst from " <<
-          (fst_in_filename == "" ? "standard input" : fst_in_filename) << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     if (push) {
       KALDI_VLOG(1) <<  "Pushing symbols\n";
@@ -103,22 +93,12 @@ int main(int argc, char *argv[]) {
 
     delete fst;
 
-    if (! fst1.Write(fst1_out_filename) ) {
-      std::cerr << "fstfactor: error writing the output to "<<
-          (fst1_out_filename != "" ? fst1_out_filename : "standard output") << '\n';
-      return 1;
-    }
-
-    if (! fst2.Write(fst2_out_filename) ) {
-      std::cerr << "fstfactor: error writing the output to "<<
-          (fst2_out_filename != "" ? fst2_out_filename : "standard output") << '\n';
-      return 1;
-    }
-
+    WriteFstKaldi(fst1, fst1_out_filename);
+    WriteFstKaldi(fst2, fst2_out_filename);
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

@@ -48,9 +48,11 @@ class AmDiagGmm {
   // to work out targets for each state (according to power-of-occupancy rule),
   // and any state less than its target gets mixed up.  If some states
   // were over their target, this may take the #Gauss over the target.
+  // we enforce a min-count on Gaussians while splitting (don't split
+  // if it would take it below min-count).
   void SplitByCount(const Vector<BaseFloat> &state_occs,
                     int32 target_components, float perturb_factor,
-                    BaseFloat power);
+                    BaseFloat power, BaseFloat min_count);
 
 
   // In SplitByCount we use the "target_components" and "power"
@@ -59,7 +61,7 @@ class AmDiagGmm {
   // were under their target, this may take the #Gauss below the target.
   void MergeByCount(const Vector<BaseFloat> &state_occs,
                     int32 target_components,
-                    BaseFloat power);
+                    BaseFloat power, BaseFloat min_count);
 
   /// Sets the gconsts for all the PDFs. Returns the total number of Gaussians
   /// over all PDFs that are "invalid" e.g. due to zero weights or variances.
@@ -98,6 +100,7 @@ class AmDiagGmm {
   void ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
                             int32 target_components,
                             BaseFloat power,
+                            BaseFloat min_count,
                             std::vector<int32> *targets) const;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmDiagGmm);
@@ -163,15 +166,32 @@ struct UbmClusteringOptions {
   BaseFloat reduce_state_factor;
   int32 intermediate_numcomps;
   BaseFloat cluster_varfloor;
+  int32 max_am_gauss;
 
   UbmClusteringOptions()
       : ubm_numcomps(400), reduce_state_factor(0.2),
-        intermediate_numcomps(4000), cluster_varfloor(0.01) {}
+        intermediate_numcomps(4000), cluster_varfloor(0.01),
+        max_am_gauss(20000) {}
   UbmClusteringOptions(int32 ncomp, BaseFloat red, int32 interm_comps,
-                       BaseFloat vfloor)
+                       BaseFloat vfloor, int32 max_am_gauss)
         : ubm_numcomps(ncomp), reduce_state_factor(red),
-          intermediate_numcomps(interm_comps), cluster_varfloor(vfloor) {}
-  void Register(ParseOptions *po);
+          intermediate_numcomps(interm_comps), cluster_varfloor(vfloor),
+          max_am_gauss(max_am_gauss) {}
+  void Register(ParseOptions *po) {
+    std::string module = "UbmClusteringOptions: ";
+    po->Register("max-am-gauss", &max_am_gauss, module+
+                 "We first reduce acoustic model to this max #Gauss before clustering.");
+    po->Register("ubm-numcomps", &ubm_numcomps, module+
+                 "Number of Gaussians components in the final UBM.");
+    po->Register("reduce-state-factor", &reduce_state_factor, module+
+                 "Intermediate number of clustered states (as fraction of total states).");
+    po->Register("intermediate-numcomps", &intermediate_numcomps, module+
+                 "Intermediate number of merged Gaussian components.");
+    po->Register("cluster-varfloor", &cluster_varfloor, module+
+                 "Variance floor used in bottom-up state clustering.");
+  }
+
+  void Check();
 };
 
 /** Clusters the Gaussians in an acoustic model to a single GMM with specified
@@ -187,8 +207,11 @@ struct UbmClusteringOptions {
  */
 void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
-                           const UbmClusteringOptions &opts,
+                           UbmClusteringOptions opts,
                            DiagGmm *ubm_out);
+
+
+
 
 }  // namespace kaldi
 

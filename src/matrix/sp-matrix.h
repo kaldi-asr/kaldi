@@ -202,11 +202,8 @@ class SpMatrix : public PackedMatrix<Real> {
   Real LogDet(Real *det_sign = NULL) const;
 
   // rank-one update, this <-- this + alpha V V'
-  void AddVec2(const Real alpha, const VectorBase<Real>& v);
-
-  // rank-one update, this <-- this + alpha V V'
   template<class OtherReal>
-  void AddVec2(const OtherReal alpha, const VectorBase<OtherReal>& v);
+  void AddVec2(const Real alpha, const VectorBase<OtherReal>& v);
 
   // rank-N update:
   // if (transM == kNoTrans)

@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Usage:  gmm-est-hlda [options] <model-in> <full-hlda-mat-in> <model-out> <full-hlda-mat-out> <partial-hlda-mat-out> <stats-in1> <stats-in2> ... \n"
         "e.g.: gmm-est-hlda 1.mdl 1.hldafull 2.mdl 2.hldafull 2.hlda 1.0.hacc 1.1.hacc ... \n";
 
-    bool binary = false;  // write in binary if true.
+    bool binary = true;  // write in binary if true.
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -55,9 +55,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     HldaAccsDiagGmm hlda_accs;

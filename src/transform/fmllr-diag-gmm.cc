@@ -41,16 +41,49 @@ AccumulateFromPosteriors(const DiagGmm &pdf,
   Vector<double> inv_var_mean(dim);
   Vector<double> g_scale(dim);  // scale on "scatter" for each dim.
   for (size_t m = 0; m < num_comp; ++m) {
-    inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
-    this->beta_ += posterior(m);
-    this->K_.AddVecVec(posterior(m), inv_var_mean, extended_data);
-    for (size_t d = 0; d < dim; ++d)
-      g_scale(d) += posterior(m) * pdf.inv_vars()(m, d);
+    BaseFloat this_post = posterior(m);
+    if (this_post != 0.0) {
+      inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
+      this->beta_ += this_post;
+      this->K_.AddVecVec(this_post, inv_var_mean, extended_data);
+      g_scale.AddVec(this_post, pdf.inv_vars().Row(m));
+    }
   }
   for (size_t d = 0; d < dim; ++d)
     this->G_[d].AddSp(g_scale(d), scatter);
 }
 
+FmllrDiagGmmAccs::
+FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs) {
+  KALDI_ASSERT(gmm.NumGauss() == fgmm_accs.NumGauss()
+               && gmm.Dim() == fgmm_accs.Dim());
+  Init(gmm.Dim());
+  int32 dim = gmm.Dim(), num_gauss = gmm.NumGauss();
+  for (int32 g = 0; g < num_gauss; g++) {
+    double this_occ = fgmm_accs.occupancy()(g);
+    if (this_occ == 0) continue;
+    SubVector<BaseFloat> this_mean_invvar(gmm.means_invvars(), g);
+    SubVector<BaseFloat> this_invvar(gmm.inv_vars(), g);
+    SubVector<double> this_mean_acc(fgmm_accs.mean_accumulator(), g);
+    Vector<double> this_mean_invvar_dbl(this_mean_invvar);
+    Vector<double> this_extended_mean_acc(dim+1);
+    this_extended_mean_acc.Range(0,dim).CopyFromVec(this_mean_acc);
+    this_extended_mean_acc(dim) = this_occ; // acc of x^+
+    Matrix<double> this_cov_acc(fgmm_accs.covariance_accumulator()[g]); // copy to
+    // regular Matrix.
+    Matrix<double> this_extended_cov_acc(dim+1, dim+1); // make as if accumulated
+    // using x^+, not x.
+    this_extended_cov_acc.Range(0, dim, 0, dim).CopyFromMat(this_cov_acc);
+    this_extended_cov_acc.Row(dim).CopyFromVec(this_extended_mean_acc);
+    this_extended_cov_acc.CopyColFromVec(this_extended_mean_acc, dim); // since
+    // there is no Col() function, use a member-function of the matrix class.
+    SpMatrix<double> this_extended_cov_acc_sp(this_extended_cov_acc);
+    beta_ += this_occ;
+    K_.AddVecVec(1.0, this_mean_invvar_dbl, this_extended_mean_acc);
+    for (int32 d = 0; d < dim; d++)
+      G_[d].AddSp(this_invvar(d), this_extended_cov_acc_sp);
+  }
+}
 
 
 BaseFloat
@@ -60,7 +93,7 @@ FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
   size_t num_comp = static_cast<int32>(pdf.NumGauss());
   Vector<BaseFloat> posterior(num_comp);
   BaseFloat loglike;
-
+  
   loglike = pdf.ComponentPosteriors(data, &posterior);
   AccumulateFromPosteriors(pdf, data, posterior);
   return loglike;
@@ -94,6 +127,7 @@ void FmllrDiagGmmAccs::Update(const FmllrOptions &opts,
     if (objf_impr) *objf_impr = objf_change;
     if (count) *count = beta_;
   } else {  // Not changing matrix.
+    KALDI_WARN << "Not updating fMLLR since below min-count: count is " << beta_;
     if (objf_impr) *objf_impr = 0.0;
     if (count) *count = beta_;
   }

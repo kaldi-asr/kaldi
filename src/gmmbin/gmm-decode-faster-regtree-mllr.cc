@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
               "regtree-in features-rspecifier transforms-rspecifier "
               "words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
     
@@ -155,16 +155,16 @@ int main(int argc, char *argv[]) {
     AmDiagGmm am_gmm;
     {
       bool binary_read;
-      Input is(model_in_filename, &binary_read);
-      trans_model.Read(is.Stream(), binary_read);
-      am_gmm.Read(is.Stream(), binary_read);
+      Input ki(model_in_filename, &binary_read);
+      trans_model.Read(ki.Stream(), binary_read);
+      am_gmm.Read(ki.Stream(), binary_read);
     }
 
     VectorFst<StdArc> *decode_fst = NULL;
     {
       std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
       if (!is.good())
-        KALDI_EXIT << "Could not open decoding-graph FST " << fst_in_filename;
+        KALDI_ERR << "Could not open decoding-graph FST " << fst_in_filename;
       decode_fst = VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
       if (decode_fst == NULL)  // fst code will warn.
         exit(1);
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
     if (word_syms_filename != "") {
       word_syms = fst::SymbolTable::ReadText(word_syms_filename);
       if (!word_syms) {
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
             << word_syms_filename;
       }
     }

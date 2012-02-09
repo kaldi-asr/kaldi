@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         " model topology.\n"
         "Usage: sgmm-init [options] <topology-in> <tree-in> <ubm-in> <sgmm-out>\n";
     
-    bool binary = false;
+    bool binary = true;
     int32 phn_space_dim = 0, spk_space_dim = 0;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
     kaldi::FullGmm ubm;
     {
       bool binary_read;
-      kaldi::Input is(ubm_in_filename, &binary_read);
-      ubm.Read(is.Stream(), binary_read);
+      kaldi::Input ki(ubm_in_filename, &binary_read);
+      ubm.Read(ki.Stream(), binary_read);
     }
 
     kaldi::AmSgmm sgmm;
@@ -82,9 +82,9 @@ int main(int argc, char *argv[]) {
     sgmm.ComputeNormalizers();
 
     {
-      kaldi::Output os(sgmm_out_filename, binary);
-      trans_model.Write(os.Stream(), binary);
-      sgmm.Write(os.Stream(), binary, kaldi::kSgmmWriteAll);
+      kaldi::Output ko(sgmm_out_filename, binary);
+      trans_model.Write(ko.Stream(), binary);
+      sgmm.Write(ko.Stream(), binary, kaldi::kSgmmWriteAll);
     }
 
     KALDI_LOG << "Written model to " << sgmm_out_filename;

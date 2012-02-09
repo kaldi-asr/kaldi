@@ -55,8 +55,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     bool use_log = false;
     bool stochastic_in_log = true;
-    po.Register("use-log", &use_log, "Preserve equivalence in log semiring [false->tropical]\n");
-    po.Register("stochastic-in-log", &stochastic_in_log, "Preserve stochasticity in log semiring [false->tropical]\n");
+    po.Register("use-log", &use_log,
+                "Preserve equivalence in log semiring [false->tropical]\n");
+    po.Register("stochastic-in-log", &stochastic_in_log,
+                "Preserve stochasticity in log semiring [false->tropical]\n");
     po.Read(argc, argv);
 
     if (po.NumArgs() > 2) {
@@ -64,19 +66,10 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(1);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetOptArg(1),
+        fst_out_filename = po.GetOptArg(2);
 
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(2);
-    if (fst_out_filename == "-") fst_out_filename = "";
-
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstrmsymbols: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     if (!use_log && stochastic_in_log) {
       RemoveEpsLocalSpecial(fst);
@@ -94,15 +87,12 @@ int main(int argc, char *argv[]) {
       RemoveEpsLocal(fst);
     }
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstrmsymbols: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

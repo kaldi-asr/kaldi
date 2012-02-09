@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_EXIT << "Could not read symbol table from file "
+        KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
 
@@ -92,8 +92,9 @@ int main(int argc, char *argv[]) {
         std::vector<int32> words;
         LatticeWeight weight;
         GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
-        KALDI_LOG << "For utterance " << key << ", best cost " <<
-            (weight.Value1() + weight.Value2());
+        KALDI_LOG << "For utterance " << key << ", best cost "
+                  << weight.Value1() << " + " << weight.Value2() << " = "
+                  << (weight.Value1() + weight.Value2());
         if (transcriptions_wspecifier != "")
           transcriptions_writer.Write(key, words);
         if (alignments_wspecifier != "")

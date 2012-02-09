@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         " gmm-acc-stats-twofeats 1.mdl 1.ali scp:train.scp scp:train_new.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
 
@@ -58,15 +58,15 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
     int32 new_dim = 0;
-    MlEstimateAmDiagGmm gmm_accs;
+    AccumAmDiagGmm gmm_accs;
     // will initialize once we know new_dim.
 
     double tot_like = 0.0;
@@ -87,9 +87,10 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &mat1 = feature1_reader.Value();
         const Matrix<BaseFloat> &mat2 = feature2_reader.Value(key);
+        KALDI_ASSERT(mat1.NumRows() == mat2.NumRows())
         if (new_dim == 0) {
           new_dim = mat2.NumCols();
-          gmm_accs.InitAccumulators(am_gmm, new_dim, kGmmAll);
+          gmm_accs.Init(am_gmm, new_dim, kGmmAll);
         }
         const Posterior &posterior = posteriors_reader.Value(key);
 
@@ -141,7 +142,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
-    
+
     {
       Output ko(accs_wxfilename, binary);
       transition_accs.Write(ko.Stream(), binary);

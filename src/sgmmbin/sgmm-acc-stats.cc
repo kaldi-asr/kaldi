@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-acc-stats 1.mdl 1.ali scp:train.scp 'ark:ali-to-post 1.ali ark:-|' 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
-    std::string update_flags_str = "vMNwcS";
+    std::string update_flags_str = "vMNwcSt";
     BaseFloat rand_prune = 1.0e-05;
     SgmmGselectConfig sgmm_opts;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -66,13 +66,22 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    // Initialize the readers before the model, as the model can
+    // be large, and we don't want to call fork() after reading it if
+    // virtual memory may be low.
+    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
+    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+    
     AmSgmm am_sgmm;
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
@@ -82,15 +91,6 @@ int main(int argc, char *argv[]) {
 
     double tot_like = 0.0;
     double tot_t = 0;
-
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
-      KALDI_ERR << "Unable to open stream for gaussian-selection indices";
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
-
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
 
     kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
@@ -173,9 +173,12 @@ int main(int argc, char *argv[]) {
                       << tot_weight <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << utt << " avg. like is "
+                    << (tot_like_this_file/tot_weight)
+                    << " over " << tot_weight <<" frames.";
+        }
       }
     }
     KALDI_LOG << "Overall like per frame (Gaussian only) = "

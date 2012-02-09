@@ -31,6 +31,9 @@ class ParseOptions {
  public:
   explicit ParseOptions(const char *usage)
       : print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL) {
+#ifndef _MSC_VER // This is just a convenient place to set the stderr to line 
+    setlinebuf(stderr); // buffering mode, since it's called at program start.
+#endif // This helps ensure different programs' output is not mixed up.
     Register("config", &config_, "Configuration file with options");
     Register("print-args", &print_args_, "Print the command line arguments (to stderr)");
     Register("help", &help_, "Print out usage message");

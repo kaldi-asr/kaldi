@@ -14,12 +14,14 @@ all:  $(LIBFILE) $(TESTFILES)
 
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../tree/kaldi-tree.a \
-	../gmm/kaldi-gmm.a ../transform/kaldi-transform.a
+$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+	../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a
 
 
 # Rule below would expand to, e.g.:
@@ -33,7 +35,7 @@ clean:
 	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

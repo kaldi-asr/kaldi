@@ -57,7 +57,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   frame_vars.Resize(sgmm.NumGauss(), dim, sgmm.PhoneSpaceDim());
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest,
                                         sgmm.NumGauss());
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   occs.Set(feats.NumRows());
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
@@ -145,7 +145,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   frame_vars.Resize(sgmm.NumGauss(), dim, sgmm.PhoneSpaceDim());
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest,
                                         sgmm.NumGauss());
-  kaldi::Vector<BaseFloat> occs(sgmm.NumStates());
+  kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
   occs.Set(feats.NumRows());
   sgmm.ComputeFmllrPreXform(occs, &fmllr_globals.pre_xform_,
                             &fmllr_globals.inv_xform_,
@@ -207,8 +207,8 @@ void TestSgmmFmllr() {
     // Now generate random features with those means and variances.
     feats.Resize(num_feat_comp * 200, dim);
     for (int32 m = 0; m < num_feat_comp; ++m) {
-      ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m),
-                                &feats.Range(m*200, 200, 0, dim));
+      kaldi::SubMatrix<BaseFloat> tmp(feats, m*200, 200, 0, dim);
+      ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
   TestSgmmFmllrAccsIO(sgmm, feats);

@@ -1,4 +1,4 @@
-// gmmbin/gmm-resocre-lattice.cc
+// gmmbin/gmm-rescore-lattice.cc
 
 // Copyright 2009-2011   Saarland University
 // Author: Arnab Ghoshal
@@ -18,11 +18,12 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "util/stl-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/lattice-utils.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
@@ -35,22 +36,58 @@ void LatticeAcousticRescore(const AmDiagGmm& am,
   if (!(props & fst::kTopSorted))
     KALDI_ERR << "Input lattice must be topologically sorted.";
 
-  int32 num_states = lat->NumStates();
-  for (int32 state = 0; state < num_states; ++state) {
-    int32 cur_time = state_times[state];
-    for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
-        aiter.Next()) {
-      LatticeArc arc = aiter.Value();
-      int32 trans_id = arc.ilabel;
-      if (trans_id != 0) {  // Non-epsilon input label on arc
-        int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
-        BaseFloat ll = am.LogLikelihood(pdf_id, data.Row(cur_time));
-        arc.weight.SetValue2(-ll + arc.weight.Value2());
-        // TODO(arnab): This can be made more efficient by caching likelihoods
+  KALDI_ASSERT(!state_times.empty());
+  std::vector<std::vector<int32> > time_to_state(data.NumRows());
+  for (size_t i = 0; i < state_times.size(); i++) {
+    KALDI_ASSERT(state_times[i] >= 0);
+    if (state_times[i] < data.NumRows()) // end state may be past this..
+      time_to_state[state_times[i]].push_back(i);
+    else
+      KALDI_ASSERT(state_times[i] == data.NumRows()
+                   && "There appears to be lattice/feature mismatch.");
+  }
+
+  for (int32 t = 0; t < data.NumRows(); t++) {
+    unordered_map<int32, BaseFloat> pdf_id_to_like;
+    for (size_t i = 0; i < time_to_state[t].size(); i++) {
+      int32 state = time_to_state[t][i];
+      for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
+           aiter.Next()) {
+        LatticeArc arc = aiter.Value();
+        int32 trans_id = arc.ilabel;
+        if (trans_id != 0) {  // Non-epsilon input label on arc
+          int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
+          BaseFloat ll;
+          if (pdf_id_to_like.count(pdf_id) == 0) {
+            ll = am.LogLikelihood(pdf_id, data.Row(t));
+            pdf_id_to_like[pdf_id] = ll;
+          } else {
+            ll = pdf_id_to_like[pdf_id];
+          }
+          arc.weight.SetValue2(-ll + arc.weight.Value2());
+          aiter.SetValue(arc);
+        }
       }
-      aiter.SetValue(arc);
-    }  // end iterating over arcs for a state
-  }  // end iterating over states
+    }
+  }
+  // Now make sure that epsilon-input arcs and final-probs don't have
+  // any acoustic part in the weights.
+  for (int32 s = 0; s < lat->NumStates(); s++) {
+    for (fst::MutableArcIterator<Lattice> aiter(lat, s); !aiter.Done();
+         aiter.Next()) {
+      LatticeArc arc = aiter.Value();    
+      int32 trans_id = arc.ilabel;
+      if (trans_id == 0) {
+        arc.weight.SetValue2(0); // make sure acoustic part of weight is zero.
+        aiter.SetValue(arc);
+      }
+    }
+    LatticeWeight w = lat->Final(s);
+    if (w != LatticeWeight::Zero()) {
+      w.SetValue2(0); // make sure acoustic part of weight is zero.
+      lat->SetFinal(s, w);
+    }
+  }
 }
 
 }  // namespace kaldi
@@ -66,9 +103,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Replace the acoustic scores on a lattice using a new model.\n"
-        "Usage: gmm-resocre-lattice [options] <model-in> <lattice-rspecifier> "
+        "Usage: gmm-rescore-lattice [options] <model-in> <lattice-rspecifier> "
         "<feature-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: gmm-resocre-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
+        " e.g.: gmm-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
     kaldi::ParseOptions po(usage);
@@ -90,9 +127,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -117,12 +154,8 @@ int main(int argc, char *argv[]) {
 
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        KALDI_WARN << "Utterance " << key << ": Supplied lattice not "
-                   << "topologically sorted. Sorting it.";
         if (fst::TopSort(&lat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
-      } else {
-        KALDI_LOG << "Already topologically sorted.";
       }
 
       vector<int32> state_times;

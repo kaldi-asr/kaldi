@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "  f  6 7 8 9 10\n"
         "Usage: sgmm-normalize [options] <model-in> <gaussians-rspecifier> <model-out>\n";
 
-    bool binary_write = false;
+    bool binary_write = true;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     std::vector<std::vector<int32> > norm_sets;
@@ -66,9 +66,9 @@ int main(int argc, char *argv[]) {
     am_sgmm.ComputeNormalizersNormalized(norm_sets);
     
     {
-      Output os(model_out_filename, binary_write);
-      trans_model.Write(os.Stream(), binary_write);
-      am_sgmm.Write(os.Stream(), binary_write, kSgmmWriteAll);
+      Output ko(model_out_filename, binary_write);
+      trans_model.Write(ko.Stream(), binary_write);
+      am_sgmm.Write(ko.Stream(), binary_write, kSgmmWriteAll);
     }
     
     

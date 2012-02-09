@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     string spk2utt_rspecifier;
-    bool binary = false;
+    bool binary = true;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
     po.Register("binary", &binary, "Write output in binary mode");
@@ -66,9 +66,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
     RegressionTree regtree;
     {
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
       for (; !feature_reader.Done(); feature_reader.Next()) {
         string key = feature_reader.Key();
         if (!posteriors_reader.HasKey(key)) {
-          KALDI_WARN << "Did not find aligned transcription for utterance "
+          KALDI_WARN << "Did not find posteriors for utterance "
               << key;
           num_no_posterior++;
           continue;

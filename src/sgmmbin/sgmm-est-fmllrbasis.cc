@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "Usage: sgmm-est-fmllrbasis [options] <model-in> <model-out> "
         "<stats-in1> [stats-in2 ...]\n";
 
-    bool binary = false;
+    bool binary = true;
     int32 num_bases = 50;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode.");
@@ -65,8 +65,8 @@ int main(int argc, char *argv[]) {
     for (int i = 3, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
-      kaldi::Input is(stats_in_filename, &binary_read);
-      fmllr_grad_scatter.Read(is.Stream(), binary_read,
+      kaldi::Input ki(stats_in_filename, &binary_read);
+      fmllr_grad_scatter.Read(ki.Stream(), binary_read,
                               true /* add read values */);
     }
 
@@ -75,10 +75,10 @@ int main(int argc, char *argv[]) {
 
     // Write out the accs
     {
-      kaldi::Output os(model_out_filename, binary);
-      trans_model.Write(os.Stream(), binary);
-      am_sgmm.Write(os.Stream(), binary, kaldi::kSgmmWriteAll);
-      fmllr_globals.Write(os.Stream(), binary);
+      kaldi::Output ko(model_out_filename, binary);
+      trans_model.Write(ko.Stream(), binary);
+      am_sgmm.Write(ko.Stream(), binary, kaldi::kSgmmWriteAll);
+      fmllr_globals.Write(ko.Stream(), binary);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;

@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
       return 0;
     } else {
       if (utt2spk_rspecifier != "")
-        KALDI_EXIT << "--utt2spk option not compatible with rxfilename as input "
+        KALDI_ERR << "--utt2spk option not compatible with rxfilename as input "
                    << "(did you forget ark:?)";
       std::string cmvn_rxfilename = cmvn_rspecifier_or_rxfilename;
       bool binary;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
-        Matrix<float> feat(feat_reader.Value());
+        Matrix<BaseFloat> feat(feat_reader.Value());
         ApplyCmvn(cmvn_stats, norm_vars, &feat);
         feat_writer.Write(utt, feat);
       }

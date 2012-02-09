@@ -44,7 +44,8 @@ int main(int argc, char *argv[]) {
 
     float delta = kDelta;
     ParseOptions po(usage);
-    po.Register("delta", &delta, "Delta likelihood used for quantization of weights");
+    po.Register("delta", &delta,
+                "Delta likelihood used for quantization of weights");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 1 || po.NumArgs() > 3) {
@@ -54,21 +55,13 @@ int main(int argc, char *argv[]) {
 
     int32 subseq_sym;
     if (!ConvertStringToInteger(po.GetArg(1), &subseq_sym))
-      KALDI_EXIT << "Invalid subsequential symbol "<<po.GetArg(1);
+      KALDI_ERR << "Invalid subsequential symbol "<<po.GetArg(1);
 
-    std::string fst_in_filename;
-    fst_in_filename = po.GetOptArg(2);
-    if (fst_in_filename == "-") fst_in_filename = "";
+    std::string fst_in_filename = po.GetOptArg(2);
 
-    std::string fst_out_filename;
-    fst_out_filename = po.GetOptArg(3);
-    if (fst_out_filename == "-") fst_out_filename = "";
+    std::string fst_out_filename = po.GetOptArg(3);
 
-    VectorFst<StdArc> *fst = VectorFst<StdArc>::Read(fst_in_filename);
-    if (!fst) {
-      std::cerr << "fstdeterminizestar: could not read input fst from " << fst_in_filename << '\n';
-      return 1;
-    }
+    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
 
     int32 h = HighestNumberedInputSymbol(*fst);
     if (subseq_sym <= h) {
@@ -77,15 +70,12 @@ int main(int argc, char *argv[]) {
 
     AddSubsequentialLoop(subseq_sym, fst);
 
-    if (! fst->Write(fst_out_filename) ) {
-      std::cerr << "fstaddsubsequentialloop: error writing the output to "<<fst_out_filename << '\n';
-      return 1;
-    }
+    WriteFstKaldi(*fst, fst_out_filename);
     delete fst;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
-  return 0;
 }
 

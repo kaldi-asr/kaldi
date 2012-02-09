@@ -48,11 +48,13 @@ template<>
 double VecVec<>(const VectorBase<double>& ra, const VectorBase<double>& rb);
 
 template<>
+template<>
 void VectorBase<float>::AddVec(const float alpha, const VectorBase<float>& rv);
 
 template<>
-void VectorBase<double>::AddVec(const double alpha,
-                                const VectorBase<double>& rv);
+template<>
+void VectorBase<double>::AddVec<double>(const double alpha,
+                                        const VectorBase<double>& rv);
 
 template<>
 void VectorBase<float>::AddMatVec(const float alpha, const MatrixBase<float>& M,

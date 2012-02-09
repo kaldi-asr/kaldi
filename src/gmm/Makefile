@@ -4,12 +4,12 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = diag-gmm-test estimate-diag-gmm-test full-gmm-test estimate-full-gmm-test \
-		am-diag-gmm-test
+TESTFILES = diag-gmm-test mle-diag-gmm-test full-gmm-test mle-full-gmm-test \
+		am-diag-gmm-test ebw-diag-gmm-test
 
-OBJFILES = diag-gmm.o estimate-diag-gmm.o am-diag-gmm.o estimate-am-diag-gmm.o \
-		full-gmm.o estimate-full-gmm.o model-common.o \
-		model-test-common.o 
+OBJFILES = diag-gmm.o diag-gmm-normal.o mle-diag-gmm.o am-diag-gmm.o mle-am-diag-gmm.o \
+		full-gmm.o full-gmm-normal.o mle-full-gmm.o fmpe-am-diag-gmm.o model-common.o \
+		model-test-common.o ebw-diag-gmm.o
 
 LIBFILE = kaldi-gmm.a
 
@@ -17,8 +17,10 @@ all:  $(LIBFILE) $(TESTFILES)
 
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 
 $(TESTFILES): $(LIBFILE) ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
@@ -35,7 +37,7 @@ clean:
 	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

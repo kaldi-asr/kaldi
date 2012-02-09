@@ -53,7 +53,10 @@ bool IsToken(const std::string &token) {
   if (l == 0) return false;
   for (size_t i = 0; i < l; i++) {
     char c = token[i];
-    if ( !isprint(c) || isspace(c) ) return false;
+    if ( (!isprint(c) || isspace(c)) && (isascii(c) || c == (char)255) ) return false;
+    // The "&& (isascii(c) || c == 255)" was added so that we won't reject non-ASCII
+    // characters such as French characters with accents [except for 255 which is
+    // "nbsp", a form of space].
   }
   return true;
 }

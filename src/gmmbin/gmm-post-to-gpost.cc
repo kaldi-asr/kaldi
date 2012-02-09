@@ -33,8 +33,10 @@ int main(int argc, char *argv[]) {
         " gmm-post-to-gpost 1.mdl scp:train.scp ark:1.post ark:1.gpost\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
+    BaseFloat rand_prune = 0.0;
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning of posteriors less than this");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -54,9 +56,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     double tot_like = 0.0;
@@ -87,16 +89,22 @@ int main(int argc, char *argv[]) {
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
         for (size_t i = 0; i < posterior.size(); i++) {
-          gpost[i].resize(posterior[i].size());
+          gpost[i].reserve(posterior[i].size());
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,  // transition identifier.
                 pdf_id = trans_model.TransitionIdToPdf(tid);
             BaseFloat weight = posterior[i][j].second;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
-            gpost[i][j].first = tid;
+            Vector<BaseFloat> this_post_vec;           
             BaseFloat like =
-                gmm.ComponentPosteriors(mat.Row(i), &(gpost[i][j].second));
-            gpost[i][j].second.Scale(weight);
+                gmm.ComponentPosteriors(mat.Row(i), &this_post_vec);
+            this_post_vec.Scale(weight);
+            if (rand_prune > 0.0)
+              for (int32 k = 0; k < this_post_vec.Dim(); k++)
+                this_post_vec(k) = RandPrune(this_post_vec(k),
+                                             rand_prune);
+            if (!this_post_vec.IsZero())
+              gpost[i].push_back(std::make_pair(tid, this_post_vec));
             tot_like_this_file += like * weight;
             tot_weight += weight;
           }

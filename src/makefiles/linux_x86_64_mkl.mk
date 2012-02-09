@@ -13,15 +13,19 @@ ifndef MKLROOT
 $(error MKLROOT not defined.)
 endif
 
+ifndef FSTROOT
+$(error FSTROOT not defined.)
+endif
+
 MKLLIB ?= $(MKLROOT)/lib/em64t
 
-CXXFLAGS = -msse -msse2 -Wall -I.. \
+CXXFLAGS = -m64 -msse -msse2 -Wall -I.. \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
-      -I ../../tools/openfst/include \
-      -g -O0 -DKALDI_PARANOID -m64
+      -I$(FSTROOT)/include \
+      -g -O0 -DKALDI_PARANOID
 
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
 MKL_STA_SEQ = $(MKLLIB)/libmkl_solver_lp64_sequential.a -Wl,--start-group \
@@ -44,7 +48,7 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 MKLFLAGS = $(MKL_DYN_MUL)
 
 LDFLAGS = -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl $(MKLFLAGS) -lm
+LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(MKLFLAGS) -lm
 CC = g++
 CXX = g++
 AR = ar

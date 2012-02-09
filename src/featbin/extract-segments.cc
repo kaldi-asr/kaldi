@@ -119,10 +119,10 @@ int main(int argc, char *argv[]) {
                                             // of the segment to
                                             // corresponding sample
                                             // number
-	end_samp = end * samp_freq,// convert ending time of the segment
+          end_samp = end * samp_freq,// convert ending time of the segment
                                // to corresponding sample number
-	num_samp = wave_data.NumCols(), // total number of samples present in wav data
-	num_chan = wave_data.NumRows(); // total number of channels present in wav file
+          num_samp = wave_data.NumCols(), // total number of samples present in wav data
+          num_chan = wave_data.NumRows(); // total number of channels present in wav file
       /* start sample must be less than total number of samples 
        * otherwise skip the segment
        */
@@ -135,11 +135,12 @@ int main(int argc, char *argv[]) {
        * otherwise skip the segment
        */
       if(end_samp > num_samp) {
-        if(end_samp > num_samp + static_cast<int32>(0.5 * samp_freq))
+        if(end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) {
           KALDI_WARN << "End sample too far out of range " << end_samp
                      << " [length:] " << num_samp << ", skipping segment "
                      << segment;
-        continue;
+          continue;
+        }
         end_samp = num_samp; // for small differences, just truncate.
       }
       /* check whether the segment size is less than minimum segment length(default 0.1 sec)
@@ -172,8 +173,7 @@ int main(int argc, char *argv[]) {
        */
       SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1, start_samp, end_samp-start_samp);
       WaveData segment_wave(samp_freq, segment_matrix);
-      if(!writer.Write(segment, segment_wave)) // write segment 
-        KALDI_ERR << "Failed to write segment: processling line " << line;
+      writer.Write(segment, segment_wave); // write segment in wave format.
       num_success++;
     }
     KALDI_LOG << "Successfully processed " << num_success << " lines out of "

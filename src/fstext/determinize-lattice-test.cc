@@ -94,8 +94,7 @@ template<class Arc> void TestDeterminizeLattice() {
     VectorFst<Arc> det_fst;
     try {
       DeterminizeLatticeOptions lat_opts;
-      lat_opts.max_loop = 100;
-      lat_opts.max_arcs = 100;
+      lat_opts.max_mem = 100;
       
       if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &det_fst, lat_opts, NULL))
         throw std::runtime_error("could not determinize");

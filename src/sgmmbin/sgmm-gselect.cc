@@ -27,7 +27,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Precompute Gaussian indices for SGMM training "
         "Usage: sgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
-        "e.g.: sgmm-gselect 1.sgmm \"ark:feature-command |\" ark:1.gs\n";
+        "e.g.: sgmm-gselect 1.sgmm \"ark:feature-command |\" ark:1.gs\n"
+        "Note: you can do the same thing by combining the programs sgmm-write-ubm, fgmm-global-to-gmm,\n"
+        "gmm-gselect and fgmm-gselect\n";
 
     ParseOptions po(usage);
     kaldi::SgmmGselectConfig sgmm_opts;
@@ -55,10 +57,10 @@ int main(int argc, char *argv[]) {
     AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_filename, &binary);
+      Input ki(model_filename, &binary);
       TransitionModel trans_model;
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     double tot_like = 0.0;
@@ -66,14 +68,8 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorVectorWriter gselect_writer(gselect_wspecifier);
-    BaseFloatWriter likelihood_writer;
-    if(likelihood_wspecifier != "" &&
-       !likelihood_writer.Open(likelihood_wspecifier))
-      KALDI_ERR << "Error initializing writer to write likelihoods";
-    RandomAccessInt32VectorReader preselect_reader;
-    if(preselect_rspecifier != "")
-      if(!preselect_reader.Open(preselect_rspecifier))
-        KALDI_ERR << "Error opening preselect table.";
+    BaseFloatWriter likelihood_writer(likelihood_wspecifier);
+    RandomAccessInt32VectorReader preselect_reader(preselect_rspecifier);
 
     int32 num_done = 0, num_err = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {

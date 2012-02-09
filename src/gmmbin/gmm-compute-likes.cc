@@ -54,9 +54,9 @@ int main(int argc, char *argv[]) {
     {
       bool binary;
       TransitionModel trans_model;  // not needed.
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     BaseFloatMatrixWriter loglikes_writer(loglikes_wspecifier);

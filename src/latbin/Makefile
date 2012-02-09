@@ -5,7 +5,12 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
-           lattice-lmrescore lattice-scale lattice-union lattice-to-post
+           lattice-lmrescore lattice-scale lattice-union lattice-to-post \
+           lattice-determinize lattice-oracle lattice-rmali \
+           lattice-compose lattice-boost-ali lattice-copy lattice-to-fst \
+           lattice-to-phone-lattice lattice-interp lattice-project \
+           lattice-add-trans-probs lattice-difference lattice-word-align
+
 
 OBJFILES =
 
@@ -15,7 +20,8 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../lat/kaldi-lat.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
+	../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 
 
@@ -30,7 +36,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

@@ -23,7 +23,7 @@ using std::vector;
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "sgmm/am-sgmm.h"
-# include "sgmm/fmllr-sgmm.h"
+#include "sgmm/fmllr-sgmm.h"
 #include "hmm/transition-model.h"
 
 namespace kaldi {

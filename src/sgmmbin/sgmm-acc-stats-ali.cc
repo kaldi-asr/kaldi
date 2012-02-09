@@ -33,9 +33,9 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-acc-stats-ali 1.mdl 1.ali scp:train.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
-    std::string update_flags_str = "vMNwcS";
+    std::string update_flags_str = "vMNwcSt";
     BaseFloat rand_prune = 1.0e-05;
     kaldi::SgmmGselectConfig sgmm_opts;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -67,9 +67,9 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
@@ -166,9 +166,12 @@ int main(int argc, char *argv[]) {
                       << alignment.size() <<" frames.";
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
-        if (num_done % 10 == 0)
-          KALDI_LOG << "Avg like per frame so far is "
-                    << (tot_like/tot_t);
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << utt << " avg. like is "
+                    << (tot_like_this_file/alignment.size())
+                    << " over " << alignment.size() <<" frames.";
+        }
       }
     }
     KALDI_LOG << "Overall like per frame (Gaussian only) = "

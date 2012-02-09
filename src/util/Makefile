@@ -16,8 +16,10 @@ all:  $(LIBFILE) $(TESTFILES)
 
 
 $(LIBFILE): $(OBJFILES)
+	while ! mkdir .lock; do sleep 1; done
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	rmdir .lock
 
 
 $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a  ../matrix/kaldi-matrix.a
@@ -34,7 +36,7 @@ clean:
 	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

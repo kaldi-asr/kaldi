@@ -59,19 +59,15 @@ class VectorBase {
 
   /// Indexing  operator (const).
   inline Real operator() (MatrixIndexT i) const {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
-#endif
     return *(data_ + i);
   }
 
   /// Indexing operator (non-const).
   inline Real & operator() (MatrixIndexT i) {
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
-#endif
     return *(data_ + i);
   }
 
@@ -116,6 +112,7 @@ class VectorBase {
   void Abs();
 
   /// Apply soft-max to vector and return normalizer (log sum of exponentials).
+  /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
   Real ApplySoftMax();
 
   /// Take all  elements of vector to a power.
@@ -129,9 +126,6 @@ class VectorBase {
 
   /// Invert all elements.
   void InvertElements();
-
-  /// Add vector : *this = *this + alpha * rv.
-  void AddVec(const Real alpha, const VectorBase<Real>& v);
 
   /// Add vector : *this = *this + alpha * rv (with casting between floats and
   /// doubles)
@@ -173,7 +167,7 @@ class VectorBase {
   void Add(Real c);
 
   /// Add element-by-element product of vectlrs:
-  //  this <-- v .* r + beta*this .
+  //  this <-- alpha * v .* r + beta*this .
   void AddVecVec(Real alpha, const VectorBase<Real>& v,
                  const VectorBase<Real> &r, Real beta);
 

@@ -349,10 +349,10 @@ class TableWriter {
   // Returns true if open for writing.
   bool IsOpen() const;
 
-  inline bool Write(const std::string &key, const T &value) const;
+  // Write the object.  Throws  std::runtime_erroron error (via the
+  // KALDI_ERR macro)
+  inline void Write(const std::string &key, const T &value) const;
 
-  // WriteThrow is as Write above, but throws on error.
-  inline void WriteThrow(const std::string &key, const T &value) const;
 
   // Flush will flush any archive; it does not return error status
   // or throw, any errors will be reported on the next Write or Close.

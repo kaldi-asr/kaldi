@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "gmm/estimate-am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 
 
 
@@ -32,11 +32,15 @@ int main(int argc, char *argv[]) {
         "Accumulate stats for GMM training (reading in posteriors).\n"
         "Usage:  gmm-acc-stats [options] <model-in> <feature-rspecifier> <posteriors-rspecifier> <stats-out>\n"
         "e.g.: \n"
-        " gmm-acc-stats 1.mdl 1.ali scp:train.scp ark:1.post 1.acc\n";
+        " gmm-acc-stats 1.mdl 1.post scp:train.scp ark:1.post 1.acc\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
+    std::string update_flags_str = "mvwt"; // note: t is ignored, we acc
+    // transition stats regardless.
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("update-flags", &update_flags_str, "Which GMM parameters will be "
+                "updated: subset of mvwt.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -56,15 +60,15 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     {
       bool binary;
-      Input is(model_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_gmm.Read(is.Stream(), binary);
+      Input ki(model_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     Vector<double> transition_accs;
     trans_model.InitStats(&transition_accs);
-    MlEstimateAmDiagGmm gmm_accs;
-    gmm_accs.InitAccumulators(am_gmm, kGmmAll);
+    AccumAmDiagGmm gmm_accs;
+    gmm_accs.Init(am_gmm, StringToGmmFlags(update_flags_str));
 
     double tot_like = 0.0;
     double tot_t = 0.0;

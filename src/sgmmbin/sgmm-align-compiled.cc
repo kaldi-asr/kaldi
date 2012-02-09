@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "e.g.: sgmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+    bool binary = true;
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
@@ -68,6 +68,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    if (retry_beam != 0 && retry_beam <= beam)
+      KALDI_WARN << "Beams do not make sense: beam " << beam
+                 << ", retry-beam " << retry_beam;
 
     FasterDecoderOptions decode_opts;
     decode_opts.beam = beam;  // Don't set the other options.
@@ -81,16 +84,14 @@ int main(int argc, char *argv[]) {
     AmSgmm am_sgmm;
     {
       bool binary;
-      Input is(model_in_filename, &binary);
-      trans_model.Read(is.Stream(), binary);
-      am_sgmm.Read(is.Stream(), binary);
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader;
-    if (!gselect_rspecifier.empty() && !gselect_reader.Open(gselect_rspecifier))
-      KALDI_ERR << "Unable to open stream for gaussian-selection indices";
+    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
@@ -156,11 +157,11 @@ int main(int argc, char *argv[]) {
           num_other_error++;
           continue;
         }
-
+        
         {  // Add transition-probs to the FST.
           std::vector<int32> disambig_syms;  // empty.
           AddTransitionProbs(trans_model, disambig_syms,
-                             gopts.trans_prob_scale, gopts.self_loop_scale,
+                             gopts.transition_scale, gopts.self_loop_scale,
                              &decode_fst);
         }
 
@@ -170,8 +171,7 @@ int main(int argc, char *argv[]) {
                                              features, *gselect, log_prune, acoustic_scale);
 
         decoder.Decode(&sgmm_decodable);
-        KALDI_LOG << "Length of file is " << features.NumRows();
-
+        
         VectorFst<LatticeArc> decoded;  // linear FST.
         bool ans = decoder.ReachedFinal() // consider only final states.
             && decoder.GetBestPath(&decoded);  
@@ -197,8 +197,12 @@ int main(int argc, char *argv[]) {
           tot_like += like;
           alignment_writer.Write(utt, alignment);
           num_success ++;
-          KALDI_LOG << "Log-like per frame for this file is "
-                    << (like / features.NumRows());
+          if (num_success % 50  == 0) {
+            KALDI_LOG << "Processed " << num_success << " utterances, "
+                      << "log-like per frame for " << utt << " is "
+                      << (like / features.NumRows()) << " over "
+                      << features.NumRows() << " frames.";
+          }
         } else {
           KALDI_WARN << "Did not successfully decode file " << utt << ", len = "
                      << (features.NumRows());

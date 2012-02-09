@@ -86,6 +86,11 @@ y 2
 z 3
 EOF
 \endverbatim
+Note: for the following steps to work, if you don't have the current directory on your path
+you may have to type:
+\verbatim
+export PATH=.:$PATH
+\endverbatim
 Next create a binary-format FST:
 \verbatim
 fstcompile --isymbols=isyms.txt --osymbols=osyms.txt text.fst binary.fst

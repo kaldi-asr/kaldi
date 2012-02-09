@@ -5,7 +5,7 @@ include ../kaldi.mk
 
 BINFILES = compute-mfcc-feats compute-plp-feats compute-cmvn-stats add-deltas \
 	remove-mean apply-cmvn transform-feats copy-feats compose-transforms \
-    splice-feats extract-segments subset-feats
+    splice-feats extract-segments subset-feats feat-to-len feat-to-dim
 
 
 OBJFILES = 
@@ -30,7 +30,7 @@ clean:
 	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >&/dev/null || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

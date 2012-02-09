@@ -1,15 +1,19 @@
-# makefiles/kaldi.mk.darwin contains Darwin-specific rules
+# makefiles/darwin_10_6.mk contains Darwin-specific rules for OS X 10.6.*
 
-CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0  \
-    -DHAVE_POSIX_MEMALIGN -DHAVE_CLAPACK \
-    -Wno-sign-compare -Winit-self \
-    -I../../tools/openfst/include \
-    -DHAVE_EXECINFO_H -DHAVE_CXXABI_H \
-    -rdynamic \
-    -g -O0 -DKALDI_PARANOID
+ifndef FSTROOT
+$(error FSTROOT not defined.)
+endif
+
+CXXFLAGS = -msse -msse2 -Wall -I.. \
+      -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
+      -Wno-sign-compare -Winit-self \
+      -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -rdynamic \
+      -DHAVE_CLAPACK \
+      -I$(FSTROOT)/include \
+      -g -O0 -DKALDI_PARANOID
 
 LDFLAGS = -g -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl -lm -framework Accelerate
+LDLIBS = $(FSTROOT)/lib/libfst.a -ldl -lm -framework Accelerate
 CXX = g++
 CC = g++
 RANLIB = ranlib

@@ -53,12 +53,14 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    std::string disambig_list_file = "";
-    std::string phone_separator = "/";
-    std::string disambig_prefix = "#";
+    std::string disambig_list_file = "",
+        phone_separator = "/",
+        disambig_prefix = "#";
 
-    po.Register("phone-separator", &phone_separator, "Separator for phones in phone-in-context symbols.");
-    po.Register("disambig-prefix", &disambig_prefix, "Prefix for disambiguation symbols (if used).");
+    po.Register("phone-separator", &phone_separator,
+                "Separator for phones in phone-in-context symbols.");
+    po.Register("disambig-prefix", &disambig_prefix,
+                "Prefix for disambiguation symbols (if used).");
 
     po.Read(argc, argv);
 
@@ -67,10 +69,9 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string phones_symtab_filename = po.GetArg(1);
-    std::string ilabel_info_filename = po.GetArg(2);
-    std::string clg_symtab_filename = "";
-    clg_symtab_filename = po.GetOptArg(3);
+    std::string phones_symtab_filename = po.GetArg(1),
+        ilabel_info_filename = po.GetArg(2),
+        clg_symtab_filename = po.GetOptArg(3);
 
     std::vector<std::vector<kaldi::int32> > ilabel_info;
     {
@@ -84,7 +85,7 @@ int main(int argc, char *argv[]) {
     {  // read phone symbol table.
       std::ifstream is(phones_symtab_filename.c_str());
       phones_symtab = fst::SymbolTable::ReadText(is, phones_symtab_filename);
-      if (!phones_symtab) KALDI_EXIT << "Could not read phones symbol-table file "<<phones_symtab_filename;
+      if (!phones_symtab) KALDI_ERR << "Could not read phones symbol-table file "<<phones_symtab_filename;
     }
 
     fst::SymbolTable *clg_symtab =
@@ -95,13 +96,14 @@ int main(int argc, char *argv[]) {
 
     if (clg_symtab_filename == "") {
       if (!clg_symtab->WriteText(std::cout))
-        KALDI_EXIT << "Cannot write symbol table to standard output.";
+        KALDI_ERR << "Cannot write symbol table to standard output.";
     } else {
       if (!clg_symtab->WriteText(clg_symtab_filename))
-        KALDI_EXIT << "Cannot open symbol table file "<<clg_symtab_filename<<" for writing.";
+        KALDI_ERR << "Cannot open symbol table file "<<clg_symtab_filename<<" for writing.";
     }
     delete clg_symtab;
     delete phones_symtab;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

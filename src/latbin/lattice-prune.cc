@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         n_states_in = 0, n_states_out = 0;
 
     if (acoustic_scale == 0.0)
-      KALDI_EXIT << "Do not use a zero acoustic scale (cannot be inverted)";
+      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
     LatticeWeight beam_weight(beam, static_cast<BaseFloat>(0.0));
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
