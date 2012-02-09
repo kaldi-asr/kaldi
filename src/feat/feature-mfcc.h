@@ -61,7 +61,7 @@ struct MfccOptions {
     po->Register("energy-floor", &energy_floor, "Floor on energy (absolute, not relative) in MFCC computation");
     po->Register("raw-energy", &raw_energy, "If true, compute energy (if using energy) before Hamming window and preemphasis");
     po->Register("cepstral-lifter", &cepstral_lifter, "Constant that controls scaling of MFCCs");
-    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.");
+    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.  Warning: not sufficient to get HTK compatible features (need to change other parameters).");
   }
 
 };

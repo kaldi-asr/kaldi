@@ -38,26 +38,32 @@ void WaveData::Expect4ByteTag(std::istream &is, const char *expected) {
 
 // static
 uint32 WaveData::ReadUint32(std::istream &is) {
-  char result[4];
-  is.read(result, 4);
+  union {
+    char result[4];
+    uint32 ans;
+  } u;
+  is.read(u.result, 4);
 #ifdef __BIG_ENDIAN__
   KALDI_SWAP4(result);
 #endif
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
-  return * reinterpret_cast<uint32*>(result);
+  return u.ans;
 }
 
 // static
 uint16 WaveData::ReadUint16(std::istream &is) {
-  char result[2];
-  is.read(result, 2);
+  union {
+    char result[2];
+    int16 ans;
+  } u;
+  is.read(u.result, 2);
 #ifdef __BIG_ENDIAN__
   KALDI_SWAP2(result);
 #endif
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
-  return * reinterpret_cast<uint16*>(result);
+  return u.ans;
 }
 
 // static
@@ -69,23 +75,29 @@ void WaveData::Read4ByteTag(std::istream &is, char *dest) {
 
 // static
 void WaveData::WriteUint32(std::ostream &os, int32 i) {
-  char buf[4];
-  *(reinterpret_cast<uint32*>(buf)) = i;
+  union {
+    char buf[4];
+    int i;
+  } u;
+  u.i = i;
 #ifdef __BIG_ENDIAN__
   KALDI_SWAP4(result);
 #endif
-  os.write(buf, 4);
+  os.write(u.buf, 4);
   if(os.fail())
     KALDI_ERR << "WaveData: error writing to stream.";
 }
 
 void WaveData::WriteUint16(std::ostream &os, int16 i) {
-  char buf[4];
-  *(reinterpret_cast<uint16*>(buf)) = i;
+  union {
+    char buf[4];
+    int i;
+  } u;
+  u.i = i;
 #ifdef __BIG_ENDIAN__
   KALDI_SWAP2(result);
 #endif
-  os.write(buf, 2);
+  os.write(u.buf, 2);
   if(os.fail())
     KALDI_ERR << "WaveData: error writing to stream.";
 }
