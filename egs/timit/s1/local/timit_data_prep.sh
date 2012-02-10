@@ -46,7 +46,7 @@ fi
 
 
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
-../../local/make_trans.pl trn train_sph.flist train_trans.txt train_sph.scp
+../../local/make_trans.pl trn train_sph.flist train_trans.txt train_sph.scp || exit 1;
 mv train_trans.txt tmp; sort -k 1 tmp > train_trans.txt
 mv train_sph.scp tmp; sort -k 1 tmp > train_sph.scp
 rm tmp
@@ -100,7 +100,7 @@ echo "# of utterances in dev set = ${num_lines}"
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
 for test in test dev ; do
     echo "Finalizing ${test}"
-    ../../local/make_trans.pl ${test} ${test}_sph.flist ${test}_trans.txt ${test}_sph.scp
+    ../../local/make_trans.pl ${test} ${test}_sph.flist ${test}_trans.txt ${test}_sph.scp || exit 1;
     mv ${test}_trans.txt tmp; sort -k 1 tmp > ${test}_trans.txt
     mv ${test}_sph.scp tmp; sort -k 1 tmp > ${test}_sph.scp
     rm tmp;

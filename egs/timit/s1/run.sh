@@ -1,5 +1,6 @@
 . path.sh
-local/timit_data_prep.sh /ais/gobi2/speech/TIMIT
+local/timit_data_prep.sh /mnt/matylda2/data/TIMIT
+#local/timit_data_prep.sh /ais/gobi2/speech/timit
 local/timit_train_lms.sh data/local
 local/timit_format_data.sh
 

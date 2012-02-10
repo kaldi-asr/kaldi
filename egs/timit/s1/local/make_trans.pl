@@ -15,7 +15,7 @@
 
 sub ParseTranscript() {
     my $transcript_file = $_[0];
-    open(F, "<$transcript_file") || die "Error opening phone transcription file $input_snr\n";
+    open(F, "<$transcript_file") || die "Error opening phone transcription file $transcript_file\n";
     my $trans = "h#" ; 
     my $line = <F> ; 
     chomp ($line);
@@ -61,7 +61,7 @@ while(<G>) {
     $key = $prefix . "_" . $spkname . "_" . $uttname;
     $key =~ tr/A-Z/a-z/; # Make it all lower case.
      # to make the numerical and string-sorted orders the same.
-    my $transcript_file = substr($_, 0, length($_)-4) . "PHN";
+    my $transcript_file = substr($_, 0, length($_)-4) . "phn";
     my $trans = &ParseTranscript($transcript_file);
     $trans =~ tr/a-z/A-Z/; # Make it all upper case.
     print P "$key $sph_file\n";
