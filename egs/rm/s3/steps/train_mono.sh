@@ -90,8 +90,8 @@ while [ $x -lt $numiters ]; do
         2> $dir/align.$x.log || exit 1;
   fi
   gmm-acc-stats-ali --binary=false $dir/$x.mdl "$feats" ark:$dir/cur.ali $dir/$x.acc 2> $dir/acc.$x.log  || exit 1;
-  gmm-est --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
-  rm $dir/$x.mdl $dir/$x.acc
+  gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl $dir/$x.acc $dir/$[$x+1].mdl 2> $dir/update.$x.log || exit 1;
+  rm $dir/$x.mdl $dir/$x.acc $dir/$x.occs 2>/dev/null
   if [ $x -le $maxiterinc ]; then
      numgauss=$[$numgauss+$incgauss];
   fi
@@ -99,7 +99,7 @@ while [ $x -lt $numiters ]; do
   x=$[$x+1]
 done
 
-( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl )
+( cd $dir; rm final.mdl 2>/dev/null; ln -s $x.mdl final.mdl; ln -s $x.occs final.occs )
 
 # example of showing the alignments:
 # show-alignments data/lang/phones.txt $dir/30.mdl ark:$dir/cur.ali | head -4

@@ -88,7 +88,7 @@ if( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state
         @A = split(" ", $_);
         $w = shift @A;
         if(@A == 0) { # For empty words (<s> and </s>) insert no optional
-                      # silence (not needed as adjacent words supply it)....
+            # silence (not needed as adjacent words supply it)....
                       # actually we only hit this case for the lexicon without disambig
                       # symbols but doesn't ever matter as training transcripts don't have <s> or </s>.
             print "$loopstate\t$loopstate\t<eps>\t$w\n";

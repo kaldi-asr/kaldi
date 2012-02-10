@@ -56,7 +56,7 @@ cp $srcdir/topo $dir
 
 
 awk '{ printf("%s ",$1); for(x=2; x<=NF&&x<='$nutt'+1;x++)
-    {  printf("%s ", $x); } printf("\n"); }' <data/train.spk2utt >$dir/spk2utt
+     {  printf("%s ", $x); } printf("\n"); }' <data/train.spk2utt >$dir/spk2utt
 scripts/spk2utt_to_utt2spk.pl < $dir/spk2utt > $dir/utt2spk
 cat $dir/utt2spk | awk '{print $1}' > $dir/uttlist
 scripts/filter_scp.pl $dir/uttlist <data/train.scp >$dir/train.scp
@@ -140,9 +140,7 @@ while [ $x -lt $numiters ]; do
      # Remove previous transforms, if present. 
      if [ $x -gt 1 ]; then rm $dir/$[$x-1].trans; fi
 
-     # Now change $feats to correspond to the transformed features.  We compose the
-     # transforms themselves (it's more efficient than transforming the features
-     # twice).
+     # Now change $feats to correspond to the transformed features. 
      feats="ark:splice-feats scp:data/train.scp ark:- | transform-feats $dir/lda.mat ark:- ark:- | transform-feats $utt2spk_opt ark:$dir/$x.trans ark:- ark:- |"
    fi 
 

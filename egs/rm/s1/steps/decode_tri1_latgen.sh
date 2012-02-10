@@ -48,7 +48,7 @@ for test in mar87 oct87 feb89 oct89 feb91 sep92; do
 
    scripts/sym2int.pl --ignore-first-field data/words.txt data_prep/test_${test}_trans.txt | \
     compute-wer --mode=present ark:-  ark,p:$dir/test_${test}.acwt${inv_acwt}.tra \
-     >& $dir/wer_${inv_acwt}
+     >& $dir/wer_${test}_${inv_acwt}
  done
 
  ) &

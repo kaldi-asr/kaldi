@@ -118,8 +118,8 @@ while [ $iter -lt $numiters ]; do
    if echo $realign_iters | grep -w $iter >/dev/null; then
       echo "Aligning data"
       sgmm-align-compiled $spkvecs_opt $utt2spk_opt $scale_opts "$gselect_opt" \
-          --retry-beam=40 $dir/$iter.mdl "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-      	ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
+         --beam=8 --retry-beam=40 $dir/$iter.mdl "ark:gunzip -c $dir/graphs.fsts.gz|" \
+         "$feats" ark:$dir/cur.ali 2> $dir/align.$iter.log || exit 1;
    fi
    if echo $spkvec_iters | grep -w $iter >/dev/null; then
     ( ali-to-post ark:$dir/cur.ali ark:- | \

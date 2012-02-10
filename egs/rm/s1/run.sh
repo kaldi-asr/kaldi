@@ -59,7 +59,10 @@ steps/make_mfcc_test.sh $mfccdir
 steps/train_mono.sh
 steps/decode_mono.sh  &
 steps/train_tri1.sh
-(steps/decode_tri1.sh ; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ; steps/decode_tri1_latgen.sh) &
+(steps/decode_tri1.sh; steps/decode_tri1_fmllr.sh; steps/decode_tri1_regtree_fmllr.sh ;steps/decode_tri1_latgen.sh; steps/decode_tri1_latoracle.sh) &
+
+# putting here in case anyone needs ctm output.
+scripts/make_ctms.sh exp/tri1 exp/decode_tri1
 
 steps/train_tri2a.sh
 (steps/decode_tri2a.sh ; steps/decode_tri2a_fmllr.sh; steps/decode_tri2a_fmllr_utt.sh ;
@@ -128,8 +131,4 @@ steps/train_ubma.sh
 
 (steps/train_ubmd.sh; steps/train_sgmme.sh; steps/decode_sgmme.sh; steps/decode_sgmme_fmllr.sh;
   steps/decode_sgmme_latgen.sh )&
-
-
-
-
 

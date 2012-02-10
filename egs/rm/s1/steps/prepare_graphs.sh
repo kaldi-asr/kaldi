@@ -21,6 +21,7 @@
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
+mkdir -p data
 cp data_prep/G.txt data/
 scripts/make_words_symtab.pl < data/G.txt > data/words.txt
 cp data_prep/lexicon.txt data/
@@ -45,6 +46,9 @@ cat data_prep/train_trans.txt | \
 
 # silprob = 0.5: same prob as word.
 scripts/make_lexicon_fst.pl data/lexicon.txt 0.5 sil  | fstcompile --isymbols=data/phones.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L.fst
+
+cat data/lexicon.txt | awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+ scripts/make_lexicon_fst.pl - 0.5 sil | fstcompile --isymbols=data/phones_disambig.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L_align.fst
 
 scripts/make_lexicon_fst.pl data/lexicon_disambig.txt 0.5 sil '#'$ndisambig | fstcompile --isymbols=data/phones_disambig.txt --osymbols=data/words.txt --keep_isymbols=false --keep_osymbols=false | fstarcsort --sort_type=olabel > data/L_disambig.fst
 

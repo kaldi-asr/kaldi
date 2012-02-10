@@ -1,0 +1,19 @@
+
+# Note: WER is second number from the right.
+
+for x in exp/*/decode_*; do [ -d $x ] && grep Sum $x/score_*/*.sys | scripts/best_wer.sh; done 2>/dev/null
+for x in exp/*/decode_*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done 2>/dev/null
+
+
+exp/tri4a/decode_eval2000/score_13/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   66.8      24.1        9.1        3.9       37.1       71.2   |
+exp/tri5a/decode_eval2000/score_15/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   70.0      21.3        8.7        3.3       33.3       68.5   |
+exp/tri6a/decode_eval2000/score_14/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   72.3      19.8        7.9        3.3       31.0       67.2   |
+exp/sgmm5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:|   Sum/Avg      |   4459      42989   |   74.1       19.0        6.8        3.5       29.4       66.9   |
+exp/sgmm5a/decode_eval2000_fromlats/score_10/eval2000.ctm.filt.sys:|   Sum/Avg       |   4459       42989    |   72.3        20.3         7.5         3.7        31.4        68.2    |
+
+
+exp/tri4a/decode_train_dev/wer_14:%WER 37.74 [ 18570 / 49204, 2350 ins, 4463 del, 11757 sub ]
+exp/tri5a/decode_train_dev/wer_15:%WER 33.37 [ 16420 / 49204, 1929 ins, 4160 del, 10331 sub ]
+exp/tri5a_100k/decode_train_dev/wer_14:%WER 32.94 [ 16207 / 49204, 2069 ins, 3946 del, 10192 sub ]
+exp/tri6a/decode_train_dev/wer_14:%WER 31.37 [ 15435 / 49204, 1969 ins, 3758 del, 9708 sub ]
+exp/sgmm5a/decode_train_dev/wer_11:%WER 29.34 [ 14435 / 49204, 1882 ins, 3558 del, 8995 sub ]

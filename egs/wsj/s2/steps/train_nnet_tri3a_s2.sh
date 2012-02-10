@@ -3,10 +3,13 @@
 # To be run from ..
 if [ -f path.sh ]; then . path.sh; fi
 
-dir=exp/nnet_tri3a_s2
+dir=exp/nnet-bn_tri3a_s4b_net
 mkdir -p $dir/{log,nnet}
 
 
+#source directory with GMM models
+srcdir=exp/tri3a
+srcmodel=$srcdir/final.mdl
 
 
 
@@ -17,24 +20,53 @@ cat data/train.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
 
 N=$(cat $dir/train.scp | wc -l)
 CV=$((N/10))
-echo N $N CV $CV
+
 head -n $((N-CV)) $dir/train.scp > $dir/train.scp.tr
 tail -n $CV $dir/train.scp > $dir/train.scp.cv
 
-feats="ark:add-deltas --print-args=false scp:$dir/train.scp ark:- |"
-feats_tr="ark:add-deltas --print-args=false scp:$dir/train.scp.tr ark:- |"
-feats_cv="ark:add-deltas --print-args=false scp:$dir/train.scp.cv ark:- |"
+#splice the raw MFCC features
+feats="ark:splice-feats --print-args=false --left-context=15 --right-context=15 scp:$dir/train.scp ark:- |"
+feats_tr="ark:splice-feats --print-args=false --left-context=15 --right-context=15 scp:$dir/train.scp.tr ark:- |"
+feats_cv="ark:splice-feats --print-args=false --left-context=15 --right-context=15 scp:$dir/train.scp.cv ark:- |"
+#features  for LDA computation (same order as alignments from tri3a)
+rawfeats="ark:splice-feats --print-args=false --left-context=15 --right-context=15 scp:data/train.scp ark:- |"
+
+#compute LDA
+silphonelist=`cat data/silphones.csl`
+if [ ! -e $dir/lda.mat ]; then
+  # Now accumulate LDA stats.
+  echo lda stats
+  [ -f $dir/.error ] && rm $dir/.error
+  (for n in 1 2 3; do
+    ali-to-post "ark:gunzip -c $srcdir/cur$n.ali.gz|" ark:- 
+  done | weight-silence-post 0.0 $silphonelist $srcmodel ark:- ark:- | \
+  acc-lda $srcmodel "${rawfeats}" ark:- $dir/lda.acc ) 2>$dir/lda_acc.log || touch $dir/.error 
+
+  [ -f $dir/.error ] &&  echo lda-acc error && exit 1
+  # Compute the transform
+  echo lda estimation
+  est-lda --dim=240 $dir/lda.mat $dir/lda.acc  2>$dir/lda_est.log || exit 1
+fi
+
+#add transform to feats
+feats="$feats transform-feats $dir/lda.mat ark:- ark:- |"
+feats_tr="$feats_tr transform-feats $dir/lda.mat ark:- ark:- |"
+feats_cv="$feats_cv transform-feats $dir/lda.mat ark:- ark:- |"
+
+
 
 ###### SELECT ALIGNMENTS ######
 #choose directory with alignments
 dir_ali=exp/tri3a
 echo alignments: $dir_ali
-#merge the alignment files
-for ii in 1 2 3; do
-  gunzip -c $dir_ali/cur$ii.ali.gz
-done | gzip -c > $dir/cur.ali.gz
-#convert ali to pdf
-ali-to-pdf $dir_ali/final.mdl "ark:gunzip -c $dir/cur.ali.gz|" t,ark:$dir/cur.pdf
+if [ ! -f $dir/cur.pdf ]; then
+  #merge the alignment files
+  for ii in 1 2 3; do
+    gunzip -c $dir_ali/cur$ii.ali.gz
+  done | gzip -c > $dir/cur.ali.gz
+  #convert ali to pdf
+  ali-to-pdf $dir_ali/final.mdl "ark:gunzip -c $dir/cur.ali.gz|" t,ark:$dir/cur.pdf
+fi
 labels="ark:$dir/cur.pdf"
 #count the class frames for division by prior
 scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
@@ -44,38 +76,36 @@ scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 ###### NORMALIZE FEATURES ######
 #compute per-utterance CMN
 cmn="ark:$dir/cmn.ark"
-compute-cmvn-stats "$feats" $cmn
+[ -f ${cmn#ark:} ] || compute-cmvn-stats "$feats" $cmn
 feats="$feats apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=false $cmn ark:- ark:- |"
 
+
 #compute global CVN
 cvn="$dir/global_cvn.mat"
-compute-cmvn-stats "$feats" $cvn 
+[ -f $cvn ] || compute-cmvn-stats "$feats" $cvn 
 #add global CVN to feature extration
 feats="$feats apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ark:- |"
 
-#add splicing
-feats="$feats splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
-feats_tr="$feats_tr splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
-feats_cv="$feats_cv splice-feats --print-args=false --left-context=5 --right-context=5 ark:- ark:- |"
-
 
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
 num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
-scripts/gen_mlp_init.py --dim=429:568:${num_tgt} --gauss --negbias --seed=666 > $mlp_init
+scripts/gen_mlp_init.py --dim=240:800:30:800:${num_tgt} --gauss --negbias --seed=777 --linBNdim=30 > $mlp_init
 
 
 
-###### TRAIN ######
+########################################### 
+# TRAINING CONFIG ######
+########################################### 
 #global config for trainig
 max_iters=20
 start_halving_inc=0.5
 end_halving_inc=0.1
-lrate=0.001
+lrate=0.00005
 
 
 
@@ -102,11 +132,11 @@ for iter in $(seq -w $max_iters); do
   acc_prev=$acc
   if [ 1 == $(awk 'BEGIN{print('$acc_new' > '$acc')}') ]; then
     acc=$acc_new
-    mlp_best=$dir/nnet/$mlp_base.iter${iter}_tr$(printf "%.5g" $tr_acc)_cv$(printf "%.5g" $acc_new)
+    mlp_best=$dir/nnet/$mlp_base.iter${iter}_lr$(printf "%.4g" $lrate)_tr$(printf "%.5g" $tr_acc)_cv$(printf "%.5g" $acc_new)
     mv $mlp_next $mlp_best
     echo nnet $mlp_best accepted
   else
-    mlp_reject=$dir/nnet/$mlp_base.iter${iter}_tr$(printf "%.5g" $tr_acc)_cv$(printf "%.5g" $acc_new)
+    mlp_reject=$dir/nnet/$mlp_base.iter${iter}_lr$(printf "%.4g" $lrate)_tr$(printf "%.5g" $tr_acc)_cv$(printf "%.5g" $acc_new)
     mv $mlp_next $mlp_reject
     echo nnet $mlp_reject rejected 
   fi

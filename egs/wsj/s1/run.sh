@@ -216,6 +216,7 @@ steps/train_tri2a.sh || exit 1;
  for year in 92 93; do
   scripts/decode.sh exp/decode_tri2a_bg_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a.sh data/eval_nov${year}.scp 
   scripts/decode.sh exp/decode_tri2a_bg_latgen_eval${year} exp/graph_tri2a_bg/HCLG.fst steps/decode_tri2a_latgen.sh data/eval_nov${year}.scp 
+  scripts/latoracle.sh exp/decode_tri2a_bg_latgen_eval${year} data/eval_nov${year}.txt exp/decode_tri2a_bg_latoracle_eval${year}
   scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_eval${year} 
   scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_tg_pruned.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_tg_pruned_eval${year} 
   scripts/latrescore.sh exp/decode_tri2a_bg_latgen_eval${year} data/G_bg.fst data/G_bg.fst data/eval_nov${year}.txt exp/decode_tri2a_bg_rescore_bg_eval${year} 
@@ -255,6 +256,8 @@ done
  scripts/mkgraph.sh data/G_bg.fst exp/tri3a/tree exp/tri3a/final.mdl exp/graph_tri3a_bg || exit 1;
  scripts/decode.sh exp/decode_tri3a_bg_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov92.scp 
  scripts/decode.sh exp/decode_tri3a_bg_eval93 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a.sh data/eval_nov93.scp 
+ scripts/decode.sh exp/decode_tri3a_bg_latgen_eval92 exp/graph_tri3a_bg/HCLG.fst steps/decode_tri3a_latgen.sh data/eval_nov92.scp 
+ scripts/latrescore.sh exp/decode_tri3a_bg_latgen_eval92 data/G_bg.fst data/G_tg.fst data/eval_nov92.txt exp/decode_tri3a_bg_rescore_tg_eval92 
 )&
 
 
@@ -479,6 +482,17 @@ done
 )&
 
 
+# +GD
+steps/train_ubm3f.sh || exit 1;
+steps/train_sgmm3f.sh || exit 1;
+
+(scripts/mkgraph.sh data/G_tg_pruned.fst exp/sgmm3f/tree exp/sgmm3f/final.mdl exp/graph_sgmm3f_tg_pruned || exit 1;
+for year in 92 93; do
+  scripts/decode.sh --per-spk exp/decode_sgmm3f_tgpr_eval${year} exp/graph_sgmm3f_tg_pruned/HCLG.fst steps/decode_sgmm3f.sh data/eval_nov${year}.scp exp/graph_tri2k_tg_pruned/HCLG.fst
+done
+)&
+
+
 
 # see RESULTS for results...
 
@@ -487,3 +501,11 @@ done
 # cat exp/decode_tri2a_tgpr_eval92/scoring/hyp.sys
 
 
+# notes on timing of alignment... trying it in tri2a for 500 utts.  Took
+# [with retry-beam=40]
+# the results below seem to show that beam = 6 is the fastest...
+# of course this assumes the retry-beam is 40.
+# 20.9 sec @ beam = 7
+# 13.8 sec @ beam = 6
+# 14.4 sec @ beam = 5
+# 14.4 sec @ beam = 4

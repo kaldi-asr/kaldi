@@ -96,6 +96,7 @@ acc-tree-stats  --ci-phones=$silphonelist $srcmodel "$feats" "ark:gunzip -c $dir
 # separately about stress and position-in-word.
 
 # Don't include silences as things to be clustered -> --nosil option.
+
 scripts/make_shared_phones.sh --nosil | scripts/sym2int.pl data/phones.txt > $dir/phone_sets.list
 cluster-phones $dir/treeacc $dir/phone_sets.list $dir/questions.txt 2> $dir/cluster_phones.log || exit 1;
 scripts/int2sym.pl data/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
