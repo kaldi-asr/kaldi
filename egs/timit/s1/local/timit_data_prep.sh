@@ -21,14 +21,25 @@ TIMIT_ROOT=$1
 mkdir -p data/local
 cd data/local
 
+lower_case=0
+upper_case=0
+if [ -d $TIMIT_ROOT/TIMIT/TRAIN -a -d $TIMIT_ROOT/TIMIT/TEST ];
+ then
+   upper_case=1
+   train_folder=$TIMIT_ROOT/TIMIT/TRAIN
+   test_folder=$TIMIT_ROOT/TIMIT/TEST
+elif [ -d $TIMIT_ROOT/timit/train -a -d $TIMIT_ROOT/timit/test ];
+then
+   lower_case=1
+   train_folder=$TIMIT_ROOT/timit/train
+   test_folder=$TIMIT_ROOT/timit/test
+else 
+   echo "Error: run.sh requires a directory argument (an absolute pathname) that contains TIMIT/TRAIN and TIMIT/TEST or timit/train and timit/test."
+fi
 
-if [ ! -d $TIMIT_ROOT/TIMIT/TRAIN -o ! -d $TIMIT_ROOT/TIMIT/TEST ]; then
-   echo "Error: run.sh requires a directory argument (an absolute pathname) that contains TIMIT/TRAIN and TIMIT/TEST"
-   exit 1; 
-fi  
 
 (
-   find $TIMIT_ROOT/TIMIT/TRAIN -name "*.WAV" | perl -ane 'if (! m/SA[0-9].WAV/){ print $_ ; }'
+   find $train_folder -iname "*.wav" | perl -ane 'if (! m/sa[0-9].wav/i){ print $_ ; }'
 )  > train_sph.flist
 
 
@@ -49,13 +60,22 @@ cat train_wav.scp | perl -ane 'm/^(\w+_(\w+)\w_\w+) / || die; print "$1 $2\n"' >
 cat train.utt2spk | sort -k 2 | ../../scripts/utt2spk_to_spk2utt.pl > train.spk2utt
 
 echo "Creating coretest set."
-rm -f test_sph.flist
-test_speakers="MDAB0 MWBT0 FELC0 MTAS1 MWEW0 FPAS0 MJMP0 MLNT0 FPKT0 MLLL0 MTLS0 FJLM0 MBPM0 MKLT0 FNLP0 MCMJ0 MJDH0 FMGD0 MGRT0 MNJM0 FDHC0 MJLN0 MPAM0 FMLD0"
+test_speakers="mdab0 mwbt0 felc0 mtas1 mwew0 fpas0 mjmp0 mlnt0 fpkt0 mlll0 mtls0 fjlm0 mbpm0 mklt0 fnlp0 mcmj0 mjdh0 fmgd0 mgrt0 mnjm0 fdhc0 mjln0 mpam0 fmld0"
+dev_speakers="faks0 fdac1 fjem0 mgwt0 mjar0 mmdb1 mmdm2 mpdf0 fcmh0 fkms0 mbdg0 mbwm0 mcsh0 fadg0"
+dev_speakers="${dev_speakers} fdms0 fedw0 mgjf0 mglb0 mrtk0 mtaa0 mtdt0 mthc0 mwjg0 fnmr0 frew0 fsem0 mbns0 mmjr0 mdls0 mdlf0"
+dev_speakers="${dev_speakers} mdvc0 mers0 fmah0 fdrw0 mrcs0 mrjm4 fcal1 mmwh0 fjsj0 majc0 mjsw0 mreb0 fgjd0 fjmg0 mroa0 mteb0 mjfc0 mrjr0 fmml0 mrws1"
 
+
+if [ $upper_case == 1 ] ; then
+   test_speakers=`echo $test_speakers | tr '[:lower:]' '[:upper:]'`
+   dev_speakers=`echo $dev_speakers | tr '[:lower:]' '[:upper:]'`
+fi
+
+rm -f test_sph.flist
 for speaker in $test_speakers ; do
 echo -n $speaker " "
 (
-    find $TIMIT_ROOT/TIMIT/TEST/*/${speaker}  -name "*.WAV" | perl -ane 'if (! m/SA[0-9].WAV/){ print $_ ; }'
+   find $test_folder/*/${speaker} -iname "*.wav" | perl -ane 'if (! m/sa[0-9].wav/i){ print $_ ; }'
 )  >> test_sph.flist
 done 
 echo ""
@@ -63,15 +83,11 @@ num_lines=`wc -l test_sph.flist | awk '{print $1}'`
 echo "# of utterances in coretest set = ${num_lines}"
 
 echo "Creating dev set."
-dev_speakers="FAKS0 FDAC1 FJEM0 MGWT0 MJAR0 MMDB1 MMDM2 MPDF0 FCMH0 FKMS0 MBDG0 MBWM0 MCSH0 FADG0"
-dev_speakers="${dev_speakers} FDMS0 FEDW0 MGJF0 MGLB0 MRTK0 MTAA0 MTDT0 MTHC0 MWJG0 FNMR0 FREW0 FSEM0 MBNS0 MMJR0 MDLS0 MDLF0"
-dev_speakers="${dev_speakers} MDVC0 MERS0 FMAH0 FDRW0 MRCS0 MRJM4 FCAL1 MMWH0 FJSJ0 MAJC0 MJSW0 MREB0 FGJD0 FJMG0 MROA0 MTEB0 MJFC0 MRJR0 FMML0 MRWS1"
-
 rm -f dev_sph.flist
 for speaker in $dev_speakers ; do
 echo -n $speaker " "
 (
-    find $TIMIT_ROOT/TIMIT/TEST/*/${speaker}  -name "*.WAV" | perl -ane 'if (! m/SA[0-9].WAV/){ print $_ ; }'
+   find $test_folder/*/${speaker} -iname "*.wav" | perl -ane 'if (! m/sa[0-9].wav/i){ print $_ ; }'
 )  >> dev_sph.flist
 done 
 echo ""
