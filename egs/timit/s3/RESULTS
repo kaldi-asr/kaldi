@@ -1,0 +1,11 @@
+# dev set
+#compute-wer --mode=present ark:- ark,p:tmp 
+#%WER 34.42 [ 5003 / 14534, 218 ins, 1974 del, 2811 sub ]
+#%SER 100.00 [ 400 / 400 ]
+#Scored 400 sentences, 0 not present in hyp.
+# test set
+#compute-wer --mode=present ark:- ark,p:tmp 
+#%WER 35.67 [ 2479 / 6949, 98 ins, 1009 del, 1372 sub ]
+#%SER 100.00 [ 192 / 192 ]
+
+
