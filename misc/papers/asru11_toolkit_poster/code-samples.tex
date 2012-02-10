@@ -1,0 +1,27 @@
+
+\documentclass{article}
+\begin{document}
+
+\begin{verbatim}
+void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
+                             Vector<BaseFloat> *loglikes) const {
+  loglikes->Resize(gconsts_.Dim(), kUndefined);
+  loglikes->CopyFromVec(gconsts_);
+  if (static_cast<int32>(data.Dim()) != Dim()) {
+    KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
+        << "mismatch" << (data.Dim()) << " vs. "<< (Dim());
+  }
+  Vector<BaseFloat> data_sq(data);
+  data_sq.ApplyPow(2.0);
+
+  // loglikes +=  means * inv(vars) * data.
+  loglikes->AddMatVec(1.0, means_invvars_, kNoTrans, data, 1.0);
+  // loglikes += -0.5 * inv(vars) * data_sq.
+  loglikes->AddMatVec(-0.5, inv_vars_, kNoTrans, data_sq, 1.0);
+}
+\end{verbatim}
+\vspace{0.4in}
+
+
+\end{document}
+

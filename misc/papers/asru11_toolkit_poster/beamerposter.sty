@@ -1,0 +1,301 @@
+% Copyright 2007 by 
+% Philippe Dreuw <dreuw@cs.rwth-aachen.de> and 
+% Thomas Deselaers <deselaers@cs.rwth-aachen.de>
+%
+% This file may be distributed and/or modified
+%
+% 1. under the LaTeX Project Public License and/or
+% 2. under the GNU Public License.
+%
+%
+% ChangeLog:
+%
+% 1.10 - imrpoved PackageWarning and PackageInfo outputs
+% 1.09 - bugfixed the list indention problem, can be overwritten by user with the \setdefaultleftmargin command.
+%      - added 'printer' option for external printer definition files
+% 1.08 - supports external printer definition files
+%      - added grid mode option
+%      - renamed beamer specific variables
+%      - added font size normalization, so that scale=1.0 is the default font size for all DIN-A(n) sizes
+% 1.07 - bugfixed custom size handling, portrait or landscape settings are ignored now
+% 1.06 - added the type1cm package for scalable math fonts
+% 1.05 - added version check for xkeyval package
+% 1.04 - added custom size handling
+% 1.03 - improved predefined size handling
+% 1.02 - minor bugfixes
+% 1.01 - bugfixed size handling
+% 1.00 - first beamerposter release
+%
+\def\beamerposter@name{beamerposter}
+\def\beamerposter@version{1.10}
+\def\beamerposter@date{2009/09/02}
+\def\beamerposter@msg{latex-beamer poster extension}
+\def\beamerposter@releaseinfo{\beamerposter@date \space v.\beamerposter@version \space \beamerposter@msg}
+\def\beamerposter@Error#1#2{\PackageError{\beamerposter@name}{#1}{#2}}
+\def\beamerposter@Warning#1{\PackageWarning{\beamerposter@name}{#1}}
+\def\beamerposter@Info#1{\PackageInfo{\beamerposter@name}{#1}}
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{\beamerposter@name}[\beamerposter@releaseinfo]
+\RequirePackage{xkeyval}[2006/11/18]
+\RequirePackage{type1cm} %% get it from ftp://cam.ctan.org/tex-archive/macros/latex/contrib/type1cm.zip
+\RequirePackage{fp}
+\RequirePackage{paralist}
+
+\newif\if@beamerposter@portrait
+\newif\if@beamerposter@customsize
+\newif\if@beamerposter@extern
+\newif\if@beamerposter@debug
+
+
+\DeclareOptionX{size}[a0]{
+  \beamerposter@Info{checking size input, please wait.}
+  \XKV@cc*+[\val\nr]{#1}{a0b,a0,a1,a2,a3,a4,custom}{%
+    \beamerposter@Info{the input \val\ \nr\ was correct, we proceed.}
+    \ifcase\nr\relax
+    %a0b
+    \edef\paperwidthValue{119}
+    \edef\paperheightValue{88}
+    \edef\textwidthValue{116}
+    \edef\textheightValue{88}
+    \edef\fontscale{1.0}
+    \or
+    %a0
+    \edef\paperwidthValue{118.82}
+    \edef\paperheightValue{83.96}
+    \edef\textwidthValue{117.82}
+    \edef\textheightValue{82.96}
+    \edef\fontscale{1.0}
+    \or
+    %a1
+    \edef\paperwidthValue{83.96}
+    \edef\paperheightValue{59.4}
+    \edef\textwidthValue{82.96}
+    \edef\textheightValue{58.4}
+    \edef\fontscale{0.70710678}    % fontscale=(1/sqrt(2))^1
+    \or
+    %a2
+    \edef\paperwidthValue{59.4}
+    \edef\paperheightValue{41.98}
+    \edef\textwidthValue{58.4}
+    \edef\textheightValue{40.98}
+    \edef\fontscale{0.5}           % fontscale=(1/sqrt(2))^2
+    \or
+    %a3
+    \edef\paperwidthValue{41.98}
+    \edef\paperheightValue{29.7}
+    \edef\textwidthValue{40.98}
+    \edef\textheightValue{28.7}
+    \edef\fontscale{0.35355339}    % fontscale=(1/sqrt(2))^3
+    \or
+    %a4
+    \edef\paperwidthValue{29.7}
+    \edef\paperheightValue{21.0}
+    \edef\textwidthValue{28.7}
+    \edef\textheightValue{20.0}
+    \edef\fontscale{0.25}          % fontscale=(1/sqrt(2))^4
+    \or
+    \@beamerposter@customsizetrue
+    \fi    
+  }{%
+    \beamerposter@Warning{the input \val\ was incorrect and was ignored.}
+  }%
+  \beamerposter@Info{finished size input check.}
+}
+\DeclareOptionX{orientation}[portrait]{
+  \beamerposter@Info{checking orientation input, please wait.}
+  \XKV@cc*+[\val\nr]{#1}{portrait,landscape}{%
+    \beamerposter@Info{the input \val\ \nr\ was correct, we proceed.}
+    \ifcase\nr\relax
+    \@beamerposter@portraittrue
+    \or
+    \@beamerposter@portraitfalse
+    \fi    
+  }{%
+    \beamerposter@Warning{the input \val\ was incorrect and was ignored.}
+  }%
+  \beamerposter@Info{finished orientation check.}
+}
+\DeclareOptionX{scale}[1.0]{\edef\myfontscale{#1}\beamerposter@Info{myfontscale=\myfontscale}}
+\DeclareOptionX{width}{\edef\customwidth{#1}\beamerposter@Info{custom poster width=\customwidth}}
+\DeclareOptionX{height}{\edef\customheight{#1}\beamerposter@Info{custom poster height=\customheight}}
+\DeclareOptionX{debug}{\beamerposter@Info{enabled debug mode}\@beamerposter@debugtrue}
+\DeclareOptionX{grid}{\beamerposter@Info{enabling grid}\beamertemplategridbackground[1cm]}% Display a grid to help align images
+\DeclareOptionX{printer}{\edef\printerToUse{#1}\@beamerposter@externtrue}
+\DeclareOptionX*{\beamerposter@Warning{Unknown option ignored: \CurrentOption}}
+%\DeclareOptionX*{\PassOptionsToClass{\CurrentOption}{beamer}}
+\ExecuteOptionsX{size=a0,scale=1.0}
+\ProcessOptionsX\relax
+
+%% enable debug mode for fp package (mainly for upn functions)
+\if@beamerposter@debug
+  \FPdebugtrue  
+\fi
+
+%% normalize scale depending on poster size
+\FPupn{\myfontscale}{myfontscale fontscale * 2 round}
+
+%% swap sizes for portrait orientation
+\if@beamerposter@portrait
+  \newdimen\tmp
+  \setlength{\tmp}{\paperwidthValue cm}
+  \setlength{\paperwidth}{\paperheightValue cm}
+  \setlength{\paperheight}{\tmp}
+  \setlength{\tmp}{\textwidthValue cm}
+  \setlength{\textwidth}{\textheightValue cm}
+  \setlength{\textheight}{\tmp}
+\else
+  \setlength{\paperwidth}{\paperwidthValue cm}
+  \setlength{\paperheight}{\paperheightValue cm}
+  \setlength{\textwidth}{\textwidthValue cm}
+  \setlength{\textheight}{\textheightValue cm}
+\fi
+
+%% overwrite dimensions if custom size
+\if@beamerposter@customsize
+  \setlength{\paperwidth}{\customwidth cm}
+  \setlength{\paperheight}{\customheight cm}
+  \FPupn{\resulttextwidth}{1 customwidth  -}
+  \FPupn{\resulttextheight}{1 customheight -}
+  \setlength{\textwidth}{\resulttextwidth cm}
+  \setlength{\textheight}{\resulttextheight cm}
+\fi
+
+%% Setting proper dimensions for a DIN A0 printer
+\setlength{\headheight}{0 cm}
+\setlength{\headsep}{0 cm}
+\setlength{\topmargin}{-12.7 mm}     % -1in +1.47cm
+\setlength{\oddsidemargin}{-25.4 mm} % -1in +0.4cm
+
+%% For the page layout
+\beamerposter@Info{paperwidth=\the\paperwidth, paperheight=\the\paperheight}
+\beamerposter@Info{textwidth=\the\textwidth, textwidth=\the\textheight}
+\beamerposter@Info{fontscale=\fontscale, myfontscale=\myfontscale}
+\geometry{
+  paperwidth=\the\paperwidth,
+  paperheight=\the\paperheight,
+  hmargin=1cm,%
+  vmargin=0cm,%
+  head=0.5cm, % 
+  headsep=0pt,%
+  foot=0.5cm  % 
+}
+
+%%
+%% printer definition file example 'rwth-glossy-uv.df':
+%% ----
+%% \typeout{beamerposter: RWTH RZ printer, glossy paper, UV resistant, maximum settings}
+%% \edef\printermaxwidthValue{108} %unit should be cm
+%% \newlength{\printermaxwidth}
+%% \setlength{\printermaxwidth}{\printermaxwidthValue cm}
+%% ----
+%%
+%% now load printer definitions from file (e.g. \usepackage[printer=rwth-glossy-uv.df]{beamerposter}")
+\if@beamerposter@extern
+  \InputIfFileExists{\printerToUse}{\typeout{load \printerToUse}}{\beamerposter@Error{\printerToUse\space not found!}{Please use another printer definition file}}
+  \ifx\printermaxwidthValue\@empty%
+    \relax%
+  \else%
+    %%  @todo: calc poster ratios, scale to maximum printer size, and check if they still fit
+    %%  this here is still very basic ...
+    \FPsub{\resultmaxwidth}{\printermaxwidthValue}{\paperwidthValue}
+    \FPifneg{\resultmaxwidth}
+    \beamerposter@Error{%
+      resultmaxwidth=\resultmaxwidth \MessageBreak
+      printermaxwidthValue=\printermaxwidthValue \MessageBreak
+      paperwidthValue=\paperwidthValue \MessageBreak 
+      The specified poster dimensions might not be printable using
+      '\printerToUse'.
+    }{%
+      Try to reduce your poster dimension and have a look at the aspect ratio.
+    }
+    \else
+      \relax
+    \fi
+  \fi
+%\fi
+
+%% scalable vector fonts
+\edef\fontSizeX{12}\edef\fontSizeY{14}
+\FPupn{\resulttinyX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resulttinyY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\tiny}{\fontsize{\resulttinyX}{\resulttinyY}\selectfont}
+
+\edef\fontSizeX{14.4}\edef\fontSizeY{18}   
+\FPupn{\resultscriptsizeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultscriptsizeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\scriptsize}{\fontsize{\resultscriptsizeX}{\resultscriptsizeY}\selectfont}
+
+\edef\fontSizeX{17.28}\edef\fontSizeY{22}
+\FPupn{\resultfootnotesizeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultfootnotesizeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\footnotesize}{\fontsize{\resultfootnotesizeX}{\resultfootnotesizeY}\selectfont}
+
+\edef\fontSizeX{20.74}\edef\fontSizeY{25}
+\FPupn{\resultsmallX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultsmallY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\small}{\fontsize{\resultsmallX}{\resultsmallY}\selectfont}
+
+\edef\fontSizeX{24.88}\edef\fontSizeY{30}
+\FPupn{\resultnormalsizeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultnormalsizeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\normalsize}{\fontsize{\resultnormalsizeX}{\resultnormalsizeY}\selectfont}
+
+\edef\fontSizeX{29.86}\edef\fontSizeY{37}
+\FPupn{\resultlargeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultlargeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\large}{\fontsize{\resultlargeX}{\resultlargeY}\selectfont}
+
+\edef\fontSizeX{35.83}\edef\fontSizeY{45}
+\FPupn{\resultLargeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultLargeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\Large}{\fontsize{\resultLargeX}{\resultLargeY}\selectfont}
+
+\edef\fontSizeX{43}\edef\fontSizeY{54}
+\FPupn{\resultLARGEX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultLARGEY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\LARGE}{\fontsize{\resultLARGEX}{\resultLARGEY}\selectfont}
+
+\edef\fontSizeX{51.6}\edef\fontSizeY{64}
+\FPupn{\resulthugeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resulthugeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\huge}{\fontsize{\resulthugeX}{\resulthugeY}\selectfont}
+
+\edef\fontSizeX{61.92}\edef\fontSizeY{77}
+\FPupn{\resultHugeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultHugeY}{myfontscale fontSizeY * 2 round}
+\renewcommand*{\Huge}{\fontsize{\resultHugeX}{\resultHugeY}\selectfont}
+
+\edef\fontSizeX{74.3}\edef\fontSizeY{93}
+\FPupn{\resultveryHugeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultveryHugeY}{myfontscale fontSizeY * 2 round}
+\newcommand*{\veryHuge}{\fontsize{\resultveryHugeX}{\resultveryHugeY}\selectfont}
+
+\edef\fontSizeX{89.16}\edef\fontSizeY{112}
+\FPupn{\resultVeryHugeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultVeryHugeY}{myfontscale fontSizeY * 2 round}
+\newcommand*{\VeryHuge}{\fontsize{\resultVeryHugeX}{\resultVeryHugeY}\selectfont}
+
+\edef\fontSizeX{107}\edef\fontSizeY{134}
+\FPupn{\resultVERYHugeX}{myfontscale fontSizeX * 2 round}
+\FPupn{\resultVERYHugeY}{myfontscale fontSizeY * 2 round}
+\newcommand*{\VERYHuge}{\fontsize{\resultVERYHugeX}{\resultVERYHugeY}\selectfont}
+
+% set the normalfont (default)
+\renewcommand*{\normalfont}{\normalsize}
+
+% adapt list indention (e.g. itemize/enumeration/... see paralist docu)
+\edef\indentionLevelValuei{4}       % 4em indention for first level for an A0 poster
+\edef\indentionLevelValueii{2.2}    % etc. ...
+\edef\indentionLevelValueiii{1.87}
+\edef\indentionLevelValueiiii{1.7}
+\edef\indentionLevelValueiiiii{1}
+\edef\indentionLevelValueiiiiii{1}
+\FPupn{\indentionLevelValuei}{indentionLevelValuei fontscale * 2 round}
+\FPupn{\indentionLevelValueii}{indentionLevelValueii fontscale * 2 round}
+\FPupn{\indentionLevelValueiii}{indentionLevelValueiii fontscale * 2 round}
+\FPupn{\indentionLevelValueiiii}{indentionLevelValueiiii fontscale * 2 round}
+\FPupn{\indentionLevelValueiiiii}{indentionLevelValueiiiii fontscale * 2 round}
+\FPupn{\indentionLevelValueiiiiii}{indentionLevelValueiiiiii fontscale * 2 round}
+\setdefaultleftmargin{\indentionLevelValuei em}{\indentionLevelValueii em}{\indentionLevelValueiii em}{\indentionLevelValueiiii em}{\indentionLevelValueiiiii em}{\indentionLevelValueiiiiii em}
+\setbeamersize{description width=\indentionLevelValuei em} % the description environment needs special treatment
