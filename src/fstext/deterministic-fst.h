@@ -138,8 +138,14 @@ private:
   // (recursively and cumulating the weights) until an arc with input ilabel is found.
   // If called with input ilabel equal to epsilon, treats it as any other label
   // (i.e. matches it only with epsilon labels).
-  bool GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, DeterministicOnDemandFstImpl<Arc>::Weight iweight);
-
+  static bool GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel,
+                                  Arc *oarc, Weight iweight = Weight::One());
+  
+  // private helper method for GetFinal().  If current state is final returns it;
+  // else follows epsilons recursively till it finds a final state and returns the
+  // first one it finds (or Zero() if none found).
+  Weight GetFinalFromNonDetFst(const Fst<Arc>* fst, StateId s);
+  
   // state management for composition
   typedef std::pair<StateId,StateId> StatePair;
 
@@ -162,7 +168,7 @@ private:
   typedef unordered_map<StatePair, StateId, StatePairKey, StatePairEqual> StateMap;  // map to composed StateId
 
   StateMap state_map_;   // map from state in fst1 and fst2 to composed state
-  std::vector<StatePair> composedState_;               // indexed by composed StateId 
+  std::vector<StatePair> composed_state_;               // indexed by composed StateId 
 
   // add composed state to internal data
   StateId AddComposedState(StateId s1, StateId s2) {
@@ -171,8 +177,8 @@ private:
     StateId cs;
     if (mit == state_map_.end()) {
       // new, add it
-      cs = composedState_.size();
-      composedState_.push_back(sp);
+      cs = composed_state_.size();
+      composed_state_.push_back(sp);
       state_map_[sp] = cs;
       //cerr << "Adding composed state ("<<s1<<","<<s2<<") = "<<cs<<endl;
     } else {
@@ -284,9 +290,11 @@ class DeterministicOnDemandFst : public Fst<Arc> {
   }
 
   friend class CacheStateIterator<DeterministicOnDemandFst<Arc> >;  // so it can see impl_.
- protected:
-  DeterministicOnDemandFstImpl<Arc> *impl_;  // protected so CacheStateIterator can see it
  private:
+  // visible to friends:
+  DeterministicOnDemandFstImpl<Arc> *GetImpl() const { return impl_; }
+
+  DeterministicOnDemandFstImpl<Arc> *impl_; 
   void operator = (const DeterministicOnDemandFstImpl<Arc> &fst);  // disallow
 };
 
@@ -297,7 +305,7 @@ class StateIterator< DeterministicOnDemandFst<A> >
     : public CacheStateIterator< DeterministicOnDemandFst<A> > {
  public:
   explicit StateIterator(const DeterministicOnDemandFst<A> &fst)
-      : CacheStateIterator< DeterministicOnDemandFst<A> >(fst) {}
+    : CacheStateIterator< DeterministicOnDemandFst<A> >(fst, fst.GetImpl()) {}
 };
 
 
@@ -310,9 +318,9 @@ class ArcIterator< DeterministicOnDemandFst<A> >
   typedef typename A::StateId StateId;
 
   ArcIterator(const DeterministicOnDemandFst<A> &fst, StateId s)
-      : CacheArcIterator< DeterministicOnDemandFst<A> >(fst, s) {
-    if (!fst.impl_->HasArcs(s)) // arcs not already computed.
-      fst.impl_->Expand(s);
+    : CacheArcIterator< DeterministicOnDemandFst<A> >(fst.GetImpl(), s) {
+    if (!fst.GetImpl()->HasArcs(s)) // arcs not already computed.
+      fst.GetImpl()->Expand(s);
   }
 
  private:

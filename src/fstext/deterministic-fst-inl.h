@@ -75,7 +75,7 @@ typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl
       // composition
       StateId s1 = fst1_->Start(), s2 = fst2_->Start();
       if (s1 == kNoStateId || s2 == kNoStateId) return kNoStateId;
-      if (composedState_.size()==0) AddComposedState(s1,s2);
+      if (composed_state_.size()==0) AddComposedState(s1,s2);
     } else {
       // single FST case
       s = fst1_->Start();
@@ -90,37 +90,47 @@ typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl
 // Constructor from single FST
 template<class Arc>
   DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc>&fst): 
-                                      fst1_(&fst), fst2_(NULL), cache_calls_(0), cache_hits_(0) {
-  if (!fst1_->Properties(kILabelSorted,true))
-	KALDI_ERR << "DeterministicOnDemandFst: error: input FST must be input label sorted";
+      cache_calls_(0), cache_hits_(0), fst1_(&fst), fst2_(NULL),
+      scm_it_(state_cache_map_.end()) { // initialize scm_it_ to keep older compilers happy.
+    if (!fst1_->Properties(kILabelSorted, true))
+      KALDI_ERR << "DeterministicOnDemandFst: error: input FST must be input label sorted";
+    if (!fst1_->Properties(kIDeterministic, true))
+      KALDI_ERR << "DeterministicOnDemandFst: error: input Fst must be input-label deterministic.";
   SetType("deterministic");
 }
 
 // Constructor from 2 DODF
 template<class Arc>
 DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc> &fst1,const Fst<Arc> &fst2):
-                                      fst1_(&fst1), fst2_(&fst2), cache_calls_(0), cache_hits_(0) {
-  if (!fst1_->Properties(kILabelSorted,true) || !fst2_->Properties(kILabelSorted,true))
+    cache_calls_(0), cache_hits_(0), fst1_(&fst1), fst2_(&fst2),
+    scm_it_(state_cache_map_.end())  { // initialize iterator to keep older compilers happy
+  if (!fst1_->Properties(kILabelSorted, true) || !fst2_->Properties(kILabelSorted, true))
 	KALDI_ERR << "DeterministicOnDemandFst: error: input FST's must be input label sorted";
+  if (!fst1_->Properties(kIDeterministic, true) || !fst2_->Properties(kIDeterministic, true))
+	KALDI_ERR << "DeterministicOnDemandFst: error: input FST's must be input-label deterministic";
   SetType("deterministic");
 }
 
 template<class Arc>
-DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const DeterministicOnDemandFstImpl &other) {
+DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const DeterministicOnDemandFstImpl<Arc> &other):
+    scm_it_(state_cache_map_.end()) // initialize iterator to keep older compilers happy.
+{
   /* to be implemented */
   KALDI_ERR << "DeterministicOnDemandFst copying not yet supported.";
 }
 
 template<class Arc>
-typename DeterministicOnDemandFstImpl<Arc>::Weight DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
+typename DeterministicOnDemandFstImpl<Arc>::Weight
+DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
   if (!HasFinal(s)) {  
     // Work out final-state weight.
     Weight w;
     if (fst2_){
-      StatePair sp = composedState_[s];
-      w = Times(fst1_->Final(sp.first),fst2_->Final(sp.second));
+      StatePair sp = composed_state_[s];
+      w = Times(GetFinalFromNonDetFst(fst1_, sp.first),
+                GetFinalFromNonDetFst(fst2_, sp.second));
     } else {
-      w = fst1_->Final(s);
+      w = GetFinalFromNonDetFst(fst1_, s);
     }
     SetFinal(s, w);
     return w;
@@ -149,13 +159,31 @@ void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorDa
   CacheImpl<Arc>::InitArcIterator(s, data);
 }
 
+
+template<class Arc>
+typename Arc::Weight DeterministicOnDemandFstImpl<Arc>::GetFinalFromNonDetFst(
+    const Fst<Arc>* fst, StateId s) {
+  Weight w = fst->Final(s);
+  if (w != Weight::Zero()) return w;
+  SortedMatcher<Fst<Arc> > sm(*fst, MATCH_INPUT, 1); // enable matching epsilons as well
+  sm.SetState(s);
+  if (sm.Find(kNoLabel)) {   // kNoLabel will match epsilons, but not
+    // the implicit self-loop; see matcher.h.
+    const Arc &arc = sm.Value();
+    return Times(arc.weight, GetFinalFromNonDetFst(fst, arc.nextstate));
+  }
+  return Weight::Zero();
+}
+
 // helper method for GetArc()
 template<class Arc>
-bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc, DeterministicOnDemandFstImpl<Arc>::Weight iweight = Weight::One()){
-
+bool DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
+    const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc,
+    typename Arc::Weight iweight) {
+  
   // use a SortedMatcher
   // fst should already have been tested for correct "sortedness"
-  SortedMatcher<Fst<Arc> > sm(*fst,MATCH_INPUT,0); // enable matching epsilons as well
+  SortedMatcher<Fst<Arc> > sm(*fst, MATCH_INPUT, 1);
   sm.SetState(s);
   if (sm.Find(ilabel)) {
     const Arc &arc = sm.Value();
@@ -163,10 +191,13 @@ bool  DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(const Fst<Arc>* fst
     return true;
   }
   // didn't find matching ilabel, look for an epsilon transition and take it
+  // Note: "kNoLabel" matches any "non-consuming" transitions including epsilons;
+  // we use this not 0 because 0 would match the implicit self-loop and we don't
+  // want this.
   if (sm.Find(kNoLabel)) {
     const Arc &arc = sm.Value();
     return DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
-                      fst, arc.nextstate, ilabel, oarc, Times(arc.weight,iweight));
+        fst, arc.nextstate, ilabel, oarc, Times(arc.weight,iweight));
 
   }    
   return false;  // otherwise, no match is possible
@@ -183,21 +214,21 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oar
   // otherwise compute the arc and set cache info
   if (fst2_) {
     // composition case
-    StatePair sp = composedState_[s];
+    KALDI_PARANOID_ASSERT(static_cast<size_t>(s) < composed_state_.size());
+    StatePair sp = composed_state_[s];
     Arc arc1, arc2;
-    bool r1 = GetArcFromNonDetFst(fst1_,sp.first, ilabel,     &arc1); 
+    bool r1 = GetArcFromNonDetFst(fst1_, sp.first, ilabel, &arc1); 
     if (!r1) {
-      SetArc(s,ilabel); // set without arc added
+      SetArc(s, ilabel); // set without arc added
       return false;
     }
-    //cerr << "Matched "<<ilabel     <<" in fst1, cost "<<arc1.weight<<" olabel "<<arc1.olabel<<endl;
-    if (arc1.olabel==0) {
-      // don't move in fst2_
+    if (arc1.olabel == 0) {
+      // we don't move in fst2_
       *oarc = Arc(ilabel, 0, arc1.weight, AddComposedState(arc1.nextstate,sp.second));
       AddSingleArc(s, ilabel, *oarc); // add 1 arc and set
       return true;
     }
-    bool r2 = GetArcFromNonDetFst(fst2_,sp.second,arc1.olabel,&arc2);
+    bool r2 = GetArcFromNonDetFst(fst2_, sp.second, arc1.olabel, &arc2);
     if (!r2) {
       SetArc(s,ilabel); // set without arc added
       return false;
@@ -205,14 +236,13 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oar
     // we have matching arcs from both FSTs, compute composed arc
     *oarc = Arc(ilabel, arc2.olabel,
 				Times(arc1.weight, arc2.weight), 
-				AddComposedState(arc1.nextstate,arc2.nextstate));
+				AddComposedState(arc1.nextstate, arc2.nextstate));
     AddSingleArc(s, ilabel, *oarc); // add 1 arc and set
-        return true;
+    return true;
   } else {
     // single FST case: not cached
     return GetArcFromNonDetFst(fst1_, s, ilabel, oarc);
   }
-  return false;
 }
 
 // Note that Expand is not called if we do the composition using
