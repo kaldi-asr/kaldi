@@ -62,6 +62,13 @@ while(<G>) {
     $key =~ tr/A-Z/a-z/; # Make it all lower case.
      # to make the numerical and string-sorted orders the same.
     my $transcript_file = substr($_, 0, length($_)-4) . "phn";
+    if (! -e $transcript_file ) {
+       $transcript_file = substr($_, 0, length($_)-4) . "PHN";
+    }
+    if (! -e $transcript_file ) {
+       print "Transcription file: $transcript_file missing." ; 
+    }
+     
     my $trans = &ParseTranscript($transcript_file);
     $trans =~ tr/a-z/A-Z/; # Make it all upper case.
     print P "$key $sph_file\n";
