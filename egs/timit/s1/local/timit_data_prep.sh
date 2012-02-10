@@ -28,11 +28,13 @@ if [ -d $TIMIT_ROOT/TIMIT/TRAIN -a -d $TIMIT_ROOT/TIMIT/TEST ];
    upper_case=1
    train_folder=$TIMIT_ROOT/TIMIT/TRAIN
    test_folder=$TIMIT_ROOT/TIMIT/TEST
+   spkr_info_file=$TIMIT_ROOT/TIMIT/DOC/SPKRINFO.TXT
 elif [ -d $TIMIT_ROOT/timit/train -a -d $TIMIT_ROOT/timit/test ];
-then
+   then
    lower_case=1
    train_folder=$TIMIT_ROOT/timit/train
    test_folder=$TIMIT_ROOT/timit/test
+   spkr_info_file=$TIMIT_ROOT/timit/doc/spkrinfo.txt
 else 
    echo "Error: run.sh requires a directory argument (an absolute pathname) that contains TIMIT/TRAIN and TIMIT/TEST or timit/train and timit/test."
 fi
@@ -111,18 +113,9 @@ done
 
 # Need to set these on the basis of file name first characters.
 #grep -v "^;" DOC/SPKRINFO.TXT | awk '{print $1 " " $2 ; } ' | \
-cat $TIMIT_ROOT/TIMIT/DOC/SPKRINFO.TXT | \
+cat $spkr_info_file | \
     perl -ane 'tr/A-Z/a-z/;print;' | grep -v ';' | \
     awk '{print $2$1, $2}' | sort | uniq > spk2gender.map || exit 1;
-
-# NEED TO DO THE FOLLOWING TWO STEPS
-# USE THE SWBD RECIPE FOR THIS. SEE local/swbd_p1_train_lms.sh file I COPIED
-#../../scripts/make_rm_lm.pl $TIMIT_ROOT/rm1_audio1/rm1/doc/wp_gram.txt  > G.txt || exit 1;
-
-# Getting lexicon
-#../../scripts/make_rm_dict.pl  $TIMIT_ROOT/rm1_audio2/2_4_2/score/src/rdev/pcdsril.txt \
-    #> lexicon.txt || exit 1;
-
 
 
 echo timit_data_prep succeeded.
