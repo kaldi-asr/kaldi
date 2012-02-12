@@ -100,4 +100,3 @@ gcc-3 -mno-cygwin -shared -o lib_atlas.dll \
 
 #The output of this process that you will need for Windows are the files
 #  [somewhere]/ATLAS/cygwin_build/install/lib/lib_atlas.{lib,dll}
-
