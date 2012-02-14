@@ -81,7 +81,9 @@ function linux_check_static {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
   if [ -f $dir/libatlas.a ]; then # candidate...
-    if nm $dir/libatlas.a 2>&1 | grep "File format not recognized" >/dev/null; then
+    # Note: on the next line, the variable assignment
+    # LANG=en_US should apply just to the program called on that line.
+    if LANG=en_US nm $dir/libatlas.a 2>&1 | grep "File format not recognized" >/dev/null; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
       return 1;
     fi
