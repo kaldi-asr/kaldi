@@ -191,6 +191,24 @@ void ComputePca(const MatrixBase<Real> &X,
                 bool print_eigs = false);
 
 
+
+
+// This function does: *plus += max(0, a b^T),
+// *minus += max(0, -(a b^T)).
+template<class Real>
+void AddOuterProductPlusMinus(Real alpha,
+                              const VectorBase<Real> &a,
+                              const VectorBase<Real> &b,
+                              MatrixBase<Real> *plus, 
+                              MatrixBase<Real> *minus);
+
+template<class Real1, class Real2>
+inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2> &mat2) {
+  KALDI_ASSERT(mat1.NumRows() == mat2.NumRows()
+               && mat1.NumCols() == mat2.NumCols());
+}
+
+
 /// @} end of "addtogroup matrix_funcs_misc"
 
 } // end namespace kaldi

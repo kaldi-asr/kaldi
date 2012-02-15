@@ -193,59 +193,64 @@ class SpMatrix : public PackedMatrix<Real> {
     this->AddPacked(alpha, Ma);
   }
 
-  // Below computes log determinant but only for +ve-def matrices
-  // (it uses Cholesky).
-  // If matrix is not +ve-def, it will throw an exception
-  // was LogPDDeterminant()
+  /// Computes log determinant but only for +ve-def matrices
+  /// (it uses Cholesky).
+  /// If matrix is not +ve-def, it will throw an exception
+  /// was LogPDDeterminant()
   Real LogPosDefDet() const;
 
   Real LogDet(Real *det_sign = NULL) const;
 
-  // rank-one update, this <-- this + alpha V V'
+  /// rank-one update, this <-- this + alpha V V'
   template<class OtherReal>
   void AddVec2(const Real alpha, const VectorBase<OtherReal>& v);
 
-  // rank-N update:
-  // if (transM == kNoTrans)
-  // (*this) = beta*(*this) + alpha * M * M^T,
-  // or  (if transM == kTrans)
-  //  (*this) = beta*(*this) + alpha * M^T * M
+  /// diagonal update, this <-- this + diag(v)
+  template<class OtherReal>
+  void AddVec(const Real alpha, const VectorBase<OtherReal>& v);
+  
+  /// rank-N update:
+  /// if (transM == kNoTrans)
+  /// (*this) = beta*(*this) + alpha * M * M^T,
+  /// or  (if transM == kTrans)
+  ///  (*this) = beta*(*this) + alpha * M^T * M
   void AddMat2(const Real alpha, const MatrixBase<Real> &M,
                MatrixTransposeType transM, const Real beta = 0.0);
 
-  // Extension of rank-N update:
-  // this <-- beta*this  +  alpha * M * A * M^T.
-  // (*this) and A are allowed to be the same.
-  // If transM == kTrans, then we do it as M^T * A * M.
+  /// Extension of rank-N update:
+  /// this <-- beta*this  +  alpha * M * A * M^T.
+  /// (*this) and A are allowed to be the same.
+  /// If transM == kTrans, then we do it as M^T * A * M.
   void AddMat2Sp(const Real alpha, const MatrixBase<Real> &M,
                  MatrixTransposeType transM, const SpMatrix<Real> &A,
                  const Real beta = 0.0);
 
-  // Extension of rank-N update:
-  // this <-- beta*this + alpha * M * diag(v) * M^T.
-  // if transM == kTrans, then
-  // this <-- beta*this + alpha * M^T * diag(v) * M.
+  /// Extension of rank-N update:
+  /// this <-- beta*this + alpha * M * diag(v) * M^T.
+  /// if transM == kTrans, then
+  /// this <-- beta*this + alpha * M^T * diag(v) * M.
   void AddMat2Vec(const Real alpha, const MatrixBase<Real> &M,
                   MatrixTransposeType transM, const VectorBase<Real> &v,
                   const Real beta = 0.0);
 
 
-  //  Floors this symmetric matrix to the matrix
-  // alpha * Floor, where Floor must be positive definite.
-  // It is floored in the sense that after flooring,
-  //  x^T (*this) x  >= x^T (alpha*Floor) x.
-  // This is accomplished using an Svd.  It will crash
-  // if Floor is not positive definite. // returns #floored
+  ///  Floors this symmetric matrix to the matrix
+  /// alpha * Floor, where Floor must be positive definite.
+  /// It is floored in the sense that after flooring,
+  ///  x^T (*this) x  >= x^T (alpha*Floor) x.
+  /// This is accomplished using an Svd.  It will crash
+  /// if Floor is not positive definite. // returns #floored
   int ApplyFloor(const SpMatrix<Real> &Floor, Real alpha = 1.0,
                  bool verbose = false);
 
-  // Floor: Given a positive semidefinite matrix, floors the eigenvalues
-  // to the specified quantity.  Positive semidefiniteness is only assumed
-  // because a function we call checks for it (to within a tolerance), and
-  // because it tends to be present in situations where doing this would
-  // make sense.  Set the tolerance to 2 to ensure it won't ever complain
-  // about non-+ve-semidefinite matrix (it will zero out negative dimensions)
-  int ApplyFloor(Real floor, BaseFloat tolerance = 0.001);  // returns #floored.
+  /// Floor: Given a positive semidefinite matrix, floors the eigenvalues
+  /// to the specified quantity.  Positive semidefiniteness is only assumed
+  /// because a function we call checks for it (to within a tolerance), and
+  /// because it tends to be present in situations where doing this would
+  /// make sense.  Set the tolerance to 2 to ensure it won't ever complain
+  /// about non-+ve-semidefinite matrix (it will zero out negative dimensions)
+  /// returns number of floored elements.
+  int ApplyFloor(Real floor, BaseFloat tolerance = 0.001); 
   bool IsDiagonal(Real cutoff = 1.0e-05) const;
   bool IsUnit(Real cutoff = 1.0e-05) const;
   bool IsZero(Real cutoff = 1.0e-05) const;
@@ -254,7 +259,7 @@ class SpMatrix : public PackedMatrix<Real> {
   Real FrobeniusNorm() const;
 
   /// Returns true if ((*this)-other).FrobeniusNorm() <=
-  //   tol*(*this).FrobeniusNorma()
+  ///   tol*(*this).FrobeniusNorma()
   bool ApproxEqual(const SpMatrix<Real> &other, float tol = 0.01) const;
 
   // LimitCond:

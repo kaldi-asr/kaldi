@@ -110,30 +110,30 @@ void RegtreeMllrDiagGmm::GetTransformedMeans(const RegressionTree &regtree,
 
 
 void RegtreeMllrDiagGmm::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<MLLRXFORM>");
-  WriteMarker(out, binary, "<NUMXFORMS>");
+  WriteToken(out, binary, "<MLLRXFORM>");
+  WriteToken(out, binary, "<NUMXFORMS>");
   WriteBasicType(out, binary, num_xforms_);
-  WriteMarker(out, binary, "<DIMENSION>");
+  WriteToken(out, binary, "<DIMENSION>");
   WriteBasicType(out, binary, dim_);
 
   vector< Matrix<BaseFloat> >::const_iterator xform_itr =
       xform_matrices_.begin(), xform_itr_end = xform_matrices_.end();
   for (; xform_itr != xform_itr_end; ++xform_itr) {
-    WriteMarker(out, binary, "<XFORM>");
+    WriteToken(out, binary, "<XFORM>");
     xform_itr->Write(out, binary);
   }
 
-  WriteMarker(out, binary, "<BCLASS2XFORMS>");
+  WriteToken(out, binary, "<BCLASS2XFORMS>");
   WriteIntegerVector(out, binary, bclass2xforms_);
-  WriteMarker(out, binary, "</MLLRXFORM>");
+  WriteToken(out, binary, "</MLLRXFORM>");
 }
 
 
 void RegtreeMllrDiagGmm::Read(std::istream &in, bool binary) {
-  ExpectMarker(in, binary, "<MLLRXFORM>");
-  ExpectMarker(in, binary, "<NUMXFORMS>");
+  ExpectToken(in, binary, "<MLLRXFORM>");
+  ExpectToken(in, binary, "<NUMXFORMS>");
   ReadBasicType(in, binary, &num_xforms_);
-  ExpectMarker(in, binary, "<DIMENSION>");
+  ExpectToken(in, binary, "<DIMENSION>");
   ReadBasicType(in, binary, &dim_);
   KALDI_ASSERT(num_xforms_ >= 0 && dim_ >= 0);  // can be 0 for empty xform
 
@@ -141,15 +141,15 @@ void RegtreeMllrDiagGmm::Read(std::istream &in, bool binary) {
   vector< Matrix<BaseFloat> >::iterator xform_itr = xform_matrices_.begin(),
                                     xform_itr_end = xform_matrices_.end();
   for (; xform_itr != xform_itr_end; ++xform_itr) {
-    ExpectMarker(in, binary, "<XFORM>");
+    ExpectToken(in, binary, "<XFORM>");
     xform_itr->Read(in, binary);
     KALDI_ASSERT(xform_itr->NumRows() == (xform_itr->NumCols() - 1)
                  && xform_itr->NumRows() == dim_);
   }
 
-  ExpectMarker(in, binary, "<BCLASS2XFORMS>");
+  ExpectToken(in, binary, "<BCLASS2XFORMS>");
   ReadIntegerVector(in, binary, &bclass2xforms_);
-  ExpectMarker(in, binary, "</MLLRXFORM>");
+  ExpectToken(in, binary, "</MLLRXFORM>");
 }
 
 // ************************************************************************
@@ -246,28 +246,28 @@ void RegtreeMllrDiagGmmAccs::AccumulateForGaussian(
 }
 
 void RegtreeMllrDiagGmmAccs::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<MLLRACCS>");
-  WriteMarker(out, binary, "<NUMBASECLASSES>");
+  WriteToken(out, binary, "<MLLRACCS>");
+  WriteToken(out, binary, "<NUMBASECLASSES>");
   WriteBasicType(out, binary, num_baseclasses_);
-  WriteMarker(out, binary, "<DIMENSION>");
+  WriteToken(out, binary, "<DIMENSION>");
   WriteBasicType(out, binary, dim_);
-  WriteMarker(out, binary, "<STATS>");
+  WriteToken(out, binary, "<STATS>");
   vector<AffineXformStats*>::const_iterator itr = baseclass_stats_.begin(),
                                             end = baseclass_stats_.end();
   for ( ; itr != end; ++itr)
     (*itr)->Write(out, binary);
-  WriteMarker(out, binary, "</MLLRACCS>");
+  WriteToken(out, binary, "</MLLRACCS>");
 }
 
 void RegtreeMllrDiagGmmAccs::Read(std::istream &in, bool binary, bool add) {
-  ExpectMarker(in, binary, "<MLLRACCS>");
-  ExpectMarker(in, binary, "<NUMBASECLASSES>");
+  ExpectToken(in, binary, "<MLLRACCS>");
+  ExpectToken(in, binary, "<NUMBASECLASSES>");
   ReadBasicType(in, binary, &num_baseclasses_);
-  ExpectMarker(in, binary, "<DIMENSION>");
+  ExpectToken(in, binary, "<DIMENSION>");
   ReadBasicType(in, binary, &dim_);
   KALDI_ASSERT(num_baseclasses_ > 0 && dim_ > 0);
   baseclass_stats_.resize(num_baseclasses_);
-  ExpectMarker(in, binary, "<STATS>");
+  ExpectToken(in, binary, "<STATS>");
   vector<AffineXformStats*>::iterator itr = baseclass_stats_.begin(),
                                       end = baseclass_stats_.end();
   for ( ; itr != end; ++itr) {
@@ -275,7 +275,7 @@ void RegtreeMllrDiagGmmAccs::Read(std::istream &in, bool binary, bool add) {
     (*itr)->Init(dim_, dim_);
     (*itr)->Read(in, binary, add);
   }
-  ExpectMarker(in, binary, "</MLLRACCS>");
+  ExpectToken(in, binary, "</MLLRACCS>");
 }
 
 static void ComputeMllrMatrix(const Matrix<double> &K,

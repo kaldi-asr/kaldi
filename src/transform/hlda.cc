@@ -24,8 +24,8 @@ namespace kaldi {
 
 
 void HldaAccsDiagGmm::Read(std::istream &is, bool binary, bool add) {
-  ExpectMarker(is, binary, "<HldaAccsDiagGmm>");
-  ExpectMarker(is, binary, "<S>");
+  ExpectToken(is, binary, "<HldaAccsDiagGmm>");
+  ExpectToken(is, binary, "<S>");
   int32 dim;  // just the #elems of S_, equals model-dim+1.
   ReadBasicType(is, binary, &dim);
   if (add && S_.size() != 0 && static_cast<size_t>(dim) != S_.size())
@@ -33,7 +33,7 @@ void HldaAccsDiagGmm::Read(std::istream &is, bool binary, bool add) {
   if (!add || S_.empty()) S_.resize(dim);
   for (size_t i = 0; i < S_.size(); i++)
     S_[i].Read(is, binary, add);
-  ExpectMarker(is, binary, "<occs>");
+  ExpectToken(is, binary, "<occs>");
   int32 npdfs;
   ReadBasicType(is, binary, &npdfs);
   if (add && occs_.size() != 0 && static_cast<size_t>(npdfs) != occs_.size())
@@ -44,57 +44,57 @@ void HldaAccsDiagGmm::Read(std::istream &is, bool binary, bool add) {
   }
   for (size_t i = 0; i < occs_.size(); i++)
     occs_[i].Read(is, binary, add);
-  ExpectMarker(is, binary, "<mean_accs>");
+  ExpectToken(is, binary, "<mean_accs>");
   for (size_t i = 0; i < mean_accs_.size(); i++)
     mean_accs_[i].Read(is, binary, add);
-  ExpectMarker(is, binary, "<speedup>");
+  ExpectToken(is, binary, "<speedup>");
   ReadBasicType(is, binary, &speedup_);
   if (speedup_ != 1.0) {
     if (!add || occs_sub_.empty()) {
       occs_sub_.resize(npdfs);
       mean_accs_sub_.resize(npdfs);
     }
-    ExpectMarker(is, binary, "<occs_sub>");
+    ExpectToken(is, binary, "<occs_sub>");
     for (size_t i = 0; i < occs_sub_.size(); i++)
       occs_sub_[i].Read(is, binary, add);
-    ExpectMarker(is, binary, "<mean_accs_sub>");
+    ExpectToken(is, binary, "<mean_accs_sub>");
     for (size_t i = 0; i < mean_accs_sub_.size(); i++)
       mean_accs_sub_[i].Read(is, binary, add);
   }
 
-  ExpectMarker(is, binary, "<sample_gconst>");
+  ExpectToken(is, binary, "<sample_gconst>");
   ReadBasicType(is, binary, &sample_gconst_);
-  ExpectMarker(is, binary, "</HldaAccsDiagGmm>");
+  ExpectToken(is, binary, "</HldaAccsDiagGmm>");
 }
 
 void HldaAccsDiagGmm::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<HldaAccsDiagGmm>");
-  WriteMarker(os, binary, "<S>");
+  WriteToken(os, binary, "<HldaAccsDiagGmm>");
+  WriteToken(os, binary, "<S>");
   int32 dim = S_.size();  // just the #elems of S_, equals model-dim+1.
   WriteBasicType(os, binary, dim);
   for (int32 i = 0; i < dim; i++) S_[i].Write(os, binary);
   KALDI_ASSERT(mean_accs_.size() == occs_.size());
-  WriteMarker(os, binary, "<occs>");
+  WriteToken(os, binary, "<occs>");
   int32 npdfs = occs_.size();
   WriteBasicType(os, binary, npdfs);
   for (int32 i = 0; i < npdfs; i++)
     occs_[i].Write(os, binary);
-  WriteMarker(os, binary, "<mean_accs>");
+  WriteToken(os, binary, "<mean_accs>");
   for (int32 i = 0; i < npdfs; i++)
     mean_accs_[i].Write(os, binary);
-  WriteMarker(os, binary, "<speedup>");
+  WriteToken(os, binary, "<speedup>");
   WriteBasicType(os, binary, speedup_);
   if (speedup_ != 1.0) {
-    WriteMarker(os, binary, "<occs_sub>");
+    WriteToken(os, binary, "<occs_sub>");
     for (int32 i = 0; i < npdfs; i++)
       occs_sub_[i].Write(os, binary);
-    WriteMarker(os, binary, "<mean_accs_sub>");
+    WriteToken(os, binary, "<mean_accs_sub>");
     for (int32 i = 0; i < npdfs; i++)
       mean_accs_sub_[i].Write(os, binary);
   }
-  WriteMarker(os, binary, "<sample_gconst>");
+  WriteToken(os, binary, "<sample_gconst>");
   WriteBasicType(os, binary, sample_gconst_);
-  WriteMarker(os, binary, "</HldaAccsDiagGmm>");
+  WriteToken(os, binary, "</HldaAccsDiagGmm>");
 }
 
 void HldaAccsDiagGmm::Init(const AmDiagGmm &am,

@@ -80,15 +80,19 @@ function linux_atlas_failure { # function we use when we couldn't find
 function linux_check_static {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
+  echo "int main(void) { return 0; }" > test_linking.cc;
   if [ -f $dir/libatlas.a ]; then # candidate...
     # Note: on the next line, the variable assignment
     # LANG=en_US should apply just to the program called on that line.
-    if LANG=en_US nm $dir/libatlas.a 2>&1 | grep "File format not recognized"; then
+    if LANG=en_US gcc -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
+      rm test_linking test_linking.cc 2>/dev/null
       return 1;
     fi
+    rm test_linking test_linking.cc 2>/dev/null
     return 0;
   else
+    rm test_linking.cc
     return 1;
   fi
 }

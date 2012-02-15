@@ -29,10 +29,10 @@ void AccumTiedGmm::Read(std::istream &in_stream, bool binary, bool add) {
   std::string token;
   GmmFlagsType flags;
 
-  ExpectMarker(in_stream, binary, "<TIEDGMMACCS>");
-  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ExpectToken(in_stream, binary, "<TIEDGMMACCS>");
+  ExpectToken(in_stream, binary, "<NUMCOMPONENTS>");
   ReadBasicType(in_stream, binary, &num_components);
-  ExpectMarker(in_stream, binary, "<FLAGS>");
+  ExpectToken(in_stream, binary, "<FLAGS>");
   ReadBasicType(in_stream, binary, &flags);
 
   if (add) {
@@ -49,31 +49,31 @@ void AccumTiedGmm::Read(std::istream &in_stream, bool binary, bool add) {
     Resize(num_components, flags);
   }
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
   while (token != "</TIEDGMMACCS>") {
     if (token == "<OCCUPANCY>") {
       occupancy_.Read(in_stream, binary, add);
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void AccumTiedGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<TIEDGMMACCS>");
-  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteToken(out_stream, binary, "<TIEDGMMACCS>");
+  WriteToken(out_stream, binary, "<NUMCOMPONENTS>");
   WriteBasicType(out_stream, binary, num_comp_);
-  WriteMarker(out_stream, binary, "<FLAGS>");
+  WriteToken(out_stream, binary, "<FLAGS>");
   WriteBasicType(out_stream, binary, flags_);
 
   // convert into BaseFloat before writing things
   Vector<BaseFloat> occupancy_bf(occupancy_.Dim());
   occupancy_bf.CopyFromVec(occupancy_);
 
-  WriteMarker(out_stream, binary, "<OCCUPANCY>");
+  WriteToken(out_stream, binary, "<OCCUPANCY>");
   occupancy_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</TIEDGMMACCS>");
+  WriteToken(out_stream, binary, "</TIEDGMMACCS>");
 }
 
 void AccumTiedGmm::Resize(int32 num_comp, GmmFlagsType flags) {

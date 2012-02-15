@@ -491,19 +491,19 @@ void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in, bool renorm_w
 void FullGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!valid_gconsts_)
     KALDI_ERR << "Must call ComputeGconsts() before writing the model.";
-  WriteMarker(out_stream, binary, "<FullGMM>");
+  WriteToken(out_stream, binary, "<FullGMM>");
   if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<GCONSTS>");
+  WriteToken(out_stream, binary, "<GCONSTS>");
   gconsts_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<WEIGHTS>");
+  WriteToken(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<MEANS_INVCOVARS>");
+  WriteToken(out_stream, binary, "<MEANS_INVCOVARS>");
   means_invcovars_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<INV_COVARS>");
+  WriteToken(out_stream, binary, "<INV_COVARS>");
   for (int32 i = 0; i < NumGauss(); ++i) {
     inv_covars_[i].Write(out_stream, binary);
   }
-  WriteMarker(out_stream, binary, "</FullGMM>");
+  WriteToken(out_stream, binary, "</FullGMM>");
   if (!binary) out_stream << "\n";
 }
 
@@ -544,36 +544,36 @@ void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source,
 }
 
 void FullGmm::Read(std::istream &in_stream, bool binary) {
-//  ExpectMarker(in_stream, binary, "<FullGMMBegin>");
-  std::string marker;
-  ReadMarker(in_stream, binary, &marker);
+//  ExpectToken(in_stream, binary, "<FullGMMBegin>");
+  std::string token;
+  ReadToken(in_stream, binary, &token);
   // <FullGMMBegin> is for compatibility. Will be deleted later
-  if (marker != "<FullGMMBegin>" && marker != "<FullGMM>")
-    KALDI_ERR << "Expected <FullGMM>, got " << marker;
-//  ExpectMarker(in_stream, binary, "<GCONSTS>");
-  ReadMarker(in_stream, binary, &marker);
-  if (marker == "<GCONSTS>") {  // The gconsts are optional.
+  if (token != "<FullGMMBegin>" && token != "<FullGMM>")
+    KALDI_ERR << "Expected <FullGMM>, got " << token;
+//  ExpectToken(in_stream, binary, "<GCONSTS>");
+  ReadToken(in_stream, binary, &token);
+  if (token == "<GCONSTS>") {  // The gconsts are optional.
     gconsts_.Read(in_stream, binary);
-    ExpectMarker(in_stream, binary, "<WEIGHTS>");
+    ExpectToken(in_stream, binary, "<WEIGHTS>");
   } else {
-    if (marker != "<WEIGHTS>")
+    if (token != "<WEIGHTS>")
       KALDI_ERR << "DiagGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
-                << marker;
+                << token;
   }
   weights_.Read(in_stream, binary);
-  ExpectMarker(in_stream, binary, "<MEANS_INVCOVARS>");
+  ExpectToken(in_stream, binary, "<MEANS_INVCOVARS>");
   means_invcovars_.Read(in_stream, binary);
-  ExpectMarker(in_stream, binary, "<INV_COVARS>");
+  ExpectToken(in_stream, binary, "<INV_COVARS>");
   int32 ncomp = weights_.Dim(), dim = means_invcovars_.NumCols();
   ResizeInvCovars(ncomp, dim);
   for (int32 i = 0; i < ncomp; ++i) {
     inv_covars_[i].Read(in_stream, binary);
   }
-//  ExpectMarker(in_stream, binary, "<FullGMMEnd>");
-  ReadMarker(in_stream, binary, &marker);
+//  ExpectToken(in_stream, binary, "<FullGMMEnd>");
+  ReadToken(in_stream, binary, &token);
   // <FullGMMEnd> is for compatibility. Will be deleted later
-  if (marker != "<FullGMMEnd>" && marker != "</FullGMM>")
-    KALDI_ERR << "Expected </FullGMM>, got " << marker;
+  if (token != "<FullGMMEnd>" && token != "</FullGMM>")
+    KALDI_ERR << "Expected </FullGMM>, got " << token;
 
   ComputeGconsts();  // safer option than trusting the read gconsts
 }

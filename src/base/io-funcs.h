@@ -85,33 +85,33 @@ namespace kaldi {
   we could easily create templated functions to handle most of these cases but they
   would have to share the same name.
 
-  It also often happens that the user needs to write/read special markers as part
+  It also often happens that the user needs to write/read special tokens as part
   of a file.  These might be class headers, or separators/identifiers in the class.
-  We provide special functions for manipulating these.  These special markers must
+  We provide special functions for manipulating these.  These special tokens must
   be nonempty and must not contain any whitespace.
 
-    void WriteMarker(std::ostream &os, bool binary, const char*);
-    void WriteMarker(std::ostream &os, bool binary, const std::string & marker);
+    void WriteToken(std::ostream &os, bool binary, const char*);
+    void WriteToken(std::ostream &os, bool binary, const std::string & token);
     int Peek(std::istream &is, bool binary);
-    void ReadMarker(std::istream &is, bool binary, std::string *str);
-    void PeekMarker(std::istream &is, bool binary, std::string *str);
+    void ReadToken(std::istream &is, bool binary, std::string *str);
+    void PeekToken(std::istream &is, bool binary, std::string *str);
 
 
-  WriteMarker writes the marker and one space (whether in binary or text mode).
+  WriteToken writes the token and one space (whether in binary or text mode).
 
-  Peek returns the first character of the next marker, by consuming whitespace
+  Peek returns the first character of the next token, by consuming whitespace
   (in text mode) and then returning the peek() character.  It returns -1 at EOF;
   it doesn't throw.  It's useful if a class can have various forms based on
   typedefs and virtual classes, and wants to know which version to read.
 
-  ReadMarker allow the caller to obtain the next marker.  PeekMarker works just
-  like ReadMarker, but seeks back to the beginning of the marker.  A subsequent
-  call to ReadMarker will read the same marker again.  This is useful when
-  different object types are written to the same file; using PeekMarker one can
+  ReadToken allow the caller to obtain the next token.  PeekToken works just
+  like ReadToken, but seeks back to the beginning of the token.  A subsequent
+  call to ReadToken will read the same token again.  This is useful when
+  different object types are written to the same file; using PeekToken one can
   decide which of the objects to read.
 
   There is currently no special functionality for writing/reading strings (where the strings
-  contain data rather than "special markers" that are whitespace-free and nonempty).  This is
+  contain data rather than "special tokens" that are whitespace-free and nonempty).  This is
   because Kaldi is structured in such a way that strings don't appear, except as OpenFst symbol
   table entries (and these have their own format).
 
@@ -166,32 +166,32 @@ template<class T> inline void WriteIntegerVector(std::ostream &os, bool binary,
 template<class T> inline void ReadIntegerVector(std::istream &is, bool binary,
                                                 std::vector<T> *v);
 
-/// The WriteMarker functions are for writing nonempty sequences of non-space
+/// The WriteToken functions are for writing nonempty sequences of non-space
 /// characters. They are not for general strings.
-void WriteMarker(std::ostream &os, bool binary, const char *marker);
-void WriteMarker(std::ostream &os, bool binary, const std::string & marker);
+void WriteToken(std::ostream &os, bool binary, const char *token);
+void WriteToken(std::ostream &os, bool binary, const std::string & token);
 
 /// Peek consumes whitespace (if binary == false) and then returns the peek()
 /// value of the stream.
 int Peek(std::istream &is, bool binary);
 
-/// ReadMarker gets the next marker and puts it in str (exception on failure).
-void ReadMarker(std::istream &is, bool binary, std::string *marker);
+/// ReadToken gets the next token and puts it in str (exception on failure).
+void ReadToken(std::istream &is, bool binary, std::string *token);
 
-/// PeekMarker gets the next marker, puts it in str and seeks back to the
-/// beginning of the marker (exception on failure).
-void PeekMarker(std::istream &is, bool binary, std::string *marker);
+/// PeekToken gets the next token, puts it in str and seeks back to the
+/// beginning of the token (exception on failure).
+void PeekToken(std::istream &is, bool binary, std::string *token);
 
-/// ExpectMarker tries to read in the given marker, and throws an exception
+/// ExpectToken tries to read in the given token, and throws an exception
 /// on failure.
-void ExpectMarker(std::istream &is, bool binary, const char *marker);
-void ExpectMarker(std::istream &is, bool binary, const std::string & marker);
+void ExpectToken(std::istream &is, bool binary, const char *token);
+void ExpectToken(std::istream &is, bool binary, const std::string & token);
 
-/// ExpectPretty attempts to read the text in "marker", but only in non-binary
+/// ExpectPretty attempts to read the text in "token", but only in non-binary
 /// mode.  Throws exception on failure.  It expects an exact match except that
 /// arbitrary whitespace matches arbitrary whitespace.
-void ExpectPretty(std::istream &is, bool binary, const char *marker);
-void ExpectPretty(std::istream &is, bool binary, const std::string & marker);
+void ExpectPretty(std::istream &is, bool binary, const char *token);
+void ExpectPretty(std::istream &is, bool binary, const std::string & token);
 
 /// @} end "addtogroup io_funcs_basic"
 

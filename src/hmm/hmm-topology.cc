@@ -34,18 +34,18 @@ void HmmTopology::GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_clas
 }
 
 void HmmTopology::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "<Topology>");
+  ExpectToken(is, binary, "<Topology>");
   if (!binary) {  // Text-mode read, different "human-readable" format.
     phones_.clear();
     phone2idx_.clear();
     entries_.clear();
-    std::string marker;
-    while ( ! (is >> marker).fail() ) {
-      if (marker == "</Topology>") { break; } // finished parsing.
-      else  if (marker != "<TopologyEntry>") {
-        KALDI_ERR << "Reading HmmTopology object, expected </Topology> or <TopologyEntry>, got "<<marker;
+    std::string token;
+    while ( ! (is >> token).fail() ) {
+      if (token == "</Topology>") { break; } // finished parsing.
+      else  if (token != "<TopologyEntry>") {
+        KALDI_ERR << "Reading HmmTopology object, expected </Topology> or <TopologyEntry>, got "<<token;
       } else {
-        ExpectMarker(is, binary, "<ForPhones>");
+        ExpectToken(is, binary, "<ForPhones>");
         std::vector<int32> phones;
         std::string s;
         while (1) {
@@ -61,36 +61,36 @@ void HmmTopology::Read(std::istream &is, bool binary) {
         }
 
         std::vector<HmmState> this_entry;
-        std::string marker;
-        ReadMarker(is, binary, &marker);
-        while (marker != "</TopologyEntry>") {
-          if (marker != "<State>")
-            KALDI_ERR << "Expected </TopologyEntry> or <State>, got instead "<<marker;
+        std::string token;
+        ReadToken(is, binary, &token);
+        while (token != "</TopologyEntry>") {
+          if (token != "<State>")
+            KALDI_ERR << "Expected </TopologyEntry> or <State>, got instead "<<token;
           int32 state;
           ReadBasicType(is, binary, &state);
           if (state != static_cast<int32>(this_entry.size()))
             KALDI_ERR << "States are expected to be in order from zero, expected "
                       << this_entry.size() <<  ", got " << state;
-          ReadMarker(is, binary, &marker);
+          ReadToken(is, binary, &token);
           int32 pdf_class = kNoPdf;  // -1 by default, means no pdf.
-          if (marker == "<PdfClass>") {
+          if (token == "<PdfClass>") {
             ReadBasicType(is, binary, &pdf_class);
-            ReadMarker(is, binary, &marker);
+            ReadToken(is, binary, &token);
           }
           this_entry.push_back(HmmState(pdf_class));
-          while (marker == "<Transition>") {
+          while (token == "<Transition>") {
             int32 dst_state;
             BaseFloat trans_prob;
             ReadBasicType(is, binary, &dst_state);
             ReadBasicType(is, binary, &trans_prob);
             this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));  
-            ReadMarker(is, binary, &marker);
+            ReadToken(is, binary, &token);
           }
-          if(marker == "<Final>") // TODO: remove this clause after a while.
+          if(token == "<Final>") // TODO: remove this clause after a while.
             KALDI_ERR << "You are trying to read old-format topology with new Kaldi.";
-          if (marker != "</State>")
-            KALDI_ERR << "Reading HmmTopology,  unexpected marker "<<marker;
-          ReadMarker(is, binary, &marker);
+          if (token != "</State>")
+            KALDI_ERR << "Reading HmmTopology,  unexpected token "<<token;
+          ReadToken(is, binary, &token);
         }
         int32 my_index = entries_.size();
         entries_.push_back(this_entry);
@@ -130,44 +130,44 @@ void HmmTopology::Read(std::istream &is, bool binary) {
         }
       }
     }
-    ExpectMarker(is, binary, "</Topology>");
+    ExpectToken(is, binary, "</Topology>");
   }
   Check();  // Will throw if not ok.
 }
 
 
 void HmmTopology::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<Topology>");
+  WriteToken(os, binary, "<Topology>");
   if (!binary) {  // Text-mode write.
     os << "\n";
     for (int32 i = 0; i < static_cast<int32> (entries_.size()); i++) {
-      WriteMarker(os, binary, "<TopologyEntry>");
+      WriteToken(os, binary, "<TopologyEntry>");
       os << "\n";
-      WriteMarker(os, binary, "<ForPhones>");
+      WriteToken(os, binary, "<ForPhones>");
       os << "\n";
       for (size_t j = 0; j < phone2idx_.size(); j++) {
         if (phone2idx_[j] == i)
           os << j << " ";
       }
       os << "\n";
-      WriteMarker(os, binary, "</ForPhones>");
+      WriteToken(os, binary, "</ForPhones>");
       os << "\n";
       for (size_t j = 0; j < entries_[i].size(); j++) {
-        WriteMarker(os, binary, "<State>");
+        WriteToken(os, binary, "<State>");
         WriteBasicType(os, binary, static_cast<int32>(j));
         if (entries_[i][j].pdf_class != kNoPdf) {
-          WriteMarker(os, binary, "<PdfClass>");
+          WriteToken(os, binary, "<PdfClass>");
           WriteBasicType(os, binary, entries_[i][j].pdf_class);
         }
         for (size_t k = 0; k < entries_[i][j].transitions.size(); k++) {
-          WriteMarker(os, binary, "<Transition>");
+          WriteToken(os, binary, "<Transition>");
           WriteBasicType(os, binary, entries_[i][j].transitions[k].first);
           WriteBasicType(os, binary, entries_[i][j].transitions[k].second);
         }
-        WriteMarker(os, binary, "</State>");
+        WriteToken(os, binary, "</State>");
         os << "\n";
       }
-      WriteMarker(os, binary, "</TopologyEntry>");
+      WriteToken(os, binary, "</TopologyEntry>");
       os << "\n";
     }
   } else {
@@ -186,7 +186,7 @@ void HmmTopology::Write(std::ostream &os, bool binary) const {
       }
     }
   }
-  WriteMarker(os, binary, "</Topology>");
+  WriteToken(os, binary, "</Topology>");
   if (!binary) os << "\n";
 }
 

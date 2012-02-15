@@ -31,70 +31,70 @@ namespace kaldi {
 void MleAmSgmmAccs::Write(std::ostream &out_stream, bool binary) const {
   uint32 tmp_uint32;
 
-  WriteMarker(out_stream, binary, "<SGMMACCS>");
+  WriteToken(out_stream, binary, "<SGMMACCS>");
 
-  WriteMarker(out_stream, binary, "<NUMSTATES>");
+  WriteToken(out_stream, binary, "<NUMSTATES>");
   tmp_uint32 = static_cast<uint32>(num_states_);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<NUMGaussians>");
+  WriteToken(out_stream, binary, "<NUMGaussians>");
   tmp_uint32 = static_cast<uint32>(num_gaussians_);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<FEATUREDIM>");
+  WriteToken(out_stream, binary, "<FEATUREDIM>");
   tmp_uint32 = static_cast<uint32>(feature_dim_);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<PHONESPACEDIM>");
+  WriteToken(out_stream, binary, "<PHONESPACEDIM>");
   tmp_uint32 = static_cast<uint32>(phn_space_dim_);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<SPKSPACEDIM>");
+  WriteToken(out_stream, binary, "<SPKSPACEDIM>");
   tmp_uint32 = static_cast<uint32>(spk_space_dim_);
   WriteBasicType(out_stream, binary, tmp_uint32);
   if (!binary) out_stream << "\n";
 
   if (Y_.size() != 0) {
     KALDI_ASSERT(gamma_.size() != 0);
-    WriteMarker(out_stream, binary, "<Y>");
+    WriteToken(out_stream, binary, "<Y>");
     for (int32 i = 0; i < num_gaussians_; ++i) {
       Y_[i].Write(out_stream, binary);
     }
   }
   if (Z_.size() != 0) {
     KALDI_ASSERT(R_.size() != 0);
-    WriteMarker(out_stream, binary, "<Z>");
+    WriteToken(out_stream, binary, "<Z>");
     for (int32 i = 0; i < num_gaussians_; ++i) {
       Z_[i].Write(out_stream, binary);
     }
-    WriteMarker(out_stream, binary, "<R>");
+    WriteToken(out_stream, binary, "<R>");
     for (int32 i = 0; i < num_gaussians_; ++i) {
       R_[i].Write(out_stream, binary);
     }
   }
   if (S_.size() != 0) {
     KALDI_ASSERT(gamma_.size() != 0);
-    WriteMarker(out_stream, binary, "<S>");
+    WriteToken(out_stream, binary, "<S>");
     for (int32 i = 0; i < num_gaussians_; ++i) {
       S_[i].Write(out_stream, binary);
     }
   }
   if (y_.size() != 0) {
     KALDI_ASSERT(gamma_.size() != 0);
-    WriteMarker(out_stream, binary, "<y>");
+    WriteToken(out_stream, binary, "<y>");
     for (int32 j = 0; j < num_states_; ++j) {
       y_[j].Write(out_stream, binary);
     }
   }
   if (gamma_.size() != 0) {
-    WriteMarker(out_stream, binary, "<gamma>");
+    WriteToken(out_stream, binary, "<gamma>");
     for (int32 j = 0; j < num_states_; ++j) {
       gamma_[j].Write(out_stream, binary);
     }
   }
-  WriteMarker(out_stream, binary, "<total_like>");
+  WriteToken(out_stream, binary, "<total_like>");
   WriteBasicType(out_stream, binary, total_like_);
 
-  WriteMarker(out_stream, binary, "<total_frames>");
+  WriteToken(out_stream, binary, "<total_frames>");
   WriteBasicType(out_stream, binary, total_frames_);
 
-  WriteMarker(out_stream, binary, "</SGMMACCS>");
+  WriteToken(out_stream, binary, "</SGMMACCS>");
 }
 
 void MleAmSgmmAccs::Read(std::istream &in_stream, bool binary,
@@ -102,25 +102,25 @@ void MleAmSgmmAccs::Read(std::istream &in_stream, bool binary,
   uint32 tmp_uint32;
   string token;
 
-  ExpectMarker(in_stream, binary, "<SGMMACCS>");
+  ExpectToken(in_stream, binary, "<SGMMACCS>");
 
-  ExpectMarker(in_stream, binary, "<NUMSTATES>");
+  ExpectToken(in_stream, binary, "<NUMSTATES>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   num_states_ = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<NUMGaussians>");
+  ExpectToken(in_stream, binary, "<NUMGaussians>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   num_gaussians_ = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<FEATUREDIM>");
+  ExpectToken(in_stream, binary, "<FEATUREDIM>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   feature_dim_ = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<PHONESPACEDIM>");
+  ExpectToken(in_stream, binary, "<PHONESPACEDIM>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   phn_space_dim_ = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<SPKSPACEDIM>");
+  ExpectToken(in_stream, binary, "<SPKSPACEDIM>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   spk_space_dim_ = static_cast<int32>(tmp_uint32);
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
 
   while (token != "</SGMMACCS>") {
     if (token == "<Y>") {
@@ -173,7 +173,7 @@ void MleAmSgmmAccs::Read(std::istream &in_stream, bool binary,
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 

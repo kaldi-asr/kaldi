@@ -855,7 +855,7 @@ void AddTransitionProbs(const TransitionModel &trans_model,
 
 
 // This function takes a phone-sequence with word-start and word-end
-// markers in it, and a word-sequence, and outputs the pronunciations
+// tokens in it, and a word-sequence, and outputs the pronunciations
 // "prons"... the format of "prons" is, each element is a vector,
 // where the first element is the word (or zero meaning no word, e.g.
 // for optional silence introduced by the lexicon), and the remaining

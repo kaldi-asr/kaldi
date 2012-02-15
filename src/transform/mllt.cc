@@ -30,7 +30,7 @@ void MlltAccs::Init(int32 dim, BaseFloat rand_prune) {  // initializes (destroys
 }
 
 void MlltAccs::Read(std::istream &is, bool binary, bool add) {
-  ExpectMarker(is, binary, "<MlltAccs>");
+  ExpectToken(is, binary, "<MlltAccs>");
   double beta;
   int32 dim;
   ReadBasicType(is, binary, &beta);
@@ -40,23 +40,23 @@ void MlltAccs::Read(std::istream &is, bool binary, bool add) {
   if (add && G_.size() != 0 && static_cast<size_t>(dim) != G_.size())
     KALDI_ERR << "MlltAccs::Read, summing accs of different size.";
   if (!add || G_.empty()) G_.resize(dim);
-  ExpectMarker(is, binary, "<G>");
+  ExpectToken(is, binary, "<G>");
   for (size_t i = 0; i < G_.size(); i++)
     G_[i].Read(is, binary, add);
-  ExpectMarker(is, binary, "</MlltAccs>");
+  ExpectToken(is, binary, "</MlltAccs>");
 }
 
 void MlltAccs::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<MlltAccs>");
+  WriteToken(os, binary, "<MlltAccs>");
   if(!binary) os << '\n';
   WriteBasicType(os, binary, beta_);
   int32 dim = G_.size();
   WriteBasicType(os, binary, dim);
-  WriteMarker(os, binary, "<G>");
+  WriteToken(os, binary, "<G>");
   if(!binary) os << '\n';
   for (size_t i = 0; i < G_.size(); i++)
     G_[i].Write(os, binary);
-  WriteMarker(os, binary, "</MlltAccs>");
+  WriteToken(os, binary, "</MlltAccs>");
   if(!binary) os << '\n';
 }
 

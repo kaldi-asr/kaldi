@@ -108,7 +108,7 @@ void AccumAmDiagGmm::AccumulateForGaussian(
 void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
                                bool add) {
   int32 num_pdfs;
-  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
   if (!add || (add && gmm_accumulators_.empty())) {
@@ -132,7 +132,7 @@ void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
 
 void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
   int32 num_pdfs = gmm_accumulators_.size();
-  WriteMarker(out_stream, binary, "<NUMPDFS>");
+  WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, num_pdfs);
   for (std::vector<AccumDiagGmm*>::const_iterator it =
       gmm_accumulators_.begin(), end = gmm_accumulators_.end(); it != end; ++it) {

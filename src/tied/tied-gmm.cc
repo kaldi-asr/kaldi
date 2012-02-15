@@ -150,14 +150,14 @@ void TiedGmm::Merge(std::vector<int32> *sequence) {
 }
 
 void TiedGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<TIEDGMM>");
+  WriteToken(out_stream, binary, "<TIEDGMM>");
   if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<PDF_INDEX>");
+  WriteToken(out_stream, binary, "<PDF_INDEX>");
   WriteBasicType(out_stream, binary, codebook_index_);
   //  if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<WEIGHTS>");
+  WriteToken(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</TIEDGMM>");
+  WriteToken(out_stream, binary, "</TIEDGMM>");
   if (!binary) out_stream << "\n";
 }
 
@@ -168,27 +168,27 @@ std::ostream & operator <<(std::ostream & out_stream,
 }
 
 void TiedGmm::Read(std::istream &in_stream, bool binary) {
-  // ExpectMarker(in_stream, binary, "<TiedDiagGMM>");
-  std::string marker;
-  ReadMarker(in_stream, binary, &marker);
-  if (marker != "<TIEDGMM>")
-    KALDI_ERR << "Expected <TIEDGMM>, got " << marker;
+  // ExpectToken(in_stream, binary, "<TiedDiagGMM>");
+  std::string token;
+  ReadToken(in_stream, binary, &token);
+  if (token != "<TIEDGMM>")
+    KALDI_ERR << "Expected <TIEDGMM>, got " << token;
 
-  ReadMarker(in_stream, binary, &marker);
-  if (marker != "<PDF_INDEX>")
-    KALDI_ERR << "Expected <PDF_INDEX>, got " << marker;
+  ReadToken(in_stream, binary, &token);
+  if (token != "<PDF_INDEX>")
+    KALDI_ERR << "Expected <PDF_INDEX>, got " << token;
   ReadBasicType(in_stream, binary, &codebook_index_);
 
-  ReadMarker(in_stream, binary, &marker);
-  if (marker != "<WEIGHTS>")
+  ReadToken(in_stream, binary, &token);
+  if (token != "<WEIGHTS>")
     KALDI_ERR << "TiedGmm::Read, expected <WEIGHTS> got "
-              << marker;
+              << token;
   weights_.Read(in_stream, binary);
-  // ExpectMarker(in_stream, binary, "<TiedDiagGMM>");
-  ReadMarker(in_stream, binary, &marker);
+  // ExpectToken(in_stream, binary, "<TiedDiagGMM>");
+  ReadToken(in_stream, binary, &token);
   // <DiagGMMEnd> is for compatibility. Will be deleted later
-  if (marker != "</TIEDGMM>")
-    KALDI_ERR << "Expected </TIEDGMM>, got " << marker;
+  if (token != "</TIEDGMM>")
+    KALDI_ERR << "Expected </TIEDGMM>, got " << token;
 }
 
 std::istream & operator >>(std::istream & rIn, kaldi::TiedGmm &gmm) {

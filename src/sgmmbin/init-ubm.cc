@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Cluster the Gaussians in a diagonal-GMM acoustic model\n"
-        "to a single full-covariance GMM.\n"
+        "to a single full-covariance or diagonal-covariance GMM.\n"
         "Usage: init-ubm [options] <model-file> <state-occs> <gmm-out>\n";
 
     bool binary_write = true, fullcov_ubm = true;

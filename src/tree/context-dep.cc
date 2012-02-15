@@ -137,12 +137,12 @@ ContextDependency *GenRandContextDependencyLarge(const std::vector<int32> &phone
 
 
 void ContextDependency::Write (std::ostream &os, bool binary) {
-  WriteMarker(os, binary, "ContextDependency");
+  WriteToken(os, binary, "ContextDependency");
   WriteBasicType(os, binary, N_);
   WriteBasicType(os, binary, P_);
-  WriteMarker(os, binary, "ToPdf");
+  WriteToken(os, binary, "ToPdf");
   to_pdf_->Write(os, binary);
-  WriteMarker(os, binary, "EndContextDependency");
+  WriteToken(os, binary, "EndContextDependency");
 }
 
 
@@ -151,24 +151,24 @@ void ContextDependency::Read (std::istream &is, bool binary) {
     delete to_pdf_;
     to_pdf_ = NULL;
   }
-  ExpectMarker(is, binary, "ContextDependency");
+  ExpectToken(is, binary, "ContextDependency");
   ReadBasicType(is, binary, &N_);
   ReadBasicType(is, binary, &P_);
   EventMap *to_pdf = NULL;
-  std::string marker;
-  ReadMarker(is, binary, &marker);
-  if (marker == "ToLength") {  // back-compat.
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "ToLength") {  // back-compat.
     EventMap *to_num_pdf_classes = EventMap::Read(is, binary);
     if (to_num_pdf_classes) delete to_num_pdf_classes;
-    ReadMarker(is, binary, &marker);
+    ReadToken(is, binary, &token);
   }
-  if (marker == "ToPdf") {
+  if (token == "ToPdf") {
     to_pdf = EventMap::Read(is , binary);
   } else {
-    KALDI_ERR << "Got unexpected marker " << marker
+    KALDI_ERR << "Got unexpected token " << token
               << " reading context-dependency object.";
   }
-  ExpectMarker(is, binary, "EndContextDependency");
+  ExpectToken(is, binary, "EndContextDependency");
   to_pdf_ = to_pdf;
 }
 

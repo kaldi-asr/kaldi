@@ -187,12 +187,12 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 
   while (getline(istrm, inpline) && !istrm.eof()) {
     std::istringstream ss(inpline);
-    std::string marker;
-    ss >> marker >> std::ws;
-    if (marker == "\\data\\" && ss.eof()) break;
+    std::string token;
+    ss >> token >> std::ws;
+    if (token == "\\data\\" && ss.eof()) break;
   }
   if (istrm.eof()) {
-    KALDI_ERR << "\\data\\ marker not found in arpa file.\n";
+    KALDI_ERR << "\\data\\ token not found in arpa file.\n";
   }
 
   while (getline(istrm, inpline) && !istrm.eof()) {

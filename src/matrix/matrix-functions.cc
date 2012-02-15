@@ -1,7 +1,7 @@
 // matrix/matrix-functions.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Go Vivace Inc.;  Jan Silovsky
-//                      Yanmin Qian;  Saarland University
+//                      Yanmin Qian;  Saarland University;  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -562,7 +562,7 @@ so: re(D_k)= 1/2 (im(B_k) + im(B_{N/2-k}))                             (z2)
 
 
 /*
-   (*) [this marker is referred to in a comment above].
+   (*) [this token is referred to in a comment above].
 
    Notes for separating 2 real transforms from one complex one.  Note that the
    letters here (A, B, C and N) are all distinct from the same letters used in the
@@ -901,6 +901,56 @@ void ComputePca(const MatrixBase<double> &X,
                 MatrixBase<double> *A,
                 bool print_eigs);
 
+
+// Added by Dan, Feb. 13 2012. 
+// This function does: *plus += max(0, a b^T),
+// *minus += max(0, -(a b^T)).
+template<class Real>
+void AddOuterProductPlusMinus(Real alpha,
+                              const VectorBase<Real> &a,
+                              const VectorBase<Real> &b,
+                              MatrixBase<Real> *plus, 
+                              MatrixBase<Real> *minus) {
+  KALDI_ASSERT(a.Dim() == plus->NumRows() && b.Dim() == plus->NumCols()
+               && a.Dim() == minus->NumRows() && b.Dim() == minus->NumCols());
+  int32 nrows = a.Dim(), ncols = b.Dim(), pskip = plus->Stride() - ncols,
+      mskip = minus->Stride() - ncols;
+  const Real *adata = a.Data(), *bdata = b.Data();
+  Real *plusdata = plus->Data(), *minusdata = minus->Data();
+
+  for (int32 i = 0; i < nrows; i++) {
+    const Real *btmp = bdata;
+    Real multiple = alpha * *adata;
+    if (multiple > 0.0) {
+      for (int32 j = 0; j < ncols; j++, plusdata++, minusdata++, btmp++) {
+        if (*btmp > 0.0) *plusdata += multiple * *btmp;
+        else *minusdata -= multiple * *btmp;
+      }
+    } else {
+      for (int32 j = 0; j < ncols; j++, plusdata++, minusdata++, btmp++) {
+        if (*btmp < 0.0) *plusdata += multiple * *btmp;
+        else *minusdata -= multiple * *btmp;
+      }
+    }        
+    plusdata += pskip;
+    minusdata += mskip;
+    adata++;
+  }
+}
+
+// Instantiate template
+template
+void AddOuterProductPlusMinus<float>(float alpha,
+                                     const VectorBase<float> &a,
+                                     const VectorBase<float> &b,
+                                     MatrixBase<float> *plus, 
+                                     MatrixBase<float> *minus);
+template
+void AddOuterProductPlusMinus<double>(double alpha,
+                                      const VectorBase<double> &a,
+                                      const VectorBase<double> &b,
+                                      MatrixBase<double> *plus, 
+                                      MatrixBase<double> *minus);
 
 
 } // end namespace kaldi

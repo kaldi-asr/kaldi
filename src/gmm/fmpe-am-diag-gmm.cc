@@ -31,15 +31,15 @@ void FmpeAccumModelDiff::Read(std::istream &in_stream, bool binary) {
   int32 dimension, num_components;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<FMPEMODELDIFFS>");
-  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ExpectToken(in_stream, binary, "<FMPEMODELDIFFS>");
+  ExpectToken(in_stream, binary, "<VECSIZE>");
   ReadBasicType(in_stream, binary, &dimension);
-  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ExpectToken(in_stream, binary, "<NUMCOMPONENTS>");
   ReadBasicType(in_stream, binary, &num_components);
 
   Resize(num_components, dimension);
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
   while (token != "</FMPEMODELDIFFS>") {
     if (token == "<MLE_OCCUPANCY>") {
       mle_occupancy_.Read(in_stream, binary);
@@ -50,15 +50,15 @@ void FmpeAccumModelDiff::Read(std::istream &in_stream, bool binary) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void FmpeAccumModelDiff::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<FMPEMODELDIFFS>");
-  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteToken(out_stream, binary, "<FMPEMODELDIFFS>");
+  WriteToken(out_stream, binary, "<VECSIZE>");
   WriteBasicType(out_stream, binary, dim_);
-  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteToken(out_stream, binary, "<NUMCOMPONENTS>");
   WriteBasicType(out_stream, binary, num_comp_);
 
   // convert into BaseFloat before writing things
@@ -71,13 +71,13 @@ void FmpeAccumModelDiff::Write(std::ostream &out_stream, bool binary) const {
   mean_diff_accumulator_bf.CopyFromMat(mean_diff_accumulator_);
   variance_diff_accumulator_bf.CopyFromMat(variance_diff_accumulator_);
 
-  WriteMarker(out_stream, binary, "<MLE_OCCUPANCY>");
+  WriteToken(out_stream, binary, "<MLE_OCCUPANCY>");
   occupancy_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<MEANDIFFS>");
+  WriteToken(out_stream, binary, "<MEANDIFFS>");
   mean_diff_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<DIAGVARDIFFS>");
+  WriteToken(out_stream, binary, "<DIAGVARDIFFS>");
   variance_diff_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</FMPEMODELDIFFS>");
+  WriteToken(out_stream, binary, "</FMPEMODELDIFFS>");
 }
 
 void FmpeAccumModelDiff::Resize(int32 num_comp, int32 dim) {
@@ -164,15 +164,15 @@ void FmpeAccumModelDiff::ComputeModelParaDiff(const DiagGmm& diag_gmm,
 void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   uint32 tmp_uint32;
 
-  WriteMarker(out_stream, binary, "<FMPEACCS>");
+  WriteToken(out_stream, binary, "<FMPEACCS>");
 
-  WriteMarker(out_stream, binary, "<NumGaussians>");
+  WriteToken(out_stream, binary, "<NumGaussians>");
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<LengthContextExp>");
+  WriteToken(out_stream, binary, "<LengthContextExp>");
   tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
 
@@ -180,7 +180,7 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   Matrix<BaseFloat> mat_bf(dim_, dim_ + 1);
 
   if (p_.size() != 0) {
-    WriteMarker(out_stream, binary, "<P>");
+    WriteToken(out_stream, binary, "<P>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
 		mat_bf.CopyFromMat(p_[i][j], kNoTrans);
@@ -189,7 +189,7 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
     }
   }
   if (n_.size() != 0) {
-    WriteMarker(out_stream, binary, "<N>");
+    WriteToken(out_stream, binary, "<N>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
 		mat_bf.CopyFromMat(n_[i][j], kNoTrans);
@@ -206,14 +206,14 @@ void FmpeAccs::Write(std::ostream &out_stream, bool binary) const {
   direct_diff_bf.CopyFromVec(direct_diff_);
   indirect_diff_bf.CopyFromVec(indirect_diff_);
 
-  WriteMarker(out_stream, binary, "<DIFFERENTIAL>");
+  WriteToken(out_stream, binary, "<DIFFERENTIAL>");
   diff_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<DIRECTDIFFERENTIAL>");
+  WriteToken(out_stream, binary, "<DIRECTDIFFERENTIAL>");
   direct_diff_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<INDIRECTDIFFERENTIAL>");
+  WriteToken(out_stream, binary, "<INDIRECTDIFFERENTIAL>");
   indirect_diff_bf.Write(out_stream, binary);
 
-  WriteMarker(out_stream, binary, "</FMPEACCS>");
+  WriteToken(out_stream, binary, "</FMPEACCS>");
 }
 
 void FmpeAccs::Read(std::istream &in_stream, bool binary,
@@ -221,18 +221,18 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
   uint32 tmp_uint32;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<FMPACCS>");
+  ExpectToken(in_stream, binary, "<FMPACCS>");
 
-  ExpectMarker(in_stream, binary, "<NumGaussians>");
+  ExpectToken(in_stream, binary, "<NumGaussians>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 num_gaussians = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<LengthContExp>");
+  ExpectToken(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 length_cont_exp = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim_);
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
 
   while (token != "</FMPEACCS>") {
     if (token == "<P>") {
@@ -260,16 +260,16 @@ void FmpeAccs::Read(std::istream &in_stream, bool binary,
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void FmpeAccs::ReadModelDiffs(std::istream &in_stream, bool binary) {
   int32 num_pdfs;
   int32 dim;
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim);
-  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT((num_pdfs > 0) && (dim > 0));
 
@@ -683,15 +683,15 @@ void FmpeUpdater::Init(int32 num_gmm_gauss, int32 con_exp, int32 dim) {
 void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   uint32 tmp_uint32;
 
-  WriteMarker(out_stream, binary, "<FMPE>");
+  WriteToken(out_stream, binary, "<FMPE>");
 
-  WriteMarker(out_stream, binary, "<NumGaussians>");
+  WriteToken(out_stream, binary, "<NumGaussians>");
   tmp_uint32 = static_cast<uint32>(config_.gmm_num_comps);
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<LengthContExp>");
+  WriteToken(out_stream, binary, "<LengthContExp>");
   tmp_uint32 = static_cast<uint32>(config_.context_windows.NumRows());
   WriteBasicType(out_stream, binary, tmp_uint32);
-  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
 
@@ -699,7 +699,7 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
   Matrix<BaseFloat> mat_bf(dim_, dim_ + 1);
 
   if (M_.size() != 0) {
-    WriteMarker(out_stream, binary, "<PROJ_MAT>");
+    WriteToken(out_stream, binary, "<PROJ_MAT>");
     for (int32 i = 0; i < config_.gmm_num_comps; ++i) {
       for (int32 j = 0; j < config_.context_windows.NumRows(); ++j) {
 		mat_bf.CopyFromMat(M_[i][j], kNoTrans);
@@ -708,25 +708,25 @@ void FmpeUpdater::Write(std::ostream &out_stream, bool binary) const {
     }
   }
 
-  WriteMarker(out_stream, binary, "</FMPE>");
+  WriteToken(out_stream, binary, "</FMPE>");
 }
 
 void FmpeUpdater::Read(std::istream &in_stream, bool binary) {
   uint32 tmp_uint32;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<FMPE>");
+  ExpectToken(in_stream, binary, "<FMPE>");
 
-  ExpectMarker(in_stream, binary, "<NumGaussians>");
+  ExpectToken(in_stream, binary, "<NumGaussians>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 num_gaussians = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<LengthContExp>");
+  ExpectToken(in_stream, binary, "<LengthContExp>");
   ReadBasicType(in_stream, binary, &tmp_uint32);
   int32 length_cont_exp = static_cast<int32>(tmp_uint32);
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim_);
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
 
   while (token != "</FMPE>") {
     if (token == "<PROJ_MAT>") {
@@ -740,7 +740,7 @@ void FmpeUpdater::Read(std::istream &in_stream, bool binary) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 

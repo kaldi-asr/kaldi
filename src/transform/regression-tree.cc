@@ -266,23 +266,23 @@ bool RegressionTree::GatherStats(const vector<AffineXformStats*> &stats_in,
 }
 
 void RegressionTree::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<REGTREE>");
-  WriteMarker(out, binary, "<NUMNODES>");
+  WriteToken(out, binary, "<REGTREE>");
+  WriteToken(out, binary, "<NUMNODES>");
   WriteBasicType(out, binary, num_nodes_);
   if (!binary) out << '\n';
-  WriteMarker(out, binary, "<PARENTS>");
+  WriteToken(out, binary, "<PARENTS>");
   if (!binary) out << '\n';
   WriteIntegerVector(out, binary, parents_);
-  WriteMarker(out, binary, "</PARENTS>");
+  WriteToken(out, binary, "</PARENTS>");
   if (!binary) out << '\n';
 
-  WriteMarker(out, binary, "<BASECLASSES>");
+  WriteToken(out, binary, "<BASECLASSES>");
   if (!binary) out << '\n';
-  WriteMarker(out, binary, "<NUMBASECLASSES>");
+  WriteToken(out, binary, "<NUMBASECLASSES>");
   WriteBasicType(out, binary, num_baseclasses_);
   if (!binary) out << '\n';
   for (int32 bclass = 0; bclass < num_baseclasses_; bclass++) {
-    WriteMarker(out, binary, "<CLASS>");
+    WriteToken(out, binary, "<CLASS>");
     WriteBasicType(out, binary, bclass);
     WriteBasicType(out, binary, static_cast<int32>(
         baseclasses_[bclass].size()));
@@ -295,32 +295,32 @@ void RegressionTree::Write(std::ostream &out, bool binary) const {
       if (!binary) out << '\n';
     }
 
-    WriteMarker(out, binary, "</CLASS>");
+    WriteToken(out, binary, "</CLASS>");
     if (!binary) out << '\n';
   }
-  WriteMarker(out, binary, "</BASECLASSES>");
+  WriteToken(out, binary, "</BASECLASSES>");
   if (!binary) out << '\n';
 }
 
 void RegressionTree::Read(std::istream &in, bool binary,
                           const AmDiagGmm &am) {
   int32 total_gauss = 0;
-  ExpectMarker(in, binary, "<REGTREE>");
-  ExpectMarker(in, binary, "<NUMNODES>");
+  ExpectToken(in, binary, "<REGTREE>");
+  ExpectToken(in, binary, "<NUMNODES>");
   ReadBasicType(in, binary, &num_nodes_);
   assert(num_nodes_ > 0);
   parents_.resize(static_cast<size_t>(num_nodes_));
-  ExpectMarker(in, binary, "<PARENTS>");
+  ExpectToken(in, binary, "<PARENTS>");
   ReadIntegerVector(in, binary, &parents_);
-  ExpectMarker(in, binary, "</PARENTS>");
+  ExpectToken(in, binary, "</PARENTS>");
 
-  ExpectMarker(in, binary, "<BASECLASSES>");
-  ExpectMarker(in, binary, "<NUMBASECLASSES>");
+  ExpectToken(in, binary, "<BASECLASSES>");
+  ExpectToken(in, binary, "<NUMBASECLASSES>");
   ReadBasicType(in, binary, &num_baseclasses_);
   assert(num_baseclasses_ >0);
   baseclasses_.resize(static_cast<size_t>(num_baseclasses_));
   for (int32 bclass = 0; bclass < num_baseclasses_; bclass++) {
-    ExpectMarker(in, binary, "<CLASS>");
+    ExpectToken(in, binary, "<CLASS>");
     int32 class_id, num_comp, pdf_id, gauss_id;
     ReadBasicType(in, binary, &class_id);
     ReadBasicType(in, binary, &num_comp);
@@ -335,9 +335,9 @@ void RegressionTree::Read(std::istream &in, bool binary,
       baseclasses_[bclass].push_back(std::make_pair(pdf_id, gauss_id));
     }
 
-    ExpectMarker(in, binary, "</CLASS>");
+    ExpectToken(in, binary, "</CLASS>");
   }
-  ExpectMarker(in, binary, "</BASECLASSES>");
+  ExpectToken(in, binary, "</BASECLASSES>");
 
   if (total_gauss != am.NumGauss())
     KALDI_ERR << "Expecting " << am.NumGauss() << " Gaussians in "

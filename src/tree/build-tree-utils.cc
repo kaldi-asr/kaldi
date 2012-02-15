@@ -25,7 +25,7 @@
 namespace kaldi {
 
 void WriteBuildTreeStats(std::ostream &os, bool binary, const BuildTreeStatsType &stats) {
-  WriteMarker(os, binary, "BTS");
+  WriteToken(os, binary, "BTS");
   uint32 size = stats.size();
   WriteBasicType(os, binary, size);
   for (size_t i = 0; i < size; i++) {
@@ -44,7 +44,7 @@ void WriteBuildTreeStats(std::ostream &os, bool binary, const BuildTreeStatsType
 void ReadBuildTreeStats(std::istream &is, bool binary, const Clusterable &example, BuildTreeStatsType *stats) {
   assert(stats != NULL);
   assert(stats->empty());
-  ExpectMarker(is, binary, "BTS");
+  ExpectToken(is, binary, "BTS");
   uint32 size;
   ReadBasicType(is, binary, &size);
   stats->resize(size);

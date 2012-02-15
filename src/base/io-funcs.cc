@@ -117,22 +117,22 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
   }
 }
 
-void CheckMarker(const char *marker) {
-  assert(*marker != '\0');  // check it's nonempty.
-  while (*marker != '\0') {
-    assert(!::isspace(*marker));
-    marker++;
+void CheckToken(const char *token) {
+  assert(*token != '\0');  // check it's nonempty.
+  while (*token != '\0') {
+    assert(!::isspace(*token));
+    token++;
   }
 }
 
-void WriteMarker(std::ostream &os, bool binary, const char *marker) {
+void WriteToken(std::ostream &os, bool binary, const char *token) {
   // binary mode is ignored;
   // we use space as termination character in either case.
-  assert(marker != NULL);
-  CheckMarker(marker);  // make sure it's valid (can be read back)
-  os << marker << " ";
+  assert(token != NULL);
+  CheckToken(token);  // make sure it's valid (can be read back)
+  os << token << " ";
   if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteMarker.");
+    throw std::runtime_error("Write failure in WriteToken.");
   }
 }
 
@@ -141,20 +141,20 @@ int Peek(std::istream &is, bool binary) {
   return is.peek();
 }
 
-void WriteMarker(std::ostream &os, bool binary, const std::string & marker) {
-  WriteMarker(os, binary, marker.c_str());
+void WriteToken(std::ostream &os, bool binary, const std::string & token) {
+  WriteToken(os, binary, token.c_str());
 }
 
-void ReadMarker(std::istream &is, bool binary, std::string *str) {
+void ReadToken(std::istream &is, bool binary, std::string *str) {
   assert(str != NULL);
   if (!binary) is >> std::ws;  // consume whitespace.
   is >> *str;
   if (is.fail()) {
-    KALDI_ERR << "ReadMarker, failed to read marker at file position "
+    KALDI_ERR << "ReadToken, failed to read token at file position "
               << is.tellg();
   }
   if (!isspace(is.peek())) {
-    KALDI_ERR << "ReadMarker, expected space after marker, saw instead "
+    KALDI_ERR << "ReadToken, expected space after token, saw instead "
               << static_cast<char>(is.peek())
               << ", at file position " << is.tellg();
   }
@@ -162,39 +162,39 @@ void ReadMarker(std::istream &is, bool binary, std::string *str) {
 }
 
 
-void PeekMarker(std::istream &is, bool binary, std::string *str) {
+void PeekToken(std::istream &is, bool binary, std::string *str) {
   assert(str != NULL);
   if (!binary) is >> std::ws;  // consume whitespace.
   std::streampos beg = is.tellg();
   is >> *str;
   if (is.fail()) {
-    KALDI_ERR << "PeekMarker, failed to read marker at file position "
+    KALDI_ERR << "PeekToken, failed to read token at file position "
               << is.tellg();
   }
   is.seekg(beg);
 }
 
 
-void ExpectMarker(std::istream &is, bool binary, const char *marker) {
+void ExpectToken(std::istream &is, bool binary, const char *token) {
   int pos_at_start = is.tellg();
-  assert(marker != NULL);
-  CheckMarker(marker);  // make sure it's valid (can be read back)
+  assert(token != NULL);
+  CheckToken(token);  // make sure it's valid (can be read back)
   if (!binary) is >> std::ws;  // consume whitespace.
   std::string str;
   is >> str;
   is.get();  // consume the space.
   if (is.fail()) {
-    KALDI_ERR << "Failed to read marker [started at file position "
-              << pos_at_start << "], expected " << marker;
+    KALDI_ERR << "Failed to read token [started at file position "
+              << pos_at_start << "], expected " << token;
   }
-  if (strcmp(str.c_str(), marker) != 0) {
-    KALDI_ERR << "Expected marker \"" << marker << "\", got instead \""
+  if (strcmp(str.c_str(), token) != 0) {
+    KALDI_ERR << "Expected token \"" << token << "\", got instead \""
               << str <<"\".";
   }
 }
 
-void ExpectMarker(std::istream &is, bool binary, const std::string &marker) {
-  ExpectMarker(is, binary, marker.c_str());
+void ExpectToken(std::istream &is, bool binary, const std::string &token) {
+  ExpectToken(is, binary, token.c_str());
 }
 
 }  // end namespace kaldi

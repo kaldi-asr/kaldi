@@ -24,7 +24,7 @@ namespace kaldi {
 
 void EventMap::Write(std::ostream &os, bool binary, EventMap *emap) {
   if (emap == NULL) {
-    WriteMarker(os, binary, "NULL");
+    WriteToken(os, binary, "NULL");
   } else {
     emap->Write(os, binary);
   }
@@ -33,7 +33,7 @@ void EventMap::Write(std::ostream &os, bool binary, EventMap *emap) {
 EventMap *EventMap::Read(std::istream &is, bool binary) {
   char c = Peek(is, binary);
   if (c == 'N') {
-    ExpectMarker(is, binary, "NULL");
+    ExpectToken(is, binary, "NULL");
     return NULL;
   } else if (c == 'C') {
     return ConstantEventMap::Read(is, binary);
@@ -50,7 +50,7 @@ EventMap *EventMap::Read(std::istream &is, bool binary) {
 
 
 void ConstantEventMap::Write(std::ostream &os, bool binary) {
-  WriteMarker(os, binary, "CE");
+  WriteToken(os, binary, "CE");
   WriteBasicType(os, binary, answer_);
   if (os.fail()) {
     KALDI_ERR << "ConstantEventMap::Write(), could not write to stream.";
@@ -59,7 +59,7 @@ void ConstantEventMap::Write(std::ostream &os, bool binary) {
 
 // static member function.
 ConstantEventMap* ConstantEventMap::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "CE");
+  ExpectToken(is, binary, "CE");
   EventAnswerType answer;
   ReadBasicType(is, binary, &answer);
   return new ConstantEventMap(answer);
@@ -67,16 +67,16 @@ ConstantEventMap* ConstantEventMap::Read(std::istream &is, bool binary) {
 
 
 void TableEventMap::Write(std::ostream &os, bool binary) {
-  WriteMarker(os, binary, "TE");
+  WriteToken(os, binary, "TE");
   WriteBasicType(os, binary, key_);
   uint32 size = table_.size();
   WriteBasicType(os, binary, size);
-  WriteMarker(os, binary, "(");
+  WriteToken(os, binary, "(");
   for (size_t t = 0; t < size; t++) {
     // This Write function works for NULL pointers.
     EventMap::Write(os, binary, table_[t]);
   }
-  WriteMarker(os, binary, ")");
+  WriteToken(os, binary, ")");
   if (!binary) os << '\n';
   if (os.fail()) {
     KALDI_ERR << "TableEventMap::Write(), could not write to stream.";
@@ -85,31 +85,31 @@ void TableEventMap::Write(std::ostream &os, bool binary) {
 
 // static member function.
 TableEventMap* TableEventMap::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "TE");
+  ExpectToken(is, binary, "TE");
   EventKeyType key;
   ReadBasicType(is, binary, &key);
   uint32 size;
   ReadBasicType(is, binary, &size);
   std::vector<EventMap*> table(size);
-  ExpectMarker(is, binary, "(");
+  ExpectToken(is, binary, "(");
   for (size_t t = 0; t < size; t++) {
     // This Read function works for NULL pointers.
     table[t] = EventMap::Read(is, binary);
   }
-  ExpectMarker(is, binary, ")");
+  ExpectToken(is, binary, ")");
   return new TableEventMap(key, table);
 }
 
 void SplitEventMap::Write(std::ostream &os, bool binary) {
-  WriteMarker(os, binary, "SE");
+  WriteToken(os, binary, "SE");
   WriteBasicType(os, binary, key_);
   // WriteIntegerVector(os, binary, yes_set_);
   yes_set_.Write(os, binary);
   assert(yes_ != NULL && no_ != NULL);
-  WriteMarker(os, binary, "{");
+  WriteToken(os, binary, "{");
   yes_->Write(os, binary);
   no_->Write(os, binary);
-  WriteMarker(os, binary, "}");
+  WriteToken(os, binary, "}");
   if (!binary) os << '\n';
   if (os.fail()) {
     KALDI_ERR << "SplitEventMap::Write(), could not write to stream.";
@@ -118,17 +118,17 @@ void SplitEventMap::Write(std::ostream &os, bool binary) {
 
 // static member function.
 SplitEventMap* SplitEventMap::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "SE");
+  ExpectToken(is, binary, "SE");
   EventKeyType key;
   ReadBasicType(is, binary, &key);
   // std::vector<EventValueType> yes_set;
   // ReadIntegerVector(is, binary, &yes_set);
   ConstIntegerSet<EventValueType> yes_set;
   yes_set.Read(is, binary);
-  ExpectMarker(is, binary, "{");
+  ExpectToken(is, binary, "{");
   EventMap *yes = EventMap::Read(is, binary);
   EventMap *no = EventMap::Read(is, binary);
-  ExpectMarker(is, binary, "}");
+  ExpectToken(is, binary, "}");
   // yes and no should be non-NULL because NULL values are not valid for SplitEventMap;
   // the constructor checks this.  Therefore this is an unlikely error.
   if (yes == NULL || no == NULL) KALDI_ERR << "SplitEventMap::Read, NULL pointers.";
@@ -137,7 +137,7 @@ SplitEventMap* SplitEventMap::Read(std::istream &is, bool binary) {
 
 
 void WriteEventType(std::ostream &os, bool binary, const EventType &evec) {
-  WriteMarker(os, binary, "EV");
+  WriteToken(os, binary, "EV");
   uint32 size = evec.size();
   WriteBasicType(os, binary, size);
   for (size_t i = 0; i < size; i++) {
@@ -149,7 +149,7 @@ void WriteEventType(std::ostream &os, bool binary, const EventType &evec) {
 
 void ReadEventType(std::istream &is, bool binary, EventType *evec) {
   assert(evec != NULL);
-  ExpectMarker(is, binary, "EV");
+  ExpectToken(is, binary, "EV");
   uint32 size;
   ReadBasicType(is, binary, &size);
   evec->resize(size);

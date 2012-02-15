@@ -171,13 +171,13 @@ void AccumFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
   GmmFlagsType flags;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<GMMACCS>");
-  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ExpectToken(in_stream, binary, "<GMMACCS>");
+  ExpectToken(in_stream, binary, "<VECSIZE>");
   ReadBasicType(in_stream, binary, &dimension);
-  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ExpectToken(in_stream, binary, "<NUMCOMPONENTS>");
   ReadBasicType(in_stream, binary, &num_components);
   KALDI_ASSERT(dimension > 0 && num_components > 0);
-  ExpectMarker(in_stream, binary, "<FLAGS>");
+  ExpectToken(in_stream, binary, "<FLAGS>");
   ReadBasicType(in_stream, binary, &flags);
 
   if (add) {
@@ -199,7 +199,7 @@ void AccumFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
   Vector<double> tmp_occs;
   Matrix<double> tmp_means;
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
   while (token != "</GMMACCS>") {
     if (token == "<OCCUPANCY>") {
       tmp_occs.Read(in_stream, binary, false);
@@ -221,30 +221,30 @@ void AccumFullGmm::Read(std::istream &in_stream, bool binary, bool add) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void AccumFullGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<GMMACCS>");
-  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteToken(out_stream, binary, "<GMMACCS>");
+  WriteToken(out_stream, binary, "<VECSIZE>");
   WriteBasicType(out_stream, binary, dim_);
-  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteToken(out_stream, binary, "<NUMCOMPONENTS>");
   WriteBasicType(out_stream, binary, num_comp_);
-  WriteMarker(out_stream, binary, "<FLAGS>");
+  WriteToken(out_stream, binary, "<FLAGS>");
   WriteBasicType(out_stream, binary, flags_);
 
   Vector<BaseFloat> occupancy_bf(occupancy_);
-  WriteMarker(out_stream, binary, "<OCCUPANCY>");
+  WriteToken(out_stream, binary, "<OCCUPANCY>");
   occupancy_bf.Write(out_stream, binary);
   Matrix<BaseFloat> mean_accumulator_bf(mean_accumulator_);
-  WriteMarker(out_stream, binary, "<MEANACCS>");
+  WriteToken(out_stream, binary, "<MEANACCS>");
   mean_accumulator_bf.Write(out_stream, binary);
 
   if (num_comp_ != 0) assert(((flags_ & kGmmVariances) != 0 )
       == (covariance_accumulator_.size() != 0));  // sanity check.
   if (covariance_accumulator_.size() != 0) {
-    WriteMarker(out_stream, binary, "<FULLVARACCS>");
+    WriteToken(out_stream, binary, "<FULLVARACCS>");
     for (int32 i = 0; i < num_comp_; ++i) {
       SpMatrix<double> tmp_acc(covariance_accumulator_[i]);
       if (occupancy_(i) != 0) tmp_acc.AddVec2(-1.0 / occupancy_(i),
@@ -253,7 +253,7 @@ void AccumFullGmm::Write(std::ostream &out_stream, bool binary) const {
       tmp_acc_bf.Write(out_stream, binary);
     }
   }
-  WriteMarker(out_stream, binary, "</GMMACCS>");
+  WriteToken(out_stream, binary, "</GMMACCS>");
 }
 
 BaseFloat MlObjective(const FullGmm& gmm, const AccumFullGmm &fullgmm_acc) {

@@ -258,9 +258,9 @@ void TransitionModel::ComputeDerivedOfProbs() {
 }
 
 void TransitionModel::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "<TransitionModel>");
+  ExpectToken(is, binary, "<TransitionModel>");
   topo_.Read(is, binary);
-  ExpectMarker(is, binary, "<Triples>");
+  ExpectToken(is, binary, "<Triples>");
   int32 size;
   ReadBasicType(is, binary, &size);
   triples_.resize(size);
@@ -269,21 +269,21 @@ void TransitionModel::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &(triples_[i].hmm_state));
     ReadBasicType(is, binary, &(triples_[i].pdf));
   }
-  ExpectMarker(is, binary, "</Triples>");
+  ExpectToken(is, binary, "</Triples>");
   ComputeDerived();
-  ExpectMarker(is, binary, "<LogProbs>");
+  ExpectToken(is, binary, "<LogProbs>");
   log_probs_.Read(is, binary);
-  ExpectMarker(is, binary, "</LogProbs>");
-  ExpectMarker(is, binary, "</TransitionModel>");
+  ExpectToken(is, binary, "</LogProbs>");
+  ExpectToken(is, binary, "</TransitionModel>");
   ComputeDerivedOfProbs();
   Check();
 }
 
 void TransitionModel::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<TransitionModel>");
+  WriteToken(os, binary, "<TransitionModel>");
   if (!binary) os << "\n";
   topo_.Write(os, binary);
-  WriteMarker(os, binary, "<Triples>");
+  WriteToken(os, binary, "<Triples>");
   WriteBasicType(os, binary, static_cast<int32>(triples_.size()));
   if (!binary) os << "\n";
   for (int32 i = 0; i < static_cast<int32> (triples_.size()); i++) {
@@ -292,14 +292,14 @@ void TransitionModel::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, triples_[i].pdf);
     if (!binary) os << "\n";
   }
-  WriteMarker(os, binary, "</Triples>");
+  WriteToken(os, binary, "</Triples>");
   if (!binary) os << "\n";
-  WriteMarker(os, binary, "<LogProbs>");
+  WriteToken(os, binary, "<LogProbs>");
   if (!binary) os << "\n";
   log_probs_.Write(os, binary);
-  WriteMarker(os, binary, "</LogProbs>");
+  WriteToken(os, binary, "</LogProbs>");
   if (!binary) os << "\n";
-  WriteMarker(os, binary, "</TransitionModel>");
+  WriteToken(os, binary, "</TransitionModel>");
   if (!binary) os << "\n";
 }
 

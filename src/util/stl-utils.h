@@ -79,7 +79,7 @@ inline bool IsSortedAndUniq(const std::vector<T> &vec) {
 template<typename T>
 inline void Uniq(std::vector<T> *vec) {  // must be already sorted.
   KALDI_PARANOID_ASSERT(IsSorted(*vec));
-  assert(vec);
+  KALDI_ASSERT(vec);
   vec->erase(std::unique(vec->begin(), vec->end()), vec->end());
 }
 
@@ -88,7 +88,7 @@ template<class T>
 void CopySetToVector(const std::set<T> &s, std::vector<T> *v) {
   // adds members of s to v, in sorted order from lowest to highest
   // (because the set was in sorted order).
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->resize(s.size());
   typename std::set<T>::const_iterator siter = s.begin(), send = s.end();
   typename std::vector<T>::iterator viter = v->begin();
@@ -102,7 +102,7 @@ void CopySetToVector(const std::set<T> &s, std::vector<T> *v) {
 template<class A, class B>
 void CopyMapToVector(const std::map<A, B> &m,
                      std::vector<std::pair<A, B> > *v) {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->resize(m.size());
   typename std::map<A, B>::const_iterator miter = m.begin(), mend = m.end();
   typename std::vector<std::pair<A, B> >::iterator viter = v->begin();
@@ -115,7 +115,7 @@ void CopyMapToVector(const std::map<A, B> &m,
 /// Copies the keys in a map to a vector.
 template<class A, class B>
 void CopyMapKeysToVector(const std::map<A, B> &m, std::vector<A> *v) {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->resize(m.size());
   typename std::map<A, B>::const_iterator miter = m.begin(), mend = m.end();
   typename std::vector<A>::iterator viter = v->begin();
@@ -127,7 +127,7 @@ void CopyMapKeysToVector(const std::map<A, B> &m, std::vector<A> *v) {
 /// Copies the values in a map to a vector.
 template<class A, class B>
 void CopyMapValuesToVector(const std::map<A, B> &m, std::vector<B> *v) {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->resize(m.size());
   typename std::map<A, B>::const_iterator miter = m.begin(), mend = m.end();
   typename std::vector<B>::iterator viter = v->begin();
@@ -139,7 +139,7 @@ void CopyMapValuesToVector(const std::map<A, B> &m, std::vector<B> *v) {
 /// Copies the keys in a map to a set.
 template<class A, class B>
 void CopyMapKeysToSet(const std::map<A, B> &m, std::set<A> *s) {
-  assert(s != NULL);
+  KALDI_ASSERT(s != NULL);
   s->clear();
   typename std::map<A, B>::const_iterator miter = m.begin(), mend = m.end();
   for (; miter != mend; ++miter) {
@@ -150,7 +150,7 @@ void CopyMapKeysToSet(const std::map<A, B> &m, std::set<A> *s) {
 /// Copies the values in a map to a set.
 template<class A, class B>
 void CopyMapValuesToSet(const std::map<A, B> &m, std::set<B> *s) {
-  assert(s != NULL);
+  KALDI_ASSERT(s != NULL);
   s->clear();
   typename std::map<A, B>::const_iterator miter = m.begin(), mend = m.end();
   for (; miter != mend; ++miter)
@@ -161,7 +161,7 @@ void CopyMapValuesToSet(const std::map<A, B> &m, std::set<B> *s) {
 /// Copies the contents of a vector to a set.
 template<class A>
 void CopyVectorToSet(const std::vector<A> &v, std::set<A> *s) {
-  assert(s != NULL);
+  KALDI_ASSERT(s != NULL);
   s->clear();
   typename std::vector<A>::const_iterator iter = v.begin(), end = v.end();
   for (; iter != end; ++iter)
@@ -173,7 +173,7 @@ void CopyVectorToSet(const std::vector<A> &v, std::set<A> *s) {
 /// the corresponding entries of v to NULL
 template<class A>
 void DeletePointers(std::vector<A*> *v) {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   typename std::vector<A*>::iterator iter = v->begin(), end = v->end();
   for (; iter != end; ++iter) {
     if (*iter != NULL) {
@@ -196,7 +196,7 @@ bool ContainsNullPointers(const std::vector<A*> &v) {
 /// of another type.
 template<typename A, typename B>
 void CopyVectorToVector(const std::vector<A> &vec_in, std::vector<B> *vec_out) {
-  assert(vec_out != NULL);
+  KALDI_ASSERT(vec_out != NULL);
   vec_out->resize(vec_in.size());
   for (size_t i = 0; i < vec_in.size(); i++)
     (*vec_out)[i] = static_cast<B> (vec_in[i]);
@@ -239,10 +239,48 @@ struct StringHasher {  // hashing function for std::string
 /// Reverses the contents of a vector.
 template<typename T>
 inline void ReverseVector(std::vector<T> *vec) {
-  assert(vec != NULL);
+  KALDI_ASSERT(vec != NULL);
   size_t sz = vec->size();
   for (size_t i = 0; i < sz/2; i++)
     std::swap( (*vec)[i], (*vec)[sz-1-i]);
+}
+
+
+/// Comparator object for pairs that compares only the first pair.
+template<class A, class B>
+struct CompareFirstMemberOfPair {
+  inline bool operator() (const std::pair<A, B> &p1,
+                          const std::pair<A, B> &p2) {
+    return (p1.first < p2.first);
+  }
+};
+
+/// For a vector of pair<I, F> where I is an integer and F a floating-point or
+/// integer type, this function sorts a vector of type vector<pair<I, F> > on
+/// the I value and then merges elements with equal I values, summing these over
+/// the F component and then removing any F component with zero value.  This
+/// is for where the vector of pairs represents a map from the integer to float
+/// component, with an "adding" type of semantics for combining the elements.
+template<typename I, typename F>
+inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
+  KALDI_ASSERT_IS_INTEGER_TYPE(I);
+  CompareFirstMemberOfPair<I, F> c;
+  std::sort(vec->begin(), vec->end(), c); // sort on 1st element. 
+  typename std::vector<std::pair<I, F> >::iterator out = vec->begin(),
+      in = vec->begin(), end = vec->end();
+  while (in < end) {
+    // We reach this point only at the first element of
+    // each stretch of identical .first elements.
+    *out = *in;
+    ++in;
+    while (in < end && in->first == out->first) {
+      out->second += in->second; // this is the merge operation.
+      ++in;
+    }
+    if (out->second != static_cast<F>(0)) // Don't keep zero elements.
+      out++;
+  }
+  vec->erase(out, end);
 }
 
 

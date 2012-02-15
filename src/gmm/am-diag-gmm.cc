@@ -210,9 +210,9 @@ void AmDiagGmm::MergeByCount(const Vector<BaseFloat> &state_occs,
 void AmDiagGmm::Read(std::istream &in_stream, bool binary) {
   int32 num_pdfs;
 
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim_);
-  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
   densities_.reserve(num_pdfs);
@@ -225,9 +225,9 @@ void AmDiagGmm::Read(std::istream &in_stream, bool binary) {
 }
 
 void AmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
-  WriteMarker(out_stream, binary, "<NUMPDFS>");
+  WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, static_cast<int32>(densities_.size()));
   for (std::vector<DiagGmm*>::const_iterator it = densities_.begin(),
       end = densities_.end(); it != end; ++it) {

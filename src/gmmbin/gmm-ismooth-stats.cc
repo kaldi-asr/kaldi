@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("smooth-from-model", &smooth_from_model, "Expect second argument to be a model file");
+    po.Register("smooth-from-model", &smooth_from_model, "If true, "
+                "expect first argument to be a model file");
     po.Register("tau", &tau, "Tau value for I-smoothing");
     
     po.Read(argc, argv);

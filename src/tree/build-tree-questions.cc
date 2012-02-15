@@ -22,39 +22,39 @@
 namespace kaldi {
 
 void QuestionsForKey::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<QuestionsForKey>");
+  WriteToken(os, binary, "<QuestionsForKey>");
   int32 size = initial_questions.size();
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
     WriteIntegerVector(os, binary, initial_questions[i]);
   refine_opts.Write(os, binary);
-  WriteMarker(os, binary, "</QuestionsForKey>");
+  WriteToken(os, binary, "</QuestionsForKey>");
 }
 
 void QuestionsForKey::Read(std::istream &is, bool binary) {
   int32 size;
-  ExpectMarker(is, binary, "<QuestionsForKey>");
+  ExpectToken(is, binary, "<QuestionsForKey>");
   ReadBasicType(is, binary, &size);
   initial_questions.resize(size);
   for (int32 i = 0; i < size; i++)
     ReadIntegerVector(is, binary, &(initial_questions[i]));
   refine_opts.Read(is, binary);
-  ExpectMarker(is, binary, "</QuestionsForKey>");
+  ExpectToken(is, binary, "</QuestionsForKey>");
 }
 
 void Questions::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<Questions>");
+  WriteToken(os, binary, "<Questions>");
 
   std::vector<EventKeyType> keys_with_options;
   this->GetKeysWithQuestions(&keys_with_options);
   for (size_t i = 0; i < keys_with_options.size(); i++) {
     EventKeyType key = keys_with_options[i];
-    WriteMarker(os, binary, "<Key>");
+    WriteToken(os, binary, "<Key>");
     WriteBasicType(os, binary, key);
     const QuestionsForKey &opts = GetQuestionsOf(key);
     opts.Write(os, binary);
   }
-  WriteMarker(os, binary, "</Questions>");
+  WriteToken(os, binary, "</Questions>");
 }
 
 void Questions::Read(std::istream &is, bool binary) {
@@ -63,17 +63,17 @@ void Questions::Read(std::istream &is, bool binary) {
   key_options_.clear();
   key_idx_.clear();
 
-  ExpectMarker(is, binary, "<Questions>");
+  ExpectToken(is, binary, "<Questions>");
 
   std::vector<EventKeyType> keys_with_options;
 
   while (1) {
-    std::string marker;
-    ReadMarker(is, binary, &marker);
-    if (marker == "</Questions>") return;
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token == "</Questions>") return;
     else {
-      if (marker != "<Key>")
-        KALDI_ERR << "Questions::Read, expecting <Key>, got "<<marker;
+      if (token != "<Key>")
+        KALDI_ERR << "Questions::Read, expecting <Key>, got "<<token;
       EventKeyType key;
       ReadBasicType(is, binary, &key);
       QuestionsForKey opts;

@@ -30,14 +30,14 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
   int32 num_states, feat_dim, num_gauss;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<SGMM>");
-  ExpectMarker(in_stream, binary, "<NUMSTATES>");
+  ExpectToken(in_stream, binary, "<SGMM>");
+  ExpectToken(in_stream, binary, "<NUMSTATES>");
   ReadBasicType(in_stream, binary, &num_states);
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &feat_dim);
   KALDI_ASSERT(num_states > 0 && feat_dim > 0);
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
 
   while (token != "</SGMM>") {
     if (token == "<DIAG_UBM>") {
@@ -45,21 +45,21 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
     } else if (token == "<FULL_UBM>") {
       full_ubm_.Read(in_stream, binary);
     } else if (token == "<SigmaInv>") {
-      ExpectMarker(in_stream, binary, "<NUMGaussians>");
+      ExpectToken(in_stream, binary, "<NUMGaussians>");
       ReadBasicType(in_stream, binary, &num_gauss);
       SigmaInv_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; ++i) {
         SigmaInv_[i].Read(in_stream, binary);
       }
     } else if (token == "<M>") {
-      ExpectMarker(in_stream, binary, "<NUMGaussians>");
+      ExpectToken(in_stream, binary, "<NUMGaussians>");
       ReadBasicType(in_stream, binary, &num_gauss);
       M_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; ++i) {
         M_[i].Read(in_stream, binary);
       }
     } else if (token == "<N>") {
-      ExpectMarker(in_stream, binary, "<NUMGaussians>");
+      ExpectToken(in_stream, binary, "<NUMGaussians>");
       ReadBasicType(in_stream, binary, &num_gauss);
       N_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; ++i) {
@@ -85,7 +85,7 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 
   if (n_.empty()) {
@@ -99,62 +99,62 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
       feat_dim = FeatureDim(),
       num_gauss = NumGauss();
 
-  WriteMarker(out_stream, binary, "<SGMM>");
+  WriteToken(out_stream, binary, "<SGMM>");
   if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<NUMSTATES>");
+  WriteToken(out_stream, binary, "<NUMSTATES>");
   WriteBasicType(out_stream, binary, num_states);
-  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, feat_dim);
   if (!binary) out_stream << "\n";
 
   if (write_params & kSgmmBackgroundGmms) {
-    WriteMarker(out_stream, binary, "<DIAG_UBM>");
+    WriteToken(out_stream, binary, "<DIAG_UBM>");
     diag_ubm_.Write(out_stream, binary);
-    WriteMarker(out_stream, binary, "<FULL_UBM>");
+    WriteToken(out_stream, binary, "<FULL_UBM>");
     full_ubm_.Write(out_stream, binary);
   }
 
   if (write_params & kSgmmGlobalParams) {
-    WriteMarker(out_stream, binary, "<SigmaInv>");
-    WriteMarker(out_stream, binary, "<NUMGaussians>");
+    WriteToken(out_stream, binary, "<SigmaInv>");
+    WriteToken(out_stream, binary, "<NUMGaussians>");
     WriteBasicType(out_stream, binary, num_gauss);
     if (!binary) out_stream << "\n";
     for (int32 i = 0; i < num_gauss; ++i) {
       SigmaInv_[i].Write(out_stream, binary);
     }
-    WriteMarker(out_stream, binary, "<M>");
-    WriteMarker(out_stream, binary, "<NUMGaussians>");
+    WriteToken(out_stream, binary, "<M>");
+    WriteToken(out_stream, binary, "<NUMGaussians>");
     WriteBasicType(out_stream, binary, num_gauss);
     if (!binary) out_stream << "\n";
     for (int32 i = 0; i < num_gauss; ++i) {
       M_[i].Write(out_stream, binary);
     }
     if (N_.size() != 0) {
-      WriteMarker(out_stream, binary, "<N>");
-      WriteMarker(out_stream, binary, "<NUMGaussians>");
+      WriteToken(out_stream, binary, "<N>");
+      WriteToken(out_stream, binary, "<NUMGaussians>");
       WriteBasicType(out_stream, binary, num_gauss);
       if (!binary) out_stream << "\n";
       for (int32 i = 0; i < num_gauss; ++i) {
         N_[i].Write(out_stream, binary);
       }
     }
-    WriteMarker(out_stream, binary, "<w>");
+    WriteToken(out_stream, binary, "<w>");
     w_.Write(out_stream, binary);
   }
 
   if (write_params & kSgmmStateParams) {
-    WriteMarker(out_stream, binary, "<v>");
+    WriteToken(out_stream, binary, "<v>");
     for (int32 j = 0; j < num_states; ++j) {
       v_[j].Write(out_stream, binary);
     }
-    WriteMarker(out_stream, binary, "<c>");
+    WriteToken(out_stream, binary, "<c>");
     for (int32 j = 0; j < num_states; ++j) {
       c_[j].Write(out_stream, binary);
     }
   }
 
   if (write_params & kSgmmNormalizers) {
-    WriteMarker(out_stream, binary, "<n>");
+    WriteToken(out_stream, binary, "<n>");
     if (n_.empty())
       KALDI_WARN << "Not writing normalizers since they are not present.";
     else
@@ -162,7 +162,7 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
         n_[j].Write(out_stream, binary);
   }
 
-  WriteMarker(out_stream, binary, "</SGMM>");
+  WriteToken(out_stream, binary, "</SGMM>");
 }
 
 void AmSgmm::Check(bool show_properties) {
@@ -1181,39 +1181,39 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
 
 
 void SgmmGauPost::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<SgmmGauPost>");
+  WriteToken(os, binary, "<SgmmGauPost>");
   int32 T = this->size();
   WriteBasicType(os, binary, T);
   for (int32 t = 0; t < T; t++) {
-    WriteMarker(os, binary, "<gselect>");
+    WriteToken(os, binary, "<gselect>");
     WriteIntegerVector(os, binary, (*this)[t].gselect);
-    WriteMarker(os, binary, "<tids>");
+    WriteToken(os, binary, "<tids>");
     WriteIntegerVector(os, binary, (*this)[t].tids);
     KALDI_ASSERT((*this)[t].tids.size() == (*this)[t].posteriors.size());
     for (size_t i = 0; i < (*this)[t].posteriors.size(); i++) {
       (*this)[t].posteriors[i].Write(os, binary);
     }
   }
-  WriteMarker(os, binary, "</SgmmGauPost>");
+  WriteToken(os, binary, "</SgmmGauPost>");
 }
 
 void SgmmGauPost::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "<SgmmGauPost>");
+  ExpectToken(is, binary, "<SgmmGauPost>");
   int32 T;
   ReadBasicType(is, binary, &T);
   KALDI_ASSERT(T >= 0);
   this->resize(T);
   for (int32 t = 0; t < T; t++) {
-    ExpectMarker(is, binary, "<gselect>");
+    ExpectToken(is, binary, "<gselect>");
     ReadIntegerVector(is, binary, &((*this)[t].gselect));
-    ExpectMarker(is, binary, "<tids>");
+    ExpectToken(is, binary, "<tids>");
     ReadIntegerVector(is, binary, &((*this)[t].tids));
     size_t sz = (*this)[t].tids.size();
     (*this)[t].posteriors.resize(sz);
     for (size_t i = 0; i < sz; i++)
       (*this)[t].posteriors[i].Read(is, binary);
   }
-  ExpectMarker(is, binary, "</SgmmGauPost>");
+  ExpectToken(is, binary, "</SgmmGauPost>");
 }
 
 
