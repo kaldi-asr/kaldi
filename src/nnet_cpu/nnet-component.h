@@ -69,17 +69,17 @@ class Component {
     kWindow,
     kLog
   } ComponentType;
-  /// Pair of type and marker
+  /// Pair of type and token
   struct key_value {
     const Component::ComponentType key;
     const char* value;
   };
-  /// Mapping of types and markers 
-  static const struct key_value kMarkerMap[];
-  /// Convert component type to marker
-  static const char* TypeToMarker(ComponentType t);
-  /// Convert marker to component type
-  static ComponentType MarkerToType(const std::string& s);
+  /// Mapping of types and tokens 
+  static const struct key_value kTokenMap[];
+  /// Convert component type to token
+  static const char* TypeToToken(ComponentType t);
+  /// Convert token to component type
+  static ComponentType TokenToType(const std::string& s);
 
   Component(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet) 
       : input_dim_(input_dim), output_dim_(output_dim), nnet_(nnet) { }

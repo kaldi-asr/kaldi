@@ -217,16 +217,16 @@ inline void Rnnlm::Read(const std::string& file) {
 }
 
 inline void Rnnlm::Read(std::istream& in, bool binary) {
-  ExpectMarker(in,binary,"<rnnlm_v1.0>");
-  ExpectMarker(in,binary,"<v1>");
+  ExpectToken(in,binary,"<rnnlm_v1.0>");
+  ExpectToken(in,binary,"<v1>");
   in >> V1_; 
-  ExpectMarker(in,binary,"<u1>");
+  ExpectToken(in,binary,"<u1>");
   in >> U1_; 
-  ExpectMarker(in,binary,"<b1>");
+  ExpectToken(in,binary,"<b1>");
   in >> b1_; 
-  ExpectMarker(in,binary,"<w2>");
+  ExpectToken(in,binary,"<w2>");
   in >> W2_; 
-  ExpectMarker(in,binary,"<b2>");
+  ExpectToken(in,binary,"<b2>");
   in >> b2_;
   //in >> V1 >> U1 >> b1 >> W2cls >> b2cls >> last_element_index >> W2 >> b2;
   
@@ -258,16 +258,16 @@ inline void Rnnlm::Write(const std::string& file, bool binary) {
 }
 
 inline void Rnnlm::Write(std::ostream& out, bool binary) {
-  WriteMarker(out,binary,"<rnnlm_v1.0>");
-  WriteMarker(out,binary,"<v1>");
+  WriteToken(out,binary,"<rnnlm_v1.0>");
+  WriteToken(out,binary,"<v1>");
   out << V1_; 
-  WriteMarker(out,binary,"<u1>");
+  WriteToken(out,binary,"<u1>");
   out << U1_; 
-  WriteMarker(out,binary,"<b1>");
+  WriteToken(out,binary,"<b1>");
   out << b1_; 
-  WriteMarker(out,binary,"<w2>");
+  WriteToken(out,binary,"<w2>");
   out << W2_; 
-  WriteMarker(out,binary,"<b2>");
+  WriteToken(out,binary,"<b2>");
   out << b2_;
   //out << V1 << U1 << b1 << W2cls << b2cls << last_element_index << W2 << b2;
 }

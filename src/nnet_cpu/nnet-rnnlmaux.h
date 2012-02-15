@@ -40,7 +40,7 @@ class RnnlmAux {
     int32 index;
     while (Peek(in.Stream(),binary) != EOF) {
       ReadBasicType(in.Stream(),binary,&index);
-      ReadMarker(in.Stream(),binary,&word);
+      ReadToken(in.Stream(),binary,&word);
       (*dict)[word] = index;
     }
     in.Close();
@@ -67,7 +67,7 @@ class RnnlmAux {
       std::string key(words[i]);
       seq->push_back(dict.find(key)->second);
     }
-    //add end of sentence marker
+    //add end of sentence token
     seq->push_back(1);
 
     return true;
