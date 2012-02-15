@@ -357,6 +357,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
+    linux_configure_cuda
     echo "Configured for Linux with MKL libs from $MKLROOT"
     exit 0;
 
@@ -374,6 +375,7 @@ if [ "`uname`" == "Linux" ]; then
         failure "makefiles/linux_clapack.mk not found."
     fi
     cat makefiles/linux_clapack.mk >> kaldi.mk
+    linux_configure_cuda
     echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
     # TODO(arnab): enable CLAPACK options for Linux
