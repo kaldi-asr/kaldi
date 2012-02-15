@@ -83,7 +83,7 @@ function linux_check_static {
   if [ -f $dir/libatlas.a ]; then # candidate...
     # Note: on the next line, the variable assignment
     # LANG=en_US should apply just to the program called on that line.
-    if LANG=en_US nm $dir/libatlas.a 2>&1 | grep "File format not recognized" >/dev/null; then
+    if LANG=en_US nm $dir/libatlas.a 2>&1 | grep "File format not recognized"; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
       return 1;
     fi
@@ -95,7 +95,7 @@ function linux_check_static {
 
 function linux_configure_static {
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
      linux_check_static &&  ATLASLIBDIR=$dir
     done
