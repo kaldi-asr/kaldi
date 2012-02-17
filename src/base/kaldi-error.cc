@@ -31,22 +31,14 @@
 
 namespace kaldi {
 int32 g_kaldi_verbose_level = 0;  // Just initialize this global variable.
-std::string g_program_name;
+const char *g_program_name = NULL;
 
 // If the program name was set (g_program_name != ""), the function
 // GetProgramName returns the program name (without the path) followed by a
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
-const std::string &GetProgramName() {
-  static std::string g_program_name_nopath;  // static local variable!
-
-  if (g_program_name.length() == 0) return g_program_name;
-  if (g_program_name_nopath.length() == 0) {
-    // set g_program_name_nopath.  will be called once.
-    size_t pos = g_program_name.find_last_of("\\/");
-    if (pos == std::string::npos) g_program_name_nopath = g_program_name + ":";
-    else g_program_name_nopath = std::string(g_program_name, pos+1) + ":";
-  }
-  return g_program_name_nopath;
+const char *GetProgramName() {
+  if (g_program_name == NULL) return "";
+  else return g_program_name;
 }
 
 // Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
