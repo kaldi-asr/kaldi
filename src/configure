@@ -130,10 +130,10 @@ function linux_check_static {
 }
 
 function linux_configure_static {
-  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
+  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the first one below.
     for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-     linux_check_static &&  ATLASLIBDIR=$dir
+     linux_check_static &&  ATLASLIBDIR=$dir && break
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
       echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."

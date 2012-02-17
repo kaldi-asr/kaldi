@@ -65,7 +65,7 @@ feats_cv="$feats_cv splice-feats --print-args=false --left-context=5 --right-con
 
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
-num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
+num_tgt=$(gmm-copy --binary=false $dir_ali/final.mdl - | grep NUMPDFS | awk '{ print $4 }')
 scripts/gen_mlp_init.py --dim=429:568:${num_tgt} --gauss --negbias --seed=666 > $mlp_init
 
 

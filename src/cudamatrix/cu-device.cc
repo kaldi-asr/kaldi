@@ -17,7 +17,11 @@ CuDevice::CuDevice()
   if((ret = cublasInit()) == 0) {
     enabled_ = true;
   } else {
-    KALDI_WARN << "CUDA will not be used!!! cublasInit() returns: " << ret;
+    //WHY IS THE STRING STATIC IN 
+    //base/kaldi-error.cc:GetProgramName?
+    //KALDI_WARN CAUSES SEGMENTATION FAULT!!!
+    //KALDI_WARN << "CUDA will not be used!!! cublasInit() returns: " << ret;
+    std::cerr << "WARNING (CUDA will not be used!!! cublasInit() returns: " << ret << ")\n";
   }
 }
 
@@ -26,7 +30,11 @@ CuDevice::~CuDevice() {
   if(enabled_) {
     cuSafeCall(cublasShutdown());
   } else {
-    KALDI_WARN << "CUDA was not used";
+    //WHY IS THE STRING STATIC IN 
+    //base/kaldi-error.cc:GetProgramName?
+    //KALDI_WARN CAUSES SEGMENTATION FAULT!!!
+    //KALDI_WARN << "CUDA was not used";
+    std::cerr << "WARNING (CUDA was not used)\n";
   }
 }
 
@@ -40,7 +48,7 @@ void CuDevice::AccuProfile(const std::string& key,double time) {
 
 
 void CuDevice::PrintProfile() {
-  if(verbose_) { 
+  if(verbose_ && enabled_) { 
     std::ostringstream os;
     os << "-----\n[cudevice profile]\n";
     std::map<std::string, double>::iterator it;

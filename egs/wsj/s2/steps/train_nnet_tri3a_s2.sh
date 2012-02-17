@@ -93,7 +93,7 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cvn ark:- ar
 
 ###### INITIALIZE THE NNET ######
 mlp_init=$dir/nnet.init
-num_tgt=$(grep NUMPDFS $dir_ali/final.mdl | awk '{ print $4 }')
+num_tgt=$(gmm-copy --binary=false $dir_ali/final.mdl - | grep NUMPDFS | awk '{ print $4 }')
 scripts/gen_mlp_init.py --dim=240:800:30:800:${num_tgt} --gauss --negbias --seed=777 --linBNdim=30 > $mlp_init
 
 
