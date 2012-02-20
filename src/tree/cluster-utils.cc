@@ -1253,17 +1253,17 @@ BaseFloat ClusterTopDown(const std::vector<Clusterable*> &points,
 
 
 void RefineClustersOptions::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<RefineClustersOptions>");
+  WriteToken(os, binary, "<RefineClustersOptions>");
   WriteBasicType(os, binary, num_iters);
   WriteBasicType(os, binary, top_n);
-  WriteMarker(os, binary, "</RefineClustersOptions>");
+  WriteToken(os, binary, "</RefineClustersOptions>");
 }
 
 void RefineClustersOptions::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "<RefineClustersOptions>");
+  ExpectToken(is, binary, "<RefineClustersOptions>");
   ReadBasicType(is, binary, &num_iters);
   ReadBasicType(is, binary, &top_n);
-  ExpectMarker(is, binary, "</RefineClustersOptions>");
+  ExpectToken(is, binary, "</RefineClustersOptions>");
 }
 
 

@@ -192,9 +192,9 @@ void PackedMatrix<Real>::Write(std::ostream &os, bool binary) const {
   if (!os.good()) {
     KALDI_ERR << "Failed to write vector to stream: stream not good";
   }
-  std::string my_marker = (sizeof(Real) == 4 ? "FP" : "DP");
+  std::string my_token = (sizeof(Real) == 4 ? "FP" : "DP");
 
-  WriteMarker(os, binary, my_marker);
+  WriteToken(os, binary, my_token);
 
   int32 size = this->NumRows();  // make the size 32-bit on disk.
   KALDI_ASSERT(this->NumRows() == (MatrixIndexT) size);
@@ -260,12 +260,12 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
   std::ostringstream specific_error;
   MatrixIndexT pos_at_start = is.tellg();
   int peekval = Peek(is, binary);
-  const char *my_marker =  (sizeof(Real) == 4 ? "FP" : "DP");
-  char other_marker_start = (sizeof(Real) == 4 ? 'D' : 'F');
+  const char *my_token =  (sizeof(Real) == 4 ? "FP" : "DP");
+  char other_token_start = (sizeof(Real) == 4 ? 'D' : 'F');
   int32 size;
   MatrixIndexT num_elems;
 
-  if (peekval == other_marker_start) {  // need to instantiate the other type to read it.
+  if (peekval == other_token_start) {  // need to instantiate the other type to read it.
     typedef typename OtherReal<Real>::Real OtherType;  // if Real == float, OtherType == double, and vice versa.
     PackedMatrix<OtherType> other(this->NumRows());
     other.Read(is, binary, false);  // add is false at this point.
@@ -273,10 +273,10 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
     this->CopyFromPacked(other);
     return;
   }
-  std::string marker;
-  ReadMarker(is, binary, &marker);
-  if (marker != my_marker) {
-    specific_error << ": Expected marker " << my_marker << ", got " << marker;
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token != my_token) {
+    specific_error << ": Expected token " << my_token << ", got " << token;
     goto bad;
   }
   ReadBasicType(is, binary, &size);  // throws on error.

@@ -122,10 +122,10 @@ void LdaEstimate::Read(std::istream &in_stream, bool binary, bool add) {
   int32 num_classes, dim;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<LDAACCS>");
-  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ExpectToken(in_stream, binary, "<LDAACCS>");
+  ExpectToken(in_stream, binary, "<VECSIZE>");
   ReadBasicType(in_stream, binary, &dim);
-  ExpectMarker(in_stream, binary, "<NUMCLASSES>");
+  ExpectToken(in_stream, binary, "<NUMCLASSES>");
   ReadBasicType(in_stream, binary, &num_classes);
 
   if (add) {
@@ -147,7 +147,7 @@ void LdaEstimate::Read(std::istream &in_stream, bool binary, bool add) {
   Matrix<double> tmp_first_acc;
   SpMatrix<double> tmp_sec_acc;
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
   while (token != "</LDAACCS>") {
     if (token == "<ZERO_ACCS>") {
       tmp_zero_acc.Read(in_stream, binary, false);
@@ -171,24 +171,24 @@ void LdaEstimate::Read(std::istream &in_stream, bool binary, bool add) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void LdaEstimate::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<LDAACCS>");
-  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteToken(out_stream, binary, "<LDAACCS>");
+  WriteToken(out_stream, binary, "<VECSIZE>");
   WriteBasicType(out_stream, binary, static_cast<int32>(Dim()));
-  WriteMarker(out_stream, binary, "<NUMCLASSES>");
+  WriteToken(out_stream, binary, "<NUMCLASSES>");
   WriteBasicType(out_stream, binary, static_cast<int32>(NumClasses()));
 
-  WriteMarker(out_stream, binary, "<ZERO_ACCS>");
+  WriteToken(out_stream, binary, "<ZERO_ACCS>");
   Vector<BaseFloat> zero_acc_bf(zero_acc_);
   zero_acc_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<FIRST_ACCS>");
+  WriteToken(out_stream, binary, "<FIRST_ACCS>");
   Matrix<BaseFloat> first_acc_bf(first_acc_);
   first_acc_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<SECOND_ACCS>");
+  WriteToken(out_stream, binary, "<SECOND_ACCS>");
   SpMatrix<double> tmp_sec_acc(total_second_acc_);
   for (int32 c = 0; c < static_cast<int32>(NumClasses()); ++c) {
     if (zero_acc_(c) != 0)
@@ -197,7 +197,7 @@ void LdaEstimate::Write(std::ostream &out_stream, bool binary) const {
   SpMatrix<BaseFloat> tmp_sec_acc_bf(tmp_sec_acc);
   tmp_sec_acc_bf.Write(out_stream, binary);
 
-  WriteMarker(out_stream, binary, "</LDAACCS>");
+  WriteToken(out_stream, binary, "</LDAACCS>");
 }
 
 

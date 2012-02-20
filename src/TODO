@@ -12,6 +12,7 @@ major:
  ? remove occs when doing next version of script, keep tacc?
 
 minor:
+ Add something in training tools, to verify that spk-id is prefix of utt-id.
  Refactor UBM-building code "ClusterGaussiansToUbm"
  add combination scripts for wsj/s3
  look into why results not reproducible?   check if reproducible?

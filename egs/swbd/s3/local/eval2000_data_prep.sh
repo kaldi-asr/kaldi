@@ -69,7 +69,7 @@ grep -v ';;' $pem | awk '{spk=$1"-"$2; utt=sprintf("%s_%06d-%06d",spk,$4*100,$5*
 #en_4156 A en_4156_A 357.64 359.64 <O,en,F,en-F>  HE IS A POLICE OFFICER 
 grep -v ';;' $tdir/2000_hub5_eng_eval_tr/reference/hub5e00.english.000405.stm | \
   awk '{spk=$1"-"$2; utt=sprintf("%s_%06d-%06d",spk,$4*100,$5*100); printf utt;
-       for(n=7;n<=NF;n++) printf " " $n; print ""; }' | sort > $dir/text.all
+       for(n=7;n<=NF;n++) printf(" %s", $n); print ""; }' | sort > $dir/text.all
 
 # We'll use the stm file for sclite scoring.  There seem to be various errors
 # in the stm file that upset hubscr.pl, and we fix them here.

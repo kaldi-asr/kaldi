@@ -60,7 +60,7 @@ fi
 # make basic transcription file (add segments info)
 awk '{name=substr($1,1,6);gsub("^sw","sw0",name); side=substr($1,7,1);stime=$2;etime=$3;
  printf("%s-%s_%06.0f-%06.0f", name, side, int(100*stime+0.5), int(100*etime+0.5));
- for(i=4;i<=NF;i++) printf " " toupper($i); printf "\n"}' \
+ for(i=4;i<=NF;i++) printf(" %s", toupper($i)); printf "\n"}' \
   swb_ms98_transcriptions/*/*/*-trans.text  > transcripts1.txt
 
 # test if trans. file is sorted

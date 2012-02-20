@@ -37,15 +37,15 @@
 void RnnLm::Read(std::istream& in, bool binary) {
   using namespace kaldi;
 
-  ExpectMarker(in,binary,"<rnnlm_v2.0>");
-  ExpectMarker(in,binary,"<v1>"); in >> V1_;
-  ExpectMarker(in,binary,"<u1>"); in >> U1_; U1_.Transpose();
-  ExpectMarker(in,binary,"<b1>"); in >> b1_;
-  ExpectMarker(in,binary,"<w2>"); in >> W2_; W2_.Transpose();
-  ExpectMarker(in,binary,"<b2>"); in >> b2_;
-  ExpectMarker(in,binary,"<cl>"); in >> Cl_; Cl_.Transpose();
-  ExpectMarker(in,binary,"<cl_b>"); in >> cl_b_;
-  ExpectMarker(in,binary,"<classes>");
+  ExpectToken(in,binary,"<rnnlm_v2.0>");
+  ExpectToken(in,binary,"<v1>"); in >> V1_;
+  ExpectToken(in,binary,"<u1>"); in >> U1_; U1_.Transpose();
+  ExpectToken(in,binary,"<b1>"); in >> b1_;
+  ExpectToken(in,binary,"<w2>"); in >> W2_; W2_.Transpose();
+  ExpectToken(in,binary,"<b2>"); in >> b2_;
+  ExpectToken(in,binary,"<cl>"); in >> Cl_; Cl_.Transpose();
+  ExpectToken(in,binary,"<cl_b>"); in >> cl_b_;
+  ExpectToken(in,binary,"<classes>");
   ReadIntegerVector(in,binary,&int2class_);
 
   // determine range for classes 
@@ -58,12 +58,12 @@ void RnnLm::Read(std::istream& in, bool binary) {
     class2maxint_[cl]=i; // mapping class -> max int
   }
 
-  ExpectMarker(in,binary,"<words>");
+  ExpectToken(in,binary,"<words>");
   std::string wrd;
 
   // read vocabulary
   for (int32 i=0;i<VocabSize();i++) {
-    ReadMarker(in,binary,&wrd);
+    ReadToken(in,binary,&wrd);
     word2int_[wrd]=i;
     int2word_[i]=wrd;
   }

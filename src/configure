@@ -109,7 +109,8 @@ function linux_atlas_failure { # function we use when we couldn't find
    cat makefiles/linux_atlas.mk >> kaldi.mk
    echo "** $* ***"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
-   echo "** you may be able to proceed (replace [somewhere] with a directory)"
+   echo "** you may be able to proceed (replace [somewhere] with a directory),"
+   echo "** or install the ATLAS package on your machine,"
    echo "** or try going to ../tools and running install_atlas.sh, and running"
    echo "** this script (configure) again."
    exit 1;
@@ -118,20 +119,26 @@ function linux_atlas_failure { # function we use when we couldn't find
 function linux_check_static {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
+  echo "int main(void) { return 0; }" > test_linking.cc;
   if [ -f $dir/libatlas.a ]; then # candidate...
-    if nm $dir/libatlas.a 2>&1 | grep "File format not recognized" >/dev/null; then
+    # Note: on the next line, the variable assignment
+    # LANG=en_US should apply just to the program called on that line.
+    if LANG=en_US gcc -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
+      rm test_linking test_linking.cc 2>/dev/null
       return 1;
     fi
+    rm test_linking test_linking.cc 2>/dev/null
     return 0;
   else
+    rm test_linking.cc
     return 1;
   fi
 }
 
 function linux_configure_static {
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the first one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
      linux_check_static &&  ATLASLIBDIR=$dir && break
     done
@@ -291,6 +298,9 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ $osx_ver == "10.6" ]; then
     check_exists makefiles/darwin_10_6.mk
     cat makefiles/darwin_10_6.mk >> kaldi.mk 
+  elif [ $osx_ver == "10.7" ]; then
+    check_exists makefiles/darwin_10_7.mk
+    cat makefiles/darwin_10_7.mk >> kaldi.mk 
   else 
     failure "OS X version '$osx_ver' not supported"
   fi

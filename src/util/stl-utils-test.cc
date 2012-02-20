@@ -1,6 +1,7 @@
 // util/stl-utils-test.cc
 
-// Copyright 2009-2011     Microsoft Corporation;  Saarland University
+// Copyright 2009-2012     Microsoft Corporation;  Saarland University
+//                         Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -207,6 +208,38 @@ void TestReverseVector() {
   }
 }
 
+void TestMergePairVectorSumming() {
+  for (int p = 0; p < 100; p++) {
+    std::vector<std::pair<int32, int16> > v;
+    std::map<int32, int16> m;
+    int sz = rand() % 10;
+    for (size_t i = 0; i < sz; i++) {
+      int32 key = rand() % 10;
+      int16 val = (rand() % 5) - 2;
+      v.push_back(std::make_pair(key, val));
+      if (m.count(key) == 0) m[key] = val;
+      else m[key] += val;
+    }
+    MergePairVectorSumming(&v);
+    KALDI_ASSERT(IsSorted(v));
+    for (size_t i = 0; i < v.size(); i++) {
+      KALDI_ASSERT(v[i].second == m[v[i].first]);
+      KALDI_ASSERT(v[i].second != 0.0);
+      if (i > 0) KALDI_ASSERT(v[i].first > v[i-1].first);
+    }
+    for (std::map<int32, int16>::const_iterator iter = m.begin();
+         iter != m.end(); ++iter) {
+      if (iter->second != 0) {
+        size_t i;
+        for (i = 0; i < v.size(); i++)
+          if (v[i].first == iter->first) break;
+        KALDI_ASSERT(i != v.size()); // Or we didn't find this
+        // key in v.
+      }
+    }
+  }
+}
+  
 
 } // end namespace kaldi
 
@@ -224,6 +257,7 @@ int main() {
   TestCopyMapValuesToSet();
   TestContainsNullPointers();
   TestReverseVector();
+  TestMergePairVectorSumming();
   // CopyVectorToSet implicitly tested by last 2.
   std::cout << "Test OK\n";
 }

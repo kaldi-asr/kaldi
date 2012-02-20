@@ -184,6 +184,34 @@ void SpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M, SpCopyType copy_type
 }
 
 
+// diagonal update, this <-- this + diag(v)
+template<class Real>
+template<class OtherReal>
+void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& rv) {
+  int32 num_rows = this->num_rows_;
+  KALDI_ASSERT(num_rows == rv.Dim());
+  const OtherReal *src = rv.Data();
+  Real *dst = this->data_;
+  if (alpha == 1.0)
+    for (int32 i = 1; i <= num_rows; i++, src++, dst += i)
+      *dst += *src;
+  else
+    for (int32 i = 1; i <= num_rows; i++, src++, dst += i)
+      *dst += alpha * *src;
+    
+}
+// instantiate the template above.
+template
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<double>& rv);
+template
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<float>& rv);
+template
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<float>& rv);
+template
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<double>& rv);
+
+
+
 template<>
 template<>
 void  SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& rv);

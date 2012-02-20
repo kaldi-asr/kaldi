@@ -30,8 +30,10 @@
     svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
   \endverbatim
   This may be more stable than the ``trunk'' version, which may occassionally
-  be broken by new changes.
-  If you want to get updates and bug fixes you can go to some checked-out
+  be broken by new changes.  However, at the present time we recommend to use the
+ ``trunk'', as it has a lot more features than kaldi-1 (e.g. discriminative training),
+  and nicer scripts.
+   If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim
     svn update

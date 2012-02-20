@@ -17,11 +17,7 @@ CuDevice::CuDevice()
   if((ret = cublasInit()) == 0) {
     enabled_ = true;
   } else {
-    //WHY IS THE STRING STATIC IN 
-    //base/kaldi-error.cc:GetProgramName?
-    //KALDI_WARN CAUSES SEGMENTATION FAULT!!!
-    //KALDI_WARN << "CUDA will not be used!!! cublasInit() returns: " << ret;
-    std::cerr << "WARNING (CUDA will not be used!!! cublasInit() returns: " << ret << ")\n";
+    KALDI_WARN << "CUDA will NOT be used!!! The cublasInit() returns: " << ret;
   }
 }
 
@@ -30,11 +26,7 @@ CuDevice::~CuDevice() {
   if(enabled_) {
     cuSafeCall(cublasShutdown());
   } else {
-    //WHY IS THE STRING STATIC IN 
-    //base/kaldi-error.cc:GetProgramName?
-    //KALDI_WARN CAUSES SEGMENTATION FAULT!!!
-    //KALDI_WARN << "CUDA was not used";
-    std::cerr << "WARNING (CUDA was not used)\n";
+    KALDI_WARN << "CUDA was NOT used!";
   }
 }
 

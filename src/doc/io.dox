@@ -93,29 +93,29 @@ namespace kaldi {
 
   Some other important low-level I/O functions are;
  \code
-  void ReadMarker(std::istream &is, bool binary, std::string *marker);
-  void WriteMarker(std::ostream &os, bool binary, const std::string & marker);
+  void ReadToken(std::istream &is, bool binary, std::string *token);
+  void WriteToken(std::ostream &os, bool binary, const std::string & token);
  \endcode
-  A marker must be a nonempty string with no spaces, typically in practice an XML-looking
+  A token must be a nonempty string with no spaces, typically in practice an XML-looking
   string like "<SomeKaldiClass>" or "<SomeClassMemberName>" or "</SomeKaldiClass>".  
   These functions do what they look like they would do.  For convenience, we also
-  provide ExpectMarker(), which is like ReadMarker() except you give it the string
+  provide ExpectToken(), which is like ReadToken() except you give it the string
   you expect (and it will throw an exception if it doesn't get it).  Typical lines
   of code invoking these are:
 \code
    // in writing code:
-   WriteMarker(os, binary, "<MyClassName>");
+   WriteToken(os, binary, "<MyClassName>");
    // in reading code:
-   ExpectMarker(is, binary, "<MyClassName>");
+   ExpectToken(is, binary, "<MyClassName>");
    // or, if a class has multiple forms:
-   std::string marker;
-   ReadMarker(is, binary, &marker);
-   if(marker == "<OptionA>") { ... }
-   else if(marker == "<OptionB>") { ... }
+   std::string token;
+   ReadToken(is, binary, &token);
+   if(token == "<OptionA>") { ... }
+   else if(token == "<OptionB>") { ... }
    ...
 \endcode
   There are also the WritePretty() and ExpectPretty() functions.
-  These are less frequently used, and they behave like the corresponding Marker
+  These are less frequently used, and they behave like the corresponding Token
   functions except that they only actually read and write in text mode, and they
   accept arbitrary strings (i.e. they allow spaces); the ReadPretty function also
   accepts input that has differs in whitespace versus what was expected.

@@ -1,6 +1,6 @@
 // bin/scale-post.cc
 
-// Copyright 2009-2011 Chao Weng 
+// Copyright 2011 Chao Weng 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
         posterior_writer.Write(key, posterior);
       }
     }
-    KALDI_LOG << "Scale " << num_scaled << " posteriors;  " << num_no_scale
+    KALDI_LOG << "Done " << num_scaled << " posteriors;  " << num_no_scale
               << " had no scales.";
     return (num_scaled != 0 ? 0 : 1);
   } catch(const std::exception& e) {

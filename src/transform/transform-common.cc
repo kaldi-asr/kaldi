@@ -44,16 +44,16 @@ void AffineXformStats::Init(int32 dim, int32 num_gs) {
 }
 
 void AffineXformStats::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<DIMENSION>");
+  WriteToken(out, binary, "<DIMENSION>");
   WriteBasicType(out, binary, dim_);
   if (!binary) out << '\n';
-  WriteMarker(out, binary, "<BETA>");
+  WriteToken(out, binary, "<BETA>");
   WriteBasicType(out, binary, beta_);
   if (!binary) out << '\n';
-  WriteMarker(out, binary, "<K>");
+  WriteToken(out, binary, "<K>");
   Matrix<BaseFloat> tmp_k(K_);
   tmp_k.Write(out, binary);
-  WriteMarker(out, binary, "<G>");
+  WriteToken(out, binary, "<G>");
   int32 g_size = static_cast<int32>(G_.size());
   WriteBasicType(out, binary, g_size);
   if (!binary) out << '\n';
@@ -65,11 +65,11 @@ void AffineXformStats::Write(std::ostream &out, bool binary) const {
 }
 
 void AffineXformStats::Read(std::istream &in, bool binary, bool add) {
-  ExpectMarker(in, binary, "<DIMENSION>");
+  ExpectToken(in, binary, "<DIMENSION>");
   ReadBasicType(in, binary, &dim_);
-  ExpectMarker(in, binary, "<BETA>");
+  ExpectToken(in, binary, "<BETA>");
   ReadBasicType(in, binary, &beta_);
-  ExpectMarker(in, binary, "<K>");
+  ExpectToken(in, binary, "<K>");
   Matrix<BaseFloat> tmp_k;
   tmp_k.Read(in, binary);
   K_.Resize(tmp_k.NumRows(), tmp_k.NumCols());
@@ -79,7 +79,7 @@ void AffineXformStats::Read(std::istream &in, bool binary, bool add) {
   } else {
     K_.CopyFromMat(tmp_k, kNoTrans);
   }
-  ExpectMarker(in, binary, "<G>");
+  ExpectToken(in, binary, "<G>");
   int32 g_size;
   ReadBasicType(in, binary, &g_size);
   G_.resize(g_size);

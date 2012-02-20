@@ -81,14 +81,14 @@ void UnitTestIoNew(bool binary) {
     for (size_t i = 0; i < 10; i++) vec3.push_back(rand()%100);
     WriteIntegerVector(outfile, binary, vec3);
     if (!binary && rand()%2 == 0) outfile << " \n";
-    const char *marker1 = "Hi";
-    WriteMarker(outfile, binary, marker1);
+    const char *token1 = "Hi";
+    WriteToken(outfile, binary, token1);
     if (!binary) outfile << " \n";
-    std::string marker2 = "There.";
-    WriteMarker(outfile, binary, marker2);
+    std::string token2 = "There.";
+    WriteToken(outfile, binary, token2);
     if (!binary && rand()%2 == 0) outfile << " \n";
-    std::string marker3 = "You.";
-    WriteMarker(outfile, binary, marker3);
+    std::string token3 = "You.";
+    WriteToken(outfile, binary, token3);
     if (!binary && rand()%2 == 0) outfile << " ";
     float f1 = RandUniform();
     WriteBasicType(outfile, binary, f1);
@@ -125,16 +125,16 @@ void UnitTestIoNew(bool binary) {
       std::vector<char> vec3_in;
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
-      std::string  marker1_in, marker2_in;
-      assert(Peek(infile, binary_in) == (int)*marker1);
-      ReadMarker(infile, binary_in, &marker1_in);
-      assert(marker1_in == (std::string)marker1);
-      ReadMarker(infile, binary_in, &marker2_in);
-      assert(marker2_in == marker2);
+      std::string  token1_in, token2_in;
+      assert(Peek(infile, binary_in) == (int)*token1);
+      ReadToken(infile, binary_in, &token1_in);
+      assert(token1_in == (std::string)token1);
+      ReadToken(infile, binary_in, &token2_in);
+      assert(token2_in == token2);
       if (rand() % 2 == 0)
-        ExpectMarker(infile, binary_in, marker3.c_str());
+        ExpectToken(infile, binary_in, token3.c_str());
       else
-        ExpectMarker(infile, binary_in, marker3);
+        ExpectToken(infile, binary_in, token3);
       float f1_in;  // same type.
       ReadBasicType(infile, binary_in, &f1_in);
       AssertEqual(f1_in, f1);
@@ -185,14 +185,14 @@ void UnitTestIoPipe(bool binary) {
     for (size_t i = 0; i < 10; i++) vec3.push_back(rand()%100);
     WriteIntegerVector(outfile, binary, vec3);
     if (!binary && rand()%2 == 0) outfile << " \n";
-    const char *marker1 = "Hi";
-    WriteMarker(outfile, binary, marker1);
+    const char *token1 = "Hi";
+    WriteToken(outfile, binary, token1);
     if (!binary) outfile << " \n";
-    std::string marker2 = "There.";
-    WriteMarker(outfile, binary, marker2);
+    std::string token2 = "There.";
+    WriteToken(outfile, binary, token2);
     if (!binary && rand()%2 == 0) outfile << " \n";
-    std::string marker3 = "You.";
-    WriteMarker(outfile, binary, marker3);
+    std::string token3 = "You.";
+    WriteToken(outfile, binary, token3);
     if (!binary && rand()%2 == 0) outfile << " ";
     float f1 = RandUniform();
     WriteBasicType(outfile, binary, f1);
@@ -233,16 +233,16 @@ void UnitTestIoPipe(bool binary) {
       std::vector<char> vec3_in;
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
-      std::string  marker1_in, marker2_in;
-      assert(Peek(infile, binary_in) == (int)*marker1);
-      ReadMarker(infile, binary_in, &marker1_in);
-      assert(marker1_in == (std::string)marker1);
-      ReadMarker(infile, binary_in, &marker2_in);
-      assert(marker2_in == marker2);
+      std::string  token1_in, token2_in;
+      assert(Peek(infile, binary_in) == (int)*token1);
+      ReadToken(infile, binary_in, &token1_in);
+      assert(token1_in == (std::string)token1);
+      ReadToken(infile, binary_in, &token2_in);
+      assert(token2_in == token2);
       if (rand() % 2 == 0)
-        ExpectMarker(infile, binary_in, marker3.c_str());
+        ExpectToken(infile, binary_in, token3.c_str());
       else
-        ExpectMarker(infile, binary_in, marker3);
+        ExpectToken(infile, binary_in, token3);
       float f1_in;  // same type.
       ReadBasicType(infile, binary_in, &f1_in);
       AssertEqual(f1_in, f1);

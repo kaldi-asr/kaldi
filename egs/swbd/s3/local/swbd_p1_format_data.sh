@@ -155,7 +155,7 @@ fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
 
 # Checking that LG is stochastic:
 fsttablecompose data/lang/L.fst data/lang_test/G.fst | \
-   fstisstochastic || echo Error: LG is not stochastic.
+   fstisstochastic || echo LG is not stochastic
 
 
 echo swbd_p1_format_data succeeded.

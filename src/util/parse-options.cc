@@ -212,12 +212,25 @@ int ParseOptions::Read(int argc, const char* const argv[]) {
   argv_ = argv;
   std::string key, value;
   int i;
-  if (argc > 0)
-    g_program_name = argv[0];  // This lets kaldi-error.h know what the
-  // name of the program is so it can print it out in error messages;
-  // it's useful because often the stderr of different programs will
-  // be mixed together in the same log file.
-
+  if (argc > 0) {
+    // set global "const char*" g_program_name
+    // name of the program (followed by ':')
+    // so it can print it out in error messages;
+    // it's useful because often the stderr of different programs will
+    // be mixed together in the same log file.
+#ifdef _MSC_VER
+    const char *c = strrchr(argv[0], '\\');
+#else
+    const char *c = strrchr(argv[0], '/');
+#endif
+    if (c == NULL) c = argv[0];
+    else c++;
+    char *program_name = new char[strlen(c)+2];
+    strcpy(program_name, c);
+    strcat(program_name, ":");
+    g_program_name = program_name;
+  }
+  
   // first pass: look for config parameter, look for priority
   for (i = 1; i < argc; i++) {
     if (std::strncmp(argv[i], "--", 2) == 0) {

@@ -20,7 +20,10 @@ Explanations of the corpora are below:
     get the same data using combinations of other catalog numbers, but this
     is the one we used).
 
+Recipes in progress:
+
  swbd: Switchboard.  A fairly large amount of telephone speech (2-channel, 8kHz
     sampling rate).
     This directory is a work in progress.
   
+ gp: GlobalPhone.  This is a multilingual speech corpus.

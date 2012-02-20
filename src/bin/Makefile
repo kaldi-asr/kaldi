@@ -14,7 +14,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         phones-to-prons prons-to-wordali copy-gselect copy-tree scale-post \
         compute-mce-scale get-silence-probs post-to-weights reverse-weights \
         dot-weights sum-tree-stats weight-post post-to-tacc copy-matrix \
-        copy-vector copy-int-vector
+        copy-vector copy-int-vector sum-post sum-matrices
 
 OBJFILES = 
 

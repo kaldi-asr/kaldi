@@ -114,7 +114,7 @@ void AccumAmTiedFullGmm::AccumulateFromPosteriors(
 
 void AccumAmTiedFullGmm::Read(std::istream& in_stream, bool binary, bool add) {
   int32 num_pdfs, num_tied;
-  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
   if (!add || (add && gmm_accumulators_.empty())) {
@@ -135,7 +135,7 @@ void AccumAmTiedFullGmm::Read(std::istream& in_stream, bool binary, bool add) {
       (*it)->Read(in_stream, binary, add);
   }
 
-  ExpectMarker(in_stream, binary, "<NUMTIEDPDFS>");
+  ExpectToken(in_stream, binary, "<NUMTIEDPDFS>");
   ReadBasicType(in_stream, binary, &num_tied);
   KALDI_ASSERT(num_tied > 0);
   if (!add || (add && tied_gmm_accumulators_.empty())) {
@@ -160,13 +160,13 @@ void AccumAmTiedFullGmm::Read(std::istream& in_stream, bool binary, bool add) {
 void AccumAmTiedFullGmm::Write(std::ostream& out_stream, bool binary) const {
   int32 num_pdfs = gmm_accumulators_.size();
   int32 num_tied = tied_gmm_accumulators_.size();
-  WriteMarker(out_stream, binary, "<NUMPDFS>");
+  WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, num_pdfs);
   for (vector<AccumFullGmm*>::const_iterator it = gmm_accumulators_.begin(),
        end = gmm_accumulators_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);
   }
-  WriteMarker(out_stream, binary, "<NUMTIEDPDFS>");
+  WriteToken(out_stream, binary, "<NUMTIEDPDFS>");
   WriteBasicType(out_stream, binary, num_tied);
   for (vector<AccumTiedGmm*>::const_iterator it =
        tied_gmm_accumulators_.begin(), end = tied_gmm_accumulators_.end();

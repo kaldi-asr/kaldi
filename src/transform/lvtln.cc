@@ -63,7 +63,7 @@ BaseFloat LinearVtln::GetAuxf(const FmllrDiagGmmAccs &speaker_stats,
 
 void LinearVtln::Read(std::istream &is, bool binary) {
   int32 sz;
-  ExpectMarker(is, binary, "<LinearVtln>");
+  ExpectToken(is, binary, "<LinearVtln>");
   ReadBasicType(is, binary, &sz);
   A_.resize(sz);
   logdets_.resize(sz);
@@ -71,11 +71,11 @@ void LinearVtln::Read(std::istream &is, bool binary) {
     A_[i].Read(is, binary);
     ReadBasicType(is, binary, &(logdets_[i]));
   }
-  ExpectMarker(is, binary, "</LinearVtln>");
+  ExpectToken(is, binary, "</LinearVtln>");
 }
 
 void LinearVtln::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<LinearVtln>");
+  WriteToken(os, binary, "<LinearVtln>");
   if(!binary) os << "\n";
   int32 sz = A_.size();
   assert(static_cast<size_t>(sz) == logdets_.size());
@@ -85,7 +85,7 @@ void LinearVtln::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, logdets_[i]);
     if(!binary) os << "\n";
   }
-  WriteMarker(os, binary, "</LinearVtln>");
+  WriteToken(os, binary, "</LinearVtln>");
 }
 
 

@@ -24,30 +24,30 @@
 namespace kaldi {
 
 
-const struct Component::key_value Component::kMarkerMap[] = {
+const struct Component::key_value Component::kTokenMap[] = {
   { Component::kBiasedLinearity,"<biasedlinearity>" },
   { Component::kSigmoid,"<sigmoid>" },
   { Component::kSoftmax,"<softmax>" }
 };
 
 
-const char* Component::TypeToMarker(ComponentType t) {
-  int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
+const char* Component::TypeToToken(ComponentType t) {
+  int32 N=sizeof(kTokenMap)/sizeof(kTokenMap[0]);
   for(int i=0; i<N; i++) {
-    if(kMarkerMap[i].key == t) 
-      return kMarkerMap[i].value;
+    if(kTokenMap[i].key == t) 
+      return kTokenMap[i].value;
   }
   KALDI_ERR << "Unknown type" << t;
   return NULL;
 }
 
-Component::ComponentType Component::MarkerToType(const std::string& s) {
-  int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
+Component::ComponentType Component::TokenToType(const std::string& s) {
+  int32 N=sizeof(kTokenMap)/sizeof(kTokenMap[0]);
   for(int i=0; i<N; i++) {
-    if(0 == strcmp(kMarkerMap[i].value,s.c_str())) 
-      return kMarkerMap[i].key;
+    if(0 == strcmp(kTokenMap[i].value,s.c_str())) 
+      return kTokenMap[i].key;
   }
-  KALDI_ERR << "Unknown marker" << s;
+  KALDI_ERR << "Unknown token" << s;
   return kUnknown;
 }
 
@@ -59,8 +59,8 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   int first_char = Peek(is,binary);
   if(first_char == EOF) return NULL;
 
-  ReadMarker(is,binary,&token); 
-  Component::ComponentType comp_type = Component::MarkerToType(token);
+  ReadToken(is,binary,&token); 
+  Component::ComponentType comp_type = Component::TokenToType(token);
 
   ReadBasicType(is,binary,&dim_out); 
   ReadBasicType(is,binary,&dim_in);
@@ -87,7 +87,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
 
 
 void Component::Write(std::ostream& os, bool binary) const {
-  WriteMarker(os,binary,Component::TypeToMarker(GetType()));
+  WriteToken(os,binary,Component::TypeToToken(GetType()));
   WriteBasicType(os,binary,OutputDim());
   WriteBasicType(os,binary,InputDim());
   if(!binary) os << "\n";

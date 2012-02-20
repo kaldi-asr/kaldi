@@ -1012,9 +1012,9 @@ void MatrixBase<Real>::Write(std::ostream &os, bool binary) const {
   }
   if (binary) {  // Use separate binary and text formats,
     // since in binary mode we need to know if it's float or double.
-    std::string my_marker = (sizeof(Real) == 4 ? "FM" : "DM");
+    std::string my_token = (sizeof(Real) == 4 ? "FM" : "DM");
 
-    WriteMarker(os, binary, my_marker);
+    WriteToken(os, binary, my_token);
     {
       int32 rows = this->num_rows_;  // make the size 32-bit on disk.
       int32 cols = this->num_cols_;
@@ -1100,9 +1100,9 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
 
   if (binary) {  // Read in binary mode.
     int peekval = Peek(is, binary);
-    const char *my_marker =  (sizeof(Real) == 4 ? "FM" : "DM");
-    char other_marker_start = (sizeof(Real) == 4 ? 'D' : 'F');
-    if (peekval == other_marker_start) {  // need to instantiate the other type to read it.
+    const char *my_token =  (sizeof(Real) == 4 ? "FM" : "DM");
+    char other_token_start = (sizeof(Real) == 4 ? 'D' : 'F');
+    if (peekval == other_token_start) {  // need to instantiate the other type to read it.
       typedef typename OtherReal<Real>::Real OtherType;  // if Real == float, OtherType == double, and vice versa.
       Matrix<OtherType> other(this->num_rows_, this->num_cols_);
       other.Read(is, binary, false);  // add is false at this point anyway.
@@ -1110,10 +1110,10 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
       this->CopyFromMat(other);
       return;
     }
-    std::string marker;
-    ReadMarker(is, binary, &marker);
-    if (marker != my_marker) {
-      specific_error << ": Expected marker " << my_marker << ", got " << marker;
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token != my_token) {
+      specific_error << ": Expected token " << my_token << ", got " << token;
       goto bad;
     }
     int32 rows, cols;
@@ -1633,6 +1633,7 @@ void MatrixBase<Real>::ApplyLog() {
     Row(i).ApplyLog();
   }
 }
+
 
 template<class Real>
 void MatrixBase<Real>::ApplyPow(Real power) {

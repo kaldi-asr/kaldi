@@ -125,6 +125,8 @@ int main(int argc, char *argv[]) {
         "with alpha*per-phone-like + (1-alpha)*model-like.  This gives more consistent alignments.\n"
         "Per-phone models are obtained by K-means on weighted model states, using the transition-accs\n"
         "to get weights. (e.g. use the first line of text format of normal accs).\n"
+        "Note: this program actually isn't that useful.  We keep it mainly as an example\n"
+        "of how to write a decoder with interpolated likelihoods.\n"
 
         "Usage:   gmm-align-compiled-plusphones [options] transition-accs-in model-in graphs-rspecifier feature-rspecifier alignments-wspecifier\n"
         "e.g.: \n"

@@ -179,10 +179,10 @@ void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
   if (densities_.size() > 0 || tied_densities_.size() > 0)
     KALDI_WARN << "Calling AmTiedDiagGmm.Read on alread initialized model!";
 
-  ExpectMarker(in_stream, binary, "<DIMENSION>");
+  ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &dim_);
 
-  ExpectMarker(in_stream, binary, "<NUMPDFS>");
+  ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
   densities_.reserve(num_pdfs);
@@ -193,7 +193,7 @@ void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
                  == dim_);
   }
 
-  ExpectMarker(in_stream, binary, "<NUMTIEDPDFS>");
+  ExpectToken(in_stream, binary, "<NUMTIEDPDFS>");
   ReadBasicType(in_stream, binary, &num_tied_pdfs);
   KALDI_ASSERT(num_tied_pdfs > 0);
   tied_densities_.reserve(num_tied_pdfs);
@@ -204,12 +204,12 @@ void AmTiedFullGmm::Read(std::istream &in_stream, bool binary) {
 }
 
 void AmTiedFullGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<DIMENSION>");
+  WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   if (!binary) out_stream << "\n";
 
   // write out codebooks
-  WriteMarker(out_stream, binary, "<NUMPDFS>");
+  WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, static_cast<int32>(densities_.size()));
   if (!binary) out_stream << "\n";
 
@@ -219,7 +219,7 @@ void AmTiedFullGmm::Write(std::ostream &out_stream, bool binary) const {
   }
 
   // write out tied pdfs
-  WriteMarker(out_stream, binary, "<NUMTIEDPDFS>");
+  WriteToken(out_stream, binary, "<NUMTIEDPDFS>");
   WriteBasicType(out_stream, binary,
                  static_cast<int32>(tied_densities_.size()));
   if (!binary) out_stream << "\n";

@@ -408,63 +408,63 @@ void ExponentialTransformAccsA::Init(int32 dim) {
 }
 
 void ExponentialTransform::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<ExponentialTransform>");
-  WriteMarker(os, binary, "<A>");
+  WriteToken(os, binary, "<ExponentialTransform>");
+  WriteToken(os, binary, "<A>");
   A_.Write(os, binary);
-  WriteMarker(os, binary, "<B>");
+  WriteToken(os, binary, "<B>");
   B_.Write(os, binary);
-  WriteMarker(os, binary, "<NormType>");
+  WriteToken(os, binary, "<NormType>");
   int32 i = static_cast<int32>(norm_type_);
   WriteBasicType(os, binary, i);
-  WriteMarker(os, binary, "</ExponentialTransform>");
+  WriteToken(os, binary, "</ExponentialTransform>");
 }
 
 void ExponentialTransform::Read(std::istream &is, bool binary) {
-  ExpectMarker(is, binary, "<ExponentialTransform>");
-  ExpectMarker(is, binary, "<A>");
+  ExpectToken(is, binary, "<ExponentialTransform>");
+  ExpectToken(is, binary, "<A>");
   A_.Read(is, binary);
-  ExpectMarker(is, binary, "<B>");
+  ExpectToken(is, binary, "<B>");
   B_.Read(is, binary);
-  ExpectMarker(is, binary, "<NormType>");
+  ExpectToken(is, binary, "<NormType>");
   int32 i;
   ReadBasicType(is, binary, &i);
   norm_type_ = static_cast<EtNormalizeType>(i);
-  ExpectMarker(is, binary, "</ExponentialTransform>");
+  ExpectToken(is, binary, "</ExponentialTransform>");
 }
 
 
 
 void ExponentialTransformAccsA::Write(std::ostream &os, bool binary) const {
-  WriteMarker(os, binary, "<ExponentialTransformAccsA>");
-  WriteMarker(os, binary, "<Beta>");
+  WriteToken(os, binary, "<ExponentialTransformAccsA>");
+  WriteToken(os, binary, "<Beta>");
   WriteBasicType(os, binary, beta_);
-  WriteMarker(os, binary, "<BetaT>");
+  WriteToken(os, binary, "<BetaT>");
   WriteBasicType(os, binary, beta_t_);
-  WriteMarker(os, binary, "<Dim>");
+  WriteToken(os, binary, "<Dim>");
   int32 dim = G_.size();
   WriteBasicType(os, binary, dim);
-  WriteMarker(os, binary, "<G>");
+  WriteToken(os, binary, "<G>");
   for (int32 i = 0; i < dim; i++)
     G_[i].Write(os, binary);
-  WriteMarker(os, binary, "<Ahat>");
+  WriteToken(os, binary, "<Ahat>");
   Ahat_.Write(os, binary);
-  WriteMarker(os, binary, "</ExponentialTransformAccsA>");
+  WriteToken(os, binary, "</ExponentialTransformAccsA>");
 }
 
 void ExponentialTransformAccsA::Read(std::istream &os, bool binary, bool add) {
   if (G_.empty()) add = false;  // don't add to nonexistent stats...
-  ExpectMarker(os, binary, "<ExponentialTransformAccsA>");
-  ExpectMarker(os, binary, "<Beta>");
+  ExpectToken(os, binary, "<ExponentialTransformAccsA>");
+  ExpectToken(os, binary, "<Beta>");
   double beta;
   ReadBasicType(os, binary, &beta);
   if (add) beta_ += beta;
   else beta_ = beta;
-  ExpectMarker(os, binary, "<BetaT>");
+  ExpectToken(os, binary, "<BetaT>");
   double beta_t;
   ReadBasicType(os, binary, &beta_t);
   if (add) beta_t_ += beta_t;
   else beta_t_ = beta_t;
-  ExpectMarker(os, binary, "<Dim>");
+  ExpectToken(os, binary, "<Dim>");
   int32 dim;
   ReadBasicType(os, binary, &dim);
   if (!add) G_.resize(dim);
@@ -473,12 +473,12 @@ void ExponentialTransformAccsA::Read(std::istream &os, bool binary, bool add) {
       KALDI_ERR << "Reading accs for updating B in exponential transform, "
                 << "dim mismatch " << dim << " vs. " << G_.size();
   }
-  ExpectMarker(os, binary, "<G>");
+  ExpectToken(os, binary, "<G>");
   for (size_t i = 0; i < G_.size(); i++)
     G_[i].Read(os, binary, add);
-  ExpectMarker(os, binary, "<Ahat>"); 
+  ExpectToken(os, binary, "<Ahat>"); 
   Ahat_.Read(os, binary, add);
-  ExpectMarker(os, binary, "</ExponentialTransformAccsA>");
+  ExpectToken(os, binary, "</ExponentialTransformAccsA>");
 }
 
 

@@ -92,9 +92,9 @@ int main(int argc, char *argv[]) {
     // Write out the model diffs
     {
       kaldi::Output ko(model_diffs_out_filename, binary);
-      WriteMarker(ko.Stream(), binary, "<DIMENSION>");
+      WriteToken(ko.Stream(), binary, "<DIMENSION>");
       WriteBasicType(ko.Stream(), binary, static_cast<int32>(am_gmm.Dim()));
-      WriteMarker(ko.Stream(), binary, "<NUMPDFS>");
+      WriteToken(ko.Stream(), binary, "<NUMPDFS>");
       WriteBasicType(ko.Stream(), binary, static_cast<int32>(model_diffs.size()));
       for (std::vector<FmpeAccumModelDiff*>::const_iterator it = model_diffs.begin(),
         end = model_diffs.end(); it != end; ++it) {

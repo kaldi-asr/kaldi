@@ -54,10 +54,13 @@ template<class T> inline void ReadBasicType(std::istream &is,
   // Compile time assertion that this is not called with a wrong type.
   KALDI_ASSERT_IS_INTEGER_TYPE(T);
   if (binary) {
-    char len_c = is.get(), len_c_expected
-        = (std::numeric_limits<T>::is_signed ? 1 :  -1)
-        * static_cast<char>(sizeof(*t));
-
+    int len_c_in = is.get();
+    if (len_c_in == -1)
+      KALDI_ERR << "ReadBasicType: encountered end of stream.";
+    char len_c = static_cast<char>(len_c_in), len_c_expected
+      = (std::numeric_limits<T>::is_signed ? 1 :  -1)
+      * static_cast<char>(sizeof(*t));
+    
     if (len_c !=  len_c_expected) {
       KALDI_ERR << "ReadBasicType: did not get expected integer type, "
                 << static_cast<int>(len_c)

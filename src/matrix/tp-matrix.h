@@ -64,8 +64,9 @@ class TpMatrix : public PackedMatrix<Real> {
     return *(this->data_ + (r*(r+1)) / 2 + c);
     // Duplicating code from PackedMatrix.h
   }
-
+  // Note: Cholesky may throw std::runtime_error
   void Cholesky(const SpMatrix<Real>& Orig);
+  
   void Invert();
   // Inverts in double precision.
   void InvertDouble() {

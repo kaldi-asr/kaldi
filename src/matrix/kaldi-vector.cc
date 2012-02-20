@@ -407,6 +407,13 @@ void VectorBase<Real>::ApplyPow(Real power) {
   if (power == 2.0) {
     for (MatrixIndexT i = 0; i < dim_; i++)
       data_[i] = data_[i] * data_[i];
+  } else if (power == 0.5) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (!(data_[i] >= 0.0))
+        KALDI_ERR << "Cannot take square root of negative value "
+                   << data_[i];
+      data_[i] = sqrt(data_[i]);
+    }
   } else {
     for (MatrixIndexT i = 0; i < dim_; i++) {
       data_[i] = pow(data_[i], power);
@@ -787,9 +794,9 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
 
   if (binary) {
     int peekval = Peek(is, binary);
-    const char *my_marker =  (sizeof(Real) == 4 ? "FV" : "DV");
-    char other_marker_start = (sizeof(Real) == 4 ? 'D' : 'F');
-    if (peekval == other_marker_start) {  // need to instantiate the other type to read it.
+    const char *my_token =  (sizeof(Real) == 4 ? "FV" : "DV");
+    char other_token_start = (sizeof(Real) == 4 ? 'D' : 'F');
+    if (peekval == other_token_start) {  // need to instantiate the other type to read it.
       typedef typename OtherReal<Real>::Real OtherType;  // if Real == float, OtherType == double, and vice versa.
       Vector<OtherType> other(this->Dim());
       other.Read(is, binary, false);  // add is false at this point.
@@ -797,10 +804,10 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
       this->CopyFromVec(other);
       return;
     }
-    std::string marker;
-    ReadMarker(is, binary, &marker);
-    if (marker != my_marker) {
-      specific_error << ": Expected marker " << my_marker << ", got " << marker;
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token != my_token) {
+      specific_error << ": Expected token " << my_token << ", got " << token;
       goto bad;
     }
     int32 size;
@@ -890,8 +897,8 @@ void VectorBase<Real>::Write(std::ostream & os, bool binary) const {
     KALDI_ERR << "Failed to write vector to stream: stream not good";
   }
   if (binary) {
-    std::string my_marker = (sizeof(Real) == 4 ? "FV" : "DV");
-    WriteMarker(os, binary, my_marker);
+    std::string my_token = (sizeof(Real) == 4 ? "FV" : "DV");
+    WriteToken(os, binary, my_token);
 
     int32 size = Dim();  // make the size 32-bit on disk.
     KALDI_ASSERT(Dim() == (MatrixIndexT) size);

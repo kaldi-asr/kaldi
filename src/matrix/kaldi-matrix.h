@@ -348,7 +348,6 @@ class MatrixBase {
   void AddVecVec(const Real alpha, const VectorBase<OtherReal>& a,
                  const VectorBase<OtherReal>& b);
 
-
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
                MatrixTransposeType transA = kNoTrans);

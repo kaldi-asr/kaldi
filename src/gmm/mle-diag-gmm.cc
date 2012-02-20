@@ -30,12 +30,12 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
   GmmFlagsType flags;
   std::string token;
 
-  ExpectMarker(in_stream, binary, "<GMMACCS>");
-  ExpectMarker(in_stream, binary, "<VECSIZE>");
+  ExpectToken(in_stream, binary, "<GMMACCS>");
+  ExpectToken(in_stream, binary, "<VECSIZE>");
   ReadBasicType(in_stream, binary, &dimension);
-  ExpectMarker(in_stream, binary, "<NUMCOMPONENTS>");
+  ExpectToken(in_stream, binary, "<NUMCOMPONENTS>");
   ReadBasicType(in_stream, binary, &num_components);
-  ExpectMarker(in_stream, binary, "<FLAGS>");
+  ExpectToken(in_stream, binary, "<FLAGS>");
   ReadBasicType(in_stream, binary, &flags);
 
   if (add) {
@@ -53,7 +53,7 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
     Resize(num_components, dimension, flags);
   }
 
-  ReadMarker(in_stream, binary, &token);
+  ReadToken(in_stream, binary, &token);
   while (token != "</GMMACCS>") {
     if (token == "<OCCUPANCY>") {
       occupancy_.Read(in_stream, binary, add);
@@ -64,17 +64,17 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
-    ReadMarker(in_stream, binary, &token);
+    ReadToken(in_stream, binary, &token);
   }
 }
 
 void AccumDiagGmm::Write(std::ostream &out_stream, bool binary) const {
-  WriteMarker(out_stream, binary, "<GMMACCS>");
-  WriteMarker(out_stream, binary, "<VECSIZE>");
+  WriteToken(out_stream, binary, "<GMMACCS>");
+  WriteToken(out_stream, binary, "<VECSIZE>");
   WriteBasicType(out_stream, binary, dim_);
-  WriteMarker(out_stream, binary, "<NUMCOMPONENTS>");
+  WriteToken(out_stream, binary, "<NUMCOMPONENTS>");
   WriteBasicType(out_stream, binary, num_comp_);
-  WriteMarker(out_stream, binary, "<FLAGS>");
+  WriteToken(out_stream, binary, "<FLAGS>");
   WriteBasicType(out_stream, binary, flags_);
 
   // convert into BaseFloat before writing things
@@ -87,13 +87,13 @@ void AccumDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   mean_accumulator_bf.CopyFromMat(mean_accumulator_);
   variance_accumulator_bf.CopyFromMat(variance_accumulator_);
 
-  WriteMarker(out_stream, binary, "<OCCUPANCY>");
+  WriteToken(out_stream, binary, "<OCCUPANCY>");
   occupancy_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<MEANACCS>");
+  WriteToken(out_stream, binary, "<MEANACCS>");
   mean_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<DIAGVARACCS>");
+  WriteToken(out_stream, binary, "<DIAGVARACCS>");
   variance_accumulator_bf.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</GMMACCS>");
+  WriteToken(out_stream, binary, "</GMMACCS>");
 }
 
 

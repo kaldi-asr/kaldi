@@ -1,8 +1,8 @@
 // matrix/matrix-lib-test.cc
 
-// Copyright 2009-2011   Microsoft Corporation;  Mohit Agarwal;  Lukas Burget;
-//                       Ondrej Glembek;  Saarland University;  Go Vivace Inc.;
-//                       Yanmin Qian;   Jan Silovsky
+// Copyright 2009-2012   Microsoft Corporation;  Mohit Agarwal  Lukas Burget;
+//                       Ondrej Glembek  Saarland University  Go Vivace Inc.
+//                       Yanmin Qian  Jan Silovsky  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -157,6 +157,24 @@ template<class Real> static void UnitTestAddSp() {
     AssertEqual(M, N);
   }
 }
+
+template<class Real, class OtherReal>
+static void UnitTestSpAddVec() {
+  for (MatrixIndexT i = 0;i< 10;i++) {
+    BaseFloat alpha = (i<5 ? 1.0 : 0.5);
+    MatrixIndexT dimM = 10+rand()%10;
+    SpMatrix<Real> S(dimM);
+    InitRand(&S);
+    SpMatrix<Real> T(S);
+    Vector<OtherReal> v(dimM);
+    InitRand(&v);
+    S.AddVec(alpha, v);
+    for (int32 i = 0; i < dimM; i++)
+      T(i,i) += alpha * v(i);
+    AssertEqual(S, T);
+  }
+}
+              
 
 template<class Real> static void UnitTestSpliceRows() {
 
@@ -594,6 +612,31 @@ template<class Real> static void UnitTestPower() {
   }
 }
 
+
+template<class Real> static void UnitTestAddOuterProductPlusMinus() {
+  for (int iter = 0; iter < 10; iter++) {
+    MatrixIndexT dimM = 10 + rand() % 10;
+    MatrixIndexT dimN = 10 + rand() % 10;
+    Matrix<Real> M(dimM, dimN), Plus(dimM, dimN), Minus(dimM, dimN),
+        M2(dimM, dimN);
+    Vector<Real> v1(dimM), v2(dimN);
+
+    for (int32 i = 0; i < 5; i++) {
+      InitRand(&v1);
+      InitRand(&v2);
+      Real alpha = 0.333 * ((rand() % 10) - 5);
+      M.AddVecVec(alpha, v1, v2);
+         
+      AddOuterProductPlusMinus(alpha, v1, v2, &Plus, &Minus);
+      M2.SetZero();
+      M2.AddMat(-1.0, Minus);
+      M2.AddMat(1.0, Plus);
+      AssertEqual(M, M2);
+      KALDI_ASSERT(Minus.Min() >= 0);
+      KALDI_ASSERT(Plus.Min() >= 0);
+    }
+  }
+}
 
 template<class Real> static void UnitTestSger() {
   for (int iter = 0;iter < 5;iter++) {
@@ -2578,7 +2621,8 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestSvd<Real>();
   UnitTestSvdNodestroy<Real>();
   UnitTestSvdJustvec<Real>();
-
+  UnitTestSpAddVec<Real,float>();
+  UnitTestSpAddVec<Real,double>();  
   UnitTestSpInvert<Real>();
       KALDI_LOG << " Point D";
   UnitTestTpInvert<Real>();
@@ -2604,6 +2648,7 @@ template<class Real> static void MatrixUnitTest() {
         KALDI_LOG << " Point F";
   UnitTestDeterminantSign<Real>();
   UnitTestSger<Real>();
+  UnitTestAddOuterProductPlusMinus<Real>();
   UnitTestPca<Real>();
   UnitTestTraceProduct<Real>();
   UnitTestTransposeScatter<Real>();

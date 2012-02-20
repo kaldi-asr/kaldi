@@ -5,7 +5,8 @@ include ../kaldi.mk
 
 BINFILES = compute-mfcc-feats compute-plp-feats compute-cmvn-stats add-deltas \
 	remove-mean apply-cmvn transform-feats copy-feats compose-transforms \
-    splice-feats extract-segments subset-feats feat-to-len feat-to-dim
+    splice-feats extract-segments subset-feats feat-to-len feat-to-dim \
+    fmpe-apply-transform fmpe-acc-stats fmpe-init fmpe-update
 
 
 OBJFILES = 

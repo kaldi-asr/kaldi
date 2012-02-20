@@ -16,7 +16,7 @@ test_install:
 	[ -d ../tools/openfst-1.2.10 ] || ( echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
 
 remove_locks:
-	-rm */.lock 2>/dev/null
+	rm */.lock 2>/dev/null || exit 0;
 
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done

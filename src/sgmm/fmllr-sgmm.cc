@@ -99,35 +99,35 @@ static void ApplyInvHessianXformToChange(const SgmmFmllrGlobalParams &globals,
 
 
 void SgmmFmllrGlobalParams::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<SGMM_FMLLR_GLOBAL_PARAMS>");
-  WriteMarker(out, binary, "<PRE_XFORM>");
+  WriteToken(out, binary, "<SGMM_FMLLR_GLOBAL_PARAMS>");
+  WriteToken(out, binary, "<PRE_XFORM>");
   pre_xform_.Write(out, binary);
-  WriteMarker(out, binary, "<INV_XFORM>");
+  WriteToken(out, binary, "<INV_XFORM>");
   inv_xform_.Write(out, binary);
-  WriteMarker(out, binary, "<MEAN_SCATTER>");
+  WriteToken(out, binary, "<MEAN_SCATTER>");
   mean_scatter_.Write(out, binary);
   if (fmllr_bases_.size() != 0) {
-    WriteMarker(out, binary, "<FMLLR_BASIS>");
+    WriteToken(out, binary, "<FMLLR_BASIS>");
     uint32 tmp = static_cast<uint32>(fmllr_bases_.size());
     WriteBasicType(out, binary, tmp);
     for (uint32 i = 0; i < tmp; ++i) {
       fmllr_bases_[i].Write(out, binary);
     }
   }
-  WriteMarker(out, binary, "</SGMM_FMLLR_GLOBAL_PARAMS>");
+  WriteToken(out, binary, "</SGMM_FMLLR_GLOBAL_PARAMS>");
 }
 
 void SgmmFmllrGlobalParams::Read(std::istream &in, bool binary) {
-  ExpectMarker(in, binary, "<SGMM_FMLLR_GLOBAL_PARAMS>");
-  ExpectMarker(in, binary, "<PRE_XFORM>");
+  ExpectToken(in, binary, "<SGMM_FMLLR_GLOBAL_PARAMS>");
+  ExpectToken(in, binary, "<PRE_XFORM>");
   pre_xform_.Read(in, binary);
-  ExpectMarker(in, binary, "<INV_XFORM>");
+  ExpectToken(in, binary, "<INV_XFORM>");
   inv_xform_.Read(in, binary);
-  ExpectMarker(in, binary, "<MEAN_SCATTER>");
+  ExpectToken(in, binary, "<MEAN_SCATTER>");
   mean_scatter_.Read(in, binary);
-  std::string marker;
-  ReadMarker(in, binary, &marker);
-  if (marker == "<FMLLR_BASIS>") {
+  std::string token;
+  ReadToken(in, binary, &token);
+  if (token == "<FMLLR_BASIS>") {
     uint32 tmp;
     ReadBasicType(in, binary, &tmp);
     fmllr_bases_.resize(tmp);
@@ -135,8 +135,8 @@ void SgmmFmllrGlobalParams::Read(std::istream &in, bool binary) {
       fmllr_bases_[i].Read(in, binary);
     }
   } else {
-    if (marker != "</SGMM_FMLLR_GLOBAL_PARAMS>")
-      KALDI_ERR << "Unexpected marker '" << marker << "' found.";
+    if (token != "</SGMM_FMLLR_GLOBAL_PARAMS>")
+      KALDI_ERR << "Unexpected token '" << token << "' found.";
   }
 }
 
@@ -262,22 +262,22 @@ BaseFloat FmllrSgmmAccs::FmllrObjGradient(const AmSgmm &sgmm,
 
 
 void FmllrSgmmAccs::Write(std::ostream &out, bool binary) const {
-  WriteMarker(out, binary, "<FMLLRACCS>");
-  WriteMarker(out, binary, "<DIMENSION>");
+  WriteToken(out, binary, "<FMLLRACCS>");
+  WriteToken(out, binary, "<DIMENSION>");
   WriteBasicType(out, binary, dim_);
-  WriteMarker(out, binary, "<STATS>");
+  WriteToken(out, binary, "<STATS>");
   stats_.Write(out, binary);
-  WriteMarker(out, binary, "</FMLLRACCS>");
+  WriteToken(out, binary, "</FMLLRACCS>");
 }
 
 void FmllrSgmmAccs::Read(std::istream &in, bool binary, bool add) {
-  ExpectMarker(in, binary, "<FMLLRACCS>");
-  ExpectMarker(in, binary, "<DIMENSION>");
+  ExpectToken(in, binary, "<FMLLRACCS>");
+  ExpectToken(in, binary, "<DIMENSION>");
   ReadBasicType(in, binary, &dim_);
   KALDI_ASSERT(dim_ > 0);
-  ExpectMarker(in, binary, "<STATS>");
+  ExpectToken(in, binary, "<STATS>");
   stats_.Read(in, binary, add);
-  ExpectMarker(in, binary, "</FMLLRACCS>");
+  ExpectToken(in, binary, "</FMLLRACCS>");
 }
 
 

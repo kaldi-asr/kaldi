@@ -658,17 +658,17 @@ void DiagGmm::Interpolate(BaseFloat rho, const FullGmm &source,
 void DiagGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!valid_gconsts_)
     KALDI_ERR << "Must call ComputeGconsts() before writing the model.";
-  WriteMarker(out_stream, binary, "<DiagGMM>");
+  WriteToken(out_stream, binary, "<DiagGMM>");
   if (!binary) out_stream << "\n";
-  WriteMarker(out_stream, binary, "<GCONSTS>");
+  WriteToken(out_stream, binary, "<GCONSTS>");
   gconsts_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<WEIGHTS>");
+  WriteToken(out_stream, binary, "<WEIGHTS>");
   weights_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<MEANS_INVVARS>");
+  WriteToken(out_stream, binary, "<MEANS_INVVARS>");
   means_invvars_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "<INV_VARS>");
+  WriteToken(out_stream, binary, "<INV_VARS>");
   inv_vars_.Write(out_stream, binary);
-  WriteMarker(out_stream, binary, "</DiagGMM>");
+  WriteToken(out_stream, binary, "</DiagGMM>");
   if (!binary) out_stream << "\n";
 }
 
@@ -679,31 +679,31 @@ std::ostream & operator <<(std::ostream & out_stream,
 }
 
 void DiagGmm::Read(std::istream &in_stream, bool binary) {
-//  ExpectMarker(in_stream, binary, "<DiagGMMBegin>");
-  std::string marker;
-  ReadMarker(in_stream, binary, &marker);
+//  ExpectToken(in_stream, binary, "<DiagGMMBegin>");
+  std::string token;
+  ReadToken(in_stream, binary, &token);
   // <DiagGMMBegin> is for compatibility. Will be deleted later
-  if (marker != "<DiagGMMBegin>" && marker != "<DiagGMM>")
-    KALDI_ERR << "Expected <DiagGMM>, got " << marker;
-  ReadMarker(in_stream, binary, &marker);
-  if (marker == "<GCONSTS>") {  // The gconsts are optional.
+  if (token != "<DiagGMMBegin>" && token != "<DiagGMM>")
+    KALDI_ERR << "Expected <DiagGMM>, got " << token;
+  ReadToken(in_stream, binary, &token);
+  if (token == "<GCONSTS>") {  // The gconsts are optional.
     gconsts_.Read(in_stream, binary);
-    ExpectMarker(in_stream, binary, "<WEIGHTS>");
+    ExpectToken(in_stream, binary, "<WEIGHTS>");
   } else {
-    if (marker != "<WEIGHTS>")
+    if (token != "<WEIGHTS>")
       KALDI_ERR << "DiagGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
-                << marker;
+                << token;
   }
   weights_.Read(in_stream, binary);
-  ExpectMarker(in_stream, binary, "<MEANS_INVVARS>");
+  ExpectToken(in_stream, binary, "<MEANS_INVVARS>");
   means_invvars_.Read(in_stream, binary);
-  ExpectMarker(in_stream, binary, "<INV_VARS>");
+  ExpectToken(in_stream, binary, "<INV_VARS>");
   inv_vars_.Read(in_stream, binary);
-//  ExpectMarker(in_stream, binary, "<DiagGMMEnd>");
-  ReadMarker(in_stream, binary, &marker);
+//  ExpectToken(in_stream, binary, "<DiagGMMEnd>");
+  ReadToken(in_stream, binary, &token);
   // <DiagGMMEnd> is for compatibility. Will be deleted later
-  if (marker != "<DiagGMMEnd>" && marker != "</DiagGMM>")
-    KALDI_ERR << "Expected </DiagGMM>, got " << marker;
+  if (token != "<DiagGMMEnd>" && token != "</DiagGMM>")
+    KALDI_ERR << "Expected </DiagGMM>, got " << token;
 
   ComputeGconsts();  // safer option than trusting the read gconsts
 }
