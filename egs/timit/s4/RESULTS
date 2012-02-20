@@ -1,0 +1,24 @@
+exp/mono/decode_dev_bg/wer_3
+compute-wer --text --mode=present ark:exp/mono/decode_dev_bg/test_trans.filt ark,p:- 
+%WER 33.73 [ 5079 / 15057, 392 ins, 1716 del, 2971 sub ]
+%SER 100.00 [ 400 / 400 ]
+Scored 400 sentences, 0 not present in hyp.
+
+exp/mono/decode_test_bg/wer
+compute-wer --text --mode=present ark:exp/mono/decode_test_bg/test.trans ark,p:exp/mono/decode_test_bg/text 
+%WER 35.68 [ 2574 / 7215, 204 ins, 848 del, 1522 sub ]
+%SER 100.00 [ 192 / 192 ]
+Scored 192 sentences, 0 not present in hyp.
+
+exp/tri1/decode_dev_bg/wer_6
+compute-wer --text --mode=present ark:exp/tri1/decode_dev_bg/test.trans ark,p:- 
+%WER 28.68 [ 4319 / 15057, 474 ins, 1333 del, 2512 sub ]
+%SER 100.00 [ 400 / 400 ]
+Scored 400 sentences, 0 not present in hyp.
+
+exp/tri1/decode_test_bg/wer
+compute-wer --text --mode=present ark:exp/tri1/decode_test_bg/test.trans ark,p:exp/tri1/decode_test_bg/text 
+%WER 31.02 [ 2238 / 7215, 226 ins, 704 del, 1308 sub ]
+%SER 100.00 [ 192 / 192 ]
+Scored 192 sentences, 0 not present in hyp.
+
