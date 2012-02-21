@@ -148,12 +148,30 @@ BaseFloat AccumAmDiagGmm::TotCount() const {
   return ans;
 }
 
-void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config,
-            const AccumAmDiagGmm &amdiaggmm_acc,
-            GmmFlagsType flags,
-            AmDiagGmm *am_gmm,
-            BaseFloat *obj_change_out,
-            BaseFloat *count_out) {
+void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
+  for (int32 pdf_id = 0; pdf_id < am_gmm->NumPdfs(); pdf_id++) {
+    DiagGmm &pdf = am_gmm->GetPdf(pdf_id);
+    pdf.Resize(pdf.NumGauss(), dim);
+    Matrix<BaseFloat> inv_vars(pdf.NumGauss(), dim);
+    inv_vars.Set(1.0); // make all vars 1.
+    pdf.SetInvVars(inv_vars);
+  }
+}
+
+void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
+                         const AccumAmDiagGmm &amdiaggmm_acc,
+                         GmmFlagsType flags,
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *obj_change_out,
+                         BaseFloat *count_out) {
+  if (amdiaggmm_acc.Dim() != am_gmm->Dim()) {
+    KALDI_ASSERT(amdiaggmm_acc.Dim() != 0);
+    KALDI_WARN << "Dimensions of accumulator " << amdiaggmm_acc.Dim()
+               << " and gmm " << am_gmm->Dim() << " do not match, resizing "
+               << " GMM and setting to zero-mean, unit-variance.";
+    ResizeModel(amdiaggmm_acc.Dim(), am_gmm);
+  }
+  
   KALDI_ASSERT(am_gmm != NULL);
   KALDI_ASSERT(amdiaggmm_acc.NumAccs() == am_gmm->NumPdfs());
   if (obj_change_out != NULL) *obj_change_out = 0.0;

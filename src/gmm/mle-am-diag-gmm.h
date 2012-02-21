@@ -78,6 +78,11 @@ class AccumAmDiagGmm {
 
   AccumDiagGmm& GetAcc(int32 index);
 
+  int32 Dim() const {
+    return (gmm_accumulators_.empty() || !gmm_accumulators_[0] ?
+            0 : gmm_accumulators_[0]->Dim());
+  }
+
  private:
   /// MLE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> gmm_accumulators_;
