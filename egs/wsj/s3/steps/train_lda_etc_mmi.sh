@@ -20,10 +20,8 @@
 # [something] may be MLLT, or ET, or MLLT + SAT.  Any speaker-specific
 # transforms are expected to be located in the alignment directory. 
 # This script never re-estimates any transforms, it just does model 
-# training.  To make this faster, it initializes the model from the
-# old system's model, i.e. for each p.d.f., it takes the best-match pdf
-# from the old system (based on overlap of tree-stats counts), and 
-# uses that GMM to initialize the current GMM.
+# training.  
+
 # Basically we are doing 4 iterations of Extended Baum-Welch (EBW)
 # estimation, as described in Dan Povey's thesis, with a few differences:
 # (i) we have the option of "boosting", as in "Boosted MMI", which increases
@@ -47,7 +45,9 @@
 niters=4
 nj=4
 boost=0.0
-tau=100
+tau=200
+merge=true # if true, cancel num and den counts as described in 
+    # the boosted MMI paper. 
 cmd=scripts/run.pl
 acwt=0.1
 stage=0
@@ -68,6 +68,9 @@ for x in `seq 8`; do
   fi  
   if [ $1 == "--acwt" ]; then
     shift; acwt=$1; shift
+  fi  
+  if [ $1 == "--tau" ]; then
+    shift; tau=$1; shift
   fi  
   if [ $1 == "--stage" ]; then
     shift; stage=$1; shift
@@ -121,58 +124,60 @@ rm $dir/.error 2>/dev/null
 cur_mdl=$srcdir/final.mdl
 x=0
 while [ $x -lt $niters ]; do
-  echo "Iteration $x: getting denominator stats."
-  # Get denominator stats...  For simplicity we rescore the lattice
+  echo "Iteration $x: getting stats."
+  # Get denominator and numerator stats together...    This involves
+  # merging the num and den posteriors, and (if $merge==true), canceling
+  # the +ve and -ve occupancies on each frame. 
+  # For simplicity we rescore the lattice
   # on all iterations, even though it shouldn't be necessary on the zeroth
   # (but we want this script to work even if $srcdir doesn't contain the
-  # model used to generate the lattice).
+  #  model used to generate the lattice).
   if [ $stage -le $x ]; then
     for n in `get_splits.pl $nj`; do  
-      $cmd $dir/log/acc_den.$x.$n.log \
+      $cmd $dir/log/acc.$x.$n.log \
         gmm-rescore-lattice $cur_mdl "${latspart[$n]}" "${featspart[$n]}" ark:- \| \
         lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-        gmm-acc-stats $cur_mdl "${featspart[$n]}" ark:- $dir/den_acc.$x.$n.acc \
-         || touch $dir/.error &
+        sum-post --merge=$merge --scale1=-1 \
+         ark:- "ark,s,cs:gunzip -c $alidir/$n.ali.gz | ali-to-post ark:- ark:- |" ark:- \| \
+        gmm-acc-stats2 $cur_mdl "${featspart[$n]}" ark,s,cs:- \
+          $dir/num_acc.$x.$n.acc $dir/den_acc.$x.$n.acc  || touch $dir/.error &
     done 
     wait
-    [ -f $dir/.error ] && echo Error accumulating den stats on iter $x && exit 1;
+    [ -f $dir/.error ] && echo Error accumulating stats on iter $x && exit 1;
     $cmd $dir/log/den_acc_sum.$x.log \
       gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
     rm $dir/den_acc.$x.*.acc
-
-    echo "Iteration $x: getting numerator stats."
-    for n in `get_splits.pl $nj`; do  
-      $cmd $dir/log/acc_num.$x.$n.log \
-        gmm-acc-stats-ali $cur_mdl "${featspart[$n]}" "ark:gunzip -c $alidir/$n.ali.gz|" \
-          $dir/num_acc.$x.$n.acc || touch $dir/.error &
-    done
-    wait;
-    [ -f $dir/.error ] && echo Error accumulating num stats on iter $x && exit 1;
     $cmd $dir/log/num_acc_sum.$x.log \
       gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
     rm $dir/num_acc.$x.*.acc
 
+    # note: this tau value is for smoothing to model parameters;
+    # you need to use gmm-ismooth-stats to smooth to the ML stats,
+    # but anyway this script does canceling of num and den stats on
+    # each frame (as suggested in the Boosted MMI paper) which would
+    # make smoothing to ML impossible without accumulating extra stats.
+
     $cmd $dir/log/update.$x.log \
-      gmm-est-gaussians-ebw $cur_mdl "gmm-ismooth-stats --tau=$tau $dir/num_acc.$x.acc $dir/num_acc.$x.acc -|" \
-        $dir/den_acc.$x.acc - \| \
+      gmm-est-gaussians-ebw --tau=$tau $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - \| \
       gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
   else 
     echo "not doing this iteration because --stage=$stage"
   fi
   cur_mdl=$dir/$[$x+1].mdl
 
-  # Some diagnostics
-  den=`grep Overall $dir/log/acc_den.$x.*.log  | grep lattice-to-post | awk '{p+=$7*$9; nf+=$9;} END{print p/nf;}'`
-  num=`grep Overall $dir/log/acc_num.$x.*.log  | grep gmm-acc-stats-ali | awk '{p+=$11*$13; nf+=$13;} END{print p/nf}'`
-  diff=`perl -e "print ($num * $acwt - $den);"`
-  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10;}'`
-  impr=`perl -e "print ($impr * $acwt);"` # auxf impr normalized by multiplying by
-  # kappa, so it's comparable to an objective-function change.
-  echo On iter $x, objf was $diff, auxf improvement was $impr | tee $dir/objf.$x.log
+  # Some diagnostics.. note, this objf is somewhat comparable to the
+  # MMI objective function divided by the acoustic weight, and differences in it
+  # are comparable to the auxf improvement printed by the update program.
+  objf=`grep Overall $dir/log/acc.$x.*.log | grep gmm-acc-stats2 | awk '{ p+=$10*$12; nf+=$12; } END{print p/nf;}'`
+  nf=`grep Overall $dir/log/acc.$x.*.log | grep gmm-acc-stats2 | awk '{ nf+=$12; } END{print nf;}'`
+  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10*$12;}'`
+  impr=`perl -e "print ($impr/$nf);"` # renormalize by "real" #frames, to correct
+    # for the canceling of stats.
+  echo On iter $x, objf was $objf, auxf improvement from MMI was $impr | tee $dir/objf.$x.log
 
   x=$[$x+1]
 done
 
 echo "Succeeded with $niters iterations of MMI training (boosting factor = $boost)"
 
-( cd $dir; ln -s $x.mdl final.mdl )
+( cd $dir; rm final.mdl; ln -s $x.mdl final.mdl )

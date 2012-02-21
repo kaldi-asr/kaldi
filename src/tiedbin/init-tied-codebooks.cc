@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         "  init-tied-codebooks tree tree.acc ubm-full tree.map\n";
 
-    bool binary = false;
+    bool binary = true;
     int max_num_gaussians = 512;
     bool split_gaussians = false;
     BaseFloat perturb = 0.01;

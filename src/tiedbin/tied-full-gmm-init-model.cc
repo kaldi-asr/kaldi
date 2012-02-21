@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         "  tied-full-gmm-init-model tree topo tree.map full0.ubm full1.ubm 1.mdl\n";
 
-    bool binary = false;
+    bool binary = true;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");

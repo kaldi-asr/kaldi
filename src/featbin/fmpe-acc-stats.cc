@@ -21,6 +21,7 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using kaldi::int32;
   try {
     const char *usage =
         "Apply fMPE transform to features\n"
@@ -55,13 +56,13 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
     // fmpe stats...
-    Matrix<BaseFloat> stats(fmpe.ProjectionNumRows() * 2,
-                            fmpe.ProjectionNumCols());
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionNumRows(),
-                                    fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
+    Matrix<BaseFloat> stats(fmpe.ProjectionTNumRows() * 2,
+                            fmpe.ProjectionTNumCols());
+    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
+    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
+                                    fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
     
     int32 num_done = 0, num_err = 0;
     

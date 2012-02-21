@@ -28,7 +28,7 @@ exit 1;
 # shorten to WAV to take out the empty files and those with compression errors. 
 # So set WORKDIR to someplace with enough disk space. That is where MFCCs will 
 # get created, as well as the FST versions of LMs.
-WORKDIR=/path/with/disk/space
+WORKDIR=/mnt/matylda6/jhu09/qpovey/temp_gp
 cp -r conf local utils steps install.sh path.sh $WORKDIR
 cd $WORKDIR
 # INSTALLING REQUIRED TOOLS:
@@ -39,7 +39,7 @@ cd $WORKDIR
   { echo "shorten and/or sox not found on PATH. Installing..."; 
     install.sh }
 
-local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=/path/to/GlobalPhone --lm-dir=/path/to/lms --work-dir=$WORKDIR
+local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=/mnt/matylda2/data/GLOBALPHONE --lm-dir=/path/to/lms --work-dir=$WORKDIR
 # On Eddie: local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=$PWD/corpus --lm-dir=$PWD/corpus/language_models --work-dir=$PWD
 
 local/gp_format_data.sh --hmm-proto=conf/topo.proto --work-dir=$PWD

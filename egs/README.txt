@@ -26,4 +26,7 @@ Recipes in progress:
     sampling rate).
     This directory is a work in progress.
   
+
  gp: GlobalPhone.  This is a multilingual speech corpus.
+
+ timit: TIMIT, which is an old corpus of carefully read speech.  

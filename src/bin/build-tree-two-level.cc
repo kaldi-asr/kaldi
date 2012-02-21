@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " build-tree-two-level treeacc roots.txt 1.qst topo tree tree.map\n";
 
-    bool binary = false;
+    bool binary = true;
     int32 P = 1, N = 3;
 
     bool cluster_leaves = true;

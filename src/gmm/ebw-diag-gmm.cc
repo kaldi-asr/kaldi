@@ -148,11 +148,10 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
       if (den_has_stats)
         var_stats.AddVec(-1.0, den_stats.variance_accumulator().Row(g));
     }
-    double D = opts.E * den_count / 2; // E*gamma_den/2 where E = 2;
-    // We initialize to half the value of D that would be dictated by
-    // E; this is part of the strategy used to ensure that the value of
-    // D we use is at least twice the value that would ensure positive
-    // variances.
+    double D = (opts.tau + opts.E * den_count) / 2;
+    // We initialize to half the value of D that would be dictated by E (and
+    // tau); this is part of the strategy used to ensure that the value of D we
+    // use is at least twice the value that would ensure positive variances.
 
     int32 iter, max_iter = 100;
     for (iter = 0; iter < max_iter; iter++) { // will normally break from the loop
@@ -184,7 +183,7 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
         D *= 1.1; 
       }
     }
-    if (iter > 0 && num_floored_out != NULL) *num_floored_out++;
+    if (iter > 0 && num_floored_out != NULL) (*num_floored_out)++;
     if (iter == max_iter) KALDI_WARN << "Dropped off end of loop, recomputing D. (unexpected.)";
   }
   // copy to natural representation according to flags.

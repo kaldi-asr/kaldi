@@ -15,13 +15,13 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
            gmm-est-regtree-mllr gmm-decode-kaldi gmm-compute-likes \
            gmm-decode-faster-regtree-mllr gmm-et-apply-c gmm-latgen-simple \
-           gmm-rescore-lattice gmm-decode-biglm-faster fmpe-gmm-model-diffs-est \
-           fmpe-gmm-acc-stats-gpost fmpe-gmm-sum-accs fmpe-init-gmms fmpe-gmm-est \
+           gmm-rescore-lattice gmm-decode-biglm-faster \
            gmm-est-gaussians-ebw gmm-est-weights-ebw gmm-latgen-faster gmm-copy \
            gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \
            gmm-latgen-biglm-faster gmm-ismooth-stats gmm-global-get-frame-likes \
            gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
-           gmm-global-copy gmm-align-compiled-plusphones gmm-get-feat-deriv
+           gmm-global-copy gmm-align-compiled-plusphones gmm-get-feat-deriv \
+           gmm-fmpe-acc-stats gmm-acc-stats2
 
 OBJFILES =
 

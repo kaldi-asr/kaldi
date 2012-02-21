@@ -167,7 +167,7 @@ try {
         "  tied-lbg tree-old tree-tied topo scp:train.scp ark:ali ubm-full "
         "tree.map\n";
 
-    bool binary = false;
+    bool binary = true;
     bool full = true;
     
     BaseFloat perturb = 0.01;

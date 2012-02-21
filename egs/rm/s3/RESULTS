@@ -5,38 +5,38 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh;
 # monophone; delta+accel
 exp/mono/decode/wer_4:%WER 9.830049 [ 1232 / 12533, 143 ins, 289 del, 800 sub ]
 # First triphone pass; delta+accel
-exp/tri1/decode/wer_6:%WER 3.694247 [ 463 / 12533, 69 ins, 100 del, 294 sub ]
+exp/tri1/decode/wer_6:%WER 3.893721 [ 488 / 12533, 69 ins, 96 del, 323 sub ]
 # Second triphone pass; delta+accel
-exp/tri2a/decode/wer_7:%WER 3.638395 [ 456 / 12533, 61 ins, 107 del, 288 sub ]
+exp/tri2a/decode/wer_7:%WER 3.486795 [ 437 / 12533, 65 ins, 91 del, 281 sub ]
 # [as tri2a, but] LDA+MLLT
-exp/tri2b/decode/wer_7:%WER 3.534668 [ 443 / 12533, 74 ins, 88 del, 281 sub ]
+exp/tri2b/decode/wer_6:%WER 3.359132 [ 421 / 12533, 73 ins, 71 del, 277 sub ]
 # LDA + exponential transform (note: this is with speaker adaptation)
-exp/tri2c/decode/wer_5:%WER 2.848480 [ 357 / 12533, 62 ins, 61 del, 234 sub ]
+exp/tri2c/decode/wer_5:%WER 2.905492 [ 364 / 12528, 68 ins, 59 del, 237 sub ]
 # LDA+MLLT+MMI.
-exp/tri3a/decode/wer_7:%WER 3.502753 [ 439 / 12533, 75 ins, 83 del, 281 sub ]
+exp/tri3a/decode/wer_7:%WER 3.084052 [ 386 / 12516, 54 ins, 67 del, 265 sub ]
 # LDA+MLLT+boosted MMI [note: errors are not identical, although WER is same]
-exp/tri3b/decode/wer_7:%WER 3.454879 [ 433 / 12533, 75 ins, 80 del, 278 sub ]
+exp/tri3b/decode/wer_5:%WER 3.155960 [ 395 / 12516, 74 ins, 50 del, 271 sub ]
 # LDA+MLLT+MCE
-exp/tri3c/decode/wer_7:%WER 3.183595 [ 399 / 12533, 62 ins, 79 del, 258 sub ]
+exp/tri3c/decode/wer_6:%WER 3.047953 [ 382 / 12533, 56 ins, 69 del, 257 sub ]
 # LDA+MLLT+SAT
-exp/tri3d/decode/wer_6:%WER 2.553259 [ 320 / 12533, 43 ins, 63 del, 214 sub ]
+exp/tri3d/decode/wer_7:%WER 2.234102 [ 280 / 12533, 35 ins, 62 del, 183 sub ]
 # LDA+MLLT+SAT+MMI
-exp/tri4a/decode/wer_6:%WER 2.473470 [ 310 / 12533, 43 ins, 62 del, 205 sub ]
+exp/tri4a/decode/wer_6:%WER 2.146334 [ 269 / 12533, 37 ins, 43 del, 189 sub ]
 # LDA+MLLT+SAT, extra phase of builting on top of 3d (no help)
-exp/tri4d/decode/wer_5:%WER 2.800606 [ 351 / 12533, 47 ins, 68 del, 236 sub ]
+exp/tri4d/decode/wer_5:%WER 2.457512 [ 308 / 12533, 50 ins, 54 del, 204 sub ]
 # LDA+MLLT + SGMM with speaker vectors
-exp/sgmm3d/decode/wer_4:%WER 2.186228 [ 274 / 12533, 41 ins, 42 del, 191 sub ]
+exp/sgmm3d/decode/wer_6:%WER 2.305912 [ 289 / 12533, 53 ins, 52 del, 184 sub ]
 # LDA+ET + SGMM with speaker vectors.
-exp/sgmm3e/decode/wer_5:%WER 2.242081 [ 281 / 12533, 44 ins, 47 del, 190 sub ]
+exp/sgmm3e/decode/wer_4:%WER 2.042608 [ 256 / 12533, 39 ins, 38 del, 179 sub ]
 # LDA+MLLT+SAT + SGMM with speaker vectors.
-exp/sgmm4f/decode/wer_5:%WER 2.226123 [ 279 / 12533, 56 ins, 49 del, 174 sub ]
+exp/sgmm4f/decode/wer_7:%WER 1.970797 [ 247 / 12533, 36 ins, 56 del, 155 sub ]
 # + FMLLR on top of it all.
-exp/sgmm4f/decode_fmllr/wer_6:%WER 2.202186 [ 276 / 12533, 39 ins, 59 del, 178 sub ]
+exp/sgmm4f/decode_fmllr/wer_5:%WER 1.954839 [ 245 / 12533, 40 ins, 47 del, 158 sub ]
 
 # System combination via lattices: combine tri1 and tri2a
 exp/combine_1_2a/decode/wer_6:%WER 3.518711 [ 441 / 12533, 62 ins, 97 del, 282 sub ]
 # System combination via lattices: combine sgmm4f and tri3d.
-exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 2.082502 [ 261 / 12533, 36 ins, 48 del, 177 sub ]
+exp/combine_sgmm4f_tri3d/decode/wer_5:%WER 1.763345 [ 221 / 12533, 32 ins, 42 del, 147 sub ]
 # System combination via lattices: combine sgmm4f and tri4a.
-exp/combine_sgmm4f_tri4a/decode/wer_5:%WER 2.082502 [ 261 / 12533, 37 ins, 49 del, 175 sub ]
+exp/combine_sgmm4f_tri4a/decode/wer_6:%WER 1.715471 [ 215 / 12533, 31 ins, 39 del, 145 sub ]
 

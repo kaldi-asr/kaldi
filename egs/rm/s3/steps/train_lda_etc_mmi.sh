@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2010-2012 Microsoft Corporation  Daniel Povey
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,13 +27,24 @@
 #  ali, final.mdl, final.mat
 
 boost=0 # boosting constant, for boosted MMI. 
-tau=100 # Tau value.
+tau=200 # Tau value.
+merge=true # if true, cancel num and den counts as described in 
+    # the boosted MMI paper. 
 
-if [ $1 == "--boost" ]; then # e.g. "--boost 0.05"
-   shift;
-   boost=$1;
-   shift;
-fi
+for x in `seq 4`; do
+  if [ $1 == "--boost" ]; then # e.g. "--boost 0.05"
+    boost=$2;
+    shift 2;
+  fi
+  if [ $1 == "--smooth-to-model" ]; then 
+    shift;
+    smooth_to_model=true
+  fi
+  if [ $1 == "--tau" ]; then # e.g. "--tau 200
+    tau=$2
+    shift 2;
+  fi
+done
 
 if [ $# != 4 ]; then
    echo "Usage: steps/train_lda_etc_mmi.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
@@ -99,7 +110,7 @@ scripts/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 
 echo "Making denominator lattices"
 
-
+ if false; then ##temp
 rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
@@ -113,45 +124,33 @@ if [ -f $dir/.error ]; then
    echo "Error creating denominator lattices"
    exit 1;
 fi
+ fi ##temp
 
 # No need to create "numerator" alignments/lattices: we just use the 
 # alignments in $alidir.
 
-echo "Note: ignore absolute offsets in the objective function values"
-echo "This is caused by not having LM, lexicon or transition-probs in numerator"
-
 x=0;
 while [ $x -lt $num_iters ]; do
-  echo "Iteration $x: getting denominator stats."
-  # Get denominator stats...
-  if [ $x -eq 0 ]; then
-    ( lattice-to-post --acoustic-scale=$acwt "ark:gunzip -c $dir/lat?.gz|" ark:- | \
-      gmm-acc-stats $dir/$x.mdl "$feats" ark:- $dir/den_acc.$x.acc ) \
-     2>$dir/acc_den.$x.log || exit 1;
-  else # Need to recompute acoustic likelihoods...
-   ( gmm-rescore-lattice $dir/$x.mdl "ark:gunzip -c $dir/lat?.gz|" "$feats" ark:- | \
-      lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
-      gmm-acc-stats $dir/$x.mdl "$feats" ark:- $dir/den_acc.$x.acc ) \
-     2>$dir/acc_den.$x.log || exit 1;
-  fi
-  echo "Iteration $x: getting numerator stats."
-  # Get numerator stats...
-  gmm-acc-stats-ali $dir/$x.mdl "$feats" ark:$alidir/ali $dir/num_acc.$x.acc \
-   2>$dir/acc_num.$x.log || exit 1;
+  echo "Iteration $x: getting  stats."
+  ( gmm-rescore-lattice $dir/$x.mdl "ark:gunzip -c $dir/lat?.gz|" "$feats" ark:- | \
+   lattice-to-post --acoustic-scale=$acwt ark:- ark:- | \
+   sum-post --merge=$merge --scale1=-1 \
+    ark:- "ark,s,cs:ali-to-post ark:$alidir/ali ark:- |" ark:- | \
+   gmm-acc-stats2 $dir/$x.mdl "$feats" ark:- $dir/num_acc.$x.acc $dir/den_acc.$x.acc ) \
+     2>$dir/acc.$x.log || exit 1;
 
-  ( gmm-est-gaussians-ebw $dir/$x.mdl "gmm-ismooth-stats --tau=$tau $dir/num_acc.$x.acc $dir/num_acc.$x.acc -|" \
-         $dir/den_acc.$x.acc - | \
+  # This tau is only used for smoothing "to the model".
+  ( gmm-est-gaussians-ebw --tau=$tau $dir/$x.mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - | \
    gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl ) \
     2>$dir/update.$x.log || exit 1;
 
-  den=`grep Overall $dir/acc_den.$x.log  | grep lattice-to-post | awk '{print $7}'`
-  num=`grep Overall $dir/acc_num.$x.log  | grep gmm-acc-stats-ali | awk '{print $11}'`
-  diff=`perl -e "print ($num * $acwt - $den);"`
-  impr=`grep Overall $dir/update.$x.log | head -1 | awk '{print $10;}'`
-  impr=`perl -e "print ($impr * $acwt);"` # auxf impr normalized by multiplying by
-  # kappa, so it's comparable to an objective-function change.
-  echo On iter $x, objf was $diff, auxf improvement was $impr | tee $dir/objf.$x.log
-
+  objf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $10}'`
+  nf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $12}'`
+  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10*$12;}'`
+  impr=`perl -e "print ($impr/$nf);"` # renormalize by "real" #frames, to correct
+    # for the canceling of stats.
+  echo On iter $x, objf was $objf, auxf improvement from MMI was $impr | tee $dir/objf.$x.log
+  rm $dir/*.acc
   x=$[$x+1]
 done
 

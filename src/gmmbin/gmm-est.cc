@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
                             power, min_count);
 
       if (!occs_out_filename.empty()) {
-        bool binary = false; // write this in text mode-- useful to look at.
+        bool binary = true; // write this in text mode-- useful to look at.
         kaldi::Output ko(occs_out_filename, binary);
         state_occs.Write(ko.Stream(), binary);
       }

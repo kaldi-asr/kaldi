@@ -103,4 +103,3 @@ done
 
 # example of showing the alignments:
 # show-alignments data/lang/phones.txt $dir/30.mdl ark:$dir/cur.ali | head -4
-

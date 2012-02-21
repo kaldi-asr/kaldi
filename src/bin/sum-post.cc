@@ -39,6 +39,7 @@ void ScalePosteriors(BaseFloat scale, Posterior *post) {
 // note: Posterior is vector<vector<pair<int,BaseFloat> > >
 void MergePosteriors(const Posterior &post1,
                      const Posterior &post2,
+                     bool merge,
                      Posterior *post) {
   KALDI_ASSERT(post1.size() == post2.size()); // precondition.
   post->resize(post1.size());
@@ -49,10 +50,14 @@ void MergePosteriors(const Posterior &post1,
                       post1[i].begin(), post1[i].end());
     (*post)[i].insert((*post)[i].end(),
                       post2[i].begin(), post2[i].end());
-    MergePairVectorSumming(&((*post)[i])); // This sorts on
-    // the transition-id merges the entries with the same
-    // key (i.e. same .first element; same transition-id), and
-    // gets rid of entries with zero .second element.
+    if (merge) { // combine and sum up entries with same transition-id.
+      MergePairVectorSumming(&((*post)[i])); // This sorts on
+      // the transition-id merges the entries with the same
+      // key (i.e. same .first element; same transition-id), and
+      // gets rid of entries with zero .second element.
+    } else { // just to keep them pretty, merge them.
+      std::sort( (*post)[i].begin(), (*post)[i].end() );
+    }
   }
 }
 
@@ -70,10 +75,12 @@ int main(int argc, char *argv[]) {
         "Usage: sum-post post-rspecifier1 post-rspecifier2 post-wspecifier\n";
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
-
+    bool merge = true;
     ParseOptions po(usage);
     po.Register("scale1", &scale1, "Scale for first set of posteriors");
     po.Register("scale2", &scale2, "Scale for second set of posteriors");
+    po.Register("merge", &merge, "If true, merge posterior entries for "
+                "same transition-id (canceling positive and negative parts)");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -111,7 +118,7 @@ int main(int argc, char *argv[]) {
       ScalePosteriors(scale1, &posterior1);
       ScalePosteriors(scale2, &posterior2);
       kaldi::Posterior posterior_out;
-      MergePosteriors(posterior1, posterior2, &posterior_out);
+      MergePosteriors(posterior1, posterior2, merge, &posterior_out);
       posterior_writer.Write(key, posterior_out);
       num_done++;
     }

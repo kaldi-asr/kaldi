@@ -1,4 +1,24 @@
 
+ Update to legal notice, made Feb. 2012.  We would like to clarify that we
+ are using a convention where multiple names in the Apache copyright headers, 
+ for example
+
+  // Copyright 2009-2012  Yanmin Qian  Arnab Ghoshal
+
+ does not necessarily signify joint ownership of copyright of that file, except
+ in cases where all those names were present in the original release made in
+ March 2011-- you can use the version history to work this out, if this matters
+ to you.  Instead, we intend that those contributors who later modified the file, 
+ agree to release their changes under the Apache license, but do not claim to 
+ jointly own the copyright of the original material (which would require an agreement 
+ with the original contributors).  The conventional way of signifying 
+ this is to duplicate the Apache headers at the top of each file each time
+ a change is made by a different author, but this would quickly become impractical.
+
+ The original legal notice is below.  Note: we are continuing to modify it by
+ adding the names of new contributors.
+
+---
                           Legal Notices
 
 Each of the files comprising Kaldi v1.0 have been separately licensed by
@@ -18,6 +38,7 @@ Individual Contributors (in alphabetical order)
       Arnab Ghoshal
       Go Vivace Inc.
       Mirko Hannemann
+      Navdeep Jaitly
       Microsoft Corporation
       Petr Motlicek
       Ariya Rastrow

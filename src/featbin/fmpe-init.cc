@@ -1,6 +1,6 @@
 // featbin/fmpe-init.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Daniel Povey  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Initialize fMPE transform (to zeo)\n"
+        "Initialize fMPE transform (to zero)\n"
         "Usage: fmpe-init [options...] <diag-gmm-in> <fmpe-out>\n"
         "E.g. fmpe-init 1.ubm 1.fmpe\n";
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     Output ko(fmpe_wxfilename, binary);
     fmpe.Write(ko.Stream(), binary);
 
-    KALDI_LOG << "Initialized fMPE object and wrote to"
+    KALDI_LOG << "Initialized fMPE object and wrote to "
               << fmpe_wxfilename;
     return 0;
   } catch(const std::exception& e) {

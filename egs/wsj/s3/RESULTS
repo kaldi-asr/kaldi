@@ -22,12 +22,15 @@ exp/tri2b/decode_tgpr_dev93_fromlats/wer_15:%WER 16.71 [ 1376 / 8234, 267 ins, 1
 exp/tri2b/decode_tgpr_dev93_tg/wer_16:%WER 16.26 [ 1339 / 8234, 267 ins, 141 del, 931 sub ]
 exp/tri2b/decode_tgpr_dev93_tg_biglm/wer_16:%WER 16.42 [ 1352 / 8234, 269 ins, 142 del, 941 sub ]
 
-exp/tri2b/decode_tgpr_eval92/wer_16:%WER 11.54 [ 651 / 5643, 146 ins, 42 del, 463 sub ]
+exp/tri2b/decode_tgpr_eval92/wer_17:%WER 11.45 [ 646 / 5643, 140 ins, 46 del, 460 sub ]
 
 # +MMI
-exp/tri2b_mmi/decode_tgpr_eval92/wer_16:%WER 11.08 [ 625 / 5643, 125 ins, 44 del, 456 sub ]
+exp/tri2b_mmi/decode_tgpr_eval92/wer_14:%WER 10.63 [ 600 / 5643, 124 ins, 45 del, 431 sub ]
 #  +boosting
-exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.83 [ 611 / 5643, 122 ins, 43 del, 446 sub ]
+exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.69 [ 603 / 5643, 119 ins, 48 del, 436 sub ]
+# +fMMI
+exp/tri2b_fmmi_b0.1/decode_tgpr_eval92/wer_15:%WER 10.26 [ 579 / 5643, 111 ins, 39 del, 429 sub ]
+
 # +MCE
 exp/tri2b_mce/decode_tgpr_eval92/wer_16:%WER 11.15 [ 629 / 5643, 132 ins, 45 del, 452 sub ]
 
@@ -69,8 +72,17 @@ exp/tri4b/decode_tgpr_dev93/wer_13:%WER 12.53 [ 1032 / 8234, 242 ins, 79 del, 71
 exp/tri4b/decode_tgpr_eval92/wer_16:%WER 8.05 [ 454 / 5643, 119 ins, 23 del, 312 sub ]
 
 # +MMI
-exp/tri4b_mmi/decode_tgpr_dev93/wer_14:%WER 11.53 [ 949 / 8234, 203 ins, 82 del, 664 sub ]
-exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_16:%WER 11.45 [ 943 / 8234, 191 ins, 87 del, 665 sub ]
+exp/tri4b_mmi/decode_tgpr_dev93/wer_12:%WER 11.28 [ 929 / 8234, 206 ins, 76 del, 647 sub ]
+#+boosting
+exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_16:%WER 11.25 [ 926 / 8234, 176 ins, 94 del, 656 sub ]
+ # increasing beam from 13 to 15 to see effect. 
+ exp/tri4b_mmi_b0.1/decode_tgpr_dev93_b15/wer_14:%WER 10.72 [ 883 / 8234, 172 ins, 84 del, 627 sub ]
+exp/tri4b_mmi_b0.1/decode_tgpr_eval92/wer_14:%WER 7.34 [ 414 / 5643, 105 ins, 20 del, 289 sub ]
+
+#+fMMI
+exp/tri4b_fmmi_b0.1/decode_tgpr_dev93/wer_13:%WER 10.86 [ 894 / 8234, 167 ins, 89 del, 638 sub ]
+exp/tri4b_fmmi_b0.1/decode_tgpr_eval92/wer_12:%WER 7.25 [ 409 / 5643, 111 ins, 14 del, 284 sub ]
+
 
 # LDA+MLLT+SAT, SI-284, full retraining starting from 3b [c.f. 4b]
 exp/tri4c/decode_tgpr_dev93/wer_16:%WER 12.10 [ 996 / 8234, 220 ins, 83 del, 693 sub ]

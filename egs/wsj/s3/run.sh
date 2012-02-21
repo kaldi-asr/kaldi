@@ -164,6 +164,18 @@ steps/train_lda_etc_mmi.sh --num-jobs 10 --boost 0.1 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi_b0.1
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92
 
+ # The next 3 commands train and test fMMI+MMI (on top of LDA+MLLT).
+ steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
+   --num-jobs 10 --cmd "$train_cmd" 400 data/train_si84 \
+   data/lang exp/tri2b_ali_si84 exp/dubm2b
+ steps/train_lda_etc_mmi_fmmi.sh \
+   --num-jobs 10 --boost 0.1 --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
+   exp/tri2b exp/tri2b_fmmi_b0.1
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fmpe.sh \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_fmmi_b0.1/decode_tgpr_eval92
+
+
 steps/train_lda_etc_mce.sh --cmd "$train_cmd" --num-jobs 10 data/train_si84 data/lang \
  exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mce
  scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
@@ -222,7 +234,8 @@ scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92
 
-# Train and test MMI, and boosted MMI, on tri4b.
+# Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
+# all the data).
 # Making num-jobs 40 as want to keep them under 4 hours long (or will fail
 # on regular queue at BUT).
 steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
@@ -235,6 +248,25 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tg
 steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 exp/tri4b exp/tri4b_mmi_b0.1
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93
+ scripts/decode.sh --opts "--beam 15" --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93_b15 exp/tri4b/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b_mmi_b0.1/decode_tgpr_eval92 exp/tri4b/decode_tgpr_eval92
+
+ # Train fMMI+MMI system on top of 4b.
+ steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
+   --num-jobs 40 --cmd "$train_cmd" 600 data/train_si284 \
+   data/lang exp/tri4b_ali_si284 exp/dubm4b
+ steps/train_lda_etc_mmi_fmmi.sh \
+   --num-jobs 40 --boost 0.1 --cmd "$train_cmd" \
+   data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b exp/tri4b_denlats_si284 \
+   exp/tri4b exp/tri4b_fmmi_b0.1 
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc_fmpe.sh \
+   exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b_fmmi_b0.1/decode_tgpr_eval92 \
+   exp/tri4b/decode_tgpr_eval92
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc_fmpe.sh \
+   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_fmmi_b0.1/decode_tgpr_dev93 \
+   exp/tri4b/decode_tgpr_dev93
+
+
 
 # Train UBM, for SGMM system on top of LDA+MLLT.
 steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
@@ -244,6 +276,7 @@ steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr \
   data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+
 
 # Decode using 3 Gaussians (not 15) for gselect in 1st pass, for fast decoding.
 scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \

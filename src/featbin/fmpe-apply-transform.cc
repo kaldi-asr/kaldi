@@ -1,6 +1,6 @@
 // featbin/fmpe-apply-transform.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Daniel Povey  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using kaldi::int32;
   try {
     const char *usage =
         "Apply fMPE transform to features\n"
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
     // no non-default options.
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }

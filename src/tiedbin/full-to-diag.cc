@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
         "Convert a full covariance GMM into a diagonal one.\n"
         "Usage: full-to-tied <full-gmm-in> <diag-gmm-out>\n";
 
-    bool binary = false;
+    bool binary = true;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
