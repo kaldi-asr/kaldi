@@ -178,7 +178,7 @@ static void UnitTestHTKCompare1() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.1",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -259,7 +259,7 @@ static void UnitTestHTKCompare2() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.2",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -340,7 +340,7 @@ static void UnitTestHTKCompare3() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.3",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -419,7 +419,7 @@ static void UnitTestHTKCompare4() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.4",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -502,7 +502,7 @@ static void UnitTestHTKCompare5() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.5",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -585,7 +585,7 @@ static void UnitTestHTKCompare6() {
     021406  // MFCC_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.fea_kaldi",
+    std::ofstream os("test_data/test.wav.fea_kaldi.6",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
