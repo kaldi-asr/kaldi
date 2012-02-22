@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
 
     po.Read(argc, argv);
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
