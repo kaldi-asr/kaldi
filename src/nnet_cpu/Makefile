@@ -10,11 +10,12 @@ OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-rnnlm.o
 
 LIBFILE = kaldi-nnet.a 
 
-all:  $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE) $(TESTFILES)
 
-$(LIBFILE): $(OBJFILES)
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	$(unlock-dir)
 
 
 

@@ -10,12 +10,10 @@ LIBFILE = kaldi-hmm.a
 
 all:  $(LIBFILE) $(TESTFILES)
 
-
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../tree/kaldi-tree.a ../base/kaldi-base.a ../matrix/kaldi-matrix.a 

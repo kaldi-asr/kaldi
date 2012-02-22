@@ -10,14 +10,13 @@ OBJFILES = rnnlm.o
 
 LIBFILE = rnnlm.a
 
-all:  $(LIBFILE) $(BINFILES)
+all: $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 $(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../rnn/rnnlm.a
 

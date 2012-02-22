@@ -9,6 +9,7 @@ SUBDIRS = base matrix util feat tree optimization gmm tied transform sgmm \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           cudamatrix nnet nnetbin nnet_cpu nnetbin_cpu latbin rnn
 
+
 all: test_install remove_locks $(SUBDIRS) 
 	echo Done
 
@@ -31,10 +32,11 @@ valgrind:
 depend: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done
 
-$(SUBDIRS) : .phony
+
+.PHONY: $(SUBDIRS)
+$(SUBDIRS) :
 	$(MAKE) -C $@ 
 
-
-.phony:
-
+RECURSIVE = true
+export RECURSIVE
 

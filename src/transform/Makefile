@@ -16,11 +16,10 @@ LIBFILE = kaldi-transform.a
 all:  $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../tree/kaldi-tree.a

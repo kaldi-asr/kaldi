@@ -9,14 +9,13 @@ OBJFILES = kaldi-rprop-test.o conjugate-gradients-test.o
 
 LIBFILE = kaldi-optimization.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a 

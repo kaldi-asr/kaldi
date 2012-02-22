@@ -12,14 +12,13 @@ OBJFILES = text-utils.o kaldi-io.o \
 
 LIBFILE = kaldi-util.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a  ../matrix/kaldi-matrix.a

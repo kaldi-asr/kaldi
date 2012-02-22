@@ -15,16 +15,17 @@ OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o
 
 LIBFILE = kaldi-matrix.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE) $(TESTFILES) 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
+
 
 
 # Rule below would expand to, e.g.:

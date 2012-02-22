@@ -11,3 +11,15 @@ valgrind: .valgrind
 	touch .valgrind
 
 
+# Rules that enable directory locks for parallel compilation
+.PHONY: lock-dir
+lock-dir:
+	@if [[ "$(RECURSIVE)" != "true" && -d .lock ]]; then rmdir $(shell pwd)/.lock; fi
+	@if [ -d .lock ]; then echo "[WAIT $(shell pwd) IS LOCKED]"; echo "(or unlock manually by 'rmdir $(shell pwd)/.lock')"; fi
+	@while ! mkdir .lock 2>/dev/null; do sleep 1; done
+	@echo "[LOCKED $(shell pwd)]"
+
+unlock-dir=@rmdir .lock; echo "[UNLOCKED $(shell pwd)]"
+
+
+

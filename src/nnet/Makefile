@@ -14,9 +14,10 @@ LIBFILE = kaldi-nnet.a
 
 all:  $(LIBFILE) $(TESTFILES)
 
-$(LIBFILE): $(OBJFILES)
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
+	$(unlock-dir)
 
 
 

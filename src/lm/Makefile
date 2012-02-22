@@ -20,13 +20,12 @@ CMDFILES = arpa2fst
 
 LIBFILE = kaldi-lm.a
 
-all:  $(LIBFILE) $(TESTFILES) $(CMDFILES)
+all: $(LIBFILE) $(TESTFILES) $(CMDFILES)
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a

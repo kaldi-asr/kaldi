@@ -10,14 +10,13 @@ OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-compress.o fmllr-sgmm.o
 
 LIBFILE = kaldi-sgmm.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): $(OBJFILES)
-	while ! mkdir .lock; do sleep 1; done
+$(LIBFILE): lock-dir $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	rmdir .lock
+	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
