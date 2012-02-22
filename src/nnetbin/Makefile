@@ -5,7 +5,7 @@ include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 
-BINFILES = nnet-train-xent-hardlab-perutt nnet-forward
+BINFILES = nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff nnet-forward
 
 OBJFILES =
 

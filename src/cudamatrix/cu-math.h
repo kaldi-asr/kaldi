@@ -44,6 +44,9 @@ namespace cu {
   /// Sum each row of the matrix
   void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum);
 
+  /// ie. switch rows according to copyFrom   
+  void Randomize(const CuMatrix<BaseFloat>& src, const CuStlVector<int32>& copy_from_idx, CuMatrix<BaseFloat>* tgt);
+
   /*
    * Templated implementation to make it always compilable
    */
@@ -86,6 +89,11 @@ namespace cu {
   template<typename _ElemT>
   void SumRowsVec(const CuMatrix<_ElemT>& mat, CuVector<_ElemT>* sum) {
     KALDI_ERR << __func__ << " Not implemented"; 
+  }
+
+  template<typename _ElemT>
+  void Randomize(const CuMatrix<_ElemT>& src, const CuStlVector<int32>& copy_from_idx, CuMatrix<_ElemT>* tgt) { 
+    KALDI_ERR << __func__ << " Not implemented";
   }
 
 } //namespace cu

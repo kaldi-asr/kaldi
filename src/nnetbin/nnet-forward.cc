@@ -39,8 +39,9 @@ int main(int argc, char *argv[]) {
     std::string class_frame_counts;
     po.Register("class-frame-counts", &class_frame_counts, "Counts of frames for posterior division by class-priors");
 
-    bool apply_log = false;
+    bool apply_log = false, silent = false;
     po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
+    po.Register("silent", &silent, "Don't print any messages");
 
     po.Read(argc, argv);
 
@@ -95,7 +96,8 @@ int main(int argc, char *argv[]) {
     }
 
     Timer tim;
-    KALDI_LOG << "MLP FEEDFORWARD STARTED";
+    if(!silent) KALDI_LOG << "MLP FEEDFORWARD STARTED";
+
     int32 num_done = 0;
     //iterate over all the feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -127,19 +129,19 @@ int main(int argc, char *argv[]) {
 
       //progress log
       if(num_done % 1000 == 0) {
-        KALDI_LOG << num_done << ", " << std::flush;
+        if(!silent) KALDI_LOG << num_done << ", " << std::flush;
       }
       num_done++;
       tot_t += mat.NumRows();
     }
     
     //final message
-    KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
-    KALDI_LOG << "Done " << num_done << " files";
+    if(!silent) KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
+                          << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
+    if(!silent) KALDI_LOG << "Done " << num_done << " files";
 
 #if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
+    if(!silent) CuDevice::Instantiate().PrintProfile();
 #endif
 
     return 0;

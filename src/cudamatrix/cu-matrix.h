@@ -92,12 +92,17 @@ class CuMatrix {
   ThisType&        CopyFromMat(const Matrix<_ElemT>& src);
   void             CopyToMat(Matrix<_ElemT>* dst) const;
 
+  /// Copy row interval from matrix
+  /// @param r      [in] number of rows to copy.
+  /// @param src    [in] source matrix.
+  /// @param src_ro [in] source matrix row offset.
+  /// @param dst_ro [in] destination matrix row offset.
+  void             CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int32 src_ro, int32 dst_ro);
+
+  /// I/O functions
   void             Read(std::istream& is, bool binary);
   void             Write(std::ostream& os, bool binary) const;
 
-  /// Copy rowCnt rows from rSrc, starting by row srcOri, 
-  /// copying to memory block starting by row dstOri
-  void CopyNumRows(MatrixIndexT rowCnt, MatrixIndexT srcOri, const CuMatrix<_ElemT>& rSrc, MatrixIndexT dstOri);
 
   // Math operations, some calling kernels
   //

@@ -186,10 +186,12 @@ void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>* dst) const {
 }
 
 
+
 template<typename _ElemT>
-void CuMatrix<_ElemT>::CopyNumRows(MatrixIndexT rowCnt, MatrixIndexT srcOri, const CuMatrix<_ElemT>& src, MatrixIndexT dstOri) {
-  assert(rowCnt+srcOri <= src.NumRows());
-  assert(rowCnt+dstOri <= NumRows());
+void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int32 src_ro, int32 dst_ro) {
+  
+  assert(r+src_ro <= src.NumRows());
+  assert(r+dst_ro <= NumRows());
   assert(NumCols() == src.NumCols());
 
    
@@ -201,16 +203,16 @@ void CuMatrix<_ElemT>::CopyNumRows(MatrixIndexT rowCnt, MatrixIndexT srcOri, con
     MatrixIndexT src_pitch = src.Stride()*sizeof(_ElemT);
     MatrixIndexT width = src.NumCols()*sizeof(_ElemT);
 
-    const _ElemT* p_src = src.Data() + srcOri*src.Stride();  
-    _ElemT* p_dst = data_ + dstOri*stride_;
+    const _ElemT* p_src = src.Data() + src_ro*src.Stride();  
+    _ElemT* p_dst = data_ + dst_ro*stride_;
 
-    cuSafeCall(cudaMemcpy2D(p_dst, dst_pitch, p_src, src_pitch, width, rowCnt, cudaMemcpyDeviceToDevice));
+    cuSafeCall(cudaMemcpy2D(p_dst, dst_pitch, p_src, src_pitch, width, r, cudaMemcpyDeviceToDevice));
 
     CuDevice::Instantiate().AccuProfile("CuMatrix::CopyRowsD2D",tim.Elapsed());
   } else
   #endif
   {
-    memcpy(Data()+dstOri*stride_,src.Data()+srcOri*src.Stride(),rowCnt*stride_*sizeof(_ElemT));
+    memcpy(Data()+dst_ro*stride_,src.Data()+src_ro*src.Stride(),r*stride_*sizeof(_ElemT));
   }
    
 }

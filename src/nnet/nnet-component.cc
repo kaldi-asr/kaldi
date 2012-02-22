@@ -20,14 +20,12 @@
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-biasedlinearity.h"
-//#include "nnet/nnet-krylovlinearity.h"
 
 namespace kaldi {
 
 
 const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kBiasedLinearity,"<biasedlinearity>" },
-  { Component::kKrylovLinearity,"<krylovlinearity>" },
   { Component::kSigmoid,"<sigmoid>" },
   { Component::kSoftmax,"<softmax>" }
 };
@@ -72,9 +70,6 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
     case Component::kBiasedLinearity :
       p_comp = new BiasedLinearity(dim_in,dim_out,nnet); 
       break;
-  //  case Component::kKrylovLinearity :
-  //    p_comp = new KrylovLinearity(dim_in,dim_out,nnet); 
-  //    break;
     case Component::kSigmoid :
       p_comp = new Sigmoid(dim_in,dim_out,nnet);
       break;

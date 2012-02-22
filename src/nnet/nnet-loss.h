@@ -41,10 +41,6 @@ class Xent {
   std::string Report();
 
  private:
-  int32 Correct(const Matrix<BaseFloat>& net_out,
-                const std::vector<int32>& target);
-
- private:
   int32 frames_;
   int32 correct_;
   double loss_;
@@ -59,7 +55,7 @@ class Xent {
 };
 
 
-/*
+
 class Mse {
  public:
   Mse() : frames_(0), loss_(0.0) { }
@@ -76,7 +72,7 @@ class Mse {
   int32 frames_;
   double loss_;
 };
-*/
+
 
 
 } // namespace

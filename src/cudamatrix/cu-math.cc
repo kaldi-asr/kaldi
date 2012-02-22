@@ -345,6 +345,40 @@ void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum) {
 }
 
 
+void Randomize(const CuMatrix<BaseFloat>& src, const CuStlVector<int32>& copy_from_idx, CuMatrix<BaseFloat>* tgt) {
+
+  assert(src.NumCols() == tgt->NumCols());
+  assert(src.NumRows() == tgt->NumRows());
+  assert(copy_from_idx.Dim() <= tgt->NumRows());
+
+  #if HAVE_CUDA==1
+  if(CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    
+    dim3 dimBlock(CUBLOCK,CUBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(copy_from_idx.Dim(),CUBLOCK));
+    
+    MatrixDim dimsrc = src.Dim(); dimsrc.rows=copy_from_idx.Dim();
+    MatrixDim dimtgt = tgt->Dim(); dimtgt.rows=copy_from_idx.Dim();
+
+    cudaF_randomize(dimGrid, dimBlock, tgt->Data(), src.Data(), copy_from_idx.Data(), dimtgt, dimsrc);
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+  } else
+  #endif
+  {
+    //randomize in CPU
+    const MatrixBase<BaseFloat>& srcmat = src.Mat();
+    const std::vector<int32>& copy_from_idxvec = copy_from_idx.Vec();
+    MatrixBase<BaseFloat>& tgtmat = tgt->Mat();
+    for(int i=0; i<copy_from_idx.Dim(); i++) {
+      tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
+    }
+  }
+} 
+
+
 
 } //namespace cu
 

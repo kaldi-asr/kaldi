@@ -129,6 +129,11 @@ void Nnet::Feedforward(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) 
     return; 
   }
 
+  if(LayerCount() == 1) {
+    nnet_[0]->Propagate(in,out);
+    return;
+  }
+
   //we need at least 2 input buffers
   KALDI_ASSERT(propagate_buf_.size() >= 2);
 

@@ -24,6 +24,7 @@
 
 using namespace kaldi;
 
+//:TODO:
 static void UnitTestSomething() {
   KALDI_ERR << "Unimeplemented";
 }
