@@ -56,6 +56,9 @@ mfccdir=/path/to/mfccdir
 scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_mfcc_train.sh $mfccdir" $mfccdir
 scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_mfcc_test.sh $mfccdir" $mfccdir
 
+fbankdir=/path/to/fbankdir
+scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_fbank_train.sh $fbankdir" $fbankdir
+scripts/run_sge_or_locally.sh "-pe smp 4" "steps/make_fbank_test.sh $fbankdir" $fbankdir
 
 
 ## MONOPHONE ##
@@ -128,4 +131,27 @@ time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_
 # tune acoustic scale
   scripts/run_sge_or_locally.sh "-pe smp 12" "scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s3_tune steps/decode_nnet_tri2a_s3.sh" $PWD/exp/decode_nnet_tri2a_s3_tune_sge/
 ) &
+
+
+
+# +frame level shuffling
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_tri2a_s4.sh $PWD/exp/nnet_tri2a_s4/
+# decode
+( scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s4.sh $PWD/exp/decode_nnet_tri2a_s4/ 
+# tune acoustic scale
+  scripts/run_sge_or_locally.sh "-pe smp 12" "scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s4_tune steps/decode_nnet_tri2a_s4.sh" $PWD/exp/decode_nnet_tri2a_s4_tune_sge/
+) &
+
+
+
+# +Petr Schwarz features
+# train
+time scripts/run_sge_or_locally.sh "-l gpu=1 -q all.q@@pco203" steps/train_nnet_tri2a_s5.sh $PWD/exp/nnet_tri2a_s5/
+# decode
+( scripts/run_sge_or_locally.sh "-pe smp 12" steps/decode_nnet_tri2a_s5.sh $PWD/exp/decode_nnet_tri2a_s5/ 
+# tune acoustic scale
+  scripts/run_sge_or_locally.sh "-pe smp 12" "scripts/tune_acscale.py 0 0.5 exp/decode_nnet_tri2a_s5_tune steps/decode_nnet_tri2a_s5.sh" $PWD/exp/decode_nnet_tri2a_s5_tune_sge/
+) &
+
 

@@ -69,6 +69,16 @@ exp/nnet_tri2a_s3:
 - Average WER is 3.829889 (480 / 12533) 
 - + speaker-wise CMVN 
 - tuned_acwt:0.197081
+exp/nnet_tri2a_s4:
+- Average WER is 3.231469 (405 / 12533)
+- + frame level shuffling
+- tuned_acwt:0.147931
+exp/nnet_tri2a_s5:
+- Average WER is 3.031996 (380 / 12533)
+- Peta Schwarz features
+- tuned_acwt:0.178307 ...  
+
+
 
 
 
@@ -76,13 +86,7 @@ For further improvements we should:
 * use more parameters
 * use more target classes
 * use better alignments 
-* use the CRBE-SPLICE-Hamming-DCT features
 * use hierarchical structure (HATs, Universal context)
-
-The training can be accelerated by multithreading BLAS
-or by GPGPU implementation. Also it's possible to dump 
-features to HTK format, train the network by the TNet 
-GPGPU toolkit and convert it back to Kaldi format.
 
 
 ######################################################################
