@@ -1,7 +1,29 @@
+# Copyright 2012  Navdeep Jaitly
+
+# Is mostly a cut and paste operation, derived from 
+# ../../../tools/kaldi_lm/train_lm.sh to create an lm for 
+# biphone/bigram language models, which train_lm.sh does not
+# deign to do.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
+
 # note: output is
 # data/local/lm/3gram-mincount/lm_unpruned.gz 
 # Expects train.gz, word_map in [argument 1 folder].
 # Call from local/timit_train_lms.sh.
+
 if [ $# != 1 ]; then
   echo "Usage: ../../local/create_biphone_lm.sh [lm folder]"
   echo "eg: ../../local/create_biphone_lm.sh data/local"

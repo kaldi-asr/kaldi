@@ -1,6 +1,7 @@
 #!/bin/bash
-#
-# Copyright 2010-2011 Microsoft Corporation
+
+# Copyright 2012  Navdeep Jaitly
+# Copyright 2010-2011  Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,7 +56,7 @@ scripts/add_disambig.pl data/lang/phones.txt $ndisambig > data/lang_test/phones_
 cp data/lang_test/phones_disambig.txt data/lang/ # needed for MMI.
 
 echo "Creating L.fst"
-silprob=0.5  # same prob as word
+silprob=0.3  # same prob as word
 scripts/make_lexicon_fst.pl data/local/lexicon.txt $silprob sil  | \
   fstcompile --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt \
    --keep_isymbols=false --keep_osymbols=false | \

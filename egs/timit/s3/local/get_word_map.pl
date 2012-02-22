@@ -1,4 +1,6 @@
 #!/usr/bin/perl
+# A very small modification on ../../../tools/kaldi_lm/get_word_map.pl to account
+# for no OOV vocab terms in timit.  - Navdeep Jaitly.
 
 
 # This program reads in a file with one word
