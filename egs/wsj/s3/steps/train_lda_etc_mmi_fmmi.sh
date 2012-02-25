@@ -234,3 +234,5 @@ echo "Succeeded with $niters iterations of MMI+fMMI training (boosting factor = 
 
 # Now do some cleanup.
 rm $dir/gselect.*.gz $dir/*.acc $dir/*.fmpe_acc
+exit 0;
+

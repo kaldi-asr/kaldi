@@ -214,3 +214,4 @@ done
 echo "Succeeded with $niters iterations of MCE training"
 
 ( cd $dir; ln -s $x.mdl final.mdl )
+exit 0;

@@ -131,16 +131,47 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out);
 
+/// GetLinearSymbolSequence gets the symbol sequences and weights
+/// from an FST as output by the ShortestPath algorithm (called with
+/// some parameter n), which has up to n arcs out from the start state,
+/// and if you follow one of the arcs you enter a linear sequence of
+/// states.  This function outputs the info in a more N-best-list-like
+/// format.  It returns true if the FST had the expected structure,
+/// and false otherwise (note: an empty FST counts as having this
+/// structure).  We don't accept an FST that has a final-prob on the start
+/// state, as it wouldn't be clear whether to put it as the first or
+/// last path (this function is used in an N-best context where the
+/// paths' ordering is somewhat meaningful.)
+/// This function will set the output vectors to the appropriate
+/// size, and for each path will output the input and output symbols as
+/// vectors (not including epsilons).  It outputs the total weight
+/// for each path.
+template<class Arc, class I>
+bool GetLinearSymbolSequences(const Fst<Arc> &fst,
+                              vector<vector<I> > *isymbols_out,
+                              vector<vector<I> > *osymbols_out,
+                              vector<typename Arc::Weight> *tot_weight_out);
 
-// Creates unweighted linear acceptor from symbol sequence.
+
+/// Takes the n-shortest-paths (using ShortestPath), but outputs
+/// the result as a vector of up to n fsts.  This function will
+/// size the "fsts_out" vector to however many paths it got
+/// (which will not exceed n).  n must be >= 1.
+template<class Arc>
+void NbestAsFsts(const Fst<Arc> &fst,
+                 size_t n,
+                 vector<VectorFst<Arc> > *fsts_out);
+
+
+/// Creates unweighted linear acceptor from symbol sequence.
 template<class Arc, class I>
 void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst);
 
 
 
-// Creates an unweighted acceptor with a linear structure, with alternatives
-// at each position.  Epsilon is treated like a normal symbol here.
-// Each position in "labels" must have at least one alternative.
+/// Creates an unweighted acceptor with a linear structure, with alternatives
+/// at each position.  Epsilon is treated like a normal symbol here.
+/// Each position in "labels" must have at least one alternative.
 template<class Arc, class I>
 void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
                                         MutableFst<Arc> *ofst);

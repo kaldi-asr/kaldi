@@ -4,12 +4,13 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-nbest \
+BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-lmrescore lattice-scale lattice-union lattice-to-post \
            lattice-determinize lattice-oracle lattice-rmali \
            lattice-compose lattice-boost-ali lattice-copy lattice-to-fst \
            lattice-to-phone-lattice lattice-interp lattice-project \
-           lattice-add-trans-probs lattice-difference lattice-word-align
+           lattice-add-trans-probs lattice-difference lattice-word-align \
+           nbest-to-linear nbest-to-lattice lattice-1best linear-to-nbest
 
 
 OBJFILES =

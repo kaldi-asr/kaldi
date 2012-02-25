@@ -181,3 +181,5 @@ done
 echo "Succeeded with $niters iterations of MMI training (boosting factor = $boost)"
 
 ( cd $dir; rm final.mdl; ln -s $x.mdl final.mdl )
+exit 0;
+

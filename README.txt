@@ -16,9 +16,10 @@ instructions (excluding Cygwin), see windows/INSTALL.
 
 To run the example system builds, see egs/README.txt
 
-If you encounter problems (and you probably will), your first point of contact
-should be Dan Povey (dpovey@microsoft.com).  In addition to specific questions,
-please let me know if there are specific aspects of the project that you feel
-could be improved, that you find confusing, etc., and which missing features you
-most wish it had.
+If you encounter problems (and you probably will), please do not hesitate
+to contact the developers at
+ https://sourceforge.net/mailarchive/forum.php?forum_name=kaldi-developers
+In addition to specific questions, please let us know if there are specific
+aspects of the project that you feel could be improved, that you find confusing,
+etc., and which missing features you most wish it had.
  

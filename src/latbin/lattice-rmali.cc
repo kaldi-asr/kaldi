@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
       compact_lattice_writer.Write(key, clat);
       n_done++;
     }
-    KALDI_LOG << "Done removing alignments from" << n_done << " lattices.";
+    KALDI_LOG << "Done removing alignments from " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

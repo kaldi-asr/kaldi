@@ -50,6 +50,26 @@ void TestMakeLinearAcceptor() {
   assert(vec_nozeros == vec2);
   assert(vec_nozeros == vec3);
 
+  if (vec2.size() != 0 || vec3.size() != 0) { // This test might not work 
+    // for empty sequences...
+    {
+      vector<vector<I> > vecs2;
+      vector<vector<I> > vecs3;
+      vector<Weight> ws;
+      GetLinearSymbolSequences(vfst, &vecs2, &vecs3, &ws);
+      assert(vecs2.size() == 1);
+      assert(vecs2[0] == vec2);
+      assert(vecs3[0] == vec3);
+      assert(ApproxEqual(ws[0], w));
+    }
+    {
+      vector<VectorFst<Arc> > fstvec;
+      NbestAsFsts(vfst, 1, &fstvec);
+      KALDI_ASSERT(fstvec.size() == 1);
+      assert(RandEquivalent(vfst, fstvec[0], 2/*paths*/, 0.01/*delta*/,
+                            rand()/*seed*/, 100/*path length-- max?*/));
+    }
+  }  
   bool include_eps = (rand() % 2 == 0);
   if (!include_eps) vec = vec_nozeros;
   kaldi::SortAndUniq(&vec);

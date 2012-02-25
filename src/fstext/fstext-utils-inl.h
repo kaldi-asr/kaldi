@@ -1,6 +1,6 @@
 // fstext/fstext-utils-inl.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -207,6 +207,148 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
       if (arc.olabel != 0) olabel_seq.push_back(arc.olabel);
       cur_state = arc.nextstate;
     }
+  }
+}
+
+// see fstext-utils.h for comment.
+template<class Arc, class I>
+bool GetLinearSymbolSequences(const Fst<Arc> &fst,
+                              vector<vector<I> > *isymbols_out,
+                              vector<vector<I> > *osymbols_out,
+                              vector<typename Arc::Weight> *weights_out) {
+  typedef typename Arc::Label Label;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+
+  if (isymbols_out) isymbols_out->clear();
+  if (osymbols_out) osymbols_out->clear();
+  if (weights_out) weights_out->clear();
+
+  StateId start_state = fst.Start();
+  if (start_state == kNoStateId) {  // no paths.
+    return true; // empty FST counts as having this structure.
+  }
+
+  if (fst.Final(start_state) != Weight::Zero())
+    return false; // We don't allow final-prob on the start state.
+
+  size_t N = fst.NumArcs(start_state), n = 0;
+  if (isymbols_out) isymbols_out->resize(N);
+  if (osymbols_out) osymbols_out->resize(N);
+  if (weights_out) weights_out->resize(N);
+
+  bool error = false;
+  
+  for (ArcIterator<Fst<Arc> > aiter(fst, start_state);
+       !aiter.Done();
+       aiter.Next(), n++) {
+    StateId cur_state = start_state;
+    if (isymbols_out) (*isymbols_out)[n].clear();
+    if (osymbols_out) (*osymbols_out)[n].clear();
+    if (weights_out) (*weights_out)[n] = Weight::One();
+
+    while (1) {
+      if (fst.Final(cur_state) != Weight::Zero()) {
+        (*weights_out)[n] = Times((*weights_out)[n],
+                                  fst.Final(cur_state));
+        if (fst.NumArcs(cur_state) != 0)
+          error = true;
+        break;
+      } else {
+        if (fst.NumArcs(cur_state) != 1) {
+          error = true;
+          break;
+        }
+        ArcIterator<Fst<Arc> > aiter(fst, cur_state);
+        const Arc &arc = aiter.Value();
+        if (isymbols_out && arc.ilabel != 0)
+          (*isymbols_out)[n].push_back(arc.ilabel);
+        if (osymbols_out && arc.ilabel != 0)
+          (*osymbols_out)[n].push_back(arc.olabel);
+        if (weights_out)
+          (*weights_out)[n] = Times((*weights_out)[n], arc.weight);
+        cur_state = arc.nextstate;
+      }
+    }
+    if (error) break;
+  }
+  if (error) {
+    if (isymbols_out) isymbols_out->clear();
+    if (osymbols_out) osymbols_out->clear();
+    if (weights_out) weights_out->clear();
+    return false;
+  } else {
+    return true;
+  }
+}
+
+// see fstext-utils.sh for comment.
+template<class Arc>
+void NbestAsFsts(const Fst<Arc> &fst,
+                 size_t n,
+                 vector<VectorFst<Arc> > *fsts_out) {
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+  typedef typename Arc::Weight Weight;
+  KALDI_ASSERT(n > 0);
+  KALDI_ASSERT(fsts_out != NULL);
+  VectorFst<Arc> nbest_fst;
+  ShortestPath(fst, &nbest_fst, n);
+  fsts_out->clear();
+  StateId start_state = nbest_fst.Start();
+  if (start_state == kNoStateId) return; // No output.
+  size_t n_arcs = nbest_fst.NumArcs(start_state);
+  if (n_arcs == 0) {
+    // this is kind of a special case and I'm not sure if it's even
+    // possible, but we'll allow it.
+    KALDI_ASSERT(nbest_fst.Final(start_state) != Weight::Zero());
+    fsts_out->resize(1);
+    (*fsts_out)[0] = nbest_fst; // Just one path in it.
+  } else {
+    KALDI_ASSERT(nbest_fst.Final(start_state) == Weight::Zero());
+    // As far as I know, it's not possible for the output of ShortestPath
+    // to have a final-prob and also an arc out of the start state.
+    // It's supposed to have an arc out for each path.
+    KALDI_ASSERT(n_arcs <= n); // or bug in ShortestPath algorithm.
+    fsts_out->resize(n_arcs);
+
+    size_t k = 0;
+    for (ArcIterator<Fst<Arc> > start_aiter(nbest_fst, start_state);
+         !start_aiter.Done();
+         start_aiter.Next(), k++) {
+      KALDI_ASSERT(k < n_arcs);
+      VectorFst<Arc> &ofst = (*fsts_out)[k];
+      const Arc &first_arc = start_aiter.Value();
+      StateId cur_state = start_state,
+          cur_ostate = ofst.AddState();
+      ofst.SetStart(cur_ostate);
+      StateId next_ostate = ofst.AddState();
+      ofst.AddArc(cur_ostate, Arc(first_arc.ilabel, first_arc.olabel,
+                                  first_arc.weight, next_ostate));
+      cur_state = first_arc.nextstate;
+      cur_ostate = next_ostate;
+      while (1) {
+        size_t this_n_arcs = nbest_fst.NumArcs(cur_state);
+        KALDI_ASSERT(this_n_arcs <= 1); // or problem with ShortestPath.
+        if (this_n_arcs == 1) {
+          KALDI_ASSERT(nbest_fst.Final(cur_state) == Weight::Zero());
+          // or problem with ShortestPath.
+          ArcIterator<Fst<Arc> > aiter(nbest_fst, cur_state);
+          const Arc &arc = aiter.Value();
+          next_ostate = ofst.AddState();
+          ofst.AddArc(cur_ostate, Arc(arc.ilabel, arc.olabel,
+                                      arc.weight, next_ostate));
+          cur_state = arc.nextstate;
+          cur_ostate = next_ostate;
+        } else {
+          KALDI_ASSERT(nbest_fst.Final(cur_state) != Weight::Zero());
+          // or problem with ShortestPath.
+          ofst.SetFinal(cur_ostate, nbest_fst.Final(cur_state));
+          break;
+        }
+      }
+    }
+    KALDI_ASSERT(k == n_arcs);
   }
 }
 

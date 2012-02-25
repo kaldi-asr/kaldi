@@ -55,6 +55,19 @@ exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.07 [ 512 / 5643, 130 ins, 32 del, 
  # note: mixing up from 15k->20k Gaussians, it's a bit better [14.66->14.26]
  exp/tri3b_20k/decode_tgpr_dev93/wer_16:%WER 14.22 [ 1171 / 8234, 243 ins, 105 del, 823 sub ]
 
+ # Note: the numbers below are the same experiments as the few lines above, but run a 
+ # different time on a different type of amachine so they differ slightly (need to run
+ # all this on one machine).  They show
+ # the effect of a small RNNLM with just 30 hidden layers.  WER changes from 6.43 to 6.01
+ # when we add in RNNLM with weight 0.25.  We only tried weights of 1 and 0.25.  
+ exp/tri3b/decode_bd_tgpr_eval92/wer_16:%WER 7.53 [ 425 / 5643, 61 ins, 47 del, 317 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg/wer_17:%WER 6.43 [ 363 / 5643, 55 ins, 44 del, 264 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm/wer_19:%WER 6.63 [ 374 / 5643, 62 ins, 38 del, 274 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm_0.25/wer_18:%WER 6.01 [ 339 / 5643, 53 ins, 39 del, 247 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_tg/wer_18:%WER 6.80 [ 384 / 5643, 58 ins, 46 del, 280 sub ]
+
+
+
 
 # sgmm3c is SGMM on top of LDA+MLLT.
 # In this case decoding from lattices is worse, presumably because the lattices used

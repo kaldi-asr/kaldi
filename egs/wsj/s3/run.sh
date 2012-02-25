@@ -1,21 +1,5 @@
 #!/bin/bash
 
-# Copyright 2010-2011 Microsoft Corporation
-
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-# MERCHANTABLITY OR NON-INFRINGEMENT.
-# See the Apache 2 License for the specific language governing permissions and
-# limitations under the License.
-
-exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
@@ -27,11 +11,13 @@ exit 1;
 # Another example set of command line arguments is
 # /ais/gobi2/speech/WSJ/*/??-{?,??}.?
 #  These must be absolute,  not relative, pathnames.
-local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.?
 
-local/wsj_prepare_dict.sh
+local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
+#local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
 
-local/wsj_format_data.sh
+local/wsj_prepare_dict.sh || exit 1;
+
+local/wsj_format_data.sh || exit 1;
 
 # We suggest to run the next three commands in the background,
 # as they are not a precondition for the system building and
@@ -40,19 +26,21 @@ local/wsj_format_data.sh
 # and an LM trained directly on that data (i.e. not just
 # copying the arpa files from the disks from LDC).
 (
+# on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
  local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
  local/wsj_prepare_local_dict.sh && \
  local/wsj_train_lms.sh && \
- local/wsj_format_data_local.sh
+ local/wsj_format_data_local.sh && \
+ local/wsj_train_rnnlms.sh
 ) &
 
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-mfccdir=/mnt/matylda6/jhu09/qpovey/kaldi_wsj_mfcc
+mfccdir=~/data/kaldi_wsj_mfcc
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
- steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4
+ steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4  || exit 1;
 done
 
 
@@ -60,28 +48,30 @@ mkdir data/train_si84
 for x in feats.scp text utt2spk wav.scp; do
   head -7138 data/train_si284/$x > data/train_si84/$x
 done
-scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt
-scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender
+scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt || exit 1;
+scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender || exit 1;
 
 # Now make subset with the shortest 2k utterances from si-84.
-scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort
+scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort || exit 1;
 
 # Now make subset with half of the data from si-84.
-scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half
+scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 
 # you can change these commands to just run.pl to make them run
 # locally, but in that case you should change the num-jobs to
 # the #cpus on your machine or fewer.
-decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
-train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+#decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
+#train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+decode_cmd="run.pl"
+train_cmd="run.pl"
 
 steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_si84_2kshort data/lang exp/mono0a
+  data/train_si84_2kshort data/lang exp/mono0a || exit 1;
 
 (
-scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 || exit 1;
 )&
 
 # This queue option will be supplied to all alignment
@@ -91,41 +81,43 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tg
 
 
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
-   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali
+   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali || exit 1;
 
 steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
-    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1
+    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr
+wait; # or the mono mkgraph.sh might be writing 
+# data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
 
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
 
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
 scripts/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-  data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode 
+  data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
 done
-scripts/walign_lats.sh data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned
+scripts/walign_lats.sh data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
 
 # Align tri1 system with si84 data.
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84
+  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84 || exit 1;
 
 
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
 steps/train_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93
+  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93 || exit 1;
 
 
 # Train tri2b, which is LDA+MLLT, on si84 data.
 steps/train_lda_mllt.sh --num-jobs 10 --cmd "$train_cmd" \
-   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93
+   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93 || exit 1;
 
 # Now, with dev93, compare lattice rescoring with biglm decoding,
 # going from tgpr to tg.  Note: results are not the same, even though they should
@@ -136,10 +128,10 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_t
 # Note: if you are running this soon after it's created and not from scratch, you
 # may have to rerun local/wsj_format_data.sh before the command below (a rmepsilon
 # stage in there that's necessary).
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_biglm.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_biglm.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm data/lang_test_tgpr/G.fst data/lang_test_tg/G.fst || exit 1;
 # baseline via LM rescoring of lattices.
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/ \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg
+  data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg || exit 1;
 
 
 
@@ -147,22 +139,28 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/
 # decoding graphs from one system's lattices and rescore with another system.
 # Note: we could easily do this with the trigram LM, unpruned, but for comparability
 # with the experiments above we do it with the pruned one.
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh data/lang_test_tgpr \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats exp/tri2a/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh \
+  data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats 
+  exp/tri2a/decode_tgpr_dev93 || exit 1;
 
 # Align tri2b system with si84 data.
 steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
-  --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84
+  --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84  || exit 1;
 
 # Train and test MMI (and boosted MMI) on tri2b system.
 steps/make_denlats_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84
+  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 || exit 1;
 steps/train_lda_etc_mmi.sh --num-jobs 10  --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92
+  data/train_si84 data/lang exp/tri2b_ali_si84 \
+  exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi  || exit 1;
+
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+  exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92  || exit 1;
 steps/train_lda_etc_mmi.sh --num-jobs 10 --boost 0.1 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi_b0.1
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92
+  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
+  exp/tri2b exp/tri2b_mmi_b0.1  || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92 || exit 1;
 
  # The next 3 commands train and test fMMI+MMI (on top of LDA+MLLT).
  steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
@@ -177,77 +175,96 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b/graph_t
 
 
 steps/train_lda_etc_mce.sh --cmd "$train_cmd" --num-jobs 10 data/train_si84 data/lang \
- exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mce
- scripts/decode.sh --num-jobs 10 --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
-   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92
+ exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mce || exit 1;
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92 || exit 1;
 
 
 # Train LDA+ET system.
 steps/train_lda_et.sh --num-jobs 10 --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93_2pass
+  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93_2pass || exit 1;
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
 steps/train_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
-  data/test_dev93 exp/tri3b/decode_tgpr_dev93
+  2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
-  data/test_eval92 exp/tri3b/decode_tgpr_eval92
+  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg
+  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg \
+   || exit 1;
+
+ # This step interpolates a small RNNLM (with weight 0.25) with the 4-gram LM.
+ scripts/rnnlmrescore.sh \
+  --inv-acwt 17 \
+  0.25 data/lang_test_bd_fg data/local/rnnlm/rnnlm.voc10000.hl30 data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm_0.25  \
+  || exit 1;
+
 
 # Trying the larger dictionary ("big-dict"/bd) + locally produced LM.
-scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_bd_tgpr \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92
+scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
 
-scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_bd_tgpr \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92
+scripts/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg
+  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
+   || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg
+  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg \
+  || exit 1;
 
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
  steps/mixup_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-   20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k
- scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri3b/graph_tgpr \
-   data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93
+   20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k || exit 1;
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93  || exit 1;
 )
 
 
 # From 3b system, align all si284 data.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284
+  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
 
 steps/train_lda_etc_quick.sh --num-jobs 10 --cmd "$train_cmd" \
-   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92
+   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
 
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
 # all the data).
 # Making num-jobs 40 as want to keep them under 4 hours long (or will fail
 # on regular queue at BUT).
 steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284
+  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 steps/make_denlats_lda_etc.sh --num-jobs 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284
+  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 || exit 1;
 steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 exp/tri4b exp/tri4b_mmi
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93
+  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
+  exp/tri4b exp/tri4b_mmi || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr \
+  data/test_dev93 exp/tri4b_mmi/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93 \
+   || exit 1;
 steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 exp/tri4b exp/tri4b_mmi_b0.1
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93
+  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
+  exp/tri4b exp/tri4b_mmi_b0.1 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr \
+ data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93 \
+   || exit 1;
  scripts/decode.sh --opts "--beam 15" --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93_b15 exp/tri4b/decode_tgpr_dev93
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b_mmi_b0.1/decode_tgpr_eval92 exp/tri4b/decode_tgpr_eval92
 
@@ -270,111 +287,125 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tg
 
 # Train UBM, for SGMM system on top of LDA+MLLT.
 steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-  400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c
+  400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c || exit 1;
 steps/train_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-   3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c/final.ubm exp/sgmm3c
-scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr \
-  data/test_dev93 exp/sgmm3c/decode_tgpr_dev93
+   3500 10000 41 40 data/train_si84 data/lang exp/tri2b_ali_si84 \
+   exp/ubm3c/final.ubm exp/sgmm3c || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm3c exp/sgmm3c/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
+  exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93 || exit 1;
 
 
 # Decode using 3 Gaussians (not 15) for gselect in 1st pass, for fast decoding.
 scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \
-  steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_gs3
+  steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 \
+  exp/sgmm3c/decode_tgpr_dev93_gs3 || exit 1;
 
 # Decoding via lattice rescoring of lats from regular model. [ a bit worse].
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh data/lang_test_tgpr \
-  data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_fromlats exp/tri2b/decode_tgpr_dev93
- 
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+  data/lang_test_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93_fromlats \
+  exp/tri2b/decode_tgpr_dev93 || exit 1;
 
 # Train SGMM system on top of LDA+MLLT+SAT.
 steps/align_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri3b exp/tri3b_ali_si84
+  data/train_si84 data/lang exp/tri3b exp/tri3b_ali_si84 || exit 1;
 steps/train_ubm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-  400 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b
+  400 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b || exit 1;
 steps/train_sgmm_lda_etc.sh  --num-jobs 10 --cmd "$train_cmd" \
-  3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 exp/ubm4b/final.ubm exp/sgmm4b
+  3500 10000 41 40 data/train_si84 data/lang exp/tri3b_ali_si84 \
+ exp/ubm4b/final.ubm exp/sgmm4b || exit 1;
 scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4b exp/sgmm4b/graph_tgpr
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-  exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+  exp/sgmm4b/graph_tgpr data/test_dev93 exp/sgmm4b/decode_tgpr_dev93 \
+ exp/tri3b/decode_tgpr_dev93 || exit 1;
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-  exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+  exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b/decode_tgpr_eval92 \
+  exp/tri3b/decode_tgpr_eval92 || exit 1;
 
  # Trying further mixing-up of this system [increase #substates]:
   steps/mixup_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
-     12500 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_12500
+     12500 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_12500 || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_12500/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_12500/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
  # note: taking it up to 150k made it worse again [8.63->8.56->8.72 ... this was before some
  # decoding-script changes so these results not the same as in RESULTS file.]
   # increasing phone dim but not #substates..
   steps/mixup_sgmm_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" --increase-phone-dim 50 \
-    10000 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_50
+    10000 data/train_si84 exp/sgmm4b exp/tri3b_ali_si84 exp/sgmm4b_50 || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_50/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+    exp/sgmm4b/graph_tgpr data/test_eval92 exp/sgmm4b_50/decode_tgpr_eval92 \
+   exp/tri3b/decode_tgpr_eval92 || exit 1;
 
 # Align 3b system with si284 data and num-jobs = 20; we'll train an LDA+MLLT+SAT system on si284 from this.
 # This is 4c.  c.f. 4b which is "quick" training.
 
 steps/align_lda_mllt_sat.sh --num-jobs 20 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284_20
+  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284_20 || exit 1;
 steps/train_lda_mllt_sat.sh --num-jobs 20 --cmd "$train_cmd" \
-  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/tri4c
-scripts/mkgraph.sh data/lang_test_tgpr exp/tri4c exp/tri4c/graph_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
-  data/test_dev93 exp/tri4c/decode_tgpr_dev93
+  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/tri4c || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri4c exp/tri4c/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri4c/graph_tgpr data/test_dev93 exp/tri4c/decode_tgpr_dev93 || exit 1;
 
 
 ( # Try mixing up the tri4c system further.
  steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
-  50000 data/train_si284 exp/tri4c exp/tri3b_ali_si284_20 exp/tri4c_50k
- scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
-  data/test_dev93 exp/tri4c_50k/decode_tgpr_dev93
+  50000 data/train_si284 exp/tri4c exp/tri3b_ali_si284_20 exp/tri4c_50k || exit 1;
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri4c/graph_tgpr data/test_dev93 exp/tri4c_50k/decode_tgpr_dev93 || exit 1;
 
  steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
-  75000 data/train_si284 exp/tri4c_50k exp/tri3b_ali_si284_20 exp/tri4c_75k
- scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
-  data/test_dev93 exp/tri4c_75k/decode_tgpr_dev93
+  75000 data/train_si284 exp/tri4c_50k exp/tri3b_ali_si284_20 exp/tri4c_75k || exit 1;
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+   exp/tri4c/graph_tgpr data/test_dev93 exp/tri4c_75k/decode_tgpr_dev93 || exit 1;
 
  steps/mixup_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
-  100000 data/train_si284 exp/tri4c_75k exp/tri3b_ali_si284_20 exp/tri4c_100k
- scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh exp/tri4c/graph_tgpr \
-  data/test_dev93 exp/tri4c_100k/decode_tgpr_dev93
+  100000 data/train_si284 exp/tri4c_75k exp/tri3b_ali_si284_20 exp/tri4c_100k || exit 1;
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+  exp/tri4c/graph_tgpr data/test_dev93 exp/tri4c_100k/decode_tgpr_dev93 || exit 1;
 )
-
-
 
 
 # Train SGMM on top of LDA+MLLT+SAT, on all SI-284 data.  C.f. 4b which was
 # just on SI-84.
 steps/train_ubm_lda_etc.sh --num-jobs 20 --cmd "$train_cmd" \
-  600 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/ubm4c
+  600 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/ubm4c || exit 1;
 steps/train_sgmm_lda_etc.sh  --num-jobs 20 --cmd "$train_cmd" \
-  5500 25000 50 40 data/train_si284 data/lang exp/tri3b_ali_si284_20 exp/ubm4c/final.ubm exp/sgmm4c
-scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4c exp/sgmm4c/graph_tgpr
+  5500 25000 50 40 data/train_si284 data/lang exp/tri3b_ali_si284_20 \
+  exp/ubm4c/final.ubm exp/sgmm4c || exit 1;
+scripts/mkgraph.sh data/lang_test_tgpr exp/sgmm4c exp/sgmm4c/graph_tgpr || exit 1;
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4c/graph_tgpr data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93
+  exp/sgmm4c/graph_tgpr data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 \
+  exp/tri3b/decode_tgpr_dev93  || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/sgmm4c/decode_tgpr_dev93_tg
+  data/test_dev93 exp/sgmm4c/decode_tgpr_dev93 exp/sgmm4c/decode_tgpr_dev93_tg \
+  || exit 1;
 
 # decode sgmm4c with nov'92 too
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh  \
-    exp/sgmm4c/graph_tgpr data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+    exp/sgmm4c/graph_tgpr data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 \
+  exp/tri3b/decode_tgpr_eval92 || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/sgmm4c/decode_tgpr_eval92_tg
+  data/test_eval92 exp/sgmm4c/decode_tgpr_eval92 exp/sgmm4c/decode_tgpr_eval92_tg \
+  || exit 1;
 
 # Decode sgmm4c with the "big-dict" decoding graph.
-scripts/mkgraph.sh data/lang_test_bd_tgpr exp/sgmm4c exp/sgmm4c/graph_bd_tgpr
-scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh exp/sgmm4c/graph_bd_tgpr \
-  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/tri3b/decode_tgpr_eval92
+scripts/mkgraph.sh data/lang_test_bd_tgpr exp/sgmm4c exp/sgmm4c/graph_bd_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
+  exp/sgmm4c/graph_bd_tgpr data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 \
+ exp/tri3b/decode_tgpr_eval92
+
 # The same with Gaussian selection pruned down, for speed.
 scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \
    steps/decode_sgmm_lda_etc.sh exp/sgmm4c/graph_bd_tgpr \
-  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_gs3 exp/tri3b/decode_tgpr_eval92
+  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_gs3 exp/tri3b/decode_tgpr_eval92 \
+  || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
-  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_fg
+  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_fg \
+  || exit 1;
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
-  data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_tg
+ data/test_eval92 exp/sgmm4c/decode_bd_tgpr_eval92 exp/sgmm4c/decode_bd_tgpr_eval92_tg \
+  || exit 1;
 
 # Decode sgmm4c with the "big-dict" decoding graph; here, we avoid doing a full
 # re-decoding but limit ourselves from the lattices from the "big-dict" decoding
@@ -383,7 +414,7 @@ scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_b
 # 4-gram.
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  data/lang_test_bd_fg data/test_eval92 exp/sgmm4c/decode_bd_fg_eval92_fromlats \
-  exp/tri3b/decode_bd_tgpr_eval92
+  exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
 
 
 # Getting results [see RESULTS file]

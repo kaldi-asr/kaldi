@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
     int32 n_done = n_ok + n_err_write + n_err_nowrite;
     KALDI_LOG << "Done " << n_done << " lattices: " << n_ok << " OK, "
               << n_err_write << " in error but written anyway, "
-              << n_err_nowrite << "in error and not written.";
+              << n_err_nowrite << " in error and not written.";
     return (n_ok != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
