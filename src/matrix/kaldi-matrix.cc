@@ -1771,12 +1771,11 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
         delete [] pmem;
         return false;
       }
-      if (MachineIsLittleEndian()) {  // HTK standard is big-endian!
-        MatrixIndexT C = M.NumCols();
-        for (j = 0; j < C; ++j) {
+      MatrixIndexT C = M.NumCols();
+      for (j = 0; j < C; ++j) {
+        if (MachineIsLittleEndian())  // HTK standard is big-endian!
           KALDI_SWAP4(pmem[j]);
-          M(i, j) = static_cast<Real>(pmem[j]);
-        }
+        M(i, j) = static_cast<Real>(pmem[j]);
       }
     }
     delete [] pmem;
