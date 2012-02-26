@@ -690,6 +690,102 @@ class HtkMatrixHolder {
   T t_;
 };
 
+// SphinxMatrixHolder can be used to read and write feature files in
+// CMU Sphinx format. 13-dimensional big-endian features are assumed.
+// The ultimate reference is SphinxBase's source code (for example see
+// feat_s2mfc_read() in src/libsphinxbase/feat/feat.c).
+// We can't fully automate the detection of machine/feature file endianess
+// mismatch here, because for this Sphinx relies on comparing the feature
+// file's size with the number recorded in its header. We are working with
+// streams, however(what happens if this is a Kaldi archive?). This should
+// be no problem, because the usage help of Sphinx' "wave2feat" for example
+// says that Sphinx features are always big endian.
+template<int kFeatDim=13> class SphinxMatrixHolder {
+ public:
+  typedef Matrix<BaseFloat> T;
+
+  SphinxMatrixHolder() {}
+
+  void Clear() { feats_.Resize(0, 0); }
+
+  // Writes Sphinx-format features
+  static bool Write(std::ostream& os, bool binary, const T& m) {
+    if (!binary) {
+      KALDI_WARN << "SphinxMatrixHolder can't write Sphinx features in text ";
+      return false;
+    }
+
+    int32 size = m.NumRows() * m.NumCols();
+    if (MachineIsLittleEndian())
+      KALDI_SWAP4(size);
+    os.write((char*) &size, sizeof(size)); // write the header
+
+    for (MatrixIndexT i = 0; i < m.NumRows(); ++i) {
+      float32 tmp[m.NumCols()];
+      for (MatrixIndexT j = 0; j < m.NumCols(); ++j) {
+        tmp[j] = static_cast<float32>(m(i, j));
+        if (MachineIsLittleEndian())
+          KALDI_SWAP4(tmp[j]);
+      }
+      os.write((char*) tmp, sizeof(tmp));
+    }
+
+    return true;
+  }
+
+  // Reads the features into a Kaldi Matrix
+  bool Read(std::istream &is) {
+    int32 nmfcc;
+
+    is.read((char*) &nmfcc, sizeof(nmfcc));
+    if (MachineIsLittleEndian())
+      KALDI_SWAP4(nmfcc);
+    KALDI_VLOG(2) << "#feats: " << nmfcc;
+    int32 nfvec = nmfcc / kFeatDim;
+    if ((nmfcc % kFeatDim) != 0) {
+      KALDI_WARN << "Sphinx feature count is inconsistent with vector length ";
+      return false;
+    }
+
+    feats_.Resize(nfvec, kFeatDim);
+    for (MatrixIndexT i = 0; i < feats_.NumRows(); ++i) {
+      if (sizeof(BaseFloat) == sizeof(float32)) {
+        is.read((char*) feats_.RowData(i), kFeatDim * sizeof(float32));
+        if (!is.good()) {
+          KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
+          return false;
+        }
+        if (MachineIsLittleEndian()) {
+          for (MatrixIndexT j=0; j < kFeatDim; ++j)
+            KALDI_SWAP4(feats_(i, j));
+        }
+      } else { // KALDI_DOUBLEPRECISION=1
+        float32 tmp[kFeatDim];
+        is.read((char*) tmp, sizeof(tmp));
+        if (!is.good()) {
+          KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
+          return false;
+        }
+        for (MatrixIndexT j=0; j < kFeatDim; ++j) {
+          if (MachineIsLittleEndian())
+            KALDI_SWAP4(tmp[j]);
+          feats_(i, j) = static_cast<BaseFloat>(tmp[j]);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  // Only read in binary
+  static bool IsReadInBinary() { return true; }
+
+  const T &Value() const { return feats_; }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SphinxMatrixHolder);
+  T feats_;
+};
 
 // PosteriorHolder is a holder for Posterior, which is
 // std::vector<std::vector<std::pair<int32, BaseFloat> > >
