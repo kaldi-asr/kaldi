@@ -24,9 +24,10 @@ int main(int argc, char *argv[]) {
   using kaldi::int32;
   try {
     const char *usage =
-        "Apply fMPE transform to features\n"
-        "Usage:  fmpe-apply-transform [options...] <fmpe-object> "
-        "<feat-rspecifier> <feat-diff-rspecifier> <gselect-rspecifier> <stats-out>\n";
+        "Compute statistics for fMPE training\n"
+        "Usage:  fmpe-acc-stats [options...] <fmpe-object> "
+        "<feat-rspecifier> <feat-diff-rspecifier> <gselect-rspecifier> <stats-out>\n"
+        "Note: gmm-fmpe-acc-stats avoids computing the features an extra time\n";
 
     ParseOptions po(usage);
     bool binary = true;
