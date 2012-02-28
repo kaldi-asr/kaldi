@@ -26,10 +26,10 @@ all:  $(LIBFILE) $(TESTFILES)
 	export PATH=$(CUDATKDIR)/bin:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
 
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
+
 
 $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 

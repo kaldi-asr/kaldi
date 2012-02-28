@@ -30,7 +30,6 @@ static void _apply_log(T* mat, MatrixDim d) {
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int index = i + j*d.stride;
   if ( i < d.cols  &&  j < d.rows )
-    if(mat[index] < FLT_MIN) mat[index] = FLT_MIN;
     mat[index] = log(mat[index]);
 }
 

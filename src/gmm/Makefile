@@ -15,10 +15,9 @@ LIBFILE = kaldi-gmm.a
 
 all:  $(LIBFILE) $(TESTFILES)
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
 
 $(TESTFILES): $(LIBFILE) ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
 

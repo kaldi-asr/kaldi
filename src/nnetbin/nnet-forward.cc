@@ -39,8 +39,15 @@ int main(int argc, char *argv[]) {
     std::string class_frame_counts;
     po.Register("class-frame-counts", &class_frame_counts, "Counts of frames for posterior division by class-priors");
 
+    BaseFloat prior_scale = 1.0;
+    po.Register("prior-scale", &prior_scale, "scaling factor of prior log-probabilites given by --class-frame-counts");
+
     bool apply_log = false, silent = false;
     po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
+
+    bool no_softmax = false;
+    po.Register("no-softmax", &no_softmax, "No softmax on MLP output. The MLP outputs directly log-likelihoods, log-priors will be subtracted");
+
     po.Register("silent", &silent, "Don't print any messages");
 
     po.Read(argc, argv);
@@ -84,11 +91,11 @@ int main(int argc, char *argv[]) {
       
       BaseFloat sum = tmp_priors.Sum();
       tmp_priors.Scale(1.0/sum);
-      if(apply_log) {
+      if(apply_log || no_softmax) {
         tmp_priors.ApplyLog();
-        tmp_priors.Scale(-1.0);
+        tmp_priors.Scale(-prior_scale);
       } else {
-        tmp_priors.InvertElements();
+        tmp_priors.ApplyPow(-prior_scale);
       }
 
       //push priors to GPU
@@ -116,7 +123,7 @@ int main(int argc, char *argv[]) {
      
       //divide posteriors by priors to get quasi-likelihoods
       if(class_frame_counts != "") {
-        if(apply_log) {
+        if(apply_log || no_softmax) {
           nnet_out.AddScaledRow(1.0,priors,1.0);
         } else {
           nnet_out.MulColsVec(priors);

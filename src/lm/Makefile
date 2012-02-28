@@ -22,10 +22,9 @@ LIBFILE = kaldi-lm.a
 
 all: $(LIBFILE) $(TESTFILES) $(CMDFILES)
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a

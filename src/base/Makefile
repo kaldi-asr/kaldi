@@ -11,10 +11,10 @@ LIBFILE = kaldi-base.a
 
 all:  $(LIBFILE) $(TESTFILES)
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
+
 
 
 $(TESTFILES): $(LIBFILE) 

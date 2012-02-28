@@ -12,10 +12,9 @@ LIBFILE = kaldi-optimization.a
 all: $(LIBFILE) $(TESTFILES)
 
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
 
 
 $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a 

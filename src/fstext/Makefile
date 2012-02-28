@@ -23,10 +23,9 @@ LIBFILE =
 
 all:  $(LIBFILE) $(TESTFILES)
 
-$(LIBFILE): lock-dir $(OBJFILES)
+$(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
-	$(unlock-dir)
 
 # tree and matrix archives needed for test-context-fst
 $(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../util/kaldi-util.a
