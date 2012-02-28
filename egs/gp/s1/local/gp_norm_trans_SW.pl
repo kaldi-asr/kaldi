@@ -40,12 +40,12 @@ while (<T>) {
   my $utt_id = $1;
   my $trans = $2;
 
-  # Normalize spaces
-  $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
+  $trans =~ s/^\s*//; $trans =~ s/\s*$//;  # Normalize spaces
   $trans =~ s/\`(.*?)\'/$1/g;  # Remove quotation marks.
 
   print $utt_id;
-  for my $word (split(" ", $trans)) {
+  for my $word (split(/\s+/, $trans)) {
+    next if ($word =~ /\<\#.*\>/);  # Numbers are written as digits also.
     $word =~ tr/a-z/A-Z/;  # Now, capitalize every word.
     print " $word"
   }

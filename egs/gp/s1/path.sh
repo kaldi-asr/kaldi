@@ -1,13 +1,14 @@
 # This contains the locations of the tools and data required for running
 # the GlobalPhone experiments.
 
-KALDISRC=/exports/home/aghoshal/kaldi/trunk/src
+KALDIROOT=/exports/home/aghoshal/kaldi/trunk
+KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
 KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/tiedbin:$KALDISRC/lm
 
-FSTBIN=/exports/home/aghoshal/kaldi/trunk/tools/openfst/bin
-LMBIN=/exports/home/aghoshal/kaldi/trunk/tools/irstlm/bin
+FSTBIN=$KALDIROOT/tools/openfst/bin
+LMBIN=$KALDIROOT/tools/irstlm/bin
 
 [ -d $PWD/local ] || { echo "Expecting 'local' subdirectory"; exit 1; }
 [ -d $PWD/utils ] || { echo "Expecting 'utils' subdirectory"; exit 1; }
@@ -30,5 +31,5 @@ export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS:$TOOLS
 export LC_ALL=C
 
 # Site-specific configs:
-[ `hostname -y` == ecdf ] && \
-  { . /etc/profile.d/modules.sh; module add intel/mkl; }
+[ `hostname -y` == ecdf ] && { . path_ed.sh; }
+

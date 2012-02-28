@@ -1,7 +1,6 @@
 #!/bin/bash -u
 
 # Copyright 2012  Arnab Ghoshal
-# Copyright 2010-2011  Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +15,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# To be run from .. (one directory up from here)
+# Converts HTK features to Kaldi format.
 
 function error_exit () {
   echo -e "$@" >&2; exit 1;
@@ -30,12 +29,12 @@ function readint () {
   echo $retval
 }
 
-nj=4       # Default number of jobs
-qcmd=""    # Options for the submit_jobs.sh script
-sjopts=""  # Options for the submit_jobs.sh script
+nj=1      # Default number of jobs
+qcmd=""   # Options for the submit_jobs.sh script
+sjopts="" # Options for the submit_jobs.sh script
 
 PROG=`basename $0`;
-usage="Usage: $PROG [options] <data-dir> <log-dir> <abs-path-to-mfccdir>\n\n
+usage="Usage: $PROG [options] <htk-file-list> <log-dir> <out-dir> <out-list>\n\n
 Options:\n
   --help\t\tPrint this message and exit\n
   --num-jobs INT\tNumber of parallel jobs to run (default=$nj).\n
@@ -59,32 +58,22 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ $# != 3 ]; then
+if [ $# != 4 ]; then
   error_exit $usage;
 fi
 
 [ -f path.sh ] && . path.sh
 
-data=$1
+htklist=$1
 logdir=$2
-mfccdir=$3
+outdir=$3
+outlist=$4
 
 # use "name" as part of name of the archive.
-name=`basename $data`
+name=`basename $htklist`
 
-mkdir -p $mfccdir || exit 1;
-mkdir -p $logdir || exit 1;
-
-scp=$data/wav.scp
-config=conf/mfcc.conf
-required="$scp $config"
-
-for f in $required; do
-  if [ ! -f $f ]; then
-    echo "make_mfcc.sh: no such file $f"
-    exit 1;
-  fi
-done
+mkdir -p $outdir || error_exit "Cannot create '$outdir'.";
+mkdir -p $logdir || error_exit "Cannot create '$logdir'.";
 
 # note: in general, the double-parenthesis construct in bash "((" is "C-style
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
@@ -92,22 +81,22 @@ done
 
 split_scps=""
 for ((n=1; n<=nj; n++)); do
-  split_scps="$split_scps $logdir/wav$n.scp"
+  split_scps="$split_scps $logdir/htk$n.scp"
 done
 
-split_scp.pl $scp $split_scps || exit 1;
+split_scp.pl $htklist $split_scps || exit 1;
 
-submit_jobs.sh "$qcmd" --njobs=$nj --log=$logdir/make_mfcc.TASK_ID.log $sjopts \
-  compute-mfcc-feats --verbose=2 --config=$config scp:$logdir/wavTASK_ID.scp \
-  ark,scp:$mfccdir/mfcc_$name.TASK_ID.ark,$mfccdir/mfcc_$name.TASK_ID.scp \
-  || error_exit "Error producing mfcc features for $name:"`tail $logdir/make_mfcc.*.log`
+submit_jobs.sh "$qcmd" --njobs=$nj --log=$logdir/htk2kaldi.TASK_ID.log $sjopts \
+  copy-feats --verbose=2 --htk-in scp:$logdir/htkTASK_ID.scp \
+    ark,scp:$outdir/kaldi_$name.TASK_ID.ark,$outdir/kaldi_$name.TASK_ID.scp \
+    || error_exit "Error converting HTK features:"`tail $logdir/htk2kaldi.*.log`
 
 # concatenate the .scp files together.
-rm $data/feats.scp 2>/dev/null
+rm -f $outlist
 for ((n=1; n<=nj; n++)); do
-  cat $mfccdir/mfcc_$name.$n.scp >> $data/feats.scp
+  cat $outdir/kaldi_$name.$n.scp >> $outlist
 done
 
-# rm $logdir/wav*.scp
+rm $logdir/htk*.scp
 
-echo "Succeeded creating MFCC features for $name"
+echo "Succeeded in copying HTK featurs to Kaldi format."

@@ -36,20 +36,22 @@ function read_dirname () {
 }
 
 orig_args="$*"
-njobs=""  # Total number of jobs unset by default. Will set to #speakers (if 
+nj=""  # Total number of jobs unset by default. Will set to #speakers (if 
           # using a grid) or 4 (if not), unless specified by user.
 lang=""   # Option for sclite scoring (off by default)
 opts=""
 qcmd=""   # Options for the submit_jobs.sh script
+sjopts="" # Options for the submit_jobs.sh script
 
 PROG=`basename $0`;
 usage="Usage: $PROG [options] <decode_script> <graph-dir> <data-dir> <decode-dir> [extra-args...]\n\n
 Options:\n
   --help\t\tPrint this message and exit\n
   -l DIR\t\tDirectory to find L_align.fst (needed for sclite scoring)\n
-  --num-jobs INT\tNumber of parallel jobs to run (default=$njobs).\n
+  --num-jobs INT\tNumber of parallel jobs to run (default=$nj).\n
   --opts STRING\tOptions for the decoder script\n
   --qcmd STRING\tCommand for submitting a job to a grid engine (e.g. qsub) including switches.\n
+  --sjopts STRING\tOptions for the 'submit_jobs.sh' script\n
 ";
 
 while [ $# -gt 0 ]; do
@@ -61,15 +63,15 @@ while [ $# -gt 0 ]; do
 	error_exit "Invalid argument to -l option; expected $lang/phones_disambig.txt and $lang/L_align.fst to exist."
       shift ;;
     --num-jobs)
-      shift; njobs=`readint $1`;
-      [ $njobs -lt 1 ] && error_exit "--num-jobs arg '$njobs' not positive.";
+      shift; nj=`readint $1`;
+      [ $nj -lt 1 ] && error_exit "--num-jobs arg '$nj' not positive.";
       shift ;;
     --opts)
       shift; opts="$1"; shift ;;
     --qcmd)
       shift; qcmd="--qcmd=${1}"; shift ;;
-    --stage)
-      shift; stage=`readint $1`; shift ;;
+    --sjopts)
+      shift; sjopts="$1"; shift ;;
     -*)  echo "Unknown argument: $1, exiting"; echo -e $usage; exit 1 ;;
     *)   break ;;   # end of options: interpreted as the script to execute
   esac
@@ -108,23 +110,23 @@ if [ ! -f $graphdir/HCLG.fst -a ! -f $graphdir/G.fst ]; then
   exit 1;
 fi
 
-if [ -z "$njobs" ]; then # Figure out num-jobs; user did not specify.
+if [ -z "$nj" ]; then # Figure out num-jobs; user did not specify.
   if [ -z "$qcmd" ]; then
-    njobs=4
+    nj=4
   else  # running on queue...
-    njobs=`utt2spk_to_spk2utt.pl $data/utt2spk | wc -l`
+    nj=`utt2spk_to_spk2utt.pl $data/utt2spk | wc -l`
   fi
 fi
 
-echo "Decoding with num-jobs = $njobs"
-if [[ $njobs -gt 1 || ! -d $data/split$njobs || \
-      $data/split$njobs -ot $data/feats.scp ]]; then
-  split_data.sh $data $njobs
+echo "Decoding with num-jobs = $nj"
+if [[ $nj -gt 1 || ! -d $data/split$nj || \
+      $data/split$nj -ot $data/feats.scp ]]; then
+  split_data.sh $data $nj
 fi
 
-#for n in `get_splits.pl $njobs`; do
-submit_jobs.sh "$qcmd" --njobs=$njobs --log=$dir/partTASK_ID.log \
-  $script $opts -j $njobs TASK_ID $graphdir $data $dir $extra_args \
+#for n in `get_splits.pl $nj`; do
+submit_jobs.sh "$qcmd" --njobs=$nj --log=$dir/decodeTASK_ID.log $sjopts \
+  $script $opts -j $nj TASK_ID $graphdir $data $dir $extra_args \
   || error_exit "Error in decoding script: command was decode.sh $orig_args"
 
 if ls $dir/lat.*.gz >&/dev/null; then

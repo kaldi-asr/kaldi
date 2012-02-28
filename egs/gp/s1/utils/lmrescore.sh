@@ -37,6 +37,7 @@ function read_dirname () {
 orig_args="$*"
 mode=4
 qcmd=""   # Options for the submit_jobs.sh script
+sjopts="" # Options for the submit_jobs.sh script
 
 PROG=`basename $0`;
 usage="Usage: $PROG [options] <old-lang-dir> <new-lang-dir> <data-dir> <input-decode-dir> <output-decode-dir>\n
@@ -45,6 +46,7 @@ Options:\n
   --help\t\tPrint this message and exit\n
   --mode INT\tOptions for the decoder script\n
   --qcmd STRING\tCommand for submitting a job to a grid engine (e.g. qsub) including switches.\n
+  --sjopts STRING\tOptions for the 'submit_jobs.sh' script\n
 ";
 
 while [ $# -gt 0 ]; do
@@ -56,6 +58,8 @@ while [ $# -gt 0 ]; do
       shift ;;
     --qcmd)
       shift; qcmd="--qcmd=${1}"; shift ;;
+    --sjopts)
+      shift; sjopts="$1"; shift ;;
     -*)  echo "Unknown argument: $1, exiting"; echo -e $usage; exit 1 ;;
     *)   break ;;   # end of options: interpreted as the old LM directory
   esac
@@ -99,19 +103,26 @@ if [ "$mode" == 4 ]; then
 fi
 
 # for lat in $indir/lat.*.gz; do
+nj=`ls $indir/lat.*.gz | wc -l`  # Number of lattices found
+echo $nj;
+for n in `seq 1 $nj`; do  # Make sure lattices are indexed properly
+  [ -f $indir/lat.$n.gz ] || error_exit "Lattice '$indir/lat.$n.gz' not found."
+done
+exit
+
 lat=$indir/lat.TASK_ID.gz
 newlat=$outdir/`basename $lat`
 case "$mode" in
   1) # 1 is inexact, the original way of doing it.
-    submit_jobs.sh "$qcmd" --njobs=$njobs --log=$outdir/rescorelm.TASK_ID.log \
-      lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $lat|" "$oldlmcommand" \
-      ark:- \| lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" \
-      "ark,t:|gzip -c>$newlat" \
+    submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+      $sjopts lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $lat|" \
+      "$oldlmcommand" ark:- \| lattice-lmrescore --lm-scale=1.0 ark:- \
+      "$newlmcommand" "ark,t:|gzip -c>$newlat" \
       || error_exit "Error doing LM rescoring."
     ;;
    2)  # 2 is equivalent to 1, but using more basic operations, combined.
-    submit_jobs.sh "$qcmd" --njobs=$njobs --log=$outdir/rescorelm.TASK_ID.log \
-      gunzip -c $lat \| \
+    submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+      $sjopts gunzip -c $lat \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
       \| lattice-determinize ark:- ark:- \| \
@@ -124,8 +135,8 @@ case "$mode" in
      # through G.fst (which is what we want as that happened in lattice 
      # generation), but we add the new one with "phi matcher", only taking
      # backoff arcs if an explicit arc did not exist.
-    submit_jobs.sh "$qcmd" --njobs=$njobs --log=$outdir/rescorelm.TASK_ID.log \
-      gunzip -c $lat \| \
+    submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+      $sjopts gunzip -c $lat \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
       \| \ lattice-determinize ark:- ark:- \| \
@@ -139,8 +150,8 @@ case "$mode" in
      # grammar and transition weights.
     mdl=`dirname $indir`/final.mdl
     [ ! -f $mdl ] && echo No such model $mdl && exit 1;
-    submit_jobs.sh "$qcmd" --njobs=$njobs --log=$outdir/rescorelm.TASK_ID.log \
-      gunzip -c $lat \| \
+    submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
+      $sjopts gunzip -c $lat \| \
       lattice-scale --lm-scale=0.0 ark:- ark:- \| \
       lattice-to-phone-lattice $mdl ark:- ark:- \| \
       lattice-compose ark:- $outdir/Ldet.fst ark:- \| \

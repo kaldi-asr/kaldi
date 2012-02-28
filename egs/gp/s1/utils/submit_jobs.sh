@@ -38,6 +38,7 @@ Required arguments:\n
   --log=FILE\tOutput of command redirected to this file.\n\n
 Options:\n
   --njobs=INT\tNumber of jobs to run (default=1). Assumes split data exists.\n
+  --nosync\tWait for all jobs to finish without using the -sync option (off by default).\n
   --qcmd=STRING\tCommand for submitting a job to a grid engine (e.g. qsub) including switches.\n
 ";
 
@@ -47,6 +48,7 @@ fi
 
 NJOBS=1     # Default number of jobs
 QCMD=""     # No grid usage by default
+SYNC=1      # Use -sync option for qsub by default
 while [ $# -gt 1 ]; do
   case "${1# *}" in  # ${1# *} strips any leading spaces from the arguments
   --help) echo -e $usage; exit 0 ;;
@@ -54,6 +56,7 @@ while [ $# -gt 1 ]; do
   QCMD=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
   --njobs=*)
   NJOBS=`readposint $1`; shift ;;
+  --nosync) SYNC=0; shift ;;
   --log=*)
   LOGF=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
   -*)  echo "Unknown argument: $1, exiting"; echo -e $usage; exit 1 ;;
@@ -76,7 +79,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-function run_locally {
+function run_locally () {
   rm -f $logfile_dir/.error;
   for n in `seq 1 $NJOBS`; do
     local this_logfile=${logfile_base//TASK_ID/$n}
@@ -94,27 +97,66 @@ function run_locally {
   exit 0;
 }
 
-function run_on_grid {
+function submit_sync () {
+  local qdir=$1;
+  local batch_file=$2;
+  local command=$3
+  local logfile=$4
+  local qlog=$qdir/queue.log
+
+  printf "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -V -cwd -j y\n" > $batch_file
+  { printf "{ cd $PWD\n  . path.sh\n  echo Running on: \`hostname\`\n";
+    printf "  echo Started at: \`date\`\n  $command\n  ret=\$\?\n";
+    printf "  echo Finished at: \`date\`\n} >& %s\nexit \$ret\n" "$logfile"
+    printf "# Submitted with:\n"
+    printf "# $QCMD -sync y -o $qlog -t 1-$NJOBS $batch_file >> $qlog 2>&1\n"
+  } >> $batch_file
+
+  $QCMD -sync y -o $qlog -t 1-${NJOBS} $batch_file >& $qlog
+  exit $?
+}
+
+function submit_nosync () {
+  local qdir=$1;  rm -f $qdir/error
+  local batch_file=$2;
+  local command=$3
+  local logfile=$4
+  local qlog=$qdir/queue.log
+
+  printf "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -V -cwd -j y\n" > $batch_file
+  { printf "{ cd $PWD\n  . path.sh\n  echo Running on: \`hostname\`\n";
+    printf "  echo Started at: \`date\`\n";
+    printf "  $command || { echo \$SGE_TASK_ID >> $qdir/error; ret=1; }\n";
+    printf "  echo Finished at: \`date\`\n} >& %s\nexit \$ret\n" "$logfile"
+    printf "# Submitted with:\n"
+    printf "# $QCMD -sync n -o $qlog -t 1-$NJOBS $batch_file >> $qlog 2>&1\n"
+  } >> $batch_file
+
+  local qsub_message=`$QCMD -sync n -o $qlog -t 1-${NJOBS} $batch_file`;
+  echo $qsub_message > $qlog
+  local jobid=$(echo $qsub_message | awk '{print $3}')
+  jobid=${jobid//.*/}
+  while [[ `qstat|grep $jobid` ]] ; do sleep 60 ; done
+  if [ -f $qdir/error ]; then exit 1; else exit 0; fi
+}
+
+function run_on_grid () {
   local this_logfile=${logfile_base//TASK_ID/\$SGE_TASK_ID}
   this_logfile=$logfile_dir"/"$this_logfile".log"
   # If log files are in a separate 'log' directory, create the job submission
   # scripts one level up.
   local qdir=${logfile_dir/%log/q}
   mkdir -p $qdir
-  local qlog=$qdir/queue.log
   local this_command=${exec_cmd//TASK_ID/\$SGE_TASK_ID}
-  local run_this=$qdir"/"${logfile_base//TASK_ID/}".sh"
-  run_this=${run_this//../.}
-  printf "#!/bin/bash\n#\$ -S /bin/bash\n#\$ -V -cwd -j y\n" > $run_this
-  { printf "set -e\n";
-    printf "{ cd %s\n  . path.sh\n  echo Running on: \`hostname\`\n" "$PWD";
-    printf "  echo Started at: \`date\`\n  $this_command\n  ret=\$\?\n";
-    printf "  echo Finished at: \`date\`\n} >& %s\nexit \$ret\n" "$this_logfile"
-    printf "# Submitted with:\n"
-    printf "# $QCMD -sync y -o $qlog -t 1-$NJOBS $run_this >> $qlog 2>&1\n"
-  } >> $run_this
-  $QCMD -sync y -o $qlog -t 1-${NJOBS} $run_this >> $qlog 2>&1
-  exit $?
+  local batch_file=$qdir"/"${logfile_base//TASK_ID/}".sh"
+  batch_file=${batch_file//../.}
+
+  if [ $SYNC -eq 1 ]; then
+    submit_sync "$qdir" "$batch_file" "$this_command" "$this_logfile"
+  else
+    submit_nosync "$qdir" "$batch_file" "$this_command" "$this_logfile"
+  fi
+  exit 99  # Should never be reached!
 }
 
 if [ -z "$QCMD" ]; then

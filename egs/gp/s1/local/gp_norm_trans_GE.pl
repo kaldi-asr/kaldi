@@ -44,13 +44,12 @@ while (<T>) {
   my $utt_id = $1;
   my $trans = $2;
 
-  # Normalize spaces
-  $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
+  $trans =~ s/^\s*//; $trans =~ s/\s*$//;  # Normalize spaces
   $trans =~ s/ \,(.*?)\'/ $1/g;  # Remove quotation marks.
   $trans =~ s/ \-/ /g;  # conjoined noun markers, don't need them.
 
   print $utt_id;
-  for my $word (split(" ", $trans)) {
+  for my $word (split(/\s+/, $trans)) {
     # Distinguish acronyms before capitalizing everything, since they have 
     # different pronunciations. This may not be important.
     if (defined($acro)) {
