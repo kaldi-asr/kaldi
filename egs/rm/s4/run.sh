@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Copyright 2010-2011 Microsoft Corporation
 # Copyright 2012 Vassil Panayotov
+# modified from a file that was:
+# Copyright 2010-2011 Microsoft Corporation
+
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +21,6 @@
 # It is recommended that you do not invoke this file from the shell, but
 # run the paths one by one, by hand.
 
-# IMPORTANT:
-# This script file cannot be run as-is; some paths in it need to be changed
-# before you can run it. Please edit the path variables in ./path.sh
 source ./path.sh
 
 # First step is to do data preparation: 
