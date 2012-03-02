@@ -58,10 +58,10 @@ steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
     data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
 # train tri2a with different number of leaves
-numleavesL=(500 1000 1200 1400 1600 1800 2000 2200 2400)
+numleavesL=(0500 1000 1200 1400 1600 1800 2000 2200 2400)
 for numleaves in ${numleavesL[@]}; do
   # train tri2a [delta+delta-deltas]
-  steps/train_deltas.sh --numleaves $numleaves data/train data/lang exp/tri1_ali exp/tri2a-$numleaves || exit 1;
+  steps/train_deltas.sh --numleaves ${numleaves##0} data/train data/lang exp/tri1_ali exp/tri2a-$numleaves || exit 1;
   # build graph
   scripts/mkgraph.sh data/lang_test exp/tri2a-$numleaves exp/tri2a-$numleaves/graph || exit 1;
   # decode tri2a
@@ -87,9 +87,9 @@ scripts/tune_scalar.py local/decode.sh "steps/decode_nnet.sh --acoustic-scale %g
 
 
 # train nnets with tri2a-????
-numleavesL=(500 1000 1200 1400 1600 1800 2000 2200)
+numleavesL=(0500 1000 1200 1400 1600 1800 2000 2200)
 for numleaves in ${numleavesL[@]}; do
-  # train nnet with mono1a 
+  # train nnet with tri2a-???? labels
   steps/train_nnet.sh data/train data/lang exp/tri2a-${numleaves}_ali exp/tri2a-${numleaves}_nnet || exit 1;
   # build graph
   scripts/mkgraph.sh data/lang_test exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet/graph || exit 1;
@@ -106,11 +106,12 @@ done
 #tune the prior scale for best system
 #THIS DID NOT HELP AT ALL (it worked for Navdeep on TIMIT)
 numleaves=1800
-priorscaleL=(0.5 0.8 1.0 1.2 1.4 2)
-for priorscale in ${priorscaleL[@]} do
-  mkdir exp/tri2a-${numleaves}_nnet_priorscale$priorscale
-  cp -r exp/tri2a-${numleaves}_nnet exp/tri2a-${numleaves}_nnet/* exp/tri2a-${numleaves}_nnet_priorscale$priorscale
-  scripts/tune_scalar.py local/decode.sh "steps/decode_nnet.sh --acoustic-scale %g --prior-scale $priorscale" exp/tri2a-${numleaves}_nnet_priorscale$priorscale 0.0 0.5 || exit 1;
+priorscaleL=(0.5 0.8 1.0 1.2 1.4 1.6 1.8 2.0)
+for priorscale in ${priorscaleL[@]}; do
+  dir=exp/tri2a-${numleaves}_nnet_priorscale$priorscale
+  mkdir $dir
+  cp -r -p exp/tri2a-${numleaves}_nnet/* "$dir"
+  scripts/tune_scalar.py local/decode.sh "steps/decode_nnet.sh --acoustic-scale %g --prior-scale $priorscale" $dir 0.0 0.5 || exit 1;
 done
 
 
@@ -121,7 +122,7 @@ done
 #  the 2000000 did not improve WER, 
 #  711000 is the number of GMM parameters
 numleaves=1800
-modelsizeL=(711000 1000000 2000000)
+modelsizeL=(711000 1000000 1500000 2000000 2500000 3000000)
 for modelsize in ${modelsizeL[@]}; do
   steps/train_nnet.sh --model-size $modelsize data/train data/lang exp/tri2a-${numleaves}_ali exp/tri2a-${numleaves}_nnet_modelsize$modelsize || exit 1;
   # build graph
@@ -156,8 +157,9 @@ done
 
 #decding with no softmax in the MLP
 #=>THIS LEADS TO IDENTICAL RESULTS, AND IS FASTER WITH NON-GPU MACHINES
-mkdir exp/tri2a-${numleaves}_nnet_nosoftmax
-cp -r exp/tri2a-${numleaves}_nnet/* exp/tri2a-${numleaves}_nnet_nosoftmax
-scripts/tune_scalar.py local/decode.sh "steps/decode_nnet_nosoftmax.sh --acoustic-scale %g" exp/tri2a-${numleaves}_nnet_nosoftmax 0.0 0.5 || exit 1;
+dir=exp/tri2a-${numleaves}_nnet_nosoftmax
+mkdir $dir
+cp -r -p exp/tri2a-${numleaves}_nnet/* $dir
+scripts/tune_scalar.py local/decode.sh "steps/decode_nnet_nosoftmax.sh --acoustic-scale %g" "$dir" 0.0 0.5 || exit 1;
 
 

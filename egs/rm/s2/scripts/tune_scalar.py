@@ -21,6 +21,7 @@ max = float(sys.argv[5])
 #debug
 print decode, script, dir, min, max
 log='%s/tune_scalar.log'%dir
+log2='%s/tune_scalar.log.last_decode'%dir
 os.system('echo "-------------tuning-started" >%s'%(log))
 
 # function that we want to maximize
@@ -32,7 +33,7 @@ def tryScalarValue(value):
     #substitute scalar value to <decode_script> argument
     script_value = script % value
     #build the command
-    cmd = '%s "%s" %s >/dev/null' % (decode,script_value,dir)
+    cmd = '%s "%s" %s >%s' % (decode,script_value,dir,log2)
     os.system('echo "%s " >>%s'%(cmd,log))
     #run the script
     os.system(cmd)
