@@ -145,7 +145,7 @@ class TransitionModel {
   /// Note: "Indices" is the plural of "index".   Index is not the same as "id",
   /// here.  A transition-index is a zero-based offset into the transitions
   /// out of a particular transition state.
-  inline int32 NumTransitionIndices(int32 trans_state) const;
+  int32 NumTransitionIndices(int32 trans_state) const;
 
   /// Returns the total number of transition-states (note, these are one-based).
   int32 NumTransitionStates() const { return triples_.size(); }
