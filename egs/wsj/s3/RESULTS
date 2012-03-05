@@ -5,7 +5,7 @@
 # [really, these scales should be tuned on a dev set, but we think it's
 # fine to compare the WERs obtained this way to each other.]
 
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
+  for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
 
 # monophone, deltas, half of SI-84
 exp/mono0a/decode_tgpr_dev93/wer_11:%WER 34.30 [ 2824 / 8234, 243 ins, 511 del, 2070 sub ]

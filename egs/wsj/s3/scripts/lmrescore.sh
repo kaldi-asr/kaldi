@@ -57,7 +57,6 @@ if [ "$mode" == 4 ]; then
     fstdeterminizestar | fstrmsymbols $outdir/disambig.list >$outdir/Ldet.fst || exit 1;
 fi
 
-
 rm $outdir/.error 2>/dev/null
 
 for lat in $indir/lat.*.gz; do

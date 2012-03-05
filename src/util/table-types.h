@@ -64,6 +64,10 @@ typedef TableWriter<BasicPairVectorHolder<int32> >  Int32PairVectorWriter;
 typedef SequentialTableReader<BasicPairVectorHolder<int32> >  SequentialInt32PairVectorReader;
 typedef RandomAccessTableReader<BasicPairVectorHolder<int32> >  RandomAccessInt32PairVectorReader;
 
+typedef TableWriter<BasicPairVectorHolder<BaseFloat> >  BaseFloatPairVectorWriter;
+typedef SequentialTableReader<BasicPairVectorHolder<BaseFloat> >  SequentialBaseFloatPairVectorReader;
+typedef RandomAccessTableReader<BasicPairVectorHolder<BaseFloat> >  RandomAccessBaseFloatPairVectorReader;
+
 typedef TableWriter<BasicHolder<BaseFloat> >  BaseFloatWriter;
 typedef SequentialTableReader<BasicHolder<BaseFloat> >  SequentialBaseFloatReader;
 typedef RandomAccessTableReader<BasicHolder<BaseFloat> >  RandomAccessBaseFloatReader;

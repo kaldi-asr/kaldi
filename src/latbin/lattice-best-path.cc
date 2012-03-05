@@ -41,7 +41,6 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
 
     std::string word_syms_filename;
-    std::string lats_wspecifier;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     

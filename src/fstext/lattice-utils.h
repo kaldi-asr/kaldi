@@ -50,14 +50,14 @@ void ConvertLattice(
     bool invert = true);
 
 /**
-   Convert lattice from a CompactLattice FST to a normal FST.  This is a bit like
-   converting from the Gallic semiring.  "ifst" must be an acceptor (i.e.,
-   ilabels and olabels should be identical).  If invert=false, the labels on
-   "ifst" become the ilabels on "ofst" and the strings in the weights of "ifst"
-   becomes the olabels.  If invert=true [default], this is reversed (useful for speech
-   recognition lattices; our standard non-compact format has the words on the output side to
-   match HCLG).
-*/
+   Convert lattice CompactLattice  format to Lattice.  This is a bit
+   like converting from the Gallic semiring.  As for any CompactLattice, "ifst"
+   must be an acceptor (i.e., ilabels and olabels should be identical).  If
+   invert=false, the labels on "ifst" become the ilabels on "ofst" and the
+   strings in the weights of "ifst" becomes the olabels.  If invert=true
+   [default], this is reversed (useful for speech recognition lattices; our
+   standard non-compact format has the words on the output side to match HCLG).
+   */
 template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
@@ -66,9 +66,10 @@ void ConvertLattice(
 
 
 /**
-  Convert between CompactLattices of different floating point types...
+  Convert between CompactLattices and Lattices of different floating point types...
   this works between any pair of weight types for which ConvertLatticeWeight
-  is defined (c.f. lattice-weight.h)... 
+  is defined (c.f. lattice-weight.h), and also includes conversion from
+  LatticeWeight to TropicalWeight.
  */
 template<class WeightIn, class WeightOut>
 void ConvertLattice(
@@ -78,6 +79,8 @@ void ConvertLattice(
 
 // Now define some ConvertLattice functions that require two phases of conversion (don't
 // bother coding these separately as they will be used rarely.
+
+// Lattice with float to CompactLattice with double.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<float> > > &ifst,
                     MutableFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > *ofst) {
@@ -86,6 +89,7 @@ void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<float> > > &ifst,
   ConvertLattice(fst, ofst);
 }
 
+// Lattice with double to CompactLattice with float.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<double> > > &ifst,
                     MutableFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > *ofst) {
@@ -94,6 +98,7 @@ void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<double> > > &ifst,
   ConvertLattice(fst, ofst);
 }
 
+// CompactLattice with double to Lattice with float.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > &ifst,
                     MutableFst<ArcTpl<LatticeWeightTpl<float> > > *ofst) {
@@ -102,6 +107,7 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(fst, ofst);
 }
 
+// CompactLattice with float to Lattice with double.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > &ifst,
                     MutableFst<ArcTpl<LatticeWeightTpl<double> > > *ofst) {
@@ -110,14 +116,6 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(fst, ofst);
 }
 
-template<class Weight, class Int>
-void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<Weight> > > &ifst,
-                    MutableFst<ArcTpl<Weight> > *ofst,
-                    bool invert = true) {
-  VectorFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<Weight>, Int> > > fst;
-  ConvertLattice(ifst, &fst);
-  ConvertLattice(fst, ofst, invert);
-}
 
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
 inline vector<vector<double> > DefaultLatticeScale() {
@@ -192,8 +190,14 @@ class StdToLatticeMapper {
   typedef ArcTpl<LatticeWeight> LatticeArc;
  public:
   LatticeArc operator()(const StdArc &arc) {
+    // Note: we have to check whether the arc's weight is zero below,
+    // and if so return (infinity, infinity) and not (infinity, zero),
+    // because (infinity, zero) is not a valid LatticeWeight, which should
+    // either be both finite, or both infinite (i.e. Zero()).
     return LatticeArc(arc.ilabel, arc.olabel,
-                      LatticeWeight(arc.weight.Value(), 0.0),
+                      LatticeWeight(arc.weight.Value(),
+                                    arc.weight == StdArc::Weight::Zero() ?
+                                    arc.weight.Value() : 0.0),
                       arc.nextstate);
   }
   MapFinalAction FinalAction() { return MAP_NO_SUPERFINAL; }

@@ -133,7 +133,10 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_biglm.sh exp/tri2b/g
 scripts/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/ \
   data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg || exit 1;
 
-
+# Trying Minimum Bayes Risk decoding (like Confusion Network decoding):
+mkdir exp/tri2b/decode_tgpr_dev93_tg_mbr 
+cp exp/tri2b/decode_tgpr_dev93_tg/lat.*.gz exp/tri2b/decode_tgpr_dev93_tg_mbr 
+scripts/score_mbr.sh exp/tri2b/decode_tgpr_dev93_tg_mbr  data/lang_test_tgpr/words.txt data/test_dev93
 
 # Demonstrate 'cross-tree' lattice rescoring where we create utterance-specific
 # decoding graphs from one system's lattices and rescore with another system.

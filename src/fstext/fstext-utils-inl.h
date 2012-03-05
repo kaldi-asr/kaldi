@@ -1134,10 +1134,11 @@ void PhiCompose(const Fst<Arc> &fst1,
   // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
   // The matcher for fst1 doesn't matter; we'll use fst2's matcher.
   ComposeFstImplOptions<SortedMatcher<F>, PM> impl_opts(base_opts);
-  // false is something called phi_loop which is something I don't
+
+  // the false below is something called phi_loop which is something I don't
   // fully understand, but I don't think we want it.
 
-  // These pointers are taken ownership of by ComposeFst.
+  // These pointers are taken ownership of, by ComposeFst.
   PM *phi_matcher =
       new PM(fst2, MATCH_INPUT, phi_label, false);
   SortedMatcher<F> *sorted_matcher =

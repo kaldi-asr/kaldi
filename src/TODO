@@ -6,6 +6,10 @@
 
 =====
 dan's TODO:
+ 
+ fix SGMM w/ resizing spk vecs.
+ change usage message so standard and program-specific options printed
+  separately.
 major:
  look at Stefan's code for nnet rescoring.  
  finalize biglm stuff.

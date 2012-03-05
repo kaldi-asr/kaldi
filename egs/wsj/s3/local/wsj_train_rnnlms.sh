@@ -109,8 +109,6 @@ mkdir $dir/rnnlm.voc$nwords.hl30
 )
 
 # Now we want to evaluate the likelihood on the validation data.
-# We use the script rnnlm_compute_scores.sh, which has to
-# include the OOV probabilities.
 
 # make it like a Kaldi table format, with fake utterance-ids.
 cat $dir/valid | awk '{ printf("uttid-%d ", NR); print; }' > $dir/valid.with_ids
@@ -119,9 +117,9 @@ scripts/rnnlm_compute_scores.sh $dir/rnnlm.voc$nwords.hl30 $dir/tmp.valid $dir/v
   $dir/valid.scores
 nw=`wc -w < $dir/valid.with_ids` # Note: valid.with_ids includes utterance-ids which
   # is one per word, to account for the </s> at the end of each sentence; this is the
-  # correct number to normalize by.
+  # correct number to normalize buy.
 p=`awk -v nw=$nw '{x=x+$2} END{print exp(x/nw);}' <$dir/valid.scores` 
-echo Perplexity over $nw words is $p | tee $dir/perplexity
+echo Perplexity is $p
 
 
 # This is a better setup, but takes a long time to train:

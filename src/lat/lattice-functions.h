@@ -38,6 +38,13 @@ namespace kaldi {
 /// the maximum time in the lattice.
 int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 
+/// As LatticeStateTimes, but in the CompactLattice format.  Note: must
+/// be topologically sorted.  Returns length of the utterance in frames, which
+/// may not be the same as the maximum time in the lattice, due to frames
+/// in the final-prob.
+int32 CompactLatticeStateTimes(const CompactLattice &lat,
+                               std::vector<int32> *times);
+
 /// This function does the forward-backward over lattices and computes the
 /// posterior probabilities of the arcs. It returns the total log-probability
 /// of the lattice.
@@ -82,7 +89,6 @@ bool LatticeBoost(const TransitionModel &trans,
                   BaseFloat max_silence_error,
                   Lattice *lat);
 
-/// This function takes a reference lattice
 int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
                                const std::vector< std::map<int32, int32> > &ref,
                                std::vector< std::map<int32, char> > *arc_accs,
