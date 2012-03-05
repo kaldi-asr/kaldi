@@ -29,10 +29,12 @@
 /**
   \mainpage Kaldi
 
+   (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
+  <p>
   For the slides for a series of Kaldi lectures currently being delivered, 
   see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>
  
-   (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
+
    <p>
    R.E. the presentation at the ICASSP meeting in Prague: the slides are 
     <a href=Kaldi.pptx> here (intro)</a>, 
