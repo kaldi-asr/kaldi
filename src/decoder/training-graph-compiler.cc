@@ -13,7 +13,6 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
-
 #include "decoder/training-graph-compiler.h"
 #include "hmm/hmm-utils.h" // for GetHTransducer
 
@@ -189,8 +188,9 @@ bool TrainingGraphCompiler::CompileGraphs(
     // TableCompose more efficient than compose.
     TableCompose(*lex_fst_, *(word_fsts[i]), &phone2word_fst, &lex_cache_);
 
-    assert(phone2word_fst.Start() != kNoStateId);
-
+    KALDI_ASSERT(phone2word_fst.Start() != kNoStateId &&
+                 "Perhaps you have words missing in your lexicon?");
+    
     VectorFst<StdArc> ctx2word_fst;
     ComposeContextFst(*cfst, phone2word_fst, &ctx2word_fst);
     // ComposeContextFst is like Compose but faster for this particular Fst type.

@@ -118,6 +118,7 @@ class MinimumBayesRisk {
 
   /// Function used to increment map.
   static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma) {
+    if (d == 0) return;
     std::pair<const int32, double> pr(i, d);
     std::pair<std::map<int32, double>::iterator, bool> ret = gamma->insert(pr);
     if (!ret.second) // not inserted, so add to contents.
