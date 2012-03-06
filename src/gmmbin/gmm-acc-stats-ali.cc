@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Accumulate stats for GMM training.\n"
-        "Usage:  gmm-acc-stats-ali [options] <model-in> <feature-rspecifier> <alignments-rspecifier> <stats-out>\n"
-        "e.g.: \n"
-        " gmm-acc-stats-ali 1.mdl 1.ali scp:train.scp ark:1.ali 1.acc\n";
+        "Usage:  gmm-acc-stats-ali [options] <model-in> <feature-rspecifier> "
+        "<alignments-rspecifier> <stats-out>\n"
+        "e.g.:\n gmm-acc-stats-ali 1.mdl 1.ali scp:train.scp ark:1.ali 1.acc\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -93,7 +93,8 @@ int main(int argc, char *argv[]) {
           int32 tid = alignment[i],  // transition identifier.
               pdf_id = trans_model.TransitionIdToPdf(tid);
           trans_model.Accumulate(1.0, tid, &transition_accs);
-          tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, 1.0);
+          tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i),
+                                                          pdf_id, 1.0);
         }
         tot_like += tot_like_this_file;
         tot_t += alignment.size();
@@ -107,7 +108,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.";
-    
+
     KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
 
@@ -117,8 +118,10 @@ int main(int argc, char *argv[]) {
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";
-    if (num_done != 0) return 0;
-    else return 1;
+    if (num_done != 0)
+      return 0;
+    else
+      return 1;
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

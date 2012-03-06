@@ -29,7 +29,7 @@ namespace kaldi {
 
 class AccumAmDiagGmm {
  public:
-  AccumAmDiagGmm() {}
+  AccumAmDiagGmm() : total_frames_(0.0), total_log_like_(0.0) {}
   ~AccumAmDiagGmm();
 
   void Read(std::istream &in_stream, bool binary, bool add);
@@ -72,7 +72,9 @@ class AccumAmDiagGmm {
 
   int32 NumAccs() const { return gmm_accumulators_.size(); }
 
-  BaseFloat TotCount() const;
+  // Be careful since total_frames_ is not updated in AccumulateForGaussian
+  BaseFloat TotCount() const { return total_frames_; }
+  BaseFloat TotLogLike() const { return total_log_like_; }
 
   const AccumDiagGmm& GetAcc(int32 index) const;
 
@@ -86,6 +88,9 @@ class AccumAmDiagGmm {
  private:
   /// MLE accumulators and update methods for the GMMs
   std::vector<AccumDiagGmm*> gmm_accumulators_;
+
+  /// Total counts & likelihood (for diagnostics)
+  double total_frames_, total_log_like_;
 
   // Cannot have copy constructor and assigment operator
   KALDI_DISALLOW_COPY_AND_ASSIGN(AccumAmDiagGmm);

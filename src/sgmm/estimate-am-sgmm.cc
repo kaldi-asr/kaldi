@@ -318,7 +318,8 @@ void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
   }
 
   if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
-               kSgmmCovarianceMatrix | kSgmmSubstateWeights | kSgmmPhoneProjections)) {
+               kSgmmCovarianceMatrix | kSgmmSubstateWeights |
+               kSgmmPhoneProjections)) {
     gamma_.resize(num_states_);
     total_frames_ = total_like_ = 0;
     for (int32 j = 0; j < num_states_; j++) {
@@ -362,19 +363,20 @@ void MleAmSgmmAccs::ZeroAccumulators(SgmmUpdateFlagsType flags) {
   }
 
   if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
-               kSgmmCovarianceMatrix | kSgmmSubstateWeights | kSgmmPhoneProjections)) {
+               kSgmmCovarianceMatrix | kSgmmSubstateWeights |
+               kSgmmPhoneProjections)) {
     total_frames_ = total_like_ = 0;
     for (int32 i = 0, end = gamma_.size(); i < end; ++i)
       gamma_[i].SetZero();
   }
 }
 
-BaseFloat
-MleAmSgmmAccs::Accumulate(const AmSgmm &model,
-                          const SgmmPerFrameDerivedVars& frame_vars,
-                          const VectorBase<BaseFloat> &v_s,  // may be empty
-                          int32 j, BaseFloat weight,
-                          SgmmUpdateFlagsType flags) {
+
+BaseFloat MleAmSgmmAccs::Accumulate(const AmSgmm &model,
+                                    const SgmmPerFrameDerivedVars& frame_vars,
+                                    const VectorBase<BaseFloat> &v_s,  // may be empty
+                                    int32 j, BaseFloat weight,
+                                    SgmmUpdateFlagsType flags) {
   // Calculate Gaussian posteriors and collect statistics
   Matrix<BaseFloat> posteriors;
   BaseFloat log_like = model.ComponentPosteriors(frame_vars, j, &posteriors);
@@ -387,13 +389,13 @@ MleAmSgmmAccs::Accumulate(const AmSgmm &model,
 }
 
 
-BaseFloat
-MleAmSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
-                                        const SgmmPerFrameDerivedVars& frame_vars,
-                                        const Matrix<BaseFloat> &posteriors,
-                                        const VectorBase<BaseFloat> &v_s,  // may be empty
-                                        int32 j,
-                                        SgmmUpdateFlagsType flags) {
+BaseFloat MleAmSgmmAccs::AccumulateFromPosteriors(
+    const AmSgmm &model,
+    const SgmmPerFrameDerivedVars& frame_vars,
+    const Matrix<BaseFloat> &posteriors,
+    const VectorBase<BaseFloat> &v_s,  // may be empty
+    int32 j,
+    SgmmUpdateFlagsType flags) {
   double tot_count = 0.0;
   const vector<int32>& gselect = frame_vars.gselect;
   // Intermediate variables
@@ -408,11 +410,10 @@ MleAmSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
     for (int32 m = 0; m < num_substates; ++m) {
       // Eq. (39): gamma_{jmi}(t) = p (j, m, i|t)
       BaseFloat gammat_jmi = RandPrune(posteriors(ki, m), rand_prune_);
-      
+
       // Accumulate statistics for non-zero gaussian posterior
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
-
         if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
                      kSgmmCovarianceMatrix | kSgmmSubstateWeights |
                      kSgmmPhoneProjections)) {
@@ -443,7 +444,7 @@ MleAmSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
           xt_jmi.CopyFromVec(frame_vars.xt);
           xt_jmi.AddVec(-1.0, mu_jmi);
           // Eq. (44): Z_{i} = \sum_{t, j, m} \gamma_{jmi}(t) x_{jmi}(t) v^{s}'
-          if (v_s.Dim() != 0) // interpret empty v_s as zero.
+          if (v_s.Dim() != 0)  // interpret empty v_s as zero.
             Z_[i].AddVecVec(gammat_jmi, xt_jmi, v_s);
           // Eq. (49): \gamma_{i}^{(s)} = \sum_{t\in\Tau(s), j, m} gamma_{jmi}
           // Will be used when you call CommitStatsForSpk(), to update R_.
@@ -488,9 +489,8 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
                               AmSgmm *model,
                               SgmmUpdateFlagsType flags) {
   KALDI_ASSERT((flags & (kSgmmPhoneVectors | kSgmmPhoneProjections |
-                         kSgmmWeightProjections | kSgmmCovarianceMatrix | kSgmmSubstateWeights |
-                         kSgmmSpeakerProjections)) != 0);
-
+                         kSgmmWeightProjections | kSgmmCovarianceMatrix |
+                         kSgmmSubstateWeights | kSgmmSpeakerProjections)) != 0);
 
   if (flags & kSgmmPhoneProjections)
     ComputeQ(accs, *model);
@@ -502,7 +502,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   // "smoothing" matrices, weighted sums of above.
   SpMatrix<double> H_sm;
   Vector<double> y_sm;  // "smoothing" vectors
-  if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections)
+  if ((flags & (kSgmmPhoneVectors | kSgmmWeightProjections))
       || update_options_.renormalize_V) {
     model->ComputeH(&H);
     ComputeSmoothingTerms(accs, *model, H, &H_sm,
@@ -512,7 +512,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   BaseFloat tot_impr = 0.0;
 
   if (flags & kSgmmPhoneVectors) {
-    if(update_options_.check_v) {
+    if (update_options_.check_v) {
       KALDI_ASSERT(update_options_.tau_vec == 0 &&
                    "You cannot combine the check-v and tau-vec options.");
       tot_impr += UpdatePhoneVectorsChecked(accs, model, H);
@@ -534,7 +534,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
     }
   }
   if (flags & kSgmmCovarianceMatrix) {
-    if (update_options_.compress_vars_dim == 0)    
+    if (update_options_.compress_vars_dim == 0)
       tot_impr += UpdateVars(accs, model);
     else
       tot_impr += UpdateVarsCompress(accs, model);
@@ -755,29 +755,27 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
     }
   }
 
-  KALDI_LOG << "**Overall objf impr for v is " << (totimpr / (count + 1.0e-20))
-            << "(with ad-hoc prior) " << (likeimpr / (count + 1.0e-20))
-            << " (no prior) over " << (count) << " frames";
+  totimpr /= (count + 1.0e-20);
+  likeimpr /= (count + 1.0e-20);
+  KALDI_LOG << "**Overall objf impr for v is " << totimpr
+            << "(with ad-hoc prior) " << likeimpr << " (no prior) over "
+            << (count) << " frames";
   // Choosing to return actual likelihood impr here.
-  return likeimpr / (count + 1.0e-20);
+  return likeimpr;
 }
 
 
-/*
-  Math for UpdatePhoneVectorsChecked:
-   
+/** Math for UpdatePhoneVectorsChecked:
+
   Auxf is:
       v_{jm}^T y_jm -0.5 v_{jm}^T X_{jm} v_{jm}
      + sum_i gamma_{jmi} \log w_{jmi} ,
   where X_{jm} = \sum_i \gamma_{jmi} \H_i  [this is one term in H_{jm} in the
      CSL paper].
-  
+
   A local quadratic approximation to this is computable with the formulas in the
-  CSL paper.  
-  
-
+  CSL paper.
 */
-
 double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
                                                    AmSgmm *model,
                                                    const vector< SpMatrix<double> > &H) {
@@ -786,16 +784,14 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
   double tot_count = 0.0, tot_objf_impr = 0.0, tot_auxf_impr = 0.0;  // sum over all states
 
   for (int32 j = 0; j < accs.num_states_; ++j) {
-
     for (int32 m = 0; m < model->NumSubstates(j); ++m) {
       double gamma_jm = accs.gamma_[j].Row(m).Sum();
-
       SpMatrix<double> X_jm(accs.phn_space_dim_);  // = \sum_i \gamma_{jmi} H_i
 
       for (int32 i = 0; i < accs.num_gaussians_; ++i) {
         double gamma_jmi = accs.gamma_[j](m, i);
         if (gamma_jmi != 0.0)
-          X_jm.AddSp(gamma_jmi, H[i]); 
+          X_jm.AddSp(gamma_jmi, H[i]);
       }
 
       Vector<double> v_jm_orig(model->v_[j].Row(m)),
@@ -803,22 +799,22 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
 
       double exact_objf_start = 0.0, exact_objf = 0.0, auxf_impr = 0.0;
       int32 backtrack_iter, max_backtrack = 10;
-      for(backtrack_iter = 0; backtrack_iter < max_backtrack; backtrack_iter++) {
+      for (backtrack_iter = 0; backtrack_iter < max_backtrack; backtrack_iter++) {
         // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
         Vector<double> w_jm(accs.num_gaussians_);
         w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
                        v_jm, 0.0);
-        w_jm.Add(-w_jm.LogSumExp()); // it is now log w_jm
+        w_jm.Add(-w_jm.LogSumExp());  // it is now log w_jm
 
         exact_objf = VecVec(w_jm, accs.gamma_[j].Row(m))
             + VecVec(v_jm, accs.y_[j].Row(m))
             -0.5 * VecSpVec(v_jm, X_jm, v_jm);
 
-        if(backtrack_iter == 0.0)
+        if (backtrack_iter == 0.0) {
           exact_objf_start = exact_objf;
-        else {
-          if(exact_objf >= exact_objf_start) { 
-            break; // terminate backtracking.
+        } else {
+          if (exact_objf >= exact_objf_start) {
+            break;  // terminate backtracking.
           } else {
             KALDI_LOG << "Backtracking computation of v_jm for j = " << j
                       << " and m = " << m << " because objf changed by "
@@ -829,8 +825,8 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
           }
         }
 
-        if(backtrack_iter == 0) { // computing updated value.
-          w_jm.ApplyExp(); // it is now w_jm
+        if (backtrack_iter == 0) {  // computing updated value.
+          w_jm.ApplyExp();  // it is now w_jm
           SpMatrix<double> H_jm(X_jm);
           Vector<double> g_jm(accs.y_[j].Row(m));
           for (int32 i = 0; i < accs.num_gaussians_; ++i) {
@@ -856,9 +852,9 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
       tot_count += gamma_jm;
       tot_objf_impr += objf_impr;
       tot_auxf_impr += auxf_impr;
-      if(backtrack_iter == max_backtrack)
+      if (backtrack_iter == max_backtrack) {
         KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]\n";
-      else {
+      } else {
         model->v_[j].Row(m).CopyFromVec(v_jm);
       }
 
@@ -870,13 +866,13 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
     }
   }
 
-  KALDI_LOG << "**Overall objf impr for v is "
-            << (tot_objf_impr / (tot_count + 1.0e-20))
-            << " (auxf impr before backtracking:) "
-            << (tot_auxf_impr / (tot_count + 1.0e-20))
+  tot_objf_impr /= (tot_count + 1.0e-20);
+  tot_auxf_impr /= (tot_count + 1.0e-20);
+  KALDI_LOG << "**Overall objf impr for v is " << tot_objf_impr
+            << " (auxf impr before backtracking:) " << tot_auxf_impr
             << " over " << tot_count << " frames";
   // Choosing to return actual likelihood impr here.
-  return tot_objf_impr / (tot_count + 1.0e-20);
+  return tot_objf_impr;
 }
 
 void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
@@ -918,8 +914,8 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
   Matrix<double> U(accs.phn_space_dim_, accs.phn_space_dim_);
   Vector<double> eigs(accs.phn_space_dim_);
   H_sm_proj.SymPosSemiDefEig(&eigs, &U, 1.0);  // 1.0 means no checking +ve def -> faster
-  KALDI_LOG << "Note on the next diagnostic: the first number is generally not that meaningful "
-            << "as it relates to the static offset";
+  KALDI_LOG << "Note on the next diagnostic: the first number is generally not "
+            << "that meaningful as it relates to the static offset";
   H_sm_proj.PrintEigs("H_sm_proj (Significance of dims in vector space.. note)");
 
   // Transform on vectors is U^T L^{-1}.
@@ -934,7 +930,7 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
   TransInv.Invert();  // T in above...
 
 #ifdef KALDI_PARANOID
-  {  
+  {
     SpMatrix<double> H_sm_tmp(accs.phn_space_dim_);
     H_sm_tmp.AddMat2Sp(1.0, TransInv, kTrans, H_sm, 0.0);
     KALDI_ASSERT(H_sm_tmp.IsDiagonal(0.1));
@@ -960,7 +956,8 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
 
     Matrix<double> tmpM(accs.feature_dim_, accs.phn_space_dim_);
     // Multiplying on right not left so must not transpose TransInv.
-    tmpM.AddMatMat(1.0, Matrix<double>(model->M_[i]), kNoTrans, TransInv, kNoTrans, 0.0);
+    tmpM.AddMatMat(1.0, Matrix<double>(model->M_[i]), kNoTrans,
+                   TransInv, kNoTrans, 0.0);
     model->M_[i].CopyFromMat(tmpM);
   }
   KALDI_LOG << "Renormalized subspace.";
@@ -993,7 +990,8 @@ double MleAmSgmmUpdater::UpdateM(const MleAmSgmmAccs &accs,
 
     if (i < 10) {
       KALDI_VLOG(2) << "Objf impr for projection M for i = " << i << ", is "
-                    << (impr/(gamma_i + 1.0e-20)) << " over " << gamma_i << " frames";
+                    << (impr/(gamma_i + 1.0e-20)) << " over " << gamma_i
+                    << " frames";
     }
     totcount += gamma_i;
     tot_like_impr += impr;
@@ -1039,7 +1037,6 @@ double MleAmSgmmUpdater::UpdateNCompress(const MleAmSgmmAccs &accs,
 
 double MleAmSgmmUpdater::UpdateVarsCompress(const MleAmSgmmAccs &accs,
                                             AmSgmm *model) {
-
   KALDI_ASSERT(S_means_.size() == static_cast<size_t>(accs.num_gaussians_) &&
                "Must call PreComputeStats before updating the covariances.");
   SpMatrix<double> Sigma_i(accs.feature_dim_), Sigma_i_ml(accs.feature_dim_);
@@ -1048,7 +1045,7 @@ double MleAmSgmmUpdater::UpdateVarsCompress(const MleAmSgmmAccs &accs,
   Vector<double> objf_improv(accs.num_gaussians_);
 
   std::vector<SpMatrix<double> > T(accs.num_gaussians_);
-  
+
   // Compute the stats gamma_vec and T.
   // (the ML solution would be Sigma_i = (1/gamma_vec(i)) T[i]
   for (int32 i = 0; i < accs.num_gaussians_; ++i) {
@@ -1071,7 +1068,7 @@ double MleAmSgmmUpdater::UpdateVarsCompress(const MleAmSgmmAccs &accs,
   CompressVars compress(gamma_vec, T, update_options_.compress_vars_dim);
 
   compress.ComputeInv(&(model->SigmaInv_), &tot_objf_impr, &tot_t);
-  
+
   KALDI_LOG << "UpdateVarsCompress: objf impr for Sigma is "
             << (tot_objf_impr/tot_t) << " over " << tot_t << " frames.";
   return tot_objf_impr / tot_t;
@@ -1120,14 +1117,16 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
         k_like_before += VecVec(w_jm, accs.gamma_[j].Row(m));
         w_jm.ApplyExp();
         v_vT.SetZero();
-        v_vT.AddVec2(static_cast<BaseFloat>(1.0), model->v_[j].Row(m));  // v_vT := v_{jkm} v_{jkm}^T
+        // v_vT := v_{jkm} v_{jkm}^T
+        v_vT.AddVec2(static_cast<BaseFloat>(1.0), model->v_[j].Row(m));
 
         for (int32 i = 0; i < accs.num_gaussians_; i++) {
           // Suggestion: g_jkm can be computed more efficiently
           // using the Vector/Matrix routines for all i at once
           // linear term around cur value.
           double linear_term = accs.gamma_[j](m, i) - gamma_jm * w_jm(i);
-          double quadratic_term = std::max(accs.gamma_[j](m, i), gamma_jm * w_jm(i));
+          double quadratic_term = std::max(accs.gamma_[j](m, i),
+                                           gamma_jm * w_jm(i));
           g_i.Row(i).AddVec(linear_term, model->v_[j].Row(m));
           // Now I am calling this F_i in the document. [dan]
           F_i[i].AddSp(quadratic_term, v_vT);
@@ -1177,9 +1176,10 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
         }
       }
       KALDI_VLOG(2) << "For iteration " << (iter) << ", updating w gives "
-                    << "predicted per-frame like impr " << (k_predicted_like_impr /
-                                                            k_count) << ", actual " << ((k_like_after - k_like_before) /
-                                                                                        k_count) << ", over "   << (k_count) << " frames";
+                    << "predicted per-frame like impr "
+                    << (k_predicted_like_impr / k_count) << ", actual "
+                    << ((k_like_after - k_like_before) / k_count) << ", over "
+                    << (k_count) << " frames";
       if (k_like_after < k_like_before) {
         w.CopyFromMat(w_orig);  // Undo what we computed.
         if (fabs(k_like_after - k_like_before) / k_count < 1.0e-05) {
@@ -1210,12 +1210,12 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
 
   model->w_.CopyFromMat(w);
 
-  KALDI_LOG << "**Overall objf impr for w is " <<
-      (tot_predicted_like_impr / tot_count) << ", actual " <<
-      ((tot_like_after - tot_like_before) / tot_count) <<
-      ", over " << (tot_count) << " frames";
-
-  return (tot_like_after - tot_like_before) / tot_count;
+  tot_predicted_like_impr /= tot_count;
+  tot_like_after = (tot_like_after - tot_like_before) / tot_count;
+  KALDI_LOG << "**Overall objf impr for w is " << tot_predicted_like_impr
+            << ", actual " << tot_like_after << ", over "
+            << tot_count << " frames";
+  return tot_like_after;
 }
 
 double MleAmSgmmUpdater::UpdateWSequential(
@@ -1283,7 +1283,7 @@ double MleAmSgmmUpdater::UpdateWSequential(
               this_count = accs.gamma_[j](m, i);
 
           double linear_term = this_count - substate_count * this_w;
-          double quadratic_term = std::max(this_count, substate_count * this_w) ;
+          double quadratic_term = std::max(this_count, substate_count * this_w);
 
           g_i.AddVec(linear_term, model->v_[j].Row(m));
           // should not ever be zero, but check anyway.
@@ -1389,11 +1389,12 @@ double MleAmSgmmUpdater::UpdateWSequential(
 
   model->w_.CopyFromMat(w);
 
-  KALDI_LOG << "**Overall objf impr for w is " << (tot_delta_predicted /
-                                                   tot_count) << ", observed " << (tot_delta_observed / tot_count)
-            << ", over " << (tot_count) << " frames";
-
-  return tot_delta_observed / tot_count;
+  tot_delta_observed /= tot_count;
+  tot_delta_predicted /= tot_count;
+  KALDI_LOG << "**Overall objf impr for w is " << tot_delta_predicted
+            << ", observed " << tot_delta_observed << ", over "
+            << tot_count << " frames";
+  return tot_delta_observed;
 }
 
 double MleAmSgmmUpdater::UpdateN(const MleAmSgmmAccs &accs,
@@ -1434,9 +1435,10 @@ double MleAmSgmmUpdater::UpdateN(const MleAmSgmmAccs &accs,
     tot_like_impr += impr;
   }
 
-  KALDI_LOG << "**Overall objf impr for N is " << (tot_like_impr / (totcount
-                                                                    + 1.0e-20)) << " over " << (totcount) << " frames";
-  return tot_like_impr / (totcount + 1.0e-20);
+  tot_like_impr /= (totcount+1.0e-20);
+  KALDI_LOG << "**Overall objf impr for N is " << tot_like_impr << " over "
+            << totcount << " frames";
+  return tot_like_impr;
 }
 
 void MleAmSgmmUpdater::RenormalizeN(
@@ -1599,8 +1601,9 @@ double MleAmSgmmUpdater::UpdateVars(const MleAmSgmmAccs &accs,
       }
     }
   }
-  KALDI_LOG << "**Overall objf impr for variance update = " << (tot_objf_impr
-                                                                / (tot_t+ 1.0e-20)) << " over " << (tot_t) << " frames";
+  KALDI_LOG << "**Overall objf impr for variance update = "
+            << (tot_objf_impr / (tot_t+ 1.0e-20))
+            << " over " << (tot_t) << " frames";
   return tot_objf_impr / (tot_t + 1.0e-20);
 }
 

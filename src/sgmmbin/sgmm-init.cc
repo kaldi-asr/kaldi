@@ -1,7 +1,7 @@
 // sgmmbin/sgmm-init.cc
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011   Saarland University
-// Author:  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,17 +31,21 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Initialize an SGMM from a trained full-covariance UBM and a specified"
         " model topology.\n"
-        "Usage: sgmm-init [options] <topology-in> <tree-in> <ubm-in> <sgmm-out>\n";
-    
-    bool binary = true;
-    int32 phn_space_dim = 0, spk_space_dim = 0;
+        "Usage: sgmm-init [options] <topology> <tree> <init-model> <sgmm-out>\n"
+        "The <init-model> argument can be a UBM (the default case) or another\n"
+        "SGMM (if the --init-from-sgmm flag is used).\n";
+
+    bool binary = true, init_from_sgmm = false;
+    int32 phn_space_dim = 1, spk_space_dim = 0;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("phn-space-dim", &phn_space_dim, "Phonetic space dimension.");
     po.Register("spk-space-dim", &spk_space_dim, "Speaker space dimension.");
-
+    po.Register("init-from-sgmm", &init_from_sgmm,
+        "Initialize from another SGMM (instead of a UBM).");
 
     po.Read(argc, argv);
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
@@ -49,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     std::string topo_in_filename = po.GetArg(1),
         tree_in_filename = po.GetArg(2),
-        ubm_in_filename = po.GetArg(3),
+        init_model_filename = po.GetArg(3),
         sgmm_out_filename = po.GetArg(4);
 
     ContextDependency ctx_dep;
@@ -66,19 +70,28 @@ int main(int argc, char *argv[]) {
       Input ki(topo_in_filename, &binary_in);
       topo.Read(ki.Stream(), binary_in);
     }
-    
-    TransitionModel trans_model(ctx_dep, topo);    
 
-    kaldi::FullGmm ubm;
-    {
-      bool binary_read;
-      kaldi::Input ki(ubm_in_filename, &binary_read);
-      ubm.Read(ki.Stream(), binary_read);
-    }
+    TransitionModel trans_model(ctx_dep, topo);
 
     kaldi::AmSgmm sgmm;
-    sgmm.InitializeFromFullGmm(ubm, trans_model.NumPdfs(), phn_space_dim,
-                               spk_space_dim);
+    if (init_from_sgmm) {
+      kaldi::AmSgmm init_sgmm;
+      {
+        bool binary_read;
+        kaldi::Input ki(init_model_filename, &binary_read);
+        init_sgmm.Read(ki.Stream(), binary_read);
+      }
+      sgmm.CopyGlobalsInitVecs(init_sgmm, phn_space_dim, spk_space_dim);
+    } else {
+      kaldi::FullGmm ubm;
+      {
+        bool binary_read;
+        kaldi::Input ki(init_model_filename, &binary_read);
+        ubm.Read(ki.Stream(), binary_read);
+      }
+      sgmm.InitializeFromFullGmm(ubm, trans_model.NumPdfs(), phn_space_dim,
+                                 spk_space_dim);
+    }
     sgmm.ComputeNormalizers();
 
     {

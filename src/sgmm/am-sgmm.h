@@ -83,7 +83,7 @@ class GaussSelectionRecord {
  */
 struct SgmmPerFrameDerivedVars {
   std::vector<int32> gselect;
-  Vector<BaseFloat> xt;   ///< x'(t), FMLLR-adapted (if applicable), dim = [D], eq.(33)
+  Vector<BaseFloat> xt;   ///< x'(t), FMLLR-adapted, dim = [D], eq.(33)
   Matrix<BaseFloat> xti;  ///< x_{i}(t) = x'(t) - o_i(s): dim = [I][D], eq.(34)
   Matrix<BaseFloat> zti;  ///< z_{i}(t), dim = [I][S], eq.(35)
   Vector<BaseFloat> nti;  ///< n_{i}(t), dim = [I], eq.(36)
@@ -150,6 +150,11 @@ class AmSgmm {
 
   /// Used to copy models (useful in update)
   void CopyFromSgmm(const AmSgmm &other, bool copy_normalizers);
+
+  /// Copies a subset of global parameters from the supplied model and
+  /// initializes the rest of the parameters from the UBM.
+  void CopyGlobalsInitVecs(const AmSgmm &other, int32 phn_subspace_dim,
+                           int32 spk_subspace_dim);
 
   /// Computes the top-scoring Gaussian indices (used for pruning of later
   /// stages of computation). Returns frame log-likelihood given selected
@@ -218,8 +223,9 @@ class AmSgmm {
   /// Computes the normalizers, while normalizing the weights to one
   /// among each of the sets in "normalize_sets": these sets should
   /// be disjoint and their union should be all the indices 0 ... I-1.
-  void ComputeNormalizersNormalized(const std::vector<std::vector<int32> > &normalize_sets);
-  
+  void ComputeNormalizersNormalized(
+      const std::vector< std::vector<int32> > &normalize_sets);
+
   /// Computes the LDA-like pre-transform and its inverse as well as the
   /// eigenvalues of the scatter of the means used in FMLLR estimation.
   void ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,

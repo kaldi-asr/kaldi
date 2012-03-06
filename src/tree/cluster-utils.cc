@@ -1,5 +1,6 @@
 // tree/cluster-utils.cc
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -635,6 +636,7 @@ BaseFloat ClusterBottomUpCompartmentalized(
     int32 min_clust, std::vector< std::vector<Clusterable*> > *clusters_out,
     std::vector< std::vector<int32> > *assignments_out) {
   KALDI_ASSERT(thresh >= 0.0 && min_clust >= 0);
+  KALDI_ASSERT(min_clust >= points.size());  // Code does not merge compartments.
   int32 npoints = 0;
   for (vector< vector<Clusterable*> >::const_iterator itr = points.begin(),
            end = points.end(); itr != end; ++itr) {

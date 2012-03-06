@@ -54,8 +54,8 @@ struct MleAmSgmmOptions {
   /// backtracks if necessary;
   bool check_v;
 
-  bool renormalize_V;
-  bool renormalize_N;
+  bool renormalize_V;  // Renormalize the phonetic space.
+  bool renormalize_N;  // Renormalize the speaker space.
 
   /// Number of iters when re-estimating weight projections "w".
   int weight_projections_iters;
@@ -78,9 +78,9 @@ struct MleAmSgmmOptions {
     cov_diag_ratio = 2.0;  // set to very large to get diagonal-cov models.
     max_cond = 1.0e+05;
     epsilon = 1.0e-40;
-    max_cond_H_sm = 1.0e+05; // only real significance in normal situation is for diagnostics.
+    max_cond_H_sm = 1.0e+05;  // only for diagnostics in normal situations.
     fixup_H_sm = true;
-    check_v = false; // for back-compat.
+    check_v = false;  // for back-compat.
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors
     // on disk.
@@ -155,6 +155,9 @@ class MleAmSgmmAccs {
 
   /// Set the accumulators specified by the flags argument to zero.
   void ZeroAccumulators(SgmmUpdateFlagsType flags);
+
+  /// Add another accumulator object
+  void AddAccumulators(const MleAmSgmmAccs &other, SgmmUpdateFlags flags);
 
   /// Returns likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
@@ -249,7 +252,7 @@ class MleAmSgmmUpdater {
   /// Compute the S_i^{(means)} quantities (Eq. 74).
   void ComputeSMeans(const MleAmSgmmAccs &accs,
                      const AmSgmm &model);
-  
+
   void ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
                              const AmSgmm &model,
                              const std::vector< SpMatrix<double> > &H,
@@ -263,8 +266,6 @@ class MleAmSgmmUpdater {
                             const std::vector<SpMatrix<double> > &H,
                             const SpMatrix<double> &H_sm,
                             const Vector<double> &y_sm);
-
-  
 
   // UpdatePhoneVectors function that does not support smoothing
   // terms, but allows checking of objective-function improvement,

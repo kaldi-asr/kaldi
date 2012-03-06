@@ -17,6 +17,8 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <functional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -247,7 +249,7 @@ void AmSgmm::InitializeFromFullGmm(const FullGmm &full_gmm,
   if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
     KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
                << full_gmm.Dim() << "]. Changing from " << spk_subspace_dim
-               << " to " << full_gmm.Dim() + 1;
+               << " to " << full_gmm.Dim();
     spk_subspace_dim = full_gmm.Dim();
   }
   w_.Resize(0, 0);
@@ -286,6 +288,55 @@ void AmSgmm::CopyFromSgmm(const AmSgmm &other,
   if (copy_normalizers) n_ = other.n_;
 
   KALDI_LOG << "Done.";
+}
+
+void AmSgmm::CopyGlobalsInitVecs(const AmSgmm &other,
+                                 int32 phn_subspace_dim,
+                                 int32 spk_subspace_dim) {
+  if (phn_subspace_dim < 1 || phn_subspace_dim > other.PhoneSpaceDim()) {
+    KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
+        << other.PhoneSpaceDim() << "]. Changing from " << phn_subspace_dim
+        << " to " << other.PhoneSpaceDim();
+    phn_subspace_dim = other.PhoneSpaceDim();
+  }
+  if (spk_subspace_dim < 0 || spk_subspace_dim > other.SpkSpaceDim()) {
+    KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
+               << other.SpkSpaceDim() << "]. Changing from " << spk_subspace_dim
+               << " to " << other.SpkSpaceDim();
+    spk_subspace_dim = other.SpkSpaceDim();
+  }
+
+  KALDI_LOG << "Initializing model";
+
+  // Copy background GMMs
+  diag_ubm_.CopyFromDiagGmm(other.diag_ubm_);
+  full_ubm_.CopyFromFullGmm(other.full_ubm_);
+
+  // Copy global params
+  SigmaInv_ = other.SigmaInv_;
+  int32 num_gauss = diag_ubm_.NumGauss(),
+      data_dim = other.FeatureDim();
+  M_.resize(num_gauss);
+  w_.Resize(num_gauss, phn_subspace_dim);
+  for (int32 i = 0; i < num_gauss; ++i) {
+    M_[i].Resize(data_dim, phn_subspace_dim);
+    M_[i].CopyFromMat(other.M_[i].Range(0, data_dim, 0, phn_subspace_dim),
+                      kNoTrans);
+  }
+  w_.CopyFromMat(other.w_.Range(0, num_gauss, 0, phn_subspace_dim), kNoTrans);
+
+  if (spk_subspace_dim > 0) {
+    N_.resize(num_gauss);
+    for (int32 i = 0; i < num_gauss; ++i) {
+      N_[i].Resize(data_dim, spk_subspace_dim);
+      N_[i].CopyFromMat(other.N_[i].Range(0, data_dim, 0, spk_subspace_dim),
+                        kNoTrans);
+    }
+  } else {
+    N_.clear();
+  }
+
+  InitializeVecs(other.NumPdfs());
 }
 
 
@@ -637,19 +688,19 @@ void AmSgmm::ComputeNormalizers() {
 }
 
 
-void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> > &normalize_sets) {
+void AmSgmm::ComputeNormalizersNormalized(
+    const std::vector< std::vector<int32> > &normalize_sets) {
   { // Check sets in normalize_sets are disjoint and cover all Gaussians.
     std::set<int32> all;
-    for(int32 i = 0; i < normalize_sets.size(); i++)
-      for(int32 j = 0; static_cast<size_t>(j) < normalize_sets[i].size(); j++) {
+    for (int32 i = 0; i < normalize_sets.size(); i++)
+      for (int32 j = 0; static_cast<size_t>(j) < normalize_sets[i].size(); j++) {
         int32 n = normalize_sets[i][j];
         KALDI_ASSERT(all.count(n) == 0 && n >= 0 && n < NumGauss());
         all.insert(n);
       }
     KALDI_ASSERT(all.size() == NumGauss());
   }
-  
-  
+
   KALDI_LOG << "Computing normalizers [normalized]";
   BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
   Vector<BaseFloat> mu_jmi(FeatureDim());
@@ -680,13 +731,13 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
       log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
       log_w_jm.Add((-1.0) * log_w_jm.LogSumExp());
 
-      for(int32 n = 0; n < normalize_sets.size(); n++) {
+      for (int32 n = 0; n < normalize_sets.size(); n++) {
         const std::vector<int32> &this_set(normalize_sets[n]);
         double sum = 0.0;
-        for(int32 p = 0; p < this_set.size(); p++)
+        for (int32 p = 0; p < this_set.size(); p++)
           sum += exp(log_w_jm(this_set[p]));
-        double offset = -log(sum); // add "offset", to normalize weights.
-        for(int32 p = 0; p < this_set.size(); p++)
+        double offset = -log(sum);  // add "offset", to normalize weights.
+        for (int32 p = 0; p < this_set.size(); p++)
           log_w_jm(this_set[p]) += offset;
       }
 
@@ -856,7 +907,7 @@ void AmSgmm::ComputeH(std::vector< SpMatrix<Real> > *H_i) const {
   KALDI_ASSERT(NumGauss() != 0);
   (*H_i).resize(NumGauss());
   SpMatrix<BaseFloat> H_i_tmp(PhoneSpaceDim());
-  for (int32 i = 0; i < NumGauss(); i++) {
+  for (int32 i = 0; i < NumGauss(); ++i) {
     (*H_i)[i].Resize(PhoneSpaceDim());
     H_i_tmp.AddMat2Sp(1.0, M_[i], kTrans, SigmaInv_[i], 0.0);
     (*H_i)[i].CopyFromSp(H_i_tmp);
@@ -872,7 +923,7 @@ void AmSgmm::ComputeH(std::vector< SpMatrix<double> > *H_i) const;
 
 // Initializes the matrices M_{i} and w_i
 void AmSgmm::InitializeMw(int32 phn_subspace_dim,
-                                 const Matrix<BaseFloat> &norm_xform) {
+                          const Matrix<BaseFloat> &norm_xform) {
   int32 ddim = full_ubm_.Dim();
   KALDI_ASSERT(phn_subspace_dim <= ddim + 1);
   KALDI_ASSERT(phn_subspace_dim <= norm_xform.NumCols() + 1);
@@ -918,7 +969,7 @@ void AmSgmm::InitializeVecs(int32 num_states) {
 
   v_.resize(num_states);
   c_.resize(num_states);
-  for (int32 j = 0; j < num_states; j++) {
+  for (int32 j = 0; j < num_states; ++j) {
     v_[j].Resize(1, phn_subspace_dim);
     c_[j].Resize(1);
     v_[j](0, 0) = 1.0;  // Eq. (26): v_{j1} = [1 0 0 ... 0]
@@ -1111,7 +1162,7 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
   gselect->resize(pruned_pairs.size());
   // Make sure pruned Gaussians appear from best to worst.
   std::sort(pruned_pairs.begin(), pruned_pairs.end(),
-            std::greater<std::pair<BaseFloat,int32> >());
+            std::greater< std::pair<BaseFloat, int32> >());
   for (size_t i = 0; i < pruned_pairs.size(); i++) {
     loglikes_tmp(i) = pruned_pairs[i].first;
     (*gselect)[i] = pruned_pairs[i].second;
@@ -1123,16 +1174,15 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
                                              const VectorBase<BaseFloat> &data,
                                              const std::vector<int32> &preselect,
                                              std::vector<int32> *gselect) const {
-  KALDI_ASSERT(IsSortedAndUniq(preselect) && !preselect.empty()); 
+  KALDI_ASSERT(IsSortedAndUniq(preselect) && !preselect.empty());
   KALDI_ASSERT(diag_ubm_.NumGauss() != 0 &&
                diag_ubm_.NumGauss() == full_ubm_.NumGauss() &&
                diag_ubm_.Dim() == data.Dim());
 
-  int32 num_preselect = preselect.size();  
+  int32 num_preselect = preselect.size();
 
   KALDI_ASSERT(config.diag_gmm_nbest > 0 && config.full_gmm_nbest > 0 &&
                config.full_gmm_nbest < num_preselect);
-
 
   std::vector<std::pair<BaseFloat, int32> > pruned_pairs;
   if (config.diag_gmm_nbest < num_preselect) {
@@ -1144,17 +1194,17 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
                      ptr+num_preselect);
     BaseFloat thresh = ptr[num_preselect-config.diag_gmm_nbest];
     for (int32 p = 0; p < num_preselect; p++) {
-      if (loglikes(p) >= thresh) { // met threshold for diagonal phase.
+      if (loglikes(p) >= thresh) {  // met threshold for diagonal phase.
         int32 g = preselect[p];
-        pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
-                                              g));
+        pruned_pairs.push_back(
+            std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
       }
     }
   } else {
     for (int32 p = 0; p < num_preselect; p++) {
       int32 g = preselect[p];
-      pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
-                                            g));
+      pruned_pairs.push_back(
+          std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
     }
   }
   KALDI_ASSERT(!pruned_pairs.empty());
@@ -1167,7 +1217,7 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
   }
   // Make sure pruned Gaussians appear from best to worst.
   std::sort(pruned_pairs.begin(), pruned_pairs.end(),
-            std::greater<std::pair<BaseFloat,int32> >());
+            std::greater<std::pair<BaseFloat, int32> >());
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());
@@ -1227,20 +1277,21 @@ void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
                && dists->NumCols() == num_states);
   Vector<double> prior(state_occs);
   KALDI_ASSERT(prior.Sum() != 0.0);
-  prior.Scale(1.0 / prior.Sum()); // Normalize.
-  SpMatrix<BaseFloat> H(phn_space_dim); // The same as H_sm in some other code.
-  for(int32 i = 0; i < num_gauss; ++i) {
+  prior.Scale(1.0 / prior.Sum());  // Normalize.
+  SpMatrix<BaseFloat> H(phn_space_dim);  // The same as H_sm in some other code.
+  for (int32 i = 0; i < num_gauss; ++i) {
     SpMatrix<BaseFloat> Hi(phn_space_dim);
     Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
     H.AddSp(prior(i), Hi);
   }
   bool warned = false;
-  for(int32 j1 = 0; j1 < num_states; ++j1) {
-    if(model.NumSubstates(j1) != 1 && !warned) {
-      KALDI_WARN << "ComputeDistances() can only give meaningful output if you have one substate per state.";
+  for (int32 j1 = 0; j1 < num_states; ++j1) {
+    if (model.NumSubstates(j1) != 1 && !warned) {
+      KALDI_WARN << "ComputeDistances() can only give meaningful output if you "
+                 << "have one substate per state.";
       warned = true;
     }
-    for(int32 j2 = 0; j2 <= j1; ++j2) {
+    for (int32 j2 = 0; j2 <= j1; ++j2) {
       Vector<BaseFloat> v_diff(model.v_[j1].Row(0));
       v_diff.AddVec(-1.0, model.v_[j2].Row(0));
       (*dists)(j1, j2) = (*dists)(j2, j1) = VecSpVec(v_diff, H, v_diff);
