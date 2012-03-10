@@ -65,7 +65,9 @@ int main(int argc, char **argv) {
 
     const char *usage =
         "Outputs a decision tree description in GraphViz format\n"
-        "Usage: draw-tree [options] <phone-symbols> <tree>";
+        "Usage: draw-tree [options] <phone-symbols> <tree>\n"
+        "e.g.: draw-tree phones.txt tree | dot -Gsize=8,10.5 -Tps | ps2pdf - tree.pdf\n";
+    
     ParseOptions po(usage);
     po.Register("query", &qry,
                 "a query to trace through the tree"
