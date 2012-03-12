@@ -178,12 +178,10 @@ fi
     exit 1
   else
     tar -xovzf openfst-1.2.10.tar.gz   || exit 1
-    for dir in openfst-1.2.10/{src/,}include/fst; do
-       ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
-    done 
+    ( cd openfst-1.2.10/src/include/fst && patch -p0 -N <../../../../openfst.patch )
     #ignore errors in the following; it's for robustness in case
     # someone follows these instructions after the installation of openfst.
-    cp partition.h minimize.h openfst-1.2.10/include/fst 2>/dev/null
+    ( cd openfst-1.2.10/include/fst && patch -p0 -N < ../../../openfst.patch )
     # Remove any existing link
     rm openfst 2>/dev/null
     ln -s openfst-1.2.10 openfst
