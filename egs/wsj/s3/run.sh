@@ -143,7 +143,7 @@ scripts/score_mbr.sh exp/tri2b/decode_tgpr_dev93_tg_mbr  data/lang_test_tgpr/wor
 # Note: we could easily do this with the trigram LM, unpruned, but for comparability
 # with the experiments above we do it with the pruned one.
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh \
-  data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats 
+  data/lang_test_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93_fromlats \
   exp/tri2a/decode_tgpr_dev93 || exit 1;
 
 # Align tri2b system with si84 data.
