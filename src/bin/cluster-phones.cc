@@ -47,14 +47,14 @@ int main(int argc, char *argv[]) {
 
     // bool binary = true;
     int32 P = 1;
-    std::string hmm_position_list_str = "1";  // 1 is just the central position of 3.
+    std::string pdf_class_list_str = "1";  // 1 is just the central position of 3.
     std::string mode = "questions";
     int32 num_classes = -1;
 
     ParseOptions po(usage);
     // po.Register("binary", &binary, "Write output in binary mode");
     po.Register("central-position", &P, "Central position in context window [must match acc-tree-stats]");
-    po.Register("hmm-position-list", &hmm_position_list_str, "Colon-separated list of HMM positions to consider [Default = 1: just central position for 3-state models].");
+    po.Register("pdf-class-list", &pdf_class_list_str, "Colon-separated list of HMM positions to consider [Default = 1: just central position for 3-state models].");
     po.Register("mode", &mode, "Mode of operation: \"questions\"->sets suitable for decision trees; \"k-means\"->k-means algorithm, output k classes (set num-classes options)\n");
     po.Register("num-classes", &num_classes, "For k-means mode, number of classes.");
 
@@ -80,11 +80,11 @@ int main(int argc, char *argv[]) {
       ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
 
-    std::vector<int32> hmm_position_list;
-    if (!SplitStringToIntegers(hmm_position_list_str, ":", false, &hmm_position_list)
-       || hmm_position_list.empty()) {
-      KALDI_ERR << "Invalid hmm-position-list string [expecting colon-separated list of integers]: " 
-                 << hmm_position_list_str;
+    std::vector<int32> pdf_class_list;
+    if (!SplitStringToIntegers(pdf_class_list_str, ":", false, &pdf_class_list)
+       || pdf_class_list.empty()) {
+      KALDI_ERR << "Invalid pdf-class-list string [expecting colon-separated list of integers]: " 
+                 << pdf_class_list_str;
     }
 
     std::vector<std::vector< int32> > phone_sets;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
             "with \"questions\" mode.";
       AutomaticallyObtainQuestions(stats,
                                    phone_sets,
-                                   hmm_position_list,
+                                   pdf_class_list,
                                    P,
                                    &phone_sets_out);
     } else if (mode == "k-means") {
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
                   << ", number of phone sets is " << phone_sets.size();
       KMeansClusterPhones(stats,
                           phone_sets,
-                          hmm_position_list,
+                          pdf_class_list,
                           P,
                           num_classes,
                           &phone_sets_out);
