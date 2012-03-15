@@ -226,7 +226,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
 
 void KMeansClusterPhones(BuildTreeStatsType &stats,
                          const std::vector<std::vector<int32> > &phone_sets_in,
-                         const std::vector<int32> &all_hmm_positions_in,
+                         const std::vector<int32> &all_pdf_classes_in,
                          int32 P,
                          int32 num_classes,
                          std::vector<std::vector<int32> > *sets_out);
