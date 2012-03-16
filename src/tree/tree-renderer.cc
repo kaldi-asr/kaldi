@@ -29,7 +29,7 @@ TreeRenderer::RenderNonLeaf(int32 id, const EventKeyType &key, bool in_query) {
   int32 width = in_query? kEdgeWidthQuery: kEdgeWidth;
   std::string label;
   if (key == kPdfClass) {
-    label = "\"HMM state = ?\"";
+    label = "\"PdfClass = ?\"";
   } else if (key == 0) {
     if (N_ == 1 && P_ == 0) // monophone tree?
       label = "\"Phone = ?\"";

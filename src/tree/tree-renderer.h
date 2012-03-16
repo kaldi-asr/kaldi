@@ -64,7 +64,7 @@ class TreeRenderer {
                             const ConstIntegerSet<EventValueType> &intset);
 
   // Writes the GraphViz representation of a non-leaf node to the out stream
-  // A question about a phone from the context window or about HMM state index
+  // A question about a phone from the context window or about pdf-class
   // is used as a label.
   void RenderNonLeaf(int32 id, const EventKeyType &key, bool in_query);
 
