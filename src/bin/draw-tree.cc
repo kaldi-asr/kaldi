@@ -30,8 +30,8 @@ void MakeEvent(std::string &qry, fst::SymbolTable *phone_syms,
     EventValueType value;
     if (key == kPdfClass) {
       value = static_cast<EventValueType>(atoi(valstr.c_str()));
-      if (value < 0) { // not valid HMM class
-        KALDI_ERR << "Bad query: invalid HMM index ("
+      if (value < 0) { // not valid pdf-class
+        KALDI_ERR << "Bad query: invalid pdf-class ("
                   << valstr << ')' << std::endl << std::endl;
       }
     }
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     ParseOptions po(usage);
     po.Register("query", &qry,
                 "a query to trace through the tree"
-                "(format: hmm-class/ctx-phone1/.../ctx-phoneN)");
+                "(format: pdf-class/ctx-phone1/.../ctx-phoneN)");
     po.Register("use-tooltips", &use_tooltips, "use tooltips instead of labels");
     po.Register("gen-html", &gen_html, "generates HTML boilerplate(useful with SVG)");
     po.Read(argc, argv);
