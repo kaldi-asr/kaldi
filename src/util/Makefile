@@ -5,7 +5,10 @@ include ../kaldi.mk
 
 TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     edit-distance-test hash-list-test timer-test kaldi-io-test parse-options-test \
-    kaldi-table-test kaldi-thread-test
+    kaldi-table-test kaldi-thread-test .phony_thread
+
+.phony_thread:
+	echo  "Note: if kaldi-thread-test does not compile, you need to go to .. and re-run configure."
 
 OBJFILES = text-utils.o kaldi-io.o \
           kaldi-table.o parse-options.o simple-io-funcs.o kaldi-thread.o

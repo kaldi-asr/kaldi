@@ -6,7 +6,7 @@
 
 =====
 dan's TODO:
- 
+ eventually remove warning RE thread-test 
  fix SGMM w/ resizing spk vecs.
  change usage message so standard and program-specific options printed
   separately.
