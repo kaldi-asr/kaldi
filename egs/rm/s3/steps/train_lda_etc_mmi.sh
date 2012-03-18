@@ -110,7 +110,6 @@ scripts/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 
 echo "Making denominator lattices"
 
- if false; then ##temp
 rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
@@ -124,7 +123,6 @@ if [ -f $dir/.error ]; then
    echo "Error creating denominator lattices"
    exit 1;
 fi
- fi ##temp
 
 # No need to create "numerator" alignments/lattices: we just use the 
 # alignments in $alidir.
