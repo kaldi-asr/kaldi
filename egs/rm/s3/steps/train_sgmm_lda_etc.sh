@@ -46,6 +46,7 @@ realign_iters="5 10 15";
 spkvec_iters="5 8 12 17 22"
 silphonelist=`cat $lang/silphones.csl`
 spkspacedim=40
+phnspacedim=41
 numleaves=2500
 numsubstates=2500 # Initial #-substates.
 totsubstates=7500 # Target #-substates.
@@ -97,7 +98,7 @@ build-tree --verbose=1 --max-leaves=$numleaves \
 gmm-init-model  --write-occs=$dir/0.occs  \
     $dir/tree $dir/treeacc $lang/topo $dir/0.gmm 2> $dir/init_gmm.log || exit 1;
 
-sgmm-init --spk-space-dim=$spkspacedim $lang/topo $dir/tree $ubm \
+sgmm-init --spk-space-dim=$spkspacedim --phn-space-dim=$phnspacedim $lang/topo $dir/tree $ubm \
     $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
 
 sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | \

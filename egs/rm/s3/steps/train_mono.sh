@@ -67,7 +67,7 @@ compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
 echo Pass 0
 
 align-equal-compiled "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-   ark,t,f:-  2>$dir/align.0.log | \
+   ark:-  2>$dir/align.0.log | \
  gmm-acc-stats-ali --binary=true $dir/0.mdl "$feats" ark:- \
      $dir/0.acc 2> $dir/acc.0.log  || exit 1;
 
