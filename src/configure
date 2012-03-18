@@ -144,7 +144,7 @@ function linux_configure_static {
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
   done    
-  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS -lpthread"; fi
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
@@ -210,7 +210,7 @@ function linux_configure_dynamic {
     fi
     ATLASLIBS="$ATLASLIBS -l$x"
   done
-  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS -lpthread"; fi
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
