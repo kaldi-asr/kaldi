@@ -36,6 +36,7 @@ steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali || exit 1;
 steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 # decode tri1
 local/decode.sh steps/decode_deltas.sh exp/tri1/decode || exit 1;
+#draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
 
 # align tri1
 steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
