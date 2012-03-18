@@ -48,7 +48,7 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 MKLFLAGS = $(MKL_DYN_MUL)
 
 LDFLAGS = -rdynamic
-LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(MKLFLAGS) -lm
+LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(MKLFLAGS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar

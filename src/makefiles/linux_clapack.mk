@@ -9,7 +9,7 @@ CXXFLAGS = -msse -Wall -I.. \
       -g -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm
+LDLIBS = ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar

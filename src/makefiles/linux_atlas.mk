@@ -22,7 +22,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -g -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm
+LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar

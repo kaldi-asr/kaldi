@@ -13,7 +13,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -g -O0 -DKALDI_PARANOID
 
 LDFLAGS = -g -rdynamic
-LDLIBS = $(FSTROOT)/lib/libfst.a -ldl -lm -framework Accelerate
+LDLIBS = $(FSTROOT)/lib/libfst.a -ldl -lm -lpthread -framework Accelerate
 CXX = g++
 CC = g++
 RANLIB = ranlib
