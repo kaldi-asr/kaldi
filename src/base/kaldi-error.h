@@ -47,22 +47,28 @@ extern const char *g_program_name;
 inline int32 GetVerboseLevel() { return g_kaldi_verbose_level; }
 
 // Class KaldiLogMessage is invoked from the  KALDI_WARN, KALDI_VLOG and
-// KALDI_LOG macros. It prints the message to std::cerr.
+// KALDI_LOG macros. It prints the message to stderr.  Note: we avoid
+// using cerr, due to problems with thread safety.  fprintf is guaranteed
+// thread-safe.
 
 // class KaldiWarnMessage is invoked from the KALDI_WARN macro.
 class KaldiWarnMessage {
  public:
-  inline std::ostream &stream() { return std::cerr; }
+  inline std::ostream &stream() { return ss; }
   KaldiWarnMessage(const char *func, const char *file, int32 line);
-  ~KaldiWarnMessage() { stream() << '\n'; }
+  ~KaldiWarnMessage()  { fprintf(stderr, "%s\n", ss.str().c_str()); }
+ private:
+  std::ostringstream ss;
 };
 
 // class KaldiLogMessage is invoked from the KALDI_LOG macro.
 class KaldiLogMessage {
  public:
-  inline std::ostream &stream() { return std::cerr; }
+  inline std::ostream &stream() { return ss; }
   KaldiLogMessage(const char *func, const char *file, int32 line);
-  ~KaldiLogMessage() { stream() << '\n'; }
+  ~KaldiLogMessage() { fprintf(stderr, "%s\n", ss.str().c_str()); }
+ private:
+  std::ostringstream ss;
 };
 
 // Class KaldiVlogMessage is invoked from the KALDI_VLOG macro.
@@ -70,8 +76,10 @@ class KaldiVlogMessage {
  public:
   KaldiVlogMessage(const char *func, const char *file, int32 line,
                    int32 verbose_level);
-  inline std::ostream &stream() { return std::cerr; }
-  ~KaldiVlogMessage() { stream() << '\n'; }
+  inline std::ostream &stream() { return ss; }
+  ~KaldiVlogMessage() { fprintf(stderr, "%s\n", ss.str().c_str()); }
+ private:
+  std::ostringstream ss;
 };
 
 

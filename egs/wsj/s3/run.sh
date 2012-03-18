@@ -299,6 +299,7 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc.sh \
   exp/sgmm3c/graph_tgpr data/test_dev93 exp/sgmm3c/decode_tgpr_dev93 || exit 1;
 
 
+
 # Decode using 3 Gaussians (not 15) for gselect in 1st pass, for fast decoding.
 scripts/decode.sh --opts "--first-pass-gselect 3" --cmd "$decode_cmd" \
   steps/decode_sgmm_lda_etc.sh exp/sgmm3c/graph_tgpr data/test_dev93 \
@@ -419,6 +420,34 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  data/lang_test_bd_fg data/test_eval92 exp/sgmm4c/decode_bd_fg_eval92_fromlats \
   exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
 
+
+# Train quinphone SGMM system.  Note: this is not substantially
+# better than the triphone one... it seems quinphone does not really
+# help. Also, the likelihoods (after training) are barely improved.
+steps/train_sgmm_lda_etc.sh  --num-jobs 20 --cmd "$train_cmd" \
+  --context-opts "--context-width=5 --central-position=2" \
+  5500 25000 50 40 data/train_si284 data/lang exp/tri3b_ali_si284_20 \
+  exp/ubm4c/final.ubm exp/sgmm4d || exit 1;
+
+# This is a decoding via lattice rescoring... compare with the same for sgmm4c
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+ data/lang_test_bd_fg data/test_eval92 exp/sgmm4d/decode_bd_fg_eval92_fromlats \
+  exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
+
+
+ # This is the same, but from better lattices (from decoding sgmm4c).
+ # Need to copy the transforms over from original decoding dir (tri3b) 
+ # to the source dir for the lattices, as they're used by the decoding script.
+ # This is a bit of a mess.
+ cp exp/tri3b/decode_bd_tgpr_eval92/*.trans exp/sgmm4c/decode_bd_tgpr_eval92
+ scripts/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+ data/lang_test_bd_fg data/test_eval92 exp/sgmm4d/decode_bd_fg_eval92_fromlats2 \
+   exp/sgmm4c/decode_bd_tgpr_eval92 || exit 1;
+
+
+#Note: in preparation to a direct decode of sgmm4d, I ran the following command:
+#scripts/mkgraph.sh --quinphone data/lang_test_bd_tgpr exp/sgmm4d exp/sgmm4d/graph_bd_tgpr || exit 1;
+# but I gave up after fstcomposecontext reached 22G and was still working.
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done

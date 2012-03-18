@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2011 Microsoft Corporation  Arnab Ghoshal
+# Copyright 2010-2012 Microsoft Corporation  Arnab Ghoshal  Daniel Povey
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ nj=4
 cmd=scripts/run.pl
 stage=-5
 transformdir=
+ctxopts=
 for x in `seq 3`; do
   if [ $1 == "--num-jobs" ]; then
      shift
@@ -32,6 +33,10 @@ for x in `seq 3`; do
      shift
      cmd=$1
      shift
+  fi  
+  if [ $1 == "--context-opts" ]; then
+     ctxopts=$2 # e.g. --context-width=5 --central-position=2  for quinphone.
+     shift 2
   fi  
   if [ $1 == "--stage" ]; then # stage to start training from, typically same as the iter you have a .mdl file;
      stage=$2                  # in case it failed part-way.  
@@ -124,7 +129,7 @@ if [ $stage -le -5 ]; then
   rm $dir/.error 2>/dev/null
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/acc_tree.$n.log \
-    acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
+    acc-tree-stats  $ctxopts --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
       "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
   done
   wait
@@ -137,14 +142,14 @@ if [ $stage -le -4 ]; then
   echo "Computing questions for tree clustering"
   # preparing questions, roots file...
   sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
-  cluster-phones $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
+  cluster-phones $ctxopts $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
   sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
-  compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  compile-questions $ctxopts $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
   sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
   echo "Building tree"
   $cmd $dir/log/train_tree.log \
-    build-tree --verbose=1 --max-leaves=$numleaves \
+    build-tree $ctxopts --verbose=1 --max-leaves=$numleaves \
       $dir/treeacc $dir/roots.txt \
       $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
@@ -181,16 +186,7 @@ if [ $stage -le -3 ]; then
   [ -f $dir/.error ] && echo "Error doing Gaussian selection" && exit 1;
 fi
 
-
 if [ $stage -le -2 ]; then
-  echo "Converting alignments"  # don't bother parallelizing; very fast.
-  for n in `get_splits.pl $nj`; do
-    convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/$n.ali.gz|" \
-       "ark:|gzip -c >$dir/$n.ali.gz" 2>$dir/log/convert$n.log 
-  done
-fi
-
-if [ $stage -le -1 ]; then
   echo "Compiling training graphs"
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/compile_graphs$n.log \
@@ -200,6 +196,15 @@ if [ $stage -le -1 ]; then
   done
   wait;
   [ -f $dir/.error ] && echo "Error compiling training graphs" && exit 1;
+fi
+
+
+if [ $stage -le -1 ]; then
+  echo "Converting alignments"  # don't bother parallelizing; very fast.
+  for n in `get_splits.pl $nj`; do
+    convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/$n.ali.gz|" \
+       "ark:|gzip -c >$dir/$n.ali.gz" 2>$dir/log/convert$n.log 
+  done
 fi
 
 x=0

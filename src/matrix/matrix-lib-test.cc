@@ -146,6 +146,14 @@ template<class Real> static void CholeskyUnitTestTr() {
   }
 }
 
+template<class Real> static void SlowMatMul() {
+  int N = 1000;
+  Matrix<Real> M(N,N), P(N,N), Q(N,N);
+  for (int i = 0; i < 10000; i++) {
+    Q.AddMatMat(1.0, M, kNoTrans, P, kNoTrans, 0.0);
+  }
+}  
+
 template<class Real> static void UnitTestAddSp() {
   for (MatrixIndexT i = 0;i< 10;i++) {
     MatrixIndexT dimM = 10+rand()%10;
@@ -739,6 +747,17 @@ template<class Real> static void UnitTestDeterminantSign() {
       KALDI_ASSERT(sign4 == -1);
       KALDI_ASSERT(sign5 == -1);
     }
+  }
+}
+
+template<class Real> static void UnitTestSpVec() {
+  // Test conversion back and forth between SpMatrix and Vector.
+  for (int iter = 0;iter < 1;iter++) {
+	MatrixIndexT dimM =10;  // 20 + rand()%10;
+    SpMatrix<Real> A(dimM), B(dimM);
+    SubVector<Real> vec(A);
+    B.CopyFromVec(vec);
+    AssertEqual(A, B);
   }
 }
 
@@ -2654,6 +2673,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestTransposeScatter<Real>();
   UnitTestRankNUpdate<Real>();
   UnitTestSherman<Real>();
+  UnitTestSpVec<Real>();
   UnitTestLimitCondInvert<Real>();
         KALDI_LOG << " Point G";
   UnitTestFloorChol<Real>();
@@ -2681,6 +2701,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestTraceSpSpLower<Real>();
   UnitTestTranspose<Real>();
   UnitTestAddVecCross();
+  //  SlowMatMul<Real>();  
 }
 
 

@@ -53,24 +53,25 @@ class SpMatrix : public PackedMatrix<Real> {
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
 
-  SpMatrix(const SpMatrix<Real>& Orig)
-      : PackedMatrix<Real>(Orig) {}
+  SpMatrix(const SpMatrix<Real>& orig)
+      : PackedMatrix<Real>(orig) {}
 
   template<class OtherReal>
-  explicit SpMatrix(const SpMatrix<OtherReal>& Orig)
-      : PackedMatrix<Real>(Orig) {}
+  explicit SpMatrix(const SpMatrix<OtherReal>& orig)
+      : PackedMatrix<Real>(orig) {}
+  
 
 #ifdef KALDI_PARANOID
-  explicit SpMatrix(const MatrixBase<Real> & Orig,
+  explicit SpMatrix(const MatrixBase<Real> & orig,
                     SpCopyType copy_type = kTakeMeanAndCheck)
-      : PackedMatrix<Real>(Orig.NumRows(), kUndefined) {
-    CopyFromMat(Orig, copy_type);
+      : PackedMatrix<Real>(orig.NumRows(), kUndefined) {
+    CopyFromMat(orig, copy_type);
   }
 #else
-  explicit SpMatrix(const MatrixBase<Real> & Orig,
+  explicit SpMatrix(const MatrixBase<Real> & orig,
                     SpCopyType copy_type = kTakeMean)
-      : PackedMatrix<Real>(Orig.NumRows(), kUndefined) {
-    CopyFromMat(Orig, copy_type);
+      : PackedMatrix<Real>(orig.NumRows(), kUndefined) {
+    CopyFromMat(orig, copy_type);
   }
 #endif
 

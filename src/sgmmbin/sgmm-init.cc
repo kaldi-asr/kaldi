@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "SGMM (if the --init-from-sgmm flag is used).\n";
 
     bool binary = true, init_from_sgmm = false;
-    int32 phn_space_dim = 1, spk_space_dim = 0;
+    int32 phn_space_dim = 0, spk_space_dim = 0;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("phn-space-dim", &phn_space_dim, "Phonetic space dimension.");

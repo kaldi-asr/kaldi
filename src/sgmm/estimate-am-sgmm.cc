@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm.cc
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;   Yanmin Qian
+// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University;  Ondrej Glembek;   Yanmin Qian;
+//                      Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@ using std::vector;
 #include "sgmm/am-sgmm.h"
 #include "sgmm/estimate-am-sgmm.h"
 #include "sgmm/estimate-am-sgmm-compress.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -661,17 +663,75 @@ void MleAmSgmmUpdater::ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
   }
 }
 
-double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
-                                            AmSgmm *model,
-                                            const vector< SpMatrix<double> > &H,
-                                            const SpMatrix<double> &H_sm,
-                                            const Vector<double> &y_sm) {
-  KALDI_LOG << "Updating phone vectors";
 
-  double count = 0.0, totimpr = 0.0, likeimpr = 0.0;  // sum over all states
+class UpdatePhoneVectorsClass { // For multi-threaded.
+ public:
+  UpdatePhoneVectorsClass(MleAmSgmmUpdater *updater,
+                          const MleAmSgmmAccs &accs,
+                          AmSgmm *model,
+                          const std::vector<SpMatrix<double> > &H,
+                          const SpMatrix<double> &H_sm,
+                          const Vector<double> &y_sm,
+                          double *auxf_impr,
+                          double *like_impr):
+      updater_(updater), accs_(accs), model_(model), 
+      H_(H), H_sm_(H_sm), y_sm_(y_sm), auxf_impr_ptr_(auxf_impr),
+      auxf_impr_(0.0), like_impr_ptr_(like_impr), like_impr_(0.0) { }
+    
+  ~UpdatePhoneVectorsClass() {
+    *auxf_impr_ptr_ += auxf_impr_;
+    *like_impr_ptr_ += like_impr_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to the total sums in the destructor.
+    updater_->UpdatePhoneVectorsInternal(accs_, model_, H_, H_sm_, y_sm_,
+                                         &auxf_impr_, &like_impr_,
+                                         num_threads_, thread_id_);
+  }
+  // Copied and modified from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    UpdatePhoneVectorsClass *c = static_cast<UpdatePhoneVectorsClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
+  MleAmSgmmUpdater *updater_;
+  const MleAmSgmmAccs &accs_;
+  AmSgmm *model_;
+  const std::vector<SpMatrix<double> > &H_;
+  const SpMatrix<double> &H_sm_;
+  const Vector<double> &y_sm_;
+  double *auxf_impr_ptr_;
+  double auxf_impr_;
+  double *like_impr_ptr_;
+  double like_impr_;
+};
 
-  for (int32 j = 0; j < accs.num_states_; ++j) {
-    double state_count = 0.0, state_totimpr = 0.0, state_likeimpr = 0.0;
+
+// Runs the phone vectors update for a subset of states (called
+// multi-threaded).
+void MleAmSgmmUpdater::UpdatePhoneVectorsInternal(
+    const MleAmSgmmAccs &accs,
+    AmSgmm *model,
+    const std::vector<SpMatrix<double> > &H,
+    const SpMatrix<double> &H_sm,
+    const Vector<double> &y_sm,
+    double *auxf_impr,
+    double *like_impr,
+    int32 num_threads,
+    int32 thread_id) {
+
+  int32 block_size = (accs.num_states_ + (num_threads-1)) / num_threads,
+      j_start = block_size * thread_id,
+      j_end = std::min(accs.num_states_, j_start + block_size);
+  
+  for (int32 j = j_start; j < j_end; j++) {
+    double state_count = 0.0, state_auxf_impr = 0.0, state_like_impr = 0.0;
     Vector<double> w_jm(accs.num_gaussians_);
     for (int32 m = 0; m < model->NumSubstates(j); ++m) {
       double gamma_jm = accs.gamma_[j].Row(m).Sum();
@@ -732,36 +792,51 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
           - (VecVec(model->v_[j].Row(m), g_jm)
              - 0.5 * VecSpVec(model->v_[j].Row(m), H_jm_flt, model->v_[j].Row(m)));
       model->v_[j].Row(m).CopyFromVec(vhat_jm);
-      if (j < 3 && m < 2) {
+      if (j < 3 && m < 2 && thread_id == 0) {
         KALDI_LOG << "Objf impr for j = " << (j) << " m = " << (m) << " is "
                   << (objf_impr_with_prior / (gamma_jm + 1.0e-20))
                   << " (with ad-hoc prior) "
                   << (objf_impr_noprior / (gamma_jm + 1.0e-20))
                   << " (no prior) over " << (gamma_jm) << " frames";
       }
-      state_totimpr += objf_impr_with_prior;
-      state_likeimpr += objf_impr_noprior;
+      state_auxf_impr += objf_impr_with_prior;
+      state_like_impr += objf_impr_noprior;
     }
 
-    count += state_count;
-    totimpr += state_totimpr;
-    likeimpr += state_likeimpr;
-    if (j < 10) {
+    *auxf_impr += state_auxf_impr;
+    *like_impr += state_like_impr;
+    if (j < 10 && thread_id == 0) {
       KALDI_LOG << "Objf impr for state j = " << (j) << "  is "
-                << (state_totimpr / (state_count + 1.0e-20))
+                << (state_auxf_impr / (state_count + 1.0e-20))
                 << " (with ad-hoc prior) "
-                << (state_likeimpr / (state_count + 1.0e-20))
+                << (state_like_impr / (state_count + 1.0e-20))
                 << " (no prior) over " << (state_count) << " frames";
     }
   }
+}
 
-  totimpr /= (count + 1.0e-20);
-  likeimpr /= (count + 1.0e-20);
-  KALDI_LOG << "**Overall objf impr for v is " << totimpr
-            << "(with ad-hoc prior) " << likeimpr << " (no prior) over "
+double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
+                                            AmSgmm *model,
+                                            const vector< SpMatrix<double> > &H,
+                                            const SpMatrix<double> &H_sm,
+                                            const Vector<double> &y_sm) {
+  KALDI_LOG << "Updating phone vectors";
+
+  double count = 0.0, auxf_impr = 0.0, like_impr = 0.0;  // sum over all states
+
+  for (int32 j = 0; j < accs.num_states_; ++j) count += accs.gamma_[j].Sum();
+
+  UpdatePhoneVectorsClass c(this, accs, model, H, H_sm, y_sm,
+                            &auxf_impr, &like_impr);
+  RunMultiThreaded(c);
+
+  auxf_impr /= (count + 1.0e-20);
+  like_impr /= (count + 1.0e-20);
+  KALDI_LOG << "**Overall objf impr for v is " << auxf_impr
+            << "(with ad-hoc prior) " << like_impr << " (no prior) over "
             << (count) << " frames";
   // Choosing to return actual likelihood impr here.
-  return likeimpr;
+  return like_impr;
 }
 
 
@@ -1074,7 +1149,125 @@ double MleAmSgmmUpdater::UpdateVarsCompress(const MleAmSgmmAccs &accs,
   return tot_objf_impr / tot_t;
 }
 
+class UpdateWParallelClass { // For multi-threaded.
+ public:
+  UpdateWParallelClass(MleAmSgmmUpdater *updater,
+                       const MleAmSgmmAccs &accs,
+                       const AmSgmm &model,
+                       const Matrix<double> &w,
+                       Matrix<double> *F_i,
+                       Matrix<double> *g_i,
+                       double *tot_like):
+      updater_(updater), accs_(accs), model_(model), w_(w),
+      F_i_ptr_(F_i), g_i_ptr_(g_i), tot_like_ptr_(tot_like) {
+    tot_like_ = 0.0;
+    F_i_.Resize(F_i->NumRows(), F_i->NumCols());
+    g_i_.Resize(g_i->NumRows(), g_i->NumCols());
+  }
+    
+  ~UpdateWParallelClass() {
+    F_i_ptr_->AddMat(1.0, F_i_, kNoTrans);
+    g_i_ptr_->AddMat(1.0, g_i_, kNoTrans);
+    *tot_like_ptr_ += tot_like_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to the total sums in the destructor.
+    updater_->UpdateWParallelGetStats(accs_, model_, w_,
+                                      &F_i_, &g_i_, &tot_like_,
+                                      num_threads_, thread_id_);
+  }
+  // Copied and modified from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    UpdateWParallelClass *c = static_cast<UpdateWParallelClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
 
+  MleAmSgmmUpdater *updater_;
+  const MleAmSgmmAccs &accs_;
+  const AmSgmm &model_;
+  const Matrix<double> &w_;
+  Matrix<double> *F_i_ptr_;
+  Matrix<double> *g_i_ptr_;
+  Matrix<double> F_i_;
+  Matrix<double> g_i_;
+  double *tot_like_ptr_;
+  double tot_like_;
+};
+
+
+
+/// This function gets stats used inside UpdateWParallel, where it accumulates
+/// the F_i and g_i quantities.  Note: F_i is viewed as a vector of SpMatrix
+/// (one for each i); each row of F_i is viewed as an SpMatrix even though
+/// it's stored as a vector....
+/// Note: w is just a double-precision copy of the matrix model->w_
+void MleAmSgmmUpdater::UpdateWParallelGetStats(const MleAmSgmmAccs &accs,
+                                               const AmSgmm &model,
+                                               const Matrix<double> &w,
+                                               Matrix<double> *F_i,
+                                               Matrix<double> *g_i,
+                                               double *tot_like,
+                                               int32 num_threads, 
+                                               int32 thread_id) {
+
+  // Accumulate stats from a block of states (this gets called in parallel).
+  int32 block_size = (accs.num_states_ + (num_threads-1)) / num_threads,
+      j_start = block_size * thread_id,
+      j_end = std::min(accs.num_states_, j_start + block_size);
+
+  // Unlike in the report the inner most loop is over Gaussians, where
+  // per-gaussian statistics are accumulated. This is more memory demanding
+  // but more computationally efficient, as outer product v_{jvm} v_{jvm}^T
+  // is computed only once for all gaussians.
+
+  SpMatrix<double> v_vT(accs.phn_space_dim_);
+  
+  for (int32 j = j_start; j < j_end; j++) {
+    int32 num_substates = model.NumSubstates(j);
+    Matrix<double> w_jm(num_substates, accs.num_gaussians_);
+    // The linear term and quadratic term for each Gaussian-- two scalars
+    // for each Gaussian, they appear in the accumulation formulas.
+    Matrix<double> linear_term(num_substates, accs.num_gaussians_);
+    Matrix<double> quadratic_term(num_substates, accs.num_gaussians_);
+    Matrix<double> v_vT_m(num_substates,
+                          (accs.phn_space_dim_*(accs.phn_space_dim_+1))/2);
+
+    // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
+    Matrix<double> v_j_double(model.v_[j]);
+    w_jm.AddMatMat(1.0, v_j_double, kNoTrans, w, kTrans, 0.0);
+      
+    for (int32 m = 0; m < model.NumSubstates(j); m++) {
+      double gamma_jm = accs.gamma_[j].Row(m).Sum();
+
+      w_jm.Row(m).Add(-1.0 * w_jm.Row(m).LogSumExp());
+      *tot_like += VecVec(w_jm.Row(m), accs.gamma_[j].Row(m));
+      w_jm.Row(m).ApplyExp();
+      v_vT.SetZero();
+      // v_vT := v_{jkm} v_{jkm}^T
+      v_vT.AddVec2(static_cast<BaseFloat>(1.0), v_j_double.Row(m));
+      v_vT_m.Row(m).CopyFromPacked(v_vT); // a bit wasteful, but does not dominate.
+        
+      for (int32 i = 0; i < accs.num_gaussians_; i++) {
+        // Suggestion: g_jkm can be computed more efficiently
+        // using the Vector/Matrix routines for all i at once
+        // linear term around cur value.
+        linear_term(m, i) = accs.gamma_[j](m, i) - gamma_jm * w_jm(m, i);
+        quadratic_term(m, i) = std::max(accs.gamma_[j](m, i),
+                                        gamma_jm * w_jm(m, i));
+      }
+    } // loop over substates
+    g_i->AddMatMat(1.0, linear_term, kTrans, v_j_double, kNoTrans, 1.0);
+    F_i->AddMatMat(1.0, quadratic_term, kTrans, v_vT_m, kNoTrans, 1.0);
+  } // loop over states
+
+}
 
 // The parallel weight update, in the paper.
 double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
@@ -1085,56 +1278,25 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
   // tot_like_{after, before} are totals over multiple iterations,
   // not valid likelihoods. but difference is valid (when divided by tot_count).
   double tot_predicted_like_impr = 0.0, tot_like_before = 0.0,
-      tot_like_after = 0.0, tot_count = 0.0;
-
-  // double k_predicted_like_impr = 0.0, k_like_before = 0.0,
-  // k_like_after = 0.0, k_count;
-  Vector<double> w_jm(accs.num_gaussians_);
+      tot_like_after = 0.0;
+  
   Matrix<double> g_i(accs.num_gaussians_, accs.phn_space_dim_);
-  std::vector< SpMatrix<double> > F_i(accs.num_gaussians_);
-
+  // View F_i as a vector of SpMatrix.
+  Matrix<double> F_i(accs.num_gaussians_,
+                     (accs.phn_space_dim_*(accs.phn_space_dim_+1))/2);
+  
   Matrix<double> w(model->w_);
+  double tot_count = 0.0;
+  for (int32 j = 0; j < accs.num_states_; j++) tot_count += accs.gamma_[j].Sum();
+  
   for (int iter = 0; iter < update_options_.weight_projections_iters; iter++) {
-    for (int32 i = 0; i < accs.num_gaussians_; ++i) {
-      F_i[i].Resize(accs.phn_space_dim_);
-    }
-    double k_like_before = 0.0, k_count = 0.0;
+    F_i.SetZero();
     g_i.SetZero();
+    double k_like_before = 0.0;
 
-    // Unlike in the report the inner most loop is over Gaussians, where
-    // per-gaussian statistics are accumulated. This is more memory demanding
-    // but more computationly efficient, as outer product v_{jvm} v_{jvm}^T
-    // is computed only once for all gaussians.
-
-    for (int32 j = 0; j < accs.num_states_; j++) {
-      for (int32 m = 0; m < model->NumSubstates(j); m++) {
-        double gamma_jm = accs.gamma_[j].Row(m).Sum();
-        k_count += gamma_jm;
-
-        // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
-        w_jm.AddMatVec(1.0, w, kNoTrans, Vector<double>(model->v_[j].Row(m)), 0.0);
-        w_jm.Add((-1.0) * w_jm.LogSumExp());
-        k_like_before += VecVec(w_jm, accs.gamma_[j].Row(m));
-        w_jm.ApplyExp();
-        v_vT.SetZero();
-        // v_vT := v_{jkm} v_{jkm}^T
-        v_vT.AddVec2(static_cast<BaseFloat>(1.0), model->v_[j].Row(m));
-
-        for (int32 i = 0; i < accs.num_gaussians_; i++) {
-          // Suggestion: g_jkm can be computed more efficiently
-          // using the Vector/Matrix routines for all i at once
-          // linear term around cur value.
-          double linear_term = accs.gamma_[j](m, i) - gamma_jm * w_jm(i);
-          double quadratic_term = std::max(accs.gamma_[j](m, i),
-                                           gamma_jm * w_jm(i));
-          g_i.Row(i).AddVec(linear_term, model->v_[j].Row(m));
-          // Now I am calling this F_i in the document. [dan]
-          F_i[i].AddSp(quadratic_term, v_vT);
-        }
-      }  // loop over substates
-    }  // loop over states
-
-
+    UpdateWParallelClass c(this, accs, *model, w, &F_i, &g_i, &k_like_before);
+    RunMultiThreaded(c);
+    
     Matrix<double> w_orig(w);
     double k_predicted_like_impr = 0.0, k_like_after = 0.0;
     double min_step = 0.001, step_size;
@@ -1147,7 +1309,9 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
         Vector<double> delta_w(accs.phn_space_dim_);
         // returns objf impr with step_size = 1,
         // but it may not be 1 so we recalculate it.
-        SolveQuadraticProblem(F_i[i], g_i.Row(i), &delta_w,
+        SpMatrix<double> this_F_i(accs.phn_space_dim_);
+        this_F_i.CopyFromVec(F_i.Row(i));
+        SolveQuadraticProblem(this_F_i, g_i.Row(i), &delta_w,
                               static_cast<double>(update_options_.max_cond),
                               static_cast<double>(update_options_.epsilon),
                               "w",
@@ -1155,7 +1319,7 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
 
         delta_w.Scale(step_size);
         double predicted_impr = VecVec(delta_w, g_i.Row(i)) -
-            0.5 * VecSpVec(delta_w,  F_i[i], delta_w);
+            0.5 * VecSpVec(delta_w,  this_F_i, delta_w);
 
         // should never be negative because
         // we checked inside SolveQuadraticProblem.
@@ -1168,21 +1332,22 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
         k_predicted_like_impr += predicted_impr;
         w.Row(i).AddVec(1.0, delta_w);
       }
+      Vector<double> w_jm_vec(accs.num_gaussians_);
       for (int32 j = 0; j < accs.num_states_; j++) {
         for (int32 m = 0; m < model->NumSubstates(j); m++) {
-          w_jm.AddMatVec(1.0, w, kNoTrans, Vector<double>(model->v_[j].Row(m)), 0.0);
-          w_jm.Add((-1.0) * w_jm.LogSumExp());
-          k_like_after += VecVec(w_jm, accs.gamma_[j].Row(m));
+          w_jm_vec.AddMatVec(1.0, w, kNoTrans, Vector<double>(model->v_[j].Row(m)), 0.0);
+          w_jm_vec.Add((-1.0) * w_jm_vec.LogSumExp());
+          k_like_after += VecVec(w_jm_vec, accs.gamma_[j].Row(m));
         }
       }
       KALDI_VLOG(2) << "For iteration " << (iter) << ", updating w gives "
                     << "predicted per-frame like impr "
-                    << (k_predicted_like_impr / k_count) << ", actual "
-                    << ((k_like_after - k_like_before) / k_count) << ", over "
-                    << (k_count) << " frames";
+                    << (k_predicted_like_impr / tot_count) << ", actual "
+                    << ((k_like_after - k_like_before) / tot_count) << ", over "
+                    << (tot_count) << " frames";
       if (k_like_after < k_like_before) {
         w.CopyFromMat(w_orig);  // Undo what we computed.
-        if (fabs(k_like_after - k_like_before) / k_count < 1.0e-05) {
+        if (fabs(k_like_after - k_like_before) / tot_count < 1.0e-05) {
           k_like_after = k_like_before;
           KALDI_WARN << "Not updating weights as not increasing auxf and "
                      << "probably due to numerical issues (since small change).";
@@ -1199,9 +1364,6 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
       // Undo any step as we have no confidence that this is right.
       w.CopyFromMat(w_orig);
     } else {
-      if (iter == 0) {
-        tot_count += k_count;
-      }
       tot_predicted_like_impr += k_predicted_like_impr;
       tot_like_after += k_like_after;
       tot_like_before += k_like_before;

@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;  Yanmin Qian
+// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University;  Ondrej Glembek;  Yanmin Qian;
+//                      Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -236,6 +237,9 @@ class MleAmSgmmUpdater {
               AmSgmm *model,
               SgmmUpdateFlagsType flags);
 
+ protected:
+  friend class UpdateWParallelClass;
+  friend class UpdatePhoneVectorsClass;
  private:
   MleAmSgmmOptions update_options_;
   /// Q_{i}, quadratic term for phonetic subspace estimation. Dim is [I][S][S]
@@ -267,6 +271,19 @@ class MleAmSgmmUpdater {
                             const SpMatrix<double> &H_sm,
                             const Vector<double> &y_sm);
 
+  // Called from UpdatePhoneVectors; updates a subset of states
+  // (relates to multi-threading).
+  void UpdatePhoneVectorsInternal(const MleAmSgmmAccs &accs,
+                                  AmSgmm *model,
+                                  const std::vector<SpMatrix<double> > &H,
+                                  const SpMatrix<double> &H_sm,
+                                  const Vector<double> &y_sm,
+                                  double *auxf_impr,
+                                  double *like_impr,
+                                  int32 num_threads,
+                                  int32 thread_id);
+                                    
+
   // UpdatePhoneVectors function that does not support smoothing
   // terms, but allows checking of objective-function improvement,
   // and backtracking.
@@ -285,8 +302,19 @@ class MleAmSgmmUpdater {
   double UpdateVars(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateVarsCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateWParallel(const MleAmSgmmAccs &accs, AmSgmm *model);
+
+  /// Called, multithreaded, inside UpdateWParallel
+  void UpdateWParallelGetStats(const MleAmSgmmAccs &accs,
+                               const AmSgmm &model,
+                               const Matrix<double> &w,
+                               Matrix<double> *F_i,
+                               Matrix<double> *g_i,
+                               double *tot_like,
+                               int32 num_threads, 
+                               int32 thread_id);
+  
   double UpdateWSequential(const MleAmSgmmAccs &accs,
-                              AmSgmm *model);
+                           AmSgmm *model);
   double UpdateSubstateWeights(const MleAmSgmmAccs &accs,
                                   AmSgmm *model);
 

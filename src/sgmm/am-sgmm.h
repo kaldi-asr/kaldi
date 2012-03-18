@@ -219,7 +219,6 @@ class AmSgmm {
   /// for each Gaussian component and all substates. Eq. (31)
   void ComputeNormalizers();
 
-
   /// Computes the normalizers, while normalizing the weights to one
   /// among each of the sets in "normalize_sets": these sets should
   /// be disjoint and their union should be all the indices 0 ... I-1.
@@ -276,7 +275,13 @@ class AmSgmm {
                                        const SgmmPerSpkDerivedVars &spk,
                                        VectorBase<Real> *mean_out) const;
 
+ protected:
+  friend class ComputeNormalizersClass;
  private:
+  /// Compute a subset of normalizers; used in multi-threaded implementation.
+  void ComputeNormalizersInternal(int32 num_threads, int32 thread,
+                                  int32 *entropy_count, double *entropy_sum);
+  
   /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
   template<class Real>
   void ComputeH(std::vector< SpMatrix<Real> > *H_i) const;

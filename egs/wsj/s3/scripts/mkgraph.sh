@@ -36,6 +36,11 @@ for x in 1 2 3; do
     P=0;
     shift;
   fi
+  if [ $1 == "--quinphone" ]; then
+    N=5;
+    P=2;
+    shift;
+  fi
   if [ $1 == "--clean" ]; then
     clean=true
     shift;

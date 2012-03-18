@@ -25,6 +25,7 @@
 using std::vector;
 
 #include "sgmm/am-sgmm.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -242,8 +243,8 @@ void AmSgmm::InitializeFromFullGmm(const FullGmm &full_gmm,
   diag_ubm_.CopyFromFullGmm(full_gmm);
   if (phn_subspace_dim < 1 || phn_subspace_dim > full_gmm.Dim() + 1) {
     KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
-        << full_gmm.Dim() + 1 << "]. Changing from " << phn_subspace_dim
-        << " to " << full_gmm.Dim() + 1;
+               << full_gmm.Dim() + 1 << "]. Changing from " << phn_subspace_dim
+               << " to " << full_gmm.Dim() + 1;
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
   if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
@@ -613,65 +614,125 @@ void AmSgmm::ComputeDerivedVars() {
   }
 }
 
+class ComputeNormalizersClass { // For multi-threaded.
+ public:
+  ComputeNormalizersClass(AmSgmm *am_sgmm,
+                          int32 *entropy_count_ptr,
+                          double *entropy_sum_ptr):
+      am_sgmm_(am_sgmm), entropy_count_ptr_(entropy_count_ptr),
+      entropy_sum_ptr_(entropy_sum_ptr), entropy_count_(0),
+      entropy_sum_(0.0) { }
+
+  ~ComputeNormalizersClass() {
+    *entropy_count_ptr_ += entropy_count_;
+    *entropy_sum_ptr_ += entropy_sum_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to original pointer in the destructor.
+    am_sgmm_->ComputeNormalizersInternal(num_threads_, thread_id_,
+                                         &entropy_count_,
+                                         &entropy_sum_);
+  }
+  // Copied from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    ComputeNormalizersClass *c = static_cast<ComputeNormalizersClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
+  ComputeNormalizersClass() { } // Disallow empty constructor.
+  AmSgmm *am_sgmm_;
+  int32 *entropy_count_ptr_;
+  double *entropy_sum_ptr_;
+  int32 entropy_count_;
+  double entropy_sum_;
+
+};
+
 void AmSgmm::ComputeNormalizers() {
   KALDI_LOG << "Computing normalizers";
+  n_.resize(NumPdfs());
+  int32 entropy_count = 0;
+  double entropy_sum = 0.0;
+  ComputeNormalizersClass c(this, &entropy_count, &entropy_sum);
+  RunMultiThreaded(c);
+
+  KALDI_LOG << "Entropy of weights in substates is "
+            << (entropy_sum / entropy_count) << " over " << entropy_count
+            << " substates, equivalent to perplexity of "
+            << (exp(entropy_sum /entropy_count));
+  KALDI_LOG << "Done computing normalizers";
+}
+
+
+void AmSgmm::ComputeNormalizersInternal(int32 num_threads, int32 thread,
+                                        int32 *entropy_count,
+                                        double *entropy_sum) {
+
   BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
-  Vector<BaseFloat> mu_jmi(FeatureDim());
-  Vector<BaseFloat> SigmaInv_mu(FeatureDim());
   Vector<BaseFloat> log_det_Sigma(NumGauss());
 
   for (int32 i = 0; i < NumGauss(); i++) {
     try {
       log_det_Sigma(i) = - SigmaInv_[i].LogPosDefDet();
     } catch(...) {
-      KALDI_WARN << "Covariance is not positive definite, setting to unit";
+      if (thread == 0) // just for one thread, print errors [else, duplicates]
+        KALDI_WARN << "Covariance is not positive definite, setting to unit";
       SigmaInv_[i].SetUnit();
       log_det_Sigma(i) = 0.0;
     }
   }
 
-  double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumPdfs());
-  for (int32 j = 0; j < NumPdfs(); ++j) {
-    Vector<BaseFloat> log_w_jm(NumGauss());
-
+  int block_size = (NumPdfs() + num_threads-1) / num_threads;
+  int j_start = thread * block_size, j_end = std::min(NumPdfs(), j_start + block_size);
+  
+  for (int32 j = j_start; j < j_end; ++j) {
+    Matrix<BaseFloat> log_w_jm(NumSubstates(j), NumGauss());
     n_[j].Resize(NumGauss(), NumSubstates(j));
+    Matrix<BaseFloat> mu_jmi(NumSubstates(j), FeatureDim());
+    Matrix<BaseFloat> SigmaInv_mu(NumSubstates(j), FeatureDim());
+        
+    // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
+    log_w_jm.AddMatMat(1.0, v_[j], kNoTrans, w_, kTrans, 0.0);
     for (int32 m = 0; m < NumSubstates(j); m++) {
-      BaseFloat logc = log(c_[j](m));
-
-      // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
-      log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
-      log_w_jm.Add((-1.0) * log_w_jm.LogSumExp());
-
+      log_w_jm.Row(m).Add(-1.0 * log_w_jm.Row(m).LogSumExp());    
       {  // DIAGNOSTIC CODE
-        entropy_count++;
+        (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
-          entropy_sum -= log_w_jm(i) * exp(log_w_jm(i));
+          (*entropy_sum) -= log_w_jm(m, i) * exp(log_w_jm(m, i));
         }
       }
-
-      for (int32 i = 0; i < NumGauss(); ++i) {
-        // mu_jmi = M_{i} * v_{jm}
-        mu_jmi.AddMatVec(1.0, M_[i], kNoTrans, v_[j].Row(m), 0.0);
-
+    }      
+    
+    for (int32 i = 0; i < NumGauss(); ++i) {    
+      // mu_jmi = M_{i} * v_{jm}
+      mu_jmi.AddMatMat(1.0, v_[j], kNoTrans, M_[i], kTrans, 0.0);
+      SigmaInv_mu.AddMatSp(1.0, mu_jmi, kNoTrans, SigmaInv_[i], 0.0);
+    
+      for (int32 m = 0; m < NumSubstates(j); m++) {
         // mu_{jmi} * \Sigma_{i}^{-1} * mu_{jmi}
-        SigmaInv_mu.AddSpVec(1.0, SigmaInv_[i], mu_jmi, 0.0);
-        BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi, SigmaInv_mu);
+        BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi.Row(m), SigmaInv_mu.Row(m));
+        BaseFloat logc = log(c_[j](m));
 
         // Suggestion: Both mu_jmi and SigmaInv_mu could
-        // have been computed at once  for i ,
-        // if M[i] was concatenated to single matrix over i indeces
-
+        // have been computed at once for i,
+        // if M[i] was concatenated to single matrix over i indices
+        
         // eq.(31)
-        n_[j](i, m) = logc + log_w_jm(i) - 0.5 * (log_det_Sigma(i) + DLog2pi
+        n_[j](i, m) = logc + log_w_jm(m, i) - 0.5 * (log_det_Sigma(i) + DLog2pi
             + mu_SigmaInv_mu);
         {  // Mainly diagnostic code.  Not necessary.
           BaseFloat tmp = n_[j](i, m);
           if (!KALDI_ISFINITE(tmp)) {  // NaN or inf
             KALDI_LOG << "Warning: normalizer for j = " << j << ", m = " << m
                       << ", i = " << i << " is infinite or NaN " << tmp << "= "
-                      << (logc) << "+" << (log_w_jm(i)) << "+" << (-0.5 *
+                      << (logc) << "+" << (log_w_jm(m, i)) << "+" << (-0.5 *
                           log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
                       << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
             n_[j](i, m) = -1.0e+40;  // future work(arnab): get rid of magic number
@@ -680,11 +741,6 @@ void AmSgmm::ComputeNormalizers() {
       }
     }
   }
-  KALDI_LOG << "Entropy of weights in substates is " << (entropy_sum /
-      entropy_count) << " over " << (entropy_count) <<
-      " substates, equivalent to perplexity of " << (exp(entropy_sum /
-          entropy_count));
-  KALDI_LOG << "Done computing normalizers";
 }
 
 
@@ -716,8 +772,6 @@ void AmSgmm::ComputeNormalizersNormalized(
       log_det_Sigma(i) = 0.0;
     }
   }
-
-//  double entropy_count = 0, entropy_sum = 0;
 
   n_.resize(NumPdfs());
   for (int32 j = 0; j < NumPdfs(); ++j) {

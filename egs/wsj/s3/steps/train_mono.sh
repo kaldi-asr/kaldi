@@ -85,7 +85,7 @@ if [ -f $lang/phonesets_mono.txt ]; then
   shared_phones_opt="--shared-phones=$dir/phonesets.int"
 fi
 
-gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo 39  \
+gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo 39 \
    $dir/0.mdl $dir/tree 2> $dir/log/init.log || exit 1;
 
 rm $dir/.error 2>/dev/null

@@ -223,6 +223,19 @@ void VectorBase<Real>::CopyFromVec(const VectorBase<Real>& rv) {
   CopyFromPtr(rv.data_, rv.Dim());
 }
 
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::CopyFromPacked(const PackedMatrix<OtherReal>& M) {
+  SubVector<OtherReal> v(M);
+  this->CopyFromVec(v);
+}
+// instantiate the template.
+template void VectorBase<float>::CopyFromPacked(const PackedMatrix<double> &other);
+template void VectorBase<float>::CopyFromPacked(const PackedMatrix<float> &other);
+template void VectorBase<double>::CopyFromPacked(const PackedMatrix<double> &other);
+template void VectorBase<double>::CopyFromPacked(const PackedMatrix<float> &other);
+
+
 /// Load data into the vector
 template<typename Real>
 void VectorBase<Real>::CopyFromPtr(const Real* Data, MatrixIndexT sz) {
