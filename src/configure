@@ -31,9 +31,11 @@ ATLASROOT=`rel2abs ../tools/ATLAS/`
 FSTROOT=`rel2abs ../tools/openfst`
 
 function usage {
-  echo 'Usage: ./configure [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+  echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--mathlib=ATLAS|MKL|CLAPACK]';
 }
+
+threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
 
 while [ $# -gt 0 ];
 do
@@ -41,6 +43,10 @@ do
   --help) usage; exit 0 ;;
   --atlas-root=*) 
   ATLASROOT=`read_dirname $1`; shift ;;
+  --threaded-atlas=yes)
+  threaded_atlas=true; shift ;;
+  --threaded-atlas=no)
+  threaded_atlas=false; shift ;;
   --fst-root=*)
   FSTROOT=`read_dirname $1`; shift ;;
   --mkl-root=*)
@@ -98,6 +104,8 @@ function linux_check_static {
 }
 
 function linux_configure_static {
+  if $threaded_atlas; then pt=pt; else pt=""; fi
+
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
@@ -129,13 +137,14 @@ function linux_configure_static {
     return ;
   fi
    
-  for x in libcblas.a libatlas.a libf77blas.a; do
+  for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do
     if [ ! -f $ATLASLIBDIR/$x ]; then
       echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
   done    
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS -lpthread"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
@@ -161,6 +170,7 @@ function linux_check_dynamic {
 }
 
 function linux_configure_dynamic {
+  if $threaded_atlas; then pt=pt; else pt=""; fi
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
@@ -193,13 +203,14 @@ function linux_configure_dynamic {
     return 1;
   fi
    
-  for x in cblas atlas f77blas; do
+  for x in ${pt}cblas atlas ${pt}f77blas; do
     if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
       echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS -l$x"
   done
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS -lpthread"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
