@@ -245,6 +245,11 @@ fi
 
 cp makefiles/common.mk kaldi.mk
 
+# Removing any previously defined FSTROOT in Makefile
+cp Makefile Makefile.bak
+grep -v ^'FSTROOT =' Makefile.bak > Makefile
+[ cmp Makefile Makefile.bak >&/dev/null ] || rm Makefile.bak
+
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
 
@@ -260,6 +265,7 @@ if [ "`uname`" == "Darwin"  ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo FSTROOT = $FSTROOT >> kaldi.mk
+  echo FSTROOT = $FSTROOT >> Makefile
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
   osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | sed -e 's?\.[^.]*$??'`
   echo "Configuring for OS X version $osx_ver ..."
@@ -297,6 +303,7 @@ if [ "`uname`" == "Linux" ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo FSTROOT = $FSTROOT >> kaldi.mk
+  echo FSTROOT = $FSTROOT >> Makefile
 
   echo "On Linux: Checking for linear algebra header files ..."
   if [ $MATHLIB == "ATLAS" ]; then

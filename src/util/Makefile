@@ -5,17 +5,17 @@ include ../kaldi.mk
 
 TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     edit-distance-test hash-list-test timer-test kaldi-io-test parse-options-test \
-    kaldi-table-test kaldi-thread-test .phony_thread
+    kaldi-table-test kaldi-thread-test
 
-.phony_thread:
-	echo  "Note: if kaldi-thread-test does not compile, you need to go to .. and re-run configure."
+.phony_thread: $(TESTFILES)
+	echo; echo "Note: if kaldi-thread-test does not compile, you need to go to .. and re-run configure."
 
 OBJFILES = text-utils.o kaldi-io.o \
           kaldi-table.o parse-options.o simple-io-funcs.o kaldi-thread.o
 
 LIBFILE = kaldi-util.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE) $(TESTFILES) .phony_thread
 
 
 $(LIBFILE): $(OBJFILES)
@@ -25,7 +25,7 @@ $(LIBFILE): $(OBJFILES)
 	rmdir .lock
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a  ../matrix/kaldi-matrix.a
+$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:
@@ -36,7 +36,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a  ../matrix/kaldi-matrix.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

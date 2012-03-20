@@ -32,7 +32,7 @@ $(BINFILES): ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-featur
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES) $(BINFILES)
+	-rm -f *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

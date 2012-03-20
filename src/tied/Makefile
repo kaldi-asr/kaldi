@@ -32,7 +32,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kal
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
