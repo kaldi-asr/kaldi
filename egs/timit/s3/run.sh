@@ -1,4 +1,4 @@
-.#!/bin/bash -u
+#!/bin/bash -u
 
 # Copyright 2012  Navdeep Jaitly
 
