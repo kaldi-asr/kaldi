@@ -84,7 +84,11 @@ cat $dir/unigram.counts  | awk '{print $2}' | local/get_word_map.pl "<s>" "</s>"
 cat $trans_file | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]=$2;}
   { for(n=2;n<=NF;n++) { printf map[$n]; if(n<NF){ printf " "; } else { print ""; }}}' | gzip -c >$dir/train.gz
 
-! merge_ngrams </dev/null >&/dev/null  && echo You need to have kaldi_lm on your path \
+! merge_ngrams </dev/null >&/dev/null  && \
+     echo merge_ngrams not found in kaldi_lm. You need to have kaldi_lm on your path OR && \
+     echo You can do the following:  && \
+     echo  1. Install the latest version from http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz  && \
+     echo  2. you delete kaldi_lm, and kaldi_lm.tar.gz in the tools folder. This script will automatically install it. && \
    && exit 1;
 
 echo "Creating biphone model"
