@@ -15,12 +15,14 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+# To be safe we suggest running the recipe line by line. Otherwise
+# comment out the following line
 exit 1;
 
 . path.sh
-local/timit_data_prep.sh /ais/gobi2/speech/TIMIT
-local/timit_train_lms.sh data/local
-local/timit_format_data.sh
+local/timit_data_prep.sh /ais/gobi2/speech/TIMIT || exit 1;
+local/timit_train_lms.sh data/local || exit 1 ;
+local/timit_format_data.sh || exit 1;
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
@@ -31,22 +33,22 @@ for test in train test dev ; do
 done
 
 # train monophone system.
-steps/train_mono.sh data/train data/lang exp/mono
+steps/train_mono.sh data/train data/lang exp/mono || exit 1;
 
-scripts/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+scripts/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph || exit 1;
 echo "Decoding test datasets."
 for test in dev test ; do
   steps/decode_deltas.sh exp/mono data/$test data/lang exp/mono/decode_$test &
 done
 wait
-scripts/average_wer.sh exp/mono/decode_*/wer > exp/mono/wer
+scripts/average_wer.sh exp/mono/decode_*/wer > exp/mono/wer || exit 1;
 
 # Get alignments from monophone system.
 echo "Creating training alignments to use to train other systems such as ANN-HMM."
-steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali_train
+steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali_train || exit 1;
 echo "Creating dev alignments to use to train other systems such as ANN-HMM."
-steps/align_deltas.sh data/dev data/lang exp/mono exp/mono_ali_dev
+steps/align_deltas.sh data/dev data/lang exp/mono exp/mono_ali_dev || exit 1;
 echo "Creating test alignments to use to train other systems such as ANN-HMM."
-steps/align_deltas.sh data/test data/lang exp/mono exp/mono_ali_test
+steps/align_deltas.sh data/test data/lang exp/mono exp/mono_ali_test || exit 1;
 
 
