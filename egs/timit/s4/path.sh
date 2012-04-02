@@ -1,7 +1,7 @@
 # This contains the locations of the tools and data required for running
 # the GlobalPhone experiments.
 
-KALDIROOT=/exports/home/aghoshal/kaldi/trunk
+KALDIROOT=`cd ../../..; pwd`
 KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin

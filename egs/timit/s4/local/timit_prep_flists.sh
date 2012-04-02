@@ -56,6 +56,11 @@ do
   esac
 done
 
+if [ ! -d "$CORPUS/train" -a ! -d "$CORPUS/TRAIN" ]; then
+  echo "Expecting directory $CORPUS/train or $CORPUS/TRAIN to exist."
+  exit 1;
+fi
+
 tmpdir=$(mktemp -d);
 trap 'rm -rf "$tmpdir"' EXIT
 
@@ -64,7 +69,9 @@ trap 'rm -rf "$tmpdir"' EXIT
 # speakers in the 'train' directory are used for training.
 tr '[:upper:]' '[:lower:]' < $DEVSPK > $tmpdir/dev_spk    # Just in case!
 tr '[:upper:]' '[:lower:]' < $TESTSPK > $tmpdir/test_spk  # Just in case!
+
 ls -d "$CORPUS"/train/dr*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+
 
 ODIR=$WDIR/local  # Directory to write file lists & transcripts
 mkdir -p $ODIR

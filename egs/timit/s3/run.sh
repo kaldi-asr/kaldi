@@ -21,6 +21,7 @@ exit 1;
 
 . path.sh
 local/timit_data_prep.sh /ais/gobi2/speech/TIMIT || exit 1;
+# local/timit_data_prep.sh /export/corpora5/LDC/LDC93S1 || exit 1;
 local/timit_train_lms.sh data/local || exit 1 ;
 local/timit_format_data.sh || exit 1;
 

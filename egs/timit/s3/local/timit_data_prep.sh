@@ -55,6 +55,7 @@ elif [ -d $TIMIT_ROOT/timit/train -a -d $TIMIT_ROOT/timit/test ];
    spkr_info_file=$TIMIT_ROOT/timit/doc/spkrinfo.txt
 else 
    echo "Error: run.sh requires a directory argument (an absolute pathname) that contains TIMIT/TRAIN and TIMIT/TEST or timit/train and timit/test."
+   exit 1;
 fi
 
 
