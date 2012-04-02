@@ -23,5 +23,5 @@ of experiments.
       Training is done on 48 phonemes  (see- Lee and Hon: Speaker-Independent
       Phone Recognition Using Hidden Markov Models. IEEE TRANSACTIONS ON
       ACOUSTICS. SPEECH, AND SIGNAL PROCESSING, VOL. 31. NO. 11, PG. 1641-48,
-      NOVEMBER 1989, )
+      NOVEMBER 1989, ). Implemented by Arnab Ghoshal (arnab13@gmail.com)
 
