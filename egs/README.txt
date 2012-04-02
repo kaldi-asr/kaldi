@@ -30,3 +30,5 @@ Recipes in progress (these may be less polished than the ones above).
  gp: GlobalPhone.  This is a multilingual speech corpus.
 
  timit: TIMIT, which is an old corpus of carefully read speech.  
+    LDC corpous LDC93S1  
+
