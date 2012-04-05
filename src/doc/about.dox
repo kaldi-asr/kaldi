@@ -121,13 +121,34 @@
   @section about_status Status of the project
 
  Currently, we have code and scripts for most standard techniques, including all standard
- linear transforms, MMI, boosted MMI and MCE discriminative training (but not yet MPE or
- feature-space discriminative training).  We have working recipes for Wall Street Journal
+ linear transforms, MMI, boosted MMI and MCE discriminative training, and also feature-space
+ discriminative training (like fMPE, but based on boosted MMI)-- however, this is not
+ yet working as well as it should be.  We have working recipes for Wall Street Journal
  and Resource Management, and also for Switchboard (but the Switchboard recipe is not yet
- giving state-of-the-art results).  These features can be found in the "trunk/" code
- (see \ref install).  The only version number we currently have is "v1".  We will at some
+ giving state-of-the-art results, probably due to vocabulary and language model issues-- we
+ don't use any external data sources for this).  These features can be found in the "trunk/" code
+ (see \ref install).  The only version number we currently have is "v1".  We may at some
  point create a "v2" version that has a stable, finalized version of the techniques 
  described here.
 
+  @section about_reference Referencing Kaldi in papers
+
+You can use the following reference if you want to cite Kaldi in papers.
+\begin{verbatim}
+@INPROCEEDINGS{
+         Povey_ASRU2011,
+         author = {Povey, Daniel and Ghoshal, Arnab and Boulianne, Gilles and Burget, Lukas and Glembek, Ondrej and Goel, Nagendra and Hannemann, Mirko and Motlicek, Petr and Qian, Yanmin and Schwarz, Petr and Silovsky, Jan and Stemmer, Georg and Vesely, Karel},
+       keywords = {ASR, Automatic Speech Recognition, GMM, HTK, SGMM},
+          month = dec,
+          title = {The Kaldi Speech Recognition Toolkit},
+      booktitle = {IEEE 2011 Workshop on Automatic Speech Recognition and Understanding},
+           year = {2011},
+      publisher = {IEEE Signal Processing Society},
+       location = {Hilton Waikoloa Village, Big Island, Hawaii, US},
+           note = {IEEE Catalog No.: CFP11SRW-USB},
+}
+\end{verbatim}
+
+The paper can be found <a href=http://publications.idiap.ch/downloads/papers/2012/Povey_ASRU2011_2011.pdf> here </a>.
 
 */
