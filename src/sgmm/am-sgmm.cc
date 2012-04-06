@@ -293,7 +293,8 @@ void AmSgmm::CopyFromSgmm(const AmSgmm &other,
 
 void AmSgmm::CopyGlobalsInitVecs(const AmSgmm &other,
                                  int32 phn_subspace_dim,
-                                 int32 spk_subspace_dim) {
+                                 int32 spk_subspace_dim,
+                                 int32 num_pdfs) {
   if (phn_subspace_dim < 1 || phn_subspace_dim > other.PhoneSpaceDim()) {
     KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
         << other.PhoneSpaceDim() << "]. Changing from " << phn_subspace_dim
@@ -336,8 +337,7 @@ void AmSgmm::CopyGlobalsInitVecs(const AmSgmm &other,
   } else {
     N_.clear();
   }
-
-  InitializeVecs(other.NumPdfs());
+  InitializeVecs(num_pdfs);
 }
 
 

@@ -1,6 +1,6 @@
-// bin/build-tree.cc
+// sgmmbin/sgmm-build-tree.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@
 #include "tree/context-dep.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
-#include "tree/clusterable-classes.h"
+#include "sgmm/sgmm-clusterable.h"
+#include "sgmm/estimate-am-sgmm.h"
 #include "util/text-utils.h"
+
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -33,10 +35,10 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Train decision tree\n"
-        "Usage:  build-tree [options] <tree-stats-in> <roots-file> <questions-file> <topo-file> <tree-out>\n"
-        "e.g.: \n"
-        " build-tree treeacc roots.txt 1.qst topo tree\n";
-
+        "Usage: sgmm-build-tree [options] <old-sgmm-in> <tree-stats-in> "
+        "<roots-file> <questions-file> <tree-out> [<sgmm-out>]\n"
+        "e.g.: sgmm-build-tree 0.sgmm streeacc roots.txt 1.qst tree\n";
+    
     bool binary = true;
     int32 P = 1, N = 3;
 
@@ -65,13 +67,12 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string stats_filename = po.GetArg(1),
-        roots_filename = po.GetArg(2),
-        questions_filename = po.GetArg(3),
-        topo_filename = po.GetArg(4),
+    std::string sgmm_filename = po.GetArg(1), 
+        stats_filename = po.GetArg(2),
+        roots_filename = po.GetArg(3),
+        questions_filename = po.GetArg(4),
         tree_out_filename = po.GetArg(5);
-
-
+    
     // Following 2 variables derived from roots file.
     // phone_sets is sets of phones that share their roots.
     // Just one phone each for normal systems.
@@ -83,22 +84,29 @@ int main(int argc, char *argv[]) {
       ReadRootsFile(ki.Stream(), &phone_sets, &is_shared_root, &is_split_root);
     }
 
-    HmmTopology topo;
+    AmSgmm am_sgmm;
+    TransitionModel trans_model;
     {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
+      bool binary;
+      Input ki(sgmm_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_sgmm.Read(ki.Stream(), binary);
     }
 
+    const HmmTopology &topo = trans_model.GetTopo();
+    std::vector<SpMatrix<double> > H;
+    am_sgmm.ComputeH(&H);
+    
     BuildTreeStatsType stats;
     {
       bool binary_in;
-      GaussClusterable gc;  // dummy needed to provide type.
+      SgmmClusterable sc(am_sgmm, H);  // dummy stats needed to provide
+      // type info, and access to am_sgmm and H.
       Input ki(stats_filename, &binary_in);
-      ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
+      ReadBuildTreeStats(ki.Stream(), binary_in, sc, &stats);
     }
     KALDI_LOG << "Number of separate statistics is " << stats.size() << '\n';
-    
+
     Questions qo;
     {
       bool binary_in;
@@ -162,16 +170,16 @@ int main(int argc, char *argv[]) {
         WriteIntegerVector(ss, false, topo.GetPhones());
         KALDI_WARN << "Mismatch between phone sets provided in roots file, and those in topology: " << ss.str();
       }
-      std::vector<int32> phones_vec;  // phones we saw.
-      PossibleValues(P, stats, &phones_vec); // function in build-tree-utils.h
-
+      std::vector<int32> seen_phones;
+      PossibleValues(P, stats, &seen_phones); // get phones seen in the data.
+      
       std::vector<int32> unseen_phones;  // diagnostic.
       for (size_t i = 0; i < all_phones.size(); i++)
-        if (!std::binary_search(phones_vec.begin(), phones_vec.end(), all_phones[i]))
+        if (!std::binary_search(seen_phones.begin(), seen_phones.end(), all_phones[i]))
           unseen_phones.push_back(all_phones[i]);
-      for (size_t i = 0; i < phones_vec.size(); i++)
-        if (!std::binary_search(all_phones.begin(), all_phones.end(), phones_vec[i]))
-          KALDI_ERR << "Phone " << (phones_vec[i])
+      for (size_t i = 0; i < seen_phones.size(); i++)
+        if (!std::binary_search(all_phones.begin(), all_phones.end(), seen_phones[i]))
+          KALDI_ERR << "Phone " << (seen_phones[i])
                     << " appears in stats but is not listed in roots file.";
       if (!unseen_phones.empty()) {
         std::ostringstream ss;

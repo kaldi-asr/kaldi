@@ -24,6 +24,10 @@
 
 namespace kaldi {
 
+// Note: see sgmm/sgmm-clusterable.h for an SGMM-based clusterable
+// class.  We didn't include it here, to avoid adding an extra
+// dependency to this directory.
+
 /// \addtogroup clustering_group
 /// @{
 

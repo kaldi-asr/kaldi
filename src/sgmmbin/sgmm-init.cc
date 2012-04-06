@@ -81,7 +81,8 @@ int main(int argc, char *argv[]) {
         kaldi::Input ki(init_model_filename, &binary_read);
         init_sgmm.Read(ki.Stream(), binary_read);
       }
-      sgmm.CopyGlobalsInitVecs(init_sgmm, phn_space_dim, spk_space_dim);
+      sgmm.CopyGlobalsInitVecs(init_sgmm, phn_space_dim, spk_space_dim,
+                               init_sgmm.NumPdfs());
     } else {
       kaldi::FullGmm ubm;
       {

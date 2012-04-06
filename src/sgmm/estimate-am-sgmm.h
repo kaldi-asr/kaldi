@@ -26,6 +26,7 @@
 #include "sgmm/am-sgmm.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
+#include "sgmm/sgmm-clusterable.h"
 
 namespace kaldi {
 
@@ -163,7 +164,7 @@ class MleAmSgmmAccs {
   /// Returns likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
                        const SgmmPerFrameDerivedVars& frame_vars,
-                       const VectorBase<BaseFloat> &v_s,  // may be empty
+                       const VectorBase<BaseFloat> &v_s,  // spk-vec, may be empty
                        int32 state_index, BaseFloat weight,
                        SgmmUpdateFlagsType flags);
 
@@ -237,9 +238,19 @@ class MleAmSgmmUpdater {
               AmSgmm *model,
               SgmmUpdateFlagsType flags);
 
+  /// This function is like UpdatePhoneVectorsChecked, which supports
+  /// objective-function checking and backtracking but no smoothing term, but it
+  /// takes as input the stats used in SGMM-based tree clustering-- this is used
+  /// in initializing an SGMM from the tree stats.
+  double UpdatePhoneVectorsCheckedFromClusterable(
+      const std::vector<SgmmClusterable*> &stats,
+      const std::vector<SpMatrix<double> > &H,
+      AmSgmm *model);
+  
  protected:
   friend class UpdateWParallelClass;
   friend class UpdatePhoneVectorsClass;
+  friend class UpdatePhoneVectorsCheckedFromClusterableClass;
  private:
   MleAmSgmmOptions update_options_;
   /// Q_{i}, quadratic term for phonetic subspace estimation. Dim is [I][S][S]
@@ -271,6 +282,7 @@ class MleAmSgmmUpdater {
                             const SpMatrix<double> &H_sm,
                             const Vector<double> &y_sm);
 
+  
   // Called from UpdatePhoneVectors; updates a subset of states
   // (relates to multi-threading).
   void UpdatePhoneVectorsInternal(const MleAmSgmmAccs &accs,
@@ -291,6 +303,16 @@ class MleAmSgmmUpdater {
                                    AmSgmm *model,
                                    const std::vector<SpMatrix<double> > &H);
 
+  // Called (indirectly) from UpdatePhoneVectorsCheckedFromClusterable()
+  void UpdatePhoneVectorsCheckedFromClusterableInternal(
+      const std::vector<SgmmClusterable*> &stats,
+      const std::vector< SpMatrix<double> > &H,
+      AmSgmm *model,
+      double *count_ptr,
+      double *like_impr_ptr,
+      int32 num_threads,
+      int32 thread_id);
+  
   double UpdateM(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateMCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
 

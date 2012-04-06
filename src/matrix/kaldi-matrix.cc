@@ -728,21 +728,21 @@ void MatrixBase<Real>::CopyFromTp(const TpMatrix<OtherReal> & M,
   if (Trans == kNoTrans) {
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
     SetZero();
-    // MORE EFFICIENT IF LOWER TRIANGULAR!  Reverse code otherwise.
-    for (MatrixIndexT i = 0;i < num_rows_; i++) {
-      for (MatrixIndexT j = 0;j < i;j++) {
-        (*this)(i, j) = M(i, j);
-      }
-      (*this)(i, i) = M(i, i);
+    Real *out_i = data_;
+    const OtherReal *in_i = M.Data();
+    for (MatrixIndexT i = 0; i < num_rows_; i++, out_i += stride_, in_i += i) {
+      for (MatrixIndexT j = 0; j <= i; j++)
+        out_i[j] = in_i[j];
     }
   } else {
     SetZero();
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
-    for (MatrixIndexT i = 0; i < num_rows_; i++) {
-      for (MatrixIndexT j = 0; j < i; j++) {
-        (*this)(j, i) = M(i, j);
-      }
-      (*this)(i, i) = M(i, i);
+    MatrixIndexT stride = stride_;
+    Real *out_i = data_;
+    const OtherReal *in_i = M.Data();
+    for (MatrixIndexT i = 0; i < num_rows_; i++, out_i ++, in_i += i) {
+      for (MatrixIndexT j = 0; j <= i; j++)
+        out_i[j*stride] = in_i[j];
     }
   }
 }

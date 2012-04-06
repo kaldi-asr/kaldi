@@ -1975,22 +1975,29 @@ template<class Real> static void UnitTestSolve() {
 
     Matrix<Real> M2(M);
 
-#if defined(_MSC_VER)
+    SpMatrix<Real> Qinv(Q);
+    if (Q.Cond() < 1000.0)
+      Qinv.Invert();
+    
+#if defined(_MSC_VER) // compiler bug workaround.
     SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2, (Real)1.0E4, (Real)1.0E-40, "unknown", true);
 #else
     SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2);
 #endif
+
+    Matrix<Real> M3(M);
+    M3.AddMatSp(1.0, Y, kNoTrans, Qinv, 0.0);
+    if (Q.Cond() < 1000.0) {
+      AssertEqual(M2, M3); // This equality only holds if SigmaInv full-rank,
+      // which is overwhelmingly likely if dimO > dimM
+    }
+    
     {
       Real a1 = TraceMatSpMat(M2, kTrans, SigmaInv, Y, kNoTrans), a2 = TraceMatSpMatSp(M2, kNoTrans, Q, M2, kTrans, SigmaInv),
           b1 = TraceMatSpMat(M, kTrans, SigmaInv, Y, kNoTrans), b2 = TraceMatSpMatSp(M, kNoTrans, Q, M, kTrans, SigmaInv),
-        a3 = a1-0.5*a2, b3 = b1-0.5*b2;
-      Real a4;
-      {
-        SpMatrix<Real> MQM(dimO);
-        MQM.AddMat2Sp(1.0, M, kNoTrans, Q, 0.0);
-        a4 = TraceSpSp(MQM, SigmaInv);
-      }
+          a3 = a1-0.5*a2, b3 = b1-0.5*b2;
       KALDI_ASSERT(a3 >= b3);
+      // KALDI_LOG << "a3 = " << a3 << ", b3 = " << b3 << ", c3 = " << c3;
     }
     // Check objf not decreased.
   }

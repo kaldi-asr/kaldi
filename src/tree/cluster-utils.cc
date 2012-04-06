@@ -271,8 +271,6 @@ void BottomUpClusterer::Renumber() {
   std::vector<uint_smaller> mapping(npoints_, static_cast<uint_smaller> (-1));  // mapping from intermediate to final clusters.
   std::vector<Clusterable*> new_clusters(nclusters_);
   int32 clust = 0;
-  std::vector<Clusterable*>::const_iterator iter = clusters_->begin(), end =
-      clusters_->end();
   for (int32 i = 0; i < npoints_; i++) {
     if ((*clusters_)[i] != NULL) {
       assert(clust < nclusters_);

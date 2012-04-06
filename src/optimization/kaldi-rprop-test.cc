@@ -47,7 +47,7 @@ class QuadraticRprop: public OptimizableInterface<BaseFloat> {
 };
 
 void UnitTestRprop() {
-  bool converged = false;
+  // bool converged = false;
   for (size_t p = 0; p < 10; p++) {
     QuadraticRprop qc;
     RpropOptions<BaseFloat> opts;
@@ -57,7 +57,8 @@ void UnitTestRprop() {
     Vector<BaseFloat> param(qc.dim);
     param.SetRandn();
     // std::cout << "Initial param: " << param;
-    converged = Rprop(opts, &qc, &param);
+    // converged =
+    Rprop(opts, &qc, &param);
     // std::cout << "Optimized param: " << param;
     Vector<BaseFloat> param_optimal(qc.dim);
     Matrix<BaseFloat> Binv(qc.B);

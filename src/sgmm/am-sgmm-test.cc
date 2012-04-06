@@ -79,7 +79,8 @@ void TestSgmmInit(const AmSgmm &sgmm) {
 
   // Finally, copy the global parameters from the current model
   AmSgmm *sgmm4 = new AmSgmm();
-  sgmm4->CopyGlobalsInitVecs(sgmm, sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim());
+  sgmm4->CopyGlobalsInitVecs(sgmm, sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim(),
+                             sgmm.NumPdfs());
   sgmm4->ComputeNormalizers();
   sgmm4->GaussianSelection(config, feat, &gselect);
   sgmm4->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);

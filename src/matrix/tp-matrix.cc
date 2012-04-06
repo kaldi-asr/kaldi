@@ -59,12 +59,62 @@ void TpMatrix<double>::Invert() {
   }
 }
 #else
+
+  
+template<>
+void TpMatrix<float>::Invert() {
+  // ATLAS doesn't implement triangular matrix inversion in packed
+  // format, so we temporarily put in non-packed format.
+  Matrix<float> tmp(*this);
+  int rows = static_cast<int>(num_rows_);
+
+  
+  // ATLAS call.  It's really row-major ordering and a lower triangular matrix,
+  // but there is some weirdness with Fortran-style indexing that we need to
+  // take account of, so everything gets swapped.
+  int result = clapack_strtri(CblasColMajor, CblasUpper, CblasNonUnit, rows,
+                              tmp.Data(), tmp.Stride());
+  // Let's hope ATLAS has the same return value conventions as clapack.
+  // I couldn't find any documentation online.
+  if (result < 0) {
+    KALDI_ERR << "Call to ATLAS strtri function failed";
+  } else if (result > 0) {
+    KALDI_ERR << "Matrix is singular";
+  }
+  (*this).CopyFromMat(tmp);
+}
+
+
+template<>
+void TpMatrix<double>::Invert() {
+  // ATLAS doesn't implement triangular matrix inversion in packed
+  // format, so we temporarily put in non-packed format.
+  Matrix<double> tmp(*this);
+  int rows = static_cast<int>(num_rows_);
+
+  // ATLAS call.  It's really row-major ordering and a lower triangular matrix,
+  // but there is some weirdness with Fortran-style indexing that we need to
+  // take account of, so everything gets swapped.
+  int result = clapack_dtrtri(CblasColMajor, CblasUpper, CblasNonUnit, rows,
+                              tmp.Data(), tmp.Stride());
+  // Let's hope ATLAS has the same return value conventions as clapack.
+  // I couldn't find any documentation online.
+  if (result < 0) {
+    KALDI_ERR << "Call to ATLAS dtrtri function failed";
+  } else if (result > 0) {
+    KALDI_ERR << "Matrix is singular";
+  }
+  (*this).CopyFromMat(tmp);
+}
+
+/*
 template<class Real>
 void TpMatrix<Real>::Invert() {
   Matrix<Real> tmp(*this);
   tmp.Invert();
   (*this).CopyFromMat(tmp);
 }
+*/
 
 #endif
 
@@ -90,24 +140,32 @@ void TpMatrix<Real>::Cholesky(const SpMatrix<Real>& rOrig) {
   KALDI_ASSERT(rOrig.NumRows() == this->NumRows());
   MatrixIndexT n = this->NumRows();
   this->SetZero();
-
-  // Main loop.
-  for (MatrixIndexT j = 0; j < n; j++) {
+  Real *data = this->data_, *jdata = data;  // start of j'th row of matrix.
+  const Real *orig_jdata = rOrig.Data(); // start of j'th row of matrix.
+  for (MatrixIndexT j = 0; j < n; j++, jdata += j, orig_jdata += j) {
+    Real *kdata = data; // start of k'th row of matrix.
     Real d(0.0);
-    for (MatrixIndexT k = 0; k < j; k++) {
+    for (MatrixIndexT k = 0; k < j; k++, kdata += k) {
       Real s(0.0);
       for (MatrixIndexT i = 0; i < k; i++) {
-        s += (*this)(k, i) * (*this)(j, i);
+        // s += (*this)(k, i) * (*this)(j, i);
+        s += kdata[i] * jdata[i];
       }
-      (*this)(j, k) = s = (rOrig(j, k) - s)/(*this)(k, k);
+      // (*this)(j, k) = s = (rOrig(j, k) - s)/(*this)(k, k);
+      jdata[k] = s = (orig_jdata[k] - s)/kdata[k];
       d = d + s*s;
     }
-    d = rOrig(j, j) - d;
-    if (d >= 0.0)
-      (*this)(j, j) = sqrt(d);
-    else
-      KALDI_ERR << "Cholesky decomposition failed. Maybe matrix "
-          "is not positive definite.";
+    // d = rOrig(j, j) - d;
+    d = orig_jdata[j] - d;
+    
+    if (d >= 0.0) {
+      // (*this)(j, j) = sqrt(d);
+      jdata[j] = sqrt(d);
+    } else {
+      KALDI_WARN << "Cholesky decomposition failed. Maybe matrix "
+          "is not positive definite. Throwing error";
+      throw std::runtime_error("Cholesky decomposition failed.");
+    }
   }
 }
 
@@ -117,18 +175,21 @@ void TpMatrix<Real>::CopyFromMat(MatrixBase<Real> &M,
   if (Trans == kNoTrans) {
     KALDI_ASSERT(this->NumRows() == M.NumRows() && M.NumRows() == M.NumCols());
     MatrixIndexT D = this->NumRows();
-    for (MatrixIndexT i = 0; i < D; i++) {
-      for (MatrixIndexT j = 0; j <= i; j++) {
-        (*this)(i, j) = M(i, j);
-      }
-    }
+    const Real *in_i = M.Data();
+    MatrixIndexT stride = M.Stride();
+    Real *out_i = this->data_;
+    for (MatrixIndexT i = 0; i < D; i++, in_i += stride, out_i += i)
+      for (MatrixIndexT j = 0; j <= i; j++)
+        out_i[j] = in_i[j];
   } else {
     KALDI_ASSERT(this->NumRows() == M.NumRows() && M.NumRows() == M.NumCols());
     MatrixIndexT D = this->NumRows();
-    for (MatrixIndexT i = 0; i < D; i++) {
-      for (MatrixIndexT j = 0; j <= i; j++) {
-        (*this)(i, j) = M(j, i);
-      }
+    const Real *in_i = M.Data();
+    MatrixIndexT stride = M.Stride();
+    Real *out_i = this->data_;
+    for (MatrixIndexT i = 0; i < D; i++, in_i++, out_i += i) {
+      for (MatrixIndexT j = 0; j <= i; j++)
+        out_i[j] = in_i[stride*j];
     }
   }
 }

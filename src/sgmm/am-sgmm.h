@@ -151,10 +151,12 @@ class AmSgmm {
   /// Used to copy models (useful in update)
   void CopyFromSgmm(const AmSgmm &other, bool copy_normalizers);
 
-  /// Copies a subset of global parameters from the supplied model and
-  /// initializes the rest of the parameters from the UBM.
+  /// Copies the global parameters from the supplied model, but sets
+  /// the state vectors to zero.  Supports reducing the phonetic
+  /// and speaker subspace dimensions.
+  /// , and initializes the rest of the parameters from the UBM.
   void CopyGlobalsInitVecs(const AmSgmm &other, int32 phn_subspace_dim,
-                           int32 spk_subspace_dim);
+                           int32 spk_subspace_dim, int32 num_pdfs);
 
   /// Computes the top-scoring Gaussian indices (used for pruning of later
   /// stages of computation). Returns frame log-likelihood given selected
@@ -171,10 +173,11 @@ class AmSgmm {
                                        const std::vector<int32> &preselect,
                                        std::vector<int32> *gselect) const;
 
-  /// This needs to be called with each new frame of data, prior to
-  /// accumulation or likelihood evaluation: it computes various
-  /// pre-computed quantities. The 'logdet_s' term is the log determinant
-  /// of FMLLR transform, or 0.0 if no FMLLR is used.
+  /// This needs to be called with each new frame of data, prior to accumulation
+  /// or likelihood evaluation: it computes various pre-computed quantities. The
+  /// 'logdet_s' term is the log determinant of the FMLLR transform, or 0.0 if
+  /// no FMLLR is used or it's single-class fMLLR applied in the feature
+  /// extraction, and we're not keeping track of it here.
   void ComputePerFrameVars(const VectorBase<BaseFloat>& data,
                            const std::vector<int32> &gselect,
                            const SgmmPerSpkDerivedVars &spk_vars,
@@ -196,7 +199,6 @@ class AmSgmm {
   /// probabilities for the top-scoring Gaussian components and all substates.
   BaseFloat ComponentPosteriors(const SgmmPerFrameDerivedVars &per_frame_vars,
                                 int32 state, Matrix<BaseFloat> *post) const;
-
 
   /// Increases the total number of substates bases on the state occupancies.
   void SplitSubstates(const Vector<BaseFloat> &state_occupancies,
@@ -275,6 +277,10 @@ class AmSgmm {
                                        const SgmmPerSpkDerivedVars &spk,
                                        VectorBase<Real> *mean_out) const;
 
+  /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
+  template<class Real>
+  void ComputeH(std::vector< SpMatrix<Real> > *H_i) const;
+  
  protected:
   friend class ComputeNormalizersClass;
  private:
@@ -282,9 +288,6 @@ class AmSgmm {
   void ComputeNormalizersInternal(int32 num_threads, int32 thread,
                                   int32 *entropy_count, double *entropy_sum);
   
-  /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
-  template<class Real>
-  void ComputeH(std::vector< SpMatrix<Real> > *H_i) const;
 
   /// Initializes the matrices M_ and w_
   void InitializeMw(int32 phn_subspace_dim,

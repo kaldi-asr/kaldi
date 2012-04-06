@@ -130,6 +130,8 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Accumulated stats for " << num_done << " files, "
               << num_no_alignment << " failed due to no alignment, "
               << num_other_error << " failed for other reasons.";
+    KALDI_LOG << "Number of separate stats (context-dependent states) is "
+              << stats.size();
     DeleteBuildTreeStats(&stats);
     if (num_done != 0) return 0;
     else return 1;

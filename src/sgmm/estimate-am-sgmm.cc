@@ -737,7 +737,7 @@ void MleAmSgmmUpdater::UpdatePhoneVectorsInternal(
       double gamma_jm = accs.gamma_[j].Row(m).Sum();
       state_count += gamma_jm;
       Vector<double> g_jm(accs.phn_space_dim_);  // computed using eq. 58
-      SpMatrix<double> H_jm(accs.phn_space_dim_);  // computed using eq. 59
+     SpMatrix<double> H_jm(accs.phn_space_dim_);  // computed using eq. 59
       // First compute normal H_jm.
 
       // need weights for this ...
@@ -840,17 +840,12 @@ double MleAmSgmmUpdater::UpdatePhoneVectors(const MleAmSgmmAccs &accs,
 }
 
 
-/** Math for UpdatePhoneVectorsChecked:
+/**
+   This is as UpdatePhoneVectors but does not support smoothing terms or
+   parallelization.  However, it does compute the auxiliary function
+   after doing the update, and backtracks if it did not increase (due
+   to the weight terms, increase is not mathematically guaranteed). */
 
-  Auxf is:
-      v_{jm}^T y_jm -0.5 v_{jm}^T X_{jm} v_{jm}
-     + sum_i gamma_{jmi} \log w_{jmi} ,
-  where X_{jm} = \sum_i \gamma_{jmi} \H_i  [this is one term in H_{jm} in the
-     CSL paper].
-
-  A local quadratic approximation to this is computable with the formulas in the
-  CSL paper.
-*/
 double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
                                                    AmSgmm *model,
                                                    const vector< SpMatrix<double> > &H) {
@@ -949,6 +944,208 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
   // Choosing to return actual likelihood impr here.
   return tot_objf_impr;
 }
+
+
+
+class UpdatePhoneVectorsCheckedFromClusterableClass { // For multi-threaded.
+ public:
+  UpdatePhoneVectorsCheckedFromClusterableClass(
+      MleAmSgmmUpdater *updater,
+      const std::vector<SgmmClusterable*> &stats,
+      const std::vector<SpMatrix<double> > &H,
+      AmSgmm *model,
+      double *count,
+      double *like_impr):
+      updater_(updater), stats_(stats), H_(H), model_(model),
+      count_ptr_(count), count_(0.0),
+      like_impr_ptr_(like_impr), like_impr_(0.0)
+      { }
+  
+  ~UpdatePhoneVectorsCheckedFromClusterableClass() {
+    *count_ptr_ += count_;
+    *like_impr_ptr_ += like_impr_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to the total sums in the destructor.
+    updater_->UpdatePhoneVectorsCheckedFromClusterableInternal(
+        stats_, H_, model_, &count_, &like_impr_, num_threads_, thread_id_);
+  }
+  // Copied and modified from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    UpdatePhoneVectorsCheckedFromClusterableClass *c =
+        static_cast<UpdatePhoneVectorsCheckedFromClusterableClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
+  MleAmSgmmUpdater *updater_;
+  const std::vector<SgmmClusterable*> &stats_;
+  const std::vector<SpMatrix<double> > &H_;
+  AmSgmm *model_;
+  double *count_ptr_;
+  double count_;
+  double *like_impr_ptr_;
+  double like_impr_;
+};
+
+
+double MleAmSgmmUpdater::UpdatePhoneVectorsCheckedFromClusterable(
+    const std::vector<SgmmClusterable*> &stats,
+    const vector< SpMatrix<double> > &H,
+    AmSgmm *model) {
+  KALDI_LOG << "Updating phone vectors using stats from Clusterable class "
+      "(and checking auxiliary function)";
+  double count = 0.0, like_impr = 0.0;
+  
+  UpdatePhoneVectorsCheckedFromClusterableClass c(this, stats, H, model,
+                                                  &count, &like_impr);
+  RunMultiThreaded(c);
+
+  KALDI_LOG << "**Overall objf impr for v is " << (like_impr / count)
+            << " over " << count << " frames.";
+  
+  return like_impr / count;
+}
+
+
+void MleAmSgmmUpdater::UpdatePhoneVectorsCheckedFromClusterableInternal(
+    const std::vector<SgmmClusterable*> &stats,
+    const vector< SpMatrix<double> > &H,
+    AmSgmm *model,
+    double *count_ptr,
+    double *like_impr_ptr,
+    int32 num_threads,
+    int32 thread_id) {
+  
+  int32 block_size = (model->NumPdfs() + (num_threads-1)) / num_threads,
+                j_start = block_size * thread_id,
+                j_end = std::min(model->NumPdfs(), j_start + block_size);
+  
+  double tot_count = 0.0, tot_objf_impr = 0.0, tot_auxf_impr = 0.0;  // sum over all states
+
+  KALDI_ASSERT(model->NumPdfs() == static_cast<int32>(stats.size()));
+  int32 num_gauss = model->NumGauss();
+  for (int32 j = j_start; j < j_end; j++) {
+    KALDI_ASSERT(model->NumSubstates(j) == 1 &&
+                 "This function only works if there is 1 substate per state.");
+    int32 m = 0; // sub-state index.
+    const Vector<double> &gamma = stats[j]->gamma();
+    const Vector<double> &y = stats[j]->y();
+      
+    double gamma_jm = gamma.Sum();
+    SpMatrix<double> X_jm(model->PhoneSpaceDim());  // = \sum_i \gamma_{jmi} H_i
+
+    for (int32 i = 0; i < num_gauss; ++i) {
+      double gamma_jmi = gamma(i);
+      if (gamma_jmi != 0.0)
+        X_jm.AddSp(gamma_jmi, H[i]);
+    }
+
+    Vector<double> v_jm_orig(model->v_[j].Row(m)),
+        v_jm(v_jm_orig);
+    
+    double exact_objf_start = 0.0, exact_objf = 0.0, auxf_impr = 0.0;
+    int32 backtrack_iter, max_backtrack = 10;
+    for (backtrack_iter = 0; backtrack_iter < max_backtrack; backtrack_iter++) {
+      // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
+      Vector<double> w_jm(num_gauss);
+      w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
+                     v_jm, 0.0);
+      w_jm.Add(-w_jm.LogSumExp());  // it is now log w_jm
+      
+      exact_objf = VecVec(w_jm, gamma)
+          + VecVec(v_jm, y)
+          -0.5 * VecSpVec(v_jm, X_jm, v_jm);
+      
+      if (backtrack_iter == 0.0) {
+        exact_objf_start = exact_objf;
+      } else {
+        if (exact_objf >= exact_objf_start) {
+          break;  // terminate backtracking.
+        } else {
+          KALDI_LOG << "Backtracking computation of v_jm for j = " << j
+                    << " and m = " << m << " because objf changed by "
+                    << (exact_objf-exact_objf_start) << " [vs. predicted:] "
+                    << auxf_impr;
+          v_jm.AddVec(1.0, v_jm_orig);
+          v_jm.Scale(0.5);
+        }
+      }
+
+      if (backtrack_iter == 0) {  // computing updated value.
+        w_jm.ApplyExp();  // it is now w_jm
+        SpMatrix<double> weight_2nd_deriv(model->PhoneSpaceDim()); // actually
+        // negatived 2nd derivative.
+        Vector<double> num_deriv(model->PhoneSpaceDim());
+        Vector<double> den_deriv(model->PhoneSpaceDim());
+        
+        // We modify the optimization to use the exact 2nd derivative.
+        // Because we do checking and backtracking, the loss of
+        // natural stability is OK.
+        for (int32 i = 0; i < num_gauss; ++i) {
+          double gamma_jmi = gamma(i);
+          SubVector<BaseFloat> wi(model->w_, i);
+          num_deriv.AddVec(gamma_jmi, wi);
+          double scalar = gamma_jm * w_jm(i); // expected count.
+          den_deriv.AddVec(scalar, wi);
+          if (scalar > 1.0e-10) // if-statement is a speedup
+            weight_2nd_deriv.AddVec2(static_cast<BaseFloat>(scalar), wi);
+        }
+        Vector<double> total_linear_term(y);
+        total_linear_term.AddVec(1.0, num_deriv);
+        total_linear_term.AddVec(-1.0, den_deriv);
+        if (gamma_jm > 0.0)
+          weight_2nd_deriv.AddVec2(-1.0/gamma_jm, den_deriv);
+        
+        total_linear_term.AddSpVec(1.0, weight_2nd_deriv, v_jm, 1.0);
+        // we want the derivatives around zero, not around the current point.
+        // Correction for this.
+        
+        SpMatrix<double> total_quadratic_term(weight_2nd_deriv);
+        total_quadratic_term.AddSp(1.0, X_jm);
+        
+        auxf_impr =
+            SolveQuadraticProblem(total_quadratic_term,
+                                  total_linear_term,
+                                  &v_jm,
+                                  static_cast<double>(update_options_.max_cond),
+                                  static_cast<double>(update_options_.epsilon),
+                                  "v", true);
+      }
+    }
+    double objf_impr = exact_objf - exact_objf_start;
+    tot_count += gamma_jm;
+    tot_objf_impr += objf_impr;
+    tot_auxf_impr += auxf_impr;
+    if (backtrack_iter == max_backtrack) {
+      KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]\n";
+    } else {
+      model->v_[j].Row(m).CopyFromVec(v_jm);
+    }
+    if (j < 3) {
+      KALDI_LOG << "Objf impr for j = " << (j) << " m = " << (m) << " is "
+                << objf_impr << " vs. quadratic auxf impr (before backtrack) "
+                << auxf_impr;
+    }
+  }
+
+  *like_impr_ptr = tot_objf_impr;  
+  *count_ptr = tot_count;
+  
+  tot_objf_impr /= (tot_count + 1.0e-20);
+  tot_auxf_impr /= (tot_count + 1.0e-20);
+
+  if (j_start == 0)
+    KALDI_LOG << "**For first batch: objf impr for v is " << tot_objf_impr
+              << " (auxf impr before backtracking:) " << tot_auxf_impr
+              << " over " << tot_count << " frames";
+}
+
 
 void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
                                     AmSgmm *model,
