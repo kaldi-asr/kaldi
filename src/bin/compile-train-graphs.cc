@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "compile-train-graphs: succeeded for " << num_succeed
               << " graphs, failed for " << num_fail;
-    return 0;
+    return (num_succeed != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
