@@ -89,7 +89,7 @@ cat $trans_file | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1
      echo You can do the following:  && \
      echo  1. Install the latest version from http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz  && \
      echo  2. you delete kaldi_lm, and kaldi_lm.tar.gz in the tools folder. This script will automatically install it. && \
-   && exit 1;
+   exit 1;
 
 echo "Creating biphone model"
 local/create_biphone_lm.sh  $dir
