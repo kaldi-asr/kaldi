@@ -293,7 +293,7 @@ if [ "`uname -o`" == "Cygwin"  ]; then
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure "please first install package liblapack0"
     fi
-    echo FSTFSTROOT = $FSTROOT >> kaldi.mk
+    echo FSTROOT = $FSTROOT >> kaldi.mk
     echo FSTROOT = $FSTROOT >> Makefile
     cat makefiles/cygwin.mk >> kaldi.mk
     echo "Configuration succeeded for platform cygwin"
