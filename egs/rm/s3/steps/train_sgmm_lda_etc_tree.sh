@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2011 Microsoft Corporation  Arnab Ghoshal
+# Copyright 2010-2012 Microsoft Corporation  Arnab Ghoshal  Daniel Povey
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,22 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+# This script trains SGMMs, but the tree is trained using the SGMM-type
+# tree stats.
 
+# Old comment describing previous script:
 # Trains SGMM on top of LDA plus [something] features, where the [something]
-# might be e.g. MLLT, or some kind of speaker-specific transform.
+# might be e.g. MLLT, or some kind of speaker-specific transform.  This version
+# of the script trains the tree in an integrated way, with the SGMM itself.  It
+# first trains an initial SGMM for a few iterations, with a single sub-state per
+# state, based on the old tree.  It then accumulates "SGMM tree stats" using
+# this SGMM, and does the clustering with this; the tree building program
+# outputs an SGMM that's compatible with the new tree.
+
 
 if [ $# != 5 ]; then
-   echo "Usage: steps/train_sgmm_lda_etc.sh <data-dir> <lang-dir> <ali-dir> <ubm> <exp-dir>"
-   echo " e.g.: steps/train_sgmm_lda_etc.sh data/train data/lang exp/tri2b_ali exp/ubm3c/final.ubm exp/sgmm3d"
+   echo "Usage: steps/train_sgmm_lda_etc_2.sh <data-dir> <lang-dir> <ali-dir> <ubm> <exp-dir>"
+   echo " e.g.: steps/train_sgmm_lda_etc_2.sh data/train data/lang exp/tri2b_ali exp/ubm3c/final.ubm exp/sgmm3d"
    exit 1;
 fi
 
@@ -29,6 +38,7 @@ if [ -f path.sh ]; then . path.sh; fi
 # This is SGMM with speaker vectors, on top of LDA+STC/MLLT features.
 # To be run from ..
 
+simple_init=true 
 data=$1
 lang=$2
 alidir=$3
@@ -40,6 +50,8 @@ cp $alidir/final.mat $dir/final.mat || exit 1;
 
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 
+numpreiters=5 # Number of iterations for the initial phases of SGMM
+   # training before we build the tree.
 numiters=25   # Total number of iterations
 
 realign_iters="5 10 15"; 
@@ -74,30 +86,69 @@ if [ ! -f $ubm ]; then
   exit 1;
 fi
 
+# Create an SGMM based on the old tree.  We'll estimate this for a few iterations
+# before creating our new tree.
+sgmm-init --spk-space-dim=$spkspacedim --phn-space-dim=$phnspacedim $lang/topo $alidir/tree $ubm \
+    $dir/0.pre_mdl 2> $dir/init_sgmm.log || exit 1;
+
+# Compute the Gaussian-selection info.
+if [ ! -f $dir/gselect.gz ]; then
+ sgmm-gselect $dir/0.pre_mdl "$feats" ark,t:- 2>$dir/gselect.log | \
+    gzip -c > $dir/gselect.gz || exit 1;
+fi
+
+if [ ! -f $dir/$numpreiters.pre_mdl ]; then 
+
+# Update this model for a few iterations.  We won't bother with speaker adaptation yet.
+# we can add this later.
+  iter=0
+  while [ $iter -lt $numpreiters ]; do
+    echo "Pre-iter $iter ... "
+    if [ $iter -eq 0 ]; then
+      flags=vwcSt
+    else
+      flags=vMwcSt
+    fi
+    sgmm-acc-stats --update-flags=$flags "$gselect_opt" --rand-prune=$randprune --binary=false $dir/$iter.pre_mdl "$feats" "ark:ali-to-post ark:$alidir/ali ark:-|" $dir/$iter.acc 2> $dir/pre_acc.$iter.log  || exit 1;
+    sgmm-est --update-flags=$flags $dir/$iter.pre_mdl $dir/$iter.acc $dir/$[$iter+1].pre_mdl 2> $dir/pre_update.$iter.log || exit 1;
+
+    rm $dir/$iter.pre_mdl $dir/$iter.acc
+    iter=$[$iter+1];
+  done
+fi
 
 # We rebuild the tree because we want a larger #states than for a normal
 # GMM system (the optimum #states for SGMMs tends to be a bit higher).
 
-if [ ! -f $dir/treeacc ]; then
-  acc-tree-stats  --ci-phones=$silphonelist $alidir/final.mdl "$feats" ark:$alidir/ali \
-    $dir/treeacc 2> $dir/acc.tree.log || exit 1;
+if [ ! -f $dir/streeacc ]; then
+  sgmm-acc-tree-stats "$gselect_opt" --ci-phones=$silphonelist \
+    $dir/$numpreiters.pre_mdl "$feats" ark:$alidir/ali \
+    $dir/streeacc 2> $dir/acc.tree.log || exit 1;
 fi
 
-cat $lang/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
-cluster-phones $dir/treeacc $dir/phones.list $dir/questions.txt 2> $dir/questions.log || exit 1;
-scripts/int2sym.pl $lang/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
-compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
-scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
 
-build-tree --verbose=1 --max-leaves=$numleaves \
-    $dir/treeacc $dir/roots.txt \
-    $dir/questions.qst $lang/topo $dir/tree  2> $dir/train_tree.log || exit 1;
+if [ ! -f $dir/roots.txt ]; then
+  cat $lang/phones.txt | awk '{print $NF}' | grep -v -w 0 > $dir/phones.list
+  sgmm-cluster-phones $dir/$numpreiters.pre_mdl $dir/streeacc $dir/phones.list $dir/questions.txt 2> $dir/questions.log || exit 1;
+  scripts/int2sym.pl $lang/phones.txt < $dir/questions.txt > $dir/questions_syms.txt
+  compile-questions $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/compile_questions.log || exit 1;
+  scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split > $dir/roots.txt 2>$dir/roots.log || exit 1;
+fi
 
-sgmm-init --spk-space-dim=$spkspacedim --phn-space-dim=$phnspacedim $lang/topo $dir/tree $ubm \
-    $dir/0.mdl 2> $dir/init_sgmm.log || exit 1;
+if [ ! -f $dir/tree ]; then
+  # This program build the tree and also initializes the SGMM.
+  sgmm-build-tree --verbose=1 --max-leaves=$numleaves \
+    $dir/$numpreiters.pre_mdl $dir/streeacc $dir/roots.txt \
+    $dir/questions.qst $dir/tree  2> $dir/train_tree.log || exit 1;
+fi
 
-sgmm-gselect $dir/0.mdl "$feats" ark,t:- 2>$dir/gselect.log | \
-    gzip -c > $dir/gselect.gz || exit 1;
+if $simple_init; then
+  sgmm-init --spk-space-dim=$spkspacedim --phn-space-dim=$phnspacedim $lang/topo $dir/tree $ubm \
+     $dir/0.mdl 2> $dir/init_sgmm_final.log || exit 1;
+else
+  sgmm-init-from-tree-stats $dir/$numpreiters.pre_mdl \
+    $dir/tree $dir/streeacc $dir/0.mdl 2>$dir/init_sgmm_final.log || exit 1;
+fi
 
 convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree ark:$alidir/ali \
     ark:$dir/cur.ali 2>$dir/convert.log 
@@ -129,9 +180,7 @@ while [ $iter -lt $numiters ]; do
       mv $dir/tmp.vecs $dir/cur.vecs
       spkvecs_opt="--spk-vecs=ark:$dir/cur.vecs"
    fi  
-   if [ $iter -eq 0 ]; then
-     flags=vwcSt
-   elif [ $[$iter%2] -eq 1 -a $iter -gt 4 ]; then # even iters after 4 (i.e. starting from 6)...
+   if [ $[$iter%2] -eq 1 -a $iter -gt 4 ]; then # even iters after 4 (i.e. starting from 6)...
      flags=vNwcSt
    else
      flags=vMwcSt

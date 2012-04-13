@@ -18,16 +18,24 @@
 # see "The subspace Gaussian mixture model--A structured model for speech recognition"
 # by D. Povey et al, Computer Speech and Language, 2011.
 
+# This differs from train_sgmm_lda_etc.sh by training the tree using an
+# SGMM-derived auxiliary function, rather than Gaussian stats.
+
 nj=4
 cmd=scripts/run.pl
-stage=-5
+stage=-30
 transformdir=
 ctxopts=
-for x in `seq 3`; do
+simple_init=false
+for x in `seq 5`; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
      shift
+  fi
+  if [ $1 == "--simple-init" ]; then
+     shift
+     simple_init=true
   fi
   if [ $1 == "--cmd" ]; then
      shift
@@ -81,7 +89,8 @@ cp $transformdir/final.mat $dir/final.mat || exit 1;
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 oov_sym=`cat $lang/oov.txt`
 
-numiters=25   # Total number of iterations
+numpreiters=5 # Number of iterations before we build the tree
+numiters=25   # Total number of iterations (after we build the tree)
 numiters_alimdl=3 # Number of iterations for estimating alignment model.
 maxiterinc=15 # Last iter to increase #substates on.
 realign_iters="5 10 15"; 
@@ -121,6 +130,54 @@ if [ ! -f $ubm ]; then
   exit 1;
 fi
 
+if [ $stage -le -22 ]; then
+  # Create an SGMM based on the old tree.  We'll estimate this for a few iterations
+  # before creating our new tree.
+  $cmd $dir/log/init_sgmm.log \
+    sgmm-init --spk-space-dim=$spkdim --phn-space-dim=$phndim $lang/topo $alidir/tree $ubm \
+      $dir/0.pre_mdl || exit 1;
+fi
+
+rm $dir/.error 2>/dev/null
+
+if [ $stage -le -21 ]; then
+  echo "Doing Gaussian selection"
+  for n in `get_splits.pl $nj`; do
+    $cmd $dir/log/gselect$n.log \
+      sgmm-gselect $dir/0.pre_mdl "${featspart[$n]}" "ark,t:|gzip -c > $dir/$n.gselect.gz" \
+     || touch $dir/.error &
+  done
+  wait;
+  [ -f $dir/.error ] && echo "Error doing Gaussian selection" && exit 1;
+fi
+
+x=0
+# Note the "stage" stuff assumes $numpreiters is less than 10!
+while [ $x -lt $numpreiters ]; do
+  if [ $stage -le $[-20 + $x] ]; then
+    echo "Iteration $x / $numpreiters [before building tree]"
+    if [ $x -eq 0 ]; then
+      flags=MwcS # First time don't update v...
+    else
+      flags=vMwcS # don't update transitions-- will probably share graph with
+                  # normal model.
+    fi
+
+    for n in `get_splits.pl $nj`; do
+      $cmd $dir/log/pre_acc.$x.$n.log \
+        sgmm-acc-stats --update-flags=$flags "${gselect_opt[$n]}" --rand-prune=$randprune \
+        $dir/$x.pre_mdl "${featspart[$n]}" "ark,s,cs:ali-to-post 'ark:gunzip -c $alidir/$n.ali.gz|' ark:-|" \
+        $dir/$x.$n.acc || touch $dir/.error &
+    done
+    wait;
+    [ -f $dir/.error ] && echo "Error accumulating stats on iter $x" && exit 1;     
+    $cmd $dir/log/pre_update.$x.log \
+      sgmm-est --update-flags=$flags $dir/$x.pre_mdl \
+       "sgmm-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].pre_mdl || exit 1;
+    rm $dir/$x.pre_mdl $dir/$x.*.acc
+  fi
+  x=$[$x+1];
+done
 
 if [ $stage -le -5 ]; then
   # This stage assumes we won't need the context of silence, which
@@ -129,55 +186,44 @@ if [ $stage -le -5 ]; then
   rm $dir/.error 2>/dev/null
   for n in `get_splits.pl $nj`; do
     $cmd $dir/log/acc_tree.$n.log \
-    acc-tree-stats  $ctxopts --ci-phones=$silphonelist $alidir/final.mdl "${featspart[$n]}" \
-      "ark:gunzip -c $alidir/$n.ali.gz|" $dir/$n.treeacc || touch $dir/.error &
+      sgmm-acc-tree-stats "${gselect_opt[$n]}" $ctxopts --ci-phones=$silphonelist \
+       $dir/$numpreiters.pre_mdl "${featspart[$n]}" "ark:gunzip -c $alidir/$n.ali.gz|" \
+       $dir/$n.streeacc || touch $dir/.error &
   done
   wait
   [ -f $dir/.error ] && echo Error accumulating tree stats && exit 1;
-  sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
-  rm $dir/*.treeacc
+  $cmd $dir/log/sum_tree_acc.log \
+    sgmm-sum-tree-stats "|gzip -c >$dir/streeacc.gz" $dir/*.streeacc  || exit 1;
+  rm $dir/*.streeacc
 fi
 
 if [ $stage -le -4 ]; then
   echo "Computing questions for tree clustering"
   # preparing questions, roots file...
   sym2int.pl $lang/phones.txt $lang/phonesets_cluster.txt > $dir/phonesets.txt || exit 1;
-  cluster-phones $ctxopts $dir/treeacc $dir/phonesets.txt $dir/questions.txt 2> $dir/log/questions.log || exit 1;
+  sgmm-cluster-phones $ctxopts $dir/$numpreiters.pre_mdl "gunzip -c $dir/streeacc.gz|" $dir/phonesets.txt \
+    $dir/questions.txt 2> $dir/log/questions.log || exit 1;
   sym2int.pl $lang/phones.txt $lang/extra_questions.txt >> $dir/questions.txt
   compile-questions $ctxopts $lang/topo $dir/questions.txt $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
   sym2int.pl --ignore-oov $lang/phones.txt $lang/roots.txt > $dir/roots.txt
 
   echo "Building tree"
   $cmd $dir/log/train_tree.log \
-    build-tree $ctxopts --verbose=1 --max-leaves=$numleaves \
-      $dir/treeacc $dir/roots.txt \
-      $dir/questions.qst $lang/topo $dir/tree || exit 1;
-
-  # The next line is a bit of a hack to work out the feature dim.  The program
-  # feat-to-len returns the #rows of each matrix, which for the transform matrix,
-  # is the feature dim.
-  featdim=`feat-to-len "scp:echo foo $transformdir/final.mat|" ark,t:- 2>/dev/null | awk '{print $2}'`
-  
-  # Note: if phndim and/or spkdim are higher than you can initialize with,
-  # sgmm-init will just make them as high as it can (later we'll increase)
-
-  $cmd $dir/log/init_sgmm.log \
-    sgmm-init --phn-space-dim=$phndim --spk-space-dim=$spkdim $lang/topo $dir/tree $ubm \
-      $dir/0.mdl || exit 1;
-
+    sgmm-build-tree $ctxopts --verbose=1 --max-leaves=$numleaves \
+      $dir/$numpreiters.pre_mdl "gunzip -c $dir/streeacc.gz|" $dir/roots.txt \
+      $dir/questions.qst $dir/tree  || exit 1;
 fi
 
-rm $dir/.error 2>/dev/null
-
 if [ $stage -le -3 ]; then
-  echo "Doing Gaussian selection"
-  for n in `get_splits.pl $nj`; do
-    $cmd $dir/log/gselect$n.log \
-      sgmm-gselect $dir/0.mdl "${featspart[$n]}" "ark,t:|gzip -c > $dir/$n.gselect.gz" \
-     || touch $dir/.error &
-  done
-  wait;
-  [ -f $dir/.error ] && echo "Error doing Gaussian selection" && exit 1;
+  if $simple_init; then
+    $cmd $dir/log/init_sgmm_final.log \
+      sgmm-init --spk-space-dim=$spkdim --phn-space-dim=$phndim $lang/topo $dir/tree $ubm \
+        $dir/0.mdl || exit 1;
+  else
+    $cmd $dir/log/init_sgmm_final.log \
+      sgmm-init-from-tree-stats $dir/$numpreiters.pre_mdl \
+        $dir/tree "gunzip -c $dir/streeacc.gz|" $dir/0.mdl || exit 1;
+  fi
 fi
 
 if [ $stage -le -2 ]; then
@@ -235,9 +281,7 @@ while [ $x -lt $numiters ]; do
      wait;
      [ -f $dir/.error ] && echo "Error computing speaker vectors on iter $x" && exit 1;     
    fi  
-   if [ $x -eq 0 ]; then
-     flags=vwcSt # On first iter, don't update M or N.
-   elif [ $spkdim -gt 0 -a $[$x%2] -eq 1 -a $x -ge `echo $spkvec_iters | awk '{print $1}'` ]; then 
+   if [ $spkdim -gt 0 -a $[$x%2] -eq 1 -a $x -ge `echo $spkvec_iters | awk '{print $1}'` ]; then 
      # Update N if we have spk-space and x is odd, and we're at least at 1st spkvec iter.
      flags=vNwcSt
    else # Else update M but not N.
