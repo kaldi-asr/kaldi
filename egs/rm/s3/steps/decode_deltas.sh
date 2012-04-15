@@ -58,7 +58,6 @@ feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ar
 
 gmm-latgen-simple --beam=20.0 --acoustic-scale=0.1 --word-symbol-table=$lang/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.gz" \
-  ark,t:$dir/test.tra ark,t:$dir/test.ali \
      2> $dir/decode.log || exit 1;
 
 # In this setup there are no non-scored words, so
