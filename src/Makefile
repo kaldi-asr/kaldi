@@ -61,3 +61,4 @@ nnet_cpu: base util matrix
 rnn: base util matrix lat 
 
 
+FSTROOT = /mnt/matylda5/iveselyk/DEVEL/kaldi/sandbox/karel/tools/openfst

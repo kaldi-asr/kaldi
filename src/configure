@@ -31,9 +31,11 @@ ATLASROOT=`rel2abs ../tools/ATLAS/`
 FSTROOT=`rel2abs ../tools/openfst`
 
 function usage {
-  echo 'Usage: ./configure [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+  echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--mathlib=ATLAS|MKL|CLAPACK]';
 }
+
+threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
 
 while [ $# -gt 0 ];
 do
@@ -41,6 +43,10 @@ do
   --help) usage; exit 0 ;;
   --atlas-root=*) 
   ATLASROOT=`read_dirname $1`; shift ;;
+  --threaded-atlas=yes)
+  threaded_atlas=true; shift ;;
+  --threaded-atlas=no)
+  threaded_atlas=false; shift ;;
   --fst-root=*)
   FSTROOT=`read_dirname $1`; shift ;;
   --mkl-root=*)
@@ -137,10 +143,12 @@ function linux_check_static {
 }
 
 function linux_configure_static {
-  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the first one below.
+  if $threaded_atlas; then pt=pt; else pt=""; fi
+
+  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-     linux_check_static &&  ATLASLIBDIR=$dir && break
+     linux_check_static &&  ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
       echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
@@ -168,13 +176,14 @@ function linux_configure_static {
     return ;
   fi
    
-  for x in libcblas.a libatlas.a libf77blas.a; do
+  for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do
     if [ ! -f $ATLASLIBDIR/$x ]; then
       echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
   done    
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
@@ -189,21 +198,24 @@ function linux_check_dynamic {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
   if [ -f $dir/libatlas.so ]; then # candidate...
-    if nm $dir/libatlas.so 2>&1 | grep "File format not recognized" >/dev/null; then
+    if nm --dynamic $dir/libatlas.so 2>&1 | grep "File format not recognized" >/dev/null; then
       echo "Directory $dir may contain dynamic ATLAS libraries but seems to be wrong architecture";
       return 1;
     fi
+    echo "Atlas found in $dir";
     return 0;
   else
-    return 1;
+      echo "No libatlas.so in $dir";
+      return 1;
   fi
 }
 
 function linux_configure_dynamic {
+  if $threaded_atlas; then pt=pt; else pt=""; fi
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-       linux_check_dyamic && ATLASLIBDIR=$dir
+       linux_check_dynamic && ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then
       echo "Could not find libatlas.so in any of the obvious places."
@@ -221,7 +233,7 @@ function linux_configure_dynamic {
   # for all the names we have encountered. 
   for libname in lapack lapack_atlas  clapack; do
     if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
-      if nm  $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
+      if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
          ATLASLIBS="-L$ATLASLIBDIR -l${libname}"
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
@@ -232,13 +244,14 @@ function linux_configure_dynamic {
     return 1;
   fi
    
-  for x in cblas atlas f77blas; do
+  for x in ${pt}cblas atlas ${pt}f77blas; do
     if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
       echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS -l$x"
   done
+  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
@@ -274,6 +287,11 @@ fi
 
 cp makefiles/common.mk kaldi.mk
 
+# Removing any previously defined FSTROOT in Makefile
+cp Makefile Makefile.bak
+grep -v ^'FSTROOT =' Makefile.bak > Makefile
+[ cmp Makefile Makefile.bak >&/dev/null ] || rm Makefile.bak
+
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
 
@@ -289,6 +307,7 @@ if [ "`uname`" == "Darwin"  ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo FSTROOT = $FSTROOT >> kaldi.mk
+  echo FSTROOT = $FSTROOT >> Makefile
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
   osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | sed -e 's?\.[^.]*$??'`
   echo "Configuring for OS X version $osx_ver ..."
@@ -316,6 +335,8 @@ if [ "`uname -o`" == "Cygwin"  ]; then
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure "please first install package liblapack0"
     fi
+    echo FSTROOT = $FSTROOT >> kaldi.mk
+    echo FSTROOT = $FSTROOT >> Makefile
     cat makefiles/cygwin.mk >> kaldi.mk
     echo "Configuration succeeded for platform cygwin"
     exit 0
@@ -326,6 +347,7 @@ if [ "`uname`" == "Linux" ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo FSTROOT = $FSTROOT >> kaldi.mk
+  echo FSTROOT = $FSTROOT >> Makefile
 
   echo "On Linux: Checking for linear algebra header files ..."
   if [ $MATHLIB == "ATLAS" ]; then

@@ -1,0 +1,20 @@
+<Topology> 
+<TopologyEntry> 
+<ForPhones>
+NONSILENCEPHONES
+</ForPhones> 
+<State> 0 <PdfClass> 0 <Transition> 0 0.75 <Transition> 1 0.25 </State> 
+<State> 1 <PdfClass> 1 <Transition> 1 0.75 <Transition> 2 0.25 </State> 
+<State> 2 <PdfClass> 2 <Transition> 2 0.75 <Transition> 3 0.25 </State> 
+<State> 3 </State>
+</TopologyEntry> 
+<TopologyEntry> 
+<ForPhones>
+SILENCEPHONES
+</ForPhones> 
+<State> 0 <PdfClass> 0 <Transition> 0 0.75 <Transition> 1 0.25 </State>
+<State> 1 <PdfClass> 1 <Transition> 1 0.75 <Transition> 2 0.25 </State>
+<State> 2 <PdfClass> 2 <Transition> 2 0.75 <Transition> 3 0.25 </State>
+<State> 3 </State>
+</TopologyEntry> 
+</Topology> 
