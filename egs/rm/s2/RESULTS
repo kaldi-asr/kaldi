@@ -60,4 +60,7 @@ tri2a-1800_nnet_l2-1e-6/wer Average WER is 2.864438 (359 / 12533)
 tri2a-1800_nnet_l2-1e-5/wer Average WER is 3.143701 (394 / 12533)
 tri2a-1800_nnet_l2-1e-5/wer Trying 0.256578 ...  Average WER is 2.904333 (364 / 12533) [better cvAcc than baseline] 
 tri2a-1800_nnet_l2-1e-4/wer Average WER is 4.803319 (602 / 12533) 
- 
+
+#realign by the NNET 
+tri2a-1800_nnet_iter2/wer Average WER is 2.617091 (328 / 12533) 
+

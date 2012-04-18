@@ -163,3 +163,29 @@ cp -r -p exp/tri2a-${numleaves}_nnet/* $dir
 scripts/tune_scalar.py local/decode.sh "steps/decode_nnet_nosoftmax.sh --acoustic-scale %g" "$dir" 0.0 0.5 || exit 1;
 
 
+#iter2: realign from neural network, 
+numleavesL=(1800)
+for numleaves in ${numleavesL[@]}; do
+  # align tri2a-*_nnet
+  steps/align_nnet.sh --graphs "ark,s,cs:gunzip -c exp/tri2a-$numleaves/graphs.fsts.gz|" \
+    data/train data/lang exp/tri2a-${numleaves}_nnet exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet_ali || exit 1;
+  # train nnet with tri2a-????_nnet_ali labels
+  steps/train_nnet.sh data/train data/lang exp/tri2a-${numleaves}_nnet_ali exp/tri2a-${numleaves}_nnet_iter2 || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet_iter2/graph || exit 1;
+  # decode 
+  local/decode.sh steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet_iter2 || exit 1;
+done
+# tune acousticscale
+for numleaves in ${numleavesL[@]}; do
+  scripts/tune_scalar.py local/decode.sh "steps/decode_nnet.sh --acoustic-scale %g" exp/tri2a-${numleaves}_nnet_iter2 0.0 0.5 || exit 1;
+done
+
+
+#generate lattices
+numleavesL=(1800)
+for numleaves in ${numleavesL[@]}; do
+  # generate lattices 
+  local/decode.sh steps/latgen_nnet.sh exp/tri2a-${numleaves}_nnet_iter2 || exit 1;
+done
+

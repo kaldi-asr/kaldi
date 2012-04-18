@@ -25,6 +25,13 @@ if [ "$1" == "--model-size" ]; then
   shift;
 fi
 
+if [ "$1" == "--lrate" ]; then
+  shift;
+  lrate=$1
+  shift;
+fi
+
+
 if [ "$1" == "--l2-penalty" ]; then
   shift;
   l2penalty=$1
@@ -71,7 +78,7 @@ max_iters=20
 start_halving_inc=0.5
 end_halving_inc=0.1
 halving_factor=0.5
-lrate=0.015
+echo lrate: ${lrate:=0.015} #learning rate
 echo l2penalty: ${l2penalty:=0.0} #L2 regularization penalty
 ########
 
