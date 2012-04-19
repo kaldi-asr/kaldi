@@ -15,7 +15,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# Decoding script using pure-hybrid acoustic model, 
+# Lattice-generation script using pure-hybrid acoustic model, 
 # using fbank features with cepstral mean normalization 
 # and hamming-dct transform
 

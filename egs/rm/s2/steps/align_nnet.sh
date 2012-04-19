@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2011 Microsoft Corporation  Arnab Ghoshal
+# Copyright 2012 Karel Vesely
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 # To be run from ..
 
-# This script does training-data alignment given a model built using 
-# CMN + delta + delta-delta features.  Its output, all in its own
-# experimental directory, is cmvn.ark, ali, tree, and final.mdl 
-# (the last two are just copied from the source directory). 
+# This script does training-data alignment given a neural network
+# built using CMN and TRAPs-DCT feature extraction.
+# experimental directory, is ali, tree, final.nnet and transition.mdl
+# (the last three are just copied from the source directory). 
 
 # Option to use precompiled graphs from last phase, if these
 # are available (i.e. if they were built with the same data).
