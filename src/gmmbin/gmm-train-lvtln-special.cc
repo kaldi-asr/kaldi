@@ -60,11 +60,7 @@ int main(int argc, char *argv[]) {
 
     // Get lvtln object.
     LinearVtln lvtln;
-    {
-      bool binary_in;
-      Input ki(lvtln_rxfilename, &binary_in);
-      lvtln.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(lvtln_rxfilename, &lvtln);
     int32 dim = lvtln.Dim();  // feature dimension [we hope!].
 
 

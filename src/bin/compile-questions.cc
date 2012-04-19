@@ -88,11 +88,7 @@ int main(int argc, char *argv[]) {
 
     HmmTopology topo;  // just needed for checking, and to get the
     // largest number of pdf-classes for any phone.
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     std::vector<std::vector<int32> > questions;  // sets of phones.
     if (!ReadIntegerVectorVectorSimple(questions_rxfilename, &questions))
@@ -134,10 +130,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Setting questions for hmm-position [hmm-position ranges from 0 to "<< (max_num_pdfclasses-1) <<"]";
     qo.SetQuestionsOf(kPdfClass, pdfclass_opts);
 
-    {
-      Output ko(questions_out_filename, binary);
-      qo.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(qo, questions_out_filename, binary);
     KALDI_LOG << "Wrote questions to "<<questions_out_filename;
   } catch(const std::exception& e) {
     std::cerr << e.what();

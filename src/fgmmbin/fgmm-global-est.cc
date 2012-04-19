@@ -81,10 +81,7 @@ int main(int argc, char *argv[]) {
     if (mixup != 0)
       fgmm.Split(mixup, perturb_factor);
 
-    {
-      Output ko(model_out_filename, binary_write);
-      fgmm.Write(ko.Stream(), binary_write);
-    }
+    WriteKaldiObject(fgmm, model_out_filename, binary_write);
 
     KALDI_LOG << "Written model to " << model_out_filename;
   } catch(const std::exception& e) {

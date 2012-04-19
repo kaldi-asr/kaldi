@@ -111,11 +111,7 @@ int main(int argc, char *argv[]) {
     }
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     BuildTreeStatsType stats;
     {
@@ -163,10 +159,7 @@ int main(int argc, char *argv[]) {
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;
 
-    {
-      Output ko(tree_out_filename, binary);
-      ctx_dep.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(ctx_dep, tree_out_filename, binary);
 
     {
       Output ko(map_out_filename, binary);

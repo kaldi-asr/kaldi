@@ -46,11 +46,7 @@ int main(int argc, char *argv[]) {
         feat_wspecifier = po.GetArg(4);
     
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);

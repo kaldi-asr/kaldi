@@ -69,11 +69,7 @@ int main(int argc, char *argv[]) {
     }
 
     ExponentialTransform et;
-    {
-      bool binary;
-      Input ki(et_rxfilename, &binary);
-      et.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(et_rxfilename, &et);
 
     int32 dim = et.Dim();
     double tot_objf_impr = 0.0, tot_count = 0.0;

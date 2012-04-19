@@ -197,12 +197,12 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Train decision tree\n"
+        "Initialize GMM from decision tree and tree stats\n"
         "Usage:  gmm-init-model [options] <tree-in> <tree-stats-in> <topo-file> <model-out> [<old-tree> <old-model>]\n"
         "e.g.: \n"
-        "  gmm-init-model tree treeacc topo tree 1.mdl\n"
+        "  gmm-init-model tree treeacc topo 1.mdl\n"
         "or (initializing GMMs with old model):\n"
-        "  gmm-init-model tree treeacc topo tree 1.mdl prev/tree prev/30.mdl\n";
+        "  gmm-init-model tree treeacc topo 1.mdl prev/tree prev/30.mdl\n";
 
     bool binary = true;
     std::string occs_out_filename;
@@ -244,11 +244,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Number of separate statistics is " << stats.size();
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
 
     std::vector<int32> phone2num_pdf_classes;

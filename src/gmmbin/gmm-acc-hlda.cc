@@ -141,10 +141,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall avg like per frame (Gaussian only) = "
               << (tot_like/tot_t) << " over " << tot_t << " frames.";
     
-    {
-      Output ko(accs_wxfilename, binary);
-      hlda_accs.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(hlda_accs, accs_wxfilename, binary);
     KALDI_LOG << "Written accs.";
     if (num_done != 0) return 0;
     else return 1;

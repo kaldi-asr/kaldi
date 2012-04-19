@@ -46,11 +46,7 @@ int main(int argc, char *argv[]) {
         stats_wxfilename = po.GetArg(5);
     
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     RandomAccessBaseFloatMatrixReader diff_reader(feat_diff_rspecifier);

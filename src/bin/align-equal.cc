@@ -57,18 +57,10 @@ int main(int argc, char *argv[]) {
     std::string alignment_wspecifier = po.GetArg(6);
 
     ContextDependency ctx_dep;
-    {
-      bool binary;
-      Input ki(tree_in_filename, &binary);
-      ctx_dep.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(tree_in_filename, &ctx_dep);
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_in_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_in_filename, &trans_model);
 
     // need VectorFst because we will change it by adding subseq symbol.
     VectorFst<StdArc> *lex_fst = NULL;

@@ -69,11 +69,7 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<BaseFloat> hlda_mat_full;
-    {
-      bool binary_in;
-      Input ki(hldafull_in_filename, &binary_in);
-      hlda_mat_full.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(hldafull_in_filename, &hlda_mat_full);
     KALDI_ASSERT(hlda_mat_full.NumRows() == hlda_accs.FeatureDim()
                  && hlda_mat_full.NumCols() == hlda_accs.FeatureDim());
 
@@ -87,14 +83,8 @@ int main(int argc, char *argv[]) {
               << " over " << count << " frames, logdet is "
               << hlda_mat_full.LogDet();
 
-    {
-      Output ko(hldafull_out_filename, binary);
-      hlda_mat_full.Write(ko.Stream(), binary);
-    }
-    {
-      Output ko(hldapart_out_filename, binary);
-      hlda_mat_part.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(hlda_mat_full, hldafull_out_filename, binary);
+    WriteKaldiObject(hlda_mat_part, hldapart_out_filename, binary);
     {
       Output ko(model_out_filename, binary);
       trans_model.Write(ko.Stream(), binary);

@@ -77,11 +77,7 @@ int main(int argc, char *argv[]) {
     std::string scores_wspecifier = po.GetOptArg(5);
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_in_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_in_filename, &trans_model);
 
     SequentialBaseFloatMatrixReader loglikes_reader(feature_rspecifier);
     RandomAccessTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);

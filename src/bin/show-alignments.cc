@@ -45,11 +45,7 @@ int main(int argc, char *argv[]) {
         alignments_rspecifier = po.GetArg(3);
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_filename, &trans_model);
 
     fst::SymbolTable *phones_symtab = NULL;
     {

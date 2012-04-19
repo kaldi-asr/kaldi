@@ -85,7 +85,7 @@ class ContextDependency: public ContextDependencyInterface {
   ContextDependency(int32 N, int32 P,
                     EventMap *to_pdf):
       N_(N), P_(P), to_pdf_(to_pdf) { }
-  void Write (std::ostream &os, bool binary);
+  void Write (std::ostream &os, bool binary) const;
 
   ~ContextDependency() { if (to_pdf_ != NULL) delete to_pdf_; }
 

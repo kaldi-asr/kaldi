@@ -49,11 +49,7 @@ int main(int argc, char *argv[]) {
         a_wxfilename = po.GetArg(2);
     
     ExponentialTransform et;
-    {
-      bool binary_in;
-      Input ki(et_rxfilename, &binary_in);
-      et.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(et_rxfilename, &et);
     Matrix<BaseFloat> A;
     et.GetDefaultTransform(&A);
     Output ko(a_wxfilename, binary);

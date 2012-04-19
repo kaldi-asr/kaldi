@@ -57,11 +57,7 @@ int main(int argc, char *argv[]) {
 
     TransitionModel trans_model;
     
-    {
-      bool binary;
-      Input ki(model_rxfilename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_rxfilename, &trans_model);
     
     SequentialLatticeReader lattice_reader(lats_rspecifier); // read as
     // regular lattice.

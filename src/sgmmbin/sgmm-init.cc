@@ -65,11 +65,7 @@ int main(int argc, char *argv[]) {
 
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_in_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_in_filename, &topo);
 
     TransitionModel trans_model(ctx_dep, topo);
 

@@ -225,6 +225,20 @@ class Input {
   KALDI_DISALLOW_COPY_AND_ASSIGN(Input);
 };
 
+template <class C> inline void ReadKaldiObject(const std::string &filename,
+                                               C *c) {
+  bool binary_in;
+  Input ki(filename, &binary_in);
+  c->Read(ki.Stream(), binary_in);
+}
+
+template <class C> inline void WriteKaldiObject(const C &c,
+                                                const std::string &filename,
+                                                bool binary) {
+  Output ko(filename, binary);
+  c.Write(ko.Stream(), binary);
+}
+
 /// PrintableRxfilename turns the rxfilename into a more human-readable
 /// form for error reporting, i.e. it does quoting and escaping and
 /// replaces "" or "-" with "standard input".

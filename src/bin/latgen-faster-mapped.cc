@@ -161,11 +161,7 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetOptArg(6);
     
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_in_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_in_filename, &trans_model);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;

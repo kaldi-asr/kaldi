@@ -51,17 +51,9 @@ int main(int argc, char *argv[]) {
         et_wxfilename = po.GetArg(3);
 
     ExponentialTransform et;
-    {
-      bool binary_in;
-      Input ki(et_rxfilename, &binary_in);
-      et.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(et_rxfilename, &et);
     Matrix<BaseFloat> Cpart;
-    {
-      bool binary_in;
-      Input ki(cpart_rxfilename, &binary_in);
-      Cpart.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(cpart_rxfilename, &Cpart);
     et.ApplyC(Cpart);
     Output ko(et_wxfilename, binary);
     et.Write(ko.Stream(), binary);

@@ -67,18 +67,10 @@ int main(int argc, char *argv[]) {
     }
 
     ContextDependency ctx_dep;
-    {
-      bool binary_in;
-      Input ki(tree_filename, &binary_in);
-      ctx_dep.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(tree_filename, &ctx_dep);
 
     TransitionModel trans_model;
-    {
-      bool binary_in;
-      Input ki(model_filename, &binary_in);
-      trans_model.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(model_filename, &trans_model);
 
     std::vector<int32> disambig_syms_out;
 

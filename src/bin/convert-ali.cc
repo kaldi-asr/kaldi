@@ -94,25 +94,13 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(new_alignments_wspecifier);
 
     TransitionModel old_trans_model;
-    {
-      bool binary;
-      Input ki(old_model_filename, &binary);
-      old_trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(old_model_filename, &old_trans_model);
 
     TransitionModel new_trans_model;
-    {
-      bool binary;
-      Input ki(new_model_filename, &binary);
-      new_trans_model.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(new_model_filename, &new_trans_model);
 
     ContextDependency new_ctx_dep;  // the tree.
-    {
-      bool binary;
-      Input ki(new_tree_filename, &binary);
-      new_ctx_dep.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(new_tree_filename, &new_ctx_dep);
 
     int num_success = 0, num_fail = 0;
 

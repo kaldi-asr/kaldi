@@ -56,11 +56,7 @@ int main(int argc, char *argv[]) {
       names[i] = syms->Find(i);
 
     TransitionModel trans_model;
-    {
-      bool binary_in;
-      Input ki(transition_model_filename, &binary_in);
-      trans_model.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(transition_model_filename, &trans_model);
 
     Vector<double> occs;
     if (accumulator_filename != "") {

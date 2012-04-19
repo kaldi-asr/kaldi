@@ -58,11 +58,7 @@ int main(int argc, char *argv[]) {
         gselect_wspecifier = po.GetArg(3);
     
     FullGmm fgmm;
-    {
-      bool binary;
-      Input ki(model_filename, &binary);
-      fgmm.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_filename, &fgmm);
     KALDI_ASSERT(num_gselect > 0);
     int32 num_gauss = fgmm.NumGauss();
     KALDI_ASSERT(num_gauss);

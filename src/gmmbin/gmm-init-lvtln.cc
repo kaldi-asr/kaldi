@@ -60,10 +60,7 @@ int main(int argc, char *argv[]) {
 
     if (!male_female) {
       LinearVtln lvtln(dim, num_classes, default_class);
-      {
-        Output ko(lvtln_wxfilename, binary);
-        lvtln.Write(ko.Stream(), binary);
-      }
+      WriteKaldiObject(lvtln, lvtln_wxfilename, binary);
     } else {
       if (dim % num_blocks != 0 || num_blocks <= 0)
         KALDI_ERR << "gmm-init-lvtln: num-blocks has invalid value " << num_blocks
@@ -89,10 +86,7 @@ int main(int argc, char *argv[]) {
       }
       lvtln.SetTransform(0, M_male);
       lvtln.SetTransform(1, M_female);
-      {
-        Output ko(lvtln_wxfilename, binary);
-        lvtln.Write(ko.Stream(), binary);
-      }
+      WriteKaldiObject(lvtln, lvtln_wxfilename, binary);
     }
     return 0;
   } catch(const std::exception& e) {

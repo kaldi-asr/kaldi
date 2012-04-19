@@ -43,11 +43,7 @@ int main(int argc, char *argv[]) {
         fmpe_wxfilename = po.GetArg(2);
 
     DiagGmm dgmm;
-    {
-      bool binary_in;
-      Input ki(dgmm_rxfilename, &binary_in);
-      dgmm.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(dgmm_rxfilename, &dgmm);
     
     
     Fmpe fmpe(dgmm, opts);

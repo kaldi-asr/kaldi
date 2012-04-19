@@ -45,17 +45,9 @@ int main(int argc, char *argv[]) {
         fmpe_wxfilename = po.GetArg(3);
 
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
     Matrix<BaseFloat> stats;
-    {
-      bool binary_in;
-      Input ki(stats_rxfilename, &binary_in);
-      stats.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(stats_rxfilename, &stats);
     // the matrix is in two parts, for the "plus" and "minus"
     // parts of the gradient that we stored separately.
     SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),

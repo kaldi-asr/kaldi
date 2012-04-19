@@ -71,11 +71,7 @@ int main(int argc, char *argv[]) {
     }
 
     TransitionModel trans_model;
-    {
-      bool binary_in;
-      Input ki(model_in_filename, &binary_in);
-      trans_model.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(model_in_filename, &trans_model);
 
 
     fst::VectorFst<fst::StdArc> *fst =

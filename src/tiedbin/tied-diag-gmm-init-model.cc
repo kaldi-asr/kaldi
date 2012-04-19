@@ -99,18 +99,10 @@ int main(int argc, char *argv[]) {
     }
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     DiagGmm cb0;
-    {
-      bool binary_in;
-      Input ki(first_cb_filename, &binary_in);
-      cb0.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(first_cb_filename, &cb0);
 
     AmTiedDiagGmm am_gmm;
     am_gmm.Init(cb0);

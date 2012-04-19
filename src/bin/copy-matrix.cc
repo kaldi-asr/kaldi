@@ -62,11 +62,7 @@ int main(int argc, char *argv[]) {
     
     if (!in_is_rspecifier) {
       Matrix<BaseFloat> mat;
-      {
-        bool binary_in;
-        Input ki(matrix_in_fn, &binary_in);
-        mat.Read(ki.Stream(), binary_in);
-      }
+      ReadKaldiObject(matrix_in_fn, &mat);
       Output ko(matrix_out_fn, binary);
       mat.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied matrix to " << matrix_out_fn;

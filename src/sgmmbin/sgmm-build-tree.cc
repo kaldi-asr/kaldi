@@ -151,10 +151,7 @@ int main(int argc, char *argv[]) {
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;
 
-    {
-      Output ko(tree_out_filename, binary);
-      ctx_dep.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(ctx_dep, tree_out_filename, binary);
 
     {  // This block is just doing some checks.
 

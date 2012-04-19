@@ -52,11 +52,7 @@ int main(int argc, char *argv[]) {
     std::string fst_out_filename = po.GetOptArg(2);
 
     TransitionModel trans_model;
-    {
-      bool binary_in;
-      Input ki(trans_model_filename, &binary_in);
-      trans_model.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(trans_model_filename, &trans_model);
 
     fst::VectorFst<fst::StdArc> *fst = GetPdfToTransitionIdTransducer(trans_model);
 

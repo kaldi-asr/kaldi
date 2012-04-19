@@ -65,11 +65,7 @@ int main(int argc, char *argv[]) {
         lats_wspecifier = po.GetArg(3);
 
     TransitionModel tmodel;
-    {
-      bool binary_in;
-      Input ki(model_rxfilename, &binary_in);
-      tmodel.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(model_rxfilename, &tmodel);
     
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     // Write as compact lattice.

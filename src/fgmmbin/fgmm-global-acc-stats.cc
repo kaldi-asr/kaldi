@@ -149,10 +149,7 @@ int main(int argc, char *argv[]) {
               << "frame = " << (tot_like/tot_weight) << " over " << tot_weight
               << " (weighted) frames.";
 
-    {
-      Output ko(accs_wxfilename, binary);
-      fgmm_accs.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(fgmm_accs, accs_wxfilename, binary);
     KALDI_LOG << "Written accs to " << accs_wxfilename;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
