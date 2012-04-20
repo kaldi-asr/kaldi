@@ -21,7 +21,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-latgen-biglm-faster gmm-ismooth-stats gmm-global-get-frame-likes \
            gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
            gmm-global-copy gmm-align-compiled-plusphones gmm-get-feat-deriv \
-           gmm-fmpe-acc-stats gmm-acc-stats2
+           gmm-fmpe-acc-stats gmm-acc-stats2 gmm-init-model-flat
 
 OBJFILES =
 

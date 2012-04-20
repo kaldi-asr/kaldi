@@ -279,8 +279,8 @@ int main(int argc, char *argv[]) {
       trans_model.Write(ko.Stream(), binary);
       am_gmm.Write(ko.Stream(), binary);
     }
-    KALDI_LOG << "Wrote tree and model.";
-
+    KALDI_LOG << "Wrote model.";
+    
     DeleteBuildTreeStats(&stats);
   } catch(const std::exception& e) {
     std::cerr << e.what();

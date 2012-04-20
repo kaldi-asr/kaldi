@@ -97,12 +97,12 @@ int main(int argc, char *argv[]) {
           mean_stats.AddVec(1.0, mat.Row(i));
         }
       }
-      if (count == 0) { KALDI_ERR << "gmm-init-mono: no features were seen."; }
+      if (count == 0) { KALDI_ERR << "no features were seen."; }
       var_stats.Scale(1.0/count);
       mean_stats.Scale(1.0/count);
       var_stats.AddVec2(-1.0, mean_stats);
       if (var_stats.Min() <= 0.0)
-        KALDI_ERR << "gmm-init-mono: bad variance";
+        KALDI_ERR << "bad variance";
       var_stats.InvertElements();
       glob_inv_var.CopyFromVec(var_stats);
       glob_mean.CopyFromVec(mean_stats);
