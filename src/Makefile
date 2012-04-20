@@ -40,5 +40,4 @@ $(SUBDIRS) : test_install remove_locks .phony
 .phony:
 
 
-#FSTROOT = /exports/home/aghoshal/work/tools/src/kaldi/trunk/tools/openfst
-FSTROOT = /home/dpovey/kaldi-trunk/tools/openfst
+FSTROOT = ../tools/openfst

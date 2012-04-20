@@ -134,7 +134,7 @@
   @section about_reference Referencing Kaldi in papers
 
 You can use the following reference if you want to cite Kaldi in papers.
-\begin{verbatim}
+\verbatim
 @INPROCEEDINGS{
          Povey_ASRU2011,
          author = {Povey, Daniel and Ghoshal, Arnab and Boulianne, Gilles and Burget, Lukas and Glembek, Ondrej and Goel, Nagendra and Hannemann, Mirko and Motlicek, Petr and Qian, Yanmin and Schwarz, Petr and Silovsky, Jan and Stemmer, Georg and Vesely, Karel},
@@ -147,7 +147,7 @@ You can use the following reference if you want to cite Kaldi in papers.
        location = {Hilton Waikoloa Village, Big Island, Hawaii, US},
            note = {IEEE Catalog No.: CFP11SRW-USB},
 }
-\end{verbatim}
+\endverbatim
 
 The paper can be found <a href=http://publications.idiap.ch/downloads/papers/2012/Povey_ASRU2011_2011.pdf> here </a>.
 
