@@ -47,7 +47,7 @@ nj=4
 den_boost=0.1
 num_boost=-1.0
 tau=200
-merge=true # if true, cancel num and den counts as described in 
+merge=false # if true, cancel num and den counts as described in 
     # the boosted MMI paper. 
 cmd=scripts/run.pl
 acwt=0.1
@@ -56,6 +56,9 @@ stage=0
 for x in `seq 8`; do
   if [ $1 == "--num-jobs" ]; then
     shift; nj=$1; shift
+  fi
+  if [ $1 == "--cancel" ]; then
+    shift; merge=true
   fi
   if [ $1 == "--num-iters" ]; then
     shift; niters=$1; shift
@@ -119,7 +122,7 @@ for n in `get_splits.pl $nj`; do
   $use_trans && featspart[$n]="${featspart[$n]} transform-feats --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.trans ark:- ark:- |"
 
   [ ! -f $denlatdir/lat.$n.gz ] && echo No such file $denlatdir/lat.$n.gz && exit 1;
-  latspart[$n]="ark:gunzip -c $denlatdir/lat.$n.gz|"
+  latspart[$n]="ark,s,cs:gunzip -c $denlatdir/lat.$n.gz|"
   # note: in next line, doesn't matter which model we use, it's only used to map to phones.
   numlatspart[$n]="${latspart[$n]} lattice-boost-ali --b=$num_boost --silence-phones=$silphonelist $alidir/final.mdl ark:- 'ark,s,cs:gunzip -c $alidir/$n.ali.gz|' ark:- |"
   denlatspart[$n]="${latspart[$n]} lattice-boost-ali --b=$den_boost --silence-phones=$silphonelist $alidir/final.mdl ark:- 'ark,s,cs:gunzip -c $alidir/$n.ali.gz|' ark:- |"
@@ -139,16 +142,13 @@ while [ $x -lt $niters ]; do
   #  model used to generate the lattice).
   if [ $stage -le $x ]; then
     for n in `get_splits.pl $nj`; do  
-      $cmd $dir/log/num_acc.$x.$n.log \
-        gmm-rescore-lattice $cur_mdl "${numlatspart[$n]}" "${featspart[$n]}" ark:- \| \
-        lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-        gmm-acc-stats $cur_mdl "${featspart[$n]}" ark,s,cs:- \
-          $dir/num_acc.$x.$n.acc || touch $dir/.error &
-      $cmd $dir/log/den_acc.$x.$n.log \
+      $cmd $dir/log/acc.$x.$n.log \
         gmm-rescore-lattice $cur_mdl "${denlatspart[$n]}" "${featspart[$n]}" ark:- \| \
         lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-        gmm-acc-stats $cur_mdl "${featspart[$n]}" ark,s,cs:- \
-          $dir/den_acc.$x.$n.acc || touch $dir/.error &
+        sum-post --merge=$merge --scale1=-1 ark:- \
+"${numlatspart[$n]} gmm-rescore-lattice $cur_mdl ark:- '${featspart[$n]}' ark:- | lattice-to-post --acoustic-scale=$acwt ark:- ark:- |" \
+        ark:- \| gmm-acc-stats2 $cur_mdl "${featspart[$n]}" ark,s,cs:- \
+          $dir/num_acc.$x.$n.acc $dir/den_acc.$x.$n.acc || touch $dir/.error &
     done 
     wait
     [ -f $dir/.error ] && echo Error accumulating stats on iter $x && exit 1;
