@@ -71,8 +71,8 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmm(
   BaseFloat log_like =
       gmm_accumulators_[gmm_index]->AccumulateFromDiag(model.GetPdf(gmm_index),
                                                        data, weight);
-  total_log_like_ += log_like;
-  total_frames_++;
+  total_log_like_ += log_like * weight;
+  total_frames_ += weight;
   return log_like;
 }
 
@@ -89,8 +89,8 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmmTwofeats(
   BaseFloat log_like = gmm.ComponentPosteriors(data1, &posteriors);
   posteriors.Scale(weight);
   acc.AccumulateFromPosteriors(data2, posteriors);
-  total_log_like_ += log_like;
-  total_frames_++;
+  total_log_like_ += log_like * weight;
+  total_frames_ += weight;
   return log_like;
 }
 
@@ -113,7 +113,7 @@ void AccumAmDiagGmm::AccumulateForGaussian(
 }
 
 void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
-                               bool add) {
+                          bool add) {
   int32 num_pdfs;
   ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
