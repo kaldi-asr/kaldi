@@ -70,13 +70,22 @@ if (defined $jobname && $logfile !~ m/$jobname/
 
 #
 # Work out the command; quote escaping is done here.
+# Note: the rules for escaping stuff are worked out pretty
+# arbitrarily, based on what we want it to do.  Some things that
+# we pass as arguments to queue.pl, such as "|", we want to be
+# interpreted by bash, so we don't escape them.  Other things,
+# such as archive specifiers like 'ark:gunzip -c foo.gz|', we want
+# to be passed, in quotes, to the Kaldi program.  Our heuristic
+# is that stuff with spaces in should be quoted.  This doesn't
+# always work.
 #
 $cmd = "";
 
 foreach $x (@ARGV) { 
-  if ($x =~ m/^\S+$/) { $cmd .=  $x . " "; }
-  elsif ($x =~ m:\":) { $cmd .= "'\''$x'\'' "; }
-  else { $cmd .= "\"$x\" "; } 
+  if ($x =~ m/^\S+$/) { $cmd .= $x . " "; } # If string contains no spaces, take
+                                            # as-is.
+  elsif ($x =~ m:\":) { $cmd .= "'\''$x'\'' "; } # else if no dbl-quotes, use single
+  else { $cmd .= "\"$x\" "; }  # else use double.
 }
 
 #
@@ -84,11 +93,13 @@ foreach $x (@ARGV) {
 #
 $dir = dirname($logfile);
 $base = basename($logfile);
-$queue_logfile = "$dir/q/$base";
+$qdir = "$dir/q";
+$qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
+$queue_logfile = "$qdir/$base";
 
 if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
 if (!-d $dir) { die "Cannot make the directory $dir\n"; }
-if (!-d "$dir/q") { system "mkdir $dir/q 2>/dev/null"; } # make a directory called "q",
+if (!-d "$qdir") { system "mkdir $qdir 2>/dev/null"; } # make a directory called "q",
   # where we will put the log created by qsub... normally this doesn't contain
   # anything interesting, evertyhing goes to $logfile.
 
@@ -115,7 +126,7 @@ if ($queue_scriptfile !~ m:^/:) {
 # Also keep our current PATH around, just in case there was something
 # in it that we need (although we also source ./path.sh)
 
-$syncfile = "$dir/q/done.$$";
+$syncfile = "$qdir/done.$$";
 
 system("rm $queue_logfile $syncfile 2>/dev/null");
 #
@@ -233,7 +244,8 @@ else { # we failed.
     print STDERR "queue.pl: job writing to $logfile failed with status $status\n";
   } else {
     $numjobs = 1 + $jobend - $jobstart;
-    print STDERR "queue.pl: $num_failed / $numjobs failed.\n";
+    if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
+    print STDERR "queue.pl: $num_failed / $numjobs writing to $logfile failed.\n";
   }
   exit(1);
 }

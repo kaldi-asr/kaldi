@@ -9,7 +9,10 @@ if [ $# -le 3 ]; then
    exit 1;
 fi
 
-mkdir -p data/local
+
+dir=`pwd`/data/local/data
+lmdir=`pwd`/data/local/nist_lm
+mkdir -p $dir $lmdir
 local=`pwd`/local
 utils=`pwd`/utils
 
@@ -20,7 +23,7 @@ if [ ! -x $sph2pipe ]; then
 fi
 export PATH=$PATH:`pwd`/../../../tools/irstlm/bin
 
-cd data/local
+cd $dir
 
 
 # Make directory of links to the WSJ disks such as 11-13.1.  This relies on the command
@@ -131,35 +134,35 @@ done
 
 
 #in case we want to limit lm's on most frequent words, copy lm training word frequency list
-cp links/13-32.1/wsj1/doc/lng_modl/vocab/wfl_64.lst .
+cp links/13-32.1/wsj1/doc/lng_modl/vocab/wfl_64.lst $lmdir
 
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
 
-cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z lm_bg.arpa.gz || exit 1;
-chmod u+w lm_bg.arpa.gz
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb20onp.z $lmdir/lm_bg.arpa.gz || exit 1;
+chmod u+w $lmdir/lm_bg.arpa.gz
 
 # trigram would be:
 cat links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb20onp.z | \
  perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' | \
- gzip -c -f > lm_tg.arpa.gz || exit 1;
+ gzip -c -f > $lmdir/lm_tg.arpa.gz || exit 1;
 
-prune-lm --threshold=1e-7 lm_tg.arpa.gz lm_tgpr.arpa || exit 1;
-gzip -f lm_tgpr.arpa || exit 1;
+prune-lm --threshold=1e-7 $lmdir/lm_tg.arpa.gz $lmdir/lm_tgpr.arpa || exit 1;
+gzip -f $lmdir/lm_tgpr.arpa || exit 1;
 
 # repeat for 5k language models
-cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb05onp.z  lm_bg_5k.arpa.gz || exit 1;
-chmod u+w lm_bg_5k.arpa.gz
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/bcb05onp.z  $lmdir/lm_bg_5k.arpa.gz || exit 1;
+chmod u+w $lmdir/lm_bg_5k.arpa.gz
 
 # trigram would be: !only closed vocabulary here!
-cp links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb05cnp.z lm_tg_5k.arpa.gz || exit 1;
-chmod u+w lm_tg_5k.arpa.gz
-gunzip lm_tg_5k.arpa.gz
-tail -n 4328839 lm_tg_5k.arpa | gzip -c -f > lm_tg_5k.arpa.gz
-rm lm_tg_5k.arpa
+cp links/13-32.1/wsj1/doc/lng_modl/base_lm/tcb05cnp.z $lmdir/lm_tg_5k.arpa.gz || exit 1;
+chmod u+w $lmdir/lm_tg_5k.arpa.gz
+gunzip $lmdir/lm_tg_5k.arpa.gz
+tail -n 4328839 $lmdir/lm_tg_5k.arpa | gzip -c -f > $lmdir/lm_tg_5k.arpa.gz
+rm $lmdir/lm_tg_5k.arpa
 
-prune-lm --threshold=1e-7 lm_tg_5k.arpa.gz lm_tgpr_5k.arpa || exit 1;
-gzip -f lm_tgpr_5k.arpa || exit 1;
+prune-lm --threshold=1e-7 $lmdir/lm_tg_5k.arpa.gz $lmdir/lm_tgpr_5k.arpa || exit 1;
+gzip -f $lmdir/lm_tgpr_5k.arpa || exit 1;
 
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then

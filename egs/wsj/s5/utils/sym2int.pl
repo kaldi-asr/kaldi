@@ -17,17 +17,35 @@
 
 $ignore_oov = 0;
 $ignore_first_field = 0;
-for($x = 0; $x < 3; $x++) {
-    # Note: it will just print OOVS unmodified if you specify --ignore-oov.
-    # Else will complain and put nothing out.
-    if($ARGV[0] eq "--ignore-oov") { $ignore_oov = 1; shift @ARGV; } 
-    if($ARGV[0] eq "--ignore-first-field") { $ignore_first_field = 1; shift @ARGV; }
-    if($ARGV[0] eq "--map-oov") { shift @ARGV; $map_oov = shift @ARGV; }
+for($x = 0; $x < 2; $x++) {
+  if ($ARGV[0] eq "--map-oov") {
+    shift @ARGV; $map_oov = shift @ARGV;
+  }
+  if ($ARGV[0] eq "-f") {
+    shift @ARGV; 
+    $field_spec = shift @ARGV; 
+    if ($field_spec =~ m/^\d+$/) {
+      $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
+    }
+    if ($field_spec =~ m/^(\d*)[-:](\d*)/) { # accept e.g. 1:10 as a courtesty (properly, 1-10)
+      if ($1 ne "") {
+        $field_begin = $1 - 1;  # Change to zero-based indexing.
+      }
+      if ($2 ne "") {
+        $field_end = $2 - 1;    # Change to zero-based indexing.
+      }
+    }
+    if (!defined $field_begin && !defined $field_end) {
+      die "Bad argument to -f option: $field_spec"; 
+    }
+  }
 }
 
 $symtab = shift @ARGV;
-if(!defined $symtab) {
-    die "Usage: sym2int.pl symtab [input transcriptions] > output transcriptions\n";
+if (!defined $symtab) {
+  print STDERR "Usage: sym2int.pl [options] symtab [input transcriptions] > output transcriptions\n" .
+    "options: [--map-oov <oov-symbol> ]  [-f <field-range> ]\n" .
+      "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n";
 }
 open(F, "<$symtab") || die "Error opening symbol table file $symtab";
 while(<F>) {
@@ -36,47 +54,47 @@ while(<F>) {
     $sym2int{$A[0]} = $A[1] + 0;
 }
 
-$num_warning = 0;
-$max_warning = 20;
-$error = 0;
-while(<>) {
-    @A = split(" ", $_);
-    if(@A == 0) {
-        die "Empty line in transcriptions input.";
-    }
-    if($ignore_first_field) {
-        $key = shift @A;
-        print $key . " ";
-    }
-    @B = ();
-    foreach $a (@A) {
-        $i = $sym2int{$a};
-        if(!defined ($i)) {
-            if (defined $map_oov) {
-                if (!defined $sym2int{$map_oov}) {
-                    die "sym2int.pl: invalid map-oov option $map_oov (symbol not defined in $symtab)";
-                }
-                if ($num_warning++ < $max_warning) {
-                    print STDERR "sym2int.pl: replacing $a with $map_oov\n";
-                    if ($num_warning == $max_warning) {
-                        print STDERR "sym2int.pl: not warning for OOVs any more times\n";
-                    }
-                }
-                $i = $sym2int{$map_oov};
-            } elsif($ignore_oov) {
-                $i = $a; # just print them out unmodified..
-            } else {
-                die "sym2int.pl: undefined symbol $a\n";
-            }
-        }
-        push @B, $i;
-    }
-    print join(" ", @B);
-    print "\n";
+if (defined $map_oov && $map_oov !~ m/^\d+$/) { # not numeric-> look it up
+  if (!defined $sym2int{$map_oov}) { die "OOV symbol $map_oov not defined."; }
+  $map_oov = $sym2int{$map_oov};
 }
 
-if($error) { exit(1); }
-else { exit(0); }
+$num_warning = 0;
+$max_warning = 20;
 
+while (<>) {
+  @A = split(" ", $_);
+  if (@A == 0) {
+    die "Empty line in transcriptions input.";
+  }
+  @B = ();
+  for ($n = 0; $n < @A; $n++) {
+    $a = $A[$n];
+    if ( (!defined $field_begin || $n >= $field_begin)
+         && (!defined $field_end || $n <= $field_end)) {
+      $i = $sym2int{$a};
+      if (!defined ($i)) {
+        if (defined $map_oov) {
+          if ($num_warning++ < $max_warning) {
+            print STDERR "sym2int.pl: replacing $a with $map_oov\n";
+            if ($num_warning == $max_warning) {
+              print STDERR "sym2int.pl: not warning for OOVs any more times\n";
+            }
+          }
+          $i = $map_oov;
+        } else {
+          $pos = $n+1;
+          die "sym2int.pl: undefined symbol $a (in position $pos)\n";
+        }
+      }
+      $a = $i;
+    }
+    push @B, $a;
+  }
+  print join(" ", @B);
+  print "\n";
+}
+
+exit(0);
 
 

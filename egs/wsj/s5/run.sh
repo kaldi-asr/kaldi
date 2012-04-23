@@ -9,6 +9,8 @@ local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
 
+utils/prepare_lang.sh data/local/dict data/local/lang data/lang || exit 1;
+
 local/wsj_format_data.sh || exit 1;
 
 # # We suggest to run the next three commands in the background,
@@ -26,8 +28,8 @@ local/wsj_format_data.sh || exit 1;
 #  local/wsj_train_rnnlms.sh
 # ) &
 
-. cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-       ## This relates to the queue.x
+. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
+          ## This relates to the queue.
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -50,20 +52,13 @@ utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a || exit 1;
 
-##################### I AM HERE ####################################
-exit 0;
-
 (
-utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 || exit 1;
-)&
-
-# This queue option will be supplied to all alignment
-# and training scripts.  Note: you have to supply the same num-jobs
-# to the alignment and training scripts, as the archives are split
-# up in this way.
-
+ utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
+ steps/decode_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+      exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 && \
+ steps/decode_deltas.sh --num-jobs 8 --cmd "$train_cmd" \
+   exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
+) &
 
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
    data/train_si84_half data/lang exp/mono0a exp/mono0a_ali || exit 1;
@@ -73,9 +68,14 @@ steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
 
 wait; # or the mono mkgraph.sh might be writing 
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
+
 utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
 
-utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
+steps/decode_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+  exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
+steps/decode_deltas.sh --num-jobs 8 --cmd "$train_cmd" \
+  exp/tri1/graph_tgpr data/test_eval92 exp/tri1/decode_tgpr_eval92 || exit 1;
+
 
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
@@ -83,7 +83,12 @@ for mode in 1 2 3 4; do
 utils/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
 done
+
+##################### I AM HERE ####################################2
+
 utils/walign_lats.sh data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
+
+
 
 # Align tri1 system with si84 data.
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \

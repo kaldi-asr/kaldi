@@ -90,7 +90,7 @@ else
   ## so this becomes the command true or false.
   if $shortest; then
     # select the n shortest utterances.
-    . path.sh
+    . ./path.sh
     feat-to-len scp:$srcdir/feats.scp ark,t:$destdir/tmp.len || exit 1;
     sort -n -k2 $destdir/tmp.len | awk '{print $1}' | head -$numutt >$destdir/tmp.uttlist
     utils/filter_scp.pl $destdir/tmp.uttlist $srcdir/feats.scp >$destdir/feats.scp

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2012 Microsoft Corporation  Arnab Ghoshal  Daniel Povey
+# Copyright 2012  Daniel Povey
 # Apache 2.0
 
 
@@ -8,21 +8,19 @@
 # This script applies cepstral mean normalization (per speaker).
 
 nj=4
-cmd=scripts/run.pl
-for x in 1 2; do
-  if [ $1 == "--num-jobs" ]; then
-    nj=$2
-    shift 2
-  fi
-  if [ $1 == "--cmd" ]; then
-    cmd=$2
-    shift 2
-  fi  
+cmd=run.pl
+config= # name of config file.
+
+for x in `seq 3`; do
+  [ "$1" == "--num-jobs" ] && nj=$2 && shift 2;
+  [ "$1" == "--cmd" ] && cmd=$2 && shift 2;
+  [ "$1" == "--config" ] && config=$2 && shift 2;
 done
 
 if [ $# != 3 ]; then
-   echo "Usage: steps/train_mono.sh <data-dir> <lang-dir> <exp-dir>"
+   echo "Usage: steps/train_mono.sh [options] <data-dir> <lang-dir> <exp-dir>"
    echo " e.g.: steps/train_mono.sh data/train.1k data/lang exp/mono"
+   echo "options: [--cmd (run.pl|queue.pl [opts])] [--num-jobs <nj>] [--config <cfg-file>]"
    exit 1;
 fi
 
@@ -30,27 +28,26 @@ data=$1
 lang=$2
 dir=$3
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
-# Configuration:
+# Begin configuration.
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 numiters=40    # Number of iterations of training
 maxiterinc=30 # Last iter to increase #Gauss on.
-numgauss=300 # Initial num-Gauss (must be more than #states=3*phones).
 totgauss=1000 # Target #Gaussians.  
-incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
-oov_sym=`cat $lang/oov.txt`
-sdata=$data/split$nj;                   
+# End configuration.
+[ ! -z $config ] && . $config # Override any of the above, if --config specified.
+
+oov_sym=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir/log
-if [ ! -d $sdata -o $sdata -ot $data/feats.scp ]; then
-  split_data.sh $data $nj
-fi
+echo $nj > $dir/num_jobs
+sdata=$data/split$nj;
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 
-
-feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
 example_feats="`echo '$feats' | sed s/JOB/1/g`";
 
 echo "Initializing monophone system."
@@ -60,16 +57,19 @@ if [ -f $lang/phones/sets_mono.int ]; then
 fi
 
 # Note: JOB=1 just uses the 1st part of the features-- we only need a subset anyway.
-! $cmd JOB=1 $dir/log/init.log \
+$cmd JOB=1 $dir/log/init.log \
  gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo 39 \
-   $dir/0.mdl $dir/tree && echo "Error initializing monophone" && exit 1;
+   $dir/0.mdl $dir/tree || exit 1;
+
+numgauss=`gmm-info --print-args=false $dir/0.mdl | grep gaussians | awk '{print $NF}'`
+incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 
 rm $dir/.error 2>/dev/null
 
 echo "Compiling training graphs"
 $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
   compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
-   "ark:sym2int.pl --map-oov '$oov_sym' --ignore-first-field $lang/words.txt < $sdata/JOB/text|" \
+   "ark:sym2int.pl --map-oov $oov_sym -f 2- $lang/words.txt < $sdata/JOB/text|" \
     "ark:|gzip -c >$dir/JOB.fsts.gz" || exit 1;
 
 echo "Aligning data equally (pass 0)"
