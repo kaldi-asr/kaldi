@@ -36,6 +36,11 @@ for x in 1 2 3; do
     P=0;
     shift;
   fi
+  if [ $1 == "--quinphone" ]; then
+    N=5;
+    P=2;
+    shift;
+  fi
   if [ $1 == "--clean" ]; then
     clean=true
     shift;
@@ -73,7 +78,7 @@ for f in $required; do
 done
 
 mkdir -p $lang/tmp
-if [[ ! -f $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
+if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
     fstminimizeencoded  > $lang/tmp/LG.fst || exit 1;
@@ -90,7 +95,7 @@ grep '#' $lang/phones_disambig.txt | awk '{print $2}' > $lang/tmp/disambig_phone
 
 clg=$lang/tmp/CLG_${N}_${P}.fst
 
-if [[ ! -f $clg || $clg -ot $lang/tmp/LG.fst ]]; then
+if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/tmp/disambig_phones.list \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.list \

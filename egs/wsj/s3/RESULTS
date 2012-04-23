@@ -5,7 +5,7 @@
 # [really, these scales should be tuned on a dev set, but we think it's
 # fine to compare the WERs obtained this way to each other.]
 
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
+  for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
 
 # monophone, deltas, half of SI-84
 exp/mono0a/decode_tgpr_dev93/wer_11:%WER 34.30 [ 2824 / 8234, 243 ins, 511 del, 2070 sub ]
@@ -22,12 +22,15 @@ exp/tri2b/decode_tgpr_dev93_fromlats/wer_15:%WER 16.71 [ 1376 / 8234, 267 ins, 1
 exp/tri2b/decode_tgpr_dev93_tg/wer_16:%WER 16.26 [ 1339 / 8234, 267 ins, 141 del, 931 sub ]
 exp/tri2b/decode_tgpr_dev93_tg_biglm/wer_16:%WER 16.42 [ 1352 / 8234, 269 ins, 142 del, 941 sub ]
 
-exp/tri2b/decode_tgpr_eval92/wer_16:%WER 11.54 [ 651 / 5643, 146 ins, 42 del, 463 sub ]
+exp/tri2b/decode_tgpr_eval92/wer_17:%WER 11.45 [ 646 / 5643, 140 ins, 46 del, 460 sub ]
 
 # +MMI
-exp/tri2b_mmi/decode_tgpr_eval92/wer_16:%WER 11.08 [ 625 / 5643, 125 ins, 44 del, 456 sub ]
+exp/tri2b_mmi/decode_tgpr_eval92/wer_14:%WER 10.63 [ 600 / 5643, 124 ins, 45 del, 431 sub ]
 #  +boosting
-exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.83 [ 611 / 5643, 122 ins, 43 del, 446 sub ]
+exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.69 [ 603 / 5643, 119 ins, 48 del, 436 sub ]
+# +fMMI
+exp/tri2b_fmmi_b0.1/decode_tgpr_eval92/wer_15:%WER 10.26 [ 579 / 5643, 111 ins, 39 del, 429 sub ]
+
 # +MCE
 exp/tri2b_mce/decode_tgpr_eval92/wer_16:%WER 11.15 [ 629 / 5643, 132 ins, 45 del, 452 sub ]
 
@@ -52,6 +55,19 @@ exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.07 [ 512 / 5643, 130 ins, 32 del, 
  # note: mixing up from 15k->20k Gaussians, it's a bit better [14.66->14.26]
  exp/tri3b_20k/decode_tgpr_dev93/wer_16:%WER 14.22 [ 1171 / 8234, 243 ins, 105 del, 823 sub ]
 
+ # Note: the numbers below are the same experiments as the few lines above, but run a 
+ # different time on a different type of amachine so they differ slightly (need to run
+ # all this on one machine).  They show
+ # the effect of a small RNNLM with just 30 hidden layers.  WER changes from 6.43 to 6.01
+ # when we add in RNNLM with weight 0.25.  We only tried weights of 1 and 0.25.  
+ exp/tri3b/decode_bd_tgpr_eval92/wer_16:%WER 7.53 [ 425 / 5643, 61 ins, 47 del, 317 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg/wer_17:%WER 6.43 [ 363 / 5643, 55 ins, 44 del, 264 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm/wer_19:%WER 6.63 [ 374 / 5643, 62 ins, 38 del, 274 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm_0.25/wer_18:%WER 6.01 [ 339 / 5643, 53 ins, 39 del, 247 sub ]
+ exp/tri3b/decode_bd_tgpr_eval92_tg/wer_18:%WER 6.80 [ 384 / 5643, 58 ins, 46 del, 280 sub ]
+
+
+
 
 # sgmm3c is SGMM on top of LDA+MLLT.
 # In this case decoding from lattices is worse, presumably because the lattices used
@@ -69,8 +85,17 @@ exp/tri4b/decode_tgpr_dev93/wer_13:%WER 12.53 [ 1032 / 8234, 242 ins, 79 del, 71
 exp/tri4b/decode_tgpr_eval92/wer_16:%WER 8.05 [ 454 / 5643, 119 ins, 23 del, 312 sub ]
 
 # +MMI
-exp/tri4b_mmi/decode_tgpr_dev93/wer_14:%WER 11.53 [ 949 / 8234, 203 ins, 82 del, 664 sub ]
-exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_16:%WER 11.45 [ 943 / 8234, 191 ins, 87 del, 665 sub ]
+exp/tri4b_mmi/decode_tgpr_dev93/wer_12:%WER 11.28 [ 929 / 8234, 206 ins, 76 del, 647 sub ]
+#+boosting
+exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_16:%WER 11.25 [ 926 / 8234, 176 ins, 94 del, 656 sub ]
+ # increasing beam from 13 to 15 to see effect. 
+ exp/tri4b_mmi_b0.1/decode_tgpr_dev93_b15/wer_14:%WER 10.72 [ 883 / 8234, 172 ins, 84 del, 627 sub ]
+exp/tri4b_mmi_b0.1/decode_tgpr_eval92/wer_14:%WER 7.34 [ 414 / 5643, 105 ins, 20 del, 289 sub ]
+
+#+fMMI
+exp/tri4b_fmmi_b0.1/decode_tgpr_dev93/wer_13:%WER 10.86 [ 894 / 8234, 167 ins, 89 del, 638 sub ]
+exp/tri4b_fmmi_b0.1/decode_tgpr_eval92/wer_12:%WER 7.25 [ 409 / 5643, 111 ins, 14 del, 284 sub ]
+
 
 # LDA+MLLT+SAT, SI-284, full retraining starting from 3b [c.f. 4b]
 exp/tri4c/decode_tgpr_dev93/wer_16:%WER 12.10 [ 996 / 8234, 220 ins, 83 del, 693 sub ]
@@ -89,17 +114,27 @@ exp/sgmm4b/decode_tgpr_eval92/wer_13:%WER 8.38 [ 473 / 5643, 117 ins, 24 del, 33
 
 
 # sgmm4c is the same, but on all SI-284 data.
-exp/sgmm4c/decode_tgpr_dev93/wer_12:%WER 10.77 [ 887 / 8234, 181 ins, 77 del, 629 sub ]
-exp/sgmm4c/decode_tgpr_eval92/wer_14:%WER 7.89 [ 445 / 5643, 105 ins, 26 del, 314 sub ]
+exp/sgmm4c/decode_tgpr_dev93/wer_12:%WER 10.55 [ 869 / 8234, 167 ins, 82 del, 620 sub ]
+exp/sgmm4c/decode_tgpr_eval92/wer_18:%WER 7.53 [ 425 / 5643, 96 ins, 23 del, 306 sub ]
 
 # rescoring with full trigram LM.
-exp/sgmm4c/decode_tgpr_dev93_tg/wer_11:%WER 10.09 [ 831 / 8234, 185 ins, 71 del, 575 sub ]
-exp/sgmm4c/decode_tgpr_eval92_tg/wer_11:%WER 7.21 [ 407 / 5643, 112 ins, 19 del, 276 sub ]
+exp/sgmm4c/decode_tgpr_dev93_tg/wer_13:%WER 9.96 [ 820 / 8234, 167 ins, 84 del, 569 sub ]
+exp/sgmm4c/decode_tgpr_eval92_tg/wer_11:%WER 7.09 [ 400 / 5643, 110 ins, 15 del, 275 sub ]
 
  # using big-dict.
- exp/sgmm4c/decode_bd_fg_eval92_fromlats/wer_13:%WER 5.32 [ 300 / 5643, 59 ins, 21 del, 220 sub ]
- exp/sgmm4c/decode_bd_tgpr_eval92/wer_10:%WER 5.19 [ 293 / 5643, 49 ins, 22 del, 222 sub ]
- exp/sgmm4c/decode_bd_tgpr_eval92_gs3/wer_10:%WER 5.17 [ 292 / 5643, 48 ins, 23 del, 221 sub ] [faster decoding, ~1.3xRT -> 0.6xRT]
- exp/sgmm4c/decode_bd_tgpr_eval92_tg/wer_13:%WER 4.64 [ 262 / 5643, 34 ins, 24 del, 204 sub ]
- exp/sgmm4c/decode_bd_tgpr_eval92_fg/wer_13:%WER 4.34 [ 245 / 5643, 36 ins, 19 del, 190 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92/wer_12:%WER 4.86 [ 274 / 5643, 41 ins, 18 del, 215 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92_gs3/wer_12:%WER 4.87 [ 275 / 5643, 41 ins, 18 del, 216 sub ] [faster decoding, ~1.3xRT -> 0.6xRT]
+ exp/sgmm4c/decode_bd_tgpr_eval92_tg/wer_12:%WER 4.59 [ 259 / 5643, 36 ins, 22 del, 201 sub ]
+ exp/sgmm4c/decode_bd_tgpr_eval92_fg/wer_15:%WER 4.24 [ 239 / 5643, 29 ins, 25 del, 185 sub ]
 
+ # Decoding via lattice rescoring of lats from tri3b [c.f. 4.24 above]... quite a bit worse.
+ exp/sgmm4c/decode_bd_fg_eval92_fromlats/wer_17:%WER 5.35 [ 302 / 5643, 51 ins, 27 del, 224 sub ]
+
+# sgmm4d is as sgmm4c, but quinphone, not triphone.  Decoding only via lattice rescoring
+# (not sure if graph compilation will blow up).
+#   Rescoring tri3b lattices (c.f. exp/sgmm4c/decode_bd_fg_eval92_fromlats, which is 5.35% WER)
+exp/sgmm4d/decode_bd_fg_eval92_fromlats/wer_14:%WER 5.19 [ 293 / 5643, 51 ins, 24 del, 218 sub ]
+
+# rescoring lattices from sgmm4c.  Baseline is probably exp/sgmm4c/decode_bd_tgpr_eval92_fg/,
+# which is 4.24%.
+exp/sgmm4d/decode_bd_fg_eval92_fromlats2/wer_18:%WER 4.22 [ 238 / 5643, 25 ins, 27 del, 186 sub ]
