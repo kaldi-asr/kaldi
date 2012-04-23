@@ -193,8 +193,8 @@ void ContextFstImpl<Arc, LabelT>::InitArcIterator(StateId s, ArcIteratorData<Arc
 
 template<class Arc, class LabelT>
 void ContextFstImpl<Arc, LabelT>::CreateDisambigArc(StateId s,
-                                                   Label olabel,
-                                                   Arc *oarc) {  // called from CreateArc.
+                                                    Label olabel,
+                                                    Arc *oarc) {  // called from CreateArc.
   // Creates a self-loop arc corresponding to the disambiguation symbol.
   vector<LabelT> label_info;  // (olabel);
   label_info.push_back(-olabel);  // olabel is a disambiguation symbol.  Use its negative

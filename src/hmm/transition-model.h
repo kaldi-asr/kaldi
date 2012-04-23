@@ -157,7 +157,7 @@ class TransitionModel {
   int32 NumPdfs() const { return num_pdfs_; }
 
 
-  /// Returns a sorted, uniq list of phones.
+  /// Returns a sorted, unique list of phones.
   const std::vector<int32> &GetPhones() const { return topo_.GetPhones(); }
 
   // Transition-parameter-getting functions:

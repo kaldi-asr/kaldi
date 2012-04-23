@@ -1,6 +1,6 @@
-// gmmbin/gmm-copy.cc
+// gmmbin/gmm-info.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2012  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,26 +26,21 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy GMM based model (and possibly change binary/text format)\n"
-        "Usage:  gmm-copy [options] <model-in> <model-out>\n"
+        "Write to standard output various properties of GMM-based model\n"
+        "Usage:  gmm-info [options] <model-in>\n"
         "e.g.:\n"
-        " gmm-copy --binary=false 1.mdl 1_txt.mdl\n";
-
-
-    bool binary_write = true;
+        " gmm-info 1.mdl\n";
     
     ParseOptions po(usage);
-    po.Register("binary", &binary_write, "Write output in binary mode");
-
+    
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
-        model_out_filename = po.GetArg(2);
+    std::string model_in_filename = po.GetArg(1);
 
     AmDiagGmm am_gmm;
     TransitionModel trans_model;
@@ -56,13 +51,14 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary_read);
     }
 
-    {
-      Output ko(model_out_filename, binary_write);
-      trans_model.Write(ko.Stream(), binary_write);
-      am_gmm.Write(ko.Stream(), binary_write);
-    }
-
-    KALDI_LOG << "Written model to " << model_out_filename;
+    std::cout << "number of phones " << trans_model.GetPhones().size() << '\n';
+    std::cout << "number of pdfs " << trans_model.NumPdfs() << '\n';
+    std::cout << "number of transition-ids " << trans_model.NumTransitionIds()
+              << '\n';
+    std::cout << "number of transition-states "
+              << trans_model.NumTransitionStates() << '\n';
+    std::cout << "feature dimension " << am_gmm.Dim() << '\n';
+    std::cout << "number of gaussians " << am_gmm.NumGauss() << '\n';
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;

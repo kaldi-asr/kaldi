@@ -39,9 +39,12 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat lm_scale = 1.0;
 
     std::string word_syms_filename;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for LM probabilities. "
+                "Note: the ratio acoustic-scale/lm-scale is all that matters.");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     
     po.Read(argc, argv);
@@ -78,7 +81,7 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
       Lattice best_path;
       fst::ShortestPath(lat, &best_path);
       if (best_path.Start() == fst::kNoStateId) {
