@@ -171,6 +171,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scpfn = $OUTPUTS[$scpidx];
         open(F, ">$scpfn") || die "Could not open scp file $scpfn for writing.";
+        binmode(F, ":utf8");
         $count = 0;
         if(@{$scparray[$scpidx]} == 0) {
             print STDERR "Warning: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
