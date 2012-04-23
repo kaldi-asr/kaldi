@@ -835,6 +835,21 @@ can be accomplished with linear-to-nbest.
  sequences.  This is there for historical reasons; the combination of lattice-to-1best
  and nbest-to-linear is cleaner and more consistent with the overall framework.
 
+ \section lattices_times Times on lattices
+
+ If you want the time information of the lattices explicitly (rather than having to
+ count transition-ids), there is a function LatticeStateTimes (for Lattice), and
+ CompactLatticeStateTimes (for CompactLattice), which will give you the time
+ where each state is located (a number from 0 to the number of frames in the file).
+ Be careful that in general, the words are ``pushed'' relative to the transition-ids,
+ so the times you get from the lattice will (as far as the word labels are concerned)
+ be inexact.  If you want exact times (e.g. for conversion to HTK lattices, or for
+ sclite scoring), then you should run the program lattice-word-align.  This program
+ only works if you built your system with word-position-dependent phones, and it
+ requires certain command-line options to tell it which phones are in which position
+ in the word.  See egs/wsj/s3/run.sh for an example (search for align).  
+
+
 */
 
 

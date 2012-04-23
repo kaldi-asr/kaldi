@@ -145,7 +145,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
 
   // Backward pass and collect posteriors
   vector< map<int32, double> > tmp_arc_post(max_time);
-  for (int32 state = num_states -1; state > 0; --state) {
+  for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
                  state_alphas, &state_betas, &tmp_arc_post[cur_time - 1]);

@@ -6,6 +6,7 @@
 
 =====
 dan's TODO:
+ wali_to_ctm.sh assumes that conv-side is spk-{A,B}, not always true.
  eventually remove warning RE thread-test 
  fix SGMM w/ resizing spk vecs.
  change usage message so standard and program-specific options printed

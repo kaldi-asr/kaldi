@@ -35,7 +35,7 @@ namespace kaldi {
 /// and counts the time instance corresponding to each state. The times are
 /// returned in a vector of integers 'times' which is resized to have a size
 /// equal to the number of states in the lattice. The function also returns
-/// the maximum time in the lattice.
+/// the maximum time in the lattice (this will equal the #frames in the file).
 int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 
 /// As LatticeStateTimes, but in the CompactLattice format.  Note: must
