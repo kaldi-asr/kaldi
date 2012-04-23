@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
     kaldi::Vector<double> transition_accs;
     kaldi::AccumAmDiagGmm gmm_accs;
 
+    int num_accs = po.NumArgs() - 1;
     for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
@@ -56,7 +57,9 @@ int main(int argc, char *argv[]) {
       transition_accs.Write(ko.Stream(), binary);
       gmm_accs.Write(ko.Stream(), binary);
     }
-
+    KALDI_LOG << "Summed " << num_accs << " stats, total count "
+              << gmm_accs.TotCount() << ", avg like/frame "
+              << (gmm_accs.TotLogLike() / gmm_accs.TotCount());
     KALDI_LOG << "Written stats to " << stats_out_filename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';

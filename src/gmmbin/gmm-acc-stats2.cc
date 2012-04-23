@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
 
         BaseFloat tot_like_this_file = 0.0, tot_weight_this_file = 0.0;
 
+        num_done++;
         for (size_t i = 0; i < posterior.size(); i++) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,
@@ -112,7 +113,6 @@ int main(int argc, char *argv[]) {
             trans_model.Accumulate(fabs(weight), tid,
                                    (weight > 0.0 ?
                                     &num_trans_accs : &den_trans_accs));
-            num_done++;            
             tot_like_this_file +=
                 (weight > 0.0 ? &num_gmm_accs : &den_gmm_accs) ->
                 AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, fabs(weight)) * weight;
