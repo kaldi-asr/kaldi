@@ -132,15 +132,23 @@ the questions configuration class would be output by the compile-questions
 program, which takes in a topology list of phonetic questions (in our
 scripts, these are automatically obtained from tree-building statistics
 by the program cluster-phones.  The roots file specifies sets of phones
-that are shared roots in the decision-tree clustering process, and says
+that are goint to have shared roots in the decision-tree clustering process, and says
 for each phone set the following two things:
   - "shared" or "not-shared" says whether or not there should be separate  
-    roots for each of the \ref pdf_class "pdf-classes", or if the roots
+    roots for each of the \ref pdf_class "pdf-classes" (i.e. HMM-states,
+    in the typical case), or if the roots
     should be shared.  If we are going to be splitting (the "split" option
     below) we enforce that the roots should be shared.
   - "split" or "not-split" says whether or not the decision tree splitting
     should actually be done for the roots in question (for silence, we
     typically don't split).
+
+Be careful because the notation is a bit tricky.  The "shared" on the line of
+the roots file is about whether we will share all the 3 HMM-states of the phone
+in a single tree root.  But we will always share together the roots of all the phones that
+appear on a single lines of the roots file.  This is not configurable via these
+strings because if you don't want to share them, you can just put them on
+separate lines of the roots file. 
 
 Below is an example of a roots file; this assumes that phone 1 is silence
 and all the other phones have separate roots.
@@ -151,10 +159,33 @@ shared split 3
 ...
 shared split 28
 \endverbatim
-Sharing roots is most useful when we have things like position and 
+Having multiple phones on the same line is most useful when we have things like position and 
 stress-dependent phones; in this case each "real" phone would correspond
 to a set of integer phone ids.  In that case we share the roots for all
-versions of a particular underlying phone.
+versions of a particular underlying phone.  Below is an example of a roots file
+for Wall Street Journal, from the egs/wsj/s5 scripts (this is in text, not integer form; 
+it would have to be converted to integer form before being read by Kalid):
+\verbatim
+not-shared not-split SIL SIL_B SIL_E SIL_I SIL_S SPN SPN_B SPN_E SPN_I SPN_S NSN NSN_B NSN_E NSN_I NSN_S 
+shared split AA_B AA_E AA_I AA_S AA0_B AA0_E AA0_I AA0_S AA1_B AA1_E AA1_I AA1_S AA2_B AA2_E AA2_I AA2_S
+shared split AE_B AE_E AE_I AE_S AE0_B AE0_E AE0_I AE0_S AE1_B AE1_E AE1_I AE1_S AE2_B AE2_E AE2_I AE2_S
+shared split AH_B AH_E AH_I AH_S AH0_B AH0_E AH0_I AH0_S AH1_B AH1_E AH1_I AH1_S AH2_B AH2_E AH2_I AH2_S
+shared split AO_B AO_E AO_I AO_S AO0_B AO0_E AO0_I AO0_S AO1_B AO1_E AO1_I AO1_S AO2_B AO2_E AO2_I AO2_S
+shared split AW_B AW_E AW_I AW_S AW0_B AW0_E AW0_I AW0_S AW1_B AW1_E AW1_I AW1_S AW2_B AW2_E AW2_I AW2_S
+shared split AY_B AY_E AY_I AY_S AY0_B AY0_E AY0_I AY0_S AY1_B AY1_E AY1_I AY1_S AY2_B AY2_E AY2_I AY2_S
+shared split B_B B_E B_I B_S
+shared split CH_B CH_E CH_I CH_S
+shared split D_B D_E D_I D_S
+\endverbatim
+When creating the roots file, you should ensure that at least one phone on each line is seen.
+For instance, in this case, if the phone AY was seen in at least some combination of stress and
+word-position, we would be OK.
+
+In this example, we have various word-position-dependent variants of silence and so on.  
+In this example they will all share their pdf's because they are on the same line and are
+"not-split"-- but they may have different transition parameters.  In fact, most of these
+variants of silence would never be used as silence never appears inside words; this is for
+future-proofing the setup in case someone does something weird in future.
 
 We do the initial phases of Gaussian mixing up using the alignments from
 the previous (e.g. monophone) build; the alignments are converted from one
