@@ -199,14 +199,19 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     if($numlines == 0) {
         print STDERR "split_scp.pl: warning: empty input scp file $inscp";
     }
-    $linesperscp = int( ($numlines+($numscps-1)) / $numscps); # the +$(numscps-1) forces rounding up.
-# [just doing int() rounds down].
+    $linesperscp = int( $numlines / $numscps); # the "whole part"..
+    $linesperscp >= 1 || die "You are splitting into too many pieces!";
+    $remainder = $numlines - ($linesperscp * $numscps);
+    ($remainder >= 0 && $remainder < $numlines) || die "bad remainder $remainder";
+    # [just doing int() rounds down].
+    $n = 0;
     for($scpidx = 0; $scpidx < @OUTPUTS; $scpidx++) {
         $scpfile = $OUTPUTS[$scpidx];
         open(O, ">$scpfile") || die "Opening output scp file $scpfile";
-        for($n = $linesperscp * $scpidx; $n < $numlines && $n < $linesperscp*($scpidx+1); $n++) {
-            print O $F[$n];
+        for($k = 0; $k < $linesperscp + ($scpidx < $remainder ? 1 : 0); $k++) {
+            print O $F[$n++];
         }
         close(O) || die "Closing scp file $scpfile";
     }
+    $n == $numlines || die "split_scp.pl: code error., $n != $numlines";
 }

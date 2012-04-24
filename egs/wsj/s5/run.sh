@@ -88,8 +88,6 @@ sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print 2}'`
 steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
   data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
 
-##################### I AM HERE ####################################2
-
 
 # Align tri1 system with si84 data.
 steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
@@ -99,8 +97,13 @@ steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
 steps/train_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a || exit 1;
+
 utils/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93 || exit 1;
+
+steps/decode_deltas.sh --num-jobs 10 --cmd "$decode_cmd" \
+  exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93 || exit 1;
+
+##################### I AM HERE ####################################
 
 
 # Train tri2b, which is LDA+MLLT, on si84 data.
