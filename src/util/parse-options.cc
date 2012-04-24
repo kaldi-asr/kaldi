@@ -1,7 +1,7 @@
 // util/parse-options.cc
 
-// Copyright 2009-2011  Karel Vesely;  Microsoft Corporation;
-//                      Saarland University
+// Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
+//                      Saarland University;  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -121,7 +121,8 @@ std::string ParseOptions::GetArg(int i) {
 
 
 
-enum ShellType { kBash = 0, kDos = 1 };
+enum ShellType { kBash = 0 }; // We currently do not support any
+// other options.
 
 static ShellType kShellType = kBash;  // This can be changed in the
 // code if it ever does need to be changed (as it's unlikely that one
@@ -140,16 +141,19 @@ static bool MustBeQuoted(const std::string &str, ShellType st) {
   // But it's mostly a cosmetic issue as it basically affects how
   // the program echoes its command-line arguments to the screen.
 
-  assert(st == kBash||st == kDos);
+  KALDI_ASSERT(st == kBash); // Nothing else supported right now.
   const char *c = str.c_str();
   if (*c == '\0') return true;  // Must quote empty string
   else {
     const char *ok_chars[2];
-    ok_chars[kBash] = "[]~#^_-+=:., /";  // these seem not to be interpreted as long
-    // as there are no other "bad" characters involved (e.g. ", " would be interpreted
-    // as part of something like a{b, c}).
-    ok_chars[kDos] = "\\[]~#^_-+=:., /";  // This may not be exact.
-
+    ok_chars[kBash] = "[]~#^_-+=:.,/";  // these seem not to be interpreted as long
+    // as there are no other "bad" characters involved (e.g. "," would be interpreted
+    // as part of something like a{b,c}, but not on its own.
+    
+    KALDI_ASSERT(!strchr(ok_chars[kBash], ' ')); // Just want to make sure that
+    // a space character doesn't get automatically inserted here via an automated
+    // style-checking script, like it did before.
+    
     for (; *c != '\0'; c++) {
       if ( ! isalnum(*c) ) {
         // For non-alphanumeric characters we have a list of
@@ -162,22 +166,43 @@ static bool MustBeQuoted(const std::string &str, ShellType st) {
         // one of the "ok_chars".  So must be escaped
       }
     }
-    return false;  // The string was OK: no escaping.
+    return false;  // The string was OK: no quoting or escaping.
   }
 }
 
 // returns a quoted and escaped version of "str"
 // which has previously been determined to need escaping.
+// Our aim is to print out the command line in such a way that if it's
+// pasted into a shell of ShellType "st" (only bash for now), it
+// will get passed to the program in the same way.  For now
+// we use the following rules:
+//  In the normal case, we quote with single-quote "'", and to escape
+// a single-quote we use the string: '\'' (interpreted as closing the
+// single-quote, putting an escaped single-quote from the shell, and
+// then reopening the single quote).
+//  If the string contains single-quotes that would need escaping this
+// way, and we determine that the string could be safely double-quoted
+// without requiring any escaping, then we double-quote the string.
+// This is the case if the characters "`$\ do not appear in the string.
+// e.g. see http://www.redhat.com/mirrors/LDP/LDP/abs/html/quotingvar.html
+
 static std::string QuoteAndEscape(const std::string &str, ShellType st) {
   char quote_char;
   const char *escape_str;  // the sequence of characters we insert
   // when we encounter a quote character.
 
   if (st == kBash) {
-    quote_char = '\''; escape_str = "'\\''";  // e.g. echo 'a'\''b' returns a'b
-  } else if (st == kDos) {
-    quote_char = '"'; escape_str = "\"\"";   // not sure about this.  Must test.
-  } else assert(0);
+    const char *c_str = str.c_str();
+    if (strchr(c_str, '\'') && !strpbrk(c_str, "\"`$\\")) {
+      quote_char = '"';
+      escape_str = "\\\""; //  should never be accessed.
+    } else {
+      quote_char = '\'';
+      escape_str = "'\\''";  // e.g. echo 'a'\''b' returns a'b
+    }
+  } else {
+    KALDI_ERR << "Invalid shell type.";
+  }
 
   char buf[2];
   buf[1] = '\0';

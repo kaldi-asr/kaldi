@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         " rnnlm-train-perseq rnnlm.init train.txt dict rnnlm.iter1\n";
 
     ParseOptions po(usage);
-    bool binary = false, 
+    bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");

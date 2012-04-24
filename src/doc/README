@@ -1,22 +1,32 @@
 
-This directory contains some of the source for the Doxygen documentation (the
-code itself, and its comments, is the rest of the source).  Doxygen will create
-the actual documentation in ../html/ (e.g. open ../html/index.html in a browser).
-To run doxygen, type "doxygen" from one directory above this.  If this does
-not work, search for "Kaldi main page" online and you will hopefully get a 
-version of the documentation.
+#This directory contains some of the source for the Doxygen documentation (the
+#code itself, and its comments, is the rest of the source).  Doxygen will create
+#the actual documentation in ../html/ (e.g. open ../html/index.html in a browser).
+#To run doxygen, type "doxygen" from one directory above this.  If this does
+#not work, search for "Kaldi main page" online and you will hopefully get a 
+#version of the documentation.
 
-(from Dan:) The commands below show how I compile the documentation and
-copy it to the homepage at sourceforge.  (We also maintain a version 
-at http://merlin.fit.vutbr.cz/kaldi but this will eventually be 
-discontinued).
+# Note: I generally run this file by typing ". doc/README" from src/,
+# but this relies on having dsa encryption set up  with Sourceforge.
+# instructions (from Vassil Panayotov) on how to do this:
+# type
+#ssh-keygen -t dsa -C "vpanayotov@shell.sf.net"
+#ssh-add
+# end then import the contents of .ssh/id_dsa.pub into
+# http://sourceforge.net/account/services 
+
+#(from Dan:) The commands below show how I compile the documentation and
+#copy it to the homepage at sourceforge.  (We also maintain a version 
+#at http://merlin.fit.vutbr.cz/kaldi but this will eventually be 
+#discontinued).
 
 # cd to src/
 doxygen
 cp ~/sourceforge/kaldi/trunk/src/doc/*.pptx ~/sourceforge/kaldi/trunk/src/html/; 
 
-echo 'for x in ~/sourceforge/kaldi/trunk/src/html/*
-    do cp -r $x /var/www/html/kaldi; done' | ssh merlin bash
+# outdated instructions:
+#echo 'for x in ~/sourceforge/kaldi/trunk/src/html/*
+#    do cp -r $x /var/www/html/kaldi; done' | ssh merlin bash
 
 tar -czf html.tar.gz html
 scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/

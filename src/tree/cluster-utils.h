@@ -1,5 +1,6 @@
 // tree/cluster-utils.h
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,11 +110,14 @@ BaseFloat ClusterBottomUp(const std::vector<Clusterable*> &points,
                           std::vector<Clusterable*> *clusters_out,
                           std::vector<int32> *assignments_out);
 
-/// This is a bottom-up clustering where the points are pre-clustered in a set
-/// of compartments, such that only points in the same compartment are
-/// clustered together. The compartment and pair of points with the smallest
-/// merge cost are clustered.
-/// The clusters in "clusters_out" are newly allocated and owned by the caller.
+/** This is a bottom-up clustering where the points are pre-clustered in a set
+ *  of compartments, such that only points in the same compartment are clustered
+ *  together. The compartment and pair of points with the smallest merge cost
+ *  is selected and the points are clustered. The result stays in the same
+ *  compartment. The code does not merge compartments, and hence assumes that
+ *  the number of compartments is smaller than the 'min_clust' option.
+ *  The clusters in "clusters_out" are newly allocated and owned by the caller.
+ */
 BaseFloat ClusterBottomUpCompartmentalized(
     const std::vector< std::vector<Clusterable*> > &points, BaseFloat thresh,
     int32 min_clust, std::vector< std::vector<Clusterable*> > *clusters_out,

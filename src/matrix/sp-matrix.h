@@ -53,24 +53,25 @@ class SpMatrix : public PackedMatrix<Real> {
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
 
-  SpMatrix(const SpMatrix<Real>& Orig)
-      : PackedMatrix<Real>(Orig) {}
+  SpMatrix(const SpMatrix<Real>& orig)
+      : PackedMatrix<Real>(orig) {}
 
   template<class OtherReal>
-  explicit SpMatrix(const SpMatrix<OtherReal>& Orig)
-      : PackedMatrix<Real>(Orig) {}
+  explicit SpMatrix(const SpMatrix<OtherReal>& orig)
+      : PackedMatrix<Real>(orig) {}
+  
 
 #ifdef KALDI_PARANOID
-  explicit SpMatrix(const MatrixBase<Real> & Orig,
+  explicit SpMatrix(const MatrixBase<Real> & orig,
                     SpCopyType copy_type = kTakeMeanAndCheck)
-      : PackedMatrix<Real>(Orig.NumRows(), kUndefined) {
-    CopyFromMat(Orig, copy_type);
+      : PackedMatrix<Real>(orig.NumRows(), kUndefined) {
+    CopyFromMat(orig, copy_type);
   }
 #else
-  explicit SpMatrix(const MatrixBase<Real> & Orig,
+  explicit SpMatrix(const MatrixBase<Real> & orig,
                     SpCopyType copy_type = kTakeMean)
-      : PackedMatrix<Real>(Orig.NumRows(), kUndefined) {
-    CopyFromMat(Orig, copy_type);
+      : PackedMatrix<Real>(orig.NumRows(), kUndefined) {
+    CopyFromMat(orig, copy_type);
   }
 #endif
 
@@ -353,12 +354,13 @@ double VecSpVec(const VectorBase<double> &v1, const SpMatrix<double> &M,
 /// using a numerically stable method. Like a numerically stable version of
 /// \f$  x := Q^{-1} g.    \f$
 /// Assumes H positive semidefinite.
+/// Returns the objective-function change.
 template<class Real>
 Real SolveQuadraticProblem(const SpMatrix<Real> &H,
                            const VectorBase<Real> &g,
                            VectorBase<Real> *x, Real K = 1.0E4,
                            Real eps = 1.0E-40,
-                           const char *debug_str = "unknown",
+                           const char *debug_str = "[unknown]",
                            bool optimizeDelta = true);
 
 /// Maximizes the auxiliary function :
@@ -372,7 +374,7 @@ Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                                  const SpMatrix<Real> &P,
                                  MatrixBase<Real> *M, Real K = 1.0E4,
                                  Real eps = 1.0E-40,
-                                 const char *debug_str = "unknown",
+                                 const char *debug_str = "[unknown]",
                                  bool optimizeDelta = true);
 
 /// Maximizes the auxiliary function :
@@ -389,7 +391,7 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
                                        const SpMatrix<Real> &Q2,
                                        MatrixBase<Real> *M, Real K = 1.0E4,
                                        Real eps = 1.0E-40,
-                                       const char *debug_str = "unknown");
+                                       const char *debug_str = "[unknown]");
 
 /// @} End of "addtogroup matrix_funcs_misc"
 

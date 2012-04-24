@@ -22,6 +22,8 @@
 #include <vector>
 
 #include "gmm/am-diag-gmm.h"
+#include "hmm/transition-model.h"
+#include "util/kaldi-holder.h" // for Posterior
 
 namespace kaldi {
 
@@ -104,8 +106,13 @@ class Fmpe {
   int32 NumGauss() const { return gmm_.NumGauss(); }
   int32 NumContexts() const { return static_cast<int32>(contexts_.size()); }
 
-  int32 ProjectionNumRows() { return FeatDim() * NumContexts(); }
-  int32 ProjectionNumCols() { return (FeatDim()+1) * NumGauss(); }
+  // Note: this returns the number of rows and columns in projT_,
+  // which is the transpose of the high->intermediate dimensional
+  // projection matrix.  This is the dimension we want for the
+  // stats.
+  int32 ProjectionTNumRows() { return (FeatDim()+1) * NumGauss(); }
+  int32 ProjectionTNumCols() { return FeatDim() * NumContexts(); }
+
   
   // Computes the fMPE feature offsets and outputs them.
   // You can add feat_in to this afterwards, if you want.
@@ -131,9 +138,10 @@ class Fmpe {
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  void Update(const FmpeUpdateOptions &config,
-              MatrixBase<BaseFloat> &proj_deriv_plus,
-              MatrixBase<BaseFloat> &proj_deriv_minus);
+  // Returns total objf improvement, based on linear assumption.
+  BaseFloat Update(const FmpeUpdateOptions &config,
+                   MatrixBase<BaseFloat> &proj_deriv_plus,
+                   MatrixBase<BaseFloat> &proj_deriv_minus);
   
  private:
   void SetContexts(std::string context_str);
@@ -180,8 +188,9 @@ class Fmpe {
   // variances of the GMM -- computed to avoid taking a square root
   // in the fMPE computation.   Derived variable-- not stored on
   // disk.
-  Matrix<BaseFloat> proj_; // The projection matrix, of dimension
-  // (FeatDim() * NumContexts()) x (NumGauss() * (FeatDim()+1))
+  Matrix<BaseFloat> projT_; // The transpose of the projection matrix;
+  // this is of dimension
+  // (NumGauss() * (FeatDim()+1)) * (FeatDim() * NumContexts()).
   
   TpMatrix<BaseFloat> C_; // Cholesky factor of the variance Sigma of
   // features around their mean (as estimated from GMM)... applied
@@ -197,6 +206,17 @@ class Fmpe {
   
 };
 
+/// Computes derivatives of the likelihood of these states (weighted),
+/// w.r.t. the feature values.  Used in fMPE training.  Note, the
+/// weights "posterior" may be positive or negative-- for MMI, MPE,
+/// etc., they will typically be of both signs.  Will resize "deriv".
+/// Returns the sum of (GMM likelihood * weight), which may be used
+/// as an approximation to the objective function. 
+BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
+                                   const TransitionModel &trans_model,
+                                   const Posterior &posterior,
+                                   const MatrixBase<BaseFloat> &features,
+                                   Matrix<BaseFloat> *deriv);
 
 
 }  // End namespace kaldi

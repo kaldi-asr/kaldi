@@ -49,10 +49,7 @@ int main(int argc, char *argv[]) {
       Input ki(model_in_filename, &binary_read);
       fgmm.Read(ki.Stream(), binary_read);
     }
-    {
-      Output ko(model_out_filename, binary_write);
-      fgmm.Write(ko.Stream(), binary_write);
-    }
+    WriteKaldiObject(fgmm, model_out_filename, binary_write);
 
     KALDI_LOG << "Written model to " << model_out_filename;
   } catch(const std::exception& e) {

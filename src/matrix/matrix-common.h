@@ -28,9 +28,6 @@ namespace kaldi {
 typedef enum {
   kTrans    = CblasTrans,
   kNoTrans = CblasNoTrans
-  // we previously had situation where we defined:
-  //    kTrans    = 'T',
-  //    kNoTrans = 'N'
 } MatrixTransposeType;
 
 typedef enum {

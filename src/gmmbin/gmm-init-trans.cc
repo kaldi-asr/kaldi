@@ -49,27 +49,15 @@ int main(int argc, char *argv[]) {
 
     // Read toppology.
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     // Read model.
     AmDiagGmm am_gmm;
-    {
-      bool binary_in;
-      Input in(gmm_filename, &binary_in);
-      am_gmm.Read(in.Stream(), binary_in);
-    }
+    ReadKaldiObject(gmm_filename, &am_gmm);
 
     // Now the tree
     ContextDependency ctx_dep;
-    {
-      bool binary_in;
-      Input in(tree_filename, &binary_in);
-      ctx_dep.Read(in.Stream(), binary_in);
-    }
+    ReadKaldiObject(tree_filename, &ctx_dep);
 
     TransitionModel trans_model(ctx_dep, topo);
 

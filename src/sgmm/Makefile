@@ -6,11 +6,12 @@ include ../kaldi.mk
 
 TESTFILES = am-sgmm-test estimate-am-sgmm-test fmllr-sgmm-test
 
-OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-compress.o fmllr-sgmm.o
+OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-compress.o fmllr-sgmm.o \
+           sgmm-clusterable.o
 
 LIBFILE = kaldi-sgmm.a
 
-all: $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE) $(TESTFILES)
 
 
 $(LIBFILE): $(OBJFILES)
@@ -30,7 +31,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kal
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

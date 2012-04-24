@@ -167,7 +167,7 @@ try {
         "  tied-lbg tree-old tree-tied topo scp:train.scp ark:ali ubm-full "
         "tree.map\n";
 
-    bool binary = false;
+    bool binary = true;
     bool full = true;
     
     BaseFloat perturb = 0.01;
@@ -225,11 +225,7 @@ try {
     
     // load topo
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     // build transition models
     TransitionModel trans_model(ctx_dep, topo);

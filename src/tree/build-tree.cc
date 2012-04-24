@@ -494,7 +494,7 @@ static void ObtainSetsOfPhones(const std::vector<std::vector<int32> > &phone_set
 
 void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
                                   const std::vector<std::vector<int32> > &phone_sets_in,
-                                  const std::vector<int32> &all_hmm_positions_in,
+                                  const std::vector<int32> &all_pdf_classes_in,
                                   int32 P,
                                   std::vector<std::vector<int32> > *questions_out) {
   std::vector<std::vector<int32> > phone_sets(phone_sets_in);
@@ -514,12 +514,12 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
   if (phones.empty())
     KALDI_ERR << "No phones provided.";
 
-  std::vector<int32> all_hmm_positions(all_hmm_positions_in);
-  SortAndUniq(&all_hmm_positions);
-  assert(!all_hmm_positions.empty());
+  std::vector<int32> all_pdf_classes(all_pdf_classes_in);
+  SortAndUniq(&all_pdf_classes);
+  assert(!all_pdf_classes.empty());
 
   BuildTreeStatsType retained_stats;
-  FilterStatsByKey(stats, kPdfClass, all_hmm_positions,
+  FilterStatsByKey(stats, kPdfClass, all_pdf_classes,
                    true,  // retain only the listed positions
                    &retained_stats);
 
@@ -599,7 +599,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
 
 void KMeansClusterPhones(BuildTreeStatsType &stats,
                          const std::vector<std::vector<int32> > &phone_sets_in,
-                         const std::vector<int32> &all_hmm_positions_in,
+                         const std::vector<int32> &all_pdf_classes_in,
                          int32 P,
                          int32 num_classes,
                          std::vector<std::vector<int32> > *sets_out) {
@@ -620,12 +620,12 @@ void KMeansClusterPhones(BuildTreeStatsType &stats,
   if (phones.empty())
     KALDI_ERR << "No phones provided.";
 
-  std::vector<int32> all_hmm_positions(all_hmm_positions_in);
-  SortAndUniq(&all_hmm_positions);
-  assert(!all_hmm_positions.empty());
+  std::vector<int32> all_pdf_classes(all_pdf_classes_in);
+  SortAndUniq(&all_pdf_classes);
+  assert(!all_pdf_classes.empty());
 
   BuildTreeStatsType retained_stats;
-  FilterStatsByKey(stats, kPdfClass, all_hmm_positions,
+  FilterStatsByKey(stats, kPdfClass, all_pdf_classes,
                    true,  // retain only the listed positions
                    &retained_stats);
 

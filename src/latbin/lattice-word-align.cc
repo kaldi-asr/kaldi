@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
+        "(note: from the s5 scripts onward, this is deprecated, see lattice-align-words)\n"
         "Create word-aligned lattices (in which the arcs correspond with\n"
         "word boundaries)\n"
         "Usage: lattice-word-align [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
@@ -65,11 +66,7 @@ int main(int argc, char *argv[]) {
         lats_wspecifier = po.GetArg(3);
 
     TransitionModel tmodel;
-    {
-      bool binary_in;
-      Input ki(model_rxfilename, &binary_in);
-      tmodel.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(model_rxfilename, &tmodel);
     
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     // Write as compact lattice.
@@ -119,7 +116,7 @@ int main(int argc, char *argv[]) {
     int32 n_done = n_ok + n_err_write + n_err_nowrite;
     KALDI_LOG << "Done " << n_done << " lattices: " << n_ok << " OK, "
               << n_err_write << " in error but written anyway, "
-              << n_err_nowrite << "in error and not written.";
+              << n_err_nowrite << " in error and not written.";
     return (n_ok != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

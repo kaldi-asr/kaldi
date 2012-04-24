@@ -105,10 +105,15 @@ int main(int argc, char *argv[]) {
 
     {  // Update GMMs.
       BaseFloat objf_impr, count;
-      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags, &am_gmm, &objf_impr, &count);
+      BaseFloat tot_like = gmm_accs.TotLogLike(),
+          tot_t = gmm_accs.TotCount();
+      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags, &am_gmm,
+                         &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  (count) <<  " frames.";
+      KALDI_LOG << "GMM update: Overall avg like per frame = "
+                << (tot_like/tot_t) << " over " << tot_t << " frames.";
     }
 
     if (mixup != 0 || mixdown != 0 || !occs_out_filename.empty()) {  // get state occs
@@ -116,7 +121,7 @@ int main(int argc, char *argv[]) {
       state_occs.Resize(gmm_accs.NumAccs());
       for (int i = 0; i < gmm_accs.NumAccs(); i++)
         state_occs(i) = gmm_accs.GetAcc(i).occupancy().Sum();
-      
+
       if (mixdown != 0)
         am_gmm.MergeByCount(state_occs, mixdown, power, min_count);
 
@@ -125,7 +130,7 @@ int main(int argc, char *argv[]) {
                             power, min_count);
 
       if (!occs_out_filename.empty()) {
-        bool binary = false; // write this in text mode-- useful to look at.
+        bool binary = true;  // write this in text mode-- useful to look at.
         kaldi::Output ko(occs_out_filename, binary);
         state_occs.Write(ko.Stream(), binary);
       }

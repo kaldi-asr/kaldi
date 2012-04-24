@@ -3,7 +3,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = kaldi-math-test io-funcs-test kaldi-error-test 
+TESTFILES = kaldi-math-test io-funcs-test kaldi-error-test
 
 OBJFILES = kaldi-math.o kaldi-error.o io-funcs.o kaldi-utils.o
 
@@ -16,7 +16,6 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-
 $(TESTFILES): $(LIBFILE) 
 
 # Rule below would expand to, e.g.:
@@ -27,7 +26,7 @@ $(TESTFILES): $(LIBFILE)
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

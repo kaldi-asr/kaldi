@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " tied-full-gmm-init-mono topo cb.pdf mono.mdl mono.tree\n";
 
-    bool binary = false;
+    bool binary = true;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);

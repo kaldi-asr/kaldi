@@ -776,6 +776,7 @@ inline void ConvertLatticeWeight(
   *w_out = Times(w1, w2);
 }
 
+
   
 } // end namespace fst
 

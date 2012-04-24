@@ -136,7 +136,7 @@ ContextDependency *GenRandContextDependencyLarge(const std::vector<int32> &phone
 }
 
 
-void ContextDependency::Write (std::ostream &os, bool binary) {
+void ContextDependency::Write (std::ostream &os, bool binary) const {
   WriteToken(os, binary, "ContextDependency");
   WriteBasicType(os, binary, N_);
   WriteBasicType(os, binary, P_);

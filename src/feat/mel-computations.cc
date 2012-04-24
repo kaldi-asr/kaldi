@@ -105,7 +105,10 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
       if (mel > left_mel && mel <= center_mel) {
         BaseFloat weight = (mel-left_mel) / (center_mel-left_mel);
         this_bin(i) = weight;
-        if (first_index == -1) first_index = i;
+        if (first_index == -1)
+          first_index = i;
+        last_index = i; // this statement only needed to handle
+        // very short bins that arise in pathological cases.
       } else if (mel > center_mel && mel < right_mel) {
         BaseFloat weight = (right_mel-mel) / (right_mel-center_mel);
         this_bin(i) = weight;

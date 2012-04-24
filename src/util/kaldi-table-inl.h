@@ -2126,7 +2126,7 @@ void RandomAccessTableReader<Holder>::CheckImpl() const {
 template<class Holder>
 void TableWriter<Holder>::CheckImpl() const {
   if (!impl_) {
-    KALDI_ERR << "Trying to use empty RandomAccessTableReader (perhaps you "
+    KALDI_ERR << "Trying to use empty TableWriter (perhaps you "
               << "passed the empty string as an argument to a program?)";
   }
 }

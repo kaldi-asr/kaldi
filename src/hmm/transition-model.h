@@ -145,7 +145,7 @@ class TransitionModel {
   /// Note: "Indices" is the plural of "index".   Index is not the same as "id",
   /// here.  A transition-index is a zero-based offset into the transitions
   /// out of a particular transition state.
-  inline int32 NumTransitionIndices(int32 trans_state) const;
+  int32 NumTransitionIndices(int32 trans_state) const;
 
   /// Returns the total number of transition-states (note, these are one-based).
   int32 NumTransitionStates() const { return triples_.size(); }
@@ -157,7 +157,7 @@ class TransitionModel {
   int32 NumPdfs() const { return num_pdfs_; }
 
 
-  /// Returns a sorted, uniq list of phones.
+  /// Returns a sorted, unique list of phones.
   const std::vector<int32> &GetPhones() const { return topo_.GetPhones(); }
 
   // Transition-parameter-getting functions:

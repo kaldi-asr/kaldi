@@ -88,11 +88,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
     LinearVtln lvtln;
-    {
-      bool binary;
-      Input ki(lvtln_rxfilename, &binary);
-      lvtln.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(lvtln_rxfilename, &lvtln);
 
 
     RandomAccessGauPostReader gpost_reader(gpost_rspecifier);

@@ -64,11 +64,7 @@ int main(int argc, char *argv[]) {
     ConstIntegerSet<int32> silence_set(silence_phones);  // faster lookup.
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input inp(model_rxfilename, &binary);
-      trans_model.Read(inp.Stream(), binary);
-    }
+    ReadKaldiObject(model_rxfilename, &trans_model);
 
     int32 num_posteriors = 0;
     SequentialPosteriorReader posterior_reader(posteriors_rspecifier);

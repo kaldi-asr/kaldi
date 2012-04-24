@@ -15,8 +15,7 @@ OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o
 
 LIBFILE = kaldi-matrix.a
 
-all: $(LIBFILE) $(TESTFILES) 
-
+all:  $(LIBFILE) $(TESTFILES)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
@@ -24,7 +23,6 @@ $(LIBFILE): $(OBJFILES)
 
 
 $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
-
 
 
 # Rule below would expand to, e.g.:
@@ -35,7 +33,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

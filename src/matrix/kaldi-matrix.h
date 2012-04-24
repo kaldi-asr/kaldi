@@ -88,7 +88,10 @@ class MatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
     return *(data_ + r * stride_ + c);
   }
-
+  /// Indexing operator, provided for ease of debugging (gdb doesn't work
+  /// with parenthesis operator).
+  Real &Index (MatrixIndexT r, MatrixIndexT c) {  return (*this)(r, c); }
+  
   /// Indexing operator, const
   /// (only checks sizes if compiled with -DKALDI_PARANOID)
   inline const Real operator() (MatrixIndexT r, MatrixIndexT c) const {

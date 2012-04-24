@@ -196,19 +196,22 @@ BaseFloat GaussClusterable::Objf() const {
     return 0.0;
   } else {
     size_t dim = stats_.NumCols();
-    Vector<BaseFloat> vars(dim);
+    Vector<double> vars(dim);
+    double objf_per_frame = 0.0;
     for (size_t d = 0; d < dim; d++) {
       double mean(stats_(0, d) / count_), var = stats_(1, d) / count_ - mean
-          * mean;
-      var = std::max(var, var_floor_);
-      vars(d) = var;
+          * mean, floored_var = std::max(var, var_floor_);
+      vars(d) = floored_var;
+      objf_per_frame += -0.5 * var / floored_var;
     }
-    BaseFloat ans = -0.5 * (vars.SumLog() + M_LOG_2PI * dim);
-    if (KALDI_ISNAN(ans)) {
+    objf_per_frame += -0.5 * (vars.SumLog() + M_LOG_2PI * dim);
+    if (KALDI_ISNAN(objf_per_frame)) {
       KALDI_WARN << "GaussClusterable::Objf(), objf is NaN\n";
       return 0.0;
     }
-    return ans * count_;
+    // KALDI_VLOG(2) << "count = " << count_ << ", objf_per_frame = "<< objf_per_frame
+    //   << ", returning " << (objf_per_frame*count_) << ", floor = " << var_floor_;
+    return objf_per_frame * count_;
   }
 }
 

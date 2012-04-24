@@ -1,7 +1,7 @@
 // lat/lattice-functions.cc
 
-// Copyright 2009-2011   Saarland University
-// Author: Arnab Ghoshal
+// Copyright 2009-2011   Saarland University  2012  Daniel Povey
+// Authors: Arnab Ghoshal  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,26 +16,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-using std::pair;
-#include <map>
-using std::map;
-#include <vector>
-using std::vector;
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
-
-
 
 #include "lat/lattice-functions.h"
 #include "hmm/transition-model.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {
+using std::map;
+using std::vector;
 
 int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
@@ -69,6 +57,46 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
     }
   }
   return (*std::max_element(times->begin(), times->end()));
+}
+
+int32 CompactLatticeStateTimes(const CompactLattice &lat, vector<int32> *times) {
+  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted))
+    KALDI_ERR << "Input lattice must be topologically sorted.";
+  KALDI_ASSERT(lat.Start() == 0);
+  int32 num_states = lat.NumStates();
+  times->clear();
+  times->resize(num_states, -1);
+  (*times)[0] = 0;
+  int32 utt_len = -1;
+  for (int32 state = 0; state < num_states; ++state) {
+    int32 cur_time = (*times)[state];
+    for (fst::ArcIterator<CompactLattice> aiter(lat, state); !aiter.Done();
+        aiter.Next()) {
+      const CompactLatticeArc& arc = aiter.Value();
+      int32 arc_len = static_cast<int32>(arc.weight.String().size());
+      if ((*times)[arc.nextstate] == -1)
+        (*times)[arc.nextstate] = cur_time + arc_len;
+      else
+        KALDI_ASSERT((*times)[arc.nextstate] == cur_time + arc_len);
+    }
+    if (lat.Final(state) != CompactLatticeWeight::Zero()) {
+      int32 this_utt_len = (*times)[state] + lat.Final(state).String().size();
+      if (utt_len == -1) utt_len = this_utt_len;
+      else {
+        if (this_utt_len != utt_len) {
+          KALDI_WARN << "Utterance does not "
+              "seem to have a consistent length.";
+          utt_len = std::max(utt_len, this_utt_len);
+        }
+      }
+    }        
+  }
+  if (utt_len == -1) {
+    KALDI_WARN << "Utterance does not have a final-state.";
+    return 0;
+  }
+  return utt_len;
 }
 
 
@@ -117,7 +145,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
 
   // Backward pass and collect posteriors
   vector< map<int32, double> > tmp_arc_post(max_time);
-  for (int32 state = num_states -1; state > 0; --state) {
+  for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
                  state_alphas, &state_betas, &tmp_arc_post[cur_time - 1]);

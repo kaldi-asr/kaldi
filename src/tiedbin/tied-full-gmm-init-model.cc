@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         "  tied-full-gmm-init-model tree topo tree.map full0.ubm full1.ubm 1.mdl\n";
 
-    bool binary = false;
+    bool binary = true;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -98,18 +98,10 @@ int main(int argc, char *argv[]) {
     }
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     FullGmm cb0;
-    {
-      bool binary_in;
-      Input ki(first_cb_filename, &binary_in);
-      cb0.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(first_cb_filename, &cb0);
 
     AmTiedFullGmm am_gmm;
     am_gmm.Init(cb0);

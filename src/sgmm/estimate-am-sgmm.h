@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;  Yanmin Qian
+// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University;  Ondrej Glembek;  Yanmin Qian;
+//                      Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "sgmm/am-sgmm.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
+#include "sgmm/sgmm-clusterable.h"
 
 namespace kaldi {
 
@@ -54,8 +56,8 @@ struct MleAmSgmmOptions {
   /// backtracks if necessary;
   bool check_v;
 
-  bool renormalize_V;
-  bool renormalize_N;
+  bool renormalize_V;  // Renormalize the phonetic space.
+  bool renormalize_N;  // Renormalize the speaker space.
 
   /// Number of iters when re-estimating weight projections "w".
   int weight_projections_iters;
@@ -78,9 +80,9 @@ struct MleAmSgmmOptions {
     cov_diag_ratio = 2.0;  // set to very large to get diagonal-cov models.
     max_cond = 1.0e+05;
     epsilon = 1.0e-40;
-    max_cond_H_sm = 1.0e+05; // only real significance in normal situation is for diagnostics.
+    max_cond_H_sm = 1.0e+05;  // only for diagnostics in normal situations.
     fixup_H_sm = true;
-    check_v = false; // for back-compat.
+    check_v = false;  // for back-compat.
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors
     // on disk.
@@ -156,10 +158,13 @@ class MleAmSgmmAccs {
   /// Set the accumulators specified by the flags argument to zero.
   void ZeroAccumulators(SgmmUpdateFlagsType flags);
 
+  /// Add another accumulator object
+  void AddAccumulators(const MleAmSgmmAccs &other, SgmmUpdateFlags flags);
+
   /// Returns likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
                        const SgmmPerFrameDerivedVars& frame_vars,
-                       const VectorBase<BaseFloat> &v_s,  // may be empty
+                       const VectorBase<BaseFloat> &v_s,  // spk-vec, may be empty
                        int32 state_index, BaseFloat weight,
                        SgmmUpdateFlagsType flags);
 
@@ -233,6 +238,19 @@ class MleAmSgmmUpdater {
               AmSgmm *model,
               SgmmUpdateFlagsType flags);
 
+  /// This function is like UpdatePhoneVectorsChecked, which supports
+  /// objective-function checking and backtracking but no smoothing term, but it
+  /// takes as input the stats used in SGMM-based tree clustering-- this is used
+  /// in initializing an SGMM from the tree stats.
+  double UpdatePhoneVectorsCheckedFromClusterable(
+      const std::vector<SgmmClusterable*> &stats,
+      const std::vector<SpMatrix<double> > &H,
+      AmSgmm *model);
+  
+ protected:
+  friend class UpdateWParallelClass;
+  friend class UpdatePhoneVectorsClass;
+  friend class UpdatePhoneVectorsCheckedFromClusterableClass;
  private:
   MleAmSgmmOptions update_options_;
   /// Q_{i}, quadratic term for phonetic subspace estimation. Dim is [I][S][S]
@@ -249,7 +267,7 @@ class MleAmSgmmUpdater {
   /// Compute the S_i^{(means)} quantities (Eq. 74).
   void ComputeSMeans(const MleAmSgmmAccs &accs,
                      const AmSgmm &model);
-  
+
   void ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
                              const AmSgmm &model,
                              const std::vector< SpMatrix<double> > &H,
@@ -265,6 +283,18 @@ class MleAmSgmmUpdater {
                             const Vector<double> &y_sm);
 
   
+  // Called from UpdatePhoneVectors; updates a subset of states
+  // (relates to multi-threading).
+  void UpdatePhoneVectorsInternal(const MleAmSgmmAccs &accs,
+                                  AmSgmm *model,
+                                  const std::vector<SpMatrix<double> > &H,
+                                  const SpMatrix<double> &H_sm,
+                                  const Vector<double> &y_sm,
+                                  double *auxf_impr,
+                                  double *like_impr,
+                                  int32 num_threads,
+                                  int32 thread_id);
+                                    
 
   // UpdatePhoneVectors function that does not support smoothing
   // terms, but allows checking of objective-function improvement,
@@ -273,6 +303,16 @@ class MleAmSgmmUpdater {
                                    AmSgmm *model,
                                    const std::vector<SpMatrix<double> > &H);
 
+  // Called (indirectly) from UpdatePhoneVectorsCheckedFromClusterable()
+  void UpdatePhoneVectorsCheckedFromClusterableInternal(
+      const std::vector<SgmmClusterable*> &stats,
+      const std::vector< SpMatrix<double> > &H,
+      AmSgmm *model,
+      double *count_ptr,
+      double *like_impr_ptr,
+      int32 num_threads,
+      int32 thread_id);
+  
   double UpdateM(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateMCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
 
@@ -284,8 +324,19 @@ class MleAmSgmmUpdater {
   double UpdateVars(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateVarsCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateWParallel(const MleAmSgmmAccs &accs, AmSgmm *model);
+
+  /// Called, multithreaded, inside UpdateWParallel
+  void UpdateWParallelGetStats(const MleAmSgmmAccs &accs,
+                               const AmSgmm &model,
+                               const Matrix<double> &w,
+                               Matrix<double> *F_i,
+                               Matrix<double> *g_i,
+                               double *tot_like,
+                               int32 num_threads, 
+                               int32 thread_id);
+  
   double UpdateWSequential(const MleAmSgmmAccs &accs,
-                              AmSgmm *model);
+                           AmSgmm *model);
   double UpdateSubstateWeights(const MleAmSgmmAccs &accs,
                                   AmSgmm *model);
 

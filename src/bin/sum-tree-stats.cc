@@ -18,9 +18,8 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
+#include "tree/clusterable-classes.h"
 #include "tree/build-tree-utils.h"
-#include "hmm/transition-model.h"
-#include "hmm/tree-accu.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -47,7 +46,9 @@ int main(int argc, char *argv[]) {
     
     std::string tree_stats_wxfilename = po.GetArg(1);
 
-    // typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType;    
+    // A reminder on what BuildTreeStatsType is:
+    // typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType;
+    
     for (int32 arg = 2; arg <= po.NumArgs(); arg++) {
       std::string tree_stats_rxfilename = po.GetArg(arg);
       bool binary_in;

@@ -19,6 +19,8 @@
 #include "transform/fmpe.h"
 #include "util/text-utils.h"
 #include "gmm/diag-gmm-normal.h"
+#include "gmm/am-diag-gmm.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 
@@ -73,7 +75,7 @@ void Fmpe::ComputeC() {
   // to get centered covariance.
   C_.Resize(dim);
   try {
-    TpMatrix<double> Ctmp; Ctmp.Cholesky(x2_stats);
+    TpMatrix<double> Ctmp(dim); Ctmp.Cholesky(x2_stats);
     C_.CopyFromTp(Ctmp);
   } catch (...) {
     KALDI_ERR << "Error initializing fMPE object: cholesky of "
@@ -94,9 +96,9 @@ void Fmpe::ApplyContext(const MatrixBase<BaseFloat> &intermed_feat,
   // Applies the temporal-context part of the transformation.
   int32 dim = FeatDim(), ncontexts = NumContexts(),
       T = intermed_feat.NumRows();
-  KALDI_ASSERT(intermed_feat.NumRows() == dim * ncontexts &&
-               intermed_feat.NumCols() == feat_out->NumCols()
-               && feat_out->NumRows() == dim);
+  KALDI_ASSERT(intermed_feat.NumCols() == dim * ncontexts &&
+               intermed_feat.NumRows() == feat_out->NumRows()
+               && feat_out->NumCols() == dim);
   // note: ncontexts == contexts_.size().
   for (int32 i = 0; i < ncontexts; i++) {
     // this_intermed_feat is the chunk of the "intermediate features"
@@ -125,9 +127,9 @@ void Fmpe::ApplyContextReverse(const MatrixBase<BaseFloat> &feat_deriv,
   // in reverse, for getting derivatives for training.
   int32 dim = FeatDim(), ncontexts = NumContexts(),
       T = feat_deriv.NumRows();
-  KALDI_ASSERT(intermed_feat_deriv->NumRows() == dim * ncontexts &&
-               intermed_feat_deriv->NumCols() == feat_deriv.NumCols()
-               && feat_deriv.NumRows() == dim);
+  KALDI_ASSERT(intermed_feat_deriv->NumCols() == dim * ncontexts &&
+               intermed_feat_deriv->NumRows() == feat_deriv.NumRows()
+               && feat_deriv.NumCols() == dim);
   // note: ncontexts == contexts_.size().
   for (int32 i = 0; i < ncontexts; i++) {
     // this_intermed_feat is the chunk of the derivative of
@@ -142,7 +144,7 @@ void Fmpe::ApplyContextReverse(const MatrixBase<BaseFloat> &feat_deriv,
       // but this doesn't dominate the computation and I think this is
       // clearer.
       for (int32 t_out = 0; t_out < T; t_out++) { // t_out indexes the output
-        int32 t_in = t_in + t_offset; // t_in indexes the input.
+        int32 t_in = t_out + t_offset; // t_in indexes the input.
         if (t_in >= 0 && t_in < T) // Discard frames outside range.
           this_intermed_feat_deriv.Row(t_in).AddVec(weight,
                                                     feat_deriv.Row(t_out));
@@ -164,7 +166,16 @@ void Fmpe::ApplyC(MatrixBase<BaseFloat> *feat_out, bool reverse) const {
   }
 }
 
-// Constructs the high-dim features and applies the main projection matrix proj_.
+// Constructs the high-dim features and applies the main projection matrix
+// projT_.  This projects from dimension ngauss*(dim+1) to dim*ncontexts.  Note:
+// because the input vector of size ngauss*(dim+1) is sparse in a blocky way
+// (i.e. each frame only has a couple of nonzero posteriors), we deal with
+// sub-matrices of the projection matrix projT_.  We actually further optimize
+// the code by taking all frames in a file that had nonzero posteriors for a
+// particular Gaussian, and forming a matrix out of the corresponding
+// high-dimensional features; we can then use a matrix-matrix multiply rather
+// than using vector-matrix operations.
+
 void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
                            const std::vector<std::vector<int32> > &gselect,
                            MatrixBase<BaseFloat> *intermed_feat) const {
@@ -173,17 +184,44 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
   Vector<BaseFloat> post; // will be posteriors of selected Gaussians.
   Vector<BaseFloat> input_chunk(dim+1); // will be a segment of
   // the high-dimensional features.
+
+  // "all_posts" is a vector of ((gauss-index, time-index), gaussian
+  // posterior).
+  // We'll compute the posterior information, sort it, and then
+  // go through it in sorted order, which maintains memory locality
+  // when accessing the projection matrix.
+  // Note: if we really cared we could make this use level-3 BLAS
+  // (matrix-matrix multiply), but we'd need to have a temporary
+  // matrix for the output and input.
+  std::vector<std::pair<std::pair<int32,int32>, BaseFloat> > all_posts;
+  
   for (int32 t = 0; t < feat_in.NumRows(); t++) {
     SubVector<BaseFloat> this_feat(feat_in, t);
-    SubVector<BaseFloat> this_intermed_feat(*intermed_feat, t);
     gmm_.LogLikelihoodsPreselect(this_feat, gselect[t], &post);
     // At this point, post will contain log-likes of the selected
     // Gaussians.
     post.ApplySoftMax(); // Now they are posteriors (which sum to one).
     for (int32 i = 0; i < post.Dim(); i++) {
       int32 gauss = gselect[t][i];
+      all_posts.push_back(std::make_pair(std::make_pair(gauss, t), post(i)));
+    }
+  }
+  std::sort(all_posts.begin(), all_posts.end());
+  
+  bool optimize = true;
+
+  if (!optimize) { // Why do we keep this un-optimized code around?
+    // For clarity, so you can see what's going on, and for easier
+    // comparision with ApplyProjectionReverse which is similar to this
+    // un-optimized segment.  Both un-optimized and optimized versions
+    // should give identical transforms (up to tiny roundoff differences).
+    for (size_t i = 0; i < all_posts.size(); i++) {
+      int32 gauss = all_posts[i].first.first, t = all_posts[i].first.second;
+      SubVector<BaseFloat> this_feat(feat_in, t);
+      SubVector<BaseFloat> this_intermed_feat(*intermed_feat, t);
+      BaseFloat this_post = all_posts[i].second;
       SubVector<BaseFloat> this_stddev(stddevs_, gauss);
-      BaseFloat this_post = post(i);
+
       // The next line is equivalent to setting input_chunk to
       // -this_post * the gaussian mean / (gaussian stddev).  Note: we use
       // the fact that mean * inv_var *  stddev == mean / stddev.
@@ -196,12 +234,55 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
                                              1.0);
       // The last element of this input_chunk is the posterior itself
       // (between 0 and 1).
-      input_chunk(dim) = this_post;
+      input_chunk(dim) = this_post * config_.post_scale;
 
-      // this_intermed_feat += [appropriate chjunk of proj_] * input_chunk.
-      this_intermed_feat.AddMatVec(1.0, proj_.Range(0, dim*ncontexts,
-                                                    gauss*(dim+1), dim+1),
-                                   kNoTrans, input_chunk, 1.0);
+      // this_intermed_feat += [appropriate chjunk of projT_] * input_chunk.
+      this_intermed_feat.AddMatVec(1.0, projT_.Range(gauss*(dim+1), dim+1,
+                                                     0, dim*ncontexts),
+                                   kTrans, input_chunk, 1.0);
+    }
+  } else {
+    size_t i = 0;
+    while (i < all_posts.size()) {
+      int32 gauss = all_posts[i].first.first;
+      SubVector<BaseFloat> this_stddev(stddevs_, gauss),
+          this_mean_invvar(gmm_.means_invvars(), gauss);
+      SubMatrix<BaseFloat> this_projT_chunk(projT_, gauss*(dim+1), dim+1,
+                                            0, dim*ncontexts);
+      int32 batch_size; // number of posteriors with same Gaussian..
+      for (batch_size = 0;
+           batch_size+i < static_cast<int32>(all_posts.size()) &&
+               all_posts[batch_size+i].first.first == gauss;
+           batch_size++); // empty loop body.
+      Matrix<BaseFloat> input_chunks(batch_size, dim+1);
+      Matrix<BaseFloat> intermed_temp(batch_size, dim*ncontexts);
+      for (int32 j = 0; j < batch_size; j++) { // set up "input_chunks"
+        int32 t = all_posts[i+j].first.second;
+        SubVector<BaseFloat> this_feat(feat_in, t);
+        SubVector<BaseFloat> this_input_chunk(input_chunks, j);
+        BaseFloat this_post = all_posts[i+j].second;
+        this_input_chunk.Range(0, dim).AddVecVec(-this_post,
+                                                 this_mean_invvar,
+                                                 this_stddev, 0.0);
+        this_input_chunk.Range(0, dim).AddVecDivVec(this_post, this_feat,
+                                                    this_stddev, 1.0);
+        this_input_chunk(dim) = this_post * config_.post_scale;
+      }
+      // The next line is where most of the computation will happen,
+      // during the feature computation phase.  We have rearranged
+      // stuff so it's a matrix-matrix operation, for greater
+      // efficiency (when using optimized libraries like ATLAS).
+      intermed_temp.AddMatMat(1.0, input_chunks, kNoTrans,
+                              this_projT_chunk, kNoTrans, 0.0);
+      for (int32 j = 0; j < batch_size; j++) { // add data from
+        // intermed_temp to the output "intermed_feat"
+        int32 t = all_posts[i+j].first.second;
+        SubVector<BaseFloat> this_intermed_feat(*intermed_feat, t);
+        SubVector<BaseFloat> this_intermed_temp(intermed_temp, j);
+        // this_intermed_feat += this_intermed_temp.
+        this_intermed_feat.AddVec(1.0, this_intermed_temp);
+      }
+      i += batch_size;
     }
   }
 }      
@@ -221,9 +302,16 @@ void Fmpe::ApplyProjectionReverse(const MatrixBase<BaseFloat> &feat_in,
   Vector<BaseFloat> post; // will be posteriors of selected Gaussians.
   Vector<BaseFloat> input_chunk(dim+1); // will be a segment of
   // the high-dimensional features.
+
+  // "all_posts" is a vector of ((gauss-index, time-index), gaussian
+  // posterior).
+  // We'll compute the posterior information, sort it, and then
+  // go through it in sorted order, which maintains memory locality
+  // when accessing the projection matrix.
+  std::vector<std::pair<std::pair<int32,int32>, BaseFloat> > all_posts;
+  
   for (int32 t = 0; t < feat_in.NumRows(); t++) {
     SubVector<BaseFloat> this_feat(feat_in, t);
-    SubVector<BaseFloat> this_intermed_feat_deriv(intermed_feat_deriv, t);
     gmm_.LogLikelihoodsPreselect(this_feat, gselect[t], &post);
     // At this point, post will contain log-likes of the selected
     // Gaussians.
@@ -232,34 +320,43 @@ void Fmpe::ApplyProjectionReverse(const MatrixBase<BaseFloat> &feat_in,
       // The next few lines (where we set up "input_chunk") are identical
       // to ApplyProjection.
       int32 gauss = gselect[t][i];
-      SubVector<BaseFloat> this_stddev(stddevs_, gauss);
-      BaseFloat this_post = post(i);
-      input_chunk.Range(0, dim).AddVecVec(-this_post, gmm_.means_invvars().Row(gauss),
-                                          this_stddev, 0.0);
-      input_chunk.Range(0, dim).AddVecDivVec(this_post, this_feat, this_stddev,
-                                             1.0);
-      input_chunk(dim) = this_post;
-
-      // If not for accumulating the + and - parts separately, we would be
-      // doing something like:
-      // proj_deriv_.Range(0, dim*ncontexts, gauss*(dim+1), dim+1).AddVecVec(
-      //                    1.0, this_intermed_feat_deriv, input_chunk);
-
-
-      SubMatrix<BaseFloat> plus_chunk(*proj_deriv_plus, 0, dim*ncontexts,
-                                      gauss*(dim+1), dim+1),
-          minus_chunk(*proj_deriv_minus, 0, dim*ncontexts,
-                      gauss*(dim+1), dim+1);
-          
-      // This next function takes the rank-one matrix
-      //  (this_intermed_deriv * input_chunk') and adds the positive
-      // part to proj_deriv_plus, and minus the negative part to
-      // proj_deriv_minus.
-      AddOuterProductPlusMinus(static_cast<BaseFloat>(1.0),
-                               this_intermed_feat_deriv,
-                               input_chunk,
-                               &plus_chunk, &minus_chunk);
+      all_posts.push_back(std::make_pair(std::make_pair(gauss, t), post(i)));
     }
+  }
+  std::sort(all_posts.begin(), all_posts.end());
+  for (size_t i = 0; i < all_posts.size(); i++) {
+    int32 gauss = all_posts[i].first.first, t = all_posts[i].first.second;
+    BaseFloat this_post = all_posts[i].second;
+    SubVector<BaseFloat> this_feat(feat_in, t);    
+    SubVector<BaseFloat> this_intermed_feat_deriv(intermed_feat_deriv, t);
+    SubVector<BaseFloat> this_stddev(stddevs_, gauss);
+    input_chunk.Range(0, dim).AddVecVec(-this_post, gmm_.means_invvars().Row(gauss),
+                                        this_stddev, 0.0);
+    input_chunk.Range(0, dim).AddVecDivVec(this_post, this_feat, this_stddev,
+                                           1.0);
+    input_chunk(dim) = this_post * config_.post_scale;
+
+    // If not for accumulating the + and - parts separately, we would be
+    // doing something like:
+    // proj_deriv_.Range(0, dim*ncontexts, gauss*(dim+1), dim+1).AddVecVec(
+    //                    1.0, this_intermed_feat_deriv, input_chunk);
+
+
+    SubMatrix<BaseFloat> plus_chunk(*proj_deriv_plus, 
+                                    gauss*(dim+1), dim+1,
+                                    0, dim*ncontexts),
+        minus_chunk(*proj_deriv_minus, 
+                    gauss*(dim+1), dim+1,
+                    0, dim*ncontexts);
+          
+    // This next function takes the rank-one matrix
+    //  (input_chunk * this_intermed_deriv'), and adds the positive
+    // part to proj_deriv_plus, and minus the negative part to
+    // proj_deriv_minus.
+    AddOuterProductPlusMinus(static_cast<BaseFloat>(1.0),
+                             input_chunk,
+                             this_intermed_feat_deriv,
+                             &plus_chunk, &minus_chunk);
   }
 }      
 
@@ -296,8 +393,8 @@ void Fmpe::AccStats(const MatrixBase<BaseFloat> &feat_in,
   int32 dim = FeatDim(), ncontexts = NumContexts();
   KALDI_ASSERT(feat_in.NumRows() != 0 && feat_in.NumCols() == dim);
   KALDI_ASSERT(feat_in.NumRows() == static_cast<int32>(gselect.size()));
-  AssertSameDim(*proj_deriv_plus, proj_);
-  AssertSameDim(*proj_deriv_minus, proj_);
+  AssertSameDim(*proj_deriv_plus, projT_);
+  AssertSameDim(*proj_deriv_minus, projT_);
   AssertSameDim(feat_in, feat_deriv_in);
 
   // We do everything in reverse now, in reverse order.
@@ -326,28 +423,29 @@ Fmpe::Fmpe(const DiagGmm &gmm, const FmpeOptions &config): gmm_(gmm),
   SetContexts(config.context_expansion);
   ComputeC();
   ComputeStddevs();
-  proj_.Resize(NumGauss() * (FeatDim()+1), FeatDim() * NumContexts());
+  projT_.Resize(NumGauss() * (FeatDim()+1), FeatDim() * NumContexts());
 }
 
-void Fmpe::Update(const FmpeUpdateOptions &config,
-                  MatrixBase<BaseFloat> &proj_deriv_plus,
-                  MatrixBase<BaseFloat> &proj_deriv_minus) {
+BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
+                       MatrixBase<BaseFloat> &proj_deriv_plus,
+                       MatrixBase<BaseFloat> &proj_deriv_minus) {
   // tot_linear_objf_impr is the change in the actual
   // objective function if it were linear, i.e.
   //   objf-gradient . parameter-change  // Note: none of this is normalized by the #frames (we don't have
   // this info here), so that is done at the script level.
   BaseFloat tot_linear_objf_impr = 0.0;
-  AssertSameDim(proj_deriv_plus, proj_);
-  AssertSameDim(proj_deriv_minus, proj_);
+  int32 changed = 0; // Keep track of how many elements change sign.
+  AssertSameDim(proj_deriv_plus, projT_);
+  AssertSameDim(proj_deriv_minus, projT_);
   KALDI_ASSERT(proj_deriv_plus.Min() >= 0);
   KALDI_ASSERT(proj_deriv_minus.Min() >= 0);
   BaseFloat learning_rate = config.learning_rate,
       l2_weight = config.l2_weight;
   
-  for (int32 i = 0; i < proj_.NumRows(); i++) {
-    for (int32 j = 0; j < proj_.NumCols(); j++) {
+  for (int32 i = 0; i < projT_.NumRows(); i++) {
+    for (int32 j = 0; j < projT_.NumCols(); j++) {
       BaseFloat p = proj_deriv_plus(i,j), n = proj_deriv_minus(i,j),
-          x = proj_(i,j);
+          x = projT_(i,j);
       // Suppose the basic update (before regularization) is:
       // z <-- x  +   learning_rate * (p - n) / (p + n),
       // where z is the new parameter and x is the old one.
@@ -371,10 +469,14 @@ void Fmpe::Update(const FmpeUpdateOptions &config,
       // z is the new parameter value.
 
       tot_linear_objf_impr += (z-x) * (p-n); // objf impr based on linear assumption.
-      proj_(i,j) = z;
+      projT_(i,j) = z;
+      if (z*x < 0) changed++;
     }
   }
   KALDI_LOG << "Objf impr (assuming linear) is " << tot_linear_objf_impr;
+  KALDI_LOG << ((100.0*changed)/(projT_.NumRows()*projT_.NumCols()))
+            << "% of matrix elements changed sign.";
+  return tot_linear_objf_impr;
 }
 
 // Note: we write the GMM first, without any other header.
@@ -386,7 +488,7 @@ void Fmpe::Write(std::ostream &os, bool binary) const {
   gmm_.Write(os, binary);
   config_.Write(os, binary);
   // stddevs_ are derived, don't write them.
-  proj_.Write(os, binary);
+  projT_.Write(os, binary);
   C_.Write(os, binary);
   // contexts_ are derived from config, don't write them.
 }
@@ -396,11 +498,59 @@ void Fmpe::Read(std::istream &is, bool binary) {
   gmm_.Read(is, binary);
   config_.Read(is, binary);
   ComputeStddevs(); // computed from gmm.
-  proj_.Read(is, binary);
+  projT_.Read(is, binary);
   C_.Read(is, binary);
   SetContexts(config_.context_expansion);
 }
 
+
+BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
+                                   const TransitionModel &trans_model,
+                                   const Posterior &posterior,
+                                   const MatrixBase<BaseFloat> &features,
+                                   Matrix<BaseFloat> *deriv) {
+  BaseFloat ans = 0.0;
+  KALDI_ASSERT(posterior.size() == static_cast<size_t>(features.NumRows()));
+  deriv->Resize(features.NumRows(), features.NumCols());
+  Vector<BaseFloat> temp_vec(features.NumCols());
+  for (size_t i = 0; i < posterior.size(); i++) {
+    for (size_t j = 0; j < posterior[i].size(); j++) {
+      int32 tid = posterior[i][j].first,  // transition identifier.
+          pdf_id = trans_model.TransitionIdToPdf(tid);
+      BaseFloat weight = posterior[i][j].second;
+      const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
+      Vector<BaseFloat> gauss_posteriors;
+      SubVector<BaseFloat> this_feat(features, i);
+      SubVector<BaseFloat> this_deriv(*deriv, i);
+      ans += weight * 
+          gmm.ComponentPosteriors(this_feat, &gauss_posteriors);
+      
+      gauss_posteriors.Scale(weight);
+      // The next line does: to i'th row of deriv, add
+      // means_invvars^T * gauss_posteriors,
+      // where each row of means_invvars is the mean times
+      // diagonal inverse covariance... after transposing,
+      // this becomes a weighted of these rows, weighted by
+      // the posteriors.  This comes from the term
+      //  feat^T * inv_var * mean
+      // in the objective function.
+      this_deriv.AddMatVec(1.0, gmm.means_invvars(), kTrans,
+                           gauss_posteriors, 1.0);
+
+      // next line does temp_vec == inv_vars^T * gauss_posteriors,
+      // which sets temp_vec to a weighted sum of the inv_vars,
+      // weighed by Gaussian posterior.
+      temp_vec.AddMatVec(1.0, gmm.inv_vars(), kTrans,
+                         gauss_posteriors, 0.0);
+      // Add to the derivative, -(this_feat .* temp_vec),
+      // which is the term that comes from the -0.5 * inv_var^T feat_sq,
+      // in the objective function (where inv_var is a vector, and feat_sq
+      // is a vector of squares of the feature values).
+      this_deriv.AddVecVec(-1.0, this_feat, temp_vec, 1.0);
+    }
+  }
+  return ans;
+}
 
 
 }  // End of namespace kaldi

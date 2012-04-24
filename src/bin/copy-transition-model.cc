@@ -53,16 +53,9 @@ int main(int argc, char *argv[]) {
 
 
     TransitionModel trans_model;
-    {
-      bool binary_in;
-      Input ki(transition_model_rxfilename, &binary_in);
-      trans_model.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(transition_model_rxfilename, &trans_model);
 
-    {
-      Output ko(transition_model_wxfilename, binary);
-      trans_model.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(trans_model, transition_model_wxfilename, binary);
 
     KALDI_LOG << "Copied transition model.";
   } catch(const std::exception& e) {

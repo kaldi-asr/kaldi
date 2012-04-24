@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
           std::string utt = uttlist[i];
           if (!feature_reader.HasKey(utt)) {
             KALDI_WARN << "Did not find features for utterance " << utt;
+            num_other_error++;
             continue;
           }
           if (!post_reader.HasKey(utt)) {

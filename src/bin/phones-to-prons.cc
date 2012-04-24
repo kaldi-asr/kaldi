@@ -33,8 +33,9 @@ void CreatePhonesAltFst(const std::vector<int32> &phones,
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Weight Weight;
 
-  ofst->SetStart(0);
+  ofst->DeleteStates();
   StateId cur_s = ofst->AddState();
+  ofst->SetStart(cur_s); // will be 0.
   for (size_t i = 0; i < phones.size(); i++) {
     StateId next_s = ofst->AddState();
     // add arc to next state.
@@ -150,7 +151,9 @@ int main(int argc, char *argv[]) {
         Compose(*L, words_acceptor, &phn2word);
       }
       if (phn2word.Start() == fst::kNoStateId) {
-        KALDI_WARN << "Phone to word FST is empty (possible mismatch in lexicon?)";
+        KALDI_WARN << "Phone to word FST for utterance " << key
+                   << "is empty (either decoding for this utterance did "
+                   << "not reach end-state, or mismatched lexicon.)";
         n_err++;
         continue;
       }
@@ -162,10 +165,20 @@ int main(int argc, char *argv[]) {
       // on the input side, and words on the output side.
       VectorFst<StdArc> phnx2word;
       Compose(phones_alt_fst, phn2word, &phnx2word);
-
+      
       if (phnx2word.Start() == fst::kNoStateId) {
-        KALDI_WARN << "phnx2word FST is empty (possible mismatch in lexicon?)";
-        n_err++;
+        KALDI_WARN << "phnx2word FST for utterance " << key
+                   << "is empty (either decoding for this utterance did "
+                   << "not reach end-state, or mismatched lexicon.)";
+        if (g_kaldi_verbose_level >= 2) {
+          KALDI_LOG << "phn2word FST is below:";
+          fst::FstPrinter<StdArc> fstprinter(phn2word, NULL, NULL, NULL, false, true);
+          fstprinter.Print(&std::cerr, "standard error");
+          KALDI_LOG << "phone sequence is: ";
+          for (size_t i = 0; i < phones.size(); i++)
+            std::cerr << phones[i] << ' ';
+          std::cerr << '\n';
+        }
         continue;
       }
 

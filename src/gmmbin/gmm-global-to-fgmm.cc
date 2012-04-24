@@ -52,10 +52,7 @@ int main(int argc, char *argv[]) {
 
     FullGmm fgmm;
     fgmm.CopyFromDiagGmm(gmm);
-    {
-      Output ko(fgmm_wxfilename, binary);
-      fgmm.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(fgmm, fgmm_wxfilename, binary);
     KALDI_LOG << "Written full GMM to " << fgmm_wxfilename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';

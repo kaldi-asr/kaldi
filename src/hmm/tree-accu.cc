@@ -30,7 +30,7 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
                          const Matrix<BaseFloat> &features,
                          std::map<EventType, GaussClusterable*> *stats) {
 
-  assert(IsSortedAndUniq(ci_phones));
+  KALDI_ASSERT(IsSortedAndUniq(ci_phones));
   std::vector<std::vector<int32> > split_alignment;
   bool ans = SplitToPhones(trans_model, alignment, &split_alignment);
   if (!ans) {
@@ -39,7 +39,7 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
   }
   int cur_pos = 0;
   int dim = features.NumCols();
-  assert(features.NumRows() == static_cast<int32>(alignment.size()));
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(alignment.size()));
   for (int i = -N; i < static_cast<int>(split_alignment.size()); i++) {
     // consider window starting at i, only if i+P is within
     // list of phones.
@@ -67,27 +67,25 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
         // recipe but might be less robust to changes in tree-building recipe].
         if (is_ctx_dep || j == P)
           evec.push_back(std::make_pair<EventKeyType, EventValueType>(j, phone));
-        // now for each sub-hmm-position in the window...
       }
       for (int j = 0; j < static_cast<int>(split_alignment[i+P].size());j++) {
         // for central phone of this window...
         EventType evec_more(evec);
         int32 pdf_class = trans_model.TransitionIdToPdfClass(split_alignment[i+P][j]);
-        // pdf_class will normally by 0, 1 or 2 for 3-state HMM represented as
-        // 3 sub-HMMs.
+        // pdf_class will normally by 0, 1 or 2 for 3-state HMM.
         std::pair<EventKeyType, EventValueType> pr(kPdfClass, pdf_class);
         evec_more.push_back(pr);
         std::sort(evec_more.begin(), evec_more.end());  // these must be sorted!
-        if (stats->count(evec_more) == 0) {
-          GaussClusterable *new_stats = new GaussClusterable(dim, var_floor);
-          (*stats)[evec_more] = new_stats;
-        }
-        (*stats)[evec_more]->AddStats(features.Row(cur_pos), 1.0);
+        if (stats->count(evec_more) == 0)
+          (*stats)[evec_more] = new GaussClusterable(dim, var_floor);
+        
+        BaseFloat weight = 1.0;
+        (*stats)[evec_more]->AddStats(features.Row(cur_pos), weight);
         cur_pos++;
       }
     }
   }
-  assert(cur_pos == static_cast<int>(alignment.size()));
+  KALDI_ASSERT(cur_pos == static_cast<int>(alignment.size()));
 }
 
 

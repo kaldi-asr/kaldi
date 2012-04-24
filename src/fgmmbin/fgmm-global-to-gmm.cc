@@ -52,10 +52,7 @@ int main(int argc, char *argv[]) {
 
     DiagGmm gmm;
     gmm.CopyFromFullGmm(fgmm);
-    {
-      Output ko(gmm_wxfilename, binary);
-      gmm.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(gmm, gmm_wxfilename, binary);
     KALDI_LOG << "Written diagonal GMM to " << gmm_wxfilename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';

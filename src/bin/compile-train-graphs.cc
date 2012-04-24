@@ -67,11 +67,7 @@ int main(int argc, char *argv[]) {
     std::string fsts_wspecifier = po.GetArg(5);
 
     ContextDependency ctx_dep;  // the tree.
-    {
-      bool binary;
-      Input ki(tree_rxfilename, &binary);
-      ctx_dep.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
     TransitionModel trans_model;
     {
@@ -149,7 +145,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "compile-train-graphs: succeeded for " << num_succeed
               << " graphs, failed for " << num_fail;
-    return 0;
+    return (num_succeed != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

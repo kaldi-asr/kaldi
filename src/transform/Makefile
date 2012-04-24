@@ -4,7 +4,7 @@ include ../kaldi.mk
 
 TESTFILES = regtree-fmllr-diag-gmm-test lda-estimate-test \
       regression-tree-test fmllr-diag-gmm-test exponential-transform-test \
-      regtree-mllr-diag-gmm-test
+      regtree-mllr-diag-gmm-test fmpe-test
 
 OBJFILES = regression-tree.o regtree-mllr-diag-gmm.o lda-estimate.o \
     regtree-fmllr-diag-gmm.o cmvn.o transform-common.o fmllr-diag-gmm.o \
@@ -21,7 +21,7 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../tree/kaldi-tree.a
+$(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:
@@ -32,7 +32,7 @@ $(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../matrix/kaldi-matrix.a ../util/kal
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

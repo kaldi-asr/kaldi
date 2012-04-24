@@ -68,8 +68,12 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmm(
     const AmDiagGmm &model, const VectorBase<BaseFloat>& data,
     int32 gmm_index, BaseFloat weight) {
   KALDI_ASSERT(static_cast<size_t>(gmm_index) < gmm_accumulators_.size());
-  return gmm_accumulators_[gmm_index]->AccumulateFromDiag(model.GetPdf(
-      gmm_index), data, weight);
+  BaseFloat log_like =
+      gmm_accumulators_[gmm_index]->AccumulateFromDiag(model.GetPdf(gmm_index),
+                                                       data, weight);
+  total_log_like_ += log_like * weight;
+  total_frames_ += weight;
+  return log_like;
 }
 
 BaseFloat AccumAmDiagGmm::AccumulateForGmmTwofeats(
@@ -78,13 +82,15 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmmTwofeats(
     const VectorBase<BaseFloat>& data2,
     int32 gmm_index,
     BaseFloat weight) {
-  assert(static_cast<size_t>(gmm_index) < gmm_accumulators_.size());
+  KALDI_ASSERT(static_cast<size_t>(gmm_index) < gmm_accumulators_.size());
   const DiagGmm &gmm = model.GetPdf(gmm_index);
   AccumDiagGmm &acc = *(gmm_accumulators_[gmm_index]);
   Vector<BaseFloat> posteriors;
   BaseFloat log_like = gmm.ComponentPosteriors(data1, &posteriors);
   posteriors.Scale(weight);
   acc.AccumulateFromPosteriors(data2, posteriors);
+  total_log_like_ += log_like * weight;
+  total_frames_ += weight;
   return log_like;
 }
 
@@ -94,6 +100,7 @@ void AccumAmDiagGmm::AccumulateFromPosteriors(
     int32 gmm_index, const VectorBase<BaseFloat>& posteriors) {
   KALDI_ASSERT(gmm_index >= 0 && gmm_index < NumAccs());
   gmm_accumulators_[gmm_index]->AccumulateFromPosteriors(data, posteriors);
+  total_frames_ += posteriors.Sum();
 }
 
 void AccumAmDiagGmm::AccumulateForGaussian(
@@ -106,7 +113,7 @@ void AccumAmDiagGmm::AccumulateForGaussian(
 }
 
 void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
-                               bool add) {
+                          bool add) {
   int32 num_pdfs;
   ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
@@ -128,6 +135,17 @@ void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
              end = gmm_accumulators_.end(); it != end; ++it)
       (*it)->Read(in_stream, binary, add);
   }
+  // TODO(arnab): Bad hack! Need to make this self-delimiting.
+  in_stream.peek();  // This will set the EOF bit for older accs.
+  if (!in_stream.eof()) {
+    double like, frames;
+    ExpectToken(in_stream, binary, "<total_like>");
+    ReadBasicType(in_stream, binary, &like);
+    total_log_like_ = (add)? total_log_like_ + like : like;
+    ExpectToken(in_stream, binary, "<total_frames>");
+    ReadBasicType(in_stream, binary, &frames);
+    total_frames_ = (add)? total_frames_ + frames : frames;
+  }
 }
 
 void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
@@ -138,22 +156,45 @@ void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
       gmm_accumulators_.begin(), end = gmm_accumulators_.end(); it != end; ++it) {
     (*it)->Write(out_stream, binary);
   }
+  WriteToken(out_stream, binary, "<total_like>");
+  WriteBasicType(out_stream, binary, total_log_like_);
+
+  WriteToken(out_stream, binary, "<total_frames>");
+  WriteBasicType(out_stream, binary, total_frames_);
 }
 
 
-BaseFloat AccumAmDiagGmm::TotCount() const {
-  BaseFloat ans = 0.0;
-  for (int32 pdf = 0; pdf < NumAccs(); pdf++)
-    ans += gmm_accumulators_[pdf]->occupancy().Sum();
-  return ans;
+//BaseFloat AccumAmDiagGmm::TotCount() const {
+//  BaseFloat ans = 0.0;
+//  for (int32 pdf = 0; pdf < NumAccs(); pdf++)
+//    ans += gmm_accumulators_[pdf]->occupancy().Sum();
+//  return ans;
+//}
+
+void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
+  for (int32 pdf_id = 0; pdf_id < am_gmm->NumPdfs(); pdf_id++) {
+    DiagGmm &pdf = am_gmm->GetPdf(pdf_id);
+    pdf.Resize(pdf.NumGauss(), dim);
+    Matrix<BaseFloat> inv_vars(pdf.NumGauss(), dim);
+    inv_vars.Set(1.0); // make all vars 1.
+    pdf.SetInvVars(inv_vars);
+  }
 }
 
-void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config,
-            const AccumAmDiagGmm &amdiaggmm_acc,
-            GmmFlagsType flags,
-            AmDiagGmm *am_gmm,
-            BaseFloat *obj_change_out,
-            BaseFloat *count_out) {
+void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
+                         const AccumAmDiagGmm &amdiaggmm_acc,
+                         GmmFlagsType flags,
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *obj_change_out,
+                         BaseFloat *count_out) {
+  if (amdiaggmm_acc.Dim() != am_gmm->Dim()) {
+    KALDI_ASSERT(amdiaggmm_acc.Dim() != 0);
+    KALDI_WARN << "Dimensions of accumulator " << amdiaggmm_acc.Dim()
+               << " and gmm " << am_gmm->Dim() << " do not match, resizing "
+               << " GMM and setting to zero-mean, unit-variance.";
+    ResizeModel(amdiaggmm_acc.Dim(), am_gmm);
+  }
+  
   KALDI_ASSERT(am_gmm != NULL);
   KALDI_ASSERT(amdiaggmm_acc.NumAccs() == am_gmm->NumPdfs());
   if (obj_change_out != NULL) *obj_change_out = 0.0;

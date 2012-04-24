@@ -73,11 +73,7 @@ int main(int argc, char *argv[]) {
     }
 
     ExponentialTransform et;
-    {
-      bool binary;
-      Input ki(et_rxfilename, &binary);
-      et.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(et_rxfilename, &et);
 
     if (normalize_type != "") {
       EtNormalizeType nt = kEtNormalizeNone;

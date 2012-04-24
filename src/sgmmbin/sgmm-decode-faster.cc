@@ -158,6 +158,8 @@ int main(int argc, char *argv[]) {
           am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
         } else {
           KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+          num_fail++;
+          continue;
         }
       }  // else spk_vars is "empty"
 

@@ -47,8 +47,10 @@ int main(int argc, char *argv[]) {
     po.Register("utt2spk", &utt2spk_rspecifier,
                 "rspecifier for utterance to speaker map");
     po.Register("rand-prune", &rand_prune, "Pruning threshold for posteriors");
-    po.Register("update-flags", &update_flags_str, "Which SGMM parameters to update: subset of vMNwcS.");
+    po.Register("update-flags", &update_flags_str, "Which SGMM parameters to accumulate "
+                "stats for: subset of vMNwcS.");
     sgmm_opts.Register(&po);
+
     po.Read(argc, argv);
 
     kaldi::SgmmUpdateFlagsType acc_flags = StringToSgmmUpdateFlags(update_flags_str);
@@ -140,6 +142,8 @@ int main(int argc, char *argv[]) {
             am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
           } else {
             KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+            continue;
+            num_other_error++;
           }
         }  // else spk_vars is "empty"
 

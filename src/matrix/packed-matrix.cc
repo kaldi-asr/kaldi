@@ -1,6 +1,7 @@
 // matrix/packed-matrix.cc
 
-// Copyright 2009-2011  Microsoft Corporation;  Saarland University
+// Copyright 2009-2012  Microsoft Corporation  Saarland University
+//        Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,27 +119,56 @@ void PackedMatrix<Real>::ScaleDiag(Real alpha) {
 
 template<typename Real>
 template<typename OtherReal>
-void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal>& rOrig) {
-  KALDI_ASSERT(NumRows() == rOrig.NumRows());
+void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal>& orig) {
+  KALDI_ASSERT(NumRows() == orig.NumRows());
   if (sizeof(Real) == sizeof(OtherReal)) {
-    memcpy(data_, rOrig.Data(), SizeInBytes());
+    memcpy(data_, orig.Data(), SizeInBytes());
   } else {
-    for (MatrixIndexT i = 0; i < NumRows(); i++)
-      for (MatrixIndexT j = 0; j <= i; j++)
-        (*this)(i, j) = rOrig(i, j);
-    // could make it more efficient but would have to declare friend templates etc.. not called often.
+    Real *dst = data_;
+    const OtherReal *src = orig.Data();
+    MatrixIndexT size = (NumRows() * (NumRows()+1) / 2);
+    for (MatrixIndexT i = 0; i < size; i++, dst++, src++)
+      *dst = *src;
   }
 }
 
 // template instantiations.
 template
-void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<double>& rOrig);
+void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<double>& orig);
 template
-void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<float>& rOrig);
+void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<float>& orig);
 template
-void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<double>& rOrig);
+void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<double>& orig);
 template
-void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<float>& rOrig);
+void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<float>& orig);
+
+
+
+template<typename Real>
+template<typename OtherReal>
+void PackedMatrix<Real>::CopyFromVec(const SubVector<OtherReal>& vec) {
+  MatrixIndexT size = (NumRows()*(NumRows()+1)) / 2;
+  KALDI_ASSERT(vec.Dim() == size);
+  if (sizeof(Real) == sizeof(OtherReal)) {
+    memcpy(data_, vec.Data(), size * sizeof(Real));
+  } else {
+    Real *dst = data_;
+    const OtherReal *src = vec.Data();
+    for (MatrixIndexT i = 0; i < size; i++, dst++, src++)
+      *dst = *src;
+  }
+}
+
+// template instantiations.
+template
+void PackedMatrix<float>::CopyFromVec(const SubVector<double>& orig);
+template
+void PackedMatrix<double>::CopyFromVec(const SubVector<float>& orig);
+template
+void PackedMatrix<double>::CopyFromVec(const SubVector<double>& orig);
+template
+void PackedMatrix<float>::CopyFromVec(const SubVector<float>& orig);
+
 
 
 template<typename Real>

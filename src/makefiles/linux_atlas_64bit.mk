@@ -11,7 +11,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0 \
       -g -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl /usr/local/lib64/liblapack.a /usr/local/lib64/libcblas.a /usr/local/lib64/libatlas.a -lg2c -lm
+LDLIBS = ../../tools/openfst/lib/libfst.a -ldl /usr/local/lib64/liblapack.a /usr/local/lib64/libcblas.a /usr/local/lib64/libatlas.a -lg2c -lm -lpthread
 CC = x86_64-linux-g++
 CXX = x86_64-linux-g++
 AR = x86_64-linux-ar

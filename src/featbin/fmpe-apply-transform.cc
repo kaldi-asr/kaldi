@@ -1,6 +1,6 @@
 // featbin/fmpe-apply-transform.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Daniel Povey  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using kaldi::int32;
   try {
     const char *usage =
         "Apply fMPE transform to features\n"
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
     // no non-default options.
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -45,11 +46,7 @@ int main(int argc, char *argv[]) {
         feat_wspecifier = po.GetArg(4);
     
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);

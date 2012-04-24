@@ -7,11 +7,12 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 
 TESTFILES = kaldi-lattice-test
 
-OBJFILES = kaldi-lattice.o lattice-functions.o word-align-lattice.o
+OBJFILES = kaldi-lattice.o lattice-functions.o word-align-lattice.o sausages.o
 
 LIBFILE = kaldi-lat.a
 
 all:  $(LIBFILE) $(TESTFILES)
+
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
@@ -29,7 +30,7 @@ $(TESTFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

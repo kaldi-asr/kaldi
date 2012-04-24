@@ -56,8 +56,7 @@ class Clusterable {
     KALDI_ERR << "This Clusterable object does not implement Scale().";
   }
 
-  /// Return a value, typically a data-count, which we can divide Objf()
-  /// by to get a more human-readable number.
+  /// Return a string that describes the inherited type. 
   virtual std::string Type() const = 0;
 
   /// Write data to stream.

@@ -80,11 +80,7 @@ int main(int argc, char *argv[]) {
     if (mixup != 0 || mixdown != 0) {
 
       Vector<BaseFloat> occs;
-      {
-        bool binary;
-        Input ki(occs_in_filename, &binary);
-        occs.Read(ki.Stream(), binary);
-      }
+      ReadKaldiObject(occs_in_filename, &occs);
       if (occs.Dim() != am_gmm.NumPdfs())
         KALDI_ERR << "Dimension of state occupancies " << occs.Dim()
                    << " does not match num-pdfs " << am_gmm.NumPdfs();

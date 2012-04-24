@@ -96,8 +96,8 @@ class ContextFstImpl : public CacheImpl<Arc> {
   typedef typename VectorToLabelType::const_iterator VectorToLabelIter;
 
   ContextFstImpl(Label subsequential_symbol,  // epsilon not allowed.
-                 const vector<LabelT>& phones,  // on output side of ifst.
-                 const vector<LabelT>& disambig_syms,  // on output side of ifst.
+                 const vector<LabelT>& phones,
+                 const vector<LabelT>& disambig_syms,
                  int32 N,  // size of ctx window
                  int32 P);
 

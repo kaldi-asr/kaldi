@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " build-tree-two-level treeacc roots.txt 1.qst topo tree tree.map\n";
 
-    bool binary = false;
+    bool binary = true;
     int32 P = 1, N = 3;
 
     bool cluster_leaves = true;
@@ -111,11 +111,7 @@ int main(int argc, char *argv[]) {
     }
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     BuildTreeStatsType stats;
     {
@@ -163,10 +159,7 @@ int main(int argc, char *argv[]) {
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;
 
-    {
-      Output ko(tree_out_filename, binary);
-      ctx_dep.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(ctx_dep, tree_out_filename, binary);
 
     {
       Output ko(map_out_filename, binary);

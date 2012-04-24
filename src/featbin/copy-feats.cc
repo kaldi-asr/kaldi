@@ -30,7 +30,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool htk_in = false;
+    bool sphinx_in = false;
     po.Register("htk-in", &htk_in, "Read input as HTK features");
+    po.Register("sphinx-in", &sphinx_in, "Read input as Sphinx features");
 
     po.Read(argc, argv);
 
@@ -47,6 +49,10 @@ int main(int argc, char *argv[]) {
       SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
       for (; !htk_reader.Done(); htk_reader.Next())
         kaldi_writer.Write(htk_reader.Key(), htk_reader.Value().first);
+    } else if (sphinx_in) {
+      SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
+      for (; !sphinx_reader.Done(); sphinx_reader.Next())
+        kaldi_writer.Write(sphinx_reader.Key(), sphinx_reader.Value());
     } else {
       SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
       for (; !kaldi_reader.Done(); kaldi_reader.Next())

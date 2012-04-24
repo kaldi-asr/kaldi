@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         " nnet-train-xent-hardlab-perutt nnet.init scp:train.scp ark:train.ali nnet.iter1\n";
 
     ParseOptions po(usage);
-    bool binary = false, 
+    bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");

@@ -293,11 +293,11 @@ BaseFloat MlObjective(const DiagGmm& gmm,
 }
 
 void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
-            const AccumDiagGmm &diaggmm_acc,
-            GmmFlagsType flags,
-            DiagGmm *gmm,
-            BaseFloat *obj_change_out,
-            BaseFloat *count_out) {
+                      const AccumDiagGmm &diaggmm_acc,
+                      GmmFlagsType flags,
+                      DiagGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out) {
   KALDI_ASSERT(gmm != NULL);
 
   if (flags & ~diaggmm_acc.Flags())

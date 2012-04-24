@@ -49,11 +49,7 @@ int main(int argc, char *argv[]) {
     std::string et_wxfilename = po.GetArg(2);
 
     ExponentialTransform et;
-    {
-      bool binary_in;
-      Input ki(et_rxfilename, &binary_in);
-      et.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(et_rxfilename, &et);
     ExponentialTransformAccsA stats;
     for (int32 i = 3; i <= po.NumArgs(); i++) {
       std::string stats_rxfilename = po.GetArg(i);
@@ -64,10 +60,7 @@ int main(int argc, char *argv[]) {
 
     stats.Update(update_a_opts, &et, NULL, NULL);
 
-    {
-      Output ko(et_wxfilename, binary);
-      et.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(et, et_wxfilename, binary);
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

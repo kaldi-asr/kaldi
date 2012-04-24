@@ -49,11 +49,7 @@ int main(int argc, char *argv[]) {
         model_out_wxfilename = po.GetArg(3);
 
     Matrix<BaseFloat> mat;
-    {
-      bool binary_in;
-      Input ki(mat_rxfilename, &binary_in);
-      mat.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(mat_rxfilename, &mat);
 
     AmDiagGmm am_gmm;
     TransitionModel trans_model;

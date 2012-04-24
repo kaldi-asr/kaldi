@@ -14,8 +14,9 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         phones-to-prons prons-to-wordali copy-gselect copy-tree scale-post \
         compute-mce-scale get-silence-probs post-to-weights reverse-weights \
         dot-weights sum-tree-stats weight-post post-to-tacc copy-matrix \
-        copy-vector copy-int-vector sum-post sum-matrices \
-	align-mapped align-compiled-mapped latgen-faster-mapped
+        copy-vector copy-int-vector sum-post sum-matrices draw-tree \
+        copy-int-vector-vector \
+        align-mapped align-compiled-mapped latgen-faster-mapped
 
 OBJFILES = 
 
@@ -24,7 +25,7 @@ all:  $(BINFILES)
 
 TESTFILES =
 
-$(BINFILES): ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -34,7 +35,7 @@ $(BINFILES): ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../transform/kaldi-tr
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES) $(BINFILES) 
+	-rm -f *.o *.a $(TESTFILES) $(BINFILES) 
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

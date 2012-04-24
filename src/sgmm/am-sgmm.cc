@@ -17,12 +17,15 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <functional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 using std::vector;
 
 #include "sgmm/am-sgmm.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -240,14 +243,14 @@ void AmSgmm::InitializeFromFullGmm(const FullGmm &full_gmm,
   diag_ubm_.CopyFromFullGmm(full_gmm);
   if (phn_subspace_dim < 1 || phn_subspace_dim > full_gmm.Dim() + 1) {
     KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
-        << full_gmm.Dim() + 1 << "]. Changing from " << phn_subspace_dim
-        << " to " << full_gmm.Dim() + 1;
+               << full_gmm.Dim() + 1 << "]. Changing from " << phn_subspace_dim
+               << " to " << full_gmm.Dim() + 1;
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
   if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
     KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
                << full_gmm.Dim() << "]. Changing from " << spk_subspace_dim
-               << " to " << full_gmm.Dim() + 1;
+               << " to " << full_gmm.Dim();
     spk_subspace_dim = full_gmm.Dim();
   }
   w_.Resize(0, 0);
@@ -286,6 +289,55 @@ void AmSgmm::CopyFromSgmm(const AmSgmm &other,
   if (copy_normalizers) n_ = other.n_;
 
   KALDI_LOG << "Done.";
+}
+
+void AmSgmm::CopyGlobalsInitVecs(const AmSgmm &other,
+                                 int32 phn_subspace_dim,
+                                 int32 spk_subspace_dim,
+                                 int32 num_pdfs) {
+  if (phn_subspace_dim < 1 || phn_subspace_dim > other.PhoneSpaceDim()) {
+    KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
+        << other.PhoneSpaceDim() << "]. Changing from " << phn_subspace_dim
+        << " to " << other.PhoneSpaceDim();
+    phn_subspace_dim = other.PhoneSpaceDim();
+  }
+  if (spk_subspace_dim < 0 || spk_subspace_dim > other.SpkSpaceDim()) {
+    KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
+               << other.SpkSpaceDim() << "]. Changing from " << spk_subspace_dim
+               << " to " << other.SpkSpaceDim();
+    spk_subspace_dim = other.SpkSpaceDim();
+  }
+
+  KALDI_LOG << "Initializing model";
+
+  // Copy background GMMs
+  diag_ubm_.CopyFromDiagGmm(other.diag_ubm_);
+  full_ubm_.CopyFromFullGmm(other.full_ubm_);
+
+  // Copy global params
+  SigmaInv_ = other.SigmaInv_;
+  int32 num_gauss = diag_ubm_.NumGauss(),
+      data_dim = other.FeatureDim();
+  M_.resize(num_gauss);
+  w_.Resize(num_gauss, phn_subspace_dim);
+  for (int32 i = 0; i < num_gauss; ++i) {
+    M_[i].Resize(data_dim, phn_subspace_dim);
+    M_[i].CopyFromMat(other.M_[i].Range(0, data_dim, 0, phn_subspace_dim),
+                      kNoTrans);
+  }
+  w_.CopyFromMat(other.w_.Range(0, num_gauss, 0, phn_subspace_dim), kNoTrans);
+
+  if (spk_subspace_dim > 0) {
+    N_.resize(num_gauss);
+    for (int32 i = 0; i < num_gauss; ++i) {
+      N_[i].Resize(data_dim, spk_subspace_dim);
+      N_[i].CopyFromMat(other.N_[i].Range(0, data_dim, 0, spk_subspace_dim),
+                        kNoTrans);
+    }
+  } else {
+    N_.clear();
+  }
+  InitializeVecs(num_pdfs);
 }
 
 
@@ -562,65 +614,125 @@ void AmSgmm::ComputeDerivedVars() {
   }
 }
 
+class ComputeNormalizersClass { // For multi-threaded.
+ public:
+  ComputeNormalizersClass(AmSgmm *am_sgmm,
+                          int32 *entropy_count_ptr,
+                          double *entropy_sum_ptr):
+      am_sgmm_(am_sgmm), entropy_count_ptr_(entropy_count_ptr),
+      entropy_sum_ptr_(entropy_sum_ptr), entropy_count_(0),
+      entropy_sum_(0.0) { }
+
+  ~ComputeNormalizersClass() {
+    *entropy_count_ptr_ += entropy_count_;
+    *entropy_sum_ptr_ += entropy_sum_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to original pointer in the destructor.
+    am_sgmm_->ComputeNormalizersInternal(num_threads_, thread_id_,
+                                         &entropy_count_,
+                                         &entropy_sum_);
+  }
+  // Copied from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    ComputeNormalizersClass *c = static_cast<ComputeNormalizersClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
+  ComputeNormalizersClass() { } // Disallow empty constructor.
+  AmSgmm *am_sgmm_;
+  int32 *entropy_count_ptr_;
+  double *entropy_sum_ptr_;
+  int32 entropy_count_;
+  double entropy_sum_;
+
+};
+
 void AmSgmm::ComputeNormalizers() {
   KALDI_LOG << "Computing normalizers";
+  n_.resize(NumPdfs());
+  int32 entropy_count = 0;
+  double entropy_sum = 0.0;
+  ComputeNormalizersClass c(this, &entropy_count, &entropy_sum);
+  RunMultiThreaded(c);
+
+  KALDI_LOG << "Entropy of weights in substates is "
+            << (entropy_sum / entropy_count) << " over " << entropy_count
+            << " substates, equivalent to perplexity of "
+            << (exp(entropy_sum /entropy_count));
+  KALDI_LOG << "Done computing normalizers";
+}
+
+
+void AmSgmm::ComputeNormalizersInternal(int32 num_threads, int32 thread,
+                                        int32 *entropy_count,
+                                        double *entropy_sum) {
+
   BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
-  Vector<BaseFloat> mu_jmi(FeatureDim());
-  Vector<BaseFloat> SigmaInv_mu(FeatureDim());
   Vector<BaseFloat> log_det_Sigma(NumGauss());
 
   for (int32 i = 0; i < NumGauss(); i++) {
     try {
       log_det_Sigma(i) = - SigmaInv_[i].LogPosDefDet();
     } catch(...) {
-      KALDI_WARN << "Covariance is not positive definite, setting to unit";
+      if (thread == 0) // just for one thread, print errors [else, duplicates]
+        KALDI_WARN << "Covariance is not positive definite, setting to unit";
       SigmaInv_[i].SetUnit();
       log_det_Sigma(i) = 0.0;
     }
   }
 
-  double entropy_count = 0, entropy_sum = 0;
 
-  n_.resize(NumPdfs());
-  for (int32 j = 0; j < NumPdfs(); ++j) {
-    Vector<BaseFloat> log_w_jm(NumGauss());
-
+  int block_size = (NumPdfs() + num_threads-1) / num_threads;
+  int j_start = thread * block_size, j_end = std::min(NumPdfs(), j_start + block_size);
+  
+  for (int32 j = j_start; j < j_end; ++j) {
+    Matrix<BaseFloat> log_w_jm(NumSubstates(j), NumGauss());
     n_[j].Resize(NumGauss(), NumSubstates(j));
+    Matrix<BaseFloat> mu_jmi(NumSubstates(j), FeatureDim());
+    Matrix<BaseFloat> SigmaInv_mu(NumSubstates(j), FeatureDim());
+        
+    // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
+    log_w_jm.AddMatMat(1.0, v_[j], kNoTrans, w_, kTrans, 0.0);
     for (int32 m = 0; m < NumSubstates(j); m++) {
-      BaseFloat logc = log(c_[j](m));
-
-      // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
-      log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
-      log_w_jm.Add((-1.0) * log_w_jm.LogSumExp());
-
+      log_w_jm.Row(m).Add(-1.0 * log_w_jm.Row(m).LogSumExp());    
       {  // DIAGNOSTIC CODE
-        entropy_count++;
+        (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
-          entropy_sum -= log_w_jm(i) * exp(log_w_jm(i));
+          (*entropy_sum) -= log_w_jm(m, i) * exp(log_w_jm(m, i));
         }
       }
-
-      for (int32 i = 0; i < NumGauss(); ++i) {
-        // mu_jmi = M_{i} * v_{jm}
-        mu_jmi.AddMatVec(1.0, M_[i], kNoTrans, v_[j].Row(m), 0.0);
-
+    }      
+    
+    for (int32 i = 0; i < NumGauss(); ++i) {    
+      // mu_jmi = M_{i} * v_{jm}
+      mu_jmi.AddMatMat(1.0, v_[j], kNoTrans, M_[i], kTrans, 0.0);
+      SigmaInv_mu.AddMatSp(1.0, mu_jmi, kNoTrans, SigmaInv_[i], 0.0);
+    
+      for (int32 m = 0; m < NumSubstates(j); m++) {
         // mu_{jmi} * \Sigma_{i}^{-1} * mu_{jmi}
-        SigmaInv_mu.AddSpVec(1.0, SigmaInv_[i], mu_jmi, 0.0);
-        BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi, SigmaInv_mu);
+        BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi.Row(m), SigmaInv_mu.Row(m));
+        BaseFloat logc = log(c_[j](m));
 
         // Suggestion: Both mu_jmi and SigmaInv_mu could
-        // have been computed at once  for i ,
-        // if M[i] was concatenated to single matrix over i indeces
-
+        // have been computed at once for i,
+        // if M[i] was concatenated to single matrix over i indices
+        
         // eq.(31)
-        n_[j](i, m) = logc + log_w_jm(i) - 0.5 * (log_det_Sigma(i) + DLog2pi
+        n_[j](i, m) = logc + log_w_jm(m, i) - 0.5 * (log_det_Sigma(i) + DLog2pi
             + mu_SigmaInv_mu);
         {  // Mainly diagnostic code.  Not necessary.
           BaseFloat tmp = n_[j](i, m);
           if (!KALDI_ISFINITE(tmp)) {  // NaN or inf
             KALDI_LOG << "Warning: normalizer for j = " << j << ", m = " << m
                       << ", i = " << i << " is infinite or NaN " << tmp << "= "
-                      << (logc) << "+" << (log_w_jm(i)) << "+" << (-0.5 *
+                      << (logc) << "+" << (log_w_jm(m, i)) << "+" << (-0.5 *
                           log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
                       << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
             n_[j](i, m) = -1.0e+40;  // future work(arnab): get rid of magic number
@@ -629,27 +741,22 @@ void AmSgmm::ComputeNormalizers() {
       }
     }
   }
-  KALDI_LOG << "Entropy of weights in substates is " << (entropy_sum /
-      entropy_count) << " over " << (entropy_count) <<
-      " substates, equivalent to perplexity of " << (exp(entropy_sum /
-          entropy_count));
-  KALDI_LOG << "Done computing normalizers";
 }
 
 
-void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> > &normalize_sets) {
+void AmSgmm::ComputeNormalizersNormalized(
+    const std::vector< std::vector<int32> > &normalize_sets) {
   { // Check sets in normalize_sets are disjoint and cover all Gaussians.
     std::set<int32> all;
-    for(int32 i = 0; i < normalize_sets.size(); i++)
-      for(int32 j = 0; static_cast<size_t>(j) < normalize_sets[i].size(); j++) {
+    for (int32 i = 0; i < normalize_sets.size(); i++)
+      for (int32 j = 0; static_cast<size_t>(j) < normalize_sets[i].size(); j++) {
         int32 n = normalize_sets[i][j];
         KALDI_ASSERT(all.count(n) == 0 && n >= 0 && n < NumGauss());
         all.insert(n);
       }
     KALDI_ASSERT(all.size() == NumGauss());
   }
-  
-  
+
   KALDI_LOG << "Computing normalizers [normalized]";
   BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
   Vector<BaseFloat> mu_jmi(FeatureDim());
@@ -666,8 +773,6 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
     }
   }
 
-//  double entropy_count = 0, entropy_sum = 0;
-
   n_.resize(NumPdfs());
   for (int32 j = 0; j < NumPdfs(); ++j) {
     Vector<BaseFloat> log_w_jm(NumGauss());
@@ -680,13 +785,13 @@ void AmSgmm::ComputeNormalizersNormalized(const std::vector<std::vector<int32> >
       log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
       log_w_jm.Add((-1.0) * log_w_jm.LogSumExp());
 
-      for(int32 n = 0; n < normalize_sets.size(); n++) {
+      for (int32 n = 0; n < normalize_sets.size(); n++) {
         const std::vector<int32> &this_set(normalize_sets[n]);
         double sum = 0.0;
-        for(int32 p = 0; p < this_set.size(); p++)
+        for (int32 p = 0; p < this_set.size(); p++)
           sum += exp(log_w_jm(this_set[p]));
-        double offset = -log(sum); // add "offset", to normalize weights.
-        for(int32 p = 0; p < this_set.size(); p++)
+        double offset = -log(sum);  // add "offset", to normalize weights.
+        for (int32 p = 0; p < this_set.size(); p++)
           log_w_jm(this_set[p]) += offset;
       }
 
@@ -856,7 +961,7 @@ void AmSgmm::ComputeH(std::vector< SpMatrix<Real> > *H_i) const {
   KALDI_ASSERT(NumGauss() != 0);
   (*H_i).resize(NumGauss());
   SpMatrix<BaseFloat> H_i_tmp(PhoneSpaceDim());
-  for (int32 i = 0; i < NumGauss(); i++) {
+  for (int32 i = 0; i < NumGauss(); ++i) {
     (*H_i)[i].Resize(PhoneSpaceDim());
     H_i_tmp.AddMat2Sp(1.0, M_[i], kTrans, SigmaInv_[i], 0.0);
     (*H_i)[i].CopyFromSp(H_i_tmp);
@@ -872,7 +977,7 @@ void AmSgmm::ComputeH(std::vector< SpMatrix<double> > *H_i) const;
 
 // Initializes the matrices M_{i} and w_i
 void AmSgmm::InitializeMw(int32 phn_subspace_dim,
-                                 const Matrix<BaseFloat> &norm_xform) {
+                          const Matrix<BaseFloat> &norm_xform) {
   int32 ddim = full_ubm_.Dim();
   KALDI_ASSERT(phn_subspace_dim <= ddim + 1);
   KALDI_ASSERT(phn_subspace_dim <= norm_xform.NumCols() + 1);
@@ -918,7 +1023,7 @@ void AmSgmm::InitializeVecs(int32 num_states) {
 
   v_.resize(num_states);
   c_.resize(num_states);
-  for (int32 j = 0; j < num_states; j++) {
+  for (int32 j = 0; j < num_states; ++j) {
     v_[j].Resize(1, phn_subspace_dim);
     c_[j].Resize(1);
     v_[j](0, 0) = 1.0;  // Eq. (26): v_{j1} = [1 0 0 ... 0]
@@ -1111,7 +1216,7 @@ BaseFloat AmSgmm::GaussianSelection(const SgmmGselectConfig &config,
   gselect->resize(pruned_pairs.size());
   // Make sure pruned Gaussians appear from best to worst.
   std::sort(pruned_pairs.begin(), pruned_pairs.end(),
-            std::greater<std::pair<BaseFloat,int32> >());
+            std::greater< std::pair<BaseFloat, int32> >());
   for (size_t i = 0; i < pruned_pairs.size(); i++) {
     loglikes_tmp(i) = pruned_pairs[i].first;
     (*gselect)[i] = pruned_pairs[i].second;
@@ -1123,16 +1228,15 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
                                              const VectorBase<BaseFloat> &data,
                                              const std::vector<int32> &preselect,
                                              std::vector<int32> *gselect) const {
-  KALDI_ASSERT(IsSortedAndUniq(preselect) && !preselect.empty()); 
+  KALDI_ASSERT(IsSortedAndUniq(preselect) && !preselect.empty());
   KALDI_ASSERT(diag_ubm_.NumGauss() != 0 &&
                diag_ubm_.NumGauss() == full_ubm_.NumGauss() &&
                diag_ubm_.Dim() == data.Dim());
 
-  int32 num_preselect = preselect.size();  
+  int32 num_preselect = preselect.size();
 
   KALDI_ASSERT(config.diag_gmm_nbest > 0 && config.full_gmm_nbest > 0 &&
                config.full_gmm_nbest < num_preselect);
-
 
   std::vector<std::pair<BaseFloat, int32> > pruned_pairs;
   if (config.diag_gmm_nbest < num_preselect) {
@@ -1144,17 +1248,17 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
                      ptr+num_preselect);
     BaseFloat thresh = ptr[num_preselect-config.diag_gmm_nbest];
     for (int32 p = 0; p < num_preselect; p++) {
-      if (loglikes(p) >= thresh) { // met threshold for diagonal phase.
+      if (loglikes(p) >= thresh) {  // met threshold for diagonal phase.
         int32 g = preselect[p];
-        pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
-                                              g));
+        pruned_pairs.push_back(
+            std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
       }
     }
   } else {
     for (int32 p = 0; p < num_preselect; p++) {
       int32 g = preselect[p];
-      pruned_pairs.push_back(std::make_pair(full_ubm_.ComponentLogLikelihood(data, g),
-                                            g));
+      pruned_pairs.push_back(
+          std::make_pair(full_ubm_.ComponentLogLikelihood(data, g), g));
     }
   }
   KALDI_ASSERT(!pruned_pairs.empty());
@@ -1167,7 +1271,7 @@ BaseFloat AmSgmm::GaussianSelectionPreselect(const SgmmGselectConfig &config,
   }
   // Make sure pruned Gaussians appear from best to worst.
   std::sort(pruned_pairs.begin(), pruned_pairs.end(),
-            std::greater<std::pair<BaseFloat,int32> >());
+            std::greater<std::pair<BaseFloat, int32> >());
   Vector<BaseFloat> loglikes_tmp(pruned_pairs.size());  // for return value.
   KALDI_ASSERT(gselect != NULL);
   gselect->resize(pruned_pairs.size());
@@ -1227,20 +1331,21 @@ void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
                && dists->NumCols() == num_states);
   Vector<double> prior(state_occs);
   KALDI_ASSERT(prior.Sum() != 0.0);
-  prior.Scale(1.0 / prior.Sum()); // Normalize.
-  SpMatrix<BaseFloat> H(phn_space_dim); // The same as H_sm in some other code.
-  for(int32 i = 0; i < num_gauss; ++i) {
+  prior.Scale(1.0 / prior.Sum());  // Normalize.
+  SpMatrix<BaseFloat> H(phn_space_dim);  // The same as H_sm in some other code.
+  for (int32 i = 0; i < num_gauss; ++i) {
     SpMatrix<BaseFloat> Hi(phn_space_dim);
     Hi.AddMat2Sp(1.0, model.M_[i], kTrans, model.SigmaInv_[i], 0.0);
     H.AddSp(prior(i), Hi);
   }
   bool warned = false;
-  for(int32 j1 = 0; j1 < num_states; ++j1) {
-    if(model.NumSubstates(j1) != 1 && !warned) {
-      KALDI_WARN << "ComputeDistances() can only give meaningful output if you have one substate per state.";
+  for (int32 j1 = 0; j1 < num_states; ++j1) {
+    if (model.NumSubstates(j1) != 1 && !warned) {
+      KALDI_WARN << "ComputeDistances() can only give meaningful output if you "
+                 << "have one substate per state.";
       warned = true;
     }
-    for(int32 j2 = 0; j2 <= j1; ++j2) {
+    for (int32 j2 = 0; j2 <= j1; ++j2) {
       Vector<BaseFloat> v_diff(model.v_[j1].Row(0));
       v_diff.AddVec(-1.0, model.v_[j2].Row(0));
       (*dists)(j1, j2) = (*dists)(j2, j1) = VecSpVec(v_diff, H, v_diff);

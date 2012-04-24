@@ -1,7 +1,7 @@
 // sgmm/am-sgmm-test.cc
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011  Saarland University
-// Author:  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,72 @@ using kaldi::int32;
 using kaldi::BaseFloat;
 namespace ut = kaldi::unittest;
 
+// Tests the initialization routines: InitializeFromFullGmm(), CopyFromSgmm()
+// and CopyGlobalsInitVecs().
+void TestSgmmInit(const AmSgmm &sgmm) {
+  using namespace kaldi;
+  int32 dim = sgmm.FeatureDim();
+  kaldi::SgmmGselectConfig config;
+  config.full_gmm_nbest = std::min(config.full_gmm_nbest, sgmm.NumGauss());
+
+  kaldi::Vector<BaseFloat> feat(dim);
+  for (int32 d = 0; d < dim; ++d) {
+    feat(d) = kaldi::RandGauss();
+  }
+  kaldi::SgmmPerFrameDerivedVars frame_vars;
+  frame_vars.Resize(sgmm.NumGauss(), sgmm.FeatureDim(),
+                    sgmm.PhoneSpaceDim());
+
+  std::vector<int32> gselect;
+  sgmm.GaussianSelection(config, feat, &gselect);
+  SgmmPerSpkDerivedVars empty;
+  SgmmPerFrameDerivedVars per_frame;
+  sgmm.ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
+  BaseFloat loglike = sgmm.LogLikelihood(per_frame, 0);
+
+  // First, test the CopyFromSgmm() method:
+  AmSgmm *sgmm1 = new AmSgmm();
+  sgmm1->CopyFromSgmm(sgmm, true);
+  sgmm1->GaussianSelection(config, feat, &gselect);
+  sgmm1->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
+  BaseFloat loglike1 = sgmm1->LogLikelihood(per_frame, 0);
+  kaldi::AssertEqual(loglike, loglike1, 1e-4);
+  delete sgmm1;
+
+  AmSgmm *sgmm2 = new AmSgmm();
+  sgmm2->CopyFromSgmm(sgmm, false);
+  sgmm2->ComputeNormalizers();
+  sgmm2->GaussianSelection(config, feat, &gselect);
+  sgmm2->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
+  BaseFloat loglike2 = sgmm2->LogLikelihood(per_frame, 0);
+  kaldi::AssertEqual(loglike, loglike2, 1e-4);
+  delete sgmm2;
+
+  // Next, initialize using the UBM from the current model
+  AmSgmm *sgmm3 = new AmSgmm();
+  sgmm3->InitializeFromFullGmm(sgmm.full_ubm(), sgmm.NumPdfs(),
+                               sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim());
+  sgmm3->ComputeNormalizers();
+  sgmm3->GaussianSelection(config, feat, &gselect);
+  sgmm3->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
+  BaseFloat loglike3 = sgmm3->LogLikelihood(per_frame, 0);
+  kaldi::AssertEqual(loglike, loglike3, 1e-4);
+  delete sgmm3;
+
+  // Finally, copy the global parameters from the current model
+  AmSgmm *sgmm4 = new AmSgmm();
+  sgmm4->CopyGlobalsInitVecs(sgmm, sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim(),
+                             sgmm.NumPdfs());
+  sgmm4->ComputeNormalizers();
+  sgmm4->GaussianSelection(config, feat, &gselect);
+  sgmm4->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
+  BaseFloat loglike4 = sgmm4->LogLikelihood(per_frame, 0);
+  kaldi::AssertEqual(loglike, loglike4, 1e-4);
+  delete sgmm4;
+}
+
 // Tests the Read() and Write() methods, in both binary and ASCII mode, as well
-// as Check(), CopyFromSgmm(), and methods in likelihood computations.
+// as Check(), and methods in likelihood computations.
 void TestSgmmIO(const AmSgmm &sgmm) {
   using namespace kaldi;
   int32 dim = sgmm.FeatureDim();
@@ -79,15 +143,6 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   BaseFloat loglike2 = sgmm2->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete sgmm2;
-
-  AmSgmm *sgmm3 = new AmSgmm();
-  sgmm3->CopyFromSgmm(sgmm, false);
-  sgmm3->ComputeNormalizers();
-  sgmm3->GaussianSelection(config, feat, &gselect);
-  sgmm3->ComputePerFrameVars(feat, gselect, empty, 0.0, &per_frame);
-  BaseFloat loglike3 = sgmm3->LogLikelihood(per_frame, 0);
-  kaldi::AssertEqual(loglike, loglike3, 1e-4);
-  delete sgmm3;
 }
 
 void TestSgmmSubstates(const AmSgmm &sgmm) {
@@ -202,6 +257,7 @@ void UnitTestSgmm() {
   kaldi::SgmmGselectConfig config;
   sgmm.InitializeFromFullGmm(full_gmm, num_states, dim+1, 0);
   sgmm.ComputeNormalizers();
+  TestSgmmInit(sgmm);
   TestSgmmIO(sgmm);
   TestSgmmSubstates(sgmm);
   TestSgmmIncreaseDim(sgmm);

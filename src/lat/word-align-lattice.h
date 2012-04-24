@@ -1,6 +1,6 @@
 // lat/word-align-lattice.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +85,33 @@ struct WordBoundaryInfoOpts {
   }
 };
 
+
+// This structure is to be used for newer code, from s5 scripts on.
+struct WordBoundaryInfoNewOpts {
+  int32 silence_label;
+  int32 partial_word_label;
+  bool reorder;
+  
+  WordBoundaryInfoNewOpts(): silence_label(0), partial_word_label(0),
+                             reorder(true) { }
+  
+  void Register(ParseOptions *po) {
+    po->Register("silence-label", &silence_label, "Numeric id of word symbol "
+                 "that is to be used for silence arcs in the word-aligned "
+                 "lattice (zero is OK)");
+    po->Register("partial-word-label", &partial_word_label, "Numeric id of "
+                 "word symbol that is to be used for arcs in the word-aligned "
+                 "lattice corresponding to partial words at the end of "
+                 "\"forced-out\" utterances (zero is OK)");
+    po->Register("reorder", &reorder, "True if the lattices were generated "
+                 "from graphs that had the --reorder option true, relating to "
+                 "reordering self-loops (typically true)");
+  }
+};
+
+
 struct WordBoundaryInfo {
+  // This initializer will be deleted eventually.
   WordBoundaryInfo(const WordBoundaryInfoOpts &opts); // Initialize from
   // options class.  Note: this throws.  Don't try to catch this error
   // and continue; catching errors thrown from initializers is dangerous.
@@ -93,17 +119,33 @@ struct WordBoundaryInfo {
   // options strings in the options class, but if silence_may_be_word_internal=true
   // or silence_has_olabels=true, we modify them as needed to make
   // silence phones behave in this way.
-    
-  std::vector<int32> wbegin_phones;
-  std::vector<int32> wend_phones;
-  std::vector<int32> wbegin_and_end_phones;
-  std::vector<int32> winternal_phones;
-  std::vector<int32> silence_phones; // e.g. silence, vocalized-noise...
-               // if these occur outside a word, we treat them as optional
-               // silence.
-  int32 silence_label; // The label we give to silence words.
-  // (May be zero, but this will give you epsilon arcs in the
-  // CompactLattice output).
+
+  // This initializer is to be used in future.
+  WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
+                   std::string word_boundary_file);
+
+  enum PhoneType {
+    kNoPhone = 0,
+    kWordBeginPhone,
+    kWordEndPhone,
+    kWordBeginAndEndPhone,
+    kWordInternalPhone,
+    kNonWordPhone // non-word phones are typically silence phones; but the point
+    // is that there is
+    // no word label associated with them in the lattice.  If a silence phone
+    // had a word label with it, we'd have to call it kWordBeginAndEndPhone.
+  };
+  PhoneType TypeOfPhone(int32 p) const {
+    if ((p < 0 || p > phone_to_type.size()))
+      KALDI_ERR << "Phone " << p << " was not specified in "
+          "word-boundary file (or options)";
+    return phone_to_type[p];
+  }
+  
+  std::vector<PhoneType> phone_to_type;
+
+  int32 silence_label; // The integer label we give to silence words.
+  // (May be zero).
   int32 partial_word_label; // The label we give to partially
   // formed words that we might get at the end of the utterance
   // if the lattice was "forced out" (no end state was reached).
@@ -111,6 +153,10 @@ struct WordBoundaryInfo {
   bool reorder; // True if the "reordering" of self-loops versus
   // forward-transition was done during graph creation (will
   // normally be true.
+
+ private:
+  // This is to be removed eventually, when we all move to s5 scripts.
+  void SetOptions(const std::string int_list, PhoneType phone_type);
 };
 
 

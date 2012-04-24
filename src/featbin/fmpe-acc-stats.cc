@@ -21,11 +21,13 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using kaldi::int32;
   try {
     const char *usage =
-        "Apply fMPE transform to features\n"
-        "Usage:  fmpe-apply-transform [options...] <fmpe-object> "
-        "<feat-rspecifier> <feat-diff-rspecifier> <gselect-rspecifier> <stats-out>\n";
+        "Compute statistics for fMPE training\n"
+        "Usage:  fmpe-acc-stats [options...] <fmpe-object> "
+        "<feat-rspecifier> <feat-diff-rspecifier> <gselect-rspecifier> <stats-out>\n"
+        "Note: gmm-fmpe-acc-stats avoids computing the features an extra time\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -44,24 +46,20 @@ int main(int argc, char *argv[]) {
         stats_wxfilename = po.GetArg(5);
     
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     RandomAccessBaseFloatMatrixReader diff_reader(feat_diff_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
     // fmpe stats...
-    Matrix<BaseFloat> stats(fmpe.ProjectionNumRows() * 2,
-                            fmpe.ProjectionNumCols());
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionNumRows(),
-                                    fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
+    Matrix<BaseFloat> stats(fmpe.ProjectionTNumRows() * 2,
+                            fmpe.ProjectionTNumCols());
+    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
+    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
+                                    fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
     
     int32 num_done = 0, num_err = 0;
     

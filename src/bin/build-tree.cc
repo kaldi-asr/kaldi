@@ -25,28 +25,6 @@
 #include "tree/clusterable-classes.h"
 #include "util/text-utils.h"
 
-namespace kaldi {
-void GetSeenPhones(BuildTreeStatsType &stats, int P, std::vector<int32> *phones_out) {
-  // Get list of phones that we saw (in the central position P, although it
-  // shouldn't matter what position).
-
-  std::set<int32> phones_set;
-  for (size_t i = 0 ; i < stats.size(); i++) {
-    const EventType &evec = stats[i].first;
-    for (size_t j = 0; j < evec.size(); j++) {
-      if (evec[j].first == P) {  // "key" is position P
-        assert(evec[j].second != 0);
-        phones_set.insert(evec[j].second);  // insert "value" of this
-        // phone.
-      }
-    }
-    CopySetToVector(phones_set, phones_out);
-  }
-}
-
-
-}
-
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
@@ -106,11 +84,7 @@ int main(int argc, char *argv[]) {
     }
 
     HmmTopology topo;
-    {
-      bool binary_in;
-      Input ki(topo_filename, &binary_in);
-      topo.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(topo_filename, &topo);
 
     BuildTreeStatsType stats;
     {
@@ -119,8 +93,8 @@ int main(int argc, char *argv[]) {
       Input ki(stats_filename, &binary_in);
       ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
     }
-    std::cerr << "Number of separate statistics is " << stats.size() << '\n';
-
+    KALDI_LOG << "Number of separate statistics is " << stats.size() << '\n';
+    
     Questions qo;
     {
       bool binary_in;
@@ -165,10 +139,7 @@ int main(int argc, char *argv[]) {
     // of pointer "to_pdf", so set it NULL.
     to_pdf = NULL;
 
-    {
-      Output ko(tree_out_filename, binary);
-      ctx_dep.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(ctx_dep, tree_out_filename, binary);
 
     {  // This block is just doing some checks.
 
@@ -185,7 +156,7 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "Mismatch between phone sets provided in roots file, and those in topology: " << ss.str();
       }
       std::vector<int32> phones_vec;  // phones we saw.
-      GetSeenPhones(stats, P, &phones_vec);
+      PossibleValues(P, stats, &phones_vec); // function in build-tree-utils.h
 
       std::vector<int32> unseen_phones;  // diagnostic.
       for (size_t i = 0; i < all_phones.size(); i++)
@@ -193,7 +164,8 @@ int main(int argc, char *argv[]) {
           unseen_phones.push_back(all_phones[i]);
       for (size_t i = 0; i < phones_vec.size(); i++)
         if (!std::binary_search(all_phones.begin(), all_phones.end(), phones_vec[i]))
-          KALDI_ERR << "Phone "<< (phones_vec[i]) << " appears in stats but is not listed in roots file.";
+          KALDI_ERR << "Phone " << (phones_vec[i])
+                    << " appears in stats but is not listed in roots file.";
       if (!unseen_phones.empty()) {
         std::ostringstream ss;
         for (size_t i = 0; i < unseen_phones.size(); i++)

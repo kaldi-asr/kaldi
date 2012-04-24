@@ -54,10 +54,7 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> lda_mat;
     Matrix<BaseFloat> full_lda_mat;
     lda.Estimate(dim, &lda_mat, &full_lda_mat);
-    {
-      Output ko(lda_mat_wxfilename, binary);
-      lda_mat.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(lda_mat, lda_mat_wxfilename, binary);
     if (full_matrix_wxfilename != "") {
       Output ko(full_matrix_wxfilename, binary);
       full_lda_mat.Write(ko.Stream(), binary);

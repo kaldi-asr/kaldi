@@ -1,6 +1,6 @@
-// featbin/fmpe-update.cc
+// featbin/fmpe-est.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Daniel Povey  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Initialize fMPE transform (to zeo)\n"
-        "Usage: fmpe-update [options...] <fmpe-in> <stats-in> <fmpe-out>\n"
-        "E.g. fmpe-update 1.fmpe 1.accs 2.fmpe\n";
+        "Usage: fmpe-est [options...] <fmpe-in> <stats-in> <fmpe-out>\n"
+        "E.g. fmpe-est 1.fmpe 1.accs 2.fmpe\n";
 
     ParseOptions po(usage);
     FmpeUpdateOptions opts;
@@ -45,31 +45,23 @@ int main(int argc, char *argv[]) {
         fmpe_wxfilename = po.GetArg(3);
 
     Fmpe fmpe;
-    {
-      bool binary_in;
-      Input ki(fmpe_rxfilename, &binary_in);
-      fmpe.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(fmpe_rxfilename, &fmpe);
     Matrix<BaseFloat> stats;
-    {
-      bool binary_in;
-      Input ki(stats_rxfilename, &binary_in);
-      stats.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(stats_rxfilename, &stats);
     // the matrix is in two parts, for the "plus" and "minus"
     // parts of the gradient that we stored separately.
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionNumRows(),
-                                    fmpe.ProjectionNumRows(),
-                                    0, fmpe.ProjectionNumCols());
+    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
+    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
+                                    fmpe.ProjectionTNumRows(),
+                                    0, fmpe.ProjectionTNumCols());
     
     fmpe.Update(opts, stats_plus, stats_minus);
 
     Output ko(fmpe_wxfilename, binary);
     fmpe.Write(ko.Stream(), binary);
 
-    KALDI_LOG << "Initialized fMPE object and wrote to"
+    KALDI_LOG << "Updated fMPE object and wrote to "
               << fmpe_wxfilename;
     return 0;
   } catch(const std::exception& e) {

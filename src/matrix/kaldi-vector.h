@@ -93,6 +93,10 @@ class VectorBase {
   /// Copy data from another vector (must match own size).
   void CopyFromVec(const VectorBase<Real>& v);
 
+  /// Copy data from a SpMatrix or TpMatrix (must match own size).
+  template<typename OtherReal>
+  void CopyFromPacked(const PackedMatrix<OtherReal>& M);
+  
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal>& v);
@@ -388,6 +392,13 @@ class SubVector : public VectorBase<Real> {
     VectorBase<Real>::dim_   = length;
   }
 
+  /// This constructor initializes the vector to point at the contents
+  /// of this packed matrix (SpMatrix or TpMatrix).
+  SubVector(const PackedMatrix<Real> &M) {
+    VectorBase<Real>::data_ = const_cast<Real*> (M.Data());
+    VectorBase<Real>::dim_   = (M.NumRows()*(M.NumRows()+1))/2;
+  }
+  
   /// Copy constructor
   SubVector(const SubVector &other) : VectorBase<Real> () {
     // this copy constructor needed for Range() to work in base class.

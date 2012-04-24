@@ -104,10 +104,7 @@ int main(int argc, char *argv[]) {
     sizes_ko.Stream() << "\n";
     
     // Write out the model
-    {
-      Output ko(fgmm_out_filename, binary);
-      fgmm.Write(ko.Stream(), binary);
-    }
+    WriteKaldiObject(fgmm, fgmm_out_filename, binary);
     KALDI_LOG << "Written merged GMM to " << fgmm_out_filename;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';

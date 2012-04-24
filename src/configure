@@ -190,7 +190,6 @@ function linux_configure_static {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   linux_configure_cuda
   echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
-
   exit 0;
 }
 
@@ -414,6 +413,7 @@ if [ "`uname`" == "Linux" ]; then
   else 
       failure "Unsupported linear algebra library '$MATHLIB'"
   fi
+
 fi
 
-failure "Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers."
+failure Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers.

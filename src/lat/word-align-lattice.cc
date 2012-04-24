@@ -1,6 +1,6 @@
 // lat/word-align-lattice.cc
 
-// Copyright 2011   Microsoft Corporation
+// Copyright 2011-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -322,9 +322,8 @@ bool LatticeWordAligner::ComputationState::OutputSilenceArc(
     CompactLatticeArc *arc_out,  bool *error) {
   if (transition_ids_.empty()) return false;
   int32 phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
-  if (!std::binary_search(info.silence_phones.begin(),
-                          info.silence_phones.end(),
-                          phone)) return false;
+  if (info.TypeOfPhone(phone) != WordBoundaryInfo::kNonWordPhone) return false;
+
   // we assume the start of transition_ids_ is the start of the phone [silence];
   // this is a precondition.
   size_t len = transition_ids_.size(), i;
@@ -370,9 +369,8 @@ bool LatticeWordAligner::ComputationState::OutputOnePhoneWordArc(
   if (transition_ids_.empty()) return false;
   if (word_labels_.empty()) return false;
   int32 phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
-  if (!std::binary_search(info.wbegin_and_end_phones.begin(),
-                          info.wbegin_and_end_phones.end(),
-                          phone)) return false;
+  if (info.TypeOfPhone(phone) != WordBoundaryInfo::kWordBeginAndEndPhone)
+    return false;  
   // we assume the start of transition_ids_ is the start of the phone.
   // this is a precondition.
   size_t len = transition_ids_.size(), i;
@@ -422,9 +420,8 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
   if (transition_ids_.empty()) return false;
   if (word_labels_.empty()) return false;
   int32 begin_phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
-  if (!std::binary_search(info.wbegin_phones.begin(),
-                          info.wbegin_phones.end(),
-                          begin_phone)) return false;
+  if (info.TypeOfPhone(begin_phone) != WordBoundaryInfo::kWordBeginPhone)
+    return false;  
   // we assume the start of transition_ids_ is the start of the phone.
   // this is a precondition.
   size_t len = transition_ids_.size(), i;
@@ -450,12 +447,10 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
   // else.
   for (; i < len; i++) {
     int32 this_phone = tmodel.TransitionIdToPhone(transition_ids_[i]);
-    if (std::binary_search(info.wend_phones.begin(),
-                           info.wend_phones.end(),
-                           this_phone)) break; // we hit a word-end phone.
-    if (!std::binary_search(info.winternal_phones.begin(),
-                            info.winternal_phones.end(),
-                            this_phone) && !*error) {
+    if (info.TypeOfPhone(this_phone) == WordBoundaryInfo::kWordEndPhone)
+      break;
+    if (info.TypeOfPhone(this_phone) != WordBoundaryInfo::kWordInternalPhone
+        && !*error) {
       KALDI_WARN << "Unexpected phone " << this_phone
                  << " found inside a word.";
       *error = true;
@@ -514,14 +509,11 @@ static bool IsPlausibleWord(const WordBoundaryInfo &info,
   if (transition_ids.empty()) return false;
   int32 first_phone = tmodel.TransitionIdToPhone(transition_ids.front()),
       last_phone = tmodel.TransitionIdToPhone(transition_ids.back());
-  if ( (std::binary_search(info.wbegin_and_end_phones.begin(),
-                           info.wbegin_and_end_phones.end(),
-                           first_phone) && first_phone == last_phone)
+  if ( (info.TypeOfPhone(first_phone) == WordBoundaryInfo::kWordBeginAndEndPhone
+        && first_phone == last_phone)
        ||
-       (std::binary_search(info.wbegin_phones.begin(),
-                           info.wbegin_phones.end(), first_phone) &&
-        std::binary_search(info.wend_phones.begin(),
-                           info.wend_phones.end(), last_phone))) {
+       (info.TypeOfPhone(first_phone) == WordBoundaryInfo::kWordBeginPhone &&
+        info.TypeOfPhone(last_phone) == WordBoundaryInfo::kWordEndPhone) ) {
     if (! info.reorder) {
       return (tmodel.IsFinal(transition_ids.back()));
     } else {
@@ -572,9 +564,8 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
     // Transition-ids but no word label-- either silence or
     // partial word.
     int32 first_phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
-    if (std::binary_search(info.silence_phones.begin(),
-                           info.silence_phones.end(),
-                           first_phone)) { // first phone is silence...
+    if (info.TypeOfPhone(first_phone) == WordBoundaryInfo::kNonWordPhone) {
+      // first phone is silence...
       if (!first_phone == tmodel.TransitionIdToPhone(transition_ids_.back())
           && ! *error) {
         *error = true;
@@ -607,87 +598,71 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
   }
 }
 
-static bool AreDisjoint(std::vector<int32> vec1,
-                        std::vector<int32> vec2) {
-  Uniq(&vec1); // remove dups...
-  Uniq(&vec2);
-  vec2.insert(vec2.end(), vec1.begin(), vec1.end());
-  size_t size = vec2.size();
-  SortAndUniq(&vec2);
-  return (vec2.size() == size);
-}  
-
-WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoOpts &opts) {
-  if (!kaldi::SplitStringToIntegers(opts.wbegin_phones, ":",
+// This code will eventually be removed.
+void WordBoundaryInfo::SetOptions(const std::string int_list, PhoneType phone_type) {
+  KALDI_ASSERT(!int_list.empty() && phone_type != kNoPhone);
+  std::vector<int32> phone_list;
+  if (!kaldi::SplitStringToIntegers(int_list, ":",
                                     false,
-                                    &wbegin_phones)
-      || wbegin_phones.empty())
-    KALDI_ERR << "Invalid argument to --wbegin-phones option: "
-              << opts.wbegin_phones;
-  if (!kaldi::SplitStringToIntegers(opts.wend_phones, ":",
-                                    false,
-                                    &wend_phones)
-      || wend_phones.empty())
-    KALDI_ERR << "Invalid argument to --wend-phones option: "
-              << opts.wend_phones;
-  if (!kaldi::SplitStringToIntegers(opts.wbegin_and_end_phones, ":",
-                                    false,
-                                    &wbegin_and_end_phones)
-      || wbegin_and_end_phones.empty())
-    KALDI_ERR << "Invalid argument to --wbegin-and-end-phones option: "
-              << opts.wbegin_and_end_phones;
-  if (!kaldi::SplitStringToIntegers(opts.winternal_phones, ":",
-                                    false,
-                                    &winternal_phones)
-      || winternal_phones.empty())      
-    KALDI_ERR << "Invalid argument to --winternal-phones option: "
-              << opts.winternal_phones;
-  if (!kaldi::SplitStringToIntegers(opts.silence_phones, ":",
-                                    false,
-                                    &silence_phones)) // we let this one be empty.
-    KALDI_ERR << "Invalid argument to --silence-phones option: "
-              << opts.silence_phones;
-
-  std::vector<std::vector<int32>* > all_vecs;
-  all_vecs.push_back(&wbegin_phones);
-  all_vecs.push_back(&wend_phones);
-  all_vecs.push_back(&wbegin_and_end_phones);
-  all_vecs.push_back(&winternal_phones);
-  all_vecs.push_back(&silence_phones);  
-  
-  for(size_t i = 0; i < all_vecs.size(); i++) {
-    std::sort(all_vecs[i]->begin(), all_vecs[i]->end());
-    if (!IsSortedAndUniq(*all_vecs[i]))
-      KALDI_ERR << "Expecting all options such as --wbegin-phones "
-          "to have no repetitions";
+                                    &phone_list)
+      || phone_list.empty())
+    KALDI_ERR << "Invalid argument to --*-phones option: " << int_list;
+  for (size_t i= 0; i < phone_list.size(); i++) {
+    if (phone_to_type.size() <= phone_list[i])
+      phone_to_type.resize(phone_list[i]+1, kNoPhone);
+    if (phone_to_type[phone_list[i]] != kNoPhone)
+      KALDI_ERR << "Phone " << phone_list[i] << "was given two incompatible "
+          "assignments.";
+    phone_to_type[phone_list[i]] = phone_type;
   }
-  
-  for(size_t i = 0; i < all_vecs.size(); i++)
-    for (size_t j = i+1; j < all_vecs.size(); j++)
-      if (!AreDisjoint(*(all_vecs[i]), *(all_vecs[j])))
-        KALDI_ERR << "Expecting the phones in options such as "
-            "--wbegin-phones to be disjoint from each other. "
-            "Make sure this is what you mean.";
-  
+}
+
+// This initializer will be deleted eventually.
+WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoOpts &opts) {
+  SetOptions(opts.wbegin_phones, kWordBeginPhone);
+  SetOptions(opts.wend_phones, kWordEndPhone);
+  SetOptions(opts.wbegin_and_end_phones, kWordBeginAndEndPhone);
+  SetOptions(opts.winternal_phones, kWordInternalPhone);
+  SetOptions(opts.silence_phones, (opts.silence_has_olabels ?
+                                   kWordBeginAndEndPhone : kNonWordPhone));
   reorder = opts.reorder;
   silence_label = opts.silence_label;
   partial_word_label = opts.partial_word_label;
-  if (opts.silence_may_be_word_internal) {
-    winternal_phones.insert(winternal_phones.end(),
-                            silence_phones.begin(), silence_phones.end());
-    SortAndUniq(&winternal_phones);
-  }
-  if (opts.silence_has_olabels) { // output labels will be in lattice for silence.
-    // (because it appeared on output side of WFST, e.g. it was in your ARPA).
-    // Note: in this case you can't have optional silence in your lexicon.
-    // Treat the silence phones as word begin-and-end phones.
-    wbegin_and_end_phones.insert(wbegin_and_end_phones.end(),
-                                 silence_phones.begin(), silence_phones.end());
-    SortAndUniq(&wbegin_and_end_phones);
-    silence_phones.clear();
-  }
 }
-  
+
+
+WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
+                                   std::string word_boundary_file) {
+  reorder = opts.reorder;
+  silence_label = opts.silence_label;
+  partial_word_label = opts.partial_word_label;
+  bool binary_in;
+  Input ki(word_boundary_file, &binary_in);
+  KALDI_ASSERT(!binary_in && "Not expecting binary word-boundary file.");
+  std::string line;
+  while(std::getline(ki.Stream(), line)) {
+    std::vector<std::string> split_line;  
+    SplitStringToVector(line, " \t\r", &split_line, true);// split the line by space or tab
+    int32 p;
+    if (split_line.size() != 2 ||
+        !ConvertStringToInteger(split_line[0], &p))
+      KALDI_ERR << "Invalid line in word-boundary file: " << line;
+    KALDI_ASSERT(p > 0);
+    if (phone_to_type.size() <= static_cast<size_t>(p))
+      phone_to_type.resize(p+1, kNoPhone);
+    std::string t = split_line[1];
+    if (t == "nonword") phone_to_type[p] = kNonWordPhone;
+    else if (t == "begin") phone_to_type[p] = kWordBeginPhone;
+    else if (t == "singleton") phone_to_type[p] = kWordBeginAndEndPhone;
+    else if (t == "end") phone_to_type[p] = kWordEndPhone;
+    else if (t == "internal") phone_to_type[p] = kWordInternalPhone;
+    else 
+      KALDI_ERR << "Invalid line in word-boundary file: " << line;
+  }
+  if (phone_to_type.empty())
+    KALDI_ERR << "Empty word-boundary file " << word_boundary_file;
+}
+
   
 bool WordAlignLattice(const CompactLattice &lat,
                       const TransitionModel &tmodel,
@@ -745,9 +720,8 @@ class WordAlignedLatticeTester {
     const std::vector<int32> &tids = arc.weight.String();
     if (tids.empty()) return false;
     int32 first_phone = tmodel_.TransitionIdToPhone(tids.front());
-    if (!std::binary_search(info_.silence_phones.begin(),
-                            info_.silence_phones.end(),
-                            first_phone)) return false;
+    if (info_.TypeOfPhone(first_phone) != WordBoundaryInfo::kNonWordPhone)
+      return false;
     for (size_t i = 0; i < tids.size(); i++)
       if (tmodel_.TransitionIdToPhone(tids[i]) != first_phone) return false;
       
@@ -778,9 +752,8 @@ class WordAlignedLatticeTester {
     const std::vector<int32> &tids = arc.weight.String();
     if (tids.empty()) return false;
     int32 first_phone = tmodel_.TransitionIdToPhone(tids.front());
-    if (!std::binary_search(info_.wbegin_and_end_phones.begin(),
-                            info_.wbegin_and_end_phones.end(),
-                            first_phone)) return false;
+    if (info_.TypeOfPhone(first_phone) !=
+        WordBoundaryInfo::kWordBeginAndEndPhone) return false;
     for (size_t i = 0; i < tids.size(); i++)
       if (tmodel_.TransitionIdToPhone(tids[i]) != first_phone) return false;
       
@@ -807,9 +780,8 @@ class WordAlignedLatticeTester {
     const std::vector<int32> &tids = arc.weight.String();
     if (tids.empty()) return false;
     int32 first_phone = tmodel_.TransitionIdToPhone(tids.front());
-    if (!std::binary_search(info_.wbegin_phones.begin(),
-                            info_.wbegin_phones.end(),
-                            first_phone)) return false;
+    if (info_.TypeOfPhone(first_phone) != WordBoundaryInfo::kWordBeginPhone)
+      return false;
     size_t i;
     { // first phone.
       int num_final = 0;
@@ -817,24 +789,24 @@ class WordAlignedLatticeTester {
         if (tmodel_.IsFinal(tids[i])) num_final++;
         if (tmodel_.TransitionIdToPhone(tids[i]) != first_phone) break;
       }
-      if (num_final != 1) return false; // Something went wrong-- perhaps we
+      if (num_final != 1)
+        return false; // Something went wrong-- perhaps we
       // got two beginning phones in a row.
     }
     { // middle phones.  Skip over them.
       while (i < tids.size() &&
-             std::binary_search(info_.winternal_phones.begin(),
-                                info_.winternal_phones.end(),
-                                tmodel_.TransitionIdToPhone(tids[i])))
+             info_.TypeOfPhone(tmodel_.TransitionIdToPhone(tids[i]))
+             == WordBoundaryInfo::kWordInternalPhone)
         i++;
     }
-    if (i == tids.size()) return false; // No final phone.
+    if (i == tids.size()) return false;
     int32 final_phone = tmodel_.TransitionIdToPhone(tids[i]);
-    if (!std::binary_search(info_.wend_phones.begin(),
-                            info_.wend_phones.end(),
-                            final_phone)) return false; // not word-ending.
+    if (info_.TypeOfPhone(final_phone) != WordBoundaryInfo::kWordEndPhone)
+      return false; // not word-ending.
     for (size_t j = i; j < tids.size(); j++) // make sure only this final phone till end.
       if (tmodel_.TransitionIdToPhone(tids[j]) != final_phone)
         return false; // Other phones after final phone.
+
     for (size_t j = i; j < tids.size(); j++) {
       if (tmodel_.IsFinal(tids[j])) { // Found "final transition"..   Note:
         // may be "reordered" with its self loops.
@@ -845,7 +817,8 @@ class WordAlignedLatticeTester {
           for (size_t k=j+1; k<tids.size(); k++)
             if (tmodel_.TransitionIdToTransitionState(tids[k])
                 != tmodel_.TransitionIdToTransitionState(tids[j])
-                || !tmodel_.IsSelfLoop(tids[k])) return false;
+                || !tmodel_.IsSelfLoop(tids[k]))
+              return false;
           return true;
         }
       }

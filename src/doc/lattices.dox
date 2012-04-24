@@ -788,6 +788,66 @@ or:
   lattice-copy ark:1.lats ark,t:- | head -50
 \endverbatim
 
+  \section lattice_nbest N-best lists and best paths
+
+  There are some situations (e.g. Viterbi training; rescoring with neural-net language
+  models) where we don't want the lattice structure and want either the best path
+  or the N best paths.  Our format for N-best lists is the same as for lattices,
+  except for each utterance we have multiple FSTs (up to n, for some specified n).
+ Suppose the utterance id's are uttA, uttB, and so on.  A normal Table of lattices
+ (e.g. an archive) will contain a lattice for uttA, one for uttB, and so on.
+ If we run the program
+\verbatim
+  lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:1.nbest
+\endverbatim
+ then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-2,
+ for uttB-1 ... uttB-10, and so on.  Of course some of the utterances may not
+ have that many N-best entries if the lattice did not contain that many distinct
+ word sequences.  The program lattice-to-nbest needs the acoustic scale as this
+ affects which paths would have the lowest score.
+
+ For some purposes it will still be inconvenient to deal with an FST and
+ we want an actual linear structure, e.g. just a sequence of words.  For this,
+ we can use the following program:
+\verbatim
+ nbest-to-linear ark:1.nbest ark:1.words ark:1.ali ark:1.acscore ark:1.lmscore
+\endverbatim
+ This program reads in an archive of lattices, which must each be a linear FST,
+ and outputs 4 archives, corresponding to the input symbol sequences, the output 
+ symbol sequences, and the acoustic and LM scores.   The format (assuming
+ you write in text mode, e.g. with "ark,t:my_file") is as one would
+ expect, e.g.:
+\verbatim
+# head 1.words
+utt-A-1 10243 432  436 10244
+utt-A-2 7890  420 10244
+...
+\endverbatim
+Remember that Kaldi always deals with integer id's; you can convert to words
+using the symbol table and scripts/int2sym.pl.  The reverse transformation
+can be accomplished with linear-to-nbest.
+
+ A program that might also be useful is lattice-to-1best, which is not the same
+ as lattice-to-nbest with --n=1, because it doesn't append "-1" to the utterance id.
+ You can pipe the output of this into nbest-to-linear if you want the word sequences
+ or something of that nature.  The program lattice-best-path takes in a lattice
+ and outputs up to two archives, containing the word sequences and transition-id
+ sequences.  This is there for historical reasons; the combination of lattice-to-1best
+ and nbest-to-linear is cleaner and more consistent with the overall framework.
+
+ \section lattices_times Times on lattices
+
+ If you want the time information of the lattices explicitly (rather than having to
+ count transition-ids), there is a function LatticeStateTimes (for Lattice), and
+ CompactLatticeStateTimes (for CompactLattice), which will give you the time
+ where each state is located (a number from 0 to the number of frames in the file).
+ Be careful that in general, the words are ``pushed'' relative to the transition-ids,
+ so the times you get from the lattice will (as far as the word labels are concerned)
+ be inexact.  If you want exact times (e.g. for conversion to HTK lattices, or for
+ sclite scoring), then you should run the program lattice-word-align.  This program
+ only works if you built your system with word-position-dependent phones, and it
+ requires certain command-line options to tell it which phones are in which position
+ in the word.  See egs/wsj/s3/run.sh for an example (search for align).  
 
 
 */

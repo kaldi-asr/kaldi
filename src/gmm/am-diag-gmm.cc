@@ -1,5 +1,6 @@
 // gmm/am-diag-gmm.cc
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Georg Stemmer
 
@@ -256,6 +257,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
                            const Vector<BaseFloat> &state_occs,
                            UbmClusteringOptions opts,
                            DiagGmm *ubm_out) {
+  opts.Check();  // Make sure the various # of Gaussians make sense.
   if (am.NumGauss() > opts.max_am_gauss) {
     KALDI_LOG << "ClusterGaussiansToUbm: first reducing num-gauss from " << am.NumGauss()
               << " to " << opts.max_am_gauss;
@@ -277,6 +279,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
   int32 num_pdfs = static_cast<int32>(am.NumPdfs()),
       dim = am.Dim(),
       num_clust_states = static_cast<int32>(opts.reduce_state_factor*num_pdfs);
+
   Vector<BaseFloat> tmp_mean(dim);
   Vector<BaseFloat> tmp_var(dim);
   DiagGmm tmp_gmm;
@@ -330,11 +333,21 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
     }
   }
 
+  // This is an unlikely operating scenario, no need to handle this in a more
+  // optimized fashion.
   if (opts.intermediate_numcomps > am.NumGauss()) {
     KALDI_WARN << "Intermediate numcomps " << opts.intermediate_numcomps
                << " is more than num-gauss " << am.NumGauss()
                << ", reducing it to " << am.NumGauss();
     opts.intermediate_numcomps = am.NumGauss();
+  }
+
+  // The compartmentalized clusterer used below does not merge compartments.
+  if (opts.intermediate_numcomps < num_clust_states) {
+    KALDI_WARN << "Intermediate numcomps " << opts.intermediate_numcomps
+               << " is less than # of preclustered states " << num_clust_states
+               << ", increasing it to " << num_clust_states;
+    opts.intermediate_numcomps = num_clust_states;
   }
     
   KALDI_VLOG(1) << "Merging from " << am.NumGauss() << " Gaussians in the "

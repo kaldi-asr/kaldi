@@ -32,17 +32,20 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Generate 1-best path through lattices; output as transcriptions and alignments\n"
+        "Note: if you want output as FSTs, use lattice-1best; if you want output\n"
+        "with acoustic and LM scores, use lattice-1best | nbest-to-linear\n"
         "Usage: lattice-best-path [options]  lattice-rspecifier [ transcriptions-wspecifier [ alignments-wspecifier] ]\n"
         " e.g.: lattice-best-path --acoustic-scale=0.1 ark:1.lats ark:1.tra ark:1.ali\n";
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat lm_scale = 1.0;
 
     std::string word_syms_filename;
-    std::string lats_wspecifier;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for LM probabilities. "
+                "Note: the ratio acoustic-scale/lm-scale is all that matters.");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
-    po.Register("write-lattices", &lats_wspecifier, "If supplied, write 1-best path as lattices to this wspecifier");
     
     po.Read(argc, argv);
 
@@ -59,9 +62,6 @@ int main(int argc, char *argv[]) {
     // this is the form we need it in for efficient best-path.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
 
-    // optional: write 1-best paths as fsts
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
-    
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
     Int32VectorWriter alignments_writer(alignments_wspecifier);
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
       Lattice best_path;
       fst::ShortestPath(lat, &best_path);
       if (best_path.Start() == fst::kNoStateId) {
@@ -108,16 +108,6 @@ int main(int argc, char *argv[]) {
             std::cerr << s << ' ';
           }
           std::cerr << '\n';
-        }
-        if (lats_wspecifier != "") {
-          if (acoustic_scale == 0.0)
-            KALDI_ERR << "You can't use zero acoustic scale and write best-path"
-                      << " as FSTs (use a very small scale instead).";
-          fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
-                            &best_path);
-          CompactLattice clat;
-          ConvertLattice(best_path, &clat);
-          compact_lattice_writer.Write(key, clat);
         }
         n_done++;
         n_frame += alignment.size();

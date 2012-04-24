@@ -31,10 +31,14 @@ namespace kaldi {
 // Options for Extended Baum-Welch Gaussian update.
 struct EbwOptions {
   BaseFloat E;
-  EbwOptions(): E(2.0) { }
+  BaseFloat tau; // This is only useful for smoothing "to the model":
+  // if you want to smooth to ML stats, you need to use gmm-ismooth-stats
+  EbwOptions(): E(2.0), tau(0.0) { }
   void Register(ParseOptions *po) {
     std::string module = "EbwOptions: ";
     po->Register("E", &E, module+"Constant E for Extended Baum-Welch (EBW) update");
+    po->Register("tau", &tau, module+"Tau value for smoothing to the model "
+                 "parameters only (for smoothing to ML stats, use gmm-ismooth-stats");
   }
 };
 

@@ -2,22 +2,20 @@ all:
 
 include ../kaldi.mk
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
-
 BINFILES = rnn-rescore rnn-rescore-kaldi
 
 OBJFILES = rnnlm.o
 
 LIBFILE = rnnlm.a
 
-all: $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE) $(BINFILES)
 
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
-$(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a ../rnn/rnnlm.a
+$(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 # Rule below would expand to, e.g.:
 # # ../base/kaldi-base.a:
@@ -27,7 +25,7 @@ $(BINFILES): ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ..
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES) $(BINFILES)
+	-rm -f *.o *.a $(TESTFILES) $(BINFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

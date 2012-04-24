@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-
+#include "util/kaldi-thread.h"
 #include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "sgmm/estimate-am-sgmm.h"
@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
                 "update: subset of vMNwcSt.");
     po.Register("write-flags", &write_flags_str, "Which SGMM parameters to "
                 "write: subset of gsnu");
+    po.Register("num-threads", &g_num_threads, "Number of threads to use in "
+                "weight update and normalizer computation");
     tcfg.Register(&po);
     sgmm_opts.Register(&po);
 

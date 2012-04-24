@@ -117,11 +117,7 @@ int main(int argc, char *argv[]) {
         trans_wspecifier = po.GetArg(3);
 
     DiagGmm gmm;
-    {
-      bool binary;
-      Input ki(gmm_rxfilename, &binary);
-      gmm.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(gmm_rxfilename, &gmm);
     DiagGmm ali_gmm_read;
     if (alignment_model != "") {
       bool binary;

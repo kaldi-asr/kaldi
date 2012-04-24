@@ -10,6 +10,7 @@ LIBFILE = kaldi-hmm.a
 
 all:  $(LIBFILE) $(TESTFILES)
 
+
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
@@ -26,7 +27,7 @@ $(TESTFILES): $(LIBFILE) ../tree/kaldi-tree.a ../base/kaldi-base.a ../matrix/kal
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

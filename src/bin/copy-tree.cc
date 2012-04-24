@@ -48,15 +48,8 @@ int main(int argc, char *argv[]) {
         tree_out_filename = po.GetArg(2);
 
     ContextDependency ctx_dep;
-    {
-      bool binary_in;
-      Input ki(tree_in_filename, &binary_in);
-      ctx_dep.Read(ki.Stream(), binary_in);
-    }
-    {
-      Output ko(tree_out_filename, binary);
-      ctx_dep.Write(ko.Stream(), binary);
-    }
+    ReadKaldiObject(tree_in_filename, &ctx_dep);
+    WriteKaldiObject(ctx_dep, tree_out_filename, binary);
     KALDI_LOG << "Copied tree";
   } catch(const std::exception& e) {
     std::cerr << e.what();

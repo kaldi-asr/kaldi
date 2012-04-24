@@ -54,11 +54,7 @@ int main(int argc, char *argv[]) {
     }
     
     Vector<BaseFloat> occs;
-    {
-      bool binary;
-      Input ki(occs_in_filename, &binary);
-      occs.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(occs_in_filename, &occs);
 
     Matrix<BaseFloat> dists(am_sgmm.NumPdfs(), am_sgmm.NumPdfs());
     AmSgmmFunctions::ComputeDistances(am_sgmm, occs, &dists);

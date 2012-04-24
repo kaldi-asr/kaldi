@@ -125,11 +125,7 @@ int main(int argc, char *argv[]) {
           }
         } else {  // a is rspecifier,  b is rxfilename
           Matrix<BaseFloat> b;
-          {
-            bool binary_in;
-            Input ki(transform_b_fn, &binary_in);
-            b.Read(ki.Stream(), binary_in);
-          }
+          ReadKaldiObject(transform_b_fn, &b);
           for (;!a_reader.Done(); a_reader.Next()) {
             Matrix<BaseFloat> c;
             if (!ComposeTransforms(a_reader.Value(), b,
@@ -140,11 +136,7 @@ int main(int argc, char *argv[]) {
         }
       } else {
         Matrix<BaseFloat> a;
-        {
-          bool binary_in;
-          Input ki(transform_a_fn, &binary_in);
-          a.Read(ki.Stream(), binary_in);
-        }
+        ReadKaldiObject(transform_a_fn, &a);
         SequentialBaseFloatMatrixReader b_reader(transform_b_fn);
         for (; !b_reader.Done(); b_reader.Next()) {
           Matrix<BaseFloat> c;
@@ -156,17 +148,9 @@ int main(int argc, char *argv[]) {
       }
     } else {  // all are just {rx, wx}filenames.
       Matrix<BaseFloat> a;
-      {
-        bool binary_in;
-        Input ki(transform_a_fn, &binary_in);
-        a.Read(ki.Stream(), binary_in);
-      }
+      ReadKaldiObject(transform_a_fn, &a);
       Matrix<BaseFloat> b;
-      {
-        bool binary_in;
-        Input ki(transform_b_fn, &binary_in);
-        b.Read(ki.Stream(), binary_in);
-      }
+      ReadKaldiObject(transform_b_fn, &b);
       Matrix<BaseFloat> c;
       if (!b_is_affine && a.NumRows() == a.NumCols()+1 && a.NumRows() == b.NumRows()
           && a.NumCols() == b.NumCols())

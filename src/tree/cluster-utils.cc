@@ -1,5 +1,6 @@
 // tree/cluster-utils.cc
 
+// Copyright 2012   Arnab Ghoshal
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -270,8 +271,6 @@ void BottomUpClusterer::Renumber() {
   std::vector<uint_smaller> mapping(npoints_, static_cast<uint_smaller> (-1));  // mapping from intermediate to final clusters.
   std::vector<Clusterable*> new_clusters(nclusters_);
   int32 clust = 0;
-  std::vector<Clusterable*>::const_iterator iter = clusters_->begin(), end =
-      clusters_->end();
   for (int32 i = 0; i < npoints_; i++) {
     if ((*clusters_)[i] != NULL) {
       assert(clust < nclusters_);
@@ -635,6 +634,7 @@ BaseFloat ClusterBottomUpCompartmentalized(
     int32 min_clust, std::vector< std::vector<Clusterable*> > *clusters_out,
     std::vector< std::vector<int32> > *assignments_out) {
   KALDI_ASSERT(thresh >= 0.0 && min_clust >= 0);
+  KALDI_ASSERT(min_clust >= points.size());  // Code does not merge compartments.
   int32 npoints = 0;
   for (vector< vector<Clusterable*> >::const_iterator itr = points.begin(),
            end = points.end(); itr != end; ++itr) {

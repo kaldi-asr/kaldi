@@ -1,7 +1,7 @@
 // matrix/packed-matrix.h
 
-// Copyright 2009-2011  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
-//                      Saarland University;  Yanmin Qian
+// Copyright 2009-2012  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
+//                      Saarland University;  Yanmin Qian;  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace kaldi {
 /// \addtogroup matrix_funcs_io
 // we need to declare the friend << operator here
 template<typename Real>
-std::ostream & operator <<(std::ostream & out, const PackedMatrix<Real>& rM);
+std::ostream & operator <<(std::ostream & out, const PackedMatrix<Real>& M);
 
 
 /// \addtogroup matrix_group
@@ -45,17 +45,17 @@ template<typename Real> class PackedMatrix {
   explicit PackedMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero):
       data_(NULL) {  Resize(r, resize_type);  }
 
-  explicit PackedMatrix(const PackedMatrix<Real>& rOrig) : data_(NULL) {
-    Resize(rOrig.num_rows_);
-    CopyFromPacked(rOrig);
+  explicit PackedMatrix(const PackedMatrix<Real>& orig) : data_(NULL) {
+    Resize(orig.num_rows_);
+    CopyFromPacked(orig);
   }
 
   template<class OtherReal>
-  explicit PackedMatrix(const PackedMatrix<OtherReal>& rOrig) : data_(NULL) {
-    Resize(rOrig.NumRows());
-    CopyFromPacked(rOrig);
+  explicit PackedMatrix(const PackedMatrix<OtherReal>& orig) : data_(NULL) {
+    Resize(orig.NumRows());
+    CopyFromPacked(orig);
   }
-
+  
   void SetZero();
   void SetUnit();  /// < Set to unit matrix.
 
@@ -84,8 +84,14 @@ template<typename Real> class PackedMatrix {
   void ScaleDiag(const Real alpha);  // Scales diagonal by alpha.
 
   template<class OtherReal>
-  void CopyFromPacked(const PackedMatrix<OtherReal>& rOrig);
+  void CopyFromPacked(const PackedMatrix<OtherReal>& orig);
 
+  /// CopyFromVec just interprets the vector as having the same layout
+  /// as the packed matrix.  Must have the same dimension, i.e.
+  /// orig.Dim() == (NumRows()*(NumRows()+1)) / 2;
+  template<class OtherReal>
+  void CopyFromVec(const SubVector<OtherReal>& orig);
+  
   Real* Data() { return data_; }
   const Real* Data() const { return data_; }
   inline MatrixIndexT NumRows() const { return num_rows_; }
@@ -134,9 +140,9 @@ template<typename Real> class PackedMatrix {
                                      const PackedMatrix<Real> &m);
   // Use instead of stream<<*this, if you want to add to existing contents.
   // Will throw exception on failure.
-  void Read(std::istream & rIn, bool binary, bool add = false);
+  void Read(std::istream &in, bool binary, bool add = false);
 
-  void Write(std::ostream & rOut, bool binary) const;
+  void Write(std::ostream &out, bool binary) const;
   // binary = true is not yet supported.
 
   void Destroy();
@@ -146,7 +152,7 @@ template<typename Real> class PackedMatrix {
 
  protected:
   // Will only be called from this class or derived classes.
-  void AddPacked(const Real alpha, const PackedMatrix<Real>& rMa);
+  void AddPacked(const Real alpha, const PackedMatrix<Real>& M);
   Real* data_;
   MatrixIndexT num_rows_;
  private:
@@ -168,14 +174,14 @@ template<typename Real> class PackedMatrix {
 /// @{
 
 template<typename Real>
-std::ostream & operator << (std::ostream & os, const PackedMatrix<Real>& rM) {
-  rM.Write(os, false);
+std::ostream & operator << (std::ostream & os, const PackedMatrix<Real>& M) {
+  M.Write(os, false);
   return os;
 }
 
 template<typename Real>
-std::istream & operator >> (std::istream & is, PackedMatrix<Real> & rM) {
-  rM.Read(is, false);
+std::istream & operator >> (std::istream &is, PackedMatrix<Real> &M) {
+  M.Read(is, false);
   return is;
 }
 

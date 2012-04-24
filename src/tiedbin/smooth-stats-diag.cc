@@ -65,11 +65,7 @@ int main(int argc, char *argv[]) {
       acc_out_filename = po.GetArg(4);
 
     ContextDependency ctx_dep;  // the tree.
-    {
-      bool binary;
-      Input ki(tree_in_filename, &binary);
-      ctx_dep.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(tree_in_filename, &ctx_dep);
 
     // read in tied->pdf map
     vector<int32> tied_to_pdf;
