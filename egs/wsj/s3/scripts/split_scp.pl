@@ -204,6 +204,9 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     for($scpidx = 0; $scpidx < @OUTPUTS; $scpidx++) {
         $scpfile = $OUTPUTS[$scpidx];
         open(O, ">$scpfile") || die "Opening output scp file $scpfile";
+        if ($linesperscp * $scpidx >= $numlines) {
+          die "split_scp.pl: you are splitting into too many pieces!";
+        }
         for($n = $linesperscp * $scpidx; $n < $numlines && $n < $linesperscp*($scpidx+1); $n++) {
             print O $F[$n];
         }
