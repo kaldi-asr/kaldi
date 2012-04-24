@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
+        "(note: from the s5 scripts onward, this is deprecated, see lattice-align-words)\n"
         "Create word-aligned lattices (in which the arcs correspond with\n"
         "word boundaries)\n"
         "Usage: lattice-word-align [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
