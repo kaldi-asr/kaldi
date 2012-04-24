@@ -80,14 +80,15 @@ steps/decode_deltas.sh --num-jobs 8 --cmd "$train_cmd" \
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
-utils/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
+steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
 done
 
+sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print 2}'`
+steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
+  data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
+
 ##################### I AM HERE ####################################2
-
-utils/walign_lats.sh data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
-
 
 
 # Align tri1 system with si84 data.

@@ -107,6 +107,6 @@ rm $outdir/Ldet.fst 2>/dev/null
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $newlang $dir
+local/score.sh --cmd "$cmd" $data $newlang $outdir
 
 exit 0;
