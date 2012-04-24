@@ -23,6 +23,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <cstdio>
 
 #include "base/kaldi-types.h"
 #include "base/kaldi-utils.h"
