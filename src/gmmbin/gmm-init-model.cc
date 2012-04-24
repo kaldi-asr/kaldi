@@ -1,6 +1,6 @@
 // gmmbin/gmm-init-model.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,17 +31,31 @@ namespace kaldi {
 /// InitAmGmm initializes the GMM with one Gaussian per state.
 void InitAmGmm(const BuildTreeStatsType &stats,
                const EventMap &to_pdf_map,
-               AmDiagGmm *am_gmm) {
+               AmDiagGmm *am_gmm,
+               bool allow_empty_leaves) {
   // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, to_pdf_map, &split_stats);
+  split_stats.resize(to_pdf_map.MaxResult() + 1); // ensure that
+  // if the last leaf had no stats, this vector still has the right size.
+  
   // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
+  for (size_t i = 0; i < split_stats.size(); i++) {
+    if (split_stats[i].empty()) {
+      std::ostringstream errmsg;
+      errmsg << "Tree has pdf-id " << i << "with no stats. "
+          "This probably means you have phones that were unseen in training "
+          "and were not shared with other phones in the roots file. "
+          "You should modify your roots file as necessary to fix this."
+          "(i.e. share that phone with a similar but seen phone on one line "
+          "of the roots file). Be sure to regenerate roots.int from roots.txt, "
+          "if using s5 scripts. To work out the phone, search for "
+          "pdf-id " << i << " in the output of show-transitions (for this model). ";
+      if (allow_empty_leaves) KALDI_WARN << errmsg.str();
+      else KALDI_ERR << errmsg.str()
+                     << "Use --allow-empty-leaves to make this a warning.";
+    }
+  }
   std::vector<Clusterable*> summed_stats;
   SumStatsVec(split_stats, &summed_stats);
 
@@ -205,10 +219,13 @@ int main(int argc, char *argv[]) {
         "  gmm-init-model tree treeacc topo 1.mdl prev/tree prev/30.mdl\n";
 
     bool binary = true;
+    bool allow_empty_leaves = false;
     std::string occs_out_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("allow-empty-leaves", &allow_empty_leaves, "Do not die when there are "
+                "leaves in the tree with no stats.");
     po.Register("write-occs", &occs_out_filename, "File to write state "
                 "occupancies to.");
 
@@ -255,7 +272,7 @@ int main(int argc, char *argv[]) {
     // Now, the summed_stats will be used to initialize the GMM.
     AmDiagGmm am_gmm;
     if (old_tree_filename.empty())
-      InitAmGmm(stats, to_pdf, &am_gmm);  // Normal case: initialize 1 Gauss/model from tree stats.
+      InitAmGmm(stats, to_pdf, &am_gmm, allow_empty_leaves);  // Normal case: initialize 1 Gauss/model from tree stats.
     else {
       InitAmGmmFromOld(stats, to_pdf,
                        ctx_dep.ContextWidth(),
