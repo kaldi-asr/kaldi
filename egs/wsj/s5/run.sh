@@ -4,7 +4,7 @@
           ## This relates to the queue.
 
 
-if false; then ##TEMP
+#if false; then #TEMP
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
@@ -73,7 +73,7 @@ wait; # or the mono mkgraph.sh might be writing
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
 
-fi  ##TEMP
+#fi  #TEMP
 
 steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
