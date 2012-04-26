@@ -74,10 +74,8 @@ else
   utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
 fi
 
-if [ -z $feat_type ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-  echo "align_si.sh: feature type is $feat_type"
-fi
+if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+echo "align_si.sh: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
