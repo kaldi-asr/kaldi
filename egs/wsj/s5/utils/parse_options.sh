@@ -30,7 +30,11 @@ while true; do
  esac
 done
 
-[ ! -z $config ] && . $config # Override any of the options, if --config was specified.
+[ ! -z "$config" ] && . $config # Override any of the options, if --config was specified.
+
+# Check for an empty argument to the --cmd option, which can easily occur as a result
+# of scripting errors.
+[ ! -z "${cmd+xxx}" ] && [ -z "$cmd" ] && echo "$0: empty argument to --cmd option" && exit 1;
 
 true; # so this script returns code zero.
 

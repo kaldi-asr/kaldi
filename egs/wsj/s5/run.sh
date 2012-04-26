@@ -1,11 +1,16 @@
 #!/bin/bash
 
+. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
+          ## This relates to the queue.
+
+
+if false; then ##TEMP
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
-local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
+# local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
 
-#local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
+local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
 
@@ -27,9 +32,6 @@ local/wsj_format_data.sh || exit 1;
 #  local/wsj_format_data_local.sh && \
 #  local/wsj_train_rnnlms.sh
 # ) &
-
-. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-          ## This relates to the queue.
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -66,18 +68,12 @@ steps/align_si.sh --nj 10 --cmd "$train_cmd" \
 steps/train_deltas.sh --cmd "$train_cmd" \
     2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
-# TEMP
-  steps/train_deltas.sh --cmd "$train_cmd" \
-    2000 10000 data/train_si84_half data/lang.clustsil exp/mono0a_ali exp/tri1.clustsil
-  utils/mkgraph.sh data/lang_test_tgpr exp/tri1.clustsil exp/tri1.clustsil/graph_tgpr || exit 1;
-  steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
-    exp/tri1.clustsil/graph_tgpr data/test_dev93 exp/tri1.clustsil/decode_tgpr_dev93 || exit 1;
-
-
 wait; # or the mono mkgraph.sh might be writing 
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
+
+fi  ##TEMP
 
 steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
@@ -153,8 +149,10 @@ steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
 
 
 # Train and test MMI (and boosted MMI) on tri2b system.
-steps/make_denlats_si.sh --nj 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 || exit 1;
+steps/make_denlats.sh --nj 10 --cmd "$train_cmd" \
+  data/train_si84 data/lang exp/tri2b exp/tri2b_denlats_si84 || exit 1;
+
+# I AM HERE
 
 steps/train_lda_etc_mmi.sh --nj 10  --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 \
@@ -169,7 +167,7 @@ utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92 || exit 1;
 
 (
-# HERE-- new
+  # HERE-- new
   steps/train_lda_etc_dmmi.sh --nj 10  --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
    exp/tri2b exp/tri2b_dmmi_-1.0_0.1

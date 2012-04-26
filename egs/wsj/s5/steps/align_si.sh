@@ -21,7 +21,7 @@ retry_beam=40
 # End configuration options.
 
 [ -f path.sh ] && . ./path.sh # source the path.
-. parse_options.sh
+. parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
    echo "usage: steps/align_si.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
@@ -48,10 +48,9 @@ sdata=$data/split$nj
 cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;
 
 
-if [ -z $feat_type ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-  echo "align_si.sh: feature type is $feat_type"
-fi
+if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+echo "align_si.sh: feature type is $feat_type"
+
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"

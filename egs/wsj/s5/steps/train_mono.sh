@@ -35,8 +35,6 @@ data=$1
 lang=$2
 dir=$3
 
-[ ! -z $config ] && . $config # Override any of the above, if --config specified.
-
 oov_sym=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir/log
