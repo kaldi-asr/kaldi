@@ -6,35 +6,25 @@
 # see ../run.sh for example
 
 nj=4
-cmd=utils/run.pl
-config=conf/mfcc.conf
+cmd=run.pl
+mfcc_config=conf/mfcc.conf
 
-for x in 1 2; do
-  if [ $1 == "--num-jobs" ]; then
-     nj=$2
-     shift 2
-  fi
-  if [ $1 == "--cmd" ]; then
-     cmd=$2
-     shift 2
-  fi  
-  if [ $1 == "--config" ]; then
-     config=$2
-     shift 2
-  fi  
-done
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
    echo "usage: make_mfcc.sh [options] <data-dir> <log-dir> <path-to-mfccdir>";
-   echo "options: [--config <config-file>] [--num-jobs <num-jobs>] [--cmd utils/run.pl|utils/queue.pl]"
+   echo "options: "
+   echo "  --mfcc-config <config-file>                      # config passed to compute-mfcc-feats "
+   echo "  --nj <nj>                                        # number of parallel jobs"
+   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
-
-if [ -f path.sh ]; then . ./path.sh; fi
 
 data=$1
 logdir=$2
 mfccdir=$3
+
 
 # make $mfccdir an absolute pathname.
 mfccdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $mfccdir ${PWD}`
@@ -47,7 +37,7 @@ mkdir -p $logdir || exit 1;
 
 scp=$data/wav.scp
 
-required="$scp $config"
+required="$scp $mfcc_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
@@ -73,7 +63,7 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_mfcc.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
-    compute-mfcc-feats --verbose=2 --config=$config ark:- \
+    compute-mfcc-feats --verbose=2 --config=$mfcc_config ark:- \
     ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
      || exit 1;
 
@@ -87,7 +77,7 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_mfcc.JOB.log \
-    compute-mfcc-feats  --verbose=2 --config=$config scp:$logdir/wav.JOB.scp \
+    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp:$logdir/wav.JOB.scp \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;
 

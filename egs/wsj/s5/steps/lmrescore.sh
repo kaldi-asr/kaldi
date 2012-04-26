@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mode=4
-cmd=scripts/run.pl
+cmd=run.pl
 
 for x in `seq 2`; do
   [ "$1" == "--cmd" ] && cmd=$2 && shift 2;
@@ -10,7 +10,8 @@ done
 
 if [ $# != 5 ]; then
    echo "Do language model rescoring of lattices (remove old LM, add new LM)"
-   echo "Usage: scripts/lmrescore.sh <old-lang-dir> <new-lang-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "Usage: steps/lmrescore.sh [options] <old-lang-dir> <new-lang-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "options: [--cmd (run.pl|queue.pl [queue opts])] [--mode (1|2|3|4)]"
    exit 1;
 fi
 

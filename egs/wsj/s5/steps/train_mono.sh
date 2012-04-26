@@ -7,20 +7,27 @@
 # Flat start and monophone training, with delta-delta features.
 # This script applies cepstral mean normalization (per speaker).
 
+# Begin configuration section.
 nj=4
 cmd=run.pl
+scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+numiters=40    # Number of iterations of training
+maxiterinc=30 # Last iter to increase #Gauss on.
+totgauss=1000 # Target #Gaussians.  
+realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
+# End configuration section.
 
-for x in `seq 3`; do
-  [ "$1" == "--num-jobs" ] && nj=$2 && shift 2;
-  [ "$1" == "--cmd" ] && cmd=$2 && shift 2;
-  [ "$1" == "--config" ] && config=$2 && shift 2;
-done
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
    echo "Usage: steps/train_mono.sh [options] <data-dir> <lang-dir> <exp-dir>"
    echo " e.g.: steps/train_mono.sh data/train.1k data/lang exp/mono"
-   echo "options: [--cmd (run.pl|queue.pl [opts])] [--num-jobs <nj>] [--config <cfg-file>]"
+   echo "main options (for others, see top of script file)"
+   echo "  --config <config-file>                           # config containing options"
+   echo "  --nj <nj>                                        # number of parallel jobs"
+   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
 
@@ -28,15 +35,6 @@ data=$1
 lang=$2
 dir=$3
 
-if [ -f path.sh ]; then . ./path.sh; fi
-
-# Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-numiters=40    # Number of iterations of training
-maxiterinc=30 # Last iter to increase #Gauss on.
-totgauss=1000 # Target #Gaussians.  
-realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
-# End configuration.
 [ ! -z $config ] && . $config # Override any of the above, if --config specified.
 
 oov_sym=`cat $lang/oov.int` || exit 1;
@@ -52,8 +50,8 @@ example_feats="`echo '$feats' | sed s/JOB/1/g`";
 
 echo "Initializing monophone system."
 
-if [ -f $lang/phones/sets_mono.int ]; then
-  shared_phones_opt="--shared-phones=$lang/phones/sets_mono.int"
+if [ -f $lang/phones/sets.int ]; then
+  shared_phones_opt="--shared-phones=$lang/phones/sets.int"
 fi
 
 # Note: JOB=1 just uses the 1st part of the features-- we only need a subset anyway.

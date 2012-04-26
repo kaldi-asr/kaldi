@@ -1,0 +1,82 @@
+#!/bin/bash
+# Copyright 2012  Daniel Povey
+# Apache 2.0
+
+# Computes training alignments using a model with delta or
+# LDA+MLLT features.
+
+# If you supply the --use-graphs option, it will use the training
+# graphs from the source directory (where the model is).  In this
+# case the number of jobs must match with the source directory.
+
+
+# Begin configuration section.  
+nj=4
+cmd=run.pl
+use_graphs=false
+# Begin configuration.
+scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+beam=10
+retry_beam=40
+# End configuration options.
+
+[ -f path.sh ] && . ./path.sh # source the path.
+. parse_options.sh
+
+if [ $# != 4 ]; then
+   echo "usage: steps/align_si.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
+   echo "e.g.:  steps/align_si.sh data/train data/lang exp/tri1 exp/tri1_ali"
+   echo "main options (for others, see top of script file)"
+   echo "  --config <config-file>                           # config containing options"
+   echo "  --nj <nj>                                        # number of parallel jobs"
+   echo "  --use-graphs true                                # use graphs in src-dir"
+   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   exit 1;
+fi
+
+data=$1
+lang=$2
+srcdir=$3
+dir=$4
+
+oov_sym=`cat $lang/oov.txt`
+mkdir -p $dir/log
+echo $nj > $dir/num_jobs
+sdata=$data/split$nj
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+
+cp $srcdir/{tree,final.mdl,final.occs} $dir || exit 1;
+
+
+if [ -z $feat_type ]; then
+  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+  echo "align_si.sh: feature type is $feat_type"
+fi
+case $feat_type in
+  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+    cp $srcdir/final.mat $dir    
+   ;;
+  *) echo "Invalid feature type $feat_type" && exit 1;
+esac
+
+echo "align_si.sh: aligning data in $data using model from $srcdir, putting alignments in $dir"
+
+if $use_graphs; then 
+  [ $nj != "`cat $srcdir/num_jobs`" ] && echo "Mismatch in num-jobs" && exit 1;
+  [ ! -f $srcdir/1.fsts.gz ] && echo "no such file $srcdir/1.fsts.gz" && exit 1;
+
+  $cmd JOB=1:$nj $dir/log/align.JOB.log \
+    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl \
+      "ark:gunzip -c $srcdir/JOB.fsts.gz|" "$feats" "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+else
+  tra="ark:utils/sym2int.pl --map-oov \"$oov_sym\" -f 2- $lang/words.txt $sdata/JOB/text|";
+  # We could just use gmm-align in the next line, but it's less efficient as it compiles the
+  # training graphs one by one.
+  $cmd JOB=1:$nj $dir/log/align.JOB.log \
+    compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl ark:- \
+      "$feats" "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+fi
+
+echo "Done aligning data."

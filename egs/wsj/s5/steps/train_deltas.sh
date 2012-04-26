@@ -3,24 +3,29 @@
 # Copyright 2012  Daniel Povey
 # Apache 2.0
 
+# Begin configuration.
 stage=-4 #  This allows restarting after partway, when something when wrong.
-nj=4
 cmd=run.pl
+scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+realign_iters="10 20 30";
+numiters=35    # Number of iterations of training
+maxiterinc=25 # Last iter to increase #Gauss on.
+beam=10
+retry_beam=40
+# End configuration.
 
-for x in `seq 4`; do
-  [ "$1" == "--num-jobs" ] && nj=$2 && shift 2;
-  [ "$1" == "--cmd" ] && cmd=$2 && shift 2;
-  [ "$1" == "--config" ] && config=$2 && shift 2;
-  [ "$1" == "--stage" ] && stage=$2 && shift 2;
-done
+[ -f path.sh ] && . ./path.sh;
+. parse_options.sh || exit 1;
 
 if [ $# != 6 ]; then
    echo "Usage: steps/train_deltas.sh <num-leaves> <tot-gauss> <data-dir> <lang-dir> <alignment-dir> <exp-dir>"
    echo "e.g.: steps/train_deltas.sh 2000 10000 data/train_si84_half data/lang exp/mono_ali exp/tri1"
+   echo "main options (for others, see top of script file)"
+   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   echo "  --config <config-file>                           # config containing options"
+   echo "  --stage <stage>                                  # stage to do partial re-run from."
    exit 1;
 fi
-
-[ -f path.sh ] && . ./path.sh;
 
 numleaves=$1
 totgauss=$2
@@ -29,28 +34,20 @@ lang=$4
 alidir=$5
 dir=$6
 
-# Begin configuration.
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-realign_iters="10 20 30";
-numiters=35    # Number of iterations of training
-maxiterinc=25 # Last iter to increase #Gauss on.
-beam=10
-retry_beam=40
-# End configuration.
-[ ! -z $config ] && . $config # Override any of the above, if --config specified.
-
-[ ! -f $alidir/final.mdl ] && echo "Error: no such file $alidir/final.mdl" && exit 1;
+for f in $alidir/final.mdl $alidir/1.ali.gz $data/feats.scp $lang/phones.txt; do
+  [ ! -f $f ] && echo "train_deltas.sh: no such file $f" && exit 1;
+done
 
 numgauss=$numleaves
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 oov=`cat $lang/oov.int` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
-
+nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
+
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
-[ "$nj" -ne "`cat $alidir/num_jobs`" ] && echo "Number of jobs does not match $alidir" && exit 1;
 
 feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
 
@@ -68,7 +65,7 @@ fi
 if [ $stage -le -2 ]; then
   echo "Getting questions for tree-building, via clustering"
   # preparing questions, roots file...
-  cluster-phones $dir/treeacc $lang/phones/sets_cluster.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
+  cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
   compile-questions $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
@@ -80,9 +77,9 @@ if [ $stage -le -2 ]; then
 
   gmm-init-model  --write-occs=$dir/1.occs  \
     $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
+  grep 'no stats' $dir/log/init_model.log && echo "This is a bad warning.";
 
-  # could mix up if we wanted:
-  # gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl 2>$dir/log/mixup.log || exit 1;
+  gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl 2>$dir/log/mixup.log || exit 1;
   rm $dir/treeacc
 fi
 
@@ -122,9 +119,7 @@ while [ $x -lt $numiters ]; do
     rm $dir/$x.mdl $dir/$x.*.acc
     rm $dir/$x.occs
   fi
-  if [ $x -le $maxiterinc ]; then
-    numgauss=$[$numgauss+$incgauss];
-  fi
+  [ $x -le $maxiterinc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
 done
 
@@ -134,7 +129,7 @@ ln -s $x.occs $dir/final.occs
 
 # Summarize warning messages...
 for x in $dir/log/*.log; do 
-  [ `grep WARNING $x | wc -l` -ne 0 ] && echo $n warnings in $x;
+  n=`grep WARNING $x | wc -l`; [ $n -ne 0 ] && echo $n warnings in $x;
 done
 
-echo Done training system with delta features.
+echo Done training system with delta+delta-delta features in $dir

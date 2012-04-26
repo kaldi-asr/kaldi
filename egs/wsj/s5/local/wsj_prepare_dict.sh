@@ -36,12 +36,24 @@ svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict  \
 # Make phones symbol-table (adding in silence and verbal and non-verbal noises at this point).
 # We are adding suffixes _B, _E, _S for beginning, ending, and singleton phones.
 
+# silence phones, one per line.
+(echo SIL; echo SPN; echo NSN) > $dir/silence_phones.txt
 
-(echo SIL; echo SPN; echo NSN) > $dir/silence_phones.list
+# nonsilence phones; on each line is a list of phones that correspond
+# really to the same base phone.
+cat $dir/cmudict/cmudict.0.7a.symbols | perl -ane 's:\r::; print;' | \
+ perl -e 'while(<>){
+  chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_"; 
+  $phones_of{$1} .= "$_ "; }
+  foreach $list (values %phones_of) {print $list . "\n"; } ' \
+  > $dir/nonsilence_phones.txt || exit 1;
 
-cat $dir/cmudict/cmudict.0.7a.symbols | perl -ane 's:\r::; print;' \
- >$dir/nonsilence_phones.list
-
+# A few extra questions that will be added to those obtained by automatically clustering
+# the "real" phones.  These ask about stress; there's also one for silence.
+cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
+cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_)) {
+  $p =~ m:^([^\d]+)(\d*)$: || die "Bad phone $_"; $q{$2} .= "$p "; } } foreach $l (values %q) {print "$l\n";}' \
+ >> $dir/extra_questions.txt || exit 1;
 
 grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; print; }' \

@@ -135,6 +135,7 @@ done
 
 #in case we want to limit lm's on most frequent words, copy lm training word frequency list
 cp links/13-32.1/wsj1/doc/lng_modl/vocab/wfl_64.lst $lmdir
+chmod u+w $lmdir/*.lst # had weird permissions on source.
 
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
