@@ -4,6 +4,7 @@
 # Apache 2.0
 
 # Begin configuration section.  
+iter=
 nj=4
 cmd=run.pl
 maxactive=7000
@@ -27,6 +28,7 @@ if [ $# != 3 ]; then
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
+   echo "  --iter <iter>                                    # Iteration of model to test."
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
@@ -42,7 +44,10 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $graphdir/HCLG.fst; do
+if [ -z $iter ]; then model=$srcdir/final.mdl; 
+else model=$srcdir/$iter.mdl; fi
+
+for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
 done
 
@@ -58,7 +63,7 @@ esac
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
  gmm-latgen-faster --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+  $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;

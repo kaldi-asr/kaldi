@@ -24,7 +24,7 @@ for ($x = 1; $x <= 3; $x++) { # This for-loop is to
     }
     $qsub_opts .= "$switch $option ";
   }
-  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)/) {
+  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) {
     $jobname = $1;
     $jobstart = $2;
     $jobend = $3;
@@ -32,12 +32,12 @@ for ($x = 1; $x <= 3; $x++) { # This for-loop is to
     if ($jobstart > $jobend) {
       die "queue.pl: invalid job range $ARGV[0]";
     }
-  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)/) { # e.g. JOB=1.
+  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;
     $jobstart = $2;
     $jobend = $2;
     shift;
-  } elsif ($ARGV[0] =~ m/.+\=.*\:.*/) {
+  } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
     print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
@@ -241,10 +241,11 @@ foreach $l (@logfiles) {
 if ($num_failed == 0) { exit(0); }
 else { # we failed.
   if (@logfiles == 1) {
+    if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/$jobstart/g; }
     print STDERR "queue.pl: job writing to $logfile failed with status $status\n";
   } else {
-    $numjobs = 1 + $jobend - $jobstart;
     if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
+    $numjobs = 1 + $jobend - $jobstart;
     print STDERR "queue.pl: $num_failed / $numjobs writing to $logfile failed.\n";
   }
   exit(1);

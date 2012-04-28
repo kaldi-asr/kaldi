@@ -14,7 +14,7 @@ local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exi
 
 local/wsj_prepare_dict.sh || exit 1;
 
-utils/prepare_lang.sh data/local/dict data/local/lang data/lang || exit 1;
+utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
 
 local/wsj_format_data.sh || exit 1;
 
@@ -149,42 +149,37 @@ steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
 
 
 # Train and test MMI (and boosted MMI) on tri2b system.
-steps/make_denlats.sh --nj 10 --cmd "$train_cmd" \
+steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b exp/tri2b_denlats_si84 || exit 1;
 
-# I AM HERE
-
-steps/train_lda_etc_mmi.sh --nj 10  --cmd "$train_cmd" \
+steps/train_mmi.sh --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 \
-  exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mmi  || exit 1;
+  exp/tri2b_denlats_si84 exp/tri2b_mmi  || exit 1;
 
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
-  exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92  || exit 1;
-steps/train_lda_etc_mmi.sh --nj 10 --boost 0.1 --cmd "$train_cmd" \
+steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
+  exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi/decode_tgpr_dev93 || exit 1;
+steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92 || exit 1;
+
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
-  exp/tri2b exp/tri2b_mmi_b0.1  || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+  exp/tri2b_mmi_b0.1  || exit 1;
+
+steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi_b0.1/decode_tgpr_dev93 || exit 1;
+steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92 || exit 1;
 
-(
-  # HERE-- new
-  steps/train_lda_etc_dmmi.sh --nj 10  --cmd "$train_cmd" \
-   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
-   exp/tri2b exp/tri2b_dmmi_-1.0_0.1
+ # Test iters 2 and 3
+ steps/decode_si.sh --iter 2 --nj 10 --cmd "$decode_cmd" \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi_b0.1/decode_tgpr_dev93.it2
+ steps/decode_si.sh --iter 3 --nj 10 --cmd "$decode_cmd" \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi_b0.1/decode_tgpr_dev93.it3
 
-  utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
-    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_fmmi_b0.1/decode_tgpr_eval92
-
-  steps/train_lda_etc_dmmi.sh --nj 10  --cmd "$train_cmd" \
-   --num-boost -2.0 \
-   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
-   exp/tri2b exp/tri2b_dmmi_-2.0_0.1
-
-)
  # The next 3 commands train and test fMMI+MMI (on top of LDA+MLLT).
- steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
-   --nj 10 --cmd "$train_cmd" 400 data/train_si84 \
-   data/lang exp/tri2b_ali_si84 exp/dubm2b
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 10 --cmd "$train_cmd" \
+   400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b
+
  steps/train_lda_etc_mmi_fmmi.sh \
    --nj 10 --boost 0.1 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \

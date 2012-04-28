@@ -66,11 +66,11 @@ echo "Compiling training graphs"
 $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
   compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
    "ark:sym2int.pl --map-oov $oov_sym -f 2- $lang/words.txt < $sdata/JOB/text|" \
-    "ark:|gzip -c >$dir/JOB.fsts.gz" || exit 1;
+    "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 
 echo "Aligning data equally (pass 0)"
 $cmd JOB=1:$nj $dir/log/align.0.JOB.log \
-  align-equal-compiled "ark:gunzip -c $dir/JOB.fsts.gz|" "$feats" ark,t:-  \| \
+  align-equal-compiled "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" ark,t:-  \| \
     gmm-acc-stats-ali --binary=true $dir/0.mdl "$feats" ark:- \
       $dir/0.JOB.acc || exit 1;
 
@@ -92,11 +92,11 @@ while [ $x -lt $numiters ]; do
     echo "Aligning data"
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
       gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$[$beam*4] $dir/$x.mdl \
-        "ark:gunzip -c $dir/JOB.fsts.gz|" "$feats" "ark,t:|gzip -c >$dir/JOB.ali.gz" \
+        "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" \
        || exit 1;
   fi
   $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-    gmm-acc-stats-ali  $dir/$x.mdl "$feats" "ark:gunzip -c $dir/JOB.ali.gz|" \
+    gmm-acc-stats-ali  $dir/$x.mdl "$feats" "ark:gunzip -c $dir/ali.JOB.gz|" \
       $dir/$x.JOB.acc || exit 1;
 
   $cmd $dir/log/update.$x.log \
@@ -121,5 +121,5 @@ done
 echo Done
 
 # example of showing the alignments:
-# show-alignments data/lang/phones.txt $dir/30.mdl "ark:gunzip -c $dir/0.ali.gz|" | head -4
+# show-alignments data/lang/phones.txt $dir/30.mdl "ark:gunzip -c $dir/ali.0.gz|" | head -4
 

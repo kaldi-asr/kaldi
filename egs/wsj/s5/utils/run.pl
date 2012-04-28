@@ -28,21 +28,21 @@ $jobend=1;
 # First parse an option like JOB=1:4
 
 if (@ARGV > 0) {
-  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)/) {
+  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) {
     $jobname = $1;
     $jobstart = $2;
     $jobend = $3;
     shift;
     if ($jobstart > $jobend) {
-      die "run.pl: invalid job range $ARGV[0]";
+      die "queue.pl: invalid job range $ARGV[0]";
     }
-  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)/) { # e.g. JOB=1.
+  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;
     $jobstart = $2;
     $jobend = $2;
     shift;
-  } elsif ($ARGV[0] =~ m/.+\=.*\:.*/) {
-    print STDERR "Warning: suspicious first argument to run.pl: $ARGV[0]\n";
+  } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
+    print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
 

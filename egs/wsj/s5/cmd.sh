@@ -5,9 +5,9 @@
 # (make sure your --num-jobs options are no more than
 # the number of cpus on your machine.
 
-train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
-decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
-#train_cmd=run.pl
-#decode_cmd=run.pl
+#train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
+#decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
+train_cmd=run.pl
+decode_cmd=run.pl
 
 

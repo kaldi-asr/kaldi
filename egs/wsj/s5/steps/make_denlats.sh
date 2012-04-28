@@ -3,7 +3,7 @@
 
 # Create denominator lattices for MMI/MPE training.
 # This version uses speaker independent features.
-# output in $dir/*.lats.gz
+# output in $dir/lat.*.gz
 
 # Begin configuration.
 nj=4
@@ -74,7 +74,7 @@ else
   utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
 fi
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -f $0/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "align_si.sh: feature type is $feat_type"
 
 case $feat_type in
@@ -105,7 +105,6 @@ else
     if [ -f $dir/.done.$n ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else 
-      touch $dir/.done.$n;
       sdata2=$data/split$nj/$n/split$sub_split;
       if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata/$n $sub_split || exit 1;

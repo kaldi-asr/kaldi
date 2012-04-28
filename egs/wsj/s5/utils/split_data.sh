@@ -78,12 +78,24 @@ utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
  utils/split_scp.pl $utt2spk_opt $data/text $texts
 
 for n in `seq $numsplit`; do
-   utils/utt2spk_to_spk2utt.pl $data/split$numsplit/$n/utt2spk > $data/split$numsplit/$n/spk2utt || exit 1;
+   dsn=$data/split$numsplit/$n
+   utils/utt2spk_to_spk2utt.pl $dsn/utt2spk > $dsn/spk2utt || exit 1;
    # for completeness, also split the spk2gender file
    [ -f $data/spk2gender ] && \
-     utils/filter_scp.pl $data/split$numsplit/$n/spk2utt $data/spk2gender > $data/split$numsplit/$n/spk2gender 
+     utils/filter_scp.pl $dsn/spk2utt $data/spk2gender > $dsn/spk2gender 
    [ -f $data/cmvn.scp ] && \
-     utils/filter_scp.pl $data/split$numsplit/$n/spk2utt $data/cmvn.scp > $data/split$numsplit/$n/cmvn.scp 
+     utils/filter_scp.pl $dsn/spk2utt $data/cmvn.scp > $dsn/cmvn.scp 
+   if [ -f $data/segments ]; then
+     utils/filter_scp.pl $dsn/utt2spk $data/segments > $dsn/segments
+      awk '{print $2;}' $dsn/segments |sort|uniq > $data/tmp.reco # recording-ids.
+     [ -f $data/reco2file_and_channel ] &&
+     utils/filter_scp.pl $data/tmp.reco $data/reco2file_and_channel > $dsn/reco2file_and_channel
+     [ -f $data/wav.scp ] && utils/filter_scp.pl $data/tmp.reco $data/wav.scp  > $dsn/wav.scp
+     rm $data/tmp.reco
+   else # else wav indexed by utterance -> filter on this.
+     [ -f $data/wav.scp ] &&
+       utils/filter_scp.pl $dsn/utt2spk $data/wav.scp > $dsn/wav.scp
+   fi
 done
 
 exit 0

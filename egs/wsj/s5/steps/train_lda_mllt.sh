@@ -37,7 +37,7 @@ lang=$4
 alidir=$5
 dir=$6
 
-for f in $alidir/final.mdl $alidir/1.ali.gz $data/feats.scp $lang/phones.txt; do
+for f in $alidir/final.mdl $alidir/ali.1.gz $data/feats.scp $lang/phones.txt; do
   [ ! -f $f ] && echo "train_lda_mllt.sh: no such file $f" && exit 1;
 done
 
@@ -66,7 +66,7 @@ feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 if [ $stage -le -4 ]; then
   echo "Accumulating LDA statistics."
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
-    ali-to-post "ark:gunzip -c $alidir/JOB.ali.gz|" ark:- \| \
+    ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
       acc-lda --rand-prune=$randprune $alidir/final.mdl "$splicedfeats" ark,s,cs:- \
        $dir/lda.JOB.acc || exit 1;
@@ -80,7 +80,7 @@ if [ $stage -le -3 ]; then
   echo "Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
    acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
-     "ark:gunzip -c $alidir/JOB.ali.gz|" $dir/JOB.treeacc || exit 1;
+     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
   rm $dir/*.treeacc
@@ -115,7 +115,7 @@ if [ $stage -le -1 ]; then
   echo "Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
     convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
-     "ark:gunzip -c $alidir/JOB.ali.gz|" "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+     "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 if [ $stage -le 0 ]; then
@@ -123,7 +123,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
-      "ark:|gzip -c >$dir/JOB.fsts.gz" || exit 1;
+      "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
 
@@ -134,14 +134,14 @@ while [ $x -lt $numiters ]; do
     echo Aligning data
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
       gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/$x.mdl \
-      "ark:gunzip -c $dir/JOB.fsts.gz|" "$feats" \
-      "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+      "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
+      "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
   fi
   if echo $mllt_iters | grep -w $x >/dev/null; then
     if [ $stage -le $x ]; then
       echo "Estimating MLLT"
       $cmd JOB=1:$nj $dir/log/macc.$x.JOB.log \
-        ali-to-post "ark:gunzip -c $dir/JOB.ali.gz|" ark:- \| \
+        ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- \| \
         gmm-acc-mllt --rand-prune=$randprune  $dir/$x.mdl "$feats" ark:- $dir/$x.JOB.macc \
         || exit 1;
@@ -158,7 +158,7 @@ while [ $x -lt $numiters ]; do
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-acc-stats-ali  $dir/$x.mdl "$feats" \
-      "ark,s,cs:gunzip -c $dir/JOB.ali.gz|" $dir/$x.JOB.acc || exit 1;
+      "ark,s,cs:gunzip -c $dir/ali.JOB.gz|" $dir/$x.JOB.acc || exit 1;
     $cmd $dir/log/update.$x.log \
       gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
        "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;

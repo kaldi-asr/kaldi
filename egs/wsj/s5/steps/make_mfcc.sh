@@ -58,7 +58,7 @@ if [ -f $data/segments ]; then
     split_segments="$split_segments $logdir/segments.$n"
   done
 
-  utils/split_scp.pl $segments $split_segments || exit 1;
+  utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
   $cmd JOB=1:$nj $logdir/make_mfcc.JOB.log \

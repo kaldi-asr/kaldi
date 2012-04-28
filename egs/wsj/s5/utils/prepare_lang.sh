@@ -22,17 +22,19 @@
 # This script adds word-position-dependent phones and constructs a host of other
 # derived files, that go in data/lang/.
 
-if [ $# -ne 3 ]; then 
-  echo "usage: utils/prepare_lang.sh <dict-src-dir> <tmp-dir> <lang-dir>"
-  echo "e.g.: utils/prepare_lang.sh data/local/dict data/local/lang data/lang"
+if [ $# -ne 4 ]; then 
+  echo "usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>"
+  echo "e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang"
   exit 1;
 fi
 
-
 srcdir=$1
-tmpdir=$2
-dir=$3
+oov_word=$2
+tmpdir=$3
+dir=$4
 mkdir -p $dir $tmpdir $dir/phones
+
+[ -f path.sh ] && . ./path.sh
 
 # Create $tmpdir/lexicon.txt from $srcdir/lexicon.txt by
 # adding the markers _B, _E, _S, _I depending on word position.
@@ -138,7 +140,7 @@ utils/make_lexicon_fst.pl $tmpdir/lexicon.txt 0.5 SIL | \
 
 # The file oov.txt contains a word that we will map any OOVs to during
 # training.
-echo "<SPOKEN_NOISE>" > $dir/oov.txt || exit 1;
+echo "$oov_word" > $dir/oov.txt || exit 1;
 cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int # integer version of oov
 # symbol, used in some scripts.
 

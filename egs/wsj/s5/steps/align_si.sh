@@ -63,11 +63,11 @@ echo "align_si.sh: aligning data in $data using model from $srcdir, putting alig
 
 if $use_graphs; then 
   [ $nj != "`cat $srcdir/num_jobs`" ] && echo "Mismatch in num-jobs" && exit 1;
-  [ ! -f $srcdir/1.fsts.gz ] && echo "no such file $srcdir/1.fsts.gz" && exit 1;
+  [ ! -f $srcdir/fsts.1.gz ] && echo "no such file $srcdir/fsts.1.gz" && exit 1;
 
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl \
-      "ark:gunzip -c $srcdir/JOB.fsts.gz|" "$feats" "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+      "ark:gunzip -c $srcdir/fsts.JOB.gz|" "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 else
   tra="ark:utils/sym2int.pl --map-oov \"$oov_sym\" -f 2- $lang/words.txt $sdata/JOB/text|";
   # We could just use gmm-align in the next line, but it's less efficient as it compiles the
@@ -75,7 +75,7 @@ else
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
     compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl ark:- \
-      "$feats" "ark:|gzip -c >$dir/JOB.ali.gz" || exit 1;
+      "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 echo "Done aligning data."
