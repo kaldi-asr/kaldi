@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         " fgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
         "The --gselect option (which takes an rspecifier) limits selection to a subset\n"
         "of indices:\n"
-        "e.g.: fgmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >1.gselect.gz\n";
+        "e.g.: fgmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >1.gselect.gz\"\n";
     
     ParseOptions po(usage);
     int32 num_gselect = 50;

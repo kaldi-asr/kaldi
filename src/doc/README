@@ -21,6 +21,7 @@
 #discontinued).
 
 # cd to src/
+doc/make_tools.sh
 doxygen
 cp ~/sourceforge/kaldi/trunk/src/doc/*.pptx ~/sourceforge/kaldi/trunk/src/html/; 
 
