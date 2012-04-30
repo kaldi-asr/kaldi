@@ -81,36 +81,36 @@ fi
 [ $[$num_gauss*2] -gt $intermediate ] && intermediate=$[$num_gauss*2] \
   && echo "Setting intermediate=$intermediate (it was too small)";
 
-echo "Clustering Gaussians in $alidir/final.mdl"
-
-if [ $stage -ge -2 ]; then
+if [ $stage -le -2 ]; then
+ echo "Clustering Gaussians in $alidir/final.mdl"
  $cmd $dir/log/cluster.log \
-  init-ubm --fullcov-ubm=false --intermediate-numcomps=$intermediate \
-    --ubm-numcomps=$num_gauss $alidir/final.mdl $alidir/final.occs $dir/0.dubm   || exit 1;
+  init-ubm --fullcov-ubm=false --intermediate-num-gauss=$intermediate \
+    --ubm-num-gauss=$num_gauss $alidir/final.mdl $alidir/final.occs $dir/0.dubm   || exit 1;
 fi
 
 # Store Gaussian selection indices on disk-- this speeds up the training passes.
-if [ $stage -ge -1 ]; then
+if [ $stage -le -1 ]; then
+  echo Getting Gaussian-selection info
   $cmd JOB=1:$nj $dir/log/gselect.JOB.log \
     gmm-gselect --n=$num_gselect $dir/0.dubm "$feats" \
       "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
-done
-wait
-[ -f $dir/.error ] && echo "Error doing GMM selection" && exit 1;
+fi
 
 for x in `seq 0 $[$num_iters-1]`; do
   echo "Training pass $x"
+  if [ $stage -le $x ]; then
   # Accumulate stats.
-  $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-    gmm-global-acc-stats $weights "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" \
+    $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
+      gmm-global-acc-stats $weights "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" \
       $dir/$x.dubm "$feats" $dir/$x.JOB.acc || exit 1;
-  if [ $x -lt $[$num_iters-1] ]; then # Don't remove low-count Gaussians till last iter,
-    opt="--remove-low-count-gaussians=false" # or gselect info won't be valid any more.
+    if [ $x -lt $[$num_iters-1] ]; then # Don't remove low-count Gaussians till last iter,
+      opt="--remove-low-count-gaussians=false" # or gselect info won't be valid any more.
+    fi
+    $cmd $dir/log/update.$x.log \
+      gmm-global-est $opt $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
+      $dir/$[$x+1].dubm || exit 1;
+    rm $dir/$x.*.acc $dir/$x.dubm
   fi
-  $cmd $dir/log/update.$x.log \
-    gmm-global-est $opt $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
-    $dir/$[$x+1].dubm || exit 1;
-  rm $dir/$x.*.acc $dir/$x.dubm
 done
 
 rm $dir/gselect.*.gz

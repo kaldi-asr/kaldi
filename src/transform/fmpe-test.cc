@@ -141,14 +141,13 @@ void TestFmpe() {
   // correctly.
   BaseFloat like_before_update = GetGmmLike(gmm, feats);
   // Now get stats for update.
-  int32 nr = fmpe.ProjectionTNumRows(), nc = fmpe.ProjectionTNumCols();
-  Matrix<BaseFloat> plus_stats(nr, nc), minus_stats(nr, nc);
+  FmpeStats stats(fmpe);
   Matrix<BaseFloat> deriv;
   GetFeatDeriv(gmm, feats, &deriv);
-  fmpe.AccStats(feats, gselect, deriv, &plus_stats, &minus_stats);
+  fmpe.AccStats(feats, gselect, deriv, NULL, &stats);
   FmpeUpdateOptions update_opts;
   update_opts.learning_rate = 0.001; // so linear assumption is more valid.
-  BaseFloat delta = fmpe.Update(update_opts, plus_stats, minus_stats);
+  BaseFloat delta = fmpe.Update(update_opts, stats);
 
   fmpe.ComputeFeatures(feats, gselect, &fmpe_offset);
   feats.AddMat(1.0, fmpe_offset);

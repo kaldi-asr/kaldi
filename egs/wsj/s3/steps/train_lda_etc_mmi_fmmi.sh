@@ -154,7 +154,7 @@ while [ $x -lt $niters ]; do
       done
       wait
       [ -f $dir/.error ] && echo Error doing fMPE accumulation && exit 1;
-      ( sum-matrices $dir/$x.fmpe_acc $dir/$x.*.fmpe_acc && \
+      ( fmpe-sum-accs $dir/$x.fmpe_acc $dir/$x.*.fmpe_acc && \
         rm $dir/$x.*.fmpe_acc && \
         fmpe-est --learning-rate=$lrate $cur_fmpe $dir/$x.fmpe_acc $dir/$[$x+1].fmpe ) \
        2>$dir/log/est_fmpe.$x.log || exit 1;

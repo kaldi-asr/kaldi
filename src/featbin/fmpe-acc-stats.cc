@@ -53,14 +53,8 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
     // fmpe stats...
-    Matrix<BaseFloat> stats(fmpe.ProjectionTNumRows() * 2,
-                            fmpe.ProjectionTNumCols());
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
-                                    fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
-    
+    FmpeStats fmpe_stats(fmpe);
+
     int32 num_done = 0, num_err = 0;
     
     for (; !feat_reader.Done(); feat_reader.Next()) {
@@ -85,16 +79,24 @@ int main(int argc, char *argv[]) {
       }
       const Matrix<BaseFloat> &feat_deriv = diff_reader.Value(key);
 
-      fmpe.AccStats(feat_in, gselect, feat_deriv, &stats_plus, &stats_minus);
-      
+      if (feat_deriv.NumCols() == feat_in.NumCols()) { // Only direct derivative.
+        fmpe.AccStats(feat_in, gselect, feat_deriv, NULL, &fmpe_stats);
+      } else if (feat_deriv.NumCols() == feat_in.NumCols() * 2) { // +indirect.
+        SubMatrix<BaseFloat> direct_deriv(feat_deriv, 0, feat_deriv.NumRows(),
+                                          0, feat_in.NumCols()),
+            indirect_deriv(feat_deriv, 0, feat_deriv.NumRows(),
+                           feat_in.NumCols(), feat_in.NumCols());
+        fmpe.AccStats(feat_in, gselect, direct_deriv, &indirect_deriv, &fmpe_stats);
+      } else {
+        KALDI_ERR << "Mismatch in dimension of feature derivative.";
+      }
       num_done++;
     }
 
     KALDI_LOG << " Done " << num_done << " utterances, " << num_err
               << " had errors.";
 
-    Output ko(stats_wxfilename, binary);
-    stats.Write(ko.Stream(), binary);
+    WriteKaldiObject(fmpe_stats, stats_wxfilename, binary);
     
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {

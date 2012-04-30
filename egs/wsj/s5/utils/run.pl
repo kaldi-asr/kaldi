@@ -107,7 +107,10 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
 if ($ret != 0) {
   $njobs = $jobend - $jobstart + 1;
   if ($njobs == 1) { print STDERR "run.pl: job writing to $logfile failed\n"; }
-  else { print STDERR "run.pl: writing to $logfile: $numfail / $njobs failed\n"; }
+  else {
+    $logfile =~ s/$jobname/*/g;
+    print STDERR "run.pl: writing to $logfile: $numfail / $njobs failed\n"; 
+  }
 }
 
 

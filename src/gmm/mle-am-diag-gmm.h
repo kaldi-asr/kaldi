@@ -32,7 +32,7 @@ class AccumAmDiagGmm {
   AccumAmDiagGmm() : total_frames_(0.0), total_log_like_(0.0) {}
   ~AccumAmDiagGmm();
 
-  void Read(std::istream &in_stream, bool binary, bool add);
+  void Read(std::istream &in_stream, bool binary, bool add = false);
   void Write(std::ostream &out_stream, bool binary) const;
 
   /// Initializes accumulators for each GMM based on the number of components
@@ -79,6 +79,8 @@ class AccumAmDiagGmm {
   const AccumDiagGmm& GetAcc(int32 index) const;
 
   AccumDiagGmm& GetAcc(int32 index);
+
+  void Scale(BaseFloat scale);
 
   int32 Dim() const {
     return (gmm_accumulators_.empty() || !gmm_accumulators_[0] ?

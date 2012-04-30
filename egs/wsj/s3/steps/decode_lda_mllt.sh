@@ -1,19 +1,8 @@
 #!/bin/bash
 
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2010-2012 Microsoft Corporation  Daniel Povey
 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-# MERCHANTABLITY OR NON-INFRINGEMENT.
-# See the Apache 2 License for the specific language governing permissions and
-# limitations under the License.
+# Apache 2.0
 
 # Decoding script that works with a GMM model and the baseline
 # [e.g. MFCC] features plus cepstral mean subtraction plus
@@ -25,12 +14,16 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 numjobs=1
 jobid=0
-if [ "$1" == "-j" ]; then
-  shift;
-  numjobs=$1;
-  jobid=$2;
-  shift; shift;
-fi
+
+for x in `seq 3`; do
+  if [ "$1" == "-j" ]; then
+    shift;
+    numjobs=$1;
+    jobid=$2;
+    shift; shift;
+  fi
+done
+
 
 if [ $# != 3 ]; then
    echo "Usage: steps/decode_lda_mllt.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"

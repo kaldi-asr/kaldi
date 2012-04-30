@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2011 Microsoft Corporation  Arnab Ghoshal
+# Copyright 2010-2012 Microsoft Corporation  Arnab Ghoshal  Daniel Povey
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@
 nj=4
 cmd=scripts/run.pl
 oldgraphs=false
-for x in 1 2 3; do
+for x in `seq 5`; do
   if [ "$1" == --use-graphs ]; then
     shift;
     oldgraphs=true
@@ -84,32 +84,33 @@ done
 
 # Align all training data using the supplied model.
 
+for n in `get_splits.pl $nj`; do
+  featspart[$n]="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+done
 
 rm $dir/.error 2>/dev/null
 echo "Aligning data from $data"
 if $oldgraphs; then 
   for n in `get_splits.pl $nj`; do
-    feats="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     if [ ! -f $srcdir/$n.fsts.gz ]; then
        echo You specified --use-graphs but no such file $srcdir/$n.fsts.gz
        exit 1;
     fi
     $cmd $dir/align$n.log \
       gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl \
-       "ark:gunzip -c $srcdir/$n.fsts.gz|" "$feats" "ark:|gzip -c >$dir/$n.ali.gz" \
+       "ark:gunzip -c $srcdir/$n.fsts.gz|" "${featspart[$n]}" "ark:|gzip -c >$dir/$n.ali.gz" \
        || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;
 else
   for n in `get_splits.pl $nj`; do
-    feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     # compute integer form of transcripts.
     tra="ark:sym2int.pl --map-oov \"$oov_sym\" --ignore-first-field $lang/words.txt $data/split$nj/$n/text|";
     $cmd $dir/align$n.log \
      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
        gmm-align-compiled $scale_opts --beam=10 --retry-beam=40 $dir/final.mdl ark:- \
-        "$feats" "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
+        "${featspart[$n]}" "ark:|gzip -c >$dir/$n.ali.gz" || touch $dir/.error &
   done
   wait;
   [ -f $dir/.error ] && echo error doing alignment && exit 1;

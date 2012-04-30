@@ -49,7 +49,7 @@
 
 nj=4
 cmd=scripts/run.pl
-for x in 1 2; do
+for x in `seq 5`; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
@@ -102,7 +102,7 @@ fi
 
 # featspart[n] gets overwritten later in the script.
 for n in `get_splits.pl $nj`; do
-  splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
+  splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- |"
   featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/0.mat ark:- ark:- |"
 done
 
@@ -206,7 +206,7 @@ while [ $x -lt $numiters ]; do
            weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- \| \
            gmm-acc-mllt --rand-prune=$randprune  $dir/$x.mdl \
              "${featspart[$n]}" ark:- $dir/$x.$n.macc || touch $dir/.error &
-       featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/$x.mat ark:- ark:- |"       
+       featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/$x.mat ark:- ark:- |"
      done
      wait
      [ -f $dir/.error ] && echo "Error accumulating MLLT stats on iter $x" && exit 1;

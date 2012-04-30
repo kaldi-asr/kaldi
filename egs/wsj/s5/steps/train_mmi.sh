@@ -24,13 +24,13 @@ stage=0
 if [ $# -ne 5 ]; then
   echo "Usage: steps/train_mmi.sh <data> <lang> <ali> <denlats> <exp>"
   echo " e.g.: steps/train_mmi.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
-   echo "Main options (for others, see top of script file)"
-   echo "  --boost <boost-weight>                           # (e.g. 0.1) ... boosted MMI."
-   echo "  --cancel (true|false)                            # cancel stats (true by default)"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --config <config-file>                           # config containing options"
-   echo "  --stage <stage>                                  # stage to do partial re-run from."
-   echo "  --tau                                            # tau for i-smooth to last iter (default 200)"
+  echo "Main options (for others, see top of script file)"
+  echo "  --boost <boost-weight>                           # (e.g. 0.1) ... boosted MMI."
+  echo "  --cancel (true|false)                            # cancel stats (true by default)"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --config <config-file>                           # config containing options"
+  echo "  --stage <stage>                                  # stage to do partial re-run from."
+  echo "  --tau                                            # tau for i-smooth to last iter (default 200)"
   
   exit 1;
 fi
@@ -93,6 +93,9 @@ while [ $x -lt $num_iters ]; do
       gmm-acc-stats2 $cur_mdl "$feats" ark,s,cs:- \
       $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
 
+    n=`echo $dir/{num,den}_acc.$x.*.acc | wc -w`;
+    [ "$n" -ne $[$nj*2] ] && \
+      echo "Wrong number of MMI accumulators $n versus 2*$nj" && exit 1;
     $cmd $dir/log/den_acc_sum.$x.log \
       gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
     rm $dir/den_acc.$x.*.acc

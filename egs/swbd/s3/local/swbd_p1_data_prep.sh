@@ -12,11 +12,8 @@
 
 . path.sh
 
-#check existing directories
-if [ $# != 1 ]; then
-   echo "Usage: swbd_p1_data_prep.sh /path/to/SWBD"
-   exit 1; 
-fi 
+
+[ $# != 1 ] &&  echo "Usage: swbd_p1_data_prep.sh /path/to/SWBD" && exit 1; 
 
 SWBD_DIR=$1
 DIR=$PWD

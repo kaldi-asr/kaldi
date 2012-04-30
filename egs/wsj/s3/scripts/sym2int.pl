@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2010-2012 Microsoft Corporation  Daniel Povey
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,12 +29,15 @@ $symtab = shift @ARGV;
 if(!defined $symtab) {
     die "Usage: sym2int.pl symtab [input transcriptions] > output transcriptions\n";
 }
+
+
 open(F, "<$symtab") || die "Error opening symbol table file $symtab";
 while(<F>) {
     @A = split(" ", $_);
     @A == 2 || die "bad line in symbol table file: $_";
     $sym2int{$A[0]} = $A[1] + 0;
 }
+
 
 $num_warning = 0;
 $max_warning = 20;
@@ -77,6 +80,3 @@ while(<>) {
 
 if($error) { exit(1); }
 else { exit(0); }
-
-
-

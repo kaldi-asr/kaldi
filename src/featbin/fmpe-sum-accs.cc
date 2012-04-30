@@ -1,6 +1,6 @@
-// featbin/fmpe-est.cc
+// featbin/fmpe-sum-accs.cc
 
-// Copyright 2012  Daniel Povey  Yanmin Qian
+// Copyright 2012  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,41 +21,38 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using kaldi::int32;
   try {
     const char *usage =
-        "Do one iteration of learning (modified gradient descent)\n"
-        "on fMPE transform\n"
-        "Usage: fmpe-est [options...] <fmpe-in> <stats-in> <fmpe-out>\n"
-        "E.g. fmpe-est 1.fmpe 1.accs 2.fmpe\n";
+        "Sum fMPE stats\n"
+        "Usage: fmpe-sum-accs [options...] <accs-out> <stats-in1> <stats-in2> ... \n"
+        "E.g. fmpe-sum-accs 1.accs 1.1.accs 1.2.accs 1.3.accs 1.4.accs\n";
 
     ParseOptions po(usage);
-    FmpeUpdateOptions opts;
     bool binary = true;
-    po.Register("binary", &binary, "If true, output fMPE object in "
+    po.Register("binary", &binary, "If true, output fMPE stats in "
                 "binary mode.");
-    opts.Register(&po);
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() < 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string fmpe_rxfilename = po.GetArg(1),
-        stats_rxfilename = po.GetArg(2),
-        fmpe_wxfilename = po.GetArg(3);
+    std::string stats_wxfilename = po.GetArg(1);
 
-    Fmpe fmpe;
-    ReadKaldiObject(fmpe_rxfilename, &fmpe);
     FmpeStats stats;
-    ReadKaldiObject(stats_rxfilename, &stats);
+    for (int32 arg = 2; arg <= po.NumArgs(); arg++) {
+      std::string stats_rxfilename = po.GetArg(arg);
+      bool binary;
+      Input ki(stats_rxfilename, &binary);
+      stats.Read(ki.Stream(), binary, true); // true == sum accs.
+    }
 
-    fmpe.Update(opts, stats);
-
-    WriteKaldiObject(fmpe, fmpe_wxfilename, binary);
-
-    KALDI_LOG << "Updated fMPE object and wrote to "
-              << fmpe_wxfilename;
+    WriteKaldiObject(stats, stats_wxfilename, binary);
+    
+    KALDI_LOG << "Summed " << (po.NumArgs()-1) << " fMPE stats and wrote to "
+              << stats_wxfilename;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

@@ -78,7 +78,7 @@ class AccumDiagGmm {
   void Write(std::ostream &out_stream, bool binary) const;
 
   /// Allocates memory for accumulators
-  void Resize(int32 num_comp, int32 dim, GmmFlagsType flags);
+  void Resize(int32 num_gauss, int32 dim, GmmFlagsType flags);
   /// Calls ResizeAccumulators with arguments based on gmm
   void Resize(const DiagGmm &gmm, GmmFlagsType flags);
 
@@ -130,12 +130,12 @@ class AccumDiagGmm {
   /// same dimension and number of components as the current accumulator.
   void SmoothWithModel(BaseFloat tau, const DiagGmm& src_gmm);
 
-  // Accessors
+  // Const accessors
   const GmmFlagsType Flags() const { return flags_; }
-  const Vector<double>& occupancy() const { return occupancy_; }
-  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
-  const Matrix<double>& variance_accumulator() const { return variance_accumulator_; }
-
+  const VectorBase<double>& occupancy() const { return occupancy_; }
+  const MatrixBase<double>& mean_accumulator() const { return mean_accumulator_; }
+  const MatrixBase<double>& variance_accumulator() const { return variance_accumulator_; }
+  
  private:
   int32 dim_;
   int32 num_comp_;
@@ -174,7 +174,7 @@ BaseFloat MlObjective(const DiagGmm& gmm,
 int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
                            VectorBase<double> *var);
 int32 FloorVariance(const BaseFloat min_variance,
-                           VectorBase<double> *var);
+                    VectorBase<double> *var);
 
 }  // End namespace kaldi
 

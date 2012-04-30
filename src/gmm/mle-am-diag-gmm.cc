@@ -212,4 +212,13 @@ void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
   }
 }
 
+void AccumAmDiagGmm::Scale(BaseFloat scale) {
+  for (int32 i = 0; i < NumAccs(); i++) {
+    AccumDiagGmm &acc = GetAcc(i);
+    acc.Scale(scale, acc.Flags());
+  }
+  total_frames_ *= scale;
+  total_log_like_ *= scale;
+}
+
 }  // namespace kaldi

@@ -177,13 +177,26 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
     exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi_b0.1/decode_tgpr_dev93.it3
 
  # The next 3 commands train and test fMMI+MMI (on top of LDA+MLLT).
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 10 --cmd "$train_cmd" \
+ steps/train_diag_ubm.sh --silence-weight 0.5 --nj 10 --cmd "$train_cmd" \
    400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b
 
- steps/train_lda_etc_mmi_fmmi.sh \
-   --nj 10 --boost 0.1 --cmd "$train_cmd" \
+ steps/train_mmi_fmmi.sh --boost 0.1 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
-   exp/tri2b exp/tri2b_fmmi_b0.1
+   exp/tri2b_fmmi_b0.1
+
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 4 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it4 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 5 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it5 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 6 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it6 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 7 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it7 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it8 &
+
+# I AM HERE
+exit 1;
  utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fmpe.sh \
    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_fmmi_b0.1/decode_tgpr_eval92
 

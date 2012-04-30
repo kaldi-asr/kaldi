@@ -12,12 +12,13 @@ Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
   s3: 
-   This Switchboard recipe is currently a work in progress, but the
-   parts of it that are there should run, and we are trying to keep
-   the RESULTS file up to date.
-   Note: this is quite similar to the s3/ recipes for WSJ; the
-   scripts that are invoked are the same, except for the data
-   preparation.
+   This Switchboard recipe is not fully state-of-the-art, mostly because
+   the language model and dictionary do not use any external sources of
+   data, just what is in the LDC corpus.  As a result there is a
+   high-perplexity language model and small dictionary.
 
+  s5:
+   This is the "new-new-style" recipe.  It's currently (late April 2012)
+   being worked on actively and may change substantially.
 
 

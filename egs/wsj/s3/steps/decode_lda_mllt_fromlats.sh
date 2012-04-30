@@ -83,7 +83,7 @@ fi
 requirements="$mydata/feats.scp $srcdir/final.mdl $srcdir/final.mat $lang/G.fst $lang/L_disambig.fst $lang/phones_disambig.txt $olddir/lat.$jobid.gz"
 for f in $requirements; do
   if [ ! -f $f ]; then
-     echo "decode_lda_mllt.sh: no such file $f";
+     echo "decode_lda_mllt_fromlats.sh: no such file $f";
      exit 1;
   fi
 done

@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
       num_frames += feats.NumRows();
     }
 
-    KALDI_LOG << "Done " << num_done << " lattices, \#frames is " << num_frames;
+    KALDI_LOG << "Done " << num_done << " lattices, #frames is " << num_frames;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

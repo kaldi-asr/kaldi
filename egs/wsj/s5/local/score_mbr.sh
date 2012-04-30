@@ -32,7 +32,7 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/t
 
 # We submit the jobs separately, not as an array, because it's hard
 # to get the inverse of the LM scales.
-rm $dir/.error
+rm $dir/.error 2>/dev/null
 for inv_acwt in `seq 9 20`; do
   acwt=`perl -e "print (1.0/$inv_acwt);"`
   $cmd $dir/scoring/rescore_mbr.${inv_acwt}.log \

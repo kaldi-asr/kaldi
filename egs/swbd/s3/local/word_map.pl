@@ -1,4 +1,6 @@
 #!/usr/bin/perl
+
+
 while(<>) {
   $w = $_; chop $w; $w_orig = $w;
   $w =~ s:(|\-)^\[LAUGHTER-(.+)\](|\-)$:$1$2$3:;  # e.g. [LAUGHTER-STORY] -> STORY;
@@ -18,4 +20,3 @@ while(<>) {
   $w =~ s:_\d$::;  # e.g. THEM_1 -> THEM
   print "$w_orig $w\n";
 }
-

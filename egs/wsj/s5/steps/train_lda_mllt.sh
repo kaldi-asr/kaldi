@@ -23,7 +23,7 @@ retry_beam=40
 if [ $# != 6 ]; then
    echo "Usage: steps/train_lda_mllt.sh [options] <#leaves> <#gauss> <data> <lang> <alignments> <dir>"
    echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
-   echo "main options (for others, see top of script file)"
+   echo "Main options (for others, see top of script file)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --config <config-file>                           # config containing options"
    echo "  --stage <stage>                                  # stage to do partial re-run from."

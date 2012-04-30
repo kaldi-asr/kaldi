@@ -1,6 +1,6 @@
 // gmm/am-diag-gmm.cc
 
-// Copyright 2012   Arnab Ghoshal
+// Copyright 2012   Arnab Ghoshal  Daniel Povey
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Georg Stemmer
 
@@ -237,14 +237,14 @@ void AmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
 }
 
 void UbmClusteringOptions::Check() {
-  if (ubm_numcomps > intermediate_numcomps)
-    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps
-              << " > --intermediate-numcomps=" << intermediate_numcomps;
-  if (ubm_numcomps > max_am_gauss)
-    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps
+  if (ubm_num_gauss > intermediate_num_gauss)
+    KALDI_ERR << "Invalid parameters: --ubm-num_gauss=" << ubm_num_gauss
+              << " > --intermediate-num_gauss=" << intermediate_num_gauss;
+  if (ubm_num_gauss > max_am_gauss)
+    KALDI_ERR << "Invalid parameters: --ubm-num_gauss=" << ubm_num_gauss
               << " > --max-am-gauss=" << max_am_gauss;
-  if (ubm_numcomps <= 0)
-    KALDI_ERR << "Invalid parameters: --ubm-numcomps=" << ubm_numcomps;
+  if (ubm_num_gauss <= 0)
+    KALDI_ERR << "Invalid parameters: --ubm-num_gauss=" << ubm_num_gauss;
   if (cluster_varfloor <= 0)
     KALDI_ERR << "Invalid parameters: --cluster-varfloor="
               << cluster_varfloor;
@@ -335,37 +335,37 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
 
   // This is an unlikely operating scenario, no need to handle this in a more
   // optimized fashion.
-  if (opts.intermediate_numcomps > am.NumGauss()) {
-    KALDI_WARN << "Intermediate numcomps " << opts.intermediate_numcomps
+  if (opts.intermediate_num_gauss > am.NumGauss()) {
+    KALDI_WARN << "Intermediate num_gauss " << opts.intermediate_num_gauss
                << " is more than num-gauss " << am.NumGauss()
                << ", reducing it to " << am.NumGauss();
-    opts.intermediate_numcomps = am.NumGauss();
+    opts.intermediate_num_gauss = am.NumGauss();
   }
 
   // The compartmentalized clusterer used below does not merge compartments.
-  if (opts.intermediate_numcomps < num_clust_states) {
-    KALDI_WARN << "Intermediate numcomps " << opts.intermediate_numcomps
+  if (opts.intermediate_num_gauss < num_clust_states) {
+    KALDI_WARN << "Intermediate num_gauss " << opts.intermediate_num_gauss
                << " is less than # of preclustered states " << num_clust_states
                << ", increasing it to " << num_clust_states;
-    opts.intermediate_numcomps = num_clust_states;
+    opts.intermediate_num_gauss = num_clust_states;
   }
     
   KALDI_VLOG(1) << "Merging from " << am.NumGauss() << " Gaussians in the "
-                << "acoustic model, down to " << opts.intermediate_numcomps
+                << "acoustic model, down to " << opts.intermediate_num_gauss
                 << " Gaussians.";
   vector< vector<Clusterable*> > gauss_clusters_out;
   ClusterBottomUpCompartmentalized(state_clust_gauss, kBaseFloatMax,
-                                   opts.intermediate_numcomps,
+                                   opts.intermediate_num_gauss,
                                    &gauss_clusters_out, NULL);
   for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index)
     DeletePointers(&state_clust_gauss[clust_index]);
 
   // Next, put the remaining clustered Gaussians into a single GMM.
-  KALDI_VLOG(1) << "Putting " << opts.intermediate_numcomps << " Gaussians "
+  KALDI_VLOG(1) << "Putting " << opts.intermediate_num_gauss << " Gaussians "
                 << "into a single GMM for final merge step.";
-  Matrix<BaseFloat> tmp_means(opts.intermediate_numcomps, dim);
-  Matrix<BaseFloat> tmp_vars(opts.intermediate_numcomps, dim);
-  Vector<BaseFloat> tmp_weights(opts.intermediate_numcomps);
+  Matrix<BaseFloat> tmp_means(opts.intermediate_num_gauss, dim);
+  Matrix<BaseFloat> tmp_vars(opts.intermediate_num_gauss, dim);
+  Vector<BaseFloat> tmp_weights(opts.intermediate_num_gauss);
   Vector<BaseFloat> tmp_vec(dim);
   int32 gauss_index = 0;
   for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index) {
@@ -386,18 +386,18 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
     }
     DeletePointers(&(gauss_clusters_out[clust_index]));
   }
-  tmp_gmm.Resize(opts.intermediate_numcomps, dim);
+  tmp_gmm.Resize(opts.intermediate_num_gauss, dim);
   tmp_weights.Scale(1.0/tmp_weights.Sum());
   tmp_gmm.SetWeights(tmp_weights);
   tmp_vars.InvertElements();  // need inverse vars...
   tmp_gmm.SetInvVarsAndMeans(tmp_vars, tmp_means);
 
   // Finally, cluster to the desired number of Gaussians in the UBM.
-  if (opts.ubm_numcomps < tmp_gmm.NumGauss()) {
-    tmp_gmm.Merge(opts.ubm_numcomps);
+  if (opts.ubm_num_gauss < tmp_gmm.NumGauss()) {
+    tmp_gmm.Merge(opts.ubm_num_gauss);
     KALDI_VLOG(1) << "Merged down to " << tmp_gmm.NumGauss() << " Gaussians.";
   } else {
-    KALDI_WARN << "Not merging Gaussians since " << opts.ubm_numcomps
+    KALDI_WARN << "Not merging Gaussians since " << opts.ubm_num_gauss
                << " < " << tmp_gmm.NumGauss();
   }
   ubm_out->CopyFromDiagGmm(tmp_gmm);

@@ -85,7 +85,7 @@ steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
 
 steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
     2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
-
+  
 wait; # or the mono mkgraph.sh might be writing 
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
 scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
@@ -150,6 +150,7 @@ scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fromlats.sh \
 steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
   --use-graphs data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84  || exit 1;
 
+
 # Train and test MMI (and boosted MMI) on tri2b system.
 steps/make_denlats_lda_etc.sh --num-jobs 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 || exit 1;
@@ -165,6 +166,22 @@ steps/train_lda_etc_mmi.sh --num-jobs 10 --boost 0.1 --cmd "$train_cmd" \
 scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_b0.1/decode_tgpr_eval92 || exit 1;
 
+(
+  # Differenced MMI example.  Note-- with these parameters, it isn't
+  # better than regular boosted MMI.
+  steps/train_lda_etc_dmmi.sh --num-jobs 10  --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
+   exp/tri2b exp/tri2b_dmmi_-1.0_0.1
+
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
+    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_dmmi_-1.0_0.1/decode_tgpr_eval92
+
+  steps/train_lda_etc_dmmi.sh --num-jobs 10  --cmd "$train_cmd" \
+   --num-boost -2.0 \
+   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
+   exp/tri2b exp/tri2b_dmmi_-2.0_0.1
+
+)
  # The next 3 commands train and test fMMI+MMI (on top of LDA+MLLT).
  steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
    --num-jobs 10 --cmd "$train_cmd" 400 data/train_si84 \
