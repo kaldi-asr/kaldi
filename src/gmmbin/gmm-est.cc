@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     MleDiagGmmOptions gmm_opts;
 
     const char *usage =
-        "Accumulate stats for GMM training.\n"
+        "Do Maximum Likelihood re-estimation of GMM-based acoustic model\n"
         "Usage:  gmm-est [options] <model-in> <stats-in> <model-out>\n"
         "e.g.: gmm-est 1.mdl 1.acc 2.mdl\n";
 

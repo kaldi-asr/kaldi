@@ -60,8 +60,8 @@ void GetStatsDerivative(const AmDiagGmm &gmm,
 // trained, but we may have changed the features or the domain or something
 // of that nature, and we want to update the model but preserve the discriminative
 // training (viewed as an offset).
-void DoRescalingUpdate(const AccumDiagGmm &old_ml_accs,
-                       const AccumDiagGmm &new_ml_accs,
+void DoRescalingUpdate(const AccumAmDiagGmm &old_ml_accs,
+                       const AccumAmDiagGmm &new_ml_accs,
                        BaseFloat min_variance,
                        BaseFloat min_gaussian_occupancy,
                        AmDiagGmm *gmm);

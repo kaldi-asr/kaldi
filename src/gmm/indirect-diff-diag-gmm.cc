@@ -63,7 +63,7 @@ void GetSingleStatsDerivative(
   // then all this is equivalent to what was in the original fMPE paper.  It's just
   // extended to make sense outside of that scenario where you're doing ML.
   
-  double diff_wrt_stats_mean = diff_wrt_model_mean; // This comes from eq. 1.
+  double diff_wrt_stats_mean = diff_wrt_model_mean; // This comes from eq. 1 above.
   double diff_wrt_stats_var;
   if (model_var <= min_variance*1.01) {
     diff_wrt_stats_var = 0.0; // model would be "pinned" at minimum variance.
@@ -93,8 +93,8 @@ void GetStatsDerivative(const DiagGmm &gmm,
                         const AccumDiagGmm &num_acc,
                         const AccumDiagGmm &den_acc,
                         const AccumDiagGmm &ml_acc,
-                        BaseFloat min_gaussian_occupancy,
                         BaseFloat min_variance,
+                        BaseFloat min_gaussian_occupancy,
                         AccumDiagGmm *out_accs) {
   out_accs->Resize(gmm, kGmmAll);
   int32 num_gauss = gmm.NumGauss(), dim = gmm.Dim();
@@ -126,7 +126,7 @@ void GetStatsDerivative(const DiagGmm &gmm,
                  << num_count << ", " << den_count << ", " << ml_count;
     } else {
       double disc_count = num_count - den_count;
-      for (int32 d = 0; dim < dim; dim++) {
+      for (int32 d = 0; d < dim; d++) {
         double disc_x_acc = num_acc.mean_accumulator()(gauss, d)
             - (have_den_stats ? den_acc.mean_accumulator()(gauss, d) : 0.0),
             disc_x2_acc = num_acc.variance_accumulator()(gauss, d)
@@ -156,8 +156,8 @@ void GetStatsDerivative(const AmDiagGmm &gmm,
                         const AccumAmDiagGmm &num_accs, // for MMI, would equal ml accs.
                         const AccumAmDiagGmm &den_accs,
                         const AccumAmDiagGmm &ml_accs,
-                        BaseFloat min_gaussian_occupancy,
                         BaseFloat min_variance,
+                        BaseFloat min_gaussian_occupancy,
                         AccumAmDiagGmm *out_accs) {
   out_accs->Init(gmm, kGmmAll);
   int32 num_pdfs = gmm.NumPdfs();
@@ -166,7 +166,7 @@ void GetStatsDerivative(const AmDiagGmm &gmm,
   KALDI_ASSERT(ml_accs.NumAccs() == num_pdfs);
   for (int32 pdf = 0; pdf < num_pdfs; pdf++)
     GetStatsDerivative(gmm.GetPdf(pdf), num_accs.GetAcc(pdf), den_accs.GetAcc(pdf),
-                       ml_accs.GetAcc(pdf), min_gaussian_occupancy, min_variance,
+                       ml_accs.GetAcc(pdf), min_variance, min_gaussian_occupancy,
                        &(out_accs->GetAcc(pdf)));
   
 }
@@ -174,9 +174,11 @@ void GetStatsDerivative(const AmDiagGmm &gmm,
 
 void DoRescalingUpdate(const AccumDiagGmm &old_ml_acc,
                        const AccumDiagGmm &new_ml_acc,
-                       BaseFloat min_gaussian_occupancy,
                        BaseFloat min_variance,
-                       DiagGmm *gmm) {
+                       BaseFloat min_gaussian_occupancy,
+                       DiagGmm *gmm,
+                       double *tot_count,
+                       double *tot_divergence) {
   int32 num_gauss = gmm->NumGauss(), dim = gmm->Dim();
   KALDI_ASSERT(old_ml_acc.NumGauss() == num_gauss &&
                old_ml_acc.Dim() == dim);
@@ -197,6 +199,7 @@ void DoRescalingUpdate(const AccumDiagGmm &old_ml_acc,
                  << old_ml_count << ", " << new_ml_count;
       continue;
     }
+    *tot_count += new_ml_count;
     for (int32 d = 0; d < dim; d++) {
       double old_model_mean = gmm_normal.means_(gauss, d),
           old_model_var = gmm_normal.vars_(gauss, d),
@@ -209,6 +212,13 @@ void DoRescalingUpdate(const AccumDiagGmm &old_ml_acc,
           new_model_mean = old_model_mean + new_ml_mean - old_ml_mean,
           new_model_var = std::max(static_cast<double>(min_variance),
                                    old_model_var * new_ml_var / old_ml_var);
+      double divergence = 
+          0.5 *(((new_model_mean-old_model_mean)*(new_model_mean-old_model_mean) +
+                 new_model_var - old_model_var)/old_model_var +
+                log(old_model_var / new_model_var));
+      if (divergence < 0.0)
+        KALDI_WARN << "Negative divergence " << divergence;
+      *tot_divergence += divergence * new_ml_count;
       gmm_normal.means_(gauss, d) = new_model_mean;
       gmm_normal.vars_(gauss, d) = new_model_var;
     }
@@ -219,15 +229,21 @@ void DoRescalingUpdate(const AccumDiagGmm &old_ml_acc,
 
 void DoRescalingUpdate(const AccumAmDiagGmm &old_ml_accs,
                        const AccumAmDiagGmm &new_ml_accs,
-                       BaseFloat min_gaussian_occupancy,
                        BaseFloat min_variance,
-                       AmDiagGmm *gmm) {
-  int32 num_pdfs = gmm->NumPdfs();
+                       BaseFloat min_gaussian_occupancy,
+                       AmDiagGmm *am_gmm) {
+  int32 num_pdfs = am_gmm->NumPdfs();
   KALDI_ASSERT(old_ml_accs.NumAccs() == num_pdfs);
   KALDI_ASSERT(new_ml_accs.NumAccs() == num_pdfs);
+  double tot_count = 0.0, tot_divergence = 0.0;
   for (int32 pdf = 0; pdf < num_pdfs; pdf++)
     DoRescalingUpdate(old_ml_accs.GetAcc(pdf), new_ml_accs.GetAcc(pdf),
-                      min_gaussian_occupancy, min_variance, &gmm->GetPdf(pdf));
+                      min_variance, min_gaussian_occupancy, &am_gmm->GetPdf(pdf),
+                      &tot_count, &tot_divergence);
+  KALDI_LOG << "K-L divergence from old to new model is "
+            << (tot_divergence/tot_count) << " over "
+            << tot_count << " frames.";
+  am_gmm->ComputeGconsts();
 }
 
 

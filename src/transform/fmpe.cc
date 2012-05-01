@@ -564,7 +564,11 @@ BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
       // Note: we have to do some messing about with double-precision here
       // because the stats only come in double precision.
       this_direct_deriv.AddVecVec(-1.0, this_feat, temp_vec, 1.0);
-      if (model_diff != NULL) { // We need to get the indirect
+      if (model_diff != NULL && weight > 0.0) { // We need to get the indirect diff.
+        // This "weight > 0.0" checks that this is the numerator stats, as the
+        // fMPE indirect diff applies only to the ML stats-- CAUTION, this
+        // code will only work as-is for fMMI (and the stats should not be
+        // canceled), due to the assumption that ML stats == num stats.
         Vector<double> gauss_posteriors_dbl(gauss_posteriors);
         const AccumDiagGmm &deriv_acc = model_diff->GetAcc(pdf_id);
         // part of the derivative.  Note: we could just store the direct and
@@ -642,21 +646,29 @@ void FmpeStats::DoChecks() {
     return;
   }
   int32 dim = checks.NumCols();
-  Vector<double> shift_check(dim), scale_check(dim);
+  Vector<double> shift_check(dim), shift_check2(dim), scale_check(dim), scale_check2(dim);
   for (int32 d = 0; d < dim; d++) {
     // shiftnumerator = direct+indirect deriv-- should be zero.
     double shift_num = checks(0, d) - checks(1, d) + checks(2, d) - checks(3, d),
-        shift_den = checks(0, d) + checks(1, d) + checks(2, d) + checks(3, d);
+        shift_den = checks(0, d) + checks(1, d) + checks(2, d) + checks(3, d),
+        shift_den2 = fabs(checks(0, d) - checks(1, d)) + fabs(checks(2, d) - checks(3, d));
     shift_check(d) = shift_num / shift_den;
+    shift_check2(d) = shift_num / shift_den2;
     double scale_num = checks(4, d) - checks(5, d) + checks(6, d) - checks(7, d),
-        scale_den = checks(4, d) + checks(5, d) + checks(6, d) + checks(7, d);
+        scale_den = checks(4, d) + checks(5, d) + checks(6, d) + checks(7, d),
+        scale_den2 = fabs(checks(4, d) - checks(5, d)) + fabs(checks(6, d) - checks(7, d));
     scale_check(d) = scale_num / scale_den;
+    scale_check2(d) = scale_num / scale_den2;
   }
 
-  KALDI_LOG << "Shift-check is as follows (should be in range +- 0.1 or less)."
+  KALDI_LOG << "Shift-check is as follows (should be in range +- 0.01 or less)."
             << shift_check;
-  KALDI_LOG << "Scale-check is as follows (should be in range +- 0.1 or less)."
+  KALDI_LOG << "Scale-check is as follows (should be in range +- 0.01 or less)."
             << scale_check;
+  KALDI_LOG << "Shift-check(2) is as follows: most elements should be in range +-0.1: "
+            << shift_check2;
+  KALDI_LOG << "Scale-check(2) is as follows: most elements should be in range +-0.1: "
+            << scale_check2;
 }
 
 void FmpeStats::Write(std::ostream &os, bool binary) const {

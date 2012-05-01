@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     std::string model_derivative_rxfilename;
     po.Register("binary", &binary, "If true, write stats in binary mode.");
     po.Register("model-derivative", &model_derivative_rxfilename,
-                "GMM-accs file containing model derivative [note: contains no transition stats].");
+                "GMM-accs file containing model derivative [note: contains no transition stats].  Used for indirect differential.  Warning: this will only work correctly in the case of MMI/BMMI objective function, with non-canceled stats.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 6) {

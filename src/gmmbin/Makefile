@@ -22,7 +22,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
            gmm-global-copy gmm-align-compiled-plusphones gmm-get-feat-deriv \
            gmm-fmpe-acc-stats gmm-acc-stats2 gmm-init-model-flat gmm-info \
-           gmm-scale-accs gmm-get-stats-deriv
+           gmm-scale-accs gmm-get-stats-deriv gmm-est-rescale
 
 OBJFILES =
 

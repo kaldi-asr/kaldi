@@ -1,6 +1,6 @@
 // bin/compile-train-graphs-fsts.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     // need VectorFst because we will change it by adding subseq symbol.
     VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.
     {
-      std::ifstream is(lex_rxfilename.c_str());
+      std::ifstream is(lex_rxfilename.c_str(), std::ios_base::in|std::ios_base::binary);
       if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_rxfilename;
       lex_fst =
           VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_rxfilename));

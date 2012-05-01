@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) {
     FmpeStats stats;
     ReadKaldiObject(stats_rxfilename, &stats);
 
+    stats.DoChecks(); // checks certain checksums.
     fmpe.Update(opts, stats);
 
     WriteKaldiObject(fmpe, fmpe_wxfilename, binary);

@@ -249,6 +249,10 @@ class Fmpe {
 /// as an approximation to the objective function.
 /// Last two parameters are optional.  See GetStatsDerivative() for
 /// or fMPE paper (ICASSP, 2005) more info on indirect derivative.
+/// Caution: if you supply the last two parameters, this function only
+/// works in the MMI case as it assumes the stats with positive weight
+/// are numerator == ml stats-- this is only the same thing in the MMI
+/// case, not fMPE.
 BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
                                    const TransitionModel &trans_model,
                                    const Posterior &posterior,
