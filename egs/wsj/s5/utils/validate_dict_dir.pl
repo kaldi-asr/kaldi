@@ -10,10 +10,11 @@ if(@ARGV != 1) {
 
 $dict = shift @ARGV;
 
+$exit = 0;
 # Checking silence_phones.txt -------------------------------
 print "Checking $dict/silence_phones.txt ...\n";
--s "$dict/silence_phones.txt" || die "--> ERROR: $dict/silence_phones.txt is empty or not exists\n";
-open(S, "<$dict/silence_phones.txt") || die "--> ERROR: fail to open $dict/silence_phones.txt\n";
+if(-z "$dict/silence_phones.txt") {print "--> ERROR: $dict/silence_phones.txt is empty or not exists\n"; exit 1;}
+if(!open(S, "<$dict/silence_phones.txt")) {print "--> ERROR: fail to open $dict/silence_phones.txt\n"; exit 1;}
 $idx = 1;
 %silence = ();
 $success = 1;
@@ -22,7 +23,7 @@ while(<S>) {
     chomp;
     my @col = split(" ", $_);
     foreach(0 .. @col-1) {
-        if($silence{@col[$_]}) {print "--> ERROR: phone \"@col[$_]\" appeared more than one time in $dict/silence_phones.txt (line $idx)\n"; $success = 0;}
+        if($silence{@col[$_]}) {$exit = 1; print "--> ERROR: phone \"@col[$_]\" duplicates in $dict/silence_phones.txt (line $idx)\n"; $success = 0;}
         else {$silence{@col[$_]} = 1;}
     }
     $idx ++;
@@ -33,8 +34,8 @@ print "\n";
 
 # Checking nonsilence_phones.txt -------------------------------
 print "Checking $dict/nonsilence_phones.txt ...\n";
--s "$dict/nonsilence_phones.txt" || die "--> ERROR: $dict/nonsilence_phones.txt is empty or not exists\n";
-open(NS, "<$dict/nonsilence_phones.txt") || die "--> ERROR: fail to open $dict/nonsilence_phones.txt\n";
+if(-z "$dict/nonsilence_phones.txt") {print "--> ERROR: $dict/nonsilence_phones.txt is empty or not exists\n"; exit 1;}
+if(!open(NS, "<$dict/nonsilence_phones.txt")) {print "--> ERROR: fail to open $dict/nonsilence_phones.txt\n"; exit 1;}
 $idx = 1;
 %nonsilence = ();
 $success = 1;
@@ -43,7 +44,7 @@ while(<NS>) {
     chomp;
     my @col = split(" ", $_);
     foreach(0 .. @col-1) {
-        if($nonsilence{@col[$_]}) {print "--> ERROR: phone \"@col[$_]\" appeared more than one time in $dict/nonsilence_phones.txt (line $idx)\n"; $success = 0;}
+        if($nonsilence{@col[$_]}) {$exit = 1; print "--> ERROR: phone \"@col[$_]\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; $success = 0;}
         else {$nonsilence{@col[$_]} = 1;}
     }
     $idx ++;
@@ -68,15 +69,14 @@ sub intersect {
 
 print "Checking disjoint: silence_phones.txt, nonsilence_phones.txt\n";
 @itset = intersect(\%silence, \%nonsilence);
-print @itset;
 if(@itset == 0) {print "--> disjoint property is OK.\n";}
-else {print "--> ERROR: silence_phones.txt and nonsilence_phones.txt has overlop: "; foreach(@itset) {print "$_ ";} print "\n";}
+else {$exit = 1; print "--> ERROR: silence_phones.txt and nonsilence_phones.txt has overlop: "; foreach(@itset) {print "$_ ";} print "\n";}
 print "\n";
 
 # Checking lexicon.txt -------------------------------
 print "Checking $dict/lexicon.txt\n";
--s "$dict/lexicon.txt" || print "--> ERROR: $dict/lexicon.txt is empty or not exists\n";
-open(L, "<$dict/lexicon.txt") || print "--> ERROR: fail to open $dict/lexicon.txt\n";
+if(-z "$dict/lexicon.txt") {$exit = 1; print "--> ERROR: $dict/lexicon.txt is empty or not exists\n";}
+if(!open(L, "<$dict/lexicon.txt")) {$exit = 1; print "--> ERROR: fail to open $dict/lexicon.txt\n";}
 $idx = 1;
 $success = 1;
 print "--> reading $dict/lexicon.txt\n";
@@ -86,7 +86,7 @@ while(<L>) {
     $word = shift @col;
     foreach(0 .. @col-1) {
         if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-            print "--> phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
+            $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
             $success = 0;
         }
     }
@@ -99,7 +99,7 @@ print "\n";
 # Checking extra_questions.txt -------------------------------
 print "Checking $dict/extra_questions.txt ...\n";
 if(-s "$dict/extra_questions.txt") {
-    open(EX, "<$dict/extra_questions.txt") || print "--> ERROR: fail to open $dict/extra_questions.txt\n";
+    if(!open(EX, "<$dict/extra_questions.txt")) {$exit = 1; print "--> ERROR: fail to open $dict/extra_questions.txt\n";}
     $idx = 1;
     $success = 1;
     print "--> reading $dict/extra_questions.txt\n";
@@ -108,7 +108,7 @@ if(-s "$dict/extra_questions.txt") {
         my @col = split(" ", $_);
         foreach(0 .. @col-1) {
             if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-                print "--> phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
+                $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
                 $success = 0;
             }
         }
@@ -117,4 +117,5 @@ if(-s "$dict/extra_questions.txt") {
     close(EX);
     $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else {print "--> $dict/extra_phones.txt is empty\n";}
-print "\n";
+
+if($exit == 1) {exit 1;}
