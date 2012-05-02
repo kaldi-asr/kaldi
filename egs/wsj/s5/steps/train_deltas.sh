@@ -8,8 +8,8 @@ stage=-4 #  This allows restarting after partway, when something when wrong.
 cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="10 20 30";
-numiters=35    # Number of iterations of training
-maxiterinc=25 # Last iter to increase #Gauss on.
+num_iters=35    # Number of iterations of training
+max_iter_inc=25 # Last iter to increase #Gauss on.
 beam=10
 retry_beam=40
 # End configuration.
@@ -39,7 +39,7 @@ for f in $alidir/final.mdl $alidir/ali.1.gz $data/feats.scp $lang/phones.txt; do
 done
 
 numgauss=$numleaves
-incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
+incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter increment for #Gauss
 oov=`cat $lang/oov.int` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 nj=`cat $alidir/num_jobs` || exit 1;
@@ -100,7 +100,7 @@ if [ $stage -le 0 ]; then
 fi
 
 x=1
-while [ $x -lt $numiters ]; do
+while [ $x -lt $num_iters ]; do
   echo Training pass $x
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
@@ -119,7 +119,7 @@ while [ $x -lt $numiters ]; do
     rm $dir/$x.mdl $dir/$x.*.acc
     rm $dir/$x.occs
   fi
-  [ $x -le $maxiterinc ] && numgauss=$[$numgauss+$incgauss];
+  [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
 done
 

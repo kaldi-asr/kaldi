@@ -11,8 +11,8 @@
 nj=4
 cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-numiters=40    # Number of iterations of training
-maxiterinc=30 # Last iter to increase #Gauss on.
+num_iters=40    # Number of iterations of training
+max_iter_inc=30 # Last iter to increase #Gauss on.
 totgauss=1000 # Target #Gaussians.  
 realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
@@ -58,7 +58,7 @@ $cmd JOB=1 $dir/log/init.log \
    $dir/0.mdl $dir/tree || exit 1;
 
 numgauss=`gmm-info --print-args=false $dir/0.mdl | grep gaussians | awk '{print $NF}'`
-incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
+incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter increment for #Gauss
 
 rm $dir/.error 2>/dev/null
 
@@ -86,7 +86,7 @@ rm $dir/0.*.acc
 beam=6 # will change to 10 below after 1st pass
 # note: using slightly wider beams for WSJ vs. RM.
 x=1
-while [ $x -lt $numiters ]; do
+while [ $x -lt $num_iters ]; do
   echo "Pass $x"
   if echo $realign_iters | grep -w $x >/dev/null; then
     echo "Aligning data"
@@ -103,7 +103,7 @@ while [ $x -lt $numiters ]; do
     gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
       "gmm-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
   rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
-  if [ $x -le $maxiterinc ]; then
+  if [ $x -le $max_iter_inc ]; then
      numgauss=$[$numgauss+$incgauss];
   fi
   beam=10

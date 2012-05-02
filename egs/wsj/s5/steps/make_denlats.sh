@@ -74,7 +74,7 @@ else
   utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
 fi
 
-if [ -f $0/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "align_si.sh: feature type is $feat_type"
 
 case $feat_type in

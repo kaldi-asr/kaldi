@@ -10,24 +10,27 @@ stage=-4
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="10 20 30";
 mllt_iters="2 4 6 12";
-numiters=35    # Number of iterations of training
-maxiterinc=25  # Last iter to increase #Gauss on.
+num_iters=35    # Number of iterations of training
+max_iter_inc=25  # Last iter to increase #Gauss on.
 dim=40
 beam=10
 retry_beam=40
+randprune=4.0 # This is approximately the ratio by which we will speed up the
+              # LDA and MLLT calculations via randomized pruning.
+
 # End configuration.
 
 [ -f path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
 if [ $# != 6 ]; then
-   echo "Usage: steps/train_lda_mllt.sh [options] <#leaves> <#gauss> <data> <lang> <alignments> <dir>"
-   echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
-   echo "Main options (for others, see top of script file)"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --config <config-file>                           # config containing options"
-   echo "  --stage <stage>                                  # stage to do partial re-run from."
-   exit 1;
+  echo "Usage: steps/train_lda_mllt.sh [options] <#leaves> <#gauss> <data> <lang> <alignments> <dir>"
+  echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
+  echo "Main options (for others, see top of script file)"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --config <config-file>                           # config containing options"
+  echo "  --stage <stage>                                  # stage to do partial re-run from."
+  exit 1;
 fi
 
 numleaves=$1
@@ -42,9 +45,7 @@ for f in $alidir/final.mdl $alidir/ali.1.gz $data/feats.scp $lang/phones.txt; do
 done
 
 numgauss=$numleaves
-incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-randprune=4.0 # This is approximately the ratio by which we will speed up the
-              # LDA and MLLT calculations via randomized pruning.
+incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter #gauss increment
 oov=`cat $lang/oov.int` || exit 1;
 nj=`cat $alidir/num_jobs` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
@@ -81,6 +82,7 @@ if [ $stage -le -3 ]; then
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
    acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
      "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
+  [ `ls $dir/*.treeacc | wc -w` -eq "$nj" ] || echo "Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
   rm $dir/*.treeacc
@@ -88,7 +90,7 @@ fi
 
 
 if [ $stage -le -2 ]; then
-  echo "Computing questions for tree clustering"
+  echo "Getting questions for tree clustering."
   # preparing questions, roots file...
   cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
@@ -128,7 +130,7 @@ fi
 
 
 x=1
-while [ $x -lt $numiters ]; do
+while [ $x -lt $num_iters ]; do
   echo Training pass $x
   if echo $realign_iters | grep -w $x >/dev/null && [ $stage -le $x ]; then
     echo Aligning data
@@ -164,7 +166,7 @@ while [ $x -lt $numiters ]; do
        "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 
   fi
-  [ $x -le $maxiterinc ] && numgauss=$[$numgauss+$incgauss];
+  [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
 done
 

@@ -53,11 +53,11 @@ echo $nj > $dir/num_jobs
 model=$srcdir/$iter.mdl
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
-  [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "decode_fmmi.sh: no such file $f" && exit 1;
 done
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "decode_si.sh: feature type is $feat_type";
+echo "decode_fmmi.sh: feature type is $feat_type";
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;

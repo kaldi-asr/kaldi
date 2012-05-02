@@ -155,6 +155,20 @@ steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
 steps/train_mmi.sh --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 \
   exp/tri2b_denlats_si84 exp/tri2b_mmi  || exit 1;
+ (
+  steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/tri2b_mmi exp/tri2b_denlats_si84_2 || exit 1;
+  steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
+  data/train_si84 data/lang exp/tri2b_mmi exp/tri2b_ali_si84_2  || exit 1;
+  steps/train_mmi.sh --cmd "$train_cmd" \
+    data/train_si84 data/lang exp/tri2b_ali_si84_2 \
+    exp/tri2b_denlats_si84_2 exp/tri2b_mmi_2  || exit 1;
+  steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi_2/decode_tgpr_dev93 || exit 1;
+  steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
+    exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_2/decode_tgpr_eval92 || exit 1;
+ )
+
 
 steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi/decode_tgpr_dev93 || exit 1;
@@ -213,34 +227,40 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
  steps/train_mmi_fmmi_indirect.sh --boost 0.1 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
    exp/tri2b_fmmi_indirect_b0.1
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 4 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it4 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 5 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it5 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 6 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it6 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 7 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it7 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it8 &
 
+ steps/train_mmi_fmmi.sh --learning-rate 0.005 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+    --boost 0.1 --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
+   exp/tri2b_fmmi_first_b0.1 || exit 1;
+ 
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 4 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it4 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 5 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it5 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 6 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it6 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 7 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it7 &
+ steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
+    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it8 &
 
-
-# I AM HERE
-exit 1;
- utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_fmpe.sh \
-   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_fmmi_b0.1/decode_tgpr_eval92
-
-
-steps/train_lda_etc_mce.sh --cmd "$train_cmd" --nj 10 data/train_si84 data/lang \
- exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b exp/tri2b_mce || exit 1;
- utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh \
-   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mce/decode_tgpr_eval92 || exit 1;
-
-
-# Train LDA+ET system.
-steps/train_lda_et.sh --nj 10 --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2c || exit 1;
-utils/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_et.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93 || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_et_2pass.sh exp/tri2c/graph_tgpr data/test_dev93 exp/tri2c/decode_tgpr_dev93_2pass || exit 1;
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_lda_mllt_sat.sh  --nj 10 --cmd "$train_cmd" \
+steps/train_sat.sh  --nj 10 --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
-  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
+steps/decode_fmllr.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
+
 utils/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
   data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
 utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \

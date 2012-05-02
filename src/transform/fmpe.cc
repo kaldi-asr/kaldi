@@ -243,6 +243,8 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
     }
   } else {
     size_t i = 0;
+    // We process the "posts" vector in chunks, where each chunk corresponds to
+    // the same Gaussian index (but different times).
     while (i < all_posts.size()) {
       int32 gauss = all_posts[i].first.first;
       SubVector<BaseFloat> this_stddev(stddevs_, gauss),
@@ -256,7 +258,9 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
            batch_size++); // empty loop body.
       Matrix<BaseFloat> input_chunks(batch_size, dim+1);
       Matrix<BaseFloat> intermed_temp(batch_size, dim*ncontexts);
-      for (int32 j = 0; j < batch_size; j++) { // set up "input_chunks"
+      for (int32 j = 0; j < batch_size; j++) { // set up "input_chunks".
+        // To understand this code, first examine code and comments in "non-optimized"
+        // code chunk above (the other branch of the if/else statement).
         int32 t = all_posts[i+j].first.second;
         SubVector<BaseFloat> this_feat(feat_in, t);
         SubVector<BaseFloat> this_input_chunk(input_chunks, j);

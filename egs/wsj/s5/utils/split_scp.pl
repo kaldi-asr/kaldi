@@ -65,7 +65,8 @@ if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2)))
         " or: split_scp.pl -j num-jobs job-id [--utt2spk=<utt2spk_file>] in.scp [out.scp]\n" .
         " ... where 0 <= job-id < num-jobs.";
 }
-   
+
+$error = 0;   
 $inscp = shift @ARGV;
 if ($num_jobs == 0) { # without -j option
     @OUTPUTS = @ARGV;
@@ -173,7 +174,8 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         open(F, ">$scpfn") || die "Could not open scp file $scpfn for writing.";
         $count = 0;
         if(@{$scparray[$scpidx]} == 0) {
-            print STDERR "Warning: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
+            print STDERR "Error: split_scp.pl producing empty .scp file $scpfn (too many splits and too few speakers?)\n";
+            $error = 1;
         } else {
             foreach $spk ( @{$scparray[$scpidx]} ) {
                 print F $spk_data{$spk};
@@ -196,7 +198,8 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     }
     $numlines = @F;
     if($numlines == 0) {
-        print STDERR "split_scp.pl: warning: empty input scp file $inscp";
+        print STDERR "split_scp.pl: error: empty input scp file $inscp";
+        $error = 1;
     }
     $linesperscp = int( $numlines / $numscps); # the "whole part"..
     $linesperscp >= 1 || die "You are splitting into too many pieces!";
@@ -214,3 +217,5 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     }
     $n == $numlines || die "split_scp.pl: code error., $n != $numlines";
 }
+
+exit ($error ? 1 : 0);
