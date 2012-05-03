@@ -89,7 +89,7 @@ sub check_txt_int_csl {
         chomp;
         my @col = split(" ", $_);
         if(@col != 1) {$exit = 1; return print "--> ERROR: expect 1 column in $cat.int (break at line $idx2)\n";}
-        if($symtab->{$entry[$idx2]} != shift @col) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2)\n";}
+        if($symtab->{$entry[$idx2]} ne shift @col) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2)\n";}
         $idx2 ++;
     }
     close(INT); $idx2 --;
@@ -102,7 +102,7 @@ sub check_txt_int_csl {
         my @col = split(":", $_);
         if(@col != $idx1) {$exit = 1; return print "--> ERROR: expect $idx1 block/blocks in $cat.csl (break at line $idx3)\n";}
         foreach(1 .. $idx1) {
-            if($symtab->{$entry[$_]} != @col[$_-1]) {$exit = 1; return print "--> ERROR: $cat.csl doesn't correspond to $cat.txt (break at line $idx3, block $_)\n";}
+            if($symtab->{$entry[$_]} ne @col[$_-1]) {$exit = 1; return print "--> ERROR: $cat.csl doesn't correspond to $cat.txt (break at line $idx3, block $_)\n";}
         }
         $idx3 ++;
     }
@@ -149,7 +149,7 @@ sub check_txt_int {
         @set = split(" ", $entry[$idx2]);
         if(@set != @col) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2)\n";}
         foreach(0 .. @set-1) {
-            if($symtab->{@set[$_]} != @col[$_]) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2, block " ,$_+1, ")\n";}
+            if($symtab->{@set[$_]} ne @col[$_]) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2, block " ,$_+1, ")\n";}
         }
         $idx2 ++;
     }
@@ -336,7 +336,7 @@ $success1 = 1;
 if(@nonsilence_seq != @nonsilence) {$exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";}
 else {
     foreach(0 .. scalar(@nonsilence)-1) {
-        if($psymtab{@nonsilence[$_]} != @nonsilence_seq[$_]) {
+        if($psymtab{@nonsilence[$_]} ne @nonsilence_seq[$_]) {
             $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
             $success = 0;
         }
@@ -347,7 +347,7 @@ $success2 = 1;
 if(@silence_seq != @silence) {$exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";}
 else {
     foreach(0 .. scalar(@silence)-1) {
-        if($psymtab{@silence[$_]} != @silence_seq[$_]) {
+        if($psymtab{@silence[$_]} ne @silence_seq[$_]) {
             $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
             $success = 0;
         }
