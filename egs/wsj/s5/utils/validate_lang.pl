@@ -72,7 +72,7 @@ sub check_txt_int_csl {
     if(!open(TXT, "<$cat.txt")) {$exit = 1; return print "--> ERROR: fail to open $cat.txt\n";}
     if(!open(INT, "<$cat.int")) {$exit = 1; return print "--> ERROR: fail to open $cat.int\n";}
     if(!open(CSL, "<$cat.csl")) {$exit = 1; return print "--> ERROR: fail to open $cat.csl\n";}
-    
+
     $idx1 = 1;
     while(<TXT>) {
         chomp;
@@ -83,7 +83,7 @@ sub check_txt_int_csl {
     }
     close(TXT); $idx1 --;
     print "--> $idx1 entry/entries in $cat.txt\n";
-    
+
     $idx2 = 1;
     while(<INT>) {
         chomp;
@@ -95,7 +95,7 @@ sub check_txt_int_csl {
     close(INT); $idx2 --;
     if($idx1 != $idx2) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line ", $idx2+1, ")\n";}
     print "--> $cat.int corresponds to $cat.txt\n";
-   
+
     $idx3 = 1;
     while(<CSL>) {
         chomp;
@@ -120,7 +120,7 @@ sub check_txt_int {
     if(-z "$cat.int") {$exit = 1; return print "--> ERROR: $cat.int is empty or not exists\n";}
     if(!open(TXT, "<$cat.txt")) {$exit = 1; return print "--> ERROR: fail to open $cat.txt\n";}
     if(!open(INT, "<$cat.int")) {$exit = 1; return print "--> ERROR: fail to open $cat.int\n";}
-    
+
     $idx1 = 1;
     while(<TXT>) {
         chomp;
@@ -135,7 +135,7 @@ sub check_txt_int {
     }
     close(TXT); $idx1 --;
     print "--> $idx1 entry/entries in $cat.txt\n";
-    
+
     $idx2 = 1;
     while(<INT>) {
         chomp;
@@ -156,7 +156,7 @@ sub check_txt_int {
     close(INT); $idx2 --;
     if($idx1 != $idx2) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line ", $idx2+1, ")\n";}
     print "--> $cat.int corresponds to $cat.txt\n";
-   
+
     return print "--> $cat.\{txt, int\} are OK\n";
 }
 
@@ -240,7 +240,7 @@ sub check_disjoint {
         }
         print "\n";
     } else {print "--> silence.txt and nonsilence.txt are disjoint\n";}
-    
+
     if(@itsect2 != 0) {
         $success = 0;
         $exit = 1; print "--> ERROR: silence.txt and disambig.txt have intersection -- ";
@@ -258,7 +258,7 @@ sub check_disjoint {
         }
         print "\n";
     } else {print "--> disambig.txt and nonsilence.txt are disjoint\n";}
-    
+
     $success == 0 || print "--> disjoint property is OK\n";
     return;
 }
@@ -358,8 +358,11 @@ $success1 != 1 or $success2 != 1 || print "--> $lang/topo is OK\n";
 print "\n";
 
 # Check word_boundary -------------------------------
-$nonword = "";
-$isnonword = 0;
+$nonword   = "";
+$begin     = "";
+$end       = "";
+$internal  = "";
+$singleton = "";
 if(-s "$lang/phones/word_boundary.txt") {
     print "Checking word_boundary.txt: silence.txt, nonsilence.txt, disambig.txt ...\n";
     if(!open (W, "<$lang/phones/word_boundary.txt")) {$exit = 1; print "--> ERROR: fail to open $lang/phones/word_boundary.txt\n";}
@@ -367,14 +370,13 @@ if(-s "$lang/phones/word_boundary.txt") {
     %wb = ();
     while(<W>) {
         chomp;
-        s/ begin$//g;
-        s/ end$//g;
-        s/ internal$//g;
-        s/ singleton$//g;
-        if (m/^.*nonword$/) {s/ nonword//g; $isnonword = 1;}
-        my @col = split(" ", $_);
+        my @col;
+        if (m/^.*nonword$/  ) {s/ nonword//g;    @col = split(" ", $_); if (@col == 1) {$nonword   .= "$col[0] ";}}
+        if (m/^.*begin$/    ) {s/ begin$//g;     @col = split(" ", $_); if (@col == 1) {$begin     .= "$col[0] ";}}
+        if (m/^.*end$/      ) {s/ end$//g;       @col = split(" ", $_); if (@col == 1) {$end       .= "$col[0] ";}}
+        if (m/^.*internal$/ ) {s/ internal$//g;  @col = split(" ", $_); if (@col == 1) {$internal  .= "$col[0] ";}}
+        if (m/^.*singleton$/) {s/ singleton$//g; @col = split(" ", $_); if (@col == 1) {$singleton .= "$col[0] ";}}
         if(@col != 1) {$exit = 1; print "--> ERROR: expect 1 column in $lang/phones/word_boundary.txt (line $idx)\n";}
-        if ($isnonword == 1) {$isnonword = 0; $nonword = $nonword . "$col[0] ";}
         $wb{shift @col} = 1;
         $idx ++;
     }
@@ -411,47 +413,58 @@ if(-s "$lang/phones/word_boundary.txt") {
         print "\n";
     }
     $success2 == 0 || print "--> $lang/phones/word_boundary.txt is the union of nonsilence.txt and silence.txt\n";
-    $success1 != 1 or $success2 != 1 || print "--> $lang/phones/word_boundary.txt is OK\n"; print "\n";
+    $success1 != 1 or $success2 != 1 || print "--> $lang/phones/word_boundary.txt is OK\n";
+
+
+    # Check L.fst -------------------------------
+    print "--> checking L.fst and L_disambig.fst...\n";
+    $nonword   =~ s/ $//g;
+    $nonword   =~ s/ / |/g;
+    $begin     =~ s/ $//g;
+    $begin     =~ s/ / |/g;
+    $end       =~ s/ $//g;
+    $end       =~ s/ / |/g;
+    $internal  =~ s/ $//g;
+    $internal  =~ s/ / |/g;
+    $singleton =~ s/ $//g;
+    $singleton =~ s/ / |/g;
+    $wlen = int(rand(100)) + 1;
+    print "--> generating a $wlen words sequence\n";
+    $wordseq = "";
+    $sid = 0;
+    foreach(1 .. $wlen) {
+        $id = int(rand(scalar(%wint2sym)));
+        while($wint2sym{$id} =~ m/^#[0-9]*$/) {$id = int(rand(scalar(%wint2sym)));}
+        $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
+        $sid ++;
+    }
+    $wordseq = $wordseq . "$sid 0";
+    $phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
+    $phoneseq =~ s/\s/ /g;
+    $phoneseq =~ m/^($nonword )*((($begin )($internal )*($end)|($singleton))($nonword )*){$wlen}$/;
+    if(length($2) == 0) {
+        $exit = 1; print "--> ERROR: resulting phone sequence from L.fst doesn't correspond to the word sequence; check L.log.fst\n";
+        open(LOG, ">L.log.fst"); print LOG $wordseq; close(LOG);
+    } else {
+        print "--> resulting phone sequence from L.fst corresponds to the word sequence\n";
+        print "--> L.fst is OK\n";
+    }
+
+    $phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L_disambig.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
+    $phoneseq =~ s/\s/ /g;
+    $phoneseq =~ m/^(($nonword )(#[0-9]* )*)*((($begin )($internal )*($end)|($singleton))(#[0-9]* )*(($nonword )(#[0-9]* )*)*){$wlen}$/;
+    if(length($4) == 0) {
+        $exit = 1; print "--> ERROR: resulting phone sequence from L_disambig.fst doesn't correspond to the word sequence; check L_disambig.log.fst\n";
+        open(LOG, ">L_disambig.log.fst"); print LOG $wordseq; close(LOG);
+    } else {
+        print "--> resulting phone sequence from L_disambig.fst corresponds to the word sequence\n";
+        print "--> L_disambig.fst is OK\n";
+    }
+    print "\n";
 }
 
 # Check oov -------------------------------
 check_txt_int("$lang/oov", \%wsymtab); print "\n";
 
-# Check L.fst -------------------------------
-print "Checking L.fst and L_disambig.fst...\n";
-$nonword =~ s/ $//g;
-$nonword =~ s/ / |/g;
-$wlen = int(rand(100)) + 1;
-print "--> generating a $wlen words sequence\n";
-$wordseq = "";
-$sid = 0;
-foreach(1 .. $wlen) {
-    $id = int(rand(scalar(%wint2sym)));
-    while($wint2sym{$id} =~ m/^#[0-9]*$/) {$id = int(rand(scalar(%wint2sym)));}
-    $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
-    $sid ++;
-}
-$wordseq = $wordseq . "$sid 0";
-$phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
-$phoneseq =~ s/\s/ /g;
-$phoneseq =~ m/^($nonword )*(([^ ]*_B ([^ ]*_I )*[^ ]*_E |[^ ]_S )($nonword )*){$wlen}$/;
-if(length($2) == 0) {
-    $exit = 1; print "--> ERROR: resulting phone sequence from L.fst doesn't correspond to the word sequence; check L.log.fst\n";
-    open(LOG, ">L.log.fst"); print LOG $wordseq; close(LOG);
-} else {
-    print "--> resulting phone sequence from L.fst corresponds to the word sequence\n";
-    print "--> L.fst is OK\n";
-}
-
-$phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L_disambig.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
-$phoneseq =~ s/\s/ /g;
-$phoneseq =~ m/^(($nonword )(#[0-9]* )*)*(([^ ]*_B ([^ ]*_I )*[^ ]*_E |[^ ]_S )(#[0-9]* )*(($nonword )(#[0-9]* )*)*){$wlen}$/;
-if(length($4) == 0) {
-    $exit = 1; print "--> ERROR: resulting phone sequence from L_disambig.fst doesn't correspond to the word sequence; check L_disambig.log.fst\n";
-    open(LOG, ">L_disambig.log.fst"); print LOG $wordseq; close(LOG);
-} else {
-    print "--> resulting phone sequence from L_disambig.fst corresponds to the word sequence\n";
-    print "--> L_disambig.fst is OK\n";
-}
 
 if ($exit == 1) {exit 1;}
