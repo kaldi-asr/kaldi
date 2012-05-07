@@ -94,8 +94,10 @@ int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans
                                std::vector< std::map<int32, char> > *arc_accs,
                                std::vector<int32> *state_times);
 
-BaseFloat LatticeForwardBackwardMpe(const Lattice &lat, Posterior *arc_post);
-
+BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
+                                    const TransitionModel &trans,
+                                    const vector< std::map<int32, char> > &arc_accs,
+                                    Posterior *arc_post);
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
