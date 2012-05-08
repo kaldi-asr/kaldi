@@ -57,11 +57,9 @@ fi
 for n in `seq $numsplit`; do
    mkdir -p $data/split$numsplit/$n
    feats="$feats $data/split$numsplit/$n/feats.scp"
-   wavs="$wavs $data/split$numsplit/$n/wav.scp"
    texts="$texts $data/split$numsplit/$n/text"
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
 done
-
 
 if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
@@ -72,8 +70,6 @@ fi
 utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
 
 utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
-[ -f $data/wav.scp ] && \
-  utils/split_scp.pl $utt2spk_opt $data/wav.scp $wavs
 [ -f $data/text ] && \
  utils/split_scp.pl $utt2spk_opt $data/text $texts
 
