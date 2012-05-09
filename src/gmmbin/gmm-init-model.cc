@@ -42,7 +42,7 @@ void InitAmGmm(const BuildTreeStatsType &stats,
   // Make sure each leaf has stats.
   for (size_t i = 0; i < split_stats.size(); i++) {
     if (split_stats[i].empty()) {
-      KALDI_WARN << "Tree has pdf-id " << i << "with no stats. ";
+      KALDI_WARN << "Tree has pdf-id " << i << " with no stats. ";
       /*
         This probably means you have phones that were unseen in training 
         and were not shared with other phones in the roots file. 
@@ -98,13 +98,10 @@ void GetOccs(const BuildTreeStatsType &stats,
     // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, to_pdf_map, &split_stats);
-  // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
+  if (split_stats.size() != to_pdf_map.MaxResult()+1) {
+    KALDI_ASSERT(split_stats.size() < to_pdf_map.MaxResult()+1);
+    split_stats.resize(to_pdf_map.MaxResult()+1);
+  }
   occs->Resize(split_stats.size());
   for (int32 pdf = 0; pdf < occs->Dim(); pdf++)
     (*occs)(pdf) = SumNormalizer(split_stats[pdf]);
