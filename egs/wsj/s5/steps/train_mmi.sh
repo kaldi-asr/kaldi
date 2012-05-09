@@ -72,7 +72,7 @@ case $feat_type in
 esac
 
 [ -f $alidir/1.trans ] && echo Using transforms from $alidir && \
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk $alidir/JOB.trans ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/JOB.trans ark:- ark:- |"
 
 lats="ark:gunzip -c $denlatdir/lat.JOB.gz|"
 if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then

@@ -7,7 +7,7 @@
 
 train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
 decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
-#train_cmd=run.pl
+train_cmd=run.pl
 #decode_cmd=run.pl
 
 

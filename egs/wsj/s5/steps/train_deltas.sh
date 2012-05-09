@@ -12,6 +12,7 @@ num_iters=35    # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 beam=10
 retry_beam=40
+boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 # End configuration.
 
 [ -f path.sh ] && . ./path.sh;
@@ -54,7 +55,7 @@ feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk sc
 rm $dir/.error 2>/dev/null
 
 if [ $stage -le -3 ]; then
-  echo "Accumulating tree stats"
+  echo "$0: accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
     acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
      "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
@@ -63,13 +64,13 @@ if [ $stage -le -3 ]; then
 fi
 
 if [ $stage -le -2 ]; then
-  echo "Getting questions for tree-building, via clustering"
+  echo "$0: getting questions for tree-building, via clustering"
   # preparing questions, roots file...
   cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
   compile-questions $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
-  echo "Building the tree"
+  echo "$0: building the tree"
   $cmd $dir/log/build_tree.log \
     build-tree --verbose=1 --max-leaves=$numleaves \
      $dir/treeacc $lang/phones/roots.int \
@@ -85,14 +86,14 @@ fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments.
-  echo "Converting alignments from $alidir to use current tree"
+  echo "$0: converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
     convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 if [ $stage -le 0 ]; then
-  echo "Compiling graphs of transcripts"
+  echo "$0: compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
@@ -101,12 +102,13 @@ fi
 
 x=1
 while [ $x -lt $num_iters ]; do
-  echo Training pass $x
+  echo "$0: training pass $x"
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
-      echo Aligning data
+      echo "$0: aligning data"
+      mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
       $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-        gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/$x.mdl \
+        gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
          "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
          "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
     fi
@@ -114,7 +116,8 @@ while [ $x -lt $num_iters ]; do
       gmm-acc-stats-ali  $dir/$x.mdl "$feats" \
        "ark,s,cs:gunzip -c $dir/ali.JOB.gz|" $dir/$x.JOB.acc || exit 1;
     $cmd $dir/log/update.$x.log \
-      gmm-est --mix-up=$numgauss --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
+      gmm-est --mix-up=$numgauss \
+        --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
        "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc
     rm $dir/$x.occs
@@ -128,8 +131,7 @@ ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 
 # Summarize warning messages...
-for x in $dir/log/*.log; do 
-  n=`grep WARNING $x | wc -l`; [ $n -ne 0 ] && echo $n warnings in $x;
-done
+utils/summarize_warnings.pl  $dir/log
 
-echo Done training system with delta+delta-delta features in $dir
+echo "$0: Done training system with delta+delta-delta features in $dir"
+

@@ -35,6 +35,8 @@ cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p
 
 ( echo SIL; echo SPN; echo NSN; echo LAU ) > $dir/silence_phones.txt
 
+echo SIL > $dir/optional_silence.txt
+
 # No "extra questions" in the input to this setup, as we don't
 # have stress or tone.
 echo -n >$dir/extra_questions.txt

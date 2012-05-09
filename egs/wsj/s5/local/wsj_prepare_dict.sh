@@ -38,6 +38,7 @@ svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict  \
 
 # silence phones, one per line.
 (echo SIL; echo SPN; echo NSN) > $dir/silence_phones.txt
+echo SIL > $dir/optional_silence.txt
 
 # nonsilence phones; on each line is a list of phones that correspond
 # really to the same base phone.

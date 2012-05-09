@@ -10,7 +10,7 @@
 # This script takes no options.
 
 if [ $# != 3 ]; then
-   echo "usage: compute_cmvn_stats.sh [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "usage: compute_cmvn_stats.sh <data-dir> <log-dir> <path-to-cmvn-dir>";
    exit 1;
 fi
 

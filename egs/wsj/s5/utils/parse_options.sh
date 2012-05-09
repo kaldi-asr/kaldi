@@ -23,9 +23,23 @@ while true; do
         # is undefined.  We then have to wrap this test inside "eval" because foo_bar is
         # itself inside a variable ($name).
         eval '[ -z "${'$name'+xxx}" ] && echo "$0: invalid option $1" && exit 1;'
+        
+        oldval="`eval echo \\$$name`";
+        # Work out whether we seem to be expecting a Boolean argument.
+        if [ "$oldval" == "true" ] || [ "$oldval" == "false" ]; then was_bool=true;
+        else was_bool=false; fi
+
         # Set the variable to the right value-- the escaped quotes make it work if
         # the option had spaces, like --cmd "queue.pl -sync y"
-        eval $name=\"$2\"; shift 2;;
+        eval $name=\"$2\"; 
+        
+        # Check that Boolean-valued arguments are really Boolean.
+        if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then
+          echo "$0: expected \"true\" or \"false\": --$name $2"
+          exit 1;
+        fi
+        shift 2;
+        ;;
   *) break;
  esac
 done

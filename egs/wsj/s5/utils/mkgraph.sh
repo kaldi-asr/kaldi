@@ -15,17 +15,18 @@
 
 N=3
 P=1
-clean=false
 
-for x in `seq 3`; do 
-  [ $1 == "--mono" ] && N=1 && P=0 && shift;
-  [ $1 == "--quinphone" ] && N=5 && P=2 && shift;
-  [ $1 == "--clean" ] && clean=true && shift;
+for x in `seq 2`; do 
+  [ "$1" == "--mono" ] && N=1 && P=0 && shift;
+  [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
 done
 
 if [ $# != 3 ]; then
-   echo "Usage: utils/mkgraph.sh <test-lang-dir> <model-dir> <graphdir>"
+   echo "Usage: utils/mkgraph.sh [options] <lang-dir> <model-dir> <graphdir>"
    echo "e.g.: utils/mkgraph.sh data/lang_test exp/tri1/ exp/tri1/graph"
+   echo " Options:"
+   echo " --mono          #  For monophone models."
+   echo " --quinphone     #  For models with 5-phone context (3 is default)"
    exit 1;
 fi
 
@@ -35,8 +36,6 @@ lang=$1
 tree=$2/tree
 model=$2/final.mdl
 dir=$3
-
-if $clean; then rm -r $lang/tmp; fi
 
 mkdir -p $dir
 

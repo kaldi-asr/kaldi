@@ -1,6 +1,6 @@
 // hmm/transition-model.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -326,6 +326,10 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
                              const TransitionUpdateConfig &cfg,
                              BaseFloat *objf_impr_out,
                              BaseFloat *count_out) {
+  if (cfg.share_for_pdfs) {
+    UpdateShared(stats, cfg, objf_impr_out, count_out);
+    return;
+  }
   BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
   int32 num_skipped = 0, num_floored = 0;
   KALDI_ASSERT(stats.Dim() == NumTransitionIds()+1);
@@ -380,6 +384,101 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
   ComputeDerivedOfProbs();
 }
 
+/// This version of the Update() function is for if the user specifies
+/// --share-for-pdfs=true.  We share the transitions for all states that
+/// share the same pdf.
+void TransitionModel::UpdateShared(const Vector<double> &stats,
+                                   const TransitionUpdateConfig &cfg,
+                                   BaseFloat *objf_impr_out,
+                                   BaseFloat *count_out) {
+  KALDI_ASSERT(cfg.share_for_pdfs);
+
+  BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
+  int32 num_skipped = 0, num_floored = 0;
+  KALDI_ASSERT(stats.Dim() == NumTransitionIds()+1);
+  std::map<int32, std::set<int32> > pdf_to_tstate;
+
+  for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
+    int32 pdf = TransitionStateToPdf(tstate);
+    pdf_to_tstate[pdf].insert(tstate);
+  }
+  std::map<int32, std::set<int32> >::iterator map_iter;
+  for (map_iter = pdf_to_tstate.begin();
+       map_iter != pdf_to_tstate.end();
+       ++map_iter) {
+    // map_iter->first is pdf-id... not needed.
+    const std::set<int32> &tstates = map_iter->second;
+    KALDI_ASSERT(!tstates.empty());
+    int32 one_tstate = *(tstates.begin());
+    int32 n = NumTransitionIndices(one_tstate);
+    KALDI_ASSERT(n >= 1);
+    if (n > 1) { // Only update if >1 transition...
+      Vector<double> counts(n);
+      for (std::set<int32>::const_iterator iter = tstates.begin();
+           iter != tstates.end();
+           ++iter) {
+        int32 tstate = *iter;
+        if (NumTransitionIndices(tstate) != n)
+          KALDI_ERR << "Mismatch in #transition indices: you cannot "
+              "use the --share-for-pdfs option with this topology "
+              "and sharing scheme.";
+        for (int32 tidx = 0; tidx < n; tidx++) {
+          int32 tid = PairToTransitionId(tstate, tidx);
+          counts(tidx) += stats(tid);
+        }
+      }
+      double pdf_tot = counts.Sum();
+      count_sum += pdf_tot;
+      if (pdf_tot < cfg.mincount) { num_skipped++; }
+      else {
+        // Note: when calculating objf improvement, we
+        // assume we previously had the same tying scheme so
+        // we can get the params from one_tstate and they're valid
+        // for all.
+        Vector<BaseFloat> old_probs(n), new_probs(n);
+        for (int32 tidx = 0; tidx < n; tidx++) {
+          int32 tid = PairToTransitionId(one_tstate, tidx);
+          old_probs(tidx) = new_probs(tidx) = GetTransitionProb(tid);
+        }
+        for (int32 tidx = 0; tidx < n; tidx++)
+          new_probs(tidx) = counts(tidx) / pdf_tot;
+        for (int32 i = 0; i < 3; i++) {  // keep flooring+renormalizing for 3 times..
+          new_probs.Scale(1.0 / new_probs.Sum());
+          for (int32 tidx = 0; tidx < n; tidx++)
+            new_probs(tidx) = std::max(new_probs(tidx), cfg.floor);
+        }
+        // Compute objf change
+        for (int32 tidx = 0; tidx < n; tidx++) {
+          if (new_probs(tidx) == cfg.floor) num_floored++;
+          double objf_change = counts(tidx) * (log(new_probs(tidx))
+                                               - log(old_probs(tidx)));
+          objf_impr_sum += objf_change;
+        }
+        // Commit updated values.
+        for (std::set<int32>::const_iterator iter = tstates.begin();
+             iter != tstates.end();
+             ++iter) {
+          int32 tstate = *iter;
+          for (int32 tidx = 0; tidx < n; tidx++) {
+            int32 tid = PairToTransitionId(tstate, tidx);
+            log_probs_(tid) = log(new_probs(tidx));
+            if (log_probs_(tid) - log_probs_(tid) != 0.0)
+              KALDI_ERR << "Log probs is inf or NaN: error in update or bad stats?";
+          }
+        }
+      }
+    }
+  }
+  KALDI_LOG << "TransitionModel::Update (shared update), objf change is "
+            << (objf_impr_sum / count_sum) << " per frame over " << count_sum
+            << " frames; " << num_floored << " probabilities floored, "
+            << num_skipped << " pdf-ids skipped due to insuffient data.";
+  if (objf_impr_out) *objf_impr_out = objf_impr_sum;
+  if (count_out) *count_out = count_sum;
+  ComputeDerivedOfProbs();
+}
+
+
 int32 TransitionModel::TransitionIdToPhone(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];
@@ -409,7 +508,7 @@ void TransitionModel::Print(std::ostream &os,
                             const Vector<double> *occs) {
   if (occs != NULL)
     KALDI_ASSERT(occs->Dim() == NumPdfs());
-  for (int32 tstate = 1; tstate < NumTransitionStates(); tstate++) {
+  for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
     const Triple &triple = triples_[tstate-1];
     KALDI_ASSERT(static_cast<size_t>(triple.phone) < phone_names.size());
     std::string phone_name = phone_names[triple.phone];

@@ -1,10 +1,11 @@
 #!/bin/bash
 
+# WARNING: this is under construction.  Should stabilize by the end of May 2012.
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-          ## This relates to the queue.
-
+           ## This relates to the queue.
 
 #if false; then #TEMP
+
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
@@ -25,12 +26,21 @@ local/wsj_format_data.sh || exit 1;
 # # and an LM trained directly on that data (i.e. not just
 # # copying the arpa files from the disks from LDC).
 # (
-# # on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
+#  on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
 #  local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
-#  local/wsj_prepare_local_dict.sh && \
+#  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
 #  local/wsj_train_lms.sh && \
-#  local/wsj_format_data_local.sh && \
-#  local/wsj_train_rnnlms.sh
+#  local/wsj_format_local_lms.sh && 
+#   (  local/wsj_train_rnnlms.sh --cmd "$train_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
+#       sleep 20; # wait till tools compiled.
+#     local/wsj_train_rnnlms.sh --cmd "$train_cmd -l mem_free=12G" \
+#      --hidden 100 --nwords 20000 --class 350 --direct 1500 data/local/rnnlm.h100.voc20k &
+#     local/wsj_train_rnnlms.sh --cmd "$train_cmd -l mem_free=14G" \
+#      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
+#     local/wsj_train_rnnlms.sh --cmd "$train_cmd -l mem_free=16G" \
+#      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
+#   )
+
 # ) &
 
 # Now make MFCC features.
@@ -39,7 +49,7 @@ local/wsj_format_data.sh || exit 1;
 mfccdir=mfcc
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
  steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 \
-    data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+   data/$x exp/make_mfcc/$x $mfccdir || exit 1;
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
 
@@ -51,21 +61,21 @@ utils/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort
 # Now make subset with half of the data from si-84.
 utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 
-steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
+steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a || exit 1;
 
 (
  utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
- steps/decode_si.sh --nj 10 --cmd "$train_cmd" \
+ steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
       exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 && \
- steps/decode_si.sh --nj 8 --cmd "$train_cmd" \
+ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
    exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
 ) &
 
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
    data/train_si84_half data/lang exp/mono0a exp/mono0a_ali || exit 1;
 
-steps/train_deltas.sh --cmd "$train_cmd" \
+steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
     2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
 wait; # or the mono mkgraph.sh might be writing 
@@ -73,7 +83,6 @@ wait; # or the mono mkgraph.sh might be writing
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
 
-#fi  #TEMP
 
 steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
@@ -254,73 +263,107 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
  steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
     exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it8 &
 
+#fi #TEMP
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_sat.sh  --nj 10 --cmd "$train_cmd" \
+steps/train_sat.sh  --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
-steps/decode_fmllr.sh exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
-
-utils/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
+steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
-utils/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg \
-   || exit 1;
 
- # This step interpolates a small RNNLM (with weight 0.25) with the 4-gram LM.
- utils/rnnlmrescore.sh \
-  --inv-acwt 17 \
-  0.25 data/lang_test_bd_fg data/local/rnnlm/rnnlm.voc10000.hl30 data/test_eval92 \
-  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm_0.25  \
-  || exit 1;
+
+ # steps/decode_fmllr_thresh.sh --nj 10 --cmd "$decode_cmd" \
+ #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh || exit 1;
+ # steps/decode_fmllr_thresh.sh --nj 8 --cmd "$decode_cmd" \
+ #   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92_thresh || exit 1;
+
+ # steps/decode_fmllr_thresh.sh --threshold 0.99 --nj 10 --cmd "$decode_cmd" \
+ #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh_2 || exit 1;
+ # steps/decode_fmllr_thresh.sh --threshold 0.99 --nj 8 --cmd "$decode_cmd" \
+ #   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92_thresh_2 || exit 1;
+
+
+steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
+  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
+steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
+  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg || exit 1;
 
 
 # Trying the larger dictionary ("big-dict"/bd) + locally produced LM.
 utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
-  exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
 
-utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 8 \
   exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
-utils/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
+steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
+  exp/tri3b/graph_bd_tgpr data/test_dev93 exp/tri3b/decode_bd_tgpr_dev93 || exit 1;
+
+steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
    || exit 1;
-utils/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
+steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg \
   || exit 1;
 
+ # This step interpolates a small RNNLM (with weight 0.25) with the 4-gram LM.
+ steps/rnnlmrescore.sh \
+  --inv-acwt 17 \
+  0.25 data/lang_test_bd_fg data/local/rnnlm.h30.voc10k data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm30_0.25  \
+  || exit 1;
+
+
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
- steps/mixup_lda_etc.sh --nj 10 --cmd "$train_cmd" \
-   20000 data/train_si84 exp/tri3b exp/tri2b_ali_si84 exp/tri3b_20k || exit 1;
- utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+ steps/mixup.sh --cmd "$train_cmd" \
+   20000 data/train_si84 data/lang exp/tri3b exp/tri3b_20k || exit 1;
+ steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
    exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93  || exit 1;
 )
 
 
 # From 3b system, align all si284 data.
-steps/align_lda_mllt_sat.sh --nj 10 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
 
-steps/train_lda_etc_quick.sh --nj 10 --cmd "$train_cmd" \
+
+# From 3b system, train another SAT system with all the si284 data.
+# Use the letter tri4a, as tri4b was used in s3/ for a "quick-retrained" system.
+steps/train_sat.sh  --nj 20 --cmd "$train_cmd" \
+  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4a || exit 1;
+
+utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
+steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+  exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
+steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
+
+steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
+
 utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh \
+steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
 
+
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
-# all the data).
-# Making num-jobs 40 as want to keep them under 4 hours long (or will fail
-# on regular queue at BUT).
-steps/align_lda_mllt_sat.sh --nj 40 --cmd "$train_cmd" \
+# all the data).  Use 30 jobs.
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
-steps/make_denlats_lda_etc.sh --nj 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 || exit 1;
+
+steps/make_denlats.sh --nj 30 --sub-split 30 --cmd "$train_cmd" \
+  data/train_si284 data/lang exp/tri4b exp/tri4b_denlats_si284 || exit 1;
+
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
+  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
+  exp/tri4b_mmi_b0.1  || exit 1;
+
+## I AM HERE
+
 steps/train_lda_etc_mmi.sh --nj 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
   exp/tri4b exp/tri4b_mmi || exit 1;

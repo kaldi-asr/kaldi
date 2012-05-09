@@ -52,7 +52,7 @@ done
 
 
 if [ -f $data/segments ]; then
-  echo "Segments file exists: using that."
+  echo "$0 [info]: segments file exists: using that."
   split_segments=""
   for ((n=1; n<=nj; n++)); do
     split_segments="$split_segments $logdir/segments.$n"
@@ -68,7 +68,7 @@ if [ -f $data/segments ]; then
      || exit 1;
 
 else
-  echo "make_mfcc.sh: no segments file exists: assuming wav.scp indexed by utterance."
+  echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
   for ((n=1; n<=nj; n++)); do
     split_scps="$split_scps $logdir/wav.$n.scp"

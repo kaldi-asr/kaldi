@@ -47,7 +47,6 @@ echo "Getting training data [this should take at least a few seconds; if not, th
 # and we we replace the "." with "\n".  Note: we found this by looking at
 # oov.counts below (before adding this rule).
 
-
 touch $dir/cleaned.gz
 if [ `du -m $dir/cleaned.gz | cut -f 1` -eq 73 ]; then
   echo "Not getting cleaned data in $dir/cleaned.gz again [already exists]";

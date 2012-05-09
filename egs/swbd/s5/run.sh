@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-## JUST STARTING.  ##
+## JUST STARTING.  Not finished.  ##
 
 exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
@@ -30,16 +30,19 @@ local/swbd_p1_format_data.sh
 #local/eval2000_data_prep.sh /mnt/matylda2/data/HUB5_2000/ /mnt/matylda2/data/HUB5_2000/2000_hub5_eng_eval_tr
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 
+. cmd.sh
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
 mfccdir=mfcc
 
-steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir
+steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir || exit 1;
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir || exit 1;
 
 # after this, the next command will remove the small number of utterances
 # that couldn't be extracted for some reason (e.g. too short; no such file).
-utils/fix_data_dir.sh data/train
-steps/make_mfcc.sh --nj 10 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
+utils/fix_data_dir.sh data/train || exit 1;
+steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_mfcc/eval2000 $mfccdir || exit 1;
+steps/compute_cmvn_stats.sh data/eval2000 exp/make_mfcc/eval2000 $mfccdir || exit 1;
 utils/fix_data_dir.sh data/eval2000 # remove segments that had problems, e.g. too short.
 
 # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
@@ -71,14 +74,15 @@ local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
 local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
 
-
+# The next commands are not necessary for the scripts to run, but increase 
+# efficiency of data access by putting the mfcc's of the subset 
+# in a contiguous place in a file.
 ( . path.sh; 
   # make sure mfccdir is defined as above..
   cp data/train_10k_nodup/feats.scp{,.bak} 
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_swbd_10k_nodup.ark,$mfccdir/kaldi_swbd_10k_nodup.scp \
   && cp $mfccdir/kaldi_swbd_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-
 ( . path.sh; 
   # make sure mfccdir is defined as above..
   cp data/train_30k_nodup/feats.scp{,.bak} 
@@ -87,74 +91,69 @@ local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
 )
  
 
+steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
+  data/train_10k_nodup data/lang exp/mono0a || exit 1;
 
-decode_opts1="--beam 11.0" # for one-pass decoding
-decode_opts2="--beam1 8.0 --beam2 11.0 " # for two-pass decoding.
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+   data/train_30k_nodup data/lang exp/mono0a exp/mono0a_ali || exit 1;
 
+steps/train_deltas.sh --cmd "$train_cmd" \
+    2500 20000 data/train_30k_nodup data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
-steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
-  data/train_10k_nodup data/lang exp/mono0a
+steps/align_deltas.sh --nj 30 --cmd "$train_cmd" \
+   data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali || exit 1;
 
-steps/align_deltas.sh --num-jobs 30 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang exp/mono0a exp/mono0a_ali
+steps/train_deltas.sh --nj 30 --cmd "$train_cmd" \
+    2500 20000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2 || exit 1;
 
-steps/train_deltas.sh --num-jobs 30 --cmd "$train_cmd" \
-    2500 20000 data/train_30k_nodup data/lang exp/mono0a_ali exp/tri1
-
-steps/align_deltas.sh --num-jobs 30 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali
-
-steps/train_deltas.sh --num-jobs 30 --cmd "$train_cmd" \
-    2500 20000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2
-
-steps/align_deltas.sh --num-jobs 30 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang exp/tri2 exp/tri2_ali
+steps/align_deltas.sh --nj 30 --cmd "$train_cmd" \
+   data/train_30k_nodup data/lang exp/tri2 exp/tri2_ali || exit 1;
 
 # Train tri3a, which is LDA+MLLT, on 30k_nodup data.
-steps/train_lda_mllt.sh --num-jobs 30 --cmd "$train_cmd" \
-   2500 20000 data/train_30k_nodup data/lang exp/tri2_ali exp/tri3a
+steps/train_lda_mllt.sh --nj 30 --cmd "$train_cmd" \
+   2500 20000 data/train_30k_nodup data/lang exp/tri2_ali exp/tri3a || exit 1;
 
 # From now, we start building a more serious system (with SAT), and we'll
 # do the alignment with fMLLR.
 
-steps/align_lda_mllt_sat.sh --num-jobs 30 --cmd "$train_cmd" \
- data/train_100k_nodup data/lang exp/tri3a exp/tri3a_ali_100k_nodup
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
+  data/train_100k_nodup data/lang exp/tri3a exp/tri3a_ali_100k_nodup || exit 1;
 
+steps/train_sat.sh  --nj 30 --cmd "$train_cmd" \
+  2500 20000 data/train_100k_nodup data/lang exp/tri3a_ali_100k_nodup exp/tri4a || exit 1;
 
-
-steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
-  2500 20000 data/train_100k_nodup data/lang exp/tri3a_ali_100k_nodup exp/tri4a
+# HERE.
 
 utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
-utils/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
+utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
  steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/eval2000 exp/tri4a/decode_eval2000
 
-utils/decode.sh  --num-jobs 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
+utils/decode.sh  --nj 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
  steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/train_dev exp/tri4a/decode_train_dev
 
-steps/align_lda_mllt_sat.sh --num-jobs 30 --cmd "$train_cmd" \
+steps/align_lda_mllt_sat.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup
 
 
 ( # Build a SGMM system on just the 100k_nodup data, on top of LDA+MLLT+SAT.
- steps/train_ubm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+ steps/train_ubm_lda_etc.sh --nj 30 --cmd "$train_cmd" \
    700 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/ubm5a
- steps/train_sgmm_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+ steps/train_sgmm_lda_etc.sh --nj 30 --cmd "$train_cmd" \
    4500 40000 50 40 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup \
      exp/ubm5a/final.ubm exp/sgmm5a
 
  utils/mkgraph.sh data/lang_test exp/sgmm5a exp/sgmm5a/graph
- utils/decode.sh --opts "$decode_opts1" -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
+ utils/decode.sh --opts "$decode_opts1" -l data/lang_test --nj 30 --cmd "$decode_cmd" \
    steps/decode_sgmm_lda_etc.sh exp/sgmm5a/graph data/eval2000 exp/sgmm5a/decode_eval2000 \
    exp/tri4a/decode_eval2000
- utils/decode.sh --opts "$decode_opts1" --num-jobs 30 --cmd "$decode_cmd" \
+ utils/decode.sh --opts "$decode_opts1" --nj 30 --cmd "$decode_cmd" \
    steps/decode_sgmm_lda_etc.sh exp/sgmm5a/graph data/train_dev exp/sgmm5a/decode_train_dev \
    exp/tri4a/decode_train_dev
 
 
   # This decoding script doesn't do a full re-decoding but is limited to the lattices
   # from the baseline decoding.
-  utils/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
+  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
     data/lang_test data/eval2000 exp/sgmm5a/decode_eval2000_fromlats exp/tri4a/decode_eval2000
 
 
@@ -163,49 +162,49 @@ steps/align_lda_mllt_sat.sh --num-jobs 30 --cmd "$train_cmd" \
 
 
 # note: was 4k,150k when I was using all the data, may change back.
-steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
+steps/train_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
   3500 75000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri5a
 
 utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
 
 utils/decode.sh --opts "$decode_opts2" \
-  -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
+  -l data/lang_test --nj 30 --cmd "$decode_cmd" \
   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000
 
 utils/decode.sh --opts "$decode_opts2" \
-  --num-jobs 30 --cmd "$decode_cmd" \
+  --nj 30 --cmd "$decode_cmd" \
   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/train_dev exp/tri5a/decode_train_dev
 
 
 
 ( # Try mixing up from the 5a system to see if more Gaussians helps.
-  steps/align_lda_mllt_sat.sh --num-jobs 30 --cmd "$train_cmd" \
+  steps/align_lda_mllt_sat.sh --nj 30 --cmd "$train_cmd" \
     data/train_100k_nodup data/lang exp/tri5a exp/tri5a_ali_100k_nodup
- steps/mixup_lda_etc.sh --num-jobs 30 --cmd "$train_cmd" \
+ steps/mixup_lda_etc.sh --nj 30 --cmd "$train_cmd" \
   100000 data/train_100k_nodup exp/tri5a exp/tri5a_ali_100k_nodup exp/tri5a_100k
  utils/decode.sh --opts "$decode_opts2" \
-    --num-jobs 30 --cmd "$decode_cmd" \
+    --nj 30 --cmd "$decode_cmd" \
    steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/train_dev exp/tri5a_100k/decode_train_dev
 )
 
 
 ( 
   # MMI starting from the system in tri5a.
-  steps/align_lda_mllt_sat.sh --num-jobs 40 --cmd "$train_cmd" \
+  steps/align_lda_mllt_sat.sh --nj 40 --cmd "$train_cmd" \
     data/train_100k data/lang exp/tri5a exp/tri5a_ali_100k
   # Use a smaller beam for Switchboard, as in test time.  Use the 100k dataset,
   # but include duplicates for discriminative training.
-  steps/make_denlats_lda_etc.sh --num-jobs 40 --sub-split 40 --cmd "$train_cmd" \
+  steps/make_denlats_lda_etc.sh --nj 40 --sub-split 40 --cmd "$train_cmd" \
     $decode_opts1 --lattice-beam 6.0 data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k
-  steps/train_lda_etc_mmi.sh --num-jobs 40 --cmd "$train_cmd" \
+  steps/train_lda_etc_mmi.sh --nj 40 --cmd "$train_cmd" \
   data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k exp/tri5a exp/tri5a_mmi
-  utils/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
+  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
      steps/decode_lda_etc.sh exp/tri5a/graph data/eval2000 exp/tri5a_mmi/decode_eval2000 \
      exp/tri5a/decode_eval2000
-  steps/train_lda_etc_mmi.sh --boost 0.1 --num-jobs 40 --cmd "$train_cmd" \
+  steps/train_lda_etc_mmi.sh --boost 0.1 --nj 40 --cmd "$train_cmd" \
     data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k \
     exp/tri5a exp/tri5a_mmi_b0.1
-  utils/decode.sh -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
+  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
     steps/decode_lda_etc.sh exp/tri5a/graph  data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 \
     exp/tri5a/decode_eval2000
 )
@@ -213,20 +212,20 @@ utils/decode.sh --opts "$decode_opts2" \
 
 # Align the 5a system; we'll train triphone and SGMM systems on
 # all the data, on top of this.
-steps/align_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
+steps/align_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri5a exp/tri5a_ali_nodup
 
 ( # Train triphone system on all the data.
- steps/train_lda_mllt_sat.sh  --num-jobs 30 --cmd "$train_cmd" \
+ steps/train_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
    4000 150000 data/train_nodup data/lang exp/tri5a_ali_nodup exp/tri6a
 
  utils/mkgraph.sh data/lang_test exp/tri6a exp/tri6a/graph
  utils/decode.sh --opts "$decode_opts2" \
-   -l data/lang_test --num-jobs 30 --cmd "$decode_cmd" \
+   -l data/lang_test --nj 30 --cmd "$decode_cmd" \
    steps/decode_lda_mllt_sat.sh exp/tri6a/graph data/eval2000 exp/tri6a/decode_eval2000
 
  utils/decode.sh --opts "$decode_opts2" \
-   --num-jobs 30 --cmd "$decode_cmd" \
+   --nj 30 --cmd "$decode_cmd" \
    steps/decode_lda_mllt_sat.sh exp/tri6a/graph data/train_dev exp/tri6a/decode_train_dev
 
 )

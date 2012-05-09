@@ -19,7 +19,7 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-. path.sh || exit 1;
+. ./path.sh || exit 1;
 
 lang=$1
 indir=$2

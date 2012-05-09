@@ -15,9 +15,9 @@ max_iter_inc=25  # Last iter to increase #Gauss on.
 dim=40
 beam=10
 retry_beam=40
+boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
-
 # End configuration.
 
 [ -f path.sh ] && . ./path.sh
@@ -28,6 +28,7 @@ if [ $# != 6 ]; then
   echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --nj <num-jobs>                                  # how many parallel jobs to run"
   echo "  --config <config-file>                           # config containing options"
   echo "  --stage <stage>                                  # stage to do partial re-run from."
   exit 1;
@@ -82,7 +83,7 @@ if [ $stage -le -3 ]; then
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
    acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
      "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
-  [ `ls $dir/*.treeacc | wc -w` -eq "$nj" ] || echo "Wrong #tree-accs" && exit 1;
+  [ `ls $dir/*.treeacc | wc -w` -ne "$nj" ] && echo "Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
   rm $dir/*.treeacc
@@ -134,8 +135,9 @@ while [ $x -lt $num_iters ]; do
   echo Training pass $x
   if echo $realign_iters | grep -w $x >/dev/null && [ $stage -le $x ]; then
     echo Aligning data
+    mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/$x.mdl \
+      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
       "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
       "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
   fi
@@ -176,8 +178,7 @@ ln -s $x.occs $dir/final.occs
 ln -s $cur_lda_iter.mat $dir/final.mat
 
 # Summarize warning messages...
-for x in $dir/log/*.log; do 
-  n=`grep WARNING $x | wc -l`; [ $n -ne 0 ] && echo $n warnings in $x;
-done
+
+utils/summarize_warnings.pl $dir/log
 
 echo Done training system with LDA+MLLT features in $dir

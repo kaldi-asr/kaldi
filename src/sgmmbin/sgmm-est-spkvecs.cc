@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_sgmm.Read(ki.Stream(), binary);
     }
-    MleSgmmSpeakerAccs spk_stats(am_sgmm);
+    MleSgmmSpeakerAccs spk_stats(am_sgmm, rand_prune);
 
     RandomAccessPosteriorReader post_reader(post_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);

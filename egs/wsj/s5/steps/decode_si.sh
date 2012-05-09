@@ -5,9 +5,10 @@
 
 # Begin configuration section.  
 iter=
+model= # You can specify the model to use (e.g. if you want to use the .alimdl)
 nj=4
 cmd=run.pl
-maxactive=7000
+max_active=7000
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
@@ -29,6 +30,8 @@ if [ $# != 3 ]; then
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --iter <iter>                                    # Iteration of model to test."
+   echo "  --model <model>                                  # which model to use (e.g. to"
+   echo "                                                   # specify the final.alimdl)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
@@ -44,8 +47,10 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-if [ -z $iter ]; then model=$srcdir/final.mdl; 
-else model=$srcdir/$iter.mdl; fi
+if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
+  if [ -z $iter ]; then model=$srcdir/final.mdl; 
+  else model=$srcdir/$iter.mdl; fi
+fi
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
@@ -61,7 +66,7 @@ case $feat_type in
 esac
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+ gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 

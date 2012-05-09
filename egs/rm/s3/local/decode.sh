@@ -6,7 +6,7 @@
 # The interpretation of the decode-dir-1, etc., as inputs,
 # outputs and so on, depends on the decoding script you call.
 
-# It assumes the model directory is one level of from decode-dir-1.
+# It assumes the model directory is one level up from decode-dir-1.
 
 mono_opt=
 

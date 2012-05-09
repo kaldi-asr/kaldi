@@ -72,7 +72,7 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
      echo "Mismatch in number of jobs with $transform_dir";
   [ -f $srcdir/final.mat ] && ! cmp $transform_dir/final.mat $srcdir/final.mat && \
      echo "LDA transforms differ between $srcdir and $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk $transform_dir/JOB.trans ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/JOB.trans ark:- ark:- |"
 fi
 
 fmpefeats="$feats fmpe-apply-transform $srcdir/$iter.fmpe ark:- 'ark,s,cs:gunzip -c $dir/gselect.JOB.gz|' ark:- |" 

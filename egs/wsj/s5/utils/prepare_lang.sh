@@ -6,13 +6,16 @@
 # given a source directory containing a dictionary lexicon.txt in a form like:
 # word phone1 phone2 ... phonen
 # per line (alternate prons would be separate lines).
-# and also files silence_phones.txt and nonsilence_phones.txt, and extra_questions.txt
+# and also files silence_phones.txt and nonsilence_phones.txt, optional_silence.txt
+# and extra_questions.txt
 # Here, silence_phones.txt and nonsilence_phones.txt are lists of silence and
 # non-silence phones respectively (where silence includes various kinds of noise,
 # laugh, cough, filled pauses etc., and nonsilence phones includes the "real" phones.)
 # on each line of those files is a list of phones, and the phones on each line are
 # assumed to correspond to the same "base phone", i.e. they will be different stress
 # or tone variations of the same basic phone.
+# The file "optional_silence.txt" contains just a single phone (typically SIL) which
+# is used for optional silence in the lexicon.
 # extra_questions.txt might be empty; typically will consist of lists of phones, all
 # members of each list with the same stress or tone or something; and also a list for
 # the silence phones.  This will augment the automtically generated questions (note:
@@ -36,6 +39,8 @@ mkdir -p $dir $tmpdir $dir/phones
 
 [ -f path.sh ] && . ./path.sh
 
+utils/validate_dict_dir.pl $srcdir || exit 1;
+
 # Create $tmpdir/lexicon.txt from $srcdir/lexicon.txt by
 # adding the markers _B, _E, _S, _I depending on word position.
 # In this recipe, these markers apply to silence also.
@@ -44,10 +49,6 @@ perl -ane '@A=split(" ",$_); $w = shift @A; @A>0||die;
   if(@A==1) { print "$w $A[0]_S\n"; } else { print "$w $A[0]_B ";
     for($n=1;$n<@A-1;$n++) { print "$A[$n]_I "; } print "$A[$n]_E\n"; } ' \
   <$srcdir/lexicon.txt >$tmpdir/lexicon.txt || exit 1;
-
-for f in $srcdir/{,non}silence_phones.txt $srcdir/extra_questions.txt; do
-  [ ! -f $f ] && echo "No such file $f" && exit 1;
-done
 
 # create $tmpdir/phone_map.txt
 # this has the format (on each line)
@@ -76,7 +77,9 @@ cat $srcdir/silence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
  awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/silence.txt
 cat $srcdir/nonsilence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
  awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/nonsilence.txt
+cp $srcdir/optional_silence.txt $dir/phones/optional_silence.txt
 cp $dir/phones/silence.txt $dir/phones/context_indep.txt
+
 
 cat $srcdir/extra_questions.txt | utils/apply_map.pl $tmpdir/phone_map.txt \
   >$dir/phones/extra_questions.txt
@@ -131,9 +134,11 @@ cat $tmpdir/lexicon.txt | awk '{print $1}' | sort | uniq  | \
 #"CLOSE-QUOTE 3
 #...
 
+silphone=`cat $srcdir/optional_silence.txt` || exit 1;
+
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 
-utils/make_lexicon_fst.pl $tmpdir/lexicon.txt 0.5 SIL | \
+utils/make_lexicon_fst.pl $tmpdir/lexicon.txt 0.5 $silphone | \
   fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
   --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
@@ -148,7 +153,7 @@ cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int # integer versi
 
 # Create these lists of phones in colon-separated integer list form too, 
 # for purposes of being given to programs as command-line options.
-for f in silence nonsilence disambig context_indep; do
+for f in silence nonsilence optional_silence disambig context_indep; do
   utils/sym2int.pl $dir/phones.txt <$dir/phones/$f.txt >$dir/phones/$f.int
   utils/sym2int.pl $dir/phones.txt <$dir/phones/$f.txt | \
    awk '{printf(":%d", $1);} END{printf "\n"}' | sed s/:// > $dir/phones/$f.csl || exit 1;
@@ -177,9 +182,8 @@ cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
 phone_disambig_symbol=`grep \#0 $dir/phones.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 $dir/words.txt | awk '{print $2}'`
 
-utils/make_lexicon_fst.pl $tmpdir/lexicon_disambig.txt 0.5 SIL '#'$ndisambig | \
+utils/make_lexicon_fst.pl $tmpdir/lexicon_disambig.txt 0.5 $silphone '#'$ndisambig | \
    fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
    --keep_isymbols=false --keep_osymbols=false |   \
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
    fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
-

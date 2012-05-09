@@ -14,7 +14,24 @@ fi
 data=$1
 mkdir -p $data/.backup
 
+[ ! -d $data ] && echo "$0: no such directory $data" && exit 1;
+
+[ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
+
 cat $data/utt2spk | awk '{print $1}' > $data/utts
+
+# Do a check.
+export LC_ALL=C
+! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
+   echo "utt2spk is not in sorted order (fix this yourelf)" && exit 1;
+
+! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
+   echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
+   echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+
+! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
+   echo "spk2utt is not in sorted order (fix this yourelf)" && exit 1;
+
 maybe_wav=
 [ ! -f $data/segments ] && maybe_wav=wav  # wav indexed by utts only if segments does not exist.
 for x in feats.scp text segments $maybe_wav; do
@@ -41,6 +58,7 @@ for x in utt2spk feats.scp text segments $maybe_wav; do
      utils/filter_scp.pl $data/utts $data/.backup/$x > $data/$x
   fi
 done
+
 
 if [ -f $data/segments ]; then
   awk '{print $2}' $data/segments | sort | uniq > $data/reco # reco means the id's of the recordings.

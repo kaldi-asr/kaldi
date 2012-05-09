@@ -243,6 +243,9 @@ else { # we failed.
   if (@logfiles == 1) {
     if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/$jobstart/g; }
     print STDERR "queue.pl: job writing to $logfile failed with status $status\n";
+    if ($logfile =~ m/JOB/) {
+      print STDERR "queue.pl: probably you forgot to put JOB=1:\$nj in your script.";
+    }
   } else {
     if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
     $numjobs = 1 + $jobend - $jobstart;
