@@ -159,4 +159,3 @@ fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
 
 
 echo swbd_p1_format_data succeeded.
-

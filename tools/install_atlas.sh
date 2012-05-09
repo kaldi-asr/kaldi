@@ -22,6 +22,8 @@
 # you can edit
 # /etc/sysconfig/cpuspeed  
 # to set GOVERNOR=performance
+# On others you can do
+#  sudo cpufreq-selector performance
 # You may under some circumstances have to specify -b 32 to the configure
 # script (e.g. if you are compiling Kaldi in 32-bit on a 64-bit CPU).
 

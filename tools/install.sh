@@ -13,8 +13,8 @@ if ! which automake >&/dev/null; then
    sleep 1
 fi
 
-if ! which libtoolize >&/dev/null; then
-   echo "Warning: libtoolize not installed (IRSTLM installation probably will not work)"
+if ! which libtoolize >&/dev/null && ! which glibtoolize >&/dev/null; then
+   echo "Warning: libtoolize or glibtoolize not installed (IRSTLM installation probably will not work)"
    sleep 1
 fi
 
@@ -103,7 +103,7 @@ fi
     cd irstlm
     # Applying patch to get -write option of interpolate-lm
     # May not work with anything else than revision 398
-	patch -N -p0 < ../interpolatedwrite-5.60.02.patch
+	patch -N -p0 < ../interpolatedwrite-5.60.02.patch || exit 1;
 
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
