@@ -1,7 +1,7 @@
 // gmmbin/gmm-init-model.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Daniel Povey, Johns Hopkins
-// University  Guoguo Chen
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
+//                     Johns Hopkins University  (author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
