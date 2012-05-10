@@ -362,7 +362,9 @@ steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
   exp/tri4b_mmi_b0.1  || exit 1;
 
-## I AM HERE
+## I AM HERE.  Things below here are commands from the old run.sh,
+# and I have to change them for the current run.sh.
+exit 0;
 
 steps/train_lda_etc_mmi.sh --nj 40 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \

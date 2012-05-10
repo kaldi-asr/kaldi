@@ -123,6 +123,9 @@ steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" --alignment-model exp/tri3b/fi
   --adapt-model exp/tri3b/final.mdl exp/tri3b/graph data/test exp/tri3b_mmi/decode || exit 1;
 
 # TEMP... not finished past here.
+# Things below here are commands from the old run.sh,
+# and I have to change them for the current run.sh.
+
 exit 0;
 
 
