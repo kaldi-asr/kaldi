@@ -1,6 +1,7 @@
 // hmm/transition-model.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey, Johns Hopkins
+// University  Guoguo Chen
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -556,5 +557,26 @@ bool GetPdfsForPhones(const TransitionModel &trans_model,
   return true;
 }
 
+bool GetPhonesForPdfs(const TransitionModel &trans_model,
+                     const std::vector<int32> &pdfs, 
+                     std::vector<int32> *phones) {
+  KALDI_ASSERT(IsSortedAndUniq(pdfs));
+  KALDI_ASSERT(phones != NULL);
+  phones->clear();
+  for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++) {
+    if (std::binary_search(pdfs.begin(), pdfs.end(),
+                           trans_model.TransitionStateToPdf(tstate)))
+      phones->push_back(trans_model.TransitionStateToPhone(tstate));
+  }
+  SortAndUniq(phones);
+
+  for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++)
+    if (std::binary_search(phones->begin(), phones->end(),
+                           trans_model.TransitionStateToPhone(tstate)) 
+        && !std::binary_search(pdfs.begin(), pdfs.end(),
+                               trans_model.TransitionStateToPdf(tstate)))
+      return false;
+  return true;
+}
 
 } // End namespace kaldi

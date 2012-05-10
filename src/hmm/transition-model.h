@@ -287,7 +287,11 @@ bool GetPdfsForPhones(const TransitionModel &trans_model,
                       const std::vector<int32> &phones,
                       std::vector<int32> *pdfs);
 
-
+/// Works out which phones might correspond to the given pdfs. Similar to the
+/// above GetPdfsForPhones(, ,)
+bool GetPhonesForPdfs(const TransitionModel &trans_model,
+                      const std::vector<int32> &pdfs,
+                      std::vector<int32> *phones);
 /// @}
 
 } // end namespace kaldi
