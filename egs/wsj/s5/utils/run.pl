@@ -109,7 +109,7 @@ if ($ret != 0) {
   if ($njobs == 1) { 
     print STDERR "run.pl: job writing to $logfile failed\n"; 
     if ($logfile =~ m/JOB/) {
-      print STDERR "queue.pl: probably you forgot to put JOB=1:\$nj in your script.";
+      print STDERR "queue.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
     }
   }
   else {

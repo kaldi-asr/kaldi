@@ -65,7 +65,7 @@ oov=`cat $lang/oov.int`
 silphonelist=`cat $lang/phones/silence.csl`
 numsubstates=$num_leaves # Initial #-substates.
 incsubstates=$[($totsubstates-$numsubstates)/$max_iter_inc] # per-iter increment for #substates
-feat_dim=`gmm-info $alidir/final.model | awk '/feature dimension/{print $NF}'` || exit 1;
+feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{print $NF}'` || exit 1;
 [ $feat_dim -eq $feat_dim ] || exit 1; # make sure it's numeric.
 [ -z $phn_dim ] && phn_dim=$[$feat_dim+1]
 [ -z $spk_dim ] && spk_dim=$feat_dim
@@ -116,7 +116,7 @@ if [ $stage -le -5 ]; then
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
-    build-tree --verbose=1 --max-leaves=$numleaves \
+    build-tree --verbose=1 --max-leaves=$num_leaves \
     $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 fi
@@ -165,7 +165,7 @@ while [ $x -lt $num_iters ]; do
    fi
    if [ $spk_dim -gt 0 ] && echo $spkvec_iters | grep -w $x >/dev/null; then
      if [ $stage -le $x ]; then
-       $cmd $dir/log/spkvecs.$x.JOB.log \
+       $cmd JOB=1:$nj $dir/log/spkvecs.$x.JOB.log \
          ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
          weight-silence-post 0.01 $silphonelist $dir/$x.mdl ark:- ark:- \| \
          sgmm-est-spkvecs --rand-prune=$rand_prune --spk2utt=ark:$sdata/JOB/spk2utt \
@@ -186,7 +186,7 @@ while [ $x -lt $num_iters ]; do
    fi
    
    if [ $stage -le $x ]; then
-     $cmd $dir/log/acc.$x.JOB.log \
+     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
        sgmm-acc-stats $spkvecs_opt --utt2spk=ark:$sdata/JOB/utt2spk \
        --update-flags=$flags "$gselect_opt" --rand-prune=$rand_prune \
        $dir/$x.mdl "$feats" "ark,s,cs:gunzip -c $dir/ali.JOB.gz | ali-to-post ark:- ark:-|" \
@@ -212,8 +212,7 @@ while [ $x -lt $num_iters ]; do
        sgmm-est --update-flags=$flags --split-substates=$numsubstates $increase_dim_opts \
          --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.*.acc|" \
        $dir/$[$x+1].mdl || exit 1;
-
-     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 
+     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
    fi
    
    if [ $x -lt $max_iter_inc ]; then
@@ -242,7 +241,7 @@ if [ $spk_dim -gt 0 ]; then
       flags=vMwcS
     fi
     if [ $stage -le $x ]; then
-      $cmd $dir/log/acc_ali.$x.JOB.log \
+      $cmd JOB=1:$nj $dir/log/acc_ali.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         sgmm-post-to-gpost $spkvecs_opt "$gselect_opt" \
         --utt2spk=ark:$sdata/JOB/utt2spk $dir/$x.mdl "$feats" ark,s,cs:- ark:- \| \

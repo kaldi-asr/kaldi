@@ -122,16 +122,16 @@ steps/train_mmi.sh data/train data/lang exp/tri3b_ali exp/tri3b_denlats exp/tri3
 steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" --alignment-model exp/tri3b/final.alimdl \
   --adapt-model exp/tri3b/final.mdl exp/tri3b/graph data/test exp/tri3b_mmi/decode || exit 1;
 
-# TEMP... not finished past here.
-# Things below here are commands from the old run.sh,
-# and I have to change them for the current run.sh.
-
-exit 0;
-
 
 # of LDA+MLLT+SAT features.
 steps/train_ubm.sh 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
-steps/train_sgmm.sh data/train data/lang exp/tri2b_ali exp/ubm3d/final.ubm exp/sgmm3d || exit 1;
+steps/train_sgmm.sh 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
+
+# TEMP... not finished past here.
+# Things below here are commands from the old run.sh,
+# and I have to change them for the current run.sh.
+exit 0;
+
 
 scripts/mkgraph.sh data/lang_test exp/sgmm3d exp/sgmm3d/graph || exit 1;
 local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm3d/decode || exit 1;

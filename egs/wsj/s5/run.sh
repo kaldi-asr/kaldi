@@ -266,7 +266,7 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
 #fi #TEMP
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_sat.sh  --cmd "$train_cmd" \
+steps/train_sat.sh --cmd "$train_cmd" \
   2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
