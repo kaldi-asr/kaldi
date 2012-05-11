@@ -204,10 +204,7 @@ int main(int argc, char *argv[]) {
       fmllr_grad_scatter.Write(ko.Stream(), binary_write);
       KALDI_LOG << "Written accs to: " << accs_wxfilename;
     }
-    if (num_done != 0)
-      return 0;
-    else
-      return 1;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

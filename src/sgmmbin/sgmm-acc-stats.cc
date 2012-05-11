@@ -198,8 +198,7 @@ int main(int argc, char *argv[]) {
       sgmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";
-    if (num_done != 0) return 0;
-    else return 1;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

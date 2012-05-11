@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
               << " with no gposts, " << num_other_error << " with other errors.";
     KALDI_LOG << "Overall auxf impr per frame is " << (tot_impr / tot_t)
               << " over " << tot_t << " frames.";
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

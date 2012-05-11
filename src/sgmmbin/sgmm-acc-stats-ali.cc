@@ -1,7 +1,6 @@
 // sgmmbin/sgmm-acc-stats-ali.cc
 
-// Copyright 2009-2011   Saarland University
-// Author:  Arnab Ghoshal
+// Copyright 2009-2012   Saarland University (author:  Arnab Ghoshal)  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -189,8 +188,7 @@ int main(int argc, char *argv[]) {
       sgmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";
-    if (num_done != 0) return 0;
-    else return 1;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
