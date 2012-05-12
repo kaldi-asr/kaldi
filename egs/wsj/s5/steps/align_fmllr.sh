@@ -113,18 +113,18 @@ if [ $stage -le 2 ]; then
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
       gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
       --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
-      ark,s,cs:- ark:$dir/JOB.trans || exit 1;
+      ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   else
     $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
       --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
-      ark,s,cs:- ark:$dir/JOB.trans || exit 1;
+      ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   fi
 fi
 
-feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/JOB.trans ark:- ark:- |"
+feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
 
 if [ $stage -le 3 ]; then
   echo "$0: doing final alignment."

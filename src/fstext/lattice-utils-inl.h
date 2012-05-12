@@ -1,6 +1,6 @@
 // fstext/lattice-weight-inl.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -263,9 +263,10 @@ bool CompactLatticeHasAlignment(
   return false;
 }
 
-// old, simple version of template.
+/*
+// old, simple version of template.  Was too memory inefficient.
 template<class Weight, class Int>
-void PruneCompactLatticeOld(
+void PruneCompactLattice(
     Weight beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *fst) {
   VectorFst<ArcTpl<Weight> > lattice, pruned_lattice; // in non-compact form
@@ -274,6 +275,7 @@ void PruneCompactLatticeOld(
   Prune(lattice, &pruned_lattice, beam);
   ConvertLattice(pruned_lattice, fst);
 }
+*/
 
 // New version.
 template<class Weight, class Int>

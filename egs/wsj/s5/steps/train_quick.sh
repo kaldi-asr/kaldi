@@ -69,10 +69,10 @@ case $feat_type in
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
-if [ -f $alidir/1.trans ]; then
+if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
-  ln.pl $alidir/*.trans $dir # Link them to dest dir.
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/JOB.trans ark:- ark:- |"
+  ln.pl $alidir/trans.* $dir # Link them to dest dir.
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
 fi
 ##
 
@@ -164,7 +164,7 @@ while [ $x -lt $num_iters ]; do
   x=$[$x+1];
 done
 
-if [ -f $alidir/1.trans ]; then
+if [ -f $alidir/trans.1 ]; then
   echo "$0: estimating alignment model"
   $cmd JOB=1:$nj $dir/log/acc_alimdl.JOB.log \
     ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \

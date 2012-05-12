@@ -60,11 +60,11 @@ case $feat_type in
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
-if [ -f $srcdir/1.trans ]; then
+if [ -f $srcdir/trans.1 ]; then
   echo Using transforms from $srcdir;
-  rm $dir/*.trans 2>/dev/null
-  ln.pl $srcdir/*.trans $dir  # Link those transforms to current directory.
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/JOB.trans ark:- ark:- |"
+  rm $dir/trans.* 2>/dev/null
+  ln.pl $srcdir/trans.* $dir  # Link those transforms to current directory.
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
 else
   feats="$sifeats"
 fi
@@ -121,7 +121,7 @@ rm $dir/final.mdl $dir/final.occs 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 
-if [ -f $dir/1.trans ]; then 
+if [ -f $dir/trans.1 ]; then 
   echo "$0: accumulating stats for alignment model."
   $cmd JOB=1:$nj $dir/log/acc_alimdl.JOB.log \
     ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \

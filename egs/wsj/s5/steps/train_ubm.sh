@@ -69,9 +69,9 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
-if [ -f $alidir/1.trans ]; then
+if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/JOB.trans ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
 fi
 ##
 

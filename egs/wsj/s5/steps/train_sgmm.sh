@@ -90,9 +90,9 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
-if [ -f $alidir/1.trans ]; then
+if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/JOB.trans ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
 fi
 ##
 
@@ -231,9 +231,10 @@ if [ $spk_dim -gt 0 ]; then
   # in test time.
 
   # We do this for a few iters, in this recipe.
+  final_mdl=$dir/$x.mdl
   cur_alimdl=$dir/$x.mdl
   while [ $x -lt $[$num_iters+$num_iters_alimdl] ]; do
-    echo "$0: building alignment model (pass $y)"
+    echo "$0: building alignment model (pass $x)"
     if [ $x -eq $num_iters ]; then # 1st pass of building alimdl.
       flags=MwcS # don't update v the first time.  Note-- we never update transitions.
       # they wouldn't change anyway as we use the same alignment as previously.
@@ -244,7 +245,7 @@ if [ $spk_dim -gt 0 ]; then
       $cmd JOB=1:$nj $dir/log/acc_ali.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         sgmm-post-to-gpost $spkvecs_opt "$gselect_opt" \
-        --utt2spk=ark:$sdata/JOB/utt2spk $dir/$x.mdl "$feats" ark,s,cs:- ark:- \| \
+        --utt2spk=ark:$sdata/JOB/utt2spk $final_mdl "$feats" ark,s,cs:- ark:- \| \
         sgmm-acc-stats-gpost --update-flags=$flags  $cur_alimdl "$feats" \
         ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
       $cmd $dir/log/update_ali.$x.log \

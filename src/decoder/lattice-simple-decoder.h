@@ -1,6 +1,6 @@
 // decoder/lattice-simple-decoder.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -217,6 +217,7 @@ class LatticeSimpleDecoder {
     lat_opts.max_loop = config_.max_loop;
     for (int32 i = 0; i < 20; i++) {
       if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {
+        raw_fst.DeleteStates(); // save memory.
         if (config_.prune_lattice)
           fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), ofst);
         return true;

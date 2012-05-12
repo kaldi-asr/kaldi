@@ -44,7 +44,7 @@ while true; do
  esac
 done
 
-[ ! -z "$config" ] && . $config # Override any of the options, if --config was specified.
+[ -z "$config" ] || . $config || exit 1; # Override any of the options, if --config was specified.
 
 # Check for an empty argument to the --cmd option, which can easily occur as a result
 # of scripting errors.

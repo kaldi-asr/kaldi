@@ -68,6 +68,7 @@ fi
 graphdir=$1
 data=$2
 dir=`echo $3 | sed 's:/$::g'` # remove any trailing slash.
+
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 sdata=$data/split$nj;
 

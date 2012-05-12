@@ -11,7 +11,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-to-phone-lattice lattice-interp lattice-project \
            lattice-add-trans-probs lattice-difference lattice-word-align \
            nbest-to-linear nbest-to-lattice lattice-1best linear-to-nbest \
-           lattice-mbr-decode lattice-align-words lattice-to-mpe-post
+           lattice-mbr-decode lattice-align-words lattice-to-mpe-post \
+           lattice-copy-backoff
 
 
 OBJFILES =

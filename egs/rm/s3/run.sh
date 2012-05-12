@@ -116,8 +116,7 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode 
 
 
 # Decode with fMLLR
-. ./path.sh
-sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl} || exit 1;
+
 local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode || exit 1;
 
 

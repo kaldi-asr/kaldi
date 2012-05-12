@@ -117,7 +117,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   if (!(props & fst::kTopSorted))
     KALDI_ERR << "Input lattice must be topologically sorted.";
   KALDI_ASSERT(lat.Start() == 0);
-
+  
   int32 num_states = lat.NumStates();
   vector<int32> state_times;
   int32 max_time = LatticeStateTimes(lat, &state_times);  

@@ -76,9 +76,9 @@ case $feat_type in
 esac
 
 ## Get initial fMLLR transforms (possibly from alignment dir)
-if [ -f $alidir/1.trans ]; then
+if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/JOB.trans ark:- ark:- |"
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
 else 
   if [ $stage -le -4 ]; then
@@ -88,9 +88,9 @@ else
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
       gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
       --spk2utt=ark:$sdata/JOB/spk2utt $alidir/final.mdl "$sifeats" \
-      ark:- ark:$dir/JOB.trans || exit 1;
+      ark:- ark:$dir/trans.JOB || exit 1;
   fi
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/JOB.trans ark:- ark:- |"
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$dir
 fi
 
@@ -165,16 +165,16 @@ while [ $x -lt $num_iters ]; do
         weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
         gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
         --spk2utt=ark:$sdata/JOB/spk2utt $dir/$x.mdl \
-        "$feats" ark:- ark:$dir/JOB.tmp.trans || exit 1;
+        "$feats" ark:- ark:$dir/tmp_trans.JOB || exit 1;
       for n in `seq $nj`; do
         ! ( compose-transforms --b-is-affine=true \
-          ark:$dir/$n.tmp.trans ark:$cur_trans_dir/$n.trans ark:$dir/$n.composed.trans \
-          && mv $dir/$n.composed.trans $dir/$n.trans && \
-          rm $dir/$n.tmp.trans ) 2>$dir/log/compose_transforms.$x.log \
+          ark:$dir/tmp_trans.$n ark:$cur_trans_dir/trans.$n ark:$dir/composed_trans.$n \
+          && mv $dir/composed_trans.$n $dir/trans.$n && \
+          rm $dir/tmp_trans.$n ) 2>$dir/log/compose_transforms.$x.log \
           && echo "$0: Error composing transforms" && exit 1;
       done
     fi
-    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/JOB.trans ark:- ark:- |"
+    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
   

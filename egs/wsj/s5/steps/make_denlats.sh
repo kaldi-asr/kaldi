@@ -87,11 +87,11 @@ esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/1.trans ] && echo "Expected $transform_dir/1.trans to exist."
+  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] && echo "$0: mismatch in number of jobs with $transform_dir";
   [ -f $srcdir/final.mat ] && ! cmp $transform_dir/final.mat $srcdir/final.mat && \
      echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/JOB.trans ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 else
   if [ -f $srcdir/final.alimdl ]; then
     echo "$0: you seem to have a SAT system but you did not supply the --transform-dir option.";
