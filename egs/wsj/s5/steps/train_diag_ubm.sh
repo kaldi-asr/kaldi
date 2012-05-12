@@ -65,7 +65,7 @@ case $feat_type in
 esac
 
 [ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk $alidir/trans.JOB ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"
 
 if [ ! -z "$silence_weight" ]; then
   [ ! -f $alidir/ali.1.gz ] && \

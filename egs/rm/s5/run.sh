@@ -108,18 +108,18 @@ steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd"
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
-# Do LDA+MLLT+SAT, and decode.
+## Do LDA+MLLT+SAT, and decode.
 steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode || exit 1;
 
 
-# Align all data with LDA+MLLT+SAT system (tri3d)
+# Align all data with LDA+MLLT+SAT system (tri3b)
 steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 
-# MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
+## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
 steps/make_denlats.sh --config conf/decode.config \
    --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b_ali \
   data/train data/lang exp/tri3b exp/tri3b_denlats || exit 1;
@@ -133,19 +133,30 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2 || exit 1;
 
+## fMMI+MMI (no indirect diff) on top of tri3b (which is LDA+MLLT+SAT).
+#first, train UBM.
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 8 --cmd "$train_cmd" \
+  250 data/train data/lang exp/tri3b_ali exp/dubm3b
 
-# of LDA+MLLT+SAT features.
+steps/train_mmi_fmmi.sh --learning-rate 0.005 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+  --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
+  exp/tri3b_fmmi_a || exit 1;
+
+
+## SGMM on top of LDA+MLLT+SAT features.
 steps/train_ubm.sh 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
 steps/train_sgmm.sh 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
 
 utils/mkgraph.sh data/lang exp/sgmm4a exp/sgmm4a/graph || exit 1;
 
 steps/decode_sgmm.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode
+  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode || exit 1;
 
 steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode_fmllr
+  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode_fmllr || exit 1;
 
-steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode
-steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode
+steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
+steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
+
+
 
