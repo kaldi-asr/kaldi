@@ -48,7 +48,7 @@ utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 # note: local/decode.sh calls the command line once for each
 # test, and afterwards averages the WERs into (in this case
 # exp/mono/decode/
-steps/decode_si.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/mono/graph data/test exp/mono/decode
 
 
@@ -62,7 +62,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 # decode tri1
 utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph
-steps/decode_si.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri1/graph data/test exp/tri1/decode
 
 #draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
@@ -77,14 +77,14 @@ steps/align_si.sh --nj 8 --cmd "$train_cmd" \
 
 # decode tri2a
 utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
-steps/decode_si.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
 # train and decode tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" 1800 9000 \
   data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
-steps/decode_si.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2b/graph data/test exp/tri2b/decode
 
 # Align all data with LDA+MLLT system (tri2b)
@@ -95,17 +95,17 @@ steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
 steps/make_denlats.sh --nj 8 --cmd "$train_cmd" \
   data/train data/lang exp/tri2b exp/tri2b_denlats || exit 1;
 steps/train_mmi.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mmi || exit 1;
-steps/decode_si.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi/decode_it4
-steps/decode_si.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi/decode_it3
 
 # Do the same with boosting.
 steps/train_mmi.sh --boost 0.05 data/train data/lang \
    exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mmi_b0.05 || exit 1;
-steps/decode_si.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it4 || exit 1;
-steps/decode_si.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
+steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
 # Do LDA+MLLT+SAT, and decode.
@@ -128,6 +128,10 @@ steps/train_mmi.sh data/train data/lang exp/tri3b_ali exp/tri3b_denlats exp/tri3
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --alignment-model exp/tri3b/final.alimdl --adapt-model exp/tri3b/final.mdl \
    exp/tri3b/graph data/test exp/tri3b_mmi/decode || exit 1;
+
+# Do a decoding that uses the exp/tri3b/decode directory to get transforms from.
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+  --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2 || exit 1;
 
 
 # of LDA+MLLT+SAT features.

@@ -131,11 +131,11 @@ if [ $stage -le 1 ]; then
     gmm-post-to-gpost $alignment_model "$sifeats" ark:- ark:- \| \
     gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
     --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$sifeats" ark,s,cs:- \
-    ark:$dir/JOB.pre_trans || exit 1;
+    ark:$dir/pre_trans.JOB || exit 1;
 fi
 ##
 
-pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/JOB.pre_trans ark:- ark:- |"
+pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/pre_trans.JOB ark:- ark:- |"
 
 ## Do the main lattice generation pass.  Note: we don't determinize the lattices at
 ## this stage, as we're going to use them in acoustic rescoring with the larger 
