@@ -153,7 +153,7 @@ fi
 
 ## Do a second pass of estimating the transform-- this time with the lattices
 ## generated from the alignment model.  Compose the transforms to get
-## $dir/1.trans, etc.
+## $dir/trans.1, etc.
 if [ $stage -le 3 ]; then
   echo "$0: estimating fMLLR transforms a second time."
   $cmd JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
@@ -163,13 +163,13 @@ if [ $stage -le 3 ]; then
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
     gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
     --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$pass1feats" \
-    ark,s,cs:- ark:$dir/JOB.trans.tmp '&&' \
-    compose-transforms --b-is-affine=true ark:$dir/JOB.trans.tmp ark:$dir/JOB.pre_trans \
-    ark:$dir/JOB.trans  || exit 1;
+    ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
+    compose-transforms --b-is-affine=true ark:$dir/trans_tmp.JOB ark:$dir/pre_trans.JOB \
+    ark:$dir/trans.JOB  || exit 1;
 fi
 ##
 
-feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/JOB.trans ark:- ark:- |"
+feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
 
 # Rescore the state-level lattices with the final adapted features, and the final model
 # (which by default is $srcdir/final.mdl, but which may be specified on the command line,
@@ -189,7 +189,7 @@ fi
   echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
 local/score.sh --cmd "$cmd" $data $graphdir $dir
 
-rm $dir/*.{trans.tmp,pre_trans}
+rm $dir/{trans_tmp,pre_trans}.*
 
 exit 0;
 
