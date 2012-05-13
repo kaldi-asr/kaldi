@@ -133,14 +133,40 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2 || exit 1;
 
-## fMMI+MMI (no indirect diff) on top of tri3b (which is LDA+MLLT+SAT).
-#first, train UBM.
+
+#first, train UBM for fMMI experiments.
 steps/train_diag_ubm.sh --silence-weight 0.5 --nj 8 --cmd "$train_cmd" \
   250 data/train data/lang exp/tri3b_ali exp/dubm3b
 
-steps/train_mmi_fmmi.sh --learning-rate 0.005 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+# Next, various fMMI+MMI configurations.
+steps/train_mmi_fmmi.sh --learning-rate 0.0025 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
   --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
-  exp/tri3b_fmmi_a || exit 1;
+  exp/tri3b_fmmi_b || exit 1;
+
+for iter in 3 4 5 6 7 8; do
+ steps/decode_fmmi.sh --nj 20 --config conf/decode.config --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_b/decode_it$iter &
+done
+
+steps/train_mmi_fmmi.sh --learning-rate 0.001 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+  --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
+  exp/tri3b_fmmi_c || exit 1;
+
+for iter in 3 4 5 6 7 8; do
+ steps/decode_fmmi.sh --nj 20 --config conf/decode.config --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_c/decode_it$iter &
+done
+
+# for indirect one, use twice the learning rate.
+steps/train_mmi_fmmi_indirect.sh --learning-rate 0.002 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+  --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
+  exp/tri3b_fmmi_d || exit 1;
+
+for iter in 3 4 5 6 7 8; do
+ steps/decode_fmmi.sh --nj 20 --config conf/decode.config --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
+done
+
 
 
 ## SGMM on top of LDA+MLLT+SAT features.
@@ -158,5 +184,6 @@ steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd 
 steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
 
-
+# combining the sgmm run and the best MMI+fMMI run, but didn't really help.
+steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_3b_fmmic5/decode || exit 1;
 
