@@ -580,7 +580,56 @@ void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
       }
     }
   }
+}
 
+bool CompactLatticeToWordAlignment(const CompactLattice &clat,
+                                   std::vector<int32> *words,
+                                   std::vector<int32> *begin_times,
+                                   std::vector<int32> *lengths) {
+  words->clear();
+  begin_times->clear();
+  lengths->clear();
+  typedef CompactLattice::Arc Arc;
+  typedef Arc::Label Label;
+  typedef CompactLattice::StateId StateId;
+  typedef CompactLattice::Weight Weight;
+  using namespace fst;
+  StateId state = clat.Start();
+  int32 cur_time = 0;
+  if (state == kNoStateId) {
+    KALDI_WARN << "Empty lattice.";
+    return false;
+  }
+  while (1) {
+    Weight final = clat.Final(state);
+    size_t num_arcs = clat.NumArcs(state);
+    if (final != Weight::Zero()) {
+      if (num_arcs != 0) {
+        KALDI_WARN << "Lattice is not linear.";
+        return false;
+      }
+      if (! final.String().empty()) {
+        KALDI_WARN << "Lattice has alignments on final-weight: probably "
+            "was not word-aligned (alignments will be approximate)";
+      }
+      return true;
+    } else {
+      if (num_arcs != 1) {
+        KALDI_WARN << "Lattice is not linear: num-arcs = " << num_arcs;
+        return false;
+      }
+      fst::ArcIterator<CompactLattice> aiter(clat, state);
+      const Arc &arc = aiter.Value();
+      Label word_id = arc.ilabel; // Note: ilabel==olabel, since acceptor.
+      // Also note: word_id may be zero; we output it anyway.
+      int32 length = arc.weight.String().size();
+      words->push_back(word_id);
+      begin_times->push_back(cur_time);
+      lengths->push_back(length);
+      cur_time += length;
+      state = arc.nextstate;
+    }
+  }
 }
 
 

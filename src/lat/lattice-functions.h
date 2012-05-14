@@ -1,7 +1,6 @@
 // lat/lattice-functions.h
 
-// Copyright 2009-2011   Saarland University
-// Author: Arnab Ghoshal
+// Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,6 +97,24 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                                     const TransitionModel &trans,
                                     const vector< std::map<int32, char> > &arc_accs,
                                     Posterior *arc_post);
+
+/// This function takes a CompactLattice that should only contain
+/// a single linear sequence (e.g. derived from lattice-1best), and
+/// that should have been processed so that the arcs in the CompactLattice
+/// align correctly with the word boundaries (e.g. by lattice-align-words).
+/// It outputs 3 vectors of the same size, which give, for each word
+/// in the lattice (in sequence), the word label and the begin time and
+/// end time.  This is done even for zero words-- if you don't want them,
+/// just ignore them in the output.
+/// This function will print a warning and return false, if the lattice
+/// did not have the correct format (e.g. if it is empty or it is not
+/// linear).
+bool CompactLatticeToWordAlignment(const CompactLattice &clat,
+                                   std::vector<int32> *words,
+                                   std::vector<int32> *begin_times,
+                                   std::vector<int32> *lengths);
+                                   
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

@@ -12,7 +12,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-add-trans-probs lattice-difference lattice-word-align \
            nbest-to-linear nbest-to-lattice lattice-1best linear-to-nbest \
            lattice-mbr-decode lattice-align-words lattice-to-mpe-post \
-           lattice-copy-backoff
+           lattice-copy-backoff nbest-to-ctm
 
 
 OBJFILES =

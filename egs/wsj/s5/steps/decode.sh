@@ -19,10 +19,10 @@ acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "Usage: steps/decode_si.sh [options] <graph-dir> <data-dir> <decode-dir>"
+   echo "Usage: steps/decode.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo "... where <decode-dir> is assumed to be a sub-directory of the directory"
    echo " where the model is."
-   echo "e.g.: steps/decode_si.sh exp/mono/graph_tgpr data/test_dev93 exp/mono/decode_dev93_tgpr"
+   echo "e.g.: steps/decode.sh exp/mono/graph_tgpr data/test_dev93 exp/mono/decode_dev93_tgpr"
    echo ""
    echo "This script works on CMN + (delta+delta-delta | LDA+MLLT) features; it works out"
    echo "what type of features you used (assuming it's one of these two)"
@@ -56,11 +56,11 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
 fi
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
-  [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
 done
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "decode_si.sh: feature type is $feat_type";
+echo "decode.sh: feature type is $feat_type";
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;

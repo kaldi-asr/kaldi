@@ -186,4 +186,3 @@ steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/deco
 
 # combining the sgmm run and the best MMI+fMMI run, but didn't really help.
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_3b_fmmic5/decode || exit 1;
-

@@ -46,7 +46,7 @@ echo $nj > $dir/num_jobs
 # cases where the composed result was empty.
 $cmd JOB=1:$nj $dir/log/interp.JOB.log \
   lattice-interp --alpha=$weight1 "ark:gunzip -c $srcdir1/lat.JOB.gz|" \
-   "ark,s,cs:gunzip -c $srcdir2/lat.JOB.gz|" \| \
+   "ark,s,cs:gunzip -c $srcdir2/lat.JOB.gz|" ark:- \| \
   lattice-copy-backoff "ark,s,cs:gunzip -c $srcdir1/lat.JOB.gz|" ark,s,cs:- \
    "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 

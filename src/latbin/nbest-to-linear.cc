@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
     }
 
     std::string lats_rspecifier = po.GetArg(1),
-        ali_wspecifier = po.GetOptArg(2),
-        trans_wspecifier = po.GetArg(3),
+        ali_wspecifier = po.GetArg(2),
+        trans_wspecifier = po.GetOptArg(3),
         lm_cost_wspecifier = po.GetOptArg(4),
         ac_cost_wspecifier = po.GetOptArg(5);
 

@@ -1,0 +1,62 @@
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+# Monophone, MFCC+delta+accel
+exp/mono/decode/wer_4:%WER 8.54 [ 1070 / 12533, 106 ins, 280 del, 684 sub ]
+
+# MFCC+delta+accel
+exp/tri1/decode/wer_4:%WER 3.08 [ 386 / 12533, 57 ins, 65 del, 264 sub ]
+
+# MFCC+delta+accel (on top of better alignments, but didn't help).
+exp/tri2a/decode/wer_6:%WER 3.23 [ 405 / 12533, 57 ins, 79 del, 269 sub ]
+
+# LDA+MLLT
+exp/tri2b/decode/wer_4:%WER 2.80 [ 351 / 12533, 59 ins, 56 del, 236 sub ]
+
+# Some MMI experiments (MMI, and boosted MMI) on top of the LDA+MLLT system.
+exp/tri2b_mmi/decode_it3/wer_9:%WER 2.59 [ 324 / 12533, 31 ins, 78 del, 215 sub ]
+exp/tri2b_mmi/decode_it4/wer_8:%WER 2.60 [ 326 / 12533, 40 ins, 68 del, 218 sub ]
+exp/tri2b_mmi_b0.05/decode_it3/wer_8:%WER 2.61 [ 327 / 12533, 37 ins, 68 del, 222 sub ]
+exp/tri2b_mmi_b0.05/decode_it4/wer_10:%WER 2.63 [ 329 / 12533, 30 ins, 82 del, 217 sub ]
+
+# LDA+MLLT+SAT.
+exp/tri3b/decode.si/wer_4:%WER 3.18 [ 398 / 12533, 60 ins, 74 del, 264 sub ]
+exp/tri3b/decode/wer_4:%WER 2.06 [ 258 / 12533, 35 ins, 47 del, 176 sub ]
+
+# MMI on top of the SAT system.  Note: decode and decode2 use different decoding
+# scripts; gives about the same result.
+exp/tri3b_mmi/decode.si/wer_4:%WER 3.18 [ 398 / 12533, 60 ins, 74 del, 264 sub ]
+exp/tri3b_mmi/decode/wer_5:%WER 1.88 [ 236 / 12533, 26 ins, 39 del, 171 sub ]
+exp/tri3b_mmi/decode2/wer_7:%WER 1.89 [ 237 / 12533, 24 ins, 44 del, 169 sub ]
+##
+
+# fMMI+MMI on top of this SAT system.  Note: it doesn't really help here.
+exp/tri3b_fmmi_b/decode_it3/wer_9:%WER 1.90 [ 238 / 12533, 22 ins, 52 del, 164 sub ]
+exp/tri3b_fmmi_b/decode_it4/wer_9:%WER 1.95 [ 245 / 12533, 19 ins, 56 del, 170 sub ]
+exp/tri3b_fmmi_b/decode_it5/wer_8:%WER 2.03 [ 255 / 12533, 26 ins, 47 del, 182 sub ]
+exp/tri3b_fmmi_b/decode_it6/wer_7:%WER 2.07 [ 260 / 12533, 30 ins, 46 del, 184 sub ]
+exp/tri3b_fmmi_b/decode_it7/wer_7:%WER 2.11 [ 265 / 12533, 30 ins, 45 del, 190 sub ]
+exp/tri3b_fmmi_b/decode_it8/wer_8:%WER 2.19 [ 274 / 12533, 32 ins, 49 del, 193 sub ]
+exp/tri3b_fmmi_c/decode_it3/wer_9:%WER 1.99 [ 249 / 12533, 20 ins, 59 del, 170 sub ]
+exp/tri3b_fmmi_c/decode_it4/wer_9:%WER 1.92 [ 241 / 12533, 21 ins, 59 del, 161 sub ]
+exp/tri3b_fmmi_c/decode_it5/wer_7:%WER 1.87 [ 234 / 12533, 26 ins, 42 del, 166 sub ]
+exp/tri3b_fmmi_c/decode_it6/wer_7:%WER 1.88 [ 236 / 12533, 25 ins, 42 del, 169 sub ]
+exp/tri3b_fmmi_c/decode_it7/wer_9:%WER 1.93 [ 242 / 12533, 20 ins, 51 del, 171 sub ]
+exp/tri3b_fmmi_c/decode_it8/wer_10:%WER 1.97 [ 247 / 12533, 17 ins, 59 del, 171 sub ]
+exp/tri3b_fmmi_d/decode_it3/wer_9:%WER 2.04 [ 256 / 12533, 19 ins, 68 del, 169 sub ]
+exp/tri3b_fmmi_d/decode_it4/wer_6:%WER 2.03 [ 255 / 12533, 32 ins, 50 del, 173 sub ]
+exp/tri3b_fmmi_d/decode_it5/wer_6:%WER 1.82 [ 228 / 12533, 27 ins, 40 del, 161 sub ]
+exp/tri3b_fmmi_d/decode_it6/wer_7:%WER 1.82 [ 228 / 12533, 24 ins, 44 del, 160 sub ]
+exp/tri3b_fmmi_d/decode_it7/wer_7:%WER 1.89 [ 237 / 12533, 24 ins, 47 del, 166 sub ]
+exp/tri3b_fmmi_d/decode_it8/wer_7:%WER 2.07 [ 260 / 12533, 34 ins, 48 del, 178 sub ]
+
+
+# SGMM experiments.
+exp/sgmm4a/decode/wer_6:%WER 1.91 [ 240 / 12533, 22 ins, 60 del, 158 sub ]
+exp/sgmm4a/decode_fmllr/wer_8:%WER 1.91 [ 239 / 12533, 17 ins, 68 del, 154 sub ]
+
+
+# Some system combination experiments.
+exp/combine_1_2a/decode/wer_4:%WER 2.98 [ 373 / 12533, 51 ins, 72 del, 250 sub ]
+exp/combine_4a_3b/decode/wer_6:%WER 1.68 [ 210 / 12533, 16 ins, 48 del, 146 sub ]
+exp/combine_4a_3b_fmmic5/decode/wer_6:%WER 1.62 [ 203 / 12533, 17 ins, 46 del, 140 sub ]
+
