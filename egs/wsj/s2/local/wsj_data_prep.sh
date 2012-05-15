@@ -217,8 +217,8 @@ if [ ! -f wsj0-train-spkrinfo.txt ]; then
   echo "This is possibly omitted from the training disks; couldn't find it." 
   echo "Everything else may have worked; we just may be missing gender info"
   echo "which is only needed for VTLN-related diagnostics anyway."
-  exit 1
-fi
+  #exit 1
+else
 # Note: wsj0-train-spkrinfo.txt doesn't seem to be on the disks but the
 # LDC put it on the web.  Perhaps it was accidentally omitted from the
 # disks.  
@@ -230,6 +230,6 @@ cat links/11-13.1/wsj0/doc/spkrinfo.txt \
    ./wsj0-train-spkrinfo.txt  | \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
    awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender.map
-
+fi
 
 echo "Data preparation succeeded"
