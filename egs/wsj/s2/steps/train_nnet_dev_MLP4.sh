@@ -15,8 +15,13 @@
 # limitations under the License.
 
 # To be run from ..
+#
 # Neural network training, using fbank features, cepstral mean normalization 
 # and hamming-dct transform
+#
+# The network is simple 4-layer MLP with 2 hidden layers.
+#
+# Two datasets are used: trainset and devset (for early stopping/model selection)
 
 
 while [ 1 ]; do
@@ -114,6 +119,7 @@ cat $dir/train.pdf $dir/cv.pdf > $dir/cur.pdf
 scripts/count_class_frames.awk $dir/train.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/transition.mdl
+cp $alidir/tree $dir/tree
 
 ###### PREPARE FEATURES ######
 # shuffle the list

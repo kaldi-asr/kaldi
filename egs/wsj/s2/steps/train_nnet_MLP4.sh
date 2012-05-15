@@ -15,8 +15,15 @@
 # limitations under the License.
 
 # To be run from ..
+#
 # Neural network training, using fbank features, cepstral mean normalization 
 # and hamming-dct transform
+#
+# The network is simple 4-layer MLP with 2 hidden layers.
+#
+# The dataset is randomly split to: trainset [90%] and cross-validation set [10%] 
+# (early stopping/model selection)
+# Beware of overlapping speakers for small sets...
 
 
 while [ 1 ]; do
@@ -105,6 +112,7 @@ ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels 2> $dir/
 scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/transition.mdl
+cp $alidir/tree $dir/tree
 
 ###### PREPARE FEATURES ######
 # shuffle the list
