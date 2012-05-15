@@ -9,6 +9,7 @@
 # This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
+rand_seed=0
 cmd=run.pl
 nwords=10000 # This is how many words we're putting in the vocab of the RNNLM. 
 hidden=30
@@ -107,6 +108,11 @@ for type in train valid; do
     > $dir/$type
 done
 rm $dir/train.in # no longer needed-- and big.
+
+# Now randomize the order of the training data.
+cat $dir/train | awk -v rand_seed=$rand_seed 'BEGIN{srand(rand_seed);} {printf("%f\t%s\n", rand(), $0);}' | \
+ sort | cut -f 2 > $dir/foo
+mv $dir/foo $dir/train
 
 # OK we'll train the RNNLM on this data.
 

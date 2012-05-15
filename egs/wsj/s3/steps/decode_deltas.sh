@@ -23,14 +23,26 @@
 
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
+beam=13.0
+lattice_beam=6.0
 numjobs=1
 jobid=0
-if [ "$1" == "-j" ]; then
-  shift;
-  numjobs=$1;
-  jobid=$2;
-  shift; shift;
-fi
+for x in `seq 3`; do
+  if [ "$1" == "-j" ]; then
+    shift;
+    numjobs=$1;
+    jobid=$2;
+    shift 2;
+  fi
+  if [ "$1" == "--beam" ]; then
+    beam=$2;
+    shift 2;
+  fi
+  if [ "$1" == "--lattice-beam" ]; then
+    lattice_beam=$2;
+    shift 2;
+  fi
+done
 
 if [ $# != 3 ]; then
    echo "Usage: steps/decode_deltas.sh [-j num-jobs job-number] <graph-dir> <data-dir> <decode-dir>"
@@ -65,7 +77,7 @@ done
 # CMVN stats-- we make them part of a pipe.
 feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | add-deltas ark:- ark:- |"
 
-gmm-latgen-faster --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=0.083333 \
+gmm-latgen-faster --max-active=7000 --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=0.083333 \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
      2> $dir/decode$jobid.log || exit 1;

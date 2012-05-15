@@ -18,13 +18,25 @@
 # Flat start and monophone training, with delta-delta features.
 # This script applies cepstral mean normalization (per speaker).
 
+
+numgauss=300 # Initial num-Gauss (must be more than #states=3*phones).
+totgauss=1000 # Target #Gaussians.  
 nj=4
 cmd=scripts/run.pl
+
 for x in 1 2; do
   if [ $1 == "--num-jobs" ]; then
      shift
      nj=$1
      shift
+  fi
+  if [ $1 == "--start-gauss" ]; then
+    numgauss=$2;
+    shift 2;
+  fi
+  if [ $1 == "--end-gauss" ]; then
+    totgauss=$2;
+    shift 2;
   fi
   if [ $1 == "--cmd" ]; then
      shift
@@ -50,8 +62,6 @@ if [ -f path.sh ]; then . path.sh; fi
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 numiters=40    # Number of iterations of training
 maxiterinc=30 # Last iter to increase #Gauss on.
-numgauss=300 # Initial num-Gauss (must be more than #states=3*phones).
-totgauss=1000 # Target #Gaussians.  
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 oov_sym=`cat $lang/oov.txt`

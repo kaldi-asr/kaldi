@@ -21,6 +21,12 @@ Note: the easiest examples to work with are rm/s3 and wsj/s3.
     get the same data using combinations of other catalog numbers, but this
     is the one we used).
 
+ yesno: This is a simple recipe with some data consisting of a single person
+   saying the words "yes" and "no", that can be downloaded from the Kaldi website.
+   It's a very easy task, but useful for checking that the scripts run, or if
+   you don't yet have any of the LDC data.
+   
+
 Recipes in progress (these may be less polished than the ones above).
 
  swbd: Switchboard.  A fairly large amount of telephone speech (2-channel, 8kHz

@@ -108,27 +108,29 @@ steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali || exit 1;
 
-steps/train_deltas.sh --nj 30 --cmd "$train_cmd" \
+steps/train_deltas.sh --cmd "$train_cmd" \
     2500 20000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2 || exit 1;
 
 (
-utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;
-
-steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-  exp/tri1/graph data/eval2000 exp/tri1/decode || exit 1;
+  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;
+  steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri2/graph data/eval2000 exp/tri2/decode || exit 1;
 )&
 
-exit 0;
-# I AM HERE
 
 
-
-steps/align_deltas.sh --nj 30 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang exp/tri2 exp/tri2_ali || exit 1;
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+  data/train_30k_nodup data/lang exp/tri2 exp/tri2_ali || exit 1;
 
 # Train tri3a, which is LDA+MLLT, on 30k_nodup data.
-steps/train_lda_mllt.sh --nj 30 --cmd "$train_cmd" \
+steps/train_lda_mllt.sh --cmd "$train_cmd" \
    2500 20000 data/train_30k_nodup data/lang exp/tri2_ali exp/tri3a || exit 1;
+(
+  utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
+  steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri3a/graph data/eval2000 exp/tri3a/decode || exit 1;
+)&
+
 
 # From now, we start building a more serious system (with SAT), and we'll
 # do the alignment with fMLLR.
@@ -136,16 +138,18 @@ steps/train_lda_mllt.sh --nj 30 --cmd "$train_cmd" \
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri3a exp/tri3a_ali_100k_nodup || exit 1;
 
-steps/train_sat.sh  --nj 30 --cmd "$train_cmd" \
+steps/train_sat.sh  --cmd "$train_cmd" \
   2500 20000 data/train_100k_nodup data/lang exp/tri3a_ali_100k_nodup exp/tri4a || exit 1;
+
+(
+  utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
+  steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri4a/graph data/eval2000 exp/tri4a/decode
+)&
+
 
 # HERE.
 exit 0;
-
-utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
-utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
- steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/eval2000 exp/tri4a/decode_eval2000
-
 utils/decode.sh  --nj 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
  steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/train_dev exp/tri4a/decode_train_dev
 
@@ -252,8 +256,6 @@ steps/align_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
 
 # getting results (see RESULTS file)
 for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
-
-
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
 
 
