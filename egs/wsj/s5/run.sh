@@ -313,10 +313,33 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 
  # This step interpolates a small RNNLM (with weight 0.25) with the 4-gram LM.
  steps/rnnlmrescore.sh \
-  --inv-acwt 17 \
+  --cmd "$decode_cmd" --inv-acwt 17 \
   0.25 data/lang_test_bd_fg data/local/rnnlm.h30.voc10k data/test_eval92 \
   exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm30_0.25  \
   || exit 1;
+
+ steps/rnnlmrescore.sh \
+  --cmd "$decode_cmd" --inv-acwt 17 \
+  0.5 data/lang_test_bd_fg data/local/rnnlm.h100.voc20k data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm100_0.5 \
+  || exit 1;
+
+ steps/rnnlmrescore.sh \
+  --N 100 --cmd "$decode_cmd" --inv-acwt 17 \
+  0.5 data/lang_test_bd_fg data/local/rnnlm.h200.voc30k data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm200_0.5 \
+  || exit 1;
+
+ steps/rnnlmrescore.sh \
+  --N 100 --cmd "$decode_cmd" --inv-acwt 17 \
+  0.5 data/lang_test_bd_fg data/local/rnnlm.h300.voc40k data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm300_0.5 \
+  || exit 1;
+
+ steps/rnnlmrescore.sh \
+  --N 1000 --cmd "$decode_cmd" --inv-acwt 17 \
+  0.5 data/lang_test_bd_fg data/local/rnnlm.h300.voc40k data/test_eval92 \
+  exp/tri3b/decode_bd_tgpr_eval92_fg exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm300_0.5_N1000 &
 
 
 # The following two steps, which are a kind of side-branch, try mixing up
@@ -553,7 +576,7 @@ utils/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  # Need to copy the transforms over from original decoding dir (tri3b) 
  # to the source dir for the lattices, as they're used by the decoding script.
  # This is a bit of a mess.
- cp exp/tri3b/decode_bd_tgpr_eval92/*.trans exp/sgmm4c/decode_bd_tgpr_eval92
+ cp exp/tri3b/decode_bd_tgpr_eval92/trans.* exp/sgmm4c/decode_bd_tgpr_eval92
  utils/decode.sh --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
  data/lang_test_bd_fg data/test_eval92 exp/sgmm4d/decode_bd_fg_eval92_fromlats2 \
    exp/sgmm4c/decode_bd_tgpr_eval92 || exit 1;

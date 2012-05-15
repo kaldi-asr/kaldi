@@ -56,7 +56,7 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # OK, now we compute the scores on the text with OOVs replaced
 # with <RNN_UNK>
 
-$rnnlm -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
+$rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
    awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
 
 paste $tempdir/loglikes.rnn $tempdir/loglikes.oov | awk '{print -($1+$2);}' >$tempdir/scores
