@@ -1,6 +1,6 @@
-// fstext/determinize-lattice.h
+// fstext/determinize-lattice-pruned.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_FSTEXT_DETERMINIZE_LATTICE_H_
-#define KALDI_FSTEXT_DETERMINIZE_LATTICE_H_
+#ifndef KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_H_
+#define KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_H_
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 #include <algorithm>
@@ -31,12 +31,20 @@ namespace fst {
 ///  @{
 
 
-// For example of usage, see test-determinize-lattice.cc
+// For example of usage, see test-determinize-lattice-pruned.cc
 
 /*
-   DeterminizeLattice implements a special form of determinization
-   with epsilon removal, optimized for a phase of lattice generation.
-   Its input is an FST with weight-type BaseWeightType (usually a pair of floats,
+   DeterminizeLatticePruned implements a special form of determinization with
+   epsilon removal, optimized for a phase of lattice generation.  This algorithm
+   also does pruning at the same time-- the combination is more efficient as it
+   somtimes prevents us from creating a lot of states that would later be pruned
+   away.  This allows us to increase the lattice-beam and not have the algorithm
+   blow up.  Also, because our algorithm processes states in order from those
+   that appear on high-scoring paths down to those that appear on low-scoring
+   paths, we can easily terminate the algorithm after a certain specified number
+   of states or arcs.
+
+   The input is an FST with weight-type BaseWeightType (usually a pair of floats,
    with a lexicographical type of order, such as LatticeWeightTpl<float>).
    Typically this would be a state-level lattice, with input symbols equal to
    words, and output-symbols equal to p.d.f's (so like the inverse of HCLG).  Imagine representing this as an
@@ -93,49 +101,55 @@ namespace fst {
    
 */   
 
-struct DeterminizeLatticeOptions {
+
+struct DeterminizeLatticePrunedOptions {
   float delta; // A small offset used to measure equality of weights.
   int max_mem; // If >0, determinization will fail and return false
   // when the algorithm's (approximate) memory consumption crosses this threshold.
   int max_loop; // If >0, can be used to detect non-determinizable input
   // (a case that wouldn't be caught by max_mem).
-  DeterminizeLatticeOptions(): delta(kDelta),
-                               max_mem(-1),
-                               max_loop(-1) { }
+  int max_states;
+  int max_arcs;
+  DeterminizeLatticePrunedOptions(): delta(kDelta),
+                                     max_mem(-1),
+                                     max_loop(-1),
+                                     max_states(-1),
+                                     max_arcs(-1) { }
 };
 
 /**
     This function implements the normal version of DeterminizeLattice, in which the
     output strings are represented using sequences of arcs, where all but the
-    first one has an epsilon on the input side.  The debug_ptr argument is an
-    optional pointer to a bool that, if it becomes true while the algorithm is
-    executing, the algorithm will print a traceback and terminate (used in
-    fstdeterminizestar.cc debug non-terminating determinization).
-    More efficient if ifst is arc-sorted on input label.
-    If the #arcs gets more than max_states, it will throw std::runtime_error (otherwise
-    this code does not use exceptions).  This is mainly useful for debug.
+    first one has an epsilon on the input side.  It also prunes using the beam
+    in the "prune" parameter.  The input FST should be topologically sorted, for
+    greatest efficiency.  More efficient if ifst is arc-sorted on input label.
+    Returns true on success, and false if it had to terminate the determinization
+    earlier than specified by the "prune" beam-- that is, if it terminated because
+    of the max_mem, max_loop or max_arcs constraints in the options.
 */
 template<class Weight, class IntType>
-bool DeterminizeLattice(
-    const Fst<ArcTpl<Weight> > &ifst,
-    MutableFst<ArcTpl<Weight> > *ofst,
-    DeterminizeLatticeOptions opts = DeterminizeLatticeOptions(),
-    bool *debug_ptr = NULL);
+bool DeterminizeLatticePruned(
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    Weight prune,
+    MutableFst<ArcTpl<Weight> > *ofst, 
+    DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 
 
 /*  This is a version of DeterminizeLattice with a slightly more "natural" output format,
     where the output sequences are encoded using the CompactLatticeArcTpl template
     (i.e. the sequences of output symbols are represented directly as strings)
+    Input FST should be topologically sorted, for greatest efficiency.
     More efficient if ifst is arc-sorted on input label.
-    If the #arcs gets more than max_arcs, it will throw std::runtime_error (otherwise
-    this code does not use exceptions).  This is mainly useful for debug.
+    Returns true on success, and false if it had to terminate the determinization
+    earlier than specified by the "prune" beam-- that is, if it terminated because
+    of the max_mem, max_loop or max_arcs constraints in the options.
 */
 template<class Weight, class IntType>
-bool DeterminizeLattice(
-    const Fst<ArcTpl<Weight> >&ifst,
+bool DeterminizeLatticePruned(
+    const ExpandedFst<ArcTpl<Weight> >&ifst,
+    Weight prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
-    DeterminizeLatticeOptions opts = DeterminizeLatticeOptions(),
-    bool *debug_ptr = NULL);
+    DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 
 
 
@@ -144,6 +158,6 @@ bool DeterminizeLattice(
 
 } // end namespace fst
 
-#include "fstext/determinize-lattice-inl.h"
+#include "fstext/determinize-lattice-pruned-inl.h"
 
 #endif
