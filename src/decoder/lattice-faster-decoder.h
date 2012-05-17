@@ -24,6 +24,7 @@
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "fstext/fstext-lib.h"
+#include "fstext/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -35,10 +36,9 @@ struct LatticeFasterDecoderConfig {
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
-  bool prune_lattice;
   int32 max_mem; // max memory usage in determinization
   int32 max_loop;
-  BaseFloat beam_ratio;
+  int32 max_arcs; // max #arcs in lattice.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
   LatticeFasterDecoderConfig(): beam(16.0),
@@ -46,10 +46,9 @@ struct LatticeFasterDecoderConfig {
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
-                                prune_lattice(true),
                                 max_mem(50000000), // 50 MB (probably corresponds to 100 really)
                                 max_loop(500000),
-                                beam_ratio(0.9),
+                                max_arcs(-1),
                                 beam_delta(0.5),
                                 hash_ratio(2.0) { }
   void Register(ParseOptions *po) {
@@ -58,17 +57,15 @@ struct LatticeFasterDecoderConfig {
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("prune-lattice", &prune_lattice, "If true, prune lattice using the lattice-beam (recommended)");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be double this)");
+    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
     po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po->Register("beam-ratio", &beam_ratio, "Ratio by which to decrease lattice-beam if we reach the max-arcs.");
+    po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
     po->Register("beam-delta", &beam_delta, "Increment used in decoding");
     po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control hash behavior");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 
-                 && prune_interval > 0 && beam_ratio > 0.0 && beam_ratio < 1.0
-                 && beam_delta > 0.0 && hash_ratio >= 1.0);
+                 && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0);
   }
 };
 
@@ -217,26 +214,26 @@ class LatticeFasterDecoder {
     Lattice raw_fst;
     if(!GetRawLattice(&raw_fst)) return false;
     Invert(&raw_fst); // make it so word labels are on the input.
-    BaseFloat cur_beam = config_.lattice_beam;
-    fst::DeterminizeLatticeOptions lat_opts;
+    if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+          "(probably your lexicon has empty words or your LM has epsilon cycles; this "
+          " is a bad idea.)";
+    // (in phase where we get backward-costs).
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
+    // lattice-determinization more efficient.
+    
+    LatticeWeight beam(config_.lattice_beam, 0);
+    fst::DeterminizeLatticePrunedOptions lat_opts;
     lat_opts.max_mem = config_.max_mem;
     lat_opts.max_loop = config_.max_loop;
-    for (int32 i = 0; i < 20; i++) {
-      if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {
-        raw_fst.DeleteStates(); // Free memory prior to next stage.
-        if (config_.prune_lattice)
-          fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), ofst);
-        return true;
-      } else {
-        cur_beam *= config_.beam_ratio;
-        KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                   << "reached), reducing lattice-beam to " << cur_beam
-                   << " and re-trying.";
-        Lattice tmp_fst(raw_fst);
-        Prune(tmp_fst, &raw_fst, LatticeWeight(cur_beam, 0));
-      }
-    }
-    return false; // fell off loop-- shouldn't really happen.
+    lat_opts.max_arcs = config_.max_arcs;
+    
+    DeterminizeLatticePruned(raw_fst, beam, ofst, lat_opts);
+    raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
+    Connect(ofst); // Remove unreachable states... there might be
+    // a small number of these, in some cases.
+    return true;
   }
   
  private:

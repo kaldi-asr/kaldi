@@ -209,7 +209,9 @@ gzip -f lm_tgpr_5k.arpa || exit 1;
 
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then
-  wget http://www.ldc.upenn.edu/Catalog/docs/LDC93S6A/wsj0-train-spkrinfo.txt
+  ! wget http://www.ldc.upenn.edu/Catalog/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
+    echo "Getting wsj0-train-spkrinfo.txt from backup location" && \
+    wget https://sourceforge.net/projects/kaldi/upload/wsj0-train-spkrinfo.txt
 fi
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then

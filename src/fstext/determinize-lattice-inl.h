@@ -1,6 +1,6 @@
 // fstext/determinize-lattice-inl.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -365,7 +365,9 @@ template<class Weight, class IntType> class LatticeDeterminizer {
                       DeterminizeLatticeOptions opts):
       num_arcs_(0), num_elems_(0), ifst_(ifst.Copy()), opts_(opts),
       equal_(opts_.delta), determinized_(false),
-      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {    
+      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
+    KALDI_ASSERT(Weight::Properties() & kIdempotent); // this algorithm won't
+    // work correctly otherwise.
   }
 
   // frees all except output_arcs_, which contains the important info

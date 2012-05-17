@@ -117,7 +117,7 @@ if [ $stage -le 3 ]; then
   $cmd JOB=1:$nj $dir/log/vecs_pass1.JOB.log \
     gunzip -c $dir/pre_lat.JOB.gz \| \
     lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-determinize --acoustic-scale=$acwt --prune=true --beam=$vecs_beam ark:- ark:- \| \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- \| \
     sgmm-post-to-gpost "$gselect_opt" $srcdir/final.alimdl "$feats" ark:- ark:- \| \
@@ -133,7 +133,7 @@ if [ $stage -le 4 ]; then
     sgmm-rescore-lattice --spk-vecs=ark:$dir/pre_vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
       "$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
     lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-determinize --acoustic-scale=$acwt --prune=true --beam=$vecs_beam ark:- ark:- \| \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
     sgmm-est-spkvecs --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/pre_vecs.JOB \
@@ -155,7 +155,7 @@ if $use_fmllr; then
       sgmm-rescore-lattice --spk-vecs=ark:$dir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
       "$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
       lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-      lattice-determinize --acoustic-scale=$acwt --prune=true --beam=$vecs_beam ark:- ark:- \| \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
       sgmm-est-fmllr --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/vecs.JOB \
@@ -172,7 +172,7 @@ if [ $stage -le 6 ]; then
   $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
     sgmm-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
     $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize --acoustic-scale=$acwt --prune=true --beam=$lat_beam ark:- \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 rm $dir/pre_lat.*.gz

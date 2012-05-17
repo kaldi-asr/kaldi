@@ -1,6 +1,6 @@
 // latbin/lattice-determinize.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used to handle determinization failures, set --prune=false to disable routine pruning");
     po.Register("delta", &delta, "Tolerance used in determinization");
     po.Register("prune", &prune, "If true, prune determinized lattices with the --beam option.");
-    po.Register("max-mem", &max_mem, "Maximum approximate memory usage in determinization (real usage might be twice this)");
+    po.Register("max-mem", &max_mem, "Maximum approximate memory usage in determinization (real usage might be many times this)");
     po.Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
     po.Register("beam-ratio", &beam_ratio, "Ratio by which to decrease beam if we reach the max-arcs.");
     po.Register("num-loops", &num_loops, "Number of times to decrease beam by beam-ratio if determinization fails.");

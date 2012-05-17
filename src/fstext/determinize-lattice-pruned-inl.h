@@ -191,7 +191,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                             DeterminizeLatticePrunedOptions opts):
       num_arcs_(0), num_elems_(0), ifst_(ifst.Copy()), beam_(beam), opts_(opts),
       equal_(opts_.delta), determinized_(false),
-      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {    
+      minimal_hash_(3, hasher_, equal_), initial_hash_(3, hasher_, equal_) {
+    KALDI_ASSERT(Weight::Properties() & kIdempotent); // this algorithm won't
+    // work correctly otherwise.
   }
 
   void FreeOutputStates() {
@@ -306,34 +308,26 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // in "output_arcs_".  Must be called after Initialize().  To get the
     // output, call one of the Output routines.
 
-    bool ans = true;
-    
     InitializeDeterminization(); // some start-up tasks.
     while (!queue_.empty()) {
       Task *task = queue_.top();
-      // First assess whether we've either reached the specified beam,
-      // or reached some kind of user-specified maximum.  The condition for
+      // Note: the queue contains only tasks that are "within the beam".
+      // We also have to check whether we have reached one of the user-specified
+      // maximums, of estimated memory, arcs, or states.  The condition for
       // ending is:
-      //  weight is < cutoff-weight, OR
       // num-states is more than user specified, OR
       // num-arcs is more than user specified, OR
       // memory passed a user-specified threshold and cleanup failed
       //  to get it below that threshold.
       size_t num_states = output_states_.size();
-      if (fst::Compare(task->priority_weight, cutoff_) < 0 || 
-          (opts_.max_states > 0 && num_states > opts_.max_states) || 
+      if ((opts_.max_states > 0 && num_states > opts_.max_states) || 
           (opts_.max_arcs > 0 && num_arcs_ > opts_.max_arcs) || 
           (num_states % 100 == 0 && !CheckMemoryUsage())) {
-        if (fst::Compare(task->priority_weight, cutoff_) >= 0) { // We didn't terminate because
-          // of the lattice-beam, but for some other reason.  This is probably
-          // going to be unusual, so let's inform the user.
-          KALDI_VLOG(1) << "Lattice determinization terminated but not "
-                        << " because of lattice-beam.  (#states, #arcs) is ( " 
-                        << output_states_.size() << ", " << num_arcs_
-                        << " ), versus limits ( " << opts_.max_states << ", "
-                        << opts_.max_arcs << " (else, may be memory limit).";
-          ans = false;
-        }
+        KALDI_VLOG(1) << "Lattice determinization terminated but not "
+                      << " because of lattice-beam.  (#states, #arcs) is ( " 
+                      << output_states_.size() << ", " << num_arcs_
+                      << " ), versus limits ( " << opts_.max_states << ", "
+                      << opts_.max_arcs << " (else, may be memory limit).";
         break;
         // we terminate the determinization here-- whatever we already expanded is
         // what we'll return...  because we expanded stuff in order of total
@@ -345,7 +339,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       delete task;
     }
     determinized_ = true;
-    return ans;
+    return (queue_.empty()); // return success if queue was empty, i.e. we processed
+    // all tasks and did not break out of the loop early due to reaching a memory,
+    // arc or state limit.
   }
  private:
   
@@ -487,7 +483,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     if (iter != minimal_hash_.end()) { // Found a matching subset.
       OutputStateId state_id = iter->second;
       const OutputState &state = *(output_states_[state_id]);
-      // Below is just a check the algorithm is right...
+      // Below is just a check that the algorithm is working...
       if (fst::Compare(forward_weight, state.forward_weight) > 0
           && !ApproxEqual(forward_weight, state.forward_weight,
                           0.1)) { // TODO:  remove this once we're sure it's working...
@@ -704,7 +700,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // processes final-weights for this subset.  state.minimal_subset_ may be
     // empty if the graphs is not connected/trimmed, I think, do don't check
     // that it's nonempty.
-    StringId final_string = NULL;  // = NULL to keep compiler happy.
+    StringId final_string = repository_.EmptyString();  // set it to keep the
+    // compiler happy; if it doesn't get set in the loop, we won't use the value anyway.
     Weight final_weight = Weight::Zero();
     bool is_final = false;
     typename vector<Element>::const_iterator iter = minimal_subset.begin(), end = minimal_subset.end();
@@ -903,7 +900,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     typedef typename vector<pair<Label, Element> >::const_iterator PairIter;
     PairIter cur = all_elems.begin(), end = all_elems.end();
     while (cur != end) {
-      // The old code (non-pruned) called ProcessTransition; here,
+      // The old code (non-pruned) called ProcessTransition; here, instead,
       // we'll put the calls into a priority queue.
       Task *task = new Task;
       // Process ranges that share the same input symbol.
@@ -930,11 +927,15 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           output_states_[output_state_id]->forward_weight,
           task->priority_weight);
 
-      MakeSubsetUnique(&(task->subset)); // remove duplicate Elements with the same state.
-      
-      queue_.push(task); // Push the task onto the queue.  The queue keeps it      
-      // in prioritized order, so we always process the one with the "best"
-      // weight (highest in the semiring).
+      if (fst::Compare(task->priority_weight, cutoff_) < 0) {
+        // This task would never get done as it's below the pruning cutoff.
+        delete task;
+      } else {
+        MakeSubsetUnique(&(task->subset)); // remove duplicate Elements with the same state.
+        queue_.push(task); // Push the task onto the queue.  The queue keeps it      
+        // in prioritized order, so we always process the one with the "best"
+        // weight (highest in the semiring).
+      }
     }
     all_elems.clear(); // as it's a reference to a class variable; we want it to stay
     // empty.
@@ -1022,13 +1023,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
          a lookaside buffer anyway, so this isn't a problem-- it will get populated
          later if it needs to be.
       */
-      Element elem;
-      elem.state = start_id;
-      elem.weight = Weight::One();
-      elem.string = repository_.EmptyString();  // Id of empty sequence.
-      vector<Element> subset;
-      subset.push_back(elem);
-      EpsilonClosure(&subset); // follow through epsilon-inputs links
+      vector<Element> subset(1);
+      subset[0].state = start_id;
+      subset[0].weight = Weight::One();
+      subset[0].string = repository_.EmptyString();  // Id of empty sequence.
+      EpsilonClosure(&subset); // follow through epsilon-input links
       ConvertToMinimal(&subset); // remove all but final states and
       // states with input-labels on arcs out of them.
       // Weight::One() is the "forward-weight" of this determinized state...
@@ -1056,7 +1055,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // output we may have to ignore some of these.
     Weight forward_weight; // Represents minimal cost from start-state
     // to this state.  Used in prioritization of tasks, and pruning.
-    // Note: we know this minimal cost from when we fist create the OutputState;
+    // Note: we know this minimal cost from when we first create the OutputState;
     // this is because of the priority-queue we use, that ensures that the
     // "best" path into the state will be expanded first.
     OutputState(const vector<Element> &minimal_subset,

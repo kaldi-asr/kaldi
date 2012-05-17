@@ -23,6 +23,7 @@
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "fstext/fstext-lib.h"
+#include "fstext/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 
 #include <algorithm>
@@ -44,28 +45,27 @@ struct LatticeSimpleDecoderConfig {
   bool prune_lattice;
   int32 max_mem;
   int32 max_loop;
+  int32 max_arcs;
   BaseFloat beam_ratio;
   LatticeSimpleDecoderConfig(): beam(16.0),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
-                                prune_lattice(true),
-                                max_mem(50000000), // 50 MB (probably corresponds to 100 really) 
+                                max_mem(50000000), // 50 MB (probably corresponds to 500, really)
                                 max_loop(500000),
+                                max_arcs(-1),
                                 beam_ratio(0.9) { }
   void Register(ParseOptions *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("prune-lattice", &prune_lattice, "If true, prune lattice using the lattice-beam (recommended)");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be double this)");
+    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
     po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po->Register("beam-ratio", &beam_ratio, "Ratio by which to decrease lattice-beam if we reach the max-arcs.");
+    po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
   }
   void Check() const {
-    KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0
-                 && beam_ratio > 0.0 && beam_ratio < 1.0);
+    KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0);
   }
 };
 
@@ -211,80 +211,27 @@ class LatticeSimpleDecoder {
     Lattice raw_fst;
     if(!GetRawLattice(&raw_fst)) return false;
     Invert(&raw_fst); // make it so word labels are on the input.
-    BaseFloat cur_beam = config_.lattice_beam;
-    fst::DeterminizeLatticeOptions lat_opts;
+    if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+          "(probably your lexicon has empty words or your LM has epsilon cycles; this "
+          " is a bad idea.)";
+    // (in phase where we get backward-costs).
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
+    // lattice-determinization more efficient.
+    
+    LatticeWeight beam(config_.lattice_beam, 0);
+    fst::DeterminizeLatticePrunedOptions lat_opts;
     lat_opts.max_mem = config_.max_mem;
     lat_opts.max_loop = config_.max_loop;
-    for (int32 i = 0; i < 20; i++) {
-      if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {
-        raw_fst.DeleteStates(); // save memory.
-        if (config_.prune_lattice)
-          fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), ofst);
-        return true;
-      } else {
-        cur_beam *= config_.beam_ratio;
-        KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                   << "reached), reducing lattice-beam to " << cur_beam
-                   << " and re-trying.";
-        Lattice tmp_fst(raw_fst);
-        Prune(tmp_fst, &raw_fst, LatticeWeight(cur_beam, 0));
-      }
-    }
-    return false; // fell off loop-- shouldn't really happen.
-  }
-  
-  
-  /*
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out) {  
-    // GetOutput gets the decoding output.  If is_final == true, it limits itself to final states;
-    // otherwise it gets the most likely token not taking into account final-probs.
-    // fst_out will be empty (Start() == kNoStateId) if nothing was available.
-    // It returns true if it got output (thus, fst_out will be nonempty).
-    fst_out->DeleteStates();
-    Token *best_tok = NULL;
-    if (!is_final) {
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter)
-        if (best_tok == NULL || *best_tok < *(iter->second) )
-          best_tok = iter->second;
-    } else {
-      Weight best_weight = Weight::Zero();
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter) {
-        Weight this_weight = Times(iter->second->arc_.weight, fst_.Final(iter->first));
-        if (this_weight != Weight::Zero() &&
-           this_weight.Value() < best_weight.Value()) {
-          best_weight = this_weight;
-          best_tok = iter->second;
-        }
-      }
-    }
-    if (best_tok == NULL) return false;  // No output.
-
-    std::vector<Arc> arcs_reverse;  // arcs in reverse order.
-    for (Token *tok = best_tok; tok != NULL; tok = tok->prev_)
-      arcs_reverse.push_back(tok->arc_);
-    KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
-    arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
-
-    StateId cur_state = fst_out->AddState();
-    fst_out->SetStart(cur_state);
-    for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-      Arc arc = arcs_reverse[i];
-      arc.nextstate = fst_out->AddState();
-      fst_out->AddArc(cur_state, arc);
-      cur_state = arc.nextstate;
-    }
-    if (is_final)
-      fst_out->SetFinal(cur_state, fst_.Final(best_tok->arc_.nextstate));
-    else
-      fst_out->SetFinal(cur_state, Weight::One());
-    RemoveEpsLocal(fst_out);
+    lat_opts.max_arcs = config_.max_arcs;
+    
+    DeterminizeLatticePruned(raw_fst, beam, ofst, lat_opts);
+    raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
+    Connect(ofst); // Remove unreachable states... there might be
+    // a small number of these, in some cases.
     return true;
-    }
-  */
+  }
 
  private:
   struct Token;

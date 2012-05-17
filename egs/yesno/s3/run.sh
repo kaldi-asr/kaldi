@@ -35,5 +35,5 @@ scripts/mkgraph.sh --mono data/lang_test_tg exp/mono0a exp/mono0a/graph_tgpr
 
 # Decoding
 decode_cmd="scripts/run.pl"
-scripts/decode.sh --num-jobs 1 --cmd "$decode_cmd" --opts "--beam 10.0 --lattice-beam 2.0" \
+scripts/decode.sh --num-jobs 1 --cmd "$decode_cmd" --opts "--beam 10.0 --lattice-beam 5.0" \
    steps/decode_deltas.sh exp/mono0a/graph_tgpr data/${test_base_name} exp/mono0a/decode_${test_base_name}

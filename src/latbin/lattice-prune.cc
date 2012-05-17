@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
       n_arcs_out += pruned_narcs;
       n_states_out += pruned_nstates;
       KALDI_LOG << "For utterance " << key << ", pruned #states from "
-                << nstates << " to " << pruned_nstates << " and #arcs from"
+                << nstates << " to " << pruned_nstates << " and #arcs from "
                 << narcs << " to " << pruned_narcs;
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_lat);
       CompactLattice pruned_clat;

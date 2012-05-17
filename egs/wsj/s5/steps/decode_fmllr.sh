@@ -157,7 +157,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: estimating fMLLR transforms a second time."
   $cmd JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
-    lattice-determinize --acoustic-scale=$acwt --prune=true --beam=4.0 \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=4.0 \
     "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
@@ -181,7 +181,7 @@ if [ $stage -le 4 ]; then
   echo "$0: doing a final pass of acoustic rescoring."
   $cmd JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
     gmm-rescore-lattice $final_model "ark:gunzip -c $dir/lat.tmp.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize --acoustic-scale=$acwt --prune=true --beam=$lattice_beam ark:- \
+    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;
 fi
 

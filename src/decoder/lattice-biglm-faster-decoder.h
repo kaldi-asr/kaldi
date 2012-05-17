@@ -191,25 +191,26 @@ class LatticeBiglmFasterDecoder {
     Lattice raw_fst;
     if(!GetRawLattice(&raw_fst)) return false;
     Invert(&raw_fst); // make it so word labels are on the input.
-    BaseFloat cur_beam = config_.lattice_beam;
-    fst::DeterminizeLatticeOptions lat_opts;
+    if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+          "(probably your lexicon has empty words or your LM has epsilon cycles; this "
+          " is a bad idea.)";
+    // (in phase where we get backward-costs).
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
+    // lattice-determinization more efficient.
+    
+    LatticeWeight beam(config_.lattice_beam, 0);
+    fst::DeterminizeLatticePrunedOptions lat_opts;
     lat_opts.max_mem = config_.max_mem;
     lat_opts.max_loop = config_.max_loop;
-    for (int32 i = 0; i < 20; i++) {
-      if (DeterminizeLattice(raw_fst, ofst, lat_opts, NULL)) {
-        if (config_.prune_lattice)
-          fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), ofst);
-        return true;
-      } else {
-        cur_beam *= config_.beam_ratio;
-        KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                   << "reached), reducing lattice-beam to " << cur_beam
-                   << " and re-trying.";
-        Lattice tmp_fst(raw_fst);
-        Prune(tmp_fst, &raw_fst, LatticeWeight(cur_beam, 0));
-      }
-    }
-    return false; // fell off loop-- shouldn't really happen.
+    lat_opts.max_arcs = config_.max_arcs;
+    
+    DeterminizeLatticePruned(raw_fst, beam, ofst, lat_opts);
+    raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
+    Connect(ofst); // Remove unreachable states... there might be
+    // a small number of these, in some cases.
+    return true;
   }
   
  private:
