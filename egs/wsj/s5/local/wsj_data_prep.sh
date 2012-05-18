@@ -167,10 +167,11 @@ prune-lm --threshold=1e-7 $lmdir/lm_tg_5k.arpa.gz $lmdir/lm_tgpr_5k.arpa || exit
 gzip -f $lmdir/lm_tgpr_5k.arpa || exit 1;
 
 
-if [ ! -f wsj0-train-spkrinfo.txt ]; then
+if [ ! -f wsj0-train-spkrinfo.txt ] || [ `cat wsj0-train-spkrinfo.txt | wc -l` -ne 134 ]; then
+  rm wsj0-train-spkrinfo.txt
   ! wget http://www.ldc.upenn.edu/Catalog/docs/LDC93S6A/wsj0-train-spkrinfo.txt && \
     echo "Getting wsj0-train-spkrinfo.txt from backup location" && \
-    wget --no-check-certificate https://sourceforge.net/projects/kaldi/upload/wsj0-train-spkrinfo.txt
+    wget --no-check-certificate https://sourceforge.net/projects/kaldi/files/wsj0-train-spkrinfo.txt 
 fi
 
 if [ ! -f wsj0-train-spkrinfo.txt ]; then
