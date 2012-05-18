@@ -256,6 +256,19 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         needed_strings.push_back(output_states_[i]->arcs[j].string);
     }
 
+    { // the queue doesn't allow us access to the underlying vector,
+      // so we have to resort to a temporary collection.
+      std::vector<Task*> tasks;
+      while (!queue_.empty()) {
+        Task *task = queue_.top();
+        queue_.pop();
+        tasks.push_back(task);
+        AddStrings(task->subset, &needed_strings);
+      }
+      for (size_t i = 0; i < tasks.size(); i++)
+        queue_.push(tasks[i]);
+    }
+
     // the following loop covers strings present in initial_hash_.
     for (typename InitialSubsetHash::const_iterator
              iter = initial_hash_.begin();

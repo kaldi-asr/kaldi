@@ -352,7 +352,7 @@ inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
                         const LatticeWeightTpl<FloatType> &w2,
                         float delta = kDelta) {
   if (w1.Value1() == w2.Value1() && w1.Value2() == w2.Value2()) return true;  // handles Zero().
-  return (fabs(w1.Value1() - w2.Value1()) <= delta && fabs(w1.Value2() - w2.Value2()) <= delta);
+  return (fabs((w1.Value1() + w1.Value2()) - (w2.Value1() + w2.Value2())) <= delta);
 }
 
 template <class FloatType>
