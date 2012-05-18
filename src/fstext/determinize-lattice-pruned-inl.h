@@ -282,8 +282,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     needed_strings.erase(std::unique(needed_strings.begin(),
                                      needed_strings.end()),
                          needed_strings.end()); // uniq the strings.
-    KALDI_LOG << "Rebuilding repository. " << needed_strings[0]; //TEMP
-
+    KALDI_LOG << "Rebuilding repository.";
+    
     repository_.Rebuild(needed_strings);
   }
   
