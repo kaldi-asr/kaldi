@@ -88,7 +88,8 @@ esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
-  [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] && echo "$0: mismatch in number of jobs with $transform_dir";
+  [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
+    && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
   [ -f $srcdir/final.mat ] && ! cmp $transform_dir/final.mat $srcdir/final.mat && \
      echo "$0: LDA transforms differ between $srcdir and $transform_dir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
@@ -116,7 +117,7 @@ else
       fi
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
