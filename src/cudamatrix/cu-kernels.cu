@@ -559,7 +559,9 @@ static void _diff_xent(const int32_cuda* vec_tgt, T* mat_net_out, T* vec_log_pos
   if(i>0) return;
   if(j<d.rows) {
     int index = vec_tgt[j] + j*d.stride;
-    vec_log_post[j] = log(mat_net_out[index]);
+    T value = mat_net_out[index];
+    if(value < 1e-20) value = 1e-20;
+    vec_log_post[j] = log(value);
     mat_net_out[index] -= 1.0;
   }
 }

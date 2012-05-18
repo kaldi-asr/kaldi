@@ -74,6 +74,7 @@ class AmDiagGmm {
   void Write(std::ostream &out_stream, bool binary) const;
 
   int32 Dim() const { return dim_; }
+  void Dim(int32 dim) { dim_=dim; }
   int32 NumPdfs() const { return densities_.size(); }
   int32 NumGauss() const;
   int32 NumGaussInPdf(int32 pdf_index) const;

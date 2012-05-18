@@ -38,7 +38,7 @@ local/wsj_format_data.sh || exit 1;
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-mfccdir=~/data/kaldi_wsj_mfcc
+mfccdir=$PWD/exp/data/kaldi_wsj_mfcc
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $mfccdir 4  || exit 1;
 done

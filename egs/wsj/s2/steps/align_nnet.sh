@@ -58,6 +58,7 @@ lang=$2
 srcdir=$3
 dir=$4
 
+oov_sym=`cat $lang/oov.txt`
 
 
 ######## CONFIGURATION
@@ -98,7 +99,7 @@ feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:-
 echo "Aligning all training data"
 if [ -z "$graphs" ]; then # --graphs option not supplied [-z means empty string]
   # compute integer form of transcripts.
-  scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
+  scripts/sym2int.pl --map-oov "$oov_sym" --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
     || exit 1;
   align-mapped $scale_opts --beam=8 --retry-beam=40 $dir/tree $dir/transition.mdl $lang/L.fst \
    "$feats" ark:$dir/train.tra ark:$dir/ali 2> $dir/align.log || exit 1;
@@ -107,5 +108,8 @@ else
   align-compiled-mapped $scale_opts --beam=8 --retry-beam=40 $dir/transition.mdl \
    "$graphs" "$feats" ark:$dir/ali 2> $dir/align.log || exit 1;
 fi
+
+if [ -z $dir/ali ]; then echo "Error, the alignments $dir/ali were not created..."; exit 1; fi
+gzip -c $dir/ali > $dir/ali.gz
 
 echo "Done."

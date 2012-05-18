@@ -233,10 +233,16 @@ numleaves=2500
 modelsize=3000000
 lrate=0.004
 ( # align
-  $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_ali_si284 \
+  $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_ali_si284/_align_nnet.log \
     steps/align_nnet.sh data/train_si284 \
     data/lang exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284 \
     exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_ali_si284 || exit 1;
+
+  ####
+  #hack-in the GMM models:
+  cp exp/tri2a-2500/final.mdl exp/tri2a-2500_nnet4L_modelsize3000000_lrate0.004_ali_si284/final.mdl
+  ####
+
   # train
   $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284_iter2/_train_nnet.log \
     steps/train_nnet_MLP4.sh --model-size $modelsize --lrate $lrate data/train_si284 data/lang \

@@ -122,6 +122,7 @@ void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& ta
       loss += val*val;
     }
   }
+  //:TODO:
   
   frames_ += net_out.NumRows();
   loss_ += loss;

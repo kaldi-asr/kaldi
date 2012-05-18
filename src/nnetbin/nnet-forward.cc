@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
     if(!silent) CuDevice::Instantiate().PrintProfile();
 #endif
 
-    return 0;
+    return ((num_done>0)?0:1);
   } catch(const std::exception& e) {
     KALDI_ERR << e.what();
     return -1;
