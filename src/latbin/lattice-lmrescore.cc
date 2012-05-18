@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
         // right effect (taking the "best path" through the LM) regardless
         // of the sign of lm_scale.
         fst::ScaleLattice(fst::GraphLatticeScale(1.0/lm_scale), &lat);
-
+        ArcSort(&lat, fst::OLabelCompare<LatticeArc>());
         
         Lattice composed_lat;
         // Could just do, more simply: Compose(lat, lm_fst, &composed_lat);
