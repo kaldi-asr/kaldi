@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,
@@ -15,6 +15,7 @@ nwords=10000 # This is how many words we're putting in the vocab of the RNNLM.
 hidden=30
 class=200 # Num-classes... should be somewhat larger than sqrt of nwords.
 direct=1000 # Probably number of megabytes to allocate for hash-table for "direct" connections.
+rnnlm_ver=rnnlm-0.3e # version of RNNLM to use
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -39,17 +40,18 @@ export PATH=$KALDI_ROOT/tools/rnnlm-0.3c:$PATH
  # needed for me as I ran on a machine that had been setup
  # as 64 bit by default.
  cd $KALDI_ROOT/tools || exit 1;
- if [ -d rnnlm-0.3c ]; then
+ if [ -d $rnnlm_ver ]; then
    echo Not installing the rnnlm toolkit since it is already there.
  else
    echo Downloading and installing the rnnlm tools
    # http://www.fit.vutbr.cz/~imikolov/rnnlm/rnnlm-0.3c.tgz
-   if [ ! -f rnnlm-0.3c.tgz ]; then
-     wget http://www.fit.vutbr.cz/~imikolov/rnnlm/rnnlm-0.3c.tgz || exit 1;
+   if [ ! -f $rnnlm_ver.tgz ]; then
+     wget http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz || exit 1;
    fi
-   tar -xvzf rnnlm-0.3c.tgz || exit 1;
-   cd  rnnlm-0.3c
-   make || exit 1;
+   mkdir $rnnlm_ver
+   cd $rnnlm_ver
+   tar -xvzf ../$rnnlm_ver.tgz || exit 1;
+   make CC=g++ || exit 1;
    echo Done making the rnnlm tools
  fi
 ) || exit 1;
@@ -124,7 +126,7 @@ echo "Training RNNLM (note: this uses a lot of memory! Run it on a big machine.)
 #  -direct-order 4 -direct 1000 -binary >& $dir/rnnlm1.log &
 
 $cmd $dir/rnnlm.log \
-   $KALDI_ROOT/tools/rnnlm-0.3c/rnnlm -independent -train $dir/train -valid $dir/valid \
+   $KALDI_ROOT/tools/$rnnlm_ver/rnnlm -independent -train $dir/train -valid $dir/valid \
    -rnnlm $dir/rnnlm -hidden $hidden -rand-seed 1 -debug 2 -class $class -bptt 2 -bptt-block 20 \
    -direct-order 4 -direct $direct -binary || exit 1;
 
@@ -147,4 +149,3 @@ rm $dir/train $dir/all.gz
 #time rnnlm -train $dir/train -valid $dir/valid -rnnlm $dir/320.rnnlm \
 #  -hidden 320 -rand-seed 1 -debug 2 -class 300 -bptt 2 -bptt-block 20 \
 #  -direct-order 4 -direct 2000 -binary
-
