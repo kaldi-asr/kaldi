@@ -93,6 +93,7 @@ template <class A, class F>
 class TrivialFactorWeightFstImpl
     : public CacheImpl<A> {
  public:
+  using CacheImpl<A>::PushArc;
   using FstImpl<A>::SetType;
   using FstImpl<A>::SetProperties;
   using FstImpl<A>::Properties;
