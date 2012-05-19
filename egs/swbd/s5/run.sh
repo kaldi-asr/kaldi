@@ -103,7 +103,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
 
 steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-  exp/tri1/graph data/eval2000 exp/tri1/decode
+  exp/tri1/graph data/eval2000 exp/tri1/decode_eval2000
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali || exit 1;
@@ -114,7 +114,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;
   steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri2/graph data/eval2000 exp/tri2/decode || exit 1;
+   exp/tri2/graph data/eval2000 exp/tri2/decode_eval2000 || exit 1;
 )&
 
 
@@ -128,7 +128,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
   steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri3a/graph data/eval2000 exp/tri3a/decode || exit 1;
+   exp/tri3a/graph data/eval2000 exp/tri3a/decode_eval2000 || exit 1;
 )&
 
 
@@ -144,27 +144,30 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
   steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri4a/graph data/eval2000 exp/tri4a/decode
+   exp/tri4a/graph data/eval2000 exp/tri4a/decode_eval2000
+  steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri4a/graph data/train_dev exp/tri4a/decode_train_dev
 )&
 
-
-# HERE.
-exit 0;
-utils/decode.sh  --nj 30 --cmd "$decode_cmd" --opts "$decode_opts2" \
- steps/decode_lda_mllt_sat.sh exp/tri4a/graph data/train_dev exp/tri4a/decode_train_dev
-
-steps/align_lda_mllt_sat.sh --nj 30 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup
 
 
 ( # Build a SGMM system on just the 100k_nodup data, on top of LDA+MLLT+SAT.
- steps/train_ubm_lda_etc.sh --nj 30 --cmd "$train_cmd" \
-   700 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/ubm5a
- steps/train_sgmm_lda_etc.sh --nj 30 --cmd "$train_cmd" \
-   4500 40000 50 40 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup \
-     exp/ubm5a/final.ubm exp/sgmm5a
+ steps/train_ubm.sh --cmd "$train_cmd" 700 data/train_100k_nodup data/lang \
+  exp/tri4a_ali_100k_nodup exp/ubm5a || exit 1;
+ steps/train_sgmm.sh --cmd "$train_cmd" --phn-dim 50 \
+   4500 40000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup \
+     exp/ubm5a/final.ubm exp/sgmm5a || exit 1;
 
- utils/mkgraph.sh data/lang_test exp/sgmm5a exp/sgmm5a/graph
+ utils/mkgraph.sh data/lang_test exp/sgmm5a exp/sgmm5a/graph || exit 1;
+
+ steps/decode_sgmm.sh  --cmd "$decode_cmd" --config conf/decode.config \
+   --nj 30 --transform-dir exp/tri4a/decode_eval2000 \
+   exp/sgmm5a/graph data/eval2000 exp/sgmm5a/decode_eval2000
+)
+# HERE.
+
  utils/decode.sh --opts "$decode_opts1" -l data/lang_test --nj 30 --cmd "$decode_cmd" \
    steps/decode_sgmm_lda_etc.sh exp/sgmm5a/graph data/eval2000 exp/sgmm5a/decode_eval2000 \
    exp/tri4a/decode_eval2000
@@ -257,5 +260,6 @@ steps/align_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
 # getting results (see RESULTS file)
 for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+
 
 

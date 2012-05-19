@@ -133,6 +133,8 @@ if [ $stage -le 3 ]; then
     "ark:gunzip -c $graphdir/fsts.JOB.gz|" "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
+rm $dir/pre_ali.*.gz
+
 echo "$0: done aligning data."
 
 utils/summarize_warnings.pl $dir/log

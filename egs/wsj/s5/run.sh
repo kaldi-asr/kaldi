@@ -169,6 +169,11 @@ steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
 steps/train_mmi.sh --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b_ali_si84 \
   exp/tri2b_denlats_si84 exp/tri2b_mmi  || exit 1;
+steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
+  exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi/decode_tgpr_dev93 || exit 1;
+steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
+   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92 || exit 1;
+
  (
   steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_mmi exp/tri2b_denlats_si84_2 || exit 1;
@@ -182,12 +187,6 @@ steps/train_mmi.sh --cmd "$train_cmd" \
   steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
     exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi_2/decode_tgpr_eval92 || exit 1;
  )
-
-
-steps/decode_si.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_mmi/decode_tgpr_dev93 || exit 1;
-steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
-   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b_mmi/decode_tgpr_eval92 || exit 1;
 
 steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 \
@@ -391,15 +390,23 @@ steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
 # Use the letter tri4a, as tri4b was used in s3/ for a "quick-retrained" system.
 steps/train_sat.sh  --cmd "$train_cmd" \
   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4a || exit 1;
-
-utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
-steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
-steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
-
+(
+ utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
+ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
+ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
+) &
 steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
+(
+ utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
+ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
+ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
+) &
+
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
@@ -414,6 +421,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 
 steps/make_denlats.sh --nj 30 --sub-split 30 --cmd "$train_cmd" \
+  --transform-dir exp/tri4b_ali_si284 
   data/train_si284 data/lang exp/tri4b exp/tri4b_denlats_si284 || exit 1;
 
 steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \

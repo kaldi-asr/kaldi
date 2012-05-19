@@ -170,8 +170,8 @@ done
 
 
 ## SGMM on top of LDA+MLLT+SAT features.
-steps/train_ubm.sh 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
-steps/train_sgmm.sh 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
+steps/train_ubm.sh --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
+steps/train_sgmm.sh --cmd "$train_cmd" 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
 
 utils/mkgraph.sh data/lang exp/sgmm4a exp/sgmm4a/graph || exit 1;
 
@@ -183,6 +183,5 @@ steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd 
 
 steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
-
-# combining the sgmm run and the best MMI+fMMI run, but didn't really help.
+# combining the sgmm run and the best MMI+fMMI run.
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_3b_fmmic5/decode || exit 1;
