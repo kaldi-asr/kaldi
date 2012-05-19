@@ -1,7 +1,7 @@
 // lat/lattice-functions.cc
 
-// Copyright 2009-2011   Saarland University  2012  Daniel Povey
-// Authors: Arnab Ghoshal  Daniel Povey  Chao Weng
+// Copyright 2009-2011   Saarland University  2012  Johns Hopkins University (Author: Daniel Povey)
+// Authors: Arnab Ghoshal  Johns Hopkins University (Author: Daniel Povey)  Chao Weng
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

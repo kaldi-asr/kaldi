@@ -1,6 +1,6 @@
 // lat/sausages.h
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ namespace kaldi {
 
 /// The implementation of the Minimum Bayes Risk decoding method described in
 ///  "Minimum Bayes Risk decoding and system combination based on a recursion for
-///  edit distance", Haihua Xu, Daniel Povey, Lidia Mangu and Jie Zhu, Computer
+///  edit distance", Haihua Xu, Johns Hopkins University (Author: Daniel Povey), Lidia Mangu and Jie Zhu, Computer
 ///  Speech and Language, 2011
 /// This is a slightly more principled way to do Minimum Bayes Risk (MBR) decoding
 /// than the standard "Confusion Network" method.  Note: MBR decoding aims to

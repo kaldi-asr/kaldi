@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # This takes as standard input a ctm file that's "relative to the utterance",
 # i.e. times are measured relative to the beginning of the segments, and it

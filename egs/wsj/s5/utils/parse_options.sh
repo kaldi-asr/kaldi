@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright Daniel Povey, 2012.  Apache 2.0.
+# Copyright Johns Hopkins University (Author: Daniel Povey), 2012.  Apache 2.0.
 
 # Parse command-line options-- to be sourced by another script (as in ". parse_options.sh")
 # option format is:

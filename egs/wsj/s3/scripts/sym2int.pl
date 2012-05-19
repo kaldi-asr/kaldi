@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2010-2012 Microsoft Corporation  Daniel Povey
+# Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

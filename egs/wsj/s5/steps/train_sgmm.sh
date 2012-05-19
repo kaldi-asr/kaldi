@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # SGMM training, with speaker vectors.  This script would normally be called on
 # top of fMLLR features obtained from a conventional system, but it also works

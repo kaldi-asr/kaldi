@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2010-2012 Microsoft Corporation  Daniel Povey.  Apache 2.0.
+# Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # To be run from one directory above this script.
 

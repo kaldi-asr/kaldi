@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 # Decoding script that does fMLLR.  This can be on top of delta+delta-delta, or
 # LDA+MLLT features.

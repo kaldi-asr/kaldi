@@ -1,7 +1,7 @@
 // matrix/packed-matrix.h
 
 // Copyright 2009-2012  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
-//                      Saarland University;  Yanmin Qian;  Daniel Povey
+//                      Saarland University;  Yanmin Qian;  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

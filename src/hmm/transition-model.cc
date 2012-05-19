@@ -1,6 +1,6 @@
 // hmm/transition-model.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
+// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 //        Johns Hopkins University (author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");

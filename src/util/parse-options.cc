@@ -1,7 +1,7 @@
 // util/parse-options.cc
 
 // Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
-//                      Saarland University;  Daniel Povey
+//                      Saarland University;  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

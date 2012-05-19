@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright 2012  Daniel Povey.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
 use File::Basename;
 use Cwd;

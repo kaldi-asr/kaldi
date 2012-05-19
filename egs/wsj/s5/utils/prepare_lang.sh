@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright Daniel Povey  2012
+# Copyright Johns Hopkins University (Author: Daniel Povey)  2012
 # Apache 2.0
 
 # This script prepares a directory such as data/lang/, in the standard format,

@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-# Copyright 2012  Daniel Povey
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 
 # This program is a bit like ./sym2int.pl in that it applies a map

@@ -1,6 +1,6 @@
 // sgmmbin/sgmm-init-from-tree-stats.cc
 
-// Copyright 2012   Arnab Ghoshal  Daniel Povey
+// Copyright 2012   Arnab Ghoshal  Johns Hopkins University (Author: Daniel Povey)
 // Copyright 2009-2011   Saarland University
 
 // Licensed under the Apache License, Version 2.0 (the "License");

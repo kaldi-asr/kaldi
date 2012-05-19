@@ -1,5 +1,5 @@
 #!/bin/bash
-# by Daniel Povey, 2012.  Apache 2.0.
+# by Johns Hopkins University (Author: Daniel Povey), 2012.  Apache 2.0.
 
 # This script does MMI discriminative training, including
 # feature-space (like fMPE) and model-space components. 

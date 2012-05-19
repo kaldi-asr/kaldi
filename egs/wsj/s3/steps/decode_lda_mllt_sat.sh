@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2010-2012 Microsoft Corporation  Daniel Povey
+# Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 # Decoding script that works with a GMM model and the baseline
 # [e.g. MFCC] features plus cepstral mean subtraction plus

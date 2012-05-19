@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Ondrej Glembek;   Yanmin Qian;
-//                      Daniel Povey
+//                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # Combine two decoding directories by composing the lattices (we
 # apply a weight to each of the original weights, by default 0.5 each).

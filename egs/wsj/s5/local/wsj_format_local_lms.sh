@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright Daniel Povey 2012
+# Copyright Johns Hopkins University (Author: Daniel Povey) 2012
 
 
 [ ! -d data/lang_bd ] && echo "Expect data/local/lang_bd to exist" && exit 1;

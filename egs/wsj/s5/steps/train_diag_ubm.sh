@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright Daniel Povey,  2012.  
+# Copyright Johns Hopkins University (Author: Daniel Povey),  2012.  
 # Apache 2.0.
 
 # Train a diagonal mixture of Gaussians.  This is trained without

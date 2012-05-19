@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # This script does decoding with an SGMM system, with speaker vectors. 
 # If the SGMM system was

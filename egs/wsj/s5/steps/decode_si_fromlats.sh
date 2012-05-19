@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 # Decode, limited to the word-sequences that were present in a set

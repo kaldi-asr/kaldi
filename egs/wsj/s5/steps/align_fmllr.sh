@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012  Daniel Povey
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 # Computes training alignments; assumes features are (LDA+MLLT or delta+delta-delta)

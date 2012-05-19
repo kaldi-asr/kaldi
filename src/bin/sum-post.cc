@@ -1,6 +1,6 @@
 // bin/sum-post.cc
 
-// Copyright 2011-2012 Daniel Povey  Chao Weng
+// Copyright 2011-2012 Johns Hopkins University (Author: Daniel Povey)  Chao Weng
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

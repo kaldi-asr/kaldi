@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # mix up (or down); do 3 iters of model training; realign; then do two more
 # iterations of model training.

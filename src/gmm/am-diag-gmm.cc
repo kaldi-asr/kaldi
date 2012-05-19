@@ -1,6 +1,6 @@
 // gmm/am-diag-gmm.cc
 
-// Copyright 2012   Arnab Ghoshal  Daniel Povey
+// Copyright 2012   Arnab Ghoshal  Johns Hopkins University (Author: Daniel Povey)
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Georg Stemmer
 

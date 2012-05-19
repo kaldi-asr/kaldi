@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2010-2012  Microsoft Corporation  Daniel Povey
+# Copyright 2010-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 

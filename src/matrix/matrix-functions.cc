@@ -1,7 +1,7 @@
 // matrix/matrix-functions.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Go Vivace Inc.;  Jan Silovsky
-//                      Yanmin Qian;  Saarland University;  Daniel Povey
+//                      Yanmin Qian;  Saarland University;  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

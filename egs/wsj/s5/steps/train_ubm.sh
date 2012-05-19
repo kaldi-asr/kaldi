@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012  Daniel Povey.  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # This trains a UBM (i.e. a mixture of Gaussians), by clustering
 # the Gaussians from a trained HMM/GMM system and then doing a few

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Microsoft Corporation  Daniel Povey
+# Copyright 2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 # This script takes data prepared in a corpus-dependent way

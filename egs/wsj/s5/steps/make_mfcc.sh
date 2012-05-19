@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-# Copyright 2012  Daniel Povey
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 # To be run from .. (one directory up from here)
 # see ../run.sh for example

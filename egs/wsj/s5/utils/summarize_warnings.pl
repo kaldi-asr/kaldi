@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright 2012 Daniel Povey.  Apache 2.0.
+# Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
  @ARGV != 1 && print STDERR "Usage: summarize_warnings.pl <log-dir>\n" && exit 1;
 
