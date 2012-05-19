@@ -14,9 +14,12 @@
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
-# local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
+#wsj0=/mnt/matylda2/data/WSJ0
+#wsj1=/mnt/matylda2/data/WSJ1
+wsj0=/export/corpora5/LDC/LDC93S6B
+wsj1=/export/corpora5/LDC/LDC94S13B
 
-local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
+local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
 
@@ -33,8 +36,7 @@ local/wsj_format_data.sh || exit 1;
  # Caution: the commands below will only work if $decode_cmd 
  # is setup to use qsub.  Else, just remove the --cmd option.
  (
- # on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
-  local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
+  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
   utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
   local/wsj_train_lms.sh && \
   local/wsj_format_local_lms.sh && 
@@ -421,7 +423,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 
 steps/make_denlats.sh --nj 30 --sub-split 30 --cmd "$train_cmd" \
-  --transform-dir exp/tri4b_ali_si284 
+  --transform-dir exp/tri4b_ali_si284 \
   data/train_si284 data/lang exp/tri4b exp/tri4b_denlats_si284 || exit 1;
 
 steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
