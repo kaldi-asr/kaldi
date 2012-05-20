@@ -808,6 +808,8 @@ float VecSpVec(const VectorBase<float> &v1, const SpMatrix<float> &M, const Vect
 }
 
 
+// TODO: this is not very efficiently implemented, we could do it using
+// lower-level functions.
 template<>
 void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &rM, MatrixTransposeType transM, const SpMatrix<float> &rA, const float beta) {
   KALDI_ASSERT((transM == kNoTrans && this->NumRows() == rM.NumRows() && rM.NumCols() == rA.NumRows())
