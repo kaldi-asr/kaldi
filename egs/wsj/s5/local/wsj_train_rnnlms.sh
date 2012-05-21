@@ -31,7 +31,7 @@ dir=$1
 srcdir=data/local/dict_larger
 mkdir -p $dir
 
-export PATH=$KALDI_ROOT/tools/rnnlm-0.3c:$PATH
+export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
 
 
 ( # First make sure the kaldi_lm toolkit is installed.
@@ -44,7 +44,7 @@ export PATH=$KALDI_ROOT/tools/rnnlm-0.3c:$PATH
    echo Not installing the rnnlm toolkit since it is already there.
  else
    echo Downloading and installing the rnnlm tools
-   # http://www.fit.vutbr.cz/~imikolov/rnnlm/rnnlm-0.3c.tgz
+   # http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
    if [ ! -f $rnnlm_ver.tgz ]; then
      wget http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz || exit 1;
    fi
