@@ -1,6 +1,7 @@
 // gmmbin/gmm-init-model.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+//                     Johns Hopkins University  (author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,29 +32,55 @@ namespace kaldi {
 /// InitAmGmm initializes the GMM with one Gaussian per state.
 void InitAmGmm(const BuildTreeStatsType &stats,
                const EventMap &to_pdf_map,
-               AmDiagGmm *am_gmm) {
+               AmDiagGmm *am_gmm,
+               const TransitionModel &trans_model) {
   // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, to_pdf_map, &split_stats);
+
+  split_stats.resize(to_pdf_map.MaxResult() + 1); // ensure that
+  // if the last leaf had no stats, this vector still has the right size.
+  
   // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
+  for (size_t i = 0; i < split_stats.size(); i++) {
+    if (split_stats[i].empty()) {
+      std::vector<int32> bad_pdfs(1, i), bad_phones;
+      GetPhonesForPdfs(trans_model, bad_pdfs, &bad_phones);
+      std::ostringstream ss;
+      for (int32 idx = 0; idx < bad_phones.size(); idx ++)
+        ss << bad_phones[idx] << ' ';
+      KALDI_WARN << "Tree has pdf-id " << i 
+          << "with no stats; corresponding phone list: " << ss.str();
+      /*
+        This probably means you have phones that were unseen in training 
+        and were not shared with other phones in the roots file. 
+        You should modify your roots file as necessary to fix this.
+        (i.e. share that phone with a similar but seen phone on one line 
+        of the roots file). Be sure to regenerate roots.int from roots.txt, 
+        if using s5 scripts. To work out the phone, search for 
+        pdf-id  i  in the output of show-transitions (for this model). */
+    }
+  }
   std::vector<Clusterable*> summed_stats;
   SumStatsVec(split_stats, &summed_stats);
-
+  Clusterable *avg_stats = SumClusterable(summed_stats);
+  KALDI_ASSERT(avg_stats != NULL && "No stats available in gmm-init-model.");
   for (size_t i = 0; i < summed_stats.size(); i++) {
-    assert(summed_stats[i] != NULL);
+    GaussClusterable *c =
+        static_cast<GaussClusterable*>(summed_stats[i] != NULL ? summed_stats[i] : avg_stats);
     DiagGmm gmm;
-    Vector<BaseFloat> x (static_cast<GaussClusterable*>(summed_stats[i])->x_stats());
-    Vector<BaseFloat> x2 (static_cast<GaussClusterable*>(summed_stats[i])->x2_stats());
-    BaseFloat count =  static_cast<GaussClusterable*>(summed_stats[i])->count();
+    Vector<BaseFloat> x (c->x_stats());
+    Vector<BaseFloat> x2 (c->x2_stats());
+    BaseFloat count =  c->count();
     gmm.Resize(1, x.Dim());
     if (count < 100) {
-      KALDI_WARN << "Very small count for state "<< i << ": " << count;
+      std::vector<int32> bad_pdfs(1, i), bad_phones;
+      GetPhonesForPdfs(trans_model, bad_pdfs, &bad_phones);
+      std::ostringstream ss;
+      for (int32 idx = 0; idx < bad_phones.size(); idx ++)
+        ss << bad_phones[idx] << ' ';
+      KALDI_WARN << "Very small count for state " << i << ": " 
+          << count << "; corresponding phone list: " << ss.str();
     }
     x.Scale(1.0/count);
     x2.Scale(1.0/count);
@@ -74,6 +101,7 @@ void InitAmGmm(const BuildTreeStatsType &stats,
     am_gmm->AddPdf(gmm);
   }
   DeletePointers(&summed_stats);
+  delete avg_stats;
 }
 
 /// Get state occupation counts.
@@ -84,13 +112,10 @@ void GetOccs(const BuildTreeStatsType &stats,
     // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, to_pdf_map, &split_stats);
-  // Make sure each leaf has stats.
-  for (size_t i = 0; i < split_stats.size(); i++)
-    KALDI_ASSERT(! split_stats[i].empty() && "Tree has leaves with no stats."
-                 "  Modify your roots file as necessary to fix this.");
-  KALDI_ASSERT(static_cast<int32>(split_stats.size()-1) == to_pdf_map.MaxResult()
-               && "Tree may have final leaf with no stats.  "
-               "Modify your roots file as necessary to fix this.");
+  if (split_stats.size() != to_pdf_map.MaxResult()+1) {
+    KALDI_ASSERT(split_stats.size() < to_pdf_map.MaxResult()+1);
+    split_stats.resize(to_pdf_map.MaxResult()+1);
+  }
   occs->Resize(split_stats.size());
   for (int32 pdf = 0; pdf < occs->Dim(); pdf++)
     (*occs)(pdf) = SumNormalizer(split_stats[pdf]);
@@ -252,10 +277,12 @@ int main(int argc, char *argv[]) {
 
     const EventMap &to_pdf = ctx_dep.ToPdfMap();  // not owned here.
 
+    TransitionModel trans_model(ctx_dep, topo);
+    
     // Now, the summed_stats will be used to initialize the GMM.
     AmDiagGmm am_gmm;
     if (old_tree_filename.empty())
-      InitAmGmm(stats, to_pdf, &am_gmm);  // Normal case: initialize 1 Gauss/model from tree stats.
+      InitAmGmm(stats, to_pdf, &am_gmm, trans_model);  // Normal case: initialize 1 Gauss/model from tree stats.
     else {
       InitAmGmmFromOld(stats, to_pdf,
                        ctx_dep.ContextWidth(),
@@ -271,8 +298,6 @@ int main(int argc, char *argv[]) {
       Output ko(occs_out_filename, binary);
       occs.Write(ko.Stream(), binary);
     }
-
-    TransitionModel trans_model(ctx_dep, topo);
 
     {
       Output ko(model_out_filename, binary);

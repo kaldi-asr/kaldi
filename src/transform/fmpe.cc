@@ -1,6 +1,6 @@
 // transform/fmpe.cc
 
-// Copyright 2011-2012  Yanmin Qian  Daniel Povey
+// Copyright 2011-2012  Yanmin Qian  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -243,6 +243,8 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
     }
   } else {
     size_t i = 0;
+    // We process the "posts" vector in chunks, where each chunk corresponds to
+    // the same Gaussian index (but different times).
     while (i < all_posts.size()) {
       int32 gauss = all_posts[i].first.first;
       SubVector<BaseFloat> this_stddev(stddevs_, gauss),
@@ -256,7 +258,9 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
            batch_size++); // empty loop body.
       Matrix<BaseFloat> input_chunks(batch_size, dim+1);
       Matrix<BaseFloat> intermed_temp(batch_size, dim*ncontexts);
-      for (int32 j = 0; j < batch_size; j++) { // set up "input_chunks"
+      for (int32 j = 0; j < batch_size; j++) { // set up "input_chunks".
+        // To understand this code, first examine code and comments in "non-optimized"
+        // code chunk above (the other branch of the if/else statement).
         int32 t = all_posts[i+j].first.second;
         SubVector<BaseFloat> this_feat(feat_in, t);
         SubVector<BaseFloat> this_input_chunk(input_chunks, j);
@@ -387,25 +391,33 @@ void Fmpe::ComputeFeatures(const MatrixBase<BaseFloat> &feat_in,
 
 void Fmpe::AccStats(const MatrixBase<BaseFloat> &feat_in,
                     const std::vector<std::vector<int32> > &gselect,
-                    const MatrixBase<BaseFloat> &feat_deriv_in,
-                    MatrixBase<BaseFloat> *proj_deriv_plus,
-                    MatrixBase<BaseFloat> *proj_deriv_minus) const {
+                    const MatrixBase<BaseFloat> &direct_feat_deriv,
+                    const MatrixBase<BaseFloat> *indirect_feat_deriv, // may be NULL
+                    FmpeStats *fmpe_stats) const {
+  SubMatrix<BaseFloat> stats_plus(fmpe_stats->DerivPlus());
+  SubMatrix<BaseFloat> stats_minus(fmpe_stats->DerivMinus());
   int32 dim = FeatDim(), ncontexts = NumContexts();
   KALDI_ASSERT(feat_in.NumRows() != 0 && feat_in.NumCols() == dim);
   KALDI_ASSERT(feat_in.NumRows() == static_cast<int32>(gselect.size()));
-  AssertSameDim(*proj_deriv_plus, projT_);
-  AssertSameDim(*proj_deriv_minus, projT_);
-  AssertSameDim(feat_in, feat_deriv_in);
+  AssertSameDim(stats_plus, projT_);
+  AssertSameDim(stats_minus, projT_);
+  AssertSameDim(feat_in, direct_feat_deriv);
 
-  // We do everything in reverse now, in reverse order.
-  Matrix<BaseFloat> feat_deriv(feat_deriv_in);
+  if (indirect_feat_deriv != NULL)
+    fmpe_stats->AccumulateChecks(feat_in, direct_feat_deriv, *indirect_feat_deriv);
+  
+  Matrix<BaseFloat> feat_deriv(direct_feat_deriv); // "feat_deriv" is initially direct+indirect.
+  if (indirect_feat_deriv != NULL)
+    feat_deriv.AddMat(1.0, *indirect_feat_deriv);
+  
+  // We do the "*Reverse" version of each stage now, in reverse order.
   ApplyCReverse(&feat_deriv);
 
   Matrix<BaseFloat> intermed_feat_deriv(feat_in.NumRows(), dim*ncontexts);
   ApplyContextReverse(feat_deriv, &intermed_feat_deriv);
   
   ApplyProjectionReverse(feat_in, gselect, intermed_feat_deriv,
-                         proj_deriv_plus, proj_deriv_minus);
+                         &stats_plus, &stats_minus);
 }
 
 
@@ -427,8 +439,9 @@ Fmpe::Fmpe(const DiagGmm &gmm, const FmpeOptions &config): gmm_(gmm),
 }
 
 BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
-                       MatrixBase<BaseFloat> &proj_deriv_plus,
-                       MatrixBase<BaseFloat> &proj_deriv_minus) {
+                       const FmpeStats &stats) {
+  SubMatrix<BaseFloat> proj_deriv_plus = stats.DerivPlus(),
+      proj_deriv_minus = stats.DerivMinus();
   // tot_linear_objf_impr is the change in the actual
   // objective function if it were linear, i.e.
   //   objf-gradient . parameter-change  // Note: none of this is normalized by the #frames (we don't have
@@ -508,11 +521,17 @@ BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
                                    const TransitionModel &trans_model,
                                    const Posterior &posterior,
                                    const MatrixBase<BaseFloat> &features,
-                                   Matrix<BaseFloat> *deriv) {
+                                   Matrix<BaseFloat> *direct_deriv,
+                                   const AccumAmDiagGmm *model_diff,
+                                   Matrix<BaseFloat> *indirect_deriv) {
+  KALDI_ASSERT((model_diff != NULL) == (indirect_deriv != NULL));
   BaseFloat ans = 0.0;
   KALDI_ASSERT(posterior.size() == static_cast<size_t>(features.NumRows()));
-  deriv->Resize(features.NumRows(), features.NumCols());
+  direct_deriv->Resize(features.NumRows(), features.NumCols());
+  if (indirect_deriv != NULL)
+    indirect_deriv->Resize(features.NumRows(), features.NumCols());
   Vector<BaseFloat> temp_vec(features.NumCols());
+  Vector<double> temp_vec_dbl(features.NumCols());
   for (size_t i = 0; i < posterior.size(); i++) {
     for (size_t j = 0; j < posterior[i].size(); j++) {
       int32 tid = posterior[i][j].first,  // transition identifier.
@@ -521,7 +540,7 @@ BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
       const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
       Vector<BaseFloat> gauss_posteriors;
       SubVector<BaseFloat> this_feat(features, i);
-      SubVector<BaseFloat> this_deriv(*deriv, i);
+      SubVector<BaseFloat> this_direct_deriv(*direct_deriv, i);
       ans += weight * 
           gmm.ComponentPosteriors(this_feat, &gauss_posteriors);
       
@@ -534,8 +553,8 @@ BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
       // the posteriors.  This comes from the term
       //  feat^T * inv_var * mean
       // in the objective function.
-      this_deriv.AddMatVec(1.0, gmm.means_invvars(), kTrans,
-                           gauss_posteriors, 1.0);
+      this_direct_deriv.AddMatVec(1.0, gmm.means_invvars(), kTrans,
+                                  gauss_posteriors, 1.0);      
 
       // next line does temp_vec == inv_vars^T * gauss_posteriors,
       // which sets temp_vec to a weighted sum of the inv_vars,
@@ -546,10 +565,124 @@ BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
       // which is the term that comes from the -0.5 * inv_var^T feat_sq,
       // in the objective function (where inv_var is a vector, and feat_sq
       // is a vector of squares of the feature values).
-      this_deriv.AddVecVec(-1.0, this_feat, temp_vec, 1.0);
+      // Note: we have to do some messing about with double-precision here
+      // because the stats only come in double precision.
+      this_direct_deriv.AddVecVec(-1.0, this_feat, temp_vec, 1.0);
+      if (model_diff != NULL && weight > 0.0) { // We need to get the indirect diff.
+        // This "weight > 0.0" checks that this is the numerator stats, as the
+        // fMPE indirect diff applies only to the ML stats-- CAUTION, this
+        // code will only work as-is for fMMI (and the stats should not be
+        // canceled), due to the assumption that ML stats == num stats.
+        Vector<double> gauss_posteriors_dbl(gauss_posteriors);
+        const AccumDiagGmm &deriv_acc = model_diff->GetAcc(pdf_id);
+        // part of the derivative.  Note: we could just store the direct and
+        // indirect derivatives together in one matrix, but it makes it easier
+        // to accumulate certain diagnostics if we store them separately.
+        SubVector<BaseFloat> this_indirect_deriv(*indirect_deriv, i);
+        // note: deriv_acc.mean_accumulator() contains the derivative of
+        // the objective function w.r.t. the "x stats" accumulated for
+        // this GMM.  variance_accumulator() is the same for the "x^2 stats".
+        temp_vec_dbl.AddMatVec(1.0, deriv_acc.mean_accumulator(), kTrans,
+                               gauss_posteriors_dbl, 0.0);
+        this_indirect_deriv.AddVec(1.0, temp_vec_dbl);
+        temp_vec_dbl.AddMatVec(1.0, deriv_acc.variance_accumulator(), kTrans,
+                               gauss_posteriors_dbl, 0.0);
+        temp_vec.CopyFromVec(temp_vec_dbl); // convert to float.
+        // next line because d(x^2 stats for Gaussian)/d(feature) =
+        // 2 * (gaussian posterior) * feature.
+        this_indirect_deriv.AddVecVec(2.0, this_feat, temp_vec, 1.0);
+      }
     }
   }
   return ans;
+}
+
+
+SubMatrix<BaseFloat> FmpeStats::DerivPlus() const { // const-ness not preserved.
+  KALDI_ASSERT(deriv.NumRows() != 0);
+  int32 proj_num_rows = deriv.NumRows(),
+      proj_num_cols = deriv.NumCols()/2;
+  return SubMatrix<BaseFloat>(deriv, 0, proj_num_rows,
+                              0, proj_num_cols);
+}
+SubMatrix<BaseFloat> FmpeStats::DerivMinus() const { // const-ness not preserved.
+  KALDI_ASSERT(deriv.NumRows() != 0);
+  int32 proj_num_rows = deriv.NumRows(),
+      proj_num_cols = deriv.NumCols()/2;
+  return SubMatrix<BaseFloat>(deriv, 0, proj_num_rows,
+                              proj_num_cols, proj_num_cols);
+}
+
+void FmpeStats::Init(const Fmpe &fmpe) {
+  int32 num_rows = fmpe.ProjectionTNumRows(),
+      num_cols = fmpe.ProjectionTNumCols();
+  deriv.Resize(num_rows, num_cols*2);
+
+  int32 feat_dim = fmpe.FeatDim();
+  checks.Resize(8, feat_dim);
+}
+
+void FmpeStats::AccumulateChecks(const MatrixBase<BaseFloat> &feats,
+                                 const MatrixBase<BaseFloat> &direct_deriv,
+                                 const MatrixBase<BaseFloat> &indirect_deriv) {
+  int32 T = feats.NumRows(), dim = feats.NumCols();
+  KALDI_ASSERT(direct_deriv.NumRows() == T && direct_deriv.NumCols() == dim &&
+               indirect_deriv.NumRows() == T && indirect_deriv.NumCols() == dim);
+  KALDI_ASSERT(checks.NumRows() == 8 && checks.NumCols() == dim);
+  for (int32 t = 0; t < T; t++) {
+    for (int32 d = 0; d < dim; d++) {
+      BaseFloat zero = 0.0;
+      checks(0, d) += std::max(zero, direct_deriv(t, d));
+      checks(1, d) += std::max(zero, -direct_deriv(t, d));
+      checks(2, d) += std::max(zero, indirect_deriv(t, d));
+      checks(3, d) += std::max(zero, -indirect_deriv(t, d));
+      checks(4, d) += std::max(zero, feats(t,d)*direct_deriv(t, d));
+      checks(5, d) += std::max(zero, -feats(t,d)*direct_deriv(t, d));
+      checks(6, d) += std::max(zero, feats(t,d)*indirect_deriv(t, d));
+      checks(7, d) += std::max(zero, -feats(t,d)*indirect_deriv(t, d));
+    }
+  }
+}
+
+void FmpeStats::DoChecks() {
+  if (checks.IsZero()) {
+    KALDI_LOG << "No checks will be done, probably indirect derivative was not used.";
+    return;
+  }
+  int32 dim = checks.NumCols();
+  Vector<double> shift_check(dim), shift_check2(dim), scale_check(dim), scale_check2(dim);
+  for (int32 d = 0; d < dim; d++) {
+    // shiftnumerator = direct+indirect deriv-- should be zero.
+    double shift_num = checks(0, d) - checks(1, d) + checks(2, d) - checks(3, d),
+        shift_den = checks(0, d) + checks(1, d) + checks(2, d) + checks(3, d),
+        shift_den2 = fabs(checks(0, d) - checks(1, d)) + fabs(checks(2, d) - checks(3, d));
+    shift_check(d) = shift_num / shift_den;
+    shift_check2(d) = shift_num / shift_den2;
+    double scale_num = checks(4, d) - checks(5, d) + checks(6, d) - checks(7, d),
+        scale_den = checks(4, d) + checks(5, d) + checks(6, d) + checks(7, d),
+        scale_den2 = fabs(checks(4, d) - checks(5, d)) + fabs(checks(6, d) - checks(7, d));
+    scale_check(d) = scale_num / scale_den;
+    scale_check2(d) = scale_num / scale_den2;
+  }
+
+  KALDI_LOG << "Shift-check is as follows (should be in range +- 0.01 or less)."
+            << shift_check;
+  KALDI_LOG << "Scale-check is as follows (should be in range +- 0.01 or less)."
+            << scale_check;
+  KALDI_LOG << "Shift-check(2) is as follows: most elements should be in range +-0.1: "
+            << shift_check2;
+  KALDI_LOG << "Scale-check(2) is as follows: most elements should be in range +-0.1: "
+            << scale_check2;
+}
+
+void FmpeStats::Write(std::ostream &os, bool binary) const {
+  deriv.Write(os, binary);
+  checks.Write(os, binary);
+}
+
+void FmpeStats::Read(std::istream &is, bool binary, bool add) {
+  deriv.Read(is, binary, add);
+  checks.Read(is, binary, add);
 }
 
 

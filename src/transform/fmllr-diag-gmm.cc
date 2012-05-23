@@ -95,6 +95,7 @@ FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
   BaseFloat loglike;
   
   loglike = pdf.ComponentPosteriors(data, &posterior);
+  posterior.Scale(weight);
   AccumulateFromPosteriors(pdf, data, posterior);
   return loglike;
 }

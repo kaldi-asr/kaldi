@@ -6,13 +6,14 @@
 # subdirectories named as follows:
 #    rm1_audio1  rm1_audio2	rm2_audio
 
-local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
+#local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
+local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
 local/rm_format_data.sh || exit 1;
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
-featdir=/mnt/matylda6/jhu09/qpovey/kaldi_rm_feats
+featdir=~/data/kaldi_rm_feats
 
 for x in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92; do
   steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir 4  || exit 1;
@@ -35,6 +36,7 @@ steps/align_deltas.sh data/train data/lang exp/mono exp/mono_ali || exit 1;
 steps/train_deltas.sh data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 # decode tri1
 local/decode.sh steps/decode_deltas.sh exp/tri1/decode || exit 1;
+#draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
 
 # align tri1
 steps/align_deltas.sh --graphs "ark,s,cs:gunzip -c exp/tri1/graphs.fsts.gz|" \
@@ -114,8 +116,7 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode 
 
 
 # Decode with fMLLR
-. ./path.sh
-sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl} || exit 1;
+
 local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode || exit 1;
 
 

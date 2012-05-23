@@ -80,9 +80,9 @@ void AccumDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   // convert into BaseFloat before writing things
   Vector<BaseFloat> occupancy_bf(occupancy_.Dim());
   Matrix<BaseFloat> mean_accumulator_bf(mean_accumulator_.NumRows(),
-      mean_accumulator_.NumCols());
+                                        mean_accumulator_.NumCols());
   Matrix<BaseFloat> variance_accumulator_bf(variance_accumulator_.NumRows(),
-      variance_accumulator_.NumCols());
+                                            variance_accumulator_.NumCols());
   occupancy_bf.CopyFromVec(occupancy_);
   mean_accumulator_bf.CopyFromMat(mean_accumulator_);
   variance_accumulator_bf.CopyFromMat(variance_accumulator_);
@@ -254,7 +254,7 @@ AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)
       variance_accumulator_(other.variance_accumulator_) {}
 
 int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
-                           VectorBase<double> *var) {
+                    VectorBase<double> *var) {
   int32 ans = 0;
   KALDI_ASSERT(variance_floor_vector.Dim() == var->Dim());
   for (int32 i = 0; i < var->Dim(); i++) {
@@ -267,7 +267,7 @@ int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
 }
 
 int32 FloorVariance(const BaseFloat min_variance,
-                          VectorBase<double> *var) {
+                    VectorBase<double> *var) {
   int32 ans = 0;
   for (int32 i = 0; i < var->Dim(); i++) {
     if ((*var)(i) < min_variance) {

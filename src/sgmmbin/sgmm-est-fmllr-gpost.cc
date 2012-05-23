@@ -1,6 +1,6 @@
 // sgmmbin/sgmm-est-fmllr-gpost.cc
 
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation
+// Copyright 2009-2012  Saarland University  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
               << " with no gposts, " << num_other_error << " with other errors.";
     KALDI_LOG << "Num frames " << tot_t << ", auxf impr per frame is "
               << (tot_impr / tot_t);
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

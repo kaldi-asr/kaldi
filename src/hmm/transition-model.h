@@ -1,6 +1,7 @@
 // hmm/transition-model.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation
+//                      Johns Hopkins University (author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,13 +85,17 @@ namespace kaldi {
 struct TransitionUpdateConfig {
   BaseFloat floor;
   BaseFloat mincount;
+  bool share_for_pdfs; // If true, share all transition parameters that have the same pdf.
   TransitionUpdateConfig(BaseFloat floor = 0.01,
-                         BaseFloat mincount = 5.0):
-      floor(floor), mincount(mincount) {}
+                         BaseFloat mincount = 5.0,
+                         bool share_for_pdfs = false):
+      floor(floor), mincount(mincount), share_for_pdfs(share_for_pdfs) {}
 
   void Register (ParseOptions *po) {
     po->Register("transition-floor", &floor, "Floor for transition probabilities");
     po->Register("transition-min-count", &mincount, "Minimum count required to update transitions from a state");
+    po->Register("share-for-pdfs", &share_for_pdfs,
+                 "If true, share all transition parameters where the states have the same pdf.");
   }
 };
 
@@ -200,6 +205,8 @@ class TransitionModel {
   }
 
  private:
+  void UpdateShared(const Vector<double> &stats, const TransitionUpdateConfig &cfg,
+                    BaseFloat *objf_impr_out, BaseFloat *count_out); // called from Update.
   void ComputeTriples(const ContextDependency &ctx_dep);  // called from constructor.  initializes triples_.
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just
@@ -281,7 +288,11 @@ bool GetPdfsForPhones(const TransitionModel &trans_model,
                       const std::vector<int32> &phones,
                       std::vector<int32> *pdfs);
 
-
+/// Works out which phones might correspond to the given pdfs. Similar to the
+/// above GetPdfsForPhones(, ,)
+bool GetPhonesForPdfs(const TransitionModel &trans_model,
+                      const std::vector<int32> &pdfs,
+                      std::vector<int32> *phones);
 /// @}
 
 } // end namespace kaldi

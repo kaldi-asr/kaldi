@@ -1,6 +1,6 @@
 // transform/fmpe.h
 
-// Copyright 2011-2012  Yanmin Qian  Daniel Povey
+// Copyright 2011-2012  Yanmin Qian  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "gmm/am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "util/kaldi-holder.h" // for Posterior
 
@@ -97,6 +98,41 @@ struct FmpeUpdateOptions {
   }  
 };
 
+class Fmpe;
+
+struct FmpeStats {
+  FmpeStats() { };
+  void Init(const Fmpe &fmpe);
+  FmpeStats(const Fmpe &fmpe) { Init(fmpe); }
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary, bool add = false);
+  
+  SubMatrix<BaseFloat> DerivPlus() const;
+  SubMatrix<BaseFloat> DerivMinus() const;
+
+  /// If we're using the indirect differential, accumulates certain quantities
+  /// that will be used in the update phase to verify that the computation
+  /// of the indirect differential was done correctly
+  void AccumulateChecks(const MatrixBase<BaseFloat> &feats,
+                        const MatrixBase<BaseFloat> &direct_deriv,
+                        const MatrixBase<BaseFloat> &indirect_deriv);
+  void DoChecks(); // Will check that stuff cancels.  Just prints
+  // messages for now.
+ private:
+  Matrix<BaseFloat> deriv; // contains positive and negative parts of derivatives
+  // separately as sub-parts of the matrix, to ensure memory locality.
+
+  // checks() is an 8 x fmpe.FeatDim() matrix that stores:
+  //  (0-1) summed-deriv from direct, +ve and -ve part.
+  //  (2-3) summed-deriv from indirect, +ve and -ve part.
+  //  (4-5) (summed-deriv from direct * features), +ve and -ve part.
+  //  (6-7) (summed-deriv from indirect * features), +ve and -ve part.
+  Matrix<double> checks; // contains quantities we use to check the
+  // indirect and direct derivatives are canceling as they should.
+
+};
+
 class Fmpe {
  public:
   Fmpe() {}
@@ -110,8 +146,8 @@ class Fmpe {
   // which is the transpose of the high->intermediate dimensional
   // projection matrix.  This is the dimension we want for the
   // stats.
-  int32 ProjectionTNumRows() { return (FeatDim()+1) * NumGauss(); }
-  int32 ProjectionTNumCols() { return FeatDim() * NumContexts(); }
+  int32 ProjectionTNumRows() const { return (FeatDim()+1) * NumGauss(); }
+  int32 ProjectionTNumCols() const { return FeatDim() * NumContexts(); }
 
   
   // Computes the fMPE feature offsets and outputs them.
@@ -128,9 +164,9 @@ class Fmpe {
   // set the learning rates).
   void AccStats(const MatrixBase<BaseFloat> &feat_in,
                 const std::vector<std::vector<int32> > &gselect,
-                const MatrixBase<BaseFloat> &feat_deriv,
-                MatrixBase<BaseFloat> *proj_deriv_plus,
-                MatrixBase<BaseFloat> *proj_deriv_minus) const;
+                const MatrixBase<BaseFloat> &direct_feat_deriv,
+                const MatrixBase<BaseFloat> *indirect_feat_deriv, // may be NULL
+                FmpeStats *stats) const;
   
   // Note: the form on disk starts with the GMM; that way,
   // the gselect program can treat the fMPE object as if it
@@ -140,8 +176,7 @@ class Fmpe {
 
   // Returns total objf improvement, based on linear assumption.
   BaseFloat Update(const FmpeUpdateOptions &config,
-                   MatrixBase<BaseFloat> &proj_deriv_plus,
-                   MatrixBase<BaseFloat> &proj_deriv_minus);
+                   const FmpeStats &stats);
   
  private:
   void SetContexts(std::string context_str);
@@ -211,12 +246,21 @@ class Fmpe {
 /// weights "posterior" may be positive or negative-- for MMI, MPE,
 /// etc., they will typically be of both signs.  Will resize "deriv".
 /// Returns the sum of (GMM likelihood * weight), which may be used
-/// as an approximation to the objective function. 
+/// as an approximation to the objective function.
+/// Last two parameters are optional.  See GetStatsDerivative() for
+/// or fMPE paper (ICASSP, 2005) more info on indirect derivative.
+/// Caution: if you supply the last two parameters, this function only
+/// works in the MMI case as it assumes the stats with positive weight
+/// are numerator == ml stats-- this is only the same thing in the MMI
+/// case, not fMPE.
 BaseFloat ComputeAmGmmFeatureDeriv(const AmDiagGmm &am_gmm,
                                    const TransitionModel &trans_model,
                                    const Posterior &posterior,
                                    const MatrixBase<BaseFloat> &features,
-                                   Matrix<BaseFloat> *deriv);
+                                   Matrix<BaseFloat> *direct_deriv,
+                                   const AccumAmDiagGmm *model_diff = NULL,
+                                   Matrix<BaseFloat> *indirect_deriv = NULL);
+
 
 
 }  // End namespace kaldi

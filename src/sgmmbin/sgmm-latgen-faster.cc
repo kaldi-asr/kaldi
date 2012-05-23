@@ -351,10 +351,7 @@ int main(int argc, char *argv[]) {
               << " over " << frame_count << " frames.";
 
     if (word_syms) delete word_syms;
-    if (num_success != 0)
-      return 0;
-    else
-      return 1;
+    return (num_success != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

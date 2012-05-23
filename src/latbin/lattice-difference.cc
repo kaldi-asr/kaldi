@@ -85,9 +85,9 @@ int main(int argc, char *argv[]) {
       }
     }
     
-    KALDI_LOG << "Total " << n_done << " lattices written."
+    KALDI_LOG << "Total " << n_done << " lattices written; "
               << n_only_transcription
-              << " lattices contain only transcription; "
+              << " lattices had empty difference; "
               << n_no_lat << " missing lattices in second archive ";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {

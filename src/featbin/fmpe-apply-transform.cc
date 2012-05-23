@@ -1,6 +1,6 @@
 // featbin/fmpe-apply-transform.cc
 
-// Copyright 2012  Daniel Povey  Yanmin Qian
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

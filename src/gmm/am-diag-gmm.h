@@ -163,31 +163,35 @@ inline void AmDiagGmm::SplitPdf(int32 pdf_index,
 }
 
 struct UbmClusteringOptions {
-  int32 ubm_numcomps;
+  int32 ubm_num_gauss;
   BaseFloat reduce_state_factor;
-  int32 intermediate_numcomps;
+  int32 intermediate_num_gauss;
   BaseFloat cluster_varfloor;
   int32 max_am_gauss;
 
   UbmClusteringOptions()
-      : ubm_numcomps(400), reduce_state_factor(0.2),
-        intermediate_numcomps(4000), cluster_varfloor(0.01),
+      : ubm_num_gauss(400), reduce_state_factor(0.2),
+        intermediate_num_gauss(4000), cluster_varfloor(0.01),
         max_am_gauss(20000) {}
-  UbmClusteringOptions(int32 ncomp, BaseFloat red, int32 interm_comps,
+  UbmClusteringOptions(int32 ncomp, BaseFloat red, int32 interm_gauss,
                        BaseFloat vfloor, int32 max_am_gauss)
-        : ubm_numcomps(ncomp), reduce_state_factor(red),
-          intermediate_numcomps(interm_comps), cluster_varfloor(vfloor),
+        : ubm_num_gauss(ncomp), reduce_state_factor(red),
+          intermediate_num_gauss(interm_gauss), cluster_varfloor(vfloor),
           max_am_gauss(max_am_gauss) {}
   void Register(ParseOptions *po) {
     std::string module = "UbmClusteringOptions: ";
     po->Register("max-am-gauss", &max_am_gauss, module+
                  "We first reduce acoustic model to this max #Gauss before clustering.");
-    po->Register("ubm-numcomps", &ubm_numcomps, module+
+    po->Register("ubm-num-gauss", &ubm_num_gauss, module+
                  "Number of Gaussians components in the final UBM.");
+    po->Register("ubm-numcomps", &ubm_num_gauss, module+
+                 "Backward compatibility option (see ubm-num-gauss)");
     po->Register("reduce-state-factor", &reduce_state_factor, module+
                  "Intermediate number of clustered states (as fraction of total states).");
-    po->Register("intermediate-numcomps", &intermediate_numcomps, module+
+    po->Register("intermediate-num-gauss", &intermediate_num_gauss, module+
                  "Intermediate number of merged Gaussian components.");
+    po->Register("intermediate-numcomps", &intermediate_num_gauss, module+
+                 "Backward compatibility option (see intermediate-num-gauss)");
     po->Register("cluster-varfloor", &cluster_varfloor, module+
                  "Variance floor used in bottom-up state clustering.");
   }
@@ -201,7 +205,7 @@ struct UbmClusteringOptions {
  *  bottom-up fashion. Number of clusters is determined by reduce_state_factor.
  *  The Gaussians for each cluster of states are then merged based on the least
  *  likelihood reduction till there are intermediate_numcomp Gaussians, which
- *  are then merged into ubm_numcomps Gaussians.
+ *  are then merged into ubm_num_gauss Gaussians.
  *  This is the UBM initialization algorithm described in section 2.1 of Povey,
  *  et al., "The subspace Gaussian mixture model - A structured model for speech
  *  recognition", In Computer Speech and Language, April 2011.

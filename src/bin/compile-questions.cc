@@ -101,7 +101,9 @@ int main(int argc, char *argv[]) {
     }
     size_t nq = static_cast<int32>(questions.size());
     SortAndUniq(&questions);
-    if (questions.size() != nq) KALDI_WARN << (questions.size()-nq) << " duplicate questions present in " << questions_rxfilename;
+    if (questions.size() != nq)
+      KALDI_WARN << (nq-questions.size())
+                 << " duplicate questions present in " << questions_rxfilename;
 
     // ProcessTopo checks that all phones in the topo are
     // represented in at least one questions (else warns), and

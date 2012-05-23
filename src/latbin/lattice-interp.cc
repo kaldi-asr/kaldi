@@ -69,14 +69,18 @@ int main(int argc, char *argv[]) {
       Lattice lat1 = lattice_reader1.Value();
       lattice_reader1.FreeCurrent();
       ScaleLattice(fst::LatticeScale(alpha, alpha), &lat1);
+      ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
+      
       if (lattice_reader2.HasKey(key)) {
         n_processed++;
         CompactLattice clat2 = lattice_reader2.Value(key);
         RemoveAlignmentsFromCompactLattice(&clat2);
+        
         Lattice lat2;
         ConvertLattice(clat2, &lat2);
-        fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.        
+        fst::Project(&lat2, fst::PROJECT_OUTPUT); // project on words.   
         ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
+        ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
         
         Lattice lat3;
         Compose(lat1, lat2, &lat3);

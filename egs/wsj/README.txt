@@ -22,3 +22,8 @@ scripts at the moment.
       The recipe uses a subset of the algorithms in s1, but adds
       cepstral mean subtraction (cms), and also uses more flexible, 
       general scripts.
+
+  s5: This is currently under construction-- it is a "new-new-style" recipe
+      which fixes certain problems with the s3 recipe.
+
+

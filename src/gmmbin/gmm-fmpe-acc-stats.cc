@@ -1,6 +1,6 @@
 // gmmbin/gmm-fmpe-acc-stats.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,11 +35,14 @@ int main(int argc, char *argv[]) {
         "Usage:  gmm-fmpe-acc-stats [options] <model-in> <fmpe-in> <feature-rspecifier> "
         "<gselect-rspecifier> <posteriors-rspecifier> <fmpe-stats-out>\n"
         "e.g.: \n"
-        " gmm-fmpe-acc-stats 1.mdl 1.fmpe \"$feats\" ark:1.gselect ark:1.post 1.fmpe_stats\n";
+        " gmm-fmpe-acc-stats --model-derivative 1.accs 1.mdl 1.fmpe \"$feats\" ark:1.gselect ark:1.post 1.fmpe_stats\n";
         
     ParseOptions po(usage);
     bool binary = true;
+    std::string model_derivative_rxfilename;
     po.Register("binary", &binary, "If true, write stats in binary mode.");
+    po.Register("model-derivative", &model_derivative_rxfilename,
+                "GMM-accs file containing model derivative [note: contains no transition stats].  Used for indirect differential.  Warning: this will only work correctly in the case of MMI/BMMI objective function, with non-canceled stats.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 6) {
@@ -66,15 +69,14 @@ int main(int argc, char *argv[]) {
     Fmpe fmpe;
     ReadKaldiObject(fmpe_rxfilename, &fmpe);
 
-    // fmpe stats...
-    Matrix<BaseFloat> stats(fmpe.ProjectionTNumRows() * 2,
-                            fmpe.ProjectionTNumCols());
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
-                                    fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
 
+    bool have_indirect = (model_derivative_rxfilename != "");
+    AccumAmDiagGmm model_derivative;
+    if (have_indirect)
+      ReadKaldiObject(model_derivative_rxfilename, &model_derivative);
+    
+    FmpeStats fmpe_stats(fmpe);
+    
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
@@ -118,13 +120,16 @@ int main(int argc, char *argv[]) {
       fmpe.ComputeFeatures(feat_in, gselect, &fmpe_feat);
       fmpe_feat.AddMat(1.0, feat_in);
       
-      Matrix<BaseFloat> feat_deriv;
+      Matrix<BaseFloat> direct_deriv, indirect_deriv;
 
       tot_like += ComputeAmGmmFeatureDeriv(am_gmm, trans_model, posterior,
-                                           fmpe_feat, &feat_deriv);
+                                           fmpe_feat, &direct_deriv,
+                                           (have_indirect ? &model_derivative : NULL),
+                                           (have_indirect ? &indirect_deriv : NULL));
       num_frames += feat_in.NumRows();
 
-      fmpe.AccStats(feat_in, gselect, feat_deriv, &stats_plus, &stats_minus);
+      fmpe.AccStats(feat_in, gselect, direct_deriv,
+                    (have_indirect ? &indirect_deriv : NULL), &fmpe_stats);
       
       if (num_done % 100 == 0)
         KALDI_LOG << "Processed " << num_done << " utterances.";
@@ -136,7 +141,7 @@ int main(int argc, char *argv[]) {
               << (tot_like/num_frames) << " over " << num_frames << " frames.";
 
     Output ko(stats_wxfilename, binary);
-    stats.Write(ko.Stream(), binary);
+    fmpe_stats.Write(ko.Stream(), binary);
     
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {

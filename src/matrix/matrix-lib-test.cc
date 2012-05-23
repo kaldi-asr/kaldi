@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012   Microsoft Corporation;  Mohit Agarwal  Lukas Burget;
 //                       Ondrej Glembek  Saarland University  Go Vivace Inc.
-//                       Yanmin Qian  Jan Silovsky  Daniel Povey
+//                       Yanmin Qian  Jan Silovsky  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

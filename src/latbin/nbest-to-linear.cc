@@ -1,6 +1,6 @@
 // latbin/nbest-to-linear.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
     }
 
     std::string lats_rspecifier = po.GetArg(1),
-        ali_wspecifier = po.GetOptArg(2),
-        trans_wspecifier = po.GetArg(3),
+        ali_wspecifier = po.GetArg(2),
+        trans_wspecifier = po.GetOptArg(3),
         lm_cost_wspecifier = po.GetOptArg(4),
         ac_cost_wspecifier = po.GetOptArg(5);
 

@@ -1,6 +1,6 @@
 // sgmmbin/sgmm-decode-faster.cc
 
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation
+// Copyright 2009-2012  Saarland University  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -229,14 +229,9 @@ int main(int argc, char *argv[]) {
 
     if (word_syms) delete word_syms;
     delete decode_fst;
-    if (num_success != 0)
-      return 0;
-    else
-      return 1;
+    return (num_success != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
 }
-
-

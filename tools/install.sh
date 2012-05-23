@@ -13,8 +13,8 @@ if ! which automake >&/dev/null; then
    sleep 1
 fi
 
-if ! which libtoolize >&/dev/null; then
-   echo "Warning: libtoolize not installed (IRSTLM installation probably will not work)"
+if ! which libtoolize >&/dev/null && ! which glibtoolize >&/dev/null; then
+   echo "Warning: libtoolize or glibtoolize not installed (IRSTLM installation probably will not work)"
    sleep 1
 fi
 
@@ -103,7 +103,7 @@ fi
     cd irstlm
     # Applying patch to get -write option of interpolate-lm
     # May not work with anything else than revision 398
-	patch -N -p0 < ../interpolatedwrite-5.60.02.patch
+	patch -N -p0 < ../interpolatedwrite-5.60.02.patch || exit 1;
 
     # Just using the default aclocal, automake.
     # You may have to mess with the version by editing
@@ -178,12 +178,10 @@ fi
     exit 1
   else
     tar -xovzf openfst-1.2.10.tar.gz   || exit 1
-    for dir in openfst-1.2.10/{src/,}include/fst; do
-       ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
-    done 
+    ( cd openfst-1.2.10/src/include/fst && patch -p0 -N <../../../../openfst.patch )
     #ignore errors in the following; it's for robustness in case
     # someone follows these instructions after the installation of openfst.
-    cp partition.h minimize.h openfst-1.2.10/include/fst 2>/dev/null
+    ( cd openfst-1.2.10/include/fst && patch -p0 -N < ../../../openfst.patch )
     # Remove any existing link
     rm openfst 2>/dev/null
     ln -s openfst-1.2.10 openfst

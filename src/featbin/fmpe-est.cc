@@ -1,6 +1,6 @@
 // featbin/fmpe-est.cc
 
-// Copyright 2012  Daniel Povey  Yanmin Qian
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Initialize fMPE transform (to zeo)\n"
+        "Do one iteration of learning (modified gradient descent)\n"
+        "on fMPE transform\n"
         "Usage: fmpe-est [options...] <fmpe-in> <stats-in> <fmpe-out>\n"
         "E.g. fmpe-est 1.fmpe 1.accs 2.fmpe\n";
 
@@ -46,20 +47,13 @@ int main(int argc, char *argv[]) {
 
     Fmpe fmpe;
     ReadKaldiObject(fmpe_rxfilename, &fmpe);
-    Matrix<BaseFloat> stats;
+    FmpeStats stats;
     ReadKaldiObject(stats_rxfilename, &stats);
-    // the matrix is in two parts, for the "plus" and "minus"
-    // parts of the gradient that we stored separately.
-    SubMatrix<BaseFloat> stats_plus(stats, 0, fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
-    SubMatrix<BaseFloat> stats_minus(stats, fmpe.ProjectionTNumRows(),
-                                    fmpe.ProjectionTNumRows(),
-                                    0, fmpe.ProjectionTNumCols());
-    
-    fmpe.Update(opts, stats_plus, stats_minus);
 
-    Output ko(fmpe_wxfilename, binary);
-    fmpe.Write(ko.Stream(), binary);
+    stats.DoChecks(); // checks certain checksums.
+    fmpe.Update(opts, stats);
+
+    WriteKaldiObject(fmpe, fmpe_wxfilename, binary);
 
     KALDI_LOG << "Updated fMPE object and wrote to "
               << fmpe_wxfilename;

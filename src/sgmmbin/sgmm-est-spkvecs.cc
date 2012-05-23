@@ -1,6 +1,6 @@
 // sgmmbin/sgmm-est-spkvecs.cc
 
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation
+// Copyright 2009-2012  Saarland University  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_sgmm.Read(ki.Stream(), binary);
     }
-    MleSgmmSpeakerAccs spk_stats(am_sgmm);
+    MleSgmmSpeakerAccs spk_stats(am_sgmm, rand_prune);
 
     RandomAccessPosteriorReader post_reader(post_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
               << (tot_impr / tot_t) << " over " << tot_t << " frames.";
     KALDI_LOG << "Done " << num_done << " files, " << num_no_post
               << " with no posts, " << num_other_error << " with other errors.";
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

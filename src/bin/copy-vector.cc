@@ -1,6 +1,6 @@
 // bin/copy-vector.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,10 +33,14 @@ int main(int argc, char *argv[]) {
         "   copy-vector ark:2.trans ark,t:-\n";
     
     bool binary = true;
+    int32 change_dim = -1;
     ParseOptions po(usage);
 
-    po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-
+    po.Register("binary", &binary, "Write in binary mode (only "
+                "relevant if output is a wxfilename)");
+    po.Register("change_dim", &change_dim,
+                "Use this option to truncate or zero-pad the vectors.");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -61,19 +65,30 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Cannot mix archives with regular files (copying vectors)\n";
     
     if (!in_is_rspecifier) {
-      Vector<BaseFloat> mat;
-      ReadKaldiObject(vector_in_fn, &mat);
+      Vector<BaseFloat> vec;
+      ReadKaldiObject(vector_in_fn, &vec);
       Output ko(vector_out_fn, binary);
-      mat.Write(ko.Stream(), binary);
+      if (change_dim >= 0) vec.Resize(change_dim, kCopyData);
+      vec.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied vector to " << vector_out_fn;
       return 0;
     } else {
       int num_done = 0;
       BaseFloatVectorWriter writer(vector_out_fn);
       SequentialBaseFloatVectorReader reader(vector_in_fn);
-      for (; !reader.Done(); reader.Next(), num_done++)
-        writer.Write(reader.Key(), reader.Value());
-      KALDI_LOG << "Copied " << num_done << " vectors.";
+      if (change_dim < 0) {
+        for (; !reader.Done(); reader.Next(), num_done++)
+          writer.Write(reader.Key(), reader.Value());
+        KALDI_LOG << "Copied " << num_done << " vectors.";
+      } else {
+        for (; !reader.Done(); reader.Next(), num_done++) {
+          Vector<BaseFloat> vec (reader.Value());
+          vec.Resize(change_dim, kCopyData);
+          writer.Write(reader.Key(), reader.Value());
+        }
+        KALDI_LOG << "Copied " << num_done << " vectors, setting dim to "
+                  << change_dim;
+      }
       return (num_done != 0 ? 0 : 1);
     }
   } catch(const std::exception& e) {

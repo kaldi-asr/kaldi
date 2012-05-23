@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         "File to read speaker to utterance-list map from.");
     po.Register("spkvec-min-count", &min_count,
         "Minimum count needed to estimate speaker vectors");
-    po.Register("rand-prune", &rand_prune, "Pruning threshold for posteriors");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning parameter for posteriors (more->faster).");
     po.Register("spk-vecs", &spkvecs_rspecifier, "Speaker vectors to use during aligment (rspecifier)");
     po.Read(argc, argv);
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_sgmm.Read(ki.Stream(), binary);
     }
-    MleSgmmSpeakerAccs spk_stats(am_sgmm);
+    MleSgmmSpeakerAccs spk_stats(am_sgmm, rand_prune);
 
     RandomAccessSgmmGauPostReader gpost_reader(gpost_rspecifier);
 
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
               << " with no gposts, " << num_other_error << " with other errors.";
     KALDI_LOG << "Overall auxf impr per frame is " << (tot_impr / tot_t)
               << " over " << tot_t << " frames.";
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

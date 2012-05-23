@@ -1,6 +1,6 @@
 // latbin/lattice-1best.cc
 
-// Copyright 2009-2012  Stefan Kombrink  Daniel Povey
+// Copyright 2009-2012  Stefan Kombrink  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
-    using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
 
@@ -41,8 +40,10 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat lm_scale = 1.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for language mdoel scores.");
     
     po.Read(argc, argv);
 
@@ -63,13 +64,13 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_err = 0;
 
-    if (acoustic_scale == 0.0)
-      KALDI_ERR << "Do not use exactly zero acoustic scale (cannot be inverted)";
+    if (acoustic_scale == 0.0 || lm_scale == 0.0)
+      KALDI_ERR << "Do not use exactly zero acoustic or LM scale (cannot be inverted)";
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
 
       Lattice best_path;
       fst::ShortestPath(lat, &best_path);
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
                    << "(no output)";
         n_err++;
       } else {
-        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale),
+        fst::ScaleLattice(fst::LatticeScale(1.0 / lm_scale, 1.0/acoustic_scale),
                           &best_path);
         CompactLattice compact_best_path;
         ConvertLattice(best_path, &compact_best_path);

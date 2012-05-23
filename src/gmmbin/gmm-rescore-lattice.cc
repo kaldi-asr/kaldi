@@ -138,7 +138,8 @@ int main(int argc, char *argv[]) {
     // Write as compact lattice.
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
-    int32 n_done = 0, num_no_feats = 0, num_other_error = 0;
+    int32 num_done = 0, num_no_feats = 0, num_other_error = 0;
+    int64 num_frames = 0;
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       if (!feature_reader.HasKey(key)) {
@@ -174,11 +175,12 @@ int main(int argc, char *argv[]) {
       CompactLattice clat_out;
       ConvertLattice(lat, &clat_out);
       compact_lattice_writer.Write(key, clat_out);
-      n_done++;
+      num_done++;
+      num_frames += feats.NumRows();
     }
 
-    KALDI_LOG << "Done " << n_done << " lattices.";
-    return (n_done != 0 ? 0 : 1);
+    KALDI_LOG << "Done " << num_done << " lattices, #frames is " << num_frames;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

@@ -93,9 +93,8 @@ namespace fst {
    
 */   
 
-
 struct DeterminizeLatticeOptions {
-  float delta;
+  float delta; // A small offset used to measure equality of weights.
   int max_mem; // If >0, determinization will fail and return false
   // when the algorithm's (approximate) memory consumption crosses this threshold.
   int max_loop; // If >0, can be used to detect non-determinizable input

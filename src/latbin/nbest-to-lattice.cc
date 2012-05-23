@@ -1,6 +1,6 @@
 // latbin/nbest-to-lattice.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,10 +35,6 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
-    using fst::SymbolTable;
-    using fst::VectorFst;
-    using fst::StdArc;
 
     const char *usage =
         "Read in a Table containing N-best entries from a lattices (i.e. individual\n"

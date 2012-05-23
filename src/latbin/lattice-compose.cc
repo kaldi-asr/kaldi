@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
       for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
         std::string key = lattice_reader1.Key();
         Lattice lat1 = lattice_reader1.Value();
+        ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
         Lattice composed_lat;
         if (phi_label > 0) PhiCompose(lat1, mapped_fst2, phi_label, &composed_lat);
         else Compose(lat1, mapped_fst2, &composed_lat);
