@@ -18,6 +18,9 @@ scripts at the moment.
       techniques including global and speaker-specific transforms.
       See a parallel setup in ../rm/s1 
 
+  s2: This setup is experiments with pure hybrid system as well 
+      as with Tandem bottleneck feature system.
+
   s3: This is the "new-style" recipe.   We recommend to look here first.
       The recipe uses a subset of the algorithms in s1, but adds
       cepstral mean subtraction (cms), and also uses more flexible, 
