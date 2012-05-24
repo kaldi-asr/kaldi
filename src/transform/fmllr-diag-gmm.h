@@ -149,15 +149,6 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
                                     int32 num_iters,
                                     MatrixBase<BaseFloat> *out_xform);
 
-
-
-/// Updates the FMLLR matrix using gradient descent.  Returns the objective
-/// function improvement, not normalized by number of frames.
-BaseFloat ComputeFmllrMatrixDiagGmmGradient(const MatrixBase<BaseFloat> &in_xform,
-                                            const AffineXformStats& stats,
-                                            int32 num_iters,
-                                            MatrixBase<BaseFloat> *out_xform);
-
 /// Returns the (diagonal-GMM) FMLLR auxiliary function value given the transform
 /// and the stats.
 float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,

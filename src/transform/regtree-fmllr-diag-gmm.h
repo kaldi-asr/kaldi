@@ -40,14 +40,9 @@ struct RegtreeFmllrOptions {
   bool use_regtree;     ///< If 'true', find transforms to generate using regression tree.
                         ///< If 'false', generate transforms for each baseclass.
 
-  /// If 'true' use gradient descent (if available) for computing the transform
-  /// If 'false' use default method (row-wise update)
-  bool use_gradient_descent;
-
   RegtreeFmllrOptions(): update_type("full"), min_count(1000.0),
-                         num_iters(10), use_regtree(true),
-                         use_gradient_descent(false) { }
-
+                         num_iters(10), use_regtree(true) { }
+  
   void Register(ParseOptions *po) {
     po->Register("fmllr-update-type", &update_type,
                  "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
@@ -57,9 +52,6 @@ struct RegtreeFmllrOptions {
                  "Number of fMLLR iterations (if using an iterative update).");
     po->Register("fmllr-use-regtree", &use_regtree,
                  "Use a regression-class tree for fMLLR.");
-    // Disabling this option until needed.
-    // po->Register("fmllr-use-gradient-descent", &use_gradient_descent,
-    //"Use a gradient descent algorithm for estimating transforms.");
   }
 };
 

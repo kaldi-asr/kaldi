@@ -6,7 +6,7 @@ SHELL := /bin/bash
 
 # Compile subdirectories starting with the things "depended on".
 
-SUBDIRS = base matrix util feat tree optimization gmm tied transform sgmm \
+SUBDIRS = base matrix util feat tree gmm tied transform sgmm \
           fstext hmm lm decoder lat \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           cudamatrix nnet nnetbin nnet_cpu nnetbin_cpu latbin rnn

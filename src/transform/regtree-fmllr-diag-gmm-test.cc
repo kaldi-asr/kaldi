@@ -226,7 +226,6 @@ void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
 
   RegtreeFmllrOptions xform_opts;
   xform_opts.min_count = 100 * (1 + rand() % 10);
-  xform_opts.use_gradient_descent = (RandUniform() < 0.5)? true : false;
   xform_opts.use_regtree = (RandUniform() < 0.5)? false : true;
 
   size_t num_pdfs = 1;

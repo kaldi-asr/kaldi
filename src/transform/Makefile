@@ -14,7 +14,7 @@ OBJFILES = regression-tree.o regtree-mllr-diag-gmm.o lda-estimate.o \
 LIBFILE = kaldi-transform.a
 
 all:  $(LIBFILE) $(TESTFILES)
-
+	@echo "If compilation fails here, you may have to type \"make depend\""
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

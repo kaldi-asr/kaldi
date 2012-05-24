@@ -363,13 +363,7 @@ void RegtreeFmllrDiagGmmAccs::Update(const RegressionTree &regtree,
         xform_mat.SetUnit();
 
         if (opts.update_type == "full") {
-          if (opts.use_gradient_descent)
-            tot_auxf_impr +=
-                ComputeFmllrMatrixDiagGmmGradient(xform_mat,
-                                                  *(baseclass_stats_[bclass_index]),
-                                                  opts.num_iters, &xform_mat);
-          else
-            tot_auxf_impr +=
+          tot_auxf_impr +=
               ComputeFmllrMatrixDiagGmmFull(xform_mat,
                                             *(baseclass_stats_[bclass_index]),
                                             opts.num_iters, &xform_mat);

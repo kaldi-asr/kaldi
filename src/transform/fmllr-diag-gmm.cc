@@ -20,7 +20,6 @@
 #include <vector>
 using std::vector;
 
-#include "optimization/kaldi-rprop.h"
 #include "transform/fmllr-diag-gmm.h"
 
 namespace kaldi {
@@ -340,78 +339,6 @@ BaseFloat ComputeFmllrMatrixDiagGmmOffset(const MatrixBase<BaseFloat> &in_xform,
   return objf_impr;
 }
 
-
-class FmllrDiagGradientDescent: public OptimizableInterface<BaseFloat> {
- public:
-  explicit FmllrDiagGradientDescent(const AffineXformStats &fmllr_stats)
-      : fmllr_stats_(fmllr_stats) {}
-  void Init();  ///< Allocate memory for the parameter and gardient vectors.
-  /// Compute the gradient for set of params and pass it to gradient_out
-  virtual void ComputeGradient(const Vector<BaseFloat> &params,
-                               Vector<BaseFloat> *gradient_out);
-  /// Compute the value for set of params
-  virtual BaseFloat ComputeValue(const Vector<BaseFloat> &params);
-
- private:
-  /// reference to object containing FMLLR stats
-  const AffineXformStats &fmllr_stats_;
-  Matrix<BaseFloat> xform_;     ///< intermediate copy of transform parameters
-  Matrix<BaseFloat> gradient_;  ///< gradient
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(FmllrDiagGradientDescent);
-  FmllrDiagGradientDescent();  // disallow default ctor
-};
-
-void FmllrDiagGradientDescent::Init() {
-  size_t dim = fmllr_stats_.dim_;
-  xform_.Resize(dim, dim+1);
-  gradient_.Resize(dim, dim+1);
-}
-
-void FmllrDiagGradientDescent::ComputeGradient(const Vector<BaseFloat> &params,
-                                               Vector<BaseFloat> *grad_out) {
-  xform_.CopyRowsFromVec(params);  // copy input parameter vector to a matrix
-  FmllrAuxfGradient(xform_, fmllr_stats_, &gradient_);
-  grad_out->CopyRowsFromMat(gradient_);  // output vectorized gradient
-}
-
-BaseFloat FmllrDiagGradientDescent::ComputeValue(
-    const Vector<BaseFloat> &params) {
-  xform_.CopyRowsFromVec(params);
-  return FmllrAuxFuncDiagGmm(xform_, fmllr_stats_);
-}
-
-
-BaseFloat ComputeFmllrMatrixDiagGmmGradient(const MatrixBase<BaseFloat> &in_xform,
-                                            const AffineXformStats& stats,
-                                            int32 num_iters,
-                                            MatrixBase<BaseFloat> *out_xform) {
-  size_t dim = stats.G_.size();
-  bool converged;
-  BaseFloat obj_improvement = FmllrAuxFuncDiagGmm(in_xform, stats);
-
-  // vectorized transform matrix to be used the the optimization routine.
-  Vector<BaseFloat> param(dim * (dim + 1));
-  param.CopyRowsFromMat(in_xform);  // copy old transform into param
-
-  // Initialize optimizable object.
-  FmllrDiagGradientDescent opt_obj(stats);
-  opt_obj.Init();
-
-  // initalize options for the RProp algorithm. future work(arnab): pass these.
-  RpropOptions<BaseFloat> opt_opts;
-  opt_opts.maximizing = true;
-  opt_opts.max_iter = num_iters;
-  opt_opts.conv_check_interval = 100;
-  // perform resilient backpropagation algorithm until convergence, or maximum
-  // number of iterations reached
-  converged = Rprop(opt_opts, &opt_obj, &param);
-
-  out_xform->CopyRowsFromVec(param);  // copy param into output ransform
-  obj_improvement = FmllrAuxFuncDiagGmm(*out_xform, stats) - obj_improvement;
-  KALDI_LOG << "Objective function improvement = " << (obj_improvement);
-  return obj_improvement;
-}
 
 void ApplyFeatureTransformToStats(const MatrixBase<BaseFloat> &xform,
                                   AffineXformStats *stats) {
