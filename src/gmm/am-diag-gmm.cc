@@ -226,6 +226,7 @@ void AmDiagGmm::Read(std::istream &in_stream, bool binary) {
 }
 
 void AmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
+  KALDI_ASSERT((*densities_.begin())->Dim()==dim_);
   WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, dim_);
   WriteToken(out_stream, binary, "<NUMPDFS>");

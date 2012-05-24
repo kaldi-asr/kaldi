@@ -55,6 +55,8 @@ do
   MKLLIBDIR=`read_dirname $1`; shift ;;
   --mathlib=*)
   MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  --cudatk-dir=*)
+  CUDATKDIR=`read_dirname $1`; shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -67,6 +69,43 @@ function failure {
 
 function check_exists {
     if [ ! -f $1 ]; then failure "$1 not found."; fi
+}
+
+
+
+function linux_configure_cuda {
+  #check for CUDA toolkit in the system
+  if [ ! $CUDATKDIR ]; then
+    if [ -f /usr/local/share/cuda/bin/nvcc ]; then
+      CUDATKDIR=/usr/local/share/cuda/
+    elif [ -f /usr/local/cuda/bin/nvcc ]; then
+      CUDATKDIR=/usr/local/cuda/
+    fi
+  fi
+
+  if [ $CUDATKDIR ]; then
+    if [ ! -f $CUDATKDIR/bin/nvcc ]; then
+      failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
+    fi
+    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
+    echo >> kaldi.mk
+    echo "#Next section enables CUDA for compilation" >> kaldi.mk
+    echo CUDA = true >> kaldi.mk
+    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
+
+    if [ "`uname -m`" == "x86_64" ]; then
+      if [ "`hostname -d`" == "fit.vutbr.cz" ]; then
+        #BUT machines by default compile 32bits
+        cat makefiles/linux_cuda.mk >> kaldi.mk 
+      else
+        cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
+      fi
+    else
+      cat makefiles/linux_cuda.mk >> kaldi.mk
+    fi
+  else
+    echo "CUDA will not be used! If you have already installed cuda drivers and cuda toolkit, try using --cudatk-dir=... option"
+  fi
 }
 
 function linux_atlas_failure { # function we use when we couldn't find
@@ -149,6 +188,7 @@ function linux_configure_static {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  linux_configure_cuda
   echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -215,6 +255,7 @@ function linux_configure_dynamic {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  linux_configure_cuda
   echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -339,6 +380,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
+    linux_configure_cuda
     echo "Configured for Linux with MKL libs from $MKLROOT"
     exit 0;
 
@@ -356,6 +398,7 @@ if [ "`uname`" == "Linux" ]; then
         failure "makefiles/linux_clapack.mk not found."
     fi
     cat makefiles/linux_clapack.mk >> kaldi.mk
+    linux_configure_cuda
     echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
     # TODO(arnab): enable CLAPACK options for Linux

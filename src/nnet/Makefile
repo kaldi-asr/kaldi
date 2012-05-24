@@ -2,18 +2,15 @@
 
 all:
 
-OPENFST_CXXFLAGS = 
-OPENFST_LDLIBS =
-
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = matrix-lib-test
+TESTFILES = nnet-test
 
-OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o \
-           matrix-functions.o srfft.o
+OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-cache.o nnet-cache-tgtmat.o
 
-LIBFILE = kaldi-matrix.a
+LIBFILE = kaldi-nnet.a 
 
 all:  $(LIBFILE) $(TESTFILES)
 
@@ -22,8 +19,8 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
 
+$(TESTFILES): $(LIBFILE) ../cudamatrix/cuda-matrix.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -33,7 +30,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
+	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

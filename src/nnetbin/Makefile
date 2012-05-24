@@ -1,28 +1,22 @@
 
-
 all:
-
-OPENFST_CXXFLAGS = 
-OPENFST_LDLIBS =
-
+EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = matrix-lib-test
+BINFILES = nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff nnet-train-mse-tgtmat-frmshuff nnet-forward nnet-copy
 
-OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o \
-           matrix-functions.o srfft.o
+OBJFILES =
 
-LIBFILE = kaldi-matrix.a
-
-all:  $(LIBFILE) $(TESTFILES)
-
-$(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
+all:  $(BINFILES)
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
+TESTFILES =
+
+
+$(BINFILES): ../nnet/kaldi-nnet.a ../cudamatrix/cuda-matrix.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+
 
 
 # Rule below would expand to, e.g.:
@@ -33,7 +27,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
+	rm *.o *.a $(TESTFILES) $(BINFILES)
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  

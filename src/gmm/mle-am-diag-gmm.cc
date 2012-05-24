@@ -179,6 +179,7 @@ void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
     inv_vars.Set(1.0); // make all vars 1.
     pdf.SetInvVars(inv_vars);
   }
+  am_gmm->Dim(dim);
 }
 
 void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,

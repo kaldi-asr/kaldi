@@ -5,24 +5,33 @@ all:
 OPENFST_CXXFLAGS = 
 OPENFST_LDLIBS =
 
+
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = matrix-lib-test
+TESTFILES = cuda-matrix-test 
 
-OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o \
-           matrix-functions.o srfft.o
+OBJFILES = cu-device.o cu-matrix.o cu-vector.o cu-stlvector.o cu-math.o
+ifeq ($(CUDA), true)
+  OBJFILES += cu-kernels.o
+endif
 
-LIBFILE = kaldi-matrix.a
+LIBFILE = cuda-matrix.a
 
 all:  $(LIBFILE) $(TESTFILES)
+
+#implicit rule for kernel compilation
+%.o : %.cu
+	export PATH=$(CUDATKDIR)/bin:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
+$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 
 # Rule below would expand to, e.g.:
@@ -33,7 +42,7 @@ $(TESTFILES): $(LIBFILE) ../base/kaldi-base.a
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
+	rm *.o *.a $(TESTFILES)
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
