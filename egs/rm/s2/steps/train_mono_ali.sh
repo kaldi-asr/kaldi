@@ -19,16 +19,17 @@
 # This script applies cepstral mean normalization (per speaker),
 # unlike the corresponding script in s1/
 
-if [ $# != 3 ]; then
-   echo "Usage: steps/train_mono.sh <data-dir> <lang-dir> <exp-dir>"
-   echo " e.g.: steps/train_mono.sh data/train.1k data/lang exp/mono"
+if [ $# != 4 ]; then
+   echo "Usage: steps/train_mono.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_mono.sh data/train.1k data/lang exp/mono_ali exp/mono2"
    exit 1;
 fi
 
 
 data=$1
 lang=$2
-dir=$3
+alidir=$3
+dir=$4
 
 if [ -f path.sh ]; then . path.sh; fi
 
@@ -37,9 +38,10 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 numiters=30    # Number of iterations of training
 maxiterinc=20 # Last iter to increase #Gauss on.
 numgauss=250 # Initial num-Gauss (must be more than #states=3*phones).
-totgauss=1000 # Target #Gaussians.  
+states=146  # Number of monostates
+totgauss=$[256*states] # Target #Gaussians.  
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
-realign_iters="1 2 3 4 5 6 7 8 9 10 12 15 20 25";
+realign_iters="5 10 15 20 25";
 
 mkdir -p $dir
 echo "Computing cepstral mean and variance statistics"
@@ -54,32 +56,19 @@ scripts/sym2int.pl --ignore-first-field $lang/words.txt < $data/text > $dir/trai
   || exit 1;
 
 echo "Initializing monophone system."
-
 gmm-init-mono "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo 39  \
-   $dir/0.mdl $dir/tree 2> $dir/init.log || exit 1;
+   $dir/1.mdl $dir/tree 2> $dir/init.log || exit 1;
 
 
 echo "Compiling training graphs"
-compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
+compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst \
   ark:$dir/train.tra  "ark:|gzip -c >$dir/graphs.fsts.gz"  \
   2>$dir/compile_graphs.log || exit 1 
 
-echo Pass 0
+# Convert alignments generated from mono0a model, to use as initial alignments.
+convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree ark:$alidir/ali ark:$dir/cur.ali 2>$dir/convert.log 
 
-align-equal-compiled "ark:gunzip -c $dir/graphs.fsts.gz|" "$feats" \
-   ark,t,f:-  2>$dir/align.0.log | \
- gmm-acc-stats-ali --binary=true $dir/0.mdl "$feats" ark:- \
-     $dir/0.acc 2> $dir/acc.0.log  || exit 1;
-
-# In the following steps, the --min-gaussian-occupancy=3 option is important, otherwise
-# we fail to est "rare" phones and later on, they never align properly.
-
-gmm-est --min-gaussian-occupancy=3  --mix-up=$numgauss \
-    $dir/0.mdl $dir/0.acc $dir/1.mdl 2> $dir/update.0.log || exit 1;
-
-rm $dir/0.acc
-
-beam=4 # will change to 8 below after 1st pass
+beam=8
 x=1
 while [ $x -lt $numiters ]; do
   echo "Pass $x"
@@ -95,7 +84,6 @@ while [ $x -lt $numiters ]; do
   if [ $x -le $maxiterinc ]; then
      numgauss=$[$numgauss+$incgauss];
   fi
-  beam=8
   x=$[$x+1]
 done
 

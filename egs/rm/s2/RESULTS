@@ -1,71 +1,66 @@
 
+#Baseline GMM systems, try several number of PDFs...
+exp/mono0a/wer Average WER is 10.58804 (1327 / 12533) [988 gauss, data subset]
+exp/mono1a/wer Average WER is 6.462938 (810 / 12533) [37333 gauss]
+exp/mono1a/wer Average WER is 6.175696 (774 / 12533) [68341 gauss]
+exp/tri1/wer   Average WER is 3.582542 (449 / 12533) [9000 gauss]
+exp/tri2a-500/wer  Average WER is 4.420330 (554 / 12533) [9000 gauss]
+exp/tri2a-1000/wer Average WER is 3.853826 (483 / 12533) [9000 gauss]
+exp/tri2a-1200/wer Average WER is 3.758079 (471 / 12533) [9000 gauss]
+exp/tri2a-1400/wer Average WER is 3.726163 (467 / 12533) [9000 gauss]
+exp/tri2a-1600/wer Average WER is 3.694247 (463 / 12533) [9000 gauss] 
+exp/tri2a-1800/wer Average WER is 3.646374 (457 / 12533) [9000 gauss] 
+exp/tri2a-2000/wer Average WER is 3.407006 (427 / 12533) [9000 gauss] 
+exp/tri2a-2200/wer Average WER is 3.399027 (426 / 12533) [9000 gauss] <<== BEST BASELINE
+exp/tri2a-2400/wer Average WER is 3.486795 (437 / 12533) [9000 gauss]
 
-#The accuracies will differ by approx. 0.1% absolute, 
-#due to different random MLP initializations.
-
-######################################################################
-#Testing accuracies:
-exp/decode_mono/wer: 
-- Average WER is 14.234421 (1784 / 12533) 
-- Monophone system, subset
-exp/decode_nnet_mono_trans/wer:
-- Average WER is 20.290433 (2543 / 12533)
-- Monophone transition targets, subset
-exp/decode_nnet_mono_pdf/wer: 
-- Average WER is 18.375489 (2303 / 12533) 
-- Monophone transition targets, subset; tuned_acwt:0.338137
-
-#437-PDFs GMM
-exp/tri1:
-- Average WER is 6.191654 (776 / 12533)
-- w/o fmllr
-exp/tri2a:
-- Average WER is 5.848560 (733 / 12533)
-- w/o fmllr 
-
-#437-PDFs MLP, 1 hidden layer, 0.5M parameters
-exp/nnet_tri2a_s1a:
-- Average WER is 6.063991 (760 / 12533) acc:93.936009
-- w/o prior division
-- tuned_acwt:0.257354
-exp/nnet_tri2a_s1b:
-- Average WER is 5.401739 (677 / 12533) acc:94.598261
-- + division by prior
-- tuned_acwt:0.246711
-exp/nnet_tri2a_s2: 
-- Average WER is 5.034708 (631 / 12533) acc:94.965292
-- + splice 11 frames, still 0.5M params
-- tuned_acwt:0.236844
-exp/nnet_tri2a_s3:
-- Average WER is 4.946940 (620 / 12533) 
-- + speaker-wise CMVN 
-- tuned_acwt:0.215558
+#Pure hybrid MLP systems with tuned acoustic scale on test set (cheating)
+exp/mono1a_nnet/wer     Trying 0.103326 ...  Average WER is 7.556052 (947 / 12533) [MLP3_1M_146tgt]<-[37333 gauss]
+exp/mono1a_nnet/wer     Trying 0.176275 ...  Average WER is 7.460305 (935 / 12533) [MLP3_1M_146tgt]<-[68341 gauss]
+exp/tri2a-500_nnet/wer  Trying 0.115521 ...  Average WER is 3.885742 (487 / 12533) [MLP3_1M_421tgt]
+exp/tri2a-1000_nnet/wer Trying 0.188950 ...  Average WER is 3.055932 (383 / 12533) [MLP3_1M_813tgt]
+exp/tri2a-1200_nnet/wer Trying 0.199114 ...  Average WER is 2.936248 (368 / 12533) [MLP3_1M_979tgt]
+exp/tri2a-1400_nnet/wer Trying 0.193016 ...  Average WER is 3.031996 (380 / 12533) [MLP3_1M_1139tgt]
+exp/tri2a-1600_nnet/wer Trying 0.199593 ...  Average WER is 2.808585 (352 / 12533) [MLP3_1M_1288tgt]
+exp/tri2a-1800_nnet/wer Trying 0.165152 ...  Average WER is 2.672943 (335 / 12533) [MLP3_1M_1446tgt] <<==BEST MLP SYSTEM
+exp/tri2a-1800_nnet_2M/wer Trying 0.134775 ...  Average WER is 2.664964 (334 / 12533) [MLP3_2M_1446tgt]
+exp/tri2a-2000_nnet/wer Trying 0.184885 ...  Average WER is 2.864438 (359 / 12533) acc:97.135562
 
 
-For further improvements we should:
-* use more parameters
-* use more target classes
-* use better alignments 
-* use the CRBE-SPLICE-Hamming-DCT features
-* use hierarchical structure (HATs, Universal context)
+#Tune prior scale on best system [exp/tri2a-1800_nnet/wer]
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 3" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.208980 ...  Average WER is 3.837868 (481 / 12533) acc:96.162132
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 2.0" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.191463 ...  Average WER is 3.031996 (380 / 12533) acc:96.968004
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 1.4" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.189430 ...  Average WER is 2.696880 (338 / 12533) acc:97.303120
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 1.2" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.186918 ...  Average WER is 2.672943 (335 / 12533) acc:97.327057
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 1.0" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.165152 ...  Average WER is 2.672943 (335 / 12533) <<==BEST MLP SYSTEM
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 0.8" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.193016 ...  Average WER is 2.704859 (339 / 12533) acc:97.295141
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 0.5" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
+Trying 0.178307 ...  Average WER is 2.728796 (342 / 12533) acc:97.271204
+"steps/decode_nnet.sh --acoustic-scale %g --prior-scale 0.333333" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;al/
+Trying 0.171729 ...  Average WER is 2.792627 (350 / 12533) acc:97.207373
+# => prior-scale does not help here...
 
-The training can be accelerated by multithreading BLAS
-or by GPGPU implementation. Also it's possible to dump 
-features to HTK format, train the network by the TNet 
-GPGPU toolkit and convert it back to Kaldi format.
+#Leave softmax out
+exp/tri2a-1800_nnet/wer Trying 0.165152 ...  Average WER is 2.672943 (335 / 12533) acc:97.327057
+# => same result, that's good! Canonical link function trick works...
 
 
-######################################################################
-#Training time with ATLAS on welda2
-#??? optimizations ???
-exp/mono:real    6m3.101s
-exp/nnet_mono_trans:real	25m37.175s
-exp/nnet_mono_pdf:real	17m13.133s
+#change model size
+exp/tri2a-1800_nnet_07M Trying 0.193016 ...  Average WER is 2.944227 (369 / 12533) acc:97.055773
 
-exp/tri1:real	18m8.550s
-exp/tri2a:real	19m46.379s
+#tunle L2 regularization
+tri2a-1800_nnet_l2-0.0/wer Average WER is 2.760712 (346 / 12533)
+tri2a-1800_nnet_l2-1e-6/wer Average WER is 2.864438 (359 / 12533)
+tri2a-1800_nnet_l2-1e-5/wer Average WER is 3.143701 (394 / 12533)
+tri2a-1800_nnet_l2-1e-5/wer Trying 0.256578 ...  Average WER is 2.904333 (364 / 12533) [better cvAcc than baseline] 
+tri2a-1800_nnet_l2-1e-4/wer Average WER is 4.803319 (602 / 12533) 
 
-exp/nnet_tri2a_s1: real 253m12.008s
-exp/nnet_tri2a_s2: real	265m36.880s
-exp/nnet_tri2a_s3: real	171m46.545s
-exp/nnet_tri2a_s4: real	198m8.982s
+#realign by the NNET 
+tri2a-1800_nnet_iter2/wer Average WER is 2.617091 (328 / 12533) 
+

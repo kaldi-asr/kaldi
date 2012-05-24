@@ -1,4 +1,5 @@
-#!/usr/bin/perl
+#!/bin/bash
+#
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,26 +15,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# converts an utt2spk file to a spk2utt file.
-# Takes input from the stdin or from a file argument;
-# output goes to the standard out.
+# To be run from one directory above this script.
 
-if ( @ARGV > 1 ) {
-    die "Usage: utt2spk_to_spk2utt.pl [ utt2spk ] > spk2utt";
-}
-
-while(<>){ 
-    @A = split(" ", $_);
-    @A == 2 || die "Invalid line in utt2spk file: $_";
-    ($u,$s) = @A;
-    if(!$seen_spk{$s}) {
-        $seen_spk{$s} = 1;
-        push @spklist, $s;
-    }
-    $uttlist{$s} = $uttlist{$s} . "$u ";
-}
-foreach $s (@spklist) {
-    $l = $uttlist{$s};
-    $l =~ s: $::; # remove trailing space.
-    print "$s $l\n";
-}
+grep WER $* | \
+  awk '{n=n+$4; d=d+$6} END{ printf("Average WER is %f (%d / %d) \n", (100.0*n)/d, n, d); }' 
