@@ -150,7 +150,7 @@ static void TestRemoveEpsLocalSpecial() {
 
 int main() {
   using namespace fst;
-  for (int i = 0;i < 25;i++) {
+  for (int i = 0;i < 10;i++) {
     TestRemoveEpsLocal<fst::StdArc>();
     TestRemoveEpsLocalSpecial();
   }

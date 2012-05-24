@@ -56,7 +56,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
 // NaturalLess template etc.
 
 template<class Weight, class Int> void TestShortestPath() {
-  for (int p = 0; p < 100; p++) {
+  for (int p = 0; p < 10; p++) {
     typedef ArcTpl<Weight> Arc;
     typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
     for(int i = 0; i < 5; i++) {
@@ -198,28 +198,28 @@ template<class Int> void TestConvert2() {
 template<class Weight, class Int> void TestConvertPair(bool invert) {
   typedef ArcTpl<Weight> Arc;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
-  for(int i = 0; i < 5; i++) {
+  for(int i = 0; i < 2; i++) {
     VectorFst<Arc> *fst = RandPairFst<Arc>();
-    std::cout << "FST before converting to compact-arc is:\n";
+    /*std::cout << "FST before converting to compact-arc is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
     VectorFst<CompactArc> ofst;
     ConvertLattice<Weight, Int>(*fst, &ofst, invert);
 
-    std::cout << "FST after converting is:\n";
+    /*std::cout << "FST after converting is:\n";
     {
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
     VectorFst<Arc> origfst;
     ConvertLattice<Weight, Int>(ofst, &origfst, invert);
-    std::cout << "FST after back conversion is:\n";
+    /*std::cout << "FST after back conversion is:\n";
     {
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
 
     assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));    
     delete fst;
@@ -253,29 +253,29 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
   
   typedef ArcTpl<Weight> Arc;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
-  for(int i = 0; i < 5; i++) {
+  for(int i = 0; i < 2; i++) {
     VectorFst<Arc> *fst = RandPairFst<Arc>();
-    std::cout << "FST before converting to compact-arc is:\n";
+    /*std::cout << "FST before converting to compact-arc is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
     VectorFst<CompactArc> ofst;
     ConvertLattice<Weight, Int>(*fst, &ofst, invert);
     ScaleLattice(scale1, &ofst);
-    std::cout << "FST after converting and scaling is:\n";
+    /*std::cout << "FST after converting and scaling is:\n";
     {
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
     VectorFst<Arc> origfst;
     ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     ScaleLattice(scale2, &origfst);
-    std::cout << "FST after back conversion and scaling is:\n";
+    /*std::cout << "FST after back conversion and scaling is:\n";
     {
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
-    }
+      }*/
     // If RandEquivalent doesn't work, it could be due to a nasty issue related to the use
     // of exact floating-point comparisons in the Plus function of LatticeWeight.
     if(!RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {

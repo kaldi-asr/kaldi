@@ -488,7 +488,7 @@ template<class Arc, class inttype> void TestStringRepository() {
 
 
 int main() {
-  for (int i = 0;i < 5;i++) {  // We would need more iterations to check
+  for (int i = 0;i < 3;i++) {  // We would need more iterations to check
     // this properly.
     fst::TestStringRepository<fst::StdArc, int>();
     fst::TestStringRepository<fst::StdArc, unsigned int>();

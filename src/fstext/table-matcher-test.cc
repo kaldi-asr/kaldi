@@ -70,7 +70,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     fstprinter.Print(&std::cout, "standard output");
   }
 
-  if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {
+  if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, rand()/*seed*/, 20/*path length-- max?*/)) {
     VectorFst<Arc> diff1;
     Difference(composed, composed_baseline, &diff1);
     std::cout <<" Diff1 (composed - baseline) \n";
@@ -140,7 +140,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
     std::cout << "Connect = "<< (connect?"True\n":"False\n");
 
 
-    if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {
+    if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {
       VectorFst<Arc> diff1;
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";
@@ -186,7 +186,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
 
   TableComposeCache<Fst<Arc> > cache(opts);
 
-  for (size_t i = 0; i < 3; i++) {
+  for (size_t i = 0; i < 2; i++) {
 
     VectorFst<Arc> *fst1 = RandFst<Arc>();
 
@@ -210,7 +210,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
     std::cout << "Connect = "<< (connect?"True\n":"False\n");
 
 
-    if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {
+    if ( !RandEquivalent(composed, composed_baseline, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 20/*path length-- max?*/)) {
       VectorFst<Arc> diff1;
       Difference(composed, composed_baseline, &diff1);
       std::cout <<" Diff1 (composed - baseline) \n";
