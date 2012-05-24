@@ -1,0 +1,72 @@
+// doc/cudamatrix.dox
+
+
+// Copyright 2012 Karel Vesely
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/**
+  \page cudamatrix The CUDA Matrix library
+
+   The CUDA matrix library seamless wrapper of CUDA computation.
+   Its purpose is to separate the low level CUDA-dependent routines 
+   from the high level C++ code.
+
+   The library can be both compiled with or without CUDA libraries,
+   depending on the HAVE_CUDA==1 macro. Without CUDA, the library
+   backs-off to computation on host processor. The host processor
+   is also used when the toolkit is compiled with CUDA and no suitable
+   GPU is detected. This is particularly useful in heterogenous ``grid-like'' environments.
+
+   Computationally, the library is based on CUBLAS linear algebra operations,
+   and manually implemened grid-like kernels for the non-linear operations, 
+   which are conforming with the ``Map'' pattern.
+   While most of the ``Reduce'' kernels do use the tree-like computational 
+   pattern in conjunction with extensive use of the shared memory.
+
+   \section Important classes
+
+   The most important classes are: \ref CuDevice \ref CuMatrix \ref CuVector \ref CuStlVector.
+
+   \ref CuDevice : is an abstraction of the GPU board, it is a singleton
+   object which initializes CUBLAS library upon the application startup,
+   and releases it at the end. It is also used to collect the profiling statistics.
+
+   \ref CuMatrix : is a GPU analogy of the Matrix class. It holds a buffer in the GPU global memory,
+   as well as a backup CPU buffer. It implements a subset of the Matrix interface.
+   The host-GPU transfers are done by \ref CopyFromMat \ref CopyToMat methods, 
+   which may internally reallocate the buffers.
+
+   \ref CuVector : is a GPU analogy of the Vector class. It holds a buffer in the GPU global memory,
+   as well as a backup CPU buffer. It implements a subset of the Vector interface.
+   The host-GPU transfers are done by \ref CopyFromVec \ref CopyToVec methods, 
+   which may internally reallocate the buffers.
+
+   \ref CuStlVector : is particularly useful to create vectors of indices (int32)
+   
+
+   \section Standalone mathematical operations
+   In cu-math.h are math functions which cannot be associated solely to a vector or a matrix.
+   There are concentrated in the namespace cu::, in order to separate them from global namespace. 
+   
+   \section The kernels
+   The CUDA kernels are concentrated in the cu-kernels.cu file. Since the CUDA code is compiled by NVCC,
+   and the rest of the code is compiled by different compiler, the only possible way of interatation 
+   was to employ ANSI C interface \ref cu-kernels.h, which represents a low-level interface to CUDA.
+   The high level interface is via CuMatrix, CuVector and functions in the cu:: namespace.
+
+*/
+
+}
