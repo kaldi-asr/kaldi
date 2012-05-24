@@ -1,0 +1,622 @@
+#!/bin/bash
+
+# This is a shell script, but it's recommended that you run the commands one by
+# one by copying and pasting into the shell.
+# Caution: some of the graph creation steps use quite a bit of memory, so you
+# might want to run this script on a machine that has plenty of memory.
+
+
+# The next command line is an example; you have to give the script
+# command-line arguments corresponding to the WSJ disks from LDC.  
+# Another example set of command line arguments is
+# /ais/gobi2/speech/WSJ/*/??-{?,??}.?
+#  These must be absolute,  not relative, pathnames.
+
+local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
+#local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
+
+local/wsj_prepare_dict.sh || exit 1;
+
+local/wsj_format_data.sh || exit 1;
+
+# We suggest to run the next three commands in the background,
+# as they are not a precondition for the system building and
+# most of the tests: these commands build a dictionary
+# containing many of the OOVs in the WSJ LM training data,
+# and an LM trained directly on that data (i.e. not just
+# copying the arpa files from the disks from LDC).
+(
+# on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
+ local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
+ local/wsj_prepare_local_dict.sh && \
+ local/wsj_train_lms.sh && \
+ local/wsj_format_data_local.sh
+) &
+
+
+# Now make MFCC features.
+# featdir should be some place with a largish disk where you
+# want to store MFCC features.
+featdir=$PWD/exp/kaldi_wsj_feats
+for x in test_eval92 test_eval93 test_dev93 train_si284; do 
+  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 2
+  steps/make_fbank.sh data/$x exp/make_fbank/$x $featdir/fbank 2
+  ln -s $PWD/data/$x/feats.scp.mfcc data/$x/feats.scp #select mfcc as default
+done
+
+
+mkdir data/train_si84
+for x in feats.scp feats.scp.fbank text utt2spk wav.scp; do
+  head -7138 data/train_si284/$x > data/train_si84/$x
+done
+scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt || exit 1;
+scripts/filter_scp.pl data/train_si84/spk2utt data/train_si284/spk2gender > data/train_si84/spk2gender || exit 1;
+
+# Now make subset with the shortest 2k utterances from si-84.
+scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort || exit 1;
+
+# Now make subset with half of the data from si-84.
+scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
+
+# you can change these commands to just run.pl to make them run
+# locally, but in that case you should change the num-jobs to
+# the #cpus on your machine or fewer.
+decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
+train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+
+# put the scripts to path
+source path.sh
+
+
+
+######################################################
+### WE FIRST NEED THE GMM MODELS TO GET ALIGNMENTS ###
+
+# Train mono0a with 2k shortest segments of si84 data.
+steps/train_mono.sh --num-jobs 10 --cmd "$train_cmd" \
+  data/train_si84_2kshort data/lang exp/mono0a || exit 1;
+# Decode mono0a
+(
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 || exit 1;
+)&
+
+# This queue option will be supplied to all alignment
+# and training scripts.  Note: you have to supply the same num-jobs
+# to the alignment and training scripts, as the archives are split
+# up in this way.
+
+
+# Train better monophone system on si84 data, 
+# (more accurate monophone alignments will be useful for MLP training)
+# Align mono0a with si84 data.
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/mono0a exp/mono0a_ali_si84
+# Train mono1a with si84 data.
+steps/train_mono_ali.sh --num-jobs 10 --cmd "$train_cmd" \
+  data/train_si84 data/lang exp/mono0a_ali_si84 exp/mono1a
+
+# 
+# Decode mono1a
+(
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono1a exp/mono1a/graph_tgpr
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono1a/graph_tgpr data/test_dev93 exp/mono1a/decode_tgpr_dev93
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/mono1a/graph_tgpr data/test_eval92 exp/mono1a/decode_tgpr_eval92
+)&
+# Align mono1a with si84 data
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/train_si84 data/lang exp/mono1a exp/mono1a_ali_si84
+# Align mono1a with si284 data
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/train_si284 data/lang exp/mono1a exp/mono1a_ali_si284
+# Align mono1a with dev93 data
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/test_dev93 data/lang exp/mono1a exp/mono1a_ali_dev93
+
+# Merge alignments to single archive
+gunzip -c exp/mono1a_ali_si84/*.ali.gz | gzip -c > exp/mono1a_ali_si84/ali.gz
+gunzip -c exp/mono1a_ali_si284/*.ali.gz | gzip -c > exp/mono1a_ali_si284/ali.gz
+gunzip -c exp/mono1a_ali_dev93/*.ali.gz | gzip -c > exp/mono1a_ali_dev93/ali.gz
+
+
+# Proceed in training the triphone baselines:
+# Align mono0a with half of si84 data.
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali_si84_half || exit 1;
+
+# Train tri1a, which is deltas + delta-deltas, on half of si84 data.
+steps/train_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+    2000 10000 data/train_si84_half data/lang exp/mono0a_ali_si84_half exp/tri1 || exit 1;
+
+# Build graph
+wait; # or the mono mkgraph.sh might be writing 
+# data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
+scripts/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
+# Decode dev93, eval92
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri1/graph_tgpr data/test_eval92 exp/tri1/decode_tgpr_eval92 || exit 1;
+
+# Align tri1 system with si84 data.
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84 || exit 1;
+
+
+# Train tri2a, which is deltas + delta-deltas, on si84 data.
+# this is hot candidate for NN TARGET ALIGNMENTS
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+    $numleaves 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a-$numleaves || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-$numleaves exp/tri2a-$numleaves/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a-$numleaves/graph_tgpr data/test_dev93 exp/tri2a-$numleaves/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh exp/tri2a-$numleaves/graph_tgpr data/test_eval92 exp/tri2a-$numleaves/decode_tgpr_eval92 || exit 1;
+
+  # Align tri2a-???? system with si84 data.
+  steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+    --use-graphs data/train_si84 data/lang exp/tri2a-$numleaves exp/tri2a-${numleaves}_ali_si84
+  # Align tri2a-???? system with si284 data.
+  steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+    data/train_si284 data/lang exp/tri2a-$numleaves exp/tri2a-${numleaves}_ali_si284
+
+  # Merge alignments to single archive
+  gunzip -c exp/tri2a-${numleaves}_ali_si84/*.ali.gz | gzip -c > exp/tri2a-${numleaves}_ali_si84/ali.gz
+  gunzip -c exp/tri2a-${numleaves}_ali_si284/*.ali.gz | gzip -c > exp/tri2a-${numleaves}_ali_si284/ali.gz
+done
+
+
+# Train tri2b, which is LDA+MLLT, on si84 data.
+# another candidate for NN TRAIN ALIGNMENTS
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b-$numleaves || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b-$numleaves exp/tri2b-$numleaves/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b-$numleaves/graph_tgpr data/test_eval92 exp/tri2b-$numleaves/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh exp/tri2b-$numleaves/graph_tgpr data/test_dev93 exp/tri2b-$numleaves/decode_tgpr_dev93 || exit 1;
+
+  # Align tri2b-???? system with si84 data.
+  steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
+    --use-graphs data/train_si84 data/lang exp/tri2b-$numleaves exp/tri2b-${numleaves}_ali_si84
+  # Align tri2b-???? system with si284 data.
+  steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
+    data/train_si284 data/lang exp/tri2b-$numleaves exp/tri2b-${numleaves}_ali_si284
+  
+  # Merge alignments to single archive
+  gunzip -c exp/tri2b-${numleaves}_ali_si84/*.ali.gz | gzip -c > exp/tri2b-${numleaves}_ali_si84/ali.gz
+  gunzip -c exp/tri2b-${numleaves}_ali_si284/*.ali.gz | gzip -c > exp/tri2b-${numleaves}_ali_si284/ali.gz
+done
+
+
+
+
+#####################################
+### HERE START THE MLP EXPERIMENTS
+###
+#train the MLPs..., first on the si84 set
+
+# train nnet with mono1a 
+$cuda_cmd exp/mono1a_nnet/_train_nnet.log \
+  steps/train_nnet.sh data/train_si84 data/lang exp/mono1a_ali_si84 exp/mono1a_nnet || exit 1; 
+# build graph
+scripts/mkgraph.sh --mono data/lang_test_tgpr exp/mono1a exp/mono1a_nnet/graph_tgpr || exit 1;
+# decode mono
+scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/mono1a/graph_tgpr data/test_dev93 exp/mono1a_nnet/decode_tgpr_dev93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/mono1a/graph_tgpr data/test_eval92 exp/mono1a_nnet/decode_tgpr_eval92 || exit 1;
+
+
+# train nnet with tri2a labels
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  $cuda_cmd exp/tri2a-${numleaves}_nnet/_train_nnet.log \
+    steps/train_nnet.sh data/train_si84 data/lang exp/tri2a-${numleaves}_ali_si84 exp/tri2a-${numleaves}_nnet || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1111" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1111" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet/decode_tgpr_eval92 || exit 1;
+done
+  
+
+# train nnet with tri2b labels
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  $cuda_cmd exp/tri2b-${numleaves}_nnet/_train_nnet.log \
+    steps/train_nnet.sh data/train_si84 data/lang exp/tri2b-${numleaves}_ali_si84 exp/tri2b-${numleaves}_nnet || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2b-${numleaves} exp/tri2b-${numleaves}_nnet/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1000" steps/decode_nnet.sh exp/tri2b-${numleaves}_nnet/graph_tgpr data/test_dev93 exp/tri2b-${numleaves}_nnet/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1000" steps/decode_nnet.sh exp/tri2b-${numleaves}_nnet/graph_tgpr data/test_eval92 exp/tri2b-${numleaves}_nnet/decode_tgpr_eval92 || exit 1;
+done
+
+
+#MLP4L with better labels (tri2a)
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  $cuda_cmd exp/tri2a-${numleaves}_nnet4L/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --lrate 0.004 data/train_si84 data/lang exp/tri2a-${numleaves}_ali_si84 exp/tri2a-${numleaves}_nnet4L || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L/decode_tgpr_eval92 || exit 1;
+done
+
+
+
+#Add more parameters to the MLP (3 layers)
+numleaves=2500
+modelsizeL=(1000000 1500000 2000000 2500000 3000000)
+for modelsize in ${modelsizeL[@]}; do
+( $cuda_cmd exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/_train_nnet.log \
+    steps/train_nnet.sh --model-size $modelsize --lrate 0.015 data/train_si84 data/lang exp/tri2a-${numleaves}_ali_si84 exp/tri2a-${numleaves}_nnet_modelsize$modelsize || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet_modelsize${modelsize}/decode_tgpr_eval92 || exit 1;
+) &
+done
+
+wait
+
+
+#Add more parameters to the MLP4L
+numleaves=2500
+modelsizeL=(1000000 1500000 2000000 2500000 3000000)
+for modelsize in ${modelsizeL[@]}; do
+( $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --model-size $modelsize --lrate 0.004 data/train_si84 data/lang exp/tri2a-${numleaves}_ali_si84 exp/tri2a-${numleaves}_nnet4L_modelsize$modelsize || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L_modelsize$modelsize/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize$modelsize/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize$modelsize/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}/decode_tgpr_eval92 || exit 1;
+) &
+done
+
+wait
+
+
+
+#Try different learning rates
+numleaves=2500
+modelsize=3000000
+lrateL=(0.001 0.002 0.004 0.008 0.016)
+for lrate in ${lrateL[@]}; do
+( $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --model-size $modelsize --lrate $lrate data/train_si84 data/lang exp/tri2a-${numleaves}_ali_si84 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate} || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}/decode_tgpr_eval92 || exit 1;
+) &
+done
+
+wait
+
+
+#Try all the trainig data si284
+numleaves=2500
+modelsize=3000000
+lrate=0.004
+( $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --model-size $modelsize --lrate $lrate data/train_si284 data/lang exp/tri2a-${numleaves}_ali_si284 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284 || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_eval92 || exit 1;
+) &
+
+
+#Try all the trainig data si284
+numleaves=2500
+modelsize=3000000
+lrate=0.006
+( $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --model-size $modelsize --lrate $lrate data/train_si284 data/lang exp/tri2a-${numleaves}_ali_si284 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284 || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_eval92 || exit 1;
+) &
+
+
+#Try all the trainig data si284
+numleaves=2500
+modelsize=3000000
+lrate=0.008
+( $cuda_cmd exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/_train_nnet.log \
+    steps/train_nnet_MLP4.sh --model-size $modelsize --lrate $lrate data/train_si284 data/lang exp/tri2a-${numleaves}_ali_si284 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284 || exit 1;
+  # build graph
+  scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr || exit 1;
+  # decode 
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_dev93 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.1428" steps/decode_nnet.sh exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/graph_tgpr data/test_eval92 exp/tri2a-${numleaves}_nnet4L_modelsize${modelsize}_lrate${lrate}_si284/decode_tgpr_eval92 || exit 1;
+) &
+
+
+#TODO realign, retrain... iter2
+
+
+
+
+
+
+
+#TANDEM SYSTEM "A"
+#trained on linear BN-features, on monophone targets
+#
+#Train the nnet
+$cuda_cmd exp/mono1a_nnet-linBN-5L/_train_nnet.log \
+  steps/train_nnet_MLP5-linBN.sh --lrate 0.00025 data/train_si84 data/lang exp/mono1a_ali_si84 exp/mono1a_nnet-linBN-5L || exit 1;
+#Dump the BN-features
+nndir=exp/mono1a_nnet-linBN-5L
+bnroot=$PWD/exp/make_bnfeats_$(basename $nndir)
+for x in test_eval92 test_eval93 test_dev93 train_si84; do
+  steps/make_bnfeats.sh --bn-dim 30 data/$x $nndir $bnroot/$x $featdir/bnfeats_$(basename $nndir) 4
+done
+
+
+#Re-train the GMMs to new feature space (from scratch)
+#### Train ``tri2b'', which is LDA+MLLT, on si84 data.
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-$numleaves || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-$numleaves exp/mono1a_nnet-linBN-5L.gmm-$numleaves/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-$numleaves/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-$numleaves/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-$numleaves/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-$numleaves/decode_tgpr_dev93 || exit 1;
+done
+
+
+#Re-train the GMMs to new feature space (single pass retraining)
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass/decode_tgpr_dev93 || exit 1;
+done
+
+
+#DIFFERENT MODIFICATIONS OF GMM-INPUT:
+
+#remove LDA + MLLT
+#exp/mono1a_nnet-linBN-5L.gmm-2500_singlepass_notsf/decode_tgpr_dev93/wer_20:%WER 36.09 [ 2972 / 8234, 643 ins, 200 del, 2129 sub ]
+#exp/mono1a_nnet-linBN-5L.gmm-2500_singlepass_notsf/decode_tgpr_eval92/wer_20:%WER 20.36 [ 1149 / 5643, 265 ins, 64 del, 820 sub ]
+#Re-train the GMMs to new feature space (single pass retraining)
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_notsf.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_notsf.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_notsf.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_notsf/decode_tgpr_dev93 || exit 1;
+done
+
+
+#remove CMN
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_nocmn.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_nocmn.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_nocmn.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_nocmn/decode_tgpr_dev93 || exit 1;
+done
+
+
+#estimate LDA on monophones
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_ldamono.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_ldamono/decode_tgpr_dev93 || exit 1;
+done
+
+
+#add deltas
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_delta.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_delta.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats_delta.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_delta/decode_tgpr_dev93 || exit 1;
+done
+
+
+#20iter realign on each, disable MLLT
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_align.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2b-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_align/decode_tgpr_dev93 || exit 1;
+done
+
+
+#do single pass using tri2a baseline
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval92 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_dev93 exp/mono1a_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_dev93 || exit 1;
+done
+
+
+
+
+#TANDEM SYSTEM "B"
+#trained on linear BN-features, on monophone targets, use dev93 for NN training stopping
+#
+# Align mono1a with dev93 data
+steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
+   data/test_dev93 data/lang exp/mono1a exp/mono1a_ali_dev93
+# Merge alignments to single archive
+gunzip -c exp/mono1a_ali_dev93/*.ali.gz | gzip -c > exp/mono1a_ali_dev93/ali.gz
+# Train the nnet
+$cuda_cmd exp/mono1a_dev93_nnet-linBN-5L/_train_nnet.log \
+  steps/train_nnet_dev_MLP5-linBN.sh --lrate 0.00025 data/train_si84 data/test_dev93 data/lang exp/mono1a_ali_si84 exp/mono1a_ali_dev93 exp/mono1a_dev93_nnet-linBN-5L || exit 1;
+#Dump the BN-features
+nndir=exp/mono1a_dev93_nnet-linBN-5L
+bnroot=$PWD/exp/make_bnfeats_$(basename $nndir)
+for x in test_eval92 test_eval93 test_dev93 train_si84; do
+  steps/make_bnfeats.sh --bn-dim 30 data/$x $nndir $bnroot/$x $featdir/bnfeats_$(basename $nndir) 4
+done
+#do single pass using tri2a baseline
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval92 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_dev93 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_dev93 || exit 1;
+done
+
+
+#try tuning the alignment scales
+transL=(0.5 1.0 2.0);
+acwtL=(0.05 0.1 0.2);
+loopL=(0.05 0.1 0.2);
+for trans in ${transL[@]}; do
+  for acwt in ${acwtL[@]}; do
+    for loop in ${loopL[@]}; do
+      #Re-train the GMMs to new feature space (single pass retraining)
+      #( 
+      numleaves=2500
+      # Train
+      steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+        --scale-opts "--transition-scale=$trans --acoustic-scale=$acwt --self-loop-scale=$loop" \
+        $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop} || exit 1;
+      # Decode
+      scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop} exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop}/graph_tgpr || exit 1;
+      scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop}/graph_tgpr $bnroot/test_eval92 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop}/decode_tgpr_eval92 || exit 1;
+      scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop}/graph_tgpr $bnroot/test_dev93 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tr${trans}_aw${acwt}_sl${loop}/decode_tgpr_dev93 || exit 1;
+      #) &
+    done
+    #wait
+  done
+done
+
+
+#the best option seems to be: _tr0.5_aw0.05_sl0.1
+#train one more system:
+numleaves=2500
+# Train
+steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+  --scale-opts "--transition-scale=0.5 --acoustic-scale=0.05 --self-loop-scale=0.1" \
+  $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali || exit 1;
+# Decode
+scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/graph_tgpr || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/graph_tgpr $bnroot/test_eval92 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/decode_tgpr_eval92 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/graph_tgpr $bnroot/test_eval93 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/decode_tgpr_eval93 || exit 1;
+scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/graph_tgpr $bnroot/test_dev93 exp/mono1a_dev93_nnet-linBN-5L.gmm-${numleaves}_singlepass_tri2a_tuneali/decode_tgpr_dev93 || exit 1;
+#evaluate this system on eval93+eval92: 
+#dev93: %WER 17.21 [ 1417 / 8234, 237 ins, 174 del, 1006 sub ]
+#eval92: %WER 11.38 [ 642 / 5643, 108 ins, 60 del, 474 sub ]
+#eval93: %WER 15.92 [ 549 / 3448, 52 ins, 99 del, 398 sub ]
+#eval92+93[is2012]: %WER 13.10 16kHz (compare with is2012: 17.8-PLP-MLE, 15.8-BN, 8kHz)
+
+
+
+#TANDEM SYSTEM "C"
+#trained on linear BN-features, on monophone targets, use dev93 for NN training stopping
+#3million parameters
+#
+# Train the nnet
+$cuda_cmd exp/mono1a_dev93_nnet-linBN-5L-3M/_train_nnet.log \
+  steps/train_nnet_dev_MLP5-linBN.sh --model-size 3000000 --lrate 0.000125  data/train_si84 data/test_dev93 data/lang exp/mono1a_ali_si84 exp/mono1a_ali_dev93 exp/mono1a_dev93_nnet-linBN-5L-3M || exit 1;
+#Dump the BN-features
+nndir=exp/mono1a_dev93_nnet-linBN-5L-3M
+bnroot=$PWD/exp/make_bnfeats_$(basename $nndir)
+for x in test_eval92 test_eval93 test_dev93 train_si84; do
+  steps/make_bnfeats.sh --bn-dim 30 data/$x $nndir $bnroot/$x $featdir/bnfeats_$(basename $nndir) 4
+done
+#do single pass using tri2a baseline
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+    --scale-opts "--transition-scale=0.5 --acoustic-scale=0.05 --self-loop-scale=0.1" \
+    $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval92 exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval93 exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_dev93 exp/mono1a_dev93_nnet-linBN-5L-3M.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_dev93 || exit 1;
+done
+
+
+#TANDEM SYSTEM "D"
+#si284 training data
+# Train the nnet
+$cuda_cmd exp/mono1a_dev93_nnet-linBN-5L-3M_si284/_train_nnet.log \
+  steps/train_nnet_dev_MLP5-linBN.sh --model-size 3000000 --lrate 0.0000625  data/train_si284 data/test_dev93 data/lang exp/mono1a_ali_si284 exp/mono1a_ali_dev93 exp/mono1a_dev93_nnet-linBN-5L-3M_si284 || exit 1;
+#Dump the BN-features
+nndir=exp/mono1a_dev93_nnet-linBN-5L-3M_si284
+bnroot=$PWD/exp/make_bnfeats_$(basename $nndir)
+for x in test_eval92 test_eval93 test_dev93 train_si84 train_si284; do
+  steps/make_bnfeats.sh --bn-dim 30 data/$x $nndir $bnroot/$x $featdir/bnfeats_$(basename $nndir) 4
+done
+#do single pass using tri2a baseline
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  # Train
+  steps/train_lda_mllt_bnfeats_singlepass_tri2a.sh --num-jobs 10 --cmd "$train_cmd" \
+    --scale-opts "--transition-scale=0.5 --acoustic-scale=0.05 --self-loop-scale=0.1" \
+    $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang exp/tri2a-${numleaves}_ali_si84 exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a || exit 1;
+  # Decode
+  scripts/mkgraph.sh data/lang_test_tgpr exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval92 exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_eval93 exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_eval93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/graph_tgpr $bnroot/test_dev93 exp/mono1a_dev93_nnet-linBN-5L-3M_si284.gmm-${numleaves}_singlepass_tri2a/decode_tgpr_dev93 || exit 1;
+done
+
+
+
+#TANDEM SYSTEM "E"
+#universal context network, as in ASRU2011...\
+#1st) stage MLP
+$cuda_cmd exp/mono1a_dev93_nnet-linBN-UC7L-3M_si284_I/_train_nnet.log \
+  steps/train_nnet_dev_MLP5-linBN.sh --model-size 1480000 --lrate 0.0000625 --bn-size 80 --splice-lr 5 --dct-basis 6  data/train_si284 data/test_dev93 data/lang exp/mono1a_ali_si284 exp/mono1a_ali_dev93 exp/mono1a_dev93_nnet-linBN-UC7L-3M_si284_I || exit 1;
+#cut, normalize, dump feats
+
+
+#2nd) stage MLP
+
+#TODO

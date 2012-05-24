@@ -1,0 +1,3 @@
+
+#get the results
+  for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | scripts/best_wer.sh; done
