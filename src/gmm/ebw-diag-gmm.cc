@@ -206,16 +206,20 @@ void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-
   Vector<double> weights(diaggmmnormal.weights_),
       num_occs(num_stats.occupancy()),
       den_occs(den_stats.occupancy());
-  if (num_occs.Sum() + den_occs.Sum() < opts.min_num_count_weight_update) {
+  if (opts.tau == 0.0 &&
+      num_occs.Sum() + den_occs.Sum() < opts.min_num_count_weight_update) {
     KALDI_LOG << "Not updating weights for this state because total count is "
               << num_occs.Sum() + den_occs.Sum() << " < "
               << opts.min_num_count_weight_update;
+    if (count_out)
+      *count_out += num_occs.Sum();
     return;
   }
+  num_occs.AddVec(opts.tau, weights);
   KALDI_ASSERT(weights.Dim() == num_occs.Dim() && num_occs.Dim() == den_occs.Dim());
   if (weights.Dim() == 1) return; // Nothing to do: only one mixture.
   double weight_auxf_at_start = 0.0, weight_auxf_at_end = 0.0;
-
+  
   int32 num_comp = weights.Dim();
   for (int32 g = 0; g < num_comp; g++) {   // c.f. eq. 4.32 in Dan Povey's thesis.
     weight_auxf_at_start +=
@@ -249,7 +253,8 @@ void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-
   if (auxf_change_out)
     *auxf_change_out += weight_auxf_at_end - weight_auxf_at_start;
   if (count_out)
-    *count_out += num_occs.Sum(); // only really valid for MMI.
+    *count_out += num_occs.Sum(); // only really valid for MMI [not MPE, or MMI
+  // with canceled stats]
 
   diaggmmnormal.weights_.CopyFromVec(weights);
 

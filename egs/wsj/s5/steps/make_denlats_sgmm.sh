@@ -1,8 +1,11 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# Create denominator lattices for MMI/MPE training.
-# Creates its output in $dir/lat.*.gz
+# Create denominator lattices for MMI/MPE training, with SGMM models.  If the
+# features have fMLLR transforms you have to supply the --transform-dir option.
+# It gets any speaker vectors from the "alignment dir" ($alidir).  Note: this is
+# possibly a slight mismatch because the speaker vectors come from supervised
+# adaptation.
 
 # Begin configuration.
 nj=4
@@ -14,15 +17,13 @@ acwt=0.1
 max_active=5000
 transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
-# This is in bytes, but not "real" bytes-- you have to multiply
-# by something like 5 or 10 to get real bytes (not sure why so large)
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
-   echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/tri1 exp/tri1_denlats"
+   echo "Usage: steps/make_denlats_sgmm.sh [options] <data-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
+   echo "  e.g.: steps/make_denlats_sgmm.sh data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
    echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
    echo " plus transforms."
    echo ""
@@ -39,7 +40,7 @@ fi
 
 data=$1
 lang=$2
-srcdir=$3
+alidir=$3 # could also be $srcdir, but only if no vectors supplied.
 dir=$4
 
 sdata=$data/split$nj
@@ -62,22 +63,21 @@ cat $data/text | utils/sym2int.pl --map-oov "$oov" -f 2- $lang/words.txt | \
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
-# final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
-
+# final.mdl from $alidir; the output HCLG.fst goes in $dir/graph.
 
 if [ -s $dir/dengraph/HCLG.fst ]; then
    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
-  utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 fi
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "align_si.sh: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+    cp $alidir/final.mat $dir    
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -87,21 +87,38 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
     && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
-  [ -f $srcdir/final.mat ] && ! cmp $transform_dir/final.mat $srcdir/final.mat && \
-     echo "$0: LDA transforms differ between $srcdir and $transform_dir"
+  [ -f $alidir/final.mat ] && ! cmp $transform_dir/final.mat $alidir/final.mat && \
+     echo "$0: LDA transforms differ between $alidir and $transform_dir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 else
-  if [ -f $srcdir/final.alimdl ]; then
+  if [ -f $alidir/final.alimdl ]; then
     echo "$0: you seem to have a SAT system but you did not supply the --transform-dir option.";
     exit 1;
   fi
 fi
 
+if [ -f $alidir/gselect.1.gz ]; then
+  gselect_opt="--gselect=ark:gunzip -c $alidir/gselect.JOB.gz|"
+else
+  echo "$0: no such file $alidir/gselect.1.gz" && exit 1;
+fi
+
+if [ -f $alidir/vecs.1 ]; then
+  spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
+else
+  if [ -f $alidir/final.alimdl ]; then
+    echo "You seem to have an SGMM system with speaker vectors,"
+    echo "yet we can't find speaker vectors.  Perhaps you supplied"
+    echo "the model director instead of the alignment directory?"
+    exit 1;
+  fi
+fi
 
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
-    --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
+   sgmm-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
+     --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
   for n in `seq $nj`; do
@@ -115,9 +132,13 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
+      gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
-        --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
+        sgmm-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
+          --beam=$beam --lattice-beam=$lattice_beam \
+          --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
+          --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
       echo Merging archives for data subset $n
       rm $dir/.error 2>/dev/null;
@@ -132,4 +153,4 @@ else
 fi
 
 
-echo "$0: done generating denominator lattices."
+echo "$0: done generating denominator lattices with SGMMs."

@@ -1038,8 +1038,67 @@ template<class Real> static void UnitTestEig() {
 
     AssertEqual(M, M2);  // check reconstruction worked.
   }
-
 }
+
+
+template<class Real> static void UnitTestEigSp() {
+  // Test the Eig function with SpMatrix.
+  // We make sure to test pathological cases, that have
+  // either large zero eigenspaces, or two large
+  // eigenspaces with the same absolute value but +ve
+  // and -ve.  Also zero matrix.
+  
+  for (int iter = 0; iter < 100; iter++) {
+	MatrixIndexT dimM = 1 + (rand() % 10);
+    SpMatrix<Real> S(dimM);
+
+    switch (iter % 5) {
+      case 0: // zero matrix.
+        break;
+      case 1: // general random symmetric matrix.
+        InitRand(&S);
+        break;
+      default:
+        { // start with a random matrix; do decomposition; change the eigenvalues to
+          // try to cover the problematic cases; reconstruct.
+          InitRand(&S);
+          Vector<Real> s(dimM); Matrix<Real> P(dimM, dimM);
+          S.Eig(&s, &P);
+          // We on purpose create a problematic case where
+          // some eigs are either zero or share a value (+ve or -ve)
+          // with some other eigenvalue.
+          for (int i = 0; i < dimM; i++) {
+            if (rand() % 10 == 0) s(i) = 0; // set that eig to zero.
+            else if (rand() % 10 < 2) {
+              // set that eig to some other randomly chosen eig,
+              // times random sign.
+              s(i) = (rand()%2 == 0 ? 1 : -1) * s(rand() % dimM);
+            }
+          }
+          // Reconstruct s from the eigenvalues "made problematic."
+          S.AddMat2Vec(1.0, P, kNoTrans, s, 0.0);
+          Real *data = s.Data();
+          std::sort(data, data+dimM);
+          KALDI_LOG << "Real eigs are: " << s;
+
+        }
+    }
+    Vector<Real> s(dimM); Matrix<Real> P(dimM, dimM);
+    S.Eig(&s, &P);
+    KALDI_LOG << "Found eigs are: " << s;
+    SpMatrix<Real> S2(dimM);
+    S2.AddMat2Vec(1.0, P, kNoTrans, s, 0.0);
+    {
+      SpMatrix<Real> diff(S);
+      diff.AddSp(-1.0, S2);
+      Vector<Real> s(dimM); Matrix<Real> P(dimM, dimM);
+      diff.Eig(&s, &P);
+      KALDI_LOG << "Eigs of difference are " << s;
+    }
+    KALDI_ASSERT(S.ApproxEqual(S2, 1.0e-03f));
+  }    
+}
+
 
 template<class Real> static void UnitTestMmul() {
   for (int iter = 0;iter < 5;iter++) {
@@ -2631,6 +2690,7 @@ template<class Real> static void MatrixUnitTest() {
   KALDI_LOG << " Point A";
   UnitTestComplexPower<Real>();
   UnitTestEig<Real>();
+  UnitTestEigSp<Real>();
   // commenting these out for now-- they test the speed, but take a while.
   // UnitTestSplitRadixRealFftSpeed<Real>();
   // UnitTestRealFftSpeed<Real>();   // won't exit!/

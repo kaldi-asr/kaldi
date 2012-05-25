@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# CAUTION: I changed e.g. 1.trans to trans.1 in the scripts.  To convert to the new naming
+# CAUTION: I changed e.g. 1.trans to trans.1 in the scripts.  If you ran it
+# part-way through prior to this, to convert to the new naming
 # convention, run:
 # for x in `find . -name '*.trans'`; do mv $x `echo $x | perl -ane 's/(\d+)\.trans/trans.$1/;print;'`; done
 # but be careful as this will not follow soft links.
@@ -139,7 +140,7 @@ steps/train_diag_ubm.sh --silence-weight 0.5 --nj 8 --cmd "$train_cmd" \
   250 data/train data/lang exp/tri3b_ali exp/dubm3b
 
 # Next, various fMMI+MMI configurations.
-steps/train_mmi_fmmi.sh --learning-rate 0.0025 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+steps/train_mmi_fmmi.sh --learning-rate 0.0025 \
   --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
   exp/tri3b_fmmi_b || exit 1;
 
@@ -148,7 +149,7 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_b/decode_it$iter &
 done
 
-steps/train_mmi_fmmi.sh --learning-rate 0.001 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+steps/train_mmi_fmmi.sh --learning-rate 0.001 \
   --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
   exp/tri3b_fmmi_c || exit 1;
 
@@ -168,10 +169,9 @@ for iter in 3 4 5 6 7 8; do
 done
 
 
-
 ## SGMM on top of LDA+MLLT+SAT features.
-steps/train_ubm.sh --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
-steps/train_sgmm.sh --cmd "$train_cmd" 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
+steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
+steps/train_sgmm.sh  --cmd "$train_cmd" 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
 
 utils/mkgraph.sh data/lang exp/sgmm4a exp/sgmm4a/graph || exit 1;
 
@@ -181,7 +181,24 @@ steps/decode_sgmm.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode_fmllr || exit 1;
 
+ #  Now we'll align the SGMM system to prepare for discriminative training.
+ steps/align_sgmm.sh --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b \
+    --use-graphs true --use-gselect true data/train data/lang exp/sgmm4a exp/sgmm4a_ali || exit 1;
+ steps/make_denlats_sgmm.sh --nj 8 --sub-split 20 --cmd "$decode_cmd" --transform-dir exp/tri3b \
+   data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats
+ steps/train_mmi_sgmm.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 \
+   data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats exp/sgmm4a_mmi_b0.2 
+
+ for iter in 1 2 3 4; do
+  steps/decode_sgmm_rescore.sh --cmd "$decode_cmd" --iter $iter \
+    --transform-dir exp/tri3b/decode data/lang data/test exp/sgmm4a/decode exp/sgmm4a_mmi_b0.2/decode_it$iter &
+ done  
+
+ 
 steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
 # combining the sgmm run and the best MMI+fMMI run.
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_3b_fmmic5/decode || exit 1;
+
+steps/decode_combine.sh data/test data/lang exp/sgmm4a_mmi_b0.2/decode_it4 exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_mmi_3b_fmmic5/decode || exit 1;
+

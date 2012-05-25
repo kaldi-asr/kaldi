@@ -65,11 +65,6 @@ struct MleAmSgmmOptions {
   /// (if false, uses the "parallel" one).
   bool use_sequential_weight_update;
 
-  int compress_m_dim;  // dimension of subspace to limit the M's to (if nonzero)
-  int compress_n_dim;  // dimension of subspace to limit the N's to (if nonzero)
-  int compress_vars_dim;  // dimension of subspace to limit the log SigmaInv's
-  // to (if nonzero) [not used yet]
-
   BaseFloat epsilon;  ///< very small value used to prevent SVD crashing.
 
   MleAmSgmmOptions() {
@@ -88,9 +83,6 @@ struct MleAmSgmmOptions {
     // on disk.
     weight_projections_iters = 3;
     use_sequential_weight_update = false;
-    compress_m_dim = 0;
-    compress_n_dim = 0;
-    compress_vars_dim = 0;
   }
 
   void Register(ParseOptions *po) {
@@ -114,12 +106,6 @@ struct MleAmSgmmOptions {
                  "(not compatible with smoothing v)");
     po->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
                  "the speaker subspace to have meaningful sizes.");
-    po->Register("compress-m-dim", &compress_m_dim, module+"If nonzero, limit "
-                 "the M matrices to a subspace of this dimension.");
-    po->Register("compress-n-dim", &compress_n_dim, module+"If nonzero, limit "
-                 "the N matrices to a subspace of this dimension.");
-    po->Register("compress-vars-dim", &compress_vars_dim, module+"If nonzero, "
-                 "limit the SigmaInv matrices to a subspace of this dimension.");
   }
 };
 
@@ -221,6 +207,7 @@ class MleAmSgmmAccs {
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(MleAmSgmmAccs);
   friend class MleAmSgmmUpdater;
+  friend class EbwAmSgmmUpdater;
 };
 
 /** \class MleAmSgmmUpdater
@@ -241,7 +228,8 @@ class MleAmSgmmUpdater {
   /// This function is like UpdatePhoneVectorsChecked, which supports
   /// objective-function checking and backtracking but no smoothing term, but it
   /// takes as input the stats used in SGMM-based tree clustering-- this is used
-  /// in initializing an SGMM from the tree stats.
+  /// in initializing an SGMM from the tree stats.  It's not part of the
+  /// normal recipe.
   double UpdatePhoneVectorsCheckedFromClusterable(
       const std::vector<SgmmClusterable*> &stats,
       const std::vector<SpMatrix<double> > &H,
@@ -251,23 +239,31 @@ class MleAmSgmmUpdater {
   friend class UpdateWParallelClass;
   friend class UpdatePhoneVectorsClass;
   friend class UpdatePhoneVectorsCheckedFromClusterableClass;
+  friend class EbwEstimateAmSgmm;
+
+  ///  Compute the Q_i quantities (Eq. 64).
+  static void ComputeQ(const MleAmSgmmAccs &accs,
+                       const AmSgmm &model,
+                       std::vector< SpMatrix<double> > *Q);
+
+  /// Compute the S_means quantities, minus sum: (Y_i M_i^T + M_i Y_I^T).
+  static void ComputeSMeans(const MleAmSgmmAccs &accs,
+                            const AmSgmm &model,
+                            std::vector< SpMatrix<double> > *S_means);
+  friend class EbwAmSgmmUpdater;
  private:
   MleAmSgmmOptions update_options_;
   /// Q_{i}, quadratic term for phonetic subspace estimation. Dim is [I][S][S]
   std::vector< SpMatrix<double> > Q_;
+
   /// Eq (74): S_{i}^{(means)}, scatter of substate mean vectors for estimating
-  /// the shared covariance matrices. Dimension is [I][D][D].
+  /// the shared covariance matrices. [Actually this variable contains also the
+  /// term -(Y_i M_i^T + M_i Y_I^T).]  Dimension is [I][D][D].
   std::vector< SpMatrix<double> > S_means_;
+  
   Vector<double> gamma_j_;  ///< State occupancies
 
-  ///  Compute the Q_i quantities (Eq. 64).
-  void ComputeQ(const MleAmSgmmAccs &accs,
-                const AmSgmm &model);
-
-  /// Compute the S_i^{(means)} quantities (Eq. 74).
-  void ComputeSMeans(const MleAmSgmmAccs &accs,
-                     const AmSgmm &model);
-
+  
   void ComputeSmoothingTerms(const MleAmSgmmAccs &accs,
                              const AmSgmm &model,
                              const std::vector< SpMatrix<double> > &H,
@@ -293,9 +289,8 @@ class MleAmSgmmUpdater {
                                   double *auxf_impr,
                                   double *like_impr,
                                   int32 num_threads,
-                                  int32 thread_id);
-                                    
-
+                                  int32 thread_id) const;
+  
   // UpdatePhoneVectors function that does not support smoothing
   // terms, but allows checking of objective-function improvement,
   // and backtracking.
@@ -314,18 +309,16 @@ class MleAmSgmmUpdater {
       int32 thread_id);
   
   double UpdateM(const MleAmSgmmAccs &accs, AmSgmm *model);
-  double UpdateMCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
 
   void RenormalizeV(const MleAmSgmmAccs &accs, AmSgmm *model,
                     const SpMatrix<double> &H_sm);
   double UpdateN(const MleAmSgmmAccs &accs, AmSgmm *model);
-  double UpdateNCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
   void RenormalizeN(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateVars(const MleAmSgmmAccs &accs, AmSgmm *model);
-  double UpdateVarsCompress(const MleAmSgmmAccs &accs, AmSgmm *model);
   double UpdateWParallel(const MleAmSgmmAccs &accs, AmSgmm *model);
 
   /// Called, multithreaded, inside UpdateWParallel
+  static
   void UpdateWParallelGetStats(const MleAmSgmmAccs &accs,
                                const AmSgmm &model,
                                const Matrix<double> &w,
@@ -399,6 +392,62 @@ class MleSgmmSpeakerAccs {
   /// small constant to randomly prune tiny posteriors
   BaseFloat rand_prune_;
 };
+
+// This class, used in multi-core implementation of the updates of the "w_i"
+// quantities, was previously in estimate-am-sgmm.cc, but is being moved to the
+// header so it can be used in estimate-am-sgmm-ebw.cc.  It is responsible for
+// computing, in parallel, the F_i and g_i quantities used in the updates of
+// w_i.
+class UpdateWParallelClass {
+ public:
+  UpdateWParallelClass(const MleAmSgmmAccs &accs,
+                       const AmSgmm &model,
+                       const Matrix<double> &w,
+                       Matrix<double> *F_i,
+                       Matrix<double> *g_i,
+                       double *tot_like):
+      accs_(accs), model_(model), w_(w),
+      F_i_ptr_(F_i), g_i_ptr_(g_i), tot_like_ptr_(tot_like) {
+    tot_like_ = 0.0;
+    F_i_.Resize(F_i->NumRows(), F_i->NumCols());
+    g_i_.Resize(g_i->NumRows(), g_i->NumCols());
+  }
+    
+  ~UpdateWParallelClass() {
+    F_i_ptr_->AddMat(1.0, F_i_, kNoTrans);
+    g_i_ptr_->AddMat(1.0, g_i_, kNoTrans);
+    *tot_like_ptr_ += tot_like_;
+  }
+  
+  inline void operator() () {
+    // Note: give them local copy of the sums we're computing,
+    // which will be propagated to the total sums in the destructor.
+    MleAmSgmmUpdater::UpdateWParallelGetStats(accs_, model_, w_,
+                                              &F_i_, &g_i_, &tot_like_,
+                                              num_threads_, thread_id_);
+  }
+  // Copied and modified from example in kaldi-thread.h
+  static void *run(void *c_in) {
+    UpdateWParallelClass *c = static_cast<UpdateWParallelClass*>(c_in);
+    (*c)(); // call operator () on it.
+    return NULL;
+  }  
+ public:
+  int thread_id_;
+  int num_threads_;
+ private:
+  //MleAmSgmmUpdater *updater_;
+  const MleAmSgmmAccs &accs_;
+  const AmSgmm &model_;
+  const Matrix<double> &w_;
+  Matrix<double> *F_i_ptr_;
+  Matrix<double> *g_i_ptr_;
+  Matrix<double> F_i_;
+  Matrix<double> g_i_;
+  double *tot_like_ptr_;
+  double tot_like_;
+};
+
 
 }  // namespace kaldi
 

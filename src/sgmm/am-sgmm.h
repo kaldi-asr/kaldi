@@ -184,6 +184,21 @@ class AmSgmm {
                            BaseFloat logdet_s,
                            SgmmPerFrameDerivedVars *per_frame_vars) const;
 
+  /// Output the average phone vector (average all those in the system.)
+  /// Used in function ComputeSgmmFeature [an experimental approach were
+  /// we use a derivative quantity computed from SGMMs, as a feature vector.]
+  void ComputeAveragePhoneVector(Vector<BaseFloat> *avg_phone_vec,
+                                 Vector<BaseFloat> *normalizers);
+
+  /// Something experimental: deriving features from a certain derivative
+  /// computed from the SGMM [deriv. w.r.t. the phone-state vector, taken at
+  /// its average value.  Returns the avg like/frame given the model with
+  /// a single "average" phone vector.
+  BaseFloat ComputeSgmmFeature(const SgmmPerFrameDerivedVars &per_frame_vars,
+                               const Vector<BaseFloat> &avg_phone_vec,
+                               const Vector<BaseFloat> &normalizers,
+                               VectorBase<BaseFloat> *feature) const;
+  
   /// Computes the per-speaker derived vars; assumes vars->v_s is already
   /// set up.
   void ComputePerSpkDerivedVars(SgmmPerSpkDerivedVars *vars) const;
@@ -331,9 +346,11 @@ class AmSgmm {
   std::vector< Matrix<BaseFloat> > n_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmSgmm);
+  friend class EbwAmSgmmUpdater;
   friend class MleAmSgmmUpdater;
   friend class MleSgmmSpeakerAccs;
   friend class AmSgmmFunctions;  // misc functions that need access.
+  friend class SgmmFeature;
 };
 
 template<typename Real>
@@ -417,6 +434,24 @@ class AmSgmmFunctions {
   static void ComputeDistances(const AmSgmm& model,
                                const Vector<BaseFloat> &state_occs,
                                MatrixBase<BaseFloat> *dists);
+};
+
+class SgmmFeature { // a way of extracting a kind of features from SGMMs.
+  // It's the derivative w.r.t. the phonetic-substate vector, the
+  // derivative being taken at the average phonetic-substate vector.
+
+ public:
+  SgmmFeature(const AmSgmm &sgmm);
+  // ComputeFeature returns a log-like, computed at the average
+  // phone-vector value.
+  BaseFloat ComputeFeature(const SgmmPerFrameDerivedVars &per_frame_vars,
+                           VectorBase<BaseFloat> *feature) const;
+ private:
+  void ComputeAvgPhoneVec(const AmSgmm &sgmm);
+  void ComputeNormalizersAndDerivs(const AmSgmm &sgmm);
+  Vector<BaseFloat> avg_phone_vec_; // average of all the v_{jm}
+  Vector<BaseFloat> normalizers_; // normalizers used in likelihood computation.
+  Matrix<BaseFloat> derivs_; // derivative of each normalizer w.r.t v_{jm}
 };
 
 }  // namespace kaldi

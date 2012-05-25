@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,
 # to get the larger-size dictionary including all of CMUdict

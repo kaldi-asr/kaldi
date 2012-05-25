@@ -29,6 +29,8 @@ scripts at the moment.
       Sphinx feature files distributed by CMU and metadata available on LDC
       website. Script and data layouts are based on egs/rm/s3.
 
-  s5: This is the "new-new-style" recipe.  It's not yet finished.  It will
-      run up to a certain point.  All further work will be on top of this
-      style of recipe.
+  s5: This is the "new-new-style" recipe.  It is now finished.
+      All further work will be on top of this style of recipe.  Note: 
+      unlike previous recipes, this now uses the same underlying
+      scripts as the WSJ recipe.
+

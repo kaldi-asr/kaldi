@@ -1,6 +1,7 @@
-// sgmmbin/sgmm-acc-stats.cc
+// sgmmbin/sgmm-acc-stats2.cc
 
-// Copyright 2009-2011   Saarland University (Author:  Arnab Ghoshal),
+// Copyright 2009-2012   Saarland University (Author:  Arnab Ghoshal),
+//                       Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +30,11 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Accumulate stats for SGMM training.\n"
-        "Usage: sgmm-acc-stats [options] <model-in> <feature-rspecifier> "
-        "<posteriors-rspecifier> <stats-out>\n"
-        "e.g.: sgmm-acc-stats 1.mdl 1.ali scp:train.scp 'ark:ali-to-post 1.ali ark:-|' 1.acc\n";
+        "Accumulate numerator and denominator stats for discriminative training\n"
+        "of SGMMs (input is posteriors of mixed sign)\n"
+        "Usage: sgmm-acc-stats2 [options] <model-in> <feature-rspecifier> "
+        "<posteriors-rspecifier> <num-stats-out> <den-stats-out>\n"
+        "e.g.: sgmm-acc-stats 1.mdl 1.ali scp:train.scp ark:1.posts num.acc den.acc\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -54,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     kaldi::SgmmUpdateFlagsType acc_flags = StringToSgmmUpdateFlags(update_flags_str);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -62,10 +64,13 @@ int main(int argc, char *argv[]) {
     std::string model_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
         posteriors_rspecifier = po.GetArg(3),
-        accs_wxfilename = po.GetArg(4);
+        num_accs_wxfilename = po.GetArg(4),
+        den_accs_wxfilename = po.GetArg(5);
+    
 
     using namespace kaldi;
     typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
 
     // Initialize the readers before the model, as the model can
     // be large, and we don't want to call fork() after reading it if
@@ -85,13 +90,15 @@ int main(int argc, char *argv[]) {
       am_sgmm.Read(ki.Stream(), binary);
     }
 
-    Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
-    MleAmSgmmAccs sgmm_accs(rand_prune);
-    sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
+    Vector<double> num_transition_accs, den_transition_accs;
+    trans_model.InitStats(&num_transition_accs);
+    trans_model.InitStats(&den_transition_accs);
+    MleAmSgmmAccs num_sgmm_accs(rand_prune), den_sgmm_accs(rand_prune);
+    num_sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
+    den_sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);   
 
-    double tot_like = 0.0;
-    double tot_t = 0;
+    double tot_like = 0.0, tot_weight = 0.0, tot_abs_weight = 0.0;
+    int64 tot_frames = 0;
 
     kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
@@ -147,8 +154,9 @@ int main(int argc, char *argv[]) {
         }  // else spk_vars is "empty"
 
         num_done++;
-        BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
-
+        BaseFloat tot_like_this_file = 0.0, tot_weight_this_file = 0.0,
+            tot_abs_weight_this_file = 0.0;
+        
         for (size_t i = 0; i < posterior.size(); i++) {
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
@@ -159,42 +167,50 @@ int main(int argc, char *argv[]) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,  // transition identifier.
                 pdf_id = trans_model.TransitionIdToPdf(tid);
-            BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
-            tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
-                                                       spk_vars.v_s, pdf_id,
-                                                       weight, acc_flags)
-                                                       * weight;
-            tot_weight += weight;
+            BaseFloat weight = posterior[i][j].second,
+                abs_weight = std::abs(weight);
+            
+            trans_model.Accumulate(abs_weight, tid,  weight > 0 ?
+                                   &num_transition_accs : &den_transition_accs);
+            tot_like_this_file +=
+                (weight > 0 ? num_sgmm_accs : den_sgmm_accs).Accumulate(
+                    am_sgmm, per_frame_vars, spk_vars.v_s, pdf_id,
+                    abs_weight, acc_flags)
+                * weight;
+            tot_weight_this_file += weight;
+            tot_abs_weight_this_file += abs_weight;
           }
         }
-
-        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
+        num_sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);  // no harm doing it per utterance.
+        den_sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars.v_s);
         
-        KALDI_VLOG(2) << "Average like for this file is "
-                      << (tot_like_this_file/tot_weight) << " over "
-                      << tot_weight <<" frames.";
         tot_like += tot_like_this_file;
-        tot_t += tot_weight;
-        if (num_done % 50 == 0) {
-          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
-                    << utt << " avg. like is "
-                    << (tot_like_this_file/tot_weight)
-                    << " over " << tot_weight <<" frames.";
-        }
+        tot_weight += tot_weight_this_file;
+        tot_abs_weight += tot_abs_weight_this_file;
+        tot_frames += posterior.size();
+        if (num_done % 50 == 0)
+          KALDI_LOG << "Processed " << num_done << " utterances.";
       }
     }
-    KALDI_LOG << "Overall like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << " over " << tot_t << " frames.";
-
+    KALDI_LOG << "Overall weighted acoustic likelihood per frame was "
+              << (tot_like/tot_frames) << " over " << tot_frames << " frames; "
+              << "average weight per frame is " << (tot_weight/tot_frames)
+              << ", average abs(weight) per frame is "
+              << (tot_abs_weight/tot_frames);
+    
     KALDI_LOG << "Done " << num_done << " files, " << num_no_posterior
               << " with no posteriors, " << num_other_error
               << " with other errors.";
-
+    
     {
-      Output ko(accs_wxfilename, binary);
-      transition_accs.Write(ko.Stream(), binary);
-      sgmm_accs.Write(ko.Stream(), binary);
+      Output ko(num_accs_wxfilename, binary);
+      num_transition_accs.Write(ko.Stream(), binary);
+      num_sgmm_accs.Write(ko.Stream(), binary);
+    }
+    {
+      Output ko(den_accs_wxfilename, binary);
+      den_transition_accs.Write(ko.Stream(), binary);
+      den_sgmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Written accs.";
     return (num_done != 0 ? 0 : 1);

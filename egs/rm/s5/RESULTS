@@ -51,12 +51,18 @@ exp/tri3b_fmmi_d/decode_it8/wer_7:%WER 2.07 [ 260 / 12533, 34 ins, 48 del, 178 s
 
 
 # SGMM experiments.
-exp/sgmm4a/decode/wer_6:%WER 1.91 [ 240 / 12533, 22 ins, 60 del, 158 sub ]
-exp/sgmm4a/decode_fmllr/wer_8:%WER 1.91 [ 239 / 12533, 17 ins, 68 del, 154 sub ]
+exp/sgmm4a/decode/wer_4:%WER 1.88 [ 235 / 12533, 34 ins, 43 del, 158 sub ]
+exp/sgmm4a/decode_fmllr/wer_4:%WER 1.91 [ 240 / 12533, 34 ins, 45 del, 161 sub ]
 
+exp/sgmm4a_mmi_b0.2/decode_it1/wer_4:%WER 1.72 [ 216 / 12533, 34 ins, 34 del, 148 sub ]
+exp/sgmm4a_mmi_b0.2/decode_it2/wer_5:%WER 1.69 [ 212 / 12533, 32 ins, 36 del, 144 sub ]
+exp/sgmm4a_mmi_b0.2/decode_it3/wer_5:%WER 1.72 [ 216 / 12533, 34 ins, 38 del, 144 sub ]
+exp/sgmm4a_mmi_b0.2/decode_it4/wer_7:%WER 1.73 [ 217 / 12533, 24 ins, 46 del, 147 sub ]
 
 # Some system combination experiments.
 exp/combine_1_2a/decode/wer_4:%WER 2.98 [ 373 / 12533, 51 ins, 72 del, 250 sub ]
 exp/combine_4a_3b/decode/wer_6:%WER 1.68 [ 210 / 12533, 16 ins, 48 del, 146 sub ]
 exp/combine_4a_3b_fmmic5/decode/wer_6:%WER 1.62 [ 203 / 12533, 17 ins, 46 del, 140 sub ]
+exp/combine_4a_mmi_3b_fmmic5/decode/wer_7:%WER 1.55 [ 194 / 12533, 16 ins, 41 del, 137 sub ]
+
 

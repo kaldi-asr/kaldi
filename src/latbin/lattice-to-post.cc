@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0;
     double total_like = 0.0, lat_like;
+    double total_ac_like = 0.0, lat_ac_like; // acoustic likelihood weighted by posterior.
     double total_time = 0, lat_time;
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
@@ -78,15 +79,17 @@ int main(int argc, char *argv[]) {
       }
 
       kaldi::Posterior post;
-      lat_like = kaldi::LatticeForwardBackward(lat, &post);
+      lat_like = kaldi::LatticeForwardBackward(lat, &post, &lat_ac_like);
       total_like += lat_like;
       lat_time = post.size();
       total_time += lat_time;
+      total_ac_like += lat_ac_like;
 
       KALDI_VLOG(2) << "Processed lattice for utterance: " << key << "; found "
                     << lat.NumStates() << " states and " << fst::NumArcs(lat)
                     << " arcs. Average log-likelihood = " << (lat_like/lat_time)
-                    << " over " << lat_time << " frames.";
+                    << " over " << lat_time << " frames.  Average acoustic log-like"
+                    << " per frame is " << (lat_ac_like/lat_time);
       
       if (loglikes_writer.IsOpen()) 
         loglikes_writer.Write(key, lat_like);
@@ -97,7 +100,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Overall average log-like/frame is "
               << (total_like/total_time) << " over " << total_time
-              << " frames.";
+              << " frames.  Average acoustic like/frame is "
+              << (total_ac_like/total_time);
     KALDI_LOG << "Done " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {

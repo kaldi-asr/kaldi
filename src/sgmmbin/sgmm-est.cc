@@ -116,9 +116,9 @@ int main(int argc, char *argv[]) {
 
     sgmm_accs.Check(am_sgmm, true); // Will check consistency and print some diagnostics.
 
-    {  // Update SGMM.
-      kaldi::MleAmSgmmUpdater sgmm_updater(sgmm_opts);
-      sgmm_updater.Update(sgmm_accs, &am_sgmm, update_flags);
+    { // Do the update.
+      kaldi::MleAmSgmmUpdater updater(sgmm_opts);
+      updater.Update(sgmm_accs, &am_sgmm, update_flags);
     }
 
     if (split_substates != 0 || !occs_out_filename.empty()) {  // get state occs

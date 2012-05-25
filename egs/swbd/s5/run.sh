@@ -166,57 +166,56 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
    --nj 30 --transform-dir exp/tri4a/decode_eval2000 \
    exp/sgmm5a/graph data/eval2000 exp/sgmm5a/decode_eval2000
 )
+
+# Building a larger SAT system.
+
+steps/train_sat.sh --cmd "$train_cmd" \
+  3500 100000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri5a || exit 1;
+(
+  utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph || exit 1;
+  steps/decode_fmllr.sh --cmd "$decode_cmd" --config conf/decode.config \
+   --nj 30 exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000 || exit 1;
+)
+
+# MMI starting from system in tri5a.  Use the same data (100k_nodup).
+# Later we'll use all of it.
+steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+  data/train_100k_nodup data/lang exp/tri5a exp/tri5a_ali_100k_nodup || exit 1;
+steps/make_denlats.sh --nj 40 --cmd "$decode_cmd" --transform-dir exp/tri5a_ali_100k_nodup \
+   --sub-split 50 data/train_100k_nodup data/lang exp/tri5a exp/tri5a_denlats_100k_nodup  || exit 1;
+steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 \
+  data/train_100k_nodup data/lang exp/tri5a_{ali,denlats}_100k_nodup exp/tri5a_mmi_b0.1 || exit 1;
+
+steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+  --transform-dir exp/tri5a/decode_eval2000 \
+  exp/tri5a/graph data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 &
+
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 40 --cmd "$train_cmd" \
+  700 data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm
+
+steps/train_mmi_fmmi.sh --learning-rate 0.005 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+  --boost 0.1 --cmd "$train_cmd" \
+ data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
+   exp/tri5a_fmmi_b0.1 || exit 1;
+
+ for iter in 4 5 6 7 8; do
+  steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
+     --transform-dir exp/tri5a_ali_100k_nodup \
+     exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1/decode_eval2000_it$iter &
+ done
+
+
+exit 0;
 # HERE.
-
- utils/decode.sh --opts "$decode_opts1" -l data/lang_test --nj 30 --cmd "$decode_cmd" \
-   steps/decode_sgmm_lda_etc.sh exp/sgmm5a/graph data/eval2000 exp/sgmm5a/decode_eval2000 \
-   exp/tri4a/decode_eval2000
- utils/decode.sh --opts "$decode_opts1" --nj 30 --cmd "$decode_cmd" \
-   steps/decode_sgmm_lda_etc.sh exp/sgmm5a/graph data/train_dev exp/sgmm5a/decode_train_dev \
-   exp/tri4a/decode_train_dev
+steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config \
+  --transform-dir exp/tri5a/decode_eval2000 --nj 30 \
+   exp/tri5a/graph data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 &
 
 
-  # This decoding script doesn't do a full re-decoding but is limited to the lattices
-  # from the baseline decoding.
-  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" steps/decode_sgmm_lda_etc_fromlats.sh \
-    data/lang_test data/eval2000 exp/sgmm5a/decode_eval2000_fromlats exp/tri4a/decode_eval2000
+#HERE.
+exit 0;
 
 
-)
-
-
-
-# note: was 4k,150k when I was using all the data, may change back.
-steps/train_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
-  3500 75000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri5a
-
-utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
-
-utils/decode.sh --opts "$decode_opts2" \
-  -l data/lang_test --nj 30 --cmd "$decode_cmd" \
-  steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/eval2000 exp/tri5a/decode_eval2000
-
-utils/decode.sh --opts "$decode_opts2" \
-  --nj 30 --cmd "$decode_cmd" \
-  steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/train_dev exp/tri5a/decode_train_dev
-
-
-
-( # Try mixing up from the 5a system to see if more Gaussians helps.
-  steps/align_lda_mllt_sat.sh --nj 30 --cmd "$train_cmd" \
-    data/train_100k_nodup data/lang exp/tri5a exp/tri5a_ali_100k_nodup
- steps/mixup_lda_etc.sh --nj 30 --cmd "$train_cmd" \
-  100000 data/train_100k_nodup exp/tri5a exp/tri5a_ali_100k_nodup exp/tri5a_100k
- utils/decode.sh --opts "$decode_opts2" \
-    --nj 30 --cmd "$decode_cmd" \
-   steps/decode_lda_mllt_sat.sh exp/tri5a/graph data/train_dev exp/tri5a_100k/decode_train_dev
-)
-
-
-( 
-  # MMI starting from the system in tri5a.
-  steps/align_lda_mllt_sat.sh --nj 40 --cmd "$train_cmd" \
-    data/train_100k data/lang exp/tri5a exp/tri5a_ali_100k
   # Use a smaller beam for Switchboard, as in test time.  Use the 100k dataset,
   # but include duplicates for discriminative training.
   steps/make_denlats_lda_etc.sh --nj 40 --sub-split 40 --cmd "$train_cmd" \

@@ -108,10 +108,13 @@ static void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
                          const vector< vector<int32> > &active_states,
                          const vector<double> &state_alphas,
                          vector<double> *state_betas,
-                         map<int32, double> *post);
+                         map<int32, double> *post,
+                         double *acoustic_like_sum);
 
 
-BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
+BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
+                                 double *acoustic_like_sum) {
+  if (acoustic_like_sum) *acoustic_like_sum = 0.0;
   // Make sure the lattice is topologically sorted.
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted))
@@ -148,7 +151,8 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post) {
   for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
-                 state_alphas, &state_betas, &tmp_arc_post[cur_time - 1]);
+                 state_alphas, &state_betas, &tmp_arc_post[cur_time - 1],
+                 acoustic_like_sum);
   }
   double tot_backward_prob = state_betas[0];  // Initial state id == 0
   if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-9)) {
@@ -375,7 +379,8 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
     BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
-                 state_alphas, &state_betas, &tmp_arc_post[cur_time - 1]);
+                 state_alphas, &state_betas, &tmp_arc_post[cur_time - 1],
+                 NULL);
   }
 
   //First Pass Forward Backward check 
@@ -435,11 +440,12 @@ void ForwardNode(const Lattice &lat, int32 state,
 
 // static
 void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
-                         double tot_forward_prob,
-                         const vector< vector<int32> > &active_states,
-                         const vector<double> &state_alphas,
-                         vector<double> *state_betas,
-                         map<int32, double> *post) {
+                  double tot_forward_prob,
+                  const vector< vector<int32> > &active_states,
+                  const vector<double> &state_alphas,
+                  vector<double> *state_betas,
+                  map<int32, double> *post,
+                  double *acoustic_like_sum) {
   // Epsilon arcs leading into the state
   for (vector<int32>::const_iterator st_it = active_states[cur_time].begin();
       st_it != active_states[cur_time].end(); ++st_it) {
@@ -477,6 +483,7 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
                                           arc_loglike);
         double gamma = std::exp(state_alphas[(*st_it)] - graph_score - am_score
                                 + (*state_betas)[state] - tot_forward_prob);
+        if (acoustic_like_sum) *acoustic_like_sum -= gamma * am_score;
         if (post->find(key) == post->end())  // New label found at prev_time
           (*post)[key] = gamma;
         else  // Arc label already seen at this time

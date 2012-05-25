@@ -269,7 +269,7 @@ class MatrixBase {
      expect that S.Dim() == m, U is either NULL or m by n,
      and v is either NULL or n by n. */
   void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-                        MatrixBase<Real> *Vt);  // Destroys calling matrix.
+                      MatrixBase<Real> *Vt);  // Destroys calling matrix.
 
   /// Compute SVD (*this) = U diag(s) Vt.   Note that the v in the call is already
   /// transposed; the normal formulation is U diag(s) V^T.

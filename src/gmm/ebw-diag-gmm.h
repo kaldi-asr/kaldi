@@ -45,15 +45,20 @@ struct EbwOptions {
 struct EbwWeightOptions {
   BaseFloat min_num_count_weight_update; // minimum numerator count at state level, before we update.
   BaseFloat min_gaussian_weight;
+  BaseFloat tau; // tau value for smoothing stats in weight update.  Should probably
+  // be 10.0 or so, leaving it at 0 for back-compatibility.
   EbwWeightOptions(): min_num_count_weight_update(10.0),
-                      min_gaussian_weight(1.0e-05) { }
+                      min_gaussian_weight(1.0e-05),
+                      tau(0.0) { }
   void Register(ParseOptions *po) {
     std::string module = "EbwWeightOptions: ";
     po->Register("min-num-count-weight-update", &min_num_count_weight_update,
                  module+"Minimum numerator count required at "
-                 "state level before we update the weights.");
+                 "state level before we update the weights (only active if tau == 0.0)");
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Minimum Gaussian weight allowed in EBW update of weights");
+    po->Register("weight-tau", &tau,
+                 module+"Tau value for smoothing Gaussian weight update.");
   }
 };
 

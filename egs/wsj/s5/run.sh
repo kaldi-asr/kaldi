@@ -9,8 +9,6 @@
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
-#if false; then #TEMP
-
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
@@ -213,16 +211,10 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
    exp/tri2b_fmmi_b0.1
 
- steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 4 \
-    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it4 &
- steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 5 \
-    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it5 &
- steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 6 \
-    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it6 &
- steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 7 \
-    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it7 &
- steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
-    exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it8 &
+ for iter in 3 4 5 6 7 8; do 
+   steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter $iter \
+     exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it$iter &
+ done
 
  steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
    data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b exp/tri2b_denlats_si84 \
@@ -269,7 +261,6 @@ steps/decode_si.sh --nj 8 --cmd "$decode_cmd" \
  steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter 8 \
     exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it8 &
 
-#fi #TEMP
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
 steps/train_sat.sh --cmd "$train_cmd" \
@@ -430,42 +421,33 @@ steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
   exp/tri4b_mmi_b0.1  || exit 1;
 
-steps/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri43b/decode_tgpr_dev93 \
+steps/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode_tgpr_dev93 \
   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93
+
+#first, train UBM for fMMI experiments.
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 30 --cmd "$train_cmd" \
+  600 data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b
+
+ # I AM HERE w.r.t. running stuff
+# Next, fMMI+MMI.
+steps/train_mmi_fmmi.sh \
+  --boost 0.1 --cmd "$train_cmd" data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b exp/tri4b_denlats_si284 \
+  exp/tri4b_fmmi_a || exit 1;
+
+for iter in 3 4 5 6 7 8; do
+ steps/decode_fmmi.sh --nj 10  --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
+  exp/tri4b_fmmi_a/decode_tgpr_dev93_it$iter &
+done
+
+# Segregated some SGMM builds into a separate file.
+# Not quite finished, so commenting it out.
+# local/run_sgmm.sh
 
 ## I AM HERE.  Things below here are commands from the old run.sh,
 # and I have to change them for the current run.sh.
 exit 0;
 
-steps/train_lda_etc_mmi.sh --nj 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
-  exp/tri4b exp/tri4b_mmi || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr \
-  data/test_dev93 exp/tri4b_mmi/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93 \
-   || exit 1;
-steps/train_lda_etc_mmi.sh --boost 0.1 --nj 40 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b_ali_si284 exp/tri4b_denlats_si284 \
-  exp/tri4b exp/tri4b_mmi_b0.1 || exit 1;
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr \
- data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93 exp/tri4b/decode_tgpr_dev93 \
-   || exit 1;
- utils/decode.sh --opts "--beam 15" --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93_b15 exp/tri4b/decode_tgpr_dev93
-utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc.sh exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b_mmi_b0.1/decode_tgpr_eval92 exp/tri4b/decode_tgpr_eval92
-
- # Train fMMI+MMI system on top of 4b.
- steps/train_dubm_lda_etc.sh --silence-weight 0.5 \
-   --nj 40 --cmd "$train_cmd" 600 data/train_si284 \
-   data/lang exp/tri4b_ali_si284 exp/dubm4b
- steps/train_lda_etc_mmi_fmmi.sh \
-   --nj 40 --boost 0.1 --cmd "$train_cmd" \
-   data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b exp/tri4b_denlats_si284 \
-   exp/tri4b exp/tri4b_fmmi_b0.1 
- utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc_fmpe.sh \
-   exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b_fmmi_b0.1/decode_tgpr_eval92 \
-   exp/tri4b/decode_tgpr_eval92
- utils/decode.sh --cmd "$decode_cmd" steps/decode_lda_etc_fmpe.sh \
-   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_fmmi_b0.1/decode_tgpr_dev93 \
-   exp/tri4b/decode_tgpr_dev93
 
 
 

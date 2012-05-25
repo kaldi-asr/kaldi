@@ -429,7 +429,7 @@ bool SpMatrix<Real>::ApproxEqual(const SpMatrix<Real> &other, float tol) const {
 // function Floor: A = Floor(B, alpha * C) ... see tutorial document.
 template<typename Real>
 int SpMatrix<Real>::ApplyFloor(const SpMatrix<Real> &C, Real alpha,
-                               bool verbose) {
+                               bool verbose, bool is_psd) {
   MatrixIndexT dim = this->NumRows();
   int nfloored = 0;
   KALDI_ASSERT(C.NumRows() == dim);
@@ -448,7 +448,12 @@ int SpMatrix<Real>::ApplyFloor(const SpMatrix<Real> &C, Real alpha,
 
   Vector<Real> l(dim);
   Matrix<Real> U(dim, dim);
-  D.SymPosSemiDefEig(&l, &U);
+  if (is_psd)
+    D.SymPosSemiDefEig(&l, &U);
+  else // We added the "Eig" function more recently.  It's not as accurate
+    D.Eig(&l, &U); // as in the symmetric positive semidefinite case,
+  // so we only use it if the user says the calling matrix is not
+  // positive semidefinite.
   if (verbose) {
     KALDI_LOG << "ApplyFloor: flooring following diagonal to 1: " << l;
   }
@@ -466,6 +471,59 @@ int SpMatrix<Real>::ApplyFloor(const SpMatrix<Real> &C, Real alpha,
     (*this).AddMat2Sp(1.0, LFull, kNoTrans, D, 0.0);  // A := L * D' * L^T
   }
   return nfloored;
+}
+
+
+template<typename Real>
+void SpMatrix<Real>::EigInternal(VectorBase<Real> *eigs, MatrixBase<Real> *P,
+                                 Real tolerance, int recurse) const {
+  MatrixIndexT dim = this->NumRows();
+  KALDI_ASSERT(eigs->Dim() == dim && P->NumRows() == dim && P->NumCols() == dim);
+
+  if (recurse > 5) {
+    tolerance *= 2.0;
+    KALDI_WARN << "Doing symmetric eigenvalue problem: recursed to level "
+               << recurse << ", decreasing tolerance to " << tolerance;
+  } else if (recurse > 20) {
+    KALDI_ERR << "Doing symmetric eigenvalue problem: recursed 20 times and "
+        "still no success. ";
+  }
+  // Note: P takes the place of U in the SVD.
+  Matrix<Real> M(*this), Vt(dim, dim);
+  M.DestructiveSvd(eigs, P, &Vt);
+  P->Transpose(); // make it so the rows correspond to the eigenvalues.
+  Real max_abs_eig = eigs->Max();
+  MatrixIndexT d;
+  for (d = 0; d < dim; d++) {
+    if (VecVec(P->Row(d), Vt.Row(d)) < 0.0) {
+      (*eigs)(d) *= -1.0;
+      Vt.Row(d).Scale(-1.0);
+    }
+  }
+  Vt.AddMat(-1.0, *P);
+  for (d = 0; d < dim; d++) {
+    BaseFloat error = fabs((*eigs)(d)) * Vt.Row(d).Norm(2.0);
+    if (error > tolerance * max_abs_eig) // reject this SVD.
+      break;
+  }
+  if (d == dim) { // we didn't break -> success.
+    P->Transpose(); // Transpose back.
+    return;
+  } else { // We'll add something times the unit matrix to our matrix,
+    // do the computation again, and then subtract that from the eigenvalues.
+    // We could be super-careful about how much we add, trying to pick a nice
+    // gap in eigenvalues or something, but right now we just add 10^{-5}
+    // times the maximum eigenvalue.  It will fail extremely rarely, and
+    // in those cases we'll just recurse again.
+    Real to_add = max_abs_eig * 1.0e-3;
+    SpMatrix<Real> perturbed(*this);
+    for (MatrixIndexT d = 0; d < dim; d++)
+      perturbed(d,d) += to_add;
+    KALDI_VLOG(1) << "Recursing in eigenvalue computation.";
+    perturbed.EigInternal(eigs, P, tolerance, recurse+1);
+    eigs->Add(-to_add);
+    return;
+  }
 }
 
 template<class Real>

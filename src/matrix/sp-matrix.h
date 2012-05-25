@@ -154,7 +154,7 @@ class SpMatrix : public PackedMatrix<Real> {
 
   /// This is the version of SVD that we implement for symmetric matrices.
   /// It uses the singular value decomposition algorithm to compute the
-  /// eigenvalue decomposition (*this) = U * diag(s) * U^T with U orthogonal.
+  /// eigenvalue decomposition (*this) = P * diag(s) * P^T with P orthogonal.
   /// Will throw exception if input is not positive semidefinite to within a
   /// tolerance. This is the same as SVD, for the +ve semidefinite case.
   /// (The reason we don't have generic symmetric eigenvalue decomposition,
@@ -165,8 +165,21 @@ class SpMatrix : public PackedMatrix<Real> {
 
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real tolerance = 0.001) const;
-
-
+  
+  /// Solves the symmetric eigenvalue problem: at end we should have
+  /// (*this) = P * diag(s) * P^T.  Currently, since we don't assume
+  /// we have Lapack and we don't want to deal with the hassle of writing this
+  /// function in two ways, it does the computation using one and possibly more
+  /// calls to (generic, full-matrix) SVD code.  This gives us the answer
+  /// directly, except in the case where there are positive and negative
+  /// eigenvalues with the same absolute value, that can "mix up" the two
+  /// eigenspaces-- in this case we add some amount times the identity and try
+  /// again.  Note: if we really cared about efficiency we'd do the
+  /// re-computation in just the two eigenspaces of opposite sign but same
+  /// magnitude, but this is rare anyway.
+  void Eig(VectorBase<Real> *s, MatrixBase<Real> *P,
+           Real tolerance = 2.0e-05) const { EigInternal(s, P, tolerance, 0); }
+  
   /// Takes log of the matrix (does eigenvalue decomposition then takes
   /// log of eigenvalues and reconstructs).  Will throw of not +ve definite.
   void Log();
@@ -236,13 +249,15 @@ class SpMatrix : public PackedMatrix<Real> {
 
 
   ///  Floors this symmetric matrix to the matrix
-  /// alpha * Floor, where Floor must be positive definite.
+  /// alpha * Floor, where the matrix Floor is positive
+  /// definite.  If is_psd = true, then the
+  /// matrix (*this) must be positive semidefinite.
   /// It is floored in the sense that after flooring,
   ///  x^T (*this) x  >= x^T (alpha*Floor) x.
   /// This is accomplished using an Svd.  It will crash
-  /// if Floor is not positive definite. // returns #floored
+  /// if Floor is not positive definite. returns #floored
   int ApplyFloor(const SpMatrix<Real> &Floor, Real alpha = 1.0,
-                 bool verbose = false);
+                 bool verbose = false, bool is_psd = true);
 
   /// Floor: Given a positive semidefinite matrix, floors the eigenvalues
   /// to the specified quantity.  Positive semidefiniteness is only assumed
@@ -283,6 +298,8 @@ class SpMatrix : public PackedMatrix<Real> {
     return ans;
   }
  private:
+  void EigInternal(VectorBase<Real> *s, MatrixBase<Real> *P,
+                   Real tolerance, int recurse) const;
 };
 
 /// @} end of "addtogroup matrix_group"

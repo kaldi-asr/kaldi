@@ -64,8 +64,12 @@ case $feat_type in
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
-[ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
+if [ -f $alidir/trans.1 ]; then
+  echo Using transforms from $alidir;
+  [ "$nj" -ne "`cat $alidir/num_jobs`" ] && \
+    echo "The number of jobs differs from alignment directory $alidir." && exit 1;
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"
+fi
 
 if [ ! -z "$silence_weight" ]; then
   [ ! -f $alidir/ali.1.gz ] && \

@@ -405,11 +405,12 @@ AmSgmm::ComponentPosteriors(const SgmmPerFrameDerivedVars &per_frame_vars,
   KALDI_ASSERT(j < NumPdfs());
   if (post == NULL) KALDI_ERR << "NULL pointer passed as return argument.";
   const vector<int32> &gselect = per_frame_vars.gselect;
-  post->Resize(gselect.size(), NumSubstates(j));
+  int32 num_gselect = gselect.size();
+  post->Resize(num_gselect, NumSubstates(j));
 
   // Eq.(37): log p(x(t), m, i|j) = z_{i}^T v_{jm} (for all substates)
   post->AddMatMat(1.0, per_frame_vars.zti, kNoTrans, v_[j], kTrans, 0.0);
-  for (int32 ki = 0, last = gselect.size();  ki < last; ++ki) {
+  for (int32 ki = 0; ki < num_gselect; ki++) {
     int32 i = gselect[ki];
     // Eq. (37): log p(x(t), m, i|j) += n_{jim} + n_{i}(t) (for all substates)
     post->Row(ki).AddVec(1.0, n_[j].Row(i));
@@ -1353,6 +1354,94 @@ void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
   }
 }
 
+void SgmmFeature::ComputeAvgPhoneVec(const AmSgmm &sgmm) {
+  Vector<double> stats(sgmm.PhoneSpaceDim());
+  int32 count = 0;
+  for (int32 j = 0; j < sgmm.NumPdfs(); j++) {
+    for (int32 m = 0; m < sgmm.NumSubstates(j); m++) {
+      stats.AddVec(1.0, sgmm.v_[j].Row(m));
+      count++;
+    }
+  }
+  KALDI_ASSERT(count > 0);
+  stats.Scale(1.0 / count);
+  avg_phone_vec_.CopyFromVec(stats);
+}
+
+void SgmmFeature::ComputeNormalizersAndDerivs(const AmSgmm &sgmm) {
+  BaseFloat DLog2pi = sgmm.FeatureDim() * log(2 * M_PI);
+
+  
+  Vector<BaseFloat> log_w_jm(sgmm.NumGauss());
+  Vector<BaseFloat> mu_jmi(sgmm.FeatureDim());
+  Vector<BaseFloat> SigmaInv_mu(sgmm.FeatureDim());
+        
+  log_w_jm.AddMatVec(1.0, sgmm.w_, kNoTrans, avg_phone_vec_, 0.0);
+  log_w_jm.Add(-1.0 * log_w_jm.LogSumExp()); // normalize.
+
+  Vector<BaseFloat> base_w_deriv(sgmm.PhoneSpaceDim()); // The part of
+  // the derivative that comes from the denominator of the weight w_{jmi}.
+  // This part is shared among all Gaussians [actually it doesn't
+  // matter if we get this wrong, as it's just an offset on the
+  // feature space.]
+  {
+    Vector<BaseFloat> w_jm(log_w_jm);
+    w_jm.ApplyExp();
+    base_w_deriv.AddMatVec(-1.0, sgmm.w_, kTrans, w_jm, 0.0);
+    for (int32 i = 0; i < sgmm.NumGauss(); i++)
+      derivs_.Row(i).CopyFromVec(base_w_deriv);
+    derivs_.AddMat(1.0, sgmm.w_); // the part of the derivative that comes
+    // from the numerator term in the weight.
+  }  
+  
+  for (int32 i = 0; i < sgmm.NumGauss(); i++) {
+    BaseFloat log_det_Sigma = - sgmm.SigmaInv_[i].LogPosDefDet();
+    mu_jmi.AddMatVec(1.0, sgmm.M_[i], kNoTrans, avg_phone_vec_, 0.0);
+    SigmaInv_mu.AddSpVec(1.0, sgmm.SigmaInv_[i], mu_jmi, 0.0);
+    BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi, SigmaInv_mu);
+    derivs_.Row(i).AddMatVec(-1.0, sgmm.M_[i], kTrans, SigmaInv_mu);
+    normalizers_(i) = log_w_jm(i) - 0.5 * (log_det_Sigma + DLog2pi + mu_SigmaInv_mu);
+  }
+}
+
+SgmmFeature::SgmmFeature(const AmSgmm &sgmm):
+    avg_phone_vec_(sgmm.PhoneSpaceDim()), normalizers_(sgmm.NumGauss()),
+    derivs_(sgmm.NumGauss(), sgmm.PhoneSpaceDim()) {
+  ComputeAvgPhoneVec(sgmm);
+  ComputeNormalizersAndDerivs(sgmm);
+}
+    
+
+
+BaseFloat SgmmFeature::ComputeFeature(const SgmmPerFrameDerivedVars &per_frame_vars,
+                                      VectorBase<BaseFloat> *feature) const {
+  int32 phone_space_dim = avg_phone_vec_.Dim();
+  KALDI_ASSERT(feature->Dim() == phone_space_dim);
+  
+  // First compute the posterior probabilities of each of the
+  // pre-selected indices, given this "average" feature vector.
+  const vector<int32> &gselect = per_frame_vars.gselect;
+  int32 num_gselect = gselect.size();
+  Vector<BaseFloat> posteriors(num_gselect); // initially log-post.
+  
+  // Like Eq.(37): log p(x(t), m, i|j) = z_{i}^T v_{jm} + ...
+  posteriors.AddMatVec(1.0, per_frame_vars.zti, kNoTrans, avg_phone_vec_, 0.0);
+  posteriors.AddVec(1.0, per_frame_vars.nti);
+  
+  for (int32 ki = 0; ki < num_gselect; ki++) {
+    int32 i = gselect[ki];
+    // Eq. (37): log p(x(t), m, i|j) += n_{jim} + n_{i}(t) (for all substates)
+    posteriors(ki) += normalizers_(i);
+  }
+  BaseFloat ans = posteriors.ApplySoftMax();
+  feature->SetZero();
+  for (int32 ki = 0; ki < num_gselect; ki++) {
+    int32 i = gselect[ki];
+    feature->AddVec(posteriors(ki), per_frame_vars.zti.Row(ki));
+    feature->AddVec(posteriors(ki), derivs_.Row(i));
+  }
+  return ans;
+}
 
 
 }  // namespace kaldi

@@ -1,7 +1,8 @@
 // gmm/am-diag-gmm.h
 
-// Copyright 2009-2011  Saarland University
-// Author:  Arnab Ghoshal
+// Copyright 2009-2012  Saarland University (Author:  Arnab Ghoshal)
+//                      Johns Hopkins University (Author: Daniel Povey)
+//                      Karel Vesely
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,7 +75,7 @@ class AmDiagGmm {
   void Write(std::ostream &out_stream, bool binary) const;
 
   int32 Dim() const { return dim_; }
-  void Dim(int32 dim) { dim_=dim; }
+  void SetDim(int32 dim) { dim_=dim; } // call this in case you change dim of pdfs in model.
   int32 NumPdfs() const { return densities_.size(); }
   int32 NumGauss() const;
   int32 NumGaussInPdf(int32 pdf_index) const;

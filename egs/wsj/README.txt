@@ -27,6 +27,7 @@ scripts at the moment.
       general scripts.
 
   s5: This is currently under construction-- it is a "new-new-style" recipe
-      which fixes certain problems with the s3 recipe.
+      which fixes certain problems with the s3 recipe.  This WSJ example
+      is not quite finished yet, but the corresponding RM recipe is finished.
 
 

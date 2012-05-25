@@ -11,7 +11,7 @@
 
 # Begin configuration section.
 cmd=run.pl
-schedule="fmmi mmi fmmi mmi fmmi mmi fmmi mmi"
+schedule="fmmi fmmi fmmi fmmi mmi mmi mmi mmi"
 boost=0.0
 learning_rate=0.01
 tau=200 # For model.  Note: we're doing smoothing "to the previous iteration",

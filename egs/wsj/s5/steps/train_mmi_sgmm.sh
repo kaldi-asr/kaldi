@@ -1,38 +1,33 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# MMI training (or optionally boosted MMI, if you give the --boost option).
-# 4 iterations (by default) of Extended Baum-Welch update.
+# MMI training (or optionally boosted MMI, if you give the --boost option),
+# for SGMMs.  4 iterations (by default) of Extended Baum-Welch update.
 #
-# For the numerator we have a fixed alignment rather than a lattice--
-# this actually follows from the way lattices are defined in Kaldi, which
-# is to have a single path for each word (output-symbol) sequence.
-
 # Begin configuration section.
 cmd=run.pl
 num_iters=4
 boost=0.0
 cancel=true # if true, cancel num and den counts on each frame.
-tau=200
-weight_tau=10
 acwt=0.1
 stage=0
+update_opts=
+transform_dir=
 # End configuration section
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 if [ $# -ne 5 ]; then
-  echo "Usage: steps/train_mmi.sh <data> <lang> <ali> <denlats> <exp>"
-  echo " e.g.: steps/train_mmi.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
+  echo "Usage: steps/train_mmi_sgmm.sh <data> <lang> <ali> <denlats> <exp>"
+  echo " e.g.: steps/train_mmi_sgmm.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
   echo "Main options (for others, see top of script file)"
   echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
   echo "  --cancel (true|false)                            # cancel stats (true by default)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
-  echo "  --stage <stage>                                  # stage to do partial re-run from."
-  echo "  --tau                                            # tau for i-smooth to last iter (default 200)"
-  
+  echo "  --stage <stage>                                  # stage to do partial re-run from."  
+  echo "  --transform-dir <transform-dir>                  # directory to find fMLLR transforms."
   exit 1;
 fi
 
@@ -72,8 +67,29 @@ case $feat_type in
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
-[ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+if [ ! -z "$transform_dir" ]; then
+  echo "$0: using transforms from $transform_dir"
+  [ ! -f $transform_dir/trans.1 ] && echo "$0: no such file $transform_dir/trans.1" \
+    && exit 1;
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+else
+  echo "$0: no fMLLR transforms."
+fi
+
+if [ -f $alidir/vecs.1 ]; then
+  echo "$0: using speaker vectors from $alidir"
+  spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
+else
+  echo "$0: no speaker vectors."
+  spkvecs_opt=
+fi
+
+if [ -f $alidir/gselect.1.gz ]; then
+  echo "$0: using Gaussian-selection info from $alidir"
+  gselect_opt="--gselect=ark:gunzip -c $alidir/gselect.JOB.gz|"
+else
+  echo "$0: error: no Gaussian-selection info found" && exit 1;
+fi
 
 lats="ark:gunzip -c $denlatdir/lat.JOB.gz|"
 if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then
@@ -89,39 +105,31 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-      gmm-rescore-lattice $cur_mdl "$lats" "$feats" ark:- \| \
+      sgmm-rescore-lattice "$gselect_opt" $spkvecs_opt $cur_mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
-      gmm-acc-stats2 $cur_mdl "$feats" ark,s,cs:- \
-      $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
+      sgmm-acc-stats2 "$gselect_opt" $spkvecs_opt $cur_mdl "$feats" ark,s,cs:- \
+        $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
 
     n=`echo $dir/{num,den}_acc.$x.*.acc | wc -w`;
     [ "$n" -ne $[$nj*2] ] && \
       echo "Wrong number of MMI accumulators $n versus 2*$nj" && exit 1;
     $cmd $dir/log/den_acc_sum.$x.log \
-      gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
+      sgmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
     rm $dir/den_acc.$x.*.acc
     $cmd $dir/log/num_acc_sum.$x.log \
-      gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
+      sgmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
     rm $dir/num_acc.$x.*.acc
 
-  # note: this tau value is for smoothing towards model parameters, not
-  # as in the Boosted MMI paper, not towards the ML stats as in the earlier
-  # work on discriminative training (e.g. my thesis).  
-  # You could use gmm-ismooth-stats to smooth to the ML stats, if you had
-  # them available [here they're not available if cancel=true].
-
     $cmd $dir/log/update.$x.log \
-      gmm-est-gaussians-ebw --tau=$tau $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - \| \
-      gmm-est-weights-ebw --weight-tau=$weight_tau - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
-    rm $dir/{den,num}_acc.$x.acc
+     sgmm-est-ebw $update_opts $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
   fi
   cur_mdl=$dir/$[$x+1].mdl
 
-  # Some diagnostics: the objective function progress and auxiliary-function
-  # improvement.
 
+  # Some diagnostics: the objective function progress and auxiliary-function
+  # improvement.  Note: this code is same as in train_mmi.sh
   tail -n 50 $dir/log/acc.$x.*.log | perl -e '$acwt=shift @ARGV; while(<STDIN>) { if(m/gmm-acc-stats2.+Overall weighted acoustic likelihood per frame was (\S+) over (\S+) frames/) { $tot_aclike += $1*$2; $tot_frames1 += $2; } if(m|lattice-to-post.+Overall average log-like/frame is (\S+) over (\S+) frames.  Average acoustic like/frame is (\S+)|) { $tot_den_lat_like += $1*$2; $tot_frames2 += $2; $tot_den_aclike += $3*$2; } } if (abs($tot_frames1 - $tot_frames2) > 0.01*($tot_frames1 + $tot_frames2)) { print STDERR "Frame-counts disagree $tot_frames1 versus $tot_frames2\n"; } $tot_den_lat_like /= $tot_frames2; $tot_den_aclike /= $tot_frames2; $tot_aclike *= ($acwt / $tot_frames1);  $num_like = $tot_aclike + $tot_den_aclike; $per_frame_objf = $num_like - $tot_den_lat_like; print "$per_frame_objf $tot_frames1\n"; ' $acwt > $dir/tmpf
   objf=`cat $dir/tmpf | awk '{print $1}'`;
   nf=`cat $dir/tmpf | awk '{print $2}'`;
