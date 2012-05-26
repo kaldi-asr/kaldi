@@ -256,6 +256,10 @@ void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id) {
   } else
   #endif
   {
+    //allocate index buffer
+    id->Resize(mat.NumRows());
+    id->Set(-1);
+    //find maxima
     for(int32 r=0; r<mat.NumRows(); r++) {
       BaseFloat max = -1e21;
       int32 max_id = -1;

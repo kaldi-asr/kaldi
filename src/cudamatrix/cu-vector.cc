@@ -87,7 +87,7 @@ void CuVector<float>::AddColSum(float alpha, const CuMatrix<float>& mat, float b
   } else
   #endif
   {
-    Vector<BaseFloat> tmp;
+    Vector<BaseFloat> tmp(mat.NumCols());
     for(MatrixIndexT r=0; r<mat.NumRows(); r++) {
       tmp.AddVec(1.0,mat.Mat().Row(r));
     }
