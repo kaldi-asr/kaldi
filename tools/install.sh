@@ -171,7 +171,8 @@ fi
   echo "****(6) Install openfst"
 
   rm openfst-1.2.10.tar.gz 2>/dev/null
-  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz
+  wget -T 10 -t 3 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.2.10.tar.gz || \
+   wget --no-check-certificate -T 10 -t 3 https://sourceforge.net/projects/kaldi/files/openfst-1.2.10.tar.gz
 
   if [ ! -e openfst-1.2.10.tar.gz ]; then
     echo "****download openfst-1.2.10.tar.gz failed."
