@@ -436,24 +436,6 @@ class AmSgmmFunctions {
                                MatrixBase<BaseFloat> *dists);
 };
 
-class SgmmFeature { // a way of extracting a kind of features from SGMMs.
-  // It's the derivative w.r.t. the phonetic-substate vector, the
-  // derivative being taken at the average phonetic-substate vector.
-
- public:
-  SgmmFeature(const AmSgmm &sgmm);
-  // ComputeFeature returns a log-like, computed at the average
-  // phone-vector value.
-  BaseFloat ComputeFeature(const SgmmPerFrameDerivedVars &per_frame_vars,
-                           VectorBase<BaseFloat> *feature) const;
- private:
-  void ComputeAvgPhoneVec(const AmSgmm &sgmm);
-  void ComputeNormalizersAndDerivs(const AmSgmm &sgmm);
-  Vector<BaseFloat> avg_phone_vec_; // average of all the v_{jm}
-  Vector<BaseFloat> normalizers_; // normalizers used in likelihood computation.
-  Matrix<BaseFloat> derivs_; // derivative of each normalizer w.r.t v_{jm}
-};
-
 }  // namespace kaldi
 
 

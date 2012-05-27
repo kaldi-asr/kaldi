@@ -12,7 +12,7 @@ BINFILES = init-ubm sgmm-align-compiled sgmm-acc-stats-ali \
            sgmm-latgen-faster sgmm-rescore-lattice sgmm-copy sgmm-write-ubm \
            sgmm-mixup sgmm-info sgmm-acc-tree-stats sgmm-sum-tree-stats \
            sgmm-build-tree sgmm-cluster-phones sgmm-init-from-tree-stats \
-           sgmm-est-ebw sgmm-acc-stats2 sgmm-gen-feats
+           sgmm-est-ebw sgmm-acc-stats2
 
 OBJFILES =
 
