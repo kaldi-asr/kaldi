@@ -34,8 +34,10 @@ fi
 
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/decode_deltas.sh <model-dir> <data-dir> <lang-dir> <decode-dir>"
-   echo " e.g.: steps/decode_deltas.sh exp/mono data/test_feb89 data/test_lang exp/mono/decode_feb89"
+   echo "Usage: steps/decode_nnet.sh [--acoustic-scale x] [--prior-scale y] <model-dir> <data-dir> <lang-dir> <decode-dir>"
+   echo " e.g.: steps/decode_nnet.sh exp/mono data/test_feb89 data/test_lang exp/mono/decode_feb89"
+   echo 
+   echo "Called as: $@"
    exit 1;
 fi
 

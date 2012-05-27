@@ -97,7 +97,7 @@ steps/train_nnet.sh data/train data/lang exp/tri2a-${numleaves}_ali exp/tri2a-${
 # build graph
 scripts/mkgraph.sh data/lang_test exp/tri2a-${numleaves} exp/tri2a-${numleaves}_nnet/graph || exit 1;
 # decode 
-local/decode.sh "steps/decode_nnet.sh --acousctic-scale 0.199593"  exp/tri2a-${numleaves}_nnet || exit 1;
+local/decode.sh "steps/decode_nnet.sh --acoustic-scale 0.199593"  exp/tri2a-${numleaves}_nnet || exit 1;
 # tune acousticscale (see the oracle)
 #scripts/tune_scalar.py local/decode.sh "steps/decode_nnet.sh --acoustic-scale %g" exp/tri2a-${numleaves}_nnet 0.0 0.5 || exit 1;
 
