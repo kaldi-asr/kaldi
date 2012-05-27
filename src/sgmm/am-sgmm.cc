@@ -1433,13 +1433,15 @@ BaseFloat SgmmFeature::ComputeFeature(const SgmmPerFrameDerivedVars &per_frame_v
     // Eq. (37): log p(x(t), m, i|j) += n_{jim} + n_{i}(t) (for all substates)
     posteriors(ki) += normalizers_(i);
   }
+
   BaseFloat ans = posteriors.ApplySoftMax();
-  feature->SetZero();
+  Vector<BaseFloat> deriv(phone_space_dim);
   for (int32 ki = 0; ki < num_gselect; ki++) {
     int32 i = gselect[ki];
-    feature->AddVec(posteriors(ki), per_frame_vars.zti.Row(ki));
-    feature->AddVec(posteriors(ki), derivs_.Row(i));
+    deriv.AddVec(posteriors(ki), per_frame_vars.zti.Row(ki));
+    deriv.AddVec(posteriors(ki), derivs_.Row(i));
   }
+  feature->CopyFromVec(deriv);
   return ans;
 }
 
