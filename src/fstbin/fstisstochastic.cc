@@ -20,7 +20,7 @@
 #include "util/kaldi-io.h"
 #include "util/parse-options.h"
 #include "fst/fstlib.h"
-#include "fstext/make-stochastic.h"
+#include "fstext/fstext-utils.h"
 
 // e.g. of test:
 // echo " 0 0" | fstcompile | fstisstochastic

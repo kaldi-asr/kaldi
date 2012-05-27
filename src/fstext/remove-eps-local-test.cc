@@ -1,6 +1,6 @@
 // fstext/remove-eps-local-test.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "fstext/remove-eps-local.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
-#include "fstext/make-stochastic.h" // needed for testing RemoveEpsLocalStdArc
 
 
 
@@ -112,11 +111,28 @@ template<class Arc> static void TestRemoveEpsLocal() {
 static void TestRemoveEpsLocalSpecial() {
   // test that RemoveEpsLocalSpecial preserves equivalence in tropical while
   // maintaining stochasticity in log.
+  typedef VectorFst<LogArc> Fst;
+  typedef LogArc::Weight Weight;
+  typedef LogArc::StateId StateId;
+  typedef LogArc Arc;
   VectorFst<LogArc> *logfst = RandFst<LogArc>();
-
-  MakeStochasticOptions opts;
-  vector<float> garbage;
-  MakeStochasticFst(opts, logfst, &garbage, NULL);
+ 
+  { // Make the FST stochastic.
+    for (StateId s = 0; s < logfst->NumStates(); s++) {
+      Weight w = logfst->Final(s);
+      for (ArcIterator<Fst> aiter(*logfst, s); !aiter.Done(); aiter.Next()) {
+        w = Plus(w, aiter.Value().weight);
+      }
+      if (w != Weight::Zero()) {
+        logfst->SetFinal(s, Divide(logfst->Final(s), w, DIVIDE_ANY));
+        for (MutableArcIterator<Fst> aiter(logfst, s); !aiter.Done(); aiter.Next()) {
+          Arc a = aiter.Value();
+          a.weight = Divide(a.weight, w, DIVIDE_ANY);
+          aiter.SetValue(a);
+        }
+      }
+    }
+  }        
 #ifndef _MSC_VER
   assert(IsStochasticFst(*logfst, kDelta*10));
 #endif

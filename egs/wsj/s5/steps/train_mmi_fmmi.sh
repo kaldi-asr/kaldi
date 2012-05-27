@@ -20,6 +20,7 @@ tau=200 # For model.  Note: we're doing smoothing "to the previous iteration",
     # we are discriminatively training the features (and not using
     # the indirect differential), so it seems like it wouldn't make 
     # sense to use any element of ML.
+weight_tau=10 # for model weights.
 cancel=true # if true, cancel num and den counts as described in 
      # the boosted MMI paper. 
 indirect=true # if true, use indirect derivative.
@@ -183,7 +184,7 @@ while [ $x -lt $num_iters ]; do
       # make smoothing to ML impossible without accumulating extra stats.
       $cmd $dir/log/update.$x.log \
         gmm-est-gaussians-ebw --tau=$tau $dir/$x.mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - \| \
-        gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
+        gmm-est-weights-ebw --weight-tau=$weight_tau - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
     else 
       echo "not doing this iteration because --stage=$stage"
     fi

@@ -17,7 +17,6 @@
 
 #include "fstext/context-fst.h"
 #include "fstext/fst-test-utils.h"
-#include "fstext/make-stochastic.h"
 #include "tree/context-dep.h"
 #include "util/kaldi-io.h"
 

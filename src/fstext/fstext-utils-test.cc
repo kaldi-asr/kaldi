@@ -1,6 +1,6 @@
 // fstext/fstext-utils-test.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 #include "base/kaldi-common.h" // for exceptions
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
-#include "fstext/make-stochastic.h"
 #include "util/stl-utils.h"
 
 
@@ -239,13 +238,34 @@ template<class Arc>  void TestOptimize() {
 
 
 static void TestOptimizeStochastic() {
+  typedef VectorFst<LogArc> Fst;
+  typedef LogArc::Weight Weight;
+  typedef LogArc::StateId StateId;
+  typedef LogArc Arc;
+
   // test that Optimize preserves equivalence in tropical while
   // maintaining stochasticity in log.
-  VectorFst<LogArc> *logfst = RandFst<LogArc>();
+  VectorFst<LogArc> *logfst = RandFst<LogArc>();  
 
-  MakeStochasticOptions opts;
+
   vector<float> garbage;
-  MakeStochasticFst(opts, logfst, &garbage, NULL);
+
+  { // Make the FST stochastic.
+    for (StateId s = 0; s < logfst->NumStates(); s++) {
+      Weight w = logfst->Final(s);
+      for (ArcIterator<Fst> aiter(*logfst, s); !aiter.Done(); aiter.Next()) {
+        w = Plus(w, aiter.Value().weight);
+      }
+      if (w != Weight::Zero()) {
+        logfst->SetFinal(s, Divide(logfst->Final(s), w, DIVIDE_ANY));
+        for (MutableArcIterator<Fst> aiter(logfst, s); !aiter.Done(); aiter.Next()) {
+          Arc a = aiter.Value();
+          a.weight = Divide(a.weight, w, DIVIDE_ANY);
+          aiter.SetValue(a);
+        }
+      }
+    }
+  }        
 #if !defined(_MSC_VER)
   assert(IsStochasticFst(*logfst, kDelta*10));
 #endif
@@ -287,95 +307,6 @@ static void TestOptimizeStochastic() {
   delete logfst;
 }
 
-
-static void TestOptimizeSpecial() {
-  std::cout << "TestOptimizeSpecial: \n";
-  typedef StdArc Arc;
-  VectorFst<Arc> *fst = RandFst<Arc>();
-  {
-    std::cout << "fst = \n";
-    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-  OptimizeConfig cfg;
-  typedef StdArc::Label Label;
-  KALDI_LOG <<  "Optimize: about to determinize.";
-  {  // Determinize.
-    VectorFst<StdArc> det_fst;
-    if (cfg.maintain_log_stochasticity) SafeDeterminizeWrapperInLog(fst, &det_fst, cfg.delta);
-    else SafeDeterminizeWrapper(fst, &det_fst, cfg.delta);
-    *fst = det_fst;
-  }
-  {
-    std::cout << "fst (post-determinize) = \n";
-    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-
-  if (cfg.maintain_log_stochasticity) RemoveEpsLocalSpecial(fst);
-  else RemoveEpsLocal(fst);
-
-  {
-    std::cout << "fst (post-remove-eps) = \n";
-    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-
-  if (cfg.push_weights || cfg.push_labels) {  // need to do some kind of pushing...
-    KALDI_LOG <<  "Optimize: about to push.";
-    if (cfg.push_weights &&  cfg.push_in_log) {
-      VectorFst<LogArc> *log_fst = new VectorFst<LogArc>;
-      Cast(*fst, log_fst);
-      VectorFst<LogArc> *log_fst_pushed = new VectorFst<LogArc>;
-
-      Push<LogArc, REWEIGHT_TO_INITIAL>
-           (*log_fst, log_fst_pushed,
-            (cfg.push_weights?kPushWeights:0)|(cfg.push_labels?kPushLabels:0),
-            cfg.delta);
-
-      Cast(*log_fst_pushed, fst);
-      delete log_fst;
-      delete log_fst_pushed;
-
-      {
-        std::cout << "fst (post-push) = \n";
-        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-        fstprinter.Print(&std::cout, "standard output");
-      }
-
-    } else {
-      VectorFst<StdArc> fst_pushed;
-      Push<StdArc, REWEIGHT_TO_INITIAL>
-          (*fst, &fst_pushed,
-           (cfg.push_weights?kPushWeights:0)|(cfg.push_labels?kPushLabels:0),
-           cfg.delta);
-      *fst = fst_pushed;
-    }
-  }
-  KALDI_LOG <<  "Optimize: about to minimize.";
-  MinimizeEncoded(fst, cfg.delta);
-
-  {
-    std::cout << "fst (post-minimize) = \n";
-    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-
-  // now do DFS-order.
-  KALDI_LOG << "Optimize: about to sort arcs by weight.";
-  WeightArcSort(fst);
-  KALDI_LOG << "Optimize: about to dfs order.";
-  VectorFst<StdArc> ordered;
-  DfsReorder(*fst, &ordered);
-  *fst = ordered;
-
-  {
-    std::cout << "fst (post-reorder) = \n";
-    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-  delete fst;
-}
 
 
 template<class Arc>  void TestMakeSymbolsSame() {
@@ -612,10 +543,6 @@ int main() {
     fst::TestAcceptorMinimize<fst::StdArc>();
     fst::TestOptimize<fst::StdArc>();
     fst::TestOptimizeStochastic();  // make sure Optimize() preserves stochasticity.
-    fst::TestOptimizeSpecial();  // a special test to debug something weird with this function.
-    // fst::TestPushInLog(): mostly succeeds but sometimes doesn't
-    //  terminate, which is actually valid given the nature of the
-    //  test...
     fst::TestMakeSymbolsSame<fst::StdArc>();
     fst::TestMakeSymbolsSame<fst::LogArc>();
     fst::TestMakeSymbolsSameClass<fst::StdArc>();

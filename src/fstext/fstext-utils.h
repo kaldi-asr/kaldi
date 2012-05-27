@@ -619,6 +619,32 @@ inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
                           std::string wxfilename);
 
 
+/** This function returns true if, in the semiring of the FST, the sum (within
+    the semiring) of all the arcs out of each state in the FST is one, to within
+    delta.  After MakeStochasticFst, this should be true (for a connected FST).
+
+    @param fst [in] the FST that we are testing.
+    @param delta [in] the tolerance to within which we test equality to 1.
+    @param min_sum [out] if non, NULL, contents will be set to the minimum sum of weights.
+    @param max_sum [out] if non, NULL, contents will be set to the maximum sum of weights.
+    @return Returns true if the FST is stochastic, and false otherwise.
+*/
+
+template<class Arc>
+bool IsStochasticFst(const Fst<Arc> &fst,
+                     float delta = kDelta,  // kDelta = 1.0/1024.0 by default.
+                     typename Arc::Weight *min_sum = NULL,
+                     typename Arc::Weight *max_sum = NULL);
+
+
+
+
+// IsStochasticFstInLog makes sure it's stochastic after casting to log.
+inline bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+                                 float delta = kDelta,  // kDelta = 1.0/1024.0 by default.
+                                 StdArc::Weight *min_sum = NULL,
+                                 StdArc::Weight *max_sum = NULL);
+
 
 } // end namespace fst
 

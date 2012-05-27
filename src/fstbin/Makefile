@@ -14,12 +14,11 @@ TESTFILES =
 
 OBJFILES = 
 
-BINFILES = fstpredeterminize fstdeterminizestar  \
-           fstrmsymbols fstisstochastic fstminimizeencoded fstoptimize fstmakecontextfst \
+BINFILES = fstdeterminizestar  \
+           fstrmsymbols fstisstochastic fstminimizeencoded fstmakecontextfst \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
-           fstdeterminizelog fstreorder fstremoveuselessarcs \
-           fstphicompose fstpropfinal fstcopy
+           fstdeterminizelog fstphicompose fstpropfinal fstcopy
 
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 

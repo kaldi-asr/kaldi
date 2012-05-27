@@ -25,8 +25,6 @@
 #include "fstext/factor.h"
 #include "fstext/pre-determinize.h"
 #include "fstext/determinize-star.h"
-#include "fstext/make-stochastic.h"
-#include "fstext/reorder.h"
 
 namespace fst {
 
@@ -902,14 +900,6 @@ void Optimize(VectorFst<StdArc> *fst,
   }
   KALDI_VLOG(1) <<  "Optimize: about to minimize.";
   MinimizeEncoded(fst, cfg.delta);
-
-  // now do DFS-order.
-  KALDI_VLOG(1) << "Optimize: about to sort arcs by weight.";
-  WeightArcSort(fst);
-  KALDI_VLOG(1) << "Optimize: about to dfs order.";
-  VectorFst<StdArc> ordered;
-  DfsReorder(*fst, &ordered);
-  *fst = ordered;
 }
 
 
@@ -1223,6 +1213,100 @@ inline void WriteFstKaldi(const VectorFst<StdArc> &fst,
   fst.Write(ko.Stream(), wopts);
 }
 
+// Declare an override of the template below.
+template<>
+inline bool IsStochasticFst(const Fst<LogArc> &fst,
+                            float delta,
+                            LogArc::Weight *min_sum,
+                            LogArc::Weight *max_sum);
+
+// Will override this for LogArc where NaturalLess will not work.
+template<class Arc>
+bool IsStochasticFst(const Fst<Arc> &fst,
+                     float delta,
+                     typename Arc::Weight *min_sum,
+                     typename Arc::Weight *max_sum) {
+  typedef typename Arc::Label Label;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+  NaturalLess<Weight> nl;
+  bool first_time = true;
+  bool ans = true;
+  for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
+    StateId s = siter.Value();
+    Weight sum = fst.Final(s);
+    for (ArcIterator<Fst<Arc> > aiter(fst, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      sum = Plus(sum, arc.weight);
+    }
+    if (!ApproxEqual(Weight::One(), sum, delta)) ans = false;
+    if (first_time) {
+      first_time = false;
+      if (max_sum) *max_sum = sum;
+      if (min_sum) *min_sum = sum;
+    } else {
+      if (max_sum && nl(*max_sum, sum)) *max_sum = sum;
+      if (min_sum && nl(sum, *min_sum)) *min_sum = sum;
+    }
+  }
+  if (first_time) {  // just avoid NaNs if FST was empty.
+    if (max_sum) *max_sum = Weight::One();
+    if (min_sum) *min_sum = Weight::One();
+  }
+  return ans;
+}
+
+
+// Overriding template for LogArc as NaturalLess does not work there.
+template<>
+bool IsStochasticFst(const Fst<LogArc> &fst,
+                     float delta,
+                     LogArc::Weight *min_sum,
+                     LogArc::Weight *max_sum) {
+  typedef LogArc Arc;
+  typedef Arc::Label Label;
+  typedef Arc::StateId StateId;
+  typedef Arc::Weight Weight;
+  bool first_time = true;
+  bool ans = true;
+  for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
+    StateId s = siter.Value();
+    Weight sum = fst.Final(s);
+    for (ArcIterator<Fst<Arc> > aiter(fst, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      sum = Plus(sum, arc.weight);
+    }
+    if (!ApproxEqual(Weight::One(), sum, delta)) ans = false;
+    if (first_time) {
+      first_time = false;
+      if (max_sum) *max_sum = sum;
+      if (min_sum) *min_sum = sum;
+    } else {
+      // note that max and min are reversed from their normal
+      // meanings here (max and min w.r.t. the underlying probabilities).
+      if (max_sum && sum.Value() < max_sum->Value()) *max_sum = sum;
+      if (min_sum && sum.Value() > min_sum->Value()) *min_sum = sum;
+    }
+  }
+  if (first_time) {  // just avoid NaNs if FST was empty.
+    if (max_sum) *max_sum = Weight::One();
+    if (min_sum) *min_sum = Weight::One();
+  }
+  return ans;
+}
+
+bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
+                          float delta,
+                          StdArc::Weight *min_sum,
+                          StdArc::Weight *max_sum) {
+  VectorFst<LogArc> logfst;
+  Cast(fst, &logfst);
+  LogArc::Weight log_min, log_max;
+  bool ans = IsStochasticFst(logfst, delta, &log_min, &log_max);
+  if (min_sum) *min_sum = StdArc::Weight(log_min.Value());
+  if (max_sum) *max_sum = StdArc::Weight(log_max.Value());
+  return ans;
+}
 
 } // namespace fst.
 

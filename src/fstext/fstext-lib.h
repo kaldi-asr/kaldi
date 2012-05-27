@@ -1,6 +1,6 @@
 // fstext/fstext-lib.h
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,11 @@
 #ifndef KALDI_FSTEXT_FSTEXT_LIB_H_
 #define KALDI_FSTEXT_FSTEXT_LIB_H_
 #include "fst/fstlib.h"
-#include "compose-trim.h"
 #include "context-fst.h"
 #include "determinize-star.h"
 #include "factor.h"
 #include "fst-test-utils.h"
 #include "fstext-utils.h"
-#include "make-stochastic.h"
 #include "pre-determinize.h"
 #include "table-matcher.h"
 #include "trivial-factor-weight.h"
