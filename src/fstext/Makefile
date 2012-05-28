@@ -10,7 +10,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 
 include ../kaldi.mk
 
-TESTFILES = compose-trim-test determinize-star-test \
+TESTFILES = determinize-star-test \
       pre-determinize-test trivial-factor-weight-test \
       context-fst-test factor-test table-matcher-test fstext-utils-test \
       remove-eps-local-test rescale-test lattice-weight-test  \
