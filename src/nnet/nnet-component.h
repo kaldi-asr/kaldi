@@ -64,6 +64,7 @@ class Component {
     kSigmoid,
 
     kTranform =  0x0400,
+    kRbm,
     kExpand,
     kCopy,
     kTranspose,
