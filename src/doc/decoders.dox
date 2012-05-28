@@ -22,8 +22,9 @@ namespace kaldi {
    \page decoders Decoders used in the Kaldi toolkit
 
  In the Kaldi toolkit there is no single "canonical" decoder, or a fixed
- interface that decoders must satisfy.  There are currently three decoders
- available: SimpleDecoder, FasterDecoder, and KaldiDecoder.  By "decoder" we mean
+ interface that decoders must satisfy.  There are currently two decoders
+ available: SimpleDecoder and FasterDecoder; and there are also lattice-generating
+ versions of these (see \ref decoders_lattice).  By "decoder" we mean
  the internal code of the decoder; there are command-line programs that
  wrap these decoders so that they can decode particular types of model
  (e.g. GMMs), or with particular special conditions (e.g.  multi-class fMLLR).
@@ -236,145 +237,6 @@ separate tokens created for nonemitting arcs.
  "max_active" parameters alone, although at the value 0.5 we do not believe this
  happens very often.
  
-
- \section decoders_kaldi KaldiDecoder: an even more optimized decoder
- 
-The class KaldiDecoder should provide a fast and general purpose decoder.
-It is templated on the type of the DecodableInterface to work with
-any acoustic model and is templated on the type of FST,
-to work with any type of semi-ring.
-The design of the KaldiDecoder was partly inspired by a very fast, FST-based
-decoder written by Ondrej Glembek, but was rewritten to be flexible and
-extendible for other types of recognition networks, acoustic models and
-semi-rings. In spite of the generalizations, the goal is to not sacrify 
-much of the original speed.
-
- \subsection decoders_kaldi_itf Interface of KaldiDecoder
-
-The constructor of KaldiDecoder takes just KaldiDecoderOptions as argument:
-\verbatim
- template<class Decodable, class Fst>
- KaldiDecoder<Decodable, Fst>::KaldiDecoder(KaldiDecoderOptions opts);
-\endverbatim
-KaldiDecoderOptions is a structure that registers decoder options like pruning
-beamwidth to the command-line parser and passes their values to the decoder.
-The type of FST (and arc-type) that is used as recognition network and 
-the type of DecodableInterface are passed as template options.
-
-Decoding an utterance is accomplished by the following function:
-\verbatim
- fst::VectorFst<fst::StdArc>* Decode(const Fst &fst, Decodable &decodable);
-\endverbatim
-We do not only pass the features of the utterance (in Decodable),
-but also the recognition network as the parameter "fst".
-Each utterance can be decoded by a different network.
-KaldiDecoder requires non-reordered graphs - i.e. it is expected, that each arc
-leaving a state has the same transition-id (pdf-id) assigned to it.
-Since in this case all leaving arcs evaluate a common acoustic pdf,
-the evaluation of the acoustic model can be done state based and all at once,
-which in the case of the previous decoder lead to a significant speed-up.
-
-The Decode function returns the traceback as an FST object.
-To save memory during decoding, not the whole traceback is saved -
-new arcs are only added for each encountered word.
-If successfull (otherwise NULL), the FST is a linear acceptor
-whose output labels are the (word) labels that were on the FST
-and whose weights contain the acoustic, language model and transition weights -
-accumulated since the last word label.
-Normally only tokens reaching a final state are considered.
-However, if no token reached a final state, a warning is uttered and
-the path of the best active token in the last frame is returned instead.
-
- \subsection decoders_kaldi_workings How KaldiDecoder works
-
-The most important data members of class KaldiDecoder are:
-\verbatim
- StateOrder<StateId> *state_order_;
- WordLinkStore wl_store_;
- TokenStore tokens_, tokens_next_;
- TokenSet<StateId> *active_tokens_;
-\endverbatim
-
-The function of "active_tokens_" very much corresponds 
-to "prev_toks_" and "cur_toks_" in SimpleDecoder -
-it holds the active tokens during decoding.
-Here, TokenSet contains two unordered set of Tokens
-- one for consecutive access for the current frame
-- and another allowing random access (by node number) for the next frame
-
-Token is almost the same data structure as WordLink,
-which is used to store the traceback.
-The WordLinks are handled by WordLinkStore, which implements an own allocator
-and garbage collection. In the same way, tokens are handled by TokenStore.
-We use three different Stores, since it might speed up due to caching.
-
-StateOrder is a multi-functional data structure:
-It is used to dynamically determine the topological order of network states,
-which might not be known in advance, if we build the recognition network
-dynamically, and which is necessary when evaluating chains of non-emitting arcs.
-After determining the topological state order,
-StateOrder is used as a topologically sorted priority queue of states.
-
-The central part of the \ref KaldiDecoder::Decode() "Decode()" function
-is as follows:
-\verbatim
- InitDecoding(fst, decodable);
- frame_index_ = -1;
- do {
-   frame_index_++;
-   ProcessNonEmitting();
-   EvaluateAndPrune();
-   ProcessEmitting();
- } while (!(p_decodable_->IsLastFrame(frame_index_)));
- FinalizeDecoding();
-\endverbatim
-
-\ref KaldiDecoder::InitDecoding() "InitDecoding()" initializes data structures
-used for decoding and inserts a first token (in the start state).
-It contains all tokens in non-emitting nodes to be forwarded in the next frame,
-that resulted from forwarding the active tokens from the last frame.
-From the start state, we explore the network to find all non-emitting nodes
-and store them on them queue (see below VisitNode).
-
-\ref KaldiDecoder::ProcessNonEmitting() "ProcessNonEmitting()" works analog
-to SimpleDecoder - it forwards tokens through 
-non-emitting arcs, but it considers the order given by the priority queue
-in "state_order_", so that no arc will be processed twice.
-
-\ref KaldiDecoder::EvaluateAndPrune() "EvaluateAndPrune()" evaluates the scores
-of the acoustic model for all pdf-ids in the active tokens for this frame.
-As already mentioned, since all outgoing arcs share the same pdf-id,
-it can be evaluated once per state and the score is added
-to all tokens, before forwarding them in the next step.
-"EvaluateAndPrune()" takes also care of pruning: the best active token before and
-after the acoustic evaluation is found, and the new "beam_threshold_"
-(best token score plus beamwidth) is computed, on whose basis the following
-functions ("ProcessEmitting" and "ProcessNonEmitting") prune new tokens.
-The number of active tokens is also pruned by "max_active_tokens",
-which may result in a tighter "beam_threshold_" (adaptive beam).
-
-\ref KaldiDecoder::ProcessEmitting() "ProcessEmitting()" works analog
-to SimpleDecoder - it forwards tokens through 
-emitting arcs, using the already computed acoustic scores.
-On the fly each newly discovered node is explored using the function
-\ref KaldiDecoder::VisitNode() "VisitNode()"
-by recursively following the arcs (depth first).
-"VisitNode()" finds the topological state order for evaluating 
-the non-emitting arcs and at the same time builds the priority queue.
-A second version of this function, \ref KaldiDecoder::VerifyNode() "VerifyNode()",
-has the same functionality, but at the same checks that the recognition network
-has the properties required by the decoder (e.g. no epsilon loops).
-After exploration, new tokens are dispatched -
-Tokens to be forwarded on non-emitting arcs are put to the priority queue,
-all other are put on member list of "active_tokens_".
-
-If the last frame has been processed, \ref KaldiDecoder::FinalizeDecoding()
-"FinalizeDecoding()" forwards the tokens through non-emitting arcs, using 
-slightly modified versions of "ProcessNonEmitting()" and "ProcessEmitting()"
-and at the same time the final state weights are evaluated.
-The path of the best successfull token is back-tracked
-and returned as output FST.
-
  \section decoders_biglm BiglmDecoder: decoding with large language models.
 
  There are two basic ways in Kaldi to use large language models (i.e. language

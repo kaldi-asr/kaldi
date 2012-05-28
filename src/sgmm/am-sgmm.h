@@ -38,7 +38,6 @@ struct SgmmGselectConfig {
   /// Number of highest-scoring diagonal-covariance Gaussians per frame.
   int32 diag_gmm_nbest;
 
-
   SgmmGselectConfig() {
     full_gmm_nbest = 15;
     diag_gmm_nbest = 50;
@@ -51,30 +50,6 @@ struct SgmmGselectConfig {
         " diagonal-covariance Gaussians selected per frame.");
   }
 };
-
-
-/** \class GaussSelectionRecord
- *  Used to select the top scoring Gaussians for each frame.
- */
-class GaussSelectionRecord {
- public:
-  GaussSelectionRecord(int32 i, BaseFloat l) : gauss_index_(i), log_like_(l) {}
-  int32 Gaussian() const { return gauss_index_; }
-  BaseFloat LogLike() const { return log_like_; }
-  static bool CompareByLike(const GaussSelectionRecord &a,
-                            const GaussSelectionRecord &b) {
-    return a.log_like_ > b.log_like_;
-  }
-  static bool CompareByIndex(const GaussSelectionRecord a,
-                             const GaussSelectionRecord b) {
-    return a.gauss_index_ > b.gauss_index_;
-  }
-
- private:
-  int32 gauss_index_;
-  BaseFloat log_like_;
-};
-
 
 /** \struct SgmmPerFrameDerivedVars
  *  Holds the per-frame precomputed quantities x(t), x_{i}(t), z_{i}(t), and
@@ -183,7 +158,7 @@ class AmSgmm {
                            const SgmmPerSpkDerivedVars &spk_vars,
                            BaseFloat logdet_s,
                            SgmmPerFrameDerivedVars *per_frame_vars) const;
-
+  
   /// Output the average phone vector (average all those in the system.)
   /// Used in function ComputeSgmmFeature [an experimental approach were
   /// we use a derivative quantity computed from SGMMs, as a feature vector.]

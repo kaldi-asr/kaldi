@@ -13,7 +13,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-et-acc-a gmm-et-est-a gmm-copy-et gmm-et-get-b gmm-et-get-a \
            gmm-make-regtree gmm-decode-faster-regtree-fmllr gmm-post-to-gpost \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
-           gmm-est-regtree-mllr gmm-decode-kaldi gmm-compute-likes \
+           gmm-est-regtree-mllr gmm-compute-likes \
            gmm-decode-faster-regtree-mllr gmm-et-apply-c gmm-latgen-simple \
            gmm-rescore-lattice gmm-decode-biglm-faster \
            gmm-est-gaussians-ebw gmm-est-weights-ebw gmm-latgen-faster gmm-copy \
