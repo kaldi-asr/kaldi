@@ -194,7 +194,7 @@ steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd 
     --transform-dir exp/tri3b/decode data/lang data/test exp/sgmm4a/decode exp/sgmm4a_mmi_b0.2/decode_it$iter &
  done  
 
- 
+wait 
 steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
 steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
 # combining the sgmm run and the best MMI+fMMI run.
