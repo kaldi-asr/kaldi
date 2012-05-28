@@ -34,7 +34,7 @@ class Xent {
   void Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target,
             CuMatrix<BaseFloat>* diff);
   /// Evaluate cross entropy from soft labels
-  void Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target,
+  void EvalVec(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target,
             CuMatrix<BaseFloat>* diff);
   
   /// Generate string with error report

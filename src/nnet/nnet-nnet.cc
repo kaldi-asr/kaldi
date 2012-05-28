@@ -62,7 +62,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
     backprop_stop++;
     while(1) {
       if(nnet_[backprop_stop]->IsUpdatable()) {
-        if(0.0 != dynamic_cast<UpdatableComponent*>(nnet_[backprop_stop])->LearnRate()) {
+        if(0.0 != dynamic_cast<UpdatableComponent*>(nnet_[backprop_stop])->GetLearnRate()) {
           break;
         }
       }
@@ -84,7 +84,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
   int32 i = nnet_.size()-1;
   if(nnet_[i]->IsUpdatable()) {
     UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
-    if(uc->LearnRate() > 0.0) {
+    if(uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[i],in_err);
     }
   }
@@ -94,7 +94,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
   for(i--; i >= 1; i--) {
     if(nnet_[i]->IsUpdatable()) {
       UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
-      if(uc->LearnRate() > 0.0) {
+      if(uc->GetLearnRate() > 0.0) {
         uc->Update(propagate_buf_[i],backpropagate_buf_[i]);
       }
     }
@@ -105,7 +105,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
   //update first layer 
   if(nnet_[0]->IsUpdatable()  &&  0 >= backprop_stop) {
     UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
-    if(uc->LearnRate() > 0.0) {
+    if(uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[0],backpropagate_buf_[0]);
     }
   }
@@ -166,7 +166,7 @@ void Nnet::Read(std::istream& in, bool binary) {
 }
 
 
-void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
+void Nnet::SetLearnRate(BaseFloat lrate, const char* lrate_factors) {
   //split lrate_factors to a vector
   std::vector<BaseFloat> lrate_factor_vec;
   if(NULL != lrate_factors) {
@@ -196,7 +196,7 @@ void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
     if(nnet_[i]->IsUpdatable()) {
       BaseFloat lrate_scaled = lrate;
       if(lrate_factor_vec.size() > 0) lrate_scaled *= lrate_factor_vec[updatable++];
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->LearnRate(lrate_scaled);
+      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetLearnRate(lrate_scaled);
     }
   }
   //set global learn rate
@@ -204,12 +204,12 @@ void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
 }
 
 
-std::string Nnet::LearnRateString() {
+std::string Nnet::GetLearnRateString() {
   std::ostringstream oss;
   oss << "LEARN_RATE global: " << learn_rate_ << " individual: ";
   for(int32 i=0; i<LayerCount(); i++) {
     if(nnet_[i]->IsUpdatable()) {
-      oss << dynamic_cast<UpdatableComponent*>(nnet_[i])->LearnRate() << " ";
+      oss << dynamic_cast<UpdatableComponent*>(nnet_[i])->GetLearnRate() << " ";
     }
   }
   return oss.str();

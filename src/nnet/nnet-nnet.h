@@ -79,17 +79,17 @@ class Nnet {
   
   /// Set the learning rate values to trainable layers, 
   /// factors can disable training of individual layers
-  void LearnRate(BaseFloat lrate, const char* lrate_factors); 
+  void SetLearnRate(BaseFloat lrate, const char* lrate_factors); 
   /// Get the global learning rate value
-  BaseFloat LearnRate() { 
+  BaseFloat GetLearnRate() { 
     return learn_rate_; 
   }
   /// Get the string with real learning rate values
-  std::string LearnRateString();  
+  std::string GetLearnRateString();  
 
-  void Momentum(BaseFloat mmt);
-  void L2Penalty(BaseFloat l2);
-  void L1Penalty(BaseFloat l1);
+  void SetMomentum(BaseFloat mmt);
+  void SetL2Penalty(BaseFloat l2);
+  void SetL1Penalty(BaseFloat l1);
 
  private:
   /// Creates a component by reading from stream, return NULL if no more components
@@ -170,28 +170,28 @@ inline void Nnet::Write(std::ostream& out, bool binary) {
 }
 
     
-inline void Nnet::Momentum(BaseFloat mmt) {
+inline void Nnet::SetMomentum(BaseFloat mmt) {
   for(int32 i=0; i<LayerCount(); i++) {
     if(nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->Momentum(mmt);
+      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetMomentum(mmt);
     }
   }
 }
 
 
-inline void Nnet::L2Penalty(BaseFloat l2) {
+inline void Nnet::SetL2Penalty(BaseFloat l2) {
   for(int32 i=0; i<LayerCount(); i++) {
     if(nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->L2Penalty(l2);
+      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetL2Penalty(l2);
     }
   }
 }
 
 
-inline void Nnet::L1Penalty(BaseFloat l1) {
+inline void Nnet::SetL1Penalty(BaseFloat l1) {
   for(int32 i=0; i<LayerCount(); i++) {
     if(nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->L1Penalty(l1);
+      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetL1Penalty(l1);
     }
   }
 }

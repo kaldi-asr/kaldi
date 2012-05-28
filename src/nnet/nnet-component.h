@@ -168,38 +168,38 @@ class UpdatableComponent : public Component {
                       const CuMatrix<BaseFloat>& err) = 0;
 
   /// Sets the learning rate of gradient descent
-  void LearnRate(BaseFloat lrate) { 
+  void SetLearnRate(BaseFloat lrate) { 
     learn_rate_ = lrate; 
   }
   /// Gets the learning rate of gradient descent
-  BaseFloat LearnRate() { 
+  BaseFloat GetLearnRate() { 
     return learn_rate_; 
   }
   
   /// Sets momentum
-  void Momentum(BaseFloat mmt) { 
+  void SetMomentum(BaseFloat mmt) { 
     momentum_ = mmt; 
   }
   /// Gets momentum
-  BaseFloat Momentum() { 
+  BaseFloat GetMomentum() { 
     return momentum_; 
   }
 
   /// Sets L2 penalty (weight decay)
-  void L2Penalty(BaseFloat l2) { 
+  void SetL2Penalty(BaseFloat l2) { 
     l2_penalty_ = l2; 
   }
   /// Gets L2 penalty (weight decay)
-  BaseFloat L2Penalty() { 
+  BaseFloat GetL2Penalty() { 
     return l2_penalty_; 
   }
 
   /// Sets L1 penalty (sparisity promotion)
-  void L1Penalty(BaseFloat l1) { 
+  void SetL1Penalty(BaseFloat l1) { 
     l1_penalty_ = l1; 
   }
   /// Gets L1 penalty (sparisity promotion)
-  BaseFloat L1Penalty() { 
+  BaseFloat GetL1Penalty() { 
     return l1_penalty_; 
   }
 

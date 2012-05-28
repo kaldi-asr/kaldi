@@ -83,9 +83,9 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
     RbmBase& rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
 
-    rbm.LearnRate(learn_rate);
-    rbm.Momentum(momentum);
-    rbm.L2Penalty(l2_penalty);
+    rbm.SetLearnRate(learn_rate);
+    rbm.SetMomentum(momentum);
+    rbm.SetL2Penalty(l2_penalty);
 
     kaldi::int64 tot_t = 0;
 

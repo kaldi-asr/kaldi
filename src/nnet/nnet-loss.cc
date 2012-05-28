@@ -55,7 +55,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& t
 }
 
 
-void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target, CuMatrix<BaseFloat>* diff) {
+void Xent::EvalVec(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target, CuMatrix<BaseFloat>* diff) {
   //evaluate the frame-level classification
   int32 correct=0;
   cu::FindRowMaxId(net_out,&max_id_);

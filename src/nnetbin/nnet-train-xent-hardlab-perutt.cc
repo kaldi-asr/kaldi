@@ -80,10 +80,10 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
 
-    nnet.LearnRate(learn_rate,NULL);
-    nnet.Momentum(momentum);
-    nnet.L2Penalty(l2_penalty);
-    nnet.L1Penalty(l1_penalty);
+    nnet.SetLearnRate(learn_rate,NULL);
+    nnet.SetMomentum(momentum);
+    nnet.SetL2Penalty(l2_penalty);
+    nnet.SetL1Penalty(l1_penalty);
 
     kaldi::int64 tot_t = 0;
 
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
         nnet_transf.Feedforward(feats,&feats_transf);
         nnet.Propagate(feats_transf,&nnet_out);
         
-        xent.Eval(nnet_out,alignment,&glob_err);
+        xent.EvalVec(nnet_out,alignment,&glob_err);
         
         if(!crossvalidate) {
           nnet.Backpropagate(glob_err,NULL);
