@@ -30,23 +30,11 @@ done
 # fMMI + mmi with indirect differential.
 steps/train_mmi_fmmi_indirect.sh \
   --boost 0.1 --cmd "$train_cmd" data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b exp/tri4b_denlats_si284 \
-  exp/tri4b_fmmi_indirect_a || exit 1;
+  exp/tri4b_fmmi_indirect || exit 1;
 
 for iter in 3 4 5 6 7 8; do
  steps/decode_fmmi.sh --nj 10  --cmd "$decode_cmd" --iter $iter \
    --transform-dir exp/tri3b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
-  exp/tri4b_fmmi_indirect_a/decode_tgpr_dev93_it$iter &
-done
-
-
-# fMMI + mmi with indirect differential.
-steps/train_mmi_fmmi_indirect.sh --schedule "fmmi mmi fmmi mmi fmmi mmi fmmi mmi" \
-  --boost 0.1 --cmd "$train_cmd" data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b exp/tri4b_denlats_si284 \
-  exp/tri4b_fmmi_indirect_b || exit 1;
-
-for iter in 3 4 5 6 7 8; do
- steps/decode_fmmi.sh --nj 10  --cmd "$decode_cmd" --iter $iter \
-   --transform-dir exp/tri3b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
-  exp/tri4b_fmmi_indirect_b/decode_tgpr_dev93_it$iter &
+  exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it$iter &
 done
 

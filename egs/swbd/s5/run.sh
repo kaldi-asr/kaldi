@@ -218,29 +218,37 @@ steps/train_mmi_fmmi.sh --learning-rate 0.005 \
   --boost 0.1 --cmd "$train_cmd" \
  data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
    exp/tri5a_fmmi_b0.1 || exit 1;
-
+ # TODO: rerun this, was done with wrong config:
  for iter in 4 5 6 7 8; do
   steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-     --transform-dir exp/tri5a/decode_eval2000 \
+     --config conf/decode.config --transform-dir exp/tri5a/decode_eval2000 \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1/decode_eval2000_it$iter &
  done
 
-#TEMP:
-steps/train_mmi_fmmi.sh --learning-rate 0.01 \
+steps/train_mmi_fmmi.sh --learning-rate 0.005 \
   --boost 0.1 --cmd "$train_cmd" \
  data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
    exp/tri5a_fmmi_b0.1_b || exit 1;
-
  for iter in 4 5 6 7 8; do
   steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-     --transform-dir exp/tri5a/decode_eval2000 \
+     --config conf/decode.config --transform-dir exp/tri5a/decode_eval2000 \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_b/decode_eval2000_it$iter &
  done
 
 
-steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config \
-  --transform-dir exp/tri5a/decode_eval2000 --nj 30 \
-   exp/tri5a/graph data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 &
+#TEMP:
+steps/train_mmi_fmmi_indirect.sh \
+  --boost 0.1 --cmd "$train_cmd" \
+ data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
+   exp/tri5a_fmmi_b0.1_indirect || exit 1;
+
+ for iter in 4 5 6 7 8; do
+  steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
+     --config conf/decode.config --transform-dir exp/tri5a/decode_eval2000 \
+     exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it$iter &
+ done
+
+
 
 
 #HERE.
