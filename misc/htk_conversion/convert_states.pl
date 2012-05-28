@@ -37,7 +37,7 @@ for($pdf = 0; $pdf < $numpdfs; $pdf++) {
     defined  $nummix{$pdf} || die "No nummix defined for pdf = $pdf\n";
     print " <DiagGMMBegin>\n";
     $nm = $nummix{$pdf};
-    print "  <WEIGHTS> FV $nm [ ";
+    print "  <WEIGHTS>  [ ";
     for($n = 0; $n < $nm; $n++) {  print "$weight{$pdf,$n} "; }
     print "]\n";
     print "  <MEANS_INVVARS>  [\n";

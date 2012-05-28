@@ -47,6 +47,8 @@ while(<>) {
     if(m/~h \"(.+)\"/) {
         $phone = $1; # in context currently.
         if($phone =~ m:.+\-(.+)\+.+: ) { $phone = $1; } # Remove context. 
+        elsif ($phone =~ m:.+\-(.+): ) { $phone = $1; }
+        elsif ($phone =~ m:(.+)\+.+: ) { $phone = $1; }
         while(<>) {
             if(m/\<ENDHMM\>/) { last; } # no longer parsing this HMM.
             elsif(m/~t \"(.+)\"/) {
@@ -62,13 +64,14 @@ while(<>) {
                 if(!defined $phone2trans{$phone}) {
                     $phone2trans{$phone} = ReadNLines($nlines);
                 } else {
-                    $phone2trans{$phone} eq ReadNLines($nlines) || print STDERR "Conflicting definitions for transition matrix for phone $phone: this conversion program will give you the wrong answer.\n";
+                  $v = ReadNLines($nlines);
+                  $phone2trans{$phone} eq $v || print STDERR "Conflicting definitions for transition matrix for phone $phone: this conversion program will give you the wrong answer: $phone2trans{$phone} versus $v\n";
                 }
             }
         }
     }
 
-    if(m/\~t \"(.+)\"/) { # defining a ransition macro...
+    if(m/\~t \"(.+)\"/) { # defining a transition macro...
         $macroname = $1;
         ($tok,$n) = split(" ", <>); # Split the line like <TRANSP> 5
         $tok == "<TRANSP>" || die "Bad line $. in MMF\n";
