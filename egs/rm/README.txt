@@ -25,9 +25,7 @@ scripts at the moment.
       place to look if you're trying to set up something on your own 
       data, because they're more configurable.
 
-  s4: A recipe based on freely available subset of RM data. The recipe uses
-      Sphinx feature files distributed by CMU and metadata available on LDC
-      website. Script and data layouts are based on egs/rm/s3.
+  s4: A recipe based on freely available subset of RM data, distributed by CMU
 
   s5: This is the "new-new-style" recipe.  It is now finished.
       All further work will be on top of this style of recipe.  Note: 

@@ -83,8 +83,10 @@ scripts/make_lexicon_fst.pl data/local/lexicon_disambig.txt $silprob sil '#'$ndi
 
 cp data/lang_test/L_disambig.fst data/lang/  # Needed for MMI training.
 
-fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
-    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst
+# Compilation is no longer needed, because we are using a pre-built G.fst
+#fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
+#    --keep_osymbols=false data/local/G.txt > data/lang_test/G.fst
+cp data/local/G.fst data/lang_test/
 
 # Checking that G is stochastic [note, it wouldn't be for an Arpa]
 fstisstochastic data/lang_test/G.fst || echo Error: G is not stochastic

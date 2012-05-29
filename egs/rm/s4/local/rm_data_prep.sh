@@ -38,8 +38,8 @@ RMROOT=$1
 mkdir -p data/local
 cd data/local
 
-if [ ! -d $RMROOT/LDC93S3B -o ! -d $RMROOT/rm1 ]; then
-  echo "Speech data is missing. You can download the data by running ./getdata.sh"
+if [ ! -f $RMROOT/RM_G.fst -o ! -d $RMROOT/rm1 ]; then
+  echo "Required data is missing. You can download the data by running ./getdata.sh"
   exit 1; 
 fi
 
@@ -51,14 +51,23 @@ cat $RMROOT/rm1/etc/rm1_test.fileids | \
 
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
 
+# this is needed, because the original "al_sents.snr" file is not available
+# (and because CMU's train utterances have tags like '<sil>' added)
+cat $RMROOT/rm1/etc/rm1_train.transcription |\
+ sed -e 's/\(.*\)\(([a-z][a-z][0-9]\+)\)/\1\U\2/' |\
+ sed -e 's:</\?si\?l\?>::g' -e 's:([0-9])::g' |\
+ sed -e 's:\([ ][ ]\+\): :g' -e 's:^[ ]\+::g' |\
+ cat  $RMROOT/rm1/etc/rm1_test.transcription - \
+ > al_sents.snr 
+
 # training set
-../../local/make_trans.pl trn train.flist $RMROOT/LDC93S3B/disc_1/doc/al_sents.snr train_trans.txt train.scp
+../../local/make_trans.pl trn train.flist al_sents.snr train_trans.txt train.scp
 mv train_trans.txt tmp; sort -k 1 tmp > train_trans.txt
 mv train.scp tmp; sort -k 1 tmp > train.scp
 rm tmp
 
 # test set
-../../local/make_trans.pl test test.flist $RMROOT/LDC93S3B/disc_1/doc/al_sents.snr test_trans.txt test.scp
+../../local/make_trans.pl test test.flist al_sents.snr test_trans.txt test.scp
 mv test_trans.txt tmp; sort -k 1 tmp > test_trans.txt
 mv test.scp tmp; sort -k 1 tmp > test.scp
 rm tmp
@@ -66,15 +75,20 @@ rm tmp
 # We already have the features, so sph2pipe step is skipped and
 # given the limited data the speaker-dependent processing is also not used 
 
-../../scripts/make_rm_lm.pl $RMROOT/LDC93S3B/disc_1/doc/wp_gram.txt  > G.txt || exit 1;
+# "wp_gram.txt" is no longer available from LDC's website, so we are just using a
+# pre-built grammar WFST (G.fst). The word-pair grammar is a finite-state description
+# of the allowed utterances, which just enumerates the words that can follow each word
+# in the vocabulary. G.fst is constructed by adding output arcs to each node 
+# representing a word, one for each word that is allowed to follow, and the 
+# probability mass is distributed uniformly among all these arcs.
+#../../scripts/make_rm_lm.pl $RMROOT/LDC93S3B/disc_1/doc/wp_gram.txt  > G.txt || exit 1;
+cp $RMROOT/RM_G.fst ./G.fst
 
 # Convert the CMU's lexicon to a form which the other scripts expect
-# (leave only the first pronunciation variant, convert "'" to "+", 
-# and convert the phones to lower case)
+# (leave only the first pronunciation variant and convert the phones to lower case)
 cat $RMROOT/rm1/etc/rm1.dic | \
   egrep -v '\(' | \
-  sed -e "s/'/\+/g" | \
-  sed -e "s/^\([[:alnum:]-]\+\(+[[:alpha:]]\+\)\?\)\(.*\)/\1\L\3/g" > lexicon.txt
+  sed -e "s/^\([[:alnum:]-]\+\('[[:alpha:]]\+\)\?\)\(.*\)/\1\L\3/g" > lexicon.txt
 
 
 echo RM_data_prep succeeded.
