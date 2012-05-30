@@ -19,6 +19,15 @@ wsj1=/export/corpora5/LDC/LDC94S13B
 
 local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
+# Sometimes, we have seen WSJ distributions that do not have subdirectories 
+# like '11-13.1', but instead have 'doc', 'si_et_05', etc. directly under the 
+# wsj0 or wsj1 directories. In such cases, try the following:
+#
+# corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
+# local/cstr_wsj_data_prep.sh $corpus
+#
+# $cropus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
+
 local/wsj_prepare_dict.sh || exit 1;
 
 utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
