@@ -44,7 +44,11 @@ done
    rm $data/utts && exit 1;
 
 nutts=`cat $data/utts | wc -l`
-nfeats=`cat $data/feats.scp | wc -l`
+if [ -f $data/feats.scp ]; then
+  nfeats=`cat $data/feats.scp | wc -l`
+else
+  nfeats=0
+fi
 ntext=`cat $data/text | wc -l`
 if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
   echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."

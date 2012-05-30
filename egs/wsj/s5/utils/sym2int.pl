@@ -92,6 +92,7 @@ while (<>) {
     push @B, $a;
   }
   print join(" ", @B);
+  if (@B == 1) { print " "; } # ensures valid archive format (need a space after the key)
   print "\n";
 }
 

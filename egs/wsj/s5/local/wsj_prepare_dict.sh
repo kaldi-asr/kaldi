@@ -18,6 +18,14 @@
 # Call this script from one level above, e.g. from the s3/ directory.  It puts
 # its output in data/local/.
 
+# The parts of the output of this that will be needed are
+# [in data/local/dict/ ]
+# lexicon.txt
+# extra_questions.txt
+# nonsilence_phones.txt
+# optional_silence.txt
+# silence_phones.txt
+
 # run this from ../
 dir=data/local/dict
 mkdir -p $dir
