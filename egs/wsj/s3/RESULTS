@@ -31,6 +31,8 @@ exp/tri2b_mmi_b0.1/decode_tgpr_eval92/wer_16:%WER 10.69 [ 603 / 5643, 119 ins, 4
 # +fMMI
 exp/tri2b_fmmi_b0.1/decode_tgpr_eval92/wer_15:%WER 10.26 [ 579 / 5643, 111 ins, 39 del, 429 sub ]
 
+
+
 # +MCE
 exp/tri2b_mce/decode_tgpr_eval92/wer_16:%WER 11.15 [ 629 / 5643, 132 ins, 45 del, 452 sub ]
 
@@ -44,6 +46,8 @@ exp/tri2c/decode_tgpr_dev93_2pass/wer_15:%WER 16.24 [ 1337 / 8234, 253 ins, 140 
 # LDA+MLLT+SAT, SI-84
 exp/tri3b/decode_tgpr_dev93/wer_16:%WER 14.49 [ 1193 / 8234, 243 ins, 108 del, 842 sub ]
 exp/tri3b/decode_tgpr_dev93_tg/wer_16:%WER 13.75 [ 1132 / 8234, 252 ins, 97 del, 783 sub ]
+
+ exp/tri4d/decode_tgpr_dev93/wer_17:%WER 15.02 [ 1237 / 8234, 261 ins, 129 del, 847 sub ]
 
 exp/tri3b/decode_tgpr_eval92/wer_15:%WER 9.85 [ 556 / 5643, 139 ins, 36 del, 381 sub ]
 exp/tri3b/decode_tgpr_eval92_tg/wer_16:%WER 9.07 [ 512 / 5643, 130 ins, 32 del, 350 sub ]

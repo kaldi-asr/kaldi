@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Ondrej Glembek;  Yanmin Qian
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,7 +130,6 @@ class AmSgmm {
   /// Copies the global parameters from the supplied model, but sets
   /// the state vectors to zero.  Supports reducing the phonetic
   /// and speaker subspace dimensions.
-  /// , and initializes the rest of the parameters from the UBM.
   void CopyGlobalsInitVecs(const AmSgmm &other, int32 phn_subspace_dim,
                            int32 spk_subspace_dim, int32 num_pdfs);
 
@@ -158,21 +158,6 @@ class AmSgmm {
                            const SgmmPerSpkDerivedVars &spk_vars,
                            BaseFloat logdet_s,
                            SgmmPerFrameDerivedVars *per_frame_vars) const;
-  
-  /// Output the average phone vector (average all those in the system.)
-  /// Used in function ComputeSgmmFeature [an experimental approach were
-  /// we use a derivative quantity computed from SGMMs, as a feature vector.]
-  void ComputeAveragePhoneVector(Vector<BaseFloat> *avg_phone_vec,
-                                 Vector<BaseFloat> *normalizers);
-
-  /// Something experimental: deriving features from a certain derivative
-  /// computed from the SGMM [deriv. w.r.t. the phone-state vector, taken at
-  /// its average value.  Returns the avg like/frame given the model with
-  /// a single "average" phone vector.
-  BaseFloat ComputeSgmmFeature(const SgmmPerFrameDerivedVars &per_frame_vars,
-                               const Vector<BaseFloat> &avg_phone_vec,
-                               const Vector<BaseFloat> &normalizers,
-                               VectorBase<BaseFloat> *feature) const;
   
   /// Computes the per-speaker derived vars; assumes vars->v_s is already
   /// set up.
@@ -250,10 +235,7 @@ class AmSgmm {
   void GetInvCovars(int32 gauss_index, SpMatrix<Real> *out) const;
 
   template<typename Real>
-  void GetNtransSigmaInv(std::vector< Matrix<Real> > *out) const;
-
-  template<typename Real>
-  void GetSubstateMean(int32 state, int32 substate, int32 gauss,
+  void GetSubstateMean(int32 j, int32 m, int32 i,
                        VectorBase<Real> *mean_out) const;
 
   template<typename Real>
@@ -266,6 +248,9 @@ class AmSgmm {
                                        int32 gauss,
                                        const SgmmPerSpkDerivedVars &spk,
                                        VectorBase<Real> *mean_out) const;
+  
+  template<typename Real>
+  void GetNtransSigmaInv(std::vector< Matrix<Real> > *out) const;
 
   /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
   template<class Real>
@@ -325,7 +310,6 @@ class AmSgmm {
   friend class MleAmSgmmUpdater;
   friend class MleSgmmSpeakerAccs;
   friend class AmSgmmFunctions;  // misc functions that need access.
-  friend class SgmmFeature;
 };
 
 template<typename Real>
@@ -365,6 +349,7 @@ void AmSgmm::GetVarScaledSubstateSpeakerMean(int32 j, int32 m, int32 i,
   tmp_mean2.AddSpVec(1.0, SigmaInv_[i], tmp_mean, 0.0);
   mean_out->CopyFromVec(tmp_mean2);
 }
+
 
 /// Computes the inverse of an LDA transform (without dimensionality reduction)
 /// The computed transform is used in initializing the phonetic and speaker

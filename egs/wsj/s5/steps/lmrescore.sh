@@ -56,13 +56,13 @@ cp $indir/num_jobs $outdir
 
 case "$mode" in
   1) # 1 is inexact, it's the original way of doing it.
-    $cmd JOB=1:$nj $outdir/rescorelm.JOB.log \
+    $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       lattice-lmrescore --lm-scale=-1.0 "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
       lattice-lmrescore --lm-scale=1.0 ark:- "$newlmcommand" "ark,t:|gzip -c>$outdir/lat.JOB.gz" \
       || exit 1;
     ;;
   2)  # 2 is equivalent to 1, but using more basic operations, combined.
-    $cmd JOB=1:$nj $outdir/rescorelm.JOB.log \
+    $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
@@ -76,7 +76,7 @@ case "$mode" in
      # through G.fst (which is what we want as that happened in lattice 
      # generation), but we add the new one with "phi matcher", only taking
      # backoff arcs if an explicit arc did not exist.
-    $cmd JOB=1:$nj $outdir/rescorelm.JOB.log \
+    $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
@@ -91,7 +91,7 @@ case "$mode" in
      # grammar and transition weights.
     mdl=`dirname $indir`/final.mdl
     [ ! -f $mdl ] && echo No such model $mdl && exit 1;
-    $cmd JOB=1:$nj $outdir/rescorelm.JOB.log \
+    $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \
       lattice-scale --lm-scale=0.0 ark:- ark:- \| \
       lattice-to-phone-lattice $mdl ark:- ark:- \| \

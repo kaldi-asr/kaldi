@@ -2276,6 +2276,34 @@ template<class Real> static void UnitTestTranspose() {
   N.Transpose();
   AssertEqual(M, N);
 }
+
+template<class Real> static void UnitTestAddVecToRows() {
+
+  Matrix<Real> M(rand() % 5 + 1, rand() % 10 + 1);
+  InitRand(&M);
+  Vector<float> v(M.NumCols());
+  InitRand(&v);
+  Matrix<Real> N(M);
+  Vector<float> ones(M.NumRows());
+  ones.Set(1.0);
+  M.AddVecToRows(0.5, v);
+  N.AddVecVec(0.5, ones, v);
+  AssertEqual(M, N);
+}
+
+template<class Real> static void UnitTestAddVecToCols() {
+  Matrix<Real> M(rand() % 5 + 1, rand() % 10 + 1);
+  InitRand(&M);
+  Vector<float> v(M.NumRows());
+  InitRand(&v);
+  Matrix<Real> N(M);
+  Vector<float> ones(M.NumCols());
+  ones.Set(1.0);
+  M.AddVecToCols(0.5, v);
+  N.AddVecVec(0.5, v, ones);
+  AssertEqual(M, N);
+}
+
 template<class Real> static void UnitTestComplexFft2() {
 
   // Make sure it inverts properly.
@@ -2737,7 +2765,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestAddOuterProductPlusMinus<Real>();
   UnitTestPca<Real>();
   UnitTestTraceProduct<Real>();
-  UnitTestTransposeScatter<Real>();
+  UnitTestTransposeScatter<Real>(); 
   UnitTestRankNUpdate<Real>();
   UnitTestSherman<Real>();
   UnitTestSpVec<Real>();
@@ -2767,6 +2795,8 @@ template<class Real> static void MatrixUnitTest() {
             KALDI_LOG << " Point J";
   UnitTestTraceSpSpLower<Real>();
   UnitTestTranspose<Real>();
+  UnitTestAddVecToRows<Real>();
+  UnitTestAddVecToCols<Real>();
   UnitTestAddVecCross();
   //  SlowMatMul<Real>();  
 }

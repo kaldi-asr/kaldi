@@ -2109,5 +2109,56 @@ Real MatrixBase<Real>::ApplySoftMax() {
 template float MatrixBase<float>::ApplySoftMax();
 template double MatrixBase<double>::ApplySoftMax();
 
+template<class Real>
+template<class OtherReal>
+void MatrixBase<Real>::AddVecToRows(const Real alpha, const VectorBase<OtherReal> &v) {
+  const MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_;
+  KALDI_ASSERT(v.Dim() == num_cols);
+  Real *data = data_;
+  const OtherReal *vdata = v.Data();
+
+  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
+    for (MatrixIndexT j = 0; j < num_cols; j++)
+      data[j] += alpha * vdata[j];
+  }
+}
+
+template void MatrixBase<float>::AddVecToRows(const float alpha,
+                                              const VectorBase<float> &v);
+template void MatrixBase<float>::AddVecToRows(const float alpha,
+                                              const VectorBase<double> &v);
+template void MatrixBase<double>::AddVecToRows(const double alpha,
+                                              const VectorBase<float> &v);
+template void MatrixBase<double>::AddVecToRows(const double alpha,
+                                               const VectorBase<double> &v);
+
+
+template<class Real>
+template<class OtherReal>
+void MatrixBase<Real>::AddVecToCols(const Real alpha, const VectorBase<OtherReal> &v) {
+  const MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_;
+  KALDI_ASSERT(v.Dim() == num_rows);
+  Real *data = data_;
+  const OtherReal *vdata = v.Data();
+
+  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
+    Real to_add = alpha * vdata[i];
+    for (MatrixIndexT j = 0; j < num_cols; j++)
+      data[j] += to_add;
+  }
+}
+
+template void MatrixBase<float>::AddVecToCols(const float alpha,
+                                              const VectorBase<float> &v);
+template void MatrixBase<float>::AddVecToCols(const float alpha,
+                                              const VectorBase<double> &v);
+template void MatrixBase<double>::AddVecToCols(const double alpha,
+                                              const VectorBase<float> &v);
+template void MatrixBase<double>::AddVecToCols(const double alpha,
+                                               const VectorBase<double> &v);
+
+
 } // namespace kaldi
 
