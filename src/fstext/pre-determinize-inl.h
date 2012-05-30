@@ -388,10 +388,10 @@ void PreDeterminize(MutableFst<Arc> *fst,
     vector<StateId> all_seed_states;  // all "problematic" states, plus initial state (if not problematic).
     if (!p_vec[fst->Start()])
       all_seed_states.push_back(fst->Start());
-    for (StateId s = 0;s<=max_state;++s)
+    for (StateId s = 0;s<=max_state; s++)
       if (p_vec[s]) all_seed_states.push_back(s);
 
-    for (size_t idx = 0;idx < all_seed_states.size();++idx) {
+    for (size_t idx = 0;idx < all_seed_states.size(); idx++) {
       StateId s = all_seed_states[idx];
       std::set<StateId> closure_s;
       closure_s.insert(s);  // insert "seed" state.
@@ -425,7 +425,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
     size_t n =cur_pair.second;  // next special symbol to add.
 
     // (D)(v)(b)
-    for (size_t idx = 0;idx < A.size();++idx) {
+    for (size_t idx = 0;idx < A.size(); idx++) {
       assert(d_vec[A[idx]] == false && "This state has been seen before.  Algorithm error.");
       d_vec[A[idx]] = true;
     }
@@ -441,7 +441,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
 
 
     {  // This block sets up arc_hash
-      for (size_t idx = 0;idx < A.size();++idx) {
+      for (size_t idx = 0;idx < A.size(); idx++) {
         StateId s = A[idx];
         assert(s>=0 && s<=max_state);
         ArcId arc_id = 0;
