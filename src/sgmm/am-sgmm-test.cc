@@ -34,7 +34,7 @@ void TestSgmmInit(const AmSgmm &sgmm) {
   config.full_gmm_nbest = std::min(config.full_gmm_nbest, sgmm.NumGauss());
 
   kaldi::Vector<BaseFloat> feat(dim);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -98,7 +98,7 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   config.full_gmm_nbest = std::min(config.full_gmm_nbest, sgmm.NumGauss());
 
   kaldi::Vector<BaseFloat> feat(dim);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -149,7 +149,7 @@ void TestSgmmSubstates(const AmSgmm &sgmm) {
   using namespace kaldi;
   int32 target_substates = 2 * sgmm.NumPdfs();
   kaldi::Vector<BaseFloat> occs(sgmm.NumPdfs());
-  for (int32 i = 0; i < occs.Dim(); ++i)
+  for (int32 i = 0; i < occs.Dim(); i++)
     occs(i) = std::fabs(kaldi::RandGauss()) * (kaldi::RandUniform()+1);
   AmSgmm *sgmm1 = new AmSgmm();
   sgmm1->CopyFromSgmm(sgmm, false);
@@ -160,7 +160,7 @@ void TestSgmmSubstates(const AmSgmm &sgmm) {
   kaldi::SgmmGselectConfig config;
   config.full_gmm_nbest = std::min(config.full_gmm_nbest, sgmm.NumGauss());
   kaldi::Vector<BaseFloat> feat(dim);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
 
@@ -189,7 +189,7 @@ void TestSgmmIncreaseDim(const AmSgmm &sgmm) {
   kaldi::SgmmGselectConfig config;
   config.full_gmm_nbest = std::min(config.full_gmm_nbest, sgmm.NumGauss());
   kaldi::Vector<BaseFloat> feat(dim);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -265,7 +265,7 @@ void UnitTestSgmm() {
 }
 
 int main() {
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 10; i++)
     UnitTestSgmm();
   std::cout << "Test OK.\n";
   return 0;

@@ -93,13 +93,13 @@ UnitTestEstimateLda() {
   Matrix<BaseFloat> means_f(num_class, dim);
   std::vector<SpMatrix<BaseFloat> > vars_f(num_class);
   std::vector<TpMatrix<BaseFloat> > vars_f_sqrt(num_class);
-  for (size_t mix = 0; mix < num_class; ++mix) {
+  for (size_t mix = 0; mix < num_class; mix++) {
     vars_f[mix].Resize(dim);
     vars_f_sqrt[mix].Resize(dim);
   }
 
-  for (size_t m = 0; m < num_class; ++m) {
-    for (size_t d = 0; d < dim; ++d) {
+  for (size_t m = 0; m < num_class; m++) {
+    for (size_t d = 0; d < dim; d++) {
       means_f(m, d) = kaldi::RandGauss();
     }
     rand_posdef_spmatrix(dim, &vars_f[m], &vars_f_sqrt[m], NULL);
@@ -111,9 +111,9 @@ UnitTestEstimateLda() {
   Matrix<BaseFloat> feats(num_class * vec_count, dim);
   std::vector<int32> feats_class(num_class * vec_count);
   Vector<BaseFloat> rnd_vec(dim);
-  for (size_t m = 0; m < num_class; ++m) {
-    for (size_t i = 0; i < vec_count; ++i) {
-      for (size_t d = 0; d < dim; ++d) {
+  for (size_t m = 0; m < num_class; m++) {
+    for (size_t i = 0; i < vec_count; i++) {
+      for (size_t d = 0; d < dim; d++) {
         rnd_vec(d) = RandGauss();
       }
       feats.Row(counter).CopyFromVec(means_f.Row(m));
@@ -128,7 +128,7 @@ UnitTestEstimateLda() {
   Matrix<double> class_mean(num_class, dim);
   SpMatrix<double> total_covar(dim);
   Vector<double> tmp_vec_d(dim);
-  for (size_t i = 0; i < counter; ++i) {
+  for (size_t i = 0; i < counter; i++) {
     tmp_vec_d.CopyFromVec(feats.Row(i));
     class_mean.Row(feats_class[i]).AddVec(1.0, tmp_vec_d);
     total_mean.AddVec(1.0, tmp_vec_d);
@@ -139,7 +139,7 @@ UnitTestEstimateLda() {
   total_covar.AddVec2(-1.0, total_mean);
   // Compute between-class covar.
   SpMatrix<double> bc_covar(dim);
-  for (size_t c = 0; c < num_class; ++c) {
+  for (size_t c = 0; c < num_class; c++) {
     class_mean.Row(c).Scale(1/static_cast<double>(vec_count));
     bc_covar.AddVec2(static_cast<double>(vec_count)/counter, class_mean.Row(c));
   }
@@ -171,7 +171,7 @@ UnitTestEstimateLda() {
   tmp_mat.AddMatMatMat(1.0, lda_mat, kNoTrans, bc_covar_mat, kNoTrans,
     lda_mat, kTrans, 0.0);
   assert(tmp_mat.IsDiagonal());
-  for (int32 i = 1; i < static_cast<int32>(dim); ++i) {
+  for (int32 i = 1; i < static_cast<int32>(dim); i++) {
     if (tmp_mat(i, i) < 1.0e-10) { tmp_mat(i, i) = 0.0; }
     assert(tmp_mat(i - 1, i - 1) >= tmp_mat(i, i));
   }
@@ -184,7 +184,7 @@ UnitTestEstimateLda() {
 int
 main() {
   // repeat the test X times
-  for (int i = 0; i < 2; ++i)
+  for (int i = 0; i < 2; i++)
     UnitTestEstimateLda();
   std::cout << "Test OK.\n";
 }

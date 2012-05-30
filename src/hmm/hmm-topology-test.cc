@@ -80,7 +80,7 @@ void TestHmmTopology() {
 
 int main() {
   // repeat the test ten times
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; i++) {
     kaldi::TestHmmTopology();
   }
   std::cout << "Test OK.\n";

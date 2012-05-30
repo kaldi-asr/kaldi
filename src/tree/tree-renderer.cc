@@ -122,7 +122,7 @@ void TreeRenderer::RenderTable(const EventType *query, int32 id) {
   if (query != NULL)
     EventMap::Lookup(*query, key, &value);
   RenderNonLeaf(id, key, (query != NULL));
-  for (size_t t = 0; t < size; ++t) {
+  for (size_t t = 0; t < size; t++) {
     std::string color = (t == value)? kEdgeColorQuery: kEdgeColor;
     int32 width = (t==value)? kEdgeWidthQuery: kEdgeWidth;
     std::ostringstream label;

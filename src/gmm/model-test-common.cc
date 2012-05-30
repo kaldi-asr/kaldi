@@ -58,8 +58,8 @@ void RandDiagGaussFeatures(int32 num_samples,
   KALDI_ASSERT(sqrt_var.Dim() == dim);
 
   Vector<BaseFloat> rnd_vec(dim);
-  for (int32 counter = 0; counter < num_samples; ++counter) {
-    for (int32 d = 0; d < dim; ++d) {
+  for (int32 counter = 0; counter < num_samples; counter++) {
+    for (int32 d = 0; d < dim; d++) {
       rnd_vec(d) = RandGauss();
     }
     feats->Row(counter).CopyFromVec(mean);
@@ -77,8 +77,8 @@ void RandFullGaussFeatures(int32 num_samples,
   KALDI_ASSERT(sqrt_var.NumRows() == dim);
 
   Vector<BaseFloat> rnd_vec(dim);
-  for (int32 counter = 0; counter < num_samples; ++counter) {
-    for (int32 d = 0; d < dim; ++d) {
+  for (int32 counter = 0; counter < num_samples; counter++) {
+    for (int32 d = 0; d < dim; d++) {
       rnd_vec(d) = RandGauss();
     }
     feats->Row(counter).CopyFromVec(mean);
@@ -109,14 +109,14 @@ void InitRandFullGmm(int32 dim, int32 num_comp, FullGmm *gmm) {
   Vector<BaseFloat> weights(num_comp);
   Matrix<BaseFloat> means(num_comp, dim);
   std::vector< SpMatrix<BaseFloat> > invcovars(num_comp);
-  for (int32 mix = 0; mix < num_comp; ++mix) {
+  for (int32 mix = 0; mix < num_comp; mix++) {
     invcovars[mix].Resize(dim);
   }
 
   BaseFloat tot_weight = 0.0;
-  for (int32 m = 0; m < num_comp; ++m) {
+  for (int32 m = 0; m < num_comp; m++) {
     weights(m) = RandUniform() + 1e-2;
-    for (int32 d= 0; d < dim; ++d) {
+    for (int32 d= 0; d < dim; d++) {
       means(m, d) = RandGauss();
     }
     RandPosdefSpMatrix(dim, &invcovars[m], NULL, NULL);

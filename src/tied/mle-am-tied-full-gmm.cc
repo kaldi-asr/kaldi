@@ -49,22 +49,22 @@ void AccumAmTiedFullGmm::Init(const AmTiedFullGmm &model,
   tied_gmm_accumulators_.resize(model.NumTiedPdfs(), NULL);
 
   /// codebook accumulators
-  for (int32 i = 0; i < model.NumCodebooks(); ++i) {
+  for (int32 i = 0; i < model.NumCodebooks(); i++) {
     gmm_accumulators_[i] = new AccumFullGmm();
     gmm_accumulators_[i]->Resize(model.GetCodebook(i), flags);
   }
 
   /// tied gmm accumulators
-  for (int32 i = 0; i < model.NumTiedPdfs(); ++i) {
+  for (int32 i = 0; i < model.NumTiedPdfs(); i++) {
     tied_gmm_accumulators_[i] = new AccumTiedGmm();
     tied_gmm_accumulators_[i]->Resize(model.GetTiedPdf(i), flags);
   }
 }
 
 void AccumAmTiedFullGmm::SetZero(GmmFlagsType flags) {
-  for (size_t i = 0; i < gmm_accumulators_.size(); ++i)
+  for (size_t i = 0; i < gmm_accumulators_.size(); i++)
     gmm_accumulators_[i]->SetZero(flags);
-  for (size_t i = 0; i < tied_gmm_accumulators_.size(); ++i)
+  for (size_t i = 0; i < tied_gmm_accumulators_.size(); i++)
     tied_gmm_accumulators_[i]->SetZero(flags);
 }
 
@@ -256,19 +256,19 @@ void MleAmTiedFullGmmUpdate(
 
     // smooth the weights for tied...
     if ((flags & kGmmWeights) && config_tied.interpolate_weights) {
-      for (int32 i = 0; i < model->NumTiedPdfs(); ++i)
+      for (int32 i = 0; i < model->NumTiedPdfs(); i++)
         model->GetTiedPdf(i).Interpolate(wt, oldm->GetTiedPdf(i));
     }
 
     // ...and mean/var for codebooks
     if ((flags & kGmmMeans) && config_tied.interpolate_means) {
-      for (int32 i = 0; i < model->NumCodebooks(); ++i)
+      for (int32 i = 0; i < model->NumCodebooks(); i++)
         model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
                                           kGmmMeans);
     }
 
     if ((flags & kGmmVariances) && config_tied.interpolate_variances) {
-      for (int32 i = 0; i < model->NumCodebooks(); ++i)
+      for (int32 i = 0; i < model->NumCodebooks(); i++)
         model->GetCodebook(i).Interpolate(wt, oldm->GetCodebook(i),
                                           kGmmVariances);
     }

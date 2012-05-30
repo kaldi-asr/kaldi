@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
       }
 
       // subsequently add the codebooks
-      for (int32 i = 5; i < po.NumArgs(); ++i) {
+      for (int32 i = 5; i < po.NumArgs(); i++) {
         DiagGmm cb;
         bool binary_in;
         Input ki(po.GetArg(i), &binary_in);

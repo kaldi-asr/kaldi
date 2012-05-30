@@ -74,7 +74,7 @@ void AllocateDiagGmms(const BuildTreeStatsType &stats,
     x2.AddVec2(-1.0, x);  // subtract mean^2.
 
     // enforce variance floor
-    for (int32 i = 0; i < x2.Dim(); ++i)
+    for (int32 i = 0; i < x2.Dim(); i++)
       if (x2(i) < 0.01) x2(i) = 0.01;
 
     // KALDI_ASSERT(x2.Min() > 0);
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
       }
 
       // we will attribute the Gaussians according to a power law
-      for (int32 i = 0; i < num_pdf; ++i) {
+      for (int32 i = 0; i < num_pdf; i++) {
         occs[i] = pow(occs[i], power);
 	tot_occ += occs[i];
       }
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
     vector<DiagGmm *> pdfs;
     {
       double slack = 0.;
-      for (int32 i = 0; i < num_pdf; ++i) {
+      for (int32 i = 0; i < num_pdf; i++) {
         // build initial GMM
         int c = comp[i].size();
         KALDI_ASSERT(c > 0);
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
         DiagGmmNormal npdfsi(*(pdfs[i]));
 
         // add components
-        for (int32 j = 0; j < comp[i].size(); ++j) {
+        for (int32 j = 0; j < comp[i].size(); j++) {
           DiagGmmNormal n(*(leafs[comp[i][j]]));
           npdfsi.weights_(j) = n.weights_(0);
           npdfsi.means_.CopyRowFromVec(n.means_.Row(0), j);
@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
 
     // write out codebooks
     KALDI_LOG << "Writing out " << model_out_filebase << ".*";
-    for (int32 i = 0; i < pdfs.size(); ++i) {
+    for (int32 i = 0; i < pdfs.size(); i++) {
       std::ostringstream str;
       str << model_out_filebase << "." << i;
 
@@ -287,10 +287,10 @@ int main(int argc, char *argv[]) {
 
         BaseFloat var = dgn.vars_.Min();
 
-        for (int32 j = 0; j < pdfs[i]->NumGauss(); ++j) {
-          for (int32 k = 0; k < dim; ++k) {
+        for (int32 j = 0; j < pdfs[i]->NumGauss(); j++) {
+          for (int32 k = 0; k < dim; k++) {
             fgn.vars_[j](k, k) = dgn.vars_.Row(j)(k);
-            for (int32 l = k+1; l < dim; ++l) {
+            for (int32 l = k+1; l < dim; l++) {
               fgn.vars_[j](k, l) = var;
               fgn.vars_[j](l, k) = var;
             }

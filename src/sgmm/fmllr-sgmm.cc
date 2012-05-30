@@ -61,8 +61,8 @@ static void ApplyHessianXformToGradient(const SgmmFmllrGlobalParams &globals,
   const Vector<BaseFloat> &D = globals.mean_scatter_;
   if (D.Min() <= 0.0)
     KALDI_ERR << "Cannot estimate FMLLR: mean scatter has 0 eigenvalues.";
-  for (int32 r = 0; r < dim; ++r) {
-    for (int32 c = 0; c < r; ++c) {
+  for (int32 r = 0; r < dim; r++) {
+    for (int32 c = 0; c < r; c++) {
       // Eq. (B.15)
       (*gradient_out)(r, c) = gradient_in(r, c) / std::sqrt(1 + D(c));
       // Eq. (B.16)
@@ -83,8 +83,8 @@ static void ApplyInvHessianXformToChange(const SgmmFmllrGlobalParams &globals,
   const Vector<BaseFloat> &D = globals.mean_scatter_;
   if (D.Min() <= 0.0)
     KALDI_ERR << "Cannot estimate FMLLR: mean scatter has 0 eigenvalues.";
-  for (int32 r = 0; r < dim; ++r) {
-    for (int32 c = 0; c < r; ++c) {
+  for (int32 r = 0; r < dim; r++) {
+    for (int32 c = 0; c < r; c++) {
       // Eq. (B.21)
       (*delta_out)(r, c) = delta_in(r, c) / std::sqrt(1 + D(c)) -
           delta_in(c, r) / ((1 + D(c)) * std::sqrt(1 + D(r) - 1 / (1 + D(c))));
@@ -110,7 +110,7 @@ void SgmmFmllrGlobalParams::Write(std::ostream &out, bool binary) const {
     WriteToken(out, binary, "<FMLLR_BASIS>");
     uint32 tmp = static_cast<uint32>(fmllr_bases_.size());
     WriteBasicType(out, binary, tmp);
-    for (uint32 i = 0; i < tmp; ++i) {
+    for (uint32 i = 0; i < tmp; i++) {
       fmllr_bases_[i].Write(out, binary);
     }
   }
@@ -131,7 +131,7 @@ void SgmmFmllrGlobalParams::Read(std::istream &in, bool binary) {
     uint32 tmp;
     ReadBasicType(in, binary, &tmp);
     fmllr_bases_.resize(tmp);
-    for (uint32 i = 0; i < tmp; ++i) {
+    for (uint32 i = 0; i < tmp; i++) {
       fmllr_bases_[i].Read(in, binary);
     }
   } else {
@@ -179,10 +179,10 @@ FmllrSgmmAccs::AccumulateFromPosteriors(const AmSgmm &model,
   SpMatrix<double> scatter(dim_+1, kSetZero);
   scatter.AddVec2(1.0, extended_data);
 
-  for (int32 ki = 0, ki_max = gselect.size(); ki < ki_max; ++ki) {
+  for (int32 ki = 0, ki_max = gselect.size(); ki < ki_max; ki++) {
     int32 i = gselect[ki];
 
-    for (int32 m = 0; m < model.NumSubstates(pdf_index); ++m) {
+    for (int32 m = 0; m < model.NumSubstates(pdf_index); m++) {
       // posterior gamma_{jkmi}(t)                             eq.(39)
       BaseFloat gammat_jmi = posteriors(ki, m);
 
@@ -237,7 +237,7 @@ BaseFloat FmllrSgmmAccs::FmllrObjGradient(const AmSgmm &sgmm,
   SpMatrix<double> inv_covar(dim);
   double obj = stats_.beta_ * A.LogDet() +
       TraceMatMat(xform_d, stats_.K_, kTrans);
-  for (int32 i = 0; i < num_gauss; ++i) {
+  for (int32 i = 0; i < num_gauss; i++) {
     sgmm.GetInvCovars(i, &inv_covar);
     xform_g.AddMatSp(1.0, xform_d, kNoTrans, stats_.G_[i], 0.0);
     total_g.AddSpMat(1.0, inv_covar, xform_g, kNoTrans, 1.0);
@@ -298,7 +298,7 @@ static BaseFloat CalcFmllrStepSize(const AffineXformStats &stats,
   // Eq. (B.29): n = \sum_i tr(\Delta \Sigma_{i}^{-1} \Delta S_{i})
   BaseFloat n = 0;
   SpMatrix<double> inv_covar;
-  for (int32 i = 0, num_gauss = sgmm.NumGauss(); i < num_gauss; ++i) {
+  for (int32 i = 0, num_gauss = sgmm.NumGauss(); i < num_gauss; i++) {
     sgmm.GetInvCovars(i, &inv_covar);
     n += TraceMatSpMatSp(Delta_d, kTrans, inv_covar, Delta_d, kNoTrans,
                          stats.G_[i]);
@@ -425,7 +425,7 @@ bool FmllrSgmmAccs::Update(const AmSgmm &sgmm,
         // coefficients for each of the basis matrices. The current
         // implementation stores the computed transform to simplify the code!
         hess_xformed_delta.SetZero();
-        for (int32 b = 0; b < num_bases; ++b) {  // Eq (B.20)
+        for (int32 b = 0; b < num_bases; b++) {  // Eq (B.20)
           hess_xformed_delta.AddMat(TraceMatMat(globals.fmllr_bases_[b],
                                                 hess_xformed_grad, kTrans),
                                     globals.fmllr_bases_[b], kNoTrans);

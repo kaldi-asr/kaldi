@@ -181,7 +181,7 @@ void EbwAmSgmmUpdater::UpdatePhoneVectorsInternal(
     double num_state_count = 0.0,
         state_auxf_impr = 0.0;
     Vector<double> w_jm(I);
-    for (int32 m = 0; m < model->NumSubstates(j); ++m) {
+    for (int32 m = 0; m < model->NumSubstates(j); m++) {
       double gamma_jm_num = num_accs.gamma_[j].Row(m).Sum();
       double gamma_jm_den = den_accs.gamma_[j].Row(m).Sum();
       num_state_count += gamma_jm_num;
@@ -594,12 +594,12 @@ double EbwAmSgmmUpdater::UpdateSubstateWeights(
   KALDI_LOG << "Updating substate mixture weights";
 
   double tot_count = 0.0, tot_impr = 0.0;
-  for (int32 j = 0; j < num_accs.num_states_; ++j) {
+  for (int32 j = 0; j < num_accs.num_states_; j++) {
     int32 M = model->NumSubstates(j);
     Vector<double> num_occs(M), den_occs(M),
         orig_weights(model->c_[j]), weights(model->c_[j]);
 
-    for (int32 m = 0; m < M; ++m) {
+    for (int32 m = 0; m < M; m++) {
       num_occs(m) = num_accs.gamma_[j].Row(m).Sum()
           + options_.tau_c * weights(m);
       den_occs(m) = den_accs.gamma_[j].Row(m).Sum();

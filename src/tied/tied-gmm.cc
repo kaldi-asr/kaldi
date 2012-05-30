@@ -139,7 +139,7 @@ void TiedGmm::Merge(std::vector<int32> *sequence) {
   }
 
   int32 m = 0;
-  for (int32 i = 0; i < discarded.size(); ++i) {
+  for (int32 i = 0; i < discarded.size(); i++) {
     if (discarded[i])
       weights_.RemoveElement(m);
     else

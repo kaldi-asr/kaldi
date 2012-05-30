@@ -213,7 +213,7 @@ void UnitTestEstimateMmieDiagGmm() {
 
 int main() {
   // repeat the test 20 times
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 20; i++) {
     kaldi::UnitTestEstimateMmieDiagGmm();
   }
   std::cout << "Test OK.\n";

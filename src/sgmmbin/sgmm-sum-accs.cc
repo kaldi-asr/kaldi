@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     kaldi::Vector<double> transition_accs;
     kaldi::MleAmSgmmAccs sgmm_accs;
 
-    for (int i = 2, max = po.NumArgs(); i <= max; ++i) {
+    for (int i = 2, max = po.NumArgs(); i <= max; i++) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       kaldi::Input ki(stats_in_filename, &binary_read);

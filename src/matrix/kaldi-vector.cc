@@ -378,7 +378,7 @@ void VectorBase<Real>::CopyRowFromMat(const MatrixBase<OtherReal> &mat, MatrixIn
   KALDI_ASSERT(row < mat.NumRows());
   KALDI_ASSERT(dim_ == mat.NumCols());
   const OtherReal *mat_row = mat.RowData(row);
-  for (MatrixIndexT i = 0; i < dim_; ++i)
+  for (MatrixIndexT i = 0; i < dim_; i++)
     data_[i] = static_cast<Real>(mat_row[i]);
 }
 
@@ -397,7 +397,7 @@ void VectorBase<Real>::CopyRowFromSp(const SpMatrix<OtherReal> &sp, MatrixIndexT
 
   sp_data += (row*(row+1)) / 2; // takes us to beginning of this row.
   MatrixIndexT i;
-  for (i = 0; i < row; ++i) // copy consecutive elements.
+  for (i = 0; i < row; i++) // copy consecutive elements.
     data_[i] = static_cast<Real>(*(sp_data++));
   for(; i < dim_; ++i, sp_data += i) 
     data_[i] = static_cast<Real>(*sp_data);
@@ -529,7 +529,7 @@ void VectorBase<Real>::CopyDiagFromPacked(const PackedMatrix<Real> &M) {
 template<typename Real>
 Real VectorBase<Real>::Sum() const {
   double sum = 0.0;
-  for (MatrixIndexT i = 0; i < dim_; ++i) { sum += data_[i]; }
+  for (MatrixIndexT i = 0; i < dim_; i++) { sum += data_[i]; }
   return sum;
 }
 
@@ -537,7 +537,7 @@ template<typename Real>
 Real VectorBase<Real>::SumLog() const {
   double sum_log = 0.0;
   double prod = 1.0;
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     prod *= data_[i];
     // Possible future work (arnab): change these magic values to pre-defined
     // constants
@@ -555,9 +555,9 @@ void VectorBase<Real>::AddRowSumMat(const MatrixBase<Real>& rM) {
   // note the double accumulator
   double sum;
   KALDI_ASSERT(dim_ == rM.NumCols());
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     sum = 0.0;
-    for (MatrixIndexT j = 0; j < rM.NumRows(); ++j) {
+    for (MatrixIndexT j = 0; j < rM.NumRows(); j++) {
       sum += rM(j, i);
     }
     data_[i] += sum;
@@ -569,9 +569,9 @@ void VectorBase<Real>::AddColSumMat(const MatrixBase<Real>& rM) {
   // note the double accumulator
   double sum;
   KALDI_ASSERT(dim_ == rM.NumRows());
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     sum = 0.0;
-    for (MatrixIndexT j = 0; j < rM.NumCols(); ++j) {
+    for (MatrixIndexT j = 0; j < rM.NumCols(); j++) {
       sum += rM(i, j);
     }
     data_[i] += sum;
@@ -591,7 +591,7 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
 
   double sum_relto_max_elem = 0.0;
 
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     BaseFloat f = data_[i];
     if (f >= cutoff)
       sum_relto_max_elem += exp(f - max_elem);
@@ -601,14 +601,14 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
 
 template<typename Real>
 void VectorBase<Real>::InvertElements() {
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = static_cast<Real>(1 / data_[i]);
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyLog() {
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     if (data_[i] < 0.0)
       KALDI_ERR << "Trying to take log of a negative number.";
     data_[i] = log(data_[i]);
@@ -618,27 +618,27 @@ void VectorBase<Real>::ApplyLog() {
 template<typename Real>
 void VectorBase<Real>::ApplyLogAndCopy(const VectorBase<Real>& rv) {
   KALDI_ASSERT(dim_ == rv.Dim());
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = log(rv(i));
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::ApplyExp() {
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = exp(data_[i]);
   }
 }
 
 template<typename Real>
 void VectorBase<Real>::Abs() {
-  for (MatrixIndexT i = 0; i < dim_; ++i) { data_[i] = std::abs(data_[i]); }
+  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = std::abs(data_[i]); }
 }
 
 template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
   Real lse = LogSumExp();
-  for (MatrixIndexT i = 0; i < dim_; ++i) {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] = exp(data_[i] - lse);
   }
   return lse;

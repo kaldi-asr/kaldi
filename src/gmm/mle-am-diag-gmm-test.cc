@@ -35,7 +35,7 @@ void TestAmDiagGmmAccsIO(const AmDiagGmm &am_gmm,
   AccumAmDiagGmm accs;
   accs.Init(am_gmm, flags);
   BaseFloat loglike = 0.0;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 state = RandInt(0, am_gmm.NumPdfs()-1);
     loglike += accs.AccumulateForGmm(am_gmm, feats.Row(i), state, 1.0);
   }
@@ -92,7 +92,7 @@ void UnitTestMleAmDiagGmm() {
 
   AmDiagGmm am_gmm;
   int32 total_num_comp = 0;
-  for (int32 i = 0; i < num_pdfs; ++i) {
+  for (int32 i = 0; i < num_pdfs; i++) {
     int32 num_comp = 1 + kaldi::RandInt(0, 9);  // random mixture size
     kaldi::DiagGmm gmm;
     ut::InitRandDiagGmm(dim, num_comp, &gmm);
@@ -107,7 +107,7 @@ void UnitTestMleAmDiagGmm() {
                                                           total_num_comp/2);
     kaldi::Matrix<BaseFloat> means(num_feat_comp, dim),
         vars(num_feat_comp, dim);
-    for (int32 m = 0; m < num_feat_comp; ++m) {
+    for (int32 m = 0; m < num_feat_comp; m++) {
       for (int32 d= 0; d < dim; d++) {
         means(m, d) = kaldi::RandGauss();
         vars(m, d) = exp(kaldi::RandGauss()) + 1e-2;
@@ -115,7 +115,7 @@ void UnitTestMleAmDiagGmm() {
     }
     // Now generate random features with those means and variances.
     feats.Resize(num_feat_comp * 200, dim);
-    for (int32 m = 0; m < num_feat_comp; ++m) {
+    for (int32 m = 0; m < num_feat_comp; m++) {
       kaldi::SubMatrix<BaseFloat> tmp(feats, m*200, 200, 0, dim);
       ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
@@ -126,7 +126,7 @@ void UnitTestMleAmDiagGmm() {
 
 int main() {
 //  std::srand(time(NULL));
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 10; i++)
     UnitTestMleAmDiagGmm();
   std::cout << "Test OK.\n";
   return 0;

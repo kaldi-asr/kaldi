@@ -98,7 +98,7 @@ UnitTestRegressionTree() {
   Matrix<BaseFloat> means2(num_comp, dim);
   Vector<BaseFloat> tmp_vec(dim);
   gmm1.GetMeans(&means2);
-  for (int32 c = 0; c < static_cast<int32>(num_comp); ++c) {
+  for (int32 c = 0; c < static_cast<int32>(num_comp); c++) {
     // tmp_vec.SetRandn();
     // tmp_vec.Scale(0.01);
     tmp_vec.Set(0.001 * means2.Row(c).Max());
@@ -117,11 +117,11 @@ UnitTestRegressionTree() {
   // let's have uniform occupancies
   size_t num_pdfs = 2;
   Vector<BaseFloat> occs(num_pdfs);
-  for (int32 i = 0; i < static_cast<int32>(num_pdfs); ++i) {
+  for (int32 i = 0; i < static_cast<int32>(num_pdfs); i++) {
     occs(i) = 1.0/static_cast<BaseFloat>(num_pdfs*num_comp);
   }
 
-  for (int32 i = 0; i < gmm1.NumGauss(); ++i) {
+  for (int32 i = 0; i < gmm1.NumGauss(); i++) {
     gmm1.GetComponentMean(i, &tmp_vec);
     tmp_vec.Write(std::cout, false);
     gmm2.GetComponentMean(i, &tmp_vec);
@@ -142,7 +142,7 @@ UnitTestRegressionTree() {
 int
 main() {
   // repeat the test X times
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < 4; i++)
     UnitTestRegressionTree();
   std::cout << "Test OK.\n";
 }

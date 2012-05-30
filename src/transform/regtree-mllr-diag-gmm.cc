@@ -91,7 +91,7 @@ void RegtreeMllrDiagGmm::GetTransformedMeans(const RegressionTree &regtree,
   Vector<BaseFloat> extended_mean(dim_+1);
   extended_mean(dim_) = 1.0;
 
-  for (int32 gauss_index = 0; gauss_index < num_gauss; ++gauss_index) {
+  for (int32 gauss_index = 0; gauss_index < num_gauss; gauss_index++) {
     int32 bclass_index = regtree.Gauss2BaseclassId(pdf_index, gauss_index);
     int32 xform_index = bclass2xforms_[bclass_index];
     if (xform_index > -1) {  // use a transform
@@ -310,7 +310,7 @@ static BaseFloat MllrAuxFunction(const Matrix<BaseFloat> &xform,
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform_d, 0, dim, 0, dim);
   double obj = TraceMatMat(xform_d, stats.K_, kTrans);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
   }

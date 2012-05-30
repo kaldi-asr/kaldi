@@ -72,7 +72,7 @@ void AmDiagGmm::RemovePdf(int32 pdf_index) {
 
 int32 AmDiagGmm::NumGauss() const {
   int32 ans = 0;
-  for (size_t i = 0; i < densities_.size(); ++i)
+  for (size_t i = 0; i < densities_.size(); i++)
     ans += densities_[i]->NumGauss();
   return ans;
 }
@@ -83,7 +83,7 @@ void AmDiagGmm::CopyFromAmDiagGmm(const AmDiagGmm &other) {
   }
   densities_.resize(other.NumPdfs(), NULL);
   dim_ = other.dim_;
-  for (int32 i = 0, end = densities_.size(); i < end; ++i) {
+  for (int32 i = 0, end = densities_.size(); i < end; i++) {
     densities_[i] = new DiagGmm();
     densities_[i]->CopyFromDiagGmm(*other.densities_[i]);
   }
@@ -358,7 +358,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
   ClusterBottomUpCompartmentalized(state_clust_gauss, kBaseFloatMax,
                                    opts.intermediate_num_gauss,
                                    &gauss_clusters_out, NULL);
-  for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index)
+  for (int32 clust_index = 0; clust_index < num_clust_states; clust_index++)
     DeletePointers(&state_clust_gauss[clust_index]);
 
   // Next, put the remaining clustered Gaussians into a single GMM.
@@ -369,7 +369,7 @@ void ClusterGaussiansToUbm(const AmDiagGmm& am,
   Vector<BaseFloat> tmp_weights(opts.intermediate_num_gauss);
   Vector<BaseFloat> tmp_vec(dim);
   int32 gauss_index = 0;
-  for (int32 clust_index = 0; clust_index < num_clust_states; ++clust_index) {
+  for (int32 clust_index = 0; clust_index < num_clust_states; clust_index++) {
     for (int32 i = gauss_clusters_out[clust_index].size()-1; i >=0; --i) {
       GaussClusterable *this_cluster = static_cast<GaussClusterable*>(
           gauss_clusters_out[clust_index][i]);

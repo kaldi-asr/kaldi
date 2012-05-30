@@ -39,7 +39,7 @@ AccumulateFromPosteriors(const DiagGmm &pdf,
   scatter.AddVec2(1.0, extended_data);
   Vector<double> inv_var_mean(dim);
   Vector<double> g_scale(dim);  // scale on "scatter" for each dim.
-  for (size_t m = 0; m < num_comp; ++m) {
+  for (size_t m = 0; m < num_comp; m++) {
     BaseFloat this_post = posterior(m);
     if (this_post != 0.0) {
       inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
@@ -48,7 +48,7 @@ AccumulateFromPosteriors(const DiagGmm &pdf,
       g_scale.AddVec(this_post, pdf.inv_vars().Row(m));
     }
   }
-  for (size_t d = 0; d < dim; ++d)
+  for (size_t d = 0; d < dim; d++)
     this->G_[d].AddSp(g_scale(d), scatter);
 }
 
@@ -166,7 +166,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
 
   // Compute the inverse matrices of second-order statistics
   vector< SpMatrix<double> > inv_g(dim);
-  for (size_t d = 0; d < dim; ++d) {
+  for (size_t d = 0; d < dim; d++) {
     inv_g[d].Resize(dim + 1);
     inv_g[d].CopyFromSp(stats.G_[d]);
     inv_g[d].Invert();
@@ -178,7 +178,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
   double obj_old = obj_improvement, obj_new = 0;
 
   for (int32 iter = 0; iter < num_iters; ++iter) {
-    for (size_t d = 0; d < dim; ++d) {
+    for (size_t d = 0; d < dim; d++) {
       double logdet;
       // Calculating the matrix of cofactors (transpose of adjugate)
       Matrix<double> cofact_mat(dim, dim);
@@ -448,7 +448,7 @@ float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
   SubMatrix<double> A(xform_d, 0, dim, 0, dim);
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform_d, stats.K_, kTrans);
-  for (size_t d = 0; d < dim; ++d) {
+  for (size_t d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
   }
@@ -462,7 +462,7 @@ double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
   SubMatrix<double> A(xform, 0, dim, 0, dim);
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform, stats.K_, kTrans);
-  for (size_t d = 0; d < dim; ++d) {
+  for (size_t d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform.Row(d));
   }
@@ -481,7 +481,7 @@ BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform_d, stats.K_, kTrans);
   Matrix<double> S(dim, dim + 1);
-  for (size_t d = 0; d < dim; ++d) {
+  for (size_t d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
     S.CopyRowFromVec(xform_row_g, d);

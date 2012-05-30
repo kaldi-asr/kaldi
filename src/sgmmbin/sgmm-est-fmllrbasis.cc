@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     int32 dim = am_sgmm.FeatureDim();
     fmllr_grad_scatter.Resize(dim * (dim + 1), kaldi::kSetZero);
 
-    for (int i = 3, max = po.NumArgs(); i <= max; ++i) {
+    for (int i = 3, max = po.NumArgs(); i <= max; i++) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       kaldi::Input ki(stats_in_filename, &binary_read);

@@ -59,7 +59,7 @@ void AccumAmDiagGmm::Init(const AmDiagGmm &model,
 }
 
 void AccumAmDiagGmm::SetZero(GmmFlagsType flags) {
-  for (size_t i = 0; i < gmm_accumulators_.size(); ++i) {
+  for (size_t i = 0; i < gmm_accumulators_.size(); i++) {
     gmm_accumulators_[i]->SetZero(flags);
   }
 }

@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         << am_sgmm.FeatureDim() << endl;
       if (sgmm_detailed) {
         int32 total_substates = 0;
-        for (int32 j = 0; j < am_sgmm.NumPdfs(); ++j) {
+        for (int32 j = 0; j < am_sgmm.NumPdfs(); j++) {
           cout << "  # of substates for state " << setw(13) << j
             << am_sgmm.NumSubstates(j) << endl;
           total_substates += am_sgmm.NumSubstates(j);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
         << trans_model.NumTransitionStates() << endl;
       if (trans_detailed) {
         int32 total_indices = 0;
-        for (int32 s = 0; s < trans_model.NumTransitionStates(); ++s) {
+        for (int32 s = 0; s < trans_model.NumTransitionStates(); s++) {
           cout << "  # of transition ids for state " << setw(8) << s
             << trans_model.NumTransitionIndices(s) << endl;
           total_indices += trans_model.NumTransitionIndices(s);

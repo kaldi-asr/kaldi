@@ -177,7 +177,7 @@ void UnitTestDiagGmm() {
     gmm3.Resize(gmm->NumGauss(), gmm->Dim());
     gmm3.SetWeights(weights_bak);
     means_bak.SetZero();
-    for (size_t i = 0; i < nMix; ++i) {
+    for (size_t i = 0; i < nMix; i++) {
       SubVector<BaseFloat> row(means_bak, i);
       gmm->GetComponentMean(i, &row);
       gmm3.SetComponentMean(i, row);
@@ -296,7 +296,7 @@ void UnitTestDiagGmm() {
 
 int main() {
   // repeat the test ten times
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 2; i++) {
     kaldi::UnitTestDiagGmm();
     kaldi::UnitTestDiagGmmGenerate();
   }

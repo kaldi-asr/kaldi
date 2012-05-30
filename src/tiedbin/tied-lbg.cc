@@ -61,7 +61,7 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
   KALDI_LOG << "Estimating " << numc << " single Gaussians";
   vector<int32> target_size(numc, 0);
   gmms.resize(numc, NULL);
-  for (int32 i = 0; i < numc; ++i) {
+  for (int32 i = 0; i < numc; i++) {
     // ML estimate for single component
     Vector<double> x;
     Vector<double> x2;
@@ -107,7 +107,7 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
   
   // determine target number of Gaussians for each codebook
   double slack = 0.;
-  for (int32 i = 0; i < numc; ++i) {
+  for (int32 i = 0; i < numc; i++) {
     // this codebook's share of the freely distributable Gaussians
     double sd = static_cast<double> (total_n - numc * min_n) 
                 * target_size[i] / features.size();
@@ -124,7 +124,7 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
   
   // now for each codebook that hasn't reached target size, do the split and 
   // re-estimate loop
-  for (int32 i = 0; i < numc; ++i) {
+  for (int32 i = 0; i < numc; i++) {
     KALDI_LOG << "Initializing codebook " << i << " with " << target_size[i]
               << " Gaussians";
     DiagGmm *diag = gmms[i];
@@ -133,7 +133,7 @@ void Lbg(int32 min_n, int32 total_n, vector<int32> &mapping,
       diag->Split(diag->NumGauss() + 1, perturb);
       
       // iterate acc/est
-      for (int32 j = 0; j < em_it; ++j) {
+      for (int32 j = 0; j < em_it; j++) {
         AccumDiagGmm acc(*diag, kGmmAll);
         vector<int32>::iterator mit, mend;
         vector<Vector<BaseFloat> >::iterator fit, fend;
@@ -277,7 +277,7 @@ try {
         }
 
         // translate alignment into codebook ids and append data
-        for (int32 i = 0; i < newalg.size(); ++i) {
+        for (int32 i = 0; i < newalg.size(); i++) {
           // get the pdf associated with this transition
           int32 pdfid = trans_model.TransitionIdToPdf(newalg[i]);
           
@@ -308,7 +308,7 @@ try {
     if (pdfs.size() > 1) {
       KALDI_LOG << "Writing out " << outfile_base << ".[0.." 
                 << (pdfs.size() - 1) << "]";
-      for (int32 i = 0; i < pdfs.size(); ++i) {
+      for (int32 i = 0; i < pdfs.size(); i++) {
         std::ostringstream str;
         str << outfile_base << "." << i;
 

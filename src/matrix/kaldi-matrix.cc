@@ -888,8 +888,8 @@ void MatrixBase<Real>::MulElements(const MatrixBase<Real>& a) {
   MatrixIndexT i;
   MatrixIndexT j;
 
-  for (i = 0; i < num_rows_; ++i) {
-    for (j = 0; j < num_cols_; ++j) {
+  for (i = 0; i < num_rows_; i++) {
+    for (j = 0; j < num_cols_; j++) {
       (*this)(i, j) *= a(i, j);
     }
   }
@@ -901,8 +901,8 @@ void MatrixBase<Real>::DivElements(const MatrixBase<Real>& a) {
   MatrixIndexT i;
   MatrixIndexT j;
 
-  for (i = 0; i < num_rows_; ++i) {
-    for (j = 0; j < num_cols_; ++j) {
+  for (i = 0; i < num_rows_; i++) {
+    for (j = 0; j < num_cols_; j++) {
       (*this)(i, j) /= a(i, j);
     }
   }
@@ -912,8 +912,8 @@ template<typename Real>
 Real MatrixBase<Real>::Sum() const {
   double sum = 0.0;
 
-  for (MatrixIndexT i = 0; i < num_rows_; ++i) {
-    for (MatrixIndexT j = 0; j < num_cols_; ++j) {
+  for (MatrixIndexT i = 0; i < num_rows_; i++) {
+    for (MatrixIndexT j = 0; j < num_cols_; j++) {
       sum += (*this)(i, j);
     }
   }
@@ -1588,8 +1588,8 @@ void MatrixBase<Real>::InvertDouble(Real *LogDet, Real *DetSign,
 
 template<typename Real>
 void MatrixBase<Real>::InvertElements() {
-  for (MatrixIndexT r = 0; r < num_rows_; ++r) {
-    for (MatrixIndexT c = 0; c < num_cols_; ++c) {
+  for (MatrixIndexT r = 0; r < num_rows_; r++) {
+    for (MatrixIndexT c = 0; c < num_cols_; c++) {
       (*this)(r, c) = static_cast<Real>(1.0 / (*this)(r, c));
     }
   }
@@ -1749,7 +1749,7 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
   MatrixIndexT i;
   MatrixIndexT j;
   if (sizeof(Real) == sizeof(float)) {
-    for (i = 0; i< M.NumRows(); ++i) {
+    for (i = 0; i< M.NumRows(); i++) {
       is.read((char*)M.RowData(i), sizeof(float)*M.NumCols());
       if (is.fail()) {
         KALDI_WARN << "Could not read data from HTK feature file ";
@@ -1772,7 +1772,7 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
         return false;
       }
       MatrixIndexT C = M.NumCols();
-      for (j = 0; j < C; ++j) {
+      for (j = 0; j < C; j++) {
         if (MachineIsLittleEndian())  // HTK standard is big-endian!
           KALDI_SWAP4(pmem[j]);
         M(i, j) = static_cast<Real>(pmem[j]);
@@ -1809,7 +1809,7 @@ bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr) //
   MatrixIndexT i;
   MatrixIndexT j;
   if (sizeof(Real) == sizeof(float) && !MachineIsLittleEndian()) {
-    for (i = 0; i< M.NumRows(); ++i) {  // Unlikely to reach here ever!
+    for (i = 0; i< M.NumRows(); i++) {  // Unlikely to reach here ever!
       os.write((char*)M.RowData(i), sizeof(float)*M.NumCols());
       if (os.fail()) goto bad;
     }
@@ -2083,8 +2083,8 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
 
   double sum_relto_max_elem = 0.0;
 
-  for (MatrixIndexT i = 0; i < num_rows_; ++i) {
-    for (MatrixIndexT j = 0; j < num_cols_; ++j) {
+  for (MatrixIndexT i = 0; i < num_rows_; i++) {
+    for (MatrixIndexT j = 0; j < num_cols_; j++) {
       BaseFloat f = (*this)(i, j);
       if (f >= cutoff)
         sum_relto_max_elem += exp(f - max_elem);
@@ -2099,8 +2099,8 @@ template double MatrixBase<double>::LogSumExp(double) const;
 template<typename Real>
 Real MatrixBase<Real>::ApplySoftMax() {
   Real lse = LogSumExp();
-  for (MatrixIndexT i = 0; i < num_rows_; ++i)
-    for (MatrixIndexT j = 0; j < num_cols_; ++j)
+  for (MatrixIndexT i = 0; i < num_rows_; i++)
+    for (MatrixIndexT j = 0; j < num_cols_; j++)
       (*this)(i, j) = exp((*this)(i, j) - lse);
   return lse;
 }

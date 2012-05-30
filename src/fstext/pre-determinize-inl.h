@@ -239,7 +239,7 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
         // Has at least one digit.
         size_t pos;
-        for (pos = prefix_len;sym[pos] != '\0'; ++pos)
+        for (pos = prefix_len;sym[pos] != '\0'; pos++)
           if (!isdigit(sym[pos])) break;
         if (sym[pos] == '\0') {  // All remaining characters were digits.
           if (bad_sym != NULL) *bad_sym = (std::string) sym;

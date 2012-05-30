@@ -38,7 +38,7 @@ void FullGmm::SetMeans(const Matrix<Real>& m) {
     && means_invcovars_.NumCols() == m.NumCols());
   size_t num_comp = NumGauss();
   Matrix<BaseFloat> m_bf(m);
-  for (size_t i = 0; i < num_comp; ++i) {
+  for (size_t i = 0; i < num_comp; i++) {
     means_invcovars_.Row(i).AddSpVec(1.0, inv_covars_[i], m_bf.Row(i), 0.0);
   }
   valid_gconsts_ = false;
@@ -52,7 +52,7 @@ void FullGmm::SetInvCovarsAndMeans(
     && inv_covars_.size() == invcovars.size());
 
   size_t num_comp = NumGauss();
-  for (size_t i = 0; i < num_comp; ++i) {
+  for (size_t i = 0; i < num_comp; i++) {
     inv_covars_[i].CopyFromSp(invcovars[i]);
     Vector<Real> mean_times_inv(Dim());
     mean_times_inv.AddSpVec(1.0, invcovars[i], means.Row(i), 0.0);
@@ -70,7 +70,7 @@ void FullGmm::SetInvCovarsAndMeansInvCovars(
                && inv_covars_.size() == invcovars.size());
 
   size_t num_comp = NumGauss();
-  for (size_t i = 0; i < num_comp; ++i) {
+  for (size_t i = 0; i < num_comp; i++) {
     inv_covars_[i].CopyFromSp(invcovars[i]);
   }
   means_invcovars_.CopyFromMat(means_invcovars);
@@ -87,7 +87,7 @@ void FullGmm::SetInvCovars(const std::vector<SpMatrix<Real> >& v) {
   Vector<Real> new_mean_times_invvar(Dim());
   SpMatrix<Real> covar(Dim());
 
-  for (size_t i = 0; i < num_comp; ++i) {
+  for (size_t i = 0; i < num_comp; i++) {
     orig_mean_times_invvar.CopyFromVec(means_invcovars_.Row(i));
     covar.CopyFromSp(inv_covars_[i]);
     covar.InvertDouble();

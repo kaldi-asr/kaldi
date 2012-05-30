@@ -89,19 +89,19 @@ UnitTestFullGmm() {
   Vector<BaseFloat> loglikes(nMix);
   Matrix<BaseFloat> means(nMix, dim);
   std::vector<SpMatrix<BaseFloat> > invcovars(nMix);
-  for (size_t mix = 0; mix < nMix; ++mix) {
+  for (size_t mix = 0; mix < nMix; mix++) {
     invcovars[mix].Resize(dim);
   }
   Vector<BaseFloat> covars_logdet(nMix);
 
-  for (size_t d = 0; d < dim; ++d) {
+  for (size_t d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
 
   float tot_weight = 0.0;
-  for (size_t m = 0; m < nMix; ++m) {
+  for (size_t m = 0; m < nMix; m++) {
     weights(m) = kaldi::RandUniform();
-    for (size_t d = 0; d < dim; ++d) {
+    for (size_t d = 0; d < dim; d++) {
       means(m, d) = kaldi::RandGauss();
     }
     SpMatrix<BaseFloat> covar(dim);
@@ -112,13 +112,13 @@ UnitTestFullGmm() {
   }
 
   // normalize weights and compute loglike for feature vector
-  for (size_t m = 0; m < nMix; ++m) {
+  for (size_t m = 0; m < nMix; m++) {
     weights(m) /= tot_weight;
   }
 
   // compute loglike for feature vector
   float loglike = 0.0;
-  for (size_t m = 0; m < nMix; ++m) {
+  for (size_t m = 0; m < nMix; m++) {
     loglikes(m) += -0.5 * (M_LOG_2PI * dim
       + covars_logdet(m)
       + VecSpVec(means.Row(m), invcovars[m], means.Row(m))
@@ -151,14 +151,14 @@ UnitTestFullGmm() {
     Vector<BaseFloat> weights_bak(nMix);
     Matrix<BaseFloat> means_bak(nMix, dim);
     std::vector<SpMatrix<BaseFloat> > invcovars_bak(nMix);
-    for (size_t i = 0; i < nMix; ++i) {
+    for (size_t i = 0; i < nMix; i++) {
       invcovars_bak[i].Resize(dim);
     }
 
     weights_bak.CopyFromVec(gmm->weights());
     gmm->GetMeans(&means_bak);
     gmm->GetCovars(&invcovars_bak);
-    for (size_t i = 0; i < nMix; ++i) {
+    for (size_t i = 0; i < nMix; i++) {
       invcovars_bak[i].InvertDouble();
     }
 
@@ -191,7 +191,7 @@ UnitTestFullGmm() {
     gmm3.Resize(gmm->NumGauss(), gmm->Dim());
     gmm3.SetWeights(weights_bak);
     means_bak.SetZero();
-    for (size_t i = 0; i < nMix; ++i) {
+    for (size_t i = 0; i < nMix; i++) {
       SubVector<BaseFloat> tmp = means_bak.Row(i);
       gmm->GetComponentMean(i, &tmp);
     }
@@ -206,7 +206,7 @@ UnitTestFullGmm() {
     gmm4.Resize(gmm->NumGauss(), gmm->Dim());
     gmm4.SetWeights(weights_bak);
     gmm->GetCovarsAndMeans(&invcovars_bak, &means_bak);
-    for (size_t i = 0; i < nMix; ++i) {
+    for (size_t i = 0; i < nMix; i++) {
       invcovars_bak[i].InvertDouble();
     }
     gmm4.SetInvCovarsAndMeans(invcovars_bak, means_bak);
@@ -297,7 +297,7 @@ UnitTestFullGmm() {
 int
 main() {
   // repeat the test ten times
-  for (int i = 0; i < 2; ++i)
+  for (int i = 0; i < 2; i++)
     UnitTestFullGmm();
   std::cout << "Test OK.\n";
 }

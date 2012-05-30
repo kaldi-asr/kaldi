@@ -72,7 +72,7 @@ void LdaEstimate::Estimate(int32 target_dim,
   // between-class covariance
   SpMatrix<double> bc_covar(dim);
   Vector<double> c_mean(dim);
-  for (int32 c = 0; c < static_cast<int32>(num_class); ++c) {
+  for (int32 c = 0; c < static_cast<int32>(num_class); c++) {
     c_mean.CopyRowFromMat(first_acc_, c);
     c_mean.Scale(1/zero_acc_(c));
     bc_covar.AddVec2(zero_acc_(c)/sum, c_mean);
@@ -161,7 +161,7 @@ void LdaEstimate::Read(std::istream &in_stream, bool binary, bool add) {
       // first_acc_.Read(in_stream, binary, add);
     } else if (token == "<SECOND_ACCS>") {
       tmp_sec_acc.Read(in_stream, binary, false);
-      for (int32 c = 0; c < static_cast<int32>(NumClasses()); ++c) {
+      for (int32 c = 0; c < static_cast<int32>(NumClasses()); c++) {
         if (tmp_zero_acc(c) != 0)
           tmp_sec_acc.AddVec2(1.0 / tmp_zero_acc(c), tmp_first_acc.Row(c));
       }
@@ -190,7 +190,7 @@ void LdaEstimate::Write(std::ostream &out_stream, bool binary) const {
   first_acc_bf.Write(out_stream, binary);
   WriteToken(out_stream, binary, "<SECOND_ACCS>");
   SpMatrix<double> tmp_sec_acc(total_second_acc_);
-  for (int32 c = 0; c < static_cast<int32>(NumClasses()); ++c) {
+  for (int32 c = 0; c < static_cast<int32>(NumClasses()); c++) {
     if (zero_acc_(c) != 0)
       tmp_sec_acc.AddVec2(-1.0 / zero_acc_(c), first_acc_.Row(c));
   }

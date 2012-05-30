@@ -217,7 +217,7 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
 
   if (debug_) {
     fprintf(stderr, "MEL BANKS:\n");
-    for (int32 i = 0; i < num_bins; ++i)
+    for (int32 i = 0; i < num_bins; i++)
       fprintf(stderr, " %f", (*mel_energies_out)(i));
     fprintf(stderr, "\n");
   }

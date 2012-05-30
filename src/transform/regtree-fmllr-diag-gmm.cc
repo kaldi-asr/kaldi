@@ -79,7 +79,7 @@ void RegtreeFmllrDiagGmm::Validate() {
               << ", number of log-determinant terms = " << (logdet_.Dim())
               << ". `Expected number = " << (num_xforms_);
   }
-  for (int32 i = 0; i < num_xforms_; ++i) {
+  for (int32 i = 0; i < num_xforms_; i++) {
     if (xform_matrices_[i].NumRows() != dim_ ||
         xform_matrices_[i].NumCols() != (dim_+1)) {
       KALDI_ERR << "For transform " << (i) << ": inconsistent size: rows = "
@@ -88,7 +88,7 @@ void RegtreeFmllrDiagGmm::Validate() {
     }
   }
   if (bclass2xforms_.size() > 0) {
-    for (int32 i = 0, maxi = bclass2xforms_.size(); i < maxi; ++i) {
+    for (int32 i = 0, maxi = bclass2xforms_.size(); i < maxi; i++) {
       if (bclass2xforms_[i] >= num_xforms_) {
         KALDI_ERR << "For baseclass " << (i) << ", transform index "
                   << (bclass2xforms_[i]) << " exceeds total transforms "
@@ -104,7 +104,7 @@ void RegtreeFmllrDiagGmm::Validate() {
 
 void RegtreeFmllrDiagGmm::ComputeLogDets() {
   logdet_.Resize(num_xforms_);
-  for (int32 r = 0; r < num_xforms_; ++r) {
+  for (int32 r = 0; r < num_xforms_; r++) {
     SubMatrix<BaseFloat> tmp_a(xform_matrices_[r], 0, dim_, 0,
                                dim_);
     logdet_(r) = tmp_a.LogDet();
@@ -237,19 +237,19 @@ BaseFloat RegtreeFmllrDiagGmmAccs::AccumulateForGmm(
 
   Vector<double> inv_var_mean(dim_);
   Matrix<double> g_scale(baseclass_stats_.size(), dim_);  // scale on "scatter" for each dim.
-  for (int32 m = 0; m < num_comp; ++m) {
+  for (int32 m = 0; m < num_comp; m++) {
     inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
     int32 bclass = regtree.Gauss2BaseclassId(pdf_index, m);
 
     baseclass_stats_[bclass]->beta_ += posterior_d(m);
     baseclass_stats_[bclass]->K_.AddVecVec(posterior_d(m), inv_var_mean,
                                            extended_data);
-    for (int32 d = 0; d < dim_; ++d)
+    for (int32 d = 0; d < dim_; d++)
       g_scale(bclass, d) +=  posterior(m) * pdf.inv_vars()(m, d);
   }
   for (size_t bclass = 0; bclass < baseclass_stats_.size(); bclass++) {
     vector< SpMatrix<double> > &G = baseclass_stats_[bclass]->G_;
-    for (int32 d = 0; d < dim_; ++d)
+    for (int32 d = 0; d < dim_; d++)
       if (g_scale(bclass, d) != 0.0)
         G[d].AddSp(g_scale(bclass, d), scatter);
   }
@@ -276,7 +276,7 @@ void RegtreeFmllrDiagGmmAccs::AccumulateForGaussian(
   baseclass_stats_[bclass]->beta_ += weight_d;
   baseclass_stats_[bclass]->K_.AddVecVec(weight_d, inv_var_mean, extended_data);
   vector< SpMatrix<double> > &G = baseclass_stats_[bclass]->G_;
-  for (size_t d = 0; d < dim; ++d)
+  for (size_t d = 0; d < dim; d++)
     G[d].AddSp((weight_d * pdf.inv_vars()(gauss_index, d)), scatter);
 }
 

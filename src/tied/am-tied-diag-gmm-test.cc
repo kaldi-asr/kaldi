@@ -38,7 +38,7 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   TiedGmmPerFrameVars pfv;
 
   kaldi::Vector<BaseFloat> feat(dim);
-  for (int32 d = 0; d < dim; ++d) {
+  for (int32 d = 0; d < dim; d++) {
     feat(d) = kaldi::RandGauss();
   }
 
@@ -47,7 +47,7 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm.SetupPerFrameVars(&pfv);
   am_gmm.ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm.NumCodebooks(); ++i)
+  for (int32 i = 0; i < am_gmm.NumCodebooks(); i++)
     loglike += am_gmm.LogLikelihood(i, &pfv);
 
   // First, non-binary write
@@ -64,7 +64,7 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm1->SetupPerFrameVars(&pfv);
   am_gmm1->ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm1->NumCodebooks(); ++i)
+  for (int32 i = 0; i < am_gmm1->NumCodebooks(); i++)
     loglike1 += am_gmm1->LogLikelihood(i, &pfv);
 
   kaldi::AssertEqual(loglike, loglike1, 1e-4);
@@ -83,7 +83,7 @@ void TestAmTiedDiagGmmIO(const AmTiedDiagGmm &am_gmm) {
   am_gmm2->SetupPerFrameVars(&pfv);
   am_gmm2->ComputePerFrameVars(feat, &pfv);
 
-  for (int32 i = 0; i < am_gmm2->NumCodebooks(); ++i)
+  for (int32 i = 0; i < am_gmm2->NumCodebooks(); i++)
     loglike2 += am_gmm2->LogLikelihood(i, &pfv);
 
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
@@ -103,21 +103,21 @@ void UnitTestAmTiedDiagGmm() {
   am_gmm.Init(diag);
 
   // add codebooks
-  for (int32 i = 1; i < num_pdfs; ++i) {
+  for (int32 i = 1; i < num_pdfs; i++) {
     num_comp = 4 + kaldi::RandInt(0, 12);  // random number of mixtures
     ut::InitRandDiagGmm(dim, num_comp, &diag);
     am_gmm.AddCodebook(diag);
   }
 
   // add tied mixtures, round robin with codebooks
-  for (int32 i = 0; i < num_tied_pdfs; ++i) {
+  for (int32 i = 0; i < num_tied_pdfs; i++) {
     TiedGmm tied;
     int32 pdf_index = i % num_pdfs;
     tied.Setup(pdf_index, am_gmm.GetCodebook(pdf_index).NumGauss());
 
     // generate random weights
     Vector<BaseFloat> wts(am_gmm.GetCodebook(pdf_index).NumGauss());
-    for (int32 j = 0; j < wts.Dim(); ++j)
+    for (int32 j = 0; j < wts.Dim(); j++)
       wts(j) = kaldi::RandInt(1, 1024);
 
     wts.Scale(1.0 / wts.Sum());
@@ -133,7 +133,7 @@ void UnitTestAmTiedDiagGmm() {
 }
 
 int main() {
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 10; i++) {
     UnitTestAmTiedDiagGmm();
   }
   std::cout << "Test OK.\n";

@@ -106,12 +106,12 @@ void AmTiedFullGmm::CopyFromAmTiedFullGmm(const AmTiedFullGmm &other) {
 
   dim_ = other.dim_;
 
-  for (int32 i = 0; i < densities_.size(); ++i) {
+  for (int32 i = 0; i < densities_.size(); i++) {
     densities_[i] = new FullGmm();
     densities_[i]->CopyFromFullGmm(*(other.densities_[i]));
   }
 
-  for (int32 i = 0; i < tied_densities_.size(); ++i) {
+  for (int32 i = 0; i < tied_densities_.size(); i++) {
     tied_densities_[i] = new TiedGmm();
     tied_densities_[i]->CopyFromTiedGmm(*(other.tied_densities_[i]));
   }
@@ -137,7 +137,7 @@ void AmTiedFullGmm::SetupPerFrameVars(
   per_frame_vars->Setup(dim_, NumCodebooks());
 
   // allocate the svqs
-  for (int32 i = 0; i < NumCodebooks(); ++i) {
+  for (int32 i = 0; i < NumCodebooks(); i++) {
     per_frame_vars->ResizeSvq(i, GetCodebook(i).NumGauss());
     per_frame_vars->current[i] = false;
   }
@@ -150,7 +150,7 @@ void AmTiedFullGmm::ComputePerFrameVars(
   per_frame_vars->x.CopyFromVec(data);
 
   // set the currency indicators to false
-  for (int32 i = 0; i < NumCodebooks(); ++i)
+  for (int32 i = 0; i < NumCodebooks(); i++)
     per_frame_vars->current[i] = false;
 }
 

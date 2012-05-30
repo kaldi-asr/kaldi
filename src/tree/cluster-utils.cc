@@ -428,7 +428,7 @@ class CompartmentalizedBottomUpClusterer {
     ncompartments_ = points.size();
     nclusters_ = 0;
     npoints_.resize(ncompartments_);
-    for (int32 comp = 0; comp < ncompartments_; ++comp) {
+    for (int32 comp = 0; comp < ncompartments_; comp++) {
       npoints_[comp] = points[comp].size();
       nclusters_ += npoints_[comp];
     }
@@ -485,7 +485,7 @@ BaseFloat CompartmentalizedBottomUpClusterer::Cluster(
       total_obj_change += MergeClusters(qelem.compartment, qelem.point1,
                                         qelem.point2);
   }
-  for (int32 comp = 0; comp < ncompartments_; ++comp)
+  for (int32 comp = 0; comp < ncompartments_; comp++)
     Renumber(comp);
   if (clusters_out != NULL) clusters_out->swap(clusters_); 
   if (assignments_out != NULL) assignments_out->swap(assignments_);
@@ -540,10 +540,10 @@ void CompartmentalizedBottomUpClusterer::Renumber(int32 comp) {
 void CompartmentalizedBottomUpClusterer::InitializeAssignments() {
   clusters_.resize(ncompartments_);
   assignments_.resize(ncompartments_);
-  for (int32 comp = 0; comp < ncompartments_; ++comp) {
+  for (int32 comp = 0; comp < ncompartments_; comp++) {
     clusters_[comp].resize(npoints_[comp]);
     assignments_[comp].resize(npoints_[comp]);
-    for (int32 i = 0; i < npoints_[comp]; ++i) {  // initialize as 1-1 mapping.
+    for (int32 i = 0; i < npoints_[comp]; i++) {  // initialize as 1-1 mapping.
       clusters_[comp][i] = points_[comp][i]->Copy();
       assignments_[comp][i] = i;
     }
@@ -552,10 +552,10 @@ void CompartmentalizedBottomUpClusterer::InitializeAssignments() {
 
 void CompartmentalizedBottomUpClusterer::SetInitialDistances() {
   dist_vec_.resize(ncompartments_);
-  for (int32 comp = 0; comp < ncompartments_; ++comp) {
+  for (int32 comp = 0; comp < ncompartments_; comp++) {
     dist_vec_[comp].resize((npoints_[comp] * (npoints_[comp] - 1)) / 2);
-    for (int32 i = 0; i < npoints_[comp]; ++i)
-      for (int32 j = 0; j < i; ++j)
+    for (int32 i = 0; i < npoints_[comp]; i++)
+      for (int32 j = 0; j < i; j++)
         SetDistance(comp, i, j);
   }
 }
@@ -604,10 +604,10 @@ void CompartmentalizedBottomUpClusterer::ReconstructQueue() {
     QueueType tmp;
     std::swap(tmp, queue_);
   }
-  for (int32 comp = 0; comp < ncompartments_; ++comp) {
-    for (int32 i = 0; i < npoints_[comp]; ++i) {
+  for (int32 comp = 0; comp < ncompartments_; comp++) {
+    for (int32 i = 0; i < npoints_[comp]; i++) {
       if (clusters_[comp][i] == NULL) continue;
-      for (int32 j = 0; j < i; ++j) {
+      for (int32 j = 0; j < i; j++) {
         if (clusters_[comp][j] == NULL) continue;
         SetDistance(comp, i, j);
       }

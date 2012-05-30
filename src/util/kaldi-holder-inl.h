@@ -720,9 +720,9 @@ template<int kFeatDim=13> class SphinxMatrixHolder {
       KALDI_SWAP4(size);
     os.write((char*) &size, sizeof(size)); // write the header
 
-    for (MatrixIndexT i = 0; i < m.NumRows(); ++i) {
+    for (MatrixIndexT i = 0; i < m.NumRows(); i++) {
       float32 tmp[m.NumCols()];
-      for (MatrixIndexT j = 0; j < m.NumCols(); ++j) {
+      for (MatrixIndexT j = 0; j < m.NumCols(); j++) {
         tmp[j] = static_cast<float32>(m(i, j));
         if (MachineIsLittleEndian())
           KALDI_SWAP4(tmp[j]);
@@ -748,7 +748,7 @@ template<int kFeatDim=13> class SphinxMatrixHolder {
     }
 
     feats_.Resize(nfvec, kFeatDim);
-    for (MatrixIndexT i = 0; i < feats_.NumRows(); ++i) {
+    for (MatrixIndexT i = 0; i < feats_.NumRows(); i++) {
       if (sizeof(BaseFloat) == sizeof(float32)) {
         is.read((char*) feats_.RowData(i), kFeatDim * sizeof(float32));
         if (!is.good()) {
@@ -756,7 +756,7 @@ template<int kFeatDim=13> class SphinxMatrixHolder {
           return false;
         }
         if (MachineIsLittleEndian()) {
-          for (MatrixIndexT j=0; j < kFeatDim; ++j)
+          for (MatrixIndexT j=0; j < kFeatDim; j++)
             KALDI_SWAP4(feats_(i, j));
         }
       } else { // KALDI_DOUBLEPRECISION=1
@@ -766,7 +766,7 @@ template<int kFeatDim=13> class SphinxMatrixHolder {
           KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
           return false;
         }
-        for (MatrixIndexT j=0; j < kFeatDim; ++j) {
+        for (MatrixIndexT j=0; j < kFeatDim; j++) {
           if (MachineIsLittleEndian())
             KALDI_SWAP4(tmp[j]);
           feats_(i, j) = static_cast<BaseFloat>(tmp[j]);

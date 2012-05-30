@@ -323,7 +323,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   DiagGmmNormal ngmm(*gmm);
 
   std::vector<int32> to_remove;
-  for (int32 i = 0; i < num_gauss; ++i) {
+  for (int32 i = 0; i < num_gauss; i++) {
     double occ = diaggmm_acc.occupancy()(i);
     double prob;
     if (occ_sum > 0.0)

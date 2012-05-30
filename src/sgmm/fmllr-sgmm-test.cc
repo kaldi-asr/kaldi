@@ -76,7 +76,7 @@ void TestSgmmFmllrAccsIO(const AmSgmm &sgmm,
   BaseFloat loglike = 0.0;
   Vector<BaseFloat> empty_spk;
   std::vector<int32> gselect;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
     sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
     loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
@@ -161,7 +161,7 @@ void TestSgmmFmllrSubspace(const AmSgmm &sgmm,
   BaseFloat loglike = 0.0;
   Vector<BaseFloat> empty_spk;
   std::vector<int32> gselect;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
     sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
     loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
@@ -198,7 +198,7 @@ void TestSgmmFmllr() {
     int32 num_feat_comp = num_comp + kaldi::RandInt(-num_comp/2, num_comp/2);
     kaldi::Matrix<BaseFloat> means(num_feat_comp, dim),
         vars(num_feat_comp, dim);
-    for (int32 m = 0; m < num_feat_comp; ++m) {
+    for (int32 m = 0; m < num_feat_comp; m++) {
       for (int32 d= 0; d < dim; d++) {
         means(m, d) = kaldi::RandGauss();
         vars(m, d) = exp(kaldi::RandGauss()) + 1e-2;
@@ -206,7 +206,7 @@ void TestSgmmFmllr() {
     }
     // Now generate random features with those means and variances.
     feats.Resize(num_feat_comp * 200, dim);
-    for (int32 m = 0; m < num_feat_comp; ++m) {
+    for (int32 m = 0; m < num_feat_comp; m++) {
       kaldi::SubMatrix<BaseFloat> tmp(feats, m*200, 200, 0, dim);
       ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
@@ -217,7 +217,7 @@ void TestSgmmFmllr() {
 
 int main() {
   kaldi::g_kaldi_verbose_level = 5;
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 10; i++)
     TestSgmmFmllr();
   std::cout << "Test OK.\n";
   return 0;

@@ -36,11 +36,11 @@ void TestComponentAcc(const DiagGmm &gmm, const Matrix<BaseFloat> &feats) {
   est_compwise.SetZero(kGmmAll);
 
   // accumulate estimators
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     est_atonce.AccumulateFromDiag(gmm, feats.Row(i), 1.0F);
     Vector<BaseFloat> post(gmm.NumGauss());
     gmm.ComponentPosteriors(feats.Row(i), &post);
-    for (int32 m = 0; m < gmm.NumGauss(); ++m) {
+    for (int32 m = 0; m < gmm.NumGauss(); m++) {
       est_compwise.AccumulateForComponent(feats.Row(i), m, post(m));
     }
   }
@@ -57,7 +57,7 @@ void TestComponentAcc(const DiagGmm &gmm, const Matrix<BaseFloat> &feats) {
   double loglike0 = 0.0;
   double loglike1 = 0.0;
   double loglike2 = 0.0;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     loglike0 += static_cast<double>(gmm.LogLikelihood(feats.Row(i)));
     loglike1 += static_cast<double>(gmm_atonce.LogLikelihood(feats.Row(i)));
     loglike2 += static_cast<double>(gmm_compwise.LogLikelihood(feats.Row(i)));
@@ -99,7 +99,7 @@ void test_flags_driven_update(const DiagGmm &gmm,
   est_gmm_somep.SetZero(flags);
 
   // accumulate estimators
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     est_gmm_allp.AccumulateFromDiag(gmm, feats.Row(i), 1.0F);
     est_gmm_somep.AccumulateFromDiag(gmm, feats.Row(i), 1.0F);
   }
@@ -140,7 +140,7 @@ void test_flags_driven_update(const DiagGmm &gmm,
   double loglike0 = 0.0;
   double loglike1 = 0.0;
   double loglike2 = 0.0;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     loglike0 += static_cast<double>(
       gmm.LogLikelihood(feats.Row(i)));
     loglike1 += static_cast<double>(
@@ -186,7 +186,7 @@ test_io(const DiagGmm &gmm, const AccumDiagGmm &est_gmm, bool binary,
 
   BaseFloat loglike1 = 0.0;
   BaseFloat loglike2 = 0.0;
-  for (int32 i = 0; i < feats.NumRows(); ++i) {
+  for (int32 i = 0; i < feats.NumRows(); i++) {
     loglike1 += gmm1.LogLikelihood(feats.Row(i));
     loglike2 += gmm2.LogLikelihood(feats.Row(i));
   }
@@ -278,7 +278,7 @@ UnitTestEstimateDiagGmm() {
     // check contents
     KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
     KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
-    for (int32 d = 0; d < dim; ++d) {
+    for (int32 d = 0; d < dim; d++) {
       KALDI_ASSERT(ApproxEqual(means.Row(0)(d), ngmm.means_.Row(0)(d), 1e-6));
       KALDI_ASSERT(ApproxEqual(1./invvars.Row(0)(d), ngmm.vars_.Row(0)(d), 1e-6));
       KALDI_ASSERT(ApproxEqual(gmm->means_invvars().Row(0)(d), rgmm.means_invvars().Row(0)(d), 1e-6));
@@ -375,7 +375,7 @@ UnitTestEstimateDiagGmm() {
 
 int main() {
   // repeat the test five times
-  for (int i = 0; i < 2; ++i)
+  for (int i = 0; i < 2; i++)
     UnitTestEstimateDiagGmm();
   std::cout << "Test OK.\n";
 }

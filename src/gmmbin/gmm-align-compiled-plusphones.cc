@@ -72,7 +72,7 @@ void CreatePhoneModel(const TransitionModel &trans_model,
     gmm.SetWeights(weights);
   }
   phone_am->Init(gmm, num_phones);
-  for (int32 phone = 1; phone < static_cast<int32>(phone_weights.size()); ++phone) {
+  for (int32 phone = 1; phone < static_cast<int32>(phone_weights.size()); phone++) {
     if (phone_weights[phone].empty()) continue; // No GMM for this phone.  Presumably
     // not a valid phone.
     std::vector<std::pair<BaseFloat, const DiagGmm*> > gmm_vec;

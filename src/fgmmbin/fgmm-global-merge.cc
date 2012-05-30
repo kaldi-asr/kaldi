@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     FullGmm fgmm;
     Output sizes_ko(sizes_out_filename, false); // false == not binary.
     
-    for (int i = 3, max = po.NumArgs(); i <= max; ++i) {
+    for (int i = 3, max = po.NumArgs(); i <= max; i++) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       Input ki(stats_in_filename, &binary_read);

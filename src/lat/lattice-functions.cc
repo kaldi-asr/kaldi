@@ -34,7 +34,7 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   times->clear();
   times->resize(num_states, -1);
   (*times)[0] = 0;
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = (*times)[state];
     for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
@@ -69,7 +69,7 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat, vector<int32> *times) 
   times->resize(num_states, -1);
   (*times)[0] = 0;
   int32 utt_len = -1;
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = (*times)[state];
     for (fst::ArcIterator<CompactLattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
@@ -133,7 +133,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
   double tot_forward_prob = kLogZeroDouble;
 
   // Forward pass
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     active_states[cur_time].push_back(state);
 
@@ -162,7 +162,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
 
   // Output the computed posteriors
   arc_post->resize(max_time);
-  for (int32 cur_time = 0; cur_time < max_time; ++cur_time) {
+  for (int32 cur_time = 0; cur_time < max_time; cur_time++) {
     map<int32, double>::const_iterator post_itr =
         tmp_arc_post[cur_time].begin();
     for (; post_itr != tmp_arc_post[cur_time].end(); ++post_itr) {
@@ -184,7 +184,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
   int32 max_time = LatticeStateTimes(lat, &state_times);
   active_phones->clear();
   active_phones->resize(max_time);
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
@@ -203,7 +203,7 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
                             Lattice *lat) {
   typedef LatticeArc Arc;
   int32 num_states = lat->NumStates();
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
       Arc arc(aiter.Value());
@@ -236,7 +236,7 @@ bool LatticeBoost(const TransitionModel &trans,
   vector<int32> state_times;
   int32 num_states = lat->NumStates();
   LatticeStateTimes(*lat, &state_times);
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     if (cur_time < 0 || cur_time > active_phones.size()) {
       KALDI_WARN << "Lattice is too long for active_phones: mismatched den and num lattices/alignments?";
@@ -287,7 +287,7 @@ int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans
   }
 
   int32 num_states_hyp = hyp.NumStates();
-  for (int32 state = 0; state < num_states_hyp; ++state) {
+  for (int32 state = 0; state < num_states_hyp; state++) {
     int32 cur_time = state_times_hyp[state];
     for (fst::ArcIterator<Lattice> aiter(hyp, state); !aiter.Done();
         aiter.Next()) {
@@ -351,7 +351,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   double tot_forward_score = 0;
 
   //First Pass Forward, 
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     active_states[cur_time].push_back(state);
     if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
@@ -364,7 +364,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   }
 
   //Second Pass Forward, calculate forward for MPE,
-  for (int32 state = 0; state < num_states; ++state) {
+  for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
       tot_forward_score += state_alphas_mpe[state];
@@ -409,7 +409,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
 
   // Output the computed posteriors
   arc_post->resize(max_time);
-  for (int32 cur_time = 0; cur_time < max_time; ++cur_time) {
+  for (int32 cur_time = 0; cur_time < max_time; cur_time++) {
     map<int32, double>::const_iterator post_itr =
         tmp_arc_post_mpe[cur_time].begin();
     for (; post_itr != tmp_arc_post_mpe[cur_time].end(); ++post_itr) {

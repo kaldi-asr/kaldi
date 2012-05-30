@@ -39,7 +39,7 @@ void FullGmm::ResizeInvCovars(int32 nmix, int32 dim) {
   KALDI_ASSERT(nmix > 0 && dim > 0);
   if (inv_covars_.size() != static_cast<size_t>(nmix))
     inv_covars_.resize(nmix);
-  for (int32 i = 0; i < nmix; ++i) {
+  for (int32 i = 0; i < nmix; i++) {
     if (inv_covars_[i].NumRows() != dim) {
       inv_covars_[i].Resize(dim);
       inv_covars_[i].SetUnit();
@@ -55,7 +55,7 @@ void FullGmm::CopyFromFullGmm(const FullGmm &fullgmm) {
   weights_.CopyFromVec(fullgmm.weights_);
   means_invcovars_.CopyFromMat(fullgmm.means_invcovars_);
   int32 ncomp = NumGauss();
-  for (int32 mix = 0; mix < ncomp; ++mix) {
+  for (int32 mix = 0; mix < ncomp; mix++) {
     inv_covars_[mix].CopyFromSp(fullgmm.inv_covars_[mix]);
   }
   valid_gconsts_ = fullgmm.valid_gconsts_;
@@ -67,9 +67,9 @@ void FullGmm::CopyFromDiagGmm(const DiagGmm &diaggmm) {
   weights_.CopyFromVec(diaggmm.weights());
   means_invcovars_.CopyFromMat(diaggmm.means_invvars());
   int32 ncomp = NumGauss(), dim = Dim();
-  for (int32 mix = 0; mix < ncomp; ++mix) {
+  for (int32 mix = 0; mix < ncomp; mix++) {
     inv_covars_[mix].SetZero();
-    for (int32 d = 0; d < dim; ++d) {
+    for (int32 d = 0; d < dim; d++) {
       inv_covars_[mix](d, d) = diaggmm.inv_vars()(mix, d);
     }
   }
@@ -132,10 +132,10 @@ void FullGmm::Split(int32 target_components, float perturb_factor,
   means_invcovars_.Range(0, current_components, 0,
       dim).CopyFromMat(tmp->means_invcovars_);
   ResizeInvCovars(target_components, dim);
-  for (int32 mix = 0; mix < current_components; ++mix) {
+  for (int32 mix = 0; mix < current_components; mix++) {
     inv_covars_[mix].CopyFromSp(tmp->inv_covars_[mix]);
   }
-  for (int32 mix = current_components; mix < target_components; ++mix) {
+  for (int32 mix = current_components; mix < target_components; mix++) {
     inv_covars_[mix].SetZero();
   }
   gconsts_.Resize(target_components);
@@ -191,7 +191,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     // Undo variance inversion and multiplication of mean by this
     std::vector<SpMatrix<BaseFloat> > covars(num_comp);
     Matrix<BaseFloat> means(num_comp, dim);
-    for (int32 i = 0; i < num_comp; ++i) {
+    for (int32 i = 0; i < num_comp; i++) {
       covars[i].Resize(dim);
       covars[i].CopyFromSp(inv_covars_[i]);
       covars[i].InvertDouble();
@@ -207,7 +207,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     inv_covars_[0].Resize(dim);
     Vector<BaseFloat> tmp_mean(dim);
 
-    for (int32 i = 0; i < num_comp; ++i) {
+    for (int32 i = 0; i < num_comp; i++) {
       weights_(0) += weights(i);
       tmp_mean.AddVec(weights(i), means.Row(i));
       inv_covars_[0].AddSp(weights(i), covars[i]);
@@ -230,7 +230,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   std::vector<bool> discarded_component(num_comp);
   Vector<BaseFloat> logdet(num_comp);   // logdet for each component
   logdet.SetZero();
-  for (int32 i = 0; i < num_comp; ++i) {
+  for (int32 i = 0; i < num_comp; i++) {
     discarded_component[i] = false;
     logdet(i) += 0.5 * inv_covars_[i].LogPosDefDet();
     // +0.5 because var is inverted
@@ -240,7 +240,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   // Makes copy of means and vars for all components - memory inefficient?
   std::vector<SpMatrix<BaseFloat> > vars(num_comp);
   Matrix<BaseFloat> means(num_comp, dim);
-  for (int32 i = 0; i < num_comp; ++i) {
+  for (int32 i = 0; i < num_comp; i++) {
     vars[i].Resize(dim);
     vars[i].CopyFromSp(inv_covars_[i]);
     vars[i].InvertDouble();
@@ -253,8 +253,8 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
 
   // compute change of likelihood for all combinations of components
   SpMatrix<BaseFloat> delta_like(num_comp);
-  for (int32 i = 0; i < num_comp; ++i) {
-    for (int32 j = 0; j < i; ++j) {
+  for (int32 i = 0; i < num_comp; i++) {
+    for (int32 j = 0; j < i; j++) {
       BaseFloat w1 = weights_(i), w2 = weights_(j), w_sum = w1 + w2;
       BaseFloat merged_logdet = merged_components_logdet(w1, w2,
         means.Row(i), means.Row(j), vars[i], vars[j]);
@@ -264,14 +264,14 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   }
 
   // Merge components with smallest impact on the loglike
-  for (int32 removed = 0; removed < num_comp - target_components; ++removed) {
+  for (int32 removed = 0; removed < num_comp - target_components; removed++) {
     // Search for the least significant change in likelihood
     // (maximum of negative delta_likes)
     BaseFloat max_delta_like = -std::numeric_limits<BaseFloat>::max();
     int32 max_i = 0, max_j = 0;
-    for (int32 i = 0; i < NumGauss(); ++i) {
+    for (int32 i = 0; i < NumGauss(); i++) {
       if (discarded_component[i]) continue;
-      for (int32 j = 0; j < i; ++j) {
+      for (int32 j = 0; j < i; j++) {
         if (discarded_component[j]) continue;
         if (delta_like(i, j) > max_delta_like) {
           max_delta_like = delta_like(i, j);
@@ -322,7 +322,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     discarded_component[max_j] = true;
 
     // Update delta_like for merged component
-    for (int32 j = 0; j < num_comp; ++j) {
+    for (int32 j = 0; j < num_comp; j++) {
       if ((j == max_i) || (discarded_component[j])) continue;
       BaseFloat w1 = weights_(max_i), w2 = weights_(j), w_sum = w1 + w2;
       BaseFloat merged_logdet = merged_components_logdet(w1, w2,
@@ -336,7 +336,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
 
   // Remove the consumed components
   int32 m = 0;
-  for (int32 i = 0; i < num_comp; ++i) {
+  for (int32 i = 0; i < num_comp; i++) {
     if (discarded_component[i]) {
       weights_.RemoveElement(m);
       means_invcovars_.RemoveRow(m);
@@ -419,7 +419,7 @@ void FullGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->AddMatVec(1.0, means_invcovars_, kNoTrans, data, 1.0);
   // loglikes -= 0.5 * data'*inv(covar)*data = 0.5 * tr(data*data'*inv(covar))
   int32 num_comp = NumGauss();
-  for (int32 mix = 0; mix < num_comp; ++mix) {
+  for (int32 mix = 0; mix < num_comp; mix++) {
     // was: (*loglikes)(mix) -= 0.5 * TraceSpSp(data_sq, inv_covars_[mix]);
     (*loglikes)(mix) -= TraceSpSpLower(data_sq, inv_covars_[mix]);
   }
@@ -500,7 +500,7 @@ void FullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteToken(out_stream, binary, "<MEANS_INVCOVARS>");
   means_invcovars_.Write(out_stream, binary);
   WriteToken(out_stream, binary, "<INV_COVARS>");
-  for (int32 i = 0; i < NumGauss(); ++i) {
+  for (int32 i = 0; i < NumGauss(); i++) {
     inv_covars_[i].Write(out_stream, binary);
   }
   WriteToken(out_stream, binary, "</FullGMM>");
@@ -533,7 +533,7 @@ void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source,
   }
 
   if (flags & kGmmVariances) {
-    for (int32 i = 0; i < NumGauss(); ++i) {
+    for (int32 i = 0; i < NumGauss(); i++) {
       us.vars_[i].Scale(1.0 - rho);
       us.vars_[i].AddSp(rho, them.vars_[i]);
     }
@@ -566,7 +566,7 @@ void FullGmm::Read(std::istream &in_stream, bool binary) {
   ExpectToken(in_stream, binary, "<INV_COVARS>");
   int32 ncomp = weights_.Dim(), dim = means_invcovars_.NumCols();
   ResizeInvCovars(ncomp, dim);
-  for (int32 i = 0; i < ncomp; ++i) {
+  for (int32 i = 0; i < ncomp; i++) {
     inv_covars_[i].Read(in_stream, binary);
   }
 //  ExpectToken(in_stream, binary, "<FullGMMEnd>");
