@@ -37,7 +37,8 @@ struct LatticeFasterDecoderConfig {
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
   int32 max_mem; // max memory usage in determinization
-  int32 max_loop;
+  int32 max_loop; // can be used to debug non-determinizable input, but for now,
+  // inadvisable to set it.
   int32 max_arcs; // max #arcs in lattice.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
@@ -47,7 +48,7 @@ struct LatticeFasterDecoderConfig {
                                 prune_interval(25),
                                 determinize_lattice(true),
                                 max_mem(50000000), // 50 MB (probably corresponds to 100 really)
-                                max_loop(500000),
+                                max_loop(0), // means we don't use this constraint.
                                 max_arcs(-1),
                                 beam_delta(0.5),
                                 hash_ratio(2.0) { }
