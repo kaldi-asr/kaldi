@@ -8,6 +8,15 @@
 # Compute cepstral mean and variance statistics per speaker.  
 # We do this in just one job; it's fast.
 # This script takes no options.
+#
+# Note: there is no option to do CMVN per utterance.  The idea is
+# that if you did it per utterance it would not make sense to do
+# per-speaker fMLLR on top of that (since you'd be doing fMLLR on
+# top of different offsets).  Therefore what would be the use
+# of the speaker information?  In this case you should probably
+# make the speaker-ids identical to the utterance-ids.  The
+# speaker information does not have to correspond to actual
+# speakers, it's just the level you want to adapt at.
 
 if [ $# != 3 ]; then
    echo "usage: compute_cmvn_stats.sh <data-dir> <log-dir> <path-to-cmvn-dir>";

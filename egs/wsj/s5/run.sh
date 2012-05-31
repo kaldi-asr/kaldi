@@ -30,7 +30,7 @@ local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
 
-utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
+utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
 
 local/wsj_format_data.sh || exit 1;
 
