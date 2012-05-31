@@ -55,7 +55,7 @@ cp -r $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 
-cat $data/text | utils/sym2int.pl --map-oov "$oov" -f 2- $lang/words.txt | \
+cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
   utils/make_unigram_grammar.pl | fstcompile > $dir/lang/G.fst \
    || exit 1;
