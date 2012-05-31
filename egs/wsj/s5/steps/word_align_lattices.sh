@@ -29,7 +29,7 @@ mdl=`dirname $indir`/final.mdl
 wbfile=$lang/phones/word_boundary.int
 
 for f in $mdl $wbfile $indir/num_jobs; do
-  [ ! -f $f ] && echo "word_align_lattices.sh: no such file $mdl" && exit 1;
+  [ ! -f $f ] && echo "word_align_lattices.sh: no such file $f" && exit 1;
 done
 
 mkdir -p $outdir/log

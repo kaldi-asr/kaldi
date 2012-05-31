@@ -26,7 +26,7 @@ local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 # corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
 # local/cstr_wsj_data_prep.sh $corpus
 #
-# $cropus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
+# $corpus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
 
 local/wsj_prepare_dict.sh || exit 1;
 
