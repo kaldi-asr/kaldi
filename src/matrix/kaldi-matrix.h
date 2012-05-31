@@ -192,10 +192,12 @@ class MatrixBase {
   /// Multiply each element with a scalar value.
   void Scale(Real alpha);
 
-  /// Equivalent to (*this) = (*this) * diag(scale).
+  /// Equivalent to (*this) = (*this) * diag(scale).  Scaling
+  /// each column by a scalar taken from that dimension of the vector.
   void MulColsVec(const VectorBase<Real> &scale);
 
-  /// Equivalent to (*this) = diag(scale) * (*this);
+  /// Equivalent to (*this) = diag(scale) * (*this).  Scaling
+  /// each row by a scalar taken from that dimension of the vector.
   void MulRowsVec(const VectorBase<Real> &scale);
 
   /// Returns logdet of matrix.
@@ -225,8 +227,11 @@ class MatrixBase {
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 
-  /// Calculates log to all the matrix elemnts
+  /// Calculates log of all the matrix elemnts
   void ApplyLog();
+
+  /// Exponentiate each of the elements.
+  void ApplyExp();
 
   /// Applies power to all matrix elements
   void ApplyPow(Real power);
@@ -326,7 +331,7 @@ class MatrixBase {
   /// Apply soft-max to the collection of all elements of the
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
-
+  
   /** Uses Svd to compute the eigenvalue decomposition of a symmetric positive
    * semi-definite matrix: (*this) = rP * diag(rS) * rP^T, with rP an
    * orthogonal matrix so rP^{-1} = rP^T.   Throws exception if input was not
@@ -354,7 +359,7 @@ class MatrixBase {
   /// [each row of *this] += alpha * v
   template<class OtherReal>
   void AddVecToRows(const Real alpha, const VectorBase<OtherReal>& v);
-
+  
   /// [each col of *this] += alpha * v
   template<class OtherReal>
   void AddVecToCols(const Real alpha, const VectorBase<OtherReal>& v);      

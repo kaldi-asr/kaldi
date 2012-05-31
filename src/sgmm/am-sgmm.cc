@@ -447,12 +447,10 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
   Vector<BaseFloat> rand_vec(phn_dim), v_shift(phn_dim);
 
   for (int32 j = 0; j < NumPdfs(); j++) {
-    // work out the sub-model's prob from the sum of 'c'.;
-    BaseFloat gamma_p = pow(state_occupancies(j) * c_[j].Sum(), power);
+    BaseFloat gamma_p = pow(state_occupancies(j), power);
     substate_counts.push(SubstateCounter(j, NumSubstates(j), gamma_p));
     tot_n_substates_old += NumSubstates(j);
   }
-
   if (target_nsubstates <= tot_n_substates_old || tot_n_substates_old == 0) {
     KALDI_WARN << "Cannot split from " << (tot_n_substates_old) <<
         " to " << (target_nsubstates) << " substates.";
@@ -480,7 +478,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
 
     if (n_substates_j == tgt_n_substates_j) continue;
 
-    // Resize v[j][k] and c[j][k] to fit new substates
+    // Resize v[j] and c[j] to fit new substates
     Matrix<BaseFloat> tmp_v_j(v_[j]);
     v_[j].Resize(tgt_n_substates_j, phn_dim);
     v_[j].Range(0, n_substates_j, 0, phn_dim).CopyFromMat(tmp_v_j);

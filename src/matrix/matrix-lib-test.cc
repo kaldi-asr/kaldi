@@ -1567,7 +1567,21 @@ template<class Real> static void  UnitTestSimple() {
     AssertEqual(V, V2);
 	AssertEqual(V3, V2);
 
-
+    {
+      Vector<Real> V2(V);
+      for (int32 i = 0; i < V2.Dim(); i++)
+        V2(i) = exp(V2(i));
+      V.ApplyExp();
+      AssertEqual(V, V2);
+    }
+    {
+      Matrix<Real> N2(N), N3(N);
+      for (int32 i = 0; i < N.NumRows(); i++)
+        for (int32 j = 0; j < N.NumCols(); j++)
+          N2(i, j) = exp(N2(i,j));
+      N3.ApplyExp();
+      AssertEqual(N2, N3);
+    }
     KALDI_ASSERT(!S.IsDiagonal());
     KALDI_ASSERT(!S.IsUnit());
     N.SetUnit();
@@ -1578,70 +1592,12 @@ template<class Real> static void  UnitTestSimple() {
     S.CopyFromMat(N);
     KALDI_ASSERT(S.IsZero());
     KALDI_ASSERT(S.IsDiagonal());
-  }
-}
-
-template<class Real> static void UnitTestIoOld() {  // deprecated I/O style.
-
-  for (int i = 0;i < 5;i++) {
-    MatrixIndexT dimM = rand()%10 + 1;
-    MatrixIndexT dimN = rand()%10 + 1;
-    bool binary = (i%2 == 0);
-
-    if (i == 0) {
-      dimM = 0;dimN = 0;  // test case when both are zero.
-    }
-    Matrix<Real> M(dimM, dimN);
-    InitRand(&M);
-    Matrix<Real> N;
-    Vector<Real> v1(dimM);
-    InitRand(&v1);
-    Vector<Real> v2(dimM);
-
-    SpMatrix<Real> S(dimM);
-    InitRand(&S);
-    SpMatrix<Real> T(dimM);
-
-    {
-      std::ofstream outs("tmpf", std::ios_base::out |std::ios_base::binary);
-      InitKaldiOutputStream(outs, binary);
-      M.Write(outs, binary);
-      S.Write(outs, binary);
-      v1.Write(outs, binary);
-      M.Write(outs, binary);
-      S.Write(outs, binary);
-      v1.Write(outs, binary);
-    }
-
-	{
-      std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
-      bool binary_in;
-      InitKaldiInputStream(ins, &binary_in);
-      N.Read(ins, binary_in);
-      T.Read(ins, binary_in);
-      v2.Read(ins, binary_in);
-      if (i%2 == 0)
-        ((MatrixBase<Real>&)N).Read(ins, binary_in, true);  // add
-      else
-        N.Read(ins, binary_in, true);
-      T.Read(ins, binary_in, true);  // add
-      if (i%2 == 0)
-        ((VectorBase<Real>&)v2).Read(ins, binary_in, true);  // add
-      else
-        v2.Read(ins, binary_in, true);
-    }
-    N.Scale(0.5);
-    v2.Scale(0.5);
-    T.Scale(0.5);
-    AssertEqual(M, N);
-    AssertEqual(v1, v2);
-    AssertEqual(S, T);
-  }
+ }
 }
 
 
 
-template<class Real> static void UnitTestIo () {  // newer I/O test with the kaldi streams.
+template<class Real> static void UnitTestIo() {
 
   for (int i = 0;i < 5;i++) {
     MatrixIndexT dimM = rand()%10 + 1;
@@ -2741,7 +2697,6 @@ template<class Real> static void MatrixUnitTest() {
       KALDI_LOG << " Point D";
   UnitTestTpInvert<Real>();
   UnitTestIo<Real>();
-  UnitTestIoOld<Real>();
   UnitTestIoCross<Real>();
   UnitTestHtkIo<Real>();
   UnitTestScale<Real>();

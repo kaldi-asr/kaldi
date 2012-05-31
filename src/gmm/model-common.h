@@ -41,14 +41,16 @@ std::string GmmFlagsToString(GmmFlagsType gmm_flags);
 GmmFlagsType AugmentGmmFlags(GmmFlagsType flags);
 
 enum SgmmUpdateFlags {  /// The letters correspond to the variable names.
-  kSgmmPhoneVectors       = 0x001,  /// v
-  kSgmmPhoneProjections   = 0x002,  /// M
-  kSgmmWeightProjections  = 0x004,  /// w
-  kSgmmCovarianceMatrix   = 0x008,  /// S
-  kSgmmSubstateWeights    = 0x010,  /// c
-  kSgmmSpeakerProjections = 0x020,  /// N
-  kSgmmTransitions        = 0x040,  /// t .. not really part of SGMM.
-  kSgmmAll                = 0x07F   /// a (won't normally use this).
+  kSgmmPhoneVectors         = 0x001,  /// v
+  kSgmmPhoneProjections     = 0x002,  /// M
+  kSgmmWeightProjections    = 0x004,  /// w
+  kSgmmCovarianceMatrix     = 0x008,  /// S
+  kSgmmSubstateWeights      = 0x010,  /// c
+  kSgmmSpeakerProjections   = 0x020,  /// N
+  kSgmmTransitions          = 0x040,  /// t .. not really part of SGMM.
+  kSgmmSpkWeightProjections = 0x080,  /// u [ for SSGMM ]
+  kSgmmAll                  = 0x0FF   /// a (won't normally use this).
+  
 };
 
 typedef uint16 SgmmUpdateFlagsType;  ///< Bitwise OR of the above flags.

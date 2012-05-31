@@ -115,8 +115,8 @@ class DiagGmm {
                    ClusterKMeansOptions cfg = ClusterKMeansOptions());
                    
   
-  void Write(std::ostream &rOut, bool binary) const;
-  void Read(std::istream &rIn, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &in, bool binary);
 
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const DiagGmm &source, 
@@ -205,10 +205,10 @@ class DiagGmm {
 
 /// ostream operator that calls DiagGMM::Write()
 std::ostream &
-operator << (std::ostream & rOut, const kaldi::DiagGmm &gmm);
+operator << (std::ostream &os, const kaldi::DiagGmm &gmm);
 /// istream operator that calls DiagGMM::Read()
 std::istream &
-operator >> (std::istream & rIn, kaldi::DiagGmm &gmm);
+operator >> (std::istream &is, kaldi::DiagGmm &gmm);
 
 }  // End namespace kaldi
 

@@ -220,8 +220,8 @@ class AmSgmm {
   void RemoveSpeakerSpace() { N_.clear(); }
 
   /// Accessors
-  const FullGmm& full_ubm() const { return full_ubm_; }
-  const DiagGmm& diag_ubm() const { return diag_ubm_; }
+  const FullGmm & full_ubm() const { return full_ubm_; }
+  const DiagGmm & diag_ubm() const { return diag_ubm_; }
 
   const Matrix<BaseFloat>& StateVectors(int32 state_index) const {
     return v_[state_index];

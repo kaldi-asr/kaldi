@@ -68,6 +68,7 @@ SgmmUpdateFlagsType StringToSgmmUpdateFlags(std::string str) {
       case 'c': flags |= kSgmmSubstateWeights; break;
       case 'N': flags |= kSgmmSpeakerProjections; break;
       case 't': flags |= kSgmmTransitions; break;
+      case 'u': flags |= kSgmmSpkWeightProjections; break;
       case 'a': flags |= kSgmmAll; break;
       default: KALDI_ERR << "Invalid element " << CharToString(*c)
                          << " of SgmmUpdateFlagsType option string "

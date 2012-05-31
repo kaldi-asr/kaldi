@@ -100,8 +100,8 @@ class FullGmm {
   /// merged (flat list of pairs)
   void Merge(int32 target_components, std::vector<int32> *history = NULL);
 
-  void Write(std::ostream &rOut, bool binary) const;
-  void Read(std::istream &rIn, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
   
   /// this = rho x source + (1-rho) x this
   void Interpolate(BaseFloat rho, const FullGmm &source, 

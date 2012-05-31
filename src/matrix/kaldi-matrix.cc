@@ -160,10 +160,10 @@ void MatrixBase<double>::Invert(double *LogDet, double *DetSign,
 template<>
 template<>
 void MatrixBase<float>::AddVecVec(const float alpha,
-                                  const VectorBase<float>& ra,
+                                  const VectorBase<float>& a,
                                   const VectorBase<float>& rb) {
-  KALDI_ASSERT(ra.Dim() == num_rows_ && rb.Dim() == num_cols_);
-  cblas_sger(CblasRowMajor, ra.Dim(), rb.Dim(), alpha, ra.Data(), 1, rb.Data(),
+  KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
+  cblas_sger(CblasRowMajor, a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
              1, data_, stride_);
 }
 
@@ -195,86 +195,86 @@ void MatrixBase<double>::AddVecVec(const double alpha,
 template<>
 template<>
 void MatrixBase<double>::AddVecVec(const double alpha,
-                                   const VectorBase<double>& ra,
+                                   const VectorBase<double>& a,
                                    const VectorBase<double>& rb) {
-  KALDI_ASSERT(ra.Dim() == num_rows_ && rb.Dim() == num_cols_);
-  cblas_dger(CblasRowMajor, ra.Dim(), rb.Dim(), alpha, ra.Data(), 1, rb.Data(),
+  KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
+  cblas_dger(CblasRowMajor, a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
              1, data_, stride_);
 }
 
 template<>
 void MatrixBase<float>::AddMatMat(const float alpha,
-                                  const MatrixBase<float>& rA,
+                                  const MatrixBase<float>& A,
                                   MatrixTransposeType transA,
-                                  const MatrixBase<float>& rB,
+                                  const MatrixBase<float>& B,
                                   MatrixTransposeType transB,
                                   const float beta) {
-  KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && rA.num_cols_ == rB.num_rows_ && rA.num_rows_ == num_rows_ && rB.num_cols_ == num_cols_)
-	     || (transA == kTrans && transB == kNoTrans && rA.num_rows_ == rB.num_rows_ && rA.num_cols_ == num_rows_ && rB.num_cols_ == num_cols_)
-	     || (transA == kNoTrans && transB == kTrans && rA.num_cols_ == rB.num_cols_ && rA.num_rows_ == num_rows_ && rB.num_rows_ == num_cols_)
-	     || (transA == kTrans && transB == kTrans && rA.num_rows_ == rB.num_cols_ && rA.num_cols_ == num_rows_ && rB.num_rows_ == num_cols_));
-  KALDI_ASSERT(&rA !=  this && &rB != this);
+  KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && A.num_cols_ == B.num_rows_ && A.num_rows_ == num_rows_ && B.num_cols_ == num_cols_)
+	     || (transA == kTrans && transB == kNoTrans && A.num_rows_ == B.num_rows_ && A.num_cols_ == num_rows_ && B.num_cols_ == num_cols_)
+	     || (transA == kNoTrans && transB == kTrans && A.num_cols_ == B.num_cols_ && A.num_rows_ == num_rows_ && B.num_rows_ == num_cols_)
+	     || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
+  KALDI_ASSERT(&A !=  this && &B != this);
 
   cblas_sgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), static_cast<CBLAS_TRANSPOSE>(transB),
-              num_rows_, num_cols_, transA == kNoTrans ? rA.num_cols_ : rA.num_rows_,
-              alpha, rA.data_, rA.stride_, rB.data_, rB.stride_,
+              num_rows_, num_cols_, transA == kNoTrans ? A.num_cols_ : A.num_rows_,
+              alpha, A.data_, A.stride_, B.data_, B.stride_,
               beta, data_, stride_);
 }
 
 template<>
 void MatrixBase<double>::AddMatMat(const double alpha,
-                                   const MatrixBase<double>& rA,
+                                   const MatrixBase<double>& A,
                                    MatrixTransposeType transA,
-                                   const MatrixBase<double>& rB,
+                                   const MatrixBase<double>& B,
                                    MatrixTransposeType transB,
                                    const double beta) {
-  KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && rA.num_cols_ == rB.num_rows_ && rA.num_rows_ == num_rows_ && rB.num_cols_ == num_cols_)
-	     || (transA == kTrans && transB == kNoTrans && rA.num_rows_ == rB.num_rows_ && rA.num_cols_ == num_rows_ && rB.num_cols_ == num_cols_)
-	     || (transA == kNoTrans && transB == kTrans && rA.num_cols_ == rB.num_cols_ && rA.num_rows_ == num_rows_ && rB.num_rows_ == num_cols_)
-	     || (transA == kTrans && transB == kTrans && rA.num_rows_ == rB.num_cols_ && rA.num_cols_ == num_rows_ && rB.num_rows_ == num_cols_));
-  KALDI_ASSERT(&rA !=  this && &rB != this);
+  KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && A.num_cols_ == B.num_rows_ && A.num_rows_ == num_rows_ && B.num_cols_ == num_cols_)
+	     || (transA == kTrans && transB == kNoTrans && A.num_rows_ == B.num_rows_ && A.num_cols_ == num_rows_ && B.num_cols_ == num_cols_)
+	     || (transA == kNoTrans && transB == kTrans && A.num_cols_ == B.num_cols_ && A.num_rows_ == num_rows_ && B.num_rows_ == num_cols_)
+	     || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
+  KALDI_ASSERT(&A !=  this && &B != this);
 
   cblas_dgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), static_cast<CBLAS_TRANSPOSE>(transB),
-              num_rows_, num_cols_, transA == kNoTrans ? rA.num_cols_ : rA.num_rows_,
-              alpha, rA.data_, rA.stride_, rB.data_, rB.stride_,
+              num_rows_, num_cols_, transA == kNoTrans ? A.num_cols_ : A.num_rows_,
+              alpha, A.data_, A.stride_, B.data_, B.stride_,
               beta, data_, stride_);
 }
 
 template<>
-void MatrixBase<float>::AddSpSp(const float alpha, const SpMatrix<float>& rA,
-                                const SpMatrix<float>& rB, const float beta) {
+void MatrixBase<float>::AddSpSp(const float alpha, const SpMatrix<float> &A_in,
+                                const SpMatrix<float> &B_in, const float beta) {
   MatrixIndexT sz = num_rows_;
-  KALDI_ASSERT(sz == num_cols_ && sz == rA.NumRows() && sz == rB.NumRows());
+  KALDI_ASSERT(sz == num_cols_ && sz == A_in.NumRows() && sz == B_in.NumRows());
 
-  Matrix<float> A(rA), B(rB);
+  Matrix<float> A(A_in), B(B_in);
   // CblasLower or CblasUpper would work below as symmetric matrix is copied
   // fully (to save work, we used the matrix constructor from SpMatrix).
-  // CblasLeft means rA is on the left: C <-- alpha A B + beta C
+  // CblasLeft means A is on the left: C <-- alpha A B + beta C
   cblas_ssymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, A.data_,
               A.stride_, B.data_, B.stride_, beta, data_, stride_);
 }
 
 template<>
 void MatrixBase<double>::AddSpSp(const double alpha,
-                                 const SpMatrix<double>& rA,
-                                 const SpMatrix<double>& rB,
+                                 const SpMatrix<double> &A_in,
+                                 const SpMatrix<double> &B_in,
                                  const double beta) {
   MatrixIndexT sz = num_rows_;
-  KALDI_ASSERT(sz == num_cols_ && sz == rA.NumRows() && sz == rB.NumRows());
+  KALDI_ASSERT(sz == num_cols_ && sz == A_in.NumRows() && sz == B_in.NumRows());
 
-  Matrix<double> A(rA), B(rB);
+  Matrix<double> A(A_in), B(B_in);
   // CblasLower or CblasUpper would work below as symmetric matrix is copied
   // fully (to save work, we used the matrix constructor from SpMatrix).
-  // CblasLeft means rA is on the left: C <-- alpha A B + beta C
+  // CblasLeft means A is on the left: C <-- alpha A B + beta C
   cblas_dsymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, A.data_,
               A.stride_, B.data_, B.stride_, beta, data_, stride_);
 }
 
 
 template<>
-void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& rA,
+void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& A,
                                MatrixTransposeType transA) {
-  if (&rA == this) {  // Make it work in this case.
+  if (&A == this) {  // Make it work in this case.
     if (!transA) {
       Scale(alpha + 1.0);
     } else {
@@ -304,16 +304,16 @@ void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& rA,
       }
     }
   } else {
-    int aStride = (int) rA.stride_, stride = stride_;
-    float *adata = rA.data_, *data = data_;
+    int aStride = (int) A.stride_, stride = stride_;
+    float *adata = A.data_, *data = data_;
     if (transA == kNoTrans) {
-      KALDI_ASSERT(rA.num_rows_ == num_rows_ && rA.num_cols_ == num_cols_);
+      KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata += aStride,
            data += stride) {
         cblas_saxpy(num_cols_, alpha, adata, 1, data, 1);
       }
     } else {
-      KALDI_ASSERT(rA.num_cols_ == num_rows_ && rA.num_rows_ == num_cols_);
+      KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata++, data += stride)
         cblas_saxpy(num_cols_, alpha, adata, aStride, data, 1);
     }
@@ -322,8 +322,8 @@ void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& rA,
 
 template<>
 void MatrixBase<double>::AddMat(const double alpha,
-                            const MatrixBase<double>& rA, MatrixTransposeType transA) {
-  if (&rA == this) {  // Make it work in this case.
+                            const MatrixBase<double>& A, MatrixTransposeType transA) {
+  if (&A == this) {  // Make it work in this case.
     if (!transA) {
       Scale(alpha+1.0);
     } else {
@@ -353,14 +353,14 @@ void MatrixBase<double>::AddMat(const double alpha,
       }
     }
   } else {
-    int aStride = (int)rA.stride_, stride = stride_;
-    double *adata = rA.data_, *data = data_;
+    int aStride = (int)A.stride_, stride = stride_;
+    double *adata = A.data_, *data = data_;
     if (transA == kNoTrans) {
-      KALDI_ASSERT(rA.num_rows_ == num_rows_ && rA.num_cols_ == num_cols_);
+      KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
       for (MatrixIndexT row = 0;row < num_rows_;row++, adata+=aStride, data+=stride)
         cblas_daxpy(num_cols_, alpha, adata, 1, data, 1);
     } else {
-      KALDI_ASSERT(rA.num_cols_ == num_rows_ && rA.num_rows_ == num_cols_);
+      KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
       for (MatrixIndexT row = 0;row < num_rows_;row++, adata++, data+=stride)
         cblas_daxpy(num_cols_, alpha, adata, aStride, data, 1);
     }
@@ -1634,6 +1634,12 @@ void MatrixBase<Real>::ApplyLog() {
   }
 }
 
+template<class Real>
+void MatrixBase<Real>::ApplyExp() {
+  for (MatrixIndexT i = 0; i < num_rows_; i++) {
+    Row(i).ApplyExp();
+  }
+}
 
 template<class Real>
 void MatrixBase<Real>::ApplyPow(Real power) {

@@ -187,10 +187,10 @@ void SpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M, SpCopyType copy_type
 // diagonal update, this <-- this + diag(v)
 template<class Real>
 template<class OtherReal>
-void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& rv) {
+void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& v) {
   int32 num_rows = this->num_rows_;
-  KALDI_ASSERT(num_rows == rv.Dim());
-  const OtherReal *src = rv.Data();
+  KALDI_ASSERT(num_rows == v.Dim());
+  const OtherReal *src = v.Data();
   Real *dst = this->data_;
   if (alpha == 1.0)
     for (int32 i = 1; i <= num_rows; i++, src++, dst += i)
@@ -202,22 +202,22 @@ void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& rv) 
 }
 // instantiate the template above.
 template
-void SpMatrix<float>::AddVec(const float alpha, const VectorBase<double>& rv);
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<double>& v);
 template
-void SpMatrix<double>::AddVec(const double alpha, const VectorBase<float>& rv);
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<float>& v);
 template
-void SpMatrix<float>::AddVec(const float alpha, const VectorBase<float>& rv);
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<float>& v);
 template
-void SpMatrix<double>::AddVec(const double alpha, const VectorBase<double>& rv);
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<double>& v);
 
 
 
 template<>
 template<>
-void  SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& rv);
+void  SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& v);
 template<>
 template<>
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& rv);
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& v);
 
 #ifndef HAVE_ATLAS
 template<>
@@ -815,27 +815,27 @@ SolveDoubleQuadraticMatrixProblem(const MatrixBase<float> &G, const SpMatrix<flo
 // rank-one update, this <-- this + alpha V V'
 template<>
 template<>
-void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& rv) {
-  KALDI_ASSERT(rv.Dim() == this->NumRows());
-  cblas_sspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1,
+void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& v) {
+  KALDI_ASSERT(v.Dim() == this->NumRows());
+  cblas_sspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1,
              this->data_);
 }
 
 // rank-one update, this <-- this + alpha V V'
 template<>
 template<>
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_);
-  cblas_dspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1, data_);
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& v) {
+  KALDI_ASSERT(v.Dim() == num_rows_);
+  cblas_dspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1, data_);
 }
 
 
 template<class Real>
 template<class OtherReal>
-void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal>& rv) {
-  KALDI_ASSERT(rv.Dim() == this->NumRows());
+void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal>& v) {
+  KALDI_ASSERT(v.Dim() == this->NumRows());
   Real *data = this->data_;
-  const OtherReal *v_data = rv.Data();
+  const OtherReal *v_data = v.Data();
   MatrixIndexT nr = this->num_rows_;
   for (MatrixIndexT i = 0; i < nr; i++)
     for (MatrixIndexT j = 0; j <= i; j++, data++)
@@ -844,9 +844,9 @@ void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal>& rv) 
 
 // instantiate the template above.
 template
-void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<double>& rv);
+void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<double>& v);
 template
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<float>& rv);
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<float>& v);
 
 
 double VecSpVec(const VectorBase<double> &v1, const SpMatrix<double> &M, const VectorBase<double> &v2) {
@@ -869,60 +869,60 @@ float VecSpVec(const VectorBase<float> &v1, const SpMatrix<float> &M, const Vect
 // TODO: this is not very efficiently implemented, we could do it using
 // lower-level functions.
 template<>
-void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &rM, MatrixTransposeType transM, const SpMatrix<float> &rA, const float beta) {
-  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == rM.NumRows() && rM.NumCols() == rA.NumRows())
-         || (transM ==    kTrans && this->NumRows() == rM.NumCols() && rM.NumRows() == rA.NumRows()));
+void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &M, MatrixTransposeType transM, const SpMatrix<float> &A, const float beta) {
+  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows() && M.NumCols() == A.NumRows())
+         || (transM ==    kTrans && this->NumRows() == M.NumCols() && M.NumRows() == A.NumRows()));
 
-  Vector<float> tmp_vec(rA.NumRows());
+  Vector<float> tmp_vec(A.NumRows());
   SpMatrix<float> tmp_A;
-  const float *p_A_data = rA.Data();
+  const float *p_A_data = A.Data();
   float *p_row_data = this->Data();
 
-  if (this->Data() <= rA.Data() + rA.SizeInBytes() && this->Data() + this->SizeInBytes() >= rA.Data()) {
-    // Matrices rA and *this overlap. Make copy of rA
-    tmp_A.Resize(rA.NumRows());
-    tmp_A.CopyFromSp(rA);
+  if (this->Data() <= A.Data() + A.SizeInBytes() && this->Data() + this->SizeInBytes() >= A.Data()) {
+    // Matrices A and *this overlap. Make copy of A
+    tmp_A.Resize(A.NumRows());
+    tmp_A.CopyFromSp(A);
     p_A_data = tmp_A.Data();
   }
   for (MatrixIndexT r = 0; r < this->NumRows(); r++, p_row_data += r) {
     SubVector<float> out_row_vec(p_row_data, r+1);
 
     if (transM == kNoTrans) {
-      cblas_sspmv(CblasRowMajor, CblasLower, rA.NumRows(), 1.0, p_A_data, rM.RowData(r), 1, 0.0, tmp_vec.Data(), 1);
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(rM, 0, r+1, 0, rM.NumCols()), transM, tmp_vec, beta);
+      cblas_sspmv(CblasRowMajor, CblasLower, A.NumRows(), 1.0, p_A_data, M.RowData(r), 1, 0.0, tmp_vec.Data(), 1);
+      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, r+1, 0, M.NumCols()), transM, tmp_vec, beta);
     } else {
-      cblas_sspmv(CblasRowMajor, CblasLower, rA.NumRows(), 1.0, p_A_data, rM.Data() + r, rM.Stride(), 0.0, tmp_vec.Data(), 1);
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(rM, 0, rM.NumRows() , 0, r+1), transM, tmp_vec, beta);
+      cblas_sspmv(CblasRowMajor, CblasLower, A.NumRows(), 1.0, p_A_data, M.Data() + r, M.Stride(), 0.0, tmp_vec.Data(), 1);
+      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
     }
   }
 }
 
 
 template<>
-void SpMatrix<double>::AddMat2Sp(const double alpha, const MatrixBase<double> &rM, MatrixTransposeType transM, const SpMatrix<double> &rA, const double beta) {
-  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == rM.NumRows() && rM.NumCols() == rA.NumRows())
-         || (transM ==    kTrans && this->NumRows() == rM.NumCols() && rM.NumRows() == rA.NumRows()));
+void SpMatrix<double>::AddMat2Sp(const double alpha, const MatrixBase<double> &M, MatrixTransposeType transM, const SpMatrix<double> &A, const double beta) {
+  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows() && M.NumCols() == A.NumRows())
+         || (transM ==    kTrans && this->NumRows() == M.NumCols() && M.NumRows() == A.NumRows()));
 
-  Vector<double> tmp_vec(rA.NumRows());
+  Vector<double> tmp_vec(A.NumRows());
   SpMatrix<double> tmp_A;
-  const double *p_A_data = rA.Data();
+  const double *p_A_data = A.Data();
   double *p_row_data = this->Data();
 
-  if (this->Data() <= rA.Data() + rA.SizeInBytes() && this->Data() + this->SizeInBytes() >= rA.Data()) {
-    // Matrices rA and *this overlap. Make copy of rA
-    tmp_A.Resize(rA.NumRows());
-    tmp_A.CopyFromSp(rA);
+  if (this->Data() <= A.Data() + A.SizeInBytes() && this->Data() + this->SizeInBytes() >= A.Data()) {
+    // Matrices A and *this overlap. Make copy of A
+    tmp_A.Resize(A.NumRows());
+    tmp_A.CopyFromSp(A);
     p_A_data = tmp_A.Data();
   }
   for (MatrixIndexT r = 0; r < this->NumRows(); r++, p_row_data += r) {
     SubVector<double> out_row_vec(p_row_data, r+1);
 
     if (transM == kNoTrans) {
-      cblas_dspmv(CblasRowMajor, CblasLower, rA.NumRows(), 1.0, p_A_data, rM.RowData(r), 1,           0.0, tmp_vec.Data(), 1);
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(rM, 0, r+1 , 0, rM.NumCols()), transM, tmp_vec, beta);
+      cblas_dspmv(CblasRowMajor, CblasLower, A.NumRows(), 1.0, p_A_data, M.RowData(r), 1,           0.0, tmp_vec.Data(), 1);
+      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, r+1 , 0, M.NumCols()), transM, tmp_vec, beta);
     } else {
-      cblas_dspmv(CblasRowMajor, CblasLower, rA.NumRows(), 1.0, p_A_data, rM.Data() + r, rM.Stride(), 0.0, tmp_vec.Data(), 1);
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(rM, 0, rM.NumRows() , 0, r+1), transM, tmp_vec, beta);
+      cblas_dspmv(CblasRowMajor, CblasLower, A.NumRows(), 1.0, p_A_data, M.Data() + r, M.Stride(), 0.0, tmp_vec.Data(), 1);
+      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
     }
   }
 }
@@ -991,10 +991,10 @@ void SpMatrix<double>::AddMat2Vec(const double alpha,
 }
 
 template<>
-void SpMatrix<float>::AddMat2(const float alpha, const MatrixBase<float> &rM, MatrixTransposeType transM, const float beta) {
-  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == rM.NumRows())
-         || (transM == kTrans && this->NumRows() == rM.NumCols()));
-  Vector<float> tmp_vec(transM == kTrans ? rM.NumRows() : 0);
+void SpMatrix<float>::AddMat2(const float alpha, const MatrixBase<float> &M, MatrixTransposeType transM, const float beta) {
+  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
+         || (transM == kTrans && this->NumRows() == M.NumCols()));
+  Vector<float> tmp_vec(transM == kTrans ? M.NumRows() : 0);
   SpMatrix<float> tmp_A;
   float *p_row_data = this->Data();
 
@@ -1003,20 +1003,20 @@ void SpMatrix<float>::AddMat2(const float alpha, const MatrixBase<float> &rM, Ma
 
     if (transM == kNoTrans) {
       // tmp_vec =
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(rM, 0, r+1 , 0, rM.NumCols()), transM, rM.Row(r), beta);  // rM.Row(r) is a SubVector...
+      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, r+1 , 0, M.NumCols()), transM, M.Row(r), beta);  // M.Row(r) is a SubVector...
     } else {
-      tmp_vec.CopyColFromMat(rM, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(rM, 0, rM.NumRows() , 0, r+1), transM, tmp_vec, beta);
+      tmp_vec.CopyColFromMat(M, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
+      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
     }
   }
 }
 
 template<>
-void SpMatrix<double>::AddMat2(const double alpha, const MatrixBase<double> &rM, MatrixTransposeType transM, const double beta)  {
-  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == rM.NumRows())
-         || (transM == kTrans && this->NumRows() == rM.NumCols()));
+void SpMatrix<double>::AddMat2(const double alpha, const MatrixBase<double> &M, MatrixTransposeType transM, const double beta)  {
+  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
+         || (transM == kTrans && this->NumRows() == M.NumCols()));
 
-  Vector<double> tmp_vec(transM == kTrans ? rM.NumRows() : 0);
+  Vector<double> tmp_vec(transM == kTrans ? M.NumRows() : 0);
   SpMatrix<double> tmp_A;
   double *p_row_data = this->Data();
 
@@ -1024,10 +1024,10 @@ void SpMatrix<double>::AddMat2(const double alpha, const MatrixBase<double> &rM,
     SubVector<double> out_row_vec(p_row_data, r+1);
 
     if (transM == kNoTrans) {
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(rM, 0, r+1 , 0, rM.NumCols()), transM, rM.Row(r), beta);  // rM.Row(r) is a SubVector...
+      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, r+1 , 0, M.NumCols()), transM, M.Row(r), beta);  // M.Row(r) is a SubVector...
     } else {
-      tmp_vec.CopyColFromMat(rM, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(rM, 0, rM.NumRows() , 0, r+1), transM, tmp_vec, beta);
+      tmp_vec.CopyColFromMat(M, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
+      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
     }
   }
 }

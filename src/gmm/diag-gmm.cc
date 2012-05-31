@@ -672,35 +672,35 @@ void DiagGmm::Write(std::ostream &out_stream, bool binary) const {
   if (!binary) out_stream << "\n";
 }
 
-std::ostream & operator <<(std::ostream & out_stream,
+std::ostream & operator <<(std::ostream & os,
                            const kaldi::DiagGmm &gmm) {
-  gmm.Write(out_stream, false);
-  return out_stream;
+  gmm.Write(os, false);
+  return os;
 }
 
-void DiagGmm::Read(std::istream &in_stream, bool binary) {
-//  ExpectToken(in_stream, binary, "<DiagGMMBegin>");
+void DiagGmm::Read(std::istream &is, bool binary) {
+//  ExpectToken(is, binary, "<DiagGMMBegin>");
   std::string token;
-  ReadToken(in_stream, binary, &token);
+  ReadToken(is, binary, &token);
   // <DiagGMMBegin> is for compatibility. Will be deleted later
   if (token != "<DiagGMMBegin>" && token != "<DiagGMM>")
     KALDI_ERR << "Expected <DiagGMM>, got " << token;
-  ReadToken(in_stream, binary, &token);
+  ReadToken(is, binary, &token);
   if (token == "<GCONSTS>") {  // The gconsts are optional.
-    gconsts_.Read(in_stream, binary);
-    ExpectToken(in_stream, binary, "<WEIGHTS>");
+    gconsts_.Read(is, binary);
+    ExpectToken(is, binary, "<WEIGHTS>");
   } else {
     if (token != "<WEIGHTS>")
       KALDI_ERR << "DiagGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
                 << token;
   }
-  weights_.Read(in_stream, binary);
-  ExpectToken(in_stream, binary, "<MEANS_INVVARS>");
-  means_invvars_.Read(in_stream, binary);
-  ExpectToken(in_stream, binary, "<INV_VARS>");
-  inv_vars_.Read(in_stream, binary);
-//  ExpectToken(in_stream, binary, "<DiagGMMEnd>");
-  ReadToken(in_stream, binary, &token);
+  weights_.Read(is, binary);
+  ExpectToken(is, binary, "<MEANS_INVVARS>");
+  means_invvars_.Read(is, binary);
+  ExpectToken(is, binary, "<INV_VARS>");
+  inv_vars_.Read(is, binary);
+//  ExpectToken(is, binary, "<DiagGMMEnd>");
+  ReadToken(is, binary, &token);
   // <DiagGMMEnd> is for compatibility. Will be deleted later
   if (token != "<DiagGMMEnd>" && token != "</DiagGMM>")
     KALDI_ERR << "Expected </DiagGMM>, got " << token;
@@ -708,9 +708,9 @@ void DiagGmm::Read(std::istream &in_stream, bool binary) {
   ComputeGconsts();  // safer option than trusting the read gconsts
 }
 
-std::istream & operator >>(std::istream & rIn, kaldi::DiagGmm &gmm) {
-  gmm.Read(rIn, false);  // false == non-binary.
-  return rIn;
+std::istream & operator >>(std::istream &is, kaldi::DiagGmm &gmm) {
+  gmm.Read(is, false);  // false == non-binary.
+  return is;
 }
 
 void DiagGmm::Generate(VectorBase<BaseFloat> *output) {
