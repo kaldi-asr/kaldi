@@ -44,13 +44,13 @@ fi
 
 cat links/11-13.1/wsj0/doc/indices/train/tr_s_wv1.ndx | \
  $local/ndx2flist.pl $* | sort | \
- grep -v 11-2.1/wsj0/si_tr_s/401 > train_si84.flist
+ grep -v -i 11-2.1/wsj0/si_tr_s/401 > train_si84.flist
 
 # This version for SI-284
 cat links/13-34.1/wsj1/doc/indices/si_tr_s.ndx \
  links/11-13.1/wsj0/doc/indices/train/tr_s_wv1.ndx | \
  $local/ndx2flist.pl  $* | sort | \
- grep -v 11-2.1/wsj0/si_tr_s/401 > train_si284.flist
+ grep -v -i 11-2.1/wsj0/si_tr_s/401 > train_si284.flist
 
 
 # Now for the test sets.
