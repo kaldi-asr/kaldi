@@ -173,7 +173,7 @@ static void UnitTestHTKCompare1() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };
@@ -254,7 +254,7 @@ static void UnitTestHTKCompare2() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };
@@ -335,7 +335,7 @@ static void UnitTestHTKCompare3() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };
@@ -414,7 +414,7 @@ static void UnitTestHTKCompare4() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };
@@ -497,7 +497,7 @@ static void UnitTestHTKCompare5() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };
@@ -580,7 +580,7 @@ static void UnitTestHTKCompare6() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021406  // MFCC_D_A_0
   };

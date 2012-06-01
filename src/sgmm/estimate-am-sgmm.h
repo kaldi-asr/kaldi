@@ -436,7 +436,7 @@ class UpdateWParallelClass {
   int thread_id_;
   int num_threads_;
  private:
-  //MleAmSgmmUpdater *updater_;
+  // MleAmSgmmUpdater *updater_;
   const MleAmSgmmAccs &accs_;
   const AmSgmm &model_;
   const Matrix<double> &w_;

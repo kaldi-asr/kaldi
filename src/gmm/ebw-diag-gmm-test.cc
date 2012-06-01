@@ -43,7 +43,7 @@ void UnitTestEstimateMmieDiagGmm() {
       means_f(m, d) = kaldi::RandGauss()*100.0F;
       vars_f(m, d) = exp(kaldi::RandGauss())*1000.0F+ 1.0F;
     }
-    //std::cout << "Gauss " << m << ": Mean = " << means_f.Row(m) << '\n'
+    // std::cout << "Gauss " << m << ": Mean = " << means_f.Row(m) << '\n'
     //          << "Vars = " << vars_f.Row(m) << '\n';
   }
    
@@ -88,10 +88,10 @@ void UnitTestEstimateMmieDiagGmm() {
   mean_acc.Scale(1.0F/counter_num);
   var_acc.Scale(1.0F/counter_num);
   var_acc.AddVec2(-1.0, mean_acc);
-  //std::cout << "Mean acc = " << mean_acc << '\n' << "Var acc = "
+  // std::cout << "Mean acc = " << mean_acc << '\n' << "Var acc = "
   //         << var_acc << '\n';
 
-   //write the feature vectors to a file
+   // write the feature vectors to a file
    std::ofstream of("tmpfeats");
    of.precision(10);
    of << feats_num; 
@@ -152,13 +152,13 @@ void UnitTestEstimateMmieDiagGmm() {
       featvec_num.CopyRowFromMat(feats_num, i);
       loglike_num += static_cast<double>(num.AccumulateFromDiag(*gmm,
         featvec_num, 1.0F));
-      //std::cout << "Mean accum_num: " <<  num.mean_accumulator() << '\n';
+      // std::cout << "Mean accum_num: " <<  num.mean_accumulator() << '\n';
     }
     for (size_t i = 0; i < counter_den; i++) {
       featvec_den.CopyRowFromMat(feats_den, i);
       loglike_den += static_cast<double>(den.AccumulateFromDiag(*gmm,
         featvec_den, 1.0F));
-      //std::cout << "Mean accum_den: " <<  den.mean_accumulator() << '\n';
+      // std::cout << "Mean accum_den: " <<  den.mean_accumulator() << '\n';
     }
 
     std::cout << "Loglikelihood Num before iteration " << iteration << " : "
@@ -194,8 +194,8 @@ void UnitTestEstimateMmieDiagGmm() {
                              &count);
    }
    
-   //mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
-   //std::cout << "MEANY: " << mean_hlp << '\n'; 
+   // mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
+   // std::cout << "MEANY: " << mean_hlp << '\n'; 
    std::cout << "MEANY: " << gmm->weights() << '\n';
 
 

@@ -27,8 +27,8 @@
 #if HAVE_CUDA==1
 
 extern "C" {
-  //**************
-  //float
+  // **************
+  // float
   //
   void cudaF_rand(dim3 Gr, dim3 Bl, float* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d);
   void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d);
@@ -36,6 +36,6 @@ extern "C" {
 
 }
 
-#endif //HAVE_CUDA
+#endif // HAVE_CUDA
 
 #endif

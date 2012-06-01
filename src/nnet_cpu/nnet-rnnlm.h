@@ -136,26 +136,26 @@ class Rnnlm {
 
  private:
   ///////
-  //network parameters
+  // network parameters
 
-  //layer1,input 1 of N coding
+  // layer1,input 1 of N coding
   Matrix<BaseFloat> V1_; ///< x->y
   Matrix<BaseFloat> U1_; ///< y(t-1)->y(t)
   Vector<BaseFloat> b1_;
 
-  ///factorization - clustering words to classes
-  //:TODO:
+  /// factorization - clustering words to classes
+  // :TODO:
   Matrix<BaseFloat> W2cls_;
   Vector<BaseFloat> b2cls_;
   std::vector<int32> last_element_index_;
 
-  ///output weights
+  /// output weights
   Matrix<BaseFloat> W2_;
   Vector<BaseFloat> b2_;
-  //std::vector<SubMatrix<BaseFloat> > W2div_;
+  // std::vector<SubMatrix<BaseFloat> > W2div_;
 
   ///////
-  //buffers
+  // buffers
   std::vector<int32> in_seq_;
   Matrix<BaseFloat> h2_;
   Vector<BaseFloat> h2_last_;
@@ -168,7 +168,7 @@ class Rnnlm {
   Vector<BaseFloat> b1_corr_;
 
   ///////
-  //global parameters
+  // global parameters
   BaseFloat learn_rate_; ///< global learning rate
   BaseFloat l2_penalty_; ///< l2 penalty
   BaseFloat l1_penalty_; ///< l1 penalty
@@ -228,14 +228,14 @@ inline void Rnnlm::Read(std::istream& in, bool binary) {
   in >> W2_; 
   ExpectToken(in,binary,"<b2>");
   in >> b2_;
-  //in >> V1 >> U1 >> b1 >> W2cls >> b2cls >> last_element_index >> W2 >> b2;
+  // in >> V1 >> U1 >> b1 >> W2cls >> b2cls >> last_element_index >> W2 >> b2;
   
-  //same vocabulary size
+  // same vocabulary size
   KALDI_ASSERT(V1_.NumRows() == W2_.NumCols());
-  //same dim of hidden layer
+  // same dim of hidden layer
   KALDI_ASSERT(V1_.NumCols() == U1_.NumCols());
   KALDI_ASSERT(V1_.NumCols() == b1_.Dim());
-  //input of layer2 same as output of layer1
+  // input of layer2 same as output of layer1
   KALDI_ASSERT(V1_.NumCols() == W2_.NumRows());
   KALDI_ASSERT(b2_.Dim() == W2_.NumCols());
 
@@ -269,14 +269,14 @@ inline void Rnnlm::Write(std::ostream& out, bool binary) {
   out << W2_; 
   WriteToken(out,binary,"<b2>");
   out << b2_;
-  //out << V1 << U1 << b1 << W2cls << b2cls << last_element_index << W2 << b2;
+  // out << V1 << U1 << b1 << W2cls << b2cls << last_element_index << W2 << b2;
 }
 
     
 
 
 
-} //namespace kaldi
+} // namespace kaldi
 
 #endif
 

@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
           std::cerr << '\n';
         }
         BaseFloat like = -(weight.Value1() - weight.Value2());
-        //KALDI_LOG << "final weight:" << weight.Value1() << "," << weight.Value2();
+        // KALDI_LOG << "final weight:" << weight.Value1() << "," << weight.Value2();
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << key << " is "
                   << (like / features.NumRows()) << " over "

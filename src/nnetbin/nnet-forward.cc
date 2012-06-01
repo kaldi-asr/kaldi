@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out;
     Matrix<BaseFloat> nnet_out_host;
 
-    //Read the class-counts, compute priors
+    // Read the class-counts, compute priors
     Vector<BaseFloat> tmp_priors;
     CuVector<BaseFloat> priors;
     if(class_frame_counts != "") {
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         tmp_priors.ApplyPow(-prior_scale);
       }
 
-      //push priors to GPU
+      // push priors to GPU
       priors.CopyFromVec(tmp_priors);
     }
 
@@ -106,22 +106,22 @@ int main(int argc, char *argv[]) {
     if(!silent) KALDI_LOG << "MLP FEEDFORWARD STARTED";
 
     int32 num_done = 0;
-    //iterate over all the feature files
+    // iterate over all the feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
-      //read
+      // read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
-      //push it to gpu
+      // push it to gpu
       feats.CopyFromMat(mat);
-      //fwd-pass
+      // fwd-pass
       nnet_transf.Feedforward(feats, &feats_transf);
       nnet.Feedforward(feats_transf, &nnet_out);
       
-      //convert posteriors to log-posteriors
+      // convert posteriors to log-posteriors
       if (apply_log) {
         nnet_out.ApplyLog();
       }
      
-      //divide posteriors by priors to get quasi-likelihoods
+      // divide posteriors by priors to get quasi-likelihoods
       if(class_frame_counts != "") {
         if (apply_log || no_softmax) {
           nnet_out.AddScaledRow(1.0, priors, 1.0);
@@ -130,11 +130,11 @@ int main(int argc, char *argv[]) {
         }
       }
       
-      //write
+      // write
       nnet_out.CopyToMat(&nnet_out_host);
       feature_writer.Write(feature_reader.Key(), nnet_out_host);
 
-      //progress log
+      // progress log
       if (num_done % 1000 == 0) {
         if(!silent) KALDI_LOG << num_done << ", " << std::flush;
       }
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
       tot_t += mat.NumRows();
     }
     
-    //final message
+    // final message
     if(!silent) KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
                           << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
     if(!silent) KALDI_LOG << "Done " << num_done << " files";

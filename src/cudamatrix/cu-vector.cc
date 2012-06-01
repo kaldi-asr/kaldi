@@ -120,4 +120,4 @@ void CuVector<float>::InvertElements() {
 
 
 
-} //namespace
+} // namespace

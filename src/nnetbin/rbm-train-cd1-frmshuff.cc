@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
     Cache cache;
-    cachesize = (cachesize/bunchsize)*bunchsize; //ensure divisibility
+    cachesize = (cachesize/bunchsize)*bunchsize; // ensure divisibility
     cache.Init(cachesize, bunchsize);
 
     CuRand<BaseFloat> cu_rand;
@@ -109,58 +109,58 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_cache = 0;
     while (1) {
-      //fill the cache
+      // fill the cache
       while (!cache.Full() && !feature_reader.Done()) {
-        //get feature matrix
+        // get feature matrix
         const Matrix<BaseFloat> &mat = feature_reader.Value();
-        //resize the dummy vector to fill Cache:: with
+        // resize the dummy vector to fill Cache:: with
         dummy_cache_vec.resize(mat.NumRows());
-        //push features to GPU
+        // push features to GPU
         feats.CopyFromMat(mat);
-        //possibly apply transform
+        // possibly apply transform
         rbm_transf.Feedforward(feats, &feats_transf);
-        //add to cache
+        // add to cache
         cache.AddData(feats_transf, dummy_cache_vec);
         num_done++;
-        //next feature file... 
+        // next feature file... 
         Timer t_features;
         feature_reader.Next(); 
         time_next += t_features.Elapsed();
       }
-      //randomize
+      // randomize
       cache.Randomize();
-      //report
+      // report
       std::cerr << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
                 << " frames: " << tot_t << "\n";
-      //train with the cache
+      // train with the cache
       while (!cache.Empty()) {
-        //get block of feature/target pairs
+        // get block of feature/target pairs
         cache.GetBunch(&pos_vis, &dummy_cache_vec);
        
-        //TRAIN with CD1
-        //forward pass
+        // TRAIN with CD1
+        // forward pass
         rbm.Propagate(pos_vis, &pos_hid);
-        //alter the hidden values, so we can generate negative example
+        // alter the hidden values, so we can generate negative example
         if (rbm.HidType() == Rbm::BERNOULLI) {
           cu_rand.BinarizeProbs(pos_hid, &neg_hid);
         } else {
-          //assume Rbm::GAUSSIAN
+          // assume Rbm::GAUSSIAN
           neg_hid.CopyFromMat(pos_hid);
           cu_rand.AddGaussNoise(&neg_hid);
         }
-        //reconstruct pass
+        // reconstruct pass
         rbm.Reconstruct(neg_hid, &pos_vis);
-        //update step
+        // update step
         rbm.RbmUpdate(pos_vis, pos_hid, neg_vis, neg_hid);
-        //evaluate mean square error
+        // evaluate mean square error
         mse.Eval(neg_vis, pos_vis, &dummy_mse_mat);
 
         tot_t += pos_vis.NumRows();
       }
 
-      //stop training when no more data
+      // stop training when no more data
       if (feature_reader.Done()) break;
     }
 

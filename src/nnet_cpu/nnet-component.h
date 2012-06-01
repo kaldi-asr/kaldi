@@ -23,13 +23,13 @@
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
-//#include "nnet/nnet-nnet.h"
+// #include "nnet/nnet-nnet.h"
 
 #include <iostream>
 
 namespace kaldi {
 
-//declare the nnet class so we can declare pointer
+// declare the nnet class so we can declare pointer
 class Nnet;
     
 

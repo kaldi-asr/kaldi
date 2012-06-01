@@ -27,7 +27,7 @@
 
 namespace kaldi {
 
-//typedef fst::StdArc::StateId StateId;
+// typedef fst::StdArc::StateId StateId;
 
 // newlyAdded will be updated
 StateId LmFstConverter::AddStateFromSymb(
@@ -74,13 +74,13 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst* pfst) {
   // go through all states with a recorded backoff destination 
   // and find out any that has no output arcs and is not final
   unsigned int connected = 0;
-  //cerr << "ConnectUnusedStates has recorded "<<bkState_.size()<<" states.\n";
+  // cerr << "ConnectUnusedStates has recorded "<<bkState_.size()<<" states.\n";
 
   for (BkStateMap::iterator bkit = bkState_.begin(); bkit != bkState_.end(); ++bkit) {
 	// add an output arc to its backoff destination recorded in backoff_
 	fst::StdArc::StateId src = bkit->first, dst = bkit->second;
 	if (pfst->NumArcs(src)==0 && !IsFinal(pfst, src)) {
-	  //cerr << "ConnectUnusedStates: adding arc from "<<src<<" to "<<dst<<endl;
+	  // cerr << "ConnectUnusedStates: adding arc from "<<src<<" to "<<dst<<endl;
 	  pfst->AddArc(src, fst::StdArc(0, 0, fst::StdArc::Weight::One(), dst)); // epsilon arc with no cost
 	  connected++;
 	}

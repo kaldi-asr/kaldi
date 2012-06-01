@@ -497,7 +497,7 @@ int main() {
     fst::TestStringRepository<fst::StdArc, char>();
     fst::TestDeterminizeGeneral<fst::StdArc>();
     fst::TestDeterminize<fst::StdArc>();
-    //fst::TestDeterminize2<fst::StdArc>();
+    // fst::TestDeterminize2<fst::StdArc>();
     fst::TestPush<fst::StdArc>();
     fst::TestMinimize<fst::StdArc>();
   }

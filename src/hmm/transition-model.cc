@@ -84,7 +84,7 @@ void TransitionModel::ComputeDerived() {
       num_pdfs_ = std::max(num_pdfs_, 1+pdf);
       const HmmTopology::HmmState &state = topo_.TopologyForPhone(phone)[hmm_state];
       int32 my_num_ids = static_cast<int32>(state.transitions.size());
-      cur_transition_id += my_num_ids;  //# trans out of this state.
+      cur_transition_id += my_num_ids;  // # trans out of this state.
     }
   }
 

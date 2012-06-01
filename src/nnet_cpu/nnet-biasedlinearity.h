@@ -53,36 +53,36 @@ class BiasedLinearity : public UpdatableComponent {
   }
 
   void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
-    //precopy bias
+    // precopy bias
     for (MatrixIndexT i=0; i<out->NumRows(); i++) {
       out->CopyRowFromVec(bias_, i);
     }
-    //multiply by weights^t
+    // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
   void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
-    //multiply error by weights
+    // multiply error by weights
     out_err->AddMatMat(1.0, in_err, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
   void Update(const Matrix<BaseFloat>& input, const Matrix<BaseFloat>& err) {
     
-    //compute gradient
+    // compute gradient
     linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
     bias_corr_.Scale(momentum_);
     bias_corr_.AddRowSumMat(err);
-    //l2 regularization
+    // l2 regularization
     if (l2_penalty_ != 0.0) {
       linearity_.AddMat(-learn_rate_*l2_penalty_*input.NumRows(), linearity_);
     }
-    //l1 regularization
+    // l1 regularization
     if (l1_penalty_ != 0.0) {
       BaseFloat l1 = learn_rate_*input.NumRows()*l1_penalty_;
       for(MatrixIndexT r=0; r<linearity_.NumRows(); r++) {
         for(MatrixIndexT c=0; c<linearity_.NumCols(); c++) {
-          if(linearity_(r,c)==0.0) continue; //skip L1 if zero weight!
+          if(linearity_(r,c)==0.0) continue; // skip L1 if zero weight!
           BaseFloat l1sign = l1;
           if (linearity_(r, c) < 0.0) 
             l1sign = -l1;
@@ -97,7 +97,7 @@ class BiasedLinearity : public UpdatableComponent {
         }
       }
     }
-    //update
+    // update
     linearity_.AddMat(-learn_rate_, linearity_corr_);
     bias_.AddVec(-learn_rate_, bias_corr_);
 
@@ -111,7 +111,7 @@ class BiasedLinearity : public UpdatableComponent {
     std::cout << "\n";
     */
 
-    //std::cout << l1_penalty_ << l2_penalty_ << momentum_ << learn_rate_ << "\n";
+    // std::cout << l1_penalty_ << l2_penalty_ << momentum_ << learn_rate_ << "\n";
   }
 
  private:
@@ -122,6 +122,6 @@ class BiasedLinearity : public UpdatableComponent {
   Vector<BaseFloat> bias_corr_;
 };
 
-} //namespace
+} // namespace
 
 #endif

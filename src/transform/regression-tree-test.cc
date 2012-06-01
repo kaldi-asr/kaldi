@@ -50,7 +50,7 @@ test_io(const RegressionTree &regtree,
 //
 //  Matrix<BaseFloat> means1(gmm1.NumGauss());
 //  size_t num_comp
-//}
+// }
 
 void
 rand_diag_gmm(size_t num_comp, size_t dim, DiagGmm *gmm) {

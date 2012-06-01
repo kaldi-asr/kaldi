@@ -31,10 +31,10 @@
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
 
 // macros to switch off all debugging messages without runtime cost
-//#define DEBUG_CMD(x) x;
-//#define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
-//#define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
-//#define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
+// #define DEBUG_CMD(x) x;
+// #define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
+// #define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
+// #define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
 #define DEBUG_OUT1(x)
 #define DEBUG_OUT2(x)
 #define DEBUG_OUT3(x)
@@ -116,8 +116,8 @@ class NBestDecoder {
       DEBUG_OUT1("==== FRAME " << frame << " =====")
       BaseFloat adaptive_beam = PropagateEmitting(frame);
       PropagateEpsilon(adaptive_beam);
-      //Prune();
-      //if (frame==12) break;
+      // Prune();
+      // if (frame==12) break;
     }
   }
 
@@ -247,9 +247,9 @@ class NBestDecoder {
 //  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
 //    fst::VectorFst<CompactLatticeArc> fst, fst_one;
 //    if (!GetNBestLattice(&fst, was_final)) return false;
-    //std::cout << "n-best paths:\n";
-    //fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-    //fstprinter.Print(&std::cout, "standard output");
+    // std::cout << "n-best paths:\n";
+    // fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+    // fstprinter.Print(&std::cout, "standard output");
 //    ShortestPath(fst, &fst_one);
 //    ConvertLattice(fst_one, fst_out, true);
 //    return true;
@@ -559,7 +559,7 @@ class NBestDecoder {
   }; // class TokenStore
   typedef TokenStore::Token Token;
   typedef TokenStore::SeqToken SeqToken;
-  //typedef HashList<StateId, Token*>::Elem Elem;
+  // typedef HashList<StateId, Token*>::Elem Elem;
   typedef HashList<StateId, Token*> TokenHash;
   typedef TokenHash::Elem Elem;
 
@@ -665,7 +665,7 @@ class NBestDecoder {
       if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
-        //assert(state == tok->arc_.nextstate);
+        // assert(state == tok->arc_.nextstate);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
             !aiter.Done(); aiter.Next()) {
         // for all a in A(state)    
@@ -702,7 +702,7 @@ class NBestDecoder {
     queue_.max_load_factor(1.0);
     float best_weight = 1.0e+10;
     for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
-      //queue_.push_back(e->key);
+      // queue_.push_back(e->key);
       queue_.insert(e->key);
       best_weight = std::min(best_weight, e->val->c.Value());
     }
@@ -711,11 +711,11 @@ class NBestDecoder {
 
     StateId last = 123456789;
     while (!queue_.empty()) {
-      //StateId state = queue_.back();
+      // StateId state = queue_.back();
       StateId state = *(queue_.begin());
       if (state == last) { DEBUG_OUT2("repeat") }
       last = state;
-      //queue_.pop_back();
+      // queue_.pop_back();
       queue_.erase(queue_.begin());
       Elem *elem = toks_.Find(state);  // would segfault if state not
       // in toks_ but this can't happen.
@@ -733,7 +733,7 @@ class NBestDecoder {
           DEBUG_OUT2("prune")
           continue;
         }
-        //assert(tok != NULL && state == tok->arc_.nextstate);
+        // assert(tok != NULL && state == tok->arc_.nextstate);
         assert(tok != NULL);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
             !aiter.Done(); aiter.Next()) {
@@ -746,12 +746,12 @@ class NBestDecoder {
               if (e_found == NULL) {
                 DEBUG_OUT2("insert/queue to: " << arc.nextstate)
                 toks_.Insert(arc.nextstate, new_tok);
-                //queue_.push_back(arc.nextstate);
+                // queue_.push_back(arc.nextstate);
                 queue_.insert(arc.nextstate); // might be pushed several times
               } else {
                 DEBUG_OUT2("combine: " << arc.nextstate)
                 if (token_store_.CombineN(e_found, new_tok)) { // C was updated
-                  //queue_.push_back(arc.nextstate);
+                  // queue_.push_back(arc.nextstate);
                   queue_.insert(arc.nextstate);
                 }
               }
@@ -770,7 +770,7 @@ class NBestDecoder {
   NBestDecoderOptions opts_;
   typedef std::tr1::unordered_set<StateId> StateQueue;
   StateQueue queue_; // used in PropagateEpsilon,
-  //std::vector<StateId> queue_;  // temp variable used in PropagateEpsilon,
+  // std::vector<StateId> queue_;  // temp variable used in PropagateEpsilon,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   TokenStore token_store_;

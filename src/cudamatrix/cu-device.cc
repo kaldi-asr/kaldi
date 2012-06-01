@@ -77,4 +77,4 @@ CuDevice CuDevice::msDevice;
 }
 
 
-#endif //HAVE_CUDA
+#endif // HAVE_CUDA

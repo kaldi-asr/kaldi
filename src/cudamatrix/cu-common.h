@@ -56,6 +56,6 @@ namespace kaldi {
   }
 
 }
-#endif //HAVE_CUDA
+#endif // HAVE_CUDA
 
 #endif

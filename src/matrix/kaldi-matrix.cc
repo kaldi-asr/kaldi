@@ -90,8 +90,8 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
 }
 
 
-//***************************************************************************
-//***************************************************************************
+// ***************************************************************************
+// ***************************************************************************
 template<>
 void MatrixBase<double>::Invert(double *LogDet, double *DetSign,
                                 bool inverse_needed) {
@@ -394,8 +394,8 @@ void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 
 
 #ifndef HAVE_ATLAS
-//****************************************************************************
-//****************************************************************************
+// ****************************************************************************
+// ****************************************************************************
 template<>
 void MatrixBase<float>::LapackGesvd(VectorBase<float> *s, MatrixBase<float> *U_in, MatrixBase<float> *V_in) {
   KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
@@ -1139,11 +1139,11 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     std::string str;
     is >> str; // get a token
     if (is.fail()) { specific_error << ": Expected \"[\", got EOF"; goto bad; }
-    //if ((str.compare("DM") == 0) || (str.compare("FM") == 0)) {  // Back compatibility.
+    // if ((str.compare("DM") == 0) || (str.compare("FM") == 0)) {  // Back compatibility.
     // is >> str;  // get #rows
     //  is >> str;  // get #cols
     //  is >> str;  // get "["
-    //}
+    // }
     if (str == "[]") { Resize(0, 0); return; } // Be tolerant of variants.
     else if (str != "[") {
       specific_error << ": Expected \"[\", got \"" << str << '"';
@@ -1729,7 +1729,7 @@ template class SubMatrix<double>;
 // INT_32 mHeaderSize;
 // INT_32 mVersion;
 // INT_32 mSampSize;
-//};
+// };
 
 template<class Real>
 bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)

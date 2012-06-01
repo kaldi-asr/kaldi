@@ -25,10 +25,10 @@
 
 namespace kaldi {
 
-//explicit class intantiation
+// explicit class intantiation
 template class CuRand<BaseFloat>;
 
-//TODO put somwhere else so the type gets instantiated?
+// TODO put somwhere else so the type gets instantiated?
 template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size) {
   SeedBuffer(&z1_, state_size);
   SeedBuffer(&z2_, state_size);
@@ -41,30 +41,30 @@ template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size) {
 }
 
 template<typename T> void CuRand<T>::SeedBuffer(unsigned** tgt, MatrixIndexT state_size) {
-  //optionally resize host buffer
+  // optionally resize host buffer
   if (state_size != host_size_) {
     delete[] host_;
     host_ = new unsigned[state_size]; 
     host_size_ = state_size;
   }
-  //generate random state
+  // generate random state
   for(MatrixIndexT i=0; i<host_size_; i++) {
     host_[i] = RandInt(128, RAND_MAX);
   }
   #if HAVE_CUDA==1
-  //push it to the GPU
+  // push it to the GPU
   if (CuDevice::Instantiate().Enabled()) {
     int32 state_size_in_bytes = state_size*sizeof(unsigned);
-    //resize the GPU buffer
+    // resize the GPU buffer
     if (state_size_ != state_size) {
       cudaFree(*tgt);
       cudaMalloc((void**)tgt, state_size_in_bytes);
     }
-    //copy the values
+    // copy the values
     cudaMemcpy(*tgt, host_, state_size_in_bytes, cudaMemcpyHostToDevice);
   } else
   #endif
-  {//use back-off host buffer
+  {// use back-off host buffer
     if (state_size_ != state_size) {
       delete[] (*tgt);
       *tgt = new unsigned[state_size];
@@ -137,7 +137,7 @@ template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float>& probs, CuMat
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    //possible no-op's...
+    // possible no-op's...
     int32 tgt_size = probs.NumRows()*probs.Stride();
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 

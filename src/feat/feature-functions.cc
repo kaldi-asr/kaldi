@@ -21,7 +21,7 @@
 #include "feat/feature-functions.h"
 #include "matrix/matrix-functions.h"
 
-//#define DEBUG
+// #define DEBUG
 
 namespace kaldi {
 

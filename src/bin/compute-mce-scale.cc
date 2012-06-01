@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
       if (!den_score_reader.HasKey(key)) {
         num_no_score++;
       } else {
-        //calculate the sigmoid scaling factor for MCE
+        // calculate the sigmoid scaling factor for MCE
         // Note: the derivative is:
         //  \alpha * sigmoid(num - den) * (1 - sigmoid(num - den))
         // but the make the scale be:

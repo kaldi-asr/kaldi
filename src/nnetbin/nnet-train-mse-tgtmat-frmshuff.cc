@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader targets_reader(targets_rspecifier);
 
     CacheTgtMat cache;
-    cachesize = (cachesize/bunchsize)*bunchsize; //ensure divisibility
+    cachesize = (cachesize/bunchsize)*bunchsize; // ensure divisibility
     cache.Init(cachesize, bunchsize);
 
     Mse mse;
@@ -110,15 +110,15 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, num_cache = 0;
     while (1) {
-      //fill the cache, 
-      //both reader are sequential, not to be too memory hungry,
-      //the scp lists must be in the same order 
-      //we run the loop over targets, skipping features with no targets
+      // fill the cache, 
+      // both reader are sequential, not to be too memory hungry,
+      // the scp lists must be in the same order 
+      // we run the loop over targets, skipping features with no targets
       while (!cache.Full() && !feature_reader.Done() && !targets_reader.Done()) {
-        //get the keys
+        // get the keys
         std::string tgt_key = targets_reader.Key();
         std::string fea_key = feature_reader.Key();
-        //skip feature matrix with no targets
+        // skip feature matrix with no targets
         while (fea_key != tgt_key) {
           KALDI_WARN << "No targets for: " << fea_key;
           num_no_tgt_mat++;
@@ -127,23 +127,23 @@ int main(int argc, char *argv[]) {
             fea_key = feature_reader.Key();
           }
         }
-        //now we should have a pair
+        // now we should have a pair
         if (fea_key == tgt_key) {
-          //get feature tgt_mat pair
+          // get feature tgt_mat pair
           const Matrix<BaseFloat> &fea_mat = feature_reader.Value();
           const Matrix<BaseFloat> &tgt_mat = targets_reader.Value();
-          //chech for dimension
+          // chech for dimension
           if (tgt_mat.NumRows() != fea_mat.NumRows()) {
             KALDI_WARN << "Alignment has wrong size "<< (tgt_mat.NumRows()) << " vs. "<< (fea_mat.NumRows());
             num_other_error++;
             continue;
           }
-          //push features/targets to GPU
+          // push features/targets to GPU
           feats.CopyFromMat(fea_mat);
           targets.CopyFromMat(tgt_mat);
-          //possibly apply feature transform
+          // possibly apply feature transform
           nnet_transf.Feedforward(feats, &feats_transf);
-          //add to cache
+          // add to cache
           cache.AddData(feats_transf, targets);
           num_done++;
         }
@@ -152,20 +152,20 @@ int main(int argc, char *argv[]) {
         targets_reader.Next(); 
         time_next += t_features.Elapsed();
       }
-      //randomize
+      // randomize
       if (!crossvalidate) {
         cache.Randomize();
       }
-      //report
+      // report
       std::cerr << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
                 << " frames: " << tot_t << "\n";
-      //train with the cache
+      // train with the cache
       while (!cache.Empty()) {
-        //get block of feature/target pairs
+        // get block of feature/target pairs
         cache.GetBunch(&nnet_in, &nnet_tgt);
-        //train 
+        // train 
         nnet.Propagate(nnet_in, &nnet_out);
         mse.Eval(nnet_out, nnet_tgt, &glob_err);
         if (!crossvalidate) {
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         tot_t += nnet_in.NumRows();
       }
 
-      //stop training when no more data
+      // stop training when no more data
       if (feature_reader.Done()) break;
     }
 

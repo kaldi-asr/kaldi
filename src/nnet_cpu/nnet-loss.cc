@@ -27,14 +27,14 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& targe
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
 
-  //compute derivative wrt. activations of last layer of neurons
+  // compute derivative wrt. activations of last layer of neurons
   diff->CopyFromMat(net_out);
   diff->AddMat(-1.0, target);
 
-  //we'll not produce per-frame classification accuracy for soft labels
+  // we'll not produce per-frame classification accuracy for soft labels
   correct_ = -1;
 
-  //compute xentropy
+  // compute xentropy
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     for(int32 c=0; c<net_out.NumCols(); c++) {
@@ -51,7 +51,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& targe
 void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target, Matrix<BaseFloat>* diff) {
   KALDI_ASSERT(net_out.NumRows() == (int32)target.size());
 
-  //check the labels
+  // check the labels
   int32 max=0;
   std::vector<int32>::const_iterator it; 
   for(it=target.begin(); it!=target.end(); ++it) {
@@ -62,7 +62,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
               << " outputs while having " << max+1 << " labels";
   }
 
-  //compute derivative wrt. activations of last layer of neurons
+  // compute derivative wrt. activations of last layer of neurons
   diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
   diff->CopyFromMat(net_out);
   for(int32 r=0; r<(int32)target.size(); r++) {
@@ -70,10 +70,10 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
     (*diff)(r, target.at(r)) -= 1.0;
   }
 
-  //we'll not produce per-frame classification accuracy for soft labels
+  // we'll not produce per-frame classification accuracy for soft labels
   correct_ += Correct(net_out, target);
 
-  //compute xentropy
+  // compute xentropy
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     KALDI_ASSERT(target.at(r) <= net_out.NumCols());
@@ -122,11 +122,11 @@ void Mse::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
 
-  //compute derivative w.r.t. neural nerwork outputs
+  // compute derivative w.r.t. neural nerwork outputs
   diff->CopyFromMat(net_out);
   diff->AddMat(-1.0, target);
 
-  //compute mean square error
+  // compute mean square error
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     for(int32 c=0; c<net_out.NumCols(); c++) {

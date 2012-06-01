@@ -405,11 +405,7 @@ void ParseOptions::NormalizeArgName(std::string* str) {
 
   for (it = str->begin(); it != str->end(); ++it) {
     if (*it == '_') out += '-';  // convert _ to -
-    else
-      out += std::tolower(*it);
-    // if (strip.find(*it) == std::string::npos) {
-    // out += std::tolower(*it);
-    //}
+    else out += std::tolower(*it);
   }
   *str = out;
 

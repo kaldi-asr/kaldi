@@ -35,7 +35,7 @@ class Sigmoid : public Component {
   }
 
   void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
-    //y = 1/(1+e^-x)
+    // y = 1/(1+e^-x)
     for(MatrixIndexT r=0; r<out->NumRows(); r++) {
       for(MatrixIndexT c=0; c<out->NumCols(); c++) {
         (*out)(r, c) = 1.0/(1.0+exp(-in(r, c)));
@@ -44,7 +44,7 @@ class Sigmoid : public Component {
   }
 
   void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
-    //ey = y(1-y)ex
+    // ey = y(1-y)ex
     const Matrix<BaseFloat>& y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
 
     for(MatrixIndexT r=0; r<out_err->NumRows(); r++) {
@@ -69,7 +69,7 @@ class Softmax : public Component {
   }
 
   void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
-    //y = e^x_j/sum_j(e^x_j)
+    // y = e^x_j/sum_j(e^x_j)
     out->CopyFromMat(in);
     for(MatrixIndexT r=0; r<out->NumRows(); r++) {
       out->Row(r).ApplySoftMax();
@@ -77,8 +77,8 @@ class Softmax : public Component {
   }
 
   void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
-    //simply copy the error
-    //(ie. assume crossentropy error function, 
+    // simply copy the error
+    // (ie. assume crossentropy error function, 
     // while in_err contains (net_output-target) :
     // this is already derivative of the error with 
     // respect to activations of last layer neurons)

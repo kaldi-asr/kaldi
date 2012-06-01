@@ -39,7 +39,7 @@ _ElemT* CuVector<_ElemT>::Data() {
 template<typename _ElemT>
 CuVector<_ElemT>& CuVector<_ElemT>::Resize(size_t dim) {
   if (dim_ == dim) {
-    //SetZero();
+    // SetZero();
     return *this;
   }
 
@@ -190,7 +190,7 @@ template<> void CuVector<float>::AddVec(float alpha, const CuVector<float>& vec,
 template<> void CuVector<float>::AddColSum(float alpha, const CuMatrix<float>& mat, float beta);
 template<> void CuVector<float>::InvertElements();
  
-} //namespace kaldi
+} // namespace kaldi
 
 
 

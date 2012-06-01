@@ -221,7 +221,7 @@ void CuMatrix<float>::AddMatMat(
     assert(k == k1);
 
     #if 0
-     //DEBUG MESSAGE
+     // DEBUG MESSAGE
     std::cout << "\n" << transB << " " << transA << " " << m << " " << n << " " << k << " " <<
                 alpha << " " << B << " " << B.Stride() << " " <<
                 A << " " << A.Stride() << " " << beta << " " << C << " " << 
@@ -244,5 +244,5 @@ void CuMatrix<float>::AddMatMat(
   }
 }
 
-} //namespace kaldi
+} // namespace kaldi
 

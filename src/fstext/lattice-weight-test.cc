@@ -91,9 +91,9 @@ void LatticeWeightTest() {
                   << ", l5 = " << l5 << ", l6 = " << l6 << "\n";
         std::cout << "ERROR: " << wa << " != " <<  wb << "\n";
       }
-      //KALDI_ASSERT(Times(Plus(l1, l2), Plus(l5, l6))
-      //== Plus(Times(l1, l5), Plus(Times(l1,l6),
-      //Plus(Times(l2, l5), Times(l2, l6))))); // * distributes over +
+      // KALDI_ASSERT(Times(Plus(l1, l2), Plus(l5, l6))
+      // == Plus(Times(l1, l5), Plus(Times(l1,l6),
+      // Plus(Times(l2, l5), Times(l2, l6))))); // * distributes over +
     }
     KALDI_ASSERT(l1.Member() && l2.Member() && l3.Member() && l4.Member()
                  && l5.Member() && l6.Member());

@@ -206,7 +206,7 @@ class LatticeWordAligner {
     // epsilon-sequencing rules encoded by the filters in
     // composition.
     CompactLatticeArc lat_arc;
-    Tuple tuple2(tuple); //temp
+    Tuple tuple2(tuple); // temp
     if (tuple.comp_state.OutputArc(info_, tmodel_, &lat_arc, &error_)) {
       // note: this function changes the tuple (when it returns true).
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,

@@ -62,8 +62,8 @@ void cudaF_sum_rows_vec(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, Matr
 void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda*mat, int32_cuda value, MatrixDim d);
 
 
-} //extern "C" 
+} // extern "C" 
 
-#endif //HAVE_CUDA
+#endif // HAVE_CUDA
 
 #endif

@@ -69,7 +69,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   size_t sz = baseline_set.size(), sz1 = my_set1.size(), sz2 = my_set2.size(),
       sz3 = my_set3.size(), sz4 = my_set4.size(), sz5 = my_set5.size();
   assert(sz == sz1 && sz == sz2 && sz == sz3 && sz == sz4 && sz==sz5);
-  //}
+  // }
   for (size_t i = 0;i < 100;i++) {
     Int some_int;
     if (i%2 == 0 && vector_set.size() != 0)
@@ -120,7 +120,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   assert(my_iter3 == my_set3.end());
   assert(my_iter4 == my_set4.end());
   assert(my_iter5 == my_set5.end());
-  //}
+  // }
 }
 
 } // end namespace kaldi

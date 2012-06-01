@@ -69,7 +69,7 @@ _ElemT* CuMatrix<_ElemT>::RowData(MatrixIndexT r) {
 template<typename _ElemT>
 CuMatrix<_ElemT>& CuMatrix<_ElemT>::Resize(MatrixIndexT rows, MatrixIndexT cols) {
   if (num_rows_ == rows && num_cols_ == cols) {
-    //SetZero();
+    // SetZero();
     return *this;
   }
 

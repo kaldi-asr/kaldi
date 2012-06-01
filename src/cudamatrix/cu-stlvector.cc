@@ -28,4 +28,4 @@ template<> void CuStlVector<int32>::Set(int32 value) {
   }
 }
 
-}//namespace kaldi
+}// namespace kaldi

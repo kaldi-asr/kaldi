@@ -58,12 +58,12 @@ class CuDevice {
   bool enabled_;
   bool verbose_;
 
-}; //class CuDevice
+}; // class CuDevice
 
 
-}//namespace
+}// namespace
 
-#endif //HAVE_CUDA
+#endif // HAVE_CUDA
 
 
 #endif

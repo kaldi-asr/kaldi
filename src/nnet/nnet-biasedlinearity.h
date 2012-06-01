@@ -53,33 +53,33 @@ class BiasedLinearity : public UpdatableComponent {
   }
 
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
-    //precopy bias
+    // precopy bias
     out->AddScaledRow(1.0, bias_, 0.0);
-    //multiply by weights^t
+    // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {
-    //multiply error by weights
+    // multiply error by weights
     out_err->AddMatMat(1.0, in_err, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
   void Update(const CuMatrix<BaseFloat>& input, const CuMatrix<BaseFloat>& err) {
-    //compute gradient
+    // compute gradient
     linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
     bias_corr_.AddColSum(1.0, err, momentum_);
-    //l2 regularization
+    // l2 regularization
     if (l2_penalty_ != 0.0) {
       BaseFloat l2 = learn_rate_*l2_penalty_*input.NumRows();
       linearity_.AddMat(-l2, linearity_);
     }
-    //l1 regularization
+    // l1 regularization
     if (l1_penalty_ != 0.0) {
       BaseFloat l1 = learn_rate_*input.NumRows()*l1_penalty_;
       cu::RegularizeL1(&linearity_, &linearity_corr_, l1, learn_rate_);
     }
-    //update
+    // update
     linearity_.AddMat(-learn_rate_, linearity_corr_);
     bias_.AddVec(-learn_rate_, bias_corr_);
   }
@@ -92,6 +92,6 @@ class BiasedLinearity : public UpdatableComponent {
   CuVector<BaseFloat> bias_corr_;
 };
 
-} //namespace
+} // namespace
 
 #endif

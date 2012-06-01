@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
 
     Cache cache;
-    cachesize = (cachesize/bunchsize)*bunchsize; //ensure divisibility
+    cachesize = (cachesize/bunchsize)*bunchsize; // ensure divisibility
     cache.Init(cachesize, bunchsize);
 
     Xent xent;
@@ -111,26 +111,26 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_no_alignment = 0, num_other_error = 0, num_cache = 0;
     while (1) {
-      //fill the cache
+      // fill the cache
       while (!cache.Full() && !feature_reader.Done()) {
         std::string key = feature_reader.Key();
         if (!alignments_reader.HasKey(key)) {
           num_no_alignment++;
         } else {
-          //get feature alignment pair
+          // get feature alignment pair
           const Matrix<BaseFloat> &mat = feature_reader.Value();
           const std::vector<int32> &alignment = alignments_reader.Value(key);
-          //chech for dimension
+          // chech for dimension
           if ((int32)alignment.size() != mat.NumRows()) {
             KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
             num_other_error++;
             continue;
           }
-          //push features to GPU
+          // push features to GPU
           feats.CopyFromMat(mat);
-          //possibly apply transform
+          // possibly apply transform
           nnet_transf.Feedforward(feats, &feats_transf);
-          //add to cache
+          // add to cache
           cache.AddData(feats_transf, alignment);
           num_done++;
         }
@@ -138,20 +138,20 @@ int main(int argc, char *argv[]) {
         feature_reader.Next(); 
         time_next += t_features.Elapsed();
       }
-      //randomize
+      // randomize
       if (!crossvalidate) {
         cache.Randomize();
       }
-      //report
+      // report
       std::cerr << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
                 << " frames: " << tot_t << "\n";
-      //train with the cache
+      // train with the cache
       while (!cache.Empty()) {
-        //get block of feature/target pairs
+        // get block of feature/target pairs
         cache.GetBunch(&nnet_in, &targets);
-        //train 
+        // train 
         nnet.Propagate(nnet_in, &nnet_out);
         xent.EvalVec(nnet_out, targets, &glob_err);
         if (!crossvalidate) {
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
         tot_t += nnet_in.NumRows();
       }
 
-      //stop training when no more data
+      // stop training when no more data
       if (feature_reader.Done()) break;
     }
 

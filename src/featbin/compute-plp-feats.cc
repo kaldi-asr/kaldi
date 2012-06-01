@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
         p.first.CopyFromMat(features);
         HtkHeader header = {
           features.NumRows(),
-          100000,  //10ms shift
+          100000,  // 10ms shift
           sizeof(float)*features.NumCols(),
           013 | // PLP
           020000 // C0 [no option currently to use energy in PLP.

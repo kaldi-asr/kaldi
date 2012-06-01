@@ -169,7 +169,7 @@ class CuMatrix {
   Matrix<_ElemT> mat_; ///< non-GPU matrix as back-off
 
 
-}; //class CuMatrix
+}; // class CuMatrix
 
 
 /// I/O
@@ -177,7 +177,7 @@ template<typename _ElemT>
 std::ostream& operator << (std::ostream& out, const CuMatrix<_ElemT>& mat);
 
   
-} //namespace
+} // namespace
 
 
 #include "cu-matrix-inl.h"

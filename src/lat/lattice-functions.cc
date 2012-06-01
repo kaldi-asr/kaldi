@@ -342,15 +342,15 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   // the +1 is needed since time is indexed from 0
  
   vector<double> state_alphas(num_states, kLogZeroDouble),
-      state_alphas_mpe(num_states, 0), //forward variable for mpe
+      state_alphas_mpe(num_states, 0), // forward variable for mpe
       state_betas(num_states, kLogZeroDouble),
-      state_betas_mpe(num_states, 0); //backward variable for mpe
+      state_betas_mpe(num_states, 0); // backward variable for mpe
   state_alphas[0] = 0.0;
   state_alphas_mpe[0] = 0.0;
   double tot_forward_prob = kLogZeroDouble;
   double tot_forward_score = 0;
 
-  //First Pass Forward, 
+  // First Pass Forward, 
   for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     active_states[cur_time].push_back(state);
@@ -363,7 +363,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
     }
   }
 
-  //Second Pass Forward, calculate forward for MPE,
+  // Second Pass Forward, calculate forward for MPE,
   for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
     if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
@@ -374,7 +374,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
     }
   }
 
-  //First Pass Backward,  
+  // First Pass Backward,  
   vector< map<int32, double> > tmp_arc_post(max_time);
   for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
@@ -383,14 +383,14 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                  NULL);
   }
 
-  //First Pass Forward Backward check 
+  // First Pass Forward Backward check 
   double tot_backward_prob = state_betas[0];  // Initial state id == 0
   if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-9)) {
     KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
               << ", while total backward probability = " << tot_backward_prob;
   }
  
-  //Second Pass Backward, collect Mpe style posteriors
+  // Second Pass Backward, collect Mpe style posteriors
   vector< map<int32, double> > tmp_arc_post_mpe(max_time);
   for (int32 state = num_states - 1; state > 0; --state) {
     int32 cur_time = state_times[state];
@@ -400,7 +400,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                     &tmp_arc_post_mpe[cur_time - 1]);
   }
  
-  //Second Pass Forward Backward check
+  // Second Pass Forward Backward check
   double tot_backward_score = state_betas_mpe[0];  // Initial state id == 0
   if (!ApproxEqual(tot_forward_score, tot_backward_score, 1e-9)) {
     KALDI_ERR << "Total forward score over lattice = " << tot_forward_score
@@ -519,10 +519,10 @@ void ForwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
 }
 
 
-//The "posteriors" this function collect is the regular one scaled
-//by the Mpe phone arc accuracy differentiation, which could be 
-//postive or negative
-//static
+// The "posteriors" this function collect is the regular one scaled
+// by the Mpe phone arc accuracy differentiation, which could be 
+// postive or negative
+// static
 void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
                      int32 state, int32 cur_time,
                      double tot_forward_prob, double tot_forward_score,
@@ -568,9 +568,9 @@ void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
             arc_loglike =  graph_score + am_score;
         double gamma = std::exp(state_alphas[(*st_it)] - graph_score - am_score
                                 + state_betas[state] - tot_forward_prob);
-        //calculate Mpe phone acc differentiation
+        // calculate Mpe phone acc differentiation
         int32 phone = trans.TransitionIdToPhone(arc.ilabel);
-        //note: should be prev_time here ?
+        // note: should be prev_time here ?
         double frame_acc = (arc_accs[prev_time].find(phone) == arc_accs[prev_time].end())?
           0.0 : 1.0;
         double arc_scale = std::exp(state_betas[state] - arc_loglike

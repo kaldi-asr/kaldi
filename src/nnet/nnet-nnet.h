@@ -111,7 +111,7 @@ class Nnet {
   
 
 inline Nnet::~Nnet() {
-  //delete all the components
+  // delete all the components
   NnetType::iterator it;
   for(it=nnet_.begin(); it!=nnet_.end(); ++it) {
     delete *it;
@@ -199,7 +199,7 @@ inline void Nnet::SetL1Penalty(BaseFloat l1) {
 
 
 
-} //namespace kaldi
+} // namespace kaldi
 
 #endif
 

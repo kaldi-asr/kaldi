@@ -1111,7 +1111,7 @@ template<class Real> static void UnitTestMmul() {
 	// std::cout <<"a = " << A;
 	// std::cout<<"B = " << B;
 	C.AddMatMat(1.0, A, kNoTrans, B, kNoTrans, 0.0);  // C = A * B.
-	//	std::cout << "c = " << C;
+	// 	std::cout << "c = " << C;
 	for (MatrixIndexT i = 0;i < dimM;i++) {
 	  for (MatrixIndexT j = 0;j < dimO;j++) {
 		double sum = 0.0;

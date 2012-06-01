@@ -124,7 +124,7 @@ Weight WalkSinglePath(StdVectorFst* ifst, StdDeterministicOnDemandFst* dfst) {
 	const StdArc &iarc = aiter.Value();
 	if (dfst->GetArc(dsrc, iarc.olabel, oarc)) {
 	  Weight cost = Times(iarc.weight, oarc->weight);
-	  //cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;	  
+	  // cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;	  
 	  totalCost = Times(totalCost, cost);
 	} else {
 	  cout << "  Can't match arc ["<<iarc.ilabel<<","<<iarc.olabel<<","<<iarc.weight<<"] from "<<isrc<<endl;
@@ -142,7 +142,7 @@ Weight WalkSinglePath(StdVectorFst* ifst, StdDeterministicOnDemandFst* dfst) {
 
 
 int main() {
-  //--------------- Test without files ---------------------
+  // --------------- Test without files ---------------------
   using namespace fst;
   // Build from existing fst
   cout << "Test with single generated backoff FST" << endl;
@@ -187,7 +187,7 @@ int main() {
   }
   
 
-  //----------------- Test with files, single FST case --------------
+  // ----------------- Test with files, single FST case --------------
   Weight cost2;
   cout << "Single FST case: string with G'" <<  endl;
   cout << "  Reading Gp.fst" << endl << std::flush;
@@ -198,7 +198,7 @@ int main() {
   cost2 = WalkSinglePath(strfst, dfst2);
   delete dfst2; delete strfst;
 
-  //----------------- Test with files, composition case (with string transducer)
+  // ----------------- Test with files, composition case (with string transducer)
   Weight cost3;
   cout << "Composition case: string*bg with G^-1 * G'" << endl;
   cout << "  Reading Gm.fst" << endl << std::flush;
@@ -214,7 +214,7 @@ int main() {
 	exit(1);
   }
 
-  //----------------- Exercise cache, composition case (with string transducer)
+  // ----------------- Exercise cache, composition case (with string transducer)
   Weight cost4;
   cout << "Exercise cache: string*bg with G^-1 * G'" << endl;
   cost4 = WalkSinglePath(strbgfst, dfst3);

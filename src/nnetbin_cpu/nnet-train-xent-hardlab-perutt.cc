@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(key);
          
-        //std::cout << mat;
+        // std::cout << mat;
 
         if ((int32)alignment.size() != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
@@ -118,10 +118,10 @@ int main(int argc, char *argv[]) {
 
         nnet_transf.Feedforward(mat, &feats_transf);
         nnet.Propagate(feats_transf, &nnet_out);
-        //std::cout << "\nNETOUT" << nnet_out;
+        // std::cout << "\nNETOUT" << nnet_out;
         xent.Eval(nnet_out, alignment, &glob_err);
-        //std::cout << "\nALIGN" << alignment[0] << " "<< alignment[1]<< " "<< alignment[2];
-        //std::cout << "\nGLOBERR" << glob_err;
+        // std::cout << "\nALIGN" << alignment[0] << " "<< alignment[1]<< " "<< alignment[2];
+        // std::cout << "\nGLOBERR" << glob_err;
         if (!crossvalidate) {
           nnet.Backpropagate(glob_err, NULL);
         }

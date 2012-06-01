@@ -96,8 +96,8 @@ namespace cu {
     KALDI_ERR << __func__ << " Not implemented";
   }
 
-} //namespace cu
+} // namespace cu
 
-} //namespace kaldi
+} // namespace kaldi
 
 #endif

@@ -40,7 +40,7 @@ void MinimumBayesRisk::MbrDecode() {
       for (size_t j = 0; j < this_gamma.size(); j++)
         if (this_gamma[j].first == rq) old_gamma = this_gamma[j].second;
       delta_Q += (old_gamma - new_gamma); // will be 0 or negative; a bound on
-      //change in error.
+      // change in error.
       if (rq != rhat)
         KALDI_VLOG(2) << "Changing word " << rq << " to " << rhat;
       R_[q] = rhat;

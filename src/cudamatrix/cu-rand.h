@@ -27,11 +27,11 @@
 namespace kaldi {
 
 
-//TODO: CANNOT DEFINE CuMatrix<unsigned>, 
-//CuMatrix has back-off Matrix which cannot hold integers... 
-//The inner state must be in a separate holder class... 
-//or just a buffer with the size of the current matrix... 
-//Presumably use on demand seeding to figure out the size of the buffer...
+// TODO: CANNOT DEFINE CuMatrix<unsigned>, 
+// CuMatrix has back-off Matrix which cannot hold integers... 
+// The inner state must be in a separate holder class... 
+// or just a buffer with the size of the current matrix... 
+// Presumably use on demand seeding to figure out the size of the buffer...
   
 template<typename T> 
 class CuRand {
@@ -62,7 +62,7 @@ class CuRand {
   void SeedBuffer(unsigned** tgt, MatrixIndexT state_size);
    
  private:
-  // CuMatrix<unsigned> z1, z2, z3, z4; //cannot use CuMatrix
+  // CuMatrix<unsigned> z1, z2, z3, z4; // cannot use CuMatrix
   unsigned *z1_, *z2_, *z3_, *z4_; ///< raw rnd-generator inner state pointers 
   int32 state_size_; ///< size of the buffers
 
@@ -73,19 +73,19 @@ class CuRand {
 };
 
 
-///thsese methods have T-independent implementation
-//template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size);
-//template<typename T> void CuRand<T>::SeedBuffer(unsigned* tgt, MatrixIndexT state_size);
+/// thsese methods have T-independent implementation
+// template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size);
+// template<typename T> void CuRand<T>::SeedBuffer(unsigned* tgt, MatrixIndexT state_size);
 
 
-///declare the BaseFloat specializations, that are in cu-rand.cc
+/// declare the BaseFloat specializations, that are in cu-rand.cc
 template<> void CuRand<float>::RandUniform(CuMatrix<float>* tgt);
 template<> void CuRand<float>::RandGaussian(CuMatrix<float>* tgt);
 template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float>& probs, CuMatrix<float>* states);
 template<> void CuRand<float>::AddGaussNoise(CuMatrix<float>* tgt, float gscale);
 
 
-///also define the non-specialized versions, so the code always compies
+/// also define the non-specialized versions, so the code always compies
 template<typename T> void CuRand<T>::RandUniform(CuMatrix<T>* tgt) {
   KALDI_ERR << __func__ << " Not implemented"; 
 }

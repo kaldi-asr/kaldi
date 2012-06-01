@@ -17,7 +17,7 @@ all: test_install $(SUBDIRS)
 # delete or comment out the lines below.
 OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
 test_install:
-	[ $(OPENFST_VER) == '1.2.10' ] || ( echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
+	@[ $(OPENFST_VER) == '1.2.10' ] || ( echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
 
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done
@@ -62,5 +62,3 @@ cudamatrix: base util matrix
 nnet: base util matrix cudamatrix
 nnet_cpu: base util matrix
 rnn: base util matrix lat 
-
-

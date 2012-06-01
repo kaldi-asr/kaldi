@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &loglikes = loglikes_reader.Value();
         VectorFst<StdArc> decode_fst(fst_reader.Value(key));
-        //fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
+        // fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
         // by deleting the fst inside the reader, since we're about to mutate
         // the fst by adding transition probs.
 

@@ -25,13 +25,13 @@
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
-//#include "nnet/nnet-nnet.h"
+// #include "nnet/nnet-nnet.h"
 
 #include <iostream>
 
 namespace kaldi {
 
-//declare the nnet class so we can declare pointer
+// declare the nnet class so we can declare pointer
 class Nnet;
     
 

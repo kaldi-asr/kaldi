@@ -142,7 +142,7 @@ class LatticeFasterDecoder {
   bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
     fst::VectorFst<LatticeArc> fst;
     if (!GetRawLattice(&fst)) return false;
-    //std::cout << "Raw lattice is:\n";
+    // std::cout << "Raw lattice is:\n";
     // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
     // fstprinter.Print(&std::cout, "standard output");
     ShortestPath(fst, ofst);

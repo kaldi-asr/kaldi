@@ -55,19 +55,19 @@ class RnnlmAux {
   
     std::vector<const char*> words;
 
-    //parse the line, check OOVs'
+    // parse the line, check OOVs'
     const char* w = NULL;
     while (NULL != (w = strtok((w==NULL?line:NULL), delim))) {
-      if(dict.find(w) == dict.end()) return false; //OOV
+      if(dict.find(w) == dict.end()) return false; // OOV
       words.push_back(w);
     }
     
-    //add line to seq
+    // add line to seq
     for(int32 i=0; i<words.size(); i++) {
       std::string key(words[i]);
       seq->push_back(dict.find(key)->second);
     }
-    //add end of sentence token
+    // add end of sentence token
     seq->push_back(1);
 
     return true;

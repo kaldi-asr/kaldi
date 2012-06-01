@@ -40,7 +40,7 @@ extern int32 g_num_threads; // Maximum number of threads (for programs that
 class ExampleClass {
  public:
   ExampleClass (const ExampleClass &other) {
-    //.. optional initalizer.  Run sequentially;
+    // .. optional initalizer.  Run sequentially;
     // initialized from object passed by user.
   }
   void operator() (){

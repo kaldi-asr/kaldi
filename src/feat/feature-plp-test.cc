@@ -134,7 +134,7 @@ static void UnitTestHTKCompare1() {
   // write the htk features for later inspection
   HtkHeader header = {
     kaldi_features.NumRows(),
-    100000,  //10ms
+    100000,  // 10ms
     sizeof(float)*kaldi_features.NumCols(),
     021413  // PLP_D_A_0
   };

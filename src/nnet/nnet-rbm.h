@@ -115,13 +115,13 @@ class Rbm : public RbmBase {
   }
 
 
-  //UpdatableComponent API
+  // UpdatableComponent API
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
-    //precopy bias
+    // precopy bias
     out->AddScaledRow(1.0, hid_bias_, 0.0);
-    //multiply by weights^t
+    // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, vis_hid_, kTrans, 1.0);
-    //optionally apply sigmoid
+    // optionally apply sigmoid
     if (hid_type_ == RbmBase::BERNOULLI) {
       cu::Sigmoid(*out, out);
     }
@@ -137,22 +137,22 @@ class Rbm : public RbmBase {
               << "Better convert it to <BiasedLinearity>";
   }
 
-  //RBM training API
+  // RBM training API
   void Reconstruct(const CuMatrix<BaseFloat>& hid_state, CuMatrix<BaseFloat>* vis_probs) {
-    //check the dim
+    // check the dim
     if (output_dim_ != hid_state.NumCols()) {
       KALDI_ERR << "Nonmatching dims, component:" << output_dim_ << " data:" << hid_state.NumCols();
     }
-    //optionally allocate buffer
+    // optionally allocate buffer
     if (input_dim_ != vis_probs->NumCols() || hid_state.NumRows() != vis_probs->NumRows()) {
       vis_probs->Resize(hid_state.NumRows(), input_dim_);
     }
 
-    //precopy bias
+    // precopy bias
     vis_probs->AddScaledRow(1.0, vis_bias_, 0.0);
-    //multiply by weights
+    // multiply by weights
     vis_probs->AddMatMat(1.0, hid_state, kNoTrans, vis_hid_, kNoTrans, 1.0);
-    //optionally apply sigmoid
+    // optionally apply sigmoid
     if (vis_type_ == RbmBase::BERNOULLI) {
       cu::Sigmoid(*vis_probs, vis_probs);
     }
@@ -177,9 +177,9 @@ class Rbm : public RbmBase {
     //                 -(epsilonw*weightcost)*vishid[t-1]
     //
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
-    //vis_hid_corr_.Gemm('T','N',-learn_rate_/N,neg_vis,neg_hid,momentum_);
+    // vis_hid_corr_.Gemm('T','N',-learn_rate_/N,neg_vis,neg_hid,momentum_);
     vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_vis, kTrans, neg_hid, kNoTrans, momentum_);
-    //vis_hid_corr_.Gemm('T','N',+learn_rate_/N,pos_vis,pos_hid,1.0);
+    // vis_hid_corr_.Gemm('T','N',+learn_rate_/N,pos_vis,pos_hid,1.0);
     vis_hid_corr_.AddMatMat(+learn_rate_/N, pos_vis, kTrans, pos_hid, kNoTrans, 1.0);
     vis_hid_corr_.AddMat(-learn_rate_*l2_penalty_, vis_hid_, 1.0);
     vis_hid_.AddMat(1.0, vis_hid_corr_, 1.0);
@@ -221,7 +221,7 @@ protected:
   CuVector<BaseFloat> vis_bias_corr_;  ///< Vector for bias updates
   CuVector<BaseFloat> hid_bias_corr_;  ///< Vector for bias updates
 
-  //CuMatrix<BaseFloat> backprop_err_buf_;
+  // CuMatrix<BaseFloat> backprop_err_buf_;
 
   RbmNodeType vis_type_;
   RbmNodeType hid_type_;
@@ -230,6 +230,6 @@ protected:
 
 
 
-} //namespace
+} // namespace
 
 #endif

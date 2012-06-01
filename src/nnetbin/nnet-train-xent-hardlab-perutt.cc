@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(key);
          
-        //std::cout << mat;
+        // std::cout << mat;
 
         if ((int32)alignment.size() != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
         if(num_done % 10000 == 0) std::cout << num_done << ", " << std::flush;
         num_done++;
 
-        //push features to GPU
+        // push features to GPU
         feats.CopyFromMat(mat);
 
         nnet_transf.Feedforward(feats, &feats_transf);

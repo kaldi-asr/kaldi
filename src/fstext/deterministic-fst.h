@@ -180,7 +180,7 @@ private:
       cs = composed_state_.size();
       composed_state_.push_back(sp);
       state_map_[sp] = cs;
-      //cerr << "Adding composed state ("<<s1<<","<<s2<<") = "<<cs<<endl;
+      // cerr << "Adding composed state ("<<s1<<","<<s2<<") = "<<cs<<endl;
     } else {
       cs = (*mit).second;
     }

@@ -766,7 +766,7 @@ void TestSplitDecisionTree() {
     }
     Questions qo;  // all default.
     BaseFloat thresh = 0.00001;  // these stats have a count of 1... need v. small thresh to get them to merge.
-    //0.000001 tries to ensure everything is split.
+    // 0.000001 tries to ensure everything is split.
 
     bool intersection = true;  // keep borrowed code later on happy.
 

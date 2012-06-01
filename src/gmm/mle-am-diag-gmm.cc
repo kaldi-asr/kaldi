@@ -164,12 +164,12 @@ void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
 }
 
 
-//BaseFloat AccumAmDiagGmm::TotCount() const {
+// BaseFloat AccumAmDiagGmm::TotCount() const {
 //  BaseFloat ans = 0.0;
 //  for (int32 pdf = 0; pdf < NumAccs(); pdf++)
 //    ans += gmm_accumulators_[pdf]->occupancy().Sum();
 //  return ans;
-//}
+// }
 
 void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
   for (int32 pdf_id = 0; pdf_id < am_gmm->NumPdfs(); pdf_id++) {

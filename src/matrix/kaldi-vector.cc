@@ -837,10 +837,10 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
   } else {  // Text mode reading; format is " [ 1.1 2.0 3.4 ]\n"
     std::string s;
     is >> s;
-    //if ((s.compare("DV") == 0) || (s.compare("FV") == 0)) {  // Back compatibility.
+    // if ((s.compare("DV") == 0) || (s.compare("FV") == 0)) {  // Back compatibility.
     //  is >> s;  // get dimension
     //  is >> s;  // get "["
-    //}
+    // }
     if (is.fail()) { specific_error << "EOF while trying to read vector."; goto bad; }
     if (s.compare("[]") == 0) { Resize(0); return; } // tolerate this variant.
     if (s.compare("[")) { specific_error << "Expected \"[\" but got " << s; goto bad; }

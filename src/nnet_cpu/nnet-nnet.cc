@@ -31,7 +31,7 @@ void Nnet::Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
     return; 
   }
 
-  //we need at least L+1 input buffers
+  // we need at least L+1 input buffers
   KALDI_ASSERT((int32)propagate_buf_.size() >= LayerCount()+1);
 
   
@@ -51,12 +51,12 @@ void Nnet::Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
 void Nnet::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
   if(LayerCount() == 0) { KALDI_ERR << "Cannot backpropagate on empty network"; }
 
-  //we need at least L+1 input bufers
+  // we need at least L+1 input bufers
   KALDI_ASSERT((int32)propagate_buf_.size() >= LayerCount()+1);
-  //we need at least L-1 error bufers
+  // we need at least L-1 error bufers
   KALDI_ASSERT((int32)backpropagate_buf_.size() >= LayerCount()-1);
 
-  //find out when we can stop backprop
+  // find out when we can stop backprop
   int32 backprop_stop = -1;
   if (NULL == out_err) {
     backprop_stop++;
@@ -73,14 +73,14 @@ void Nnet::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out
       }
     }
   }
-  //disable!
+  // disable!
   backprop_stop=-1;
 
   //////////////////////////////////////
   // Backpropagation
   //
 
-  //don't copy the in_err to buffers, use it as is...
+  // don't copy the in_err to buffers, use it as is...
   int32 i = nnet_.size()-1;
   if (nnet_[i]->IsUpdatable()) {
     UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
@@ -90,7 +90,7 @@ void Nnet::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out
   }
   nnet_.back()->Backpropagate(in_err, &backpropagate_buf_[i-1]);
 
-  //backpropagate by using buffers
+  // backpropagate by using buffers
   for(i--; i >= 1; i--) {
     if (nnet_[i]->IsUpdatable()) {
       UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
@@ -102,14 +102,14 @@ void Nnet::Backpropagate(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out
     nnet_[i]->Backpropagate(backpropagate_buf_[i], &backpropagate_buf_[i-1]);
   }
 
-  //update first layer 
+  // update first layer 
   if (nnet_[0]->IsUpdatable()  &&  0 >= backprop_stop) {
     UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
     if (uc->LearnRate() > 0.0) {
       uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
     }
   }
-  //now backpropagate through first layer, but only if asked to (by out_err pointer)
+  // now backpropagate through first layer, but only if asked to (by out_err pointer)
   if (NULL != out_err) {
     nnet_[0]->Backpropagate(backpropagate_buf_[0], out_err);
   }
@@ -129,10 +129,10 @@ void Nnet::Feedforward(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
     return; 
   }
 
-  //we need at least 2 input buffers
+  // we need at least 2 input buffers
   KALDI_ASSERT(propagate_buf_.size() >= 2);
 
-  //propagate by using exactly 2 auxiliary buffers
+  // propagate by using exactly 2 auxiliary buffers
   int32 L = 0;
   nnet_[L]->Propagate(in, &propagate_buf_[L%2]);
   for(L++; L<=LayerCount()-2; L++) {
@@ -143,7 +143,7 @@ void Nnet::Feedforward(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
 
 
 void Nnet::Read(std::istream& in, bool binary) {
-  //get the network layers from a factory
+  // get the network layers from a factory
   Component *comp;
   while (NULL != (comp = Component::Read(in, binary, this))) {
     if (LayerCount() > 0 && nnet_.back()->OutputDim() != comp->InputDim()) {
@@ -153,16 +153,16 @@ void Nnet::Read(std::istream& in, bool binary) {
     }
     nnet_.push_back(comp);
   }
-  //create empty buffers
+  // create empty buffers
   propagate_buf_.resize(LayerCount()+1);
   backpropagate_buf_.resize(LayerCount()-1);
-  //reset learn rate
+  // reset learn rate
   learn_rate_ = 0.0;
 }
 
 
 void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
-  //split lrate_factors to a vector
+  // split lrate_factors to a vector
   std::vector<BaseFloat> lrate_factor_vec;
   if (NULL != lrate_factors) {
     char* copy = new char[strlen(lrate_factors)+1];
@@ -174,18 +174,18 @@ void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
     delete copy;
   }
 
-  //count trainable layers
+  // count trainable layers
   int32 updatable = 0;
   for(int i=0; i<LayerCount(); i++) {
     if (nnet_[i]->IsUpdatable()) updatable++;
   }
-  //check number of factors
+  // check number of factors
   if (lrate_factor_vec.size() > 0 && updatable != (int32)lrate_factor_vec.size()) {
     KALDI_ERR << "Mismatch between number of trainable layers " << updatable
               << " and learn rate factors " << lrate_factor_vec.size();
   }
 
-  //set learn rates
+  // set learn rates
   updatable=0;
   for(int32 i=0; i<LayerCount(); i++) {
     if (nnet_[i]->IsUpdatable()) {
@@ -194,7 +194,7 @@ void Nnet::LearnRate(BaseFloat lrate, const char* lrate_factors) {
       dynamic_cast<UpdatableComponent*>(nnet_[i])->LearnRate(lrate_scaled);
     }
   }
-  //set global learn rate
+  // set global learn rate
   learn_rate_ = lrate;
 }
 

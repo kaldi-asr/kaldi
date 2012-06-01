@@ -39,7 +39,7 @@ _ElemT* CuStlVector<_ElemT>::Data() {
 template<typename _ElemT>
 CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
   if (dim_ == dim) {
-    //SetZero();
+    // SetZero();
     return *this;
   }
 
@@ -155,4 +155,4 @@ std::ostream& operator << (std::ostream& out, const CuStlVector<_ElemT>& vec) {
 template<> void CuStlVector<int32>::Set(int32 value);
 
 
-} //namespace kaldi
+} // namespace kaldi

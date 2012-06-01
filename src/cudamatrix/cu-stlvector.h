@@ -82,7 +82,7 @@ template<typename _ElemT>
 std::ostream& operator << (std::ostream& out, const CuStlVector<_ElemT>& vec);
  
   
-} //namespace
+} // namespace
 
 
 #include "cu-stlvector-inl.h"
