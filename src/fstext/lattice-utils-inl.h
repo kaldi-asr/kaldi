@@ -30,12 +30,12 @@ namespace fst {
 template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
-    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *ofst,
     bool invert) {
   typedef ArcTpl<Weight> Arc;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
-  typedef CompactLatticeWeightTpl<Weight,Int> CompactWeight;
+  typedef CompactLatticeWeightTpl<Weight, Int> CompactWeight;
   typedef ArcTpl<CompactWeight> CompactArc;
 
   VectorFst<ArcTpl<Weight> > ffst;
@@ -85,13 +85,13 @@ void ConvertLattice(
 
 template<class Weight, class Int>
 void ConvertLattice(
-    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &ifst,
     MutableFst<ArcTpl<Weight> > *ofst,
     bool invert) {
   typedef ArcTpl<Weight> Arc;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
-  typedef CompactLatticeWeightTpl<Weight,Int> CompactWeight;
+  typedef CompactLatticeWeightTpl<Weight, Int> CompactWeight;
   typedef ArcTpl<CompactWeight> CompactArc;
   ofst->DeleteStates();
   // make the states in the new FST have the same numbers as

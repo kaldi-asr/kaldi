@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         p.second = header;
         htk_writer.Write(utt, p);
       }
-      if(num_utts % 10 == 0)
+      if (num_utts % 10 == 0)
         KALDI_LOG << "Processed " << num_utts << " utterances";
       KALDI_VLOG(2) << "Processed features for key " << utt;
       num_success++;

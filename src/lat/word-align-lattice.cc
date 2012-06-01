@@ -640,7 +640,7 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
   Input ki(word_boundary_file, &binary_in);
   KALDI_ASSERT(!binary_in && "Not expecting binary word-boundary file.");
   std::string line;
-  while(std::getline(ki.Stream(), line)) {
+  while (std::getline(ki.Stream(), line)) {
     std::vector<std::string> split_line;  
     SplitStringToVector(line, " \t\r", &split_line, true);// split the line by space or tab
     int32 p;
@@ -697,7 +697,7 @@ class WordAlignedLatticeTester {
         TestFinal(aligned_lat_.Final(s));
       }
     }
-    if(was_ok_)
+    if (was_ok_)
       TestEquivalent();
   }
  private:

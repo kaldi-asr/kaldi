@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
       vector<vector<int32> > gselect(mat.NumRows());
       tot_t_this_file += mat.NumRows();
       if(gselect_rspecifier != "") { // Limit Gaussians to preselected group...
-        if(!gselect_reader.HasKey(utt)) {
+        if (!gselect_reader.HasKey(utt)) {
           KALDI_WARN << "No gselect information for utterance " << utt;
           num_err++;
           continue;
@@ -119,14 +119,14 @@ int main(int argc, char *argv[]) {
           BaseFloat loglike = -1.0e+10;
           // we want the output sorted from best likelihood to worse
           // (so we can prune further without the model)...
-          std::vector<std::pair<BaseFloat,int32> > pairs;
+          std::vector<std::pair<BaseFloat, int32> > pairs;
           for (int32 p = 0; p < preselect_sz; p++) {
             if (loglikes(p) >= thresh) {
               pairs.push_back(std::make_pair(loglikes(p), preselect[i][p]));
             }
           }
           std::sort(pairs.begin(), pairs.end(),
-                    std::greater<std::pair<BaseFloat,int32> >());
+                    std::greater<std::pair<BaseFloat, int32> >());
           for (int32 j = 0;
                j < this_num_gselect && j < static_cast<int32>(pairs.size());
                j++) {
@@ -150,14 +150,14 @@ int main(int argc, char *argv[]) {
           BaseFloat thresh = ptr[num_gauss-num_gselect];
           
           BaseFloat loglike = -1.0e+10;
-          std::vector<std::pair<BaseFloat,int32> > pairs;
+          std::vector<std::pair<BaseFloat, int32> > pairs;
           for (int32 p = 0; p < num_gauss; p++) {
             if (loglikes(p) >= thresh) {
               pairs.push_back(std::make_pair(loglikes(p), p));
             }
           }
           std::sort(pairs.begin(), pairs.end(),
-                    std::greater<std::pair<BaseFloat,int32> >());
+                    std::greater<std::pair<BaseFloat, int32> >());
           for (int32 j = 0;
                j < num_gselect && j < static_cast<int32>(pairs.size());
                j++) {

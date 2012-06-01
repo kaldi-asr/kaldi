@@ -81,7 +81,7 @@ void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
   // remove weights, project to output, sort according to input arg
   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>()); 
   fst::Project(ofst, fst::PROJECT_OUTPUT);  // The words are on the output side  
-  MapWildCards(wildcards,ofst);
+  MapWildCards(wildcards, ofst);
   fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to tally errors
   fst::ArcSort(ofst, fst::StdILabelCompare());
 }
@@ -137,7 +137,7 @@ void CountErrors(fst::StdVectorFst &fst,
   // go through the first complete path in fst (there should be only one)
   StateId src = fst.Start(); 
   while (fst.Final(src)== Weight::Zero()) { // while not final
-    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst,src); !aiter.Done(); aiter.Next()) {
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, src); !aiter.Done(); aiter.Next()) {
       fst::StdArc arc = aiter.Value();
       if (arc.ilabel == 0 && arc.olabel == 0) {
         // don't count these so we may compare number of arcs and number of errors
@@ -239,7 +239,7 @@ int main(int argc, char *argv[]) {
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> fst1;
-      ConvertLatticeToUnweightedAcceptor(lat,wild_syms,&fst1);
+      ConvertLatticeToUnweightedAcceptor(lat, wild_syms, &fst1);
       CheckFst(fst1, "fst1_", key);
       
       // TODO: map certain symbols (using an FST created with CreateMapFst())

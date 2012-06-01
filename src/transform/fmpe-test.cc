@@ -85,7 +85,7 @@ void TestFmpe() {
 
   for (int32 i = 0; i < num_frames; i++)
     for (int32 j = 0; j < dim; j++)
-      feats(i,j) = RandGauss();
+      feats(i, j) = RandGauss();
 
   FmpeOptions opts; // Default.
   {
@@ -110,7 +110,7 @@ void TestFmpe() {
     Matrix<BaseFloat> random_offset(feats.NumRows(), feats.NumCols());
     for (int32 i = 0; i < feats.NumRows(); i++)
       for (int32 j = 0; j < feats.NumCols(); j++)
-        random_offset(i,j) = 1.0e-03 * RandGauss();
+        random_offset(i, j) = 1.0e-03 * RandGauss();
     BaseFloat like_before = GetGmmLike(gmm, feats);
     feats.AddMat(1.0, random_offset);
     BaseFloat like_after = GetGmmLike(gmm, feats);

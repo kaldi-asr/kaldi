@@ -425,7 +425,7 @@ template<class BasicType> class BasicVectorVectorHolder {
 /// types, and bool.
 template<class BasicType> class BasicPairVectorHolder {
  public:
-  typedef std::vector<std::pair<BasicType,BasicType> > T;
+  typedef std::vector<std::pair<BasicType, BasicType> > T;
 
   BasicPairVectorHolder() { }
   

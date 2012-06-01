@@ -923,7 +923,7 @@ Real MatrixBase<Real>::Sum() const {
 
 template<>
 void MatrixBase<float>::Scale(float alpha) {
-  if(num_cols_ == stride_) {
+  if (num_cols_ == stride_) {
     cblas_sscal(num_rows_ * num_cols_, alpha,
                 data_, 1);
   } else {
@@ -936,7 +936,7 @@ void MatrixBase<float>::Scale(float alpha) {
 
 template<>
 void MatrixBase<double>::Scale(double alpha) {
-  if(num_cols_ == stride_) {
+  if (num_cols_ == stride_) {
     cblas_dscal(num_rows_ * num_cols_, alpha,
                 data_, 1);
   } else {
@@ -1384,7 +1384,7 @@ void MatrixBase<Real>::DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U, 
   // "N"== no eigenvectors wanted.
   LapackGesvd(s, U, Vt);
 #else
-  /*  if(num_rows_ > 1 && num_cols_ > 1 && (*this)(0, 0) == (*this)(1, 1)
+  /*  if (num_rows_ > 1 && num_cols_ > 1 && (*this)(0, 0) == (*this)(1, 1)
      && Max() == Min() && (*this)(0, 0) != 0.0) { // special case that JamaSvd sometimes crashes on.
     KALDI_WARN << "Jama SVD crashes on this type of matrix, perturbing it to prevent crash.";
     for(int32 i = 0; i < NumRows(); i++)

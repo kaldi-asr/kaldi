@@ -1657,7 +1657,7 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
 
     if (state_ == kEof || state_ == kError) return false;
 
-    if(state_ == kUninitialized)
+    if (state_ == kUninitialized)
       KALDI_ERR << "Trying to access a RandomAccessTableReader object that is not open.";
 
     std::string last_key_;  // To check that
@@ -1800,7 +1800,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
       return true;
     }
 
-    if(state_ == kUninitialized)
+    if (state_ == kUninitialized)
       KALDI_ERR << "Trying to access a RandomAccessTableReader object that is not open.";
     
     // Step one is to see whether we have to read ahead for the object..

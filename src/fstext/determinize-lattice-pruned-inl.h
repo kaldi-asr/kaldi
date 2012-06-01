@@ -59,7 +59,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     assert(determinized_);
     typedef typename Arc::StateId StateId;
     StateId nStates = static_cast<StateId>(output_states_.size());
-    if(destroy)
+    if (destroy)
       FreeMostMemory();
     ofst->DeleteStates();
     ofst->SetStart(kNoStateId);
@@ -114,7 +114,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       ofst->SetStart(kNoStateId);
       return;
     }
-    if(destroy)
+    if (destroy)
       FreeMostMemory();
     // Add basic states-- but we will add extra ones to account for strings on output.
     for (OutputStateId s = 0;s < nStates;s++) {
@@ -206,7 +206,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // frees all memory except the info (in output_states_[ ]->arcs)
   // that we need to output the FST.
   void FreeMostMemory() {
-    if(ifst_) {
+    if (ifst_) {
       delete ifst_;
       ifst_ = NULL;
     }
@@ -229,7 +229,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     { // Free up the queue.  I'm not sure how to make sure all
       // the memory is really freed (no swap() function)... doesn't really
       // matter much though.
-      while(!queue_.empty()) {
+      while (!queue_.empty()) {
         Task *t = queue_.top();
         delete t;
         queue_.pop();
@@ -474,7 +474,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     assert(!subset->empty());
     typename vector<Element>::iterator cur_in = subset->begin(),
         cur_out = subset->begin(), end = subset->end();
-    while(cur_in != end) {
+    while (cur_in != end) {
       if(IsIsymbolOrFinal(cur_in->state)) {  // keep it...
         *cur_out = *cur_in;
         cur_out++;
@@ -532,7 +532,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       const Element &elem = iter->second;
       *remaining_weight = elem.weight;
       *common_prefix = elem.string;
-      if(elem.weight == Weight::Zero())
+      if (elem.weight == Weight::Zero())
         std::cerr << "Zero weight!\n"; // TEMP
       return elem.state;
     }
@@ -555,7 +555,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     OutputStateId ans = MinimalToStateId(subset, forward_weight);
     *remaining_weight = elem.weight;
     *common_prefix = elem.string;
-    if(elem.weight == Weight::Zero())
+    if (elem.weight == Weight::Zero())
       KALDI_WARN << "Zero weight!\n";
     
     // Before returning "ans", add the initial subset to the hash,
@@ -578,9 +578,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   inline int Compare(const Weight &a_w, StringId a_str,
                      const Weight &b_w, StringId b_str) const {
     int weight_comp = fst::Compare(a_w, b_w);
-    if(weight_comp != 0) return weight_comp;
+    if (weight_comp != 0) return weight_comp;
     // now comparing strings.
-    if(a_str == b_str) return 0;
+    if (a_str == b_str) return 0;
     vector<IntType> a_vec, b_vec;
     repository_.ConvertToVector(a_str, &a_vec);
     repository_.ConvertToVector(b_str, &b_vec);
@@ -588,11 +588,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     int a_len = a_vec.size(), b_len = b_vec.size();
     // use opposite order on the string lengths (c.f. Compare in
     // lattice-weight.h)
-    if(a_len > b_len) return -1;
-    else if(a_len < b_len) return 1;
+    if (a_len > b_len) return -1;
+    else if (a_len < b_len) return 1;
     for(int i = 0; i < a_len; i++) {
-      if(a_vec[i] < b_vec[i]) return -1;
-      else if(a_vec[i] > b_vec[i]) return 1;
+      if (a_vec[i] < b_vec[i]) return -1;
+      else if (a_vec[i] > b_vec[i]) return 1;
     }
     assert(0); // because we checked if a_str == b_str above, shouldn't reach here
     return 0;
@@ -646,9 +646,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       // both the new (optimal) and old (less-optimal) Element will still be in
       // "queue".  The next if-statement stops us from wasting compute by
       // processing the old Element.
-      if(replaced_elems && cur_subset[elem.state] != elem)
+      if (replaced_elems && cur_subset[elem.state] != elem)
         continue;
-      if(opts_.max_loop > 0 && counter++ > opts_.max_loop) {
+      if (opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         KALDI_ERR << "Lattice determinization aborted since looped more than "
                   << opts_.max_loop << " times during epsilon closure.\n";
         throw std::runtime_error("looped more than max-arcs times in lattice determinization");
@@ -670,7 +670,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           
           typename unordered_map<InputStateId, Element>::iterator
               iter = cur_subset.find(next_elem.state);
-          if(iter == cur_subset.end()) {
+          if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
             cur_subset[next_elem.state] = next_elem;
             queue.push_back(next_elem);
@@ -722,7 +722,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       const Element &elem = *iter;
       Weight this_final_weight = Times(elem.weight, ifst_->Final(elem.state));
       StringId this_final_string = elem.string;
-      if(this_final_weight != Weight::Zero() &&
+      if (this_final_weight != Weight::Zero() &&
          (!is_final || Compare(this_final_weight, this_final_string,
                                final_weight, final_string) == 1)) { // the new
         // (weight, string) pair is more in semiring than our current
@@ -799,7 +799,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       if (cur_in != cur_out) *cur_out = *cur_in;
       cur_in++;
       while (cur_in != end && cur_in->state == cur_out->state) {
-        if(Compare(cur_in->weight, cur_in->string,
+        if (Compare(cur_in->weight, cur_in->string,
                    cur_out->weight, cur_out->string) == 1) {
           // if *cur_in > *cur_out in semiring, then take *cur_in.
           cur_out->string = cur_in->string;
@@ -959,21 +959,21 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // of the input FST either is final or has an osymbol on an arc out of it.
     // Uses the vector isymbol_or_final_ as a cache for this info.
     assert(state >= 0);
-    if(isymbol_or_final_.size() <= state)
+    if (isymbol_or_final_.size() <= state)
       isymbol_or_final_.resize(state+1, static_cast<char>(OSF_UNKNOWN));
-    if(isymbol_or_final_[state] == static_cast<char>(OSF_NO))
+    if (isymbol_or_final_[state] == static_cast<char>(OSF_NO))
       return false;
-    else if(isymbol_or_final_[state] == static_cast<char>(OSF_YES))
+    else if (isymbol_or_final_[state] == static_cast<char>(OSF_YES))
       return true;
     // else work it out...
     isymbol_or_final_[state] = static_cast<char>(OSF_NO);
-    if(ifst_->Final(state) != Weight::Zero())
+    if (ifst_->Final(state) != Weight::Zero())
       isymbol_or_final_[state] = static_cast<char>(OSF_YES);
     for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
-      if(arc.ilabel != 0 && arc.weight != Weight::Zero()) {
+      if (arc.ilabel != 0 && arc.weight != Weight::Zero()) {
         isymbol_or_final_[state] = static_cast<char>(OSF_YES);
         return true;
       }

@@ -67,7 +67,7 @@ class CacheTgtMat {
   struct GenerateRandom {
     int32 operator()(int32 max) { 
       //return lrand48() % max; 
-      return RandInt(0,max-1); 
+      return RandInt(0, max-1); 
     }
   };
 

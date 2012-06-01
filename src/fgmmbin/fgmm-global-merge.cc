@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       Input ki(stats_in_filename, &binary_read);
-      if(i==3) {
+      if (i==3) {
         fgmm.Read(ki.Stream(), binary_read);
         sizes_ko.Stream() << fgmm.NumGauss() << ' ';
       } else {

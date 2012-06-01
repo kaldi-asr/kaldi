@@ -211,8 +211,8 @@ inline const Matrix<BaseFloat>& Rnnlm::HidMatrix() const {
   
 inline void Rnnlm::Read(const std::string& file) {
   bool binary;
-  Input in(file,&binary);
-  Read(in.Stream(),binary);
+  Input in(file, &binary);
+  Read(in.Stream(), binary);
   in.Close();
 }
 
@@ -242,8 +242,8 @@ inline void Rnnlm::Read(std::istream& in, bool binary) {
   h2_last_.Resize(b1_.Dim());
 
   b2_corr_.Resize(b2_.Dim());
-  V1_corr_.Resize(V1_.NumRows(),V1_.NumCols());
-  U1_corr_.Resize(U1_.NumRows(),U1_.NumCols());
+  V1_corr_.Resize(V1_.NumRows(), V1_.NumCols());
+  U1_corr_.Resize(U1_.NumRows(), U1_.NumCols());
   b1_corr_.Resize(b1_.Dim());
 
 
@@ -253,7 +253,7 @@ inline void Rnnlm::Read(std::istream& in, bool binary) {
 
 inline void Rnnlm::Write(const std::string& file, bool binary) {
   Output out(file, binary, true);
-  Write(out.Stream(),binary);
+  Write(out.Stream(), binary);
   out.Close();
 }
 

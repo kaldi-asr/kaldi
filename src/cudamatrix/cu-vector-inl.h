@@ -13,7 +13,7 @@ namespace kaldi {
 template<typename _ElemT>
 const _ElemT* CuVector<_ElemT>::Data() const {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
   } else
   #endif
@@ -26,7 +26,7 @@ const _ElemT* CuVector<_ElemT>::Data() const {
 template<typename _ElemT>
 _ElemT* CuVector<_ElemT>::Data() { 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
   } else
   #endif
@@ -38,7 +38,7 @@ _ElemT* CuVector<_ElemT>::Data() {
 
 template<typename _ElemT>
 CuVector<_ElemT>& CuVector<_ElemT>::Resize(size_t dim) {
-  if(dim_ == dim) {
+  if (dim_ == dim) {
     //SetZero();
     return *this;
   }
@@ -46,7 +46,7 @@ CuVector<_ElemT>& CuVector<_ElemT>::Resize(size_t dim) {
   Destroy();
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     cuSafeCall(cudaMalloc((void**)&data_, dim*sizeof(_ElemT)));
   } else
   #endif
@@ -64,8 +64,8 @@ CuVector<_ElemT>& CuVector<_ElemT>::Resize(size_t dim) {
 template<typename _ElemT>
 void CuVector<_ElemT>::Destroy() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
-    if(NULL != data_) {
+  if (CuDevice::Instantiate().Enabled()) { 
+    if (NULL != data_) {
       cuSafeCall(cudaFree(data_));
       data_ = NULL;
     }
@@ -84,7 +84,7 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const CuVector<_ElemT>& src) {
   Resize(src.Dim());
   
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(_ElemT), cudaMemcpyDeviceToDevice));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecD2D",tim.Elapsed());
@@ -103,7 +103,7 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT>& src) {
   Resize(src.Dim());
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     cuSafeCall(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(_ElemT), cudaMemcpyHostToDevice));
@@ -120,12 +120,12 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT>& src) {
 
 template<typename _ElemT>
 void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
-  if(dst->Dim() != dim_) {
+  if (dst->Dim() != dim_) {
     dst->Resize(dim_);
   }
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemcpy(dst->Data(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
@@ -140,7 +140,7 @@ void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
 template<typename _ElemT>
 void CuVector<_ElemT>::Read(std::istream& is, bool binary) {
   Vector<BaseFloat> tmp;
-  tmp.Read(is,binary);
+  tmp.Read(is, binary);
   CopyFromVec(tmp);    
 }
 
@@ -149,14 +149,14 @@ template<typename _ElemT>
 void CuVector<_ElemT>::Write(std::ostream& os, bool binary) const {
   Vector<BaseFloat> tmp;
   CopyToVec(&tmp);
-  tmp.Write(os,binary); 
+  tmp.Write(os, binary); 
 }
 
 
 template<typename _ElemT>
 void CuVector<_ElemT>::SetZero() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     KALDI_ASSERT(dim_>0);
     KALDI_ASSERT(data_!=NULL);
     Timer tim;

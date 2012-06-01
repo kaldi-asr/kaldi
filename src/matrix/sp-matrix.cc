@@ -295,10 +295,10 @@ Real TraceSpSp(const SpMatrix<Real> &A, const SpMatrix<OtherReal> &B) {
 }
 
 template
-float TraceSpSp<float,double>(const SpMatrix<float> &A, const SpMatrix<double> &B);
+float TraceSpSp<float, double>(const SpMatrix<float> &A, const SpMatrix<double> &B);
 
 template
-double TraceSpSp<double,float>(const SpMatrix<double> &A, const SpMatrix<float> &B);
+double TraceSpSp<double, float>(const SpMatrix<double> &A, const SpMatrix<float> &B);
 
 
 
@@ -518,7 +518,7 @@ void SpMatrix<Real>::EigInternal(VectorBase<Real> *eigs, MatrixBase<Real> *P,
     Real to_add = max_abs_eig * 1.0e-3;
     SpMatrix<Real> perturbed(*this);
     for (MatrixIndexT d = 0; d < dim; d++)
-      perturbed(d,d) += to_add;
+      perturbed(d, d) += to_add;
     KALDI_VLOG(1) << "Recursing in eigenvalue computation.";
     perturbed.EigInternal(eigs, P, tolerance, recurse+1);
     eigs->Add(-to_add);

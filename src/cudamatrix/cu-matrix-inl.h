@@ -15,7 +15,7 @@ namespace kaldi {
 template<typename _ElemT>
 const _ElemT* CuMatrix<_ElemT>::Data() const {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_;
   } else 
   #endif
@@ -28,7 +28,7 @@ const _ElemT* CuMatrix<_ElemT>::Data() const {
 template<typename _ElemT>
 _ElemT* CuMatrix<_ElemT>::Data() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_;
   } else 
   #endif
@@ -42,7 +42,7 @@ template<typename _ElemT>
 const _ElemT* CuMatrix<_ElemT>::RowData(MatrixIndexT r) const { 
   assert(r < NumRows()); 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_+r*stride_; 
   } else
   #endif
@@ -56,7 +56,7 @@ template<typename _ElemT>
 _ElemT* CuMatrix<_ElemT>::RowData(MatrixIndexT r) {
   assert(r < NumRows()); 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_+r*stride_; 
   } else
   #endif
@@ -68,7 +68,7 @@ _ElemT* CuMatrix<_ElemT>::RowData(MatrixIndexT r) {
 
 template<typename _ElemT>
 CuMatrix<_ElemT>& CuMatrix<_ElemT>::Resize(MatrixIndexT rows, MatrixIndexT cols) {
-  if(num_rows_ == rows && num_cols_ == cols) {
+  if (num_rows_ == rows && num_cols_ == cols) {
     //SetZero();
     return *this;
   }
@@ -76,7 +76,7 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::Resize(MatrixIndexT rows, MatrixIndexT cols)
   Destroy();
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     MatrixIndexT row_bytes = cols * sizeof(_ElemT);
     size_t pitch;
     cuSafeCall(cudaMallocPitch((void**)&data_, &pitch, row_bytes, rows));
@@ -86,7 +86,7 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::Resize(MatrixIndexT rows, MatrixIndexT cols)
   } else
   #endif
   {
-    mat_.Resize(rows,cols);
+    mat_.Resize(rows, cols);
     num_rows_=rows;
     num_cols_=cols;
     stride_=mat_.Stride();
@@ -99,8 +99,8 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::Resize(MatrixIndexT rows, MatrixIndexT cols)
 template<typename _ElemT>
 void CuMatrix<_ElemT>::Destroy() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
-    if(NULL != data_) {
+  if (CuDevice::Instantiate().Enabled()) { 
+    if (NULL != data_) {
       cuSafeCall(cudaFree(data_));
       data_ = NULL;
     }
@@ -115,10 +115,10 @@ void CuMatrix<_ElemT>::Destroy() {
 
 template<typename _ElemT>
 CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const CuMatrix<_ElemT>& src) {
-  Resize(src.NumRows(),src.NumCols());
+  Resize(src.NumRows(), src.NumCols());
  
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     MatrixIndexT dst_pitch = stride_*sizeof(_ElemT);
@@ -139,10 +139,10 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const CuMatrix<_ElemT>& src) {
 
 template<typename _ElemT>
 CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT>& src) {
-  Resize(src.NumRows(),src.NumCols());
+  Resize(src.NumRows(), src.NumCols());
 
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     MatrixIndexT dst_pitch = stride_*sizeof(_ElemT);
@@ -163,12 +163,12 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT>& src) {
 
 template<typename _ElemT>
 void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>* dst) const {
-  if(dst->NumRows() != NumRows()  ||  dst->NumCols() != NumCols()) {
-    dst->Resize(NumRows(),NumCols());
+  if (dst->NumRows() != NumRows()  ||  dst->NumCols() != NumCols()) {
+    dst->Resize(NumRows(), NumCols());
   }
 
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
 
     Timer tim;
    
@@ -196,7 +196,7 @@ void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int
 
    
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     MatrixIndexT dst_pitch = stride_*sizeof(_ElemT);
@@ -212,7 +212,7 @@ void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int
   } else
   #endif
   {
-    memcpy(Data()+dst_ro*stride_,src.Data()+src_ro*src.Stride(),r*stride_*sizeof(_ElemT));
+    memcpy(Data()+dst_ro*stride_, src.Data()+src_ro*src.Stride(), r*stride_*sizeof(_ElemT));
   }
    
 }
@@ -221,7 +221,7 @@ void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int
 template<typename _ElemT>
 void CuMatrix<_ElemT>::Read(std::istream& is, bool binary) {
   Matrix<BaseFloat> tmp;
-  tmp.Read(is,binary);
+  tmp.Read(is, binary);
   CopyFromMat(tmp);    
 }
 
@@ -230,7 +230,7 @@ template<typename _ElemT>
 void CuMatrix<_ElemT>::Write(std::ostream& os, bool binary) const {
   Matrix<BaseFloat> tmp;
   CopyToMat(&tmp);
-  tmp.Write(os,binary); 
+  tmp.Write(os, binary); 
 }
 
 
@@ -238,7 +238,7 @@ void CuMatrix<_ElemT>::Write(std::ostream& os, bool binary) const {
 template<typename _ElemT>
 void CuMatrix<_ElemT>::SetZero() {
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemset(data_, 0, num_rows_*stride_*sizeof(_ElemT)));
     CuDevice::Instantiate().AccuProfile("CuMatrix::SetZero",tim.Elapsed());

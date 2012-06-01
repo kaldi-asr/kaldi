@@ -4,12 +4,10 @@
 
 SHELL := /bin/bash
 
-# Compile subdirectories starting with the things "depended on".
-
 SUBDIRS = base matrix util feat tree gmm tied transform sgmm \
-          fstext hmm lm decoder lat \
+          fstext hmm lm decoder lat cudamatrix nnet nnet_cpu \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          cudamatrix nnet nnetbin nnet_cpu nnetbin_cpu latbin rnn
+          nnetbin nnetbin_cpu latbin
 
 
 all: test_install $(SUBDIRS) 

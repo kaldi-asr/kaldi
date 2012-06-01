@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         alignments_rspecifier = po.GetArg(3);
         
     std::string target_model_filename;
-    if(!crossvalidate) {
+    if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
     }
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
 
-    nnet.SetLearnRate(learn_rate,NULL);
+    nnet.SetLearnRate(learn_rate, NULL);
     nnet.SetMomentum(momentum);
     nnet.SetL2Penalty(l2_penalty);
     nnet.SetL1Penalty(l1_penalty);
@@ -124,13 +124,13 @@ int main(int argc, char *argv[]) {
         //push features to GPU
         feats.CopyFromMat(mat);
 
-        nnet_transf.Feedforward(feats,&feats_transf);
-        nnet.Propagate(feats_transf,&nnet_out);
+        nnet_transf.Feedforward(feats, &feats_transf);
+        nnet.Propagate(feats_transf, &nnet_out);
         
-        xent.EvalVec(nnet_out,alignment,&glob_err);
+        xent.EvalVec(nnet_out, alignment, &glob_err);
         
-        if(!crossvalidate) {
-          nnet.Backpropagate(glob_err,NULL);
+        if (!crossvalidate) {
+          nnet.Backpropagate(glob_err, NULL);
         }
 
         tot_t += mat.NumRows();
@@ -141,8 +141,8 @@ int main(int argc, char *argv[]) {
       time_next += t_features.Elapsed();
     }
 
-    if(!crossvalidate) {
-      nnet.Write(target_model_filename,binary);
+    if (!crossvalidate) {
+      nnet.Write(target_model_filename, binary);
     }
     
     std::cout << "\n" << std::flush;

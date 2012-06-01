@@ -28,8 +28,8 @@ class BiasedLinearity : public UpdatableComponent {
  public:
   BiasedLinearity(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet* nnet) 
     : UpdatableComponent(dim_in, dim_out, nnet), 
-      linearity_(dim_out,dim_in), bias_(dim_out),
-      linearity_corr_(dim_out,dim_in), bias_corr_(dim_out) 
+      linearity_(dim_out, dim_in), bias_(dim_out),
+      linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
   { }
   ~BiasedLinearity()
   { }
@@ -39,8 +39,8 @@ class BiasedLinearity : public UpdatableComponent {
   }
 
   void ReadData(std::istream& is, bool binary) {
-    linearity_.Read(is,binary);
-    bias_.Read(is,binary);
+    linearity_.Read(is, binary);
+    bias_.Read(is, binary);
 
     KALDI_ASSERT(linearity_.NumRows() == output_dim_);
     KALDI_ASSERT(linearity_.NumCols() == input_dim_);
@@ -48,58 +48,58 @@ class BiasedLinearity : public UpdatableComponent {
   }
 
   void WriteData(std::ostream& os, bool binary) const {
-    linearity_.Write(os,binary);
-    bias_.Write(os,binary);
+    linearity_.Write(os, binary);
+    bias_.Write(os, binary);
   }
 
   void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
     //precopy bias
     for (MatrixIndexT i=0; i<out->NumRows(); i++) {
-      out->CopyRowFromVec(bias_,i);
+      out->CopyRowFromVec(bias_, i);
     }
     //multiply by weights^t
-    out->AddMatMat(1.0,in,kNoTrans,linearity_,kTrans,1.0);
+    out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
   void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
     //multiply error by weights
-    out_err->AddMatMat(1.0,in_err,kNoTrans,linearity_,kNoTrans,0.0);
+    out_err->AddMatMat(1.0, in_err, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
   void Update(const Matrix<BaseFloat>& input, const Matrix<BaseFloat>& err) {
     
     //compute gradient
-    linearity_corr_.AddMatMat(1.0,err,kTrans,input,kNoTrans,momentum_);
+    linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
     bias_corr_.Scale(momentum_);
     bias_corr_.AddRowSumMat(err);
     //l2 regularization
-    if(l2_penalty_ != 0.0) {
-      linearity_.AddMat(-learn_rate_*l2_penalty_*input.NumRows(),linearity_);
+    if (l2_penalty_ != 0.0) {
+      linearity_.AddMat(-learn_rate_*l2_penalty_*input.NumRows(), linearity_);
     }
     //l1 regularization
-    if(l1_penalty_ != 0.0) {
+    if (l1_penalty_ != 0.0) {
       BaseFloat l1 = learn_rate_*input.NumRows()*l1_penalty_;
       for(MatrixIndexT r=0; r<linearity_.NumRows(); r++) {
         for(MatrixIndexT c=0; c<linearity_.NumCols(); c++) {
           if(linearity_(r,c)==0.0) continue; //skip L1 if zero weight!
           BaseFloat l1sign = l1;
-          if(linearity_(r,c) < 0.0) 
+          if (linearity_(r, c) < 0.0) 
             l1sign = -l1;
-          BaseFloat before = linearity_(r,c);
-          BaseFloat after = linearity_(r,c)-learn_rate_*linearity_corr_(r,c)-l1sign;
-          if((after > 0.0) ^ (before > 0.0)) {
-            linearity_(r,c) = 0.0;
-            linearity_corr_(r,c) = 0.0;
+          BaseFloat before = linearity_(r, c);
+          BaseFloat after = linearity_(r, c)-learn_rate_*linearity_corr_(r, c)-l1sign;
+          if ((after > 0.0) ^ (before > 0.0)) {
+            linearity_(r, c) = 0.0;
+            linearity_corr_(r, c) = 0.0;
           } else {
-            linearity_(r,c) -= l1sign;
+            linearity_(r, c) -= l1sign;
           }
         }
       }
     }
     //update
-    linearity_.AddMat(-learn_rate_,linearity_corr_);
-    bias_.AddVec(-learn_rate_,bias_corr_);
+    linearity_.AddMat(-learn_rate_, linearity_corr_);
+    bias_.AddVec(-learn_rate_, bias_corr_);
 
     /*
     std::cout <<"I"<< input.Row(0);

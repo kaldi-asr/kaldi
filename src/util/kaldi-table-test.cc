@@ -507,7 +507,7 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
     int32 sz2 = rand() % 5;
     for (int32 j = 0; j < sz2; j++) 
-      v[i].push_back(std::pair<int32,int32>(rand() % 10, rand() % 10));
+      v[i].push_back(std::pair<int32, int32>(rand() % 10, rand() % 10));
   }
   
   bool ans;

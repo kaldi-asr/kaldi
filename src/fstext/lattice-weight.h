@@ -102,9 +102,9 @@ class LatticeWeightTpl {
   
   LatticeWeightTpl Quantize(float delta = kDelta) const {
     if (value1_+value2_ == FloatLimits<T>::kNegInfinity) {
-      return LatticeWeightTpl(FloatLimits<T>::kNegInfinity,FloatLimits<T>::kNegInfinity);
+      return LatticeWeightTpl(FloatLimits<T>::kNegInfinity, FloatLimits<T>::kNegInfinity);
     } else if (value1_+value2_ == FloatLimits<T>::kPosInfinity) {
-      return LatticeWeightTpl(FloatLimits<T>::kPosInfinity,FloatLimits<T>::kPosInfinity);
+      return LatticeWeightTpl(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
     } else if (value1_+value2_ != value1_+value2_) { // NaN
       return LatticeWeightTpl(value1_+value2_, value1_+value2_);
     } else {
@@ -401,7 +401,7 @@ class CompactLatticeWeightTpl {
   CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
       weight_(w), string_(s) { }
 
-  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType,IntType> &w) {
+  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
     weight_ = w.weight_;
     string_ = w.string_;
     return *this;
@@ -415,13 +415,13 @@ class CompactLatticeWeightTpl {
 
   void SetString(const vector<IntType> &s) { string_ = s; }
   
-  static const CompactLatticeWeightTpl<WeightType,IntType> Zero() {
-    return CompactLatticeWeightTpl<WeightType,IntType>(
+  static const CompactLatticeWeightTpl<WeightType, IntType> Zero() {
+    return CompactLatticeWeightTpl<WeightType, IntType>(
         WeightType::Zero(), vector<IntType>());
   }
 
-  static const CompactLatticeWeightTpl<WeightType,IntType> One() {
-    return CompactLatticeWeightTpl<WeightType,IntType>(
+  static const CompactLatticeWeightTpl<WeightType, IntType> One() {
+    return CompactLatticeWeightTpl<WeightType, IntType>(
         WeightType::One(), vector<IntType>());
   }
 
@@ -512,20 +512,20 @@ class CompactLatticeWeightTpl {
 };
 
 template<class WeightType, class IntType>
-inline bool operator==(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-                       const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
+inline bool operator==(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                       const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   return (w1.Weight() == w2.Weight() && w1.String() == w2.String());
 }
 
 template<class WeightType, class IntType>
-inline bool operator!=(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-                       const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
+inline bool operator!=(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                       const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   return (w1.Weight() != w2.Weight() || w1.String() != w2.String());
 }
 
 template<class WeightType, class IntType>
-inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-                        const CompactLatticeWeightTpl<WeightType,IntType> &w2,
+inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                        const CompactLatticeWeightTpl<WeightType, IntType> &w2,
                         float delta = kDelta) {
   return (ApproxEqual(w1.Weight(), w2.Weight(), delta) && w1.String() == w2.String());
 }
@@ -545,8 +545,8 @@ inline bool ApproxEqual(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
 // break.
 
 template<class WeightType, class IntType>
-inline int Compare (const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-                    const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
+inline int Compare (const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                    const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   int c1 = Compare(w1.Weight(), w2.Weight());
   if (c1 != 0) return c1;
   int l1 = w1.String().size(), l2 = w2.String().size();
@@ -587,20 +587,20 @@ inline int Compare(const TropicalWeight &w1,
 
 
 template<class WeightType, class IntType>
-inline CompactLatticeWeightTpl<WeightType,IntType> Plus(
-    const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-    const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
-  return (Compare(w1,w2) >= 0 ? w1 : w2); 
+inline CompactLatticeWeightTpl<WeightType, IntType> Plus(
+    const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+    const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
+  return (Compare(w1, w2) >= 0 ? w1 : w2); 
 }
 
 template<class WeightType, class IntType>
-inline CompactLatticeWeightTpl<WeightType,IntType> Times(
-    const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-    const CompactLatticeWeightTpl<WeightType,IntType> &w2) {
+inline CompactLatticeWeightTpl<WeightType, IntType> Times(
+    const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+    const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
   typedef WeightType T;
   WeightType w = Times(w1.Weight(), w2.Weight());
   if (w == WeightType::Zero()) {
-    return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
+    return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
     // special case to ensure zero is unique
   } else {
     vector<IntType> v;
@@ -608,17 +608,17 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Times(
     typename vector<IntType>::iterator iter = v.begin();
     iter = std::copy(w1.String().begin(), w1.String().end(), iter); // returns end of first range.
     std::copy(w2.String().begin(), w2.String().end(), iter);
-    return CompactLatticeWeightTpl<WeightType,IntType>(w, v);
+    return CompactLatticeWeightTpl<WeightType, IntType>(w, v);
   }
 }
 
 template<class WeightType, class IntType>
-inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWeightTpl<WeightType,IntType> &w1,
-                                                          const CompactLatticeWeightTpl<WeightType,IntType> &w2,
+inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
+                                                          const CompactLatticeWeightTpl<WeightType, IntType> &w2,
                                                           DivideType div) {
   if (w1.Weight() == WeightType::Zero()) {
     if (w2.Weight() != WeightType::Zero()) {
-      return CompactLatticeWeightTpl<WeightType,IntType>::Zero();
+      return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
     } else {
       std::cerr << "Division by zero [0/0] in CompactLatticeWeightTpl\n";
       exit(1);
@@ -641,14 +641,14 @@ inline CompactLatticeWeightTpl<WeightType,IntType> Divide(const CompactLatticeWe
       std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
       exit(1);
     }
-    return CompactLatticeWeightTpl<WeightType,IntType>(
+    return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
   } else if (div == DIVIDE_RIGHT) {
     if (!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
       std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
       exit(1);
     }
-    return CompactLatticeWeightTpl<WeightType,IntType>(
+    return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
 
   } else {
@@ -716,13 +716,13 @@ inline istream &operator >>(istream &strm, CompactLatticeWeightTpl<WeightType, I
 template<class BaseWeightType, class IntType>
 class CompactLatticeWeightCommonDivisorTpl {
  public:
-  typedef CompactLatticeWeightTpl<BaseWeightType,IntType> Weight;
+  typedef CompactLatticeWeightTpl<BaseWeightType, IntType> Weight;
   
   Weight operator()(const Weight &w1, const Weight &w2) const {
     // First find longest common prefix of the strings.
     typename vector<IntType>::const_iterator s1b = w1.String().begin(),
         s1e = w1.String().end(), s2b = w2.String().begin(), s2e = w2.String().end();
-    while(s1b < s1e && s2b < s2e && *s1b == *s2b) {
+    while (s1b < s1e && s2b < s2e && *s1b == *s2b) {
       s1b++;
       s2b++;
     }
@@ -730,7 +730,7 @@ class CompactLatticeWeightCommonDivisorTpl {
   }
 };
 
-/** Scales the pair (a,b) of floating-point weights inside a
+/** Scales the pair (a, b) of floating-point weights inside a
     CompactLatticeWeight by premultiplying it (viewed as a vector)
     by a 2x2 matrix "scale".
     Assumes there is a ScaleTupleWeight function that applies to "Weight";

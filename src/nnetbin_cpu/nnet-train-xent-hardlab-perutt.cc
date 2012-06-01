@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
         alignments_rspecifier = po.GetArg(3);
         
     std::string target_model_filename;
-    if(!crossvalidate) {
+    if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
     }
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
 
-    nnet.LearnRate(learn_rate,NULL);
+    nnet.LearnRate(learn_rate, NULL);
     nnet.Momentum(momentum);
     nnet.L2Penalty(l2_penalty);
     nnet.L1Penalty(l1_penalty);
@@ -116,22 +116,22 @@ int main(int argc, char *argv[]) {
         if(num_done % 10000 == 0) std::cout << num_done << ", " << std::flush;
         num_done++;
 
-        nnet_transf.Feedforward(mat,&feats_transf);
-        nnet.Propagate(feats_transf,&nnet_out);
+        nnet_transf.Feedforward(mat, &feats_transf);
+        nnet.Propagate(feats_transf, &nnet_out);
         //std::cout << "\nNETOUT" << nnet_out;
-        xent.Eval(nnet_out,alignment,&glob_err);
+        xent.Eval(nnet_out, alignment, &glob_err);
         //std::cout << "\nALIGN" << alignment[0] << " "<< alignment[1]<< " "<< alignment[2];
         //std::cout << "\nGLOBERR" << glob_err;
-        if(!crossvalidate) {
-          nnet.Backpropagate(glob_err,NULL);
+        if (!crossvalidate) {
+          nnet.Backpropagate(glob_err, NULL);
         }
 
         tot_t += mat.NumRows();
       }
     }
 
-    if(!crossvalidate) {
-      nnet.Write(target_model_filename,binary);
+    if (!crossvalidate) {
+      nnet.Write(target_model_filename, binary);
     }
     
     std::cout << "\n" << std::flush;

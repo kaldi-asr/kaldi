@@ -31,7 +31,7 @@ void Cache::Init(int32 cachesize, int32 bunchsize) {
   KALDI_ASSERT(bunchsize>0);
   KALDI_ASSERT(cachesize>=bunchsize);
 
-  if((cachesize % bunchsize) != 0) {
+  if ((cachesize % bunchsize) != 0) {
     KALDI_ERR << "Non divisible cachesize by bunchsize";
   }
   
@@ -49,34 +49,34 @@ void Cache::Init(int32 cachesize, int32 bunchsize) {
 
 
 void Cache::AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32>& targets) {
-  if(state_ == FULL) {
+  if (state_ == FULL) {
     KALDI_ERR << "Cannot add data, cache already full";
   }
 
   assert(features.NumRows() == targets.size());
 
   //lazy buffers allocation
-  if(features_.NumRows() != cachesize_) {
-    features_.Resize(cachesize_,features.NumCols());
+  if (features_.NumRows() != cachesize_) {
+    features_.Resize(cachesize_, features.NumCols());
     targets_.resize(cachesize_);
   }
 
   //warn if segment longer than half-cache 
   //(the frame level shuffling will have poor effect)
-  if(features.NumRows() > cachesize_/2) {
+  if (features.NumRows() > cachesize_/2) {
     KALDI_WARN << "Too long segment and small feature cache!"
        << " cachesize: " << cachesize_
        << " segmentsize: " << features.NumRows();
   }
 
   //change state
-  if(state_ == EMPTY) { 
+  if (state_ == EMPTY) { 
     state_ = FILLING; filling_pos_ = 0;
    
     //check for leftover from previous segment 
     int leftover = features_leftover_.NumRows();
     //check if leftover is not bigger than cachesize
-    if(leftover > cachesize_) {
+    if (leftover > cachesize_) {
       KALDI_WARN << "Too small feature cache: " << cachesize_
          << ", truncating: "
          << leftover - cachesize_ 
@@ -84,8 +84,8 @@ void Cache::AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32
       leftover = cachesize_;
     }
     //prefill cache with leftover
-    if(leftover > 0) {
-      features_.CopyRowsFromMat(leftover,features_leftover_,0,0);
+    if (leftover > 0) {
+      features_.CopyRowsFromMat(leftover, features_leftover_, 0, 0);
       
       std::copy(targets_leftover_.begin(),
                 targets_leftover_.begin()+leftover,
@@ -108,16 +108,16 @@ void Cache::AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32
   assert(cache_space > 0);
 
   //copy the data to cache
-  features_.CopyRowsFromMat(fill_rows,features,0,filling_pos_);
+  features_.CopyRowsFromMat(fill_rows, features, 0, filling_pos_);
 
   std::copy(targets.begin(),
             targets.begin()+fill_rows,
             targets_.begin()+filling_pos_);
 
   //copy leftovers
-  if(leftover > 0) {
-    features_leftover_.Resize(leftover,features_.NumCols());
-    features_leftover_.CopyRowsFromMat(leftover,features,fill_rows,0);
+  if (leftover > 0) {
+    features_leftover_.Resize(leftover, features_.NumCols());
+    features_leftover_.CopyRowsFromMat(leftover, features, fill_rows, 0);
     
     assert(targets.end()-(targets.begin()+fill_rows)==leftover);
     targets_leftover_.resize(leftover);
@@ -130,7 +130,7 @@ void Cache::AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32
   filling_pos_ += fill_rows;
   
   //change state
-  if(filling_pos_ == cachesize_) { 
+  if (filling_pos_ == cachesize_) { 
     state_ = FULL;
   }
 }
@@ -141,7 +141,7 @@ void Cache::Randomize() {
   assert(state_ == FULL || state_ == FILLING);
 
   //lazy initialization of the output buffers
-  features_random_.Resize(cachesize_,features_.NumCols());
+  features_random_.Resize(cachesize_, features_.NumCols());
   targets_random_.resize(cachesize_);
 
   //generate random series of integers
@@ -165,34 +165,34 @@ void Cache::Randomize() {
 
 
 void Cache::GetBunch(CuMatrix<BaseFloat>* features, std::vector<int32>* targets) {
-  if(state_ == EMPTY) {
+  if (state_ == EMPTY) {
     KALDI_ERR << "GetBunch on empty cache!!!";
   }
 
   //change state if full...
-  if(state_ == FULL) { 
+  if (state_ == FULL) { 
     state_ = EMPTYING; emptying_pos_ = 0; 
   }
 
   //final cache is not completely filled
-  if(state_ == FILLING) { 
+  if (state_ == FILLING) { 
     state_ = EMPTYING; emptying_pos_ = 0; 
   } 
 
   assert(state_ == EMPTYING);
 
   //init the output
-  features->Resize(bunchsize_,features_.NumCols());
+  features->Resize(bunchsize_, features_.NumCols());
   targets->resize(bunchsize_);
 
   //copy the output
-  if(randomized_) {
-    features->CopyRowsFromMat(bunchsize_,features_random_,emptying_pos_,0);
+  if (randomized_) {
+    features->CopyRowsFromMat(bunchsize_, features_random_, emptying_pos_, 0);
     std::copy(targets_random_.begin()+emptying_pos_,
               targets_random_.begin()+emptying_pos_+bunchsize_,
               targets->begin());
   } else {
-    features->CopyRowsFromMat(bunchsize_,features_,emptying_pos_,0);
+    features->CopyRowsFromMat(bunchsize_, features_, emptying_pos_, 0);
     std::copy(targets_.begin()+emptying_pos_,
               targets_.begin()+emptying_pos_+bunchsize_,
               targets->begin());
@@ -202,7 +202,7 @@ void Cache::GetBunch(CuMatrix<BaseFloat>* features, std::vector<int32>* targets)
   emptying_pos_ += bunchsize_;
 
   //change state to EMPTY
-  if(emptying_pos_ > filling_pos_-bunchsize_) {
+  if (emptying_pos_ > filling_pos_-bunchsize_) {
     //we don't have more complete bunches...
     state_ = EMPTY;
   }

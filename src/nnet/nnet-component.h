@@ -149,12 +149,12 @@ class Component {
  * Class UpdatableComponent is a Component which has
  * trainable parameters and contains some global 
  * parameters for stochastic gradient descent
- * (learnrate,momenutm,L2,L1)
+ * (learnrate, momenutm, L2, L1)
  */
 class UpdatableComponent : public Component {
  public: 
   UpdatableComponent(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet)
-    : Component(input_dim,output_dim,nnet),
+    : Component(input_dim, output_dim, nnet),
       learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0) { }
   virtual ~UpdatableComponent() { }
 
@@ -215,11 +215,11 @@ class UpdatableComponent : public Component {
 
 inline void Component::Propagate(const CuMatrix<BaseFloat>& in,
                                  CuMatrix<BaseFloat>* out) {
-  if(input_dim_ != in.NumCols()) {
+  if (input_dim_ != in.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << input_dim_ << " data:" << in.NumCols();
   }
   
-  if(output_dim_ != out->NumCols() || in.NumRows() != out->NumRows()) {
+  if (output_dim_ != out->NumCols() || in.NumRows() != out->NumRows()) {
     out->Resize(in.NumRows(), output_dim_);
   }
 
@@ -229,12 +229,12 @@ inline void Component::Propagate(const CuMatrix<BaseFloat>& in,
 
 inline void Component::Backpropagate(const CuMatrix<BaseFloat>& in_err,
                                      CuMatrix<BaseFloat>* out_err) {
-  if(output_dim_ != in_err.NumCols()) {
+  if (output_dim_ != in_err.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << output_dim_ 
               << " data:" << in_err.NumCols();
   }
   
-  if(input_dim_ != out_err->NumCols() || in_err.NumRows() != out_err->NumRows()) {
+  if (input_dim_ != out_err->NumCols() || in_err.NumRows() != out_err->NumRows()) {
     out_err->Resize(in_err.NumRows(), input_dim_);
   }
 

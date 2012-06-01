@@ -25,11 +25,11 @@ namespace kaldi {
 void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
-  diff->Resize(net_out.NumRows(),net_out.NumCols(),kUndefined);
+  diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
 
   //compute derivative wrt. activations of last layer of neurons
   diff->CopyFromMat(net_out);
-  diff->AddMat(-1.0,target);
+  diff->AddMat(-1.0, target);
 
   //we'll not produce per-frame classification accuracy for soft labels
   correct_ = -1;
@@ -38,8 +38,8 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& targe
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     for(int32 c=0; c<net_out.NumCols(); c++) {
-      val = -target(r,c)*log(net_out(r,c));
-      if(KALDI_ISINF(val)) val = 1e10;
+      val = -target(r, c)*log(net_out(r, c));
+      if (KALDI_ISINF(val)) val = 1e10;
       loss_ += val;
     }
   }
@@ -55,30 +55,30 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& targ
   int32 max=0;
   std::vector<int32>::const_iterator it; 
   for(it=target.begin(); it!=target.end(); ++it) {
-    if(max < *it) max = *it;
+    if (max < *it) max = *it;
   }
-  if(max >= net_out.NumCols()) {
+  if (max >= net_out.NumCols()) {
     KALDI_ERR << "Network has " << net_out.NumCols() 
               << " outputs while having " << max+1 << " labels";
   }
 
   //compute derivative wrt. activations of last layer of neurons
-  diff->Resize(net_out.NumRows(),net_out.NumCols(),kUndefined);
+  diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
   diff->CopyFromMat(net_out);
   for(int32 r=0; r<(int32)target.size(); r++) {
     KALDI_ASSERT(target.at(r) <= diff->NumCols());
-    (*diff)(r,target.at(r)) -= 1.0;
+    (*diff)(r, target.at(r)) -= 1.0;
   }
 
   //we'll not produce per-frame classification accuracy for soft labels
-  correct_ += Correct(net_out,target);
+  correct_ += Correct(net_out, target);
 
   //compute xentropy
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     KALDI_ASSERT(target.at(r) <= net_out.NumCols());
-    val = -log(net_out(r,target.at(r)));
-    if(KALDI_ISINF(val)) val = 1e10;
+    val = -log(net_out(r, target.at(r)));
+    if (KALDI_ISINF(val)) val = 1e10;
     loss_ += val;
   }
 
@@ -90,7 +90,7 @@ std::string Xent::Report() {
   std::ostringstream oss;
   oss << "Xent:" << loss_ << " frames:" << frames_ 
       << " err/frm:" << loss_/frames_;
-  if(correct_ >= 0.0) {
+  if (correct_ >= 0.0) {
     oss << " correct[" << 100.0*correct_/frames_ << "%]";
   }
   oss << std::endl;
@@ -104,12 +104,12 @@ int32 Xent::Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& 
     BaseFloat max = -1;
     int32 max_id = -1;
     for(int32 c=0; c<net_out.NumCols(); c++) {
-      if(max < net_out(r,c)) {
-        max = net_out(r,c);
+      if (max < net_out(r, c)) {
+        max = net_out(r, c);
         max_id = c;
       }
     }
-    if(target.at(r) == max_id) {
+    if (target.at(r) == max_id) {
       correct++;
     }
   }
@@ -120,17 +120,17 @@ int32 Xent::Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& 
 void Mse::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
-  diff->Resize(net_out.NumRows(),net_out.NumCols(),kUndefined);
+  diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
 
   //compute derivative w.r.t. neural nerwork outputs
   diff->CopyFromMat(net_out);
-  diff->AddMat(-1.0,target);
+  diff->AddMat(-1.0, target);
 
   //compute mean square error
   BaseFloat val;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     for(int32 c=0; c<net_out.NumCols(); c++) {
-      val = target(r,c) - net_out(r,c);
+      val = target(r, c) - net_out(r, c);
       loss_ += val*val;
     }
   }

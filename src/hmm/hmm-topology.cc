@@ -208,10 +208,10 @@ void HmmTopology::Check() {
     if (num_states <= 1)
       KALDI_ERR << "HmmTopology::Check(), cannot only have one state (i.e., must "
           "have at least one emitting state).";
-    if(!entries_[i][num_states-1].transitions.empty())
+    if (!entries_[i][num_states-1].transitions.empty())
       KALDI_ERR << "HmmTopology::Check(), last state must have no transitions.";
     // not sure how necessary this next stipulation is.
-    if(entries_[i][num_states-1].pdf_class != kNoPdf) 
+    if (entries_[i][num_states-1].pdf_class != kNoPdf) 
       KALDI_ERR << "HmmTopology::Check(), last state must not be emitting.";
 
     std::vector<bool> has_trans_in(num_states, false);
@@ -249,10 +249,10 @@ void HmmTopology::Check() {
         seen_transition.insert(dst_state);
         has_trans_in[dst_state] = true;
       }
-      if(j+1 < num_states) {
+      if (j+1 < num_states) {
         KALDI_ASSERT(tot_prob > 0.0 && "Non-final state must have transitions out."
                      "(with nonzero probability)");
-        if(fabs(tot_prob - 1.0) > 0.01)
+        if (fabs(tot_prob - 1.0) > 0.01)
           KALDI_WARN << "Total probability for state " << j <<
               " in topology entry is " << tot_prob;
       } else

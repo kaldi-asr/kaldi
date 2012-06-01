@@ -148,7 +148,7 @@ template<class Real> static void CholeskyUnitTestTr() {
 
 template<class Real> static void SlowMatMul() {
   int N = 1000;
-  Matrix<Real> M(N,N), P(N,N), Q(N,N);
+  Matrix<Real> M(N, N), P(N, N), Q(N, N);
   for (int i = 0; i < 10000; i++) {
     Q.AddMatMat(1.0, M, kNoTrans, P, kNoTrans, 0.0);
   }
@@ -178,7 +178,7 @@ static void UnitTestSpAddVec() {
     InitRand(&v);
     S.AddVec(alpha, v);
     for (int32 i = 0; i < dimM; i++)
-      T(i,i) += alpha * v(i);
+      T(i, i) += alpha * v(i);
     AssertEqual(S, T);
   }
 }
@@ -1578,7 +1578,7 @@ template<class Real> static void  UnitTestSimple() {
       Matrix<Real> N2(N), N3(N);
       for (int32 i = 0; i < N.NumRows(); i++)
         for (int32 j = 0; j < N.NumCols(); j++)
-          N2(i, j) = exp(N2(i,j));
+          N2(i, j) = exp(N2(i, j));
       N3.ApplyExp();
       AssertEqual(N2, N3);
     }
@@ -2691,8 +2691,8 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestSvd<Real>();
   UnitTestSvdNodestroy<Real>();
   UnitTestSvdJustvec<Real>();
-  UnitTestSpAddVec<Real,float>();
-  UnitTestSpAddVec<Real,double>();  
+  UnitTestSpAddVec<Real, float>();
+  UnitTestSpAddVec<Real, double>();  
   UnitTestSpInvert<Real>();
       KALDI_LOG << " Point D";
   UnitTestTpInvert<Real>();

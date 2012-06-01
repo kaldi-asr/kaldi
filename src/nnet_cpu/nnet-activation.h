@@ -38,7 +38,7 @@ class Sigmoid : public Component {
     //y = 1/(1+e^-x)
     for(MatrixIndexT r=0; r<out->NumRows(); r++) {
       for(MatrixIndexT c=0; c<out->NumCols(); c++) {
-        (*out)(r,c) = 1.0/(1.0+exp(-in(r,c)));
+        (*out)(r, c) = 1.0/(1.0+exp(-in(r, c)));
       }
     }
   }
@@ -49,7 +49,7 @@ class Sigmoid : public Component {
 
     for(MatrixIndexT r=0; r<out_err->NumRows(); r++) {
       for(MatrixIndexT c=0; c<out_err->NumCols(); c++) {
-        (*out_err)(r,c) = y(r,c)*(1.0-y(r,c))*in_err(r,c);
+        (*out_err)(r, c) = y(r, c)*(1.0-y(r, c))*in_err(r, c);
       }
     }
   }

@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
       std::vector<std::vector<int32> > gselect_vec(mat.NumRows());
       tot_t_this_file += mat.NumRows();
       if(preselect_rspecifier != "") { // e.g. gender dependent.        
-        if(!preselect_reader.HasKey(utt)) {
+        if (!preselect_reader.HasKey(utt)) {
           KALDI_WARN << "No preselect information for utterance " << utt;
           num_err++;
           continue;

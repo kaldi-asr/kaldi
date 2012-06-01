@@ -155,7 +155,7 @@ void HashList<I, T>::InsertMore(I key, T val) {
   Elem *e = (bucket.prev_bucket == static_cast<size_t>(-1) ?
              list_head_ : buckets_[bucket.prev_bucket].last_elem->tail);
   // find place to insert in linked list 
-  while(e != bucket.last_elem->tail && e->key != key) e = e->tail;
+  while (e != bucket.last_elem->tail && e->key != key) e = e->tail;
   assert(e->key == key); // not found? - should not happen
   elem->tail = e->tail;
   e->tail = elem;

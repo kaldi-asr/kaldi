@@ -147,7 +147,7 @@ private:
   Weight GetFinalFromNonDetFst(const Fst<Arc>* fst, StateId s);
   
   // state management for composition
-  typedef std::pair<StateId,StateId> StatePair;
+  typedef std::pair<StateId, StateId> StatePair;
 
   class StatePairEqual {
    public:
@@ -231,7 +231,7 @@ class DeterministicOnDemandFst : public Fst<Arc> {
 
   DeterministicOnDemandFst(const DeterministicOnDemandFst<Arc> &fst, bool reset = false); // defined in -inl.h
 
-  DeterministicOnDemandFst(const Fst<Arc> &fst1,const Fst<Arc> &fst2) :
+  DeterministicOnDemandFst(const Fst<Arc> &fst1, const Fst<Arc> &fst2) :
    	impl_(new DeterministicOnDemandFstImpl<Arc>(fst1,fst2)) {}   // no options yet
 
   virtual ~DeterministicOnDemandFst() { if (!impl_->DecrRefCount()) delete impl_;  }

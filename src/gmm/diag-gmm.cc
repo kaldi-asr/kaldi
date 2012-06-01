@@ -525,7 +525,7 @@ void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
   
   int32 num_indices = static_cast<int32>(indices.size());
   loglikes->Resize(num_indices, kUndefined);
-  if(indices.back() + 1 - indices.front() == num_indices) {
+  if (indices.back() + 1 - indices.front() == num_indices) {
     // A special (but common) case when the indices form a contiguous range.
     int32 start_idx = indices.front();
     loglikes->CopyFromVec(SubVector<BaseFloat>(gconsts_, start_idx, num_indices));

@@ -12,16 +12,16 @@ namespace kaldi {
 template<> 
 void CuMatrix<float>::Set(float value) { 
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_set_const(dimGrid,dimBlock,data_,value,Dim());
+    cudaF_set_const(dimGrid, dimBlock, data_, value, Dim());
     cuSafeCall(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
@@ -33,16 +33,16 @@ void CuMatrix<float>::Set(float value) {
 template<> 
 void CuMatrix<float>::ApplyLog() { 
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_apply_log(dimGrid,dimBlock,data_,Dim());
+    cudaF_apply_log(dimGrid, dimBlock, data_, Dim());
     cuSafeCall(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
@@ -54,20 +54,20 @@ void CuMatrix<float>::ApplyLog() {
 template<>
 void CuMatrix<float>::MulElements(const CuMatrix<float>& A) {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     assert(num_cols_ == A.NumCols());
     assert(num_rows_ == A.NumRows());
     assert(stride_ == A.Stride());
     
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_mul_elem(dimGrid,dimBlock,data_, A.Data(), Dim());
+    cudaF_mul_elem(dimGrid, dimBlock, data_, A.Data(), Dim());
     cuSafeCall(cudaGetLastError());
     
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
@@ -79,19 +79,19 @@ void CuMatrix<float>::MulElements(const CuMatrix<float>& A) {
 template<>
 void CuMatrix<float>::MulColsVec(const CuVector<float>& scale) {
   #if HAVE_CUDA==1 
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     assert(scale.Dim() == NumCols());
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_scale_cols(dimGrid,dimBlock,data_,scale.Data(),Dim());
+    cudaF_scale_cols(dimGrid, dimBlock, data_, scale.Data(), Dim());
     cuSafeCall(cudaGetLastError());
 
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
@@ -103,19 +103,19 @@ void CuMatrix<float>::MulColsVec(const CuVector<float>& scale) {
 template<>
 void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     assert(scale.Dim() == NumRows());
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_scale_rows(dimGrid,dimBlock,data_,scale.Data(),Dim());
+    cudaF_scale_rows(dimGrid, dimBlock, data_, scale.Data(), Dim());
     cuSafeCall(cudaGetLastError());
 
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else 
   #endif
   {
@@ -127,18 +127,18 @@ void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
 template<>
 void CuMatrix<float>::DivRowsVec(const CuVector<float>& div) {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     assert(div.Dim() == NumRows());
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_div_rows_vec(dimGrid,dimBlock,data_,div.Data(),Dim());
+    cudaF_div_rows_vec(dimGrid, dimBlock, data_, div.Data(), Dim());
     cuSafeCall(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else 
   #endif
   {
@@ -152,24 +152,24 @@ void CuMatrix<float>::DivRowsVec(const CuVector<float>& div) {
 template<>
 void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta) {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     assert(A.NumRows() == NumRows());
     assert(A.NumCols() == NumCols());
 
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_add_scaled(dimGrid,dimBlock,alpha,A.Data(),beta,data_,Dim());
+    cudaF_add_scaled(dimGrid, dimBlock, alpha, A.Data(), beta, data_, Dim());
     cuSafeCall(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
     mat_.Scale(beta);
-    mat_.AddMat(alpha,A.mat_);
+    mat_.AddMat(alpha, A.mat_);
   }
 }
 
@@ -177,27 +177,27 @@ void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta) 
 template<>
 void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float>& row, float beta) { 
   
-  if(row.Dim() != NumCols()) {
+  if (row.Dim() != NumCols()) {
     KALDI_ERR << "Non matching dimensions: Cols:" << NumCols() << " VectorDim:" << row.Dim();
   }
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
    
-    dim3 dimBlock(CUBLOCK,CUBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(),CUBLOCK));
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_add_scaled_row(dimGrid,dimBlock,alpha,row.Data(),beta,data_,Dim());
+    cudaF_add_scaled_row(dimGrid, dimBlock, alpha, row.Data(), beta, data_, Dim());
     cuSafeCall(cudaGetLastError());
     
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
     for(MatrixIndexT r=0; r<NumRows(); r++) {
       mat_.Row(r).Scale(beta);
-      mat_.Row(r).AddVec(alpha,row.Vec());
+      mat_.Row(r).AddVec(alpha, row.Vec());
     }
   }
 }
@@ -208,7 +208,7 @@ void CuMatrix<float>::AddMatMat(
                float alpha, const CuMatrix<float>& A, MatrixTransposeType transA,
                const CuMatrix<float>& B, MatrixTransposeType transB, float beta) {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {
     // CUBLAS is col major, C++ is row major
     // keep trans..., just swap A&B matrices: A->B B->A
     MatrixIndexT m = ((transB==kTrans)? B.NumRows() : B.NumCols()); 
@@ -236,11 +236,11 @@ void CuMatrix<float>::AddMatMat(
 
     cuSafeCall(cublasGetError());
 
-    CuDevice::Instantiate().AccuProfile(__func__,tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
-    mat_.AddMatMat(alpha,A.mat_,transA,B.mat_,transB,beta);
+    mat_.AddMatMat(alpha, A.mat_, transA, B.mat_, transB, beta);
   }
 }
 

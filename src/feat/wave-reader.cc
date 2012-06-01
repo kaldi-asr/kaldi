@@ -84,7 +84,7 @@ void WaveData::WriteUint32(std::ostream &os, int32 i) {
   KALDI_SWAP4(result);
 #endif
   os.write(u.buf, 4);
-  if(os.fail())
+  if (os.fail())
     KALDI_ERR << "WaveData: error writing to stream.";
 }
 
@@ -98,7 +98,7 @@ void WaveData::WriteUint16(std::ostream &os, int16 i) {
   KALDI_SWAP2(result);
 #endif
   os.write(u.buf, 2);
-  if(os.fail())
+  if (os.fail())
     KALDI_ERR << "WaveData: error writing to stream.";
 }
 
@@ -239,7 +239,7 @@ void WaveData::Read(std::istream &is) {
 
 void WaveData::Write(std::ostream &os) const {
   os << "RIFF";
-  if(data_.NumRows() == 0)
+  if (data_.NumRows() == 0)
     KALDI_ERR << "Error: attempting to write empty WAVE file";
   
   int32 num_chan = data_.NumRows(),
@@ -269,7 +269,7 @@ void WaveData::Write(std::ostream &os) const {
     for(int32 j = 0; j < num_chan; j++) {
       int32 elem = static_cast<int32>(data_ptr[j*stride + i]);
       int16 elem_16(elem);
-      if(static_cast<int32>(elem_16) != elem)
+      if (static_cast<int32>(elem_16) != elem)
         KALDI_ERR << "Wave file is out of range for 16-bit.";
 #ifdef __BIG_ENDIAN__
       KALDI_SWAP2(elem_16);
@@ -277,7 +277,7 @@ void WaveData::Write(std::ostream &os) const {
       os.write(reinterpret_cast<char*>(&elem_16), 2);
     }
   }
-  if(os.fail())
+  if (os.fail())
     KALDI_ERR << "Error writing wave data to stream.";
 }
 

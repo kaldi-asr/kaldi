@@ -93,9 +93,9 @@ BaseFloat SgmmClusterable::Objf() const {
     C.Cholesky(my_H_);
     C.Invert();
     for (int32 i = 0; i < C.NumRows(); i++)
-      if (fabs(C(i,i)) > 100.0) {
+      if (fabs(C(i, i)) > 100.0) {
         KALDI_VLOG(3) << "Condion-number probably bad: element is "
-                      << C(i,i);
+                      << C(i, i);
         throw std::runtime_error("Bad condition number"); // back off to SVD.
       }
     // Note: assuming things are well preconditioned, the elements

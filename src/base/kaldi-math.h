@@ -207,7 +207,7 @@ inline float LogSub(float x, float y) {
 // return (a == b)
 static inline bool ApproxEqual(float a, float b, float tol = 0.001) {
   // a==b handles infinities.
-  if(a==b) return true;
+  if (a==b) return true;
   float diff = std::abs(a-b);
   if (diff == std::numeric_limits<float>::infinity()
       || diff!=diff) return false; // diff is +inf or nan.

@@ -81,8 +81,8 @@ AccumulateForSpeaker(const FmllrDiagGmmAccs &accs_in,
   for (int32 i = 0; i < dim; i++) {
     G_[i].AddSp(t*t, accs.G_[i]);
     S.Row(i).CopyRowFromSp(accs.G_[i], i); // s_i = g_ii
-    if(accs.G_[i](i,i) - accs.K_(i,i) > 0)
-      G_[i](i,i) += accs.G_[i](i,i) - accs.K_(i,i);
+    if (accs.G_[i](i, i) - accs.K_(i, i) > 0)
+      G_[i](i, i) += accs.G_[i](i, i) - accs.K_(i, i);
   }
 
   // Update the total beta, and the total beta*t (which is needed

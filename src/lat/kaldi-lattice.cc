@@ -102,9 +102,9 @@ class LatticeReader {
       whether it's a Lattice or CompactLattice in the stream so it tries to
       read both formats until it becomes clear which is the correct one.
   */
-  static std::pair<Lattice*,CompactLattice*> ReadText(
+  static std::pair<Lattice*, CompactLattice*> ReadText(
       std::istream &is) {
-    typedef std::pair<Lattice*,CompactLattice*> PairT;
+    typedef std::pair<Lattice*, CompactLattice*> PairT;
     using std::string;
     using std::vector;
     Lattice *fst = new Lattice();
@@ -272,7 +272,7 @@ class LatticeReader {
 
 
 CompactLattice *ReadCompactLatticeText(std::istream &is) {
-  std::pair<Lattice*,CompactLattice*> lat_pair = LatticeReader::ReadText(is);
+  std::pair<Lattice*, CompactLattice*> lat_pair = LatticeReader::ReadText(is);
   if (lat_pair.second != NULL) {
     if (lat_pair.first) delete lat_pair.first;
     return lat_pair.second;
@@ -286,7 +286,7 @@ CompactLattice *ReadCompactLatticeText(std::istream &is) {
 
 
 Lattice *ReadLatticeText(std::istream &is) {
-  std::pair<Lattice*,CompactLattice*> lat_pair = LatticeReader::ReadText(is);
+  std::pair<Lattice*, CompactLattice*> lat_pair = LatticeReader::ReadText(is);
   if (lat_pair.first != NULL) {
     if (lat_pair.second) delete lat_pair.second;
     return lat_pair.first;

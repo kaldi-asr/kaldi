@@ -33,23 +33,23 @@ namespace kaldi {
  */
 class RnnlmAux {
  public:
-  static void ReadDict(const std::string& file, std::map<std::string,int32>* dict) {
+  static void ReadDict(const std::string& file, std::map<std::string, int32>* dict) {
     bool binary;
-    Input in(file,&binary);
+    Input in(file, &binary);
     std::string word;
     int32 index;
-    while (Peek(in.Stream(),binary) != EOF) {
-      ReadBasicType(in.Stream(),binary,&index);
-      ReadToken(in.Stream(),binary,&word);
+    while (Peek(in.Stream(), binary) != EOF) {
+      ReadBasicType(in.Stream(), binary, &index);
+      ReadToken(in.Stream(), binary, &word);
       (*dict)[word] = index;
     }
     in.Close();
   }
 
-  static bool AddLine(std::istream& is, const std::map<std::string,int32>& dict, std::vector<int32>* seq) {
+  static bool AddLine(std::istream& is, const std::map<std::string, int32>& dict, std::vector<int32>* seq) {
 
     char line[4096];
-    is.getline(line,4096);
+    is.getline(line, 4096);
     
     const char* delim = " \t";
   
@@ -57,7 +57,7 @@ class RnnlmAux {
 
     //parse the line, check OOVs'
     const char* w = NULL;
-    while(NULL != (w = strtok((w==NULL?line:NULL),delim))) {
+    while (NULL != (w = strtok((w==NULL?line:NULL), delim))) {
       if(dict.find(w) == dict.end()) return false; //OOV
       words.push_back(w);
     }

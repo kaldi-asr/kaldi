@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
 
-    int32 bunchsize=512,cachesize=32768;
+    int32 bunchsize=512, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
 
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
         targets_rspecifier = po.GetArg(3);
         
     std::string target_model_filename;
-    if(!crossvalidate) {
+    if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
     }
 
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
 
-    nnet.SetLearnRate(learn_rate,NULL);
+    nnet.SetLearnRate(learn_rate, NULL);
     nnet.SetMomentum(momentum);
     nnet.SetL2Penalty(l2_penalty);
     nnet.SetL1Penalty(l1_penalty);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     CacheTgtMat cache;
     cachesize = (cachesize/bunchsize)*bunchsize; //ensure divisibility
-    cache.Init(cachesize,bunchsize);
+    cache.Init(cachesize, bunchsize);
 
     Mse mse;
 
@@ -109,20 +109,20 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, num_cache = 0;
-    while(1) {
+    while (1) {
       //fill the cache, 
       //both reader are sequential, not to be too memory hungry,
       //the scp lists must be in the same order 
       //we run the loop over targets, skipping features with no targets
-      while(!cache.Full() && !feature_reader.Done() && !targets_reader.Done()) {
+      while (!cache.Full() && !feature_reader.Done() && !targets_reader.Done()) {
         //get the keys
         std::string tgt_key = targets_reader.Key();
         std::string fea_key = feature_reader.Key();
         //skip feature matrix with no targets
-        while(fea_key != tgt_key) {
+        while (fea_key != tgt_key) {
           KALDI_WARN << "No targets for: " << fea_key;
           num_no_tgt_mat++;
-          if(!feature_reader.Done()) {
+          if (!feature_reader.Done()) {
             feature_reader.Next(); 
             fea_key = feature_reader.Key();
           }
@@ -142,9 +142,9 @@ int main(int argc, char *argv[]) {
           feats.CopyFromMat(fea_mat);
           targets.CopyFromMat(tgt_mat);
           //possibly apply feature transform
-          nnet_transf.Feedforward(feats,&feats_transf);
+          nnet_transf.Feedforward(feats, &feats_transf);
           //add to cache
-          cache.AddData(feats_transf,targets);
+          cache.AddData(feats_transf, targets);
           num_done++;
         }
         Timer t_features;
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
         time_next += t_features.Elapsed();
       }
       //randomize
-      if(!crossvalidate) {
+      if (!crossvalidate) {
         cache.Randomize();
       }
       //report
@@ -162,24 +162,24 @@ int main(int argc, char *argv[]) {
                 << " segments: " << num_done
                 << " frames: " << tot_t << "\n";
       //train with the cache
-      while(!cache.Empty()) {
+      while (!cache.Empty()) {
         //get block of feature/target pairs
-        cache.GetBunch(&nnet_in,&nnet_tgt);
+        cache.GetBunch(&nnet_in, &nnet_tgt);
         //train 
-        nnet.Propagate(nnet_in,&nnet_out);
-        mse.Eval(nnet_out,nnet_tgt,&glob_err);
-        if(!crossvalidate) {
-          nnet.Backpropagate(glob_err,NULL);
+        nnet.Propagate(nnet_in, &nnet_out);
+        mse.Eval(nnet_out, nnet_tgt, &glob_err);
+        if (!crossvalidate) {
+          nnet.Backpropagate(glob_err, NULL);
         }
         tot_t += nnet_in.NumRows();
       }
 
       //stop training when no more data
-      if(feature_reader.Done()) break;
+      if (feature_reader.Done()) break;
     }
 
-    if(!crossvalidate) {
-      nnet.Write(target_model_filename,binary);
+    if (!crossvalidate) {
+      nnet.Write(target_model_filename, binary);
     }
     
     std::cout << "\n" << std::flush;

@@ -37,7 +37,7 @@ namespace fst {
 template<class Arc>
 bool DeterministicOnDemandFstImpl<Arc>::HasArc(StateId s, Label l) {
   cache_calls_++;
-  StateLabelPair sl = make_pair(s,l);
+  StateLabelPair sl = make_pair(s, l);
   scm_it_ = state_cache_map_.find(sl);
   if (scm_it_ != state_cache_map_.end()){
     cache_hits_++;
@@ -49,15 +49,15 @@ bool DeterministicOnDemandFstImpl<Arc>::HasArc(StateId s, Label l) {
 
 template<class Arc>
 void DeterministicOnDemandFstImpl<Arc>::AddSingleArc(StateId s, Label l, Arc& a) {
-  StateLabelPair sl = make_pair(s,l);
+  StateLabelPair sl = make_pair(s, l);
   state_cache_map_[sl] = a;
 }
 
 template<class Arc>
 void DeterministicOnDemandFstImpl<Arc>::SetArc(StateId s, Label l) {
   // add an invalid arc with a kNoStateId nextstate
-  Arc a(0,0,0,kNoStateId);
-  DeterministicOnDemandFstImpl<Arc>::AddSingleArc(s,l,a);
+  Arc a(0, 0, 0, kNoStateId);
+  DeterministicOnDemandFstImpl<Arc>::AddSingleArc(s, l, a);
 }
 
 template<class Arc>
@@ -75,7 +75,7 @@ typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl
       // composition
       StateId s1 = fst1_->Start(), s2 = fst2_->Start();
       if (s1 == kNoStateId || s2 == kNoStateId) return kNoStateId;
-      if (composed_state_.size()==0) AddComposedState(s1,s2);
+      if (composed_state_.size()==0) AddComposedState(s1, s2);
     } else {
       // single FST case
       s = fst1_->Start();
@@ -101,7 +101,7 @@ template<class Arc>
 
 // Constructor from 2 DODF
 template<class Arc>
-DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc> &fst1,const Fst<Arc> &fst2):
+DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc> &fst1, const Fst<Arc> &fst2):
     cache_calls_(0), cache_hits_(0), fst1_(&fst1), fst2_(&fst2),
     scm_it_(state_cache_map_.end())  { // initialize iterator to keep older compilers happy
   if (!fst1_->Properties(kILabelSorted, true) || !fst2_->Properties(kILabelSorted, true))
@@ -197,7 +197,7 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
   if (sm.Find(kNoLabel)) {
     const Arc &arc = sm.Value();
     return DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
-        fst, arc.nextstate, ilabel, oarc, Times(arc.weight,iweight));
+        fst, arc.nextstate, ilabel, oarc, Times(arc.weight, iweight));
 
   }    
   return false;  // otherwise, no match is possible
@@ -224,7 +224,7 @@ bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oar
     }
     if (arc1.olabel == 0) {
       // we don't move in fst2_
-      *oarc = Arc(ilabel, 0, arc1.weight, AddComposedState(arc1.nextstate,sp.second));
+      *oarc = Arc(ilabel, 0, arc1.weight, AddComposedState(arc1.nextstate, sp.second));
       AddSingleArc(s, ilabel, *oarc); // add 1 arc and set
       return true;
     }

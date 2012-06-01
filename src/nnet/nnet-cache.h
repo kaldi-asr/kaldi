@@ -67,7 +67,7 @@ class Cache {
   struct GenerateRandom { 
     int32 operator()(int32 max) const {
       //return lrand48() % max; 
-      return RandInt(0,max-1); 
+      return RandInt(0, max-1); 
     }
   };
   

@@ -44,7 +44,7 @@ class CuDevice {
   }
 
   /// Sum the IO time
-  void AccuProfile(const std::string& key,double time);
+  void AccuProfile(const std::string& key, double time);
   void PrintProfile(); 
 
   void ResetProfile() { 

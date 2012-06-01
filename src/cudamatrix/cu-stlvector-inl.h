@@ -13,7 +13,7 @@ namespace kaldi {
 template<typename _ElemT>
 const _ElemT* CuStlVector<_ElemT>::Data() const {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
   } else
   #endif
@@ -26,7 +26,7 @@ const _ElemT* CuStlVector<_ElemT>::Data() const {
 template<typename _ElemT>
 _ElemT* CuStlVector<_ElemT>::Data() { 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
   } else
   #endif
@@ -38,7 +38,7 @@ _ElemT* CuStlVector<_ElemT>::Data() {
 
 template<typename _ElemT>
 CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
-  if(dim_ == dim) {
+  if (dim_ == dim) {
     //SetZero();
     return *this;
   }
@@ -46,7 +46,7 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
   Destroy();
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     cuSafeCall(cudaMalloc((void**)&data_, dim*sizeof(_ElemT)));
   } else
   #endif
@@ -64,8 +64,8 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
 template<typename _ElemT>
 void CuStlVector<_ElemT>::Destroy() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
-    if(NULL != data_) {
+  if (CuDevice::Instantiate().Enabled()) { 
+    if (NULL != data_) {
       cuSafeCall(cudaFree(data_));
       data_ = NULL;
     }
@@ -85,7 +85,7 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>&
   Resize(src.size());
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     cuSafeCall(cudaMemcpy(data_, &src.front(), src.size()*sizeof(_ElemT), cudaMemcpyHostToDevice));
@@ -94,7 +94,7 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>&
   } else
   #endif
   {
-    memcpy(&vec_.front(),&src.front(),src.size()*sizeof(_ElemT));
+    memcpy(&vec_.front(), &src.front(), src.size()*sizeof(_ElemT));
   }
   return *this;
 }
@@ -102,12 +102,12 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>&
 
 template<typename _ElemT>
 void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT>* dst) const {
-  if(dst->size() != dim_) {
+  if (dst->size() != dim_) {
     dst->resize(dim_);
   }
 
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuStlVector::CopyToVecD2H",tim.Elapsed());
@@ -122,14 +122,14 @@ void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT>* dst) const {
 template<typename _ElemT>
 void CuStlVector<_ElemT>::SetZero() {
   #if HAVE_CUDA==1
-  if(CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemset(data_, 0, dim_*sizeof(_ElemT)));
     CuDevice::Instantiate().AccuProfile("CuStlVector::SetZero",tim.Elapsed());
   } else
   #endif
   {
-    vec_.assign(dim_,0);
+    vec_.assign(dim_, 0);
   }
 }
 

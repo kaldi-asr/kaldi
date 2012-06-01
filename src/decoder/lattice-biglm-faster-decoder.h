@@ -189,7 +189,7 @@ class LatticeBiglmFasterDecoder {
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
     Lattice raw_fst;
-    if(!GetRawLattice(&raw_fst)) return false;
+    if (!GetRawLattice(&raw_fst)) return false;
     Invert(&raw_fst); // make it so word labels are on the input.
     if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
       KALDI_WARN << "Topological sorting of state-level lattice failed "
@@ -491,7 +491,7 @@ class LatticeBiglmFasterDecoder {
         // was not necessary in the non-final case because then, this case
         // showed up as having no forward links.  Here, the tok_extra_cost has
         // an extra component relating to the final-prob.
-        if(tok_extra_cost > config_.lattice_beam)
+        if (tok_extra_cost > config_.lattice_beam)
           tok_extra_cost = infinity;
           // to be pruned in PruneTokensForFrame
 
@@ -506,7 +506,7 @@ class LatticeBiglmFasterDecoder {
     for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {    
       if (tok->extra_cost != infinity) {
         // If the token was not pruned away, 
-        if(final_active_) {
+        if (final_active_) {
           BaseFloat final_cost = tok_to_final_cost[tok];         
           if (final_cost != infinity)
             final_costs_[tok] = final_cost;

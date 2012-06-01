@@ -193,7 +193,7 @@ void Fmpe::ApplyProjection(const MatrixBase<BaseFloat> &feat_in,
   // Note: if we really cared we could make this use level-3 BLAS
   // (matrix-matrix multiply), but we'd need to have a temporary
   // matrix for the output and input.
-  std::vector<std::pair<std::pair<int32,int32>, BaseFloat> > all_posts;
+  std::vector<std::pair<std::pair<int32, int32>, BaseFloat> > all_posts;
   
   for (int32 t = 0; t < feat_in.NumRows(); t++) {
     SubVector<BaseFloat> this_feat(feat_in, t);
@@ -312,7 +312,7 @@ void Fmpe::ApplyProjectionReverse(const MatrixBase<BaseFloat> &feat_in,
   // We'll compute the posterior information, sort it, and then
   // go through it in sorted order, which maintains memory locality
   // when accessing the projection matrix.
-  std::vector<std::pair<std::pair<int32,int32>, BaseFloat> > all_posts;
+  std::vector<std::pair<std::pair<int32, int32>, BaseFloat> > all_posts;
   
   for (int32 t = 0; t < feat_in.NumRows(); t++) {
     SubVector<BaseFloat> this_feat(feat_in, t);
@@ -457,8 +457,8 @@ BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
   
   for (int32 i = 0; i < projT_.NumRows(); i++) {
     for (int32 j = 0; j < projT_.NumCols(); j++) {
-      BaseFloat p = proj_deriv_plus(i,j), n = proj_deriv_minus(i,j),
-          x = projT_(i,j);
+      BaseFloat p = proj_deriv_plus(i, j), n = proj_deriv_minus(i, j),
+          x = projT_(i, j);
       // Suppose the basic update (before regularization) is:
       // z <-- x  +   learning_rate * (p - n) / (p + n),
       // where z is the new parameter and x is the old one.
@@ -482,7 +482,7 @@ BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
       // z is the new parameter value.
 
       tot_linear_objf_impr += (z-x) * (p-n); // objf impr based on linear assumption.
-      projT_(i,j) = z;
+      projT_(i, j) = z;
       if (z*x < 0) changed++;
     }
   }
@@ -636,10 +636,10 @@ void FmpeStats::AccumulateChecks(const MatrixBase<BaseFloat> &feats,
       checks(1, d) += std::max(zero, -direct_deriv(t, d));
       checks(2, d) += std::max(zero, indirect_deriv(t, d));
       checks(3, d) += std::max(zero, -indirect_deriv(t, d));
-      checks(4, d) += std::max(zero, feats(t,d)*direct_deriv(t, d));
-      checks(5, d) += std::max(zero, -feats(t,d)*direct_deriv(t, d));
-      checks(6, d) += std::max(zero, feats(t,d)*indirect_deriv(t, d));
-      checks(7, d) += std::max(zero, -feats(t,d)*indirect_deriv(t, d));
+      checks(4, d) += std::max(zero, feats(t, d)*direct_deriv(t, d));
+      checks(5, d) += std::max(zero, -feats(t, d)*direct_deriv(t, d));
+      checks(6, d) += std::max(zero, feats(t, d)*indirect_deriv(t, d));
+      checks(7, d) += std::max(zero, -feats(t, d)*indirect_deriv(t, d));
     }
   }
 }

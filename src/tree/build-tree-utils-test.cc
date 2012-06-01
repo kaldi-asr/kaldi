@@ -123,10 +123,10 @@ void TestSplitStatsByKey() {
     BuildTreeStatsType stats;
     for(int32 i = 0; i < 100; i++) {
       EventType evec;
-      if(rand() % 2)
+      if (rand() % 2)
         evec.push_back(std::make_pair(12, rand() % 10));
       evec.push_back(std::make_pair(10, rand() % 10));
-      if(rand() % 2)
+      if (rand() % 2)
         evec.push_back(std::make_pair(8, rand() % 10));
       std::sort(evec.begin(), evec.end());
       stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(NULL)));

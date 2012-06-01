@@ -286,7 +286,7 @@ class NBestDecoder {
       inline bool Equal(Token *other) { // compares output sequences of Tokens
         if (hash != other->hash) return false;
         Token *t1 = this, *t2 = other;
-        while(t1 != NULL && t2 != NULL) {
+        while (t1 != NULL && t2 != NULL) {
           DEBUG_OUT3("comp:" << t1->o << "/" << t2->o)
           if (t1->o != t2->o) return false;
           t1 = t1->previous; t2 = t2->previous;
@@ -470,7 +470,7 @@ class NBestDecoder {
           }
         }
         e = e->tail;
-      } while( (e != NULL) && (e->key == state) );
+      } while ( (e != NULL) && (e->key == state) );
       // if we are here, no Token with the same output sequence was found
       if (count < n_best_) {
         DEBUG_OUT2("append: (" << count++ << ")")
@@ -723,7 +723,7 @@ class NBestDecoder {
       // we have to pop all tokens with the same state
       // this may create some unneccessary repetitions, since only the new token
       // needs to be forwarded, but I don't know yet how to solve this
-      while(elem && elem->key == state) {
+      while (elem && elem->key == state) {
         Token *tok = elem->val;
         elem = elem->tail;
         DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)

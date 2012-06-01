@@ -36,7 +36,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
 const char* Component::TypeToMarker(ComponentType t) {
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
   for(int i=0; i<N; i++) {
-    if(kMarkerMap[i].key == t) 
+    if (kMarkerMap[i].key == t) 
       return kMarkerMap[i].value;
   }
   KALDI_ERR << "Unknown type" << t;
@@ -46,7 +46,7 @@ const char* Component::TypeToMarker(ComponentType t) {
 Component::ComponentType Component::MarkerToType(const std::string& s) {
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
   for(int i=0; i<N; i++) {
-    if(0 == strcmp(kMarkerMap[i].value,s.c_str())) 
+    if (0 == strcmp(kMarkerMap[i].value, s.c_str())) 
       return kMarkerMap[i].key;
   }
   KALDI_ERR << "Unknown marker" << s;
@@ -58,45 +58,45 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   int32 dim_out, dim_in;
   std::string token;
 
-  int first_char = Peek(is,binary);
-  if(first_char == EOF) return NULL;
+  int first_char = Peek(is, binary);
+  if (first_char == EOF) return NULL;
 
-  ReadToken(is,binary,&token); 
+  ReadToken(is, binary, &token); 
   Component::ComponentType comp_type = Component::MarkerToType(token);
 
-  ReadBasicType(is,binary,&dim_out); 
-  ReadBasicType(is,binary,&dim_in);
+  ReadBasicType(is, binary, &dim_out); 
+  ReadBasicType(is, binary, &dim_in);
 
   Component* p_comp=NULL;
-  switch(comp_type) {
+  switch (comp_type) {
     case Component::kBiasedLinearity :
-      p_comp = new BiasedLinearity(dim_in,dim_out,nnet); 
+      p_comp = new BiasedLinearity(dim_in, dim_out, nnet); 
       break;
     case Component::kSigmoid :
-      p_comp = new Sigmoid(dim_in,dim_out,nnet);
+      p_comp = new Sigmoid(dim_in, dim_out, nnet);
       break;
     case Component::kSoftmax :
-      p_comp = new Softmax(dim_in,dim_out,nnet);
+      p_comp = new Softmax(dim_in, dim_out, nnet);
       break;
     case Component::kRbm :
-      p_comp = new Rbm(dim_in,dim_out,nnet);
+      p_comp = new Rbm(dim_in, dim_out, nnet);
       break;
     case Component::kUnknown :
     default :
       KALDI_ERR << "Missing type: " << token;
   }
 
-  p_comp->ReadData(is,binary);
+  p_comp->ReadData(is, binary);
   return p_comp;
 }
 
 
 void Component::Write(std::ostream& os, bool binary) const {
-  WriteToken(os,binary,Component::TypeToMarker(GetType()));
-  WriteBasicType(os,binary,OutputDim());
-  WriteBasicType(os,binary,InputDim());
+  WriteToken(os, binary, Component::TypeToMarker(GetType()));
+  WriteBasicType(os, binary, OutputDim());
+  WriteBasicType(os, binary, InputDim());
   if(!binary) os << "\n";
-  this->WriteData(os,binary);
+  this->WriteData(os, binary);
 }
 
 

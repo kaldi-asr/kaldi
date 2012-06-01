@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         }
         phones_writer.Write(key, phones);        
       } else {
-        std::vector<std::pair<int32,int32> > pairs;
+        std::vector<std::pair<int32, int32> > pairs;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(split[i].size() > 0);
           int32 tid = split[i][0],

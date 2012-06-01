@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     BaseFloatMatrixWriter kaldi_writer(wspecifier);
     SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
     int32 k = 0;
-    for (; !kaldi_reader.Done() && k < n; kaldi_reader.Next(),k++)
+    for (; !kaldi_reader.Done() && k < n; kaldi_reader.Next(), k++)
       kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
 
     return 0;

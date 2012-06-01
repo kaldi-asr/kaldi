@@ -48,7 +48,7 @@ void TestLatticeStringRepository() {
     vector<IntType> prefix, prefix2(rand() % 10),
         prefix3;
     for(int i = 0; i < len && i < len2; i++) {
-      if(str[i] == str2[i]) prefix.push_back(str[i]);
+      if (str[i] == str2[i]) prefix.push_back(str[i]);
       else break;
     }
     const Entry *g = sr.CommonPrefix(e, f);
@@ -59,7 +59,7 @@ void TestLatticeStringRepository() {
     assert(prefix == prefix3);
     assert(sr.IsPrefixOf(g, e));
     assert(sr.IsPrefixOf(g, f));
-    if(str.size() > prefix.size())
+    if (str.size() > prefix.size())
       assert(!sr.IsPrefixOf(e, g));
   }
 }
@@ -114,7 +114,7 @@ template<class Arc> void TestDeterminizeLattice() {
         FstPrinter<CompactArc> fstprinter(compact_fst, NULL, NULL, NULL, false, true);
         fstprinter.Print(&std::cout, "standard output");
       }
-      if(rand() % 2 == 1)
+      if (rand() % 2 == 1)
         ConvertLattice<Weight, Int>(det_fst, &compact_det_fst, false);
       else
         if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, lat_opts, NULL))

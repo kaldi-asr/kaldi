@@ -66,7 +66,7 @@ FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs) {
     SubVector<double> this_mean_acc(fgmm_accs.mean_accumulator(), g);
     Vector<double> this_mean_invvar_dbl(this_mean_invvar);
     Vector<double> this_extended_mean_acc(dim+1);
-    this_extended_mean_acc.Range(0,dim).CopyFromVec(this_mean_acc);
+    this_extended_mean_acc.Range(0, dim).CopyFromVec(this_mean_acc);
     this_extended_mean_acc(dim) = this_occ; // acc of x^+
     Matrix<double> this_cov_acc(fgmm_accs.covariance_accumulator()[g]); // copy to
     // regular Matrix.
@@ -283,7 +283,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xfor
   size_t dim = stats.G_.size();
   double beta = stats.beta_;
   out_xform->CopyFromMat(in_xform);
-  if(beta == 0.0) {
+  if (beta == 0.0) {
     KALDI_WARN << "Computing diagonal fMLLR matrix: no stats [using original transform]";
     return 0.0;
   }
@@ -291,17 +291,17 @@ BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xfor
   KALDI_ASSERT(out_xform->Range(0, dim, 0, dim).IsDiagonal()); // orig transform
   // must be diagonal.
   for(int32 i = 0; i < dim; i++) {
-    double k_ii = stats.K_(i,i), k_id = stats.K_(i,dim),
-        g_iii = stats.G_[i](i,i), g_idd = stats.G_[i](dim,dim),
-        g_idi = stats.G_[i](dim,i);
+    double k_ii = stats.K_(i, i), k_id = stats.K_(i, dim),
+        g_iii = stats.G_[i](i, i), g_idd = stats.G_[i](dim, dim),
+        g_idi = stats.G_[i](dim, i);
     double a = g_idi*g_idi/g_idd - g_iii,
         b = k_ii - g_idi*k_id/g_idd,
         c = beta;
     double s = (-b - std::sqrt(b*b - 4*a*c)) / (2*a);
     KALDI_ASSERT(s > 0.0);
     double o = (k_id - s*g_idi) / g_idd;
-    (*out_xform)(i,i) = s;
-    (*out_xform)(i,dim) = o;
+    (*out_xform)(i, i) = s;
+    (*out_xform)(i, dim) = o;
   }
   BaseFloat new_obj = FmllrAuxFuncDiagGmm(*out_xform, stats);
   KALDI_VLOG(2) << "fMLLR objective function improvement = "

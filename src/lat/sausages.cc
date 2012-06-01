@@ -63,7 +63,7 @@ struct Int32IsZero {
 // static 
 void MinimumBayesRisk::RemoveEps(std::vector<int32> *vec) {
   Int32IsZero pred;
-  vec->erase(std::remove_if(vec->begin(), vec->end(), pred),
+  vec->erase(std::remove_if (vec->begin(), vec->end(), pred),
              vec->end());
 }
 

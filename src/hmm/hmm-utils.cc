@@ -77,7 +77,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
           " that general nature.";
     }
   }
-  std::pair<int32,std::vector<int32> > cache_index(phone, pdfs);
+  std::pair<int32, std::vector<int32> > cache_index(phone, pdfs);
   if (cache != NULL) {
     HmmCacheType::iterator iter = cache->find(cache_index);
     if (iter != cache->end())

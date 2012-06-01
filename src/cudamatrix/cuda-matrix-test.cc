@@ -24,7 +24,7 @@
 using namespace kaldi;
 
 static void UnitTestSomething() {
-  CuMatrix<float> m(10,10);
+  CuMatrix<float> m(10, 10);
   m.Set(0.0);
 }
 

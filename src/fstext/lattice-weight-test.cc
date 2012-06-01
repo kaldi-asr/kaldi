@@ -32,11 +32,11 @@ typedef CompactLatticeWeightCommonDivisorTpl<LatticeWeight, int32>
 
 
 LatticeWeight RandomLatticeWeight() {
-  if(rand() % 3 == 0) {
+  if (rand() % 3 == 0) {
     return LatticeWeight::Zero();
-  } else if(rand() % 3 ==  0) {
+  } else if (rand() % 3 ==  0) {
     return LatticeWeight( 1, 2);  // sometimes return special values..
-  } else if(rand() % 3 ==  0) {
+  } else if (rand() % 3 ==  0) {
     return LatticeWeight( 2, 1);  // this tests more thoroughly certain properties...
   } else {
     return LatticeWeight( 100 * kaldi::RandGauss(), 100 * kaldi::RandGauss());
@@ -45,7 +45,7 @@ LatticeWeight RandomLatticeWeight() {
 
 CompactLatticeWeight RandomCompactLatticeWeight() {
   LatticeWeight w = RandomLatticeWeight();
-  if(w == LatticeWeight::Zero()) {
+  if (w == LatticeWeight::Zero()) {
     return CompactLatticeWeight(w, vector<int32>());
   } else {
     int32 len = rand() % 4;
@@ -84,7 +84,7 @@ void LatticeWeightTest() {
     LatticeWeight l5 = RandomLatticeWeight(), l6 = RandomLatticeWeight();
     {
       LatticeWeight wa = Times(Plus(l1, l2), Plus(l5, l6)),
-          wb =  Plus(Times(l1,l5), Plus(Times(l1,l6),
+          wb =  Plus(Times(l1, l5), Plus(Times(l1, l6),
                                         Plus(Times(l2, l5), Times(l2, l6))));
       if (!ApproxEqual(wa, wb)) {
         std::cout << "l1 = " << l1 << ", l2 = " << l2
@@ -97,7 +97,7 @@ void LatticeWeightTest() {
     }
     KALDI_ASSERT(l1.Member() && l2.Member() && l3.Member() && l4.Member()
                  && l5.Member() && l6.Member());
-    if(l2 != LatticeWeight::Zero()) 
+    if (l2 != LatticeWeight::Zero()) 
       KALDI_ASSERT(ApproxEqual(Divide(Times(l1, l2), l2), l1)); // (a*b) / b = a if b != 0
     KALDI_ASSERT(ApproxEqual(l1, l1.Quantize()));
 
@@ -137,11 +137,11 @@ void CompactLatticeWeightTest() {
     KALDI_ASSERT(Compare(l1, Plus(l1, l2)) != 1); // so do not have l1 > l1 + l2
     CompactLatticeWeight l5 = RandomCompactLatticeWeight(), l6 = RandomCompactLatticeWeight();
     KALDI_ASSERT(Times(Plus(l1, l2), Plus(l5, l6)) ==
-                 Plus(Times(l1, l5), Plus(Times(l1,l6),
+                 Plus(Times(l1, l5), Plus(Times(l1, l6),
                  Plus(Times(l2, l5), Times(l2, l6))))); // * distributes over +
     KALDI_ASSERT(l1.Member() && l2.Member() && l3.Member() && l4.Member()
                  && l5.Member() && l6.Member());
-    if(l2 != CompactLatticeWeight::Zero())  {
+    if (l2 != CompactLatticeWeight::Zero())  {
       KALDI_ASSERT(ApproxEqual(Divide(Times(l1, l2), l2, DIVIDE_RIGHT), l1)); // (a*b) / b = a if b != 0
       KALDI_ASSERT(ApproxEqual(Divide(Times(l2, l1), l2, DIVIDE_LEFT), l1)); // (a*b) / b = a if b != 0
     }
@@ -167,7 +167,7 @@ void CompactLatticeWeightTest() {
     std::cout << "l6 = " << l6 << '\n';
     l1 = divisor(l5, l6);
     std::cout << "div = " << l1 << '\n';
-    if(l1 != CompactLatticeWeight::Zero()) {
+    if (l1 != CompactLatticeWeight::Zero()) {
       l2 = Divide(l5, l1, DIVIDE_LEFT);
       l3 = Divide(l6, l1, DIVIDE_LEFT);
       std::cout << "l2 = " << l2 << '\n';

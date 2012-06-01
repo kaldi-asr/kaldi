@@ -35,7 +35,7 @@
 #define cuSafeCall(fun) \
 { \
   int ret; \
-  if((ret = (fun)) != 0) { \
+  if ((ret = (fun)) != 0) { \
     KALDI_ERR << "CUDA ERROR #" << ret << " " << cudaGetErrorString((cudaError_t)ret) << " '" << #fun << "'"; \
   } \
   cudaThreadSynchronize(); \

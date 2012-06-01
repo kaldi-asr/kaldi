@@ -14,7 +14,7 @@ namespace kaldi {
 CuDevice::CuDevice()
  : enabled_(false), verbose_(true) {
   int ret;
-  if((ret = cublasInit()) == 0) {
+  if ((ret = cublasInit()) == 0) {
     enabled_ = true;
   } else {
     KALDI_WARN << "CUDA will NOT be used!!! The cublasInit() returns: " << ret;
@@ -23,7 +23,7 @@ CuDevice::CuDevice()
 
 
 CuDevice::~CuDevice() {
-  if(enabled_) {
+  if (enabled_) {
     cuSafeCall(cublasShutdown());
   } else {
     KALDI_WARN << "CUDA was NOT used!";
@@ -31,8 +31,8 @@ CuDevice::~CuDevice() {
 }
 
 
-void CuDevice::AccuProfile(const std::string& key,double time) { 
-  if(profile_map_.find(key) == profile_map_.end()) {
+void CuDevice::AccuProfile(const std::string& key, double time) { 
+  if (profile_map_.find(key) == profile_map_.end()) {
     profile_map_[key] = 0.0;
   }
   profile_map_[key] += time;
@@ -40,7 +40,7 @@ void CuDevice::AccuProfile(const std::string& key,double time) {
 
 
 void CuDevice::PrintProfile() {
-  if(verbose_ && enabled_) { 
+  if (verbose_ && enabled_) { 
     std::ostringstream os;
     os << "-----\n[cudevice profile]\n";
     std::map<std::string, double>::iterator it;

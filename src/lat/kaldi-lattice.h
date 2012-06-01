@@ -60,7 +60,7 @@ class CompactLatticeHolder {
     return *t_;
   } 
 
-  void Clear() { if(t_) { delete t_; t_ = NULL; } }
+  void Clear() { if (t_) { delete t_; t_ = NULL; } }
 
   ~CompactLatticeHolder() { Clear(); }
 
@@ -85,7 +85,7 @@ class LatticeHolder {
     return *t_;
   } 
 
-  void Clear() { if(t_) { delete t_; t_ = NULL; } }
+  void Clear() { if (t_) { delete t_; t_ = NULL; } }
 
   ~LatticeHolder() { Clear(); }
 

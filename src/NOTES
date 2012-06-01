@@ -26,3 +26,5 @@ filename *-test that was printed).
 \endverbatim
 
 --
+Fixing commas with no spaces, and some other simple style violations.
+for x in */*.{h,cc}; do cp $x tmpf; cat tmpf | perl -ane 'if(!m/["'\'']/ && !m://: && !m/_\{/) { s/,(\S)/, $1/g; s/if\(/if (/; s/while\(/while (/; s/switch\(/switch (/; } print; ' > $x; done

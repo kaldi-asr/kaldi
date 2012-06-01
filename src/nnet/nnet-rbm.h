@@ -63,7 +63,7 @@ class RbmBase : public UpdatableComponent {
 class Rbm : public RbmBase {
  public:
   Rbm(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
-   : RbmBase(dim_in,dim_out,nnet)
+   : RbmBase(dim_in, dim_out, nnet)
   { } 
   ~Rbm()
   { }  
@@ -74,8 +74,8 @@ class Rbm : public RbmBase {
 
   void ReadData(std::istream& is, bool binary) {
     std::string vis_node_type, hid_node_type;
-    ReadToken(is,binary,&vis_node_type);
-    ReadToken(is,binary,&hid_node_type);
+    ReadToken(is, binary, &vis_node_type);
+    ReadToken(is, binary, &hid_node_type);
     
     if(vis_node_type == "BERN") {
       vis_type_ = RbmBase::BERNOULLI;
@@ -88,9 +88,9 @@ class Rbm : public RbmBase {
       hid_type_ = RbmBase::GAUSSIAN;
     }
 
-    vis_hid_.Read(is,binary);
-    vis_bias_.Read(is,binary);
-    hid_bias_.Read(is,binary);
+    vis_hid_.Read(is, binary);
+    vis_bias_.Read(is, binary);
+    hid_bias_.Read(is, binary);
 
     KALDI_ASSERT(vis_hid_.NumRows() == output_dim_);
     KALDI_ASSERT(vis_hid_.NumCols() == input_dim_);
@@ -109,21 +109,21 @@ class Rbm : public RbmBase {
       case GAUSSIAN  : WriteToken(os,binary,"GAUSS"); break;
       default : KALDI_ERR << "Unknown type " << hid_type_;
     }
-    vis_hid_.Write(os,binary);
-    vis_bias_.Write(os,binary);
-    hid_bias_.Write(os,binary);
+    vis_hid_.Write(os, binary);
+    vis_bias_.Write(os, binary);
+    hid_bias_.Write(os, binary);
   }
 
 
   //UpdatableComponent API
   void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     //precopy bias
-    out->AddScaledRow(1.0,hid_bias_,0.0);
+    out->AddScaledRow(1.0, hid_bias_, 0.0);
     //multiply by weights^t
-    out->AddMatMat(1.0,in,kNoTrans,vis_hid_,kTrans,1.0);
+    out->AddMatMat(1.0, in, kNoTrans, vis_hid_, kTrans, 1.0);
     //optionally apply sigmoid
-    if(hid_type_ == RbmBase::BERNOULLI) {
-      cu::Sigmoid(*out,out);
+    if (hid_type_ == RbmBase::BERNOULLI) {
+      cu::Sigmoid(*out, out);
     }
   }
 
@@ -140,21 +140,21 @@ class Rbm : public RbmBase {
   //RBM training API
   void Reconstruct(const CuMatrix<BaseFloat>& hid_state, CuMatrix<BaseFloat>* vis_probs) {
     //check the dim
-    if(output_dim_ != hid_state.NumCols()) {
+    if (output_dim_ != hid_state.NumCols()) {
       KALDI_ERR << "Nonmatching dims, component:" << output_dim_ << " data:" << hid_state.NumCols();
     }
     //optionally allocate buffer
-    if(input_dim_ != vis_probs->NumCols() || hid_state.NumRows() != vis_probs->NumRows()) {
+    if (input_dim_ != vis_probs->NumCols() || hid_state.NumRows() != vis_probs->NumRows()) {
       vis_probs->Resize(hid_state.NumRows(), input_dim_);
     }
 
     //precopy bias
-    vis_probs->AddScaledRow(1.0,vis_bias_,0.0);
+    vis_probs->AddScaledRow(1.0, vis_bias_, 0.0);
     //multiply by weights
-    vis_probs->AddMatMat(1.0,hid_state,kNoTrans,vis_hid_,kNoTrans,1.0);
+    vis_probs->AddMatMat(1.0, hid_state, kNoTrans, vis_hid_, kNoTrans, 1.0);
     //optionally apply sigmoid
-    if(vis_type_ == RbmBase::BERNOULLI) {
-      cu::Sigmoid(*vis_probs,vis_probs);
+    if (vis_type_ == RbmBase::BERNOULLI) {
+      cu::Sigmoid(*vis_probs, vis_probs);
     }
   }
   
@@ -178,27 +178,27 @@ class Rbm : public RbmBase {
     //
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
     //vis_hid_corr_.Gemm('T','N',-learn_rate_/N,neg_vis,neg_hid,momentum_);
-    vis_hid_corr_.AddMatMat(-learn_rate_/N,neg_vis,kTrans,neg_hid,kNoTrans,momentum_);
+    vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_vis, kTrans, neg_hid, kNoTrans, momentum_);
     //vis_hid_corr_.Gemm('T','N',+learn_rate_/N,pos_vis,pos_hid,1.0);
-    vis_hid_corr_.AddMatMat(+learn_rate_/N,pos_vis,kTrans,pos_hid,kNoTrans,1.0);
-    vis_hid_corr_.AddMat(-learn_rate_*l2_penalty_,vis_hid_,1.0);
-    vis_hid_.AddMat(1.0,vis_hid_corr_,1.0);
+    vis_hid_corr_.AddMatMat(+learn_rate_/N, pos_vis, kTrans, pos_hid, kNoTrans, 1.0);
+    vis_hid_corr_.AddMat(-learn_rate_*l2_penalty_, vis_hid_, 1.0);
+    vis_hid_.AddMat(1.0, vis_hid_corr_, 1.0);
 
     //  UPDATE visbias vector
     //
     //  visbiasinc = momentum*visbiasinc + (epsilonvb/numcases)*(posvisact-negvisact);
     //
-    vis_bias_corr_.AddColSum(-learn_rate_/N,neg_vis,momentum_);
-    vis_bias_corr_.AddColSum(+learn_rate_/N,pos_vis,1.0);
-    vis_bias_.AddVec(1.0,vis_bias_corr_,1.0);
+    vis_bias_corr_.AddColSum(-learn_rate_/N, neg_vis, momentum_);
+    vis_bias_corr_.AddColSum(+learn_rate_/N, pos_vis, 1.0);
+    vis_bias_.AddVec(1.0, vis_bias_corr_, 1.0);
     
     //  UPDATE hidbias vector
     //
     // hidbiasinc = momentum*hidbiasinc + (epsilonhb/numcases)*(poshidact-neghidact);
     //
-    hid_bias_corr_.AddColSum(-learn_rate_/N,neg_hid,momentum_);
-    hid_bias_corr_.AddColSum(+learn_rate_/N,pos_hid,1.0);
-    hid_bias_.AddVec(1.0,hid_bias_corr_,1.0);
+    hid_bias_corr_.AddColSum(-learn_rate_/N, neg_hid, momentum_);
+    hid_bias_corr_.AddColSum(+learn_rate_/N, pos_hid, 1.0);
+    hid_bias_.AddVec(1.0, hid_bias_corr_, 1.0);
   }
 
 

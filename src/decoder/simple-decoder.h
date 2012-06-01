@@ -187,8 +187,8 @@ class SimpleDecoder {
         if (arc.ilabel != 0) {  // propagate..
           arc.weight = Times(arc.weight,
                              Weight(-decodable->LogLikelihood(frame, arc.ilabel)));
-          if(arc.weight.Value() > cutoff) continue;
-          if(arc.weight.Value() + beam_  < cutoff)
+          if (arc.weight.Value() > cutoff) continue;
+          if (arc.weight.Value() + beam_  < cutoff)
             cutoff = arc.weight.Value() + beam_;
           Token *new_tok = new Token(arc, tok);
           unordered_map<StateId, Token*>::iterator find_iter

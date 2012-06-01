@@ -46,7 +46,7 @@ namespace fst {
 template<class Weight, class Int>
 void ConvertLattice(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
-    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > *ofst,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > *ofst,
     bool invert = true);
 
 /**
@@ -60,7 +60,7 @@ void ConvertLattice(
    */
 template<class Weight, class Int>
 void ConvertLattice(
-    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight,Int> > > &ifst,
+    const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<Weight, Int> > > &ifst,
     MutableFst<ArcTpl<Weight> > *ofst,
     bool invert = true);
 

@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
 
-    int32 bunchsize=512,cachesize=32768;
+    int32 bunchsize=512, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 
     Cache cache;
     cachesize = (cachesize/bunchsize)*bunchsize; //ensure divisibility
-    cache.Init(cachesize,bunchsize);
+    cache.Init(cachesize, bunchsize);
 
     CuRand<BaseFloat> cu_rand;
     Mse mse;
@@ -108,9 +108,9 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "RBM TRAINING STARTED";
 
     int32 num_done = 0, num_cache = 0;
-    while(1) {
+    while (1) {
       //fill the cache
-      while(!cache.Full() && !feature_reader.Done()) {
+      while (!cache.Full() && !feature_reader.Done()) {
         //get feature matrix
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         //resize the dummy vector to fill Cache:: with
@@ -118,9 +118,9 @@ int main(int argc, char *argv[]) {
         //push features to GPU
         feats.CopyFromMat(mat);
         //possibly apply transform
-        rbm_transf.Feedforward(feats,&feats_transf);
+        rbm_transf.Feedforward(feats, &feats_transf);
         //add to cache
-        cache.AddData(feats_transf,dummy_cache_vec);
+        cache.AddData(feats_transf, dummy_cache_vec);
         num_done++;
         //next feature file... 
         Timer t_features;
@@ -135,36 +135,36 @@ int main(int argc, char *argv[]) {
                 << " segments: " << num_done
                 << " frames: " << tot_t << "\n";
       //train with the cache
-      while(!cache.Empty()) {
+      while (!cache.Empty()) {
         //get block of feature/target pairs
-        cache.GetBunch(&pos_vis,&dummy_cache_vec);
+        cache.GetBunch(&pos_vis, &dummy_cache_vec);
        
         //TRAIN with CD1
         //forward pass
-        rbm.Propagate(pos_vis,&pos_hid);
+        rbm.Propagate(pos_vis, &pos_hid);
         //alter the hidden values, so we can generate negative example
-        if(rbm.HidType() == Rbm::BERNOULLI) {
-          cu_rand.BinarizeProbs(pos_hid,&neg_hid);
+        if (rbm.HidType() == Rbm::BERNOULLI) {
+          cu_rand.BinarizeProbs(pos_hid, &neg_hid);
         } else {
           //assume Rbm::GAUSSIAN
           neg_hid.CopyFromMat(pos_hid);
           cu_rand.AddGaussNoise(&neg_hid);
         }
         //reconstruct pass
-        rbm.Reconstruct(neg_hid,&pos_vis);
+        rbm.Reconstruct(neg_hid, &pos_vis);
         //update step
-        rbm.RbmUpdate(pos_vis,pos_hid,neg_vis,neg_hid);
+        rbm.RbmUpdate(pos_vis, pos_hid, neg_vis, neg_hid);
         //evaluate mean square error
-        mse.Eval(neg_vis,pos_vis,&dummy_mse_mat);
+        mse.Eval(neg_vis, pos_vis, &dummy_mse_mat);
 
         tot_t += pos_vis.NumRows();
       }
 
       //stop training when no more data
-      if(feature_reader.Done()) break;
+      if (feature_reader.Done()) break;
     }
 
-    nnet.Write(target_model_filename,binary);
+    nnet.Write(target_model_filename, binary);
     
     std::cout << "\n" << std::flush;
 

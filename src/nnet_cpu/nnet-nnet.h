@@ -120,7 +120,7 @@ inline Nnet::~Nnet() {
 
    
 inline MatrixIndexT Nnet::InputDim() const { 
-  if(LayerCount() > 0) {
+  if (LayerCount() > 0) {
    return nnet_.front()->InputDim(); 
   } else {
    KALDI_ERR << "No layers in MLP"; 
@@ -129,7 +129,7 @@ inline MatrixIndexT Nnet::InputDim() const {
 
 
 inline MatrixIndexT Nnet::OutputDim() const { 
-  if(LayerCount() > 0) {
+  if (LayerCount() > 0) {
     return nnet_.back()->OutputDim(); 
   } else {
     KALDI_ERR << "No layers in MLP"; 
@@ -139,7 +139,7 @@ inline MatrixIndexT Nnet::OutputDim() const {
 
 inline int32 Nnet::IndexOfLayer(const Component& comp) const {
   for(int32 i=0; i<LayerCount(); i++) {
-    if(&comp == nnet_[i]) return i;
+    if (&comp == nnet_[i]) return i;
   }
   KALDI_ERR << "Component:" << &comp 
             << " type:" << comp.GetType() 
@@ -150,29 +150,29 @@ inline int32 Nnet::IndexOfLayer(const Component& comp) const {
   
 inline void Nnet::Read(const std::string& file) {
   bool binary;
-  Input in(file,&binary);
-  Read(in.Stream(),binary);
+  Input in(file, &binary);
+  Read(in.Stream(), binary);
   in.Close();
 }
 
 
 inline void Nnet::Write(const std::string& file, bool binary) {
   Output out(file, binary, true);
-  Write(out.Stream(),binary);
+  Write(out.Stream(), binary);
   out.Close();
 }
 
 
 inline void Nnet::Write(std::ostream& out, bool binary) {
   for(int32 i=0; i<LayerCount(); i++) {
-    nnet_[i]->Write(out,binary);
+    nnet_[i]->Write(out, binary);
   }
 }
 
     
 inline void Nnet::Momentum(BaseFloat mmt) {
   for(int32 i=0; i<LayerCount(); i++) {
-    if(nnet_[i]->IsUpdatable()) {
+    if (nnet_[i]->IsUpdatable()) {
       dynamic_cast<UpdatableComponent*>(nnet_[i])->Momentum(mmt);
     }
   }
@@ -181,7 +181,7 @@ inline void Nnet::Momentum(BaseFloat mmt) {
 
 inline void Nnet::L2Penalty(BaseFloat l2) {
   for(int32 i=0; i<LayerCount(); i++) {
-    if(nnet_[i]->IsUpdatable()) {
+    if (nnet_[i]->IsUpdatable()) {
       dynamic_cast<UpdatableComponent*>(nnet_[i])->L2Penalty(l2);
     }
   }
@@ -190,7 +190,7 @@ inline void Nnet::L2Penalty(BaseFloat l2) {
 
 inline void Nnet::L1Penalty(BaseFloat l1) {
   for(int32 i=0; i<LayerCount(); i++) {
-    if(nnet_[i]->IsUpdatable()) {
+    if (nnet_[i]->IsUpdatable()) {
       dynamic_cast<UpdatableComponent*>(nnet_[i])->L1Penalty(l1);
     }
   }

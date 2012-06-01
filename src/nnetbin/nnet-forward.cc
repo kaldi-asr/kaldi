@@ -86,12 +86,12 @@ int main(int argc, char *argv[]) {
     if(class_frame_counts != "") {
       Input in;
       in.OpenTextMode(class_frame_counts);
-      tmp_priors.Read(in.Stream(),false);
+      tmp_priors.Read(in.Stream(), false);
       in.Close();
       
       BaseFloat sum = tmp_priors.Sum();
       tmp_priors.Scale(1.0/sum);
-      if(apply_log || no_softmax) {
+      if (apply_log || no_softmax) {
         tmp_priors.ApplyLog();
         tmp_priors.Scale(-prior_scale);
       } else {
@@ -113,18 +113,18 @@ int main(int argc, char *argv[]) {
       //push it to gpu
       feats.CopyFromMat(mat);
       //fwd-pass
-      nnet_transf.Feedforward(feats,&feats_transf);
-      nnet.Feedforward(feats_transf,&nnet_out);
+      nnet_transf.Feedforward(feats, &feats_transf);
+      nnet.Feedforward(feats_transf, &nnet_out);
       
       //convert posteriors to log-posteriors
-      if(apply_log) {
+      if (apply_log) {
         nnet_out.ApplyLog();
       }
      
       //divide posteriors by priors to get quasi-likelihoods
       if(class_frame_counts != "") {
-        if(apply_log || no_softmax) {
-          nnet_out.AddScaledRow(1.0,priors,1.0);
+        if (apply_log || no_softmax) {
+          nnet_out.AddScaledRow(1.0, priors, 1.0);
         } else {
           nnet_out.MulColsVec(priors);
         }
@@ -132,10 +132,10 @@ int main(int argc, char *argv[]) {
       
       //write
       nnet_out.CopyToMat(&nnet_out_host);
-      feature_writer.Write(feature_reader.Key(),nnet_out_host);
+      feature_writer.Write(feature_reader.Key(), nnet_out_host);
 
       //progress log
-      if(num_done % 1000 == 0) {
+      if (num_done % 1000 == 0) {
         if(!silent) KALDI_LOG << num_done << ", " << std::flush;
       }
       num_done++;
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     if(!silent) KALDI_LOG << "Done " << num_done << " files";
 
 #if HAVE_CUDA==1
-    if(!silent) CuDevice::Instantiate().PrintProfile();
+    if (!silent) CuDevice::Instantiate().PrintProfile();
 #endif
 
     return ((num_done>0)?0:1);

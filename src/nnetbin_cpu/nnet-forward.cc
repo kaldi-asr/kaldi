@@ -76,12 +76,12 @@ int main(int argc, char *argv[]) {
     if(class_frame_counts != "") {
       Input in;
       in.OpenTextMode(class_frame_counts);
-      priors.Read(in.Stream(),false);
+      priors.Read(in.Stream(), false);
       in.Close();
       
       BaseFloat sum = priors.Sum();
       priors.Scale(1.0/sum);
-      if(apply_log) {
+      if (apply_log) {
         priors.ApplyLog();
         priors.Scale(-1.0);
       } else {
@@ -97,19 +97,19 @@ int main(int argc, char *argv[]) {
       //read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       //fwd-pass
-      nnet_transf.Feedforward(mat,&feats_transf);
-      nnet.Feedforward(feats_transf,&nnet_out);
+      nnet_transf.Feedforward(mat, &feats_transf);
+      nnet.Feedforward(feats_transf, &nnet_out);
       
       //convert posteriors to log-posteriors
-      if(apply_log) {
+      if (apply_log) {
         nnet_out.ApplyLog();
       }
      
       //divide posteriors by priors to get quasi-likelihoods
       if(class_frame_counts != "") {
-        if(apply_log) {
+        if (apply_log) {
           for(int32 r=0; r<nnet_out.NumRows(); r++) {
-            nnet_out.Row(r).AddVec(1.0,priors);
+            nnet_out.Row(r).AddVec(1.0, priors);
           } 
         } else {
           nnet_out.MulColsVec(priors);
@@ -117,10 +117,10 @@ int main(int argc, char *argv[]) {
       }
  
       //write
-      feature_writer.Write(feature_reader.Key(),nnet_out);
+      feature_writer.Write(feature_reader.Key(), nnet_out);
 
       //progress log
-      if(num_done % 1000 == 0) {
+      if (num_done % 1000 == 0) {
         KALDI_LOG << num_done << ", " << std::flush;
       }
       num_done++;

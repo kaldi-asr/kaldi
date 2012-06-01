@@ -93,7 +93,7 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
 
   // Trim resulting FST.
   Connect(fst);
-  if(opts.acyclic)
+  if (opts.acyclic)
     assert(fst->Properties(kAcyclic, true) & kAcyclic);
   if (fst->Start() == kNoStateId && !opts.allow_empty) {
     goto start;
@@ -146,7 +146,7 @@ template<class Arc> VectorFst<Arc>* RandPairFst(RandFstOptions opts = RandFstOpt
 
   // Trim resulting FST.
   Connect(fst);
-  if(opts.acyclic)
+  if (opts.acyclic)
     assert(fst->Properties(kAcyclic, true) & kAcyclic);
   if (fst->Start() == kNoStateId && !opts.allow_empty) {
     goto start;
