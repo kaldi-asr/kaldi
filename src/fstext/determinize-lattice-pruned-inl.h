@@ -633,8 +633,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
          iter != subset->end();
          ++iter) queue.push_back(*iter);
     bool replaced_elems = false; // relates to an optimization, see below.
-    int counter = 0; // stops infinite loops here for non-lattice-determinizable input;
-    // useful in testing.
+    int counter = 0; // stops infinite loops here for non-lattice-determinizable input
+    // (e.g. input with negative-cost epsilon loops); useful in testing.
     while (queue.size() != 0) {
       Element elem = queue.front();
       queue.pop_front();

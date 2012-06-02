@@ -96,7 +96,7 @@ template<class C> void RunMultiThreaded(const C &c_in) {
     for (int32 thread = 0; thread < g_num_threads; thread++)
       if (pthread_join(threads[thread], NULL))
         KALDI_ERR << "Error rejoining thread.";
-    delete threads;
+    delete [] threads;
   }
 }
 
