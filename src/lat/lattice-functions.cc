@@ -38,7 +38,7 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
     int32 cur_time = (*times)[state];
     for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
-      const LatticeArc& arc = aiter.Value();
+      const LatticeArc &arc = aiter.Value();
 
       if (arc.ilabel != 0) {  // Non-epsilon input label on arc
         // next time instance
@@ -73,7 +73,7 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat, vector<int32> *times) 
     int32 cur_time = (*times)[state];
     for (fst::ArcIterator<CompactLattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
-      const CompactLatticeArc& arc = aiter.Value();
+      const CompactLatticeArc &arc = aiter.Value();
       int32 arc_len = static_cast<int32>(arc.weight.String().size());
       if ((*times)[arc.nextstate] == -1)
         (*times)[arc.nextstate] = cur_time + arc_len;
@@ -188,7 +188,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
     int32 cur_time = state_times[state];
     for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
-      const LatticeArc& arc = aiter.Value();
+      const LatticeArc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // Non-epsilon arc
         int32 phone = trans.TransitionIdToPhone(arc.ilabel);
         if (!std::binary_search(silence_phones.begin(),
@@ -291,7 +291,7 @@ int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans
     int32 cur_time = state_times_hyp[state];
     for (fst::ArcIterator<Lattice> aiter(hyp, state); !aiter.Done();
         aiter.Next()) {
-      const LatticeArc& arc = aiter.Value();
+      const LatticeArc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // Non-epsilon arc
         int32 phone = trans.TransitionIdToPhone(arc.ilabel);
         (*arc_accs)[cur_time][phone] =
@@ -429,7 +429,7 @@ void ForwardNode(const Lattice &lat, int32 state,
                         vector<double> *state_alphas) {
   for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
       aiter.Next()) {
-    const LatticeArc& arc = aiter.Value();
+    const LatticeArc &arc = aiter.Value();
     double graph_score = arc.weight.Value1(),
         am_score = arc.weight.Value2(),
         arc_loglike = (*state_alphas)[state] - am_score - graph_score;
@@ -452,7 +452,7 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
     if ((*st_it) < state) {
       for (fst::ArcIterator<Lattice> aiter(lat, (*st_it)); !aiter.Done();
             aiter.Next()) {
-        const LatticeArc& arc = aiter.Value();
+        const LatticeArc &arc = aiter.Value();
         if (arc.nextstate == state) {
           KALDI_ASSERT(arc.ilabel == 0);
           double arc_loglike = (*state_betas)[state] - arc.weight.Value1()
@@ -472,7 +472,7 @@ void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
       st_it != active_states[prev_time].end(); ++st_it) {
     for (fst::ArcIterator<Lattice> aiter(lat, (*st_it)); !aiter.Done();
         aiter.Next()) {
-      const LatticeArc& arc = aiter.Value();
+      const LatticeArc &arc = aiter.Value();
       if (arc.nextstate == state) {
         int32 key = arc.ilabel;
         KALDI_ASSERT(key != 0);
@@ -501,7 +501,7 @@ void ForwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
                     vector<double> *state_alphas_mpe) {
   for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
       aiter.Next()) {
-    const LatticeArc& arc = aiter.Value();
+    const LatticeArc &arc = aiter.Value();
     double graph_score = arc.weight.Value1(),
         am_score = arc.weight.Value2(),
         arc_loglike = am_score + graph_score;
@@ -539,7 +539,7 @@ void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
     if ((*st_it) < state) {
       for (fst::ArcIterator<Lattice> aiter(lat, (*st_it)); !aiter.Done();
             aiter.Next()) {
-        const LatticeArc& arc = aiter.Value();
+        const LatticeArc &arc = aiter.Value();
         if (arc.nextstate == state) {
           KALDI_ASSERT(arc.ilabel == 0);
           double arc_loglike = arc.weight.Value1() + arc.weight.Value2();
@@ -559,7 +559,7 @@ void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
       st_it != active_states[prev_time].end(); ++st_it) {
     for (fst::ArcIterator<Lattice> aiter(lat, (*st_it)); !aiter.Done();
         aiter.Next()) {
-      const LatticeArc& arc = aiter.Value();
+      const LatticeArc &arc = aiter.Value();
       if (arc.nextstate == state) {
         int32 key = arc.ilabel;
         KALDI_ASSERT(key != 0);

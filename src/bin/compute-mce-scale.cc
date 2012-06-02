@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
               << (tot_sigmoid/num_scaled) << " over "
               << num_scaled << " utterance.  [Note: should go down]";
     return (num_scaled != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

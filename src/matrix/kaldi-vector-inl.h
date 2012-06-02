@@ -24,57 +24,57 @@
 namespace kaldi {
 
 template<typename Real>
-std::ostream & operator << (std::ostream& os, const VectorBase<Real>& rv) {
+std::ostream & operator << (std::ostream &os, const VectorBase<Real> &rv) {
   rv.Write(os, false);
   return os;
 }
 
 template<typename Real>
-std::istream &operator >> (std::istream& is, VectorBase<Real>& rv) {
+std::istream &operator >> (std::istream &is, VectorBase<Real> &rv) {
   rv.Read(is, false);
   return is;
 }
 
 template<typename Real>
-std::istream &operator >> (std::istream& is, Vector<Real>& rv) {
+std::istream &operator >> (std::istream &is, Vector<Real> &rv) {
   rv.Read(is, false);
   return is;
 }
 
 template<>
-float VecVec<>(const VectorBase<float>& ra, const VectorBase<float>& rb);
+float VecVec<>(const VectorBase<float> &ra, const VectorBase<float> &rb);
 
 template<>
-double VecVec<>(const VectorBase<double>& ra, const VectorBase<double>& rb);
+double VecVec<>(const VectorBase<double> &ra, const VectorBase<double> &rb);
 
 template<>
 template<>
-void VectorBase<float>::AddVec(const float alpha, const VectorBase<float>& rv);
+void VectorBase<float>::AddVec(const float alpha, const VectorBase<float> &rv);
 
 template<>
 template<>
 void VectorBase<double>::AddVec<double>(const double alpha,
-                                        const VectorBase<double>& rv);
+                                        const VectorBase<double> &rv);
 
 template<>
 void VectorBase<float>::AddMatVec(const float alpha, const MatrixBase<float>& M,
                                   MatrixTransposeType trans,
-                                  const VectorBase<float>& v, const float beta);
+                                  const VectorBase<float> &v, const float beta);
 
 template<>
 void VectorBase<double>::AddMatVec(const double alpha,
                                    const MatrixBase<double>& M,
                                    MatrixTransposeType trans,
-                                   const VectorBase<double>& v,
+                                   const VectorBase<double> &v,
                                    const double beta);
 
 template<>
 void VectorBase<float>::AddSpVec(const float alpha, const SpMatrix<float>& M,
-                                 const VectorBase<float>& v, const float beta);
+                                 const VectorBase<float> &v, const float beta);
 
 template<>
 void VectorBase<double>::AddSpVec(const double alpha, const SpMatrix<double>& M,
-                                  const VectorBase<double>& v,
+                                  const VectorBase<double> &v,
                                   const double beta);
 
 template<>

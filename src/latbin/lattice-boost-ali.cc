@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << n_done << " lattices, missing alignments for "
               << n_no_ali << ", other errors on " << n_err;
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

@@ -26,14 +26,14 @@
 namespace kaldi {
 
 template<class Real>
-void FullGmm::SetWeights(const Vector<Real>& w) {
+void FullGmm::SetWeights(const Vector<Real> &w) {
   KALDI_ASSERT(weights_.Dim() == w.Dim());
   weights_.CopyFromVec(w);
   valid_gconsts_ = false;
 }
 
 template<class Real>
-void FullGmm::SetMeans(const Matrix<Real>& m) {
+void FullGmm::SetMeans(const Matrix<Real> &m) {
   KALDI_ASSERT(means_invcovars_.NumRows() == m.NumRows()
     && means_invcovars_.NumCols() == m.NumCols());
   size_t num_comp = NumGauss();
@@ -46,7 +46,7 @@ void FullGmm::SetMeans(const Matrix<Real>& m) {
 
 template<class Real>
 void FullGmm::SetInvCovarsAndMeans(
-    const std::vector<SpMatrix<Real> >& invcovars, const Matrix<Real>& means) {
+    const std::vector<SpMatrix<Real> > &invcovars, const Matrix<Real> &means) {
   KALDI_ASSERT(means_invcovars_.NumRows() == means.NumRows()
     && means_invcovars_.NumCols() == means.NumCols()
     && inv_covars_.size() == invcovars.size());
@@ -63,8 +63,8 @@ void FullGmm::SetInvCovarsAndMeans(
 
 template<class Real>
 void FullGmm::SetInvCovarsAndMeansInvCovars(
-    const std::vector<SpMatrix<Real> >& invcovars,
-    const Matrix<Real>& means_invcovars) {
+    const std::vector<SpMatrix<Real> > &invcovars,
+    const Matrix<Real> &means_invcovars) {
   KALDI_ASSERT(means_invcovars_.NumRows() == means_invcovars.NumRows()
                && means_invcovars_.NumCols() == means_invcovars.NumCols()
                && inv_covars_.size() == invcovars.size());
@@ -78,7 +78,7 @@ void FullGmm::SetInvCovarsAndMeansInvCovars(
 }
 
 template<class Real>
-void FullGmm::SetInvCovars(const std::vector<SpMatrix<Real> >& v) {
+void FullGmm::SetInvCovars(const std::vector<SpMatrix<Real> > &v) {
   KALDI_ASSERT(inv_covars_.size() == v.size());
   size_t num_comp = NumGauss();
 
@@ -127,7 +127,7 @@ void FullGmm::GetMeans(Matrix<Real> *M) const {
 }
 
 template<class Real>
-void FullGmm::GetCovarsAndMeans(std::vector< SpMatrix<Real> >* covars,
+void FullGmm::GetCovarsAndMeans(std::vector< SpMatrix<Real> > *covars,
                                 Matrix<Real> *means) const {
   assert(covars != NULL && means != NULL);
   size_t dim = Dim();

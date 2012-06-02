@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Converted " << n_done << " linear lattices to ctm format; "
               << n_err  << " had errors.";
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

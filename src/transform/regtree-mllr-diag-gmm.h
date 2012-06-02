@@ -63,14 +63,14 @@ class RegtreeMllrDiagGmm {
 
   /// Get all the transformed means for a given pdf.
   void GetTransformedMeans(const RegressionTree &regtree, const AmDiagGmm &am,
-                           int32 pdf_index, MatrixBase<BaseFloat>* out) const;
+                           int32 pdf_index, MatrixBase<BaseFloat> *out) const;
 
   void Write(std::ostream &out_stream, bool binary) const;
   void Read(std::istream &in_stream, bool binary);
 
   /// Mutators
   void SetParameters(const MatrixBase<BaseFloat> &mat, int32 regclass);
-  void set_bclass2xforms(const std::vector<int32>& in) { bclass2xforms_ = in; }
+  void set_bclass2xforms(const std::vector<int32> &in) { bclass2xforms_ = in; }
 
   /// Accessors
   const std::vector< Matrix<BaseFloat> > xform_matrices() const {
@@ -110,13 +110,13 @@ class RegtreeMllrDiagGmmAccs {
   /// This does not work with multiple feature transforms.
   BaseFloat AccumulateForGmm(const RegressionTree &regtree,
                              const AmDiagGmm &am,
-                             const VectorBase<BaseFloat>& data,
+                             const VectorBase<BaseFloat> &data,
                              int32 pdf_index, BaseFloat weight);
 
   /// Accumulate stats for a single Gaussian component in the model.
   void AccumulateForGaussian(const RegressionTree &regtree,
                              const AmDiagGmm &am,
-                             const VectorBase<BaseFloat>& data,
+                             const VectorBase<BaseFloat> &data,
                              int32 pdf_index, int32 gauss_index,
                              BaseFloat weight);
 
@@ -130,7 +130,7 @@ class RegtreeMllrDiagGmmAccs {
   /// Accessors
   int32 Dim() const { return dim_; }
   int32 NumBaseClasses() const { return num_baseclasses_; }
-  const std::vector<AffineXformStats*>& baseclass_stats() const {
+  const std::vector<AffineXformStats*> &baseclass_stats() const {
     return baseclass_stats_;
   }
 

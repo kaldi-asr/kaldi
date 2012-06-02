@@ -38,8 +38,8 @@ namespace kaldi {
 #define MAX_SENTENCE_LENGTH 1000
 
 /// @brief Recursively prints all complete paths starting at s and their score.
-static LmWeight PrintCompletePath(fst::SymbolTable* pst,
-                                  fst::StdVectorFst* pfst,
+static LmWeight PrintCompletePath(fst::SymbolTable *pst,
+                                  fst::StdVectorFst *pfst,
                                   fst::StdArc::StateId s,
                                   LmWeight score) {
   fst::ArcIterator<fst::StdVectorFst> ai(*pfst, s);
@@ -70,8 +70,8 @@ static LmWeight PrintCompletePath(fst::SymbolTable* pst,
 }
 
 /// @brief Recursively prints all complete paths starting from initial state.
-static LmWeight PrintCompletePaths(fst::SymbolTable* pst,
-                                   fst::StdVectorFst* pfst) {
+static LmWeight PrintCompletePaths(fst::SymbolTable *pst,
+                                   fst::StdVectorFst *pfst) {
   KALDI_ASSERT(pst);
   KALDI_ASSERT(pfst);
   KALDI_ASSERT(pfst->Start() >=0);
@@ -82,9 +82,9 @@ static LmWeight PrintCompletePaths(fst::SymbolTable* pst,
 /// @brief Creates an FST that generates any sequence of symbols
 /// taken from given symbol table.
 /// This FST is then associated with given symbol table.
-static fst::StdVectorFst* CreateGenFst(fst::SymbolTable* pst) {
+static fst::StdVectorFst* CreateGenFst(fst::SymbolTable *pst) {
   fst::StdArc::StateId initId, midId, finalId;
-  fst::StdVectorFst* genFst = new fst::StdVectorFst;
+  fst::StdVectorFst *genFst = new fst::StdVectorFst;
   pst->AddSymbol(epsilon);                         // added if not there
   int64 boslab = pst->AddSymbol(startOfSentence);  // added if not there
   int64 eoslab = pst->AddSymbol(endOfSentence);    // added if not there
@@ -110,7 +110,7 @@ static fst::StdVectorFst* CreateGenFst(fst::SymbolTable* pst) {
 }
 
 /// @brief Randomly generates ntests paths with uniform distribution.
-static fst::StdVectorFst* CreateRandPathFst(int n, fst::StdVectorFst* genFst) {
+static fst::StdVectorFst* CreateRandPathFst(int n, fst::StdVectorFst *genFst) {
   typedef fst::UniformArcSelector<fst::StdArc> UniformSelector;
 
   int nTrials = 50;
@@ -119,7 +119,7 @@ static fst::StdVectorFst* CreateRandPathFst(int n, fst::StdVectorFst* genFst) {
                                              MAX_SENTENCE_LENGTH, n);
 
   for (int i = 0; i < nTrials; i++) {
-    fst::StdVectorFst* tmpFst = new fst::StdVectorFst;
+    fst::StdVectorFst *tmpFst = new fst::StdVectorFst;
     RandGen(*genFst, tmpFst, opts);
     if (tmpFst->Properties(fst::kCoAccessible, true)) {
       // std::cout << "Got valid random path after " << i << " tries" << '\n';
@@ -135,8 +135,8 @@ static fst::StdVectorFst* CreateRandPathFst(int n, fst::StdVectorFst* genFst) {
 }
 
 /// @brief Tests if all paths generated from genFst are included in testFst.
-static bool coverageTests(fst::StdVectorFst* genFst,
-                          fst::StdVectorFst* testFst,
+static bool coverageTests(fst::StdVectorFst *genFst,
+                          fst::StdVectorFst *testFst,
                           int ntests) {
   bool success = true;
 #ifdef KALDI_PARANOID
@@ -152,7 +152,7 @@ static bool coverageTests(fst::StdVectorFst* genFst,
   if (!pathFst) return false;
 
   // compose paths with language model fst
-  fst::StdVectorFst* outFst = new fst::StdVectorFst;
+  fst::StdVectorFst *outFst = new fst::StdVectorFst;
   // std::cout << "Path FST " << '\n';
   // printFirstCompletePath(pst, pathFst, pathFst->Start());
 
@@ -184,7 +184,7 @@ bool TestLmTableReadWrite(int nTests,
 
   // first create an FST that generates
   // any sequence of symbols taken from symbol table
-  fst::StdVectorFst* genFst = CreateGenFst(lm.GetFst()->MutableInputSymbols());
+  fst::StdVectorFst *genFst = CreateGenFst(lm.GetFst()->MutableInputSymbols());
 
   // see if path generated in this FST are covered by the LM FST
   std::cout << "For any sequence of symbols found in symbol table:" << '\n';
@@ -272,7 +272,7 @@ bool TestLmTableEvalScore(const string &inpfile,
   composedFst.Write("composed.fst");
 
   // find best path score
-  fst::StdVectorFst* bestFst = new fst::StdVectorFst;
+  fst::StdVectorFst *bestFst = new fst::StdVectorFst;
   fst::ShortestPath(composedFst, bestFst, 1);
 
   std::cout << "Best path has " << bestFst->NumStates() << " states" << '\n';

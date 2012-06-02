@@ -103,10 +103,10 @@ void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs) ;
 // pAC - autocorrelation coefficients [n + 1]
 // pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
 //       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
-BaseFloat Durbin (int n, const BaseFloat* pAC, BaseFloat* pLP, BaseFloat* pTmp);
+BaseFloat Durbin (int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp);
 
 
-void Lpc2Cepstrum (int n, const BaseFloat* pLPC, BaseFloat* pCepst);
+void Lpc2Cepstrum (int n, const BaseFloat *pLPC, BaseFloat *pCepst);
 
 /// @} End of "addtogroup feat"
 } // namespace kaldi

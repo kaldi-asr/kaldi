@@ -40,11 +40,11 @@ class CacheTgtMat {
   void Init(int32 cachesize, int32 bunchsize);
 
   /// Add data to cache
-  void AddData(const CuMatrix<BaseFloat>& features, const CuMatrix<BaseFloat>& targets);
+  void AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<BaseFloat> &targets);
   /// Randomizes the cache
   void Randomize();
   /// Get the bunch of training data from cache
-  void GetBunch(CuMatrix<BaseFloat>* features, CuMatrix<BaseFloat>* targets);
+  void GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *targets);
 
 
   /// Returns true if the cache was completely filled

@@ -540,7 +540,7 @@ void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
       fmllr_bases[b].CopyRowsFromVec(U.Row(b));
     }
     KALDI_LOG << "Estimated " << num_fmllr_bases << " fMLLR basis matrices.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     KALDI_WARN << "Not estimating FMLLR bases because of a thrown exception:\n"
                << e.what();
     fmllr_bases.resize(0);

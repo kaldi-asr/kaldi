@@ -91,7 +91,7 @@ class VectorBase {
   }
 
   /// Copy data from another vector (must match own size).
-  void CopyFromVec(const VectorBase<Real>& v);
+  void CopyFromVec(const VectorBase<Real> &v);
 
   /// Copy data from a SpMatrix or TpMatrix (must match own size).
   template<typename OtherReal>
@@ -99,7 +99,7 @@ class VectorBase {
   
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
-  void CopyFromVec(const VectorBase<OtherReal>& v);
+  void CopyFromVec(const VectorBase<OtherReal> &v);
 
   /// Apply natural log to all elements.  Throw if any element of
   /// the vector is negative (but doesn't complain about zero; the
@@ -107,7 +107,7 @@ class VectorBase {
   void ApplyLog();
 
   /// Apply natural log to another vector and put result in *this.
-  void ApplyLogAndCopy(const VectorBase<Real>& v);
+  void ApplyLogAndCopy(const VectorBase<Real> &v);
 
   /// Apply exponential to each value in vector.
   void ApplyExp();
@@ -134,45 +134,45 @@ class VectorBase {
   /// Add vector : *this = *this + alpha * rv (with casting between floats and
   /// doubles)
   template<class OtherReal>
-  void AddVec(const Real alpha, const VectorBase<OtherReal>& v);
+  void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// Add vector : *this = *this + alpha * rv^2  [element-wise squaring].
-  void AddVec2(const Real alpha, const VectorBase<Real>& v);
+  void AddVec2(const Real alpha, const VectorBase<Real> &v);
 
   /// Add vector : *this = *this + alpha * rv^2  [element-wise squaring],
   /// with casting between floats and doubles.
   template<class OtherReal>
-  void AddVec2(const Real alpha, const VectorBase<OtherReal>& v);
+  void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// Add matrix times vector : this <-- beta*this + alpha*M*v.
   /// Calls BLAS GEMV.
   void AddMatVec(const Real alpha, const MatrixBase<Real>&M,
-                 const MatrixTransposeType trans,  const VectorBase<Real>& v,
+                 const MatrixTransposeType trans,  const VectorBase<Real> &v,
                  const Real beta = 0.0);
 
   /// Add symmetric positive definite matrix times vector:
   ///  this <-- beta*this + alpha*M*v.   Calls BLAS SPMV.
   void AddSpVec(const Real alpha, const SpMatrix<Real>&M,
-                const VectorBase<Real>& v, const Real beta = 0.0);
+                const VectorBase<Real> &v, const Real beta = 0.0);
 
   /// Add triangular matrix times vector: this <-- beta*this + alpha*M*v.
   /// Works even if rv == *this.
   void AddTpVec(const Real alpha, const TpMatrix<Real>&M,
-                const MatrixTransposeType trans, const VectorBase<Real>& v,
+                const MatrixTransposeType trans, const VectorBase<Real> &v,
                 const Real beta = 0.0);
 
   /// Multipy element-by-element by another vector.
-  void MulElements(const VectorBase<Real>& v);
+  void MulElements(const VectorBase<Real> &v);
   /// Multipy element-by-element by another vector of different type.
   template<typename OtherReal>
-  void MulElements(const VectorBase<OtherReal>& v);
+  void MulElements(const VectorBase<OtherReal> &v);
 
   /// Add a constant to each element of a vector.
   void Add(Real c);
 
   /// Add element-by-element product of vectlrs:
   //  this <-- alpha * v .* r + beta*this .
-  void AddVecVec(Real alpha, const VectorBase<Real>& v,
+  void AddVecVec(Real alpha, const VectorBase<Real> &v,
                  const VectorBase<Real> &r, Real beta);
 
   /// Divide element-by-element by a vector.
@@ -180,8 +180,8 @@ class VectorBase {
 
   /// Add element-by-element quotient of two vectors.
   ///  this <---- alpha*v/r + beta*this
-  void AddVecDivVec(Real alpha, const VectorBase<Real>& v,
-                    const VectorBase<Real>& r, Real beta);
+  void AddVecDivVec(Real alpha, const VectorBase<Real> &v,
+                    const VectorBase<Real> &r, Real beta);
 
   /// Multiplies all elements by this constant.
   void Scale(Real alpha);
@@ -297,20 +297,20 @@ class Vector: public VectorBase<Real> {
       : VectorBase<Real>() {  Resize(s, resize_type);  }
 
   /// Copy constructor.  The need for this is controversial.
-  Vector(const Vector<Real>& v) : VectorBase<Real>()  { //  (cannot be explicit)
+  Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
     Resize(v.Dim());
     CopyFromVec(v);
   }
 
   /// Copy-constructor from base-class, needed to copy from SubVector.
-  explicit Vector(const VectorBase<Real>& v) : VectorBase<Real>() {
+  explicit Vector(const VectorBase<Real> &v) : VectorBase<Real>() {
     Resize(v.Dim());
     CopyFromVec(v);
   }
 
   /// Type conversion constructor.
   template<typename OtherReal>
-  explicit Vector(const VectorBase<OtherReal>& v): VectorBase<Real>() {
+  explicit Vector(const VectorBase<OtherReal> &v): VectorBase<Real>() {
     Resize(v.Dim());
     CopyFromVec(v);
   }
@@ -368,7 +368,7 @@ class Vector: public VectorBase<Real> {
 
 #ifdef KALDI_MEMALIGN_MANUAL
   /// data to be freed (in case of manual memalignment use, see common.h)
-  Real* free_data_;
+  Real *free_data_;
 #endif
 };
 
@@ -381,7 +381,7 @@ class SubVector : public VectorBase<Real> {
   /// Constructor from a Vector or SubVector.
   /// SubVectors are not const-safe and it's very hard to make them
   /// so for now we just give up.  This function contains const_cast.
-  SubVector(const VectorBase<Real>& t, const MatrixIndexT origin,
+  SubVector(const VectorBase<Real> &t, const MatrixIndexT origin,
             const MatrixIndexT length) : VectorBase<Real>() {
     // following assert equiv to origin>=0 && length>=0 &&
     // origin+length <= rt.dim_
@@ -451,10 +451,10 @@ std::istream & operator >> (std::istream & in, Vector<Real> & v);
 
 /// Returns dot product between v1 and v2.
 template<typename Real>
-Real VecVec(const VectorBase<Real>& v1, const VectorBase<Real>& v2);
+Real VecVec(const VectorBase<Real> &v1, const VectorBase<Real> &v2);
 
 template<typename Real, typename OtherReal>
-Real VecVec(const VectorBase<Real>& v1, const VectorBase<OtherReal>& v2);
+Real VecVec(const VectorBase<Real> &v1, const VectorBase<OtherReal> &v2);
 
 
 /// Returns \f$ v_1^T M v_2  \f$ .

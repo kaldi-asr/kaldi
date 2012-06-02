@@ -196,7 +196,7 @@ void UnitTestDiagGmm() {
 
   {
     bool binary_in;
-    DiagGmm* gmm2 = new DiagGmm();
+    DiagGmm *gmm2 = new DiagGmm();
     Input ki("tmpf", &binary_in);
     gmm2->Read(ki.Stream(), binary_in);
 
@@ -208,7 +208,7 @@ void UnitTestDiagGmm() {
     delete gmm2;
 
     // binary read
-    DiagGmm* gmm3;
+    DiagGmm *gmm3;
     gmm3 = new DiagGmm();
     Input ki2("tmpfb", &binary_in);
     gmm3->Read(ki2.Stream(), binary_in);

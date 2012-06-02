@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall acoustic like per frame = " << (tot_like / tot_t)
               << " over " << tot_t << " frames.";
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

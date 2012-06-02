@@ -374,7 +374,7 @@ template<class Arc>  void TestMakeSymbolsSameClass() {
 // but more clearly], so we can check for equivalence.
 template<class Arc>
 VectorFst<Arc>* MakeLoopFstCompare(const vector<const ExpandedFst<Arc> *> &fsts) {
-  VectorFst<Arc>* ans = new VectorFst<Arc>;
+  VectorFst<Arc> *ans = new VectorFst<Arc>;
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;

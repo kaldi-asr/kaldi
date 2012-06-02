@@ -26,8 +26,8 @@ void Sigmoid(const CuMatrix<float>& X, CuMatrix<float>* Y) {
   } else
   #endif
   {
-    MatrixBase<float>& y = Y->Mat();
-    const MatrixBase<float>& x = X.Mat();
+    MatrixBase<float> &y = Y->Mat();
+    const MatrixBase<float> &x = X.Mat();
     for(MatrixIndexT r=0; r<x.NumRows(); r++) {
       for(MatrixIndexT c=0; c<x.NumCols(); c++) {
         y(r, c) = 1.0/(1.0+exp(-x(r, c)));
@@ -52,9 +52,9 @@ void DiffSigmoid(const CuMatrix<float>& Ein, const CuMatrix<float>& Y, CuMatrix<
   } else
   #endif
   {
-    MatrixBase<float>& eout = Eout->Mat();
-    const MatrixBase<float>& ein = Ein.Mat();
-    const MatrixBase<float>& y = Y.Mat();
+    MatrixBase<float> &eout = Eout->Mat();
+    const MatrixBase<float> &ein = Ein.Mat();
+    const MatrixBase<float> &y = Y.Mat();
     for(MatrixIndexT r=0; r<eout.NumRows(); r++) {
       for(MatrixIndexT c=0; c<eout.NumCols(); c++) {
         eout(r, c) = ein(r, c) * y(r, c)*(1.0-y(r, c));
@@ -120,8 +120,8 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
   } else
   #endif
   {
-    MatrixBase<float>& y = Y->Mat();
-    const MatrixBase<float>& x = X.Mat();
+    MatrixBase<float> &y = Y->Mat();
+    const MatrixBase<float> &x = X.Mat();
     y.CopyFromMat(x);
     for(MatrixIndexT r=0; r<x.NumRows(); r++) {
       y.Row(r).ApplySoftMax();
@@ -132,7 +132,7 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
 
 
 
-void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector<float>* match) {
+void CheckClass(const CuMatrix<float> &out, const CuMatrix<float> &des, CuVector<float> *match) {
   assert(out.NumCols() == des.NumCols());
   assert(out.NumRows() == des.NumRows());
   assert(out.Stride() == des.Stride());
@@ -160,9 +160,9 @@ void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector
   } else
   #endif
   {
-    const MatrixBase<float>& mout = out.Mat();
-    const MatrixBase<float>& mdes = des.Mat();
-    VectorBase<float>& vmatch = match->Vec();
+    const MatrixBase<float> &mout = out.Mat();
+    const MatrixBase<float> &mdes = des.Mat();
+    VectorBase<float> &vmatch = match->Vec();
     vmatch.Set(0);
 
     for(MatrixIndexT r=0; r<mout.NumRows(); r++) {
@@ -178,7 +178,7 @@ void CheckClass(const CuMatrix<float>& out, const CuMatrix<float> &des, CuVector
 }
 
 
-void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float lr) {
+void RegularizeL1(CuMatrix<float> *wei, CuMatrix<float> *grad, float l1, float lr) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -193,8 +193,8 @@ void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float l
   } else
   #endif
   {
-    MatrixBase<float>& wei2 = wei->Mat();
-    MatrixBase<float>& grad2 = grad->Mat();
+    MatrixBase<float> &wei2 = wei->Mat();
+    MatrixBase<float> &grad2 = grad->Mat();
     for(MatrixIndexT r=0; r<wei2.NumRows(); r++) {
       for(MatrixIndexT c=0; c<wei2.NumCols(); c++) {
         
@@ -218,7 +218,7 @@ void RegularizeL1(CuMatrix<float>* wei, CuMatrix<float>* grad, float l1, float l
 }
 
 
-void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id) {
+void FindRowMaxId(const CuMatrix<float> &mat, CuStlVector<int32> *id) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -275,7 +275,7 @@ void FindRowMaxId(const CuMatrix<float>& mat, CuStlVector<int32>* id) {
 }
 
 
-void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_diff, CuVector<BaseFloat>* log_post_tgt) {
+void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<BaseFloat> *net_out_or_diff, CuVector<BaseFloat> *log_post_tgt) {
 
   assert(tgt.Dim() == net_out_or_diff->NumRows());
   log_post_tgt->Resize(tgt.Dim());
@@ -301,7 +301,7 @@ void DiffXent(const CuStlVector<int32>& tgt, CuMatrix<BaseFloat>* net_out_or_dif
 }
 
 
-void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum) {
+void SumRowsVec(const CuMatrix<BaseFloat> &mat, CuVector<BaseFloat> *sum) {
 
   // initialize the sum vector
   sum->Resize(mat.NumRows());
@@ -349,7 +349,7 @@ void SumRowsVec(const CuMatrix<BaseFloat>& mat, CuVector<BaseFloat>* sum) {
 }
 
 
-void Randomize(const CuMatrix<BaseFloat>& src, const CuStlVector<int32>& copy_from_idx, CuMatrix<BaseFloat>* tgt) {
+void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<BaseFloat> *tgt) {
 
   assert(src.NumCols() == tgt->NumCols());
   assert(src.NumRows() == tgt->NumRows());
@@ -373,9 +373,9 @@ void Randomize(const CuMatrix<BaseFloat>& src, const CuStlVector<int32>& copy_fr
   #endif
   {
     // randomize in CPU
-    const MatrixBase<BaseFloat>& srcmat = src.Mat();
-    const std::vector<int32>& copy_from_idxvec = copy_from_idx.Vec();
-    MatrixBase<BaseFloat>& tgtmat = tgt->Mat();
+    const MatrixBase<BaseFloat> &srcmat = src.Mat();
+    const std::vector<int32> &copy_from_idxvec = copy_from_idx.Vec();
+    MatrixBase<BaseFloat> &tgtmat = tgt->Mat();
     for(int i=0; i<copy_from_idx.Dim(); i++) {
       tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
     }

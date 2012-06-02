@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
                 << "ask the maintainers to implement it, or call this program "
                 << "differently.";
     }
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

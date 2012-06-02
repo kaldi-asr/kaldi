@@ -80,12 +80,12 @@ class MlltAccs {
 
 
   void AccumulateFromPosteriors(const DiagGmm &gmm,
-                                const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& posteriors);
+                                const VectorBase<BaseFloat> &data,
+                                const VectorBase<BaseFloat> &posteriors);
 
   // Returns GMM likelihood.
   BaseFloat AccumulateFromGmm(const DiagGmm &gmm,
-                              const VectorBase<BaseFloat>& data,
+                              const VectorBase<BaseFloat> &data,
                               BaseFloat weight);  // e.g. weight = 1.0
 
   // premultiplies the means of the model by M.  typically called

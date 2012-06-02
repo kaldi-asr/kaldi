@@ -101,30 +101,30 @@ class AccumFullGmm {
   void Scale(BaseFloat f, GmmFlagsType flags);  // scale stats.
 
   /// Accumulate for a single component, given the posterior
-  void AccumulateForComponent(const VectorBase<BaseFloat>& data,
+  void AccumulateForComponent(const VectorBase<BaseFloat> &data,
                               int32 comp_index, BaseFloat weight);
 
   /// Accumulate for all components, given the posteriors.
-  void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& gauss_posteriors);
+  void AccumulateFromPosteriors(const VectorBase<BaseFloat> &data,
+                                const VectorBase<BaseFloat> &gauss_posteriors);
 
   /// Accumulate for all components given a full-covariance GMM.
   /// Computes posteriors and returns log-likelihood
   BaseFloat AccumulateFromFull(const FullGmm &gmm,
-                               const VectorBase<BaseFloat>& data,
+                               const VectorBase<BaseFloat> &data,
                                BaseFloat frame_posterior);
 
   /// Accumulate for all components given a diagonal-covariance GMM.
   /// Computes posteriors and returns log-likelihood
   BaseFloat AccumulateFromDiag(const DiagGmm &gmm,
-                               const VectorBase<BaseFloat>& data,
+                               const VectorBase<BaseFloat> &data,
                                BaseFloat frame_posterior);
 
   /// Accessors  
   const GmmFlagsType Flags() const { return flags_; }
-  const Vector<double>& occupancy() const { return occupancy_; }
-  const Matrix<double>& mean_accumulator() const { return mean_accumulator_; }
-  const std::vector<SpMatrix<double> >& covariance_accumulator() const { return covariance_accumulator_; }
+  const Vector<double> &occupancy() const { return occupancy_; }
+  const Matrix<double> &mean_accumulator() const { return mean_accumulator_; }
+  const std::vector<SpMatrix<double> > &covariance_accumulator() const { return covariance_accumulator_; }
 
  private:
   int32 dim_;
@@ -151,7 +151,7 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
             BaseFloat *count_out);
 
 /// Calc using the DiagGMM exponential form
-BaseFloat MlObjective(const FullGmm& gmm,
+BaseFloat MlObjective(const FullGmm &gmm,
                       const AccumFullGmm &fullgmm_acc);
 
 }  // End namespace kaldi

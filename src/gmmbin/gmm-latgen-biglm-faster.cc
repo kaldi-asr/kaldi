@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     
     VectorFst<StdArc> *new_lm_fst = ReadFstKaldi(new_lm_fst_rxfilename);
 
-    fst::DeterministicOnDemandFst<StdArc>* lm_diff_fst =
+    fst::DeterministicOnDemandFst<StdArc> *lm_diff_fst =
         new fst::DeterministicOnDemandFst<StdArc>(*old_lm_fst, *new_lm_fst);
     
     bool determinize = config.determinize_lattice;
@@ -291,7 +291,7 @@ int main(int argc, char *argv[]) {
     if (word_syms) delete word_syms;
     if (num_success != 0) return 0;
     else return 1;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

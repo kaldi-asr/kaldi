@@ -54,7 +54,7 @@ class TpMatrix : public PackedMatrix<Real> {
     // Duplicating code from PackedMatrix.h
   }
 
-  Real& operator() (MatrixIndexT r, MatrixIndexT c) {
+  Real &operator() (MatrixIndexT r, MatrixIndexT c) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                  static_cast<UnsignedMatrixIndexT>(this->num_rows_));
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(c) <=

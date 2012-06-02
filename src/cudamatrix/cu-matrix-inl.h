@@ -114,7 +114,7 @@ void CuMatrix<_ElemT>::Destroy() {
 
 
 template<typename _ElemT>
-CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const CuMatrix<_ElemT>& src) {
+CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const CuMatrix<_ElemT> &src) {
   Resize(src.NumRows(), src.NumCols());
  
   #if HAVE_CUDA==1 
@@ -138,7 +138,7 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const CuMatrix<_ElemT>& src) {
 
 
 template<typename _ElemT>
-CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT>& src) {
+CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT> &src) {
   Resize(src.NumRows(), src.NumCols());
 
   #if HAVE_CUDA==1 
@@ -162,7 +162,7 @@ CuMatrix<_ElemT>& CuMatrix<_ElemT>::CopyFromMat(const Matrix<_ElemT>& src) {
 
 
 template<typename _ElemT>
-void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>* dst) const {
+void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT> *dst) const {
   if (dst->NumRows() != NumRows()  ||  dst->NumCols() != NumCols()) {
     dst->Resize(NumRows(), NumCols());
   }
@@ -188,7 +188,7 @@ void CuMatrix<_ElemT>::CopyToMat(Matrix<_ElemT>* dst) const {
 
 
 template<typename _ElemT>
-void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int32 src_ro, int32 dst_ro) {
+void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT> &src, int32 src_ro, int32 dst_ro) {
   
   assert(r+src_ro <= src.NumRows());
   assert(r+dst_ro <= NumRows());
@@ -203,8 +203,8 @@ void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int
     MatrixIndexT src_pitch = src.Stride()*sizeof(_ElemT);
     MatrixIndexT width = src.NumCols()*sizeof(_ElemT);
 
-    const _ElemT* p_src = src.Data() + src_ro*src.Stride();  
-    _ElemT* p_dst = data_ + dst_ro*stride_;
+    const _ElemT *p_src = src.Data() + src_ro*src.Stride();  
+    _ElemT *p_dst = data_ + dst_ro*stride_;
 
     cuSafeCall(cudaMemcpy2D(p_dst, dst_pitch, p_src, src_pitch, width, r, cudaMemcpyDeviceToDevice));
 
@@ -219,7 +219,7 @@ void CuMatrix<_ElemT>::CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int
 
 
 template<typename _ElemT>
-void CuMatrix<_ElemT>::Read(std::istream& is, bool binary) {
+void CuMatrix<_ElemT>::Read(std::istream &is, bool binary) {
   Matrix<BaseFloat> tmp;
   tmp.Read(is, binary);
   CopyFromMat(tmp);    
@@ -227,7 +227,7 @@ void CuMatrix<_ElemT>::Read(std::istream& is, bool binary) {
 
 
 template<typename _ElemT>
-void CuMatrix<_ElemT>::Write(std::ostream& os, bool binary) const {
+void CuMatrix<_ElemT>::Write(std::ostream &os, bool binary) const {
   Matrix<BaseFloat> tmp;
   CopyToMat(&tmp);
   tmp.Write(os, binary); 
@@ -251,7 +251,7 @@ void CuMatrix<_ElemT>::SetZero() {
 
 
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuMatrix<_ElemT>& mat) {
+std::ostream &operator << (std::ostream &out, const CuMatrix<_ElemT> &mat) {
   Matrix<_ElemT> tmp;
   mat.CopyToMat(&tmp);
   out << tmp;
@@ -267,13 +267,13 @@ template<> void CuMatrix<float>::Set(float value);
 template<> void CuMatrix<float>::ApplyLog();
 
 template<> void CuMatrix<float>::MulElements(const CuMatrix<float>& A);
-template<> void CuMatrix<float>::MulColsVec(const CuVector<float>& scale);
-template<> void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale);
-template<> void CuMatrix<float>::DivRowsVec(const CuVector<float>& div); 
+template<> void CuMatrix<float>::MulColsVec(const CuVector<float> &scale);
+template<> void CuMatrix<float>::MulRowsVec(const CuVector<float> &scale);
+template<> void CuMatrix<float>::DivRowsVec(const CuVector<float> &div); 
 
 template<> void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta);
 
-template<> void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float>& row, float beta);
+template<> void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float> &row, float beta);
 
 template<> void CuMatrix<float>::AddMatMat(float alpha, const CuMatrix<float>& A, MatrixTransposeType transA, const CuMatrix<float>& B, MatrixTransposeType transB, float beta);
 

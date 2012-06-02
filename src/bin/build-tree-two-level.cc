@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
     std::cerr << "Wrote tree and mapping\n";
     
     DeleteBuildTreeStats(&stats);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

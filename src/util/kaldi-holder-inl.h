@@ -633,7 +633,7 @@ class TokenVectorHolder {
       KALDI_WARN << "BasicVectorHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
       return false;  // probably eof.  fail in any case.
     }
-    const char* white_chars = " \t\n\r\f\v";
+    const char *white_chars = " \t\n\r\f\v";
     SplitStringToVector(line, white_chars, &t_, true);  // true== omit empty strings e.g.
     // between spaces.
     return true;
@@ -709,7 +709,7 @@ template<int kFeatDim=13> class SphinxMatrixHolder {
   void Clear() { feats_.Resize(0, 0); }
 
   // Writes Sphinx-format features
-  static bool Write(std::ostream& os, bool binary, const T& m) {
+  static bool Write(std::ostream &os, bool binary, const T &m) {
     if (!binary) {
       KALDI_WARN << "SphinxMatrixHolder can't write Sphinx features in text ";
       return false;

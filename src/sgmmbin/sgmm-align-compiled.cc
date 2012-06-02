@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count << " frames.";
     return (num_success != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

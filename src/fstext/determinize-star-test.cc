@@ -46,7 +46,7 @@ template<class Arc> void TestDeterminizeGeneral() {
       }
       assert(RandEquivalent(*fst, ofst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length, max*/));      
     } catch (...) {
-      std::cout << "Failed to determinize* this FST (probably not determinizable)\n";
+      std::cout << "Failed to determinize *this FST (probably not determinizable)\n";
     }
     delete fst;
   }
@@ -187,7 +187,7 @@ template<class Arc>  void TestDeterminize2() {
   for(int i = 0; i < 10; i++) {
     RandFstOptions opts;
     opts.acyclic = true;
-    VectorFst<Arc>* ifst = RandFst<Arc>(opts);
+    VectorFst<Arc> *ifst = RandFst<Arc>(opts);
     VectorFst<Arc> ofst;
     Determinize(*ifst, &ofst);
     assert(RandEquivalent(*ifst, ofst, 5, 0.01, rand(), 100));

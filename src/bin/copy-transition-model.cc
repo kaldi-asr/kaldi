@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     WriteKaldiObject(trans_model, transition_model_wxfilename, binary);
 
     KALDI_LOG << "Copied transition model.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

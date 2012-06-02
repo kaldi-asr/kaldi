@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
       Lattice lat1 = lattice_reader1.Value();
       lattice_reader1.FreeCurrent();
       if (lattice_reader2.HasKey(key)) {
-        const Lattice& lat2 = lattice_reader2.Value(key);
+        const Lattice &lat2 = lattice_reader2.Value(key);
         Union(&lat1, lat2);
         n_union++;
       } else {
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
               << n_no_lat << " cases.";
     KALDI_LOG << "Done " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

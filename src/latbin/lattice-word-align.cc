@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
               << n_err_write << " in error but written anyway, "
               << n_err_nowrite << " in error and not written.";
     return (n_ok != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

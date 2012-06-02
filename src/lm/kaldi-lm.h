@@ -72,7 +72,7 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
   bool Read(std::istream &strm,
             const string &sourcename,
             GrammarType gtype,
-            fst::SymbolTable* pst = NULL,
+            fst::SymbolTable *pst = NULL,
             bool useNaturalLog = true,
             const string startSent = "<s>",
             const string endSent = "</s>") {
@@ -87,7 +87,7 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
   /// Reads from a named input file. Empty filename reads from standard input.
   bool Read(const string &filename,
             GrammarType gtype,
-            fst::SymbolTable* pst = 0,
+            fst::SymbolTable *pst = 0,
             bool useNaturalLog = true,
             const string startSent = "<s>",
             const string endSent = "</s>") {
@@ -123,11 +123,11 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
   }
 
  private:
-  fst::VectorFst<fst::StdArc>* pfst_;
+  fst::VectorFst<fst::StdArc> *pfst_;
   fst::VectorFst<fst::StdArc>* ReadStream(std::istream &strm,
                                           const string &sourcename,
                                           GrammarType gtype,
-                                          fst::SymbolTable* pst,
+                                          fst::SymbolTable *pst,
                                           bool useNaturalLog,
                                           const string startSent,
                                           const string endSent);

@@ -32,26 +32,26 @@ class RbmBase : public UpdatableComponent {
     GAUSSIAN
   } RbmNodeType;
  
-  RbmBase(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet* nnet) 
+  RbmBase(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
    : UpdatableComponent(dim_in, dim_out, nnet)
   { }
   
   /*Is included in Component:: itf
   virtual void Propagate(
-    const CuMatrix<BaseFloat>& vis_probs, 
-    CuMatrix<BaseFloat>* hid_probs
+    const CuMatrix<BaseFloat> &vis_probs, 
+    CuMatrix<BaseFloat> *hid_probs
   ) = 0;
   */
 
   virtual void Reconstruct(
-    const CuMatrix<BaseFloat>& hid_state, 
-    CuMatrix<BaseFloat>* vis_probs
+    const CuMatrix<BaseFloat> &hid_state, 
+    CuMatrix<BaseFloat> *vis_probs
   ) = 0;
   virtual void RbmUpdate(
-    const CuMatrix<BaseFloat>& pos_vis, 
-    const CuMatrix<BaseFloat>& pos_hid, 
-    const CuMatrix<BaseFloat>& neg_vis, 
-    const CuMatrix<BaseFloat>& neg_hid
+    const CuMatrix<BaseFloat> &pos_vis, 
+    const CuMatrix<BaseFloat> &pos_hid, 
+    const CuMatrix<BaseFloat> &neg_vis, 
+    const CuMatrix<BaseFloat> &neg_hid
   ) = 0;
 
   virtual RbmNodeType VisType() = 0;
@@ -72,7 +72,7 @@ class Rbm : public RbmBase {
     return kRbm;
   }
 
-  void ReadData(std::istream& is, bool binary) {
+  void ReadData(std::istream &is, bool binary) {
     std::string vis_node_type, hid_node_type;
     ReadToken(is, binary, &vis_node_type);
     ReadToken(is, binary, &hid_node_type);
@@ -98,7 +98,7 @@ class Rbm : public RbmBase {
     KALDI_ASSERT(hid_bias_.Dim() == output_dim_);
   }
   
-  void WriteData(std::ostream& os, bool binary) {
+  void WriteData(std::ostream &os, bool binary) {
     switch (vis_type_) {
       case BERNOULLI : WriteToken(os,binary,"BERN"); break;
       case GAUSSIAN  : WriteToken(os,binary,"GAUSS"); break;
@@ -116,7 +116,7 @@ class Rbm : public RbmBase {
 
 
   // UpdatableComponent API
-  void PropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
+  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // precopy bias
     out->AddScaledRow(1.0, hid_bias_, 0.0);
     // multiply by weights^t
@@ -127,18 +127,18 @@ class Rbm : public RbmBase {
     }
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     KALDI_ERR << "Cannot backpropagate through RBM!"
               << "Better convert it to <BiasedLinearity>";
   }
-  virtual void Update(const CuMatrix<BaseFloat>& input,
-                      const CuMatrix<BaseFloat>& err) {
+  virtual void Update(const CuMatrix<BaseFloat> &input,
+                      const CuMatrix<BaseFloat> &err) {
     KALDI_ERR << "Cannot update RBM by backprop!"
               << "Better convert it to <BiasedLinearity>";
   }
 
   // RBM training API
-  void Reconstruct(const CuMatrix<BaseFloat>& hid_state, CuMatrix<BaseFloat>* vis_probs) {
+  void Reconstruct(const CuMatrix<BaseFloat> &hid_state, CuMatrix<BaseFloat> *vis_probs) {
     // check the dim
     if (output_dim_ != hid_state.NumCols()) {
       KALDI_ERR << "Nonmatching dims, component:" << output_dim_ << " data:" << hid_state.NumCols();
@@ -158,7 +158,7 @@ class Rbm : public RbmBase {
     }
   }
   
-  void RbmUpdate(const CuMatrix<BaseFloat>& pos_vis, const CuMatrix<BaseFloat>& pos_hid, const CuMatrix<BaseFloat>& neg_vis, const CuMatrix<BaseFloat>& neg_hid) {
+  void RbmUpdate(const CuMatrix<BaseFloat> &pos_vis, const CuMatrix<BaseFloat> &pos_hid, const CuMatrix<BaseFloat> &neg_vis, const CuMatrix<BaseFloat> &neg_hid) {
     assert(pos_vis.NumRows() == pos_hid.NumRows() &&
            pos_vis.NumRows() == neg_vis.NumRows() &&
            pos_vis.NumRows() == neg_hid.NumRows() &&

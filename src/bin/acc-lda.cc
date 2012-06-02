@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     lda.Write(ko.Stream(), binary);
     KALDI_LOG << "Written statistics.";
     return (num_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

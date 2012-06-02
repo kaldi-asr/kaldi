@@ -47,8 +47,8 @@ class CuStlVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromVec(const std::vector<_ElemT>& src);
-  void             CopyToVec(std::vector<_ElemT>* dst) const;
+  ThisType&        CopyFromVec(const std::vector<_ElemT> &src);
+  void             CopyToVec(std::vector<_ElemT> *dst) const;
   
   // Math operations
   //
@@ -71,7 +71,7 @@ class CuStlVector {
 private:
   size_t dim_;
  
-  _ElemT* data_; ///< GPU data pointer
+  _ElemT *data_; ///< GPU data pointer
 
   std::vector<_ElemT> vec_; ///< non-GPU vector as back-off
 };
@@ -79,7 +79,7 @@ private:
 
 /// I/O
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuStlVector<_ElemT>& vec);
+std::ostream &operator << (std::ostream &out, const CuStlVector<_ElemT> &vec);
  
   
 } // namespace

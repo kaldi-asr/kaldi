@@ -91,17 +91,17 @@ class AccumDiagGmm {
   void Scale(BaseFloat f, GmmFlagsType flags);
 
   /// Accumulate for a single component, given the posterior
-  void AccumulateForComponent(const VectorBase<BaseFloat>& data,
+  void AccumulateForComponent(const VectorBase<BaseFloat> &data,
                               int32 comp_index, BaseFloat weight);
 
   /// Accumulate for all components, given the posteriors.
-  void AccumulateFromPosteriors(const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& gauss_posteriors);
+  void AccumulateFromPosteriors(const VectorBase<BaseFloat> &data,
+                                const VectorBase<BaseFloat> &gauss_posteriors);
 
   /// Accumulate for all components given a diagonal-covariance GMM.
   /// Computes posteriors and returns log-likelihood
   BaseFloat AccumulateFromDiag(const DiagGmm &gmm,
-                               const VectorBase<BaseFloat>& data,
+                               const VectorBase<BaseFloat> &data,
                                BaseFloat frame_posterior);
 
   /// Increment the stats for this component by the specified amount
@@ -123,18 +123,18 @@ class AccumDiagGmm {
   /// weighted sum of the current accumulator with the given one. An example use
   /// for this is I-smoothing for MMI and MPE. Both accumulators must have the
   /// same dimension and number of components.
-  void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc);
+  void SmoothWithAccum(BaseFloat tau, const AccumDiagGmm &src_acc);
 
   /// Smooths the accumulated counts using the parameters of a given model.
   /// An example use of this is MAP-adaptation. The model must have the
   /// same dimension and number of components as the current accumulator.
-  void SmoothWithModel(BaseFloat tau, const DiagGmm& src_gmm);
+  void SmoothWithModel(BaseFloat tau, const DiagGmm &src_gmm);
 
   // Const accessors
   const GmmFlagsType Flags() const { return flags_; }
-  const VectorBase<double>& occupancy() const { return occupancy_; }
-  const MatrixBase<double>& mean_accumulator() const { return mean_accumulator_; }
-  const MatrixBase<double>& variance_accumulator() const { return variance_accumulator_; }
+  const VectorBase<double> &occupancy() const { return occupancy_; }
+  const MatrixBase<double> &mean_accumulator() const { return mean_accumulator_; }
+  const MatrixBase<double> &variance_accumulator() const { return variance_accumulator_; }
   
  private:
   int32 dim_;
@@ -168,7 +168,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
                       BaseFloat *count_out);
 
 /// Calc using the DiagGMM exponential form
-BaseFloat MlObjective(const DiagGmm& gmm,
+BaseFloat MlObjective(const DiagGmm &gmm,
                       const AccumDiagGmm &diaggmm_acc);
 
 int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,

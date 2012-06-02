@@ -30,7 +30,7 @@ AmTiedDiagGmm::~AmTiedDiagGmm() {
   DeletePointers(&tied_densities_);
 }
 
-void AmTiedDiagGmm::Init(const DiagGmm& proto) {
+void AmTiedDiagGmm::Init(const DiagGmm &proto) {
   if (densities_.size() != 0 || tied_densities_.size() != 0) {
     KALDI_WARN << "Init() called on a non-empty object. Contents will be "
         "overwritten";

@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
 
     WriteKaldiObject(qo, questions_out_filename, binary);
     KALDI_LOG << "Wrote questions to "<<questions_out_filename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

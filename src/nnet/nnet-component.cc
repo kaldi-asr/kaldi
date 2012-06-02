@@ -43,7 +43,7 @@ const char* Component::TypeToMarker(ComponentType t) {
   return NULL;
 }
 
-Component::ComponentType Component::MarkerToType(const std::string& s) {
+Component::ComponentType Component::MarkerToType(const std::string &s) {
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
   for(int i=0; i<N; i++) {
     if (0 == strcmp(kMarkerMap[i].value, s.c_str())) 
@@ -54,7 +54,7 @@ Component::ComponentType Component::MarkerToType(const std::string& s) {
 }
 
 
-Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
+Component* Component::Read(std::istream &is, bool binary, Nnet *nnet) {
   int32 dim_out, dim_in;
   std::string token;
 
@@ -67,7 +67,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   ReadBasicType(is, binary, &dim_out); 
   ReadBasicType(is, binary, &dim_in);
 
-  Component* p_comp=NULL;
+  Component *p_comp=NULL;
   switch (comp_type) {
     case Component::kBiasedLinearity :
       p_comp = new BiasedLinearity(dim_in, dim_out, nnet); 
@@ -91,7 +91,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
 }
 
 
-void Component::Write(std::ostream& os, bool binary) const {
+void Component::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, Component::TypeToMarker(GetType()));
   WriteBasicType(os, binary, OutputDim());
   WriteBasicType(os, binary, InputDim());

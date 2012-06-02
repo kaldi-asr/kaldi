@@ -85,8 +85,8 @@ class HldaAccsDiagGmm {
   /// Accumulates stats (you have to first work out the posteriors yourself).
   void AccumulateFromPosteriors(int32 pdf_id,
                                 const DiagGmm &gmm,
-                                const VectorBase<BaseFloat>& data,
-                                const VectorBase<BaseFloat>& posteriors);
+                                const VectorBase<BaseFloat> &data,
+                                const VectorBase<BaseFloat> &posteriors);
 
 
  private:

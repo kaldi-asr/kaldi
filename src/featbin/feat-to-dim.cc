@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
       ko.Stream() << kaldi_reader.Value().NumCols() << "\n";
     }
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

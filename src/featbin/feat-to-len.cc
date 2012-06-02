@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
       length_writer.Write(kaldi_reader.Key(), kaldi_reader.Value().NumRows());
     
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

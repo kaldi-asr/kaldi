@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     dists.Write(ko.Stream(), binary);
 
     KALDI_LOG << "Wrote distances to " << distances_out_filename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

@@ -38,7 +38,7 @@ static union{
 namespace kaldi {
 
 template<typename Real>
-static void MyApplySoftMax(VectorBase<Real>& v) {
+static void MyApplySoftMax(VectorBase<Real> &v) {
   Real max = v.Max();
   v.Add(-max);
   v.ApplyExp();
@@ -47,9 +47,9 @@ static void MyApplySoftMax(VectorBase<Real>& v) {
 }
 
 template<typename Real>
-static void MyApplySoftMax2(VectorBase<Real>& v) {
+static void MyApplySoftMax2(VectorBase<Real> &v) {
 
-  Real* p=v.Data();
+  Real *p=v.Data();
   Real max = -1e20;
   for(int32 i=0; i<v.Dim(); i++) {
     Real v = *p++;
@@ -69,7 +69,7 @@ static void MyApplySoftMax2(VectorBase<Real>& v) {
 }
 
 
-void Rnnlm::Propagate(const std::vector<int32>& in, Matrix<BaseFloat>* out) {
+void Rnnlm::Propagate(const std::vector<int32> &in, Matrix<BaseFloat> *out) {
   // resize hidden buffer
   h2_.Resize(in.size(), V1_.NumCols(), kSetZero);
 
@@ -112,7 +112,7 @@ void Rnnlm::Propagate(const std::vector<int32>& in, Matrix<BaseFloat>* out) {
 }
 
 
-void Rnnlm::Backpropagate(const MatrixBase<BaseFloat>& in_err) {
+void Rnnlm::Backpropagate(const MatrixBase<BaseFloat> &in_err) {
 
   // prepare error buffer
   e2_.Resize(in_err.NumRows(), h2_.NumCols(), kSetZero);
@@ -191,7 +191,7 @@ void Rnnlm::Backpropagate(const MatrixBase<BaseFloat>& in_err) {
 
 }
 
-BaseFloat Rnnlm::Score(const std::vector<int32>& seq, const VectorBase<BaseFloat>* hid, int32 prev_wrd) {
+BaseFloat Rnnlm::Score(const std::vector<int32> &seq, const VectorBase<BaseFloat> *hid, int32 prev_wrd) {
   
   std::vector<int32>in;
   in.push_back(prev_wrd);

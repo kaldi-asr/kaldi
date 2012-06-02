@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
       return 0;
     else
       return 1;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

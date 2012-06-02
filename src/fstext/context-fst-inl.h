@@ -90,8 +90,8 @@ ContextFstImpl<Arc, LabelT>::ContextFstImpl(const ContextFstImpl &other):
 
 template<class Arc, class LabelT>
 ContextFstImpl<Arc, LabelT>::ContextFstImpl(Label subsequential_symbol,  // epsilon not allowed.
-                                            const vector<LabelT>& phone_syms,  // on output side of ifst.
-                                            const vector<LabelT>& disambig_syms,  // on output
+                                            const vector<LabelT> &phone_syms,  // on output side of ifst.
+                                            const vector<LabelT> &disambig_syms,  // on output
                                             int N,
                                             int P):
     phone_syms_(phone_syms),  disambig_syms_(disambig_syms), subsequential_symbol_(subsequential_symbol) ,

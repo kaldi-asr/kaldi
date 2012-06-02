@@ -18,7 +18,7 @@ class CuDevice {
  private:
   CuDevice();
   CuDevice(CuDevice&);
-  CuDevice& operator=(CuDevice&);
+  CuDevice &operator=(CuDevice&);
 
  public:
   ~CuDevice();
@@ -44,7 +44,7 @@ class CuDevice {
   }
 
   /// Sum the IO time
-  void AccuProfile(const std::string& key, double time);
+  void AccuProfile(const std::string &key, double time);
   void PrintProfile(); 
 
   void ResetProfile() { 

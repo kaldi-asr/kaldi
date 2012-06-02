@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     gmm.CopyFromFullGmm(fgmm);
     WriteKaldiObject(gmm, gmm_wxfilename, binary);
     KALDI_LOG << "Written diagonal GMM to " << gmm_wxfilename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

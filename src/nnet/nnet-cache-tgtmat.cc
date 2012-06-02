@@ -48,7 +48,7 @@ void CacheTgtMat::Init(int32 cachesize, int32 bunchsize) {
 
 
 
-void CacheTgtMat::AddData(const CuMatrix<BaseFloat>& features, const CuMatrix<BaseFloat>& targets) {
+void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<BaseFloat> &targets) {
   if (state_ == FULL) {
     KALDI_ERR << "Cannot add data, cache already full";
   }
@@ -153,7 +153,7 @@ void CacheTgtMat::Randomize() {
 
 
 
-void CacheTgtMat::GetBunch(CuMatrix<BaseFloat>* features, CuMatrix<BaseFloat>* targets) {
+void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *targets) {
   if (state_ == EMPTY) {
     KALDI_ERR << "GetBunch on empty cache!!!";
   }

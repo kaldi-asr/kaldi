@@ -52,7 +52,7 @@ class Rnnlm {
  // Disable copy construction and assignment
  private:
   Rnnlm(Rnnlm&); 
-  Rnnlm& operator=(Rnnlm&);
+  Rnnlm &operator=(Rnnlm&);
    
  //////////////////////////////////////////////////////////////
  // Constructor & Destructor
@@ -78,13 +78,13 @@ class Rnnlm {
    *    p(y_i|w_i), ie. first row contains the posteriors of the next word 
    *    after the first observed word1
    */ 
-  void Propagate(const std::vector<int32>& in, Matrix<BaseFloat>* out);
+  void Propagate(const std::vector<int32> &in, Matrix<BaseFloat> *out);
 
   /// Perform backward pass through the network
-  void Backpropagate(const MatrixBase<BaseFloat>& in_err);
+  void Backpropagate(const MatrixBase<BaseFloat> &in_err);
 
   /// Score a sequence
-  BaseFloat Score(const std::vector<int32>& seq, const VectorBase<BaseFloat>* hid = NULL, int32 prev_wrd = 1);
+  BaseFloat Score(const std::vector<int32> &seq, const VectorBase<BaseFloat> *hid = NULL, int32 prev_wrd = 1);
 
   MatrixIndexT InputDim() const; ///< Dimensionality of the input features
   MatrixIndexT OutputDimCls() const; ///< Dimensionality of the desired vectors
@@ -93,19 +93,19 @@ class Rnnlm {
   /// Get the last hidden layer state
   const VectorBase<BaseFloat>& HidVector() const;
   /// Set hidden layer state for next input sequence
-  void HidVector(const VectorBase<BaseFloat>& v);
+  void HidVector(const VectorBase<BaseFloat> &v);
   /// Get hidden layer states of last sequence
   const Matrix<BaseFloat>& HidMatrix() const;
   
  
   /// Read the MLP from file (can add layers to exisiting instance of Rnnlm)
-  void Read(const std::string& file);  
+  void Read(const std::string &file);  
   /// Read the MLP from stream (can add layers to exisiting instance of Rnnlm)
-  void Read(std::istream& in, bool binary);  
+  void Read(std::istream &in, bool binary);  
   /// Write MLP to file
-  void Write(const std::string& file, bool binary); 
+  void Write(const std::string &file, bool binary); 
   /// Write MLP to stream 
-  void Write(std::ostream& out, bool binary);    
+  void Write(std::ostream &out, bool binary);    
   
   /// Set the learning rate values to trainable layers, 
   /// factors can disable training of individual layers
@@ -199,7 +199,7 @@ inline const VectorBase<BaseFloat>& Rnnlm::HidVector() const {
   return h2_.Row(h2_.NumRows()-1);
 }
 
-inline void Rnnlm::HidVector(const VectorBase<BaseFloat>& v) {
+inline void Rnnlm::HidVector(const VectorBase<BaseFloat> &v) {
   h2_last_.CopyFromVec(v);
 }
 
@@ -209,14 +209,14 @@ inline const Matrix<BaseFloat>& Rnnlm::HidMatrix() const {
 
  
   
-inline void Rnnlm::Read(const std::string& file) {
+inline void Rnnlm::Read(const std::string &file) {
   bool binary;
   Input in(file, &binary);
   Read(in.Stream(), binary);
   in.Close();
 }
 
-inline void Rnnlm::Read(std::istream& in, bool binary) {
+inline void Rnnlm::Read(std::istream &in, bool binary) {
   ExpectToken(in,binary,"<rnnlm_v1.0>");
   ExpectToken(in,binary,"<v1>");
   in >> V1_; 
@@ -251,13 +251,13 @@ inline void Rnnlm::Read(std::istream& in, bool binary) {
 
 }
 
-inline void Rnnlm::Write(const std::string& file, bool binary) {
+inline void Rnnlm::Write(const std::string &file, bool binary) {
   Output out(file, binary, true);
   Write(out.Stream(), binary);
   out.Close();
 }
 
-inline void Rnnlm::Write(std::ostream& out, bool binary) {
+inline void Rnnlm::Write(std::ostream &out, bool binary) {
   WriteToken(out,binary,"<rnnlm_v1.0>");
   WriteToken(out,binary,"<v1>");
   out << V1_; 

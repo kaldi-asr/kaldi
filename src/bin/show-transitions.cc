@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
                       (accumulator_filename != "" ? &occs : NULL));
 
     delete syms;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

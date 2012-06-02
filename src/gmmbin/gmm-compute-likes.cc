@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "gmm-compute-likes: computed likelihoods for " << num_done
               << " utterances.";
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

@@ -136,7 +136,7 @@ void TpMatrix<Real>::Swap(TpMatrix<Real> *other) {
 
 
 template<typename Real>
-void TpMatrix<Real>::Cholesky(const SpMatrix<Real>& rOrig) {
+void TpMatrix<Real>::Cholesky(const SpMatrix<Real> &rOrig) {
   KALDI_ASSERT(rOrig.NumRows() == this->NumRows());
   MatrixIndexT n = this->NumRows();
   this->SetZero();

@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
               << " lattices had empty difference; "
               << n_no_lat << " missing lattices in second archive ";
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

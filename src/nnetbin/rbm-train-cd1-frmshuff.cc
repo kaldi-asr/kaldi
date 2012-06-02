@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     KALDI_ASSERT(nnet.LayerCount()==1);
     KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
-    RbmBase& rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
+    RbmBase &rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
 
     rbm.SetLearnRate(learn_rate);
     rbm.SetMomentum(momentum);
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
 
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

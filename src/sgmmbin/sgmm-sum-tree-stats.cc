@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
               << stats.size();
     DeleteBuildTreeStats(&stats);
     return (stats.size() != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

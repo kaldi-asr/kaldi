@@ -127,13 +127,13 @@ void MlltAccs::Update(double beta,
 }
 
 void MlltAccs::AccumulateFromPosteriors(const DiagGmm &gmm,
-                                        const VectorBase<BaseFloat>& data,
-                                        const VectorBase<BaseFloat>& posteriors) {
+                                        const VectorBase<BaseFloat> &data,
+                                        const VectorBase<BaseFloat> &posteriors) {
   KALDI_ASSERT(data.Dim() == gmm.Dim());
   KALDI_ASSERT(data.Dim() == Dim());
   KALDI_ASSERT(posteriors.Dim() == gmm.NumGauss());
-  const Matrix<BaseFloat>& means_invvars = gmm.means_invvars();
-  const Matrix<BaseFloat>& inv_vars = gmm.inv_vars();
+  const Matrix<BaseFloat> &means_invvars = gmm.means_invvars();
+  const Matrix<BaseFloat> &inv_vars = gmm.inv_vars();
   Vector<BaseFloat> mean(data.Dim());
   SpMatrix<double> tmp(data.Dim());
   Vector<double> offset_dbl(data.Dim());
@@ -158,7 +158,7 @@ void MlltAccs::AccumulateFromPosteriors(const DiagGmm &gmm,
 }
 
 BaseFloat MlltAccs::AccumulateFromGmm(const DiagGmm &gmm,
-                                      const VectorBase<BaseFloat>& data,
+                                      const VectorBase<BaseFloat> &data,
                                       BaseFloat weight) {  // e.g. weight = 1.0
   Vector<BaseFloat> posteriors(gmm.NumGauss());
   BaseFloat ans = gmm.ComponentPosteriors(data, &posteriors);

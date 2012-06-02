@@ -65,7 +65,7 @@ void AccumAmDiagGmm::SetZero(GmmFlagsType flags) {
 }
 
 BaseFloat AccumAmDiagGmm::AccumulateForGmm(
-    const AmDiagGmm &model, const VectorBase<BaseFloat>& data,
+    const AmDiagGmm &model, const VectorBase<BaseFloat> &data,
     int32 gmm_index, BaseFloat weight) {
   KALDI_ASSERT(static_cast<size_t>(gmm_index) < gmm_accumulators_.size());
   BaseFloat log_like =
@@ -78,8 +78,8 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmm(
 
 BaseFloat AccumAmDiagGmm::AccumulateForGmmTwofeats(
     const AmDiagGmm &model,
-    const VectorBase<BaseFloat>& data1,
-    const VectorBase<BaseFloat>& data2,
+    const VectorBase<BaseFloat> &data1,
+    const VectorBase<BaseFloat> &data2,
     int32 gmm_index,
     BaseFloat weight) {
   KALDI_ASSERT(static_cast<size_t>(gmm_index) < gmm_accumulators_.size());
@@ -96,15 +96,15 @@ BaseFloat AccumAmDiagGmm::AccumulateForGmmTwofeats(
 
 
 void AccumAmDiagGmm::AccumulateFromPosteriors(
-    const AmDiagGmm &model, const VectorBase<BaseFloat>& data,
-    int32 gmm_index, const VectorBase<BaseFloat>& posteriors) {
+    const AmDiagGmm &model, const VectorBase<BaseFloat> &data,
+    int32 gmm_index, const VectorBase<BaseFloat> &posteriors) {
   KALDI_ASSERT(gmm_index >= 0 && gmm_index < NumAccs());
   gmm_accumulators_[gmm_index]->AccumulateFromPosteriors(data, posteriors);
   total_frames_ += posteriors.Sum();
 }
 
 void AccumAmDiagGmm::AccumulateForGaussian(
-    const AmDiagGmm &am, const VectorBase<BaseFloat>& data,
+    const AmDiagGmm &am, const VectorBase<BaseFloat> &data,
     int32 gmm_index, int32 gauss_index, BaseFloat weight) {
   KALDI_ASSERT(gmm_index >= 0 && gmm_index < NumAccs());
   KALDI_ASSERT(gauss_index >= 0
@@ -112,7 +112,7 @@ void AccumAmDiagGmm::AccumulateForGaussian(
   gmm_accumulators_[gmm_index]->AccumulateForComponent(data, gauss_index, weight);
 }
 
-void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
+void AccumAmDiagGmm::Read(std::istream &in_stream, bool binary,
                           bool add) {
   int32 num_pdfs;
   ExpectToken(in_stream, binary, "<NUMPDFS>");
@@ -148,7 +148,7 @@ void AccumAmDiagGmm::Read(std::istream& in_stream, bool binary,
   }
 }
 
-void AccumAmDiagGmm::Write(std::ostream& out_stream, bool binary) const {
+void AccumAmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   int32 num_pdfs = gmm_accumulators_.size();
   WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, num_pdfs);

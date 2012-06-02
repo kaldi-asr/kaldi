@@ -67,7 +67,7 @@ struct RegtreeFmllrOptions {
 class RegtreeFmllrDiagGmm {
  public:
   RegtreeFmllrDiagGmm() : dim_(-1), num_xforms_(-1), valid_logdet_(false) {}
-  explicit RegtreeFmllrDiagGmm(const RegtreeFmllrDiagGmm& other)
+  explicit RegtreeFmllrDiagGmm(const RegtreeFmllrDiagGmm &other)
       : dim_(other.dim_), num_xforms_(other.num_xforms_),
         xform_matrices_(other.xform_matrices_), logdet_(other.logdet_),
         valid_logdet_(other.valid_logdet_),
@@ -96,7 +96,7 @@ class RegtreeFmllrDiagGmm {
 
   /// Mutators
   void SetParameters(const MatrixBase<BaseFloat> &mat, size_t regclass);
-  void set_bclass2xforms(const std::vector<int32>& in) { bclass2xforms_ = in; }
+  void set_bclass2xforms(const std::vector<int32> &in) { bclass2xforms_ = in; }
 
  private:
   int32 dim_;             ///< Dimension of feature vectors
@@ -153,13 +153,13 @@ class RegtreeFmllrDiagGmmAccs {
   /// This does not work with multiple feature transforms.
   BaseFloat AccumulateForGmm(const RegressionTree &regtree,
                              const AmDiagGmm &am,
-                             const VectorBase<BaseFloat>& data,
+                             const VectorBase<BaseFloat> &data,
                              size_t pdf_index, BaseFloat weight);
 
   /// Accumulate stats for a single Gaussian component in the model.
   void AccumulateForGaussian(const RegressionTree &regtree,
                              const AmDiagGmm &am,
-                             const VectorBase<BaseFloat>& data,
+                             const VectorBase<BaseFloat> &data,
                              size_t pdf_index, size_t gauss_index,
                              BaseFloat weight);
 
@@ -173,7 +173,7 @@ class RegtreeFmllrDiagGmmAccs {
   /// Accessors
   int32 Dim() const { return dim_; }
   int32 NumBaseClasses() const { return num_baseclasses_; }
-  const std::vector<AffineXformStats*>& baseclass_stats() const {
+  const std::vector<AffineXformStats*> &baseclass_stats() const {
     return baseclass_stats_;
   }
 

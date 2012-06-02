@@ -160,7 +160,7 @@ void UnitTestDefines() {  // Yes, we even unit-test the preprocessor statements.
   KALDI_ASSERT(std::abs(cos(exp(M_LOG_2PI)) - 1.0) < 1.0e-05);
 }
 
-void UnitTestAssertFunc() {  // Testing Assert*** functions
+void UnitTestAssertFunc() {  // Testing Assert** *functions
   using namespace kaldi;
   for (int i = 1; i < 100; i++) {
     float f1 = rand() % 10000 + 1, f2 = rand() % 20 + 1;

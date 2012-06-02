@@ -54,7 +54,7 @@ inline void PackedMatrix<Real>::Init(MatrixIndexT r) {
   }
   MatrixIndexT size = r * (r + 1) / 2 * sizeof(Real);
 
-  void* data;  // aligned memory block
+  void *data;  // aligned memory block
   void* free_data;  // memory block to be really freed
 
   if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {
@@ -119,7 +119,7 @@ void PackedMatrix<Real>::ScaleDiag(Real alpha) {
 
 template<typename Real>
 template<typename OtherReal>
-void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal>& orig) {
+void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal> &orig) {
   KALDI_ASSERT(NumRows() == orig.NumRows());
   if (sizeof(Real) == sizeof(OtherReal)) {
     memcpy(data_, orig.Data(), SizeInBytes());
@@ -134,19 +134,19 @@ void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal>& orig) {
 
 // template instantiations.
 template
-void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<double>& orig);
+void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<double> &orig);
 template
-void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<float>& orig);
+void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<float> &orig);
 template
-void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<double>& orig);
+void PackedMatrix<double>::CopyFromPacked(const PackedMatrix<double> &orig);
 template
-void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<float>& orig);
+void PackedMatrix<float>::CopyFromPacked(const PackedMatrix<float> &orig);
 
 
 
 template<typename Real>
 template<typename OtherReal>
-void PackedMatrix<Real>::CopyFromVec(const SubVector<OtherReal>& vec) {
+void PackedMatrix<Real>::CopyFromVec(const SubVector<OtherReal> &vec) {
   MatrixIndexT size = (NumRows()*(NumRows()+1)) / 2;
   KALDI_ASSERT(vec.Dim() == size);
   if (sizeof(Real) == sizeof(OtherReal)) {
@@ -161,13 +161,13 @@ void PackedMatrix<Real>::CopyFromVec(const SubVector<OtherReal>& vec) {
 
 // template instantiations.
 template
-void PackedMatrix<float>::CopyFromVec(const SubVector<double>& orig);
+void PackedMatrix<float>::CopyFromVec(const SubVector<double> &orig);
 template
-void PackedMatrix<double>::CopyFromVec(const SubVector<float>& orig);
+void PackedMatrix<double>::CopyFromVec(const SubVector<float> &orig);
 template
-void PackedMatrix<double>::CopyFromVec(const SubVector<double>& orig);
+void PackedMatrix<double>::CopyFromVec(const SubVector<double> &orig);
 template
-void PackedMatrix<float>::CopyFromVec(const SubVector<float>& orig);
+void PackedMatrix<float>::CopyFromVec(const SubVector<float> &orig);
 
 
 
@@ -334,13 +334,13 @@ bad:
 
 
 template<>
-void PackedMatrix<float>::AddVec2(const float alpha, const Vector<float>& rv) {
+void PackedMatrix<float>::AddVec2(const float alpha, const Vector<float> &rv) {
   KALDI_ASSERT(rv.Dim() == num_rows_);
   cblas_sspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1, data_);
 }
 
 template<>
-void PackedMatrix<double>::AddVec2(const double alpha, const Vector<double>& rv) {
+void PackedMatrix<double>::AddVec2(const double alpha, const Vector<double> &rv) {
   KALDI_ASSERT(rv.Dim() == num_rows_);
   cblas_dspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1, data_);
 }

@@ -149,7 +149,7 @@ bool TrainingGraphCompiler::CompileGraphsFromText(
   using namespace fst;
   std::vector<const VectorFst<StdArc>* > word_fsts(transcripts.size());
   for (size_t i = 0; i < transcripts.size(); i++) {
-    VectorFst<StdArc>* word_fst = new VectorFst<StdArc>();
+    VectorFst<StdArc> *word_fst = new VectorFst<StdArc>();
     MakeLinearAcceptor(transcripts[i], word_fst);
     word_fsts[i] = word_fst;
   }    

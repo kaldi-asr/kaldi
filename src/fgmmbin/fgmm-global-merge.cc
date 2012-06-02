@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     // Write out the model
     WriteKaldiObject(fgmm, fgmm_out_filename, binary);
     KALDI_LOG << "Written merged GMM to " << fgmm_out_filename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

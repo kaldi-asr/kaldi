@@ -251,7 +251,7 @@ template<class A, class B>
 struct CompareFirstMemberOfPair {
   inline bool operator() (const std::pair<A, B> &p1,
                           const std::pair<A, B> &p2) {
-    return (p1.first < p2.first);
+    return p1.first < p2.first;
   }
 };
 

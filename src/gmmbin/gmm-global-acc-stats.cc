@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
     WriteKaldiObject(gmm_accs, accs_wxfilename, binary);
     KALDI_LOG << "Written accs to " << accs_wxfilename;
     return (num_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

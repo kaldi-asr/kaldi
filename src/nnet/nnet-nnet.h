@@ -41,11 +41,11 @@ class Nnet {
 
  public:
   /// Perform forward pass through the network
-  void Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out); 
+  void Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
   /// Perform backward pass through the network
-  void Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err);
+  void Backpropagate(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err);
   /// Perform forward pass through the network, don't keep buffers (use it when not training)
-  void Feedforward(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out); 
+  void Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
 
   MatrixIndexT InputDim() const; ///< Dimensionality of the input features
   MatrixIndexT OutputDim() const; ///< Dimensionality of the desired vectors
@@ -69,17 +69,17 @@ class Nnet {
   }
   
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
-  void Read(const std::string& file);  
+  void Read(const std::string &file);  
   /// Read the MLP from stream (can add layers to exisiting instance of Nnet)
-  void Read(std::istream& in, bool binary);  
+  void Read(std::istream &in, bool binary);  
   /// Write MLP to file
-  void Write(const std::string& file, bool binary); 
+  void Write(const std::string &file, bool binary); 
   /// Write MLP to stream 
-  void Write(std::ostream& out, bool binary);    
+  void Write(std::ostream &out, bool binary);    
   
   /// Set the learning rate values to trainable layers, 
   /// factors can disable training of individual layers
-  void SetLearnRate(BaseFloat lrate, const char* lrate_factors); 
+  void SetLearnRate(BaseFloat lrate, const char *lrate_factors); 
   /// Get the global learning rate value
   BaseFloat GetLearnRate() { 
     return learn_rate_; 
@@ -93,9 +93,9 @@ class Nnet {
 
  private:
   /// Creates a component by reading from stream, return NULL if no more components
-  static Component* ComponentFactory(std::istream& in, bool binary, Nnet* nnet);
+  static Component* ComponentFactory(std::istream &in, bool binary, Nnet *nnet);
   /// Dumps individual component to stream
-  static void ComponentDumper(std::ostream& out, bool binary, const Component& comp);
+  static void ComponentDumper(std::ostream &out, bool binary, const Component &comp);
 
   typedef std::vector<Component*> NnetType;
   
@@ -137,7 +137,7 @@ inline MatrixIndexT Nnet::OutputDim() const {
 }
 
 
-inline int32 Nnet::IndexOfLayer(const Component& comp) const {
+inline int32 Nnet::IndexOfLayer(const Component &comp) const {
   for(int32 i=0; i<LayerCount(); i++) {
     if (&comp == nnet_[i]) return i;
   }
@@ -148,7 +148,7 @@ inline int32 Nnet::IndexOfLayer(const Component& comp) const {
 }
  
   
-inline void Nnet::Read(const std::string& file) {
+inline void Nnet::Read(const std::string &file) {
   bool binary;
   Input in(file, &binary);
   Read(in.Stream(), binary);
@@ -156,14 +156,14 @@ inline void Nnet::Read(const std::string& file) {
 }
 
 
-inline void Nnet::Write(const std::string& file, bool binary) {
+inline void Nnet::Write(const std::string &file, bool binary) {
   Output out(file, binary, true);
   Write(out.Stream(), binary);
   out.Close();
 }
 
 
-inline void Nnet::Write(std::ostream& out, bool binary) {
+inline void Nnet::Write(std::ostream &out, bool binary) {
   for(int32 i=0; i<LayerCount(); i++) {
     nnet_[i]->Write(out, binary);
   }

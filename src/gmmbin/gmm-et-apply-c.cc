@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     et.Write(ko.Stream(), binary);
     KALDI_LOG << "Applied C transform and wrote ET object.";
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

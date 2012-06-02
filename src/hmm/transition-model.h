@@ -226,7 +226,7 @@ class TransitionModel {
       else if (phone > other.phone) return false;
       else if (hmm_state < other.hmm_state) return true;
       else if (hmm_state > other.hmm_state) return false;
-      else return (pdf < other.pdf);
+      else return pdf < other.pdf;
     }
     bool operator == (const Triple &other) const {
       return (phone == other.phone && hmm_state == other.hmm_state

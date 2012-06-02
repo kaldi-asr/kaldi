@@ -135,8 +135,8 @@ void
 HldaAccsDiagGmm::
 AccumulateFromPosteriors(int32 pdf_id,
                          const DiagGmm &gmm,
-                         const VectorBase<BaseFloat>& data,
-                         const VectorBase<BaseFloat>& posteriors) {
+                         const VectorBase<BaseFloat> &data,
+                         const VectorBase<BaseFloat> &posteriors) {
   Vector<double> data_dbl(data);
   KALDI_ASSERT(static_cast<size_t>(pdf_id) < occs_.size()
                && occs_[pdf_id].Dim() == posteriors.Dim());

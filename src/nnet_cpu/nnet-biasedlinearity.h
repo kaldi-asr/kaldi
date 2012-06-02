@@ -26,7 +26,7 @@ namespace kaldi {
 
 class BiasedLinearity : public UpdatableComponent {
  public:
-  BiasedLinearity(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet* nnet) 
+  BiasedLinearity(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
     : UpdatableComponent(dim_in, dim_out, nnet), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
@@ -38,7 +38,7 @@ class BiasedLinearity : public UpdatableComponent {
     return kBiasedLinearity;
   }
 
-  void ReadData(std::istream& is, bool binary) {
+  void ReadData(std::istream &is, bool binary) {
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
 
@@ -47,12 +47,12 @@ class BiasedLinearity : public UpdatableComponent {
     KALDI_ASSERT(bias_.Dim() == output_dim_);
   }
 
-  void WriteData(std::ostream& os, bool binary) const {
+  void WriteData(std::ostream &os, bool binary) const {
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
   }
 
-  void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
+  void PropagateFnc(const Matrix<BaseFloat> &in, Matrix<BaseFloat> *out) {
     // precopy bias
     for (MatrixIndexT i=0; i<out->NumRows(); i++) {
       out->CopyRowFromVec(bias_, i);
@@ -61,13 +61,13 @@ class BiasedLinearity : public UpdatableComponent {
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
-  void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
+  void BackpropagateFnc(const Matrix<BaseFloat> &in_err, Matrix<BaseFloat> *out_err) {
     // multiply error by weights
     out_err->AddMatMat(1.0, in_err, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const Matrix<BaseFloat>& input, const Matrix<BaseFloat>& err) {
+  void Update(const Matrix<BaseFloat> &input, const Matrix<BaseFloat> &err) {
     
     // compute gradient
     linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);

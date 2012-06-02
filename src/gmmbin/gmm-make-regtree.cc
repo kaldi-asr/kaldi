@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Written regression tree to " << tree_out_filename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

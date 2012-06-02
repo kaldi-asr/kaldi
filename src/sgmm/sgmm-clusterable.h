@@ -51,7 +51,7 @@ class SgmmClusterable: public Clusterable {
   /// Note: the pdf-index j, relating to the original SGMM
   /// in sgmm_, is only needed to select the right vector to
   /// compute Gaussian-level alignments with.
-  void Accumulate(const SgmmPerFrameDerivedVars& frame_vars,
+  void Accumulate(const SgmmPerFrameDerivedVars &frame_vars,
                   int32 j, 
                   BaseFloat weight);
   

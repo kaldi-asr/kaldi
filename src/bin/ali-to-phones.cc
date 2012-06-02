@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
     KALDI_LOG << "Done " << n_done << " utterances."; 
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

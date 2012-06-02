@@ -36,7 +36,7 @@ void SplitStringToVector(const std::string &full, const char *delim,
 
 
 void Trim(std::string *str) {
-  const char* white_chars = " \t\n\r\f\v";
+  const char *white_chars = " \t\n\r\f\v";
 
   std::string::size_type pos = str->find_last_not_of(white_chars);
   if (pos != std::string::npos)  {
@@ -65,7 +65,7 @@ bool IsToken(const std::string &token) {
 void SplitStringOnFirstSpace(const std::string &str,
                              std::string *first,
                              std::string *rest) {
-  const char* white_chars = " \t\n\r\f\v";
+  const char *white_chars = " \t\n\r\f\v";
   typedef std::string::size_type I;
   const I npos = std::string::npos;
   I first_nonwhite = str.find_first_not_of(white_chars);

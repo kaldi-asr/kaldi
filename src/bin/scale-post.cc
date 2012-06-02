@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_scaled << " posteriors;  " << num_no_scale
               << " had no scales.";
     return (num_scaled != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

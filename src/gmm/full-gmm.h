@@ -65,7 +65,7 @@ class FullGmm {
   /// Outputs the per-component contributions to the
   /// log-likelihood
   void LogLikelihoods(const VectorBase<BaseFloat> &data,
-                      Vector<BaseFloat>* loglikes) const;
+                      Vector<BaseFloat> *loglikes) const;
 
   /// Outputs the per-component log-likelihoods of a subset
   /// of mixture components.  Note: indices.size() will
@@ -108,47 +108,47 @@ class FullGmm {
                    GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
-  const Vector<BaseFloat>& gconsts() const { return gconsts_; }
-  const Vector<BaseFloat>& weights() const { return weights_; }
-  const Matrix<BaseFloat>& means_invcovars() const { return means_invcovars_; }
-  const std::vector<SpMatrix<BaseFloat> >& inv_covars() const {
+  const Vector<BaseFloat> &gconsts() const { return gconsts_; }
+  const Vector<BaseFloat> &weights() const { return weights_; }
+  const Matrix<BaseFloat> &means_invcovars() const { return means_invcovars_; }
+  const std::vector<SpMatrix<BaseFloat> > &inv_covars() const {
     return inv_covars_; }
 
   /// Non-const accessors
-  Matrix<BaseFloat>& means_invcovars() { return means_invcovars_; }
-  std::vector<SpMatrix<BaseFloat> >& inv_covars() { return inv_covars_; }
+  Matrix<BaseFloat> &means_invcovars() { return means_invcovars_; }
+  std::vector<SpMatrix<BaseFloat> > &inv_covars() { return inv_covars_; }
 
   /// Mutators for both float or double
   template<class Real>
-  void SetWeights(const Vector<Real>& w);    ///< Set mixure weights
+  void SetWeights(const Vector<Real> &w);    ///< Set mixure weights
 
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>
-  void SetMeans(const Matrix<Real>& m);
+  void SetMeans(const Matrix<Real> &m);
   
   /// Use SetInvCovarsAndMeans if updating both means and (inverse) covariances
   template<class Real>
-  void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> >& invcovars,
-                            const Matrix<Real>& means);
+  void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> > &invcovars,
+                            const Matrix<Real> &means);
 
   /// Use this if setting both, in the class's native format.
   template<class Real>
-  void SetInvCovarsAndMeansInvCovars(const std::vector<SpMatrix<Real> >& invcovars,
-                                     const Matrix<Real>& means_invcovars);
+  void SetInvCovarsAndMeansInvCovars(const std::vector<SpMatrix<Real> > &invcovars,
+                                     const Matrix<Real> &means_invcovars);
 
   /// Set the (inverse) covariances and recompute means_invcovars_
   template<class Real>
-  void SetInvCovars(const std::vector<SpMatrix<Real> >& v);
+  void SetInvCovars(const std::vector<SpMatrix<Real> > &v);
 
   /// Accessor for covariances.
   template<class Real>
-  void GetCovars(std::vector<SpMatrix<Real> >* v) const;
+  void GetCovars(std::vector<SpMatrix<Real> > *v) const;
   /// Accessor for means.
   template<class Real>
   void GetMeans(Matrix<Real> *m) const;
   /// Accessor for covariances and means
   template<class Real>
-  void GetCovarsAndMeans(std::vector< SpMatrix<Real> >* covars,
+  void GetCovarsAndMeans(std::vector< SpMatrix<Real> > *covars,
                          Matrix<Real> *means) const;
 
   /// Mutators for single component, supports float or double

@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     lm.Read(arpa_filename, kaldi::kArpaLm, NULL, natural_base);
     lm.Write(fst_filename);
     exit(0);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

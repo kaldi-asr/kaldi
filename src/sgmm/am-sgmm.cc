@@ -341,7 +341,7 @@ void AmSgmm::CopyGlobalsInitVecs(const AmSgmm &other,
 }
 
 
-void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat>& data,
+void AmSgmm::ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                                  const std::vector<int32> &gselect,
                                  const SgmmPerSpkDerivedVars &spk_vars,
                                  BaseFloat logdet_s,
@@ -1320,7 +1320,7 @@ void SgmmGauPost::Read(std::istream &is, bool binary) {
 }
 
 
-void AmSgmmFunctions::ComputeDistances(const AmSgmm& model,
+void AmSgmmFunctions::ComputeDistances(const AmSgmm &model,
                                        const Vector<BaseFloat> &state_occs,
                                        MatrixBase<BaseFloat> *dists) {
   int32 num_states = model.NumPdfs(),

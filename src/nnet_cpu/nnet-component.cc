@@ -41,7 +41,7 @@ const char* Component::TypeToToken(ComponentType t) {
   return NULL;
 }
 
-Component::ComponentType Component::TokenToType(const std::string& s) {
+Component::ComponentType Component::TokenToType(const std::string &s) {
   int32 N=sizeof(kTokenMap)/sizeof(kTokenMap[0]);
   for(int i=0; i<N; i++) {
     if (0 == strcmp(kTokenMap[i].value, s.c_str())) 
@@ -52,7 +52,7 @@ Component::ComponentType Component::TokenToType(const std::string& s) {
 }
 
 
-Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
+Component* Component::Read(std::istream &is, bool binary, Nnet *nnet) {
   int32 dim_out, dim_in;
   std::string token;
 
@@ -65,7 +65,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
   ReadBasicType(is, binary, &dim_out); 
   ReadBasicType(is, binary, &dim_in);
 
-  Component* p_comp;
+  Component *p_comp;
   switch (comp_type) {
     case Component::kBiasedLinearity :
       p_comp = new BiasedLinearity(dim_in, dim_out, nnet); 
@@ -86,7 +86,7 @@ Component* Component::Read(std::istream& is, bool binary, Nnet* nnet) {
 }
 
 
-void Component::Write(std::ostream& os, bool binary) const {
+void Component::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, Component::TypeToToken(GetType()));
   WriteBasicType(os, binary, OutputDim());
   WriteBasicType(os, binary, InputDim());

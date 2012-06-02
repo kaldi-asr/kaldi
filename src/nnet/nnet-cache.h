@@ -40,11 +40,11 @@ class Cache {
   void Init(int32 cachesize, int32 bunchsize);
 
   /// Add data to cache
-  void AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32>& targets);
+  void AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32> &targets);
   /// Randomizes the cache
   void Randomize();
   /// Get the bunch of training data from cache
-  void GetBunch(CuMatrix<BaseFloat>* features, std::vector<int32>* targets);
+  void GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets);
 
 
   /// Returns true if the cache was completely filled

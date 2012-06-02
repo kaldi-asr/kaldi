@@ -33,7 +33,7 @@ AmDiagGmm::~AmDiagGmm() {
   DeletePointers(&densities_);
 }
 
-void AmDiagGmm::Init(const DiagGmm& proto, int32 num_pdfs) {
+void AmDiagGmm::Init(const DiagGmm &proto, int32 num_pdfs) {
   if (densities_.size() != 0) {
     KALDI_WARN << "Init() called on a non-empty object. Contents will be "
         "overwritten";
@@ -53,7 +53,7 @@ void AmDiagGmm::Init(const DiagGmm& proto, int32 num_pdfs) {
   }
 }
 
-void AmDiagGmm::AddPdf(const DiagGmm& gmm) {
+void AmDiagGmm::AddPdf(const DiagGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
     assert(static_cast<int32>(gmm.Dim()) == dim_);
   else
@@ -254,7 +254,7 @@ void UbmClusteringOptions::Check() {
               << reduce_state_factor;
 }
 
-void ClusterGaussiansToUbm(const AmDiagGmm& am,
+void ClusterGaussiansToUbm(const AmDiagGmm &am,
                            const Vector<BaseFloat> &state_occs,
                            UbmClusteringOptions opts,
                            DiagGmm *ubm_out) {

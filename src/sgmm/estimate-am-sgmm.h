@@ -149,7 +149,7 @@ class MleAmSgmmAccs {
 
   /// Returns likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
-                       const SgmmPerFrameDerivedVars& frame_vars,
+                       const SgmmPerFrameDerivedVars &frame_vars,
                        const VectorBase<BaseFloat> &v_s,  // spk-vec, may be empty
                        int32 state_index, BaseFloat weight,
                        SgmmUpdateFlagsType flags);
@@ -157,7 +157,7 @@ class MleAmSgmmAccs {
   /// Returns count accumulated (may differ from posteriors.Sum()
   /// due to weight pruning).
   BaseFloat AccumulateFromPosteriors(const AmSgmm &model,
-                                     const SgmmPerFrameDerivedVars& frame_vars,
+                                     const SgmmPerFrameDerivedVars &frame_vars,
                                      const Matrix<BaseFloat> &posteriors,
                                      const VectorBase<BaseFloat> &v_s,  // may be empty
                                      int32 state_index,
@@ -166,7 +166,7 @@ class MleAmSgmmAccs {
   /// Accumulates global stats for the current speaker (if applicable).
   /// If flags contains kSgmmSpeakerProjections (N), must call
   /// this after finishing the speaker's data.
-  void CommitStatsForSpk(const AmSgmm& model,
+  void CommitStatsForSpk(const AmSgmm &model,
                          const VectorBase<BaseFloat> &v_s);
 
   /// Accessors
@@ -357,14 +357,14 @@ class MleSgmmSpeakerAccs {
 
   /// Accumulate statistics.  Returns per-frame log-likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
-                       const SgmmPerFrameDerivedVars& frame_vars,
+                       const SgmmPerFrameDerivedVars &frame_vars,
                        int32 state_index, BaseFloat weight);
 
   /// Accumulate statistics, given posteriors.  Returns total
   /// count accumulated, which may differ from posteriors.Sum()
   /// due to randomized pruning.
   BaseFloat AccumulateFromPosteriors(const AmSgmm &model,
-                                     const SgmmPerFrameDerivedVars& frame_vars,
+                                     const SgmmPerFrameDerivedVars &frame_vars,
                                      const Matrix<BaseFloat> &posteriors,
                                      int32 state_index);
 

@@ -22,7 +22,7 @@
 namespace kaldi {
 
 
-void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff) {
+void Xent::Eval(const Matrix<BaseFloat> &net_out, const Matrix<BaseFloat> &target, Matrix<BaseFloat> *diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);
@@ -48,7 +48,7 @@ void Xent::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& targe
 }
 
 
-void Xent::Eval(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target, Matrix<BaseFloat>* diff) {
+void Xent::Eval(const Matrix<BaseFloat> &net_out, const std::vector<int32> &target, Matrix<BaseFloat> *diff) {
   KALDI_ASSERT(net_out.NumRows() == (int32)target.size());
 
   // check the labels
@@ -98,7 +98,7 @@ std::string Xent::Report() {
 }
 
 
-int32 Xent::Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& target) {
+int32 Xent::Correct(const Matrix<BaseFloat> &net_out, const std::vector<int32> &target) {
   int32 correct = 0;
   for(int32 r=0; r<net_out.NumRows(); r++) {
     BaseFloat max = -1;
@@ -117,7 +117,7 @@ int32 Xent::Correct(const Matrix<BaseFloat>& net_out, const std::vector<int32>& 
 }
 
 
-void Mse::Eval(const Matrix<BaseFloat>& net_out, const Matrix<BaseFloat>& target, Matrix<BaseFloat>* diff) {
+void Mse::Eval(const Matrix<BaseFloat> &net_out, const Matrix<BaseFloat> &target, Matrix<BaseFloat> *diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols(), kUndefined);

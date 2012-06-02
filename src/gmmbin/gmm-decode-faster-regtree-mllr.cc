@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
       }
 
       // If found, load the transforms for the current utterance.
-      const RegtreeMllrDiagGmm& mllr = mllr_reader.Value(utt_or_spk);
+      const RegtreeMllrDiagGmm &mllr = mllr_reader.Value(utt_or_spk);
       kaldi::DecodableAmDiagGmmRegtreeMllr gmm_decodable(am_gmm, trans_model,
                                                          features, mllr,
                                                          regtree,
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
     else
       return 1;
   }
-  catch(const std::exception& e) {
+  catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

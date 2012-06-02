@@ -72,16 +72,16 @@ class Component {
   /// Pair of type and token
   struct key_value {
     const Component::ComponentType key;
-    const char* value;
+    const char *value;
   };
   /// Mapping of types and tokens 
   static const struct key_value kTokenMap[];
   /// Convert component type to token
   static const char* TypeToToken(ComponentType t);
   /// Convert token to component type
-  static ComponentType TokenToType(const std::string& s);
+  static ComponentType TokenToType(const std::string &s);
 
-  Component(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet) 
+  Component(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet *nnet) 
       : input_dim_(input_dim), output_dim_(output_dim), nnet_(nnet) { }
   virtual ~Component() { }
    
@@ -103,31 +103,31 @@ class Component {
   }
  
   /// Perform forward pass propagateion Input->Output
-  void Propagate(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out); 
+  void Propagate(const Matrix<BaseFloat> &in, Matrix<BaseFloat> *out); 
   /// Perform backward pass propagateion ErrorInput->ErrorOutput
-  void Backpropagate(const Matrix<BaseFloat>& in_err,
-                     Matrix<BaseFloat>* out_err); 
+  void Backpropagate(const Matrix<BaseFloat> &in_err,
+                     Matrix<BaseFloat> *out_err); 
 
   /// Read component from stream
-  static Component* Read(std::istream& is, bool binary, Nnet* nnet);
+  static Component* Read(std::istream &is, bool binary, Nnet *nnet);
   /// Write component to stream
-  void Write(std::ostream& os, bool binary) const;
+  void Write(std::ostream &os, bool binary) const;
 
 
   // abstract interface for propagation/backpropagation 
  protected:
   /// Forward pass transformation (to be implemented by descendents...)
-  virtual void PropagateFnc(const Matrix<BaseFloat>& in,
-                            Matrix<BaseFloat>* out) = 0;
+  virtual void PropagateFnc(const Matrix<BaseFloat> &in,
+                            Matrix<BaseFloat> *out) = 0;
   /// Backward pass transformation (to be implemented by descendents...)
-  virtual void BackpropagateFnc(const Matrix<BaseFloat>& in_err,
-                                Matrix<BaseFloat>* out_err) = 0;
+  virtual void BackpropagateFnc(const Matrix<BaseFloat> &in_err,
+                                Matrix<BaseFloat> *out_err) = 0;
 
   /// Reads the component content
-  virtual void ReadData(std::istream& is, bool binary) { }
+  virtual void ReadData(std::istream &is, bool binary) { }
 
   /// Writes the component content
-  virtual void WriteData(std::ostream& os, bool binary) const { }
+  virtual void WriteData(std::ostream &os, bool binary) const { }
 
 
   // data members
@@ -135,7 +135,7 @@ class Component {
   MatrixIndexT input_dim_;  ///< Size of input vectors
   MatrixIndexT output_dim_; ///< Size of output vectors
   
-  Nnet* nnet_; ///< Pointer to the whole network
+  Nnet *nnet_; ///< Pointer to the whole network
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
 };
@@ -149,7 +149,7 @@ class Component {
  */
 class UpdatableComponent : public Component {
  public: 
-  UpdatableComponent(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet* nnet)
+  UpdatableComponent(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet *nnet)
     : Component(input_dim, output_dim, nnet),
       learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0) { }
   virtual ~UpdatableComponent() { }
@@ -160,8 +160,8 @@ class UpdatableComponent : public Component {
   }
 
   /// Compute gradient and update parameters
-  virtual void Update(const Matrix<BaseFloat>& input,
-                      const Matrix<BaseFloat>& err) = 0;
+  virtual void Update(const Matrix<BaseFloat> &input,
+                      const Matrix<BaseFloat> &err) = 0;
 
   /// Sets the learning rate of gradient descent
   void LearnRate(BaseFloat lrate) { 
@@ -209,8 +209,8 @@ class UpdatableComponent : public Component {
 
 
 
-inline void Component::Propagate(const Matrix<BaseFloat>& in,
-                                 Matrix<BaseFloat>* out) {
+inline void Component::Propagate(const Matrix<BaseFloat> &in,
+                                 Matrix<BaseFloat> *out) {
   if (input_dim_ != in.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << input_dim_ << " data:" << in.NumCols();
   }
@@ -223,8 +223,8 @@ inline void Component::Propagate(const Matrix<BaseFloat>& in,
 }
 
 
-inline void Component::Backpropagate(const Matrix<BaseFloat>& in_err,
-                                     Matrix<BaseFloat>* out_err) {
+inline void Component::Backpropagate(const Matrix<BaseFloat> &in_err,
+                                     Matrix<BaseFloat> *out_err) {
   if (output_dim_ != in_err.NumCols()) {
     KALDI_ERR << "Nonmatching dims, component:" << output_dim_ 
               << " data:" << in_err.NumCols();

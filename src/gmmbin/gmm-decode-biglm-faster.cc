@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     delete old_lm_fst;
     delete new_lm_fst;
     return (num_success != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

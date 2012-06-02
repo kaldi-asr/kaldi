@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files";
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     KALDI_ERR << e.what();
     return -1;
   }

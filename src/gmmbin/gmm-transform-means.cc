@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Written model to " << model_out_wxfilename;
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

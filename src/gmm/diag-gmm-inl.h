@@ -23,7 +23,7 @@
 namespace kaldi {
 
 template<class Real>
-void DiagGmm::SetWeights(const VectorBase<Real>& w) {
+void DiagGmm::SetWeights(const VectorBase<Real> &w) {
   KALDI_ASSERT(weights_.Dim() == w.Dim());
   weights_.CopyFromVec(w);
   valid_gconsts_ = false;
@@ -38,7 +38,7 @@ inline void DiagGmm::SetComponentWeight(int32 g, BaseFloat w) {
 
 
 template<class Real>
-void DiagGmm::SetMeans(const MatrixBase<Real>& m) {
+void DiagGmm::SetMeans(const MatrixBase<Real> &m) {
   KALDI_ASSERT(means_invvars_.NumRows() == m.NumRows()
     && means_invvars_.NumCols() == m.NumCols());
   means_invvars_.CopyFromMat(m);
@@ -47,7 +47,7 @@ void DiagGmm::SetMeans(const MatrixBase<Real>& m) {
 }
 
 template<class Real>
-void DiagGmm::SetComponentMean(int32 g, const VectorBase<Real>& in) {
+void DiagGmm::SetComponentMean(int32 g, const VectorBase<Real> &in) {
   KALDI_ASSERT(g < NumGauss() && Dim() == in.Dim());
   Vector<Real> tmp(Dim());
   tmp.CopyRowFromMat(inv_vars_, g);
@@ -58,8 +58,8 @@ void DiagGmm::SetComponentMean(int32 g, const VectorBase<Real>& in) {
 
 
 template<class Real>
-void DiagGmm::SetInvVarsAndMeans(const MatrixBase<Real>& invvars,
-                                 const MatrixBase<Real>& means) {
+void DiagGmm::SetInvVarsAndMeans(const MatrixBase<Real> &invvars,
+                                 const MatrixBase<Real> &means) {
   KALDI_ASSERT(means_invvars_.NumRows() == means.NumRows()
     && means_invvars_.NumCols() == means.NumCols()
     && inv_vars_.NumRows() == invvars.NumRows()
@@ -73,7 +73,7 @@ void DiagGmm::SetInvVarsAndMeans(const MatrixBase<Real>& invvars,
 }
 
 template<class Real>
-void DiagGmm::SetInvVars(const MatrixBase<Real>& v) {
+void DiagGmm::SetInvVars(const MatrixBase<Real> &v) {
   KALDI_ASSERT(inv_vars_.NumRows() == v.NumRows()
     && inv_vars_.NumCols() == v.NumCols());
 
@@ -92,7 +92,7 @@ void DiagGmm::SetInvVars(const MatrixBase<Real>& v) {
 }
 
 template<class Real>
-void DiagGmm::SetComponentInvVar(int32 g, const VectorBase<Real>& v) {
+void DiagGmm::SetComponentInvVar(int32 g, const VectorBase<Real> &v) {
   KALDI_ASSERT(g < NumGauss() && v.Dim() == Dim());
 
   int32 dim = Dim();
@@ -110,7 +110,7 @@ void DiagGmm::SetComponentInvVar(int32 g, const VectorBase<Real>& v) {
 
 
 template<class Real>
-void DiagGmm::GetVars(Matrix<Real>* v) const {
+void DiagGmm::GetVars(Matrix<Real> *v) const {
   assert(v != NULL);
   v->Resize(NumGauss(), Dim());
   v->CopyFromMat(inv_vars_);
@@ -130,7 +130,7 @@ void DiagGmm::GetMeans(Matrix<Real> *m) const {
 
 
 template<class Real>
-void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real>* out) const {
+void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real> *out) const {
   assert(gauss < NumGauss());
   assert(static_cast<int32>(out->Dim()) == Dim());
   Vector<Real> tmp(Dim());
@@ -140,7 +140,7 @@ void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real>* out) const {
 }
 
 template<class Real>
-void DiagGmm::GetComponentVariance(int32 gauss, VectorBase<Real>* out) const {
+void DiagGmm::GetComponentVariance(int32 gauss, VectorBase<Real> *out) const {
   assert(gauss < NumGauss());
   assert(static_cast<int32>(out->Dim()) == Dim());
   out->CopyRowFromMat(inv_vars_, gauss);

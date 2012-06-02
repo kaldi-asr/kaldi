@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     WriteFstKaldi(fst1, fst1_out_filename);
     WriteFstKaldi(fst2, fst2_out_filename);
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

@@ -82,7 +82,7 @@ void RegtreeMllrDiagGmm::TransformModel(const RegressionTree &regtree,
 void RegtreeMllrDiagGmm::GetTransformedMeans(const RegressionTree &regtree,
                                              const AmDiagGmm &am,
                                              int32 pdf_index,
-                                             MatrixBase<BaseFloat>* out) const {
+                                             MatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(static_cast<int32>(bclass2xforms_.size()) ==
                regtree.NumBaseclasses());
   int32 num_gauss = am.GetPdf(pdf_index).NumGauss();
@@ -182,7 +182,7 @@ void RegtreeMllrDiagGmmAccs::SetZero() {
 
 BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, int32 pdf_index, BaseFloat weight) {
+    const VectorBase<BaseFloat> &data, int32 pdf_index, BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
   int32 num_comp = static_cast<int32>(pdf.NumGauss());
   Vector<BaseFloat> posterior(num_comp);
@@ -219,7 +219,7 @@ BaseFloat RegtreeMllrDiagGmmAccs::AccumulateForGmm(
 
 void RegtreeMllrDiagGmmAccs::AccumulateForGaussian(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, int32 pdf_index, int32 gauss_index,
+    const VectorBase<BaseFloat> &data, int32 pdf_index, int32 gauss_index,
     BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
   Vector<double> data_d(data);
@@ -304,7 +304,7 @@ static void ComputeMllrMatrix(const Matrix<double> &K,
 }
 
 static BaseFloat MllrAuxFunction(const Matrix<BaseFloat> &xform,
-                                 const AffineXformStats& stats) {
+                                 const AffineXformStats &stats) {
   int32 dim = stats.G_.size();
   Matrix<double> xform_d(xform);
   Vector<double> xform_row_g(dim + 1);

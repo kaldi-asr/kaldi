@@ -21,7 +21,7 @@ namespace kaldi {
 void UnitTestParseOptions() {
   int argc = 4;
   std::string str;
-  const char* argv[4] = { "--i=boo", "a", "b", "c" };
+  const char *argv[4] = { "--i=boo", "a", "b", "c" };
   ParseOptions po("my usage msg");
   po.Register("i", &str, "My variable");
   po.Read(argc, argv);

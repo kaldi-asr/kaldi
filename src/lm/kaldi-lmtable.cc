@@ -33,10 +33,10 @@ namespace kaldi {
 StateId LmFstConverter::AddStateFromSymb(
                                       const std::vector<string> &ngramString,
                                       int kstart, int kend,
-                                      const char* sep,
-                                      fst::StdVectorFst* pfst,
-                                      fst::SymbolTable* psst,
-                                      bool& newlyAdded) {
+                                      const char *sep,
+                                      fst::StdVectorFst *pfst,
+                                      fst::SymbolTable *psst,
+                                      bool &newlyAdded) {
   int64 snum, lastAvailable;
   fst::StdArc::StateId sid;
   std::ostringstream oss("");
@@ -69,7 +69,7 @@ StateId LmFstConverter::AddStateFromSymb(
   return sid;
 }
 
-void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst* pfst) {
+void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
 
   // go through all states with a recorded backoff destination 
   // and find out any that has no output arcs and is not final
@@ -93,8 +93,8 @@ void LmFstConverter::AddArcsForNgramProb(
                          float logProb,
                          float logBow,
                          std::vector<string> &ngs,
-                         fst::StdVectorFst* pfst,
-                         fst::SymbolTable* psst,
+                         fst::StdVectorFst *pfst,
+                         fst::SymbolTable *psst,
                          const string startSent,
                          const string endSent) {
   fst::StdArc::StateId src, dst, dbo;
@@ -165,7 +165,7 @@ void LmFstConverter::AddArcsForNgramProb(
 #ifndef HAVE_IRSTLM
 
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
-                                fst::StdVectorFst* pfst,
+                                fst::StdVectorFst *pfst,
                                 bool useNaturalOpt,
                                 const string startSent,
                                 const string endSent) {
@@ -315,7 +315,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 // #ifdef HAVE_IRSTLM implementation
 
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
-                                fst::StdVectorFst* pfst,
+                                fst::StdVectorFst *pfst,
                                 bool useNaturalOpt,
                                 const string startSent,
                                 const string endSent) {
@@ -331,7 +331,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 
   // run through all nodes in table (as in dumplm)
 void LmTable::DumpStart(ngram ng,
-                        fst::StdVectorFst* pfst,
+                        fst::StdVectorFst *pfst,
                         const string startSent,
                         const string endSent) {
 #ifdef KALDI_PARANOID
@@ -356,7 +356,7 @@ void LmTable::DumpStart(ngram ng,
 // run through given levels and positions in table
 void LmTable::DumpContinue(ngram ng, int ilev, int elev,
                            table_entry_pos_t ipos, table_entry_pos_t epos,
-                           fst::StdVectorFst* pfst,
+                           fst::StdVectorFst *pfst,
                            fst::SymbolTable *pStateSymbs,
                            const string startSent, const string endSent) {
   LMT_TYPE ndt = tbltype[ilev];

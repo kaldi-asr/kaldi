@@ -251,7 +251,7 @@ void GetEqualLoudnessVector(const MelBanks &mel_banks,
   }
 }
 
-void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat>* mat_out) {
+void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat> *mat_out) {
 
   float angle = M_PI / (float)(dimension - 1);
   float scale = 1.0f / (2.0f * (dimension - 1));

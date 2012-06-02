@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
       dst_stats.Write(ko.Stream(), binary_write);
     }
     KALDI_LOG << "Smoothed stats with tau = " << tau;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

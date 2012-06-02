@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Error writing fst to "
                 << (fst_out_filename == "" ? "standard output" : fst_out_filename);
     delete fst;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

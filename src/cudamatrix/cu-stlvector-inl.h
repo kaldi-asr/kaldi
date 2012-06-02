@@ -81,7 +81,7 @@ void CuStlVector<_ElemT>::Destroy() {
 
 
 template<typename _ElemT>
-CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>& src) {
+CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT> &src) {
   Resize(src.size());
 
   #if HAVE_CUDA==1
@@ -101,7 +101,7 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT>&
 
 
 template<typename _ElemT>
-void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT>* dst) const {
+void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT> *dst) const {
   if (dst->size() != dim_) {
     dst->resize(dim_);
   }
@@ -136,7 +136,7 @@ void CuStlVector<_ElemT>::SetZero() {
 
 /// Prints the vector to stream
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuStlVector<_ElemT>& vec) {
+std::ostream &operator << (std::ostream &out, const CuStlVector<_ElemT> &vec) {
   std::vector<_ElemT> tmp;
   vec.CopyToVec(&tmp);
   out << "[";

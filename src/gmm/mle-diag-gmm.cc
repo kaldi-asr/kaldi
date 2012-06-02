@@ -131,7 +131,7 @@ void AccumDiagGmm::Scale(BaseFloat f, GmmFlagsType flags) {
   if (flags & kGmmVariances) variance_accumulator_.Scale(d);
 }
 
-void AccumDiagGmm::AccumulateForComponent(const VectorBase<BaseFloat>& data,
+void AccumDiagGmm::AccumulateForComponent(const VectorBase<BaseFloat> &data,
                                           int32 comp_index, BaseFloat weight) {
   if (flags_ & kGmmMeans)
     KALDI_ASSERT(data.Dim() == Dim());
@@ -163,8 +163,8 @@ void AccumDiagGmm::AddStatsForComponent(int32 g,
 
 
 void AccumDiagGmm::AccumulateFromPosteriors(
-    const VectorBase<BaseFloat>& data,
-    const VectorBase<BaseFloat>& posteriors) {
+    const VectorBase<BaseFloat> &data,
+    const VectorBase<BaseFloat> &posteriors) {
   if (flags_ & kGmmMeans)
     KALDI_ASSERT(static_cast<int32>(data.Dim()) == Dim());
   KALDI_ASSERT(static_cast<int32>(posteriors.Dim()) == NumGauss());
@@ -183,7 +183,7 @@ void AccumDiagGmm::AccumulateFromPosteriors(
 }
 
 BaseFloat AccumDiagGmm::AccumulateFromDiag(const DiagGmm &gmm,
-                                           const VectorBase<BaseFloat>& data,
+                                           const VectorBase<BaseFloat> &data,
                                            BaseFloat frame_posterior) {
   KALDI_ASSERT(gmm.NumGauss() == NumGauss());
   KALDI_ASSERT(gmm.Dim() == Dim());
@@ -217,7 +217,7 @@ void AccumDiagGmm::SmoothStats(BaseFloat tau) {
 // to each Gaussian in this acc.
 // Careful: this wouldn't be valid if it were used to update the
 // Gaussian weights.
-void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
+void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm &src_acc) {
   KALDI_ASSERT(src_acc.NumGauss() == num_comp_ && src_acc.Dim() == dim_);
   for (int32 i = 0; i < num_comp_; i++) {
     if (src_acc.occupancy_(i) != 0.0) { // can only smooth if src was nonzero...
@@ -232,7 +232,7 @@ void AccumDiagGmm::SmoothWithAccum(BaseFloat tau, const AccumDiagGmm& src_acc) {
 }
 
 
-void AccumDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm& gmm) {
+void AccumDiagGmm::SmoothWithModel(BaseFloat tau, const DiagGmm &gmm) {
   KALDI_ASSERT(gmm.NumGauss() == num_comp_ && gmm.Dim() == dim_);
   Matrix<double> means(num_comp_, dim_);
   Matrix<double> vars(num_comp_, dim_);
@@ -278,7 +278,7 @@ int32 FloorVariance(const BaseFloat min_variance,
   return ans;
 }
 
-BaseFloat MlObjective(const DiagGmm& gmm,
+BaseFloat MlObjective(const DiagGmm &gmm,
                       const AccumDiagGmm &diaggmm_acc) {
   GmmFlagsType acc_flags = diaggmm_acc.Flags();
   Vector<BaseFloat> occ_bf(diaggmm_acc.occupancy());

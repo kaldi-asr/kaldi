@@ -80,7 +80,7 @@ void CuVector<_ElemT>::Destroy() {
 
 
 template<typename _ElemT>
-CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const CuVector<_ElemT>& src) {
+CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const CuVector<_ElemT> &src) {
   Resize(src.Dim());
   
   #if HAVE_CUDA==1
@@ -99,7 +99,7 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const CuVector<_ElemT>& src) {
 
 
 template<typename _ElemT>
-CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT>& src) {
+CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT> &src) {
   Resize(src.Dim());
 
   #if HAVE_CUDA==1
@@ -119,7 +119,7 @@ CuVector<_ElemT>& CuVector<_ElemT>::CopyFromVec(const Vector<_ElemT>& src) {
 
 
 template<typename _ElemT>
-void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
+void CuVector<_ElemT>::CopyToVec(Vector<_ElemT> *dst) const {
   if (dst->Dim() != dim_) {
     dst->Resize(dim_);
   }
@@ -138,7 +138,7 @@ void CuVector<_ElemT>::CopyToVec(Vector<_ElemT>* dst) const {
 
 
 template<typename _ElemT>
-void CuVector<_ElemT>::Read(std::istream& is, bool binary) {
+void CuVector<_ElemT>::Read(std::istream &is, bool binary) {
   Vector<BaseFloat> tmp;
   tmp.Read(is, binary);
   CopyFromVec(tmp);    
@@ -146,7 +146,7 @@ void CuVector<_ElemT>::Read(std::istream& is, bool binary) {
 
 
 template<typename _ElemT>
-void CuVector<_ElemT>::Write(std::ostream& os, bool binary) const {
+void CuVector<_ElemT>::Write(std::ostream &os, bool binary) const {
   Vector<BaseFloat> tmp;
   CopyToVec(&tmp);
   tmp.Write(os, binary); 
@@ -173,7 +173,7 @@ void CuVector<_ElemT>::SetZero() {
 
 /// Prints the vector to stream
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuVector<_ElemT>& vec) {
+std::ostream &operator << (std::ostream &out, const CuVector<_ElemT> &vec) {
   Vector<_ElemT> tmp;
   vec.CopyToVec(&tmp);
   out << tmp;
@@ -186,8 +186,8 @@ std::ostream& operator << (std::ostream& out, const CuVector<_ElemT>& vec) {
  * declare the float specialized methods
  */
 template<> void CuVector<float>::Set(float value);
-template<> void CuVector<float>::AddVec(float alpha, const CuVector<float>& vec, float beta);
-template<> void CuVector<float>::AddColSum(float alpha, const CuMatrix<float>& mat, float beta);
+template<> void CuVector<float>::AddVec(float alpha, const CuVector<float> &vec, float beta);
+template<> void CuVector<float>::AddColSum(float alpha, const CuMatrix<float> &mat, float beta);
 template<> void CuVector<float>::InvertElements();
  
 } // namespace kaldi

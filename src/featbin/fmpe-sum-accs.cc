@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Summed " << (po.NumArgs()-1) << " fMPE stats and wrote to "
               << stats_wxfilename;
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

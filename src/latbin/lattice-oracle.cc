@@ -73,7 +73,7 @@ void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
 // convert from Lattice to standard FST
 // also maps wildcard symbols to epsilons
 // then removes epsilons
-void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice& ilat,
+void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice &ilat,
                                         const LabelSet &wildcards,
                                         fst::StdVectorFst *ofst) {
   // first convert from  lattice to normal FST
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
     unsigned int tot_errs = tot_subs + tot_del + tot_ins;
     KALDI_LOG << "Overall %WER "<<(100.*tot_errs)/tot_words<<" [ "<<tot_errs<<" / "<<tot_words<<", "<<tot_ins<<" ins, "<<tot_del<<" del, "<<tot_subs<<" sub ]";
     KALDI_LOG << "Scored " << n_done << " lattices, "<<n_fail<<" not present in hyp.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

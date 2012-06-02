@@ -111,7 +111,7 @@ void AccumAmTiedDiagGmm::AccumulateFromPosteriors(
     AccumulateFromPosteriors(posteriors);
 }
 
-void AccumAmTiedDiagGmm::Read(std::istream& in_stream, bool binary, bool add) {
+void AccumAmTiedDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
   int32 num_pdfs, num_tied;
   ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
@@ -156,7 +156,7 @@ void AccumAmTiedDiagGmm::Read(std::istream& in_stream, bool binary, bool add) {
   }
 }
 
-void AccumAmTiedDiagGmm::Write(std::ostream& out_stream, bool binary) const {
+void AccumAmTiedDiagGmm::Write(std::ostream &out_stream, bool binary) const {
   int32 num_pdfs = gmm_accumulators_.size();
   int32 num_tied = tied_gmm_accumulators_.size();
   WriteToken(out_stream, binary, "<NUMPDFS>");

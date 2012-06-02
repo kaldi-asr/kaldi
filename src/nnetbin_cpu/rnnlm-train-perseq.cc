@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << xent.Report();
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

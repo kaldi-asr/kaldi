@@ -22,7 +22,7 @@
 
 namespace kaldi {
 
-void Nnet::Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
+void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
   if (LayerCount() == 0) { 
@@ -42,13 +42,13 @@ void Nnet::Propagate(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
     nnet_[i]->Propagate(propagate_buf_[i], &propagate_buf_[i+1]);
   }
 
-  CuMatrix<BaseFloat>& mat = propagate_buf_[nnet_.size()];
+  CuMatrix<BaseFloat> &mat = propagate_buf_[nnet_.size()];
   out->Resize(mat.NumRows(), mat.NumCols());
   out->CopyFromMat(mat);
 }
 
 
-void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>* out_err) {
+void Nnet::Backpropagate(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) {
   if(LayerCount() == 0) { KALDI_ERR << "Cannot backpropagate on empty network"; }
 
   // we need at least L+1 input bufers
@@ -83,7 +83,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
   // don't copy the in_err to buffers, use it as is...
   int32 i = nnet_.size()-1;
   if (nnet_[i]->IsUpdatable()) {
-    UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
     if (uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[i], in_err);
     }
@@ -93,7 +93,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
   // backpropagate by using buffers
   for(i--; i >= 1; i--) {
     if (nnet_[i]->IsUpdatable()) {
-      UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
       if (uc->GetLearnRate() > 0.0) {
         uc->Update(propagate_buf_[i], backpropagate_buf_[i]);
       }
@@ -104,7 +104,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
 
   // update first layer 
   if (nnet_[0]->IsUpdatable()  &&  0 >= backprop_stop) {
-    UpdatableComponent* uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
     if (uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
     }
@@ -120,7 +120,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat>& in_err, CuMatrix<BaseFloat>*
 }
 
 
-void Nnet::Feedforward(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) {
+void Nnet::Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
   if (LayerCount() == 0) { 
@@ -147,7 +147,7 @@ void Nnet::Feedforward(const CuMatrix<BaseFloat>& in, CuMatrix<BaseFloat>* out) 
 }
 
 
-void Nnet::Read(std::istream& in, bool binary) {
+void Nnet::Read(std::istream &in, bool binary) {
   // get the network layers from a factory
   Component *comp;
   while (NULL != (comp = Component::Read(in, binary, this))) {
@@ -166,13 +166,13 @@ void Nnet::Read(std::istream& in, bool binary) {
 }
 
 
-void Nnet::SetLearnRate(BaseFloat lrate, const char* lrate_factors) {
+void Nnet::SetLearnRate(BaseFloat lrate, const char *lrate_factors) {
   // split lrate_factors to a vector
   std::vector<BaseFloat> lrate_factor_vec;
   if (NULL != lrate_factors) {
-    char* copy = new char[strlen(lrate_factors)+1];
+    char *copy = new char[strlen(lrate_factors)+1];
     strcpy(copy, lrate_factors);
-    char* tok = NULL;
+    char *tok = NULL;
     while(NULL != (tok = strtok((tok==NULL?copy:NULL),",:; "))) {
       lrate_factor_vec.push_back(atof(tok));
     }

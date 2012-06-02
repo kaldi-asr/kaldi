@@ -31,7 +31,7 @@ CuDevice::~CuDevice() {
 }
 
 
-void CuDevice::AccuProfile(const std::string& key, double time) { 
+void CuDevice::AccuProfile(const std::string &key, double time) { 
   if (profile_map_.find(key) == profile_map_.end()) {
     profile_map_[key] = 0.0;
   }

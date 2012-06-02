@@ -44,7 +44,7 @@ bool FileExists(string strFilename) {
     blnReturn = false; 
   } 
    
-  return(blnReturn); 
+  return blnReturn; 
 }
 
 // Simplify writing
@@ -80,7 +80,7 @@ StdVectorFst* CreateBackoffFst() {
   fst->AddState();     // state 5
   fst->SetFinal(5, 0.6);
 
-  return(fst);
+  return fst;
 }
 
 // what the resulting DeterministicOnDemand FST should be like
@@ -104,7 +104,7 @@ StdVectorFst* CreateResultFst() {
   fst->AddState();     // state 5 
   fst->SetFinal(5, 0.6);
   
-  return(fst);
+  return fst;
 }
 
 void DeleteTestFst(StdVectorFst *fst) {
@@ -113,8 +113,8 @@ void DeleteTestFst(StdVectorFst *fst) {
 
 // Follow paths from an input fst representing a string
 // (poor man's composition)
-Weight WalkSinglePath(StdVectorFst* ifst, StdDeterministicOnDemandFst* dfst) {
-  StdArc* oarc =  new StdArc();
+Weight WalkSinglePath(StdVectorFst *ifst, StdDeterministicOnDemandFst *dfst) {
+  StdArc *oarc =  new StdArc();
   StateId isrc=ifst->Start();
   StateId dsrc=dfst->Start();
   Weight totalCost = Weight::One();
@@ -146,12 +146,12 @@ int main() {
   using namespace fst;
   // Build from existing fst
   cout << "Test with single generated backoff FST" << endl;
-  StdVectorFst* nfst = CreateBackoffFst();
-  StdVectorFst* rfst = CreateResultFst();
+  StdVectorFst *nfst = CreateBackoffFst();
+  StdVectorFst *rfst = CreateResultFst();
 
   // before using, make sure that it is input sorted
   ArcSort(nfst, StdILabelCompare());
-  StdDeterministicOnDemandFst* dfst1 = new StdDeterministicOnDemandFst(*nfst);
+  StdDeterministicOnDemandFst *dfst1 = new StdDeterministicOnDemandFst(*nfst);
   
   // Compare all arcs in dfst1 with expected result
   for (StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
@@ -191,10 +191,10 @@ int main() {
   Weight cost2;
   cout << "Single FST case: string with G'" <<  endl;
   cout << "  Reading Gp.fst" << endl << std::flush;
-  StdVectorFst* gpfst = StdVectorFst::Read("Gp.fst");
+  StdVectorFst *gpfst = StdVectorFst::Read("Gp.fst");
   cout << "  Creating SDODF from Gp.fst" << endl << std::flush;
-  StdDeterministicOnDemandFst* dfst2 = new StdDeterministicOnDemandFst(*gpfst);
-  StdVectorFst* strfst = StdVectorFst::Read("str.fst");
+  StdDeterministicOnDemandFst *dfst2 = new StdDeterministicOnDemandFst(*gpfst);
+  StdVectorFst *strfst = StdVectorFst::Read("str.fst");
   cost2 = WalkSinglePath(strfst, dfst2);
   delete dfst2; delete strfst;
 
@@ -203,7 +203,7 @@ int main() {
   cout << "Composition case: string*bg with G^-1 * G'" << endl;
   cout << "  Reading Gm.fst" << endl << std::flush;
   StdVectorFst *gmfst = StdVectorFst::Read("Gm.fst");
-  StdDeterministicOnDemandFst* dfst3 = new StdDeterministicOnDemandFst(*gmfst, *gpfst);
+  StdDeterministicOnDemandFst *dfst3 = new StdDeterministicOnDemandFst(*gmfst, *gpfst);
   StdVectorFst *strbgfst = StdVectorFst::Read("strbg.fst");
   cost3 = WalkSinglePath(strbgfst, dfst3);
   cout << "Cache had "<<dfst3->CacheCalls()<<" calls and "<<dfst3->CacheHits()<<" hits"<< endl;

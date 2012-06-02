@@ -644,7 +644,7 @@ static void UnitTestFeat() {
     UnitTestHTKCompare5();
     UnitTestHTKCompare6();
     std::cout << "Tests succeeded.\n";
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what();
   }
 }

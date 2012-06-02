@@ -496,7 +496,7 @@ so: re(D_k)= 1/2 (im(B_k) + im(B_{N/2-k}))                             (z2)
     This equation is valid for k = 0...N/2-1, which is the range of the sequences B_k and
     C_k.  We don't use is for k = 0, which is a special case considered below.  For
     1 < k < N/2, it's convenient to consider the pair k, k', where k' = N/2 - k.
-    Remember that C_k' = C_k^* and D_k' = D_k^* [where * is conjugation].  Also,
+    Remember that C_k' = C_k^ *and D_k' = D_k^* [where * is conjugation].  Also,
     1^(N/2 / N) = -1.  So we have:
        A_k' = C_k^* - 1^(k/N) D_k^*                                          (a0b)
     We do (a0) and (a0b) together.

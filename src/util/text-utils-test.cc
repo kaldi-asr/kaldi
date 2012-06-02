@@ -25,7 +25,7 @@ char GetRandChar() {
   return static_cast<char>(32 + rand() % 95);  // between ' ' and '~'
 }
 
-const char* ws_delim = " \t\n\r";
+const char *ws_delim = " \t\n\r";
 char GetRandDelim() {
   if (rand() % 2 == 0)
     return static_cast<char>(33 + rand() % 94);  // between '!' and '~';

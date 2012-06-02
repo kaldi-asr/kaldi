@@ -33,7 +33,7 @@ static void UnitTestSomething() {
 static void UnitTestNnet() {
   try {
     UnitTestSomething();
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what();
   }
 }

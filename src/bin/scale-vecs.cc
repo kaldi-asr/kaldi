@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
       vec_writer.Write(vec_reader.Key(), vec);
     }
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

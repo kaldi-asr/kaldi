@@ -653,7 +653,7 @@ void TestQuestionsInitRand() {
     std::set<EventKeyType> keys_all_saw_set;
     // Now we have two distinct sets of keys keys_all and keys_some.
     // We now create the Clusterable* stuff.
-    BuildTreeStatsType dummy_stats;  // dummy because the Clusterable* pointers are actually NULL.
+    BuildTreeStatsType dummy_stats;  // dummy because the Clusterable *pointers are actually NULL.
     size_t n_stats = rand() % 100;
     // make sure we sometimes have empty or just one stats: may find extra bugs.
     if (n_stats > 90) n_stats = 0;
@@ -743,7 +743,7 @@ void TestSplitDecisionTree() {
     std::set<EventKeyType> keys_all_saw_set;
     // Now we have two distinct sets of keys keys_all and keys_some.
     // We now create the Clusterable* stuff.
-    BuildTreeStatsType stats;  // dummy because the Clusterable* pointers are actually NULL.
+    BuildTreeStatsType stats;  // dummy because the Clusterable *pointers are actually NULL.
     size_t n_stats = rand() % 100;
     // make sure we sometimes have empty or just one stats: may find extra bugs.
     if (n_stats > 90) n_stats = 0;

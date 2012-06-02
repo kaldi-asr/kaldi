@@ -24,7 +24,7 @@ namespace kaldi {
 
 
 template<typename Real>
-SubMatrix<Real> GetCols(MatrixBase<Real>& matrix, size_t co, size_t c = 1) {
+SubMatrix<Real> GetCols(MatrixBase<Real> &matrix, size_t co, size_t c = 1) {
   assert(co+c <= matrix.NumCols());
   return SubMatrix<Real>(matrix, 0, matrix.NumRows(), co, c);
 }

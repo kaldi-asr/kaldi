@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
       kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

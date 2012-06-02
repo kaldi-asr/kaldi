@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Wrote questions to "<<phone_sets_wxfilename;
 
     DeleteBuildTreeStats(&stats);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

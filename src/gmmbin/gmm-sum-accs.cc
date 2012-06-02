@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
               << gmm_accs.TotCount() << ", avg like/frame "
               << (gmm_accs.TotLogLike() / gmm_accs.TotCount());
     KALDI_LOG << "Written stats to " << stats_out_filename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

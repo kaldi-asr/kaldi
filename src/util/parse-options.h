@@ -44,19 +44,19 @@ class ParseOptions {
 
  public:
   /// Register boolean variable
-  void Register(const std::string& name, bool* b, const std::string& doc);
+  void Register(const std::string &name, bool *b, const std::string &doc);
   /// Register int32 variable
-  void Register(const std::string& name, int32 *i, const std::string& doc);
+  void Register(const std::string &name, int32 *i, const std::string &doc);
   /// Register unsinged  int32 variable
-  void Register(const std::string& name, uint32* u,
-                const std::string& doc);
+  void Register(const std::string &name, uint32 *u,
+                const std::string &doc);
   /// Register float variable
-  void Register(const std::string& name, float* f, const std::string& doc);
+  void Register(const std::string &name, float *f, const std::string &doc);
   /// Register double variable [useful as we change BaseFloat type].
-  void Register(const std::string& name, double* f, const std::string& doc);
+  void Register(const std::string &name, double *f, const std::string &doc);
   /// Register string variable
-  void Register(const std::string& name, std::string* s,
-                const std::string& doc);
+  void Register(const std::string &name, std::string *s,
+                const std::string &doc);
 
   /**
    * Parses the command line options and fills the ParseOptions-registered
@@ -68,12 +68,12 @@ class ParseOptions {
    * Returns the first position in argv that was not used.
    * [typically not useful: use NumParams() and GetParam(). ]
    */
-  int Read(int argc, const char*const* argv);
+  int Read(int argc, const char*const *argv);
 
   /// Prints the usage documentation [provided in the constructor].
   void PrintUsage(bool print_command_line = false);
   /// Prints the actual configuration of all the registered variables
-  void PrintConfig(std::ostream& os);
+  void PrintConfig(std::ostream &os);
 
   /// Number of positional parameters (c.f. argc-1).
   int NumArgs();
@@ -93,12 +93,12 @@ class ParseOptions {
 
  private:
   /// Reads the options values from a config file
-  void ReadConfigFile(const std::string& filename);
+  void ReadConfigFile(const std::string &filename);
 
-  void SplitLongArg(std::string in, std::string* key, std::string* value);
-  void NormalizeArgName(std::string* str);
+  void SplitLongArg(std::string in, std::string *key, std::string *value);
+  void NormalizeArgName(std::string *str);
 
-  bool SetOption(const std::string& key, const std::string& value);
+  bool SetOption(const std::string &key, const std::string &value);
 
   bool ToBool(std::string str);
   int32 ToInt(std::string str);
@@ -119,7 +119,7 @@ class ParseOptions {
    */
   struct DocInfo {
     DocInfo() {}
-    DocInfo(const std::string& name, const std::string& usemsg)
+    DocInfo(const std::string &name, const std::string &usemsg)
       : name_(name), use_msg_(usemsg) {}
 
     std::string name_;
@@ -134,7 +134,7 @@ class ParseOptions {
   std::vector<std::string> positional_args_;
   const char *usage_;
   int argc_;
-  const char*const* argv_;
+  const char*const *argv_;
 };
 
 }  // namespace kaldi

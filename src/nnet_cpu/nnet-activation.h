@@ -24,7 +24,7 @@ namespace kaldi {
 
 class Sigmoid : public Component {
  public:
-  Sigmoid(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet* nnet) 
+  Sigmoid(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
     : Component(dim_in, dim_out, nnet)
   { }
   ~Sigmoid()
@@ -34,7 +34,7 @@ class Sigmoid : public Component {
     return kSigmoid;
   }
 
-  void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
+  void PropagateFnc(const Matrix<BaseFloat> &in, Matrix<BaseFloat> *out) {
     // y = 1/(1+e^-x)
     for(MatrixIndexT r=0; r<out->NumRows(); r++) {
       for(MatrixIndexT c=0; c<out->NumCols(); c++) {
@@ -43,9 +43,9 @@ class Sigmoid : public Component {
     }
   }
 
-  void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
+  void BackpropagateFnc(const Matrix<BaseFloat> &in_err, Matrix<BaseFloat> *out_err) {
     // ey = y(1-y)ex
-    const Matrix<BaseFloat>& y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
+    const Matrix<BaseFloat> &y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
 
     for(MatrixIndexT r=0; r<out_err->NumRows(); r++) {
       for(MatrixIndexT c=0; c<out_err->NumCols(); c++) {
@@ -58,7 +58,7 @@ class Sigmoid : public Component {
 
 class Softmax : public Component {
  public:
-  Softmax(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet* nnet) 
+  Softmax(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
     : Component(dim_in, dim_out, nnet)
   { }
   ~Softmax()
@@ -68,7 +68,7 @@ class Softmax : public Component {
     return kSoftmax;
   }
 
-  void PropagateFnc(const Matrix<BaseFloat>& in, Matrix<BaseFloat>* out) {
+  void PropagateFnc(const Matrix<BaseFloat> &in, Matrix<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
     out->CopyFromMat(in);
     for(MatrixIndexT r=0; r<out->NumRows(); r++) {
@@ -76,7 +76,7 @@ class Softmax : public Component {
     }
   }
 
-  void BackpropagateFnc(const Matrix<BaseFloat>& in_err, Matrix<BaseFloat>* out_err) {
+  void BackpropagateFnc(const Matrix<BaseFloat> &in_err, Matrix<BaseFloat> *out_err) {
     // simply copy the error
     // (ie. assume crossentropy error function, 
     // while in_err contains (net_output-target) :

@@ -53,11 +53,11 @@ class SpMatrix : public PackedMatrix<Real> {
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
 
-  SpMatrix(const SpMatrix<Real>& orig)
+  SpMatrix(const SpMatrix<Real> &orig)
       : PackedMatrix<Real>(orig) {}
 
   template<class OtherReal>
-  explicit SpMatrix(const SpMatrix<OtherReal>& orig)
+  explicit SpMatrix(const SpMatrix<OtherReal> &orig)
       : PackedMatrix<Real>(orig) {}
   
 
@@ -113,7 +113,7 @@ class SpMatrix : public PackedMatrix<Real> {
     // Duplicating code from PackedMatrix.h
   }
 
-  inline Real& operator() (MatrixIndexT r, MatrixIndexT c) {
+  inline Real &operator() (MatrixIndexT r, MatrixIndexT c) {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r))
       std::swap(c, r);
@@ -217,11 +217,11 @@ class SpMatrix : public PackedMatrix<Real> {
 
   /// rank-one update, this <-- this + alpha V V'
   template<class OtherReal>
-  void AddVec2(const Real alpha, const VectorBase<OtherReal>& v);
+  void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// diagonal update, this <-- this + diag(v)
   template<class OtherReal>
-  void AddVec(const Real alpha, const VectorBase<OtherReal>& v);
+  void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
   
   /// rank-N update:
   /// if (transM == kNoTrans)

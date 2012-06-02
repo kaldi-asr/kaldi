@@ -184,10 +184,10 @@ class MatrixBase {
   Real Min() const;
 
   /// Element by element multiplication with a given matrix.
-  void MulElements(const MatrixBase<Real>& a);
+  void MulElements(const MatrixBase<Real> &a);
 
   /// Divide each element by the corresponding element of a given matrix.
-  void DivElements(const MatrixBase<Real>& a);
+  void DivElements(const MatrixBase<Real> &a);
 
   /// Multiply each element with a scalar value.
   void Scale(Real alpha);
@@ -353,16 +353,16 @@ class MatrixBase {
 
   /// *this += alpha * a * b^T
   template<class OtherReal>
-  void AddVecVec(const Real alpha, const VectorBase<OtherReal>& a,
-                 const VectorBase<OtherReal>& b);
+  void AddVecVec(const Real alpha, const VectorBase<OtherReal> &a,
+                 const VectorBase<OtherReal> &b);
 
   /// [each row of *this] += alpha * v
   template<class OtherReal>
-  void AddVecToRows(const Real alpha, const VectorBase<OtherReal>& v);
+  void AddVecToRows(const Real alpha, const VectorBase<OtherReal> &v);
   
   /// [each col of *this] += alpha * v
   template<class OtherReal>
-  void AddVecToCols(const Real alpha, const VectorBase<OtherReal>& v);      
+  void AddVecToCols(const Real alpha, const VectorBase<OtherReal> &v);      
   
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
@@ -468,7 +468,7 @@ class MatrixBase {
  protected:
 
   ///  Initializer, callable only from child.
-  explicit MatrixBase(Real* data, MatrixIndexT cols, MatrixIndexT rows, MatrixIndexT stride) :
+  explicit MatrixBase(Real *data, MatrixIndexT cols, MatrixIndexT rows, MatrixIndexT stride) :
     data_(data), num_cols_(cols), num_rows_(rows), stride_(stride) {
     KALDI_ASSERT_IS_FLOATING_TYPE(Real);
   }

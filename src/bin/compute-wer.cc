@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Scored " << num_sent << " sentences, "
               << num_absent_sents << " not present in hyp.\n";
     return 0;
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

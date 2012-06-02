@@ -209,8 +209,8 @@ const Matrix<BaseFloat>& DecodableAmDiagGmmRegtreeMllr::GetXformedMeanInvVars(
     KALDI_VLOG(3) << "For PDF index " << state << ": transforming means.";
     int32 num_gauss = acoustic_model_.GetPdf(state).NumGauss(),
         dim = acoustic_model_.Dim();
-    const Vector<BaseFloat>& weights = acoustic_model_.GetPdf(state).weights();
-    const Matrix<BaseFloat>& invvars = acoustic_model_.GetPdf(state).inv_vars();
+    const Vector<BaseFloat> &weights = acoustic_model_.GetPdf(state).weights();
+    const Matrix<BaseFloat> &invvars = acoustic_model_.GetPdf(state).inv_vars();
     xformed_mean_invvars_[state] = new Matrix<BaseFloat>(num_gauss, dim);
     mllr_xform_.GetTransformedMeans(regtree_, acoustic_model_, state,
                                     xformed_mean_invvars_[state]);
@@ -261,8 +261,8 @@ BaseFloat DecodableAmDiagGmmRegtreeMllr::LogLikelihoodZeroBased(int32 frame,
     previous_frame_ = frame;
   }
 
-  const Matrix<BaseFloat>& means_invvars = GetXformedMeanInvVars(state);
-  const Vector<BaseFloat>& gconsts = GetXformedGconsts(state);
+  const Matrix<BaseFloat> &means_invvars = GetXformedMeanInvVars(state);
+  const Vector<BaseFloat> &gconsts = GetXformedGconsts(state);
 
   Vector<BaseFloat> loglikes(gconsts);  // need to recreate for each pdf
   // loglikes +=  means * inv(vars) * data.

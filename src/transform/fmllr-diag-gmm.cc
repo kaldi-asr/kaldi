@@ -27,7 +27,7 @@ namespace kaldi {
 void
 FmllrDiagGmmAccs::
 AccumulateFromPosteriors(const DiagGmm &pdf,
-                         const VectorBase<BaseFloat>& data,
+                         const VectorBase<BaseFloat> &data,
                          const VectorBase<BaseFloat> &posterior) {
   size_t num_comp = static_cast<int32>(pdf.NumGauss());
   size_t dim = static_cast<size_t>(dim_);
@@ -87,7 +87,7 @@ FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs) {
 
 BaseFloat
 FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
-                                         const VectorBase<BaseFloat>& data,
+                                         const VectorBase<BaseFloat> &data,
                                          BaseFloat weight) {
   size_t num_comp = static_cast<int32>(pdf.NumGauss());
   Vector<BaseFloat> posterior(num_comp);
@@ -135,7 +135,7 @@ void FmllrDiagGmmAccs::Update(const FmllrOptions &opts,
 
 
 BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
-                                    const AffineXformStats& stats,
+                                    const AffineXformStats &stats,
                                     std::string fmllr_type,  // "none", "offset", "diag", "full"
                                     int32 num_iters,
                                     MatrixBase<BaseFloat> *out_xform) {
@@ -159,7 +159,7 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
 
 
 BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
-                                        const AffineXformStats& stats,
+                                        const AffineXformStats &stats,
                                         int32 num_iters,
                                         MatrixBase<BaseFloat> *out_xform) {
   size_t dim = stats.G_.size();
@@ -235,7 +235,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
 }
 
 BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xform,
-                                            const AffineXformStats& stats,
+                                            const AffineXformStats &stats,
                                             MatrixBase<BaseFloat> *out_xform) {
   // The "Diagonal" here means a diagonal fMLLR matrix, i.e. like W = [ A;  b] where
   // A is diagonal.
@@ -310,7 +310,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xfor
 }
 
 BaseFloat ComputeFmllrMatrixDiagGmmOffset(const MatrixBase<BaseFloat> &in_xform,
-                                          const AffineXformStats& stats,
+                                          const AffineXformStats &stats,
                                           MatrixBase<BaseFloat> *out_xform) {
   int32 dim = stats.G_.size();
   KALDI_ASSERT(in_xform.NumRows() == dim && in_xform.NumCols() == dim+1);
@@ -441,7 +441,7 @@ void ApplyModelTransformToStats(const MatrixBase<BaseFloat> &xform,
 }
 
 float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
-                              const AffineXformStats& stats) {
+                              const AffineXformStats &stats) {
   size_t dim = stats.G_.size();
   Matrix<double> xform_d(xform);
   Vector<double> xform_row_g(dim + 1);
@@ -456,7 +456,7 @@ float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
 }
 
 double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
-                           const AffineXformStats& stats) {
+                           const AffineXformStats &stats) {
   size_t dim = stats.G_.size();
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform, 0, dim, 0, dim);
@@ -472,7 +472,7 @@ double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
 BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
                             // if this is changed back to Matrix<double>
                            // un-comment the Resize() below.
-                            const AffineXformStats& stats,
+                            const AffineXformStats &stats,
                             MatrixBase<BaseFloat> *grad_out) {
   size_t dim = stats.G_.size();
   Matrix<double> xform_d(xform);

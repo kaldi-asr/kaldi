@@ -45,13 +45,13 @@ template<typename Real> class PackedMatrix {
   explicit PackedMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero):
       data_(NULL) {  Resize(r, resize_type);  }
 
-  explicit PackedMatrix(const PackedMatrix<Real>& orig) : data_(NULL) {
+  explicit PackedMatrix(const PackedMatrix<Real> &orig) : data_(NULL) {
     Resize(orig.num_rows_);
     CopyFromPacked(orig);
   }
 
   template<class OtherReal>
-  explicit PackedMatrix(const PackedMatrix<OtherReal>& orig) : data_(NULL) {
+  explicit PackedMatrix(const PackedMatrix<OtherReal> &orig) : data_(NULL) {
     Resize(orig.NumRows());
     CopyFromPacked(orig);
   }
@@ -84,13 +84,13 @@ template<typename Real> class PackedMatrix {
   void ScaleDiag(const Real alpha);  // Scales diagonal by alpha.
 
   template<class OtherReal>
-  void CopyFromPacked(const PackedMatrix<OtherReal>& orig);
+  void CopyFromPacked(const PackedMatrix<OtherReal> &orig);
 
   /// CopyFromVec just interprets the vector as having the same layout
   /// as the packed matrix.  Must have the same dimension, i.e.
   /// orig.Dim() == (NumRows()*(NumRows()+1)) / 2;
   template<class OtherReal>
-  void CopyFromVec(const SubVector<OtherReal>& orig);
+  void CopyFromVec(const SubVector<OtherReal> &orig);
   
   Real* Data() { return data_; }
   const Real* Data() const { return data_; }
@@ -111,7 +111,7 @@ template<typename Real> class PackedMatrix {
   }
 
   // This code is duplicated in child classes to avoid extra levels of calls.
-  Real& operator() (MatrixIndexT r, MatrixIndexT c) {
+  Real &operator() (MatrixIndexT r, MatrixIndexT c) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                  static_cast<UnsignedMatrixIndexT>(c) <
@@ -133,7 +133,7 @@ template<typename Real> class PackedMatrix {
 
   // *this <-- *this + alpha* rV * rV^T.
   // The "2" in the name is because the argument is repeated.
-  void AddVec2(const Real alpha, const Vector<Real>& rv);
+  void AddVec2(const Real alpha, const Vector<Real> &rv);
   void Scale(Real c);
 
   friend std::ostream & operator << <> (std::ostream & out,
@@ -153,7 +153,7 @@ template<typename Real> class PackedMatrix {
  protected:
   // Will only be called from this class or derived classes.
   void AddPacked(const Real alpha, const PackedMatrix<Real>& M);
-  Real* data_;
+  Real *data_;
   MatrixIndexT num_rows_;
  private:
   /// Init assumes the current contents of the class are is invalid (i.e. junk or
@@ -162,7 +162,7 @@ template<typename Real> class PackedMatrix {
   /// pointed to by data_ will be undefined.
   void Init(MatrixIndexT dim);
 #ifdef KALDI_MEMALIGN_MANUAL
-  Real* free_data_;
+  Real *free_data_;
 #endif
 
 

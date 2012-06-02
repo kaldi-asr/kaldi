@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall fMLLR auxf impr per frame is "
               << (tot_impr / tot_t) << " over " << tot_t << " frames.";
     return (num_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

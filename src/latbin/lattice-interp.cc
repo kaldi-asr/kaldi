@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
               << " had empty composition; in " << n_no_2ndlat
               << ", had empty second lattice.";
     return (n_success != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

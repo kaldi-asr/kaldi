@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     return ((num_done>0)?0:1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     KALDI_ERR << e.what();
     return -1;
   }

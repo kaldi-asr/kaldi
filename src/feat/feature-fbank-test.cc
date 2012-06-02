@@ -190,7 +190,7 @@ static void UnitTestFeat() {
     UnitTestSimple();
     UnitTestHTKCompare1();
     std::cout << "Tests succeeded.\n";
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what();
   }
 }

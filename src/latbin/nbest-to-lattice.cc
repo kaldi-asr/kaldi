@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
               << (n_nbest_done/static_cast<BaseFloat>(n_utt_done))
               << " N-best paths per utterance.";
     return (n_utt_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

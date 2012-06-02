@@ -92,7 +92,7 @@ void AccumFullGmm::Scale(BaseFloat f, GmmFlagsType flags) {
 }
 
 void AccumFullGmm::AccumulateForComponent(
-    const VectorBase<BaseFloat>& data, int32 comp_index, BaseFloat weight) {
+    const VectorBase<BaseFloat> &data, int32 comp_index, BaseFloat weight) {
   assert(data.Dim() == Dim());
   double wt = static_cast<double>(weight);
 
@@ -108,8 +108,8 @@ void AccumFullGmm::AccumulateForComponent(
 }
 
 void AccumFullGmm::AccumulateFromPosteriors(
-    const VectorBase<BaseFloat>& data,
-    const VectorBase<BaseFloat>& gauss_posteriors) {
+    const VectorBase<BaseFloat> &data,
+    const VectorBase<BaseFloat> &gauss_posteriors) {
   assert(gauss_posteriors.Dim() == NumGauss());
   assert(data.Dim() == Dim());
   Vector<double> data_d(data.Dim());
@@ -139,7 +139,7 @@ void AccumFullGmm::AccumulateFromPosteriors(
 }
 
 BaseFloat AccumFullGmm::AccumulateFromFull(const FullGmm &gmm,
-    const VectorBase<BaseFloat>& data, BaseFloat frame_posterior) {
+    const VectorBase<BaseFloat> &data, BaseFloat frame_posterior) {
   assert(gmm.NumGauss() == NumGauss());
   assert(gmm.Dim() == Dim());
 
@@ -153,7 +153,7 @@ BaseFloat AccumFullGmm::AccumulateFromFull(const FullGmm &gmm,
 }
 
 BaseFloat AccumFullGmm::AccumulateFromDiag(const DiagGmm &gmm,
-    const VectorBase<BaseFloat>& data, BaseFloat frame_posterior) {
+    const VectorBase<BaseFloat> &data, BaseFloat frame_posterior) {
   assert(gmm.NumGauss() == NumGauss());
   assert(gmm.Dim() == Dim());
 
@@ -256,7 +256,7 @@ void AccumFullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteToken(out_stream, binary, "</GMMACCS>");
 }
 
-BaseFloat MlObjective(const FullGmm& gmm, const AccumFullGmm &fullgmm_acc) {
+BaseFloat MlObjective(const FullGmm &gmm, const AccumFullGmm &fullgmm_acc) {
   GmmFlagsType flags = fullgmm_acc.Flags();
   Vector<BaseFloat> occ_bf(fullgmm_acc.occupancy());
   Matrix<BaseFloat> mean_accs_bf(fullgmm_acc.mean_accumulator());

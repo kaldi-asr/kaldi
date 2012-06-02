@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     WriteFstKaldi(*rand_fst, fst_out_filename);
     delete rand_fst;
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

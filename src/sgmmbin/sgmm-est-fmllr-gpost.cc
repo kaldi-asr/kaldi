@@ -251,7 +251,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Num frames " << tot_t << ", auxf impr per frame is "
               << (tot_impr / tot_t);
     return (num_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

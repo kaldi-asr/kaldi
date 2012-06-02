@@ -276,7 +276,7 @@ vector<T>* InsertMember(const vector<T> m, vector<vector<T>*> *S) {
     // It could either be a programming error or a deeper conceptual bug.
     return NULL;  // nothing was inserted.
   } else {
-    vector<T>* ret = (*S)[idx] = new vector<T>(m);  // New copy of m.
+    vector<T> *ret = (*S)[idx] = new vector<T>(m);  // New copy of m.
     return ret;  // was inserted.
   }
 }

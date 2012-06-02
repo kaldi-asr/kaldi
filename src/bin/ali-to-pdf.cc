@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
     KALDI_LOG << "Converted " << num_done << " alignments to pdf sequences.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

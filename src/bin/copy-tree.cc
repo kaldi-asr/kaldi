@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_in_filename, &ctx_dep);
     WriteKaldiObject(ctx_dep, tree_out_filename, binary);
     KALDI_LOG << "Copied tree";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

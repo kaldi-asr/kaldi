@@ -39,7 +39,7 @@ class AmDiagGmm {
   /// Initializes with a single "prototype" GMM.
   void Init(const DiagGmm &proto, int32 num_pdfs);
   /// Adds a GMM to the model, and increments the total number of PDFs.
-  void AddPdf(const DiagGmm& gmm);
+  void AddPdf(const DiagGmm &gmm);
   /// Copies the parameters from another model. Allocates necessary memory.
   void CopyFromAmDiagGmm(const AmDiagGmm &other);
 
@@ -211,7 +211,7 @@ struct UbmClusteringOptions {
  *  et al., "The subspace Gaussian mixture model - A structured model for speech
  *  recognition", In Computer Speech and Language, April 2011.
  */
-void ClusterGaussiansToUbm(const AmDiagGmm& am,
+void ClusterGaussiansToUbm(const AmDiagGmm &am,
                            const Vector<BaseFloat> &state_occs,
                            UbmClusteringOptions opts,
                            DiagGmm *ubm_out);

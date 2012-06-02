@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     fgmm.CopyFromDiagGmm(gmm);
     WriteKaldiObject(fgmm, fgmm_wxfilename, binary);
     KALDI_LOG << "Written full GMM to " << fgmm_wxfilename;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

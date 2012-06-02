@@ -42,7 +42,7 @@ template<class Label, class StringId> class StringRepository {
  public:
   class VectorKey { // Hash function object.
    public:
-    size_t operator()(const vector<Label>* vec) const {
+    size_t operator()(const vector<Label> *vec) const {
       assert(vec != NULL);
       size_t hash = 0, factor = 1;
       for (typename vector<Label>::const_iterator it = vec->begin(); it != vec->end(); it++)
@@ -52,7 +52,7 @@ template<class Label, class StringId> class StringRepository {
   };
   class VectorEqual {  // Equality-operator function object.
    public:
-    size_t operator()(const vector<Label>* vec1, const vector<Label>* vec2) const {
+    size_t operator()(const vector<Label> *vec1, const vector<Label> *vec2) const {
       return (*vec1 == *vec2);
     }
   };
@@ -767,7 +767,7 @@ template<class Arc> class DeterminizerStar {
   // to the queue).
 
   void ProcessSubset(const pair<vector<Element>*, OutputStateId> & pair) {
-    const vector<Element>* subset = pair.first;
+    const vector<Element> *subset = pair.first;
     OutputStateId state = pair.second;
 
     vector<Element> closed_subset;  // subset after epsilon closure.

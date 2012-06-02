@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
       gmm_accs.Write(ko.Stream(), binary);
     }
     KALDI_LOG << "Scaled accs with scale " << scale;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

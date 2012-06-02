@@ -88,20 +88,20 @@ class CuMatrix {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromMat(const CuMatrix<_ElemT>& src);
-  ThisType&        CopyFromMat(const Matrix<_ElemT>& src);
-  void             CopyToMat(Matrix<_ElemT>* dst) const;
+  ThisType&        CopyFromMat(const CuMatrix<_ElemT> &src);
+  ThisType&        CopyFromMat(const Matrix<_ElemT> &src);
+  void             CopyToMat(Matrix<_ElemT> *dst) const;
 
   /// Copy row interval from matrix
   /// @param r      [in] number of rows to copy.
   /// @param src    [in] source matrix.
   /// @param src_ro [in] source matrix row offset.
   /// @param dst_ro [in] destination matrix row offset.
-  void             CopyRowsFromMat(int32 r, const CuMatrix<_ElemT>& src, int32 src_ro, int32 dst_ro);
+  void             CopyRowsFromMat(int32 r, const CuMatrix<_ElemT> &src, int32 src_ro, int32 dst_ro);
 
   /// I/O functions
-  void             Read(std::istream& is, bool binary);
-  void             Write(std::ostream& os, bool binary) const;
+  void             Read(std::istream &is, bool binary);
+  void             Write(std::ostream &os, bool binary) const;
 
 
   // Math operations, some calling kernels
@@ -121,17 +121,17 @@ class CuMatrix {
   }
 
   /// scale i'th column by scale[i]
-  void MulColsVec(const CuVector<_ElemT>& scale) { 
+  void MulColsVec(const CuVector<_ElemT> &scale) { 
     KALDI_ERR << "__func__ Not implemented"; 
   }
 
   /// scale i'th row by scale[i]
-  void MulRowsVec(const CuVector<_ElemT>& scale) { 
+  void MulRowsVec(const CuVector<_ElemT> &scale) { 
     KALDI_ERR << "__func__ Not implemented"; 
   }
 
   /// divide i'th row by scale[i]
-  void DivRowsVec(const CuVector<_ElemT>& div) { 
+  void DivRowsVec(const CuVector<_ElemT> &div) { 
     KALDI_ERR << "__func__ Not implemented"; 
   }
   
@@ -141,7 +141,7 @@ class CuMatrix {
   }
 
   /// B = aplha * row + beta * B
-  void AddScaledRow(_ElemT alpha, const CuVector<_ElemT>& row, _ElemT beta=1.0) { 
+  void AddScaledRow(_ElemT alpha, const CuVector<_ElemT> &row, _ElemT beta=1.0) { 
     KALDI_ERR << "__func__ Not implemented"; 
   }
 
@@ -164,7 +164,7 @@ class CuMatrix {
   MatrixIndexT num_cols_;
   MatrixIndexT stride_;
 
-  _ElemT* data_;       ///< GPU data pointer
+  _ElemT *data_;       ///< GPU data pointer
   
   Matrix<_ElemT> mat_; ///< non-GPU matrix as back-off
 
@@ -174,7 +174,7 @@ class CuMatrix {
 
 /// I/O
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuMatrix<_ElemT>& mat);
+std::ostream &operator << (std::ostream &out, const CuMatrix<_ElemT> &mat);
 
   
 } // namespace

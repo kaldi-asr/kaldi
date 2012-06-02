@@ -187,7 +187,7 @@ void SpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M, SpCopyType copy_type
 // diagonal update, this <-- this + diag(v)
 template<class Real>
 template<class OtherReal>
-void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& v) {
+void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) {
   int32 num_rows = this->num_rows_;
   KALDI_ASSERT(num_rows == v.Dim());
   const OtherReal *src = v.Data();
@@ -202,22 +202,22 @@ void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal>& v) {
 }
 // instantiate the template above.
 template
-void SpMatrix<float>::AddVec(const float alpha, const VectorBase<double>& v);
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<double> &v);
 template
-void SpMatrix<double>::AddVec(const double alpha, const VectorBase<float>& v);
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<float> &v);
 template
-void SpMatrix<float>::AddVec(const float alpha, const VectorBase<float>& v);
+void SpMatrix<float>::AddVec(const float alpha, const VectorBase<float> &v);
 template
-void SpMatrix<double>::AddVec(const double alpha, const VectorBase<double>& v);
+void SpMatrix<double>::AddVec(const double alpha, const VectorBase<double> &v);
 
 
 
 template<>
 template<>
-void  SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& v);
+void  SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float> &v);
 template<>
 template<>
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& v);
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double> &v);
 
 #ifndef HAVE_ATLAS
 template<>
@@ -815,7 +815,7 @@ SolveDoubleQuadraticMatrixProblem(const MatrixBase<float> &G, const SpMatrix<flo
 // rank-one update, this <-- this + alpha V V'
 template<>
 template<>
-void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& v) {
+void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
   cblas_sspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1,
              this->data_);
@@ -824,7 +824,7 @@ void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float>& v) {
 // rank-one update, this <-- this + alpha V V'
 template<>
 template<>
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& v) {
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double> &v) {
   KALDI_ASSERT(v.Dim() == num_rows_);
   cblas_dspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1, data_);
 }
@@ -832,7 +832,7 @@ void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double>& v) 
 
 template<class Real>
 template<class OtherReal>
-void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal>& v) {
+void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
   Real *data = this->data_;
   const OtherReal *v_data = v.Data();
@@ -844,9 +844,9 @@ void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal>& v) {
 
 // instantiate the template above.
 template
-void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<double>& v);
+void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<double> &v);
 template
-void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<float>& v);
+void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<float> &v);
 
 
 double VecSpVec(const VectorBase<double> &v1, const SpMatrix<double> &M, const VectorBase<double> &v2) {

@@ -54,7 +54,7 @@ class DecodableMapped: public DecodableInterface {
 
  private:
   std::vector<int32> index_map_;
-  DecodableInterface* decodable_;
+  DecodableInterface *decodable_;
   
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMapped);
 };

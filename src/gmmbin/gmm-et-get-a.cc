@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     A.Write(ko.Stream(), binary);
     KALDI_LOG << "Wrote A  to " << a_wxfilename;
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

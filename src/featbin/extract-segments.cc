@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
               << num_lines << " in the segments file. ";
     /* prints number of segments processed */
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

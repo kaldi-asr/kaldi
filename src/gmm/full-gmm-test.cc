@@ -221,7 +221,7 @@ UnitTestFullGmm() {
 
   {  // I/O tests
     bool binary_in;
-    FullGmm* gmm2 = new FullGmm();
+    FullGmm *gmm2 = new FullGmm();
     Input ki("tmpf", &binary_in);
     gmm2->Read(ki.Stream(), binary_in);
 
@@ -233,7 +233,7 @@ UnitTestFullGmm() {
     delete gmm2;
 
     // binary read
-    FullGmm* gmm3;
+    FullGmm *gmm3;
     gmm3 = new FullGmm();
 
     Input ki2("tmpfb", &binary_in);

@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
       posterior_writer.Write(alignment_reader.Key(), post);
     }
     KALDI_LOG << "ali-to-post: converted " << num_alignments << " alignments.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

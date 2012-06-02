@@ -101,12 +101,12 @@ class TiedGmm {
   void Read(std::istream &rIn, bool binary);
 
   /// Const accessors
-  const Vector<BaseFloat>& weights() const { return weights_; }
-  const int32& codebook_index() const { return codebook_index_; }
+  const Vector<BaseFloat> &weights() const { return weights_; }
+  const int32 &codebook_index() const { return codebook_index_; }
 
   /// Mutators for both float or double
   template<class Real>
-  void SetWeights(const VectorBase<Real>& w);    ///< Set mixure weights
+  void SetWeights(const VectorBase<Real> &w);    ///< Set mixure weights
 
   /// Mutators for single component, supports float or double
   /// Set weight for single component.

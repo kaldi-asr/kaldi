@@ -142,7 +142,7 @@ class FmllrSgmmAccs {
   void AccumulateFromPosteriors(const AmSgmm &sgmm,
                                 const SgmmPerSpkDerivedVars &spk,
                                 const VectorBase<BaseFloat> &data,
-                                const std::vector<int32>& gauss_select,
+                                const std::vector<int32> &gauss_select,
                                 const Matrix<BaseFloat> &posteriors,
                                 int32 state_index);
 
@@ -166,7 +166,7 @@ class FmllrSgmmAccs {
 
   /// Accessors
   int32 Dim() const { return dim_; }
-  const AffineXformStats& stats() const { return stats_; }
+  const AffineXformStats &stats() const { return stats_; }
 
  private:
   AffineXformStats stats_;  ///< Accumulated stats

@@ -374,7 +374,7 @@ void MleAmSgmmAccs::ZeroAccumulators(SgmmUpdateFlagsType flags) {
 
 
 BaseFloat MleAmSgmmAccs::Accumulate(const AmSgmm &model,
-                                    const SgmmPerFrameDerivedVars& frame_vars,
+                                    const SgmmPerFrameDerivedVars &frame_vars,
                                     const VectorBase<BaseFloat> &v_s,  // may be empty
                                     int32 j, BaseFloat weight,
                                     SgmmUpdateFlagsType flags) {
@@ -392,13 +392,13 @@ BaseFloat MleAmSgmmAccs::Accumulate(const AmSgmm &model,
 
 BaseFloat MleAmSgmmAccs::AccumulateFromPosteriors(
     const AmSgmm &model,
-    const SgmmPerFrameDerivedVars& frame_vars,
+    const SgmmPerFrameDerivedVars &frame_vars,
     const Matrix<BaseFloat> &posteriors,
     const VectorBase<BaseFloat> &v_s,  // may be empty
     int32 j,
     SgmmUpdateFlagsType flags) {
   double tot_count = 0.0;
-  const vector<int32>& gselect = frame_vars.gselect;
+  const vector<int32> &gselect = frame_vars.gselect;
   // Intermediate variables
   Vector<BaseFloat> gammat(gselect.size());
   Vector<BaseFloat> xt_jmi(feature_dim_), mu_jmi(feature_dim_),
@@ -467,7 +467,7 @@ BaseFloat MleAmSgmmAccs::AccumulateFromPosteriors(
   return tot_count;
 }
 
-void MleAmSgmmAccs::CommitStatsForSpk(const AmSgmm& model,
+void MleAmSgmmAccs::CommitStatsForSpk(const AmSgmm &model,
                                       const VectorBase<BaseFloat> &v_s) {
   if (v_s.Dim() != 0 && spk_space_dim_ > 0 && gamma_s_.Dim() != 0) {
     if (!v_s.IsZero())
@@ -1900,7 +1900,7 @@ void MleSgmmSpeakerAccs::Clear() {
 
 BaseFloat
 MleSgmmSpeakerAccs::Accumulate(const AmSgmm &model,
-                               const SgmmPerFrameDerivedVars& frame_vars,
+                               const SgmmPerFrameDerivedVars &frame_vars,
                                int32 j,
                                BaseFloat weight) {
   // Calculate Gaussian posteriors and collect statistics
@@ -1913,14 +1913,14 @@ MleSgmmSpeakerAccs::Accumulate(const AmSgmm &model,
 
 BaseFloat
 MleSgmmSpeakerAccs::AccumulateFromPosteriors(const AmSgmm &model,
-                                             const SgmmPerFrameDerivedVars& frame_vars,
+                                             const SgmmPerFrameDerivedVars &frame_vars,
                                              const Matrix<BaseFloat> &posteriors,
                                              int32 j) {
   double tot_count = 0.0;
   int32 feature_dim = model.FeatureDim(),
       spk_space_dim = model.SpkSpaceDim();
   KALDI_ASSERT(spk_space_dim != 0);
-  const vector<int32>& gselect = frame_vars.gselect;
+  const vector<int32> &gselect = frame_vars.gselect;
 
   // Intermediate variables
   Vector<double> xt_jmi(feature_dim), mu_jmi(feature_dim),

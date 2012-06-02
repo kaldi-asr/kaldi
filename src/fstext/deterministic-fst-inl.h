@@ -48,7 +48,7 @@ bool DeterministicOnDemandFstImpl<Arc>::HasArc(StateId s, Label l) {
 }
 
 template<class Arc>
-void DeterministicOnDemandFstImpl<Arc>::AddSingleArc(StateId s, Label l, Arc& a) {
+void DeterministicOnDemandFstImpl<Arc>::AddSingleArc(StateId s, Label l, Arc &a) {
   StateLabelPair sl = make_pair(s, l);
   state_cache_map_[sl] = a;
 }
@@ -162,7 +162,7 @@ void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorDa
 
 template<class Arc>
 typename Arc::Weight DeterministicOnDemandFstImpl<Arc>::GetFinalFromNonDetFst(
-    const Fst<Arc>* fst, StateId s) {
+    const Fst<Arc> *fst, StateId s) {
   Weight w = fst->Final(s);
   if (w != Weight::Zero()) return w;
   SortedMatcher<Fst<Arc> > sm(*fst, MATCH_INPUT, 1); // enable matching epsilons as well
@@ -178,7 +178,7 @@ typename Arc::Weight DeterministicOnDemandFstImpl<Arc>::GetFinalFromNonDetFst(
 // helper method for GetArc()
 template<class Arc>
 bool DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
-    const Fst<Arc>* fst, StateId s, Label ilabel, Arc *oarc,
+    const Fst<Arc> *fst, StateId s, Label ilabel, Arc *oarc,
     typename Arc::Weight iweight) {
   
   // use a SortedMatcher

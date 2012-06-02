@@ -153,7 +153,7 @@ class AmSgmm {
   /// 'logdet_s' term is the log determinant of the FMLLR transform, or 0.0 if
   /// no FMLLR is used or it's single-class fMLLR applied in the feature
   /// extraction, and we're not keeping track of it here.
-  void ComputePerFrameVars(const VectorBase<BaseFloat>& data,
+  void ComputePerFrameVars(const VectorBase<BaseFloat> &data,
                            const std::vector<int32> &gselect,
                            const SgmmPerSpkDerivedVars &spk_vars,
                            BaseFloat logdet_s,
@@ -391,7 +391,7 @@ class AmSgmmFunctions {
   /// "State-Level Data Borrowing for Low-Resource Speech Recognition based on
   ///  Subspace GMMs", by Yanmin Qian et. al, Interspeech 2011.
   /// Model must have one substate per state.
-  static void ComputeDistances(const AmSgmm& model,
+  static void ComputeDistances(const AmSgmm &model,
                                const Vector<BaseFloat> &state_occs,
                                MatrixBase<BaseFloat> *dists);
 };

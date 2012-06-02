@@ -174,7 +174,7 @@ class MinimumBayesRisk {
                       const std::pair<int32, BaseFloat> &b) const {
       if (a.second > b.second) return true;
       else if (a.second < b.second) return false;
-      else return (a.first > b.first);
+      else return a.first > b.first;
     }
   };
 };

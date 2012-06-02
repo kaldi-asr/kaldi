@@ -85,7 +85,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
 
   virtual ~TableMatcherImpl() {
     assert(RefCount() == 0);
-    vector<ArcId>* const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
+    vector<ArcId> *const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
     for (size_t i = 0; i < tables_.size(); i++) {
       if (tables_[i] != NULL && tables_[i] != empty)
         delete tables_[i];
@@ -106,7 +106,7 @@ class TableMatcherImpl : public MatcherBase<typename F::Arc> {
     if (match_type_ == MATCH_NONE)
       LOG(FATAL) << "TableMatcher: bad match type";
     s_ = s;
-    vector<ArcId>* const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
+    vector<ArcId> *const empty = ((vector<ArcId>*)(NULL)) + 1;  // special marker.
     if (static_cast<size_t>(s) >= tables_.size()) {
       assert(s>=0);
       tables_.resize(s+1, NULL);

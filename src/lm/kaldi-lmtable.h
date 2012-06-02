@@ -83,36 +83,36 @@ class LmFstConverter {
                            float prob,
                            float bow,
                            std::vector<string> &ngs,
-                           fst::StdVectorFst* pfst,
-                           fst::SymbolTable* psst,
+                           fst::StdVectorFst *pfst,
+                           fst::SymbolTable *psst,
                            const string startSent,
                            const string endSent);
 
   float convertArpaLogProbToWeight(float lp) {
     if ( use_natural_log_ ) {
       // convert from arpa base 10 log to natural base, then to cost
-      return (-2.302585*lp);
+      return -2.302585*lp;
     } else {
       // keep original base but convert to cost
-      return (-lp);
+      return -lp;
     }
   }
 
-  bool IsFinal(fst::StdVectorFst* pfst,
+  bool IsFinal(fst::StdVectorFst *pfst,
                StateId s) {
     return(pfst->Final(s) != fst::StdArc::Weight::Zero());
   }
 
-  void ConnectUnusedStates(fst::StdVectorFst* pfst);
+  void ConnectUnusedStates(fst::StdVectorFst *pfst);
 
  private:
   StateId AddStateFromSymb(const std::vector<string> &ngramString,
                             int kstart,
                             int kend,
-                            const char* sep,
-                            fst::StdVectorFst* pfst,
-                            fst::SymbolTable* psst,
-                            bool& newlyAdded);
+                            const char *sep,
+                            fst::StdVectorFst *pfst,
+                            fst::SymbolTable *psst,
+                            bool &newlyAdded);
 
   bool use_natural_log_;
   BkStateMap bkState_;
@@ -131,12 +131,12 @@ class LmTable {
   ~LmTable() { if (conv_) delete conv_; }
 
   bool ReadFstFromLmFile(std::istream &istrm,
-                         fst::StdVectorFst* pfst,
+                         fst::StdVectorFst *pfst,
                          bool useNaturalLog,
                          const string startSent,
                          const string endSent);
  private:
-  LmFstConverter* conv_;
+  LmFstConverter *conv_;
 };
 
 #else
@@ -155,7 +155,7 @@ class LmTable : public lmtable {
   ///   table_entry_pos_t wdprune(float *thr, int aflag = 0);
   ///   void load(std::istream& inp, ...);
   bool ReadFstFromLmFile(std::istream &istrm,
-                       fst::StdVectorFst* pfst,
+                       fst::StdVectorFst *pfst,
                         bool useNaturalOpt,
                        const string startSent,
                        const string endSent);
@@ -163,17 +163,17 @@ class LmTable : public lmtable {
 
   /// Method specific to the IRSTLM implementation.
   void DumpStart(ngram ng,
-                 fst::StdVectorFst* pfst,
+                 fst::StdVectorFst *pfst,
                  const string startSent,
                  const string endSent);
   /// Method specific to the IRSTLM implementation.
   void DumpContinue(ngram ng,
                     int ilev, int elev,
                     table_entry_pos_t ipos, table_entry_pos_t epos,
-                    fst::StdVectorFst* pfst, fst::SymbolTable *pStateSymbs,
+                    fst::StdVectorFst *pfst, fst::SymbolTable *pStateSymbs,
                     const string startSent, const string endSent);
 
-  LmFstConverter* conv_;
+  LmFstConverter *conv_;
 };
 
 #endif

@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       }
     }
     KALDI_LOG << "rand-prune-post: processed " << num_posteriors << " posteriors.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

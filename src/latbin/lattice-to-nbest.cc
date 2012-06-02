@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
               << n << ", average actual #paths is "
               << (n_paths_out/(n_done+1.0e-20));
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

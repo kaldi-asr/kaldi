@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     WriteFstKaldi(composed_fst, fst_out_filename);
     delete fst;
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

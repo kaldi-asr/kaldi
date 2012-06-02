@@ -221,7 +221,7 @@ void RegtreeFmllrDiagGmmAccs::SetZero() {
 
 BaseFloat RegtreeFmllrDiagGmmAccs::AccumulateForGmm(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, size_t pdf_index, BaseFloat weight) {
+    const VectorBase<BaseFloat> &data, size_t pdf_index, BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
   int32 num_comp = pdf.NumGauss();
   Vector<BaseFloat> posterior(num_comp);
@@ -258,7 +258,7 @@ BaseFloat RegtreeFmllrDiagGmmAccs::AccumulateForGmm(
 
 void RegtreeFmllrDiagGmmAccs::AccumulateForGaussian(
     const RegressionTree &regtree, const AmDiagGmm &am,
-    const VectorBase<BaseFloat>& data, size_t pdf_index, size_t gauss_index,
+    const VectorBase<BaseFloat> &data, size_t pdf_index, size_t gauss_index,
     BaseFloat weight) {
   const DiagGmm &pdf = am.GetPdf(pdf_index);
   size_t dim = static_cast<size_t>(dim_);

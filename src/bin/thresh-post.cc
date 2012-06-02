@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "thresh-post: thresholded " << num_posteriors 
               << " posteriors, reduced them by a factor of "
               << (total_weight_out/total_weight_in) << " on average.";
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

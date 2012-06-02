@@ -40,7 +40,7 @@ template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size) {
   host_size_ = 0;
 }
 
-template<typename T> void CuRand<T>::SeedBuffer(unsigned** tgt, MatrixIndexT state_size) {
+template<typename T> void CuRand<T>::SeedBuffer(unsigned* *tgt, MatrixIndexT state_size) {
   // optionally resize host buffer
   if (state_size != host_size_) {
     delete[] host_;
@@ -76,7 +76,7 @@ template<typename T> void CuRand<T>::SeedBuffer(unsigned** tgt, MatrixIndexT sta
 
 
 
-template<> void CuRand<float>::RandUniform(CuMatrix<float>* tgt) {
+template<> void CuRand<float>::RandUniform(CuMatrix<float> *tgt) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -104,7 +104,7 @@ template<> void CuRand<float>::RandUniform(CuMatrix<float>* tgt) {
 
 
 
-template<> void CuRand<float>::RandGaussian(CuMatrix<float>* tgt) {
+template<> void CuRand<float>::RandGaussian(CuMatrix<float> *tgt) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -132,7 +132,7 @@ template<> void CuRand<float>::RandGaussian(CuMatrix<float>* tgt) {
 
 
 
-template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float>& probs, CuMatrix<float>* states) {
+template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float> &probs, CuMatrix<float> *states) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -166,7 +166,7 @@ template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float>& probs, CuMat
 
 
 
-template<> void CuRand<float>::AddGaussNoise(CuMatrix<float>* tgt, float gscale) {
+template<> void CuRand<float>::AddGaussNoise(CuMatrix<float> *tgt, float gscale) {
   tmp.Resize(tgt->NumRows(), tgt->NumCols());
   RandGaussian(&tmp);
   tgt->AddMat(gscale, tmp, 1.0);

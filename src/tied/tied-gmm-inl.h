@@ -23,7 +23,7 @@
 namespace kaldi {
 
 template<class Real>
-void TiedGmm::SetWeights(const VectorBase<Real>& w) {
+void TiedGmm::SetWeights(const VectorBase<Real> &w) {
   KALDI_ASSERT(weights_.Dim() == w.Dim());
   weights_.CopyFromVec(w);
 }

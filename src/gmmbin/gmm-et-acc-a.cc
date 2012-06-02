@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
     accs_a.Write(ko.Stream(), binary);
     KALDI_LOG << "Written accs.";
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

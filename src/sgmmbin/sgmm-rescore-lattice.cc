@@ -27,9 +27,9 @@
 
 namespace kaldi {
 
-void LatticeAcousticRescore(const AmSgmm& am,
-                            const TransitionModel& trans_model,
-                            const MatrixBase<BaseFloat>& data,
+void LatticeAcousticRescore(const AmSgmm &am,
+                            const TransitionModel &trans_model,
+                            const MatrixBase<BaseFloat> &data,
                             const SgmmPerSpkDerivedVars &spk_vars,
                             const std::vector<std::vector<int32> > &gselect,
                             const SgmmGselectConfig &sgmm_config,
@@ -246,7 +246,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Done " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

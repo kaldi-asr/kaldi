@@ -73,12 +73,12 @@ class FmllrDiagGmmAccs: public AffineXformStats {
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
   BaseFloat AccumulateForGmm(const DiagGmm &gmm,
-                             const VectorBase<BaseFloat>& data,
+                             const VectorBase<BaseFloat> &data,
                              BaseFloat weight);
 
   /// Accumulate stats for a GMM, given supplied posteriors.
   void AccumulateFromPosteriors(const DiagGmm &gmm,
-                                const VectorBase<BaseFloat>& data,
+                                const VectorBase<BaseFloat> &data,
                                 const VectorBase<BaseFloat> &posteriors);
 
   void Update(const FmllrOptions &opts,
@@ -101,7 +101,7 @@ inline void InitFmllr(int32 dim,
 // It starts the optimization from the current value of the matrix (e.g. use
 // InitFmllr to get this).
 // Returns auxf improvement.
-BaseFloat ComputeFmllrDiagGmm(const FmllrDiagGmmAccs& accs,
+BaseFloat ComputeFmllrDiagGmm(const FmllrDiagGmmAccs &accs,
                               const FmllrOptions &opts,
                               Matrix<BaseFloat> *out_fmllr,
                               BaseFloat *logdet);  // add this to likelihoods
@@ -119,7 +119,7 @@ inline BaseFloat ComputeFmllrLogDet(const Matrix<BaseFloat> &fmllr_mat) {
 /// Uses full fMLLR matrix (no structure).  Returns the
 /// objective function improvement, not normalized by number of frames.
 BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
-                                        const AffineXformStats& stats,
+                                        const AffineXformStats &stats,
                                         int32 num_iters,
                                         MatrixBase<BaseFloat> *out_xform);
 
@@ -128,23 +128,23 @@ BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
 /// course, these statistics are unnecessarily large for this case.  Returns the
 /// objective function improvement, not normalized by number of frames.
 BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xform,
-                                            const AffineXformStats& stats,
+                                            const AffineXformStats &stats,
                                             MatrixBase<BaseFloat> *out_xform);
 // Simpler implementation I am testing.
 BaseFloat ComputeFmllrMatrixDiagGmmDiagonal2(const MatrixBase<BaseFloat> &in_xform,
-                                             const AffineXformStats& stats,
+                                             const AffineXformStats &stats,
                                              MatrixBase<BaseFloat> *out_xform);
 
 /// This does offset-only fMLLR, i.e. it only estimates an offset.
 BaseFloat ComputeFmllrMatrixDiagGmmOffset(const MatrixBase<BaseFloat> &in_xform,
-                                          const AffineXformStats& stats,
+                                          const AffineXformStats &stats,
                                           MatrixBase<BaseFloat> *out_xform);
 
 
 /// This function internally calls ComputeFmllrMatrixDiagGmm{Full, Diagonal, Offset},
 /// depending on "fmllr_type".
 BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
-                                    const AffineXformStats& stats,
+                                    const AffineXformStats &stats,
                                     std::string fmllr_type,  // "none", "offset", "diag", "full"
                                     int32 num_iters,
                                     MatrixBase<BaseFloat> *out_xform);
@@ -152,16 +152,16 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
 /// Returns the (diagonal-GMM) FMLLR auxiliary function value given the transform
 /// and the stats.
 float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
-                              const AffineXformStats& stats);
+                              const AffineXformStats &stats);
 double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
-                           const AffineXformStats& stats);
+                           const AffineXformStats &stats);
 
 
 
 /// Returns the (diagonal-GMM) FMLLR auxiliary function value given the transform
 /// and the stats.
 BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
-                            const AffineXformStats& stats,
+                            const AffineXformStats &stats,
                             MatrixBase<BaseFloat> *grad_out);
 
 

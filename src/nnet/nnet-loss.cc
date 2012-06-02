@@ -24,7 +24,7 @@
 namespace kaldi {
 
 
-void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
+void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
   
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
@@ -55,7 +55,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& t
 }
 
 
-void Xent::EvalVec(const CuMatrix<BaseFloat>& net_out, const std::vector<int32>& target, CuMatrix<BaseFloat>* diff) {
+void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
   // evaluate the frame-level classification
   int32 correct=0;
   cu::FindRowMaxId(net_out, &max_id_);
@@ -100,7 +100,7 @@ std::string Xent::Report() {
 
 
 
-void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
+void Mse::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols());

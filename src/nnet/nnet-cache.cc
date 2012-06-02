@@ -48,7 +48,7 @@ void Cache::Init(int32 cachesize, int32 bunchsize) {
 
 
 
-void Cache::AddData(const CuMatrix<BaseFloat>& features, const std::vector<int32>& targets) {
+void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32> &targets) {
   if (state_ == FULL) {
     KALDI_ERR << "Cannot add data, cache already full";
   }
@@ -164,7 +164,7 @@ void Cache::Randomize() {
 
 
 
-void Cache::GetBunch(CuMatrix<BaseFloat>* features, std::vector<int32>* targets) {
+void Cache::GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets) {
   if (state_ == EMPTY) {
     KALDI_ERR << "GetBunch on empty cache!!!";
   }

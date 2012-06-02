@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     DeleteBuildTreeStats(&stats);
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

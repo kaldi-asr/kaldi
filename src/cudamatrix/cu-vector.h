@@ -47,12 +47,12 @@ class CuVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromVec(const CuVector<_ElemT>& src);
-  ThisType&        CopyFromVec(const Vector<_ElemT>& src);
-  void             CopyToVec(Vector<_ElemT>* dst) const;
+  ThisType&        CopyFromVec(const CuVector<_ElemT> &src);
+  ThisType&        CopyFromVec(const Vector<_ElemT> &src);
+  void             CopyToVec(Vector<_ElemT> *dst) const;
 
-  void             Read(std::istream& is, bool binary);
-  void             Write(std::ostream& is, bool binary) const;
+  void             Read(std::istream &is, bool binary);
+  void             Write(std::ostream &is, bool binary) const;
   
   // Math operations
   //
@@ -62,11 +62,11 @@ class CuVector {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddVec(_ElemT alpha, const CuVector<_ElemT>& vec, _ElemT beta=1.0) {
+  void AddVec(_ElemT alpha, const CuVector<_ElemT> &vec, _ElemT beta=1.0) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddColSum(_ElemT alpha, const CuMatrix<_ElemT>& mat, _ElemT beta=1.0) { 
+  void AddColSum(_ElemT alpha, const CuMatrix<_ElemT> &mat, _ElemT beta=1.0) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
@@ -89,7 +89,7 @@ class CuVector {
 private:
   size_t dim_;
  
-  _ElemT* data_; ///< GPU data pointer
+  _ElemT *data_; ///< GPU data pointer
 
   Vector<_ElemT> vec_; ///< non-GPU vector as back-off
 };
@@ -97,7 +97,7 @@ private:
 
 /// I/O
 template<typename _ElemT>
-std::ostream& operator << (std::ostream& out, const CuVector<_ElemT>& vec);
+std::ostream &operator << (std::ostream &out, const CuVector<_ElemT> &vec);
  
   
 } // namespace

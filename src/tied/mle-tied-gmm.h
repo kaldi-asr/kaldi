@@ -109,7 +109,7 @@ class AccumTiedGmm {
   void AccumulateForComponent(int32 comp_index, BaseFloat weight);
 
   /// Accumulate for all components, given the posteriors.
-  void AccumulateFromPosteriors(const VectorBase<BaseFloat>& gauss_posteriors);
+  void AccumulateFromPosteriors(const VectorBase<BaseFloat> &gauss_posteriors);
 
   /// Propagate the sufficient statistics to the target accumulator
   void Propagate(AccumTiedGmm *target) const;
@@ -129,7 +129,7 @@ class AccumTiedGmm {
 
   // Accessors
   const GmmFlagsType Flags() const { return flags_; }
-  const Vector<double>& occupancy() const { return occupancy_; }
+  const Vector<double> &occupancy() const { return occupancy_; }
 
  private:
   int32 num_comp_;

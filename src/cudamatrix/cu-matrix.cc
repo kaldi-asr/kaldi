@@ -77,7 +77,7 @@ void CuMatrix<float>::MulElements(const CuMatrix<float>& A) {
 
 
 template<>
-void CuMatrix<float>::MulColsVec(const CuVector<float>& scale) {
+void CuMatrix<float>::MulColsVec(const CuVector<float> &scale) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -101,7 +101,7 @@ void CuMatrix<float>::MulColsVec(const CuVector<float>& scale) {
 
 
 template<>
-void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
+void CuMatrix<float>::MulRowsVec(const CuVector<float> &scale) {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -125,7 +125,7 @@ void CuMatrix<float>::MulRowsVec(const CuVector<float>& scale) {
 
 
 template<>
-void CuMatrix<float>::DivRowsVec(const CuVector<float>& div) {
+void CuMatrix<float>::DivRowsVec(const CuVector<float> &div) {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -175,7 +175,7 @@ void CuMatrix<float>::AddMat(float alpha, const CuMatrix<float>& A, float beta) 
 
 
 template<>
-void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float>& row, float beta) { 
+void CuMatrix<float>::AddScaledRow(float alpha, const CuVector<float> &row, float beta) { 
   
   if (row.Dim() != NumCols()) {
     KALDI_ERR << "Non matching dimensions: Cols:" << NumCols() << " VectorDim:" << row.Dim();

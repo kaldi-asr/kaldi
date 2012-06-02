@@ -33,8 +33,8 @@ namespace kaldi {
 
 
 
-void ParseOptions::Register(const std::string& name, bool* b,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, bool *b,
+                            const std::string &doc) {
   KALDI_ASSERT(b != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -45,8 +45,8 @@ void ParseOptions::Register(const std::string& name, bool* b,
                           + ((*b)? "true)" : "false)"));
 }
 
-void ParseOptions::Register(const std::string& name, int32* i,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, int32 *i,
+                            const std::string &doc) {
   KALDI_ASSERT(i != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -58,8 +58,8 @@ void ParseOptions::Register(const std::string& name, int32* i,
   doc_map_[idx] = DocInfo(name, ss.str());
 }
 
-void ParseOptions::Register(const std::string& name, uint32* u,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, uint32 *u,
+                            const std::string &doc) {
   KALDI_ASSERT(u != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -71,8 +71,8 @@ void ParseOptions::Register(const std::string& name, uint32* u,
   doc_map_[idx] = DocInfo(name, ss.str());
 }
 
-void ParseOptions::Register(const std::string& name, float* f,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, float *f,
+                            const std::string &doc) {
   KALDI_ASSERT(f != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -84,8 +84,8 @@ void ParseOptions::Register(const std::string& name, float* f,
   doc_map_[idx] = DocInfo(name, ss.str());
 }
 
-void ParseOptions::Register(const std::string& name, double* f,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, double *f,
+                            const std::string &doc) {
   KALDI_ASSERT(f != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -97,8 +97,8 @@ void ParseOptions::Register(const std::string& name, double* f,
   doc_map_[idx] = DocInfo(name, ss.str());
 }
 
-void ParseOptions::Register(const std::string& name, std::string* s,
-                            const std::string& doc) {
+void ParseOptions::Register(const std::string &name, std::string *s,
+                            const std::string &doc) {
   KALDI_ASSERT(s != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -232,7 +232,7 @@ std::string ParseOptions::Escape(const std::string &str) {
 
 
 
-int ParseOptions::Read(int argc, const char* const argv[]) {
+int ParseOptions::Read(int argc, const char *const argv[]) {
   argc_ = argc;
   argv_ = argv;
   std::string key, value;
@@ -321,7 +321,7 @@ void ParseOptions::PrintUsage(bool print_command_line) {
   }
 }
 
-void ParseOptions::PrintConfig(std::ostream& os) {
+void ParseOptions::PrintConfig(std::ostream &os) {
   os << '\n' << "[[ Configuration of UI-Registered options ]]"
       << '\n';
   std::string key;
@@ -351,7 +351,7 @@ void ParseOptions::PrintConfig(std::ostream& os) {
 }
 
 
-void ParseOptions::ReadConfigFile(const std::string& filename) {
+void ParseOptions::ReadConfigFile(const std::string &filename) {
   std::ifstream is(filename.c_str(), std::ifstream::in);
   if (!is.good()) {
     std::cerr << "Cannot open config file "<<filename <<'\n';
@@ -384,8 +384,8 @@ void ParseOptions::ReadConfigFile(const std::string& filename) {
 
 
 
-void ParseOptions::SplitLongArg(std::string in, std::string* key,
-                                std::string* value) {
+void ParseOptions::SplitLongArg(std::string in, std::string *key,
+                                std::string *value) {
   assert(in.substr(0, 2) == "--");  // precondition.
   size_t pos = in.find_first_of('=', 0);
   if (pos == std::string::npos) {
@@ -399,7 +399,7 @@ void ParseOptions::SplitLongArg(std::string in, std::string* key,
 }
 
 
-void ParseOptions::NormalizeArgName(std::string* str) {
+void ParseOptions::NormalizeArgName(std::string *str) {
   std::string out;
   std::string::iterator it;
 
@@ -415,7 +415,7 @@ void ParseOptions::NormalizeArgName(std::string* str) {
 
 
 
-bool ParseOptions::SetOption(const std::string& key, const std::string& value) {
+bool ParseOptions::SetOption(const std::string &key, const std::string &value) {
   if (bool_map_.end() != bool_map_.find(key)) {
     *(bool_map_[key]) = ToBool(value);
   } else if (int_map_.end() != int_map_.find(key)) {
@@ -456,7 +456,7 @@ bool ParseOptions::ToBool(std::string str) {
 
 
 int32 ParseOptions::ToInt(std::string str) {
-  char* end_pos;
+  char *end_pos;
   // strtol is cheaper than stringstream...
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   int32 ret = std::strtol(str.c_str(), &end_pos, 0);
@@ -469,7 +469,7 @@ int32 ParseOptions::ToInt(std::string str) {
 }
 
 uint32 ParseOptions::ToUInt(std::string str) {
-  char* end_pos;
+  char *end_pos;
   // strtol is cheaper than stringstream...
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   uint32 ret = std::strtoul(str.c_str(), &end_pos, 0);
@@ -483,7 +483,7 @@ uint32 ParseOptions::ToUInt(std::string str) {
 
 
 float ParseOptions::ToFloat(std::string str) {
-  char* end_pos;
+  char *end_pos;
   // strtod is cheaper than stringstream...
   float ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {
@@ -495,7 +495,7 @@ float ParseOptions::ToFloat(std::string str) {
 }
 
 double ParseOptions::ToDouble(std::string str) {
-  char* end_pos;
+  char *end_pos;
   // strtod is cheaper than stringstream...
   double ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {

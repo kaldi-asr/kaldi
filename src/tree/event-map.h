@@ -69,11 +69,11 @@ std::string EventTypeToString(const EventType &evec);  // so we can print events
 struct EventMapVectorHash {  // Hashing object for EventMapVector.  Works for both pointers and references.
   // Not used in event-map.{h, cc}
   size_t operator () (const EventType &vec);
-  size_t operator () (const EventType* ptr) { return (*this)(*ptr); }
+  size_t operator () (const EventType *ptr) { return (*this)(*ptr); }
 };
 struct EventMapVectorEqual {  // Equality object for EventType pointers-- test equality of underlying vector.
   // Not used in event-map.{h, cc}
-  size_t operator () (const EventType* p1, const EventType *p2) { return (*p1 == *p2); }
+  size_t operator () (const EventType *p1, const EventType *p2) { return (*p1 == *p2); }
 };
 
 

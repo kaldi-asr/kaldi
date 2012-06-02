@@ -72,13 +72,13 @@ fst::StdVectorFst* LangModelFst::ReadStream(
                                             std::istream &strm,
                                             const string &sourcename,
                                             GrammarType gtype,
-                                            fst::SymbolTable* pst,
+                                            fst::SymbolTable *pst,
                                             bool useNaturalLog,
                                             const string startSent,
                                             const string endSent) {
   if (gtype == kArpaLm || gtype == kTextString) {
     // always allocate local symbol table so we know we always have to delete it
-    fst::SymbolTable* psyms = new fst::SymbolTable("lmInputSymbols");
+    fst::SymbolTable *psyms = new fst::SymbolTable("lmInputSymbols");
 
     // initialize FST and reserve initial state
     // (we can retrieve it through Start())

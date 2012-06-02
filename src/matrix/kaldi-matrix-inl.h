@@ -39,11 +39,11 @@ template<>  void MatrixBase<double>::Invert(double *LogDet, double *DetSign, boo
 
 template<>
 template<>
-void MatrixBase<float>::AddVecVec(const float alpha, const VectorBase<float>& ra, const VectorBase<float>& rb);
+void MatrixBase<float>::AddVecVec(const float alpha, const VectorBase<float> &ra, const VectorBase<float> &rb);
 
 template<>
 template<>
-void MatrixBase<double>::AddVecVec(const double alpha, const VectorBase<double>& ra, const VectorBase<double>& rb);
+void MatrixBase<double>::AddVecVec(const double alpha, const VectorBase<double> &ra, const VectorBase<double> &rb);
 
 
 template<>

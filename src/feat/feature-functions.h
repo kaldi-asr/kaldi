@@ -229,7 +229,7 @@ void GetEqualLoudnessVector(const MelBanks &mel_banks,
                             Vector<BaseFloat> *ans);
 
 
-void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat>* mat_out);
+void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat> *mat_out);
 
 
 // Compute LP coefficients from autocorrelation coefficients.

@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Done copying " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

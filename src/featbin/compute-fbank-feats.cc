@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << " Done " << num_success << " out of " << num_utts
               << " utterances.";
     return (num_success != 0 ? 0 : 1);
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }

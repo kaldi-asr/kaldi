@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall LVTLN auxf impr per frame is "
               << (tot_lvtln_impr / tot_t) << " over " << tot_t << " frames.";
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
