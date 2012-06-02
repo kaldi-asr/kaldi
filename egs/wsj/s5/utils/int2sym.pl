@@ -64,8 +64,6 @@ while (<>) {
     }
     print $a . " ";
   }
-  if ($#A == 1) { print " "; } # ensure valid archive format 
-  # (need space after the key)
   print "\n";
 }
 
