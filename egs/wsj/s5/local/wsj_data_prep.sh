@@ -105,8 +105,8 @@ cat links/13-34.1/wsj1/doc/indices/h2_p0.ndx | \
 # Note: the ???'s below match WSJ and SI_DT, or wsj and si_dt.  
 # Sometimes this gets copied from the CD's with upcasing, don't know 
 # why (could be older versions of the disks).
-find `readlink links/13-16.1`/???1/??_??_20 -print | grep ".WV1" | sort > dev_dt_20.flist
-find `readlink links/13-16.1`/???1/??_??_05 -print | grep ".WV1" | sort > dev_dt_05.flist
+find `readlink links/13-16.1`/???1/??_??_20 -print | grep -i ".wv1" | sort > dev_dt_20.flist
+find `readlink links/13-16.1`/???1/??_??_05 -print | grep -i ".wv1" | sort > dev_dt_05.flist
 
 
 # Finding the transcript files:
