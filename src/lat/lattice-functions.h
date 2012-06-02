@@ -52,7 +52,8 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat,
 /// acoustic likelihood [i.e. negated acoustic score] on that link.
 /// This is used in combination with other quantities to work out
 /// the objective function in MMI discriminative training.
-BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
+BaseFloat LatticeForwardBackward(const Lattice &lat,
+                                 Posterior *arc_post,
                                  double *acoustic_like_sum = NULL);
 
 /// Given a lattice, and a transition model to map pdf-ids to phones,

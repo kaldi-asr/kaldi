@@ -100,6 +100,82 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat, vector<int32> *times) 
 }
 
 
+BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
+                                 double *acoustic_like_sum) {
+  // Note, Posterior is defined as follows:  Indexed [frame], then a list
+  // of (transition-id, posterior-probability) pairs.
+  // typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
+  using namespace fst;
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+  
+  if (acoustic_like_sum) *acoustic_like_sum = 0.0;
+
+  // Make sure the lattice is topologically sorted.
+  if (lat.Properties(fst::kTopSorted, true) == 0)
+    KALDI_ERR << "Input lattice must be topologically sorted.";
+  KALDI_ASSERT(lat.Start() == 0);
+
+  int32 num_states = lat.NumStates();
+  vector<int32> state_times;
+  int32 max_time = LatticeStateTimes(lat, &state_times);
+  std::vector<double> alpha(num_states, kLogZeroDouble);
+  std::vector<double> &beta(alpha); // we re-use the same memory for
+  // this, but it's semantically distinct so we name it differently.
+  double tot_forward_prob = kLogZeroDouble;
+
+  arc_post->clear();
+  arc_post->resize(max_time);
+  
+  alpha[0] = 0.0;
+  // Propagate alphas forward.
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = alpha[s];
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
+    }
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - (f.Value1() + f.Value2());
+      tot_forward_prob = LogAdd(tot_forward_prob, final_like);
+      KALDI_ASSERT(state_times[s] == max_time &&
+                   "Lattice is inconsistent (final-prob not at max_time)");
+    }
+  }
+  for (StateId s = num_states-1; s >= 0; s--) {
+    Weight f = lat.Final(s);    
+    double this_beta = -(f.Value1() + f.Value2());
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+          arc_beta = beta[arc.nextstate] + arc_like;
+      this_beta = LogAdd(this_beta, arc_beta);
+      int32 transition_id = arc.ilabel;
+      if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
+        double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
+        (*arc_post)[state_times[s]].push_back(std::make_pair(transition_id,
+                                                             posterior));
+        if (acoustic_like_sum)
+          *acoustic_like_sum -= posterior * arc.weight.Value2();
+      }
+    }
+    beta[s] = this_beta;
+  }
+  double tot_backward_prob = beta[0];
+  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
+    KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+              << ", while total backward probability = " << tot_backward_prob;
+  }
+  // Now combine any posteriors with the same transition-id.
+  for (int32 t = 0; t < max_time; t++)
+    MergePairVectorSumming(&((*arc_post)[t]));
+  return tot_backward_prob;
+}
+  
+
 // Helper functions for lattice forward-backward
 static void ForwardNode(const Lattice &lat, int32 state,
                         vector<double> *state_alphas);
@@ -112,8 +188,8 @@ static void BackwardNode(const Lattice &lat, int32 state, int32 cur_time,
                          double *acoustic_like_sum);
 
 
-BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
-                                 double *acoustic_like_sum) {
+BaseFloat LatticeForwardBackwardOld(const Lattice &lat, Posterior *arc_post,
+                                    double *acoustic_like_sum) {
   if (acoustic_like_sum) *acoustic_like_sum = 0.0;
   // Make sure the lattice is topologically sorted.
   kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
