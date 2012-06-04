@@ -76,6 +76,9 @@ utils/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort
 # Now make subset with half of the data from si-84.
 utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 
+# Note: the --boost-silence option should probably be omitted by default
+# for normal setups.  It doesn't always help. [it's to discourage non-silence
+# models from modeling silence.]
 steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a || exit 1;
 
