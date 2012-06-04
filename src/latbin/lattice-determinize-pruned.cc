@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     // this options class does not have its own Register function as it's viewed as
     // being more part of "fst world", so we register its elements independently.
     opts.max_mem = 50000000;
-    opts.max_loop = 500000;
+    opts.max_loop = 0; // waz 500000;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
