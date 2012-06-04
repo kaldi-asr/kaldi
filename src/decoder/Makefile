@@ -10,7 +10,7 @@ OBJFILES = decodable-am-diag-gmm.o training-graph-compiler.o decodable-am-sgmm.o
 LIBFILE = kaldi-decoder.a
 
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)

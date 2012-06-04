@@ -13,7 +13,7 @@ OBJFILES = regression-tree.o regtree-mllr-diag-gmm.o lda-estimate.o \
 
 LIBFILE = kaldi-transform.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

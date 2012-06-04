@@ -15,7 +15,7 @@ OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o
 
 LIBFILE = kaldi-matrix.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

@@ -13,7 +13,7 @@ OBJFILES = diag-gmm.o diag-gmm-normal.o mle-diag-gmm.o am-diag-gmm.o mle-am-diag
 
 LIBFILE = kaldi-gmm.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)

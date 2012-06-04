@@ -20,7 +20,7 @@ CMDFILES = arpa2fst
 
 LIBFILE = kaldi-lm.a
 
-all:  $(LIBFILE) $(TESTFILES) $(CMDFILES)
+all:  $(LIBFILE) $(CMDFILES)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

@@ -15,7 +15,7 @@ OBJFILES = text-utils.o kaldi-io.o \
 
 LIBFILE = kaldi-util.a
 
-all:  $(LIBFILE) $(TESTFILES) .phony_thread
+all:  $(LIBFILE) .phony_thread
 
 
 $(LIBFILE): $(OBJFILES)

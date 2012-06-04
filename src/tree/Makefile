@@ -11,7 +11,7 @@ OBJFILES = event-map.o context-dep.o clusterable-classes.o cluster-utils.o build
 
 LIBFILE = kaldi-tree.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

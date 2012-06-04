@@ -11,7 +11,7 @@ OBJFILES = am-sgmm.o estimate-am-sgmm.o fmllr-sgmm.o sgmm-clusterable.o \
 
 LIBFILE = kaldi-sgmm.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)

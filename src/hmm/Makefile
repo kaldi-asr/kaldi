@@ -8,7 +8,7 @@ OBJFILES = hmm-topology.o transition-model.o hmm-utils.o tree-accu.o
 
 LIBFILE = kaldi-hmm.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)

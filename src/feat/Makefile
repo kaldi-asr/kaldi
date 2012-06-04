@@ -10,7 +10,7 @@ OBJFILES = feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o mel-
 
 LIBFILE = kaldi-feature.a 
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

@@ -11,7 +11,7 @@ OBJFILES = kaldi-lattice.o lattice-functions.o word-align-lattice.o sausages.o
 
 LIBFILE = kaldi-lat.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)

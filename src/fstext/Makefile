@@ -22,7 +22,7 @@ OBJFILES =
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 
 
-all: $(LIBFILE) $(TESTFILES)
+all: $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

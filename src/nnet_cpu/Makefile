@@ -10,7 +10,7 @@ OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-rnnlm.o
 
 LIBFILE = kaldi-nnet.a 
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)

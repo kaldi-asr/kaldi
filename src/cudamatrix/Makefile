@@ -19,7 +19,7 @@ endif
 
 LIBFILE = cuda-matrix.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 #implicit rule for kernel compilation
 %.o : %.cu

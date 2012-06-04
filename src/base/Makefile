@@ -9,7 +9,7 @@ OBJFILES = kaldi-math.o kaldi-error.o io-funcs.o kaldi-utils.o
 
 LIBFILE = kaldi-base.a
 
-all:  $(LIBFILE) $(TESTFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
