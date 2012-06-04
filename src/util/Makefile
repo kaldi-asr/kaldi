@@ -7,15 +7,12 @@ TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     edit-distance-test hash-list-test timer-test kaldi-io-test parse-options-test \
     kaldi-table-test kaldi-thread-test
 
-.phony_thread: $(TESTFILES)
-	@echo; echo "Note: if kaldi-thread-test does not compile, you need to go to .. and re-run configure."
-
 OBJFILES = text-utils.o kaldi-io.o \
           kaldi-table.o parse-options.o simple-io-funcs.o kaldi-thread.o
 
 LIBFILE = kaldi-util.a
 
-all:  $(LIBFILE) .phony_thread
+all:  $(LIBFILE)
 
 
 $(LIBFILE): $(OBJFILES)
