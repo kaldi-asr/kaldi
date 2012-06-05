@@ -42,17 +42,27 @@ int main(int argc, char *argv[]) {
         " ark:1.lats ark:1.post\n";
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
+    std::string silence_phones_str;
     kaldi::ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for \"graph costs\" (including LM costs)");
+    po.Register("silence-phones", &silence_phones_str,
+                "Colon-separated list of integer id's of silence phones, e.g. 46:47");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
+ 
+    std::vector<int32> silence_phones;
+    if (!kaldi::SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
+      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
+    kaldi::SortAndUniq(&silence_phones);
+    if (silence_phones.empty())
+      KALDI_WARN <<"No silence phones specified, make sure this is what you intended.";
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
@@ -62,10 +72,9 @@ int main(int argc, char *argv[]) {
         lats_rspecifier = po.GetArg(3),
         posteriors_wspecifier = po.GetArg(4);
 
-    // Read as regular lattice
     kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
-    kaldi::RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
     kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
+    kaldi::RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
 
     TransitionModel trans_model;
     {
@@ -77,6 +86,7 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_err = 0;
     double total_lat_frame_acc = 0.0, lat_frame_acc;
     double total_time = 0, lat_time;
+
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
@@ -96,6 +106,7 @@ int main(int argc, char *argv[]) {
         num_err++;
       } else {
         const Posterior &posterior = posteriors_reader.Value(key);
+        arc_accs.resize(posterior.size());
         for (size_t i = 0; i < posterior.size(); i++) {
           for (size_t j = 0; j < posterior[i].size(); j++) {
             int32 tid = posterior[i][j].first,  // transition identifier.
@@ -104,22 +115,20 @@ int main(int argc, char *argv[]) {
             arc_accs[i][phone] = 1;
           }
         }
+        kaldi::Posterior post;
+        lat_frame_acc = kaldi::LatticeForwardBackwardMpe(lat, trans_model,
+                                                         arc_accs, &post,
+                                                         silence_phones);
+        total_lat_frame_acc += lat_frame_acc;
+        lat_time = post.size();
+        total_time += lat_time;
+        KALDI_VLOG(2) << "Processed lattice for utterance: " << key << "; found "
+                      << lat.NumStates() << " states and " << fst::NumArcs(lat)
+                      << " arcs. Average frame accuracies = " << (lat_frame_acc/lat_time)
+                      << " over " << lat_time << " frames.";
+        posterior_writer.Write(key, post);
+        num_done++; 
       }
-       
-      kaldi::Posterior post;
-      lat_frame_acc = kaldi::LatticeForwardBackwardMpe(lat, trans_model,
-                                                       arc_accs, &post);
-      total_lat_frame_acc += lat_frame_acc;
-      lat_time = post.size();
-      total_time += lat_time;
-
-      KALDI_VLOG(2) << "Processed lattice for utterance: " << key << "; found "
-                    << lat.NumStates() << " states and " << fst::NumArcs(lat)
-                    << " arcs. Average frame accuracies = " << (lat_frame_acc/lat_time)
-                    << " over " << lat_time << " frames.";
-      
-      posterior_writer.Write(key, post);
-      num_done++;
     }
 
     KALDI_LOG << "Overall average log-like/frame is "
