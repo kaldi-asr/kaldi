@@ -103,7 +103,9 @@ int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans
 BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                                     const TransitionModel &trans,
                                     const vector< std::map<int32, char> > &arc_accs,
-                                    Posterior *arc_post);
+                                    Posterior *arc_post,
+                                    const std::vector<int32> &silence_phones);
+
 
 /// This function takes a CompactLattice that should only contain
 /// a single linear sequence (e.g. derived from lattice-1best), and
