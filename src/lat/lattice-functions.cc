@@ -404,96 +404,138 @@ static void BackwardNodeMpe(const Lattice &lat, const TransitionModel &trans,
 BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                                     const TransitionModel &trans,
                                     const vector< map<int32, char> > &arc_accs,
-                                    Posterior *arc_post) {
-  // Make sure the lattice is topologically sorted.
-  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted))
+                                    Posterior *arc_post,
+                                    const std::vector<int32> &silence_phones) {
+  using namespace fst;
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+   
+  if (lat.Properties(fst::kTopSorted, true) == 0)
     KALDI_ERR << "Input lattice must be topologically sorted.";
   KALDI_ASSERT(lat.Start() == 0);
-
+  
   int32 num_states = lat.NumStates();
   vector<int32> state_times;
   int32 max_time = LatticeStateTimes(lat, &state_times);
-  vector< vector<int32> > active_states(max_time + 1);
-  // the +1 is needed since time is indexed from 0
- 
-  vector<double> state_alphas(num_states, kLogZeroDouble),
-      state_alphas_mpe(num_states, 0), // forward variable for mpe
-      state_betas(num_states, kLogZeroDouble),
-      state_betas_mpe(num_states, 0); // backward variable for mpe
-  state_alphas[0] = 0.0;
-  state_alphas_mpe[0] = 0.0;
+  std::vector<double> alpha(num_states, kLogZeroDouble),
+      alpha_mpe(num_states, 0), //forward variable for mpe
+      beta(num_states, kLogZeroDouble),
+      beta_mpe(num_states, 0); //backward variable for mpe
+  
   double tot_forward_prob = kLogZeroDouble;
   double tot_forward_score = 0;
 
-  // First Pass Forward, 
-  for (int32 state = 0; state < num_states; state++) {
-    int32 cur_time = state_times[state];
-    active_states[cur_time].push_back(state);
-    if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
-      BaseFloat final_loglike = -(lat.Final(state).Value1() + lat.Final(state).Value2());
-      state_betas[state] = final_loglike;
-      tot_forward_prob = LogAdd(tot_forward_prob, state_alphas[state] + final_loglike);
-    } else {
-      ForwardNode(lat, state, &state_alphas);
+  arc_post->clear();
+  arc_post->resize(max_time);
+
+  alpha[0] = 0.0;
+  //First Pass Forward, 
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = alpha[s];
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
     }
-  }
-
-  // Second Pass Forward, calculate forward for MPE,
-  for (int32 state = 0; state < num_states; state++) {
-    int32 cur_time = state_times[state];
-    if (lat.Final(state) != LatticeWeight::Zero()) {  // Check if final state.
-      tot_forward_score += state_alphas_mpe[state];
-    } else {
-      ForwardNodeMpe(lat, trans, state, cur_time, arc_accs, 
-                     state_alphas, &state_alphas_mpe);
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - (f.Value1() + f.Value2());
+      tot_forward_prob = LogAdd(tot_forward_prob, final_like);
+      KALDI_ASSERT(state_times[s] == max_time &&
+                   "Lattice is inconsistent (final-prob not at max_time)");
     }
+  } 
+  //First Pass Backward, 
+  for (StateId s = num_states-1; s >= 0; s--) {
+    Weight f = lat.Final(s);    
+    double this_beta = -(f.Value1() + f.Value2());
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+          arc_beta = beta[arc.nextstate] + arc_like;
+      this_beta = LogAdd(this_beta, arc_beta);
+    }
+    beta[s] = this_beta;
   }
-
-  // First Pass Backward,  
-  vector< map<int32, double> > tmp_arc_post(max_time);
-  for (int32 state = num_states - 1; state > 0; --state) {
-    int32 cur_time = state_times[state];
-    BackwardNode(lat, state, cur_time, tot_forward_prob, active_states,
-                 state_alphas, &state_betas, &tmp_arc_post[cur_time - 1],
-                 NULL);
-  }
-
-  // First Pass Forward Backward check 
-  double tot_backward_prob = state_betas[0];  // Initial state id == 0
-  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-9)) {
+  //First Pass Forward-Backward Check
+  double tot_backward_prob = beta[0];
+  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
     KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
               << ", while total backward probability = " << tot_backward_prob;
   }
  
-  // Second Pass Backward, collect Mpe style posteriors
-  vector< map<int32, double> > tmp_arc_post_mpe(max_time);
-  for (int32 state = num_states - 1; state > 0; --state) {
-    int32 cur_time = state_times[state];
-    BackwardNodeMpe(lat, trans, state, cur_time, tot_forward_prob,
-                    tot_forward_score, active_states, arc_accs, state_alphas,
-                    state_alphas_mpe, state_betas, &state_betas_mpe,
-                    &tmp_arc_post_mpe[cur_time - 1]);
+  alpha_mpe[0] = 0.0;
+  //Second Pass Forward, calculate forward for MPE,
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = alpha[s];
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double frame_acc = 0.0;
+      if (arc.ilabel != 0) {
+      int32 cur_time = state_times[s];
+      int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+      frame_acc = (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))? 
+          0.0 : ((arc_accs[cur_time].find(phone) == arc_accs[cur_time].end())?
+          0.0 : 1.0);
+      }
+      double arc_scale = std::exp(alpha[s] + arc_like - alpha[arc.nextstate]);
+      alpha_mpe[arc.nextstate] += arc_scale * (alpha_mpe[s] + frame_acc);
+    }
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - (f.Value1() + f.Value2());
+      double arc_scale = std::exp(final_like - tot_forward_prob);
+      tot_forward_score += arc_scale * alpha_mpe[s];   
+      KALDI_ASSERT(state_times[s] == max_time &&
+                   "Lattice is inconsistent (final-prob not at max_time)");
+    }
   }
+  //Second Pass Backward, collect Mpe style posteriors
+  for (StateId s = num_states-1; s >= 0; s--) {
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+          arc_beta = beta[arc.nextstate] + arc_like;
+      double frame_acc = 0.0;
+      int32 transition_id = arc.ilabel;
+      if (arc.ilabel != 0) {
+      int32 cur_time = state_times[s];
+      int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+      frame_acc = (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))? 
+          0.0 : ((arc_accs[cur_time].find(phone) == arc_accs[cur_time].end())?
+          0.0 : 1.0);
+      }
+      double arc_scale = std::exp(beta[arc.nextstate] + arc_like - beta[s]);
+      // check arc_scale NAN, 
+      // this is to prevent partial paths in Lattices
+      // i.e., paths dont survive to the final state 
+      if (std::isnan(arc_scale)) arc_scale = 0; 
+      beta_mpe[s] += arc_scale * (beta_mpe[arc.nextstate] + frame_acc);
+
+      if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
+        double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
+        double acc_diff = alpha_mpe[s] + frame_acc + beta_mpe[arc.nextstate]
+                               - tot_forward_score;
+        double posterior_mpe = posterior * acc_diff; 
+        (*arc_post)[state_times[s]].push_back(std::make_pair(transition_id,
+                                                             posterior_mpe));
+      }
+    }
+  }  
  
-  // Second Pass Forward Backward check
-  double tot_backward_score = state_betas_mpe[0];  // Initial state id == 0
-  if (!ApproxEqual(tot_forward_score, tot_backward_score, 1e-9)) {
+  //Second Pass Forward Backward check
+  double tot_backward_score = beta_mpe[0];  // Initial state id == 0
+  // may loose the condition somehow here 1e-5/1e-4
+  if (!ApproxEqual(tot_forward_score, tot_backward_score, 1e-4)) {
     KALDI_ERR << "Total forward score over lattice = " << tot_forward_score
-              << ", while total backward probability = " << tot_backward_score;
+              << ", while total backward score = " << tot_backward_score;
   } 
 
   // Output the computed posteriors
-  arc_post->resize(max_time);
-  for (int32 cur_time = 0; cur_time < max_time; cur_time++) {
-    map<int32, double>::const_iterator post_itr =
-        tmp_arc_post_mpe[cur_time].begin();
-    for (; post_itr != tmp_arc_post_mpe[cur_time].end(); ++post_itr) {
-      (*arc_post)[cur_time].push_back(std::make_pair(post_itr->first,
-          post_itr->second));
-    }
-  }
-  
+  for (int32 t = 0; t < max_time; t++)
+    MergePairVectorSumming(&((*arc_post)[t]));
   return tot_forward_score;
 }
 
