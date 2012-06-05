@@ -109,16 +109,16 @@ class FasterDecoder {
       // This makes sense for log + tropical semiring.
     }
 
-    inline ~Token() {
-      KALDI_ASSERT(ref_count_ == 1);
-      if (prev_ != NULL) TokenDelete(prev_);
-    }
     inline static void TokenDelete(Token *tok) {
-      if (tok->ref_count_ == 1) { 
+      while (--tok->ref_count_ == 0) {
+        Token *prev = tok->prev_;
         delete tok;
-      } else {
-        tok->ref_count_--;
+        if (prev == NULL) return;
+        else tok = prev;
       }
+#ifdef KALDI_PARANOID
+      KALDI_ASSERT(tok->ref_count_ > 0);
+#endif
     }
   };
   typedef HashList<StateId, Token*>::Elem Elem;
