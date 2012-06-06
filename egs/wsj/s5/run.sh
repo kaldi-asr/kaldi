@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# CAUTION: I changed e.g. 1.trans to trans.1 in the scripts.  To convert to the new naming
-# convention, run:
-# for x in `find . -name '*.trans'`; do mv $x `echo $x | perl -ane 's/(\d+)\.trans/trans.$1/;print;'`; done
-
-
-# WARNING: this is under construction.  Should stabilize by the end of May 2012.
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
