@@ -2,6 +2,7 @@
 
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012
 
+. ./path.sh
 
 [ ! -d data/lang_bd ] && echo "Expect data/local/lang_bd to exist" && exit 1;
 

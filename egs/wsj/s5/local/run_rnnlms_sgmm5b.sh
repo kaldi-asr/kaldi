@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 for test in dev93 eval92; do
 
   steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
