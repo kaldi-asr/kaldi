@@ -637,11 +637,12 @@ void VectorBase<Real>::Abs() {
 
 template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
-  Real lse = LogSumExp();
+  Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] = exp(data_[i] - lse);
+    sum += (data_[i] = exp(data_[i] - max));
   }
-  return lse;
+  this->Scale(1.0 / sum);
+  return max + log(sum);
 }
 
 

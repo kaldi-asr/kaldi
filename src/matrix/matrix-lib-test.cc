@@ -345,13 +345,16 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
   for (MatrixIndexT i = 0; i < 5; i++) {
     Vector<Real> V(100), V1(100), V2(100);
     InitRand(&V);
-
+    
     V1.CopyFromVec(V);
     V1.ApplyExp();
+    Real a = V.LogSumExp();
     V2.Set(exp(V.LogSumExp()));
     V1.DivElemByElem(V2);
-    V.ApplySoftMax();
+    Real b = V.ApplySoftMax();
     AssertEqual(V1, V);
+    AssertEqual(a, b);
+    KALDI_LOG << "a = " << a << ", b = " << b;
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {
@@ -430,6 +433,12 @@ static void UnitTestSimpleForMat() {  // test some simple operates on all kinds 
     MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
     Matrix<Real> M(dimM, dimN);
     InitRand(&M);
+    {
+      Matrix<Real> N(M);
+      Real a = M.LogSumExp(), b = N.ApplySoftMax();
+      AssertEqual(a, b);
+      AssertEqual(1.0, N.Sum());
+    }
     {
       Matrix<Real> N(M);
       N.Add(2.0);

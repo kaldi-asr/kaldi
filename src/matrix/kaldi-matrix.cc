@@ -2104,11 +2104,13 @@ template double MatrixBase<double>::LogSumExp(double) const;
 
 template<typename Real>
 Real MatrixBase<Real>::ApplySoftMax() {
-  Real lse = LogSumExp();
+  Real max = this->Max(), sum = 0.0;
+  // the 'max' helps to get in good numeric range.
   for (MatrixIndexT i = 0; i < num_rows_; i++)
     for (MatrixIndexT j = 0; j < num_cols_; j++)
-      (*this)(i, j) = exp((*this)(i, j) - lse);
-  return lse;
+      sum += ((*this)(i, j) = exp((*this)(i, j) - max));
+  this->Scale(1.0 / sum);
+  return max + log(sum);
 }
 
 // instantiate.
