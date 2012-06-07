@@ -17,18 +17,17 @@
 # To be run from ..
 #
 # Neural network training, using fbank features, cepstral mean normalization 
-# and hamming-dct transform
+# and hamming-dct transform.
 #
-# The network is simple 4-layer MLP with 2 hidden layers.
+# The network is simple 3-layer MLP with 1 hidden layer.
 #
-# Two datasets are used: trainset and devset (for early stopping/model selection)
+# The dataset is randomly split to: trainset [90%] and cross-validation set [10%] 
+# (early stopping/model selection)
+# Beware of overlapping speakers for small sets...
 
 
 while [ 1 ]; do
   case $1 in
-    --model-size)
-      shift; modelsize=$1; shift;
-      ;;
     --lrate)
       shift; lrate=$1; shift;
       ;;
@@ -50,6 +49,9 @@ while [ 1 ]; do
     --dct-basis)
       shift; dct_basis=$1; shift;
       ;;
+    --mlp-init)
+      shift; mlp_init=$1; shift;
+      ;;
     *)
       break;
       ;;
@@ -57,20 +59,18 @@ while [ 1 ]; do
 done
 
 
-if [ $# != 6 ]; then
-   echo "Usage: steps/train_nnet.sh <data-dir> <data-dev> <lang-dir> <ali-dir> <ali-dev> <exp-dir>"
-   echo " e.g.: steps/train_nnet.sh data/train data/cv data/lang exp/mono_ali exp/mono_ali_cv exp/mono_nnet"
+if [ $# != 4 ]; then
+   echo "Usage: steps/train_nnet.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
+   echo " e.g.: steps/train_nnet.sh data/train data/lang exp/mono_ali exp/mono_nnet"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-data_cv=$2
-lang=$3
-alidir=$4
-alidir_cv=$5
-dir=$6
+lang=$2
+alidir=$3
+dir=$4
 
 if [ ! -f $alidir/final.mdl -o ! -f $alidir/ali.gz ]; then
   echo "Error: alignment dir $alidir does not contain final.mdl and ali.gz"
@@ -89,8 +89,9 @@ echo fea_dim: ${fea_dim:=23}     #FBANK dimension
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
 
-#mlp size
-echo modelsize: ${modelsize:=1000000} #number of free parameters in the MLP
+#pre-initialized mlp
+echo mlp_init: ${mlp_init:?Required: --mlp-init MLP}
+[ ! -r "$mlp_init" ] && { echo "Missing mlp_init $mlp_init"; exit 1; }
 
 
 #global config for trainig
@@ -110,17 +111,10 @@ mkdir -p $dir/{log,nnet}
 ###### PREPARE ALIGNMENTS ######
 echo "Preparing alignments"
 #convert ali to pdf
-labels_tr="ark:$dir/train.pdf"
-ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels_tr 2> $dir/ali2pdf_tr.log || exit 1
-#convert ali to pdf (cv set)
-labels_cv="ark:$dir/cv.pdf"
-ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" t,$labels_cv 2> $dir/ali2pdf_cv.log || exit 1
-#merge the two parts (scheduler expects one file in $labels)
 labels="ark:$dir/cur.pdf"
-cat $dir/train.pdf $dir/cv.pdf > $dir/cur.pdf
-
+ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels 2> $dir/ali2pdf.log || exit 1
 #get the priors, count the class examples from alignments
-scripts/count_class_frames.awk $dir/train.pdf $dir/cur.counts
+scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/transition.mdl
 cp $alidir/tree $dir/tree
@@ -128,19 +122,21 @@ cp $alidir/tree $dir/tree
 ###### PREPARE FEATURES ######
 # shuffle the list
 echo "Preparing train/cv lists"
-cat $data/feats.scp.fbank | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
-cp $data_cv/feats.scp.fbank $dir/cv.scp
+cat $data/feats.scp.fbank | scripts/shuffle_list.pl ${seed:-777} > $dir/feats.scp
+# split 90% train set 10% cross-validation set
+N=$(cat $dir/feats.scp | wc -l)
+head -n $[(N*9)/10] $dir/feats.scp > $dir/train.scp
+tail -n $[N/10] $dir/feats.scp > $dir/cv.scp
 # print the list sizes
+wc -l $dir/feats.scp
 wc -l $dir/train.scp $dir/cv.scp
 
 #compute per-speaker CMVN
 echo "Computing cepstral mean and variance statistics"
 cmvn="ark:$dir/cmvn.ark"
-cmvn_cv="ark:$dir/cmvn_cv.ark"
-compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/train.scp $cmvn 2>$dir/cmvn.log || exit 1
-compute-cmvn-stats --spk2utt=ark:$data_cv/spk2utt scp:$dir/cv.scp $cmvn_cv 2>$dir/cmvn_cv.log || exit 1
+compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/feats.scp $cmvn 2>$dir/cmvn.log || exit 1
 feats_tr="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn scp:$dir/train.scp ark:- |"
-feats_cv="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk $cmvn_cv scp:$dir/cv.scp ark:- |"
+feats_cv="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn scp:$dir/cv.scp ark:- |"
 
 #add splicing
 feats_tr="$feats_tr splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- |"
@@ -170,16 +166,6 @@ cmvn_g="$dir/cmvn_glob.mat"
 compute-cmvn-stats --binary=false "$feats_tr" $cmvn_g 2> $dir/cmvn_glob.log || exit 1
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
-
-
-###### INITIALIZE THE NNET ######
-echo -n "Initializng MLP: "
-num_fea=$((fea_dim*dct_basis))
-num_tgt=$(gmm-copy --print-args=false --binary=false $alidir/final.mdl - 2>$dir/gmm-copy.log | grep NUMPDFS | awk '{ print $4 }')
-num_hid=$(awk "BEGIN{ num_hid= -($num_fea+$num_tgt) / 2 + sqrt(($num_fea+$num_tgt)^2 + 4*$modelsize) / 2; print int(num_hid) }") # D=sqrt(b^2-4ac); x=(-b+/-D) / 2a
-mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_hid}_${num_tgt}.init
-echo " $mlp_init"
-scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 > $mlp_init
 
 
 

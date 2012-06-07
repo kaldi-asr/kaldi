@@ -14,6 +14,7 @@ echo start_halving_inc: ${start_halving_inc?$0: start_halving_inc not specified}
 echo end_halving_inc: ${end_halving_inc?$0: end_halving_inc not specified}
 echo halving_factor: ${halving_factor?$0: halving_factor not specified}
 echo lrate: ${lrate?$0: lrate not specified}
+echo bunchsize: ${bunchsize:=256}
 echo ${l2penalty:+l2penalty: $l2penalty}
 echo %%% CONFIG
 echo
@@ -35,7 +36,7 @@ echo
 #start training
 
 #prerun cross-validation
-$TRAIN_TOOL --cross-validate=true $mlp_init "$feats_cv" "$labels" &> $dir/log/prerun.log || { cat $dir/log/prerun.log; exit 1; }
+$TRAIN_TOOL --cross-validate=true --bunchsize=$bunchsize $mlp_init "$feats_cv" "$labels" &> $dir/log/prerun.log || { cat $dir/log/prerun.log; exit 1; }
 acc=$(cat $dir/log/prerun.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
 echo "CROSSVAL PRERUN ACCURACY $acc"
 
@@ -50,12 +51,12 @@ for iter in $(seq -w $max_iters); do
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
   
   #training
-  $TRAIN_TOOL --learn-rate=$lrate ${l2penalty:+ --l2-penalty=$l2penalty} $mlp_best "$feats_tr" "$labels" $mlp_next &> $dir/log/iter$iter.log || exit 1; 
+  $TRAIN_TOOL --learn-rate=$lrate --bunchsize=$bunchsize ${l2penalty:+ --l2-penalty=$l2penalty} $mlp_best "$feats_tr" "$labels" $mlp_next &> $dir/log/iter$iter.log || exit 1; 
   tr_acc=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
   echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) LRATE $(printf "%.6g" $lrate), "
   
   #cross-validation
-  $TRAIN_TOOL --cross-validate=true $mlp_next "$feats_cv" "$labels" 1>>$dir/log/iter$iter.log 2>>$dir/log/iter$iter.log || exit 1;
+  $TRAIN_TOOL --cross-validate=true --bunchsize=$bunchsize $mlp_next "$feats_cv" "$labels" 1>>$dir/log/iter$iter.log 2>>$dir/log/iter$iter.log || exit 1;
   acc_new=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
   echo -n "CROSSVAL ACCURACY $(printf "%.2f" $acc_new), "
 

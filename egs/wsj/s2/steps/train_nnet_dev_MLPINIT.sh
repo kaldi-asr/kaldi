@@ -17,18 +17,14 @@
 # To be run from ..
 #
 # Neural network training, using fbank features, cepstral mean normalization 
-# and hamming-dct transform
+# and hamming-dct transform.
 #
-# The network is simple 4-layer MLP with 2 hidden layers.
+# The network is simple 3-layer MLP with 1 hidden layer.
 #
 # Two datasets are used: trainset and devset (for early stopping/model selection)
 
-
 while [ 1 ]; do
   case $1 in
-    --model-size)
-      shift; modelsize=$1; shift;
-      ;;
     --lrate)
       shift; lrate=$1; shift;
       ;;
@@ -49,6 +45,9 @@ while [ 1 ]; do
       ;;
     --dct-basis)
       shift; dct_basis=$1; shift;
+      ;;
+    --mlp-init)
+      shift; mlp_init=$1; shift;
       ;;
     *)
       break;
@@ -89,8 +88,9 @@ echo fea_dim: ${fea_dim:=23}     #FBANK dimension
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
 
-#mlp size
-echo modelsize: ${modelsize:=1000000} #number of free parameters in the MLP
+#pre-initialized mlp
+echo mlp_init: ${mlp_init:?Required: --mlp-init MLP}
+[ ! -r "$mlp_init" ] && { echo "Missing mlp_init $mlp_init"; exit 1; }
 
 
 #global config for trainig
@@ -170,16 +170,6 @@ cmvn_g="$dir/cmvn_glob.mat"
 compute-cmvn-stats --binary=false "$feats_tr" $cmvn_g 2> $dir/cmvn_glob.log || exit 1
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
-
-
-###### INITIALIZE THE NNET ######
-echo -n "Initializng MLP: "
-num_fea=$((fea_dim*dct_basis))
-num_tgt=$(gmm-copy --print-args=false --binary=false $alidir/final.mdl - 2>$dir/gmm-copy.log | grep NUMPDFS | awk '{ print $4 }')
-num_hid=$(awk "BEGIN{ num_hid= -($num_fea+$num_tgt) / 2 + sqrt(($num_fea+$num_tgt)^2 + 4*$modelsize) / 2; print int(num_hid) }") # D=sqrt(b^2-4ac); x=(-b+/-D) / 2a
-mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_hid}_${num_tgt}.init
-echo " $mlp_init"
-scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 > $mlp_init
 
 
 

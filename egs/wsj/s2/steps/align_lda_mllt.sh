@@ -115,4 +115,7 @@ else
   [ -f $dir/.error ] && echo error doing alignment && exit 1;
 fi
 
+#Also merge alignments to single archive (for nnet training)
+gunzip -c $dir/*.ali.gz | gzip -c > $dir/ali.gz
+
 echo "Done aligning data."

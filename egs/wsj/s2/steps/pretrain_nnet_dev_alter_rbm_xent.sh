@@ -16,24 +16,25 @@
 
 # To be run from ..
 #
-# Neural network training, using fbank features, cepstral mean normalization 
-# and hamming-dct transform
-#
-# The network is simple 4-layer MLP with 2 hidden layers.
+# Deep neural network pre-training,using fbank features, 
+# cepstral mean normalization and hamming-dct transform
 #
 # Two datasets are used: trainset and devset (for early stopping/model selection)
 
 
 while [ 1 ]; do
   case $1 in
-    --model-size)
-      shift; modelsize=$1; shift;
+    --rbm-iter)
+      shift; iters_rbm=$1; shift;
+      ;;
+    --rbm-lrate)
+      shift; rbm_lrate=$1; shift;
+      ;;
+    --rbm-lrate-low)
+      shift; rbm_lrate_low=$1; shift;
       ;;
     --lrate)
       shift; lrate=$1; shift;
-      ;;
-    --bunchsize)
-      shift; bunchsize=$1; shift;
       ;;
     --l2-penalty)
       shift; l2penalty=$1; shift;
@@ -50,6 +51,9 @@ while [ 1 ]; do
     --dct-basis)
       shift; dct_basis=$1; shift;
       ;;
+    --*)
+      echo Unknown option $1; exit 1;
+      ;;
     *)
       break;
       ;;
@@ -58,8 +62,8 @@ done
 
 
 if [ $# != 6 ]; then
-   echo "Usage: steps/train_nnet.sh <data-dir> <data-dev> <lang-dir> <ali-dir> <ali-dev> <exp-dir>"
-   echo " e.g.: steps/train_nnet.sh data/train data/cv data/lang exp/mono_ali exp/mono_ali_cv exp/mono_nnet"
+   echo "Usage: steps/pretrain_nnet_dev_alter_rbm_xent.sh <data-dir> <data-dev> <lang-dir> <ali-dir> <ali-dev> <exp-dir>"
+   echo " e.g.: steps/pretrain_nnet_dev_alter_rbm_xent.sh data/train data/cv data/lang exp/mono_ali exp/mono_ali_cv exp/mono_nnet"
    exit 1;
 fi
 
@@ -81,25 +85,38 @@ fi
 
 
 ######## CONFIGURATION
-TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
+TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff --bunchsize=64 "
 
 #feature config
 echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
-echo fea_dim: ${fea_dim:=23}     #FBANK dimension
+echo fea_dim: ${fea_dim:=23}       #FBANK dimension
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
 
 #mlp size
-echo modelsize: ${modelsize:=1000000} #number of free parameters in the MLP
+echo nn_depth:  ${nn_depth:=10}    #number of hidden layers
+echo nn_dimhid: ${nn_dimhid:=1024} #dimension of hidden layers
 
 
 #global config for trainig
-max_iters=20
+iters_rbm_init=1 #number of iterations with low mmt
+echo iters_rbm: ${iters_rbm:=1} #number of iterations with high mmt
+iters_rbm_low_lrate=$((2*iters_rbm)) #number of iterations for RBMs with gaussian input
+iters_xent=1 #number of iterations of discriminative fine-tuning
+
 start_halving_inc=0.5
 end_halving_inc=0.1
 halving_factor=0.5
+
+#parameters for RBM pre-training
+echo rbm_lrate: ${rbm_lrate:=0.1}
+echo rbm_lrate_low: ${rbm_lrate_low:=0.001}
+echo rbm_momentum: ${rbm_momentum:=0.5}
+echo rbm_momentum_high: ${rbm_momentum_high:=0.9}
+echo rbm_l2penalty: ${rbm_l2penalty:=0.0002}
+
+#parameters for discriminative fine-tuning
 echo lrate: ${lrate:=0.015} #learning rate
-echo bunchsize: ${bunchsize:=256} #size of the Stochastic-GD update block
 echo l2penalty: ${l2penalty:=0.0} #L2 regularization penalty
 ########
 
@@ -172,25 +189,70 @@ feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:-
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 
 
-###### INITIALIZE THE NNET ######
-echo -n "Initializng MLP: "
+#get the DNN dimensions
 num_fea=$((fea_dim*dct_basis))
-num_tgt=$(gmm-copy --print-args=false --binary=false $alidir/final.mdl - 2>$dir/gmm-copy.log | grep NUMPDFS | awk '{ print $4 }')
-num_hid=$(awk "BEGIN{ num_hid= -($num_fea+$num_tgt) / 2 + sqrt(($num_fea+$num_tgt)^2 + 4*$modelsize) / 2; print int(num_hid) }") # D=sqrt(b^2-4ac); x=(-b+/-D) / 2a
-mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_hid}_${num_tgt}.init
-echo " $mlp_init"
-scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 > $mlp_init
+num_hid=$nn_dimhid
+num_tgt=$(gmm-info $alidir/final.mdl 2>$dir/gmm-info.log | grep pdfs | awk '{print $NF}')
+
+
+###### PERFORM THE PRE-TRAINING ######
+for depth in $(seq -w 1 $nn_depth); do
+  echo "%%%%%%% PRE-TRAINING DEPTH $depth"
+  RBM=$dir/nnet/hid${depth}a_rbm.d/nnet/hid${depth}a_rbm
+  mkdir -p $(dirname $RBM); mkdir -p $(dirname $RBM)/../log
+  echo "Pre-training RBM $RBM "
+  #The first RBM needs special treatment, because of Gussian input nodes
+  if [ "$depth" == "01" ]; then
+    #initialize the RBM with gaussian input
+    scripts/gen_rbm_init.py --dim=${num_fea}:${num_hid} --gauss --negbias --vistype=gauss --hidtype=bern > $RBM.init
+    #pre-train with reduced lrate and more iters
+    #a)low momentum
+    scripts/pretrain_rbm.sh --iters $iters_rbm_init --lrate $rbm_lrate_low --momentum $rbm_momentum --l2-penalty $rbm_l2penalty $RBM.init "$feats_tr" ${RBM}_mmt$rbm_momentum
+    #b)high momentum
+    scripts/pretrain_rbm.sh --iters $iters_rbm_low_lrate --lrate $rbm_lrate_low --momentum $rbm_momentum_high --l2-penalty $rbm_l2penalty ${RBM}_mmt$rbm_momentum "$feats_tr" ${RBM}_mmt${rbm_momentum_high}
+  else
+    #initialize the RBM
+    scripts/gen_rbm_init.py --dim=${num_hid}:${num_hid} --gauss --negbias --vistype=bern --hidtype=bern > $RBM.init
+    #pre-train (with higher learning rate)
+    #a)low momentum
+    scripts/pretrain_rbm.sh --feature-transform $TRANSF --iters $iters_rbm_init --lrate $rbm_lrate --momentum $rbm_momentum --l2-penalty $rbm_l2penalty $RBM.init "$feats_tr" ${RBM}_mmt$rbm_momentum
+    #b)high momentum
+    scripts/pretrain_rbm.sh --feature-transform $TRANSF --iters $iters_rbm --lrate $rbm_lrate --momentum $rbm_momentum_high --l2-penalty $rbm_l2penalty ${RBM}_mmt$rbm_momentum "$feats_tr" ${RBM}_mmt${rbm_momentum_high}
+  fi
+
+  #Compose trasform + RBM + multiclass logistic regression
+  echo "Compsing the nnet for discriminative supervised trainng"
+  NNET=$dir/nnet/hid${depth}b_nnet
+  [ ! -r $TRANSF ] && rm $NNET.init 2>/dev/null
+  [ -r $TRANSF ] && cat $TRANSF > $NNET.init
+  rbm-convert-to-nnet --binary=false ${RBM}_mmt${rbm_momentum_high} - >> $NNET.init
+  scripts/gen_mlp_init.py --dim=${num_hid}:${num_tgt} --gauss --negbias >> $NNET.init
+
+  #Do single iteration of fine-tuning
+  echo "Performing discriminative supervised trainng"
+  scripts/pretrain_xent.sh --iters $iters_xent --lrate $lrate --l2-penalty $l2penalty $NNET.init "$feats_tr" "$feats_cv" "$labels" $NNET.xent
+
+  #Cut the last layer (n=2:weights+softmax) in order 
+  #to get the feature transform
+  echo "Cutting the last layer"
+  TRANSF=$dir/nnet/hid${depth}c_transf
+  nnet-trim-n-last-transforms --n=2 --binary=false $NNET.xent $TRANSF
+done
+
+
+echo "Pre-training finished."
+
+echo
+echo "%%%% REPORT %%%%"
+echo "% RBM pre-training progress"
+grep -R progress $dir/nnet
+echo "% Xent pre-training progress"
+grep -R FRAME_ACCURACY $dir/nnet
+echo 
+echo "EOF"
 
 
 
-###### TRAIN ######
-echo "Starting training:"
-source scripts/train_nnet_scheduler.sh
-echo "Training finished."
-if [ "" == "$mlp_final" ]; then
-  echo "No final network returned!"
-else
-  cp $mlp_final $dir/final.nnet
-  echo "Final network $mlp_final"
-fi
+#The final fine-tuning will be run from the outer level (the run.sh script),
+#this will be done for all tne $NNET.xent networks...
 

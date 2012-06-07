@@ -160,4 +160,7 @@ wait;
 
 rm $dir/*.fsts.gz 2>/dev/null; # In case we made graphs in this directory.
 
+#Also merge alignments to single archive (for nnet training)
+gunzip -c $dir/*.ali.gz | gzip -c > $dir/ali.gz
+
 echo "Done aligning data."

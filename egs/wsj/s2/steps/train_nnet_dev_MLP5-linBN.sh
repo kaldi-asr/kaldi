@@ -33,6 +33,9 @@ while [ 1 ]; do
     --lrate)
       shift; lrate=$1; shift;
       ;;
+    --bunchsize)
+      shift; bunchsize=$1; shift;
+      ;;
     --l2-penalty)
       shift; l2penalty=$1; shift;
       ;;
@@ -82,7 +85,7 @@ fi
 
 
 ######## CONFIGURATION
-TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff --bunchsize=64 "
+TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
 
 #feature config
 echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
@@ -101,6 +104,7 @@ start_halving_inc=0.5
 end_halving_inc=0.1
 halving_factor=0.5
 echo lrate: ${lrate:=0.015} #learning rate
+echo bunchsize: ${bunchsize:=256} #size of the Stochastic-GD update block
 echo l2penalty: ${l2penalty:=0.0} #L2 regularization penalty
 ########
 

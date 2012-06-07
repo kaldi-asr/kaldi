@@ -25,6 +25,8 @@ foreach $x (@ARGV) {
     else { $cmd .= "\"$x\" "; } 
 }
 
+#create directory where log will be
+system("mkdir -p \$(dirname $logfile)");
 
 open(F, ">$logfile") || die "Error opening log file $logfile";
 print F "# " . $cmd . "\n";
