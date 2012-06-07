@@ -663,6 +663,16 @@ EventMap *RenumberEventMap(const EventMap &e_in, int32 *num_leaves) {
   return ans;
 }
 
+EventMap *MapEventMapLeaves(const EventMap &e_in,
+                            const std::vector<int32> &mapping_in) {
+  std::vector<EventMap*> mapping(mapping.size());
+  for (size_t i = 0; i < mapping_in.size(); i++)
+    mapping[i] = new ConstantEventMap(mapping_in[i]);
+  EventMap *ans = e_in.Copy(mapping);
+  DeletePointers(&mapping);
+  return ans;
+}
+
 EventMap *ClusterEventMap(const EventMap &e_in, const BuildTreeStatsType &stats,
                           BaseFloat thresh, int32 *num_removed_ptr) {
   std::vector<EventMap*> mapping;

@@ -222,7 +222,7 @@ EventMap *BuildTree(Questions &qopts,
 
     KALDI_VLOG(1) << "Objf change due to clustering "
                   << ((objf_after_cluster-objf_before_cluster) / normalizer)
-                   << " per frame.";
+                  << " per frame.";
     KALDI_VLOG(1) << "Normalizing over only split phones, this is: "
                   << ((objf_after_cluster-objf_before_cluster) / normalizer_filt)
                   << " per frame.";
@@ -356,19 +356,18 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
                                      &num_leaves, &impr, &smallest_split);
   
   KALDI_LOG << "Building second-level tree: increased #leaves from "
-                << old_num_leaves << " to " << num_leaves << ", smallest split was "
-                << smallest_split;
+            << old_num_leaves << " to " << num_leaves << ", smallest split was "
+            << smallest_split;
   
   BaseFloat normalizer = SumNormalizer(stats),
       impr_normalized = impr / normalizer;
   
   KALDI_LOG <<  "After second decision tree split, num-leaves = "
-                << num_leaves << ", like-impr = " << impr_normalized
-                << " per frame over " << normalizer << " frames.";
-
+            << num_leaves << ", like-impr = " << impr_normalized
+            << " per frame over " << normalizer << " frames.";
 
   if (cluster_leaves) {  // Cluster the leaves of the tree.
-    KALDI_LOG << "Clustering leaves of larger.";
+    KALDI_LOG << "Clustering leaves of larger tree.";
     BaseFloat objf_before_cluster = ObjfGivenMap(stats, *tree);
 
     // Now do the clustering.
@@ -382,12 +381,12 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
     
     int32 num_leaves = 0;
     EventMap *tree_renumbered = RenumberEventMap(*tree_clustered, &num_leaves);
-
+    
     BaseFloat objf_after_cluster = ObjfGivenMap(stats, *tree_renumbered);
     
     KALDI_LOG << "Objf change due to clustering "
-                  << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
-                  << " per frame.";
+              << ((objf_after_cluster-objf_before_cluster) / SumNormalizer(stats))
+              << " per frame.";
     KALDI_LOG <<  "Num-leaves now "<< num_leaves;
     delete tree;
     delete tree_clustered;
@@ -399,6 +398,29 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
                      stats,
                      leaf_map);
 
+  { // Next do another renumbering of "tree" so that leaves with the
+    // same value in "first_level_tree" are contiguous.
+    std::vector<std::pair<int32, int32> > leaf_pairs;
+    for (size_t i = 0; i < leaf_map->size(); i++)
+      leaf_pairs.push_back(std::make_pair<int32,int32>((*leaf_map)[i], i));
+    // pair of (small-tree-number, big-tree-number).
+    std::sort(leaf_pairs.begin(), leaf_pairs.end());
+    std::vector<int32> old2new_map(leaf_map->size()),
+        new_leaf_map(leaf_map->size());
+    // Note: old2new_map maps from old indices to new indices, in the
+    // renumbering; new_leaf_map maps from 2nd-level tree indices to
+    // 1st-level tree indices.
+    for (size_t i = 0; i < leaf_pairs.size(); i++) {
+      int32 old_number = leaf_pairs[i].second, new_number = i;
+      old2new_map[old_number] = new_number;
+      new_leaf_map[new_number] = (*leaf_map)[old_number];
+    }
+    *leaf_map = new_leaf_map;
+    EventMap *renumbered_tree = MapEventMapLeaves(*tree, old2new_map);
+    delete tree;
+    tree = renumbered_tree;
+  }
+  
   delete first_level_tree;
   return tree;
 }
@@ -454,7 +476,7 @@ static void ObtainSetsOfPhones(const std::vector<std::vector<int32> > &phone_set
     int32 clust = assignments[i];  // this is an index into phone_sets.
     assert(clust>=0 && clust < num_leaves);
     for (size_t j = 0; j < phone_sets[i].size(); j++) {
-       // and not just a hole.
+      // and not just a hole.
       raw_sets[clust].push_back(phone_sets[i][j]);
     }
   }
@@ -647,7 +669,7 @@ void KMeansClusterPhones(BuildTreeStatsType &stats,
   for (int32 i = 0; static_cast<size_t>(i) < summed_stats.size(); i++) {
     // just a check.
     if (summed_stats[i] != NULL &&
-       !binary_search(phones.begin(), phones.end(), i)) {
+        !binary_search(phones.begin(), phones.end(), i)) {
       KALDI_WARN << "Phone "<< i << " is present in stats but is not in phone list [make sure you intended this].";
     }
   }
@@ -738,10 +760,10 @@ void ReadRootsFile(std::istream &is,
     }
     std::sort(phone_sets->back().begin(), phone_sets->back().end());
     if (!IsSortedAndUniq(phone_sets->back()) || phone_sets->back().empty()
-       || phone_sets->back().front() <= 0)
+        || phone_sets->back().front() <= 0)
       KALDI_ERR << "Bad line in roots file [empty, or contains non-positive "
-                 << " or duplicate phone-ids]: line " << line_number << ": "
-                 << line;
+                << " or duplicate phone-ids]: line " << line_number << ": "
+                << line;
   }
   if (phone_sets->empty())
     KALDI_ERR << "Empty roots file ";

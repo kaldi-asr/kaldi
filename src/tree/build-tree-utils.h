@@ -185,7 +185,7 @@ EventMap *DoTableSplitMultiple(const EventMap &orig,
 // e.g. if we want to avoid sharing across phones.  Afterwards you can use Copy function
 // of EventMap to apply the mapping, i.e. call e_in.Copy(mapping) to get the new map.
 // Note that the application of Cluster creates gaps in the leaves.  You should then
-// call Renumber(e_in.Copy(mapping), num_leaves).
+// call RenumberEventMap(e_in.Copy(mapping), num_leaves).
 // *If you only want to cluster a subset of the leaves (e.g. just non-silence, or just
 // a particular phone, do this by providing a set of "stats" that correspond to just
 // this subset of leaves*.  Leaves with no stats will not be clustered.
@@ -203,7 +203,7 @@ EventMap *ClusterEventMap(const EventMap &e_in, const BuildTreeStatsType &stats,
 /// This is as ClusterEventMap, but first splits the stats on the keys specified
 /// in "keys" (e.g. typically keys = [ -1, P ]), and only clusters within the
 /// classes defined by that splitting.
-/// Note-- leaves will be non-consecutive at output, use Renumber.
+/// Note-- leaves will be non-consecutive at output, use RenumberEventMap.
 EventMap *ClusterEventMapRestrictedByKeys(const EventMap &e_in,
                                           const BuildTreeStatsType &stats,
                                           BaseFloat thresh,
@@ -227,17 +227,22 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
 /// the leaves, modify the function and add a new argument.
 EventMap *RenumberEventMap(const EventMap &e_in, int32 *num_leaves);
 
+/// This function remaps the event-map leaves using this mapping,
+/// indexed by the number at leaf.
+EventMap *MapEventMapLeaves(const EventMap &e_in,
+                            const std::vector<int32> &mapping);
+
+
 
 /// ShareEventMapLeaves performs a quite specific function that allows us to
-/// generate trees where, for a cetain list of phones, and for all states in
-/// the phone, all the pdf's share shared.
+/// generate trees where, for a certain list of phones, and for all states in
+/// the phone, all the pdf's are shared.
 /// Each element of "values" contains a list of phones (may be just one phone),
 /// all states of which we want shared together).  Typically at input, "key" will
 /// equal P, the central-phone position, and "values" will contain just one
 /// list containing the silence phone.
 /// This function renumbers the event map leaves after doing the sharing, to
 /// make the event-map leaves contiguous.
-
 EventMap *ShareEventMapLeaves(const EventMap &e_in, EventKeyType key,
                               std::vector<std::vector<EventValueType> > &values,
                               int32 *num_leaves);
