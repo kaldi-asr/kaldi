@@ -10,7 +10,7 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -rdynamic \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
-      -g -O0 -DKALDI_PARANOID
+      -g # -O0 -DKALDI_PARANOID
 
 LDFLAGS = -g -rdynamic
 LDLIBS = $(FSTROOT)/lib/libfst.a -ldl -lm -lpthread -framework Accelerate

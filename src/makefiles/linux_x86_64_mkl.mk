@@ -25,7 +25,7 @@ CXXFLAGS = -m64 -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
       -I$(FSTROOT)/include \
-      -g -O0 -DKALDI_PARANOID
+      -g # -O0 -DKALDI_PARANOID
 
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
 MKL_STA_SEQ = $(MKLLIB)/libmkl_solver_lp64_sequential.a -Wl,--start-group \
