@@ -90,7 +90,12 @@ steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
 steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
     2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
-wait; # or the mono mkgraph.sh might be writing 
+while [ ! -f data/lang_test_tgpr/tmp/LG.fst ] || \
+   [ -z data/lang_test_tgpr/tmp/LG.fst ]; do
+  sleep 20;
+done
+sleep 30;
+# or the mono mkgraph.sh might be writing 
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;

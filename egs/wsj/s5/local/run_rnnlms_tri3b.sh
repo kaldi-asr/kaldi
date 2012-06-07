@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. cmd.sh
+
  # This step interpolates a small RNNLM (with weight 0.25) with the 4-gram LM.
 steps/rnnlmrescore.sh \
   --N 100 --cmd "$decode_cmd" --inv-acwt 17 \
