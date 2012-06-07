@@ -48,7 +48,7 @@ loopscale=0.1
 
 required="$lang/L.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $model $tree"
 for f in $required; do
-  [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
+  [ ! -s $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
 mkdir -p $lang/tmp
@@ -72,14 +72,14 @@ if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstisstochastic $clg  || echo "[info]: CLG not stochastic."
 fi
 
-if [[ ! -f $dir/Ha.fst || $dir/Ha.fst -ot $model  \
+if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
   make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
     --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst  || exit 1;
 fi
 
-if [[ ! -f $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
+if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
       $dir/HCLGa.fst -ot $clg ]]; then
   fsttablecompose $dir/Ha.fst $clg | fstdeterminizestar --use-log=true \
     | fstrmsymbols $dir/disambig_tid.int | fstrmepslocal | \
@@ -87,7 +87,7 @@ if [[ ! -f $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \
   fstisstochastic $dir/HCLGa.fst || echo "HCLGa is not stochastic"
 fi
 
-if [[ ! -f $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
+if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
   add-self-loops --self-loop-scale=$loopscale --reorder=true \
     $model < $dir/HCLGa.fst > $dir/HCLG.fst || exit 1;
 
