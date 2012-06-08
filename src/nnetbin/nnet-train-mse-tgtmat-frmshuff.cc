@@ -29,9 +29,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Perform iteration of Neural Network training by stochastic gradient descent.\n"
-        "Usage:  nnet-train-mse-hardlab-frmshuff [options] <model-in> <feature-rspecifier> <targets-rspecifier> [<model-out>]\n"
+        "Usage:  nnet-train-mse-tgtmat-frmshuff [options] <model-in> <feature-rspecifier> <targets-rspecifier> [<model-out>]\n"
         "e.g.: \n"
-        " nnet-train-mse-hardlab-perutt nnet.init scp:train.scp ark:targets.scp nnet.iter1\n";
+        " nnet-train-mse-tgtmat-frmshuff nnet.init scp:train.scp ark:targets.scp nnet.iter1\n";
 
     ParseOptions po(usage);
     bool binary = false, 

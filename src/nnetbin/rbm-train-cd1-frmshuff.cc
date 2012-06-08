@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     cache.Init(cachesize, bunchsize);
 
     CuRand<BaseFloat> cu_rand;
-    Mse mse;
+    MseProgress mse;
 
     
     CuMatrix<BaseFloat> feats, feats_transf, pos_vis, pos_hid, neg_vis, neg_hid;
@@ -151,7 +151,9 @@ int main(int argc, char *argv[]) {
           cu_rand.AddGaussNoise(&neg_hid);
         }
         // reconstruct pass
-        rbm.Reconstruct(neg_hid, &pos_vis);
+        rbm.Reconstruct(neg_hid, &neg_vis);
+        // propagate negative examples
+        rbm.Propagate(neg_vis, &neg_hid);
         // update step
         rbm.RbmUpdate(pos_vis, pos_hid, neg_vis, neg_hid);
         // evaluate mean square error

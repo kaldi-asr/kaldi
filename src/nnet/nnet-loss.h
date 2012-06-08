@@ -75,6 +75,34 @@ class Mse {
 
 
 
+class MseProgress {
+ public:
+  MseProgress(int32 progress_step = 1e6) 
+   : progress_step_(progress_step), progress_ctr_(0), 
+     frames_(0), frames_progress_(0), 
+     loss_(0.0), loss_progress_(0)
+   { }
+  ~MseProgress() { }
+
+  /// Evaluate mean square error from target values
+  void Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target,
+            CuMatrix<BaseFloat>* diff);
+  
+  /// Generate string with error report
+  std::string Report();
+
+ private:
+  int32 progress_step_;
+  int32 progress_ctr_;
+  int32 frames_;
+  int32 frames_progress_;
+  double loss_;
+  double loss_progress_;
+  std::vector<float> loss_vec_;
+};
+
+
+
 } // namespace
 
 #endif

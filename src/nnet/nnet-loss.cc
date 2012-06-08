@@ -20,6 +20,7 @@
 #include "cudamatrix/cu-math.h"
 
 #include <sstream>
+#include <iterator>
 
 namespace kaldi {
 
@@ -137,6 +138,60 @@ std::string Mse::Report() {
   return oss.str();
 }
 
+
+
+
+void MseProgress::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
+  KALDI_ASSERT(net_out.NumCols() == target.NumCols());
+  KALDI_ASSERT(net_out.NumRows() == target.NumRows());
+  diff->Resize(net_out.NumRows(),net_out.NumCols());
+
+  //compute derivative w.r.t. neural nerwork outputs
+  diff->CopyFromMat(net_out);
+  diff->AddMat(-1.0,target);
+
+  //:TODO: reimplement when needed
+  //compute mean square error (ON CPU)
+  Matrix<BaseFloat> target_host, net_out_host;
+  target.CopyToMat(&target_host);
+  net_out.CopyToMat(&net_out_host);
+  BaseFloat val;
+  double loss=0.0;
+  for(int32 r=0; r<net_out.NumRows(); r++) {
+    for(int32 c=0; c<net_out.NumCols(); c++) {
+      val = target_host(r,c) - net_out_host(r,c);
+      loss += val*val;
+    }
+  }
+  //:TODO:
+  
+  frames_progress_ += net_out.NumRows();
+  loss_progress_ += loss;
+
+  //copmpute partial progress statistics
+  if(frames_progress_ > progress_step_) {
+    float loss_of_step = loss_progress_/frames_progress_;
+    loss_vec_.push_back(loss_of_step);
+    frames_ += frames_progress_; 
+    loss_ += loss_progress_;
+    KALDI_LOG << "Progress chunk #" << ++progress_ctr_ << " mse:" << loss_of_step << " [last " << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]";
+    frames_progress_ = 0;
+    loss_progress_ = 0;
+  }
+}
+
+
+std::string MseProgress::Report() {
+  std::ostringstream oss;
+  oss << "Mse:" << loss_ << " frames:" << frames_
+      << " err/frm:" << loss_/frames_ 
+      << std::endl;
+  oss << "progress: [";
+  std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
+  oss << "]" << std::endl;
+
+  return oss.str();
+}
 
 
 } // namespace

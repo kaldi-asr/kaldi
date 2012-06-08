@@ -1,4 +1,4 @@
-// nnetbin/nnet-copy.cc
+// nnetbin/nnet-trim-last-n-layers.cc
 
 // Copyright 2012  Karel Vesely
 
@@ -25,16 +25,19 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy Neural Network model (and possibly change binary/text format)\n"
-        "Usage:  nnet-copy [options] <model-in> <model-out>\n"
+        "Trim ending part of the MLP\n"
+        "Usage:  nnet-trim-last-n-layers [options] <model-in> <model-out>\n"
         "e.g.:\n"
-        " nnet-copy --binary=false nnet.mdl nnet_txt.mdl\n";
+        " nnet-trim-last-n-layers --binary=false nnet.mdl nnet_txt.mdl\n";
 
 
-    bool binary_write = true;
+    bool binary_write = false;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+
+    int32 trim_num = 0;
+    po.Register("n", &trim_num, "Number of transforms to be trimmed (include simgoid/softmax)");
 
     po.Read(argc, argv);
 
@@ -55,11 +58,12 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(model_out_filename, binary_write);
-      nnet.Write(ko.Stream(), binary_write);
+      int32 write_num_layers = nnet.LayerCount() - trim_num;
+      nnet.WriteFrontLayers(ko.Stream(), binary_write, write_num_layers);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;
-  } catch(const std::exception &e) {
+  } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

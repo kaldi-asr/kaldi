@@ -76,6 +76,9 @@ class Nnet {
   void Write(const std::string &file, bool binary); 
   /// Write MLP to stream 
   void Write(std::ostream &out, bool binary);    
+
+  /// Write only a front part of the MLP to stream (ie. trim the MLP)
+  void WriteFrontLayers(std::ostream& out, bool binary, int32 num_layers);    
   
   /// Set the learning rate values to trainable layers, 
   /// factors can disable training of individual layers
@@ -92,11 +95,7 @@ class Nnet {
   void SetL1Penalty(BaseFloat l1);
 
  private:
-  /// Creates a component by reading from stream, return NULL if no more components
-  static Component* ComponentFactory(std::istream &in, bool binary, Nnet *nnet);
-  /// Dumps individual component to stream
-  static void ComponentDumper(std::ostream &out, bool binary, const Component &comp);
-
+  /// Nnet is a vector of components
   typedef std::vector<Component*> NnetType;
   
   NnetType nnet_;     ///< vector of all Component*, represents layers
@@ -166,6 +165,14 @@ inline void Nnet::Write(const std::string &file, bool binary) {
 inline void Nnet::Write(std::ostream &out, bool binary) {
   for(int32 i=0; i<LayerCount(); i++) {
     nnet_[i]->Write(out, binary);
+  }
+}
+
+
+inline void Nnet::WriteFrontLayers(std::ostream& out, bool binary, int32 num_layers) {
+  KALDI_ASSERT(num_layers <= LayerCount());
+  for(int32 i=0; i<num_layers; i++) {
+    nnet_[i]->Write(out,binary);
   }
 }
 

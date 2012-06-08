@@ -1,6 +1,6 @@
-// nnetbin/nnet-copy.cc
+// gmmbin/rbm-convert-to-nnet.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2009-2011  Microsoft Corporation
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-rbm.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -25,13 +26,13 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy Neural Network model (and possibly change binary/text format)\n"
-        "Usage:  nnet-copy [options] <model-in> <model-out>\n"
+        "Convert RBM to <biasedlinearity> and <sigmoid>\n"
+        "Usage:  rbm-convert-to-nnet [options] <rbm-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-copy --binary=false nnet.mdl nnet_txt.mdl\n";
+        " rbm-convert-to-nnet --binary=false rbm.mdl nnet.mdl\n";
 
 
-    bool binary_write = true;
+    bool binary_write = false;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -52,14 +53,18 @@ int main(int argc, char *argv[]) {
       Input ki(model_in_filename, &binary_read);
       nnet.Read(ki.Stream(), binary_read);
     }
+    
+    KALDI_ASSERT(nnet.LayerCount() == 1);
+    KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
+    RbmBase& rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
 
     {
       Output ko(model_out_filename, binary_write);
-      nnet.Write(ko.Stream(), binary_write);
+      rbm.WriteAsNnet(ko.Stream(), binary_write);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;
-  } catch(const std::exception &e) {
+  } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;
   }

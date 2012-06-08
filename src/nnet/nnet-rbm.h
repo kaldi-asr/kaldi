@@ -54,8 +54,10 @@ class RbmBase : public UpdatableComponent {
     const CuMatrix<BaseFloat> &neg_hid
   ) = 0;
 
-  virtual RbmNodeType VisType() = 0;
-  virtual RbmNodeType HidType() = 0;
+  virtual RbmNodeType VisType() const = 0;
+  virtual RbmNodeType HidType() const = 0;
+
+  virtual void WriteAsNnet(std::ostream& os, bool binary) const = 0;
 };
 
 
@@ -77,14 +79,14 @@ class Rbm : public RbmBase {
     ReadToken(is, binary, &vis_node_type);
     ReadToken(is, binary, &hid_node_type);
     
-    if(vis_node_type == "BERN") {
+    if(vis_node_type == "bern") {
       vis_type_ = RbmBase::BERNOULLI;
-    } else if(vis_node_type == "GAUSS") {
+    } else if(vis_node_type == "gauss") {
       vis_type_ = RbmBase::GAUSSIAN;
     }
-    if(hid_node_type == "BERN") {
+    if(hid_node_type == "bern") {
       hid_type_ = RbmBase::BERNOULLI;
-    } else if(hid_node_type == "GAUSS") {
+    } else if(hid_node_type == "gauss") {
       hid_type_ = RbmBase::GAUSSIAN;
     }
 
@@ -98,15 +100,15 @@ class Rbm : public RbmBase {
     KALDI_ASSERT(hid_bias_.Dim() == output_dim_);
   }
   
-  void WriteData(std::ostream &os, bool binary) {
+  void WriteData(std::ostream &os, bool binary) const {
     switch (vis_type_) {
-      case BERNOULLI : WriteToken(os,binary,"BERN"); break;
-      case GAUSSIAN  : WriteToken(os,binary,"GAUSS"); break;
+      case BERNOULLI : WriteToken(os,binary,"bern"); break;
+      case GAUSSIAN  : WriteToken(os,binary,"gauss"); break;
       default : KALDI_ERR << "Unknown type " << vis_type_;
     }
     switch (hid_type_) {
-      case BERNOULLI : WriteToken(os,binary,"BERN"); break;
-      case GAUSSIAN  : WriteToken(os,binary,"GAUSS"); break;
+      case BERNOULLI : WriteToken(os,binary,"bern"); break;
+      case GAUSSIAN  : WriteToken(os,binary,"gauss"); break;
       default : KALDI_ERR << "Unknown type " << hid_type_;
     }
     vis_hid_.Write(os, binary);
@@ -159,6 +161,7 @@ class Rbm : public RbmBase {
   }
   
   void RbmUpdate(const CuMatrix<BaseFloat> &pos_vis, const CuMatrix<BaseFloat> &pos_hid, const CuMatrix<BaseFloat> &neg_vis, const CuMatrix<BaseFloat> &neg_hid) {
+
     assert(pos_vis.NumRows() == pos_hid.NumRows() &&
            pos_vis.NumRows() == neg_vis.NumRows() &&
            pos_vis.NumRows() == neg_hid.NumRows() &&
@@ -166,6 +169,12 @@ class Rbm : public RbmBase {
            pos_hid.NumCols() == neg_hid.NumCols() &&
            pos_vis.NumCols() == input_dim_ &&
            pos_hid.NumCols() == output_dim_);
+
+    //lazy initialization of buffers (possibly reduces to no-op)
+    vis_hid_corr_.Resize(vis_hid_.NumRows(),vis_hid_.NumCols());
+    vis_bias_corr_.Resize(vis_bias_.Dim());
+    hid_bias_corr_.Resize(hid_bias_.Dim());
+    
 
     //  UPDATE vishid matrix
     //  
@@ -177,6 +186,7 @@ class Rbm : public RbmBase {
     //                 -(epsilonw*weightcost)*vishid[t-1]
     //
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
+
     // vis_hid_corr_.Gemm('T','N',-learn_rate_/N,neg_vis,neg_hid,momentum_);
     vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_vis, kTrans, neg_hid, kNoTrans, momentum_);
     // vis_hid_corr_.Gemm('T','N',+learn_rate_/N,pos_vis,pos_hid,1.0);
@@ -203,14 +213,31 @@ class Rbm : public RbmBase {
 
 
 
-  RbmNodeType VisType() { 
+  RbmNodeType VisType() const { 
     return vis_type_; 
   }
 
-  RbmNodeType HidType() { 
+  RbmNodeType HidType() const { 
     return hid_type_; 
   }
 
+  void WriteAsNnet(std::ostream& os, bool binary) const {
+    //header
+    WriteToken(os,binary,Component::TypeToMarker(Component::kBiasedLinearity));
+    WriteBasicType(os,binary,OutputDim());
+    WriteBasicType(os,binary,InputDim());
+    if(!binary) os << "\n";
+    //data
+    vis_hid_.Write(os,binary);
+    hid_bias_.Write(os,binary);
+    //optionally sigmoid activation
+    if(HidType() == BERNOULLI) {
+      WriteToken(os,binary,Component::TypeToMarker(Component::kSigmoid));
+      WriteBasicType(os,binary,OutputDim());
+      WriteBasicType(os,binary,OutputDim());
+    }
+    if(!binary) os << "\n";
+  }
 
 protected:
   CuMatrix<BaseFloat> vis_hid_;        ///< Matrix with neuron weights
