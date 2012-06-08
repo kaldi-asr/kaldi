@@ -665,7 +665,7 @@ EventMap *RenumberEventMap(const EventMap &e_in, int32 *num_leaves) {
 
 EventMap *MapEventMapLeaves(const EventMap &e_in,
                             const std::vector<int32> &mapping_in) {
-  std::vector<EventMap*> mapping(mapping.size());
+  std::vector<EventMap*> mapping(mapping_in.size());
   for (size_t i = 0; i < mapping_in.size(); i++)
     mapping[i] = new ConstantEventMap(mapping_in[i]);
   EventMap *ans = e_in.Copy(mapping);
