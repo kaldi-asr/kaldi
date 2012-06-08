@@ -220,14 +220,6 @@ void CuMatrix<float>::AddMatMat(
     assert(n == NumRows());
     assert(k == k1);
 
-    #if 0
-     // DEBUG MESSAGE
-    std::cout << "\n" << transB << " " << transA << " " << m << " " << n << " " << k << " " <<
-                alpha << " " << B << " " << B.Stride() << " " <<
-                A << " " << A.Stride() << " " << beta << " " << C << " " << 
-                C.Stride() << "\n" << std::flush;
-    #endif
-
     Timer tim;
 
     cublasSgemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 

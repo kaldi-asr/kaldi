@@ -69,8 +69,9 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
-    #if 0
-    // disable 'reduce' functions
+    #if 0 
+    // disable 'tree-reduce' functions, 
+    // slower, but can be used for debugging
     size_t dimBlock = CUBLOCK;
     size_t dimGrid  = n_blocks(X.NumRows(), CUBLOCK);
 
@@ -78,42 +79,20 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
     cuSafeCall(cudaGetLastError());
     #endif
 
-    #if 0
-    if (X.NumCols() > 256) {
-      // use old implementation (can't use reduction due to 
-      // limited size of shared memory)
-      size_t dimBlock = CUBLOCK;
-      size_t dimGrid  = n_blocks(X.NumRows(), CUBLOCK);
-
-      cudaF_softmax(dimGrid, dimBlock, Y->Data(), X.Data(), X.Dim());
-      cuSafeCall(cudaGetLastError());
-    } else {
-      // use implementation with reduction
-      dim3 dimBlock(X.NumCols(), 1);
-      dim3 dimGrid(1, X.NumRows());
-
-      cudaF_softmax_reduce(dimGrid, dimBlock, Y->Data(), X.Data(), X.Dim());
-      cuSafeCall(cudaGetLastError());
-    }
-    #endif
-
-    #if 1
+    #if 1 
+    // enable 'tree-reduce' functions, 
+    //find maximum in each row (tree reduction)
     CuStlVector<int32> max_id;
-    FindRowMaxId(X, &max_id);
-
+    FindRowMaxId(X, &max_id); 
+    //in each row subtract maximum, apply exp (grid kernel)
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(X.NumCols(), CUBLOCK), n_blocks(X.NumRows(), CUBLOCK));
-    cudaF_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim());
-   
+    cudaF_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim()); 
+    //sum the rows to get normalizers (tree reduction) 
     CuVector<BaseFloat> sum(X.NumRows());
-    SumRowsVec(*Y, &sum);
-    
-    // slower by 4% than DivRowsVec(...)
-    // sum.InvertElements();
-    // Y->MulRowsVec(sum);
-    
+    sum.AddRowSum(1.0, *Y, 0.0);
+    //divide by normalizers to get posteriors (grid kernel)
     Y->DivRowsVec(sum);
-
     #endif
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -127,53 +106,6 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
       y.Row(r).ApplySoftMax();
     }
 
-  }
-}
-
-
-
-void CheckClass(const CuMatrix<float> &out, const CuMatrix<float> &des, CuVector<float> *match) {
-  assert(out.NumCols() == des.NumCols());
-  assert(out.NumRows() == des.NumRows());
-  assert(out.Stride() == des.Stride());
-  assert(match->Dim() == out.NumRows());
-
-  #if HAVE_CUDA==1 
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-
-    if (out.NumCols() > 256) {
-      size_t dimBlock = CUBLOCK;
-      size_t dimGrid = n_blocks(out.NumRows(), CUBLOCK);
-
-      cudaF_check_class(dimGrid, dimBlock, out.Data(), des.Data(), match->Data(), out.Dim());
-      cuSafeCall(cudaGetLastError());
-    } else {
-      dim3 dimBlock(out.NumCols(), 1);
-      dim3 dimGrid(1, out.NumRows());
-
-      cudaF_check_class_reduce(dimGrid, dimBlock, out.Data(), des.Data(), match->Data(), out.Dim());
-      cuSafeCall(cudaGetLastError());
-    }
-    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-  #endif
-  {
-    const MatrixBase<float> &mout = out.Mat();
-    const MatrixBase<float> &mdes = des.Mat();
-    VectorBase<float> &vmatch = match->Vec();
-    vmatch.Set(0);
-
-    for(MatrixIndexT r=0; r<mout.NumRows(); r++) {
-      MatrixIndexT i1=-1, i2=-1; 
-      float v1=0.0, v2=0.0;
-      for(MatrixIndexT c=0; c<mout.NumCols(); c++) {
-        if (v1 < mout(r, c)) { v1=mout(r, c); i1=c; }
-        if (v2 < mdes(r, c)) { v2=mdes(r, c); i2=c; }
-      }
-      if (i1==i2) { vmatch(r) = 1; }
-    }
   }
 }
 
@@ -301,53 +233,6 @@ void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<BaseFloat> *net_out_or_dif
 }
 
 
-void SumRowsVec(const CuMatrix<BaseFloat> &mat, CuVector<BaseFloat> *sum) {
-
-  // initialize the sum vector
-  sum->Resize(mat.NumRows());
-  sum->SetZero();
- 
-  #if HAVE_CUDA==1 
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-
-    MatrixDim d=mat.Dim();// only stride will be used!
-   
-    // process per 256 column blocks 
-    for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
-      dim3 dimBlock(256, 1);
-      dim3 dimGrid(1, mat.NumRows());
-      int32 offset=block*256;
-
-      cudaF_sum_rows_vec(dimGrid, dimBlock, mat.Data()+offset, sum->Data(), d);
-    }
-    
-    // process the remainder
-    int32 div = mat.NumCols() / 256;
-    int32 mod = mat.NumCols() % 256;
-    if (mod != 0) {
-      dim3 dimBlock(mod, 1);
-      dim3 dimGrid(1, mat.NumRows());
-      int32 offset=div*256;
-      
-      cudaF_sum_rows_vec(dimGrid, dimBlock, mat.Data()+offset, sum->Data(), d);
-    }
-    // now we have the sum!
-    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-  #endif
-  {
-    for(int32 r=0; r<mat.NumRows(); r++) {
-      BaseFloat rsum = 0;
-      for(int32 c=0; c<mat.NumCols(); c++) {
-        rsum += mat.Mat()(r, c);
-      }
-      sum->Vec()(r) = rsum;
-    }
-  }
-}
-
 
 void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<BaseFloat> *tgt) {
 
@@ -376,7 +261,7 @@ void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_fr
     const MatrixBase<BaseFloat> &srcmat = src.Mat();
     const std::vector<int32> &copy_from_idxvec = copy_from_idx.Vec();
     MatrixBase<BaseFloat> &tgtmat = tgt->Mat();
-    for(int i=0; i<copy_from_idx.Dim(); i++) {
+    for(int32 i=0; i<copy_from_idx.Dim(); i++) {
       tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
     }
   }

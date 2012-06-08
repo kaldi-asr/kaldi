@@ -5,23 +5,23 @@
 
 namespace kaldi {
 
-template<typename _ElemT> class CuMatrix;
+template<typename Real> class CuMatrix;
 
 /**
  * Vector for CUDA computing
  */
-template<typename _ElemT>
+template<typename Real>
 class CuVector {
- typedef CuVector<_ElemT> ThisType;
+ typedef CuVector<Real> ThisType;
 
  public:
 
   /// Default Constructor
-  CuVector<_ElemT>()
+  CuVector<Real>()
    : dim_(0), data_(NULL) { 
   }
   /// Constructor with memory initialisation
-  CuVector<_ElemT>(size_t dim)
+  CuVector<Real>(size_t dim)
    : dim_(0), data_(NULL) { 
     Resize(dim); 
   }
@@ -37,8 +37,8 @@ class CuVector {
   }
 
   /// Get raw pointer
-  const _ElemT* Data() const;
-  _ElemT* Data();
+  const Real* Data() const;
+  Real* Data();
  
   /// Allocate the memory
   ThisType& Resize(size_t dim);
@@ -47,9 +47,9 @@ class CuVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromVec(const CuVector<_ElemT> &src);
-  ThisType&        CopyFromVec(const Vector<_ElemT> &src);
-  void             CopyToVec(Vector<_ElemT> *dst) const;
+  ThisType&        CopyFromVec(const CuVector<Real> &src);
+  ThisType&        CopyFromVec(const Vector<Real> &src);
+  void             CopyToVec(Vector<Real> *dst) const;
 
   void             Read(std::istream &is, bool binary);
   void             Write(std::ostream &is, bool binary) const;
@@ -58,15 +58,19 @@ class CuVector {
   //
   void SetZero();
 
-  void Set(_ElemT value) { 
+  void Set(Real value) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddVec(_ElemT alpha, const CuVector<_ElemT> &vec, _ElemT beta=1.0) {
+  void AddVec(Real alpha, const CuVector<Real> &vec, Real beta=1.0) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddColSum(_ElemT alpha, const CuMatrix<_ElemT> &mat, _ElemT beta=1.0) { 
+  void AddColSum(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
+    KALDI_ERR << __func__ << " Not implemented"; 
+  }
+
+  void AddRowSum(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
@@ -77,10 +81,10 @@ class CuVector {
 
 
   /// Accessor to non-GPU vector
-  const VectorBase<_ElemT>& Vec() const {
+  const VectorBase<Real>& Vec() const {
     return vec_;
   }
-  VectorBase<_ElemT>& Vec() {
+  VectorBase<Real>& Vec() {
     return vec_;
   }
 
@@ -89,15 +93,15 @@ class CuVector {
 private:
   size_t dim_;
  
-  _ElemT *data_; ///< GPU data pointer
+  Real *data_; ///< GPU data pointer
 
-  Vector<_ElemT> vec_; ///< non-GPU vector as back-off
+  Vector<Real> vec_; ///< non-GPU vector as back-off
 };
 
 
 /// I/O
-template<typename _ElemT>
-std::ostream &operator << (std::ostream &out, const CuVector<_ElemT> &vec);
+template<typename Real>
+std::ostream &operator << (std::ostream &out, const CuVector<Real> &vec);
  
   
 } // namespace

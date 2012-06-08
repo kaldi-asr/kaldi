@@ -26,29 +26,28 @@
 //
 //http://http.developer.nvidia.com/GPUGems3/gpugems3_ch37.html
 
-
 // S1, S2, S3, and M are all constants, and z is part of the  
 // private per-thread generator state.
 __device__
-static unsigned TausStep(unsigned &z, int S1, int S2, int S3, unsigned M)  
+static uint32_cuda TausStep(uint32_cuda &z, int32_cuda S1, int32_cuda S2, int32_cuda S3, uint32_cuda M)  
 {  
-  unsigned b=(((z << S1) ^ z) >> S2);  
+  uint32_cuda b=(((z << S1) ^ z) >> S2);  
   return z = (((z & M) << S3) ^ b);  
 }  
 
 // A and C are constants  
 __device__
-static unsigned LCGStep(unsigned &z, unsigned A, unsigned C)  
+static uint32_cuda LCGStep(uint32_cuda &z, uint32_cuda A, uint32_cuda C)  
 {  
   return z=(A*z+C);  
 } 
 
-template<typename T>
+template<typename Real>
 __device__
-static T HybridTaus(unsigned& z1, unsigned& z2, unsigned& z3, unsigned& z4)  
+static Real HybridTaus(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4)  
 {  
   // Combined period is lcm(p1,p2,p3,p4)~ 2^121
-  T randval;
+  Real randval;
   do { 
    randval = 2.3283064365387e-10 * (          // Periods  
     TausStep(z1, 13, 19, 12, 4294967294UL) ^  // p1=2^31-1  
@@ -60,65 +59,54 @@ static T HybridTaus(unsigned& z1, unsigned& z2, unsigned& z3, unsigned& z4)
   return randval;
 }  
 
-
-
-
-template<typename T>
+template<typename Real>
 __global__
-static void _rand(T* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+static void _rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
   if( i < d.cols  && j < d.rows ) {
-    mat[index] = HybridTaus<T>(z1[index],z2[index],z3[index],z4[index]);
+    mat[index] = HybridTaus<Real>(z1[index],z2[index],z3[index],z4[index]);
   }
 }
 
-/*
-float2 BoxMuller()  
-{  
-  float u0=HybridTaus (), u1=HybridTaus ();  
-  float r=sqrt(-2 log(u0));  
-  float theta=2*PI*u1;  
-  return make_float2(r*sin(theta),r*cos(theta));  
-} 
-*/
- 
-template<typename T>
-__device__
-static T BoxMuller(unsigned& z1, unsigned& z2, unsigned& z3, unsigned& z4)  
-{
-  const T M_2PI = 6.283185307179586476925286766558;
 
-  T u0 = HybridTaus<T>(z1,z2,z3,z4), u1 = HybridTaus<T>(z1,z2,z3,z4);
-  T r = sqrt(-2.0 * log(u0));
-  T theta = M_2PI * u1;
+ 
+template<typename Real>
+__device__
+static Real BoxMuller(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4)  
+{
+  const Real M_2PI = 6.283185307179586476925286766558;
+
+  Real u0 = HybridTaus<Real>(z1,z2,z3,z4), u1 = HybridTaus<Real>(z1,z2,z3,z4);
+  Real r = sqrt(-2.0 * log(u0));
+  Real theta = M_2PI * u1;
   return r*sin(theta);
   
 }  
 
-
-template<typename T>
+template<typename Real>
 __global__
-static void _gauss_rand(T* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+static void _gauss_rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
   if( i < d.cols  && j < d.rows ) {
-    mat[index] = BoxMuller<T>(z1[index],z2[index],z3[index],z4[index]);
+    mat[index] = BoxMuller<Real>(z1[index],z2[index],z3[index],z4[index]);
   }
 }
 
 
-template<typename T>
+
+template<typename Real>
 __global__
-static void _binarize_probs(T* states, const T* probs, const T* rand, MatrixDim d)
+static void _binarize_probs(Real* states, const Real* probs, const Real* rand, MatrixDim d)
 {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
   if( i < d.cols  && j < d.rows ) {
     states[index] = ((probs[index] > rand[index])? 1.0 : 0.0);
   }
@@ -129,10 +117,10 @@ static void _binarize_probs(T* states, const T* probs, const T* rand, MatrixDim 
 /************
  * :FLOAT:
  */
-void cudaF_rand(dim3 Gr, dim3 Bl, float* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+void cudaF_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 { _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
 
-void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 { _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
 
 void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float* states, const float* probs, float* rand, MatrixDim d) 
@@ -142,10 +130,10 @@ void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float* states, const float* probs, f
 /************
  * :DOUBLE:
  */
-void cudaD_rand(dim3 Gr, dim3 Bl, double* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+void cudaD_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 { _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
 
-void cudaD_gauss_rand(dim3 Gr, dim3 Bl, double* mat, unsigned* z1, unsigned* z2, unsigned* z3, unsigned* z4, MatrixDim d)
+void cudaD_gauss_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
 { _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
 
 void cudaD_binarize_probs(dim3 Gr, dim3 Bl, double* states, const double* probs, double* rand, MatrixDim d) 

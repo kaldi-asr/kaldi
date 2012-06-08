@@ -10,8 +10,8 @@
 namespace kaldi {
 
 
-template<typename _ElemT>
-const _ElemT* CuStlVector<_ElemT>::Data() const {
+template<typename IntType>
+const IntType* CuStlVector<IntType>::Data() const {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
@@ -23,8 +23,8 @@ const _ElemT* CuStlVector<_ElemT>::Data() const {
 }
 
 
-template<typename _ElemT>
-_ElemT* CuStlVector<_ElemT>::Data() { 
+template<typename IntType>
+IntType* CuStlVector<IntType>::Data() { 
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     return data_; 
@@ -36,8 +36,8 @@ _ElemT* CuStlVector<_ElemT>::Data() {
 }
 
 
-template<typename _ElemT>
-CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
+template<typename IntType>
+CuStlVector<IntType>& CuStlVector<IntType>::Resize(size_t dim) {
   if (dim_ == dim) {
     // SetZero();
     return *this;
@@ -47,7 +47,7 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
 
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
-    cuSafeCall(cudaMalloc((void**)&data_, dim*sizeof(_ElemT)));
+    cuSafeCall(cudaMalloc((void**)&data_, dim*sizeof(IntType)));
   } else
   #endif
   {
@@ -61,8 +61,8 @@ CuStlVector<_ElemT>& CuStlVector<_ElemT>::Resize(size_t dim) {
 }
 
 
-template<typename _ElemT>
-void CuStlVector<_ElemT>::Destroy() {
+template<typename IntType>
+void CuStlVector<IntType>::Destroy() {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     if (NULL != data_) {
@@ -80,28 +80,28 @@ void CuStlVector<_ElemT>::Destroy() {
 
 
 
-template<typename _ElemT>
-CuStlVector<_ElemT>& CuStlVector<_ElemT>::CopyFromVec(const std::vector<_ElemT> &src) {
+template<typename IntType>
+CuStlVector<IntType>& CuStlVector<IntType>::CopyFromVec(const std::vector<IntType> &src) {
   Resize(src.size());
 
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    cuSafeCall(cudaMemcpy(data_, &src.front(), src.size()*sizeof(_ElemT), cudaMemcpyHostToDevice));
+    cuSafeCall(cudaMemcpy(data_, &src.front(), src.size()*sizeof(IntType), cudaMemcpyHostToDevice));
 
     CuDevice::Instantiate().AccuProfile("CuStlVector::CopyFromVecH2D",tim.Elapsed());
   } else
   #endif
   {
-    memcpy(&vec_.front(), &src.front(), src.size()*sizeof(_ElemT));
+    memcpy(&vec_.front(), &src.front(), src.size()*sizeof(IntType));
   }
   return *this;
 }
 
 
-template<typename _ElemT>
-void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT> *dst) const {
+template<typename IntType>
+void CuStlVector<IntType>::CopyToVec(std::vector<IntType> *dst) const {
   if (dst->size() != dim_) {
     dst->resize(dim_);
   }
@@ -109,22 +109,22 @@ void CuStlVector<_ElemT>::CopyToVec(std::vector<_ElemT> *dst) const {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(_ElemT), cudaMemcpyDeviceToHost));
+    cuSafeCall(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(IntType), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuStlVector::CopyToVecD2H",tim.Elapsed());
   } else
   #endif
   {
-    memcpy(&dst->front(), &vec_.front(), dim_*sizeof(_ElemT));
+    memcpy(&dst->front(), &vec_.front(), dim_*sizeof(IntType));
   }
 }
 
 
-template<typename _ElemT>
-void CuStlVector<_ElemT>::SetZero() {
+template<typename IntType>
+void CuStlVector<IntType>::SetZero() {
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemset(data_, 0, dim_*sizeof(_ElemT)));
+    cuSafeCall(cudaMemset(data_, 0, dim_*sizeof(IntType)));
     CuDevice::Instantiate().AccuProfile("CuStlVector::SetZero",tim.Elapsed());
   } else
   #endif
@@ -135,9 +135,9 @@ void CuStlVector<_ElemT>::SetZero() {
 
 
 /// Prints the vector to stream
-template<typename _ElemT>
-std::ostream &operator << (std::ostream &out, const CuStlVector<_ElemT> &vec) {
-  std::vector<_ElemT> tmp;
+template<typename IntType>
+std::ostream &operator << (std::ostream &out, const CuStlVector<IntType> &vec) {
+  std::vector<IntType> tmp;
   vec.CopyToVec(&tmp);
   out << "[";
   for(int32 i=0; i<tmp.size(); i++) {

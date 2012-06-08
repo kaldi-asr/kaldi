@@ -38,6 +38,6 @@ static void UnitTestNnet() {
 }
 
 
-int main() {
+int32 main() {
   UnitTestNnet();
 }

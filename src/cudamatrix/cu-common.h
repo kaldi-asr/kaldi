@@ -34,7 +34,7 @@
 
 #define cuSafeCall(fun) \
 { \
-  int ret; \
+  int32 ret; \
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "CUDA ERROR #" << ret << " " << cudaGetErrorString((cudaError_t)ret) << " '" << #fun << "'"; \
   } \
@@ -48,10 +48,10 @@
 namespace kaldi {
 
   /** The size of edge of CUDA square block **/
-  static const int CUBLOCK = 16;
+  static const int32 CUBLOCK = 16;
 
   /** Number of blocks in which the task of size 'size' is splitted **/
-  inline int n_blocks(int size, int block_size) { 
+  inline int32 n_blocks(int32 size, int32 block_size) { 
     return size / block_size + ((size % block_size == 0)? 0 : 1); 
   }
 

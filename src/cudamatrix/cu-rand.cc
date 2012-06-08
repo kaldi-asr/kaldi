@@ -25,11 +25,17 @@
 
 namespace kaldi {
 
-// explicit class intantiation
+// explicit template class intantiation : 
+// templeted methods from this file will get compiled-in
 template class CuRand<BaseFloat>;
+//
 
-// TODO put somwhere else so the type gets instantiated?
-template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size) {
+
+template<typename Real> void CuRand<Real>::SeedGpu(MatrixIndexT state_size) {
+  if(NULL != host_) delete[] host_; 
+  host_ = new uint32[state_size]; 
+  host_size_ = state_size;
+
   SeedBuffer(&z1_, state_size);
   SeedBuffer(&z2_, state_size);
   SeedBuffer(&z3_, state_size);
@@ -40,13 +46,9 @@ template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size) {
   host_size_ = 0;
 }
 
-template<typename T> void CuRand<T>::SeedBuffer(unsigned* *tgt, MatrixIndexT state_size) {
-  // optionally resize host buffer
-  if (state_size != host_size_) {
-    delete[] host_;
-    host_ = new unsigned[state_size]; 
-    host_size_ = state_size;
-  }
+
+
+template<typename Real> void CuRand<Real>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size) {
   // generate random state
   for(MatrixIndexT i=0; i<host_size_; i++) {
     host_[i] = RandInt(128, RAND_MAX);
@@ -54,7 +56,7 @@ template<typename T> void CuRand<T>::SeedBuffer(unsigned* *tgt, MatrixIndexT sta
   #if HAVE_CUDA==1
   // push it to the GPU
   if (CuDevice::Instantiate().Enabled()) {
-    int32 state_size_in_bytes = state_size*sizeof(unsigned);
+    int32 state_size_in_bytes = state_size*sizeof(uint32);
     // resize the GPU buffer
     if (state_size_ != state_size) {
       cudaFree(*tgt);
@@ -67,9 +69,9 @@ template<typename T> void CuRand<T>::SeedBuffer(unsigned* *tgt, MatrixIndexT sta
   {// use back-off host buffer
     if (state_size_ != state_size) {
       delete[] (*tgt);
-      *tgt = new unsigned[state_size];
+      *tgt = new uint32[state_size];
     }
-    int32 state_size_in_bytes = state_size*sizeof(unsigned);
+    int32 state_size_in_bytes = state_size*sizeof(uint32);
     memcpy(*tgt, host_, state_size_in_bytes);
   }
 }

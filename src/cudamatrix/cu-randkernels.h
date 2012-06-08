@@ -22,6 +22,7 @@
 #define KALDI_CUDAMATRIX_CU_RANDKERNELS_H_
 
 
+#include "cudamatrix/cu-matrixdim.h"
 #include "cudamatrix/cu-kernels.h"
 
 #if HAVE_CUDA==1
@@ -30,8 +31,8 @@ extern "C" {
   // **************
   // float
   //
-  void cudaF_rand(dim3 Gr, dim3 Bl, float *mat, unsigned *z1, unsigned *z2, unsigned *z3, unsigned *z4, MatrixDim d);
-  void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float *mat, unsigned *z1, unsigned *z2, unsigned *z3, unsigned *z4, MatrixDim d);
+  void cudaF_rand(dim3 Gr, dim3 Bl, float *mat, uint32_cuda *z1, uint32_cuda *z2, uint32_cuda *z3, uint32_cuda *z4, MatrixDim d);
+  void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float *mat, uint32_cuda *z1, uint32_cuda *z2, uint32_cuda *z3, uint32_cuda *z4, MatrixDim d);
   void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float *states, const float *probs, float *rand, MatrixDim d);
 
 }

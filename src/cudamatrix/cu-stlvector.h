@@ -5,23 +5,23 @@
 
 namespace kaldi {
 
-template<typename _ElemT> class CuMatrix;
+template<typename IntType> class CuMatrix;
 
 /**
  * Vector for CUDA computing
  */
-template<typename _ElemT>
+template<typename IntType>
 class CuStlVector {
- typedef CuStlVector<_ElemT> ThisType;
+ typedef CuStlVector<IntType> ThisType;
 
  public:
 
   /// Default Constructor
-  CuStlVector<_ElemT>()
+  CuStlVector<IntType>()
    : dim_(0), data_(NULL) { 
   }
   /// Constructor with memory initialisation
-  CuStlVector<_ElemT>(size_t dim)
+  CuStlVector<IntType>(size_t dim)
    : dim_(0), data_(NULL) { 
     Resize(dim); 
   }
@@ -37,8 +37,8 @@ class CuStlVector {
   }
 
   /// Get raw pointer
-  const _ElemT* Data() const;
-  _ElemT* Data();
+  const IntType* Data() const;
+  IntType* Data();
  
   /// Allocate the memory
   ThisType& Resize(size_t dim);
@@ -47,22 +47,22 @@ class CuStlVector {
   void Destroy();
 
   /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromVec(const std::vector<_ElemT> &src);
-  void             CopyToVec(std::vector<_ElemT> *dst) const;
+  ThisType&        CopyFromVec(const std::vector<IntType> &src);
+  void             CopyToVec(std::vector<IntType> *dst) const;
   
   // Math operations
   //
   void SetZero();
 
-  void Set(_ElemT value) { 
+  void Set(IntType value) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
   /// Accessor to non-GPU vector
-  const std::vector<_ElemT>& Vec() const {
+  const std::vector<IntType>& Vec() const {
     return vec_;
   }
-  std::vector<_ElemT>& Vec() {
+  std::vector<IntType>& Vec() {
     return vec_;
   }
 
@@ -71,15 +71,15 @@ class CuStlVector {
 private:
   size_t dim_;
  
-  _ElemT *data_; ///< GPU data pointer
+  IntType *data_; ///< GPU data pointer
 
-  std::vector<_ElemT> vec_; ///< non-GPU vector as back-off
+  std::vector<IntType> vec_; ///< non-GPU vector as back-off
 };
 
 
 /// I/O
-template<typename _ElemT>
-std::ostream &operator << (std::ostream &out, const CuStlVector<_ElemT> &vec);
+template<typename IntType>
+std::ostream &operator << (std::ostream &out, const CuStlVector<IntType> &vec);
  
   
 } // namespace

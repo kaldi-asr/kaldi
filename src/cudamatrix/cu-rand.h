@@ -27,13 +27,7 @@
 namespace kaldi {
 
 
-// TODO: CANNOT DEFINE CuMatrix<unsigned>, 
-// CuMatrix has back-off Matrix which cannot hold integers... 
-// The inner state must be in a separate holder class... 
-// or just a buffer with the size of the current matrix... 
-// Presumably use on demand seeding to figure out the size of the buffer...
-  
-template<typename T> 
+template<typename Real> 
 class CuRand {
  public:
 
@@ -48,34 +42,38 @@ class CuRand {
   void SeedGpu(MatrixIndexT state_size);
 
   /// fill with uniform random numbers (0.0-1.0)
-  void RandUniform(CuMatrix<T> *tgt);
+  void RandUniform(CuMatrix<Real> *tgt);
   /// fill with normal random numbers
-  void RandGaussian(CuMatrix<T> *tgt);
+  void RandGaussian(CuMatrix<Real> *tgt);
 
   /// align probabilities to discrete 0/1 states (use uniform samplig)
-  void BinarizeProbs(const CuMatrix<T> &probs, CuMatrix<T> *states);
+  void BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states);
   /// add gaussian noise to each element
-  void AddGaussNoise(CuMatrix<T> *tgt, T gscale = 1.0);
+  void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
 
  private:
   /// seed one buffer
-  void SeedBuffer(unsigned* *tgt, MatrixIndexT state_size);
+  void SeedBuffer(uint32* *tgt, MatrixIndexT state_size);
    
  private:
-  // CuMatrix<unsigned> z1, z2, z3, z4; // cannot use CuMatrix
-  unsigned *z1_, *z2_, *z3_, *z4_; ///< raw rnd-generator inner state pointers 
+
+  // CANNOT DEFINE CuMatrix<uint32>, 
+  // CuMatrix has back-off Matrix which cannot hold integers. 
+  // The inner state of random number generator will be in 
+  // a raw buffer with the size of the current matrix. 
+  //
+  // Use on-demand seeding to get the correct size of the buffer.
+  
+  /// Inner state of the ``grid-like'' random number generator
+  uint32 *z1_, *z2_, *z3_, *z4_; 
   int32 state_size_; ///< size of the buffers
 
-  unsigned *host_; ///< host bufer, used for initializing
+  uint32 *host_; ///< host bufer, used for initializing
   int32 host_size_; ///< size of the host buffer
 
-  CuMatrix<T> tmp;
+  CuMatrix<Real> tmp;
 };
 
-
-/// thsese methods have T-independent implementation
-// template<typename T> void CuRand<T>::SeedGpu(MatrixIndexT state_size);
-// template<typename T> void CuRand<T>::SeedBuffer(unsigned* tgt, MatrixIndexT state_size);
 
 
 /// declare the BaseFloat specializations, that are in cu-rand.cc
@@ -86,16 +84,16 @@ template<> void CuRand<float>::AddGaussNoise(CuMatrix<float> *tgt, float gscale)
 
 
 /// also define the non-specialized versions, so the code always compies
-template<typename T> void CuRand<T>::RandUniform(CuMatrix<T> *tgt) {
+template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
   KALDI_ERR << __func__ << " Not implemented"; 
 }
-template<typename T> void CuRand<T>::RandGaussian(CuMatrix<T> *tgt) {
+template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
   KALDI_ERR << __func__ << " Not implemented"; 
 }
-template<typename T> void CuRand<T>::BinarizeProbs(const CuMatrix<T> &probs, CuMatrix<T> *states) {
+template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states) {
   KALDI_ERR << __func__ << " Not implemented"; 
 }
-template<typename T> void CuRand<T>::AddGaussNoise(CuMatrix<T> *tgt, T gscale) {
+template<typename Real> void CuRand<Real>::AddGaussNoise(CuMatrix<Real> *tgt, Real gscale) {
   KALDI_ERR << __func__ << " Not implemented";
 } 
 

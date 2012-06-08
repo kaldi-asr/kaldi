@@ -13,7 +13,7 @@ namespace kaldi {
 
 CuDevice::CuDevice()
  : enabled_(false), verbose_(true) {
-  int ret;
+  int32 ret;
   if ((ret = cublasInit()) == 0) {
     enabled_ = true;
   } else {
