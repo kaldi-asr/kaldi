@@ -3,6 +3,8 @@
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
+#if false; then ##TEMP
+
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
@@ -54,6 +56,7 @@ local/wsj_format_data.sh || exit 1;
    )
  ) &
 
+
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
@@ -77,6 +80,7 @@ utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 # models from modeling silence.]
 steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
   data/train_si84_2kshort data/lang exp/mono0a || exit 1;
+
 
 (
  utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
@@ -254,6 +258,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 ) &
 steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
+#fi ##TEMP
 (
  utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
@@ -267,13 +272,6 @@ steps/train_quick.sh --cmd "$train_cmd" \
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri4b/graph_bd_tgpr data/test_eval92 exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
 ) &
-
-
-utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
-steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
-steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
 
 
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
