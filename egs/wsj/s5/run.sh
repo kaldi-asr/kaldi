@@ -36,6 +36,8 @@ local/wsj_format_data.sh || exit 1;
  # copying the arpa files from the disks from LDC).
  # Caution: the commands below will only work if $decode_cmd 
  # is setup to use qsub.  Else, just remove the --cmd option.
+ # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
+ # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
  (
   local/wsj_extend_dict.sh $wsj1/13-32.1  && \
   utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
