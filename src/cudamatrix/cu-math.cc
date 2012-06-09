@@ -89,7 +89,7 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
     dim3 dimGrid(n_blocks(X.NumCols(), CUBLOCK), n_blocks(X.NumRows(), CUBLOCK));
     cudaF_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim()); 
     //sum the rows to get normalizers (tree reduction) 
-    CuVector<BaseFloat> sum(X.NumRows());
+    CuVector<float> sum(X.NumRows());
     sum.AddRowSum(1.0, *Y, 0.0);
     //divide by normalizers to get posteriors (grid kernel)
     Y->DivRowsVec(sum);
@@ -132,12 +132,12 @@ void RegularizeL1(CuMatrix<float> *wei, CuMatrix<float> *grad, float l1, float l
         
         if(wei2(r,c)==0.0) continue; // skip L1 if zero weight!
 
-        BaseFloat l1_signed = l1;
+        float l1_signed = l1;
         if (wei2(r, c) < 0.0) 
           l1_signed = -l1;
 
-        BaseFloat before = wei2(r, c);
-        BaseFloat after = wei2(r, c) -lr*grad2(r, c) -l1_signed;
+        float before = wei2(r, c);
+        float after = wei2(r, c) -lr*grad2(r, c) -l1_signed;
         if ((after > 0.0) ^ (before > 0.0)) {
           wei2(r, c) = 0.0;
           grad2(r, c) = 0.0;
@@ -193,7 +193,7 @@ void FindRowMaxId(const CuMatrix<float> &mat, CuStlVector<int32> *id) {
     id->Set(-1);
     // find maxima
     for(int32 r=0; r<mat.NumRows(); r++) {
-      BaseFloat max = -1e21;
+      float max = -1e21;
       int32 max_id = -1;
       for(int32 c=0; c<mat.NumCols(); c++) {
         if (max < mat.Mat()(r, c)) {
@@ -207,7 +207,7 @@ void FindRowMaxId(const CuMatrix<float> &mat, CuStlVector<int32> *id) {
 }
 
 
-void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<BaseFloat> *net_out_or_diff, CuVector<BaseFloat> *log_post_tgt) {
+void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<float> *net_out_or_diff, CuVector<float> *log_post_tgt) {
 
   assert(tgt.Dim() == net_out_or_diff->NumRows());
   log_post_tgt->Resize(tgt.Dim());
@@ -234,7 +234,7 @@ void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<BaseFloat> *net_out_or_dif
 
 
 
-void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<BaseFloat> *tgt) {
+void Randomize(const CuMatrix<float> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<float> *tgt) {
 
   assert(src.NumCols() == tgt->NumCols());
   assert(src.NumRows() == tgt->NumRows());
@@ -258,9 +258,9 @@ void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_fr
   #endif
   {
     // randomize in CPU
-    const MatrixBase<BaseFloat> &srcmat = src.Mat();
+    const MatrixBase<float> &srcmat = src.Mat();
     const std::vector<int32> &copy_from_idxvec = copy_from_idx.Vec();
-    MatrixBase<BaseFloat> &tgtmat = tgt->Mat();
+    MatrixBase<float> &tgtmat = tgt->Mat();
     for(int32 i=0; i<copy_from_idx.Dim(); i++) {
       tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
     }

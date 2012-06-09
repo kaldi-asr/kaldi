@@ -71,6 +71,11 @@ class Mse {
  private:
   int32 frames_;
   double loss_;
+
+  CuMatrix<BaseFloat> diff_pow_2_;
+  CuVector<BaseFloat> sum_diff_pow_2_;
+  Vector<BaseFloat>   sum_diff_pow_2_host_;
+
 };
 
 
@@ -94,11 +99,19 @@ class MseProgress {
  private:
   int32 progress_step_;
   int32 progress_ctr_;
+
   int32 frames_;
   int32 frames_progress_;
+
   double loss_;
   double loss_progress_;
+
   std::vector<float> loss_vec_;
+
+  CuMatrix<BaseFloat> diff_pow_2_;
+  CuVector<BaseFloat> sum_diff_pow_2_;
+  Vector<BaseFloat>   sum_diff_pow_2_host_;
+
 };
 
 

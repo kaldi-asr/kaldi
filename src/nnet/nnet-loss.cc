@@ -72,12 +72,18 @@ void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> 
     diff->CopyFromMat(net_out);
   }
   cu::DiffXent(target_device_, diff, &log_post_tgt_);
+  //
   // Now we have derivative of Xentropy in diff,
-  // it's computed  as (net_out - target);
-  
-  // The xentropy value is computed as -sum(log(net_out)) 
-  // by using target indices as a mask, 
-  // the masked logposteriors are now in log_post_tgt_;
+  // it's computed as dE/da = net_out - target_mat,
+  // E ... xentropy
+  // a ... activation, the input of softmax
+  // note that 'target_mat' is a sparse 1-of-M matrix 
+  // encoded by index vector 'target'
+  //
+  // The frame-level xentropy statistics are computed as:
+  // log(sum_row(net_out.*target_mat)))
+  // they now are stored in vector log_post_tgt_
+  // 
   log_post_tgt_.CopyToVec(&log_post_tgt_host_);
   loss_    -= log_post_tgt_host_.Sum();
   
@@ -110,23 +116,20 @@ void Mse::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &ta
   diff->CopyFromMat(net_out);
   diff->AddMat(-1.0, target);
 
-  // :TODO: reimplement when needed
-  // compute mean square error (ON CPU)
-  Matrix<BaseFloat> target_host, net_out_host;
-  target.CopyToMat(&target_host);
-  net_out.CopyToMat(&net_out_host);
-  BaseFloat val;
-  double loss=0.0;
-  for(int32 r=0; r<net_out.NumRows(); r++) {
-    for(int32 c=0; c<net_out.NumCols(); c++) {
-      val = target_host(r, c) - net_out_host(r, c);
-      loss += val*val;
-    }
-  }
-  // :TODO:
-  
+  // compute the per-frame MSE stats
+  diff_pow_2_.Resize(diff->NumRows(), diff->NumCols());
+  diff_pow_2_.CopyFromMat(*diff);
+  diff_pow_2_.MulElements(diff_pow_2_); //grid-like operation
+  // at this point we have computed 'diff_pow_2'
+  // now sum each row (device)
+  sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
+  sum_diff_pow_2_.AddRowSum(1.0,diff_pow_2_,0.0); //tree-like reduction
+  // now sum the per-frame MSE (host)
+  sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
+  sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);
+  // accumulate
+  loss_ += 0.5 * sum_diff_pow_2_host_.Sum();
   frames_ += net_out.NumRows();
-  loss_ += loss;
 }
 
 
@@ -150,25 +153,22 @@ void MseProgress::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFl
   diff->CopyFromMat(net_out);
   diff->AddMat(-1.0,target);
 
-  //:TODO: reimplement when needed
-  //compute mean square error (ON CPU)
-  Matrix<BaseFloat> target_host, net_out_host;
-  target.CopyToMat(&target_host);
-  net_out.CopyToMat(&net_out_host);
-  BaseFloat val;
-  double loss=0.0;
-  for(int32 r=0; r<net_out.NumRows(); r++) {
-    for(int32 c=0; c<net_out.NumCols(); c++) {
-      val = target_host(r,c) - net_out_host(r,c);
-      loss += val*val;
-    }
-  }
-  //:TODO:
-  
+  // compute the per-frame MSE stats
+  diff_pow_2_.Resize(diff->NumRows(), diff->NumCols());
+  diff_pow_2_.CopyFromMat(*diff);
+  diff_pow_2_.MulElements(diff_pow_2_); //grid-like operation
+  // at this point we have computed 'diff_pow_2'
+  // now sum each row (device)
+  sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
+  sum_diff_pow_2_.AddRowSum(1.0,diff_pow_2_,0.0); //tree-like reduction
+  // now sum the per-frame MSE (host)
+  sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
+  sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);
+  // accumulate progress statistics
+  loss_progress_ += 0.5 * sum_diff_pow_2_host_.Sum();
   frames_progress_ += net_out.NumRows();
-  loss_progress_ += loss;
 
-  //copmpute partial progress statistics
+  // monitor progress per progress_step_ frames
   if(frames_progress_ > progress_step_) {
     float loss_of_step = loss_progress_/frames_progress_;
     loss_vec_.push_back(loss_of_step);

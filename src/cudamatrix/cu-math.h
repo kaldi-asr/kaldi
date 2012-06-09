@@ -16,8 +16,10 @@ namespace kaldi {
  */
 namespace cu {
   
+
   /*
-   * Float version of functions
+   * float declarations of functions, 
+   * the definitions are in cu-math.cc
    */
   /// Logistic sigmoid
   /// Y = Sigmoid(X) : y = 1/(1+exp(-x))
@@ -45,14 +47,12 @@ namespace cu {
   /// net_out_or_diff ... before invocation net output, after diff dE/da
   /// log_post_tgt ... per-frame statistics for cross-entropy computations  
   ///                  : log(sum_row(posterior_mat .* target_mat))
-  void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<BaseFloat> *net_out_or_diff, CuVector<BaseFloat> *log_post_tgt);
-
-  /// Sum each row of the matrix (used in softmax)
-  //
-//  void SumRowsVec(const CuMatrix<BaseFloat> &mat, CuVector<BaseFloat> *sum);
+  void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<float> *net_out_or_diff, CuVector<float> *log_post_tgt);
 
   /// ie. switch rows according to copyFrom   
-  void Randomize(const CuMatrix<BaseFloat> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<BaseFloat> *tgt);
+  void Randomize(const CuMatrix<float> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<float> *tgt);
+
+
 
   /*
    * Templated implementation to make it always compilable
@@ -88,12 +88,6 @@ namespace cu {
   void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<Real> *net_out_or_diff, CuVector<Real> *log_post_tgt) {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
- /* 
-  template<typename Real>
-  void SumRowsVec(const CuMatrix<Real> &mat, CuVector<Real> *sum) {
-    KALDI_ERR << __func__ << " Not implemented"; 
-  }
-*/
 
   template<typename Real>
   void Randomize(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<Real> *tgt) { 
