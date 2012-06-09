@@ -22,8 +22,11 @@ LIBFILE = cuda-matrix.a
 all:  $(LIBFILE)
 
 #implicit rule for kernel compilation
+#symlink in necessary for cross-compilation at BUT
 %.o : %.cu
-	export PATH=$(CUDATKDIR)/bin:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+	-ln -s `which $(CC)` gcc
+	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PATH); ln -s `which $(CC)` gcc; $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+	-unlink gcc
 
 
 $(LIBFILE): $(OBJFILES)
