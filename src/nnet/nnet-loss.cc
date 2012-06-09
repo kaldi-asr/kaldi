@@ -123,7 +123,7 @@ void Mse::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &ta
   // at this point we have computed 'diff_pow_2'
   // now sum each row (device)
   sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
-  sum_diff_pow_2_.AddRowSum(1.0,diff_pow_2_,0.0); //tree-like reduction
+  sum_diff_pow_2_.AddColSumMat(1.0,diff_pow_2_,0.0); //tree-like reduction
   // now sum the per-frame MSE (host)
   sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
   sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);
@@ -160,7 +160,7 @@ void MseProgress::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFl
   // at this point we have computed 'diff_pow_2'
   // now sum each row (device)
   sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
-  sum_diff_pow_2_.AddRowSum(1.0,diff_pow_2_,0.0); //tree-like reduction
+  sum_diff_pow_2_.AddColSumMat(1.0,diff_pow_2_,0.0); //tree-like reduction
   // now sum the per-frame MSE (host)
   sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
   sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);

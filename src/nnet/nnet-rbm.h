@@ -198,16 +198,16 @@ class Rbm : public RbmBase {
     //
     //  visbiasinc = momentum*visbiasinc + (epsilonvb/numcases)*(posvisact-negvisact);
     //
-    vis_bias_corr_.AddColSum(-learn_rate_/N, neg_vis, momentum_);
-    vis_bias_corr_.AddColSum(+learn_rate_/N, pos_vis, 1.0);
+    vis_bias_corr_.AddRowSumMat(-learn_rate_/N, neg_vis, momentum_);
+    vis_bias_corr_.AddRowSumMat(+learn_rate_/N, pos_vis, 1.0);
     vis_bias_.AddVec(1.0, vis_bias_corr_, 1.0);
     
     //  UPDATE hidbias vector
     //
     // hidbiasinc = momentum*hidbiasinc + (epsilonhb/numcases)*(poshidact-neghidact);
     //
-    hid_bias_corr_.AddColSum(-learn_rate_/N, neg_hid, momentum_);
-    hid_bias_corr_.AddColSum(+learn_rate_/N, pos_hid, 1.0);
+    hid_bias_corr_.AddRowSumMat(-learn_rate_/N, neg_hid, momentum_);
+    hid_bias_corr_.AddRowSumMat(+learn_rate_/N, pos_hid, 1.0);
     hid_bias_.AddVec(1.0, hid_bias_corr_, 1.0);
   }
 

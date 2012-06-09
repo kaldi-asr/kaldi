@@ -66,11 +66,13 @@ class CuVector {
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddColSum(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
+  /// Sum the rows of the matrix, add to vector
+  void AddRowSumMat(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 
-  void AddRowSum(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
+  /// Sum the columns of the matrix, add to vector
+  void AddColSumMat(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0) { 
     KALDI_ERR << __func__ << " Not implemented"; 
   }
 

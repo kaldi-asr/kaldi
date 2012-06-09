@@ -68,7 +68,7 @@ class BiasedLinearity : public UpdatableComponent {
   void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &err) {
     // compute gradient
     linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
-    bias_corr_.AddColSum(1.0, err, momentum_);
+    bias_corr_.AddRowSumMat(1.0, err, momentum_);
     // l2 regularization
     if (l2_penalty_ != 0.0) {
       BaseFloat l2 = learn_rate_*l2_penalty_*input.NumRows();

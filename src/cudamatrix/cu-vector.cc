@@ -57,92 +57,101 @@ void CuVector<float>::AddVec(float alpha, const CuVector<float> &vec, float beta
 
 
 template<>
-void CuVector<float>::AddColSum(float alpha, const CuMatrix<float> &mat, float beta) {
+void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, float beta) {
   assert(mat.NumCols() == Dim());
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
+   
+    CuVector<float> tmp(Dim()); // create a buffer
+    tmp.SetZero();
     
-    /**
-     * Rows()<=512 limit due to limited shared memory
-     * Cols()<=256 limit due to coalesced memory alignment:
-     *             matrices with huge strides have slow access!!!
-     */
-    if (mat.NumRows() > 512 || mat.NumCols() > 256) {
-      size_t dimBlock = CUBLOCK*2;
-      size_t dimGrid = n_blocks(Dim(), CUBLOCK*2); 
+    MatrixDim d = mat.Dim(); // only stride will be used!
+  
+    // process per 256 row blocks 
+    for(int32 block=0; (block+1)*256 <= mat.NumRows(); block++) {
+      //1st dim ... rows, 2nd dim ... cols
+      dim3 dimBlock(256, 1); 
+      dim3 dimGrid(1, mat.NumCols());
+      int32 offset = block*256*d.stride;
 
-      cudaF_add_col_sum(dimGrid, dimBlock, alpha, mat.Data(), beta, data_, mat.Dim());
-      cuSafeCall(cudaGetLastError());
-    } else {
-      dim3 dimBlock(mat.NumRows(), 1);
-      dim3 dimGrid(1, Dim()); 
-
-      cudaF_add_col_sum_reduce(dimGrid, dimBlock, alpha, mat.Data(), beta, data_, mat.Dim());
-      cuSafeCall(cudaGetLastError());
+      cudaF_add_row_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
     }
+    
+    // process the remainder
+    int32 div = mat.NumRows() / 256;
+    int32 mod = mat.NumRows() % 256;
+    if (mod != 0) {
+      //1st dim ... rows, 2nd dim ... cols
+      dim3 dimBlock(mod, 1);
+      dim3 dimGrid(1, mat.NumCols());
+      int32 offset = div*256*d.stride;
+      
+      cudaF_add_row_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+    }
+    // now we have the sum!
+    
+    // add buffer rmp to this vector using alpha and beta
+    this->AddVec(alpha,tmp,beta);
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
     Vector<BaseFloat> tmp(mat.NumCols());
-    for(MatrixIndexT r=0; r<mat.NumRows(); r++) {
-      tmp.AddVec(1.0, mat.Mat().Row(r));
-    }
-    if (beta != 1.0) { vec_.Scale(beta); }
-    vec_.AddVec(alpha, tmp);
+    tmp.AddRowSumMat(mat.Mat());
+    if(beta != 1.0) vec_.Scale(beta);
+    vec_.AddVec(alpha,tmp);
   }
 }
 
 
 template<>
-void CuVector<float>::AddRowSum(float alpha, const CuMatrix<float> &mat, float beta) {
-  assert(mat.NumCols() == Dim());
+void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, float beta) {
+  assert(mat.NumRows() == Dim());
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    CuVector<float> tmp(Dim());//create a buffer
+    CuVector<float> tmp(Dim());// create a buffer
+    tmp.SetZero();
     
     MatrixDim d = mat.Dim();// only stride will be used!
   
     // process per 256 column blocks 
     for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
+      //1st dim ... cols, 2nd dim ... rows
       dim3 dimBlock(256, 1);
       dim3 dimGrid(1, mat.NumRows());
-      int32 offset=block*256;
+      int32 offset = block*256;
 
-      cudaF_sum_rows_vec(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+      cudaF_add_col_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
     }
     
     // process the remainder
     int32 div = mat.NumCols() / 256;
     int32 mod = mat.NumCols() % 256;
     if (mod != 0) {
+      //1st dim ... cols, 2nd dim ... rows
       dim3 dimBlock(mod, 1);
       dim3 dimGrid(1, mat.NumRows());
       int32 offset=div*256;
       
-      cudaF_sum_rows_vec(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+      cudaF_add_col_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
     }
     // now we have the sum!
     
-    // add buffer to this vector using alpha and beta
+    // add buffer rmp to this vector using alpha and beta
     this->AddVec(alpha,tmp,beta);
-
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
-    for(int32 r=0; r<mat.NumRows(); r++) {
-      BaseFloat rsum = 0;
-      for(int32 c=0; c<mat.NumCols(); c++) {
-        rsum += mat.Mat()(r, c);
-      }
-      this->Vec()(r) = alpha*rsum + beta*this->Vec()(r);
-    }
+    Vector<BaseFloat> tmp(mat.NumRows());
+    tmp.AddColSumMat(mat.Mat());
+    if(beta != 1.0) vec_.Scale(beta);
+    vec_.AddVec(alpha,tmp);
   }
 }
 

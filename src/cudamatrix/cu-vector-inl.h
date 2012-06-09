@@ -187,8 +187,8 @@ std::ostream &operator << (std::ostream &out, const CuVector<Real> &vec) {
  */
 template<> void CuVector<float>::Set(float value);
 template<> void CuVector<float>::AddVec(float alpha, const CuVector<float> &vec, float beta);
-template<> void CuVector<float>::AddColSum(float alpha, const CuMatrix<float> &mat, float beta);
-template<> void CuVector<float>::AddRowSum(float alpha, const CuMatrix<float> &mat, float beta);
+template<> void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, float beta);
+template<> void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, float beta);
 template<> void CuVector<float>::InvertElements();
  
 } // namespace kaldi

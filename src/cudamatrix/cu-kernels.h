@@ -26,8 +26,10 @@ void cudaF_mul_elem(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim d);
 /*
  * CuVector
  */
-void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float *mat, float beta, float *vec, MatrixDim d);
-void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float *mat, float beta, float *vec, MatrixDim d);
+//void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float *mat, float beta, float *vec, MatrixDim d);
+//void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float *mat, float beta, float *vec, MatrixDim d);
+void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
+void cudaF_add_col_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
 
 /*
@@ -53,7 +55,6 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, float *mat_net
 
 void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float *X, const int32_cuda *vec_ids, float* Y, MatrixDim d);
 
-void cudaF_sum_rows_vec(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
 
 
 /*

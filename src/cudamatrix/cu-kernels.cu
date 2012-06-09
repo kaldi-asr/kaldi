@@ -155,46 +155,58 @@ static void _mul_elem(Real* mat, const Real* A, MatrixDim d) {
 /*
  * CuVector
  */
+
+//declare
+template<typename Real>
+static Real _sum_reduce(Real buffer[]);
+
 template<typename Real>
 __global__
-static void _add_col_sum(Real alpha, const Real* mat, Real beta, Real* vec, MatrixDim d) {
+static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
+  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y; //col
+  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x; //row
 
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if(blockIdx.x > 0) return;
+  if(blockDim.y > 1) return;
 
-  //This should be called 1-D
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  if(j > 0) return;
+  __shared__ Real row_data[256];
+
+  //copy the input to row_data
+  //if(j < d.rows) { 
+  row_data[j] = mat[i+j*d.stride];
+  //}
+  __syncthreads();
+
+  //get the sum
+  Real sum = _sum_reduce(row_data);
+  __syncthreads();
   
-  if(i < d.cols) {
-    double sum = 0.0;
-    for(int32_cuda k = 0; k < d.rows; k++) {
-      sum += mat[i+k*d.stride];
-    }
-    vec[i] = alpha*sum + beta*vec[i];
-  }
+  //add to previously accumulated sum
+  vec_sum[i] += sum;
 }
 
 
 template<typename Real>
 __global__
-static void _add_col_sum_reduce(Real alpha, const Real* mat, Real beta, Real* vec, MatrixDim d) {
-
-  //flipped x,y for reducing... x..row, y..col
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
+static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
 
   if(blockIdx.x > 0) return;
-  if(blockDim.y != 1) return;
+  if(blockDim.y > 1) return;
 
-  //copy vector to shared mem
-  __shared__ Real aux[512];
-  aux[threadIdx.x] = mat[i+j*d.stride];
+  __shared__ Real row_data[256];
+
+  //copy the input to row_data
+  row_data[i] = mat[i+j*d.stride];
   __syncthreads();
 
-  Real sum = _sum_reduce(aux);
+  //get the sum
+  Real sum = _sum_reduce(row_data);
   __syncthreads();
-  //copy out the result
-  vec[i] = alpha*sum + beta*vec[i];
+  
+  //add to previously accumulated sum
+  vec_sum[j] += sum;
 }
 
 
@@ -569,29 +581,6 @@ static void _softmax_part(const Real* X, const int32_cuda* vec_ids, Real* Y, Mat
 }
 
 
-template<typename Real>
-__global__
-static void _sum_rows_vec(const Real* mat, Real* vec_sum, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-
-  if(blockIdx.x > 0) return;
-  if(blockDim.y > 1) return;
-
-  __shared__ Real row_data[256];
-
-  //copy the input to row_data
-  row_data[i] = mat[i+j*d.stride];
-  __syncthreads();
-
-  //get the sum
-  Real sum = _sum_reduce(row_data);
-  __syncthreads();
-  
-  //add to previously accumulated sum
-  vec_sum[j] += sum;
-}
-
 
 /*
  * ANSI-C wrappers of CUDA kernels
@@ -643,12 +632,12 @@ void cudaF_mul_elem(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim d) {
 /*
  * CuVector
  */
-void cudaF_add_col_sum(size_t Gr, size_t Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) {
-  _add_col_sum<<<Gr,Bl>>>(alpha,mat,beta,vec,d); 
+void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
+  _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
 }
 
-void cudaF_add_col_sum_reduce(dim3 Gr, dim3 Bl, float alpha, const float* mat, float beta, float* vec, MatrixDim d) {
-  _add_col_sum_reduce<<<Gr,Bl>>>(alpha,mat,beta,vec,d); 
+void cudaF_add_col_sum_mat(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
+  _add_col_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
 }
 
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
@@ -713,10 +702,6 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net
 
 void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
   _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
-}
-
-void cudaF_sum_rows_vec(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
-  _sum_rows_vec<<<Gr,Bl>>>(mat,vec_sum,d);
 }
 
 

@@ -90,7 +90,7 @@ void Softmax(const CuMatrix<float>& X, CuMatrix<float>* Y) {
     cudaF_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim()); 
     //sum the rows to get normalizers (tree reduction) 
     CuVector<float> sum(X.NumRows());
-    sum.AddRowSum(1.0, *Y, 0.0);
+    sum.AddColSumMat(1.0, *Y, 0.0);
     //divide by normalizers to get posteriors (grid kernel)
     Y->DivRowsVec(sum);
     #endif
