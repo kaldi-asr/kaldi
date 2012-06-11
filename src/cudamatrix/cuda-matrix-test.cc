@@ -17,9 +17,12 @@
 
 
 #include <iostream>
+#include <vector>
+#include <cstdlib>
 
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-math.h"
 
 using namespace kaldi;
 
@@ -53,6 +56,15 @@ static void RandGaussMatrix(MatrixBase<Real>* mat) {
   for(int32 r=0; r<mat->NumRows(); r++)
     for(int32 c=0; c<mat->NumCols(); c++)
       (*mat)(r,c) = RandGauss();
+}
+
+
+
+template<class Real> 
+static void RandZeroToOneMatrix(MatrixBase<Real>* mat) {
+  for(int32 r=0; r<mat->NumRows(); r++)
+    for(int32 c=0; c<mat->NumCols(); c++)
+      (*mat)(r,c) = RandUniform();
 }
 
 
@@ -91,7 +103,7 @@ static bool ApproxEqual(const MatrixBase<Real> &A,
 template<class Real> 
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0;i < A.Dim();i++)
+  for (MatrixIndexT i=0; i < A.Dim(); i++)
     KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
 }
 
@@ -100,11 +112,18 @@ static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
 template<class Real> 
 static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0;i < A.Dim();i++)
+  for (MatrixIndexT i=0; i < A.Dim(); i++)
     if (std::abs(A(i)-B(i)) > tol) return false;
   return true;
 }
 
+
+
+static void AssertEqual(std::vector<int32> &A, std::vector<int32> &B) {
+  KALDI_ASSERT(A.size() == B.size());
+  for (MatrixIndexT i=0; i < A.size(); i++)
+    KALDI_ASSERT(A[i] == B[i]);
+}
 
 
 
@@ -444,6 +463,165 @@ static void UnitTestCuVectorInvertElements() {
 }
 
 
+
+/*
+ * cu:: unit tests
+ */
+template<class Real> 
+static void UnitTestCuSigmoid() {
+  Matrix<Real> Hi(100,111);
+  Matrix<Real> Ho(100,111);
+  RandGaussMatrix(&Hi);
+
+  CuMatrix<Real> Di(100,111);
+  CuMatrix<Real> Do(100,111);
+  Di.CopyFromMat(Hi);
+
+  //gpu
+  cu::Sigmoid(Di,&Do);
+  //cpu
+  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
+    for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
+      Ho(r, c) = 1.0/(1.0+exp(-Hi(r, c)));
+    }
+  }
+
+  Matrix<Real> Ho2(100,111);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho,Ho2);
+}
+
+
+
+template<class Real> 
+static void UnitTestCuDiffSigmoid() {
+  Matrix<Real> Hi(100,111);
+  Matrix<Real> Ho(100,111);
+  Matrix<Real> Hy(100,111);
+  RandGaussMatrix(&Hi);
+  RandZeroToOneMatrix(&Hy);
+
+  CuMatrix<Real> Di(100,111);
+  CuMatrix<Real> Do(100,111);
+  CuMatrix<Real> Dy(100,111);
+  Di.CopyFromMat(Hi);
+  Dy.CopyFromMat(Hy);
+
+  //gpu
+  cu::DiffSigmoid(Di,Dy,&Do);
+  //cpu
+  for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
+    for(MatrixIndexT c=0; c<Ho.NumCols(); c++) {
+      Ho(r, c) = Hy(r, c)*(1.0 - Hy(r, c)) * Hi(r, c);
+    }
+  }
+
+  Matrix<Real> Ho2(100,111);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho,Ho2);
+}
+
+
+
+template<class Real> 
+static void UnitTestCuSoftmax() {
+  Matrix<Real> Hi(100,111);
+  Matrix<Real> Ho(100,111);
+  RandGaussMatrix(&Hi);
+
+  CuMatrix<Real> Di(100,111);
+  CuMatrix<Real> Do(100,111);
+  Di.CopyFromMat(Hi);
+
+  //gpu
+  cu::Softmax(Di,&Do);
+  //cpu
+  Ho.CopyFromMat(Hi);
+  for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
+    Ho.Row(r).ApplySoftMax();
+  }
+
+  Matrix<Real> Ho2(100,111);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho,Ho2);
+}
+
+
+
+template<class Real> 
+static void UnitTestCuFindRowMaxId() {
+  Matrix<Real> Hi(100,111);
+  RandGaussMatrix(&Hi);
+
+  CuMatrix<Real> Di(100,111);
+  Di.CopyFromMat(Hi);
+
+  std::vector<int32> Hmax(100);
+  CuStlVector<int32> Dmax(100);
+
+  //gpu
+  cu::FindRowMaxId(Di,&Dmax);
+  //cpu
+  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
+    Real max=-1e20; int32 idx=-1;
+    for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
+      if(Hi(r,c) > max) { idx=c; max=Hi(r,c); }
+    }
+    Hmax[r] = idx;
+  }
+
+  std::vector<int32> Hmax2(100);
+  Dmax.CopyToVec(&Hmax2);
+
+  AssertEqual(Hmax,Hmax2);
+}
+
+
+
+template<class Real> 
+static void UnitTestCuDiffXent() {
+  int32 X=100, Y=111;
+  //nnet output / diff
+  Matrix<Real> Hi(X,Y);
+  RandZeroToOneMatrix(&Hi);
+  CuMatrix<Real> Di(X,Y);
+  Di.CopyFromMat(Hi);
+  //target vector
+  std::vector<int32> Htgt(X);
+  for(int32 i=0; i<X; i++) {
+    Htgt[i] = rand()%Y;
+  }
+  CuStlVector<int32> Dtgt(X);
+  Dtgt.CopyFromVec(Htgt);
+  //logpost vector
+  Vector<Real> Hlogpost(X);
+  CuVector<Real> Dlogpost(X);
+  
+  //gpu
+  cu::DiffXent(Dtgt,&Di,&Dlogpost);
+  //cpu
+  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
+    int32 col_tgt = Htgt[r];
+    Hlogpost(r) = log(Hi(r, col_tgt));
+    Hi(r, col_tgt) -= 1.0;
+  }
+
+  Matrix<Real> Hi2(X,Y);
+  Di.CopyToMat(&Hi2);
+  Vector<Real> Hlogpost2(X);
+  Dlogpost.CopyToVec(&Hlogpost2);
+
+  AssertEqual(Hi,Hi2);
+  AssertEqual(Hlogpost,Hlogpost2);
+}
+
+
+
+
+
 template<class Real> static void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixApplyLog<Real>();
@@ -460,9 +638,12 @@ template<class Real> static void CudaMatrixUnitTest() {
   UnitTestCuVectorAddColSumMat<Real>();
   UnitTestCuVectorAddColSumMatLarge<Real>();
   UnitTestCuVectorInvertElements<Real>();
-
-  //TODO
   //test cu:: functions
+  UnitTestCuSigmoid<Real>();
+  UnitTestCuDiffSigmoid<Real>();
+  UnitTestCuSoftmax<Real>();
+  UnitTestCuFindRowMaxId<Real>();
+  UnitTestCuDiffXent<Real>();
 }
 
 
