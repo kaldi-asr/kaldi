@@ -172,9 +172,7 @@ static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   __shared__ Real row_data[256];
 
   //copy the input to row_data
-  //if(j < d.rows) { 
   row_data[j] = mat[i+j*d.stride];
-  //}
   __syncthreads();
 
   //get the sum
@@ -182,15 +180,16 @@ static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   __syncthreads();
   
   //add to previously accumulated sum
-  vec_sum[i] += sum;
+  if(threadIdx.x == 0)
+    vec_sum[i] += sum;
 }
 
 
 template<typename Real>
 __global__
 static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; //row
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; //col
 
   if(blockIdx.x > 0) return;
   if(blockDim.y > 1) return;
@@ -206,7 +205,8 @@ static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   __syncthreads();
   
   //add to previously accumulated sum
-  vec_sum[j] += sum;
+  if(threadIdx.x == 0) 
+    vec_sum[j] += sum;
 }
 
 

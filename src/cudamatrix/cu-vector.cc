@@ -70,7 +70,7 @@ void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, floa
   
     // process per 256 row blocks 
     for(int32 block=0; (block+1)*256 <= mat.NumRows(); block++) {
-      //1st dim ... rows, 2nd dim ... cols
+      // 1st dim ... rows, 2nd dim ... cols
       dim3 dimBlock(256, 1); 
       dim3 dimGrid(1, mat.NumCols());
       int32 offset = block*256*d.stride;
@@ -82,7 +82,7 @@ void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, floa
     int32 div = mat.NumRows() / 256;
     int32 mod = mat.NumRows() % 256;
     if (mod != 0) {
-      //1st dim ... rows, 2nd dim ... cols
+      // 1st dim ... rows, 2nd dim ... cols
       dim3 dimBlock(mod, 1);
       dim3 dimGrid(1, mat.NumCols());
       int32 offset = div*256*d.stride;
@@ -113,14 +113,13 @@ void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, floa
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    CuVector<float> tmp(Dim());// create a buffer
-    tmp.SetZero();
+    CuVector<float> tmp(Dim()); // create a buffer
     
-    MatrixDim d = mat.Dim();// only stride will be used!
+    MatrixDim d = mat.Dim(); // only stride will be used!
   
     // process per 256 column blocks 
     for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
-      //1st dim ... cols, 2nd dim ... rows
+      // 1st dim ... cols, 2nd dim ... rows
       dim3 dimBlock(256, 1);
       dim3 dimGrid(1, mat.NumRows());
       int32 offset = block*256;
@@ -132,7 +131,7 @@ void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, floa
     int32 div = mat.NumCols() / 256;
     int32 mod = mat.NumCols() % 256;
     if (mod != 0) {
-      //1st dim ... cols, 2nd dim ... rows
+      // 1st dim ... cols, 2nd dim ... rows
       dim3 dimBlock(mod, 1);
       dim3 dimGrid(1, mat.NumRows());
       int32 offset=div*256;

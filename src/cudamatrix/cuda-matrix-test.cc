@@ -106,15 +106,6 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
 }
 
 
-/*
-template<class Real> 
-static void AssertEqual(Real a, Real b, float tol = 0.001) {
-  KALDI_ASSERT( std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
-}
-*/
-
-
-
 
 
 /*
@@ -343,9 +334,7 @@ static void UnitTestCuVectorAddRowSumMat() {
   Vector<Real> Hv2(Y);
   Dv.CopyToVec(&Hv2);
 
-  //std::cout << Hv << Hv2;
-
-  AssertEqual(Hv,Hv2,0.001);
+  AssertEqual(Hv,Hv2);
 }
 
 
@@ -373,7 +362,7 @@ static void UnitTestCuVectorAddRowSumMatLarge() {
   Vector<Real> Hv2(990);
   Dv.CopyToVec(&Hv2);
 
-  AssertEqual(Hv,Hv2,0.001);
+  AssertEqual(Hv,Hv2);
 }
 
 
@@ -404,7 +393,7 @@ static void UnitTestCuVectorAddColSumMat() {
   Vector<Real> Hv2(X);
   Dv.CopyToVec(&Hv2);
 
-  AssertEqual(Hv,Hv2,0.001);
+  AssertEqual(Hv,Hv2);
 }
 
 
@@ -415,11 +404,7 @@ static void UnitTestCuVectorAddColSumMatLarge() {
   Vector<Real> Hv(1000);
   Vector<Real> Hv_accu(1000);
   RandGaussMatrix(&Hm);
-  Hm.Add(100);
   InitRand(&Hv);
-
-  Vector<Real> Hv_bkup(Hv.Dim());
-  Hv_bkup.CopyFromVec(Hv);
 
   CuMatrix<Real> Dm(1000,990);
   CuVector<Real> Dv(1000);
@@ -436,15 +421,7 @@ static void UnitTestCuVectorAddColSumMatLarge() {
   Vector<Real> Hv2(1000);
   Dv.CopyToVec(&Hv2);
 
-  for(int32 i=0; i<Hv.Dim(); i++) {
-    if(Hv(i)-Hv2(i) > 0.001 || Hv(i)-Hv2(i) < -0.001) {
-      std::cout << " i " << i << " - " << Hv(i) << ", " << Hv2(i) 
-                << " - " << 0.7*Hv_bkup(i) + 0.5*Hm.Row(i).Sum() << "\n";
-
-    }
-  }
-
-  AssertEqual(Hv,Hv2,0.01);
+  AssertEqual(Hv,Hv2);
 }
 
 
