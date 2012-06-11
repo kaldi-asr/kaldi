@@ -25,7 +25,7 @@ all:  $(LIBFILE)
 #symlink in necessary for cross-compilation at BUT
 %.o : %.cu
 	-ln -s `which $(CC)` gcc
-	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PATH); ln -s `which $(CC)` gcc; $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PWD)/cudamatrix:$(PATH); ln -s `which $(CC)` gcc; $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
 	-unlink gcc
 
 

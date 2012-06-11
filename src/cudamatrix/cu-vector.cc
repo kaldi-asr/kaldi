@@ -98,7 +98,7 @@ void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, floa
   } else
   #endif
   {
-    Vector<BaseFloat> tmp(mat.NumCols());
+    Vector<float> tmp(mat.NumCols());
     tmp.AddRowSumMat(mat.Mat());
     if(beta != 1.0) vec_.Scale(beta);
     vec_.AddVec(alpha,tmp);
@@ -147,7 +147,7 @@ void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, floa
   } else
   #endif
   {
-    Vector<BaseFloat> tmp(mat.NumRows());
+    Vector<float> tmp(mat.NumRows());
     tmp.AddColSumMat(mat.Mat());
     if(beta != 1.0) vec_.Scale(beta);
     vec_.AddVec(alpha,tmp);
