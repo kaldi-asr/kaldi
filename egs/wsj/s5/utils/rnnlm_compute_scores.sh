@@ -19,7 +19,7 @@
 
 . ./path.sh || exit 1;
 
-rnnlm=$KALDI_ROOT/tools/rnnlm-0.3c/rnnlm
+rnnlm=$KALDI_ROOT/tools/rnnlm-0.3e/rnnlm
 
 [ ! -f $rnnlm ] && echo No such program $rnnlm && exit 1;
 
@@ -58,6 +58,9 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 
 $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
    awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+
+[ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \
+  echo "rnnlm rescoring failed" && exit 1;
 
 paste $tempdir/loglikes.rnn $tempdir/loglikes.oov | awk '{print -($1+$2);}' >$tempdir/scores
 
