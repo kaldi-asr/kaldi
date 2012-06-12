@@ -178,6 +178,7 @@ void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
     Matrix<BaseFloat> inv_vars(pdf.NumGauss(), dim);
     inv_vars.Set(1.0); // make all vars 1.
     pdf.SetInvVars(inv_vars);
+    pdf.ComputeGconsts();
   }
   am_gmm->SetDim(dim);
 }
@@ -205,8 +206,8 @@ void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
             *p_count   = (count_out != NULL) ? &tmp_count : NULL;
 
   for (size_t i = 0; i < amdiaggmm_acc.NumAccs(); i++) {
-    MleDiagGmmUpdate(config, amdiaggmm_acc.GetAcc(i), flags, &(am_gmm->GetPdf(i)), p_obj,
-        p_count);
+    MleDiagGmmUpdate(config, amdiaggmm_acc.GetAcc(i), flags,
+                     &(am_gmm->GetPdf(i)), p_obj, p_count);
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;

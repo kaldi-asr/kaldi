@@ -43,6 +43,7 @@ void DiagGmm::Resize(int32 nmix, int32 dim) {
   if (means_invvars_.NumRows() != nmix ||
       means_invvars_.NumCols() != dim)
     means_invvars_.Resize(nmix, dim);
+  valid_gconsts_ = false;
 }
 
 void DiagGmm::CopyFromDiagGmm(const DiagGmm &diaggmm) {

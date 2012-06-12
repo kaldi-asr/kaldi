@@ -53,7 +53,7 @@ class DiagGmm {
   
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
-
+  
   /// Returns the number of mixture components in the GMM
   int32 NumGauss() const { return weights_.Dim(); }
   /// Returns the dimensionality of the Gaussian mean vectors
