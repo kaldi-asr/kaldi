@@ -41,7 +41,7 @@ $(SUBDIRS) :
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin nnetbin nnetbin_cpu latbin: base matrix util feat tree optimization gmm tied transform sgmm fstext hmm lm decoder lat cudamatrix nnet nnet_cpu rnn
+bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnetbin_cpu latbin: base matrix util feat tree optimization gmm tied transform sgmm fstext hmm lm decoder lat cudamatrix nnet nnet_cpu rnn
 #2)The libraries have inter-dependencies
 base:
 matrix : base
@@ -53,6 +53,7 @@ gmm: base util matrix tree
 tied: base util matrix gmm tree transform
 transform: base util matrix gmm tree
 sgmm: base util matrix gmm tree transform
+sgmm2: base util matrix gmm tree transform
 fstext: base util matrix tree
 hmm: base tree matrix 
 lm: base util
