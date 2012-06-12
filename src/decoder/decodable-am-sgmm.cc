@@ -67,45 +67,4 @@ void DecodableAmSgmm::ResetLogLikeCache() {
   for (; it != end; ++it) { it->hit_time = -1; }
 }
 
-BaseFloat DecodableAmSgmmFmllr::LogLikelihoodZeroBased(int32 frame, int32 state) {
-  KALDI_ASSERT(frame >= 0 && frame < NumFrames());
-  KALDI_ASSERT(state >= 0 && state < NumIndices());
-
-  if (log_like_cache_[state].hit_time == frame) {
-    return log_like_cache_[state].log_like;  // return cached value, if found
-  }
-
-  const VectorBase<BaseFloat> &data = feature_matrix_.Row(frame);
-  // check if everything is in order
-  if (acoustic_model_.FeatureDim() != data.Dim()) {
-    KALDI_ERR << "Dim mismatch: data dim = "  << data.Dim()
-              << "vs. model dim = " << acoustic_model_.FeatureDim();
-  }
-
-  if (frame != previous_frame_) {  // Per-frame precomputation for SGMM.
-    int32 dim = acoustic_model_.FeatureDim();
-    Vector<BaseFloat> extended_data(dim+1, kUndefined);
-    extended_data.Range(0, dim).CopyFromVec(data);
-    extended_data(dim) = 1.0;
-    xformed_feat_.AddMatVec(1.0, fmllr_mat_, kNoTrans, extended_data, 0.0);
-    if (gselect_all_.empty())
-      acoustic_model_.GaussianSelection(sgmm_config_, xformed_feat_, &gselect_);
-    else {
-      KALDI_ASSERT(frame < gselect_all_.size());
-      gselect_ = gselect_all_[frame];
-    }
-    acoustic_model_.ComputePerFrameVars(xformed_feat_, gselect_, spk_, logdet_,
-                                        &per_frame_vars_);
-    previous_frame_ = frame;
-  }
-
-  BaseFloat loglike = acoustic_model_.LogLikelihood(per_frame_vars_, state,
-                                                    log_prune_);
-  if (KALDI_ISNAN(loglike) || KALDI_ISINF(loglike))
-    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-  log_like_cache_[state].log_like = loglike;
-  log_like_cache_[state].hit_time = frame;
-  return loglike;
-}
-
 }  // namespace kaldi

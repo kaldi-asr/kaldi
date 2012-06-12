@@ -98,13 +98,6 @@ class AmDiagGmm {
 
   void RemovePdf(int32 pdf_index);
 
-  // used in SplitByCount and MergeByCount.
-  void ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
-                            int32 target_components,
-                            BaseFloat power,
-                            BaseFloat min_count,
-                            std::vector<int32> *targets) const;
-
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmDiagGmm);
 };
 

@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est-spkvecs-gpost.cc
+// sgmmbin/sgmm2-est-spkvecs-gpost.cc
 
 // Copyright 2009-2011   Saarland University;  Microsoft Corporation
 
@@ -22,29 +22,30 @@ using std::vector;
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm/am-sgmm.h"
-#include "sgmm/estimate-am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
+#include "sgmm2/estimate-am-sgmm.h"
 #include "hmm/transition-model.h"
 
 namespace kaldi {
 
 void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
-                            const SgmmGauPost &gpost,
+                            const Sgmm2GauPost &gpost,
                             const TransitionModel &trans_model,
-                            const AmSgmm &am_sgmm,
-                            const SgmmPerSpkDerivedVars &spk_vars,
-                            MleSgmmSpeakerAccs *spk_stats) {
-  kaldi::SgmmPerFrameDerivedVars per_frame_vars;
+                            const AmSgmm2 &am_sgmm,
+                            Sgmm2PerSpkDerivedVars *spk_vars,
+                            MleSgmm2SpeakerAccs *spk_stats) {
+  kaldi::Sgmm2PerFrameDerivedVars per_frame_vars;
 
   for (size_t i = 0; i < gpost.size(); i++) {
     am_sgmm.ComputePerFrameVars(feats.Row(i),
-                                gpost[i].gselect, spk_vars, 0.0,
+                                gpost[i].gselect, *spk_vars,
                                 &per_frame_vars);
 
     for (size_t j = 0; j < gpost[i].tids.size(); j++) {
       int32 pdf_id = trans_model.TransitionIdToPdf(gpost[i].tids[j]);
       spk_stats->AccumulateFromPosteriors(am_sgmm, per_frame_vars,
-                                          gpost[i].posteriors[j], pdf_id);
+                                          gpost[i].posteriors[j], pdf_id,
+                                          spk_vars);
     }
   }
 }
@@ -86,23 +87,23 @@ int main(int argc, char *argv[]) {
         vecs_wspecifier = po.GetArg(4);
 
     TransitionModel trans_model;
-    AmSgmm am_sgmm;
+    AmSgmm2 am_sgmm;
     {
       bool binary;
       Input ki(model_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_sgmm.Read(ki.Stream(), binary);
     }
-    MleSgmmSpeakerAccs spk_stats(am_sgmm, rand_prune);
+    MleSgmm2SpeakerAccs spk_stats(am_sgmm, rand_prune);
 
-    RandomAccessSgmmGauPostReader gpost_reader(gpost_rspecifier);
+    RandomAccessSgmm2GauPostReader gpost_reader(gpost_rspecifier);
 
     RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
 
     BaseFloatVectorWriter vecs_writer(vecs_wspecifier);
 
     double tot_impr = 0.0, tot_t = 0.0;
-    int32 num_done = 0, num_no_gpost = 0, num_other_error = 0;
+    int32 num_done = 0, num_err = 0;
 
     if (!spk2utt_rspecifier.empty()) {  // per-speaker adaptation
       SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
@@ -113,10 +114,10 @@ int main(int argc, char *argv[]) {
         string spk = spk2utt_reader.Key();
         const vector<string> &uttlist = spk2utt_reader.Value();
 
-        SgmmPerSpkDerivedVars spk_vars;
+        Sgmm2PerSpkDerivedVars spk_vars;
         if (spkvecs_reader.IsOpen()) {
           if (spkvecs_reader.HasKey(spk)) {
-            spk_vars.v_s = spkvecs_reader.Value(spk);
+            spk_vars.SetSpeakerVector(spkvecs_reader.Value(spk));
             am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
           } else {
             KALDI_WARN << "Cannot find speaker vector for " << spk;
@@ -129,29 +130,27 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "Did not find features for utterance " << utt;
             continue;
           }
-          if (!gpost_reader.HasKey(utt)) {
-            KALDI_WARN << "Did not find posteriors for utterance " << utt;
-            num_no_gpost++;
-            continue;
-          }
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-          const SgmmGauPost &gpost = gpost_reader.Value(utt);
-          if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-            KALDI_WARN << "gpost vector has wrong size " << (gpost.size())
-                       << " vs. " << (feats.NumRows());
-            num_other_error++;
+          if (!gpost_reader.HasKey(utt) ||
+              gpost_reader.Value(utt).size() != feats.NumRows()) {
+            KALDI_WARN << "Did not find posteriors for utterance " << utt
+                       << " (or wrong size).";
+            num_err++;
             continue;
           }
-
-          AccumulateForUtterance(feats, gpost, trans_model, am_sgmm, spk_vars, &spk_stats);
+          const Sgmm2GauPost &gpost = gpost_reader.Value(utt);
+          
+          AccumulateForUtterance(feats, gpost, trans_model, am_sgmm,
+                                 &spk_vars, &spk_stats);
           num_done++;
         }  // end looping over all utterances of the current speaker
 
         BaseFloat impr, spk_tot_t;
         {  // Compute the spk_vec and write it out.
           Vector<BaseFloat> spk_vec(am_sgmm.SpkSpaceDim(), kSetZero);
-          if (spk_vars.v_s.Dim() != 0) spk_vec.CopyFromVec(spk_vars.v_s);
-          spk_stats.Update(min_count, &spk_vec, &impr, &spk_tot_t);
+          if (spk_vars.GetSpeakerVector().Dim() != 0)
+            spk_vec.CopyFromVec(spk_vars.GetSpeakerVector());
+          spk_stats.Update(am_sgmm, min_count, &spk_vec, &impr, &spk_tot_t);
           vecs_writer.Write(spk, spk_vec);
         }
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from speaker vector is "
@@ -163,42 +162,38 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {
         string utt = feature_reader.Key();
-        if (!gpost_reader.HasKey(utt)) {
+        const Matrix<BaseFloat> &feats = feature_reader.Value();
+        if (!gpost_reader.HasKey(utt) ||
+            gpost_reader.Value(utt).size() != feats.NumRows()) {
           KALDI_WARN << "Did not find posts for utterance "
                      << utt;
-          num_no_gpost++;
+          num_err++;
           continue;
         }
-        const Matrix<BaseFloat> &feats = feature_reader.Value();
+        const Sgmm2GauPost &gpost = gpost_reader.Value(utt);
 
-        SgmmPerSpkDerivedVars spk_vars;
+        Sgmm2PerSpkDerivedVars spk_vars;
         if (spkvecs_reader.IsOpen()) {
           if (spkvecs_reader.HasKey(utt)) {
-            spk_vars.v_s = spkvecs_reader.Value(utt);
+            spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
             am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
           } else {
             KALDI_WARN << "Cannot find speaker vector for " << utt;
           }
         }  // else spk_vars is "empty"
-        const SgmmGauPost &gpost = gpost_reader.Value(utt);
-
-        if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-          KALDI_WARN << "gpost has wrong size " << (gpost.size())
-              << " vs. " << (feats.NumRows());
-          num_other_error++;
-          continue;
-        }
+        
         num_done++;
-
         spk_stats.Clear();
 
-        AccumulateForUtterance(feats, gpost, trans_model, am_sgmm, spk_vars, &spk_stats);
+        AccumulateForUtterance(feats, gpost, trans_model, am_sgmm,
+                               &spk_vars, &spk_stats);
 
         BaseFloat impr, utt_tot_t;
         {  // Compute the spk_vec and write it out.
           Vector<BaseFloat> spk_vec(am_sgmm.SpkSpaceDim(), kSetZero);
-          if (spk_vars.v_s.Dim() != 0) spk_vec.CopyFromVec(spk_vars.v_s);
-          spk_stats.Update(min_count, &spk_vec, &impr, &utt_tot_t);
+          if (spk_vars.GetSpeakerVector().Dim() != 0)
+            spk_vec.CopyFromVec(spk_vars.GetSpeakerVector());
+          spk_stats.Update(am_sgmm, min_count, &spk_vec, &impr, &utt_tot_t);
           vecs_writer.Write(utt, spk_vec);
         }
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from speaker vectors is "
@@ -208,8 +203,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " << num_no_gpost
-              << " with no gposts, " << num_other_error << " with other errors.";
+    KALDI_LOG << "Done " << num_done << " files, " << num_err
+              << " with errors.";
     KALDI_LOG << "Overall auxf impr per frame is " << (tot_impr / tot_t)
               << " over " << tot_t << " frames.";
     return (num_done != 0 ? 0 : 1);

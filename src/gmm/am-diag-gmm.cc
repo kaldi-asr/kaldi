@@ -100,68 +100,6 @@ int32 AmDiagGmm::ComputeGconsts() {
   return num_bad;
 }
 
-struct CountStats {
-  CountStats(int32 p, int32 n, BaseFloat occ)
-      : pdf_index(p), num_components(n), occupancy(occ) {}
-  int32 pdf_index;
-  int32 num_components;
-  BaseFloat occupancy;
-  bool operator < (const CountStats &other) const {
-    return occupancy/(num_components+1.0e-10) <
-        other.occupancy/(other.num_components+1.0e-10);
-  }
-};
-
-void AmDiagGmm::ComputeTargetNumPdfs(const Vector<BaseFloat> &state_occs,
-                                     int32 target_components,
-                                     BaseFloat power,
-                                     BaseFloat min_count,
-                                     std::vector<int32> *targets) const {
-  KALDI_ASSERT(static_cast<int32>(state_occs.Dim()) == NumPdfs());
-
-  std::priority_queue<CountStats> split_queue;
-  int32 current_components = 0;
-  for (int32 pdf_index = 0, num_pdf = NumPdfs(); pdf_index < num_pdf;
-       ++pdf_index) {
-    BaseFloat occ = pow(state_occs(pdf_index), power);
-    // initialize with one Gaussian per PDF, to put a floor
-    // of 1 on the #Gauss
-    split_queue.push(CountStats(pdf_index, 1, occ));
-    current_components += densities_[pdf_index]->NumGauss();
-  }
-  KALDI_ASSERT(current_components == NumGauss());
-
-  for (int32 num_gauss = NumPdfs();  // since we initialized with 1 per PDF.
-       num_gauss < target_components;
-      ++num_gauss) {
-    CountStats state_to_split = split_queue.top();
-    if (state_to_split.occupancy == 0) {
-      KALDI_WARN << "Could not split up to " << target_components
-                 << " due to min-count = " << min_count
-                 << " (or no counts at all)\n";
-      break;
-    }
-    split_queue.pop();
-    BaseFloat orig_occ = state_occs(state_to_split.pdf_index);
-    if ((state_to_split.num_components+1) * min_count >= orig_occ) {
-      state_to_split.occupancy = 0; // min-count active -> disallow splitting
-      // this state any more by setting occupancy = 0.
-    } else {
-      state_to_split.num_components++;
-    }
-    split_queue.push(state_to_split);
-  }
-
-  targets->resize(NumPdfs());
-
-  current_components = 0;
-  while (!split_queue.empty()) {
-    int32 pdf_index = split_queue.top().pdf_index;
-    int32 pdf_tgt_comp = split_queue.top().num_components;
-    (*targets)[pdf_index] = pdf_tgt_comp;
-    split_queue.pop();
-  }
-}
 
 void AmDiagGmm::SplitByCount(const Vector<BaseFloat> &state_occs,
                              int32 target_components,
@@ -169,8 +107,8 @@ void AmDiagGmm::SplitByCount(const Vector<BaseFloat> &state_occs,
                              BaseFloat min_count) {
   int32 gauss_at_start = NumGauss();
   std::vector<int32> targets;
-  ComputeTargetNumPdfs(state_occs, target_components, power,
-                       min_count, &targets);
+  GetSplitTargets(state_occs, target_components, power,
+                  min_count, &targets);
 
   for (int32 i = 0; i < NumPdfs(); i++) {
     if (densities_[i]->NumGauss() < targets[i])
@@ -192,8 +130,8 @@ void AmDiagGmm::MergeByCount(const Vector<BaseFloat> &state_occs,
                              BaseFloat min_count) {
   int32 gauss_at_start = NumGauss();
   std::vector<int32> targets;
-  ComputeTargetNumPdfs(state_occs, target_components,
-                       power, min_count, &targets);
+  GetSplitTargets(state_occs, target_components,
+                  power, min_count, &targets);
 
   for (int32 i = 0; i < NumPdfs(); i++) {
     if (targets[i] == 0) targets[i] = 1;  // can't merge below 1.

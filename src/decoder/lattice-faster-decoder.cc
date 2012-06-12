@@ -109,7 +109,9 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
     if (f == 0 && ofst->NumStates() > 0)
       ofst->SetStart(ofst->NumStates()-1);
   }
-  KALDI_VLOG(3) << "init:" << num_toks_/2 + 3 << " buckets:" << tok_map.bucket_count() << " load:" << tok_map.load_factor() << " max:" << tok_map.max_load_factor();
+  KALDI_VLOG(3) << "init:" << num_toks_/2 + 3 << " buckets:"
+                << tok_map.bucket_count() << " load:" << tok_map.load_factor()
+                << " max:" << tok_map.max_load_factor();
   // Now create all arcs.
   StateId cur_state = 0; // we rely on the fact that we numbered these
   // consecutively (AddState() returns the numbers in order..)

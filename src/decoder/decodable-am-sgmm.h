@@ -57,9 +57,8 @@ class DecodableAmSgmm : public DecodableInterface {
     return (frame == NumFrames() - 1);
   }
 
-  void ResetLogLikeCache();
-
  protected:
+  void ResetLogLikeCache();
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
 
   const AmSgmm &acoustic_model_;
@@ -110,40 +109,6 @@ class DecodableAmSgmmScaled : public DecodableAmSgmm {
  private:
   BaseFloat scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmmScaled);
-};
-
-class DecodableAmSgmmFmllr : public DecodableAmSgmm {
- public:
-  DecodableAmSgmmFmllr(const SgmmGselectConfig &opts,
-                       const AmSgmm &am,
-                       const SgmmPerSpkDerivedVars &spk,  // may be empty
-                       const TransitionModel &tm,
-                       const Matrix<BaseFloat> &feats,
-                       const std::vector<std::vector<int32> > &gselect_all,
-                       // gselect_all may be empty
-                       BaseFloat log_prune,
-                       BaseFloat scale,
-                       const MatrixBase<BaseFloat> &fmllr)
-      : DecodableAmSgmm(opts, am, spk, tm, feats, gselect_all, log_prune),
-        fmllr_mat_(fmllr), xformed_feat_(am.FeatureDim()), scale_(scale) {
-    int32 dim = am.FeatureDim();
-    logdet_ = fmllr_mat_.Range(0, dim, 0, dim).LogDet();
-  }
-
-  // Note, frames are numbered from zero but transition-ids from one.
-  virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
-    return LogLikelihoodZeroBased(frame, trans_model_.TransitionIdToPdf(tid))
-            * scale_;
-  }
-
- protected:
-  virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 pdf_id);
-
- private:
-  Matrix<BaseFloat> fmllr_mat_;
-  Vector<BaseFloat> xformed_feat_;
-  BaseFloat scale_, logdet_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmmFmllr);
 };
 
 

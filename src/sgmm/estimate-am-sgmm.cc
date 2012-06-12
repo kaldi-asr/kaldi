@@ -318,7 +318,7 @@ void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
     S_.clear();
   }
 
-  if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
+  if (flags & (kSgmmPhoneVectors | kSgmmPhoneWeightProjections |
                kSgmmCovarianceMatrix | kSgmmSubstateWeights |
                kSgmmPhoneProjections)) {
     gamma_.resize(num_states_);
@@ -340,38 +340,6 @@ void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
     y_.clear();
   }
 }
-
-void MleAmSgmmAccs::ZeroAccumulators(SgmmUpdateFlagsType flags) {
-  if (flags & kSgmmPhoneVectors) {
-    for (int32 i = 0, end = y_.size(); i < end; i++)
-      y_[i].SetZero();
-  }
-  if (flags & (kSgmmPhoneProjections | kSgmmCovarianceMatrix)) {
-    for (int32 i = 0, end = Y_.size(); i < end; i++)
-      Y_[i].SetZero();
-  }
-  if (flags & kSgmmCovarianceMatrix) {
-    for (int32 i = 0, end = S_.size(); i < end; i++)
-      S_[i].SetZero();
-  }
-
-  if (flags & kSgmmSpeakerProjections) {
-    gamma_s_.SetZero();
-    for (int32 i = 0, end = Z_.size(); i < end; i++) {
-      Z_[i].SetZero();
-      R_[i].SetZero();
-    }
-  }
-
-  if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
-               kSgmmCovarianceMatrix | kSgmmSubstateWeights |
-               kSgmmPhoneProjections)) {
-    total_frames_ = total_like_ = 0;
-    for (int32 i = 0, end = gamma_.size(); i < end; i++)
-      gamma_[i].SetZero();
-  }
-}
-
 
 BaseFloat MleAmSgmmAccs::Accumulate(const AmSgmm &model,
                                     const SgmmPerFrameDerivedVars &frame_vars,
@@ -415,7 +383,7 @@ BaseFloat MleAmSgmmAccs::AccumulateFromPosteriors(
       // Accumulate statistics for non-zero gaussian posterior
       if (gammat_jmi != 0.0) {
         tot_count += gammat_jmi;
-        if (flags & (kSgmmPhoneVectors | kSgmmWeightProjections |
+        if (flags & (kSgmmPhoneVectors | kSgmmPhoneWeightProjections |
                      kSgmmCovarianceMatrix | kSgmmSubstateWeights |
                      kSgmmPhoneProjections)) {
           // Eq. (40): gamma_{jmi} = \sum_t gamma_{jmi}(t)
@@ -490,7 +458,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
                               AmSgmm *model,
                               SgmmUpdateFlagsType flags) {
   KALDI_ASSERT((flags & (kSgmmPhoneVectors | kSgmmPhoneProjections |
-                         kSgmmWeightProjections | kSgmmCovarianceMatrix |
+                         kSgmmPhoneWeightProjections | kSgmmCovarianceMatrix |
                          kSgmmSubstateWeights | kSgmmSpeakerProjections)) != 0);
 
   if (flags & kSgmmPhoneProjections)
@@ -503,7 +471,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   // "smoothing" matrices, weighted sums of above.
   SpMatrix<double> H_sm;
   Vector<double> y_sm;  // "smoothing" vectors
-  if ((flags & (kSgmmPhoneVectors | kSgmmWeightProjections))
+  if ((flags & (kSgmmPhoneVectors | kSgmmPhoneWeightProjections))
       || update_options_.renormalize_V) {
     model->ComputeH(&H);
     ComputeSmoothingTerms(accs, *model, H, &H_sm,
@@ -524,7 +492,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
   if (flags & kSgmmPhoneProjections)
     tot_impr += UpdateM(accs, model);
 
-  if (flags & kSgmmWeightProjections) {
+  if (flags & kSgmmPhoneWeightProjections) {
     if (update_options_.use_sequential_weight_update) {
       tot_impr += UpdateWSequential(accs, model);
     } else {

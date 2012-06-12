@@ -1,7 +1,7 @@
-// sgmmbin/sgmm-copy.cc
+// sgmmbin/sgmm2-copy.cc
 
 // Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
+//                      Johns Hopkins University (author: Daniel Povey).
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 
-#include "sgmm/am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
 #include "hmm/transition-model.h"
 
 int main(int argc, char *argv[]) {
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1),
         model_out_filename = po.GetArg(2);
 
-    AmSgmm am_sgmm;
+    AmSgmm2 am_sgmm;
     TransitionModel trans_model;
     {
       bool binary;

@@ -283,7 +283,6 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
   vec->erase(out, end);
 }
 
-
 }  // namespace kaldi
 
 #endif  // KALDI_UTIL_STL_UTILS_H_

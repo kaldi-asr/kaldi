@@ -140,13 +140,7 @@ class MleAmSgmmAccs {
   /// Resizes the accumulators to the correct sizes given the model. The flags
   /// argument control which accumulators to resize.
   void ResizeAccumulators(const AmSgmm &model, SgmmUpdateFlagsType flags);
-
-  /// Set the accumulators specified by the flags argument to zero.
-  void ZeroAccumulators(SgmmUpdateFlagsType flags);
-
-  /// Add another accumulator object
-  void AddAccumulators(const MleAmSgmmAccs &other, SgmmUpdateFlags flags);
-
+  
   /// Returns likelihood.
   BaseFloat Accumulate(const AmSgmm &model,
                        const SgmmPerFrameDerivedVars &frame_vars,

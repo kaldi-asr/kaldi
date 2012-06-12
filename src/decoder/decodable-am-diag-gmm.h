@@ -63,8 +63,8 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
     return (frame == NumFrames() - 1);
   }
 
-  void ResetLogLikeCache();
  protected:
+  void ResetLogLikeCache();
   virtual BaseFloat LogLikelihoodZeroBased(int32 frame, int32 state_index);
 
   const AmDiagGmm &acoustic_model_;

@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-latgen-faster.cc
+// sgmm2bin/sgmm2-latgen-faster.cc
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
 
@@ -20,11 +20,11 @@ using std::string;
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm/am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/decodable-am-sgmm.h"
+#include "decoder/decodable-am-sgmm2.h"
 #include "util/timer.h"
 
 namespace kaldi {
@@ -95,9 +95,8 @@ double ProcessDecodedOutput(const LatticeFasterDecoder &decoder,
 // the reference arguments at the beginning are not const as the style guide
 // requires, but are best viewed as inputs.
 bool ProcessUtterance(LatticeFasterDecoder &decoder,
-                      const AmSgmm &am_sgmm,
+                      const AmSgmm2 &am_sgmm,
                       const TransitionModel &trans_model,
-                      const SgmmGselectConfig &sgmm_opts,
                       double log_prune,
                       double acoustic_scale,
                       const Matrix<BaseFloat> &features,
@@ -123,10 +122,10 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
     } else { utt_or_spk = utt2spk_reader.Value(utt); }
   } else { utt_or_spk = utt; }
 
-  SgmmPerSpkDerivedVars spk_vars;
+  Sgmm2PerSpkDerivedVars spk_vars;
   if (spkvecs_reader.IsOpen()) {
     if (spkvecs_reader.HasKey(utt_or_spk)) {
-      spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+      spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt_or_spk));
       am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
     } else {
       KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk << ", not decoding this utterance";
@@ -134,20 +133,17 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
       // (this would normally be a script error or some kind of failure).
     }
   }
-  bool has_gselect = false;
-  if (gselect_reader.IsOpen()) {
-    has_gselect = gselect_reader.HasKey(utt)
-        && gselect_reader.Value(utt).size() == features.NumRows();
-    if (!has_gselect)
-      KALDI_WARN << "No Gaussian-selection info available for utterance "
-                 << utt << " (or wrong size)";
+  if (!gselect_reader.HasKey(utt) ||
+      gselect_reader.Value(utt).size() != features.NumRows()) {
+    KALDI_WARN << "No Gaussian-selection info available for utterance "
+               << utt << " (or wrong size)";
   }
-  std::vector<std::vector<int32> > empty_gselect;
-  const std::vector<std::vector<int32> > *gselect =
-      (has_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
-  DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
-                                       trans_model, features, *gselect,
-                                       log_prune, acoustic_scale);
+
+  const std::vector<std::vector<int32> > &gselect =
+      gselect_reader.Value(utt);
+  
+  DecodableAmSgmm2Scaled sgmm_decodable(am_sgmm, trans_model, features, gselect,
+                                        log_prune, acoustic_scale, &spk_vars);
   if (!decoder.Decode(&sgmm_decodable)) {
     KALDI_WARN << "Failed to decode file " << utt;
     return false;
@@ -191,9 +187,7 @@ int main(int argc, char *argv[]) {
         utt2spk_rspecifier;
 
     LatticeFasterDecoderConfig decoder_opts;
-    SgmmGselectConfig sgmm_opts;
     decoder_opts.Register(&po);    
-    sgmm_opts.Register(&po);
 
     po.Register("acoustic-scale", &acoustic_scale,
         "Scaling factor for acoustic likelihoods");
@@ -216,6 +210,9 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    if (gselect_rspecifier == "")
+      KALDI_ERR << "--gselect option is required.";
+
     std::string model_in_filename = po.GetArg(1),
         fst_in_str = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
@@ -224,7 +221,7 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetOptArg(6);
 
     TransitionModel trans_model;
-    kaldi::AmSgmm am_sgmm;
+    kaldi::AmSgmm2 am_sgmm;
     {
       bool binary;
       Input ki(model_in_filename, &binary);
@@ -256,7 +253,7 @@ int main(int argc, char *argv[]) {
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
-    int num_success = 0, num_fail = 0;
+    int num_success = 0, num_err = 0;
 
     Timer timer;
         
@@ -289,11 +286,11 @@ int main(int argc, char *argv[]) {
           const Matrix<BaseFloat> &features(feature_reader.Value());
           if (features.NumRows() == 0) {
             KALDI_WARN << "Zero-length utterance: " << utt;
-            num_fail++;
+            num_err++;
             continue;
           }
           double like;
-          if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
+          if (ProcessUtterance(decoder, am_sgmm, trans_model, log_prune, acoustic_scale,
                                features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
                                utt, determinize, allow_partial,
                                &alignment_writer, &words_writer, &compact_lattice_writer,
@@ -304,7 +301,7 @@ int main(int argc, char *argv[]) {
                       << (like / features.NumRows()) << " over "
                       << features.NumRows() << " frames.";
             num_success++;
-          } else { num_fail++; }
+          } else { num_err++; }
         }
       }
       delete decode_fst; // only safe to do this after decoder goes out of scope.
@@ -316,18 +313,19 @@ int main(int argc, char *argv[]) {
         if (!feature_reader.HasKey(utt)) {
           KALDI_WARN << "Not decoding utterance " << utt
                      << " because no features available.";
-          num_fail++;
+          num_err++;
           continue;
         }
         const Matrix<BaseFloat> &features = feature_reader.Value(utt);
         if (features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << utt;
-          num_fail++;
+          num_err++;
           continue;
         }
         LatticeFasterDecoder decoder(fst_reader.Value(), decoder_opts);
         double like;
-        if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
+
+        if (ProcessUtterance(decoder, am_sgmm, trans_model, log_prune, acoustic_scale,
                              features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
                              utt, determinize, allow_partial,
                              &alignment_writer, &words_writer, &compact_lattice_writer,
@@ -338,7 +336,7 @@ int main(int argc, char *argv[]) {
                     << (like / features.NumRows()) << " over "
                     << features.NumRows() << " frames.";
           num_success++;
-        } else { num_fail++; }
+        } else { num_err++; }
       }
     }
     double elapsed = timer.Elapsed();
@@ -346,7 +344,7 @@ int main(int argc, char *argv[]) {
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed*100.0/frame_count);
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
-              << num_fail;
+              << num_err;
     KALDI_LOG << "Overall log-likelihood per frame = " << (tot_like/frame_count)
               << " over " << frame_count << " frames.";
 

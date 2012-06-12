@@ -849,7 +849,8 @@ class WordAlignedLatticeTester {
 
     if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, rand()/*seed*/,
                         200/*path length (max?)*/))
-      KALDI_ERR << "Equivalence test failed (testing word-alignment of lattices.)";
+      KALDI_ERR << "Equivalence test failed (testing word-alignment of lattices.) "
+                << "Make sure your model and lattices match!";
   }
   
   const CompactLattice &lat_;

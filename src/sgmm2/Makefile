@@ -1,29 +1,29 @@
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -O3
+OPENFST_CXXFLAGS = 
+OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = 
+TESTFILES = am-sgmm-test estimate-am-sgmm-test 
+# fmllr-sgmm-test
 
-OBJFILES = decodable-am-diag-gmm.o training-graph-compiler.o decodable-am-sgmm.o \
-   decodable-am-tied-diag-gmm.o decodable-am-tied-full-gmm.o \
-   lattice-simple-decoder.o lattice-faster-decoder.o faster-decoder.o \
-   decodable-am-sgmm2.o
+OBJFILES = am-sgmm.o estimate-am-sgmm.o 
 
-LIBFILE = kaldi-decoder.a
+#estimate-am-sgmm-ebw.o
+## fmllr-sgmm.o sgmm-clusterable.o \
 
+LIBFILE = kaldi-sgmm.a
 
 all:  $(LIBFILE)
-
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
-     ../sgmm/kaldi-sgmm.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../util/kaldi-util.a \
-     ../base/kaldi-base.a ../matrix/kaldi-matrix.a 
+$(TESTFILES): $(LIBFILE) ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+	../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a
+
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:

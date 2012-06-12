@@ -1,6 +1,7 @@
-// sgmmbin/sgmm-align-compiled.cc
+// sgmm2bin/sgmm2-align-compiled.cc
 
-// Copyright 2009-2011  Microsoft Corporation;  Saarland University
+// Copyright 2009-2012 Microsoft Corporation;  Saarland University
+//                     Johns Hopkins University (Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +18,13 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm/am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
-#include "decoder/decodable-am-sgmm.h"
+#include "decoder/decodable-am-sgmm2.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 
@@ -37,9 +38,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given [SGMM-based] models.\n"
-        "Usage: sgmm-align-compiled [options] model-in graphs-rspecifier "
+        "Usage: sgmm2-align-compiled [options] model-in graphs-rspecifier "
         "feature-rspecifier alignments-wspecifier\n"
-        "e.g.: sgmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n";
+        "e.g.: sgmm2-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -49,10 +50,8 @@ int main(int argc, char *argv[]) {
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
     BaseFloat log_prune = 5.0;
-    
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
-    SgmmGselectConfig sgmm_opts;
-
+    
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
     po.Register("retry-beam", &retry_beam, "Decoding beam for second try "
@@ -71,14 +70,17 @@ int main(int argc, char *argv[]) {
                 "most transition probabilities.]");
     po.Register("gselect", &gselect_rspecifier, "Precomputed Gaussian indices "
                 "(rspecifier)");
-    sgmm_opts.Register(&po);
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (gselect_rspecifier == "")
+      KALDI_ERR << "--gselect option is mandatory.";
+    
     if (retry_beam != 0 && retry_beam <= beam)
       KALDI_WARN << "Beams do not make sense: beam " << beam
                  << ", retry-beam " << retry_beam;
@@ -92,7 +94,7 @@ int main(int argc, char *argv[]) {
     std::string alignment_wspecifier = po.GetArg(4);
 
     TransitionModel trans_model;
-    AmSgmm am_sgmm;
+    AmSgmm2 am_sgmm;
     {
       bool binary;
       Input ki(model_in_filename, &binary);
@@ -110,13 +112,13 @@ int main(int argc, char *argv[]) {
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
-    int num_success = 0, num_no_feat = 0, num_other_error = 0;
+    int num_done = 0, num_err = 0;
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
     for (; !fst_reader.Done(); fst_reader.Next()) {
       std::string utt = fst_reader.Key();
-      if (!feature_reader.HasKey(utt)) num_no_feat++;
+      if (!feature_reader.HasKey(utt)) num_err++;
       else {
         VectorFst<StdArc> decode_fst(fst_reader.Value());
         // stops copy-on-write of the fst by deleting the fst inside the reader,
@@ -126,7 +128,7 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &features = feature_reader.Value(utt);
         if (features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << utt;
-          num_other_error++;
+          num_err++;
           continue;
         }
 
@@ -136,38 +138,37 @@ int main(int argc, char *argv[]) {
           if (!utt2spk_reader.HasKey(utt)) {
             KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
                        << "skipping this utterance.";
-            num_other_error++;
+            num_err++;
             continue;
           } else {
             utt_or_spk = utt2spk_reader.Value(utt);
           }
         }
 
-        SgmmPerSpkDerivedVars spk_vars;
+        Sgmm2PerSpkDerivedVars spk_vars;
         if (spkvecs_reader.IsOpen()) {
           if (spkvecs_reader.HasKey(utt_or_spk)) {
-            spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+            spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt_or_spk));
             am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
           } else {
             KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
-            num_other_error++;
+            num_err++;
             continue;
           }
         }  // else spk_vars is "empty"
 
-        bool have_gselect  = !gselect_rspecifier.empty()
-            && gselect_reader.HasKey(utt)
-            && gselect_reader.Value(utt).size() == features.NumRows();
-        if (!gselect_rspecifier.empty() && !have_gselect)
+        if (!gselect_reader.HasKey(utt)
+            && gselect_reader.Value(utt).size() != features.NumRows()) {
           KALDI_WARN << "No Gaussian-selection info available for utterance "
                      << utt << " (or wrong size)";
-        std::vector<std::vector<int32> > empty_gselect;
-        const std::vector<std::vector<int32> > *gselect =
-            (have_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
+          num_err++;
+        }
+        const std::vector<std::vector<int32> > &gselect =
+            gselect_reader.Value(utt);
 
         if (decode_fst.Start() == fst::kNoStateId) {
           KALDI_WARN << "Empty decoding graph for " << utt;
-          num_other_error++;
+          num_err++;
           continue;
         }
         
@@ -179,9 +180,9 @@ int main(int argc, char *argv[]) {
         }
 
         FasterDecoder decoder(decode_fst, decode_opts);
-
-        DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars, trans_model,
-                                             features, *gselect, log_prune, acoustic_scale);
+        
+        DecodableAmSgmm2Scaled sgmm_decodable(am_sgmm, trans_model, features, gselect,
+                                              log_prune, acoustic_scale, &spk_vars);
 
         decoder.Decode(&sgmm_decodable);
         
@@ -209,9 +210,9 @@ int main(int argc, char *argv[]) {
           BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
           tot_like += like;
           alignment_writer.Write(utt, alignment);
-          num_success ++;
-          if (num_success % 50  == 0) {
-            KALDI_LOG << "Processed " << num_success << " utterances, "
+          num_done ++;
+          if (num_done % 50  == 0) {
+            KALDI_LOG << "Processed " << num_done << " utterances, "
                       << "log-like per frame for " << utt << " is "
                       << (like / features.NumRows()) << " over "
                       << features.NumRows() << " frames.";
@@ -219,16 +220,15 @@ int main(int argc, char *argv[]) {
         } else {
           KALDI_WARN << "Did not successfully decode file " << utt << ", len = "
                      << (features.NumRows());
-          num_other_error++;
+          num_err++;
         }
       }
     }
 
-    KALDI_LOG << "Done " << num_success << ", could not find features for "
-              << num_no_feat << ", other errors on " << num_other_error;
+    KALDI_LOG << "Done " << num_done << ", errors on " << num_err;
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count << " frames.";
-    return (num_success != 0 ? 0 : 1);
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
