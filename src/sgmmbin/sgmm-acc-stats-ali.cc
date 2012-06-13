@@ -1,6 +1,7 @@
 // sgmmbin/sgmm-acc-stats-ali.cc
 
-// Copyright 2009-2012   Saarland University (author:  Arnab Ghoshal)  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012   Saarland University (author:  Arnab Ghoshal);
+//                       Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,7 +73,8 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
+    if (acc_flags & kaldi::kSgmmTransitions)
+      trans_model.InitStats(&transition_accs);
     MleAmSgmmAccs sgmm_accs(rand_prune);
     sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
 
@@ -149,7 +151,8 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < alignment.size(); i++) {
           int32 tid = alignment[i],  // transition identifier.
               pdf_id = trans_model.TransitionIdToPdf(tid);
-          trans_model.Accumulate(1.0, tid, &transition_accs);
+          if (acc_flags & kaldi::kSgmmTransitions)
+            trans_model.Accumulate(1.0, tid, &transition_accs);
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
           else am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &this_gselect);
@@ -184,6 +187,8 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
+      // TODO(arnab): Ideally, we shouldn't be writing transition accs if not
+      // asked for, but that will complicate reading later. To be fixed?
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }

@@ -1,7 +1,7 @@
 // sgmmbin/sgmm-init.cc
 
 // Copyright 2012   Arnab Ghoshal
-// Copyright 2009-2011   Saarland University
+// Copyright 2009-2011   Saarland University (Author: Arnab Ghoshal)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,11 +74,13 @@ int main(int argc, char *argv[]) {
       kaldi::AmSgmm init_sgmm;
       {
         bool binary_read;
+        TransitionModel tmp_trans;
         kaldi::Input ki(init_model_filename, &binary_read);
+        tmp_trans.Read(ki.Stream(), binary_read);
         init_sgmm.Read(ki.Stream(), binary_read);
       }
       sgmm.CopyGlobalsInitVecs(init_sgmm, phn_space_dim, spk_space_dim,
-                               init_sgmm.NumPdfs());
+                               trans_model.NumPdfs());
     } else {
       kaldi::FullGmm ubm;
       {

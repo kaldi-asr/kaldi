@@ -1,6 +1,8 @@
 // sgmmbin/sgmm-acc-stats-gpost.cc
 
-// Copyright 2009-2012   Saarland University  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012   Saarland University (Author: Arnab Ghoshal)
+//                       Microsoft Corporation;
+//                       Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,7 +82,8 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
+    if (acc_flags & kaldi::kSgmmTransitions)
+      trans_model.InitStats(&transition_accs);
     MleAmSgmmAccs sgmm_accs(rand_prune);
     sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
 
@@ -141,7 +144,8 @@ int main(int argc, char *argv[]) {
                 pdf_id = trans_model.TransitionIdToPdf(tid);
 
             BaseFloat weight = gpost[i].posteriors[j].Sum();
-            trans_model.Accumulate(weight, tid, &transition_accs);
+            if (acc_flags & kaldi::kSgmmTransitions)
+              trans_model.Accumulate(weight, tid, &transition_accs);
             sgmm_accs.AccumulateFromPosteriors(am_sgmm, per_frame_vars,
                                                gpost[i].posteriors[j],
                                                spk_vars.v_s,
@@ -165,6 +169,8 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
+      // TODO(arnab): Ideally, we shouldn't be writing transition accs if not
+      // asked for, but that will complicate reading later. To be fixed?
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }

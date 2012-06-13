@@ -1,7 +1,8 @@
 // sgmm/am-sgmm.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;  Yanmin Qian
+// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University (Author: Arnab Ghoshal);
+//                      Ondrej Glembek;  Yanmin Qian;
 //                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -231,6 +232,9 @@ class AmSgmm {
   const SpMatrix<BaseFloat>& GetInvCovars(int32 gauss_index) const {
     return SigmaInv_[gauss_index];
   }
+  const Matrix<BaseFloat>& GetPhoneProjection(int32 gauss_index) const {
+    return M_[gauss_index];
+  }
 
   /// Templated accessors (used to accumulate in different precision)
   template<typename Real>
@@ -312,6 +316,7 @@ class AmSgmm {
   friend class MleAmSgmmUpdater;
   friend class MleSgmmSpeakerAccs;
   friend class AmSgmmFunctions;  // misc functions that need access.
+  friend class MleAmSgmmUpdaterMulti;
 };
 
 template<typename Real>

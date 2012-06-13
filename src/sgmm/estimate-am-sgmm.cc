@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm.cc
 
 // Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;   Yanmin Qian;
+//                      Saarland University (Author: Arnab Ghoshal);
+//                      Ondrej Glembek;   Yanmin Qian;
 //                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -454,9 +455,9 @@ void MleAmSgmmAccs::GetStateOccupancies(Vector<BaseFloat> *occs) const {
   }
 }
 
-void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
-                              AmSgmm *model,
-                              SgmmUpdateFlagsType flags) {
+BaseFloat MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
+                                   AmSgmm *model,
+                                   SgmmUpdateFlagsType flags) {
   KALDI_ASSERT((flags & (kSgmmPhoneVectors | kSgmmPhoneProjections |
                          kSgmmPhoneWeightProjections | kSgmmCovarianceMatrix |
                          kSgmmSubstateWeights | kSgmmSpeakerProjections)) != 0);
@@ -521,6 +522,7 @@ void MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
             << " over " << (accs.total_frames_) << " frames.";
 
   model->ComputeNormalizers();  // So that the model is ready to use.
+  return tot_impr;
 }
 
 // Compute the Q_{i} (Eq. 64)

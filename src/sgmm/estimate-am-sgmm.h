@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm.h
 
 // Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;  Yanmin Qian;
+//                      Saarland University (Author: Arnab Ghoshal);
+//                      Ondrej Glembek;  Yanmin Qian;
 //                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,8 +111,8 @@ struct MleAmSgmmOptions {
 };
 
 /** \class MleAmSgmmAccs
- *  Class for the accumulators associated with the phonetic-subspace model
- *  parameters
+ *  Class for the accumulators associated with the SGMM parameters except
+ *  speaker vectors.
  */
 class MleAmSgmmAccs {
  public:
@@ -165,10 +166,15 @@ class MleAmSgmmAccs {
 
   /// Accessors
   void GetStateOccupancies(Vector<BaseFloat> *occs) const;
+  const std::vector< Matrix<double> >& GetOccs() const {
+    return gamma_;
+  }
   int32 FeatureDim() const { return feature_dim_; }
   int32 PhoneSpaceDim() const { return phn_space_dim_; }
   int32 NumStates() const { return num_states_; }
   int32 NumGauss() const { return num_gaussians_; }
+  double TotalFrames() const { return total_frames_; }
+  double TotalLike() const { return total_like_; }
 
  private:
   /// The stats which are not tied to any state.
@@ -202,6 +208,7 @@ class MleAmSgmmAccs {
   KALDI_DISALLOW_COPY_AND_ASSIGN(MleAmSgmmAccs);
   friend class MleAmSgmmUpdater;
   friend class EbwAmSgmmUpdater;
+  friend class MleAmSgmmGlobalAccs;
 };
 
 /** \class MleAmSgmmUpdater
@@ -215,9 +222,11 @@ class MleAmSgmmUpdater {
     update_options_ = options;
   }
 
-  void Update(const MleAmSgmmAccs &accs,
-              AmSgmm *model,
-              SgmmUpdateFlagsType flags);
+  /// Main update function: Computes some overall stats, does parameter updates
+  /// and returns the total improvement of the different auxiliary functions.
+  BaseFloat Update(const MleAmSgmmAccs &accs,
+                   AmSgmm *model,
+                   SgmmUpdateFlagsType flags);
 
   /// This function is like UpdatePhoneVectorsChecked, which supports
   /// objective-function checking and backtracking but no smoothing term, but it

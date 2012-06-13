@@ -91,8 +91,10 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> num_transition_accs, den_transition_accs;
-    trans_model.InitStats(&num_transition_accs);
-    trans_model.InitStats(&den_transition_accs);
+    if (acc_flags & kaldi::kSgmmTransitions) {
+      trans_model.InitStats(&num_transition_accs);
+      trans_model.InitStats(&den_transition_accs);
+    }
     MleAmSgmmAccs num_sgmm_accs(rand_prune), den_sgmm_accs(rand_prune);
     num_sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
     den_sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);   
@@ -170,8 +172,10 @@ int main(int argc, char *argv[]) {
             BaseFloat weight = posterior[i][j].second,
                 abs_weight = std::abs(weight);
             
-            trans_model.Accumulate(abs_weight, tid,  weight > 0 ?
-                                   &num_transition_accs : &den_transition_accs);
+            if (acc_flags & kaldi::kSgmmTransitions) {
+              trans_model.Accumulate(abs_weight, tid,  weight > 0 ?
+                                     &num_transition_accs : &den_transition_accs);
+            }
             tot_like_this_file +=
                 (weight > 0 ? num_sgmm_accs : den_sgmm_accs).Accumulate(
                     am_sgmm, per_frame_vars, spk_vars.v_s, pdf_id,
@@ -204,6 +208,8 @@ int main(int argc, char *argv[]) {
     
     {
       Output ko(num_accs_wxfilename, binary);
+      // TODO(arnab): Ideally, we shouldn't be writing transition accs if not
+      // asked for, but that will complicate reading later. To be fixed?
       num_transition_accs.Write(ko.Stream(), binary);
       num_sgmm_accs.Write(ko.Stream(), binary);
     }

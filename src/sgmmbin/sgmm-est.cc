@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
       }
 
       if (!occs_out_filename.empty()) {
-        kaldi::Output ko(occs_out_filename, binary_write);
-        state_occs.Write(ko.Stream(), binary_write);
+        kaldi::Output ko(occs_out_filename, false /* no binary write */);
+        state_occs.Write(ko.Stream(), false  /* no binary write */);
       }
     }
 

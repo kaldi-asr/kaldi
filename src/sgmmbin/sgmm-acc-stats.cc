@@ -86,7 +86,8 @@ int main(int argc, char *argv[]) {
     }
 
     Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
+    if (acc_flags & kaldi::kSgmmTransitions)
+      trans_model.InitStats(&transition_accs);
     MleAmSgmmAccs sgmm_accs(rand_prune);
     sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags);
 
@@ -160,7 +161,8 @@ int main(int argc, char *argv[]) {
             int32 tid = posterior[i][j].first,  // transition identifier.
                 pdf_id = trans_model.TransitionIdToPdf(tid);
             BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
+            if (acc_flags & kaldi::kSgmmTransitions)
+              trans_model.Accumulate(weight, tid, &transition_accs);
             tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
                                                        spk_vars.v_s, pdf_id,
                                                        weight, acc_flags)
@@ -193,6 +195,8 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(accs_wxfilename, binary);
+      // TODO(arnab): Ideally, we shouldn't be writing transition accs if not
+      // asked for, but that will complicate reading later. To be fixed?
       transition_accs.Write(ko.Stream(), binary);
       sgmm_accs.Write(ko.Stream(), binary);
     }
