@@ -1,8 +1,9 @@
 // matrix/kaldi-vector.h
 
-// Copyright 2009-2011   Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
-//                       Saarland University;   Ariya Rastrow;   Petr Schwarz;
-//                       Yanmin Qian;   Karel Vesely;   Go Vivace Inc.
+// Copyright 2009-2012   Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
+//                       Saarland University (Author: Arnab Ghoshal);
+//                       Ariya Rastrow;  Petr Schwarz;  Yanmin Qian;
+//                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,6 +116,12 @@ class VectorBase {
   /// Take absolute value of each of the elements
   void Abs();
 
+  /// Applies floor to all elements. Returns number of elements floored.
+  MatrixIndexT ApplyFloor(Real floor_val);
+
+  /// Applies floor to all elements. Returns number of elements floored.
+  MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
+
   /// Apply soft-max to vector and return normalizer (log sum of exponentials).
   /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
   Real ApplySoftMax();
@@ -167,6 +174,12 @@ class VectorBase {
   template<typename OtherReal>
   void MulElements(const VectorBase<OtherReal> &v);
 
+  /// Divide element-by-element by a vector.
+  void DivElements(const VectorBase<Real> &v);
+  /// Divide element-by-element by a vector of different type.
+  template<typename OtherReal>
+  void DivElements(const VectorBase<OtherReal> &v);
+
   /// Add a constant to each element of a vector.
   void Add(Real c);
 
@@ -174,9 +187,6 @@ class VectorBase {
   //  this <-- alpha * v .* r + beta*this .
   void AddVecVec(Real alpha, const VectorBase<Real> &v,
                  const VectorBase<Real> &r, Real beta);
-
-  /// Divide element-by-element by a vector.
-  void DivElemByElem(const VectorBase<Real> &v);
 
   /// Add element-by-element quotient of two vectors.
   ///  this <---- alpha*v/r + beta*this

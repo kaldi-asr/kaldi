@@ -35,7 +35,8 @@ struct MleDiagGmmOptions {
   /// Flags to control which parameters to update
 
   /// Variance floor for each dimension [empty if not supplied].
-  Vector<BaseFloat> variance_floor_vector;
+  /// It is in double since the variance is computed in double precision.
+  Vector<double> variance_floor_vector;
   /// Minimum weight below which a Gaussian is not updated (and is
   /// removed, if remove_low_count_gaussians == true);
   BaseFloat min_gaussian_weight;
@@ -43,7 +44,8 @@ struct MleDiagGmmOptions {
   /// removed, if remove_low_count_gaussians == true).
   BaseFloat min_gaussian_occupancy;
   /// Minimum allowed variance in any dimension (if no variance floor)
-  BaseFloat min_variance;
+  /// It is in double since the variance is computed in double precision.
+  double min_variance;
   bool remove_low_count_gaussians;
   MleDiagGmmOptions() {
     // don't set var floor vector by default.
@@ -170,11 +172,6 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
 /// Calc using the DiagGMM exponential form
 BaseFloat MlObjective(const DiagGmm &gmm,
                       const AccumDiagGmm &diaggmm_acc);
-
-int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
-                           VectorBase<double> *var);
-int32 FloorVariance(const BaseFloat min_variance,
-                    VectorBase<double> *var);
 
 }  // End namespace kaldi
 

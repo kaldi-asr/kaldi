@@ -136,7 +136,7 @@ void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real> *out) const {
   Vector<Real> tmp(Dim());
   tmp.CopyRowFromMat(inv_vars_, gauss);
   out->CopyRowFromMat(means_invvars_, gauss);
-  out->DivElemByElem(tmp);
+  out->DivElements(tmp);
 }
 
 template<class Real>

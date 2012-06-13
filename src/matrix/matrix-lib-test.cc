@@ -1,8 +1,9 @@
 // matrix/matrix-lib-test.cc
 
-// Copyright 2009-2012   Microsoft Corporation;  Mohit Agarwal  Lukas Burget;
-//                       Ondrej Glembek  Saarland University  Go Vivace Inc.
-//                       Yanmin Qian  Jan Silovsky  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012   Microsoft Corporation;  Mohit Agarwal;  Lukas Burget;
+//                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
+//                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
+//                       Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,7 +46,11 @@ start:
   for (MatrixIndexT i = 0;i < M->NumRows();i++)
     for (MatrixIndexT j = 0;j < M->NumCols();j++)
       (*M)(i, j) = RandGauss();
-  if (M->NumRows() != 0 && M->Cond() > 100) { printf("Condition number of random matrix large %f, trying again (this is normal)\n", (float)M->Cond()); goto start; }
+    if (M->NumRows() != 0 && M->Cond() > 100) {
+      printf("Condition number of random matrix large %f, trying again (this is normal)\n",
+             (float) M->Cond());
+      goto start;
+    }
 }
 
 
@@ -304,7 +309,7 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     V2.CopyFromVec(V);
     V3.CopyFromVec(V1);
     V2.InvertElements();
-    V3.DivElemByElem(V);
+    V3.DivElements(V);
     V4.CopyFromVec(V3);
     V4.AddVecDivVec(1.0, V1, V, 0.0);
     AssertEqual(V3, V2);
@@ -350,7 +355,7 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     V1.ApplyExp();
     Real a = V.LogSumExp();
     V2.Set(exp(V.LogSumExp()));
-    V1.DivElemByElem(V2);
+    V1.DivElements(V2);
     Real b = V.ApplySoftMax();
     AssertEqual(V1, V);
     AssertEqual(a, b);

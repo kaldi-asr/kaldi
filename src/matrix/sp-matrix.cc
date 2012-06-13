@@ -591,7 +591,8 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
   KALDI_ASSERT(K>10 && eps<1.0e-10);
   MatrixIndexT dim = x->Dim();
   if (H.IsZero(0.0)) {
-    KALDI_WARN << "Zero quadratic term in quadratic vector problem.";
+    KALDI_WARN << "Zero quadratic term in quadratic vector problem for "
+               << debug_str << ": leaving it unchanged.";
     return 0.0;
   }
   Vector<double> gbar(g);
@@ -613,7 +614,7 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
   }
   Vector<double> tmp(dim);
   tmp.AddMatVec(1.0, U, kTrans, gbar, 0.0);  // tmp = U^T \bar{g}
-  tmp.DivElemByElem(l);  // divide each element of tmp by l: tmp = \tilde{L}^{-1} U^T \bar{g}
+  tmp.DivElements(l);  // divide each element of tmp by l: tmp = \tilde{L}^{-1} U^T \bar{g}
   Vector<double> delta(dim);
   delta.AddMatVec(1.0, U, kNoTrans, tmp, 0.0);  // delta = U tmp = U \tilde{L}^{-1} U^T \bar{g}
   Vector<double> &xhat(tmp);
@@ -664,7 +665,8 @@ SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
   KALDI_ASSERT(K>10 && eps<1.0e-10);
   MatrixIndexT rows = M->NumRows(), cols = M->NumCols();
   if (Q.IsZero(0.0)) {
-    KALDI_WARN << "Zero quadratic term in quadratic matrix problem.";
+    KALDI_WARN << "Zero quadratic term in quadratic matrix problem for "
+               << debug_str << ": leaving it unchanged.";
     return 0.0;
   }
   Matrix<double> Ybar(Y);

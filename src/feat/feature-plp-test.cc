@@ -139,7 +139,7 @@ static void UnitTestHTKCompare1() {
     021413  // PLP_D_A_0
   };
   {
-    std::ofstream os("test_data/test.wav.plp_kaldi.1",
+    std::ofstream os("tmp.test.wav.plp_kaldi.1",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }

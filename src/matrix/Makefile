@@ -8,10 +8,10 @@ OPENFST_LDLIBS =
 include ../kaldi.mk
 
 
-TESTFILES = matrix-lib-test
+TESTFILES = matrix-lib-test kaldi-gpsr-test
 
 OBJFILES = kaldi-matrix.o kaldi-vector.o packed-matrix.o sp-matrix.o tp-matrix.o \
-           matrix-functions.o srfft.o
+           matrix-functions.o srfft.o kaldi-gpsr.o
 
 LIBFILE = kaldi-matrix.a
 

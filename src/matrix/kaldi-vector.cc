@@ -636,6 +636,31 @@ void VectorBase<Real>::Abs() {
 }
 
 template<typename Real>
+MatrixIndexT VectorBase<Real>::ApplyFloor(Real floor_val) {
+  MatrixIndexT num_floored = 0;
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    if (data_[i] < floor_val) {
+      data_[i] = floor_val;
+      num_floored++;
+    }
+  }
+  return num_floored;
+}
+
+template<typename Real>
+MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
+  KALDI_ASSERT(floor_vec.Dim() == dim_);
+  MatrixIndexT num_floored = 0;
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    if (data_[i] < floor_vec(i)) {
+      data_[i] = floor_vec(i);
+      num_floored++;
+    }
+  }
+  return num_floored;
+}
+
+template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
   Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
@@ -664,18 +689,18 @@ void VectorBase<double>::Scale(double alpha) {
 }
 
 template<typename Real>
-void VectorBase<Real>::MulElements(const VectorBase<Real> &rv) {
-  KALDI_ASSERT(dim_ == rv.dim_);
+void VectorBase<Real>::MulElements(const VectorBase<Real> &v) {
+  KALDI_ASSERT(dim_ == v.dim_);
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] *= rv.data_[i];
+    data_[i] *= v.data_[i];
   }
 }
 
 template<typename Real>
 template<typename OtherReal>
-void VectorBase<Real>::MulElements(const VectorBase<OtherReal> &rv) {
-  KALDI_ASSERT(dim_ == rv.Dim());
-  const OtherReal *other_ptr = rv.Data();
+void VectorBase<Real>::MulElements(const VectorBase<OtherReal> &v) {
+  KALDI_ASSERT(dim_ == v.Dim());
+  const OtherReal *other_ptr = v.Data();
   for (MatrixIndexT i = 0; i < dim_; i++) {
     data_[i] *= other_ptr[i];
   }
@@ -707,12 +732,27 @@ void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
 }
 
 template<typename Real>
-void VectorBase<Real>::DivElemByElem(const VectorBase<Real> &rv) {
-  KALDI_ASSERT(dim_ == rv.dim_);
+void VectorBase<Real>::DivElements(const VectorBase<Real> &v) {
+  KALDI_ASSERT(dim_ == v.dim_);
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] /= rv.data_[i];
+    data_[i] /= v.data_[i];
   }
 }
+
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::DivElements(const VectorBase<OtherReal> &v) {
+  KALDI_ASSERT(dim_ == v.Dim());
+  const OtherReal *other_ptr = v.Data();
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    data_[i] /= other_ptr[i];
+  }
+}
+// instantiate template.
+template
+void VectorBase<float>::DivElements(const VectorBase<double> &rv);
+template
+void VectorBase<double>::DivElements(const VectorBase<float> &rv);
 
 template<typename Real>
 void VectorBase<Real>::AddVecDivVec(Real alpha, const VectorBase<Real> &rv,

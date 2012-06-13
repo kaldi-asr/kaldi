@@ -253,31 +253,6 @@ AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)
       mean_accumulator_(other.mean_accumulator_),
       variance_accumulator_(other.variance_accumulator_) {}
 
-int32 FloorVariance(const  VectorBase<BaseFloat> &variance_floor_vector,
-                    VectorBase<double> *var) {
-  int32 ans = 0;
-  KALDI_ASSERT(variance_floor_vector.Dim() == var->Dim());
-  for (int32 i = 0; i < var->Dim(); i++) {
-    if ((*var)(i) < variance_floor_vector(i)) {
-      (*var)(i) = variance_floor_vector(i);
-      ans++;
-    }
-  }
-  return ans;
-}
-
-int32 FloorVariance(const BaseFloat min_variance,
-                    VectorBase<double> *var) {
-  int32 ans = 0;
-  for (int32 i = 0; i < var->Dim(); i++) {
-    if ((*var)(i) < min_variance) {
-      (*var)(i) = min_variance;
-      ans++;
-    }
-  }
-  return ans;
-}
-
 BaseFloat MlObjective(const DiagGmm &gmm,
                       const AccumDiagGmm &diaggmm_acc) {
   GmmFlagsType acc_flags = diaggmm_acc.Flags();
@@ -362,12 +337,15 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
         }
    
         int32 floored;
-        if (config.variance_floor_vector.Dim() != 0)
-          floored = FloorVariance(config.variance_floor_vector, &var);
-        else 
-          floored = FloorVariance(config.min_variance, &var);
+        if (config.variance_floor_vector.Dim() != 0) {
+          floored = var.ApplyFloor(config.variance_floor_vector);
+//          floored = FloorVariance(config.variance_floor_vector, &var);
+        } else {
+          floored = var.ApplyFloor(config.min_variance);
+//          floored = FloorVariance(config.min_variance, &var);
+        }
       
-        if (floored) {
+        if (floored != 0) {
           tot_floored += floored;
           gauss_floored++;
         }
