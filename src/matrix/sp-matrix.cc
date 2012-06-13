@@ -97,7 +97,7 @@ void SpMatrix<Real>::Exp() {
 
 // returns true if positive definite--uses cholesky.
 template<typename Real>
-bool SpMatrix<Real>::IsPosDef() {
+bool SpMatrix<Real>::IsPosDef() const {
   MatrixIndexT D = (*this).NumRows();
   KALDI_ASSERT(D > 0);
   try {

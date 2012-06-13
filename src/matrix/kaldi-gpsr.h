@@ -69,7 +69,6 @@ struct GpsrConfig {
 
   bool debias;  ///< Do debiasing, i.e. unconstrained optimization at the end
   double stop_thresh_debias;  ///< Stopping threshold for debiasing stage
-  int32 min_iters_debias;  ///< Minimum number of iterations for debiasing stage
   int32 max_iters_debias;  ///< Maximum number of iterations for debiasing stage
 
   GpsrConfig() {
@@ -89,7 +88,6 @@ struct GpsrConfig {
 
     debias = false;
     stop_thresh_debias = 0.001;
-    min_iters_debias = 5;
     max_iters_debias = 50;
   }
 
@@ -98,6 +96,9 @@ struct GpsrConfig {
 
 inline void GpsrConfig::Register(ParseOptions *po) {
   std::string module = "GpsrConfig: ";
+  po->Register("use-gpsr-bb", &use_gpsr_bb, module+
+               "Use the Barzilai-Borwein gradient projection method.");
+
   po->Register("stop-thresh", &stop_thresh, module+
                "Stopping threshold for GPSR.");
   po->Register("max-iters", &max_iters, module+
@@ -108,17 +109,22 @@ inline void GpsrConfig::Register(ParseOptions *po) {
                "Minimum step size in feasible direction.");
   po->Register("alpha-max", &alpha_max, module+
                "Maximum step size in feasible direction.");
+  po->Register("max-sparsity", &max_sparsity, module+
+               "Maximum percentage of dimensions set to 0.");
+  po->Register("tau-reduction", &tau_reduction, module+
+               "Multiply tau by this if maximum sparsity is reached.");
+
   po->Register("gpsr-beta", &gpsr_beta, module+
                "Step size reduction factor in backtracking line search (0<beta<1).");
   po->Register("gpsr-mu", &gpsr_mu, module+
                "Improvement factor in backtracking line search (0<mu<1).");
+  po->Register("max-iters-backtrack", &max_iters_backtrak, module+
+               "Maximum number of iterations of backtracking line search.");
 
   po->Register("debias", &debias, module+
                "Do final debiasing step.");
   po->Register("stop-thresh-debias", &stop_thresh_debias, module+
                "Stopping threshold for debiaisng step.");
-  po->Register("min-iters-debias", &min_iters_debias, module+
-               "Minimum number of iterations of debiasing.");
   po->Register("max-iters-debias", &max_iters_debias, module+
                "Maximum number of iterations of debiasing.");
 }
@@ -137,11 +143,16 @@ Real Gpsr(const GpsrConfig &opts, const SpMatrix<Real> &H,
     return GpsrBasic(opts, H, g, x, debug_str);
 }
 
+/// This is the basic GPSR algorithm, where the step size is determined by a
+/// backtracking line search. The line search is called "Armijo rule along the
+/// projection arc" in Bertsekas, Nonlinear Programming, 2nd ed. page 230.
 template<typename Real>
 Real GpsrBasic(const GpsrConfig &opts, const SpMatrix<Real> &H,
                const Vector<Real> &g, Vector<Real> *x,
                const char *debug_str = "[unknown]");
 
+/// This is the paper calls the Barzilai-Borwein variant. This is a constrained
+/// Netwon's method where the Hessian is approximated by scaled identity matrix
 template<typename Real>
 Real GpsrBB(const GpsrConfig &opts, const SpMatrix<Real> &H,
             const Vector<Real> &g, Vector<Real> *x,

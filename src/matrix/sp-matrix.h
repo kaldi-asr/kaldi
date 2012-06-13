@@ -202,7 +202,7 @@ class SpMatrix : public PackedMatrix<Real> {
     KALDI_LOG << "PrintEigs: " << name << ": " << s;
   }
 
-  bool IsPosDef();  // returns true if Cholesky succeeds.
+  bool IsPosDef() const;  // returns true if Cholesky succeeds.
   void AddSp(const Real alpha, const SpMatrix<Real> &Ma) {
     this->AddPacked(alpha, Ma);
   }
