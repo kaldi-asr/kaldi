@@ -72,6 +72,9 @@ local/decode.sh steps/decode_lda_mllt.sh exp/tri3b/decode || exit 1;
 steps/train_lda_etc_mce.sh data/train data/lang exp/tri2b_ali exp/tri3c || exit 1;
 local/decode.sh steps/decode_lda_mllt.sh exp/tri3c/decode || exit 1;
 
+# An experiment with MPE (frame level)
+steps/train_lda_etc_mpe.sh data/train data/lang exp/tri2b_ali exp/tri3mpe || exit 1;
+local/decode.sh steps/decode_lda_mllt.sh exp/tri3mpe/decode || exit 1;
 
 # Do LDA+MLLT+SAT
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d || exit 1;
