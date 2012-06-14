@@ -147,8 +147,8 @@ double Debias(const GpsrConfig &opts, const SpMatrix<double> &H,
   Vector<double> conj_direction(dim);
   Vector<double> resid_change(dim);
   double alpha_cg;  // CG step size for iterate: x <- x + \alpha p
-  double beta_cg;   // CG step size for conj. direction: p <- r + \beta p
-  double resid_prod, resid_prod_new;  // inner product of residuals
+  double beta_cg;   // CG step size for conj. direction: p <- \beta p - r
+  double resid_prod, resid_prod_new;  // inner product of residual vectors
 
   // Calculate the initial residual: r = H x_0 - g
   residual.AddSpVec(1.0, H, x_bias, 0.0);
