@@ -37,12 +37,12 @@ static bool EBWUpdateGaussian(
     VectorBase<double> *mean,
     VectorBase<double> *var,
     double *auxf_impr) {
-  if (! (flags&(kGmmMeans|kGmmVariances)) || occ <= 0.0) { // nothing to do.
+  if (! (flags&(kGmmMeans|kGmmVariances)) || (occ+D) <= 0.0) { // nothing to do.
     if (auxf_impr) *auxf_impr = 0.0;
     mean->CopyFromVec(orig_mean);
     var->CopyFromVec(orig_var);
     return true; 
-  }    
+  }   
   KALDI_ASSERT(!( (flags&kGmmVariances) && !(flags&kGmmMeans))
                && "We didn't make the update cover this case sensibly (update vars not means)");
   
@@ -255,7 +255,7 @@ void UpdateEbwWeightsDiagGmm(const AccumDiagGmm &num_stats, // should have no I-
   if (count_out)
     *count_out += num_occs.Sum(); // only really valid for MMI [not MPE, or MMI
   // with canceled stats]
-
+  
   diaggmmnormal.weights_.CopyFromVec(weights);
 
   // copy to natural representation

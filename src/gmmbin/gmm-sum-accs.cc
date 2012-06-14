@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Summed " << num_accs << " stats, total count "
               << gmm_accs.TotCount() << ", avg like/frame "
               << (gmm_accs.TotLogLike() / gmm_accs.TotCount());
+    KALDI_LOG << "Total count of stats is " << gmm_accs.TotStatsCount();
     KALDI_LOG << "Written stats to " << stats_out_filename;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

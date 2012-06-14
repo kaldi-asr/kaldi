@@ -72,6 +72,9 @@ class AccumAmDiagGmm {
 
   int32 NumAccs() const { return gmm_accumulators_.size(); }
 
+  BaseFloat TotStatsCount() const; // returns the total count got by summing the count
+  // of the actual stats, may differ from TotCount() if e.g. you did I-smoothing.
+  
   // Be careful since total_frames_ is not updated in AccumulateForGaussian
   BaseFloat TotCount() const { return total_frames_; }
   BaseFloat TotLogLike() const { return total_log_like_; }

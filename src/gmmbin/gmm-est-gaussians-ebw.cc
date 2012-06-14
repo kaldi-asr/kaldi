@@ -93,8 +93,8 @@ int main(int argc, char *argv[]) {
       int32 num_floored;
       UpdateEbwAmDiagGmm(num_stats, den_stats, update_flags, ebw_opts, &am_gmm,
                           &auxf_impr, &count, &num_floored);
-      KALDI_LOG << "Num count " << num_stats.TotCount() << ", den count "
-                << den_stats.TotCount();
+      KALDI_LOG << "Num count " << num_stats.TotStatsCount() << ", den count "
+                << den_stats.TotStatsCount();
       KALDI_LOG << "Overall auxf impr/frame from Gaussian update is " << (auxf_impr/count)
                 << " over " << count << " frames; floored D for "
                 << num_floored << " Gaussians.";

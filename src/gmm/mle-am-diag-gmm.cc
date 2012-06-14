@@ -214,6 +214,15 @@ void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
   }
 }
 
+BaseFloat AccumAmDiagGmm::TotStatsCount() const {
+  double ans = 0.0;
+  for (int32 i = 0; i < NumAccs(); i++) {
+    const AccumDiagGmm &acc = GetAcc(i);
+    ans += acc.occupancy().Sum();
+  }
+  return ans;
+}
+
 void AccumAmDiagGmm::Scale(BaseFloat scale) {
   for (int32 i = 0; i < NumAccs(); i++) {
     AccumDiagGmm &acc = GetAcc(i);

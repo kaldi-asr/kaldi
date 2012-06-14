@@ -55,6 +55,8 @@ int main(int argc, char *argv[]) {
         dst_stats_filename = po.GetArg(2),
         stats_out_filename = po.GetArg(3);
 
+    double tot_count_before, tot_count_after;
+
     if (src_stats_or_model_filename == dst_stats_filename) { // as an optimization, just read once.
       KALDI_ASSERT(!smooth_from_model);
       Vector<double> transition_accs;
@@ -65,7 +67,9 @@ int main(int argc, char *argv[]) {
         transition_accs.Read(ki.Stream(), binary);
         stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
+      tot_count_before = stats.TotStatsCount();
       IsmoothStatsAmDiagGmm(stats, tau, &stats);
+      tot_count_after = stats.TotStatsCount();
       Output ko(stats_out_filename, binary_write);
       transition_accs.Write(ko.Stream(), binary_write);
       stats.Write(ko.Stream(), binary_write);
@@ -86,7 +90,9 @@ int main(int argc, char *argv[]) {
         dst_transition_accs.Read(ki.Stream(), binary);
         dst_stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
+      tot_count_before = dst_stats.TotStatsCount();
       IsmoothStatsAmDiagGmmFromModel(am_gmm, tau, &dst_stats);
+      tot_count_after = dst_stats.TotStatsCount();
       Output ko(stats_out_filename, binary_write);
       dst_transition_accs.Write(ko.Stream(), binary_write);
       dst_stats.Write(ko.Stream(), binary_write);
@@ -107,13 +113,16 @@ int main(int argc, char *argv[]) {
         dst_transition_accs.Read(ki.Stream(), binary);
         dst_stats.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
       }
+      tot_count_before = dst_stats.TotStatsCount();
       IsmoothStatsAmDiagGmm(src_stats, tau, &dst_stats);
+      tot_count_after = dst_stats.TotStatsCount();
       
       Output ko(stats_out_filename, binary_write);
       dst_transition_accs.Write(ko.Stream(), binary_write);
       dst_stats.Write(ko.Stream(), binary_write);
     }
-    KALDI_LOG << "Smoothed stats with tau = " << tau;
+    KALDI_LOG << "Smoothed stats with tau = " << tau << ", count changed from "
+              << tot_count_before << " to " << tot_count_after;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

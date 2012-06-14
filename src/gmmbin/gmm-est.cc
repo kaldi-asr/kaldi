@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
                          &objf_impr, &count);
       KALDI_LOG << "GMM update: average " << (objf_impr/count)
                 << " objective function improvement per frame over "
-                <<  (count) <<  " frames.";
+                <<  count <<  " frames";
       KALDI_LOG << "GMM update: Overall avg like per frame = "
                 << (tot_like/tot_t) << " over " << tot_t << " frames.";
     }
