@@ -28,7 +28,9 @@
 #  ali, final.mdl, final.mat
 
 boost=0 # boosting constant, for boosted MMI. 
-tau=200 # Tau value.
+tau=500 # Tau value.  Note, you'll probably want a smaller value if you
+        # smooth to ML.
+smooth_to_model=true
 merge=true # if true, cancel num and den counts as described in 
     # the boosted MMI paper. 
 
@@ -37,9 +39,9 @@ for x in `seq 4`; do
     boost=$2;
     shift 2;
   fi
-  if [ $1 == "--smooth-to-model" ]; then 
+  if [ $1 == "--smooth-to-ml" ]; then 
     shift;
-    smooth_to_model=true
+    smooth_to_model=false
   fi
   if [ $1 == "--tau" ]; then # e.g. "--tau 200
     tau=$2
@@ -111,6 +113,7 @@ scripts/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 
 echo "Making denominator lattices"
 
+if false; then ##TEMP
 rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
@@ -124,6 +127,7 @@ if [ -f $dir/.error ]; then
    echo "Error creating denominator lattices"
    exit 1;
 fi
+fi ##TEMP
 
 # No need to create "numerator" alignments/lattices: we just use the 
 # alignments in $alidir.
@@ -138,13 +142,18 @@ while [ $x -lt $num_iters ]; do
       $dir/num_acc.$x.acc $dir/den_acc.$x.acc ) \
       2>$dir/acc.$x.log || exit 1;
 
-  echo "Iteration $x of MPE: computing ml (smoothing) stats"
-    gmm-acc-stats $dir/$x.mdl "$feats" "ark,s,cs:ali-to-post ark:$alidir/ali ark:- |" \
-      $dir/ml.$x.acc  2>$dir/acc_ml.$x.log || exit 1;
+  if ! $smooth_to_model; then
+    echo "Iteration $x of MPE: computing ml (smoothing) stats"
+      gmm-acc-stats $dir/$x.mdl "$feats" "ark,s,cs:ali-to-post ark:$alidir/ali ark:- |" \
+        $dir/ml.$x.acc  2>$dir/acc_ml.$x.log || exit 1;
+    num_stats="gmm-ismooth-stats --tau=$tau $dir/ml.$x.acc $dir/num_acc.$x.acc -|"
+  else 
+    num_stats="gmm-ismooth-stats --smooth-from-model=true --tau=$tau $dir/$x.mdl $dir/num_acc.$x.acc -|"
+  fi  
 
   # This tau is only used for smoothing "to the model".
-  ( gmm-est-gaussians-ebw $dir/$x.mdl "gmm-ismooth-stats --tau=$tau $dir/ml.$x.acc $dir/num_acc.$x.acc -|" \
-      $dir/den_acc.$x.acc - | \
+  ( gmm-est-gaussians-ebw $dir/$x.mdl  \
+      "$num_stats" $dir/den_acc.$x.acc - | \
     gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl ) \
     2>$dir/update.$x.log || exit 1;
 
@@ -155,7 +164,7 @@ while [ $x -lt $num_iters ]; do
     # for the canceling of stats, and multiply by acoustic scale, to get a predicted
     # objf improvement (correct for a factor of kappa in the objective function).
   echo On iter $x, objf was $objf, auxf improvement from MPE was $impr | tee $dir/objf.$x.log
-  rm $dir/*.acc
+  # rm $dir/*.acc ##TEMP
   x=$[$x+1]
 done
 
