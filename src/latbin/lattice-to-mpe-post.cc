@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Overall average log-like/frame is "
+    KALDI_LOG << "Overall average frame-accuracy is "
               << (total_lat_frame_acc/total_time) << " over " << total_time
               << " frames.";
     KALDI_LOG << "Done " << num_done << " lattices.";

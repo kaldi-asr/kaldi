@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+#  Chao Weng
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -132,7 +133,7 @@ while [ $x -lt $num_iters ]; do
   echo "Iteration $x: getting  stats."
   ( gmm-rescore-lattice $dir/$x.mdl "ark:gunzip -c $dir/lat?.gz|" "$feats" ark:- | \
     lattice-to-mpe-post --acoustic-scale=$acwt $dir/$x.mdl \
-      "ark,s,cs:ali-to-post ark:$alidir/ali ark:- |" ark:- ark:- \| \
+      "ark,s,cs:ali-to-post ark:$alidir/ali ark:- |" ark:- ark:- | \
     gmm-acc-stats2 $dir/$x.mdl "$feats" ark,s,cs:- \
       $dir/num_acc.$x.acc $dir/den_acc.$x.acc ) \
       2>$dir/acc.$x.log || exit 1;
@@ -142,17 +143,18 @@ while [ $x -lt $num_iters ]; do
       $dir/ml.$x.acc  2>$dir/acc_ml.$x.log || exit 1;
 
   # This tau is only used for smoothing "to the model".
-  ( gmm-est-gaussians-ebw $dir/$x.mdl "gmm-ismooth-stats --tau=$tau $dir/ml.$x.acc $dir/num.$x.acc -|" \
+  ( gmm-est-gaussians-ebw $dir/$x.mdl "gmm-ismooth-stats --tau=$tau $dir/ml.$x.acc $dir/num_acc.$x.acc -|" \
       $dir/den_acc.$x.acc - | \
     gmm-est-weights-ebw - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl ) \
     2>$dir/update.$x.log || exit 1;
 
-  objf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $10}'`
-  nf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $12}'`
-  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10*$12;}'`
-  impr=`perl -e "print ($impr/$nf);"` # renormalize by "real" #frames, to correct
-    # for the canceling of stats.
-  echo On iter $x, objf was $objf, auxf improvement from MMI was $impr | tee $dir/objf.$x.log
+  objf=`grep Overall $dir/acc.$x.log  | grep lattice-to-mpe-post | awk '{print $7}'`
+  nf=`grep Overall $dir/acc.$x.log  | grep lattice-to-mpe-post | awk '{print $9}'`
+  impr=`grep Overall $dir/update.$x.log | head -1 | awk '{print $10*$12;}'`
+  impr=`perl -e "print ($impr*$acwt/$nf);"` # renormalize by "real" #frames, to correct
+    # for the canceling of stats, and multiply by acoustic scale, to get a predicted
+    # objf improvement (correct for a factor of kappa in the objective function).
+  echo On iter $x, objf was $objf, auxf improvement from MPE was $impr | tee $dir/objf.$x.log
   rm $dir/*.acc
   x=$[$x+1]
 done
