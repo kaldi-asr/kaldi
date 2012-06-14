@@ -113,7 +113,6 @@ scripts/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 
 echo "Making denominator lattices"
 
-if false; then ##TEMP
 rm $dir/.error 2>/dev/null
 for n in 0 1 2 3; do
    gmm-latgen-simple --beam=$beam --lattice-beam=$latticebeam --acoustic-scale=$acwt \
@@ -127,7 +126,6 @@ if [ -f $dir/.error ]; then
    echo "Error creating denominator lattices"
    exit 1;
 fi
-fi ##TEMP
 
 # No need to create "numerator" alignments/lattices: we just use the 
 # alignments in $alidir.
@@ -164,7 +162,7 @@ while [ $x -lt $num_iters ]; do
     # for the canceling of stats, and multiply by acoustic scale, to get a predicted
     # objf improvement (correct for a factor of kappa in the objective function).
   echo On iter $x, objf was $objf, auxf improvement from MPE was $impr | tee $dir/objf.$x.log
-  # rm $dir/*.acc ##TEMP
+  rm $dir/*.acc
   x=$[$x+1]
 done
 
