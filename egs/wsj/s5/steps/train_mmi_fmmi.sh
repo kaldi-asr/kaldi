@@ -14,8 +14,8 @@ cmd=run.pl
 schedule="fmmi fmmi fmmi fmmi mmi mmi mmi mmi"
 boost=0.0
 learning_rate=0.01
-tau=200 # For model.  Note: we're doing smoothing "to the previous iteration",
-    # so --smooth-from-model so 200 seems like a more sensible default
+tau=400 # For model.  Note: we're doing smoothing "to the previous iteration",
+    # so --smooth-from-model so 400 seems like a more sensible default
     # than 100.  We smooth to the previous iteration because now
     # we are discriminatively training the features (and not using
     # the indirect differential), so it seems like it wouldn't make 
