@@ -232,4 +232,14 @@ void AccumAmDiagGmm::Scale(BaseFloat scale) {
   total_log_like_ *= scale;
 }
 
+void AccumAmDiagGmm::Add(BaseFloat scale, const AccumAmDiagGmm &other) {
+  total_frames_ += scale * other.total_frames_;
+  total_log_like_ += scale * other.total_log_like_;
+  
+  int32 num_accs = NumAccs();
+  KALDI_ASSERT(num_accs == other.NumAccs());
+  for (int32 i = 0; i < num_accs; i++)
+    gmm_accumulators_[i]->Add(scale, *(other.gmm_accumulators_[i]));
+}
+
 }  // namespace kaldi

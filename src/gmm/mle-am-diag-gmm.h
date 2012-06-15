@@ -83,6 +83,8 @@ class AccumAmDiagGmm {
 
   AccumDiagGmm& GetAcc(int32 index);
 
+  void Add(BaseFloat scale, const AccumAmDiagGmm &other);
+
   void Scale(BaseFloat scale);
 
   int32 Dim() const {
