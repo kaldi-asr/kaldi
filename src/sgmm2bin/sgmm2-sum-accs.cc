@@ -47,8 +47,8 @@ int main(int argc, char *argv[]) {
       std::string stats_in_filename = po.GetArg(i);
       bool binary_read;
       kaldi::Input ki(stats_in_filename, &binary_read);
-      transition_accs.Read(ki.Stream(), binary_read, true /* add read values */);
-      sgmm_accs.Read(ki.Stream(), binary_read, true /* add read values */);
+      transition_accs.Read(ki.Stream(), binary_read, true /* add values */);
+      sgmm_accs.Read(ki.Stream(), binary_read, true /* add values */);
     }
 
     // Write out the accs

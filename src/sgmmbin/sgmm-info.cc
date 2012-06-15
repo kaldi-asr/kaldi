@@ -42,13 +42,13 @@ int main(int argc, char *argv[]) {
                 "Print detailed information about transition model.");
 
     po.Read(argc, argv);
-    if (po.NumArgs() != 1) {
+    if (po.NumArgs() < 1) {
       po.PrintUsage();
       exit(1);
     }
 
     for (int i = 1, max = po.NumArgs(); i <= max; ++i) {
-      std::string model_in_filename = po.GetArg(1);
+      std::string model_in_filename = po.GetArg(i);
       AmSgmm am_sgmm;
       TransitionModel trans_model;
       {
@@ -79,8 +79,7 @@ int main(int argc, char *argv[]) {
                  << am_sgmm.NumSubstates(j) << endl;
           }
         }
-        cout << setw(40) << "  Total # of substates " << total_substates
-             << endl;
+        cout << setw(40) << "  Total # of substates " << total_substates << endl;
 
         cout << "\nTransition model information:\n"
              << setw(40) << " # of HMM states" << trans_model.NumPdfs() << endl
