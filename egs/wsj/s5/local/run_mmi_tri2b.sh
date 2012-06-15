@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. ./cmd.sh
+
 # Train and test MMI (and boosted MMI) on tri2b system.
 steps/make_denlats.sh --sub-split 20 --nj 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri2b exp/tri2b_denlats_si84 || exit 1;

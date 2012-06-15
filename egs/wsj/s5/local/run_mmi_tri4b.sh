@@ -1,4 +1,5 @@
 #!/bin/bash
+. ./cmd.sh
 
 steps/make_denlats.sh --nj 30 --sub-split 30 --cmd "$train_cmd" \
   --transform-dir exp/tri4b_ali_si284 \
