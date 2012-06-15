@@ -37,7 +37,7 @@ static bool EBWUpdateGaussian(
     VectorBase<double> *mean,
     VectorBase<double> *var,
     double *auxf_impr) {
-  if (! (flags&(kGmmMeans|kGmmVariances)) || (occ+D) <= 0.0) { // nothing to do.
+  if (! (flags&(kGmmMeans|kGmmVariances))) { // nothing to do.
     if (auxf_impr) *auxf_impr = 0.0;
     mean->CopyFromVec(orig_mean);
     var->CopyFromVec(orig_var);
@@ -149,6 +149,11 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
         var_stats.AddVec(-1.0, den_stats.variance_accumulator().Row(g));
     }
     double D = (opts.tau + opts.E * den_count) / 2;
+    if (D+num_count-den_count <= 0.0) {
+      // ensure +ve-- can be problem if num count == 0 and E=2.
+      D = -1.0001*(num_count-den_count) + 1.0e-10;
+      KALDI_ASSERT(D+num_count-den_count > 0.0);
+    }
     // We initialize to half the value of D that would be dictated by E (and
     // tau); this is part of the strategy used to ensure that the value of D we
     // use is at least twice the value that would ensure positive variances.
@@ -165,12 +170,12 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
         // So double D and commit changes.
         D *= 2.0;
         double auxf_impr = 0.0;
-        EBWUpdateGaussian(D, flags,
-                          diaggmmnormal.means_.Row(g),
-                          diaggmmnormal.vars_.Row(g),
-                          mean_stats, var_stats, num_count-den_count,
-                          &mean, &var, &auxf_impr);
-        
+        bool ans = EBWUpdateGaussian(D, flags,
+                                     diaggmmnormal.means_.Row(g),
+                                     diaggmmnormal.vars_.Row(g),
+                                     mean_stats, var_stats, num_count-den_count,
+                                     &mean, &var, &auxf_impr);
+        KALDI_ASSERT(ans);
         if (auxf_change_out) *auxf_change_out += auxf_impr;
         if (count_out) *count_out += den_count; // The idea is that for MMI, this will
         // reflect the actual #frames trained on (the numerator one would be I-smoothed).
