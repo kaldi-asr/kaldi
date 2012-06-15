@@ -109,6 +109,13 @@ steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd"
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
+# Do MPE.
+steps/train_mpe.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mpe || exit 1;
+steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
+   exp/tri2b/graph data/test exp/tri2b_mpe/decode_it4 || exit 1;
+steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
+   exp/tri2b/graph data/test exp/tri2b_mpe/decode_it3 || exit 1;
+
 ## Do LDA+MLLT+SAT, and decode.
 steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
