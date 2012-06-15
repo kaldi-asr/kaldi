@@ -27,7 +27,7 @@
 #  ali, final.mdl, final.mat
 
 boost=0 # boosting constant, for boosted MMI. 
-tau=200 # Tau value.
+tau=400 # another constant used in MMI update.
 merge=true # if true, cancel num and den counts as described in 
     # the boosted MMI paper. 
 
@@ -144,7 +144,7 @@ while [ $x -lt $num_iters ]; do
 
   objf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $10}'`
   nf=`grep Overall $dir/acc.$x.log  | grep gmm-acc-stats2 | awk '{print $12}'`
-  impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10*$12;}'`
+  impr=`grep Overall $dir/update.$x.log | head -1 | awk '{print $10*$12;}'`
   impr=`perl -e "print ($impr/$nf);"` # renormalize by "real" #frames, to correct
     # for the canceling of stats.
   echo On iter $x, objf was $objf, auxf improvement from MMI was $impr | tee $dir/objf.$x.log
