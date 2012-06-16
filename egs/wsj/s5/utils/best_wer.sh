@@ -18,7 +18,7 @@
 # To be run from one directory above this script.
 
 perl -e 'while(<>){ 
-    if (m/WER (\S+)/ && (!defined $bestwer || $bestwer > $1)){ $bestwer = $1; $bestline=$_; } # kaldi "compute-wer" tool.
+    if (m/[WS]ER (\S+)/ && (!defined $bestwer || $bestwer > $1)){ $bestwer = $1; $bestline=$_; } # kaldi "compute-wer" tool.
     elsif (m: (Mean|Sum/Avg|)\s+\|\s+\S+\s+\S+\s+\|\s+\S+\s+\S+\s+\S+\s+\S+\s+(\S+)\s+\S+\s+\|:
         && (!defined $bestwer || $bestwer > $2)){ $bestwer = $2; $bestline=$_; } }  # sclite.
    if (defined $bestline){ print $bestline; } '

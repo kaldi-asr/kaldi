@@ -48,7 +48,7 @@ loopscale=0.1
 
 required="$lang/L.fst $lang/G.fst $lang/phones.txt $lang/words.txt $lang/phones/silence.csl $lang/phones/disambig.int $model $tree"
 for f in $required; do
-  [ ! -s $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
+  [ ! -f $f ] && echo "mkgraph.sh: expected $f to exist" && exit 1;
 done
 
 mkdir -p $lang/tmp
@@ -103,7 +103,8 @@ fi
 
 cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
-cp $lang/phones/word_boundary.int $dir/phones/ # might be needed for ctm scoring.
+cp $lang/phones/word_boundary.int $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+  # but ignore the error if it's not there.
 cp $lang/phones/silence.csl $dir/phones/ || exit 1;
 
 # to make const fst:

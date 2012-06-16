@@ -18,7 +18,7 @@
 # makes lexicon FST (no pron-probs involved).
 
 if(@ARGV != 1 && @ARGV != 3 && @ARGV != 4) {
-    die "Usage: make_lexicon_fst.pl lexicon.txt [silprob silphone [sil_disambig_sym]] lexiconfst.txt"
+    die "Usage: make_lexicon_fst.pl lexicon.txt [silprob silphone [sil_disambig_sym]] >lexiconfst.txt"
 }
 
 $lexfn = shift @ARGV;

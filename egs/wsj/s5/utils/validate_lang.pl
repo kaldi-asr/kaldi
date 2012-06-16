@@ -9,7 +9,6 @@ if(@ARGV != 1) {
 }
 
 $lang = shift @ARGV;
-
 $exit = 0;
 # Checking phones.txt -------------------------------
 print "Checking $lang/phones.txt ...\n";
@@ -59,7 +58,7 @@ foreach(keys %wsymtab) {
 if(exists $wsymtab{"#0"}) {
   print "--> $lang/words.txt has \"#0\"\n";
   print "--> $lang/words.txt is OK\n";
-} else {print "--> ERROR: $lang/words.txt doesn't have \"#0\"\n"; exit 1;}
+} else {print "--> ERROR: $lang/words.txt doesn't have \"#0\"\n"; $exit = 1;}
 print "\n";
 
 # Checking phones/* -------------------------------

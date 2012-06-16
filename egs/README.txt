@@ -21,6 +21,11 @@ Note: the easiest examples to work with are rm/s3 and wsj/s3.
     get the same data using combinations of other catalog numbers, but this
     is the one we used).
 
+ tidigits: The TI Digits database, available from the LDC (catalog number LDC93S10).
+   This is one of the oldest speech databases; it consists of a bunch of speakers
+   saying digit strings.  It's not considered a "real" task any more, but can be useful
+   for demos, tutorials, and the like.
+
  yesno: This is a simple recipe with some data consisting of a single person
    saying the words "yes" and "no", that can be downloaded from the Kaldi website.
    It's a very easy task, but useful for checking that the scripts run, or if
