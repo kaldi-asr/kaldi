@@ -585,7 +585,7 @@ void MleAmSgmm2Accs::CommitStatsForSpk(const AmSgmm2 &model,
   if (a_s_.Dim() != 0) {
     Vector<BaseFloat> tmp(gamma_s_);
     // tmp(i) = gamma_s^{(i)} - a_i^{(s)} b_i^{(s)}.
-    tmp.AddVecVec(-1.0, Vector<float>(a_s_), spk_vars.b_is, 1.0);
+    tmp.AddVecVec(-1.0, Vector<BaseFloat>(a_s_), spk_vars.b_is, 1.0);
     t_.AddVecVec(1.0, tmp, v_s); // eq. 53 of techreport.
     for (int32 i = 0; i < num_gaussians_; i++) {
       U_[i].AddVec2(a_s_(i) * spk_vars.b_is(i), v_s); // eq. 54 of techreport.

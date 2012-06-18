@@ -434,13 +434,6 @@ class AmSgmm2 {
   std::vector< Matrix<BaseFloat> > w_jmi_;
 
  private:
-  static void SplitToTwoEqualGroups(const std::vector<float> &counts,
-                                    std::vector<int32> *i1,
-                                    std::vector<int32> *i2);
-  
-  ///
-  ///void SplitSubstateWeights(... )
-  
   /// Called inside SplitSubstates(); splits substates of one group.
   void SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
                              const Sgmm2SplitSubstatesConfig &opts,
