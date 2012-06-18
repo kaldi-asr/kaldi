@@ -882,7 +882,7 @@ void MleAmSgmm2Updater::UpdatePhoneVectorsInternal(
           if (exact_auxf >= exact_auxf_start) {
             break;  // terminate backtracking.
           } else {
-            KALDI_LOG << "Backtracking computation of v_jm for j = " << 1j
+            KALDI_LOG << "Backtracking computation of v_jm for j = " << j1
                       << " and m = " << m << " because auxf changed by "
                       << (exact_auxf-exact_auxf_start) << " [vs. predicted:] "
                       << approx_auxf_impr;

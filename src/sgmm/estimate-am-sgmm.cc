@@ -703,7 +703,7 @@ void MleAmSgmmUpdater::UpdatePhoneVectorsInternal(
       double gamma_jm = accs.gamma_[j].Row(m).Sum();
       state_count += gamma_jm;
       Vector<double> g_jm(accs.phn_space_dim_);  // computed using eq. 58
-     SpMatrix<double> H_jm(accs.phn_space_dim_);  // computed using eq. 59
+      SpMatrix<double> H_jm(accs.phn_space_dim_);  // computed using eq. 59
       // First compute normal H_jm.
 
       // need weights for this ...
