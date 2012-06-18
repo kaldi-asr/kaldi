@@ -93,3 +93,4 @@ done
 ln -s $rbm_out.iter$i $rbm_out
 
 echo "$0 finished ok"
+

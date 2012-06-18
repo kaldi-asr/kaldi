@@ -80,7 +80,7 @@ cp $srcdir/transition.mdl $dir/transition.mdl || exit 1; # and the transition mo
 cp $dir/transition.mdl $dir/final.mdl
 
 #TODO: same as GMMs?
-scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+scale_opts="--transition-scale=1.0 --acoustic-scale=0.12 --self-loop-scale=0.1"
 
 
 # prepare features

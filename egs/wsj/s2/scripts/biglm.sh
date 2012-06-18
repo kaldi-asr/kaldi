@@ -66,3 +66,4 @@ runexp
 # RESULTS
 # exp: decode_tri2a_bg_composed_tg_pruned_eval92  %WER 12.92 4.8 RT
 # exp: decode_tri2a_bg_composed_tg_eval92         %WER 12.11 4.0 RT
+

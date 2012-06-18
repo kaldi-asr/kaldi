@@ -15,6 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits> 
+
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
 #include "base/kaldi-common.h"
@@ -110,6 +112,15 @@ int main(int argc, char *argv[]) {
     for (; !feature_reader.Done(); feature_reader.Next()) {
       // read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
+      //check for NaN/inf
+      for(int32 r=0; r<mat.NumRows(); r++) {
+        for(int32 c=0; c<mat.NumCols(); c++) {
+          BaseFloat val = mat(r,c);
+          if(val != val) KALDI_ERR << "NaN in features of : " << feature_reader.Key();
+          if(val == std::numeric_limits<BaseFloat>::infinity())
+            KALDI_ERR << "inf in features of : " << feature_reader.Key();
+        }
+      }
       // push it to gpu
       feats.CopyFromMat(mat);
       // fwd-pass
@@ -129,9 +140,19 @@ int main(int argc, char *argv[]) {
           nnet_out.MulColsVec(priors);
         }
       }
-      
-      // write
+     
+      //download from GPU 
       nnet_out.CopyToMat(&nnet_out_host);
+      //check for NaN/inf
+      for(int32 r=0; r<nnet_out_host.NumRows(); r++) {
+        for(int32 c=0; c<nnet_out_host.NumCols(); c++) {
+          BaseFloat val = nnet_out_host(r,c);
+          if(val != val) KALDI_ERR << "NaN in NNet output of : " << feature_reader.Key();
+          if(val == std::numeric_limits<BaseFloat>::infinity())
+            KALDI_ERR << "inf in NNet coutput of : " << feature_reader.Key();
+        }
+      }
+      // write
       feature_writer.Write(feature_reader.Key(), nnet_out_host);
 
       // progress log

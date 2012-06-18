@@ -186,11 +186,8 @@ class Rbm : public RbmBase {
     //                 -(epsilonw*weightcost)*vishid[t-1]
     //
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
-
-    // vis_hid_corr_.Gemm('T','N',-learn_rate_/N,neg_vis,neg_hid,momentum_);
-    vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_vis, kTrans, neg_hid, kNoTrans, momentum_);
-    // vis_hid_corr_.Gemm('T','N',+learn_rate_/N,pos_vis,pos_hid,1.0);
-    vis_hid_corr_.AddMatMat(+learn_rate_/N, pos_vis, kTrans, pos_hid, kNoTrans, 1.0);
+    vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_hid, kTrans, neg_vis, kNoTrans, momentum_);
+    vis_hid_corr_.AddMatMat(+learn_rate_/N, pos_hid, kTrans, pos_vis, kNoTrans, 1.0);
     vis_hid_corr_.AddMat(-learn_rate_*l2_penalty_, vis_hid_, 1.0);
     vis_hid_.AddMat(1.0, vis_hid_corr_, 1.0);
 

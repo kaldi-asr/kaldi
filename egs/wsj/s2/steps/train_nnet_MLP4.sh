@@ -31,6 +31,9 @@ while [ 1 ]; do
     --model-size)
       shift; modelsize=$1; shift;
       ;;
+    --learn-rate)
+      shift; lrate=$1; shift;
+      ;;
     --lrate)
       shift; lrate=$1; shift;
       ;;
@@ -51,6 +54,9 @@ while [ 1 ]; do
       ;;
     --dct-basis)
       shift; dct_basis=$1; shift;
+      ;;
+    --*)
+      echo "ERROR : Unknown argument $1"; exit 1;
       ;;
     *)
       break;

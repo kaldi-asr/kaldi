@@ -19,17 +19,77 @@
 namespace kaldi {
 /**
   \page nnet the Neural Network library
-  
-  TODO
 
-  \section Interfaces
-  \ref Component
-  forward, backward
-  \ref UpdatableComponent
-  forward, backward, gradient, update
+  \section nnet
+  Kaldi has a support for acoustic modelling by Multi-Layer Perceptron (MLP).
+  The folder ^/trunk/src/nnet contains the neural networks classes
+  and some additional classes, that are used during training.
 
-  \section Neural Network class
-  A vector of components, layers are accessible
+  The implementated training algorithm is Stochastic Gradient Descent,
+  which does updates per a block of datapoints (ie. bunch).
+  The training is supposed to run on a GPU, so the nnet library 
+  depends on cudamatrix library.
+
+  In order to simulate the ``Stochastic'' sampling of the distribution of the input/target pairs from training set,
+  there is implemented 2-level shuffling: 1st the feature-list shuffling, which is done outside in the training scripts, 
+  and 2nd the frame level shuffling which is perfomed inside the trainig tools.
+
+  Last but not least, the nnet library contains GPU implementation of training 
+  algorithm for currently very popular Restricted Boltzmann Machines (RBM).
+  There algorithm is Contrastive Divergence (CD-1), and allows training both 
+  the Bernoulli and Gaussian units.
+
+
+  \section design of nnet library
+  The key aspect of the design is ``as simple extensibility as possible''. Exactly for this reason there has been created two interfaces: 
+   - \ref Component : i-face for a general part that will be used to compose neural network, which does not contain trainable parameters
+   - \ref UpdatableComponent : this i-face extends \ref Component by adding it methods needed for training parameters
+  The most important pure-virtual methods of \ref Component and \ref UpdatableComponent are:
+   - \ref Component::PropagateFnc : this method will compute a function used during propagation  
+   - \ref Component::BackpropagateFnc : this method will compute a function used during back-propagation  
+   - \ref UpdatableComponent::Update : this method will compute the gradient based on the input matrix and error matrix and will perform update
+
+  The abstract \ref Component interface is directly implemented by classes :
+   - \ref Sigmoid : module which computes the logistic sigmoid transform and its derivative
+   - \ref Softmax : module which computes the softmax transform and copies the input error to the output
+  The abstract \ref UpdatableComponent iterface is implemented by classes : 
+   - \ref BiasedLinearity : this module contains the linear part of a neural network layer
+   - \ref Rbm : this modulue holds the parameters of the Restricted Botlzmann Machine 
+     (when training deep network it gets converted to \ref BiasedLinearity and \ref Sigmoid)
+
+  The neural network class \ref Nnet is then implemented as a vector of components and two vectors for intermediate data needed for the training.
+  Most imporant methods are:
+   - \ref Nnet::Propagate : this is for input-feature propagation during the training
+   - \ref Nnet::Backpropagate : this is for global-error back-propagation during the training
+   - \ref Nnet::Feedforward : this does the same as Nnet::Propagate, the difference is that it uses only two flipping buffers for hidden layers, so it is more memory efficient
+   - \ref Nnet::SetLearnRate : this method sets the learning rate. It can be different for individual layers, scaling factors can be provided as a string in the second argument
+  We should also mention, that both the Components and buffers are accessible via const references, this is handy for example when debugging.
+
+  The training can optimize the Mean Square Error \ref Mse of Cross Entropy \ref Xent loss function.
+  The key methods are \ref Mse::Eval , \ref Xent::Eval and \ref Xent::EvalVec .
+  These methods are used to both produce the global error matrices for back-propagation, 
+  as well as accumulate the error statistics for print in the end of the epoch. 
+
+  The frame level shuffling feature is in the classes \ref Cache and \ref CacheTgtMat. 
+  The first variant is for targets encoded as vectors of indexes, the second is for targets encoded as matrices.
+
+  \section extending the neural network by new component
+  Extension of the existing neural network code by adding new component is very easy.
+  To do it you have to do 4 steps : 
+   - 1) define new entry to \ref Component::ComponentType
+   - 2) define new line in table \ref Component::kMarkerMap
+   - 3) add dynamic constructor call to factory-like function \ref Component::Read
+   - 4) implement the the interface \ref Component:: or \ref UpdatableComponent::
+
+  \section nnetbin
+  The training tools are located in, the most important tools are: 
+   - nnet-train-xent-hardlab-frmshuff : this tool is used during trainig, it optimizes the cross entropy of the posteriors and targets, while a Viterbi-path hard-labels are used as 1-of-M encoded targets, frame-level shuffling is done between the feature transform and the trained neural network.
+   - nnet-forward : this tool is used during decoding, it propagated the features by the neural network and stores them on the output. This tool is often used in the feature extraction pipeline of the decoder. If the machine, where the decoder is run, is not equipped with a suitable GPU, the CPU is used instead.
+
+  The tools training tools perform one iteration per run of the program, 
+  the learning rate scheduling (ie. halving) is done on the bash-script level.
+
+
 
 */
 }  

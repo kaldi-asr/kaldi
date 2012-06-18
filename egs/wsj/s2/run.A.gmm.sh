@@ -158,7 +158,7 @@ for numleaves in ${numleavesL[@]}; do
     $numleaves 15000 data/train_si84 data/lang exp/tri1_ali_si84 $dir || exit 1;
   # Decode
   (
-  $mkgraph_cmd scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
+  $mkgraph_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh $dir/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh $dir/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
   )&
@@ -191,7 +191,7 @@ for numleaves in ${numleavesL[@]}; do
   (
   $mkgraph_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh $dir/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
-  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh $did/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh $dir/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
   )&
 
   # Align si84 with tri2b-2500

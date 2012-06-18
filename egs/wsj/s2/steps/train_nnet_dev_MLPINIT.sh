@@ -25,6 +25,9 @@
 
 while [ 1 ]; do
   case $1 in
+    --learn-rate)
+      shift; lrate=$1; shift;
+      ;;
     --lrate)
       shift; lrate=$1; shift;
       ;;
@@ -48,6 +51,9 @@ while [ 1 ]; do
       ;;
     --mlp-init)
       shift; mlp_init=$1; shift;
+      ;;
+    --*)
+      echo "ERROR : Unknown argument $1"; exit 1;
       ;;
     *)
       break;
