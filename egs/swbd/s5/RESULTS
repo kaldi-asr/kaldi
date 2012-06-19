@@ -7,8 +7,28 @@ exp/tri1/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 |
 exp/tri2/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 57.3   30.1   12.6    4.0   46.7   74.9 |
 exp/tri3a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 59.9   28.1   12.0    4.0   44.1   74.3 |
 exp/tri4a/decode_eval2000/score_14/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 67.2   23.2    9.6    3.6   36.4   70.1 |
-
 exp/tri4a/decode_train_dev/wer_14:%WER 36.12 [ 17503 / 48460, 2057 ins, 4271 del, 11175 sub ]
 
-exp/sgmm5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.2   18.6    7.2    3.3   29.0   65.8 |
+exp/tri5a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 71.6   20.9    7.5    3.9   32.2   68.2 |
+
+  exp/tri5a_mmi_b0.1/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 73.5   18.8    7.7    3.1   29.7   65.8 |
+
+  exp/tri5a_fmmi_b0.1/decode_eval2000_it4/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 72.8   19.3    7.9    3.3   30.5   66.5 |
+  exp/tri5a_fmmi_b0.1/decode_eval2000_it5/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 73.8   18.7    7.5    3.4   29.6   65.8 |
+  exp/tri5a_fmmi_b0.1/decode_eval2000_it6/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.5   18.7    6.8    3.7   29.2   65.7 |
+  exp/tri5a_fmmi_b0.1/decode_eval2000_it7/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.4   18.2    7.4    3.3   28.9   65.5 |
+  exp/tri5a_fmmi_b0.1/decode_eval2000_it8/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.5   18.1    7.4    3.4   *28.9*   65.5 |
+
+   exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it4/score_12/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 73.3   18.9    7.8    3.1    29.8   65.8 |
+  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it5/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 73.7   18.9    7.4    3.3    29.6   65.8 |
+  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it6/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.1   18.6    7.3    3.3    29.2   65.6 |
+  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it7/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.4   18.3    7.3    3.3    28.9   65.4 |
+   exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it8/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.4   18.2    7.4    3.3    *28.9*   65.4 |
+
+
+exp/sgmm5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.2   18.6    7.2    3.3   *29.0*   65.8 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 75.5   17.8    6.7    3.2   27.7   64.4 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it2/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.3   17.2    6.5    3.2   26.9   63.6 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it3/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.6   17.0    6.4    3.3   26.7   63.6 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.9   16.9    6.2    3.4   *26.5*   63.5 |
 

@@ -218,25 +218,13 @@ steps/train_mmi_fmmi.sh --learning-rate 0.005 \
   --boost 0.1 --cmd "$train_cmd" \
  data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
    exp/tri5a_fmmi_b0.1 || exit 1;
- # TODO: rerun this, was done with wrong config:
  for iter in 4 5 6 7 8; do
   steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
      --config conf/decode.config --transform-dir exp/tri5a/decode_eval2000 \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1/decode_eval2000_it$iter &
  done
 
-steps/train_mmi_fmmi.sh --learning-rate 0.005 \
-  --boost 0.1 --cmd "$train_cmd" \
- data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
-   exp/tri5a_fmmi_b0.1_b || exit 1;
- for iter in 4 5 6 7 8; do
-  steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-     --config conf/decode.config --transform-dir exp/tri5a/decode_eval2000 \
-     exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_b/decode_eval2000_it$iter &
- done
-
-
-#TEMP:
+# Recipe with indirect differential [doesn't make difference here]
 steps/train_mmi_fmmi_indirect.sh \
   --boost 0.1 --cmd "$train_cmd" \
  data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm exp/tri5a_denlats_100k_nodup \
@@ -248,51 +236,7 @@ steps/train_mmi_fmmi_indirect.sh \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it$iter &
  done
 
-
-
-
-#HERE.
-exit 0;
-
-
-  # Use a smaller beam for Switchboard, as in test time.  Use the 100k dataset,
-  # but include duplicates for discriminative training.
-  steps/make_denlats_lda_etc.sh --nj 40 --sub-split 40 --cmd "$train_cmd" \
-    $decode_opts1 --lattice-beam 6.0 data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k
-  steps/train_lda_etc_mmi.sh --nj 40 --cmd "$train_cmd" \
-  data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k exp/tri5a exp/tri5a_mmi
-  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
-     steps/decode_lda_etc.sh exp/tri5a/graph data/eval2000 exp/tri5a_mmi/decode_eval2000 \
-     exp/tri5a/decode_eval2000
-  steps/train_lda_etc_mmi.sh --boost 0.1 --nj 40 --cmd "$train_cmd" \
-    data/train_100k data/lang exp/tri5a_ali_100k exp/tri5a_denlats_100k \
-    exp/tri5a exp/tri5a_mmi_b0.1
-  utils/decode.sh -l data/lang_test --nj 30 --cmd "$decode_cmd" --opts "$decode_opts1" \
-    steps/decode_lda_etc.sh exp/tri5a/graph  data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 \
-    exp/tri5a/decode_eval2000
-)
-
-
-# Align the 5a system; we'll train triphone and SGMM systems on
-# all the data, on top of this.
-steps/align_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri5a exp/tri5a_ali_nodup
-
-( # Train triphone system on all the data.
- steps/train_lda_mllt_sat.sh  --nj 30 --cmd "$train_cmd" \
-   4000 150000 data/train_nodup data/lang exp/tri5a_ali_nodup exp/tri6a
-
- utils/mkgraph.sh data/lang_test exp/tri6a exp/tri6a/graph
- utils/decode.sh --opts "$decode_opts2" \
-   -l data/lang_test --nj 30 --cmd "$decode_cmd" \
-   steps/decode_lda_mllt_sat.sh exp/tri6a/graph data/eval2000 exp/tri6a/decode_eval2000
-
- utils/decode.sh --opts "$decode_opts2" \
-   --nj 30 --cmd "$decode_cmd" \
-   steps/decode_lda_mllt_sat.sh exp/tri6a/graph data/train_dev exp/tri6a/decode_train_dev
-
-)
-
+# Note: we haven't yet run with all the data.
 
 
 # getting results (see RESULTS file)
