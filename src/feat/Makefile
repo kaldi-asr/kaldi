@@ -6,7 +6,8 @@ include ../kaldi.mk
 
 TESTFILES = feature-mfcc-test feature-plp-test feature-fbank-test
 
-OBJFILES = feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o mel-computations.o wave-reader.o 
+OBJFILES = feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o \
+              feature-spectrogram.o mel-computations.o wave-reader.o 
 
 LIBFILE = kaldi-feature.a 
 
