@@ -213,7 +213,7 @@ if (!defined $jobname) { # not an array job.
 
 $num_failed = 0;
 foreach $l (@logfiles) {
-  @wait_times = (0.1, 1.0, 5.0, 25.0);
+  @wait_times = (0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1.0, 2.0, 5.0, 5.0, 5.0, 10.0, 25.0);
   for ($iter = 0; $iter <= @wait_times; $iter++) {
     $line = `tail -1 $l 2>/dev/null`;
     if ($line =~ m/with status (\d+)/) {
