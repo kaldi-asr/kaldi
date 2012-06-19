@@ -98,8 +98,16 @@ class FullGmm {
 
   /// Merge the components and remember the order in which the components were 
   /// merged (flat list of pairs)
-  void Merge(int32 target_components, std::vector<int32> *history = NULL);
+  void Merge(int32 target_components,
+             std::vector<int32> *history = NULL);
 
+  /// Merge the components and remember the order in which the components were 
+  /// merged (flat list of pairs); this version only considers merging
+  /// pairs in "preselect_pairs" (or their descendants after merging).
+  /// This is for efficiency, for large models.  Returns the delta likelihood.
+  BaseFloat MergePreselect(int32 target_components,
+                           const std::vector<std::pair<int32, int32> > &preselect_pairs);
+  
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
   
@@ -176,7 +184,7 @@ class FullGmm {
   // merged_components_logdet computes logdet for merged components
   // f1, f2 are first-order stats (normalized by zero-order stats)
   // s1, s2 are second-order stats (normalized by zero-order stats)
-  BaseFloat merged_components_logdet(BaseFloat w1, BaseFloat w2,
+  BaseFloat MergedComponentsLogdet(BaseFloat w1, BaseFloat w2,
                                      const VectorBase<BaseFloat> &f1,
                                      const VectorBase<BaseFloat> &f2,
                                      const SpMatrix<BaseFloat> &s1,

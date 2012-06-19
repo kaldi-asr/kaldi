@@ -221,7 +221,7 @@ while [ $x -lt $num_iters ]; do
 
    if [ $stage -le $x ]; then
      $cmd $dir/log/update.$x.log \
-       sgmm2-est --self-weight=$self_weight_split --update-flags=$flags \
+       sgmm2-est --update-flags=$flags \
         --split-substates=$numsubstates $increase_dim_opts --write-occs=$dir/$[$x+1].occs \
        $dir/$x.mdl "sgmm2-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
      rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null

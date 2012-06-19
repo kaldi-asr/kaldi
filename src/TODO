@@ -42,19 +42,11 @@ minor:
  document the --cmd options in wsj/s3 scripts
  change sgmm code so gselect is no longer optional [only in discrim/?]
  Make sure scripts don't depend on . being on PATH
- Make ApplySoftMax() function more efficient (does two exp()'s per element)
 
-gmm-latgen-faster [Not started].  Need to write internal code for this (Mirko, but possibly wait a bit till I finalize lattice-simple-decoder.).  As gmm-latgen-simple but not using std::unordered_map for current + previous frame's tokens-- would use the HashList stuff.
 
 lattice-rand-path [not started]  Eventually have a version that computes a random path weighted by probability?  Not sure how useful.
 
-lattice-combine [not started]  This would take two archives of lattices with identical topologies and possibly different scores, and combine the scores in some, probably linear, way.  It's a cheap way to emulate having more than 2 weights on the lattice.  Let's not create this until we have a use for it though.
 
-lex-rescore-lattice [not started].  This would add in the probabilities from the lexicon to the graph part of the lattice score.  This is a tricky algorithm that involves working out the corresponding phone-sequences for paths through the lattices, and simultaneously matching the labels on both sides of the (lattice and lexicon) FSTs.  I'll work on this at some point.
-
-transition-rescore-lattice: add transition-probs to a lattice. [possible..]
-
-lattice-nbest [not started] From a lattice, create N-best lists.  (I think the ShortestPath algorithm does what we need).  There are different possible outputs to this program, e.g.: word-Nbest (using Int32VectorVectorWriter), transition-id-Nbest (using the same), acoustic scores (BaseFloatVectorWriter), LM scores, acoustic+lm scores?  I'm not sure whether the same program should do all this.  Note: the ShortestPath algorithm creates an FST representing the N-best list, and we could consider writing this FST form too.  Perhaps we should wait till we see what the output is needed for.
 
 =============
 COMPLETED, MAY REQUIRE ADDITIONAL FEATURES

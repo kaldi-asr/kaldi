@@ -69,7 +69,7 @@ void AmSgmm2::Read(std::istream &in_stream, bool binary) {
     v_.clear();
   }
   // removing anything that was in the object before.
-  int32 num_pdfs, feat_dim, num_gauss;
+  int32 num_pdfs = -1, feat_dim, num_gauss;
   std::string token;
 
   ExpectToken(in_stream, binary, "<SGMM>");
@@ -77,6 +77,9 @@ void AmSgmm2::Read(std::istream &in_stream, bool binary) {
   ReadBasicType(in_stream, binary, &num_pdfs);
   ExpectToken(in_stream, binary, "<DIMENSION>");
   ReadBasicType(in_stream, binary, &feat_dim);
+  ExpectToken(in_stream, binary, "<NUMGAUSS>");
+  ReadBasicType(in_stream, binary, &num_gauss);
+  
   KALDI_ASSERT(num_pdfs > 0 && feat_dim > 0);
 
   ReadToken(in_stream, binary, &token);
@@ -85,27 +88,23 @@ void AmSgmm2::Read(std::istream &in_stream, bool binary) {
     if (token == "<PDF2GROUP>") {
       ReadIntegerVector(in_stream, binary, &pdf2group_);
       ComputePdfMappings();
+    } else if (token == "<WEIGHTIDX2GAUSS>") {
+      ReadIntegerVector(in_stream, binary, &weightidx2gauss_);
     } else if (token == "<DIAG_UBM>") {
       diag_ubm_.Read(in_stream, binary);
     } else if (token == "<FULL_UBM>") {
       full_ubm_.Read(in_stream, binary);
     } else if (token == "<SigmaInv>") {
-      ExpectToken(in_stream, binary, "<NUMGaussians>");
-      ReadBasicType(in_stream, binary, &num_gauss);
       SigmaInv_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; i++) {
         SigmaInv_[i].Read(in_stream, binary);
       }
     } else if (token == "<M>") {
-      ExpectToken(in_stream, binary, "<NUMGaussians>");
-      ReadBasicType(in_stream, binary, &num_gauss);
       M_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; i++) {
         M_[i].Read(in_stream, binary);
       }
     } else if (token == "<N>") {
-      ExpectToken(in_stream, binary, "<NUMGaussians>");
-      ReadBasicType(in_stream, binary, &num_gauss);
       N_.resize(num_gauss);
       for (int32 i = 0; i < num_gauss; i++) {
         N_[i].Read(in_stream, binary);
@@ -145,10 +144,14 @@ void AmSgmm2::Read(std::istream &in_stream, bool binary) {
   if (pdf2group_.empty())
     ComputePdfMappings(); // sets up group2pdf_, and pdf2group_ if reading
   // old model.
+  if (weightidx2gauss_.empty())
+    for (int32 i = 0; i < NumGauss(); i++)
+      weightidx2gauss_[i] = i;
   
   if (n_.empty())
     ComputeNormalizers();
-  ComputeWeights();
+  if (HasSpeakerDependentWeights())
+    ComputeWeights();
 }
 
 int32 AmSgmm2::Pdf2Group(int32 j2) const {
@@ -170,6 +173,8 @@ void AmSgmm2::Write(std::ostream &out_stream,
   WriteBasicType(out_stream, binary, num_pdfs);
   WriteToken(out_stream, binary, "<DIMENSION>");
   WriteBasicType(out_stream, binary, feat_dim);
+  WriteToken(out_stream, binary, "<NUMGAUSS>");
+  WriteBasicType(out_stream, binary, num_gauss);
   if (!binary) out_stream << "\n";
 
   if (write_params & kSgmmBackgroundGmms) {
@@ -180,24 +185,20 @@ void AmSgmm2::Write(std::ostream &out_stream,
   }
 
   if (write_params & kSgmmGlobalParams) {
+    WriteToken(out_stream, binary, "<WEIGHTIDX2GAUSS>");
+    WriteIntegerVector(out_stream, binary, weightidx2gauss_);
     WriteToken(out_stream, binary, "<SigmaInv>");
-    WriteToken(out_stream, binary, "<NUMGaussians>");
-    WriteBasicType(out_stream, binary, num_gauss);
     if (!binary) out_stream << "\n";
     for (int32 i = 0; i < num_gauss; i++) {
       SigmaInv_[i].Write(out_stream, binary);
     }
     WriteToken(out_stream, binary, "<M>");
-    WriteToken(out_stream, binary, "<NUMGaussians>");
-    WriteBasicType(out_stream, binary, num_gauss);
     if (!binary) out_stream << "\n";
     for (int32 i = 0; i < num_gauss; i++) {
       M_[i].Write(out_stream, binary);
     }
     if (N_.size() != 0) {
       WriteToken(out_stream, binary, "<N>");
-      WriteToken(out_stream, binary, "<NUMGaussians>");
-      WriteBasicType(out_stream, binary, num_gauss);
       if (!binary) out_stream << "\n";
       for (int32 i = 0; i < num_gauss; i++) {
         N_[i].Write(out_stream, binary);
@@ -239,14 +240,17 @@ void AmSgmm2::Check(bool show_properties) {
       num_gauss = NumGauss(),
       feat_dim = FeatureDim(),
       phn_dim = PhoneSpaceDim(),
-      spk_dim = SpkSpaceDim();
-
+      spk_dim = SpkSpaceDim(),
+      weight_dim = weightidx2gauss_.size();
+  
   if (show_properties)
     KALDI_LOG << "AmSgmm2: #pdfs = " << J2 << ", #pdf-groups = "
               << J1 << ", #Gaussians = "
               << num_gauss << ", feature dim = " << feat_dim
               << ", phone-space dim =" << phn_dim
-              << ", speaker-space dim =" << spk_dim;
+              << ", speaker-space dim =" << spk_dim
+              <<", weight dim =" << weight_dim;
+  
   KALDI_ASSERT(J1 > 0 && num_gauss > 0 && feat_dim > 0 && phn_dim > 0
                && J2 > 0 && J2 >= J1);
   
@@ -286,8 +290,16 @@ void AmSgmm2::Check(bool show_properties) {
     KALDI_ASSERT(M_[i].NumRows() == feat_dim && M_[i].NumCols() == phn_dim);
   }
 
-  KALDI_ASSERT(w_.NumRows() == num_gauss && w_.NumCols() == phn_dim);
-
+  { // check that weightidx2gauss_ has each Gaussian-index seen.
+    KALDI_ASSERT(weight_dim >= num_gauss);
+    vector<int32> v(weightidx2gauss_);
+    SortAndUniq(&v);
+    KALDI_ASSERT(v.size() == static_cast<size_t>(num_gauss)
+                 && v.front() == 0 && v.back()+1 == num_gauss);
+  }
+  
+  KALDI_ASSERT(w_.NumRows() == weight_dim && w_.NumCols() == phn_dim);
+  
   {  // check v, c.
     KALDI_ASSERT(v_.size() == static_cast<size_t>(J1) &&
                  c_.size() == static_cast<size_t>(J2));
@@ -375,6 +387,9 @@ void AmSgmm2::InitializeFromFullGmm(const FullGmm &full_gmm,
   InitializeVecsAndSubstateWeights(self_weight);
   KALDI_LOG << "Initializing variances";
   InitializeCovars();
+  int I = NumGauss();
+  weightidx2gauss_.resize(I);
+  for (int i = 0; i < I; i++) weightidx2gauss_[i] = i; // 1-to-1 mapping initially.
 }
 
 void AmSgmm2::CopyFromSgmm2(const AmSgmm2 &other,
@@ -392,6 +407,7 @@ void AmSgmm2::CopyFromSgmm2(const AmSgmm2 &other,
   SigmaInv_ = other.SigmaInv_;
   M_ = other.M_;
   w_ = other.w_;
+  weightidx2gauss_ = other.weightidx2gauss_;
   N_ = other.N_;
   u_ = other.u_;
 
@@ -758,13 +774,32 @@ void AmSgmm2::IncreaseSpkSpaceDim(int32 target_dim,
   }
 }
 
+void AmSgmm2::ComputeLogWeights(int32 j1, int32 substate,
+                                bool normalize,
+                                VectorBase<BaseFloat> *weight_out) const {
+  KALDI_ASSERT(weight_out->Dim() == NumGauss());
+  int32 num_weights = weightidx2gauss_.size();
+  KALDI_ASSERT(w_.NumRows() == num_weights);
+  Vector<float> weight_full(num_weights);
+  weight_full.AddMatVec(1.0, w_, kNoTrans, v_[j1].Row(substate), 0.0);
+  weight_out->Set(kLogZeroFloat); // negative infinity.
+  for (int32 i2 = 0; i2 < num_weights; i2++) {
+    int32 i = weightidx2gauss_[i2];
+    (*weight_out)(i) = LogAdd((*weight_out)(i), weight_full(i2));
+  }
+  if (normalize) weight_out->Add(-1.0 * weight_out->LogSumExp());
+}
+
 void AmSgmm2::ComputeWeights() {
+  KALDI_ASSERT(w_.NumRows() == NumGauss() &&
+               "We don't support speaker-dependent weights with "
+               "extra weight indices.");
   int32 J1 = NumGroups();
   w_jmi_.resize(J1);
-  int32 i = NumGauss();
+  int32 I = NumGauss();
   for (int32 j1 = 0; j1 < J1; j1++) {
     int32 M = NumSubstatesForGroup(j1);
-    w_jmi_[j1].Resize(M, i);
+    w_jmi_[j1].Resize(M, I);
     w_jmi_[j1].AddMatMat(1.0, v_[j1], kNoTrans, w_, kTrans, 0.0);
     // now w_jmi_ contains un-normalized log weights.
     for (int32 m = 0; m < M; m++)
@@ -864,19 +899,18 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
   int32 I = NumGauss();
   for (int32 j1 = j_start; j1 < j_end; j1++) {
     int32 M = NumSubstatesForGroup(j1);
-    Matrix<BaseFloat> log_w_jm(M, I);
+    Matrix<BaseFloat> log_w_j(M, I);
     n_[j1].Resize(I, M);
     Matrix<BaseFloat> mu_jmi(M, FeatureDim());
     Matrix<BaseFloat> SigmaInv_mu(M, FeatureDim());
         
-    // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
-    log_w_jm.AddMatMat(1.0, v_[j1], kNoTrans, w_, kTrans, 0.0);
     for (int32 m = 0; m < M; m++) {
-      log_w_jm.Row(m).Add(-1.0 * log_w_jm.Row(m).LogSumExp());    
+      SubVector<BaseFloat> log_w_jm(log_w_j, m);
+      ComputeLogWeights(j1, m, true, &log_w_jm);
       {  // DIAGNOSTIC CODE
         (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
-          (*entropy_sum) -= log_w_jm(m, i) * exp(log_w_jm(m, i));
+          (*entropy_sum) -= log_w_jm(i) * exp(log_w_jm(i));
         }
       }
     }      
@@ -895,14 +929,14 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
         // at this point [included later on.]
 
         // eq.(31)
-        n_[j1](i, m) = log_w_jm(m, i) - 0.5 * (log_det_Sigma(i) + DLog2pi
-            + mu_SigmaInv_mu);
+        n_[j1](i, m) = log_w_j(m, i) - 0.5 * (log_det_Sigma(i) + DLog2pi
+                                            + mu_SigmaInv_mu);
         {  // Mainly diagnostic code.  Not necessary.
           BaseFloat tmp = n_[j1](i, m);
           if (!KALDI_ISFINITE(tmp)) {  // NaN or inf
             KALDI_LOG << "Warning: normalizer for j1 = " << j1 << ", m = " << m
                       << ", i = " << i << " is infinite or NaN " << tmp << "= "
-                      << log_w_jm(m, i) << "+"
+                      << log_w_j(m, i) << "+"
                       << (-0.5 * log_det_Sigma(i)) << "+" << (-0.5 * DLog2pi)
                       << "+" << (mu_SigmaInv_mu) << ", setting to finite.";
             n_[j1](i, m) = -1.0e+40;  // future work(arnab): get rid of magic number
@@ -971,9 +1005,8 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
     }
     for (int32 m = 0; m < M; m++) {
       BaseFloat this_substate_weight = substate_weight(m);
-      // Eq. (7): w_jm = softmax([w_{1}^T ... w_{D}^T] * v_{jm})
-      w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j1].Row(m), 0.0);
-      w_jm.ApplySoftMax();
+      ComputeLogWeights(j1, m, false, &w_jm);
+      w_jm.ApplySoftMax(); // now it's non-log weights.
       
       for (int32 i = 0; i < num_gauss; i++) {
         BaseFloat weight = this_substate_weight * w_jm(i);
@@ -1206,20 +1239,11 @@ void AmSgmm2::InitializeCovars() {
   }
 }
 
-// Compute the "smoothing" matrix H^{(sm)} from expected counts given the model.
-void AmSgmm2::ComputeHsmFromModel(
-    const std::vector< SpMatrix<BaseFloat> > &H,
-    const Vector<BaseFloat> &state_occupancies,
-    SpMatrix<BaseFloat> *H_sm,
-    BaseFloat max_cond) const {
-  int32 num_gauss = NumGauss();
-  BaseFloat tot_sum = 0.0;
+void AmSgmm2::ComputeGammaI(const Vector<BaseFloat> &state_occupancies,
+                            Vector<BaseFloat> *gamma_i) const {
   KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
-  Vector<BaseFloat> w_jm(num_gauss);
-  H_sm->Resize(PhoneSpaceDim());
-  H_sm->SetZero();
-  Vector<BaseFloat> gamma_i(num_gauss);
-  gamma_i.SetZero();
+  Vector<BaseFloat> w_jm(NumGauss());
+  gamma_i->Resize(NumGauss());
   for (int32 j1 = 0; j1 < NumGroups(); j1++) {
     int32 M = NumSubstatesForGroup(j1);
     const std::vector<int32> &pdfs = group2pdf_[j1];
@@ -1229,11 +1253,50 @@ void AmSgmm2::ComputeHsmFromModel(
       substate_weight.AddVec(state_occupancies(j2), c_[j2]);
     }
     for (int32 m = 0; m < M; m++) {
-      w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j1].Row(m), 0.0);
+      ComputeLogWeights(j1, m, false, &w_jm);
       w_jm.ApplySoftMax();
-      gamma_i.AddVec(substate_weight(m), w_jm);
+      gamma_i->AddVec(substate_weight(m), w_jm);
     }
   }
+}
+
+void AmSgmm2::ComputeGammaI2(const Vector<BaseFloat> &state_occupancies,
+                             Vector<BaseFloat> *gamma_i2) const {
+  int32 num_weights = weightidx2gauss_.size();
+  KALDI_ASSERT(state_occupancies.Dim() == NumPdfs());
+  Vector<BaseFloat> w_jm_full(num_weights);
+  gamma_i2->Resize(num_weights);
+  for (int32 j1 = 0; j1 < NumGroups(); j1++) {
+    int32 M = NumSubstatesForGroup(j1);
+    const std::vector<int32> &pdfs = group2pdf_[j1];
+    Vector<BaseFloat> substate_weight(M); // total weight for each substate.
+    for (size_t i = 0; i < pdfs.size(); i++) {
+      int32 j2 = pdfs[i];
+      substate_weight.AddVec(state_occupancies(j2), c_[j2]);
+    }
+    for (int32 m = 0; m < M; m++) {
+      w_jm_full.AddMatVec(1.0, w_, kNoTrans, v_[j1].Row(m), 0.0);
+      w_jm_full.ApplySoftMax();
+      gamma_i2->AddVec(substate_weight(m), w_jm_full);
+    }
+  }
+}
+
+
+
+// Compute the "smoothing" matrix H^{(sm)} from expected counts given the model.
+void AmSgmm2::ComputeHsmFromModel(
+    const std::vector< SpMatrix<BaseFloat> > &H,
+    const Vector<BaseFloat> &state_occupancies,
+    SpMatrix<BaseFloat> *H_sm,
+    BaseFloat max_cond) const {
+  int32 num_gauss = NumGauss();
+  BaseFloat tot_sum = 0.0;
+  H_sm->Resize(PhoneSpaceDim());
+  H_sm->SetZero();
+  Vector<BaseFloat> gamma_i;
+  ComputeGammaI(state_occupancies, &gamma_i);
+
   BaseFloat sum = 0.0;
   for (int32 i = 0; i < num_gauss; i++) {
     if (gamma_i(i) > 0) {
@@ -1365,6 +1428,139 @@ void AmSgmm2::ComputePerSpkDerivedVars(Sgmm2PerSpkDerivedVars *vars) const {
     vars->Clear(); // make sure everything is cleared.
   }
 }
+
+void AmSgmm2::SplitWeightProjections(const Vector<BaseFloat> &state_occupancies,
+                                     const Sgmm2SplitWeightsConfig &config) {
+  int32 cur = weightidx2gauss_.size(), target = config.split_weights;
+  double min_count = 100.0; // min-count of data for each w_i vector... we don't
+                            // believe that this parameter should ever
+                            // matter or become active, so it's not included in
+                            // the configuration object.
+  int32 num_gauss = NumGauss(), phn_dim = PhoneSpaceDim();
+    
+  KALDI_ASSERT(cur == w_.NumRows());
+  if (target <= cur) {
+    KALDI_WARN << "Nothing to do, not splitting weight projections from "
+               << cur << " to " << target;
+    return;
+  }
+  Vector<BaseFloat> gamma_i2, gamma_i(num_gauss);
+  ComputeGammaI2(state_occupancies, &gamma_i2);
+  KALDI_ASSERT(gamma_i2.Sum() > 0.0);
+  // Now work out gamma_i from gamma_i2 in order to compute the
+  // targets.
+  for (int32 i2 = 0; i2 < cur; i2++)
+    gamma_i(weightidx2gauss_[i2]) += gamma_i2(i2);
+
+  vector<int32> tgt_weight_indices; // indexed by i, number if i2 indices
+  // we'll have for that i: a target value.  This uses the "power" rule
+  // that we also use for allocating Gaussian mixtures, sub-states, etc.
+  
+  GetSplitTargets(gamma_i, target, config.weight_power, min_count,
+                  &tgt_weight_indices);
+  
+  TpMatrix<double> T(phn_dim); // like a standard deviation in w_ space, used for splitting.
+  Vector<double> unit(phn_dim);
+  // "unit" roughly represents the direction in v that corresponds to the
+  // static offset... it is a vector such that E[v . unit] = 1.0, and the
+  // variance of v.unit is minimized.  That is: minimize: E[ (v . unit)^2 ],
+  // subject to E[v . unit] = 1.0
+  { // This block works out T.
+    // First get a matrix that consists of the scatter of the v_i's; this,
+    // when inverted, will define a suitable covariance of the w_i's,
+    // for splitting.
+    SpMatrix<double> F_sm(phn_dim);
+    Vector<double> avg_v(phn_dim);
+    {
+      int32 count = 0, J1 = NumGroups();
+      for (int32 j1 = 0; j1 < J1; j1++) {
+        Matrix<double> v_dbl(v_[j1]);
+        F_sm.AddMat2(1.0, v_dbl, kTrans, 1.0);
+        avg_v.AddRowSumMat(v_dbl);
+        count += NumSubstatesForGroup(j1);
+      }
+      F_sm.Scale(1.0 / count);
+      avg_v.Scale(1.0 / count);
+    }
+    SpMatrix<double> WSigma(F_sm); // a suitable variance-like quantity
+    WSigma.Invert(); // for the w_i's is the inverse of the scatter of
+    // the v_i's. 
+
+    T.Cholesky(WSigma); // Now T is the cholesky factor of our "variance"
+    // for the w_i's... we'll multiply random noise by this to get a
+    // perturbation for the w_i's.  With this formulation, a certain
+    // perturbation has a known magnitude of effect on the unnormalized
+    // log-weights, independent of the scale of the w or v quantities.
+
+    // for "unit" want unit . avg_v = 1, and then minimize (unit^T F_sm unit):
+    // Lagrangian is something like (unit^T F_sm unit + lambda unit.avg_v),
+    // whose derivative is:  2 F_sm unit + lambda . avg_v,
+    // so solution will be unit =  (1/2 lambda) F_sm^{-1} avg_v,
+    // and solving for lambda is easy.
+
+    unit.AddSpVec(1.0, WSigma, avg_v, 0.0); // Note: WSigma is F_sm^{-1}
+    unit.Scale(1.0 / VecVec(unit, avg_v)); // now unit.avg_v == 1.0.
+    KALDI_VLOG(1) << "\"unit\" direction is " << unit;
+  }
+  TpMatrix<BaseFloat> T_flt(T);
+    
+  vector<vector<int32> > weight_indices(num_gauss); // for each i, the list of i2 indices.
+  for (int32 i2 = 0; i2 < cur; i2++) {
+    int32 i = weightidx2gauss_[i2];
+    weight_indices[i].push_back(i2);
+  }
+  vector<Matrix<BaseFloat> > w(num_gauss); // temporary form of w, indexed by i, then a matrix
+  // each of whose rows is one of the w_{i2} projections...
+  Vector<BaseFloat> rand_vec(phn_dim), shift_vec(phn_dim);
+  int32 tot_indices = 0; // number of indices we split to-- may not be exactly the same as
+  // the target, depending on what the starting values were.
+  for (int32 i = 0; i < num_gauss; i++) {
+    KALDI_ASSERT(!weight_indices[i].empty());
+    int32 cur_n = weight_indices[i].size(), // number of weight projection vectors for this index
+        tgt_n = std::max(tgt_weight_indices[i], cur_n);
+    tot_indices += tgt_n;
+    Vector<BaseFloat> occs(tgt_n);
+    w[i].Resize(tgt_n, phn_dim);
+    for (int32 n = 0; n < cur_n; n++) {
+      int32 i2 = weight_indices[i][n];
+      w[i].Row(n).CopyFromVec(w_.Row(i2));
+      occs(n) = gamma_i2(i2);
+    }
+    // Here is where we do the splitting.
+    for (; cur_n < tgt_n; cur_n++) {
+      BaseFloat *data = occs.Data();
+      int32 split_n = std::max_element(data, data+cur_n) - data;
+      occs(split_n) = occs(cur_n) = 0.5 * occs(split_n);
+      std::generate(rand_vec.Data(), rand_vec.Data() + rand_vec.Dim(),
+                    RandGauss);
+      shift_vec.AddTpVec(config.weight_perturb_factor, T_flt, kNoTrans,
+                         rand_vec, 0.0);
+      w[i].Row(cur_n).AddVec(log(0.5), unit); // This will keep the model
+      // roughly equivalent to what it was before, by approximately including
+      // a factor of 0.5 in the likelihoods of the split weight projections.
+      w[i].Row(cur_n).CopyFromVec(w[i].Row(split_n));
+      // now perturb the split vectors.
+      w[i].Row(cur_n).AddVec(1.0, shift_vec);
+      w[i].Row(split_n).AddVec(-1.0, shift_vec);
+    }
+  }
+  KALDI_LOG << "Splitting from " << cur << " to " << tot_indices
+            << " weight-projections indices.";
+  // The rest of the code takes the information in "w" and
+  // puts it into class-members weightidx2gauss_ and w_.
+  weightidx2gauss_.resize(tot_indices);
+  w_.Resize(tot_indices, phn_dim);
+  int32 i2 = 0;
+  for (int32 i = 0; i < num_gauss; i++) {
+    int32 num_indices = w[i].NumRows(); // num indices for this Gaussian.
+    for (int32 idx = 0; idx < num_indices; idx++, i2++) {
+      weightidx2gauss_[i2] = i;
+      w_.Row(i2).CopyFromVec(w[i].Row(idx));
+    }
+  }
+  n_.clear();
+}
+
 
 BaseFloat AmSgmm2::GaussianSelection(const Sgmm2GselectConfig &config,
                                     const VectorBase<BaseFloat> &data,

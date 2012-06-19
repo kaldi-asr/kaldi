@@ -6,7 +6,7 @@ include ../kaldi.mk
 BINFILES = sgmm2-init sgmm2-gselect sgmm2-acc-stats sgmm2-est sgmm2-sum-accs \
          sgmm2-align-compiled sgmm2-est-spkvecs sgmm2-post-to-gpost \
          sgmm2-acc-stats-gpost sgmm2-latgen-faster sgmm2-est-spkvecs-gpost \
-         sgmm2-rescore-lattice sgmm2-copy
+         sgmm2-rescore-lattice sgmm2-copy sgmm2-info
 
 OBJFILES =
 

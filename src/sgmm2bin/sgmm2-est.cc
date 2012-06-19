@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     kaldi::TransitionUpdateConfig tcfg;
     kaldi::MleAmSgmm2Options sgmm_opts;
     kaldi::Sgmm2SplitSubstatesConfig split_opts;
+    kaldi::Sgmm2SplitWeightsConfig wsplit_opts;
     int32 increase_phn_dim = 0;
     int32 increase_spk_dim = 0;
     bool remove_speaker_space = false;
@@ -68,6 +69,7 @@ int main(int argc, char *argv[]) {
     tcfg.Register(&po);
     sgmm_opts.Register(&po);
     split_opts.Register(&po);
+    wsplit_opts.Register(&po);
 
     po.Read(argc, argv);
     if (po.NumArgs() != 3) {
@@ -116,19 +118,18 @@ int main(int argc, char *argv[]) {
       updater.Update(sgmm_accs, &am_sgmm, update_flags);
     }
 
-    if (split_opts.split_substates != 0 || !occs_out_filename.empty()) {  // get state occs
-      Vector<BaseFloat> state_occs;
-      sgmm_accs.GetStateOccupancies(&state_occs);
+    Vector<BaseFloat> state_occs;
+    sgmm_accs.GetStateOccupancies(&state_occs);
 
-      if (split_opts.split_substates != 0) {
-        am_sgmm.SplitSubstates(state_occs, split_opts);
-        am_sgmm.ComputeDerivedVars();  // recompute normalizers...
-      }
+    if (split_opts.split_substates != 0)
+      am_sgmm.SplitSubstates(state_occs, split_opts);
 
-      if (!occs_out_filename.empty()) {
-        kaldi::Output ko(occs_out_filename, binary_write);
-        state_occs.Write(ko.Stream(), binary_write);
-      }
+    if (wsplit_opts.split_weights != 0)
+      am_sgmm.SplitWeightProjections(state_occs, wsplit_opts);
+    
+    if (!occs_out_filename.empty()) {
+      kaldi::Output ko(occs_out_filename, binary_write);
+      state_occs.Write(ko.Stream(), binary_write);
     }
 
     if (increase_phn_dim != 0 || increase_spk_dim != 0) {
@@ -147,6 +148,9 @@ int main(int argc, char *argv[]) {
       am_sgmm.RemoveSpeakerSpace();
     }
 
+    am_sgmm.ComputeDerivedVars(); // recompute normalizers, and possibly
+    // weights.
+    
     {
       Output ko(model_out_filename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);

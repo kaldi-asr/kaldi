@@ -109,7 +109,6 @@ struct Sgmm2SplitSubstatesConfig {
   BaseFloat power;
   BaseFloat max_cond;
   BaseFloat min_count;
-  BaseFloat garbage;
   Sgmm2SplitSubstatesConfig(): split_substates(0),
                                perturb_factor(0.01),
                                power(0.2),
@@ -126,9 +125,26 @@ struct Sgmm2SplitSubstatesConfig {
                 "splitting substates.");
     po->Register("min-count", &min_count, "Minimum allowed count, used in allocating "
                  "sub-states to state in mixture splitting.");
-    po->Register("self-weight", &garbage, "Back-compatibility option."); // TODO: remove!
   }
 };
+
+struct Sgmm2SplitWeightsConfig {
+  int32 split_weights;
+  BaseFloat weight_perturb_factor;
+  BaseFloat weight_power;
+  Sgmm2SplitWeightsConfig(): split_weights(0),
+                             weight_perturb_factor(0.1),
+                             weight_power(0.2) { }
+  void Register(ParseOptions *po) {
+    po->Register("split-weights", &split_weights, "Increase number of phonetic-subspace "
+                 "weight projections to this overall target.");
+    po->Register("weight-perturb-factor", &weight_perturb_factor, "Perturbation factor for "
+                 "weight projections, used while splitting.");
+    po->Register("weight-power", &weight_power, "Exponent for occupancies used while "
+                 "splitting weight projections.");
+  }
+};
+
 
 /** \struct Sgmm2PerFrameDerivedVars
  *  Holds the per-frame precomputed quantities x(t), x_{i}(t), z_{i}(t), and
@@ -305,6 +321,10 @@ class AmSgmm2 {
   void SplitSubstates(const Vector<BaseFloat> &state_occupancies, // [indexed by pdf-id j2]
                       const Sgmm2SplitSubstatesConfig &config);
 
+  /// Increases the total number of weight projections.
+  void SplitWeightProjections(const Vector<BaseFloat> &state_occupancies,
+                              const Sgmm2SplitWeightsConfig &config);
+  
   /// Functions for increasing the phonetic and speaker space dimensions.
   /// The argument norm_xform is a LDA-like feature normalizing transform,
   /// computed by the ComputeFeatureNormalizer function.
@@ -341,6 +361,7 @@ class AmSgmm2 {
                             Vector<BaseFloat> *diag_mean_scatter) const;
 
   /// Various model dimensions.
+  int32 NumWeightIndices() const { return w_.NumRows(); }
   int32 NumPdfs() const { return pdf2group_.size(); }
   int32 NumGroups() const { return group2pdf_.size(); } // relates to SCTM.  # pdf groups,
   // <= NumPdfs().
@@ -393,13 +414,20 @@ class AmSgmm2 {
                                        const Sgmm2PerSpkDerivedVars &spk,
                                        VectorBase<Real> *mean_out) const;
 
+  /// Computes log weights w_{jmi} for given j, m. [unnormalized if normalize=false]
+  void ComputeLogWeights(int32 j1, int32 substate, bool normalize,
+                         VectorBase<BaseFloat> *weight_out) const;
+  
   /// Computes quantities H = M_i Sigma_i^{-1} M_i^T.
   template<class Real>
   void ComputeH(std::vector< SpMatrix<Real> > *H_i) const;
   
  protected:
-  std::vector<int32> pdf2group_;
+  std::vector<int32> pdf2group_; // map from pdf-index to "group" (of pdfs).
   std::vector<std::vector<int32> > group2pdf_; // the reverse map.
+
+  std::vector<int32> weightidx2gauss_; // weight-index [index of w_] to
+  // Gaussian index i, i.e. i2 -> i.
   
   /// These contain the "background" model associated with the subspace GMM.
   DiagGmm diag_ubm_;
@@ -417,9 +445,10 @@ class AmSgmm2 {
   std::vector< Matrix<BaseFloat> > M_;
   /// Speaker-subspace projections. Dimension is [I][D][T]
   std::vector< Matrix<BaseFloat> > N_;
-  /// Phonetic-subspace weight projection vectors.  Dimension is [I][S]
+  /// Phonetic-subspace weight projection vectors.  Dimension is [I][S],
   Matrix<BaseFloat> w_;
-  /// [SSGMM] Speaker-subspace weight projection vectors. Dimension is [I][T]
+  /// [SSGMM] Speaker-subspace weight projection vectors. Dimension is [I][T],
+  /// or if weightidx2gauss_ set up, [I2][T].
   Matrix<BaseFloat> u_;
   
   /// The parameters in a particular SGMM state.
@@ -434,6 +463,17 @@ class AmSgmm2 {
   std::vector< Matrix<BaseFloat> > w_jmi_;
 
  private:
+  /// Computes quasi-occupancies gamma_i from the state-level occupancies,
+  /// assuming model correctness.
+  void ComputeGammaI(const Vector<BaseFloat> &state_occupancies,
+                     Vector<BaseFloat> *gamma_i) const;
+
+  /// Computes quasi-occupancies gamma_i2 from the state-level occupancies,
+  /// assuming model correctness [these are indexed by the weight-projection
+  /// index].
+  void ComputeGammaI2(const Vector<BaseFloat> &state_occupancies,
+                      Vector<BaseFloat> *gamma_i2) const;
+  
   /// Called inside SplitSubstates(); splits substates of one group.
   void SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
                              const Sgmm2SplitSubstatesConfig &opts,

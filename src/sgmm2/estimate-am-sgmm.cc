@@ -660,6 +660,9 @@ void MleAmSgmm2Updater::Update(const MleAmSgmm2Accs &accs,
   if (update_options_.renormalize_V)
     RenormalizeV(accs, model, gamma_i, H);
 
+  model->n_.clear(); // has become invalid.
+  model->w_jmi_.clear(); // has become invalid.
+  
   KALDI_LOG << "*Overall auxf improvement, combining all parameters, is "
             << tot_impr;
 
@@ -667,9 +670,6 @@ void MleAmSgmm2Updater::Update(const MleAmSgmm2Accs &accs,
             << (accs.total_like_/accs.total_frames_)
             << " over " << accs.total_frames_ << " frames.";
 
-  model->ComputeNormalizers();  // So that the model is ready to use.
-  model->ComputeWeights(); // They would have been invalidated if
-  // we updated the v or w quantities.
 }
 
 // Compute the Q_{i} (Eq. 64)
@@ -840,14 +840,17 @@ void MleAmSgmm2Updater::UpdatePhoneVectorsInternal(
       j1_start = block_size * thread_id,
       j1_end = std::min(accs.num_groups_, j1_start + block_size);
 
+  int32 num_weight_indices = model->w_.NumRows(),
+      num_gaussians = accs.num_gaussians_, phn_space_dim = accs.phn_space_dim_;
+  
   double tot_auxf_impr = 0.0;
   
   for (int32 j1 = j1_start; j1 < j1_end; j1++) {
     for (int32 m = 0; m < model->NumSubstatesForGroup(j1); m++) {
       double gamma_jm = accs.gamma_[j1].Row(m).Sum();
-      SpMatrix<double> X_jm(accs.phn_space_dim_);  // = \sum_i \gamma_{jmi} H_i
+      SpMatrix<double> X_jm(phn_space_dim);  // = \sum_i \gamma_{jmi} H_i
       
-      for (int32 i = 0; i < accs.num_gaussians_; i++) {
+      for (int32 i = 0; i < num_gaussians; i++) {
         double gamma_jmi = accs.gamma_[j1](m, i);
         if (gamma_jmi != 0.0)
           X_jm.AddSp(gamma_jmi, H[i]);
@@ -865,14 +868,21 @@ void MleAmSgmm2Updater::UpdatePhoneVectorsInternal(
         // the auxf has improved.
         
         // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
-        Vector<double> w_jm(accs.num_gaussians_);
-        w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
-                       v_jm, 0.0);
-        if (!log_a.empty()) w_jm.AddVec(1.0, log_a[j1].Row(m)); // SSGMM techreport eq. 42
-        w_jm.Add(-w_jm.LogSumExp());  // it is now log w_jm
-        
-
-        exact_auxf = VecVec(w_jm, accs.gamma_[j1].Row(m))
+        Vector<double> log_w_jm_full(num_weight_indices),
+            log_w_jm(num_gaussians);
+        log_w_jm.Set(kLogZeroFloat); // -infinity.
+        log_w_jm_full.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
+                                v_jm, 0.0);
+        log_w_jm_full.Add(-log_w_jm_full.LogSumExp()); // normalize.
+        for (int32 i2 = 0; i2 < num_weight_indices; i2++) {
+          int32 i = model->weightidx2gauss_[i2];
+          log_w_jm(i) = LogAdd(log_w_jm(i), log_w_jm_full(i2));
+        }
+        if (!log_a.empty()) {
+          log_w_jm.AddVec(1.0, log_a[j1].Row(m)); // SSGMM techreport eq. 42.
+          log_w_jm.Add(-log_w_jm.LogSumExp()); // normalize again.
+        }
+        exact_auxf = VecVec(log_w_jm, accs.gamma_[j1].Row(m))
             + VecVec(v_jm, accs.y_[j1].Row(m))
             -0.5 * VecSpVec(v_jm, X_jm, v_jm);
 
@@ -892,17 +902,21 @@ void MleAmSgmm2Updater::UpdatePhoneVectorsInternal(
         }
 
         if (backtrack_iter == 0) {  // computing updated value.
-          w_jm.ApplyExp();  // it is now w_jm
           SpMatrix<double> H_jm(X_jm);
           Vector<double> g_jm(accs.y_[j1].Row(m));
-          for (int32 i = 0; i < accs.num_gaussians_; i++) {
-            double gamma_jmi = accs.gamma_[j1](m, i);
-            double quadratic_term = std::max(gamma_jmi, gamma_jm * w_jm(i));
-            double scalar = gamma_jmi - gamma_jm * w_jm(i) + quadratic_term
-                * VecVec(model->w_.Row(i), model->v_[j1].Row(m));
-            g_jm.AddVec(scalar, model->w_.Row(i));
+          for (int32 i2 = 0; i2 < num_weight_indices; i2++) {
+            int32 i = model->weightidx2gauss_[i2];
+            double w_jmi2 = exp(log_w_jm_full(i2));
+            double gamma_jmi2 = accs.gamma_[j1](m, i) *
+                exp(log_w_jm_full(i2) - log_w_jm(i)); // apportion the count
+            // gamma_jmi according to the mass of weight.
+            double quadratic_term = std::max(gamma_jmi2, gamma_jm * w_jmi2);
+            double scalar = gamma_jmi2 - gamma_jm * w_jmi2 + quadratic_term
+                * VecVec(model->w_.Row(i2), v_jm); // <-- note: doesn't matter whether
+            // we use v_jm or v_jm_orig here since only called on 1st iter of backtrack loop.
+            g_jm.AddVec(scalar, model->w_.Row(i2));
             if (quadratic_term > 1.0e-10) {
-              H_jm.AddVec2(static_cast<BaseFloat>(quadratic_term), model->w_.Row(i));
+              H_jm.AddVec2(static_cast<BaseFloat>(quadratic_term), model->w_.Row(i2));
             }
           }
           approx_auxf_impr =
@@ -1015,11 +1029,12 @@ void MleAmSgmm2Updater::RenormalizeV(const MleAmSgmm2Accs &accs,
       model->v_[j1].Row(m).CopyFromVec(tmp);
     }
   }
-  for (int32 i = 0; i < accs.num_gaussians_; i++) {
+  for (int32 i2 = 0; i2 < model->w_.NumRows(); i2++) {
     Vector<double> tmp(accs.phn_space_dim_);
-    tmp.AddMatVec(1.0, TransInv, kTrans, Vector<double>(model->w_.Row(i)), 0.0);
-    model->w_.Row(i).CopyFromVec(tmp);
-
+    tmp.AddMatVec(1.0, TransInv, kTrans, Vector<double>(model->w_.Row(i2)), 0.0);
+    model->w_.Row(i2).CopyFromVec(tmp);
+  }
+  for (int32 i = 0; i < accs.num_gaussians_; i++) {
     Matrix<double> tmpM(accs.feature_dim_, accs.phn_space_dim_);
     // Multiplying on right not left so must not transpose TransInv.
     tmpM.AddMatMat(1.0, Matrix<double>(model->M_[i]), kNoTrans,
@@ -1076,19 +1091,19 @@ double MleAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &accs,
 
 // static
 void MleAmSgmm2Updater::UpdateWGetStats(const MleAmSgmm2Accs &accs,
-                                       const AmSgmm2 &model,
-                                       const Matrix<double> &w,
-                                       const std::vector<Matrix<double> > &log_a,
-                                       Matrix<double> *F_i,
-                                       Matrix<double> *g_i,
-                                       double *tot_like,
-                                       int32 num_threads, 
-                                       int32 thread_id) {
+                                        const AmSgmm2 &model,
+                                        const Matrix<double> &w,
+                                        const std::vector<Matrix<double> > &log_a,
+                                        Matrix<double> *F_i,
+                                        Matrix<double> *g_i,
+                                        double *tot_like,
+                                        int32 num_threads, 
+                                        int32 thread_id) {
 
   // Accumulate stats from a block of states (this gets called in parallel).
   int32 block_size = (accs.num_groups_ + (num_threads-1)) / num_threads,
       j1_start = block_size * thread_id,
-      j1_end = std::min(accs.num_groups_, j1_start + block_size);
+      j1_end = std::min(accs.num_groups_, j1_start + block_size);      
   
   // Unlike in the report the inner most loop is over Gaussians, where
   // per-gaussian statistics are accumulated. This is more memory demanding
@@ -1096,41 +1111,67 @@ void MleAmSgmm2Updater::UpdateWGetStats(const MleAmSgmm2Accs &accs,
   // is computed only once for all gaussians.
 
   SpMatrix<double> v_vT(accs.phn_space_dim_);
-  
+
+  int32 num_weight_indices = model.w_.NumRows();
   for (int32 j1 = j1_start; j1 < j1_end; j1++) {
     int32 num_substates = model.NumSubstatesForGroup(j1);
-    Matrix<double> w_j(num_substates, accs.num_gaussians_);
+
+    // w_j_full is indexed by the full set of weight indices
+    // (may be more than #gauss)
+    Matrix<double> w_j_full(num_substates, num_weight_indices);
+    
     // The linear term and quadratic term for each Gaussian-- two scalars
     // for each Gaussian, they appear in the accumulation formulas.
-    Matrix<double> linear_term(num_substates, accs.num_gaussians_);
-    Matrix<double> quadratic_term(num_substates, accs.num_gaussians_);
+    Matrix<double> linear_term(num_substates, num_weight_indices);
+    Matrix<double> quadratic_term(num_substates, num_weight_indices);
     Matrix<double> v_vT_m(num_substates,
                           (accs.phn_space_dim_*(accs.phn_space_dim_+1))/2);
-
+    
     // w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm})  eq.(7)
     Matrix<double> v_j_double(model.v_[j1]);
-    w_j.AddMatMat(1.0, v_j_double, kNoTrans, w, kTrans, 0.0);
-    if (!log_a.empty()) w_j.AddMat(1.0, log_a[j1]); // SSGMM techreport eq. 42
+    w_j_full.AddMatMat(1.0, v_j_double, kNoTrans, w, kTrans, 0.0);
+    if (!log_a.empty()) w_j_full.AddMat(1.0, log_a[j1]); // SSGMM techreport eq. 42
+    // Note: this would crash if we had more than #gauss weight-indices; this
+    // is not compatible with SSGMM code.
     
     for (int32 m = 0; m < model.NumSubstatesForGroup(j1); m++) {
-      SubVector<double> w_jm(w_j, m);
+      SubVector<double> w_jm_full(w_j_full, m);
+      w_jm_full.Add(-1.0 * w_jm_full.LogSumExp()); // normalize.
+      w_jm_full.ApplyExp();
       double gamma_jm = accs.gamma_[j1].Row(m).Sum();
-      w_jm.Add(-1.0 * w_jm.LogSumExp());
-      *tot_like += VecVec(w_jm, accs.gamma_[j1].Row(m));
-      w_jm.ApplyExp();
+      
       v_vT.SetZero();
       // v_vT := v_{jkm} v_{jkm}^T
       v_vT.AddVec2(static_cast<BaseFloat>(1.0), v_j_double.Row(m));
-      v_vT_m.Row(m).CopyFromPacked(v_vT); // a bit wasteful, but does not dominate.
-      
-      for (int32 i = 0; i < accs.num_gaussians_; i++) {
-        // Suggestion: g_jkm can be computed more efficiently
-        // using the Vector/Matrix routines for all i at once
-        // linear term around cur value.
-        linear_term(m, i) = accs.gamma_[j1](m, i) - gamma_jm * w_jm(i);
-        quadratic_term(m, i) = std::max(accs.gamma_[j1](m, i),
-                                        gamma_jm * w_jm(i));
+      v_vT_m.Row(m).CopyFromPacked(v_vT);
+
+      // Note: in this update, which allows for multiple "mixture indices"
+      // for each Gaussian index, we first iterate over the Gaussian index,
+      // and then apportion the weight for that Gaussian-indices over
+      // the weight-indices that correspond to it.
+      Vector<double> w_jm(accs.num_gaussians_);
+      for (int32 i2 = 0; i2 < num_weight_indices; i2++) {
+        int32 i = model.weightidx2gauss_[i2];
+        w_jm(i) += w_jm_full(i2);
       }
+      
+      for (int32 i2 = 0; i2 < num_weight_indices; i2++) {
+        int32 i = model.weightidx2gauss_[i2];
+        // In the line below, gamma_jmi2 is like a soft-count: the amount
+        // of weight we assign to this weight index [OK, so the counts were
+        // already soft-counts, but this is one level further.]
+        double gamma_jmi2 = accs.gamma_[j1](m, i) * w_jm_full(i2) / w_jm(i);
+        
+        if (gamma_jmi2 != gamma_jmi2) continue; // check for NaNs appearing
+        // due to division by zero... these can be ignored as they anyway
+        // correspond to very tiny counts.
+        linear_term(m, i2) = gamma_jmi2 - gamma_jm * w_jm_full(i2);
+        quadratic_term(m, i2) = std::max(gamma_jmi2,
+                                         gamma_jm * w_jm_full(i2));
+      }
+      w_jm.ApplyLog();
+      w_jm.ApplyFloor(-500.0); // to avoid NaN's appearing.
+      *tot_like += VecVec(w_jm, accs.gamma_[j1].Row(m));
     } // loop over substates
     g_i->AddMatMat(1.0, linear_term, kTrans, v_j_double, kNoTrans, 1.0);
     F_i->AddMatMat(1.0, quadratic_term, kTrans, v_vT_m, kNoTrans, 1.0);
@@ -1139,23 +1180,38 @@ void MleAmSgmm2Updater::UpdateWGetStats(const MleAmSgmm2Accs &accs,
 
 // The parallel weight update, in the paper.
 double MleAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &accs,
-                                 const std::vector<Matrix<double> > &log_a,
-                                 const Vector<double> &gamma_i,
-                                 AmSgmm2 *model) {
+                                  const std::vector<Matrix<double> > &log_a,
+                                  const Vector<double> &gamma_i,
+                                  AmSgmm2 *model) {
   KALDI_LOG << "Updating weight projections";
-
+  
   // tot_like_{after, before} are totals over multiple iterations,
   // not valid likelihoods. but difference is valid (when divided by tot_count).
   double tot_predicted_like_impr = 0.0, tot_like_before = 0.0,
       tot_like_after = 0.0;
+
+  int32 num_weight_indices = model->weightidx2gauss_.size(); // could be same as
+  // num_gaussians or more.
   
-  Matrix<double> g_i(accs.num_gaussians_, accs.phn_space_dim_);
+  Matrix<double> g_i(num_weight_indices, accs.phn_space_dim_);
   // View F_i as a vector of SpMatrix.
-  Matrix<double> F_i(accs.num_gaussians_,
+  Matrix<double> F_i(num_weight_indices,
                      (accs.phn_space_dim_*(accs.phn_space_dim_+1))/2);
   
   Matrix<double> w(model->w_);
   double tot_count = gamma_i.Sum();
+
+  // First get a smoothing matrix that consists of the scatter of the v_i's.
+  SpMatrix<double> F_sm(accs.phn_space_dim_);
+  {
+    int32 count = 0;
+    for (int32 j1 = 0; j1 < model->NumGroups(); j1++) {
+      F_sm.AddMat2(1.0, Matrix<double>(model->v_[j1]), kTrans, 1.0);
+      count += model->NumSubstatesForGroup(j1);
+    }
+    F_sm.Scale(1.0 / count);
+  }
+  
   
   for (int iter = 0; iter < update_options_.weight_projections_iters; iter++) {
     F_i.SetZero();
@@ -1168,17 +1224,22 @@ double MleAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &accs,
     Matrix<double> w_orig(w);
     double k_predicted_like_impr = 0.0, k_like_after = 0.0;
     double min_step = 0.001, step_size;
+
     for (step_size = 1.0; step_size >= min_step; step_size /= 2) {
       k_predicted_like_impr = 0.0;
       k_like_after = 0.0;
       
-      for (int32 i = 0; i < accs.num_gaussians_; i++) {
+      for (int32 i = 0; i < num_weight_indices; i++) {
         // auxf is formulated in terms of change in w.
         Vector<double> delta_w(accs.phn_space_dim_);
         // returns objf impr with step_size = 1,
         // but it may not be 1 so we recalculate it.
         SpMatrix<double> this_F_i(accs.phn_space_dim_);
+        Vector<double> this_g_i(g_i.Row(i));
         this_F_i.CopyFromVec(F_i.Row(i));
+        this_F_i.AddSp(update_options_.tau_w, F_sm); // add smoothing term to covariance.
+        this_g_i.AddSpVec(-1.0, F_sm, w.Row(i), 1.0); // smoothing term also affects gradient,
+        // since it's the local gradient we're dealing with here, not the gradient around zero.
         SolveQuadraticProblem(this_F_i, g_i.Row(i), &delta_w,
                               static_cast<double>(update_options_.max_cond),
                               static_cast<double>(update_options_.epsilon),
@@ -1203,15 +1264,31 @@ double MleAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &accs,
       }
       for (int32 j1 = 0; j1 < accs.num_groups_; j1++) {
         int32 M = model->NumSubstatesForGroup(j1);
-        Matrix<double> w_j(M, accs.num_gaussians_);
-        w_j.AddMatMat(1.0, Matrix<double>(model->v_[j1]), kNoTrans,
-                       w, kTrans, 0.0);
-        if (!log_a.empty()) w_j.AddMat(1.0, log_a[j1]); // SSGMM techreport eq. 42
-        for (int32 m = 0; m < M; m++) {
-          SubVector<double> w_jm(w_j, m);
-          w_jm.Add(-1.0 * w_jm.LogSumExp());
+        if (!log_a.empty()) { // This version of the code works for SSGMM.
+          Matrix<double> w_j(M, accs.num_gaussians_);
+          w_j.AddMatMat(1.0, Matrix<double>(model->v_[j1]), kNoTrans,
+                        w, kTrans, 0.0);
+          w_j.AddMat(1.0, log_a[j1]); // SSGMM techreport eq. 42
+          for (int32 m = 0; m < M; m++) {
+            SubVector<double> w_jm(w_j, m);
+            w_jm.Add(-1.0 * w_jm.LogSumExp());
+          }
+          k_like_after += TraceMatMat(w_j, accs.gamma_[j1], kTrans);
+        } else {
+          // this branch takes care of index mapping, with multiple weight-indices.
+          for (int32 m = 0; m < M; m++) {
+            Vector<double> w_jm_full(num_weight_indices),
+                w_jm(accs.num_gaussians_);
+            w_jm.Set(kLogZeroFloat); // -inf.
+            w_jm_full.AddMatVec(1.0, w, kNoTrans, Vector<double>(model->v_[j1].Row(m)), 0.0);
+            w_jm_full.Add(-1.0 * w_jm_full.LogSumExp());
+            for (int32 i2 = 0; i2 < num_weight_indices; i2++) {
+              int32 i = model->weightidx2gauss_[i2];
+              w_jm(i) = LogAdd(w_jm(i), w_jm_full(i2));
+            }
+            k_like_after += VecVec(w_jm, accs.gamma_[j1].Row(m));
+          }
         }
-        k_like_after += TraceMatMat(w_j, accs.gamma_[j1], kTrans);
       }
       KALDI_VLOG(2) << "For iteration " << iter << ", updating w gives "
                     << "predicted per-frame like impr "
@@ -1227,7 +1304,8 @@ double MleAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &accs,
           break;
         } else {
           KALDI_WARN << "Halving step size for weights as likelihood did "
-                     << "not increase";
+                     << "not increase, " << (k_like_before/tot_count) << " -> "
+                     << (k_like_after/tot_count);
         }
       } else {
         break;
@@ -1378,9 +1456,9 @@ void MleAmSgmm2Updater::RenormalizeN(const MleAmSgmm2Accs &accs,
 
 
 double MleAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &accs,
-                                    const std::vector< SpMatrix<double> > &S_means,
-                                    const Vector<double> &gamma_i,
-                                    AmSgmm2 *model) {
+                                     const std::vector< SpMatrix<double> > &S_means,
+                                     const Vector<double> &gamma_i,
+                                     AmSgmm2 *model) {
   KALDI_ASSERT(S_means.size() == static_cast<size_t>(accs.num_gaussians_));
 
   SpMatrix<double> Sigma_i(accs.feature_dim_), Sigma_i_ml(accs.feature_dim_);

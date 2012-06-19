@@ -1,6 +1,6 @@
 // sgmmbin/sgmm-info.cc
 
-// Copyright 2012  Arnab Ghoshal
+// Copyright 2012  Arnab Ghoshal  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-
-#include "sgmm/am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
 #include "hmm/transition-model.h"
 
 
@@ -30,7 +29,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     const char *usage =
         "Print various information about an SGMM.\n"
-        "Usage: sgmm-info [options] <model-in> [model-in2 ... ]\n";
+        "Usage: sgmm2-info [options] <model-in> [model-in2 ... ]\n";
 
     bool sgmm_detailed = false;
     bool trans_detailed = false;
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 1, max = po.NumArgs(); i <= max; ++i) {
       std::string model_in_filename = po.GetArg(i);
-      AmSgmm am_sgmm;
+      AmSgmm2 am_sgmm;
       TransitionModel trans_model;
       {
         bool binary;
@@ -70,17 +69,25 @@ int main(int argc, char *argv[]) {
           << setw(40) << "  Dimension of speaker vector space"
           << am_sgmm.SpkSpaceDim() << endl
           << setw(40) << "  Dimension of feature vectors"
-          << am_sgmm.FeatureDim() << endl;
-        int32 total_substates = 0;
-        for (int32 j = 0; j < am_sgmm.NumPdfs(); j++) {
-          total_substates += am_sgmm.NumSubstates(j);
+          << am_sgmm.FeatureDim() << endl
+          << setw(40) << "  Number of weight indices"
+          << am_sgmm.NumWeightIndices() << endl;
+        int32 total_mixweights = 0;
+        for (int32 j2 = 0; j2 < am_sgmm.NumPdfs(); j2++) {
+          total_mixweights += am_sgmm.NumSubstatesForPdf(j2);
           if (sgmm_detailed) {
-            cout << "  # of substates for state " << setw(13) << j
-                 << am_sgmm.NumSubstates(j) << endl;
+            cout << "  # of substates for state " << setw(13) << j2
+                 << am_sgmm.NumSubstatesForPdf(j2) << endl;
           }
         }
-        cout << setw(40) << "  Total # of substates " << total_substates << endl;
-
+        cout << setw(40) << "  Total # of mixture weights " << total_mixweights << endl;
+        int32 total_groups = am_sgmm.NumGroups();
+        cout << setw(40) << "  Total # of groups of pdfs " << total_groups << endl;
+        int32 total_substates = 0;
+        for (int32 j1 = 0; j1 < am_sgmm.NumGroups(); j1++) {
+          total_substates += am_sgmm.NumSubstatesForGroup(j1);
+        }
+        cout << setw(40) << "  Total # of substates " << total_substates << endl;        
         cout << "\nTransition model information:\n"
              << setw(40) << " # of HMM states" << trans_model.NumPdfs() << endl
              << setw(40) << " # of transition states"

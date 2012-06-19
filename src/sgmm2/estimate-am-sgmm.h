@@ -35,6 +35,8 @@ namespace kaldi {
 struct MleAmSgmm2Options {
   /// Smoothing constant for sub-state weights [count to add to each one].
   BaseFloat tau_c;
+  /// Smoothing constant for weight projections w_i.
+  BaseFloat tau_w;
   /// Floor covariance matrices Sigma_i to this times average cov.
   BaseFloat cov_floor;
   /// ratio to dim below which we use diagonal. default 2, set to inf for diag.
@@ -63,6 +65,7 @@ struct MleAmSgmm2Options {
   MleAmSgmm2Options() {
     cov_floor = 0.025;
     tau_c  = 2.0;
+    tau_w  = 0.0;
     cov_diag_ratio = 2.0;  // set this to very large to get diagonal-cov models.
     max_cond = 1.0e+05;
     epsilon = 1.0e-40;
@@ -76,7 +79,9 @@ struct MleAmSgmm2Options {
   void Register(ParseOptions *po) {
     std::string module = "MleAmSgmm2Options: ";
     po->Register("tau-c", &tau_c, module+
-                 "Count for smoothing weight update.");
+                 "Count for smoothing sub-state weight update.");
+    po->Register("tau-w", &tau_w, module+
+                 "Count for smoothing weight projection update.");
     po->Register("cov-floor", &cov_floor, module+
                  "Covariance floor (fraction of average covariance).");
     po->Register("cov-diag-ratio", &cov_diag_ratio, module+

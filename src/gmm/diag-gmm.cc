@@ -317,7 +317,6 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
   // clustering of components that lead to the smallest decrease in likelihood.
   std::vector<bool> discarded_component(num_comp);
   Vector<BaseFloat> logdet(num_comp);   // logdet for each component
-  logdet.SetZero();
   for (int32 i = 0; i < num_comp; i++) {
     discarded_component[i] = false;
     for (int32 d = 0; d < dim; d++) {
@@ -450,7 +449,6 @@ BaseFloat DiagGmm::merged_components_logdet(BaseFloat w1, BaseFloat w2,
   int32 dim = f1.Dim();
   Vector<BaseFloat> tmp_mean(dim);
   Vector<BaseFloat> tmp_var(dim);
-  BaseFloat merged_logdet = 0.0;
 
   BaseFloat w_sum = w1 + w2;
   tmp_mean.CopyFromVec(f1);
@@ -460,6 +458,7 @@ BaseFloat DiagGmm::merged_components_logdet(BaseFloat w1, BaseFloat w2,
   tmp_var.AddVec(w2/w1, s2);
   tmp_var.Scale(w1/w_sum);
   tmp_var.AddVec2(-1.0, tmp_mean);
+  BaseFloat merged_logdet = 0.0;
   for (int32 d = 0; d < dim; d++) {
     merged_logdet -= 0.5 * log(tmp_var(d));
     // -0.5 because var is not inverted

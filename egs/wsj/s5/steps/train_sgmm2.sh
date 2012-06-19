@@ -21,7 +21,8 @@ num_iters_alimdl=3 # Number of iterations for estimating alignment model.
 max_iter_inc=15 # Last iter to increase #substates on.
 realign_iters="5 10 15"; # Iters to realign on. 
 spkvec_iters="5 8 12 17" # Iters to estimate speaker vectors on.
-add_dim_iters="6 8 10 12"; # Iters on which to increase phn dim and/or spk dim,
+increase_dim_iters="6 8"; # Iters on which to increase phn dim and/or spk dim;
+   # rarely necessary, and if it is, only the 1st will normally be necessary.
 rand_prune=0.1 # Randomized-pruning parameter for posteriors, to speed up training.
 phn_dim=  # You can use this to set the phonetic subspace dim. [default: feat-dim+1]
 spk_dim=  # You can use this to set the speaker subspace dim. [default: feat-dim]
@@ -29,6 +30,8 @@ beam=8
 self_weight=1.0
 retry_beam=40
 leaves_per_group=5
+num_weight_indices=0 # set this to more then #Gauss in UBM, if you
+ # want to use this type of mixture.
 # End configuration section.
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -215,14 +218,18 @@ while [ $x -lt $num_iters ]; do
          mv $dir/vecs_tmp.JOB $dir/vecs.JOB || exit 1;
      fi
    fi
+   if [ $x -eq 0 ] && [ $num_weight_indices -gt 0 ]; then 
+     weight_mixup_flag="--split-weights=$num_weight_indices"
+   else weight_mixup_flag=  ;  fi
 
    if [ $stage -le $x ]; then
      $cmd $dir/log/update.$x.log \
-       sgmm2-est --update-flags=$flags --split-substates=$numsubstates \
+       sgmm2-est $weight_mixup_flag --update-flags=$flags --split-substates=$numsubstates \
          $increase_dim_opts --write-occs=$dir/$[$x+1].occs \
          $dir/$x.mdl "sgmm2-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
      rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
    fi
+
    
    if [ $x -lt $max_iter_inc ]; then
      numsubstates=$[$numsubstates+$incsubstates]

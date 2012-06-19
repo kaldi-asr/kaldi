@@ -1,7 +1,8 @@
 // gmm/full-gmm.cc
 
-// Copyright 2009-2011  Jan Silovsky;  Saarland University;
-//                      Microsoft Corporation;  Georg Stemmer
+// Copyright 2009-2012  Jan Silovsky;  Saarland University;
+//                      Microsoft Corporation;  Georg Stemmer;
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +18,7 @@
 // limitations under the License.
 
 #include <limits>
-
+#include <queue>
 #include "gmm/full-gmm.h"
 #include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm.h"
@@ -119,8 +120,9 @@ int32 FullGmm::ComputeGconsts() {
 void FullGmm::Split(int32 target_components, float perturb_factor, 
                     std::vector<int32> *history) {
   if (target_components <= NumGauss() || NumGauss() == 0) {
-    KALDI_ERR << "Cannot split from " << NumGauss() <<  " to "
-              << target_components << " components";
+    KALDI_WARN << "Cannot split from " << NumGauss() <<  " to "
+               << target_components << " components";
+    return;
   }
   int32 current_components = NumGauss(), dim = Dim();
   FullGmm *tmp = new FullGmm();
@@ -225,8 +227,9 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     return;
   }
 
-  // If more than 1 merged component is required, use the hierarchical
-  // clustering of components that lead to the smallest decrease in likelihood.
+  // If more than 1 merged component is required, do greedy bottom-up
+  // clustering, always picking the pair of components that lead to the smallest
+  // decrease in likelihood.
   std::vector<bool> discarded_component(num_comp);
   Vector<BaseFloat> logdet(num_comp);   // logdet for each component
   logdet.SetZero();
@@ -237,7 +240,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   }
 
   // Undo variance inversion and multiplication of mean by this
-  // Makes copy of means and vars for all components - memory inefficient?
+  // Makes copy of means and vars for all components.
   std::vector<SpMatrix<BaseFloat> > vars(num_comp);
   Matrix<BaseFloat> means(num_comp, dim);
   for (int32 i = 0; i < num_comp; i++) {
@@ -256,7 +259,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   for (int32 i = 0; i < num_comp; i++) {
     for (int32 j = 0; j < i; j++) {
       BaseFloat w1 = weights_(i), w2 = weights_(j), w_sum = w1 + w2;
-      BaseFloat merged_logdet = merged_components_logdet(w1, w2,
+      BaseFloat merged_logdet = MergedComponentsLogdet(w1, w2,
         means.Row(i), means.Row(j), vars[i], vars[j]);
       delta_like(i, j) = w_sum * merged_logdet
         - w1 * logdet(i) - w2 * logdet(j);
@@ -325,7 +328,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     for (int32 j = 0; j < num_comp; j++) {
       if ((j == max_i) || (discarded_component[j])) continue;
       BaseFloat w1 = weights_(max_i), w2 = weights_(j), w_sum = w1 + w2;
-      BaseFloat merged_logdet = merged_components_logdet(w1, w2,
+      BaseFloat merged_logdet = MergedComponentsLogdet(w1, w2,
         means.Row(max_i), means.Row(j), vars[max_i], vars[j]);
       delta_like(max_i, j) = w_sum * merged_logdet
         - w1 * logdet(max_i) - w2 * logdet(j);
@@ -349,12 +352,168 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   ComputeGconsts();
 }
 
-BaseFloat FullGmm::merged_components_logdet(BaseFloat w1, BaseFloat w2,
-                                            const VectorBase<BaseFloat> &f1,
-                                            const VectorBase<BaseFloat> &f2,
-                                            const SpMatrix<BaseFloat> &s1,
-                                            const SpMatrix<BaseFloat> &s2)
-                                            const {
+BaseFloat FullGmm::MergePreselect(int32 target_components,
+                                  const std::vector<std::pair<int32, int32> > &preselect) {
+  KALDI_ASSERT(!preselect.empty());
+  double ans = 0.0;
+  if (target_components <= 0 || NumGauss() < target_components) {
+    KALDI_WARN << "Invalid argument for target number of Gaussians (="
+               << target_components << "), currently "
+               << NumGauss() << ", not mixing down";
+    return 0.0;
+  }
+  if (NumGauss() == target_components) {
+    KALDI_WARN << "No components merged, as target = total.";
+    return 0.0;
+  }
+  typedef std::pair<BaseFloat, std::pair<int32, int32> > QueueElem; // this is
+  // the likelihood change (a negative or zero value), and then the pair of
+  // indices.
+  std::priority_queue<QueueElem> queue;
+  
+  int32 num_comp = NumGauss(), dim = Dim();
+  
+  // Do greedy bottom-up clustering, always picking the pair of components that
+  // lead to the smallest decrease in likelihood.
+  std::vector<bool> discarded_component(num_comp);
+  Vector<BaseFloat> logdet(num_comp);   // logdet for each component
+  logdet.SetZero();
+  for (int32 i = 0; i < num_comp; i++) {
+    discarded_component[i] = false;
+    logdet(i) = 0.5 * inv_covars_[i].LogPosDefDet();
+    // +0.5 because var is inverted
+  }
+
+  // Undo variance inversion and multiplication of mean by
+  // inverse variance.
+  // Makes copy of means and vars for all components.
+  std::vector<SpMatrix<BaseFloat> > vars(num_comp);
+  Matrix<BaseFloat> means(num_comp, dim);
+  for (int32 i = 0; i < num_comp; i++) {
+    vars[i].Resize(dim);
+    vars[i].CopyFromSp(inv_covars_[i]);
+    vars[i].InvertDouble();
+    means.Row(i).AddSpVec(1.0, vars[i], means_invcovars_.Row(i), 0.0);
+
+    // add means square to variances; get second-order stats
+    // (normalized by zero-order stats)
+    vars[i].AddVec2(1.0, means.Row(i));
+  }
+
+  // compute change of likelihood for all combinations of components
+  for (int32 i = 0; i < preselect.size(); i++) {
+    int32 idx1 = preselect[i].first, idx2 = preselect[i].second;
+    KALDI_ASSERT(static_cast<size_t>(idx1) < static_cast<size_t>(num_comp));
+    KALDI_ASSERT(static_cast<size_t>(idx2) < static_cast<size_t>(num_comp));
+    BaseFloat w1 = weights_(idx1), w2 = weights_(idx2), w_sum = w1 + w2;
+    BaseFloat merged_logdet = MergedComponentsLogdet(w1, w2,
+                                                     means.Row(idx1), means.Row(idx2),
+                                                     vars[idx1], vars[idx2]),
+        delta_like = w_sum * merged_logdet - w1 * logdet(idx1) - w2 * logdet(idx2);
+    queue.push(std::make_pair(delta_like, preselect[i]));
+  }
+  
+  std::vector<int32> mapping(num_comp); // map of old index to where it
+  // got merged to.
+  for (int32 i = 0; i < num_comp; i++) mapping[i] = i;
+
+  // Merge components with smallest impact on the loglike
+  int32 removed;
+  for (removed = 0;
+       removed < num_comp - target_components && !queue.empty(); ) {
+    QueueElem qelem = queue.top();
+    queue.pop();
+    BaseFloat delta_log_like_old = qelem.first,
+        idx1 = qelem.second.first, idx2 = qelem.second.second;
+    // the next 3 lines are to handle when components got merged
+    // and moved to different indices, but we still want to consider
+    // merging their descendants. [descendant = current index where
+    // their data is.]
+    while (discarded_component[idx1]) idx1 = mapping[idx1];
+    while (discarded_component[idx2]) idx2 = mapping[idx2];
+    if (idx1 == idx2) continue; // can't merge something with itself.
+    
+    BaseFloat delta_log_like;
+    { // work out delta_log_like.
+      BaseFloat w1 = weights_(idx1), w2 = weights_(idx2), w_sum = w1 + w2;
+      BaseFloat merged_logdet = MergedComponentsLogdet(w1, w2,
+                                                       means.Row(idx1), means.Row(idx2),
+                                                       vars[idx1], vars[idx2]);
+      delta_log_like = w_sum * merged_logdet - w1 * logdet(idx1) - w2 * logdet(idx2);
+    }
+    if (ApproxEqual(delta_log_like, delta_log_like_old) ||
+        delta_log_like > delta_log_like_old) { // if the log-like change did
+      // not change, or if it actually got smaller (closer to zero, more
+      // positive), then merge the components-- otherwise put it back on the
+      // queue.  Note: there is no test for "freshness"-- we assume nothing
+      // is fresh.
+      BaseFloat w1 = weights_(idx1), w2 = weights_(idx2);
+      BaseFloat w_sum = w1 + w2;
+      // merge means
+      means.Row(idx1).AddVec(w2/w1, means.Row(idx2));
+      means.Row(idx1).Scale(w1/w_sum);
+      // merge vars
+      vars[idx1].AddSp(w2/w1, vars[idx2]);
+      vars[idx1].Scale(w1/w_sum);
+      // merge weights
+      weights_(idx1) = w_sum;
+
+      // Update gmm for merged component
+      // copy second-order stats (normalized by zero-order stats)
+      inv_covars_[idx1].CopyFromSp(vars[idx1]);
+      // centralize
+      inv_covars_[idx1].AddVec2(-1.0, means.Row(idx1));
+      // invert
+      inv_covars_[idx1].InvertDouble();
+      // copy first-order stats (normalized by zero-order stats)
+      // and multiply by inv_vars
+      means_invcovars_.Row(idx1).AddSpVec(1.0, inv_covars_[idx1],
+                                           means.Row(idx1), 0.0);
+
+      // Update logdet for merged component
+      logdet(idx1) = 0.5 * inv_covars_[idx1].LogPosDefDet();
+      // +0.5 because var is inverted
+
+      // Label the removed component as discarded
+      discarded_component[idx2] = true;
+      KALDI_VLOG(2) << "Delta-log-like is " << delta_log_like <<  " (merging "
+                    << idx1 << " and " << idx2 << ")";
+      ans += delta_log_like;
+      mapping[idx2] = idx1;
+      removed++;
+    } else {
+      QueueElem new_elem(delta_log_like, std::make_pair(idx1, idx2));
+      queue.push(new_elem); // push back more accurate elem.
+    }
+  }
+
+  // Renumber the components.
+  int32 cur_idx = 0;
+  for (int32 i = 0; i < num_comp; i++) {
+    if (mapping[i] == i) { // This component is kept, not merged into another.
+      weights_(cur_idx) = weights_(i);
+      means_invcovars_.Row(cur_idx).CopyFromVec(means_invcovars_.Row(i));
+      inv_covars_[cur_idx].CopyFromSp(inv_covars_[i]);
+      cur_idx++;
+    }
+  }
+  KALDI_ASSERT(cur_idx + removed == num_comp);
+  gconsts_.Resize(cur_idx);
+  valid_gconsts_ = false;
+  weights_.Resize(cur_idx, kCopyData);
+  means_invcovars_.Resize(cur_idx, Dim(), kCopyData);
+  inv_covars_.resize(cur_idx);
+  ComputeGconsts();
+  return ans;
+}
+
+
+BaseFloat FullGmm::MergedComponentsLogdet(BaseFloat w1, BaseFloat w2,
+                                          const VectorBase<BaseFloat> &f1,
+                                          const VectorBase<BaseFloat> &f2,
+                                          const SpMatrix<BaseFloat> &s1,
+                                          const SpMatrix<BaseFloat> &s2)
+    const {
   int32 dim = f1.Dim();
   Vector<BaseFloat> tmp_mean(dim);
   SpMatrix<BaseFloat> tmp_var(dim);
