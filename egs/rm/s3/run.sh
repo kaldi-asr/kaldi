@@ -76,6 +76,7 @@ local/decode.sh steps/decode_lda_mllt.sh exp/tri3c/decode || exit 1;
 steps/train_lda_etc_mpe.sh data/train data/lang exp/tri2b_ali exp/tri3mpe || exit 1;
 local/decode.sh steps/decode_lda_mllt.sh exp/tri3mpe/decode || exit 1;
 
+
 # Do LDA+MLLT+SAT
 steps/train_lda_mllt_sat.sh data/train data/lang exp/tri2b_ali exp/tri3d || exit 1;
 local/decode.sh steps/decode_lda_mllt_sat.sh exp/tri3d/decode || exit 1;
@@ -119,7 +120,7 @@ local/decode.sh steps/decode_sgmm_lda_etc.sh exp/sgmm4f/decode exp/tri3d/decode 
 
 
 # Decode with fMLLR
-
+sgmm-comp-prexform exp/sgmm4f/final.{mdl,occs,fmllr_mdl}
 local/decode.sh steps/decode_sgmm_lda_etc_fmllr.sh exp/sgmm4f/decode_fmllr exp/sgmm4f/decode exp/tri3d/decode || exit 1;
 
 
