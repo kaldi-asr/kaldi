@@ -21,7 +21,8 @@ num_iters_alimdl=3 # Number of iterations for estimating alignment model.
 max_iter_inc=15 # Last iter to increase #substates on.
 realign_iters="5 10 15"; # Iters to realign on. 
 spkvec_iters="5 8 12 17" # Iters to estimate speaker vectors on.
-add_dim_iters="6 8 10 12"; # Iters on which to increase phn dim and/or spk dim,
+increase_dim_iters="6 8"; # Iters on which to increase phn dim and/or spk dim;
+   # rarely necessary, and if it is, only the 1st will normally be necessary.
 rand_prune=0.1 # Randomized-pruning parameter for posteriors, to speed up training.
 phn_dim=  # You can use this to set the phonetic subspace dim. [default: feat-dim+1]
 spk_dim=  # You can use this to set the speaker subspace dim. [default: feat-dim]
