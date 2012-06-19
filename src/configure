@@ -111,7 +111,7 @@ function linux_configure_cuda {
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = [somewhere]/include >> kaldi.mk
-   echo ATLASLIBDIR = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
+   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
    cat makefiles/linux_atlas.mk >> kaldi.mk
    echo "** $* ***"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
@@ -142,11 +142,29 @@ function linux_check_static {
   fi
 }
 
+function linux_configure_debian {
+  if [ "`uname -m`" == "x86_64" ]; then
+    m=64
+  else
+    m=
+  fi
+  ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
+  for f in $ATLASLIBS; do 
+    [ ! -f $f ] && return 1;
+  done
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  cat makefiles/linux_atlas.mk >> kaldi.mk
+  echo "Configured for Debian Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  linux_configure_cuda
+  exit 0;
+}
+
 function linux_configure_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
 
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} /usr/local/atlas/lib{,64} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
      linux_check_static &&  ATLASLIBDIR=$dir
     done
@@ -358,7 +376,8 @@ if [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two 
     # libraries worked.  
 
-    linux_configure_static || \
+    linux_configure_debian || \
+      linux_configure_static || \
       linux_configure_dynamic || \
       linux_atlas_failure "Failed to configure ATLAS lbiraries";
 
