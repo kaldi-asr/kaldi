@@ -57,7 +57,7 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # with <RNN_UNK>
 
 $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
-   awk '{print $1;}' > $tempdir/loglikes.rnn
+   awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
 
 [ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \
   echo "rnnlm rescoring failed" && exit 1;
