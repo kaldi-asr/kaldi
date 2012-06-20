@@ -201,15 +201,12 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
   // After transpose, each row is one base
   U.Transpose();
 
-  if (base_num != NULL && (*base_num) < basis_size_) {
-    basis_size_ = *base_num;
-  } else {
-    *base_num = basis_size_;
-  }
+  *base_num = basis_size_;
   fmllr_basis_.resize(basis_size_);
   for (int32 n = 0; n < basis_size_; ++n) {
     fmllr_basis_[n].Resize(dim_, dim_ + 1, kSetZero);
     Vector<double> basis_vec((dim_ + 1) * dim_);
+    // Convert eigenvectors back to unnormalized space
     basis_vec.AddMatVec(1.0, C_inv_full, kTrans, U.Row(n), 0.0);
     // Convert stacked vectors to matrix
     fmllr_basis_[n].CopyRowsFromVec(basis_vec);
@@ -244,7 +241,8 @@ void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
     } else {
       W_mat.CopyFromMat(*out_xform);
     }
-    // Number of bases required for this speaker
+    // Number of bases for this speaker, according to the available
+    // adaptation data
     int32 basis_size = int32 (std::min( double(basis_params.basis_size_),
 	    	                   options.size_scale * spk_stats.beta_));
 
