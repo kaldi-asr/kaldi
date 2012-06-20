@@ -1,7 +1,6 @@
 // transform/basis-fmllr-diag-gmm.h
 
-// Copyright 2009-2011  Carnegie Mellon University; Johns Hopkins University;
-//                      Yajie Miao  Dan Povey
+// Copyright 2012  Carnegie Mellon University (author: Yajie Miao)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,7 +93,7 @@ class BasisFmllrGlobalParams {
   /// Note that SVD is performed in the normalized space. The base matrices
   /// are finally converted back to the unnormalized space.
   void EstimateFmllrBasis(const AmDiagGmm &am_gmm,
-  		                  int32* base_num = NULL);
+  		                  int32 *base_num = NULL);
 
   /// Gradient scatter. Dim is [(D+1)*D] [(D+1)*D]
   SpMatrix<BaseFloat> grad_scatter_;
@@ -114,7 +113,7 @@ class BasisFmllrGlobalParams {
 /// actual accumulations AffineXformStats
 /// See section 5.1 of the paper.
 void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
-                          SpMatrix<double>* pre_cond);
+                          SpMatrix<double> *pre_cond);
 
 /// This function performs speaker adaptation, computing the fMLLR matrix
 /// based on speaker statistics. It takes the global params (i.e., base matrices)
@@ -125,10 +124,10 @@ void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
 void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 		                    std::string speaker,   // just for logging and debugging
 		                    const AffineXformStats &spk_stats,
-	                        Matrix<BaseFloat>* out_xform,
-	                        Vector<BaseFloat>* coefficient,
-	                        BaseFloat* objf_impr,
-	                        BaseFloat* count,
+	                        Matrix<BaseFloat> *out_xform,
+	                        Vector<BaseFloat> *coefficient,
+	                        BaseFloat *objf_impr,
+	                        BaseFloat *count,
 	                        BasisFmllrOptions options);
 
 /// This function takes the step direction (delta) of fMLLR matrix as argument,

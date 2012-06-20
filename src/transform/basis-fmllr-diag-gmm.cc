@@ -1,7 +1,6 @@
 // transform/basis-fmllr-diag-gmm.cc
 
-// Copyright 2009-2011  Carnegie Mellon University; Johns Hopkins University;
-//                      Yajie Miao  Dan Povey
+// Copyright 2012  Carnegie Mellon University (author: Yajie Miao)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +22,6 @@ using std::vector;
 #include <string>
 using std::string;
 
-#include "optimization/kaldi-rprop.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
@@ -90,7 +88,7 @@ void BasisFmllrGlobalParams::ResizeParams(int32 dim) {
 }
 
 void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
-                          SpMatrix<double>* pre_cond) {
+                          SpMatrix<double> *pre_cond) {
   int32 dim = am_gmm.Dim();
   if (pre_cond->NumRows() != (dim + 1) * dim)
     pre_cond->Resize((dim + 1) * dim, kSetZero);
@@ -173,7 +171,7 @@ void BasisFmllrGlobalParams::AccuGradientScatter(
 
 void BasisFmllrGlobalParams::EstimateFmllrBasis(
 		                      const AmDiagGmm &am_gmm,
-		                      int32* base_num) {
+		                      int32 *base_num) {
   // Compute the preconditioner
   SpMatrix<double> precond_mat((dim_ + 1) * dim_);
   ComputeAmDiagPrecond(am_gmm, &precond_mat);
@@ -218,10 +216,10 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
 void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 		                    std::string speaker,   // for debugging
 		                    const AffineXformStats &spk_stats,
-	                        Matrix<BaseFloat>* out_xform,
-	                        Vector<BaseFloat>* coefficient,
-	                        BaseFloat* objf_impr,
-	                        BaseFloat* count,
+	                        Matrix<BaseFloat> *out_xform,
+	                        Vector<BaseFloat> *coefficient,
+	                        BaseFloat *objf_impr,
+	                        BaseFloat *count,
 	                        BasisFmllrOptions options) {
 
   if (spk_stats.beta_ < options.min_count) {
