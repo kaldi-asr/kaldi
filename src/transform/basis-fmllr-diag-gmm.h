@@ -17,8 +17,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_BASIS_TRANSFORM_FMLLR_DIAG_GMM_H_
-#define KALDI_BASIS_TRANSFORM_FMLLR_DIAG_GMM_H_
+#ifndef KALDI_BASIS_FMLLR_DIAG_GMM_H_
+#define KALDI_BASIS_FMLLR_DIAG_GMM_H_
 
 #include <vector>
 #include <string>
@@ -86,7 +86,13 @@ class BasisFmllrGlobalParams {
   /// See section 5.2 of the paper.
   void AccuGradientScatter(const AffineXformStats &spk_stats);
 
-  ///
+  /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
+  /// It takes diagonal GMM as argument, which will be used for preconditioner
+  /// computation. This function returns the total number of bases, which is
+  /// fixed as
+  /// N = (dim + 1) * dim
+  /// Note that SVD is performed in the normalized space. The base matrices
+  /// are finally converted back to the unnormalized space.
   void EstimateFmllrBasis(const AmDiagGmm &am_gmm,
   		                  int32* base_num = NULL);
 
@@ -140,4 +146,4 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
 
 } // namespace kaldi
 
-#endif  // KALDI_TRANSFORM_FMLLR_DIAG_GMM_H_
+#endif  // KALDI_BASIS_FMLLR_DIAG_GMM_H_
