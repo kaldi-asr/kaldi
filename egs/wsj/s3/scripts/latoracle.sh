@@ -30,11 +30,8 @@ dir=$3  #eg exp/decode_tri1_latgen
 
 mkdir -p $dir
 
-# Create reference transcriptions and lattices
+# Create reference transcriptions
 cat $transcript | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
-cat $dir/test_trans.filt | \
-  scripts/sym2int.pl --ignore-first-field data/words.txt | \
-  string-to-lattice "ark:$dir/test_trans.lats" 2>$dir/string-to-lattice.log
 
 # Symbols that don't count as errors
 echo "<s>"    > $dir/ignore.txt
@@ -51,10 +48,10 @@ for beam in 0.01 1 5 10; do
     "ark:gunzip -c $inputdir/*.lats.gz|" "ark,t:|gzip -c>$dir/lats.pruned.gz" \
        2>$dir/prune.$beam.log
 
-  echo "Computing oracle error rate w/r $transcript"
+  echo "Computing oracle error rate w.r.t. $transcript"
   lattice-oracle --word-symbol-table=data/words.txt --wildcard-symbols-list=$dir/ignore.txt \
-     "ark:$dir/test_trans.lats" "ark:gunzip -c $dir/lats.pruned.gz|" "ark,t:$dir/oracle${beam}.tra" \
-       2>$dir/oracle.$beam.log
+     "ark:cat $dir/test_trans.filt scripts/sym2int.pl --ignore-first-field data/words.txt|" \
+     "ark:gunzip -c $dir/lats.pruned.gz|" "ark,t:$dir/oracle${beam}.tra" 2>$dir/oracle.$beam.log
   
   cat $dir/oracle${beam}.tra | \
    scripts/int2sym.pl --ignore-first-field data/words.txt | \
