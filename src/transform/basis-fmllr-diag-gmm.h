@@ -117,18 +117,15 @@ void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
 
 /// This function performs speaker adaptation, computing the fMLLR matrix
 /// based on speaker statistics. It takes the global params (i.e., base matrices)
-/// as argument. The basis weights (d_{1}, d_{2}, ..., d_{N}) are optimized
-/// implicitly. Optionally, it can also return the weights explicitly, if the
-/// argument \coefficient is initialized as not NULL.
+/// as argument. The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
+/// explicitly. Finally, it returns objective function improvement over all the
+/// iterations.
 /// See section 5.3 of the paper for more details.
-void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
-		                    std::string speaker,   // just for logging and debugging
-		                    const AffineXformStats &spk_stats,
-	                        Matrix<BaseFloat> *out_xform,
-	                        Vector<BaseFloat> *coefficient,
-	                        BaseFloat *objf_impr,
-	                        BaseFloat *count,
-	                        BasisFmllrOptions options);
+double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
+		                      const AffineXformStats &spk_stats,
+	                          Matrix<BaseFloat> *out_xform,
+	                          Vector<BaseFloat> *coefficient,
+  	                          BasisFmllrOptions options);
 
 /// This function takes the step direction (delta) of fMLLR matrix as argument,
 /// and optimize step size using Newton's method. This is an iterative method,

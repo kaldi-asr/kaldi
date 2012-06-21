@@ -211,22 +211,18 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
   }
 }
 
-// optimize basis coefficients in test stage
-// deal with coefficients d_n implicitly
-void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
-		                    std::string speaker,   // for debugging
-		                    const AffineXformStats &spk_stats,
-	                        Matrix<BaseFloat> *out_xform,
-	                        Vector<BaseFloat> *coefficient,
-	                        BaseFloat *objf_impr,
-	                        BaseFloat *count,
-	                        BasisFmllrOptions options) {
+
+double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
+		                      const AffineXformStats &spk_stats,
+	                          Matrix<BaseFloat> *out_xform,
+	                          Vector<BaseFloat> *coefficient,
+	                          BasisFmllrOptions options) {
 
   if (spk_stats.beta_ < options.min_count) {
-    KALDI_WARN << "Not updating fMLLR since count is below min-count: " << spk_stats.beta_
-    		<< " for speaker " << speaker;
-	if (objf_impr) *objf_impr = 0.0;
-	if (count) *count = spk_stats.beta_;
+    KALDI_WARN << "Not updating fMLLR since count is below min-count: "
+               << spk_stats.beta_;
+    coefficient->Resize(0);
+    return 0.0;
   } else {
 	int dim = basis_params.dim_;
     if (out_xform->NumRows() != dim || out_xform->NumRows() != (dim +1)) {
@@ -244,9 +240,7 @@ void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
     int32 basis_size = int32 (std::min( double(basis_params.basis_size_),
 	    	                   options.size_scale * spk_stats.beta_));
 
-    if (coefficient != NULL && coefficient->Dim() != basis_size) {
-      coefficient->Resize(basis_size, kSetZero);
-    }
+    coefficient->Resize(basis_size, kSetZero);
 
     double impr_spk = 0;
     for (int32 iter = 1; iter <= options.num_iters; ++iter) {
@@ -294,25 +288,20 @@ void BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 
 	  double step_size = CalBasisFmllrStepSize(spk_stats, delta_W, A, S, options.step_size_iters);
 	  W_mat.AddMat(step_size, delta_W, kNoTrans);
-	  if (coefficient != NULL) {
-	    coefficient->AddVec(step_size, delta_d);
-	  }
+	  coefficient->AddVec(step_size, delta_d);
 	  // Check auxiliary function
 	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
-	  if (iter <= 3) {
-	    KALDI_LOG << "Objective function (iter=" << iter << "): " << startObj / spk_stats.beta_
-	  			  << " -> " << endObj / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
+
+      // For diagnose, maybe too verbose
+      if (iter <= 3) {
+        KALDI_LOG << "Objective function (iter=" << iter << "): " << startObj / spk_stats.beta_
+                  << " -> " << endObj / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
 	  }
 	  impr_spk += (endObj - startObj);
     }  // loop over iters
     out_xform->CopyFromMat(W_mat, kNoTrans);
-    KALDI_LOG << "Objective function improvement for " << speaker << ": "
-    		<< impr_spk / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
-
-    if (objf_impr) *objf_impr += impr_spk;
-    if (count) *count += spk_stats.beta_;
+    return impr_spk;
   }
-
 }
 
 
