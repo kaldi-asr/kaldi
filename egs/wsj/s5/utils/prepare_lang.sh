@@ -17,7 +17,8 @@
 # The file "optional_silence.txt" contains just a single phone (typically SIL) which
 # is used for optional silence in the lexicon.
 # extra_questions.txt might be empty; typically will consist of lists of phones, all
-# members of each list with the same stress or tone or something; and also a list for
+# members of each list with the same stress or tone or something; and also possibly 
+# a list for
 # the silence phones.  This will augment the automtically generated questions (note:
 # the automatically generated ones will treat all the stress/tone versions of a phone
 # the same, so will not "get to ask" about stress or tone).
@@ -25,9 +26,25 @@
 # This script adds word-position-dependent phones and constructs a host of other
 # derived files, that go in data/lang/.
 
+# Begin configuration section.
+sil_prob=0.5
+num_sil_states=5
+num_nonsil_states=3
+share_silence_phones=false  # if true, then share pdfs of different silence phones
+  # together.
+# end configuration sections
+
+. utils/parse_options.sh 
+
 if [ $# -ne 4 ]; then 
   echo "usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>"
   echo "e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang"
+  echo "options: "
+  echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 < silprob < 1]"
+  echo "     --num-sil-states <number of states>             # default: 5, #states in silence models."
+  echo "     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models."
+  echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
+  echo "                                                     # all non-silence phones. "
   exit 1;
 fi
 
@@ -70,8 +87,20 @@ cat <(for x in `cat $srcdir/silence_phones.txt`; do for y in "" "" "_B" "_E" "_I
 mkdir -p $dir/phones # various sets of phones...
 
 # Sets of phones for use in clustering, and making monophone systems.
-cat $srcdir/{,non}silence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
-cat $dir/phones/sets.txt | awk '{print "shared", "split", $0;}' > $dir/phones/roots.txt
+
+if $share_silence_phones; then
+  # build a roots file that will force all the silence phones to share the
+  # same pdf's. [only the transitions will differ.]
+  cat $srcdir/silence_phones.txt | awk '{printf("%s ", $0); } END{print;}' | cat - $srcdir/nonsilence_phones.txt | \
+    utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
+  cat $dir/phones/sets.txt | awk '{if(NR==1) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
+else
+  # different silence phones will have different GMMs.  [note: here, all "shared split" means
+  # is that we may have one GMM for all the states, or we can split on states.  because they're
+  # context-independent phones, they don't see the context.]
+  cat $srcdir/{,non}silence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
+  cat $dir/phones/sets.txt | awk '{print "shared", "split", $0;}' > $dir/phones/roots.txt
+fi
 
 cat $srcdir/silence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
  awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/silence.txt
@@ -138,7 +167,7 @@ silphone=`cat $srcdir/optional_silence.txt` || exit 1;
 
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 
-utils/make_lexicon_fst.pl $tmpdir/lexicon.txt 0.5 $silphone | \
+utils/make_lexicon_fst.pl $tmpdir/lexicon.txt $sil_prob $silphone | \
   fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
   --keep_isymbols=false --keep_osymbols=false | \
    fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
@@ -170,10 +199,9 @@ utils/sym2int.pl -f 1 $dir/phones.txt <$dir/phones/word_boundary.txt \
   > $dir/phones/word_boundary.int || exit 1;
 
 
-silphonelist=`cat $dir/phones/silence.csl | sed 's/:/ /g'`
-nonsilphonelist=`cat $dir/phones/nonsilence.csl | sed 's/:/ /g'`
-cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
-   sed "s:SILENCEPHONES:$silphonelist:" > $dir/topo
+silphonelist=`cat $dir/phones/silence.csl`
+nonsilphonelist=`cat $dir/phones/nonsilence.csl`
+utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonelist >$dir/topo
 
 
 # Create the lexicon FST with disambiguation symbols, and put it in lang_test.
@@ -182,7 +210,7 @@ cat conf/topo.proto | sed "s:NONSILENCEPHONES:$nonsilphonelist:" | \
 phone_disambig_symbol=`grep \#0 $dir/phones.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 $dir/words.txt | awk '{print $2}'`
 
-utils/make_lexicon_fst.pl $tmpdir/lexicon_disambig.txt 0.5 $silphone '#'$ndisambig | \
+utils/make_lexicon_fst.pl $tmpdir/lexicon_disambig.txt $sil_prob $silphone '#'$ndisambig | \
    fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
    --keep_isymbols=false --keep_osymbols=false |   \
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
