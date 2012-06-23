@@ -45,7 +45,6 @@ void AmDiagGmm::Init(const DiagGmm &proto, int32 num_pdfs) {
   }
 
   densities_.resize(num_pdfs, NULL);
-  dim_ = proto.Dim();
   for (vector<DiagGmm*>::iterator itr = densities_.begin(),
       end = densities_.end(); itr != end; ++itr) {
     *itr = new DiagGmm();
@@ -55,9 +54,7 @@ void AmDiagGmm::Init(const DiagGmm &proto, int32 num_pdfs) {
 
 void AmDiagGmm::AddPdf(const DiagGmm &gmm) {
   if (densities_.size() != 0)  // not the first gmm
-    assert(static_cast<int32>(gmm.Dim()) == dim_);
-  else
-    dim_ = gmm.Dim();
+    KALDI_ASSERT(gmm.Dim() == this->Dim());
 
   DiagGmm *gmm_ptr = new DiagGmm();
   gmm_ptr->CopyFromDiagGmm(gmm);
@@ -82,7 +79,6 @@ void AmDiagGmm::CopyFromAmDiagGmm(const AmDiagGmm &other) {
     DeletePointers(&densities_);
   }
   densities_.resize(other.NumPdfs(), NULL);
-  dim_ = other.dim_;
   for (int32 i = 0, end = densities_.size(); i < end; i++) {
     densities_[i] = new DiagGmm();
     densities_[i]->CopyFromDiagGmm(*other.densities_[i]);
@@ -147,10 +143,10 @@ void AmDiagGmm::MergeByCount(const Vector<BaseFloat> &state_occs,
 }
 
 void AmDiagGmm::Read(std::istream &in_stream, bool binary) {
-  int32 num_pdfs;
+  int32 num_pdfs, dim;
 
   ExpectToken(in_stream, binary, "<DIMENSION>");
-  ReadBasicType(in_stream, binary, &dim_);
+  ReadBasicType(in_stream, binary, &dim);
   ExpectToken(in_stream, binary, "<NUMPDFS>");
   ReadBasicType(in_stream, binary, &num_pdfs);
   KALDI_ASSERT(num_pdfs > 0);
@@ -158,15 +154,17 @@ void AmDiagGmm::Read(std::istream &in_stream, bool binary) {
   for (int32 i = 0; i < num_pdfs; i++) {
     densities_.push_back(new DiagGmm());
     densities_.back()->Read(in_stream, binary);
-    KALDI_ASSERT(static_cast<int32>(densities_.back()->Dim())
-                 == dim_);
+    KALDI_ASSERT(densities_.back()->Dim() == dim);
   }
 }
 
 void AmDiagGmm::Write(std::ostream &out_stream, bool binary) const {
-  KALDI_ASSERT((*densities_.begin())->Dim()==dim_);
+  int32 dim = this->Dim();
+  if (dim == 0) {
+    KALDI_WARN << "Trying to write empty AmDiagGmm object.";
+  }
   WriteToken(out_stream, binary, "<DIMENSION>");
-  WriteBasicType(out_stream, binary, dim_);
+  WriteBasicType(out_stream, binary, dim);
   WriteToken(out_stream, binary, "<NUMPDFS>");
   WriteBasicType(out_stream, binary, static_cast<int32>(densities_.size()));
   for (std::vector<DiagGmm*>::const_iterator it = densities_.begin(),

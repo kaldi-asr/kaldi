@@ -1,7 +1,7 @@
 // gmm/mle-am-diag-gmm.cc
 
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation;
-//                      Georg Stemmer; Yanmin Qian
+// Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal);
+//                      Microsoft Corporation;  Georg Stemmer;  Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,7 +180,6 @@ void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
     pdf.SetInvVars(inv_vars);
     pdf.ComputeGconsts();
   }
-  am_gmm->SetDim(dim);
 }
 
 void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,

@@ -1,7 +1,7 @@
 // gmm/mle-am-diag-gmm.h
 
-// Copyright 2009-2011  Saarland University
-// Author:  Arnab Ghoshal; Yanmin Qian
+// Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal);
+//                      Yanmin Qian
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

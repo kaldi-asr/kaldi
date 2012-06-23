@@ -33,7 +33,7 @@ namespace kaldi {
 
 class AmDiagGmm {
  public:
-  AmDiagGmm() : dim_(0) { }
+  AmDiagGmm() {}
   ~AmDiagGmm();
 
   /// Initializes with a single "prototype" GMM.
@@ -74,8 +74,10 @@ class AmDiagGmm {
   void Read(std::istream &in_stream, bool binary);
   void Write(std::ostream &out_stream, bool binary) const;
 
-  int32 Dim() const { return dim_; }
-  void SetDim(int32 dim) { dim_=dim; } // call this in case you change dim of pdfs in model.
+  int32 Dim() const {
+    return (densities_.size() > 0)? densities_[0]->Dim() : 0;
+  }
+//  void SetDim(int32 dim) { dim_=dim; } // call this in case you change dim of pdfs in model.
   int32 NumPdfs() const { return densities_.size(); }
   int32 NumGauss() const;
   int32 NumGaussInPdf(int32 pdf_index) const;
@@ -94,12 +96,13 @@ class AmDiagGmm {
 
  private:
   std::vector<DiagGmm*> densities_;
-  int32 dim_;
+//  int32 dim_;
 
   void RemovePdf(int32 pdf_index);
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmDiagGmm);
 };
+
 
 inline BaseFloat AmDiagGmm::LogLikelihood(
     const int32 pdf_index, const VectorBase<BaseFloat> &data) const {
@@ -124,25 +127,22 @@ inline const DiagGmm& AmDiagGmm::GetPdf(int32 pdf_index) const {
   return *(densities_[pdf_index]);
 }
 
-inline void
-AmDiagGmm::GetGaussianMean(int32 pdf_index, int32 gauss,
-                                      VectorBase<BaseFloat> *out) const {
+inline void AmDiagGmm::GetGaussianMean(int32 pdf_index, int32 gauss,
+                                       VectorBase<BaseFloat> *out) const {
   KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
       && (densities_[pdf_index] != NULL));
   densities_[pdf_index]->GetComponentMean(gauss, out);
 }
 
-inline void
-AmDiagGmm::GetGaussianVariance(int32 pdf_index, int32 gauss,
-                                          VectorBase<BaseFloat> *out) const {
+inline void AmDiagGmm::GetGaussianVariance(int32 pdf_index, int32 gauss,
+                                           VectorBase<BaseFloat> *out) const {
   KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
                && (densities_[pdf_index] != NULL));
   densities_[pdf_index]->GetComponentVariance(gauss, out);
 }
 
-inline void
-AmDiagGmm::SetGaussianMean(int32 pdf_index, int32 gauss_index,
-                                      const VectorBase<BaseFloat> &in) {
+inline void AmDiagGmm::SetGaussianMean(int32 pdf_index, int32 gauss_index,
+                                       const VectorBase<BaseFloat> &in) {
   KALDI_ASSERT((static_cast<size_t>(pdf_index) < densities_.size())
                && (densities_[pdf_index] != NULL));
   densities_[pdf_index]->SetComponentMean(gauss_index, in);
