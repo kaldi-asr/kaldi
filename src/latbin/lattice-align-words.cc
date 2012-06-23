@@ -68,9 +68,8 @@ int main(int argc, char *argv[]) {
 
     WordBoundaryInfo info(opts, word_boundary_rxfilename);
     
-    int32 num_done = 0, num_err = 0; // Note: we may have even in
-                                     // error cases.
-
+    int32 num_done = 0, num_err = 0;
+    
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       const CompactLattice &clat = clat_reader.Value();
@@ -104,7 +103,9 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Successfully aligned " << num_done << " lattices; "
               << num_err << " had errors.";
-    return (num_done != 0 ? 0 : 1);
+    return (num_done > num_err ? 0 : 1); // Change the error condition slightly here,
+    // if there are errors in the word-boundary phones we can get situations where
+    // most lattice give an error.
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

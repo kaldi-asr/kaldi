@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
         "Takes as input lattices/n-bests which must be linear (single path);\n"
         "convert from lattice to up to 4 archives containing transcriptions, alignments,\n"
         "and acoustic and LM costs (note: use ark:/dev/null for unwanted outputs)\n"
-        "Usage: nbest-to-linear [options] <nbest-rspecifier> <transcriptions-wspecifier> "
-        "[<alignments-wspecifier> [<lm-cost-wspecifier> [<ac-cost-wspecifier>]]]\n"
+        "Usage: nbest-to-linear [options] <nbest-rspecifier> <alignments-wspecifier> "
+        "[<transcriptions-wspecifier> [<lm-cost-wspecifier> [<ac-cost-wspecifier>]]]\n"
         " e.g.: lattice-to-nbest --n=10 ark:1.lats ark:- | \\\n"
         "   nbest-to-linear ark:1.lats ark,t:1.ali ark,t:1.tra\n";
     
