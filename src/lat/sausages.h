@@ -59,7 +59,9 @@ class MinimumBayesRisk {
   /// to have been done already.
   /// This does the whole computation.  You get the output with
   /// GetOneBest(), GetBayesRisk(), and GetSausageStats().
-  MinimumBayesRisk(const CompactLattice &clat);
+  MinimumBayesRisk(const CompactLattice &clat, bool do_mbr = true); // if do_mbr == false,
+  // it will just use the MAP recognition output, but will get the MBR stats for things
+  // like confidences.
   
   const std::vector<int32> &GetOneBest() const { // gets one-best (with no epsilons)
     return R_;
@@ -72,12 +74,17 @@ class MinimumBayesRisk {
     // at the same time.
   }
 
-  const std::vector<std::pair<BaseFloat, BaseFloat> > GetOneBestTimes() const {
+  const std::vector<std::pair<BaseFloat, BaseFloat> > &GetOneBestTimes() const {
     return one_best_times_; // returns average (start,end) times for each bin corresponding
     // to an entry in the one-best output.  This is just the appropriate
     // subsequence of the times in SausageTimes().
   }
-  
+
+  /// Outputs the confidences for the one-best transcript.
+  const std::vector<BaseFloat> &GetOneBestConfidences() const {
+    return one_best_confidences_;
+  }
+
   /// Returns the expected WER over this sentence (assuming
   /// model correctness.
   BaseFloat GetBayesRisk() const { return L_; }
@@ -131,6 +138,12 @@ class MinimumBayesRisk {
     int32 end_node;
     BaseFloat loglike;
   };
+
+  /// Boolean configuration parameter: if true, we actually update the hypothesis
+  /// to do MBR decoding (if false, our output is the MAP decoded output, but we
+  /// output the stats too).
+  bool do_mbr_;
+  
   /// Arcs in the topologically sorted acceptor form of the word-level lattice,
   /// with one final-state.  Contains (word-symbol, log-likelihood on arc ==
   /// negated cost).  Indexed from zero.
@@ -142,7 +155,7 @@ class MinimumBayesRisk {
 
   std::vector<int32> state_times_; // time of each state in the word lattice,
   // indexed from 1 (same index as into pre_)
-
+  
   std::vector<int32> R_; // current 1-best word sequence, normalized to have
   // epsilons between each word and at the beginning and end.  R in paper...
   // caution: indexed from zero, not from 1 as in paper.
@@ -165,6 +178,11 @@ class MinimumBayesRisk {
   // one_best_times_ is a subsequence of times_, corresponding to
   // (start,end) times of words in the one best output.  Actually these
   // times are averages over the bin that each word came from.
+
+  std::vector<BaseFloat> one_best_confidences_;
+  // vector of confidences for the 1-best output (which could be
+  // the MAP output if do_mbr_ == false, or the MBR output otherwise).
+  // Indexed by the same index as one_best_times_.
   
   struct GammaCompare{
     // should be like operator <.  But we want reverse order

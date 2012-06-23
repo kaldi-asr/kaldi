@@ -29,22 +29,31 @@ void MinimumBayesRisk::MbrDecode() {
     double delta_Q = 0.0; // change in objective function.
 
     one_best_times_.clear();
+    one_best_confidences_.clear();
     
     // Caution: q in the line below is (q-1) in the algorithm
     // in the paper; both R_ and gamma_ are indexed by q-1.
     for (size_t q = 0; q < R_.size(); q++) {
-      // sort gamma_[i] in reverse order so most likely one is first.
-      const vector<pair<int32, BaseFloat> > &this_gamma = gamma_[q];
-      double old_gamma = 0, new_gamma = this_gamma[0].second;
-      int32 rq = R_[q], rhat = this_gamma[0].first; // rq: old word, rhat: new.
-      for (size_t j = 0; j < this_gamma.size(); j++)
-        if (this_gamma[j].first == rq) old_gamma = this_gamma[j].second;
-      delta_Q += (old_gamma - new_gamma); // will be 0 or negative; a bound on
-      // change in error.
-      if (rq != rhat)
-        KALDI_VLOG(2) << "Changing word " << rq << " to " << rhat;
-      R_[q] = rhat;
-      if (rhat != 0) one_best_times_.push_back(times_[q]);
+      if (do_mbr_) { // This loop updates R_ [indexed same as gamma_]. 
+        // gamma_[i] is sorted in reverse order so most likely one is first.
+        const vector<pair<int32, BaseFloat> > &this_gamma = gamma_[q];
+        double old_gamma = 0, new_gamma = this_gamma[0].second;
+        int32 rq = R_[q], rhat = this_gamma[0].first; // rq: old word, rhat: new.
+        for (size_t j = 0; j < this_gamma.size(); j++)
+          if (this_gamma[j].first == rq) old_gamma = this_gamma[j].second;
+        delta_Q += (old_gamma - new_gamma); // will be 0 or negative; a bound on
+        // change in error.
+        if (rq != rhat)
+          KALDI_VLOG(2) << "Changing word " << rq << " to " << rhat;
+        R_[q] = rhat;
+      }
+      if (R_[q] != 0) {
+        one_best_times_.push_back(times_[q]);
+        BaseFloat confidence = 0.0;
+        for (int32 j = 0; j < gamma_[q].size(); j++)
+          if (gamma_[q][j].first == R_[q]) confidence = gamma_[q][j].second;
+        one_best_confidences_.push_back(confidence);
+      }
     }
     KALDI_VLOG(2) << "Iter = " << counter << ", delta-Q = " << delta_Q;
     if (delta_Q == 0) break;
@@ -55,7 +64,6 @@ void MinimumBayesRisk::MbrDecode() {
   }
   RemoveEps(&R_);
 }
-
 
 struct Int32IsZero {
   bool operator() (int32 i) { return (i == 0); }
@@ -249,7 +257,7 @@ void MinimumBayesRisk::AccStats() {
   }  
 }
 
-MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in) {
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr) {
   CompactLattice clat(clat_in); // copy.
 
   CreateSuperFinal(&clat); // Add super-final state to clat... this is
