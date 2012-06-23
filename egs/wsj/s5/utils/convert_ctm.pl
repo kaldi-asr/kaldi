@@ -41,10 +41,10 @@ while(<R>) {
 # command-line argument.
 while(<>) {
   @A= split(" ", $_);
-  @A == 5 || die "Unexpected ctm format: $_";
+  ( @A == 5 || @A == 6 ) || die "Unexpected ctm format: $_";
   # lines look like:
-  # <utterance-id> 1 <begin-time> <length> <word>
-  ($utt, $one, $wbegin, $wlen, $w) = @A;
+  # <utterance-id> 1 <begin-time> <length> <word> [ confidence ]
+  ($utt, $one, $wbegin, $wlen, $w, $conf) = @A;
   $reco = $utt2reco{$utt};
   if (!defined $reco) { die "Utterance-id $utt not defined in segments file $segments"; }
   $file = $reco2file{$reco};
@@ -57,7 +57,11 @@ while(<>) {
   $wbegin_r = $wbegin + $b; # Make it relative to beginning of the recording.
   $wbegin_r = sprintf("%.2f", $wbegin_r);
   $wlen = sprintf("%.2f", $wlen);
-  $line = "$file $channel $wbegin_r $wlen $w\n";
+  if (defined $conf) {
+    $line = "$file $channel $wbegin_r $wlen $w $conf\n"; 
+  } else {
+    $line = "$file $channel $wbegin_r $wlen $w\n"; 
+  }
   if ($wbegin_r + $wlen > $e + 0.01) {
     print STDERR "Warning: word appears to be past end of recording; line is $line";
   }
@@ -66,11 +70,11 @@ while(<>) {
 
 __END__
 
-# Test example:
+# Test example [also test it without the 0.5's]
 echo utt reco 10.0 20.0 > segments
 echo reco file A > reco2file_and_channel
-echo utt 1 8.0 1.0 word > ctm_in
-echo file A 18.00 1.00 word > ctm_out
+echo utt 1 8.0 1.0 word 0.5 > ctm_in
+echo file A 18.00 1.00 word 0.5 > ctm_out
 utils/convert_ctm.pl segments reco2file_and_channel ctm_in | cmp - ctm_out || echo error
 rm segments reco2file_and_channel ctm_in ctm_out
 
