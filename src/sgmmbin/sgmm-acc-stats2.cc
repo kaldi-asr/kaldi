@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "of SGMMs (input is posteriors of mixed sign)\n"
         "Usage: sgmm-acc-stats2 [options] <model-in> <feature-rspecifier> "
         "<posteriors-rspecifier> <num-stats-out> <den-stats-out>\n"
-        "e.g.: sgmm-acc-stats 1.mdl 1.ali scp:train.scp ark:1.posts num.acc den.acc\n";
+        "e.g.: sgmm-acc-stats2 1.mdl 1.ali scp:train.scp ark:1.posts num.acc den.acc\n";
 
     ParseOptions po(usage);
     bool binary = true;

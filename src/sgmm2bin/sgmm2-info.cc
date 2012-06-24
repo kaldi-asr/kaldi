@@ -69,9 +69,7 @@ int main(int argc, char *argv[]) {
           << setw(40) << "  Dimension of speaker vector space"
           << am_sgmm.SpkSpaceDim() << endl
           << setw(40) << "  Dimension of feature vectors"
-          << am_sgmm.FeatureDim() << endl
-          << setw(40) << "  Number of weight indices"
-          << am_sgmm.NumWeightIndices() << endl;
+             << am_sgmm.FeatureDim() << endl;
         int32 total_mixweights = 0;
         for (int32 j2 = 0; j2 < am_sgmm.NumPdfs(); j2++) {
           total_mixweights += am_sgmm.NumSubstatesForPdf(j2);

@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm-ebw.cc
+// sgmm2/estimate-am-sgmm-ebw.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
@@ -47,26 +47,38 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
   }
   if (flags & (kSgmmPhoneVectors | kSgmmPhoneWeightProjections))
     model->ComputeH(&H);
+  
+  Vector<double> gamma_num(num_accs.num_gaussians_);
+  for (int32 j1 = 0; j1 < num_accs.num_groups_; j1++)
+    gamma_num.AddRowSumMat(num_accs.gamma_[j1]); 
+  Vector<double> gamma_den(den_accs.num_gaussians_);
+  for (int32 j1 = 0; j1 < den_accs.num_groups_; j1++)
+    gamma_den.AddRowSumMat(den_accs.gamma_[j1]); 
 
   BaseFloat tot_impr = 0.0;
 
   if (flags & kSgmmPhoneVectors)
-    tot_impr += UpdatePhoneVectors(num_accs, den_accs, model, H);
+    tot_impr += UpdatePhoneVectors(num_accs, den_accs, H, model);
   
   if (flags & kSgmmPhoneProjections)
-    tot_impr += UpdateM(num_accs, den_accs, Q_num, Q_den, model);
-
+    tot_impr += UpdateM(num_accs, den_accs, Q_num, Q_den,
+                        gamma_num, gamma_den, model);
+  
   if (flags & kSgmmPhoneWeightProjections)
-    tot_impr += UpdateW(num_accs, den_accs, model);
+    tot_impr += UpdateW(num_accs, den_accs, gamma_num, gamma_den, model);
+
+  if (flags & kSgmmSpeakerWeightProjections)
+    tot_impr += UpdateU(num_accs, den_accs, gamma_num, gamma_den, model);
   
   if (flags & kSgmmCovarianceMatrix)
-    tot_impr += UpdateVars(num_accs, den_accs, S_means, model);
+    tot_impr += UpdateVars(num_accs, den_accs,
+                           gamma_num, gamma_den, S_means, model);
 
   if (flags & kSgmmSubstateWeights)
     tot_impr += UpdateSubstateWeights(num_accs, den_accs, model);
 
   if (flags & kSgmmSpeakerProjections)
-    tot_impr += UpdateN(num_accs, den_accs, model);
+    tot_impr += UpdateN(num_accs, den_accs, gamma_num, gamma_den, model);
   
 
   if (auxf_change_out) *auxf_change_out = tot_impr * num_accs.total_frames_;
@@ -95,8 +107,8 @@ class EbwUpdatePhoneVectorsClass { // For multi-threaded.
   EbwUpdatePhoneVectorsClass(const EbwAmSgmm2Updater *updater,
                              const MleAmSgmm2Accs &num_accs,
                              const MleAmSgmm2Accs &den_accs,
+                             const std::vector<SpMatrix<double> > &H,                             
                              AmSgmm2 *model,
-                             const std::vector<SpMatrix<double> > &H,
                              double *auxf_impr):
       updater_(updater), num_accs_(num_accs), den_accs_(den_accs),
       model_(model), H_(H), auxf_impr_ptr_(auxf_impr), auxf_impr_(0.0) { }
@@ -108,7 +120,7 @@ class EbwUpdatePhoneVectorsClass { // For multi-threaded.
   inline void operator() () {
     // Note: give them local copy of the sums we're computing,
     // which will be propagated to the total sums in the destructor.
-    updater_->UpdatePhoneVectorsInternal(num_accs_, den_accs_, model_, H_,
+    updater_->UpdatePhoneVectorsInternal(num_accs_, den_accs_, H_, model_,
                                          &auxf_impr_, num_threads_, thread_id_);
   }
   // Copied and modified from example in kaldi-thread.h
@@ -135,18 +147,23 @@ void EbwAmSgmm2Updater::ComputePhoneVecStats(
     const MleAmSgmm2Accs &accs,
     const AmSgmm2 &model,
     const std::vector<SpMatrix<double> > &H,
-    int32 j,
+    int32 j1,
     int32 m,
-    const Vector<double> &w_jm,
+    const Vector<double> &w_jm_in,
     double gamma_jm,
     Vector<double> *g_jm,
-    SpMatrix<double> *H_jm) { 
-  g_jm->CopyFromVec(accs.y_[j].Row(m));
+    SpMatrix<double> *H_jm) {
+  Vector<double> w_jm(w_jm_in);
+  if (!accs.a_.empty() && accs.a_[j1](m, 0) != 0) { // [SSGMM]
+    w_jm.MulElements(accs.a_[j1].Row(m)); // multiply by "a" quantities..
+    w_jm.Scale(1.0 / w_jm.Sum()); // renormalize.
+  }  
+  g_jm->CopyFromVec(accs.y_[j1].Row(m));
   for (int32 i = 0; i < accs.num_gaussians_; i++) {
-    double gamma_jmi = accs.gamma_[j](m, i);
+    double gamma_jmi = accs.gamma_[j1](m, i);
     double quadratic_term = std::max(gamma_jmi, gamma_jm * w_jm(i));
     double scalar = gamma_jmi - gamma_jm * w_jm(i) + quadratic_term
-        * VecVec(model.w_.Row(i), model.v_[j].Row(m));
+        * VecVec(model.w_.Row(i), model.v_[j1].Row(m));
     g_jm->AddVec(scalar, model.w_.Row(i));
     if (gamma_jmi != 0.0)
       H_jm->AddSp(gamma_jmi, H[i]);  // The most important term..
@@ -160,9 +177,9 @@ void EbwAmSgmm2Updater::ComputePhoneVecStats(
 // multi-threaded).
 void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
     const MleAmSgmm2Accs &num_accs,
-    const MleAmSgmm2Accs &den_accs,    
-    AmSgmm2 *model,
+    const MleAmSgmm2Accs &den_accs,
     const std::vector<SpMatrix<double> > &H,
+    AmSgmm2 *model,
     double *auxf_impr,
     int32 num_threads,
     int32 thread_id) const {
@@ -191,6 +208,9 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
       w_jm.AddMatVec(1.0, Matrix<double>(model->w_), kNoTrans,
                      Vector<double>(model->v_[j1].Row(m)), 0.0);
       w_jm.ApplySoftMax();
+      // Note: in the ML code, in the SSGMM case, at this point the w_jm would
+      // be modified with the "a" quantities to get the "\tilde{w}_{jm}" of the
+      // SSGMM techreport.  But in this code, it gets done inside ComputePhoneVecStats.
       
       ComputePhoneVecStats(num_accs, *model, H, j1, m, w_jm, gamma_jm_num,
                            &g_jm_num, &H_jm_num);
@@ -237,9 +257,9 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
 }
 
 double EbwAmSgmm2Updater::UpdatePhoneVectors(const MleAmSgmm2Accs &num_accs,
-                                            const MleAmSgmm2Accs &den_accs,
-                                            AmSgmm2 *model,
-                                            const vector< SpMatrix<double> > &H) const {
+                                             const MleAmSgmm2Accs &den_accs,
+                                             const vector< SpMatrix<double> > &H,
+                                             AmSgmm2 *model) const {
   KALDI_LOG << "Updating phone vectors.";
   
   double count = 0.0, auxf_impr = 0.0;
@@ -247,7 +267,7 @@ double EbwAmSgmm2Updater::UpdatePhoneVectors(const MleAmSgmm2Accs &num_accs,
   int32 J1 = num_accs.num_groups_;
   for (int32 j1 = 0; j1 < J1; j1++) count += num_accs.gamma_[j1].Sum();
   
-  EbwUpdatePhoneVectorsClass c(this, num_accs, den_accs, model, H, &auxf_impr);
+  EbwUpdatePhoneVectorsClass c(this, num_accs, den_accs, H, model, &auxf_impr);
   RunMultiThreaded(c);
 
   auxf_impr /= count;
@@ -259,22 +279,20 @@ double EbwAmSgmm2Updater::UpdatePhoneVectors(const MleAmSgmm2Accs &num_accs,
 
 
 double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
-                                 const MleAmSgmm2Accs &den_accs,
-                                 const std::vector< SpMatrix<double> > &Q_num,
-                                 const std::vector< SpMatrix<double> > &Q_den,
-                                 AmSgmm2 *model) const {
+                                  const MleAmSgmm2Accs &den_accs,
+                                  const std::vector< SpMatrix<double> > &Q_num,
+                                  const std::vector< SpMatrix<double> > &Q_den,
+                                  const Vector<double> &gamma_num,
+                                  const Vector<double> &gamma_den,
+                                  AmSgmm2 *model) const {
   int32 S = model->PhoneSpaceDim(),
       D = model->FeatureDim(),
       I = model->NumGauss();
   
-  Vector<double> num_count_vec(I), den_count_vec(I), impr_vec(I);
-  for (int32 j1 = 0; j1 < num_accs.num_groups_; j1++) {
-    num_count_vec.AddRowSumMat(num_accs.gamma_[j1]);
-    den_count_vec.AddRowSumMat(den_accs.gamma_[j1]);
-  }
+  Vector<double> impr_vec(I);
 
   for (int32 i = 0; i < I; i++) {
-    double gamma_i_num = num_count_vec(i), gamma_i_den = den_count_vec(i);
+    double gamma_i_num = gamma_num(i), gamma_i_den = gamma_den(i);
 
     if (gamma_i_num + gamma_i_den == 0.0) {
       KALDI_WARN << "Not updating phonetic basis for i = " << i
@@ -323,14 +341,14 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
                     << " frames";
     }
   }
-  BaseFloat tot_count = num_count_vec.Sum(), tot_impr = impr_vec.Sum();
+  BaseFloat tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   
   tot_impr /= (tot_count + 1.0e-20);
   KALDI_LOG << "Overall auxiliary function improvement for model projections "
             << "M is " << tot_impr << " over " << tot_count << " frames";
 
-  KALDI_VLOG(1) << "Updating M: num-count is " << num_count_vec;
-  KALDI_VLOG(1) << "Updating M: den-count is " << den_count_vec;
+  KALDI_VLOG(1) << "Updating M: num-count is " << gamma_num;
+  KALDI_VLOG(1) << "Updating M: den-count is " << gamma_den;
   KALDI_VLOG(1) << "Updating M: objf-impr is " << impr_vec;
   
   return tot_impr;
@@ -346,6 +364,8 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
 // over this approach.
 double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
                                   const MleAmSgmm2Accs &den_accs,
+                                  const Vector<double> &gamma_num,
+                                  const Vector<double> &gamma_den,
                                   AmSgmm2 *model) {
   KALDI_LOG << "Updating weight projections";
 
@@ -357,24 +377,26 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
   // linearized into vectors]
   Matrix<double> F_i_num(I, (S*(S+1))/2), F_i_den(I, (S*(S+1))/2);
   
-  Vector<double> num_count_vec(I), den_count_vec(I), impr_vec(I);
-  for (int32 j1 = 0; j1 < num_accs.num_groups_; j1++) {
-    num_count_vec.AddRowSumMat(num_accs.gamma_[j1]);
-    den_count_vec.AddRowSumMat(den_accs.gamma_[j1]);
-  }
+  Vector<double> impr_vec(I);
   
   // Get the F_i and g_i quantities-- this is done in parallel (multi-core),
   // using the same code we use in the ML update [except we get it for
   // numerator and denominator separately.]
   Matrix<double> w(model->w_);
   {
+    std::vector<Matrix<double> > log_a_num;
+    if (model->HasSpeakerDependentWeights())
+      MleAmSgmm2Updater::ComputeLogA(num_accs, &log_a_num);
     double garbage;
-    UpdateWClass c_num(num_accs, *model, w, &F_i_num, &g_i_num, &garbage);
+    UpdateWClass c_num(num_accs, *model, w, log_a_num, &F_i_num, &g_i_num, &garbage);
     RunMultiThreaded(c_num);
   }
   {
+    std::vector<Matrix<double> > log_a_den;
+    if (model->HasSpeakerDependentWeights())    
+      MleAmSgmm2Updater::ComputeLogA(den_accs, &log_a_den);
     double garbage;
-    UpdateWClass c_den(den_accs, *model, w, &F_i_den, &g_i_den, &garbage);
+    UpdateWClass c_den(den_accs, *model, w, log_a_den, &F_i_den, &g_i_den, &garbage);
     RunMultiThreaded(c_den);
   }
 
@@ -396,7 +418,7 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
     tmp_F.CopyFromVec(F_i_den.Row(i)); // tmp_F is used for Vector->SpMatrix conversion.
     quadratic_term.AddSp(1.0, tmp_F);
 
-    double state_count = num_count_vec(i) + den_count_vec(i);
+    double state_count = gamma_num(i) + gamma_den(i);
 
     quadratic_term.Scale((state_count + options_.tau_w) / (state_count + 1.0e-10));
     quadratic_term.Scale(1.0 / (options_.lrate_w + 1.0e-10) );
@@ -410,18 +432,18 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
                               "w",
                               true);
     impr_vec(i) = objf_impr;
-    if (i < 10 || objf_impr / (num_count_vec(i) + 1.0e-10) > 2.0) {
+    if (i < 10 || objf_impr / (gamma_num(i) + 1.0e-10) > 2.0) {
       KALDI_LOG << "Predicted objf impr for w per frame is "
-                << (objf_impr / (num_count_vec(i) + 1.0e-10))
-                << " over " << num_count_vec(i) << " frames.";
+                << (objf_impr / (gamma_num(i) + 1.0e-10))
+                << " over " << gamma_num(i) << " frames.";
     }
     model->w_.Row(i).AddVec(1.0, delta_w);
   }
-  KALDI_VLOG(1) << "Updating w: numerator count is " << num_count_vec;
-  KALDI_VLOG(1) << "Updating w: denominator count is " << den_count_vec;
+  KALDI_VLOG(1) << "Updating w: numerator count is " << gamma_num;
+  KALDI_VLOG(1) << "Updating w: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating w: objf-impr is " << impr_vec;
     
-  double tot_num_count = num_count_vec.Sum(), tot_impr = impr_vec.Sum();
+  double tot_num_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= tot_num_count;
 
   KALDI_LOG << "**Overall objf impr for w per frame is "
@@ -431,9 +453,71 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
 }
 
 
+double EbwAmSgmm2Updater::UpdateU(const MleAmSgmm2Accs &num_accs,
+                                  const MleAmSgmm2Accs &den_accs,
+                                  const Vector<double> &gamma_num,
+                                  const Vector<double> &gamma_den,
+                                  AmSgmm2 *model) {
+  int32 T = num_accs.spk_space_dim_;
+  double tot_impr = 0.0;
+  for (int32 i = 0; i < num_accs.num_gaussians_; i++) {
+    if (gamma_num(i) < 200.0) {
+      KALDI_LOG << "Numerator count is small " << gamma_num(i) << " for gaussian "
+                << i << ", not updating u_i.";
+      continue;
+    }
+    Vector<double> u_i(model->u_.Row(i));
+    Vector<double> delta_u(T);
+    Vector<double> t(T); // derivative.
+    t.AddVec(1.0, num_accs.t_.Row(i));
+    t.AddVec(-1.0, den_accs.t_.Row(i));
+    SpMatrix<double> U(T); // quadratic term.
+    U.AddSp(1.0, num_accs.U_[i]);
+    U.AddSp(1.0, den_accs.U_[i]);
+
+    double state_count = gamma_num(i) + gamma_den(i);
+    U.Scale((state_count + options_.tau_u) / (state_count + 1.0e-10));
+    U.Scale(1.0 / (options_.lrate_u + 1.0e-10) );
+    
+    double impr =
+        SolveQuadraticProblem(U, t, &delta_u,
+                              static_cast<double>(options_.max_cond),
+                              static_cast<double>(options_.epsilon),
+                              "u", true);
+    double impr_per_frame = impr / gamma_num(i);
+    if (impr_per_frame > options_.max_impr_u) {
+      KALDI_WARN << "Updating speaker weight projections u, for Gaussian index "
+                 << i << ", impr/frame is " << impr_per_frame << " over "
+                 << gamma_num(i) << " frames, scaling back to not exceed "
+                 << options_.max_impr_u;
+      double scale = options_.max_impr_u / impr_per_frame;
+      impr *= scale;
+      delta_u.Scale(scale);
+      // Note: a linear scaling of "impr" with "scale" is not quite accurate
+      // in depicting how the quadratic auxiliary function varies as we change
+      // the scale on "delta", but this does not really matter-- the goal is
+      // to limit the auxiliary-function change to not be too large.
+    }
+    if (i < 10) {
+      KALDI_LOG << "Objf impr for spk weight-projection u for i = " << (i)
+                << ", is " << (impr / (gamma_num(i) + 1.0e-20)) << " over "
+                << gamma_num(i) << " frames";
+    }
+    u_i.AddVec(1.0, delta_u);
+    model->u_.Row(i).CopyFromVec(u_i);
+    tot_impr += impr;
+  }
+  KALDI_LOG << "**Overall objf impr for u is " << (tot_impr/gamma_num.Sum())
+            << ", over " << gamma_num.Sum() << " frames";
+  return tot_impr;
+}
+
+
 double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
-                                 const MleAmSgmm2Accs &den_accs,
-                                 AmSgmm2 *model) const {
+                                  const MleAmSgmm2Accs &den_accs,
+                                  const Vector<double> &gamma_num,
+                                  const Vector<double> &gamma_den,
+                                  AmSgmm2 *model) const {
   if (num_accs.spk_space_dim_ == 0 || num_accs.R_.size() == 0 ||
       num_accs.Z_.size() == 0) {
     KALDI_ERR << "Speaker subspace dim is zero or no stats accumulated";
@@ -442,14 +526,10 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
   int32 I = num_accs.num_gaussians_, D = num_accs.feature_dim_,
       T = num_accs.spk_space_dim_;
   
-  Vector<double> num_count_vec(I), den_count_vec(I), impr_vec(I);
-  for (int32 j = 0; j < num_accs.num_states_; j++) {
-    num_count_vec.AddRowSumMat(num_accs.gamma_[j]);
-    den_count_vec.AddRowSumMat(den_accs.gamma_[j]);
-  }
+  Vector<double> impr_vec(I);
   
   for (int32 i = 0; i < I; i++) {
-    double gamma_i_num = num_count_vec(i), gamma_i_den = den_count_vec(i);
+    double gamma_i_num = gamma_num(i), gamma_i_den = gamma_den(i);
     if (gamma_i_num + gamma_i_den == 0.0) {
       KALDI_WARN << "Not updating speaker basis for i = " << i
                  << " because count is zero. ";
@@ -493,11 +573,11 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
     }
   }
 
-  KALDI_VLOG(1) << "Updating N: numerator count is " << num_count_vec;
-  KALDI_VLOG(1) << "Updating N: denominator count is " << den_count_vec;
+  KALDI_VLOG(1) << "Updating N: numerator count is " << gamma_num;
+  KALDI_VLOG(1) << "Updating N: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating N: objf-impr is " << impr_vec;
   
-  double tot_count = num_count_vec.Sum(), tot_impr = impr_vec.Sum();
+  double tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= (tot_count + 1.0e-20);
   KALDI_LOG << "**Overall auxf impr for N is " << tot_impr
             << " over " << tot_count << " frames";
@@ -505,9 +585,11 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
 }
 
 double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
-                                    const MleAmSgmm2Accs &den_accs,
-                                    const std::vector< SpMatrix<double> > &S_means,
-                                    AmSgmm2 *model) const {
+                                     const MleAmSgmm2Accs &den_accs,
+                                     const Vector<double> &gamma_num,
+                                     const Vector<double> &gamma_den,
+                                     const std::vector< SpMatrix<double> > &S_means,
+                                     AmSgmm2 *model) const {
   // Note: S_means contains not only the quantity S_means in the paper,
   // but also has a term - (Y_i M_i^T + M_i Y_i^T).  Plus, it is differenced
   // between numerator and denominator.  We don't calculate it here,
@@ -515,15 +597,10 @@ double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
   // changed the M quantities.
   int32 I = num_accs.num_gaussians_;
   KALDI_ASSERT(S_means.size() == I);
+  Vector<double> impr_vec(I);
   
-  Vector<double> num_count_vec(I), den_count_vec(I), impr_vec(I);
-  for (int32 j = 0; j < num_accs.num_states_; j++) {
-    num_count_vec.AddRowSumMat(num_accs.gamma_[j]);
-    den_count_vec.AddRowSumMat(den_accs.gamma_[j]);
-  }
-
   for (int32 i = 0; i < I; i++) {
-    double num_count = num_count_vec(i), den_count = den_count_vec(i);
+    double num_count = gamma_num(i), den_count = gamma_den(i);
 
     SpMatrix<double> SigmaStats(S_means[i]);
     SigmaStats.AddSp(1.0, num_accs.S_[i]);
@@ -571,11 +648,11 @@ double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
                 << "), #floor,ceil was " << n_floor << ", " << n_ceiling;
     }
   }
-  KALDI_VLOG(1) << "Updating Sigma: numerator count is " << num_count_vec;
-  KALDI_VLOG(1) << "Updating Sigma: denominator count is " << den_count_vec;
+  KALDI_VLOG(1) << "Updating Sigma: numerator count is " << gamma_num;
+  KALDI_VLOG(1) << "Updating Sigma: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating Sigma: objf-impr is " << impr_vec;
   
-  double tot_count = num_count_vec.Sum(), tot_impr = impr_vec.Sum();
+  double tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= tot_count+1.0e-20;
   KALDI_LOG << "**Overall auxf impr for Sigma is " << tot_impr
             << " over " << tot_count << " frames";
@@ -590,15 +667,15 @@ double EbwAmSgmm2Updater::UpdateSubstateWeights(
   KALDI_LOG << "Updating substate mixture weights";
 
   double tot_count = 0.0, tot_impr = 0.0;
-  for (int32 j = 0; j < num_accs.num_states_; j++) {
-    int32 M = model->NumSubstates(j);
+  for (int32 j2 = 0; j2 < num_accs.num_pdfs_; j2++) {
+    int32 M = model->NumSubstatesForPdf(j2);
     Vector<double> num_occs(M), den_occs(M),
-        orig_weights(model->c_[j]), weights(model->c_[j]);
+        orig_weights(model->c_[j2]), weights(model->c_[j2]);
 
     for (int32 m = 0; m < M; m++) {
-      num_occs(m) = num_accs.gamma_[j].Row(m).Sum()
+      num_occs(m) = num_accs.gamma_c_[j2](m)
           + options_.tau_c * weights(m);
-      den_occs(m) = den_accs.gamma_[j].Row(m).Sum();
+      den_occs(m) = den_accs.gamma_c_[j2](m);
     }
     
     if (weights.Dim() > 1) {
@@ -629,13 +706,13 @@ double EbwAmSgmm2Updater::UpdateSubstateWeights(
       }
       tot_impr += end_auxf - begin_auxf;
       double this_impr = ((end_auxf - begin_auxf) / num_occs.Sum());
-      if (j < 10 || this_impr > 0.5) {
-        KALDI_LOG << "Updating substate weights: auxf impr for state " << j
+      if (j2 < 10 || this_impr > 0.5) {
+        KALDI_LOG << "Updating substate weights: auxf impr for pdf " << j2
                   << " is " << this_impr << " per frame over " << num_occs.Sum()
                   << " frames (den count is " << den_occs.Sum() << ")";
       }
     }
-    model->c_[j].CopyFromVec(weights);
+    model->c_[j2].CopyFromVec(weights);
     tot_count += den_occs.Sum(); // Note: num and den occs should be the
     // same, except num occs are smoothed, so this is what we want.
   }    

@@ -57,8 +57,11 @@ struct EbwAmSgmm2Options {
   BaseFloat tau_N; ///<  Smoothing constant for the N quantities (speaker-subspace projections)
   BaseFloat lrate_N; ///< Learning rate used in updating N-- default 0.5
   BaseFloat tau_c;  ///< Tau value for smoothing substate weights (c)
-  BaseFloat tau_w;  ///< Tau value for smoothing update of weight projectsions (w)
-  BaseFloat lrate_w; ///< Learning rate used in updating w-- default 0.5
+  BaseFloat tau_w;  ///< Tau value for smoothing update of phonetic-subspace weight projectsions (w)
+  BaseFloat lrate_w; ///< Learning rate used in updating w-- default 1.0
+  BaseFloat tau_u;  ///< Tau value for smoothing update of speaker-subspace weight projectsions (u)
+  BaseFloat lrate_u; ///< Learning rate used in updating u-- default 1.0
+  BaseFloat max_impr_u; ///< Maximum improvement/frame allowed for u [0.25, carried over from ML update.]
   BaseFloat tau_Sigma; ///< Tau value for smoothing covariance-matrices Sigma.
   BaseFloat lrate_Sigma; ///< Learning rate used in updating Sigma-- default 0.5
   BaseFloat min_substate_weight; ///< Minimum allowed weight in a sub-state.
@@ -82,6 +85,9 @@ struct EbwAmSgmm2Options {
     tau_c = 10.0;
     tau_w = 50.0;
     lrate_w = 1.0;
+    tau_u = 50.0;
+    lrate_u = 1.0;
+    max_impr_u = 0.25;
     tau_Sigma = 500.0;
     lrate_Sigma = 0.5;
 
@@ -109,9 +115,13 @@ struct EbwAmSgmm2Options {
     po->Register("tau-c", &tau_c, module+
                  "Smoothing constant for estimation of substate weights (c)");
     po->Register("tau-w", &tau_w, module+
-                 "Smoothing constant for estimation of weight projections (w)");
+                 "Smoothing constant for estimation of phonetic-space weight projections (w)");
     po->Register("lrate-w", &lrate_w, module+
-                 "Learning rate constant for weight-projections");
+                 "Learning rate constant for phonetic-space weight-projections (w)");
+    po->Register("tau-u", &tau_u, module+
+                 "Smoothing constant for estimation of speaker-space weight projections (u)");
+    po->Register("lrate-u", &lrate_u, module+
+                 "Learning rate constant for speaker-space weight-projections (u)");
     po->Register("tau-sigma", &tau_Sigma, module+
                  "Smoothing constant for estimation of within-class covariances (Sigma)");
     po->Register("lrate-sigma", &lrate_Sigma, module+
@@ -156,15 +166,15 @@ class EbwAmSgmm2Updater {
 
   double UpdatePhoneVectors(const MleAmSgmm2Accs &num_accs,
                             const MleAmSgmm2Accs &den_accs,
-                            AmSgmm2 *model,
-                            const std::vector< SpMatrix<double> > &H) const;
+                            const std::vector< SpMatrix<double> > &H,
+                            AmSgmm2 *model) const;
   
   // Called from UpdatePhoneVectors; updates a subset of states
   // (relates to multi-threading).
   void UpdatePhoneVectorsInternal(const MleAmSgmm2Accs &num_accs,
                                   const MleAmSgmm2Accs &den_accs,
-                                  AmSgmm2 *model,
                                   const std::vector<SpMatrix<double> > &H,
+                                  AmSgmm2 *model,
                                   double *auxf_impr,
                                   int32 num_threads,
                                   int32 thread_id) const;
@@ -172,7 +182,7 @@ class EbwAmSgmm2Updater {
   static void ComputePhoneVecStats(const MleAmSgmm2Accs &accs,
                                    const AmSgmm2 &model,
                                    const std::vector<SpMatrix<double> > &H,
-                                   int32 j,
+                                   int32 j1,
                                    int32 m,
                                    const Vector<double> &w_jm,
                                    double gamma_jm,
@@ -183,14 +193,20 @@ class EbwAmSgmm2Updater {
                  const MleAmSgmm2Accs &den_accs,
                  const std::vector< SpMatrix<double> > &Q_num,
                  const std::vector< SpMatrix<double> > &Q_den,
+                 const Vector<double> &gamma_num,
+                 const Vector<double> &gamma_den,
                  AmSgmm2 *model) const;
   
   double UpdateN(const MleAmSgmm2Accs &num_accs,
                  const MleAmSgmm2Accs &den_accs,
+                 const Vector<double> &gamma_num,
+                 const Vector<double> &gamma_den,
                  AmSgmm2 *model) const;
   
   double UpdateVars(const MleAmSgmm2Accs &num_accs,
                     const MleAmSgmm2Accs &den_accs,
+                    const Vector<double> &gamma_num,
+                    const Vector<double> &gamma_den,
                     const std::vector< SpMatrix<double> > &S_means,
                     AmSgmm2 *model) const;
 
@@ -198,18 +214,16 @@ class EbwAmSgmm2Updater {
   /// updating the w quantities.
   double UpdateW(const MleAmSgmm2Accs &num_accs,
                  const MleAmSgmm2Accs &den_accs,
+                 const Vector<double> &gamma_num,
+                 const Vector<double> &gamma_den,
                  AmSgmm2 *model);
 
-  /// Called, multithreaded, inside UpdateW.  This is
-  /// written for one acc-- we call it separately for num and den.
-  void UpdateWGetStats(const MleAmSgmm2Accs &accs,
-                       const AmSgmm2 &model,
-                       const Matrix<double> &w,
-                       Matrix<double> *F_i,
-                       Matrix<double> *g_i,
-                       double *tot_like,
-                       int32 num_threads, 
-                       int32 thread_id);
+
+  double UpdateU(const MleAmSgmm2Accs &num_accs,
+                 const MleAmSgmm2Accs &den_accs,
+                 const Vector<double> &gamma_num,
+                 const Vector<double> &gamma_den,
+                 AmSgmm2 *model);
   
   double UpdateSubstateWeights(const MleAmSgmm2Accs &num_accs,
                                const MleAmSgmm2Accs &den_accs,

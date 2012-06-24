@@ -77,7 +77,6 @@ class AmDiagGmm {
   int32 Dim() const {
     return (densities_.size() > 0)? densities_[0]->Dim() : 0;
   }
-//  void SetDim(int32 dim) { dim_=dim; } // call this in case you change dim of pdfs in model.
   int32 NumPdfs() const { return densities_.size(); }
   int32 NumGauss() const;
   int32 NumGaussInPdf(int32 pdf_index) const;

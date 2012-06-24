@@ -199,17 +199,6 @@ class EbwAmSgmmUpdater {
   double UpdateWParallel(const MleAmSgmmAccs &num_accs,
                          const MleAmSgmmAccs &den_accs,
                          AmSgmm *model);
-
-  /// Called, multithreaded, inside UpdateWParallel.  This is
-  /// written for one acc-- we call it separately for num and den.
-  void UpdateWParallelGetStats(const MleAmSgmmAccs &accs,
-                               const AmSgmm &model,
-                               const Matrix<double> &w,
-                               Matrix<double> *F_i,
-                               Matrix<double> *g_i,
-                               double *tot_like,
-                               int32 num_threads, 
-                               int32 thread_id);
   
   double UpdateSubstateWeights(const MleAmSgmmAccs &num_accs,
                                const MleAmSgmmAccs &den_accs,

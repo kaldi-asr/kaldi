@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est-ebw.cc
+// sgmm2bin/sgmm2-est-ebw.cc
 
 // Copyright 2012  Johns Hopkins Univerity (Author: Daniel Povey)
 
@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "util/kaldi-thread.h"
 #include "hmm/transition-model.h"
-#include "sgmm/estimate-am-sgmm-ebw.h"
+#include "sgmm2/estimate-am-sgmm-ebw.h"
 
 
 int main(int argc, char *argv[]) {
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     string update_flags_str = "vMNwcSt";
     bool binary_write = true;
     string write_flags_str = "gsnu";
-    EbwAmSgmmOptions opts;
+    EbwAmSgmm2Options opts;
 
     
     ParseOptions po(usage);
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     SgmmUpdateFlagsType update_flags = StringToSgmmUpdateFlags(update_flags_str);
     SgmmWriteFlagsType write_flags = StringToSgmmWriteFlags(write_flags_str);
 
-    AmSgmm am_sgmm;
+    AmSgmm2 am_sgmm;
     TransitionModel trans_model;
     {
       bool binary;
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
       am_sgmm.Read(ki.Stream(), binary);
     }
 
-    MleAmSgmmAccs sgmm_num_accs;
+    MleAmSgmm2Accs sgmm_num_accs;
     {
       bool binary;
       Vector<double> transition_accs; // won't be used.
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       transition_accs.Read(ki.Stream(), binary);
       sgmm_num_accs.Read(ki.Stream(), binary, false);  // false == add; doesn't matter.
     }
-    MleAmSgmmAccs sgmm_den_accs;
+    MleAmSgmm2Accs sgmm_den_accs;
     {
       bool binary;
       Vector<double> transition_accs; // won't be used.
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
     {  // Update SGMM.
       BaseFloat auxf_impr, count;
-      kaldi::EbwAmSgmmUpdater sgmm_updater(opts);
+      kaldi::EbwAmSgmm2Updater sgmm_updater(opts);
       sgmm_updater.Update(sgmm_num_accs, sgmm_den_accs, &am_sgmm,
                           update_flags, &auxf_impr, &count);
       KALDI_LOG << "Overall auxf impr/frame from SGMM update is " << (auxf_impr/count)

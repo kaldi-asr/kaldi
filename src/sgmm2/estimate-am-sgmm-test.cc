@@ -30,10 +30,9 @@ namespace ut = kaldi::unittest;
 // Tests the Read() and Write() methods for the accumulators, in both binary
 // and ASCII mode, as well as Check().
 void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
-                    const kaldi::Matrix<BaseFloat> &feats) {
+                     const kaldi::Matrix<BaseFloat> &feats) {
   using namespace kaldi;
-  kaldi::SgmmUpdateFlagsType flags =
-      kaldi::kSgmmAll & ~kSgmmSpeakerWeightProjections;
+  kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll & ~kSgmmSpeakerWeightProjections;
   kaldi::Sgmm2PerFrameDerivedVars frame_vars;
   kaldi::Sgmm2PerSpkDerivedVars empty;
   frame_vars.Resize(sgmm.NumGauss(), sgmm.FeatureDim(),
@@ -41,7 +40,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   kaldi::Sgmm2GselectConfig sgmm_config;
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest,
                                         sgmm.NumGauss());
-  MleAmSgmm2Accs accs(sgmm, flags);
+  MleAmSgmm2Accs accs(sgmm, flags, true);
   BaseFloat loglike = 0.0;
 
   for (int32 i = 0; i < feats.NumRows(); i++) {
@@ -56,11 +55,12 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   update_opts.check_v = (rand()%2 == 0);
   AmSgmm2 *sgmm1 = new AmSgmm2();
   sgmm1->CopyFromSgmm2(sgmm, false, false);
-  kaldi::MleAmSgmmUpdater updater(update_opts);
+  kaldi::MleAmSgmm2Updater updater(update_opts);
   updater.Update(accs, sgmm1, flags);
+  sgmm1->ComputeDerivedVars();
   std::vector<int32> gselect;
   Sgmm2LikelihoodCache like_cache(sgmm.NumGroups(), sgmm.NumPdfs());
-
+  
   sgmm1->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
   sgmm1->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
   BaseFloat loglike1 = sgmm1->LogLikelihood(frame_vars, 0, &like_cache, &empty);
@@ -77,7 +77,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   AmSgmm2 *sgmm2 = new AmSgmm2();
   sgmm2->CopyFromSgmm2(sgmm, false, false);
   updater.Update(*accs1, sgmm2, flags);
-
+  sgmm2->ComputeDerivedVars();
   sgmm2->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
   sgmm2->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
   Sgmm2LikelihoodCache like_cache2(sgmm2->NumGroups(), sgmm2->NumPdfs());
@@ -95,6 +95,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   AmSgmm2 *sgmm3 = new AmSgmm2();
   sgmm3->CopyFromSgmm2(sgmm, false, false);
   updater.Update(*accs2, sgmm3, flags);
+  sgmm3->ComputeDerivedVars();
   sgmm3->GaussianSelection(sgmm_config, feats.Row(0), &gselect);
   sgmm3->ComputePerFrameVars(feats.Row(0), gselect, empty, &frame_vars);
   Sgmm2LikelihoodCache like_cache3(sgmm3->NumGroups(), sgmm3->NumPdfs());
@@ -115,7 +116,7 @@ void UnitTestEstimateSgmm2() {
   kaldi::Sgmm2GselectConfig config;
   std::vector<int32> pdf2group;
   pdf2group.push_back(0);
-  sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, dim, false); // TODO-- make this true!
+  sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, dim, false, 0.9); // TODO-- make this true!
   sgmm.ComputeNormalizers();
   
   kaldi::Matrix<BaseFloat> feats;
@@ -137,6 +138,7 @@ void UnitTestEstimateSgmm2() {
       ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
+  sgmm.ComputeDerivedVars();
   TestSgmm2AccsIO(sgmm, feats);
 }
 

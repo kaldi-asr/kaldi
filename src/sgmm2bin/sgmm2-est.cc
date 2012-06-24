@@ -39,7 +39,6 @@ int main(int argc, char *argv[]) {
     kaldi::TransitionUpdateConfig tcfg;
     kaldi::MleAmSgmm2Options sgmm_opts;
     kaldi::Sgmm2SplitSubstatesConfig split_opts;
-    kaldi::Sgmm2SplitWeightsConfig wsplit_opts;
     int32 increase_phn_dim = 0;
     int32 increase_spk_dim = 0;
     bool remove_speaker_space = false;
@@ -69,7 +68,6 @@ int main(int argc, char *argv[]) {
     tcfg.Register(&po);
     sgmm_opts.Register(&po);
     split_opts.Register(&po);
-    wsplit_opts.Register(&po);
 
     po.Read(argc, argv);
     if (po.NumArgs() != 3) {
@@ -124,9 +122,6 @@ int main(int argc, char *argv[]) {
     if (split_opts.split_substates != 0)
       am_sgmm.SplitSubstates(state_occs, split_opts);
 
-    if (wsplit_opts.split_weights != 0)
-      am_sgmm.SplitWeightProjections(state_occs, wsplit_opts);
-    
     if (!occs_out_filename.empty()) {
       kaldi::Output ko(occs_out_filename, binary_write);
       state_occs.Write(ko.Stream(), binary_write);

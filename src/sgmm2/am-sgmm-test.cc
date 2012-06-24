@@ -77,7 +77,7 @@ void TestSgmm2Init(const AmSgmm2 &sgmm) {
     std::vector<int32> pdf2group(sgmm.NumPdfs());
     for (int32 i = 0; i < sgmm.NumPdfs(); i++) pdf2group[i] = sgmm.Pdf2Group(i);
     sgmm3->InitializeFromFullGmm(sgmm.full_ubm(), pdf2group,
-                                 sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim(), true);
+                                 sgmm.PhoneSpaceDim(), sgmm.SpkSpaceDim(), true, 0.9);
   }
   sgmm3->ComputeNormalizers();
   sgmm3->GaussianSelection(config, feat, &gselect);
@@ -152,7 +152,9 @@ void TestSgmm2Substates(const AmSgmm2 &sgmm) {
     occs(i) = std::fabs(kaldi::RandGauss()) * (kaldi::RandUniform()+1);
   AmSgmm2 *sgmm1 = new AmSgmm2();
   sgmm1->CopyFromSgmm2(sgmm, false, false);
-  sgmm1->SplitSubstates(occs, target_substates, 0.01, 0.2, 1000);
+  Sgmm2SplitSubstatesConfig cfg;
+  cfg.split_substates = target_substates;
+  sgmm1->SplitSubstates(occs, cfg);
   sgmm1->ComputeNormalizers();
   sgmm1->ComputeWeights();
   sgmm1->Check(true);
@@ -261,7 +263,7 @@ void UnitTestSgmm2() {
   pdf2group.push_back(0);
   AmSgmm2 sgmm;
   kaldi::Sgmm2GselectConfig config;
-  sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, 0, true);
+  sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, 0, true, 0.9);
   sgmm.ComputeNormalizers();
   TestSgmm2Init(sgmm);
   TestSgmm2IO(sgmm);

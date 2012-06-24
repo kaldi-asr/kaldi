@@ -45,7 +45,8 @@ void AccumDiagGmm::Read(std::istream &in_stream, bool binary, bool add) {
         KALDI_ERR << "MlEstimatediagGmm::Read, dimension or flags mismatch, "
                   << NumGauss() << ", " << Dim() << ", "
                   << GmmFlagsToString(Flags()) << " vs. " << num_components << ", "
-                  << dimension << ", " << flags;
+                  << dimension << ", " << flags << " (mixing accs from different "
+                  << "models?";
     } else {
       Resize(num_components, dimension, flags);
     }
