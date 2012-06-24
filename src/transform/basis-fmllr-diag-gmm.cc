@@ -30,128 +30,37 @@ using std::string;
 
 namespace kaldi {
 
-void BasisFmllrGlobalParams::Write(std::ostream &out_stream, bool binary) const {
-  uint32 tmp_uint32;
+void BasisFmllrAccus::Write(std::ostream &out_stream, bool binary) const {
 
-  WriteToken(out_stream, binary, "<BASISFMLLRPARAM>");
-
-  WriteToken(out_stream, binary, "<NUMBASIS>");
-  tmp_uint32 = static_cast<uint32>(basis_size_);
-  WriteBasicType(out_stream, binary, tmp_uint32);
+  WriteToken(out_stream, binary, "<BASISFMLLRACCUS>");
   if (grad_scatter_.NumCols() != 0) {
     WriteToken(out_stream, binary, "<GRADSCATTER>");
     grad_scatter_.Write(out_stream, binary);
   }
-  if (fmllr_basis_.size() != 0) {
-    WriteToken(out_stream, binary, "<BASIS>");
-	for (int32 n = 0; n < basis_size_; ++n) {
-      fmllr_basis_[n].Write(out_stream, binary);
-	}
-  }
-  WriteToken(out_stream, binary, "</BASISFMLLRPARAM>");
+  WriteToken(out_stream, binary, "</BASISFMLLRACCUS>");
 }
 
-void BasisFmllrGlobalParams::Read(std::istream &in_stream, bool binary,
-                         bool add) {
-  uint32 tmp_uint32;
-  string token;
-
-  ExpectToken(in_stream, binary, "<BASISFMLLRPARAM>");
-
-  ExpectToken(in_stream, binary, "<NUMBASIS>");
-  ReadBasicType(in_stream, binary, &tmp_uint32);
-  basis_size_ = static_cast<int32>(tmp_uint32);
+void BasisFmllrAccus::Read(std::istream &in_stream, bool binary,
+                           bool add) {
+  ExpectToken(in_stream, binary, "<BASISFMLLRACCUS>");
 
   ExpectToken(in_stream, binary, "<GRADSCATTER>");
   grad_scatter_.Read(in_stream, binary, add);
-
-  ExpectToken(in_stream, binary, "<BASIS>");
-  fmllr_basis_.resize(basis_size_);
-  for (int32 n = 0; n < basis_size_; ++n) {
-    fmllr_basis_[n].Read(in_stream, binary, add);
-  }
-
-  ExpectToken(in_stream, binary, "</BASISFMLLRPARAM>");
+  ExpectToken(in_stream, binary, "</BASISFMLLRACCUS>");
 
 }
 
-void BasisFmllrGlobalParams::ResizeParams(int32 dim) {
+void BasisFmllrAccus::ResizeAccus(int32 dim) {
   if (dim <= 0) {
     KALDI_ERR << "Invalid feature dimension " << dim; // dim=0 is not allowed
   } else {
-    // Fix the size of bases in the training stage
-	// You may change it by EstimateFmllrBasis
-    basis_size_ = (dim + 1) * dim;
     // 'kSetZero' may not be necessary, but makes computation safe
     grad_scatter_.Resize((dim + 1) * dim, kSetZero);
   }
 }
 
-void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
-                          SpMatrix<double> *pre_cond) {
-  int32 dim = am_gmm.Dim();
-  if (pre_cond->NumRows() != (dim + 1) * dim)
-    pre_cond->Resize((dim + 1) * dim, kSetZero);
-
-  int32 num_pdf = am_gmm.NumPdfs();
-  Matrix<double> H_mat((dim + 1) * dim, (dim + 1) * dim);
-  // expected values of fMLLR G statistics
-  vector< SpMatrix<double> > G_hat(dim);
-  for (int32 d = 0; d < dim; ++d)
-	   G_hat[d].Resize(dim + 1, kSetZero);
-
-  // extend mean vectors with 1  [mule_jm 1]
-  Vector<double> extend_mean(dim + 1);
-  // extend covariance matrix with a row and column of 0
-  Vector<double> extend_var(dim + 1);
-  for (int32 j = 0; j < num_pdf; ++j) {
-    const DiagGmm &diag_gmm = am_gmm.GetPdf(j);
-    int32 num_comp = diag_gmm.NumGauss();
-    // means, covariance and mixture weights for this diagonal GMM
-	Matrix<double> means(num_comp, dim);
-	Matrix<double> vars(num_comp, dim);
-	diag_gmm.GetMeans(&means); diag_gmm.GetVars(&vars);
-	Vector<BaseFloat> weights(diag_gmm.weights());
-
-	for (int32 m = 0; m < num_comp; ++m) {
-      extend_mean.Range(0, dim).CopyFromVec(means.Row(m));
-      extend_mean(dim) = 1.0;
-      extend_var.Range(0, dim).CopyFromVec(vars.Row(m));
-      extend_var(dim) = 0;
-      // loop over feature dimension
-      // Eq. (28): G_hat {d} = \sum_{j, m} P_{j}{m} Inv_Sigma{j, m, d}
-      // (mule_extend mule_extend^T + Sigma_extend)
-      // where P_{j}{m} = P_{j} c_{j}{m}
-      for (int32 d = 0; d < dim; ++d) {
-        double alpha = (1.0 / num_pdf) * weights(m) * (1.0 / vars.Row(m)(d));
-        G_hat[d].AddVec2(alpha, extend_mean);
-        // add vector to the diagonal elements of the matrix
-        // not work for full covariance matrices
-        G_hat[d].AddVec(alpha, extend_var);
-      } // loop over dimension
-	} //  loop over Gaussians
-  }  // loop over states
-
-  // fill H_ with G_hat[i]; build the block diagonal structure
-  // Eq. (31)
-  for (int32 d = 0; d < dim; d++) {
-    H_mat.Range(d * (dim + 1), (dim + 1), d * (dim + 1), (dim + 1))
-    		  .CopyFromSp(G_hat[d]);
-  }
-
-  // add the extra H(1) elements
-  // Eq. (30) and Footnote 1 (0-based index)
-  for (int32 i = 0; i < dim; ++i)
-	for (int32 j = 0; j < dim; ++j)
-	  H_mat(i * (dim + 1) + j, j * (dim + 1) + i) += 1;
-  // the final H should be symmetric
-  if (!H_mat.IsSymmetric())
-    KALDI_ERR << "Preconditioner matrix H = H(1) + H(2) is not symmetric";
-  pre_cond->CopyFromMat(H_mat, kTakeLower);
-}
-
-void BasisFmllrGlobalParams::AccuGradientScatter(
-		                  const AffineXformStats &spk_stats) {
+void BasisFmllrAccus::AccuGradientScatter(
+		              const AffineXformStats &spk_stats) {
 
   // Gradient of auxf w.r.t. xform_spk
   // Eq. (33)
@@ -169,9 +78,109 @@ void BasisFmllrGlobalParams::AccuGradientScatter(
   grad_scatter_.AddVec2(BaseFloat(1.0 / spk_stats.beta_), grad_vec);
 }
 
-void BasisFmllrGlobalParams::EstimateFmllrBasis(
+void BasisFmllrEstimate::WriteBasis(std::ostream &out_stream, bool binary) const {
+  uint32 tmp_uint32;
+
+  WriteToken(out_stream, binary, "<BASISFMLLRPARAM>");
+
+  WriteToken(out_stream, binary, "<NUMBASIS>");
+  tmp_uint32 = static_cast<uint32>(basis_size_);
+  WriteBasicType(out_stream, binary, tmp_uint32);
+  if (fmllr_basis_.size() != 0) {
+    WriteToken(out_stream, binary, "<BASIS>");
+	for (int32 n = 0; n < basis_size_; ++n) {
+      fmllr_basis_[n].Write(out_stream, binary);
+	}
+  }
+  WriteToken(out_stream, binary, "</BASISFMLLRPARAM>");
+}
+
+void BasisFmllrEstimate::ReadBasis(std::istream &in_stream, bool binary,
+                                   bool add) {
+  uint32 tmp_uint32;
+  string token;
+
+  ExpectToken(in_stream, binary, "<BASISFMLLRPARAM>");
+
+  ExpectToken(in_stream, binary, "<NUMBASIS>");
+  ReadBasicType(in_stream, binary, &tmp_uint32);
+  basis_size_ = static_cast<int32>(tmp_uint32);
+
+  ExpectToken(in_stream, binary, "<BASIS>");
+  fmllr_basis_.resize(basis_size_);
+  for (int32 n = 0; n < basis_size_; ++n) {
+    fmllr_basis_[n].Read(in_stream, binary, add);
+  }
+  ExpectToken(in_stream, binary, "</BASISFMLLRPARAM>");
+
+}
+
+void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
+                                              SpMatrix<double> *pre_cond) {
+  KALDI_ASSERT(am_gmm.Dim() == dim_);
+  if (pre_cond->NumRows() != (dim_ + 1) * dim_)
+    pre_cond->Resize((dim_ + 1) * dim_, kSetZero);
+
+  int32 num_pdf = am_gmm.NumPdfs();
+  Matrix<double> H_mat((dim_ + 1) * dim_, (dim_ + 1) * dim_);
+  // expected values of fMLLR G statistics
+  vector< SpMatrix<double> > G_hat(dim_);
+  for (int32 d = 0; d < dim_; ++d)
+	   G_hat[d].Resize(dim_ + 1, kSetZero);
+
+  // extend mean vectors with 1  [mule_jm 1]
+  Vector<double> extend_mean(dim_ + 1);
+  // extend covariance matrix with a row and column of 0
+  Vector<double> extend_var(dim_ + 1);
+  for (int32 j = 0; j < num_pdf; ++j) {
+    const DiagGmm &diag_gmm = am_gmm.GetPdf(j);
+    int32 num_comp = diag_gmm.NumGauss();
+    // means, covariance and mixture weights for this diagonal GMM
+	Matrix<double> means(num_comp, dim_);
+	Matrix<double> vars(num_comp, dim_);
+	diag_gmm.GetMeans(&means); diag_gmm.GetVars(&vars);
+	Vector<BaseFloat> weights(diag_gmm.weights());
+
+	for (int32 m = 0; m < num_comp; ++m) {
+      extend_mean.Range(0, dim_).CopyFromVec(means.Row(m));
+      extend_mean(dim_) = 1.0;
+      extend_var.Range(0, dim_).CopyFromVec(vars.Row(m));
+      extend_var(dim_) = 0;
+      // loop over feature dimension
+      // Eq. (28): G_hat {d} = \sum_{j, m} P_{j}{m} Inv_Sigma{j, m, d}
+      // (mule_extend mule_extend^T + Sigma_extend)
+      // where P_{j}{m} = P_{j} c_{j}{m}
+      for (int32 d = 0; d < dim_; ++d) {
+        double alpha = (1.0 / num_pdf) * weights(m) * (1.0 / vars.Row(m)(d));
+        G_hat[d].AddVec2(alpha, extend_mean);
+        // add vector to the diagonal elements of the matrix
+        // not work for full covariance matrices
+        G_hat[d].AddVec(alpha, extend_var);
+      } // loop over dimension
+	} //  loop over Gaussians
+  }  // loop over states
+
+  // fill H_ with G_hat[i]; build the block diagonal structure
+  // Eq. (31)
+  for (int32 d = 0; d < dim_; d++) {
+    H_mat.Range(d * (dim_ + 1), (dim_ + 1), d * (dim_ + 1), (dim_ + 1))
+    		  .CopyFromSp(G_hat[d]);
+  }
+
+  // add the extra H(1) elements
+  // Eq. (30) and Footnote 1 (0-based index)
+  for (int32 i = 0; i < dim_; ++i)
+	for (int32 j = 0; j < dim_; ++j)
+	  H_mat(i * (dim_ + 1) + j, j * (dim_ + 1) + i) += 1;
+  // the final H should be symmetric
+  if (!H_mat.IsSymmetric())
+    KALDI_ERR << "Preconditioner matrix H = H(1) + H(2) is not symmetric";
+  pre_cond->CopyFromMat(H_mat, kTakeLower);
+}
+
+void BasisFmllrEstimate::EstimateFmllrBasis(
 		                      const AmDiagGmm &am_gmm,
-		                      int32 *base_num) {
+		                      const BasisFmllrAccus &basis_accus) {
   // Compute the preconditioner
   SpMatrix<double> precond_mat((dim_ + 1) * dim_);
   ComputeAmDiagPrecond(am_gmm, &precond_mat);
@@ -188,7 +197,7 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
   // Eq. (35)  M_hat = C^{-1} grad_scatter C^{-T}
   SpMatrix<double> M_hat((dim_ + 1) * dim_);
   {
-    SpMatrix<double> grad_scatter_d(grad_scatter_);
+    SpMatrix<double> grad_scatter_d(basis_accus.grad_scatter_);
     M_hat.AddMat2Sp(1.0, C_inv_full, kNoTrans, grad_scatter_d, 0.0);
   }
   Vector<double> Lvec((dim_ + 1) * dim_);
@@ -199,7 +208,6 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
   // After transpose, each row is one base
   U.Transpose();
 
-  *base_num = basis_size_;
   fmllr_basis_.resize(basis_size_);
   for (int32 n = 0; n < basis_size_; ++n) {
     fmllr_basis_[n].Resize(dim_, dim_ + 1, kSetZero);
@@ -211,25 +219,23 @@ void BasisFmllrGlobalParams::EstimateFmllrBasis(
   }
 }
 
-
-double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
-		                      const AffineXformStats &spk_stats,
+double BasisFmllrEstimate::BasisFmllrCoefficients(
+                              const AffineXformStats &spk_stats,
 	                          Matrix<BaseFloat> *out_xform,
 	                          Vector<BaseFloat> *coefficient,
 	                          BasisFmllrOptions options) {
-
+  KALDI_ASSERT(dim_ == spk_stats.dim_);
   if (spk_stats.beta_ < options.min_count) {
     KALDI_WARN << "Not updating fMLLR since count is below min-count: "
                << spk_stats.beta_;
     coefficient->Resize(0);
     return 0.0;
   } else {
-	int dim = basis_params.dim_;
-    if (out_xform->NumRows() != dim || out_xform->NumRows() != (dim +1)) {
-      out_xform->Resize(dim, dim + 1, kSetZero);
+    if (out_xform->NumRows() != dim_ || out_xform->NumRows() != (dim_ +1)) {
+      out_xform->Resize(dim_, dim_ + 1, kSetZero);
     }
     // Initialized either as [I;0] or as the current transform
-    Matrix<double> W_mat(dim, dim + 1);
+    Matrix<double> W_mat(dim_, dim_ + 1);
     if (out_xform->IsZero()) {
       W_mat.SetUnit();
     } else {
@@ -237,7 +243,7 @@ double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
     }
     // Number of bases for this speaker, according to the available
     // adaptation data
-    int32 basis_size = int32 (std::min( double(basis_params.basis_size_),
+    int32 basis_size = int32 (std::min( double(basis_size_),
 	    	                   options.size_scale * spk_stats.beta_));
 
     coefficient->Resize(basis_size, kSetZero);
@@ -249,24 +255,24 @@ double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 
 	  // Contribution of quadratic terms to derivative
 	  // Eq. (37)  s_{d} = G_{d} w_{d}
-	  Matrix<double> S(dim, dim + 1);
-	  for (int32 d = 0; d < dim; ++d) {
+	  Matrix<double> S(dim_, dim_ + 1);
+	  for (int32 d = 0; d < dim_; ++d) {
 		Matrix<double> G_d_full(spk_stats.G_[d]);
 		S.Row(d).AddMatVec(1.0, G_d_full, kNoTrans, W_mat.Row(d), 0.0);
 	  }
 
 	  // W_mat = [A; b]
-	  Matrix<double> A(dim, dim);
-	  A.CopyFromMat(W_mat.Range(0, dim, 0, dim));
+	  Matrix<double> A(dim_, dim_);
+	  A.CopyFromMat(W_mat.Range(0, dim_, 0, dim_));
 	  Matrix<double> A_inv(A);
 	  A_inv.InvertDouble();
 	  Matrix<double> A_inv_trans(A_inv);
 	  A_inv_trans.Transpose();
 	  // Compute gradient of auxf w.r.t. W_mat
 	  // Eq. (38)  P = beta [A^{-T}; 0] + K - S
-	  Matrix<double> P(dim, dim + 1);
+	  Matrix<double> P(dim_, dim_ + 1);
 	  P.SetZero();
-	  P.Range(0, dim, 0, dim).CopyFromMat(A_inv_trans);
+	  P.Range(0, dim_, 0, dim_).CopyFromMat(A_inv_trans);
 	  P.Scale(spk_stats.beta_);
 	  P.AddMat(1.0, spk_stats.K_);
 	  P.AddMat(-1.0, S);
@@ -277,11 +283,11 @@ double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 	  // d_{1,2,...,N}.
 	  // Eq. (39)  delta(W) = \sum_n tr(\fmllr_basis_{n}^T \P) \fmllr_basis_{n}
 	  // delta(d_{n}) = tr(\fmllr_basis_{n}^T \P)
-	  Matrix<double> delta_W(dim, dim + 1);
+	  Matrix<double> delta_W(dim_, dim_ + 1);
 	  Vector<double> delta_d(basis_size);
 	  for (int32 n = 0; n < basis_size; ++n) {
-	    Matrix<double> basis_full(dim, dim + 1);
-	    basis_full.CopyFromMat(basis_params.fmllr_basis_[n]);
+	    Matrix<double> basis_full(dim_, dim_ + 1);
+	    basis_full.CopyFromMat(fmllr_basis_[n]);
 	    delta_d(n) = TraceMatMat(basis_full, P, kTrans);
 	    delta_W.AddMat(delta_d(n), basis_full);
 	  }
@@ -293,12 +299,13 @@ double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
 	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
       // For diagnose, maybe too verbose
-      if (iter <= 3) {
-        KALDI_LOG << "Objective function (iter=" << iter << "): " << startObj / spk_stats.beta_
-                  << " -> " << endObj / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
-	  }
+//    if (iter <= 3) {
+//      KALDI_LOG << "Objective function (iter=" << iter << "): " << startObj / spk_stats.beta_
+//                << " -> " << endObj / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
+//	  }
 	  impr_spk += (endObj - startObj);
     }  // loop over iters
+
     out_xform->CopyFromMat(W_mat, kNoTrans);
     return impr_spk;
   }

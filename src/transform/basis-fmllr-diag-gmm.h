@@ -59,20 +59,19 @@ struct BasisFmllrOptions {
   }
 };
 
-
 /** \class BasisFmllrGlobalParams
  *  Global parameters for basis fMLLR.
  */
-class BasisFmllrGlobalParams {
+class BasisFmllrAccus {
 
  public:
-  BasisFmllrGlobalParams() { }
-  explicit BasisFmllrGlobalParams(int32 dim) {
+  BasisFmllrAccus() { }
+  explicit BasisFmllrAccus(int32 dim) {
 	  dim_ = dim;
-	  ResizeParams(dim);
+	  ResizeAccus(dim);
   }
 
-  void ResizeParams(int32 dim);
+  void ResizeAccus(int32 dim);
 
   /// Routines for reading and writing global parameters
   void Write(std::ostream &out_stream, bool binary) const;
@@ -85,6 +84,27 @@ class BasisFmllrGlobalParams {
   /// See section 5.2 of the paper.
   void AccuGradientScatter(const AffineXformStats &spk_stats);
 
+  /// Gradient scatter. Dim is [(D+1)*D] [(D+1)*D]
+  SpMatrix<BaseFloat> grad_scatter_;
+  /// Feature dimension
+  int32 dim_;
+};
+
+/** \class BasisFmllrGlobalParams
+ *  Global parameters for basis fMLLR.
+ */
+class BasisFmllrEstimate {
+
+ public:
+  BasisFmllrEstimate() { }
+  explicit BasisFmllrEstimate(int32 dim) {
+	  dim_ = dim;
+  }
+
+  /// Routines for reading and writing global parameters
+  void WriteBasis(std::ostream &out_stream, bool binary) const;
+  void ReadBasis(std::istream &in_stream, bool binary, bool add = false);
+
   /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
   /// It takes diagonal GMM as argument, which will be used for preconditioner
   /// computation. This function returns the total number of bases, which is
@@ -93,11 +113,28 @@ class BasisFmllrGlobalParams {
   /// Note that SVD is performed in the normalized space. The base matrices
   /// are finally converted back to the unnormalized space.
   void EstimateFmllrBasis(const AmDiagGmm &am_gmm,
-  		                  int32 *base_num = NULL);
+                          const BasisFmllrAccus &basis_accus);
 
-  /// Gradient scatter. Dim is [(D+1)*D] [(D+1)*D]
-  SpMatrix<BaseFloat> grad_scatter_;
-  /// Basis matrice. Dim is [T] [D] [D+1]
+  /// This function computes the preconditioner matrix, prior to gradient
+  /// scatter accumulation. Since the expected values of G statistics are
+  /// used, it takes the acoustic model as the argument, rather than the
+  /// actual accumulations AffineXformStats
+  /// See section 5.1 of the paper.
+  void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
+                            SpMatrix<double> *pre_cond);
+
+  /// This function performs speaker adaptation, computing the fMLLR matrix
+  /// based on speaker statistics. It takes the global params (i.e., base matrices)
+  /// as argument. The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
+  /// explicitly. Finally, it returns objective function improvement over all the
+  /// iterations.
+  /// See section 5.3 of the paper for more details.
+  double BasisFmllrCoefficients(const AffineXformStats &spk_stats,
+  	                            Matrix<BaseFloat> *out_xform,
+  	                            Vector<BaseFloat> *coefficient,
+    	                        BasisFmllrOptions options);
+
+  /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases
   vector< Matrix<BaseFloat> > fmllr_basis_;
   /// Feature dimension
@@ -107,25 +144,6 @@ class BasisFmllrGlobalParams {
 
 };
 
-/// This function computes the preconditioner matrix, prior to gradient
-/// scatter accumulation. Since the expected values of G statistics are
-/// used, it takes the acoustic model as the argument, rather than the
-/// actual accumulations AffineXformStats
-/// See section 5.1 of the paper.
-void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
-                          SpMatrix<double> *pre_cond);
-
-/// This function performs speaker adaptation, computing the fMLLR matrix
-/// based on speaker statistics. It takes the global params (i.e., base matrices)
-/// as argument. The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
-/// explicitly. Finally, it returns objective function improvement over all the
-/// iterations.
-/// See section 5.3 of the paper for more details.
-double BasisFmllrCoefficients(const BasisFmllrGlobalParams &basis_params,
-		                      const AffineXformStats &spk_stats,
-	                          Matrix<BaseFloat> *out_xform,
-	                          Vector<BaseFloat> *coefficient,
-  	                          BasisFmllrOptions options);
 
 /// This function takes the step direction (delta) of fMLLR matrix as argument,
 /// and optimize step size using Newton's method. This is an iterative method,
@@ -137,8 +155,6 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
                              const Matrix<double> &A,
                              const Matrix<double> &S,
                              int32 max_iters);
-
-
 
 } // namespace kaldi
 
