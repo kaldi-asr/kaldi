@@ -8,6 +8,8 @@
 
 . cmd.sh
 
+if false; then ##TEMP
+
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
@@ -62,7 +64,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
  1800 9000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
 # decode tri1
-utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph
+utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph || exit 1;
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri1/graph data/test exp/tri1/decode
 
@@ -73,7 +75,7 @@ steps/align_si.sh --nj 8 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
 # train tri2a [delta+delta-deltas]
- steps/train_deltas.sh --cmd "$train_cmd" 1800 9000 \
+steps/train_deltas.sh --cmd "$train_cmd" 1800 9000 \
  data/train data/lang exp/tri1_ali exp/tri2a || exit 1;
 
 # decode tri2a
@@ -109,12 +111,14 @@ steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd"
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
+fi ##TEMP
 # Do MPE.
 steps/train_mpe.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mpe || exit 1;
 steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mpe/decode_it4 || exit 1;
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mpe/decode_it3 || exit 1;
+
 
 ## Do LDA+MLLT+SAT, and decode.
 steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
@@ -175,37 +179,8 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
 done
 
-
-## SGMM on top of LDA+MLLT+SAT features.
-steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
-steps/train_sgmm.sh  --cmd "$train_cmd" 2500 7500 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm4a || exit 1;
-
-utils/mkgraph.sh data/lang exp/sgmm4a exp/sgmm4a/graph || exit 1;
-
-steps/decode_sgmm.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode || exit 1;
-
-steps/decode_sgmm.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  --transform-dir exp/tri3b/decode  exp/sgmm4a/graph data/test exp/sgmm4a/decode_fmllr || exit 1;
-
- #  Now we'll align the SGMM system to prepare for discriminative training.
- steps/align_sgmm.sh --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b \
-    --use-graphs true --use-gselect true data/train data/lang exp/sgmm4a exp/sgmm4a_ali || exit 1;
- steps/make_denlats_sgmm.sh --nj 8 --sub-split 20 --cmd "$decode_cmd" --transform-dir exp/tri3b \
-   data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats
- steps/train_mmi_sgmm.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 \
-   data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats exp/sgmm4a_mmi_b0.2 
-
- for iter in 1 2 3 4; do
-  steps/decode_sgmm_rescore.sh --cmd "$decode_cmd" --iter $iter \
-    --transform-dir exp/tri3b/decode data/lang data/test exp/sgmm4a/decode exp/sgmm4a_mmi_b0.2/decode_it$iter &
- done  
-
-wait 
-steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
-steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_mmi/decode exp/combine_4a_3b/decode || exit 1;
-# combining the sgmm run and the best MMI+fMMI run.
-steps/decode_combine.sh data/test data/lang exp/sgmm4a/decode exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_3b_fmmic5/decode || exit 1;
-
-steps/decode_combine.sh data/test data/lang exp/sgmm4a_mmi_b0.2/decode_it4 exp/tri3b_fmmi_c/decode_it5 exp/combine_4a_mmi_3b_fmmic5/decode || exit 1;
+# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2x.sh
+local/run_sgmm.sh
+local/run_sgmm2.sh
+local/run_sgmm2x.sh
 

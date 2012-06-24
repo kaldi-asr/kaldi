@@ -22,8 +22,8 @@ max_mem=20000000 # This will stop the processes getting too large.
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/make_denlats_sgmm.sh [options] <data-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
-   echo "  e.g.: steps/make_denlats_sgmm.sh data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
+   echo "Usage: steps/make_denlats_sgmm2.sh [options] <data-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
+   echo "  e.g.: steps/make_denlats_sgmm2.sh data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
    echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
    echo " plus transforms."
    echo ""
@@ -113,7 +113,7 @@ fi
 
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   sgmm-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
+   sgmm2-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
      --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
@@ -132,7 +132,7 @@ else
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        sgmm-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
+        sgmm2-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
           --beam=$beam --lattice-beam=$lattice_beam \
           --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
           --word-symbol-table=$lang/words.txt $alidir/final.mdl  \

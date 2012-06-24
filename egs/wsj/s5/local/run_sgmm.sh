@@ -3,6 +3,7 @@
 # This script is invoked from ../run.sh
 # It contains some SGMM-related scripts that I am breaking out of the main run.sh for clarity.
 
+. cmd.sh
 
 # SGMM system on si84 data [sgmm5a].  Note: the system we aligned from used the si284 data for
 # training, but this shouldn't have much effect.
@@ -57,7 +58,7 @@
   steps/train_ubm.sh --cmd "$train_cmd" \
     600 data/train_si284 data/lang exp/tri4b_ali_si284 exp/ubm5b || exit 1;
 
-  steps/train_sgmm.sh --cmd "$train_cmd" --phn-dim 50 \
+  steps/train_sgmm.sh --cmd "$train_cmd" \
     5500 25000 data/train_si284 data/lang exp/tri4b_ali_si284 \
     exp/ubm5b/final.ubm exp/sgmm5b || exit 1;
 

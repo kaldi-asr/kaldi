@@ -121,8 +121,8 @@ scripts/make_roots.pl --separate $lang/phones.txt $silphonelist shared split \
 # build the 2-lvl tree, make sure to not cluster the leaves!
 echo "Building tree"
 build-tree-two-level --verbose=1 --cluster-leaves=false \
-    --max-leaves_first=$max_leaves_first \
-    --max-leaves_second=$max_leaves_second \
+    --max-leaves-first=$max_leaves_first \
+    --max-leaves-second=$max_leaves_second \
     $dir/treeacc $dir/roots.txt \
     $dir/questions.qst $lang/topo $dir/tree $dir/tree.map 2> $dir/train_tree.log || exit 1;
 

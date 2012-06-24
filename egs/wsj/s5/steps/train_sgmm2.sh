@@ -12,26 +12,29 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-stage=-6
+stage=-6 # use this to resume partially finished training 
 context_opts= # e.g. set it to "--context-width=5 --central-position=2"  for a
 # quinphone system.
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
-num_iters=25   # Total number of iterations
+num_iters=25   # Total number of iterations of training
 num_iters_alimdl=3 # Number of iterations for estimating alignment model.
 max_iter_inc=15 # Last iter to increase #substates on.
 realign_iters="5 10 15"; # Iters to realign on. 
 spkvec_iters="5 8 12 17" # Iters to estimate speaker vectors on.
-increase_dim_iters="6 8"; # Iters on which to increase phn dim and/or spk dim;
-   # rarely necessary, and if it is, only the 1st will normally be necessary.
+increase_iters="6 10 14"; # Iters on which to increase phn dim and/or spk dim;
+    # rarely necessary, and if it is, only the 1st will normally be necessary.
 rand_prune=0.1 # Randomized-pruning parameter for posteriors, to speed up training.
+               # Bigger -> more pruning; zero = no pruning.
 phn_dim=  # You can use this to set the phonetic subspace dim. [default: feat-dim+1]
 spk_dim=  # You can use this to set the speaker subspace dim. [default: feat-dim]
 beam=8
-self_weight=1.0
+self_weight=0.9
 retry_beam=40
-leaves_per_group=5
-num_weight_indices=0 # set this to more then #Gauss in UBM, if you
- # want to use this type of mixture.
+leaves_per_group=5 # Relates to the SCTM (state-clustered tied-mixture) aspect:
+                   # average number of pdfs in a "group" of pdfs.
+update_m_iter=4
+spk_dep_weights=true # [Symmetric SGMM] set this to false if you don't want "u" (i.e. to turn off
+                      # symmetric SGMM.
 # End configuration section.
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -60,6 +63,7 @@ ubm=$6
 dir=$7
 
 num_groups=$[$num_pdfs/$leaves_per_group]
+first_spkvec_iter=`echo $spkvec_iters | awk '{print $1}'` || exit 1;
 
 # Check some files.
 for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $ubm; do
@@ -137,8 +141,9 @@ if [ $stage -le -4 ]; then
   # Note: if phn_dim > feat_dim+1 or spk_dim > feat_dim, these dims
   # will be truncated on initialization.
   $cmd $dir/log/init_sgmm.log \
-    sgmm2-init --self-weight=$self_weight --pdf-map=$dir/pdf2group.map --phn-space-dim=$phn_dim \
-      --spk-space-dim=$spk_dim $lang/topo $dir/tree $ubm $dir/0.mdl || exit 1;
+    sgmm2-init --spk-dep-weights=$spk_dep_weights --self-weight=$self_weight \
+       --pdf-map=$dir/pdf2group.map --phn-space-dim=$phn_dim \
+       --spk-space-dim=$spk_dim $lang/topo $dir/tree $ubm $dir/0.mdl || exit 1;
 fi
 
 if [ $stage -le -3 ]; then
@@ -188,14 +193,19 @@ while [ $x -lt $num_iters ]; do
    fi  
    if [ $x -eq 0 ]; then
      flags=vwcSt # on the first iteration, don't update projections M or N
-   elif [ $spk_dim -gt 0 -a $[$x%2] -eq 1 -a $x -ge `echo $spkvec_iters | awk '{print $1}'` ]; then 
+   elif [ $spk_dim -gt 0 -a $[$x%2] -eq 1 -a $x -ge $first_spkvec_iter ]; then 
      # Update N if we have speaker-vector space and x is odd,
      # and we've already updated the speaker vectors...
      flags=vNwSct
    else
-     # otherwise update M.
-     flags=vMwSct
+     if [ $x -ge $update_m_iter ]; then
+       flags=vMwSct # udpate M.
+     else
+       flags=vwSct # no M on early iters, if --update-m-iter option given.
+     fi
    fi
+   $spk_dep_weights && [ $x -ge $first_spkvec_iter ] && flags=${flags}u; # update 
+   # spk-weight projections "u".
    
    if [ $stage -le $x ]; then
      $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
@@ -218,19 +228,14 @@ while [ $x -lt $num_iters ]; do
          mv $dir/vecs_tmp.JOB $dir/vecs.JOB || exit 1;
      fi
    fi
-   if [ $x -eq 0 ] && [ $num_weight_indices -gt 0 ]; then 
-     weight_mixup_flag="--split-weights=$num_weight_indices"
-   else weight_mixup_flag=  ;  fi
 
    if [ $stage -le $x ]; then
      $cmd $dir/log/update.$x.log \
-       sgmm2-est $weight_mixup_flag --update-flags=$flags --split-substates=$numsubstates \
-         $increase_dim_opts --write-occs=$dir/$[$x+1].occs \
-         $dir/$x.mdl "sgmm2-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
+       sgmm2-est --update-flags=$flags \
+        --split-substates=$numsubstates $increase_dim_opts --write-occs=$dir/$[$x+1].occs \
+       $dir/$x.mdl "sgmm2-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
      rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
    fi
-
-   
    if [ $x -lt $max_iter_inc ]; then
      numsubstates=$[$numsubstates+$incsubstates]
    fi
