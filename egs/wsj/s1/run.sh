@@ -210,6 +210,15 @@ steps/train_tri2a.sh || exit 1;
 
 )&
 
+# decoding with basis-fMLLR, both per-speaker and per-utterance
+(
+ steps/train_fmllr_basis_tri2a.sh || exit 1;
+ for year in 92 93; do
+  scripts/decode.sh exp/decode_tri2a_tgpr_basisfmllr_utt_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_basis_fmllr.sh data/eval_nov${year}.scp
+  scripts/decode.sh --per-spk exp/decode_tri2a_tgpr_basisfmllr_eval${year} exp/graph_tri2a_tg_pruned/HCLG.fst steps/decode_tri2a_basis_fmllr.sh data/eval_nov${year}.scp
+ done
+)&
+
 # also doing tri2a with bigram [+ lattice generation + rescoring]
 (
  scripts/mkgraph.sh data/G_bg.fst exp/tri2a/tree exp/tri2a/final.mdl exp/graph_tri2a_bg || exit 1;
