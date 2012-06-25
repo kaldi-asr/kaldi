@@ -16,12 +16,10 @@
 
 
 # This script does the decoding similar with decode_tri2a_fmllr.sh, but with
-# basis-fMLLR, rather that the traditional fMLLR. We need to specify pointer
+# basis-fMLLR, rather than the traditional fMLLR. We need to specify pointer
 # to fMLLR base matrices, which have been estimated with train_tri2a_fmllr_basis.sh.
-# Refer to decode_tri2a_fmllr.sh for details on other auguments.
+# Refer to decode_tri2a_fmllr.sh for details on other arguments.
 # 
-# Both speaker-specific and utterance-specific adaptations are shown here.
-# Comparison can be easily made with fMLLR in both cases.
 
 if [ $# != 3 ]; then
    echo "Usage: steps/decode_tri2a_fmllr.sh <graph> <decode-dir> <job-number>"
@@ -66,30 +64,15 @@ echo running on `hostname` > $dir/predecode${job}.log
 # First-pass decoding.
 gmm-decode-faster --beam=$prebeam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$sifeats" ark,t:$dir/$job.pre_tra ark,t:$dir/$job.pre_ali  2>>$dir/predecode${job}.log 
 
-# Estimate per-speaker basis fMLLR transforms
+# Estimate basis fMLLR transforms
 ali-to-post ark:$dir/$job.pre_ali ark:- | \
   weight-silence-post 0.0 $silphones $model ark:- ark:- | \
-  gmm-est-basis-fmllr $spk2utt_opt --min-count=$mincount --num-iters=10 --size-scale=0.2 \
-  --step-size-iters=3 --write-weights=ark:$dir/$job.spk.wgt \
-  $model $fmllrbasis "$sifeats" ark,o:- ark:$dir/$job.spk.fmllr 2>$dir/fmllr${job}.spk.log
+  gmm-est-basis-fmllr $spk2utt_opt --fmllr-min-count=$mincount --num-iters=10 \
+  --size-scale=0.2 --step-size-iters=3 --write-weights=ark:$dir/$job.wgt \
+  $model $fmllrbasis "$sifeats" ark,o:- ark:$dir/$job.fmllr 2>$dir/fmllr${job}.log
 
-feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.spk.fmllr ark:- ark:- |"
+feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats $utt2spk_opt ark:$dir/$job.fmllr ark:- ark:- |"
 
-# Final decoding with per-speaker adaptation
-echo running on `hostname` > $dir/decode${job}.spk.log
-gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.spk.tra ark,t:$dir/$job.spk.ali  2>>$dir/decode${job}.spk.log 
-
-# Estimate per-utterance basis fMLLR transforms
-# Remove spk2utt option
-ali-to-post ark:$dir/$job.pre_ali ark:- | \
-  weight-silence-post 0.0 $silphones $model ark:- ark:- | \
-  gmm-est-basis-fmllr --min-count=$mincount --num-iters=10 --size-scale=0.2 \
-  --step-size-iters=3 --write-weights=ark:$dir/$job.utt.wgt \
-  $model $fmllrbasis "$sifeats" ark,o:- ark:$dir/$job.utt.fmllr 2>$dir/fmllr${job}.utt.log
-
-feats="ark:add-deltas --print-args=false scp:$scp ark:- | transform-feats ark:$dir/$job.utt.fmllr ark:- ark:- |"
-
-# Final decoding with per-utterance adaptation
-echo running on `hostname` > $dir/decode${job}.utt.log
-gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.utt.tra ark,t:$dir/$job.utt.ali  2>>$dir/decode${job}.utt.log
-
+# Final decoding with adaptation
+echo running on `hostname` > $dir/decode${job}.log
+gmm-decode-faster --beam=$beam --max-active=$max_active --acoustic-scale=$acwt --word-symbol-table=data/words.txt $model $graph "$feats" ark,t:$dir/$job.tra ark,t:$dir/$job.ali  2>>$dir/decode${job}.log 
