@@ -98,7 +98,7 @@ class BasisFmllrEstimate {
  public:
   BasisFmllrEstimate() { }
   explicit BasisFmllrEstimate(int32 dim) {
-	  dim_ = dim;
+	  dim_ = dim; basis_size_ = dim * (dim + 1);
   }
 
   /// Routines for reading and writing global parameters
