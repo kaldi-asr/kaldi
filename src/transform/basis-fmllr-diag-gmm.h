@@ -59,8 +59,8 @@ struct BasisFmllrOptions {
   }
 };
 
-/** \class BasisFmllrGlobalParams
- *  Global parameters for basis fMLLR.
+/** \class BasisFmllrAccus
+ *  Stats for fMLLR subspace estimation.
  */
 class BasisFmllrAccus {
 
@@ -73,15 +73,15 @@ class BasisFmllrAccus {
 
   void ResizeAccus(int32 dim);
 
-  /// Routines for reading and writing global parameters
+  /// Routines for reading and writing stats
   void Write(std::ostream &out_stream, bool binary) const;
   void Read(std::istream &in_stream, bool binary, bool add = false);
 
   /// Accumulate gradient scatter for one (training) speaker.
   /// To finish the process, we need to traverse the whole training
   /// set. Parallelization works if the speaker list is splitted, and
-  /// global parameters are summed up by setting add=true in ReadParams
-  /// See section 5.2 of the paper.
+  /// stats are summed up by setting add=true in BasisFmllrEstimate::
+  /// ReadBasis. See section 5.2 of the paper.
   void AccuGradientScatter(const AffineXformStats &spk_stats);
 
   /// Gradient scatter. Dim is [(D+1)*D] [(D+1)*D]
@@ -90,8 +90,8 @@ class BasisFmllrAccus {
   int32 dim_;
 };
 
-/** \class BasisFmllrGlobalParams
- *  Global parameters for basis fMLLR.
+/** \class BasisFmllrEstimate
+ *  Estimation functions for basis fMLLR.
  */
 class BasisFmllrEstimate {
 
@@ -101,33 +101,32 @@ class BasisFmllrEstimate {
 	  dim_ = dim; basis_size_ = dim * (dim + 1);
   }
 
-  /// Routines for reading and writing global parameters
+  /// Routines for reading and writing fMLLR base matrices
   void WriteBasis(std::ostream &out_stream, bool binary) const;
   void ReadBasis(std::istream &in_stream, bool binary, bool add = false);
 
   /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
   /// It takes diagonal GMM as argument, which will be used for preconditioner
-  /// computation. This function returns the total number of bases, which is
-  /// fixed as
+  /// computation. The total number of bases is fixed to
   /// N = (dim + 1) * dim
   /// Note that SVD is performed in the normalized space. The base matrices
   /// are finally converted back to the unnormalized space.
   void EstimateFmllrBasis(const AmDiagGmm &am_gmm,
                           const BasisFmllrAccus &basis_accus);
 
-  /// This function computes the preconditioner matrix, prior to gradient
-  /// scatter accumulation. Since the expected values of G statistics are
-  /// used, it takes the acoustic model as the argument, rather than the
-  /// actual accumulations AffineXformStats
+  /// This function computes the preconditioner matrix, prior to base matrices
+  /// estimation. Since the expected values of G statistics are used, it
+  /// takes the acoustic model as the argument, rather than the actual
+  /// accumulations AffineXformStats
   /// See section 5.1 of the paper.
   void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
                             SpMatrix<double> *pre_cond);
 
   /// This function performs speaker adaptation, computing the fMLLR matrix
-  /// based on speaker statistics. It takes the global params (i.e., base matrices)
-  /// as argument. The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
-  /// explicitly. Finally, it returns objective function improvement over all the
-  /// iterations.
+  /// based on speaker statistics. It takes fMLLR stats as argument.
+  /// The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
+  /// explicitly. Finally, it returns objective function improvement over
+  /// all the iterations.
   /// See section 5.3 of the paper for more details.
   double BasisFmllrCoefficients(const AffineXformStats &spk_stats,
   	                            Matrix<BaseFloat> *out_xform,
