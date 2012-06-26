@@ -7,7 +7,7 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     compute-cmvn-stats add-deltas remove-mean apply-cmvn transform-feats \
     copy-feats compose-transforms splice-feats extract-segments subset-feats \
     feat-to-len feat-to-dim fmpe-apply-transform fmpe-acc-stats fmpe-init \
-    fmpe-est fmpe-copy fmpe-sum-accs append-feats compute-spectrogram-feats
+    fmpe-est fmpe-copy fmpe-sum-accs append-feats
 
 
 OBJFILES = 
