@@ -99,8 +99,8 @@ int main(int argc, char *argv[]) {
         int32 idx1 = iter->first.first, idx2 = iter->first.second,
             count = iter->second;
         if (idx1 != idx2) {
-          BaseFloat f = count / std::pow(1.0 * counts[std::make_pair(idx1,idx1)]
-                                         * counts[std::make_pair(idx2, idx2)], power);
+          BaseFloat x = counts[std::make_pair(idx1,idx1)] * counts[std::make_pair(idx2, idx2)];
+          BaseFloat f = count / std::pow(x, power);
           queue.push(std::make_pair(f, iter->first));
         }
       }
