@@ -322,9 +322,9 @@ double EbwAmSgmmUpdater::UpdateM(const MleAmSgmmAccs &num_accs,
     Mi.AddMat(1.0, deltaM);
     model->M_[i].CopyFromMat(Mi);
     if (i < 10 || impr / state_count > 3.0) {
-      KALDI_VLOG(2) << "Objf impr for projection M for i = " << i << ", is "
-                    << (impr/(gamma_i_num + 1.0e-20)) << " over " << gamma_i_num
-                    << " frames";
+      KALDI_LOG << "Objf impr for projection M for i = " << i << ", is "
+                << (impr/(gamma_i_num + 1.0e-20)) << " over " << gamma_i_num
+                << " frames";
     }
   }
   BaseFloat tot_count = num_count_vec.Sum(), tot_impr = impr_vec.Sum();
