@@ -18,6 +18,7 @@ boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
 stage=-4
+power=0.2 # exponent to determine number of gaussians from occurrence counts
 # End configuration section.
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -83,7 +84,7 @@ fi
 # we fail to est "rare" phones and later on, they never align properly.
 
 if [ $stage -le 0 ]; then
-  gmm-est --min-gaussian-occupancy=3  --mix-up=$numgauss \
+  gmm-est --min-gaussian-occupancy=3  --mix-up=$numgauss --power=$power \
     $dir/0.mdl "gmm-sum-accs - $dir/0.*.acc|" $dir/1.mdl 2> $dir/log/update.0.log || exit 1;
   rm $dir/0.*.acc
 fi
@@ -93,7 +94,7 @@ beam=6 # will change to 10 below after 1st pass
 # note: using slightly wider beams for WSJ vs. RM.
 x=1
 while [ $x -lt $num_iters ]; do
-  echo "$0: Pass $x"
+  echo "$0: Pass $x, power=$power"
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
       echo "$0: Aligning data"
@@ -108,7 +109,7 @@ while [ $x -lt $num_iters ]; do
       $dir/$x.JOB.acc || exit 1;
 
     $cmd $dir/log/update.$x.log \
-      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
+      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss --power=$power $dir/$x.mdl \
       "gmm-sum-accs - $dir/$x.*.acc|" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
   fi

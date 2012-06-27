@@ -13,6 +13,7 @@ max_iter_inc=25 # Last iter to increase #Gauss on.
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
+power=0.2 # Exponent for number of gaussians according to occurrence counts
 # End configuration.
 
 [ -f path.sh ] && . ./path.sh;
@@ -102,7 +103,7 @@ fi
 
 x=1
 while [ $x -lt $num_iters ]; do
-  echo "$0: training pass $x"
+  echo "$0: training pass $x, power=$power"
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
       echo "$0: aligning data"
@@ -116,7 +117,7 @@ while [ $x -lt $num_iters ]; do
       gmm-acc-stats-ali  $dir/$x.mdl "$feats" \
        "ark,s,cs:gunzip -c $dir/ali.JOB.gz|" $dir/$x.JOB.acc || exit 1;
     $cmd $dir/log/update.$x.log \
-      gmm-est --mix-up=$numgauss \
+      gmm-est --mix-up=$numgauss --power=$power \
         --write-occs=$dir/$[$x+1].occs $dir/$x.mdl \
        "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc

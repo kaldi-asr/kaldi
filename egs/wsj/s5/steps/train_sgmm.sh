@@ -26,6 +26,7 @@ increase_dim_iters="6 8"; # Iters on which to increase phn dim and/or spk dim;
 rand_prune=0.1 # Randomized-pruning parameter for posteriors, to speed up training.
 phn_dim=  # You can use this to set the phonetic subspace dim. [default: feat-dim+1]
 spk_dim=  # You can use this to set the speaker subspace dim. [default: feat-dim]
+power=0.2 # Exponent for number of gaussians according to occurrence counts
 beam=8
 retry_beam=40
 # End configuration section.
@@ -147,7 +148,7 @@ if [ $stage -le -2 ]; then
 fi
 
 if [ $stage -le -1 ]; then
-  echo "Converting alignments" 
+  echo "$0: Converting alignments" 
   $cmd JOB=1:$nj $dir/log/convert_ali.JOB.log \
     convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/ali.JOB.gz|" \
     "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
@@ -211,7 +212,7 @@ while [ $x -lt $num_iters ]; do
    if [ $stage -le $x ]; then
      $cmd $dir/log/update.$x.log \
        sgmm-est --update-flags=$flags --split-substates=$numsubstates $increase_dim_opts \
-         --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.*.acc|" \
+         --power=$power --write-occs=$dir/$[$x+1].occs $dir/$x.mdl "sgmm-sum-accs - $dir/$x.*.acc|" \
        $dir/$[$x+1].mdl || exit 1;
      rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
    fi
@@ -250,7 +251,7 @@ if [ $spk_dim -gt 0 ]; then
         sgmm-acc-stats-gpost --update-flags=$flags  $cur_alimdl "$feats" \
         ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
       $cmd $dir/log/update_ali.$x.log \
-        sgmm-est --update-flags=$flags --remove-speaker-space=true $cur_alimdl \
+        sgmm-est --update-flags=$flags --remove-speaker-space=true --power=$power $cur_alimdl \
         "sgmm-sum-accs - $dir/$x.*.aliacc|" $dir/$[$x+1].alimdl || exit 1;
       rm $dir/$x.*.aliacc || exit 1;
       [ $x -gt $num_iters ]  && rm $dir/$x.alimdl

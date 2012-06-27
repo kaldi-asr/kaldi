@@ -16,6 +16,7 @@ dim=40
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
+power=0.2 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
 # End configuration.
@@ -164,8 +165,8 @@ while [ $x -lt $num_iters ]; do
       gmm-acc-stats-ali  $dir/$x.mdl "$feats" \
       "ark,s,cs:gunzip -c $dir/ali.JOB.gz|" $dir/$x.JOB.acc || exit 1;
     $cmd $dir/log/update.$x.log \
-      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
-       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
+      gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss --power=$power \
+        $dir/$x.mdl "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
