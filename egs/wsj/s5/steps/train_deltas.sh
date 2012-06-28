@@ -103,7 +103,7 @@ fi
 
 x=1
 while [ $x -lt $num_iters ]; do
-  echo "$0: training pass $x, power=$power"
+  echo "$0: training pass $x"
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
       echo "$0: aligning data"

@@ -96,7 +96,7 @@ beam=6 # will change to 10 below after 1st pass
 # note: using slightly wider beams for WSJ vs. RM.
 x=1
 while [ $x -lt $num_iters ]; do
-  echo "$0: Pass $x, power=$power"
+  echo "$0: Pass $x"
   if [ $stage -le $x ]; then
     if echo $realign_iters | grep -w $x >/dev/null; then
       echo "$0: Aligning data"
