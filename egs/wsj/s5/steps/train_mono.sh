@@ -19,6 +19,7 @@ realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
 stage=-4
 power=0.2 # exponent to determine number of gaussians from occurrence counts
+feat_dim=39
 # End configuration section.
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -30,6 +31,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --nj <nj>                                        # number of parallel jobs"
+  echo "  --feat_dim <dim>                                 # dimension of feature vector (39)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   exit 1;
 fi
@@ -57,7 +59,7 @@ shared_phones_opt="--shared-phones=$lang/phones/sets.int"
 if [ $stage -le -3 ]; then
 # Note: JOB=1 just uses the 1st part of the features-- we only need a subset anyway.
   $cmd JOB=1 $dir/log/init.log \
-    gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo 39 \
+    gmm-init-mono $shared_phones_opt "--train-feats=$feats subset-feats --n=10 ark:- ark:-|" $lang/topo $feat_dim \
     $dir/0.mdl $dir/tree || exit 1;
 fi
 
