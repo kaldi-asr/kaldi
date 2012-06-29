@@ -33,7 +33,8 @@ namespace kaldi {
 void InitAmGmm(const BuildTreeStatsType &stats,
                const EventMap &to_pdf_map,
                AmDiagGmm *am_gmm,
-               const TransitionModel &trans_model) {
+               const TransitionModel &trans_model,
+               BaseFloat var_floor) {
   // Get stats split by tree-leaf ( == pdf):
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, to_pdf_map, &split_stats);
@@ -85,6 +86,7 @@ void InitAmGmm(const BuildTreeStatsType &stats,
     x.Scale(1.0/count);
     x2.Scale(1.0/count);
     x2.AddVec2(-1.0, x);  // subtract mean^2.
+    x2.ApplyFloor(var_floor);
     x2.InvertElements();  // get inv-var.
     assert(x2.Min() > 0);
 
@@ -230,13 +232,17 @@ int main(int argc, char *argv[]) {
         "  gmm-init-model tree treeacc topo 1.mdl prev/tree prev/30.mdl\n";
 
     bool binary = true;
+    double var_floor = 0.01;
     std::string occs_out_filename;
+
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("write-occs", &occs_out_filename, "File to write state "
                 "occupancies to.");
-
+    po.Register("var-floor", &var_floor, "Variance floor used while "
+                "initializing Gaussians");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4 && po.NumArgs() != 6) {
@@ -282,7 +288,7 @@ int main(int argc, char *argv[]) {
     // Now, the summed_stats will be used to initialize the GMM.
     AmDiagGmm am_gmm;
     if (old_tree_filename.empty())
-      InitAmGmm(stats, to_pdf, &am_gmm, trans_model);  // Normal case: initialize 1 Gauss/model from tree stats.
+      InitAmGmm(stats, to_pdf, &am_gmm, trans_model, var_floor);  // Normal case: initialize 1 Gauss/model from tree stats.
     else {
       InitAmGmmFromOld(stats, to_pdf,
                        ctx_dep.ContextWidth(),
