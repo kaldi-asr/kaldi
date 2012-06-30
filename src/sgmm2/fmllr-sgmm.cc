@@ -1,7 +1,7 @@
 // sgmm/fmllr-sgmm.cc
 
-// Copyright 2009-2011       Saarland University
-// Author:  Arnab Ghoshal
+// Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
+//                       Johns Hopkins University (author: Daniel Povey)    
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include <vector>
 using std::vector;
 
-#include "sgmm/fmllr-sgmm.h"
+#include "sgmm2/fmllr-sgmm.h"
 #include "util/parse-options.h"
 
 namespace kaldi {
@@ -152,44 +152,44 @@ void FmllrSgmm2Accs::Init(int32 dim, int32 num_gaussians) {
 }
 
 BaseFloat FmllrSgmm2Accs::Accumulate(const AmSgmm2 &model,
-                                    const Sgmm2PerSpkDerivedVars &spk,
-                                    const VectorBase<BaseFloat> &data,
-                                    const Sgmm2PerFrameDerivedVars &frame_vars,
-                                    int32 pdf_index, BaseFloat weight) {
+                                     const VectorBase<BaseFloat> &data,
+                                     const Sgmm2PerFrameDerivedVars &frame_vars,
+                                     int32 pdf_index, BaseFloat weight,
+                                     Sgmm2PerSpkDerivedVars *spk) {
   // Calulate Gaussian posteriors and collect statistics
   Matrix<BaseFloat> posteriors;
   BaseFloat log_like = model.ComponentPosteriors(frame_vars, pdf_index,
-                                                 &posteriors);
+                                                 spk, &posteriors);
   posteriors.Scale(weight);
-  AccumulateFromPosteriors(model, spk, data, frame_vars.gselect, posteriors,
+  AccumulateFromPosteriors(model, *spk, data, frame_vars.gselect, posteriors,
                            pdf_index);
   return log_like;
 }
 
-void
-FmllrSgmm2Accs::AccumulateFromPosteriors(const AmSgmm2 &model,
-                                        const Sgmm2PerSpkDerivedVars &spk,
-                                        const VectorBase<BaseFloat> &data,
-                                        const vector<int32> &gselect,
-                                        const Matrix<BaseFloat> &posteriors,
-                                        int32 pdf_index) {
+void FmllrSgmm2Accs::AccumulateFromPosteriors(
+    const AmSgmm2 &model,
+    const Sgmm2PerSpkDerivedVars &spk,
+    const VectorBase<BaseFloat> &data,
+    const vector<int32> &gselect,
+    const Matrix<BaseFloat> &posteriors,
+    int32 j2) {
   Vector<double> var_scaled_mean(dim_), extended_data(dim_+1);
   extended_data.Range(0, dim_).CopyFromVec(data);
   extended_data(dim_) = 1.0;
   SpMatrix<double> scatter(dim_+1, kSetZero);
   scatter.AddVec2(1.0, extended_data);
-
+  int32 j1 = model.Pdf2Group(j2);
   for (int32 ki = 0, ki_max = gselect.size(); ki < ki_max; ki++) {
     int32 i = gselect[ki];
 
-    for (int32 m = 0; m < model.NumSubstates(pdf_index); m++) {
+    for (int32 m = 0; m < model.NumSubstatesForGroup(j1); m++) {
       // posterior gamma_{jkmi}(t)                             eq.(39)
       BaseFloat gammat_jmi = posteriors(ki, m);
 
       // Accumulate statistics for non-zero gaussian posterior
       if (gammat_jmi > 0.0) {
         stats_.beta_ += gammat_jmi;
-        model.GetVarScaledSubstateSpeakerMean(pdf_index, m, i, spk,
+        model.GetVarScaledSubstateSpeakerMean(j1, m, i, spk,
                                               &var_scaled_mean);
         // Eq. (52): K += \gamma_{jmi} \Sigma_{i}^{-1} \mu_{jmi}^{(s)} x^{+T}
         stats_.K_.AddVecVec(gammat_jmi, var_scaled_mean, extended_data);

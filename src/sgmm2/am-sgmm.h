@@ -512,7 +512,7 @@ inline void AmSgmm2::GetSubstateMean(int32 j1, int32 m, int32 i,
 
 template<typename Real>
 inline void AmSgmm2::GetSubstateSpeakerMean(int32 j1, int32 m, int32 i,
-                                           const Sgmm2PerSpkDerivedVars &spk,
+                                            const Sgmm2PerSpkDerivedVars &spk,
                                            VectorBase<Real> *mean_out) const {
   GetSubstateMean(j1, m, i, mean_out);
   if (spk.v_s.Dim() != 0)  // have speaker adaptation...

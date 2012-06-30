@@ -1,7 +1,7 @@
-// sgmm/fmllr-sgmm.h
+// sgmm2/fmllr-sgmm.h
 
-// Copyright 2009-2011       Saarland University
-// Author:  Arnab Ghoshal
+// Copyright 2009-2012     Saarland University (author: Arnab Ghoshal)
+//                         Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "sgmm/am-sgmm.h"
+#include "sgmm2/am-sgmm.h"
 #include "transform/transform-common.h"
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
@@ -133,11 +133,12 @@ class FmllrSgmm2Accs {
   /// The 'data' argument is not FMLLR-transformed and is needed in addition
   /// to the the 'frame_vars' since the latter only contains a copy of the
   /// transformed feature vector.
-  BaseFloat Accumulate(const AmSgmm2 &sgmm,
-                       const Sgmm2PerSpkDerivedVars &spk,
+  BaseFloat Accumulate(const AmSgmm2 &sgmm,                       
                        const VectorBase<BaseFloat> &data,
                        const Sgmm2PerFrameDerivedVars &frame_vars,
-                       int32 state_index, BaseFloat weight);
+                       int32 state_index,
+                       BaseFloat weight,
+                       Sgmm2PerSpkDerivedVars *spk);
 
   void AccumulateFromPosteriors(const AmSgmm2 &sgmm,
                                 const Sgmm2PerSpkDerivedVars &spk,
