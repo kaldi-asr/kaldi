@@ -35,6 +35,8 @@ system:
         [utt] 12.5       18.4                         
  +dfmllr[spk] 12.7       17.2                         | [diagonal-only fMLLR]
         [utt] 12.6       17.3
+ +bfmllr[spk] 11.3       15.4                         | basis-fMLLR, as in the paper "A basis representation of constrained MLLR transforms for robust adaptation", Daniel Povey and Kaisheng Yao, Computer Speech and Language, 2011."
+ +bfmllr[utt] 11.9       17.1                         | Thanks to Yajie Miao who implemented this.
 +dfmllr+fmllr[spk]
               11.5       15.7                         | diagonal-only fMLLR then regular fMLLR
  tri3a        10.7       13.8      11.9       15.0    | tri3a is as tri2a but all SI-284 data.
