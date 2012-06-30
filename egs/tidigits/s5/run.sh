@@ -2,7 +2,7 @@
 
 # Note: this TIDIGITS setup has not been tuned at all and has some obvious
 # deficiencies; this has been created as a starting point for a tutorial.
-
+# We're just using the "adults" data here, not the data from children.
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.

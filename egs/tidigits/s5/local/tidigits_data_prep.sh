@@ -18,13 +18,24 @@ mkdir -p $tmpdir
 # Note: the .wav files are not in .wav format but "sphere" format (this was 
 # produced in the days before Windows).
 
-find $tidigits/tidigits/train -name '*.wav' > $tmpdir/train.flist
+if [ -d $tidigits/data ]; then
+  rootdir=$tidigits/data/adults
+elif [ -d $tidigits/tidigits ]; then 
+  # This is, I think, a modified
+  # version of the format that exists at BUT.
+  rootdir=$tidigits/tidigits
+else
+  echo "Tidigits directory $tidigits does not have expected format."
+fi
+
+find $rootdir/train -name '*.wav' > $tmpdir/train.flist
 n=`cat $tmpdir/train.flist | wc -l`
 [ $n -eq 8623 ] || echo Unexpected number of training files $n versus 8623
 
-find $tidigits/tidigits/test -name '*.wav' > $tmpdir/test.flist
+find $rootdir/test -name '*.wav' > $tmpdir/test.flist
 n=`cat $tmpdir/test.flist | wc -l`
 [ $n -eq 8700 ] || echo Unexpected number of test files $n versus 8700
+
 
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
