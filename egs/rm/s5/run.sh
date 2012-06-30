@@ -8,8 +8,6 @@
 
 . cmd.sh
 
-if false; then ##TEMP
-
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
@@ -88,7 +86,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" 1800 9000 \
   data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  exp/tri2b/graph data/test exp/tri2b/decode
+   exp/tri2b/graph data/test exp/tri2b/decode
 
 # Align all data with LDA+MLLT system (tri2b)
 steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
@@ -111,7 +109,6 @@ steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd"
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
-fi ##TEMP
 # Do MPE.
 steps/train_mpe.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mpe || exit 1;
 steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
