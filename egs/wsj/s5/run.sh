@@ -3,8 +3,6 @@
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
-#if false; then ##TEMP
-
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
@@ -122,7 +120,7 @@ done
 
 # demonstrate how to get lattices that are "word-aligned" (arcs coincide with
 # words, with boundaries in the right place).
-sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print 2}'`
+sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print $2}'`
 steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
   data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
 
@@ -258,7 +256,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 ) &
 steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
-#fi ##TEMP
+
 (
  utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
@@ -281,8 +279,11 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 local/run_mmi_tri4b.sh
 
-# Segregated some SGMM builds into a separate file.
-local/run_sgmm.sh
+## Segregated some SGMM builds into a separate file.
+#local/run_sgmm.sh
+
+# You probably want to run the sgmm2 recipe as it's generally a bit better:
+local/run_sgmm2.sh
 
 
 
