@@ -1,6 +1,7 @@
 // gmmbin/gmm-transform-means.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//           2012  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,13 +81,13 @@ int main(int argc, char *argv[]) {
         // Right-multiply means by mat^T (equivalent to left-multiplying each
         // row by mat).
         new_means.AddMatMat(1.0, means, kNoTrans, mat, kTrans, 0.0);
-      } else {  // affine case
+      } else { // affine case
         Matrix<BaseFloat> means_ext(means.NumRows(), means.NumCols()+1);
         means_ext.Set(1.0);  // set all elems to 1.0
         SubMatrix<BaseFloat> means_part(means_ext, 0, means.NumRows(),
                                         0, means.NumCols());
         means_part.CopyFromMat(means);  // copy old part...
-        new_means.AddMatMat(1.0, means, kNoTrans, mat, kTrans, 0.0);
+        new_means.AddMatMat(1.0, means_ext, kNoTrans, mat, kTrans, 0.0);
       }
       gmm.SetMeans(new_means);
       gmm.ComputeGconsts();
