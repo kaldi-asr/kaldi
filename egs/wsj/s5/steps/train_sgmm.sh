@@ -248,8 +248,8 @@ if [ $spk_dim -gt 0 ]; then
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         sgmm-post-to-gpost $spkvecs_opt "$gselect_opt" \
         --utt2spk=ark:$sdata/JOB/utt2spk $final_mdl "$feats" ark,s,cs:- ark:- \| \
-        sgmm-acc-stats-gpost --update-flags=$flags  $cur_alimdl "$feats" \
-        ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
+        sgmm-acc-stats-gpost --rand-prune=$rand_prune --update-flags=$flags \
+          $cur_alimdl "$feats" ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
       $cmd $dir/log/update_ali.$x.log \
         sgmm-est --update-flags=$flags --remove-speaker-space=true --power=$power $cur_alimdl \
         "sgmm-sum-accs - $dir/$x.*.aliacc|" $dir/$[$x+1].alimdl || exit 1;

@@ -73,7 +73,8 @@ if [ $stage -le -4 ]; then
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
       acc-lda --rand-prune=$randprune $alidir/final.mdl "$splicedfeats" ark,s,cs:- \
        $dir/lda.JOB.acc || exit 1;
-  est-lda --dim=$dim $dir/0.mat $dir/lda.*.acc 2>$dir/log/lda_est.log || exit 1;
+  est-lda --write-full-matrix=$dir/full.mat --dim=$dim $dir/0.mat $dir/lda.*.acc \
+      2>$dir/log/lda_est.log || exit 1;
   rm $dir/lda.*.acc
 fi
 

@@ -104,7 +104,7 @@ if [ -f $alidir/vecs.1 ]; then
   spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
 else
   if [ -f $alidir/final.alimdl ]; then
-    echo "You seem to have an SGMM system with speaker vectors,"
+    echo "$0: You seem to have an SGMM system with speaker vectors,"
     echo "yet we can't find speaker vectors.  Perhaps you supplied"
     echo "the model director instead of the alignment directory?"
     exit 1;

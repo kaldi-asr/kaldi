@@ -266,9 +266,9 @@ if [ $spk_dim -gt 0 ]; then
       $cmd JOB=1:$nj $dir/log/acc_ali.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         sgmm2-post-to-gpost $spkvecs_opt "$gselect_opt" \
-        --utt2spk=ark:$sdata/JOB/utt2spk $final_mdl "$feats" ark,s,cs:- ark:- \| \
-        sgmm2-acc-stats-gpost --update-flags=$flags  $cur_alimdl "$feats" \
-        ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
+         --utt2spk=ark:$sdata/JOB/utt2spk $final_mdl "$feats" ark,s,cs:- ark:- \| \
+        sgmm2-acc-stats-gpost --rand-prune=$rand_prune --update-flags=$flags \
+          $cur_alimdl "$feats" ark,s,cs:- $dir/$x.JOB.aliacc || exit 1;
       $cmd $dir/log/update_ali.$x.log \
         sgmm2-est --update-flags=$flags --remove-speaker-space=true $cur_alimdl \
         "sgmm2-sum-accs - $dir/$x.*.aliacc|" $dir/$[$x+1].alimdl || exit 1;
