@@ -19,7 +19,8 @@ source path.sh
 
 # Download and extract CMU's feature files
 mkdir -p $RM1_ROOT
-wget -P $RM1_ROOT http://www.speech.cs.cmu.edu/databases/rm1/rm1_cepstra.tar.gz
+wget -P $RM1_ROOT http://www.speech.cs.cmu.edu/databases/rm1/rm1_cepstra.tar.gz ||
+ wget -P $RM1_ROOT http://sourceforge.net/projects/kaldi/files/rm1_cepstra.tar.gz
 tar -C $RM1_ROOT/ -xf $RM1_ROOT/rm1_cepstra.tar.gz
 
 # Download the G.fst graph produced from 'wp_gram.txt'
