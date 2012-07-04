@@ -8,10 +8,10 @@ CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0 \
       -Wno-sign-compare -Winit-self \
       -DHAVE_POSIX_MEMALIGN -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_ATLAS -I ../../tools/ATLAS/include -I../../tools/openfst/include \
-      -g # -O0 -DKALDI_PARANOID 
+      -g $(EXTRA_CXXFLAGS) # -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl /usr/local/lib64/liblapack.a /usr/local/lib64/libcblas.a /usr/local/lib64/libatlas.a -lg2c -lm -lpthread
+LDLIBS = $(EXTRA_LDLIBS) ../../tools/openfst/lib/libfst.a -ldl /usr/local/lib64/liblapack.a /usr/local/lib64/libcblas.a /usr/local/lib64/libatlas.a -lg2c -lm -lpthread
 CC = x86_64-linux-g++
 CXX = x86_64-linux-g++
 AR = x86_64-linux-ar

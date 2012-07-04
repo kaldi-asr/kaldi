@@ -43,21 +43,25 @@ int main(int argc, char *argv[]) {
     using namespace fst;
     using kaldi::int32;
 
+    bool remove_from_output = false;
+    
     const char *usage =
         "Replaces a subset of symbols with epsilon, wherever they appear on the input side\n"
-        "of an FST.\n"
+        "of an FST (or the output side, with --remove-from-output=true)\n"
         "\n"
         "Usage:  fstrmsymbols in-disambig-list  [in.fst [out.fst] ]\n"
         "E.g:  fstrmsymbols in.list  < in.fst > out.fst\n";
 
     ParseOptions po(usage);
+    po.Register("remove-from-output", &remove_from_output, "If true, remove these symbols from "
+                "the output, not the input, side.");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 1 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
-
+    
     std::string disambig_rxfilename = po.GetArg(1),
         fst_rxfilename = po.GetOptArg(2),
         fst_wxfilename = po.GetOptArg(3);
@@ -69,8 +73,10 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "fstrmsymbols: Could not read disambiguation symbols from "
                 << (disambig_rxfilename == "" ? "standard input" : disambig_rxfilename);
 
+    if (remove_from_output) Invert(fst);
     RemoveSomeInputSymbols(disambig_in, fst);
-
+    if (remove_from_output) Invert(fst);
+    
     WriteFstKaldi(*fst, fst_wxfilename);
 
     delete fst;

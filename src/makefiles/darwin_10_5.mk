@@ -10,10 +10,11 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
+      $(EXTRA_CXXFLAGS) \
       -gdwarf-2 # -O0 -DKALDI_PARANOID
 
 LDFLAGS = -gdwarf-2
-LDLIBS = $(FSTROOT)/lib/libfst.a -ldl -lm -lpthread -framework Accelerate
+LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl -lm -lpthread -framework Accelerate
 CXX = g++-4
 CC = g++-4
 RANLIB = ranlib

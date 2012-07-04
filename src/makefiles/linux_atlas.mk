@@ -19,10 +19,11 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_ATLAS -I$(ATLASINC) \
       -I$(FSTROOT)/include \
+      $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
+LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar

@@ -6,10 +6,11 @@ CXXFLAGS = -msse -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK -I ../../tools/CLAPACK_include \
       -I ../../tools/openfst/include \
+      $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
 LDFLAGS = -rdynamic
-LDLIBS = ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm -lpthread
+LDLIBS = $(EXTRA_LDLIBS) ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar

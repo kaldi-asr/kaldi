@@ -25,6 +25,7 @@ CXXFLAGS = -m64 -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
       -I$(FSTROOT)/include \
+      $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
@@ -48,7 +49,7 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 MKLFLAGS = $(MKL_DYN_MUL)
 
 LDFLAGS = -rdynamic -L$(FSTROOT)/lib -Wl,-R$(FSTROOT)/lib
-LDLIBS = -lfst -ldl $(MKLFLAGS) -lm -lpthread
+LDLIBS =  $(EXTRA_LDLIBS) -lfst -ldl $(MKLFLAGS) -lm -lpthread
 CC = g++
 CXX = g++
 AR = ar
