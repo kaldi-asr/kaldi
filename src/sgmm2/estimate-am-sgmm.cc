@@ -1297,7 +1297,7 @@ double MleAmSgmm2Updater::UpdateU(const MleAmSgmm2Accs &accs,
   }
   KALDI_LOG << "**Overall objf impr for u is " << (tot_impr/gamma_i.Sum())
             << ", over " << gamma_i.Sum() << " frames";
-  return tot_impr;
+  return tot_impr / gamma_i.Sum();
 }
 
 double MleAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &accs,
