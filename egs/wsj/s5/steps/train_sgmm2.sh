@@ -189,7 +189,7 @@ while [ $x -lt $num_iters ]; do
          $spkvecs_opt "$gselect_opt" $dir/$x.mdl "$feats" ark,s,cs:- \
          ark:$dir/tmp_vecs.JOB '&&' mv $dir/tmp_vecs.JOB $dir/vecs.JOB || exit 1;
      fi
-     spkvecs_opt[$n]="--spk-vecs=ark:$dir/vecs.JOB"
+     spkvecs_opt="--spk-vecs=ark:$dir/vecs.JOB"
    fi  
    if [ $x -eq 0 ]; then
      flags=vwcSt # on the first iteration, don't update projections M or N
