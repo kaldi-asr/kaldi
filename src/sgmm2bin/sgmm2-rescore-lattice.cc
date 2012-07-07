@@ -71,26 +71,6 @@ void LatticeAcousticRescore(const AmSgmm2 &am,
       }
     }
   }
-  // Now make sure that epsilon-input arcs and final-probs don't have
-  // any acoustic part in the weights.  We didn't do this as part of the
-  // previous loop as it skipped over final-states, and these also may
-  // have epsilon arcs out.
-  for (int32 s = 0; s < lat->NumStates(); s++) {
-    for (fst::MutableArcIterator<Lattice> aiter(lat, s); !aiter.Done();
-         aiter.Next()) {
-      LatticeArc arc = aiter.Value();    
-      int32 trans_id = arc.ilabel;
-      if (trans_id == 0) {
-        arc.weight.SetValue2(0); // make sure acoustic part of weight is zero.
-        aiter.SetValue(arc);
-      }
-    }
-    LatticeWeight w = lat->Final(s);
-    if (w != LatticeWeight::Zero()) {
-      w.SetValue2(0); // make sure acoustic part of weight is zero.
-      lat->SetFinal(s, w);
-    }
-  }
 }
 
 }  // namespace kaldi
@@ -106,9 +86,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Replace the acoustic scores on a lattice using a new model.\n"
-        "Usage: sgmm-rescore-lattice [options] <model-in> <lattice-rspecifier> "
+        "Usage: sgmm2-rescore-lattice [options] <model-in> <lattice-rspecifier> "
         "<feature-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: sgmm-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
+        " e.g.: sgmm2-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
     BaseFloat log_prune = 5.0;
@@ -168,7 +148,7 @@ int main(int argc, char *argv[]) {
       lattice_reader.FreeCurrent();
       if (old_acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &lat);
-
+      
       kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         if (fst::TopSort(&lat) == false)

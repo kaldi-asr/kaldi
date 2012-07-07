@@ -85,26 +85,6 @@ void LatticeAcousticRescore(const AmSgmm &am,
       }
     }
   }
-  // Now make sure that epsilon-input arcs and final-probs don't have
-  // any acoustic part in the weights.  We didn't do this as part of the
-  // previous loop as it skipped over final-states, and these also may
-  // have epsilon arcs out.
-  for (int32 s = 0; s < lat->NumStates(); s++) {
-    for (fst::MutableArcIterator<Lattice> aiter(lat, s); !aiter.Done();
-         aiter.Next()) {
-      LatticeArc arc = aiter.Value();    
-      int32 trans_id = arc.ilabel;
-      if (trans_id == 0) {
-        arc.weight.SetValue2(0); // make sure acoustic part of weight is zero.
-        aiter.SetValue(arc);
-      }
-    }
-    LatticeWeight w = lat->Final(s);
-    if (w != LatticeWeight::Zero()) {
-      w.SetValue2(0); // make sure acoustic part of weight is zero.
-      lat->SetFinal(s, w);
-    }
-  }
 }
 
 }  // namespace kaldi
