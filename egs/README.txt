@@ -43,3 +43,4 @@ Recipes in progress (these may be less polished than the ones above).
  timit: TIMIT, which is an old corpus of carefully read speech.  
     LDC corpous LDC93S1  
 
+ voxforge: A recipe for the free speech data available from voxforge.org
