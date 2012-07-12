@@ -24,5 +24,6 @@
 #include "util/kaldi-holder.h"
 #include "util/kaldi-table.h"
 #include "util/table-types.h"
+#include "util/text-utils.h"
 
 #endif

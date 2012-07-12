@@ -45,7 +45,8 @@ int main(int argc, char *argv[]) {
     std::string write_flags_str = "gsnu";
     kaldi::TransitionUpdateConfig tcfg;
     kaldi::MleAmSgmmOptions sgmm_opts;
-    int32 split_substates = 0;
+    std::string split_substates = "";  // Space-seperated list of #substates
+    std::vector<int32> split_substates_int;  // The above string split on space
     int32 increase_phn_dim = 0;
     int32 increase_spk_dim = 0;
     bool remove_speaker_space = false;
@@ -55,8 +56,10 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("split-substates", &split_substates, "Increase number of "
-                "substates to this overall target.");
+    // The split-substates option also takes a single integer: the same number
+    // of substates for all models.
+    po.Register("split-substates", &split_substates, "Space-separated string "
+                "with target number of substates for each model.");
     po.Register("increase-phn-dim", &increase_phn_dim, "Increase phone-space "
                 "dimension as far as allowed towards this target.");
     po.Register("increase-spk-dim", &increase_spk_dim, "Increase speaker-space "
@@ -86,6 +89,19 @@ int main(int argc, char *argv[]) {
     sgmms_in.resize(num_models, NULL);
     sgmm_accs_in.resize(num_models, NULL);
     trans_models_in.resize(num_models, NULL);
+
+    if (!split_substates.empty()) {
+      SplitStringToIntegers(split_substates, " ", true /*omit empty strings*/,
+                            &split_substates_int);
+      if (split_substates_int.size() == 1) {  // Same #substates for all models
+        int32 tmp_int = split_substates_int[0];
+        split_substates_int.resize(num_models, tmp_int);
+      }
+      if (split_substates_int.size() != num_models) {
+        KALDI_ERR << "Found " << split_substates_int.size() << " splitting "
+                  << "targets; expecting 1 or " << num_models;
+      }
+    }
 
     SgmmUpdateFlagsType update_flags = StringToSgmmUpdateFlags(update_flags_str);
     SgmmWriteFlagsType write_flags = StringToSgmmWriteFlags(write_flags_str);
@@ -169,8 +185,8 @@ int main(int argc, char *argv[]) {
       Vector<BaseFloat> state_occs;
       sgmm_accs_in[i]->GetStateOccupancies(&state_occs);
 
-      if (split_substates != 0) {
-        sgmms_in[i]->SplitSubstates(state_occs, split_substates, perturb_factor,
+      if (!split_substates.empty()) {
+        sgmms_in[i]->SplitSubstates(state_occs, split_substates_int[i], perturb_factor,
                                     power, max_cond);
         sgmms_in[i]->ComputeDerivedVars();  // recompute normalizers...
       }

@@ -26,6 +26,7 @@ using std::vector;
 
 #include "sgmm/am-sgmm.h"
 #include "sgmm/estimate-am-sgmm-multi.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
