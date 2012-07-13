@@ -22,6 +22,27 @@
 
 namespace kaldi {
 
+template<typename Real>
+void RandPosdefSpMatrix(MatrixIndexT dim, SpMatrix<Real> *matrix) {
+  MatrixIndexT dim2 = dim + (rand() % 3);  // slightly higher-dim.
+  // generate random (non-singular) matrix
+  Matrix<Real> tmp(dim, dim2);
+  while (1) {
+    tmp.SetRandn();
+    if (tmp.Cond() < 100) break;
+    KALDI_LOG << "Condition number of random matrix large "
+              << static_cast<float>(tmp.Cond())
+              << ", trying again (this is normal)";
+  }
+  // tmp * tmp^T will give positive definite matrix
+  matrix->AddMat2(1.0, tmp, kNoTrans, 0.0);
+
+  // Checks that the matrix is indeed pos-def
+  TpMatrix<Real> sqrt(dim);
+  sqrt.Cholesky(*matrix);
+}
+
+
 template<class Real> static void InitRand(TpMatrix<Real> *M) {
   // start:
   for (MatrixIndexT i = 0;i < M->NumRows();i++)
@@ -1987,29 +2008,32 @@ template<class Real> static void UnitTestSolve() {
   }
 
 
-  for (int i = 0;i < 5;i++) {
-    MatrixIndexT dimM = (rand()%10) + 10;
-    MatrixIndexT dimN = dimM - (rand()%3);  // slightly lower-dim.
-    MatrixIndexT dimO = (rand()%10) + 10;
+  for (int i = 0; i < 5; i++) {
+    MatrixIndexT dimM = (rand() % 10) + 10;
+    MatrixIndexT dimN = dimM - (rand() % 3); // slightly lower-dim.
+    MatrixIndexT dimO = (rand() % 10) + 10;
 
     SpMatrix<Real> Q(dimM), SigmaInv(dimO);
-    Matrix<Real> Mtmp(dimM, dimN); InitRand(&Mtmp);
-    Q.AddMat2(1.0, Mtmp, kNoTrans, 0.0);  // H = M M^T
+    Matrix<Real> Mtmp(dimM, dimN);
+    InitRand(&Mtmp);
+    Q.AddMat2(1.0, Mtmp, kNoTrans, 0.0); // H = M M^T
 
-    Matrix<Real> Ntmp(dimO, dimN); InitRand(&Ntmp);
-    SigmaInv.AddMat2(1.0, Ntmp, kNoTrans, 0.0);  // H = M M^T
+    Matrix<Real> Ntmp(dimO, dimN);
+    InitRand(&Ntmp);
+    SigmaInv.AddMat2(1.0, Ntmp, kNoTrans, 0.0); // H = M M^T
 
     Matrix<Real> M(dimO, dimM), Y(dimO, dimM);
-    InitRand(&M); InitRand(&Y);
+    InitRand(&M);
+    InitRand(&Y);
 
     Matrix<Real> M2(M);
 
     SpMatrix<Real> Qinv(Q);
-    if (Q.Cond() < 1000.0)
-      Qinv.Invert();
-    
+    if (Q.Cond() < 1000.0) Qinv.Invert();
+
 #if defined(_MSC_VER) // compiler bug workaround.
-    SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2, (Real)1.0E4, (Real)1.0E-40, "unknown", true);
+    SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2, (Real)1.0E4, (Real)1.0E-40,
+                                "unknown", true);
 #else
     SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2);
 #endif
@@ -2017,18 +2041,59 @@ template<class Real> static void UnitTestSolve() {
     Matrix<Real> M3(M);
     M3.AddMatSp(1.0, Y, kNoTrans, Qinv, 0.0);
     if (Q.Cond() < 1000.0) {
-      AssertEqual(M2, M3); // This equality only holds if SigmaInv full-rank,
-      // which is overwhelmingly likely if dimO > dimM
+      AssertEqual(M2, M3);  // This equality only holds if SigmaInv full-rank,
+                            // which is overwhelmingly likely if dimO > dimM
     }
-    
+
     {
-      Real a1 = TraceMatSpMat(M2, kTrans, SigmaInv, Y, kNoTrans), a2 = TraceMatSpMatSp(M2, kNoTrans, Q, M2, kTrans, SigmaInv),
-          b1 = TraceMatSpMat(M, kTrans, SigmaInv, Y, kNoTrans), b2 = TraceMatSpMatSp(M, kNoTrans, Q, M, kTrans, SigmaInv),
-          a3 = a1-0.5*a2, b3 = b1-0.5*b2;
+      Real a1 = TraceMatSpMat(M2, kTrans, SigmaInv, Y, kNoTrans),
+           a2 = TraceMatSpMatSp(M2, kNoTrans, Q, M2, kTrans, SigmaInv),
+           b1 = TraceMatSpMat(M, kTrans, SigmaInv, Y, kNoTrans),
+           b2 = TraceMatSpMatSp(M, kNoTrans, Q, M, kTrans, SigmaInv),
+           a3 = a1 - 0.5 * a2,
+           b3 = b1 - 0.5 * b2;
       KALDI_ASSERT(a3 >= b3);
       // KALDI_LOG << "a3 = " << a3 << ", b3 = " << b3 << ", c3 = " << c3;
-    }
-    // Check objf not decreased.
+    }  // Check objf not decreased.
+  }
+
+  for (int i = 0; i < 5; i++) {
+    MatrixIndexT dimM = (rand() % 10) + 10;
+    MatrixIndexT dimO = (rand() % 10) + 10;
+
+    SpMatrix<Real> Q1(dimM), Q2(dimM), P1(dimO), P2(dimO);
+    RandPosdefSpMatrix(dimM, &Q1);
+    RandPosdefSpMatrix(dimM, &Q2);
+    RandPosdefSpMatrix(dimO, &P1);
+    RandPosdefSpMatrix(dimO, &P1);
+
+    Matrix<Real> M(dimO, dimM), G(dimO, dimM);
+    M.SetRandn();
+    G.SetRandn();
+//    InitRand(&M);
+//    InitRand(&G);
+
+    Matrix<Real> M2(M);
+
+#if defined(_MSC_VER) // compiler bug workaround.
+    SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &M2, (Real)1.0E4,
+                                      (Real)1.0E-40, "unknown");
+#else
+    SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &M2);
+#endif
+
+    {
+      Real a1 = TraceMatMat(M2, G, kTrans),
+           a2 = TraceMatSpMatSp(M2, kNoTrans, Q1, M2, kTrans, P1),
+           a3 = TraceMatSpMatSp(M2, kNoTrans, Q2, M2, kTrans, P2),
+           b1 = TraceMatMat(M, G, kTrans),
+           b2 = TraceMatSpMatSp(M, kNoTrans, Q1, M, kTrans, P1),
+           b3 = TraceMatSpMatSp(M, kNoTrans, Q2, M, kTrans, P2),
+           a4 = a1 - 0.5 * a2 - 0.5 * a3,
+           b4 = b1 - 0.5 * b2 - 0.5 * b3;
+      KALDI_LOG << "a4 = " << a4 << ", b4 = " << b4;
+      KALDI_ASSERT(a4 >= b4);
+    }  // Check objf not decreased.
   }
 }
 

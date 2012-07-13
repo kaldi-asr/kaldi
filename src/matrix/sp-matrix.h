@@ -19,11 +19,12 @@
 #ifndef KALDI_MATRIX_SP_MATRIX_H_
 #define KALDI_MATRIX_SP_MATRIX_H_
 
+#include <algorithm>
+#include <vector>
+
 #include "matrix/packed-matrix.h"
 
 namespace kaldi {
-
-
 
 /// \weakgroup matrix_funcs_misc
 typedef enum {
@@ -59,7 +60,6 @@ class SpMatrix : public PackedMatrix<Real> {
   template<class OtherReal>
   explicit SpMatrix(const SpMatrix<OtherReal> &orig)
       : PackedMatrix<Real>(orig) {}
-  
 
 #ifdef KALDI_PARANOID
   explicit SpMatrix(const MatrixBase<Real> & orig,
@@ -107,8 +107,9 @@ class SpMatrix : public PackedMatrix<Real> {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r))
       std::swap(c, r);
+    // c<=r now so don't have to check c.
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
-                 static_cast<UnsignedMatrixIndexT>(this->num_rows_));  // c<=r now so don't have to check c.
+                 static_cast<UnsignedMatrixIndexT>(this->num_rows_));
     return *(this->data_ + (r*(r+1)) / 2 + c);
     // Duplicating code from PackedMatrix.h
   }
@@ -117,8 +118,9 @@ class SpMatrix : public PackedMatrix<Real> {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r))
       std::swap(c, r);
+    // c<=r now so don't have to check c.
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
-                 static_cast<UnsignedMatrixIndexT>(this->num_rows_));  // c<=r now so don't have to check c.
+                 static_cast<UnsignedMatrixIndexT>(this->num_rows_));
     return *(this->data_ + (r * (r + 1)) / 2 + c);
     // Duplicating code from PackedMatrix.h
   }
@@ -129,7 +131,8 @@ class SpMatrix : public PackedMatrix<Real> {
   /// matrix inverse.
   /// if inverse_needed = false, will fill matrix with garbage.
   /// (only useful if logdet wanted).
-  void Invert(Real *logdet = NULL, Real *det_sign= NULL, bool inverse_needed = true);
+  void Invert(Real *logdet = NULL, Real *det_sign= NULL,
+              bool inverse_needed = true);
 
   // Below routine does inversion in double precision,
   // even for single-precision object.
@@ -165,7 +168,7 @@ class SpMatrix : public PackedMatrix<Real> {
 
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real tolerance = 0.001) const;
-  
+
   /// Solves the symmetric eigenvalue problem: at end we should have
   /// (*this) = P * diag(s) * P^T.  Currently, since we don't assume
   /// we have Lapack and we don't want to deal with the hassle of writing this
@@ -179,7 +182,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// magnitude, but this is rare anyway.
   void Eig(VectorBase<Real> *s, MatrixBase<Real> *P,
            Real tolerance = 2.0e-05) const { EigInternal(s, P, tolerance, 0); }
-  
+
   /// Takes log of the matrix (does eigenvalue decomposition then takes
   /// log of eigenvalues and reconstructs).  Will throw of not +ve definite.
   void Log();
@@ -222,7 +225,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// diagonal update, this <-- this + diag(v)
   template<class OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
-  
+
   /// rank-N update:
   /// if (transM == kNoTrans)
   /// (*this) = beta*(*this) + alpha * M * M^T,
@@ -266,7 +269,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// make sense.  Set the tolerance to 2 to ensure it won't ever complain
   /// about non-+ve-semidefinite matrix (it will zero out negative dimensions)
   /// returns number of floored elements.
-  int ApplyFloor(Real floor, BaseFloat tolerance = 0.001); 
+  int ApplyFloor(Real floor, BaseFloat tolerance = 0.001);
   bool IsDiagonal(Real cutoff = 1.0e-05) const;
   bool IsUnit(Real cutoff = 1.0e-05) const;
   bool IsZero(Real cutoff = 1.0e-05) const;
@@ -397,9 +400,7 @@ Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
 /// Maximizes the auxiliary function :
 /// \f[   Q(M) =  tr(M^T G) -0.5 tr(P_1 M Q_1 M^T) -0.5 tr(P_2 M Q_2 M^T).   \f]
 /// Encountered in matrix update with a prior. We also apply a limit on the
-/// condition but it should be less frequently necessary, and can be set
-/// larger. Not unit-tested!  Probably not used.  The prior was abandoned
-/// in the recipe that we published.
+/// condition but it should be less frequently necessary, and can be set larger.
 template<class Real>
 Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
                                        const SpMatrix<Real> &P1,
@@ -420,5 +421,5 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
 #include "matrix/sp-matrix-inl.h"
 
 
-#endif
+#endif  // KALDI_MATRIX_SP_MATRIX_H_
 
