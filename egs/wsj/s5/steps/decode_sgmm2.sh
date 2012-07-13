@@ -27,7 +27,6 @@ vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
 use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
-
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -64,7 +63,7 @@ gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
-
+splice_opts=`cat $srcdir/splice_opts` 2>/dev/null # frame-splicing options.
 
 ## Set up features.
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
@@ -72,7 +71,7 @@ echo "$0: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
