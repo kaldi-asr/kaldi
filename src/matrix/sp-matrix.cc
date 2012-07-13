@@ -1245,4 +1245,23 @@ float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B) {
 template class SpMatrix<float>;
 template class SpMatrix<double>;
 
+template<class Real>
+void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
+                              MatrixTransposeType transM, const SpMatrix<Real> &A,
+                              const Real beta) {
+  Matrix<Real> Tmat(T);
+  AddMat2Sp(alpha, Tmat, transM, A, beta);
+}
+
+// Force instantiation.
+template
+void SpMatrix<float>::AddTp2Sp(const float alpha, const TpMatrix<float> &T,
+                               MatrixTransposeType transM, const SpMatrix<float> &A,
+                               const float beta);
+template
+void SpMatrix<double>::AddTp2Sp(const double alpha, const TpMatrix<double> &T,
+                                MatrixTransposeType transM, const SpMatrix<double> &A,
+                                const double beta);
+
+
 } // namespace kaldi

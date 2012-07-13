@@ -7,7 +7,8 @@ include ../kaldi.mk
 TESTFILES = am-sgmm-test estimate-am-sgmm-test 
 # fmllr-sgmm-test
 
-OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-ebw.o fmllr-sgmm.o
+OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-ebw.o fmllr-sgmm.o \
+          am-sgmm-project.o
 
 LIBFILE = kaldi-sgmm.a
 

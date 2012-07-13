@@ -1,4 +1,4 @@
-// sgmm2bin/sgmm-init.cc
+// sgmm2bin/sgmm2-init.cc
 
 // Copyright 2012   Arnab Ghoshal  Johns Hopkins University (author: Daniel Povey)
 // Copyright 2009-2011   Saarland University
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Initialize an SGMM from a trained full-covariance UBM and a specified"
         " model topology.\n"
-        "Usage: sgmm-init [options] <topology> <tree> <init-model> <sgmm-out>\n"
+        "Usage: sgmm2-init [options] <topology> <tree> <init-model> <sgmm-out>\n"
         "The <init-model> argument can be a UBM (the default case) or another\n"
         "SGMM (if the --init-from-sgmm flag is used).\n"
         "For systems with two-level tree, use --pdf-map argument.";

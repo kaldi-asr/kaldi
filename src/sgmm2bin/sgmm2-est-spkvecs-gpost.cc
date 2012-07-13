@@ -1,4 +1,4 @@
-// sgmmbin/sgmm2-est-spkvecs-gpost.cc
+// sgmm2bin/sgmm2-est-spkvecs-gpost.cc
 
 // Copyright 2009-2011   Saarland University;  Microsoft Corporation
 
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
         "Estimate SGMM speaker vectors, either per utterance or for the "
         "supplied set of speakers (with spk2utt option).\n"
         "Reads Gaussian-level posteriors. Writes to a table of vectors.\n"
-        "Usage: sgmm-est-spkvecs-gpost [options] <model-in> <feature-rspecifier> "
+        "Usage: sgmm2-est-spkvecs-gpost [options] <model-in> <feature-rspecifier> "
         "<gpost-rspecifier> <vecs-wspecifier>\n";
 
     ParseOptions po(usage);

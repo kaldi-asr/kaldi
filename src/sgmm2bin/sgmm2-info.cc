@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-info.cc
+// sgmm2bin/sgmm2-info.cc
 
 // Copyright 2012  Arnab Ghoshal  Johns Hopkins University (author: Daniel Povey)
 
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     bool trans_detailed = false;
 
     ParseOptions po(usage);
-    po.Register("sgmm-detailed", &sgmm_detailed,
+    po.Register("sgmm2-detailed", &sgmm_detailed,
                 "Print detailed information about substates.");
     po.Register("trans-detailed", &trans_detailed,
                 "Print detailed information about transition model.");

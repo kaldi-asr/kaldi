@@ -1,4 +1,4 @@
-// sgmm2bin/sgmm-gselect.cc
+// sgmm2bin/sgmm2-gselect.cc
 
 // Copyright 2009-2012   Saarland University  Microsoft Corporation
 //                       Johns Hopkins University (author: Daniel Povey)
@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Precompute Gaussian indices for SGMM training "
-        "Usage: sgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
-        "e.g.: sgmm-gselect 1.sgmm \"ark:feature-command |\" ark:1.gs\n"
-        "Note: you can do the same thing by combining the programs sgmm-write-ubm, fgmm-global-to-gmm,\n"
+        "Usage: sgmm2-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
+        "e.g.: sgmm2-gselect 1.sgmm \"ark:feature-command |\" ark:1.gs\n"
+        "Note: you can do the same thing by combining the programs sgmm2-write-ubm, fgmm-global-to-gmm,\n"
         "gmm-gselect and fgmm-gselect\n";
 
     ParseOptions po(usage);

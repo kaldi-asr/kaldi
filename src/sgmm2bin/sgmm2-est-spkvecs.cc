@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         "Estimate SGMM speaker vectors, either per utterance or for the "
         "supplied set of speakers (with spk2utt option).\n"
         "Reads Gaussian-level posteriors. Writes to a table of vectors.\n"
-        "Usage: sgmm-est-spkvecs [options] <model-in> <feature-rspecifier> "
+        "Usage: sgmm2-est-spkvecs [options] <model-in> <feature-rspecifier> "
         "<post-rspecifier> <vecs-wspecifier>\n"
         "note: --gselect option is required.";
     

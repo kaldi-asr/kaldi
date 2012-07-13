@@ -1385,8 +1385,7 @@ BaseFloat AmSgmm2::GaussianSelection(const Sgmm2GselectConfig &config,
   int32 num_gauss = diag_ubm_.NumGauss();
 
   std::vector< std::pair<BaseFloat, int32> > pruned_pairs;
-  if (config.diag_gmm_nbest < num_gauss) {
-    Vector<BaseFloat> loglikes(num_gauss);
+  if (config.diag_gmm_nbest < num_gauss) {    Vector<BaseFloat> loglikes(num_gauss);
     diag_ubm_.LogLikelihoods(data, &loglikes);
     Vector<BaseFloat> loglikes_copy(loglikes);
     BaseFloat *ptr = loglikes_copy.Data();

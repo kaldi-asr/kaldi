@@ -1334,6 +1334,32 @@ static void UnitTestResize() {
 
 
 template<class Real>
+static void UnitTestTp2Sp() {
+  // Tests AddTp2Sp()
+  for (int iter = 0; iter < 4; iter++) {
+	MatrixIndexT dimM = 10 + rand()%3;    
+  
+    TpMatrix<Real> T(dimM);
+    InitRand(&T);
+    SpMatrix<Real> S(dimM);
+    InitRand(&S);
+
+    Matrix<Real> M(T);
+    for ( int32 i = 0; i < dimM; i++)
+      for (int32 j = 0; j < dimM; j++) {
+        if (j <= i) AssertEqual(T(i,j), M(i,j));
+        else AssertEqual(M(i,j), 0.0);
+      }
+
+    SpMatrix<Real> A(dimM), B(dimM);
+    A.AddTp2Sp(0.5, T, (iter < 2 ? kNoTrans : kTrans), S, 0.0);
+    B.AddMat2Sp(0.5, M, (iter < 2 ? kNoTrans : kTrans), S, 0.0);
+    AssertEqual(A, B);
+  }
+}
+
+
+template<class Real>
 static void UnitTestTransposeScatter() {
   for (int iter = 0;iter < 10;iter++) {
 
@@ -2832,6 +2858,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestAddVecToRows<Real>();
   UnitTestAddVecToCols<Real>();
   UnitTestAddVecCross();
+  UnitTestTp2Sp<Real>();
   //  SlowMatMul<Real>();  
 }
 

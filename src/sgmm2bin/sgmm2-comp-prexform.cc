@@ -1,4 +1,4 @@
-// sgmm2bin/sgmm-comp-prexform.cc
+// sgmm2bin/sgmm2-comp-prexform.cc
 
 // Copyright 2009-2012  Saarland University (author: Arnab Ghoshal)
 //                      Johns Hopkins University (author: Daniel Povey)
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Compute \"pre-transform\" parameters required for estimating fMLLR with\n"
         "SGMMs, and write to a model file, after the SGMM.\n"
-        "Usage: sgmm2-comp-prexform [options] <sgmm-in> <occs-in> <sgmm-out>\n";
+        "Usage: sgmm2-comp-prexform [options] <sgmm2-in> <occs-in> <sgmm-out>\n";
 
     bool binary = true;
     kaldi::ParseOptions po(usage);

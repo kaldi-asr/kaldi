@@ -1,6 +1,6 @@
 // sgmm2/am-sgmm.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
+// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Ondrej Glembek;  Yanmin Qian;
 //                      Johns Hopkins University (author: Daniel Povey)
 
@@ -337,7 +337,7 @@ class AmSgmm2 {
                             Matrix<BaseFloat> *xform,
                             Matrix<BaseFloat> *inv_xform,
                             Vector<BaseFloat> *diag_mean_scatter) const;
-
+  
   /// Various model dimensions.
   int32 NumPdfs() const { return pdf2group_.size(); }
   int32 NumGroups() const { return group2pdf_.size(); } // relates to SCTM.  # pdf groups,
@@ -481,6 +481,7 @@ class AmSgmm2 {
   
   KALDI_DISALLOW_COPY_AND_ASSIGN(AmSgmm2);
   friend class ComputeNormalizersClass;
+  friend class Sgmm2Project;
   friend class EbwAmSgmm2Updater;
   friend class MleAmSgmm2Accs;
   friend class MleAmSgmm2Updater;

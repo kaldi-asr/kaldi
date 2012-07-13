@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using SGMM-based model.\n"
-        "Usage:  sgmm-latgen-faster [options] <model-in> (<fst-in>|<fsts-rspecifier>) "
+        "Usage:  sgmm2-latgen-faster [options] <model-in> (<fst-in>|<fsts-rspecifier>) "
         "<features-rspecifier> <lattices-wspecifier> [<words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;

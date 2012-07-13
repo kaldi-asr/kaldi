@@ -22,6 +22,9 @@
 
 namespace kaldi {
 
+// All the lines in this file seem to be declaring template specializations.
+// These tell the compiler that we'll implement the templated function
+// separately for the different template arguments (float, double).
 
 template<>
 void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &M,
@@ -105,7 +108,6 @@ double TraceSpSpLower(const SpMatrix<double> &A, const SpMatrix<double> &B);
 
 template<>
 float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B);
-
 
 
 }  // namespace kaldi

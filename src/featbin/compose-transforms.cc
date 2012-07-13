@@ -1,6 +1,7 @@
 // featbin/compose-transforms.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -158,8 +159,7 @@ int main(int argc, char *argv[]) {
                    << ", but you omitted the --b-is-affine option.";
       if (!ComposeTransforms(a, b, b_is_affine, &c)) exit (1);
 
-      Output ko(transform_c_fn, binary);
-      c.Write(ko.Stream(), binary);
+      WriteKaldiObject(c, transform_c_fn, binary);
     }
     return 0;
   } catch(const std::exception &e) {

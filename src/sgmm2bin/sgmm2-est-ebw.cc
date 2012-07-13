@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Estimate SGMM model parameters discriminatively using Extended\n"
         "Baum-Welch style of update\n"
-        "Usage: sgmm-est-ebw [options] <model-in> <num-stats-in> <den-stats-in> <model-out>\n";
+        "Usage: sgmm2-est-ebw [options] <model-in> <num-stats-in> <den-stats-in> <model-out>\n";
 
 
     string update_flags_str = "vMNwcSt";

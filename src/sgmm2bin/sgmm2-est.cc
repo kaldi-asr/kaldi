@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est.cc
+// sgmm2bin/sgmm2-est.cc
 
 // Copyright 2009-2012  Saarland University (Author:  Arnab Ghoshal)
 //                      Johns Hopkins University (Author: Daniel Povey)

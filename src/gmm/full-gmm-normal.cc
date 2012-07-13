@@ -72,7 +72,7 @@ void FullGmmNormal::CopyFromFullGmm(const FullGmm &fullgmm) {
 
 void FullGmmNormal::CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags) {
   KALDI_ASSERT(weights_.Dim() == fullgmm->weights_.Dim()
-    && means_.NumCols() == fullgmm->Dim());
+               && means_.NumCols() == fullgmm->Dim());
 
   FullGmmNormal oldg(*fullgmm);
 

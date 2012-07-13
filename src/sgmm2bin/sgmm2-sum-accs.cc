@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Sum multiple accumulated stats files for SGMM training.\n"
-        "Usage: sgmm-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
+        "Usage: sgmm2-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
 
     bool binary = true;
     kaldi::ParseOptions po(usage);

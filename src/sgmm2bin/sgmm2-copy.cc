@@ -1,4 +1,4 @@
-// sgmmbin/sgmm2-copy.cc
+// sgmm2bin/sgmm2-copy.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey).
@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     const char *usage =
         "Copy SGMM (possibly changing binary/text format)\n"
-        "Usage: sgmm-copy [options] <model-in> <model-out>\n"
-        "e.g.: sgmm-copy --binary=false 1.mdl 1_text.mdl\n";
+        "Usage: sgmm2-copy [options] <model-in> <model-out>\n"
+        "e.g.: sgmm2-copy --binary=false 1.mdl 1_text.mdl\n";
 
     bool binary_write = true;
 

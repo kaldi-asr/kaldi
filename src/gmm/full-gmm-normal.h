@@ -60,7 +60,7 @@ class FullGmmNormal {
 
   Vector<double> weights_;              ///< weights (not log).
   Matrix<double> means_;                ///< Means
-  std::vector<SpMatrix<double> >vars_;  ///< covariances
+  std::vector<SpMatrix<double> > vars_;  ///< covariances
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(FullGmmNormal);
 };

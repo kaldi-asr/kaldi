@@ -1,4 +1,4 @@
-// sgmmbin/sgmm-est-fmllr.cc
+// sgmm2bin/sgmm2-est-fmllr.cc
 
 // Copyright 2009-2012  Saarland University   Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
