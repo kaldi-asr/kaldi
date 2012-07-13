@@ -1,5 +1,3 @@
-# Note: RESULTS_2 is same results as run by Mirko, but
-# at the current time is less up to date.
 # The suffixes on the "wer" numbers are the inverses of the acoustic
 # scales.  Here, we show the best number on each test set.
 # [really, these scales should be tuned on a dev set, but we think it's
@@ -49,17 +47,14 @@ exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it5/wer_14:%WER 15.36 [ 1265 / 8234, 226 i
 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it6/wer_15:%WER 15.72 [ 1294 / 8234, 222 ins, 160 del, 912 sub ]
 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it7/wer_14:%WER 16.14 [ 1329 / 8234, 237 ins, 145 del, 947 sub ]
 exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it8/wer_15:%WER 16.25 [ 1338 / 8234, 222 ins, 160 del, 956 sub ]
-exp/tri2b_fmmi_b0.1_lr0.005.old_order/decode_tgpr_dev93_it4/wer_14:%WER 15.68 [ 1291 / 8234, 240 ins, 132 del, 919 sub ]
-exp/tri2b_fmmi_b0.1_lr0.005.old_order/decode_tgpr_dev93_it5/wer_14:%WER 15.51 [ 1277 / 8234, 241 ins, 128 del, 908 sub ]
-exp/tri2b_fmmi_b0.1_lr0.005.old_order/decode_tgpr_dev93_it6/wer_13:%WER 15.39 [ 1267 / 8234, 245 ins, 118 del, 904 sub ]
-exp/tri2b_fmmi_b0.1_lr0.005.old_order/decode_tgpr_dev93_it7/wer_16:%WER 15.40 [ 1268 / 8234, 215 ins, 159 del, 894 sub ]
-exp/tri2b_fmmi_b0.1_lr0.005.old_order/decode_tgpr_dev93_it8/wer_13:%WER 15.42 [ 1270 / 8234, 233 ins, 123 del, 914 sub ]
+
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it3/wer_19:%WER 16.54 [ 1362 / 8234, 236 ins, 162 del, 964 sub ]
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it4/wer_15:%WER 16.37 [ 1348 / 8234, 269 ins, 138 del, 941 sub ]
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it5/wer_14:%WER 15.51 [ 1277 / 8234, 246 ins, 122 del, 909 sub ]
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it6/wer_14:%WER 15.23 [ 1254 / 8234, 233 ins, 127 del, 894 sub ]
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it7/wer_15:%WER 15.24 [ 1255 / 8234, 224 ins, 137 del, 894 sub ]
 exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it8/wer_14:%WER 15.34 [ 1263 / 8234, 229 ins, 132 del, 902 sub ]
+
 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it4/wer_15:%WER 16.36 [ 1347 / 8234, 269 ins, 137 del, 941 sub ]
 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it5/wer_14:%WER 15.46 [ 1273 / 8234, 243 ins, 122 del, 908 sub ]
 exp/tri2b_fmmi_first_b0.1/decode_tgpr_dev93_it6/wer_14:%WER 15.17 [ 1249 / 8234, 233 ins, 126 del, 890 sub ]
