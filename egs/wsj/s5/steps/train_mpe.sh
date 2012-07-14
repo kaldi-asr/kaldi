@@ -54,6 +54,7 @@ nj=`cat $alidir/num_jobs` || exit 1;
 sdata=$data/split$nj
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 mkdir -p $dir/log
+cp $alidir/splice_opts $dir 2>/dev/null
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
@@ -61,7 +62,7 @@ cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-# Set up featuresl
+# Set up features
 
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
@@ -136,17 +137,18 @@ while [ $x -lt $num_iters ]; do
   # Some diagnostics: the objective function progress and auxiliary-function
   # improvement.
 
-  tail -n 50 $dir/log/acc.$x.*.log | perl -e '$acwt=shift @ARGV; while(<STDIN>) { if(m/gmm-acc-stats2.+Overall weighted acoustic likelihood per frame was (\S+) over (\S+) frames/) { $tot_aclike += $1*$2; $tot_frames1 += $2; } if(m|lattice-to-post.+Overall average log-like/frame is (\S+) over (\S+) frames.  Average acoustic like/frame is (\S+)|) { $tot_den_lat_like += $1*$2; $tot_frames2 += $2; $tot_den_aclike += $3*$2; } } if (abs($tot_frames1 - $tot_frames2) > 0.01*($tot_frames1 + $tot_frames2)) { print STDERR "Frame-counts disagree $tot_frames1 versus $tot_frames2\n"; } $tot_den_lat_like /= $tot_frames2; $tot_den_aclike /= $tot_frames2; $tot_aclike *= ($acwt / $tot_frames1);  $num_like = $tot_aclike + $tot_den_aclike; $per_frame_objf = $num_like - $tot_den_lat_like; print "$per_frame_objf $tot_frames1\n"; ' $acwt > $dir/tmpf
+ tail -n 50 $dir/log/acc.$x.*.log | perl -e 'while(<STDIN>) { if(m/lattice-to-mpe-post.+Overall average frame-accuracy is (\S+) over (\S+) frames/) { $tot_objf += $1*$2; $tot_frames += $2; }} $tot_objf /= $tot_frames; print "$tot_objf $tot_frames\n"; ' > $dir/tmpf
   objf=`cat $dir/tmpf | awk '{print $1}'`;
   nf=`cat $dir/tmpf | awk '{print $2}'`;
   rm $dir/tmpf
   impr=`grep -w Overall $dir/log/update.$x.log | awk '{x += $10*$12;} END{print x;}'`
   impr=`perl -e "print ($impr*$acwt/$nf);"` # We multiply by acwt, and divide by $nf which is the "real" number of frames.
-  echo "Iteration $x: objf was $objf, MMI auxf change was $impr" | tee $dir/objf.$x.log
+  # This gives us a projected objective function improvement.
+  echo "Iteration $x: objf was $objf, MPE auxf change was $impr" | tee $dir/objf.$x.log
   x=$[$x+1]
 done
 
-echo "MMI training finished"
+echo "MPE training finished"
 
 rm $dir/final.mdl 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
