@@ -62,7 +62,7 @@ done
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "decode.sh: feature type is $feat_type";
 
-splice_opts=`cat $srcdir/splice_opts` 2>/dev/null
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;

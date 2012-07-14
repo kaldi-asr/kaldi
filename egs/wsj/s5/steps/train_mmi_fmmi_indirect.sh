@@ -69,7 +69,7 @@ nj=`cat $alidir/num_jobs` || exit 1;
 [ "$nj" -ne "`cat $denlatdir/num_jobs`" ] && \
   echo "$alidir and $denlatdir have different num-jobs" && exit 1;
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts` 2>/dev/null # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;

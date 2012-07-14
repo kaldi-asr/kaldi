@@ -47,7 +47,7 @@ dir=$4
 
 oov=`cat $lang/oov.int` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-splice_opts=`cat $srcdir/splice_opts` 2>/dev/null # frame-splicing options.
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 sdata=$data/split$nj
 
 mkdir -p $dir/log

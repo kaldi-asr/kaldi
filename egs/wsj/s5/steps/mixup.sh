@@ -41,7 +41,7 @@ done
 
 nj=`cat $srcdir/num_jobs` || exit 1;
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts` 2>/dev/null
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs

@@ -57,7 +57,7 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
-splice_opts=`cat $alidir/splice_opts` 2>/dev/null # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
 ## Set up features.
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi

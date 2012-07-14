@@ -40,7 +40,7 @@ dir=$5
 
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts` 2>/dev/null
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;

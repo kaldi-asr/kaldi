@@ -53,7 +53,7 @@ numgauss=$[totgauss/2] # Start with half the total number of Gaussians.  We won'
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 nj=`cat $alidir/num_jobs` || exit 1;
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts` 2>/dev/null # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
 mkdir -p $dir/log
 echo $nj >$dir/num_jobs

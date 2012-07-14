@@ -85,7 +85,7 @@ feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{prin
 [ -z $phn_dim ] && phn_dim=$[$feat_dim+1]
 [ -z $spk_dim ] && spk_dim=$feat_dim
 nj=`cat $alidir/num_jobs` || exit 1;
-splice_opts=`cat $alidir/splice_opts` 2>/dev/null # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
