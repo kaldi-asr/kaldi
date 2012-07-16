@@ -251,7 +251,7 @@ void Sgmm2Project::ProjectVariance(const Matrix<double> &total_projection,
 
 void Sgmm2Project::ProjectVariance (const Matrix<double> &total_projection,
                                     bool inverse,
-                                    SpMatrix<BaseFloat> *variance) {
+                                    SpMatrix<float> *variance) {
   SpMatrix<double> variance_dbl(*variance);
   ProjectVariance(total_projection, inverse, &variance_dbl);
   if (variance->NumRows() != variance_dbl.NumRows())

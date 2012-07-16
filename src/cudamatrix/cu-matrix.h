@@ -1,3 +1,22 @@
+// cudamatrix/cu-matrix.h
+
+// Copyright 2009-2012  Karel Vesely
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
 #ifndef KALDI_CUDAMATRIX_CUMATRIX_H_
 #define KALDI_CUDAMATRIX_CUMATRIX_H_
 
@@ -16,8 +35,9 @@ template<typename Real> class CuVector;
 /**
  * Matrix for CUDA computing,
  *
- * It has "polymorphic" behavior. When CUDA is not compiled in 
- * or is not Enabled() the computation is back-off'ed to the CPU.
+ * It has "polymorphic" behavior. The computation is forwarded to CPU,
+ * both when CUDA is not compiled in as well as when missing guitable GPU :
+ * (CuDevice::Enabled() != true)
  */
 template<typename Real>
 class CuMatrix {
@@ -103,53 +123,27 @@ class CuMatrix {
   void             Read(std::istream &is, bool binary);
   void             Write(std::ostream &os, bool binary) const;
 
-
-  // Math operations, some calling kernels
-  //
+  /// Math operations, some calling kernels
   void SetZero();
-  void Set(Real value) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
-  void ApplyLog() { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void Set(Real value);
+  void ApplyLog();
   /// Multiply two matrices elementhwise: C = A .* C
-  void MulElements(const CuMatrix<Real>& A) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void MulElements(const CuMatrix<Real>& A);
   /// scale i'th column by scale[i]
-  void MulColsVec(const CuVector<Real> &scale) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void MulColsVec(const CuVector<Real> &scale); 
   /// scale i'th row by scale[i]
-  void MulRowsVec(const CuVector<Real> &scale) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void MulRowsVec(const CuVector<Real> &scale); 
   /// divide i'th row by scale[i]
-  void DivRowsVec(const CuVector<Real> &div) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-  
+  void DivRowsVec(const CuVector<Real> &div);
   /// B = aplha * A + beta * B
-  void AddMat(Real alpha, const CuMatrix<Real>& A, Real beta=1.0) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void AddMat(Real alpha, const CuMatrix<Real>& A, Real beta=1.0);
   /// B = aplha * row + beta * B
-  void AddScaledRow(Real alpha, const CuVector<Real> &row, Real beta=1.0) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
-
+  void AddVecToCols(Real alpha, const CuVector<Real> &col, Real beta=1.0);
+  /// B = aplha * row + beta * B
+  void AddVecToRows(Real alpha, const CuVector<Real> &row, Real beta=1.0);
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrix<Real>& A, MatrixTransposeType transA,
-                 const CuMatrix<Real>& B, MatrixTransposeType transB, Real beta) { 
-    KALDI_ERR << "__func__ Not implemented"; 
-  }
+                 const CuMatrix<Real>& B, MatrixTransposeType transB, Real beta);
 
   /// Accessor to the non-CUDA matrix
   const MatrixBase<Real>& Mat() const {
@@ -166,15 +160,17 @@ class CuMatrix {
 
   Real *data_;       ///< GPU data pointer
   
-  Matrix<Real> mat_; ///< non-GPU matrix as back-off
+  Matrix<Real> mat_; ///< non-GPU matrix as back-up
 
 
 }; // class CuMatrix
 
 
+
 /// I/O
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuMatrix<Real> &mat);
+
 
   
 } // namespace

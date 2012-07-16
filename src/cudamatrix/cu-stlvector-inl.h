@@ -1,8 +1,30 @@
+// cudamatrix/cu-stlvector-inl.h
+
+// Copyright 2009-2012  Karel Vesely
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+#ifndef KALDI_CUDAMATRIX_CUSTLVECTOR_INL_H_
+#define KALDI_CUDAMATRIX_CUSTLVECTOR_INL_H_
 
 #if HAVE_CUDA==1
   #include <cuda_runtime_api.h>
   #include "cudamatrix/cu-common.h"
   #include "cudamatrix/cu-device.h"
+  #include "cudamatrix/cu-kernels.h"
 #endif
 
 #include "util/timer.h"
@@ -23,6 +45,7 @@ const IntType* CuStlVector<IntType>::Data() const {
 }
 
 
+
 template<typename IntType>
 IntType* CuStlVector<IntType>::Data() { 
   #if HAVE_CUDA==1
@@ -34,6 +57,7 @@ IntType* CuStlVector<IntType>::Data() {
     return &vec_.front();
   }
 }
+
 
 
 template<typename IntType>
@@ -59,6 +83,7 @@ CuStlVector<IntType>& CuStlVector<IntType>::Resize(size_t dim) {
 
   return *this;
 }
+
 
 
 template<typename IntType>
@@ -100,6 +125,7 @@ CuStlVector<IntType>& CuStlVector<IntType>::CopyFromVec(const std::vector<IntTyp
 }
 
 
+
 template<typename IntType>
 void CuStlVector<IntType>::CopyToVec(std::vector<IntType> *dst) const {
   if (dst->size() != dim_) {
@@ -119,6 +145,7 @@ void CuStlVector<IntType>::CopyToVec(std::vector<IntType> *dst) const {
 }
 
 
+
 template<typename IntType>
 void CuStlVector<IntType>::SetZero() {
   #if HAVE_CUDA==1
@@ -134,7 +161,10 @@ void CuStlVector<IntType>::SetZero() {
 }
 
 
-/// Prints the vector to stream
+
+/**
+ * Print the vector to stream
+ */
 template<typename IntType>
 std::ostream &operator << (std::ostream &out, const CuStlVector<IntType> &vec) {
   std::vector<IntType> tmp;
@@ -150,9 +180,32 @@ std::ostream &operator << (std::ostream &out, const CuStlVector<IntType> &vec) {
 
 
 /*
- * declare the specialized methods
+ * Methods wrapping the ANSI-C CUDA kernels
  */
-template<> void CuStlVector<int32>::Set(int32 value);
+template<> 
+inline void CuStlVector<int32>::Set(int32 value) {
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cudaI32_set_const(dimGrid, dimBlock, data_, value, d);
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.assign(vec_.size(), value);
+  }
+}
 
 
 } // namespace kaldi
+
+#endif
+
+

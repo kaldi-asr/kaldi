@@ -1,3 +1,24 @@
+// cudamatrix/cu-vector-inl.h
+
+// Copyright 2009-2012  Karel Vesely
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+#ifndef KALDI_CUDAMATRIX_CUVECTOR_INL_H_
+#define KALDI_CUDAMATRIX_CUVECTOR_INL_H_
 
 #if HAVE_CUDA==1
   #include <cuda_runtime_api.h>
@@ -7,6 +28,7 @@
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-kernels.h"
 
 namespace kaldi {
 
@@ -23,6 +45,7 @@ const Real* CuVector<Real>::Data() const {
 }
 
 
+
 template<typename Real>
 Real* CuVector<Real>::Data() { 
   #if HAVE_CUDA==1
@@ -34,6 +57,7 @@ Real* CuVector<Real>::Data() {
     return vec_.Data();
   }
 }
+
 
 
 template<typename Real>
@@ -61,6 +85,7 @@ CuVector<Real>& CuVector<Real>::Resize(size_t dim) {
 }
 
 
+
 template<typename Real>
 void CuVector<Real>::Destroy() {
   #if HAVE_CUDA==1
@@ -77,6 +102,7 @@ void CuVector<Real>::Destroy() {
 
   dim_ = 0;
 }
+
 
 
 template<typename Real>
@@ -96,6 +122,7 @@ CuVector<Real>& CuVector<Real>::CopyFromVec(const CuVector<Real> &src) {
 
   return *this;
 }
+
 
 
 template<typename Real>
@@ -118,6 +145,7 @@ CuVector<Real>& CuVector<Real>::CopyFromVec(const Vector<Real> &src) {
 }
 
 
+
 template<typename Real>
 void CuVector<Real>::CopyToVec(Vector<Real> *dst) const {
   if (dst->Dim() != dim_) {
@@ -137,6 +165,7 @@ void CuVector<Real>::CopyToVec(Vector<Real> *dst) const {
 }
 
 
+
 template<typename Real>
 void CuVector<Real>::Read(std::istream &is, bool binary) {
   Vector<BaseFloat> tmp;
@@ -145,12 +174,14 @@ void CuVector<Real>::Read(std::istream &is, bool binary) {
 }
 
 
+
 template<typename Real>
 void CuVector<Real>::Write(std::ostream &os, bool binary) const {
   Vector<BaseFloat> tmp;
   CopyToVec(&tmp);
   tmp.Write(os, binary); 
 }
+
 
 
 template<typename Real>
@@ -171,7 +202,9 @@ void CuVector<Real>::SetZero() {
 
 
 
-/// Prints the vector to stream
+/**
+ * Print the vector to stream
+ */
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuVector<Real> &vec) {
   Vector<Real> tmp;
@@ -181,17 +214,184 @@ std::ostream &operator << (std::ostream &out, const CuVector<Real> &vec) {
 }
 
 
- 
+
+
 /*
- * declare the float specialized methods
+ * Methods wrapping the ANSI-C CUDA kernels
  */
-template<> void CuVector<float>::Set(float value);
-template<> void CuVector<float>::AddVec(float alpha, const CuVector<float> &vec, float beta);
-template<> void CuVector<float>::AddColSumMat(float alpha, const CuMatrix<float> &mat, float beta);
-template<> void CuVector<float>::AddRowSumMat(float alpha, const CuMatrix<float> &mat, float beta);
-template<> void CuVector<float>::InvertElements();
+template<typename Real>
+void CuVector<Real>::Set(Real value) {
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cuda_set_const(dimGrid, dimBlock, data_, value, d);
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.Set(value);
+  }
+}
+
+
+
+template<typename Real>
+void CuVector<Real>::AddVec(Real alpha, const CuVector<Real> &vec, Real beta) {
+  assert(vec.Dim() == Dim());
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cuda_add_mat(dimGrid, dimBlock, alpha, vec.Data(), beta, data_, d);
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    if (beta != 1.0) { vec_.Scale(beta); }
+    vec_.AddVec(alpha, vec.Vec());
+  }
+}
+
+
+
+template<typename Real>
+void CuVector<Real>::AddRowSumMat(Real alpha, const CuMatrix<Real> &mat, Real beta) {
+  assert(mat.NumCols() == Dim());
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+   
+    CuVector<Real> tmp(Dim()); // create a buffer
+    tmp.SetZero();
+    
+    MatrixDim d = mat.Dim(); // only stride will be used!
+  
+    // process per 256 row blocks 
+    for(int32 block=0; (block+1)*256 <= mat.NumRows(); block++) {
+      // 1st dim ... rows, 2nd dim ... cols
+      dim3 dimBlock(256, 1); 
+      dim3 dimGrid(1, mat.NumCols());
+      int32 offset = block*256*d.stride;
+
+      cuda_add_row_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+    }
+    
+    // process the remainder
+    int32 div = mat.NumRows() / 256;
+    int32 mod = mat.NumRows() % 256;
+    if (mod != 0) {
+      // 1st dim ... rows, 2nd dim ... cols
+      dim3 dimBlock(mod, 1);
+      dim3 dimGrid(1, mat.NumCols());
+      int32 offset = div*256*d.stride;
+      
+      cuda_add_row_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+    }
+    // now we have the sum!
+    
+    // add buffer rmp to this vector using alpha and beta
+    this->AddVec(alpha,tmp,beta);
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Vector<Real> tmp(mat.NumCols());
+    tmp.AddRowSumMat(mat.Mat());
+    if(beta != 1.0) vec_.Scale(beta);
+    vec_.AddVec(alpha,tmp);
+  }
+}
+
+
+
+template<typename Real>
+void CuVector<Real>::AddColSumMat(Real alpha, const CuMatrix<Real> &mat, Real beta) {
+  assert(mat.NumRows() == Dim());
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    CuVector<Real> tmp(Dim()); // create a buffer
+    
+    MatrixDim d = mat.Dim(); // only stride will be used!
+  
+    // process per 256 column blocks 
+    for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
+      // 1st dim ... cols, 2nd dim ... rows
+      dim3 dimBlock(256, 1);
+      dim3 dimGrid(1, mat.NumRows());
+      int32 offset = block*256;
+
+      cuda_add_col_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+    }
+    
+    // process the remainder
+    int32 div = mat.NumCols() / 256;
+    int32 mod = mat.NumCols() % 256;
+    if (mod != 0) {
+      // 1st dim ... cols, 2nd dim ... rows
+      dim3 dimBlock(mod, 1);
+      dim3 dimGrid(1, mat.NumRows());
+      int32 offset=div*256;
+      
+      cuda_add_col_sum_mat(dimGrid, dimBlock, mat.Data()+offset, tmp.Data(), d);
+    }
+    // now we have the sum!
+    
+    // add buffer rmp to this vector using alpha and beta
+    this->AddVec(alpha,tmp,beta);
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Vector<Real> tmp(mat.NumRows());
+    tmp.AddColSumMat(mat.Mat());
+    if(beta != 1.0) vec_.Scale(beta);
+    vec_.AddVec(alpha,tmp);
+  }
+}
+
+
+ 
+template<typename Real> 
+void CuVector<Real>::InvertElements() {
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+    
+    dim3 dimBlock(CUBLOCK*8, 1);
+    dim3 dimGrid(n_blocks(dim_, CUBLOCK*8));
+    MatrixDim d = {1, dim_, dim_};
+
+    cuda_invert_elements(dimGrid, dimBlock, data_, d);
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.InvertElements();
+  }
+}
+
  
 } // namespace kaldi
 
+#endif
 
 

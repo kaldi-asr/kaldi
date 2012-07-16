@@ -62,7 +62,8 @@ class CuRand {
   // The inner state of random number generator will be in 
   // a raw buffer with the size of the current matrix. 
   //
-  // Use on-demand seeding to get the correct size of the buffer.
+  // On-demand seeding is used to get the correct size 
+  // of the state buffer z1,z2,z3,z4
   
   /// Inner state of the ``grid-like'' random number generator
   uint32 *z1_, *z2_, *z3_, *z4_; 
@@ -76,33 +77,10 @@ class CuRand {
 
 
 
-/// declare the BaseFloat specializations, that are in cu-rand.cc
-template<> void CuRand<float>::RandUniform(CuMatrix<float> *tgt);
-template<> void CuRand<float>::RandGaussian(CuMatrix<float> *tgt);
-template<> void CuRand<float>::BinarizeProbs(const CuMatrix<float> &probs, CuMatrix<float> *states);
-template<> void CuRand<float>::AddGaussNoise(CuMatrix<float> *tgt, float gscale);
-
-
-/// also define the non-specialized versions, so the code always compies
-template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
-  KALDI_ERR << __func__ << " Not implemented"; 
-}
-template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
-  KALDI_ERR << __func__ << " Not implemented"; 
-}
-template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states) {
-  KALDI_ERR << __func__ << " Not implemented"; 
-}
-template<typename Real> void CuRand<Real>::AddGaussNoise(CuMatrix<Real> *tgt, Real gscale) {
-  KALDI_ERR << __func__ << " Not implemented";
-} 
-
-
-
-
 } // namsepace
 
-
-
+#include "cudamatrix/cu-rand-inl.h"
 
 #endif
+
+

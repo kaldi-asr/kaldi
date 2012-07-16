@@ -9,6 +9,7 @@ namespace kaldi {
 /*
  * implement float specialized methdos
  */
+ /*
 template<> 
 void CuMatrix<float>::Set(float value) { 
   #if HAVE_CUDA==1 
@@ -18,7 +19,7 @@ void CuMatrix<float>::Set(float value) {
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
 
-    cudaF_set_const(dimGrid, dimBlock, data_, value, Dim());
+    cuda_set_const(dimGrid, dimBlock, data_, value, Dim());
     cuSafeCall(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -28,7 +29,6 @@ void CuMatrix<float>::Set(float value) {
     mat_.Set(value);
   }
 }
-
 
 template<> 
 void CuMatrix<float>::ApplyLog() { 
@@ -222,7 +222,7 @@ void CuMatrix<float>::AddMatMat(
 
     Timer tim;
 
-    cublasSgemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 
+    cublas_gemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 
                 alpha, B.Data(), B.Stride(), A.Data(), A.Stride(), 
                 beta, data_, Stride());
 
@@ -235,6 +235,9 @@ void CuMatrix<float>::AddMatMat(
     mat_.AddMatMat(alpha, A.mat_, transA, B.mat_, transB, beta);
   }
 }
+
+*/
+
 
 } // namespace kaldi
 

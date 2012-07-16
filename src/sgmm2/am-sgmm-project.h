@@ -68,7 +68,7 @@ class Sgmm2Project {
   
   void ProjectVariance (const Matrix<double> &total_projection,
                         bool inverse,
-                        SpMatrix<BaseFloat> *variance);
+                        SpMatrix<float> *variance);
   
   void ComputeLdaTransform(const SpMatrix<double> &B,
                            const SpMatrix<double> &W,

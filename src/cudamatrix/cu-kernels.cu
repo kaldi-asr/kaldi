@@ -1,13 +1,118 @@
+// cudamatrix/cu-kernels.cu
+
+// Copyright 2009-2012  Karel Vesely
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+// In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
-#include "cu-kernels.h"
+#include "cu-kernels-ansi.h"
 
 
 
-/*
- * CUDA kernels
+/***********************************************************************
+ * Generic __device__ functions
  */
+template<typename Real>
+__device__
+static Real _sum_reduce(Real buffer[]) {
+  // Total number of active threads
+  int32_cuda nTotalThreads = blockDim.x;	
+  __syncthreads();
+  // perform tree-based reduction (sum)
+  while(nTotalThreads > 1) {
+    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      Real temp = 0.0;
+      if(threadIdx.x+halfPoint < nTotalThreads) {
+        temp = buffer[threadIdx.x + halfPoint];
+      }
+      buffer[threadIdx.x] += temp;
+    }
+    __syncthreads();
+    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
+  }
+  // the result
+  return buffer[0];
+}
 
+
+
+template<typename Real>
+__device__
+static Real _max_reduce(Real buffer[]) {
+  // Total number of active threads
+  int32_cuda nTotalThreads = blockDim.x;	
+  __syncthreads();
+  // perform tree-based reduction (max)
+  while(nTotalThreads > 1) {
+    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      Real temp = -1e20;
+      if(threadIdx.x+halfPoint < nTotalThreads) {
+        temp = buffer[threadIdx.x + halfPoint];
+      }
+      if (temp > buffer[threadIdx.x]) buffer[threadIdx.x] = temp;
+    }
+    __syncthreads();
+    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
+  }
+  // the result
+  return buffer[0];
+}
+
+
+
+template<typename Real>
+__device__
+static int32_cuda _max_id_reduce(Real val[], int32_cuda idx[]) {
+  // Total number of active threads
+  int32_cuda nTotalThreads = blockDim.x;	
+  __syncthreads();
+  // perform tree-based reduction (get index of maximum)
+  while(nTotalThreads > 1) {
+    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      Real temp = -1e20;
+      if(threadIdx.x+halfPoint < nTotalThreads) {
+        temp = val[idx[threadIdx.x + halfPoint]];
+      }
+      if (temp > val[idx[threadIdx.x]]) idx[threadIdx.x]=idx[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
+  }
+  // the result
+  return idx[0];
+}
+
+
+
+
+/***********************************************************************
+ * CUDA kernels
+ * the functions are templated to have the float/double operations
+ */
 
 /*
  * CuMatrix
@@ -36,45 +141,18 @@ static void _apply_log(Real* mat, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _apply_mask(Real* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*dmat.stride;
-  int32_cuda index2 = i + j*dmask.stride;
-  if ( i < dmat.cols  &&  j < dmat.rows ) 
-    if(mask[index2] == 0) mat[index] = 0;
-}
-
-
-template<typename Real>
-__global__
-static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d) {
+static void _mul_elements(Real* mat, const Real* A, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows ) {
-
-    if(wei[index]==0.0) return; //skip L1 if zero weight!
-    
-    Real l1_signed = l1;
-    if(wei[index] < 0.0) //flip sign
-      l1_signed = -l1;
-
-    Real before = wei[index];
-    Real after = wei[index] -lr*grad[index] -l1_signed;//simulate update
-    if((after > 0.0) ^ (before > 0.0)) { //sign changed?
-      wei[index] = 0.0;
-      grad[index] = 0.0;
-    } else {
-      wei[index] -= l1_signed;
-    }
-  }
+  if ( i < d.cols  &&  j < d.rows )
+    mat[index] = mat[index] * A[index];
 }
 
 
 template<typename Real>
 __global__
-static void _scale_cols(Real* mat, const Real* scale, MatrixDim d) {
+static void _mul_cols_vec(Real* mat, const Real* scale, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -85,7 +163,7 @@ static void _scale_cols(Real* mat, const Real* scale, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _scale_rows(Real* mat, const Real* scale, MatrixDim d) {
+static void _mul_rows_vec(Real* mat, const Real* scale, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -118,7 +196,7 @@ static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _add_scaled(Real alpha, const Real* A, Real beta, Real* dst, MatrixDim d) {
+static void _add_mat(Real alpha, const Real* A, Real beta, Real* dst, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -127,9 +205,22 @@ static void _add_scaled(Real alpha, const Real* A, Real beta, Real* dst, MatrixD
 }
 
 
+
 template<typename Real>
 __global__
-static void _add_scaled_row(Real alpha, const Real* row, Real beta, Real* dst, MatrixDim d) {
+static void _add_vec_to_cols(Real alpha, const Real* col, Real beta, Real* dst, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  if ( i < d.cols  &&  j < d.rows )
+    dst[index] = alpha*col[j] + beta*dst[index];
+}
+
+
+
+template<typename Real>
+__global__
+static void _add_vec_to_rows(Real alpha, const Real* row, Real beta, Real* dst, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -140,26 +231,20 @@ static void _add_scaled_row(Real alpha, const Real* row, Real beta, Real* dst, M
 
 template<typename Real>
 __global__
-static void _mul_elem(Real* mat, const Real* A, MatrixDim d) {
+static void _apply_mask(Real* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
-    mat[index] = mat[index] * A[index];
+  int32_cuda index = i + j*dmat.stride;
+  int32_cuda index2 = i + j*dmask.stride;
+  if ( i < dmat.cols  &&  j < dmat.rows ) 
+    if(mask[index2] == 0) mat[index] = 0;
 }
-
-
 
 
 
 /*
  * CuVector
  */
-
-//declare
-template<typename Real>
-static Real _sum_reduce(Real buffer[]);
-
 template<typename Real>
 __global__
 static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
@@ -233,10 +318,6 @@ static void _sigmoid(Real*y, const Real*x, MatrixDim d) {
   int32_cuda index = i + j*d.stride;
   if( i < d.cols  &&  j < d.rows ) {
     Real res = 1.0 / (1.0 + exp(-x[index]));
-    /*
-    if(res < 0.001) res = 0.001;
-    if(res > 0.999) res = 0.999;
-    */
     y[index] = res;
   }
 }
@@ -279,111 +360,9 @@ static void _softmax(Real*y, const Real*x, MatrixDim d) {
 
 
 
-
-template<typename Real>
-__device__
-static Real _max_reduce(Real buffer[]) {
-
-  // Total number of active threads
-  int32_cuda nTotalThreads = blockDim.x;	
-  __syncthreads();
-
-  while(nTotalThreads > 1) {
-    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
-    // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
-      // Get the shared value stored by another thread
-      Real temp = -1e20;
-      if(threadIdx.x+halfPoint < nTotalThreads) {
-        temp = buffer[threadIdx.x + halfPoint];
-      }
-      if (temp > buffer[threadIdx.x]) buffer[threadIdx.x] = temp;
-    }
-    __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
-  }
-  // the result
-  return buffer[0];
-}
-
-
-
-
-template<typename Real>
-__device__
-static Real _sum_reduce(Real buffer[]) {
-
-  // Total number of active threads
-  int32_cuda nTotalThreads = blockDim.x;	
-  __syncthreads();
-
-  while(nTotalThreads > 1) {
-    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
-    // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
-      // Get the shared value stored by another thread
-      Real temp = 0.0;
-      if(threadIdx.x+halfPoint < nTotalThreads) {
-        temp = buffer[threadIdx.x + halfPoint];
-      }
-      buffer[threadIdx.x] += temp;
-    }
-    __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
-  }
-  // the result
-  return buffer[0];
-}
-
-
-
 template<typename Real>
 __global__
-static void _softmax_reduce(Real*y, const Real*x, MatrixDim d) {
-  
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-
-  if(blockIdx.x > 0) return;
-  if(blockDim.y > 1) return;
-
-  __shared__ Real row_data[256];
-  __shared__ Real aux[256];
-
-  //copy the input to row_data
-  row_data[i] = x[i+j*d.stride];
-  __syncthreads();
-
-  //copy input to aux
-  aux[i] = row_data[i];
-  __syncthreads();
-  //get the maximum value
-  Real max = _max_reduce(aux);
-  __syncthreads();
-
-  //calculate exp(data-max)
-  row_data[i] = exp(row_data[i]-max);
- 
-  //copy the values to aux
-  aux[i] = row_data[i];
-  __syncthreads();
-  //get the sum
-  Real sum = _sum_reduce(aux);
-  __syncthreads();
-
-  //divide the values
-  row_data[i] /= sum;
-  //copy out
-  y[i+j*d.stride] = row_data[i];
-
-}
-
-
-
-template<typename Real>
-__global__
-static void _expand(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in)
-{
+static void _expand(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d_out.stride;
@@ -397,10 +376,10 @@ static void _expand(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_o
 }
 
 
+
 template<typename Real>
 __global__
-static void _rearrange(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in)
-{
+static void _rearrange(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d_out.stride;
@@ -417,8 +396,7 @@ static void _rearrange(Real* y, const Real* x, const int32_cuda* copy_from, Matr
 
 template<typename Real>
 __global__
-static void _randomize(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in)
-{
+static void _randomize(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d_out.stride;
@@ -431,90 +409,26 @@ static void _randomize(Real* y, const Real* x, const int32_cuda* copy_from, Matr
 
 template<typename Real>
 __global__
-static void _check_class(const Real* out, const Real* des, float* match, MatrixDim d)
-{
+static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  if(j>0) return;
+  int32_cuda index = i + j*d.stride;
+  if ( i < d.cols  &&  j < d.rows ) {
 
-  if(i<d.rows) {
-    int32_cuda out_id = -1, des_id = -2;
-    Real out_max = -1e20, des_max = -1e20;
-
-    for(int32_cuda k=0; k<d.cols; k++) {
-      Real val = out[k + i*d.stride];
-      if(val > out_max) { out_max = val; out_id = k; }
-    }
-    for(int32_cuda k=0; k<d.cols; k++) {
-      Real val = des[k + i*d.stride];
-      if(val > des_max) { des_max = val; des_id = k; }
-    }
+    if(wei[index]==0.0) return; //skip L1 if zero weight!
     
-    match[i] = ((out_id == des_id)?1:0);
-  }
-}
+    Real l1_signed = l1;
+    if(wei[index] < 0.0) //flip sign
+      l1_signed = -l1;
 
-
-template<typename Real>
-__device__
-static int32_cuda _max_id_reduce(Real val[], int32_cuda idx[]) {
-
-  // Total number of active threads
-  int32_cuda nTotalThreads = blockDim.x;	
-  __syncthreads();
-
-  while(nTotalThreads > 1) {
-    int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
-    // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
-      // Get the shared value stored by another thread
-      Real temp = -1e20;
-      if(threadIdx.x+halfPoint < nTotalThreads) {
-        temp = val[idx[threadIdx.x + halfPoint]];
-      }
-      if (temp > val[idx[threadIdx.x]]) idx[threadIdx.x]=idx[threadIdx.x + halfPoint];
+    Real before = wei[index];
+    Real after = wei[index] -lr*grad[index] -l1_signed;//simulate update
+    if((after > 0.0) ^ (before > 0.0)) { //sign changed?
+      wei[index] = 0.0;
+      grad[index] = 0.0;
+    } else {
+      wei[index] -= l1_signed;
     }
-    __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
-  }
-  // the result
-  return idx[0];
-}
-
-
-
-
-
-
-template<typename Real>
-__global__
-static void _check_class_reduce(const Real* out, const Real* des, float* match, MatrixDim d)
-{
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-
-  if(blockIdx.x > 0) return;
-  if(blockDim.y != 1) return;
-
-  __shared__ Real value[256];
-  __shared__ int32_cuda index[256];
-
-  value[threadIdx.x] = out[i+j*d.stride];
-  index[threadIdx.x] = threadIdx.x;
-  __syncthreads();
-
-  int32_cuda out_max = _max_id_reduce(value,index);
-  __syncthreads();
-
-  value[threadIdx.x] = des[i+j*d.stride];
-  index[threadIdx.x] = threadIdx.x;
-  __syncthreads();
-  
-  int32_cuda des_max = _max_id_reduce(value,index);
-  __syncthreads();
-
-  if(threadIdx.x == 0) {
-    match[j] = ((out_max == des_max)?1:0);
   }
 }
 
@@ -551,6 +465,7 @@ static void _find_row_max_id(const Real* mat, Real* vec_val, int32_cuda* vec_id,
 }
 
 
+
 template<typename Real>
 __global__
 static void _diff_xent(const int32_cuda* vec_tgt, Real* mat_net_out, Real* vec_log_post, MatrixDim d) {
@@ -568,6 +483,7 @@ static void _diff_xent(const int32_cuda* vec_tgt, Real* mat_net_out, Real* vec_l
 }
 
 
+
 template<typename Real>
 __global__
 static void _softmax_part(const Real* X, const int32_cuda* vec_ids, Real* Y, MatrixDim d) {
@@ -582,12 +498,21 @@ static void _softmax_part(const Real* X, const int32_cuda* vec_ids, Real* Y, Mat
 
 
 
-/*
+/***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
 
 /*
- * float 
+ * "int32" 
+ */
+void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, MatrixDim d) {
+  _set_const<<<Gr,Bl>>>(mat,value,d); 
+}
+
+
+
+/*
+ * "float"
  */
 
 /*
@@ -601,33 +526,40 @@ void cudaF_apply_log(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_log<<<Gr,Bl>>>(mat,d); 
 }
 
-void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
-  _apply_mask<<<Gr,Bl>>>(mat,mask,dmat,dmask); 
+void cudaF_mul_elements(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim d) {
+  _mul_elements<<<Gr,Bl>>>(mat,A,d); 
 }
 
-void cudaF_scale_cols(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
-  _scale_cols<<<Gr,Bl>>>(mat,scale,d); 
+void cudaF_mul_cols_vec(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
+  _mul_cols_vec<<<Gr,Bl>>>(mat,scale,d); 
 }
 
-void cudaF_scale_rows(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
-  _scale_rows<<<Gr,Bl>>>(mat,scale,d);
+void cudaF_mul_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
+  _mul_rows_vec<<<Gr,Bl>>>(mat,scale,d);
 }
 
 void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* vec_div, MatrixDim d) {
   _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
 }
 
-void cudaF_add_scaled(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d) {
-  _add_scaled<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
+void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, float* dst, MatrixDim d) {
+  _add_mat<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
 }
 
-void cudaF_add_scaled_row(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d) {
-  _add_scaled_row<<<Gr,Bl>>>(alpha,row,beta,dst,d); 
+void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float* col, float beta, float* dst, MatrixDim d) {
+  _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d); 
 }
 
-void cudaF_mul_elem(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim d) {
-  _mul_elem<<<Gr,Bl>>>(mat,A,d); 
+
+void cudaF_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d) {
+  _add_vec_to_rows<<<Gr,Bl>>>(alpha,row,beta,dst,d); 
 }
+
+// CURRENTLY UNUSED...
+void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
+  _apply_mask<<<Gr,Bl>>>(mat,mask,dmat,dmask); 
+}
+
 
 /*
  * CuVector
@@ -659,38 +591,26 @@ void cudaF_softmax (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d)
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
 
-void cudaF_softmax_reduce (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) { 
-  _softmax_reduce<<<Gr,Bl>>>(y, x, d); 
+void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
+  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
 }
-
 
 void cudaF_expand(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
   _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
 }
 
-
 void cudaF_rearrange(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
   _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
 }
-
   
 void cudaF_randomize(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) { 
   _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
 }
 
 
-void cudaF_check_class(size_t Gr, size_t Bl, const float* out, const float* des, float* match, MatrixDim d) { 
-  _check_class<<<Gr,Bl>>>(out,des,match,d); 
-}
-
-void cudaF_check_class_reduce(dim3 Gr, dim3 Bl, const float* out, const float* des, float* match, MatrixDim d) { 
-  _check_class_reduce<<<Gr,Bl>>>(out,des,match,d); 
-}
-
 void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, float lr, MatrixDim d) {
   _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
 }
-
 
 void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
   _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, voff, d);
@@ -700,14 +620,120 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
 }
 
-void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
-  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
-}
+
 
 
 /*
- * int32 CUDA functions
+ * "double" 
  */
-void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, MatrixDim d) {
+
+/*
+ * CuMatrix
+ */
+void cudaD_set_const(dim3 Gr, dim3 Bl, double* mat, double value, MatrixDim d) {
   _set_const<<<Gr,Bl>>>(mat,value,d); 
 }
+
+void cudaD_apply_log(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
+  _apply_log<<<Gr,Bl>>>(mat,d); 
+}
+
+void cudaD_mul_elements(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim d) {
+  _mul_elements<<<Gr,Bl>>>(mat,A,d); 
+}
+
+void cudaD_mul_cols_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale, MatrixDim d) {
+  _mul_cols_vec<<<Gr,Bl>>>(mat,scale,d); 
+}
+
+void cudaD_mul_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale, MatrixDim d) {
+  _mul_rows_vec<<<Gr,Bl>>>(mat,scale,d);
+}
+
+void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* vec_div, MatrixDim d) {
+  _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
+}
+
+void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* A, double beta, double* dst, MatrixDim d) {
+  _add_mat<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
+}
+
+void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double* col, double beta, double* dst, MatrixDim d) {
+  _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d); 
+}
+
+void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double* row, double beta, double* dst, MatrixDim d) {
+  _add_vec_to_rows<<<Gr,Bl>>>(alpha,row,beta,dst,d); 
+}
+
+// CURRENTLY UNUSED...
+void cudaD_apply_mask(dim3 Gr, dim3 Bl, double* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
+  _apply_mask<<<Gr,Bl>>>(mat,mask,dmat,dmask); 
+}
+
+
+
+/*
+ * CuVector
+ */
+void cudaD_add_row_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum, MatrixDim d) {
+  _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
+}
+
+void cudaD_add_col_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum, MatrixDim d) {
+  _add_col_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
+}
+
+void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {
+  _invert_elements<<<Gr,Bl>>>(data, d);
+}
+
+/*
+ * cu::
+ */
+void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
+  _sigmoid<<<Gr,Bl>>>(y, x, d); 
+}
+
+void cudaD_diff_sigmoid (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d) {
+  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
+}
+
+void cudaD_softmax (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) { 
+  _softmax<<<Gr,Bl>>>(y, x, d); 
+}
+
+void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double* X, const int32_cuda* vec_ids, double* Y, MatrixDim d) {
+  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
+}
+
+void cudaD_expand(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
+  _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
+}
+
+void cudaD_rearrange(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
+  _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+}
+  
+void cudaD_randomize(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) { 
+  _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+}
+
+void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double* wei, double* grad, double l1, double lr, MatrixDim d) {
+  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
+}
+
+void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
+  _find_row_max_id<<<Gr,Bl>>>(mat, vec_val, vec_id, voff, d);
+}
+
+void cudaD_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, double* mat_net_out, double* vec_log_post, MatrixDim d) {
+  _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
+}
+
+
+
+
+
+
+

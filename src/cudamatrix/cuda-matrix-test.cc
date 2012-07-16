@@ -270,6 +270,52 @@ static void UnitTestCuMatrixAddMat() {
 
 
 template<class Real> 
+static void UnitTestCuMatrixAddVecToCols() {
+  Matrix<Real> Hm(100,99);
+  Vector<Real> Hv(100);
+  RandGaussMatrix(&Hm);
+  InitRand(&Hv);
+
+  CuMatrix<Real> Dm(100,99);
+  CuVector<Real> Dv(100);
+  Dm.CopyFromMat(Hm);
+  Dv.CopyFromVec(Hv);
+
+  Dm.AddVecToCols(0.5,Dv);
+  Hm.AddVecToCols(0.5,Hv);
+
+  Matrix<Real> Hm2(100,99);
+  Dm.CopyToMat(&Hm2);
+
+  AssertEqual(Hm,Hm2);
+}
+
+
+
+template<class Real> 
+static void UnitTestCuMatrixAddVecToRows() {
+  Matrix<Real> Hm(100,99);
+  Vector<Real> Hv(99);
+  RandGaussMatrix(&Hm);
+  InitRand(&Hv);
+
+  CuMatrix<Real> Dm(100,99);
+  CuVector<Real> Dv(99);
+  Dm.CopyFromMat(Hm);
+  Dv.CopyFromVec(Hv);
+
+  Dm.AddVecToRows(0.5,Dv);
+  Hm.AddVecToRows(0.5,Hv);
+
+  Matrix<Real> Hm2(100,99);
+  Dm.CopyToMat(&Hm2);
+
+  AssertEqual(Hm,Hm2);
+}
+
+
+
+template<class Real> 
 static void UnitTestCuMatrixAddMatMat() {
   Matrix<Real> Ha(200,100);
   Matrix<Real> Hb(100,200);
@@ -630,6 +676,8 @@ template<class Real> static void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
+  UnitTestCuMatrixAddVecToCols<Real>();
+  UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
@@ -652,6 +700,6 @@ template<class Real> static void CudaMatrixUnitTest() {
 
 int main() {
   kaldi::CudaMatrixUnitTest<float>();
-  //kaldi::CudaMatrixUnitTest<double>();
+  kaldi::CudaMatrixUnitTest<double>();
   std::cout << "Tests succeeded.\n";
 }

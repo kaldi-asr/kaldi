@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
       // divide posteriors by priors to get quasi-likelihoods
       if(class_frame_counts != "") {
         if (apply_log || no_softmax) {
-          nnet_out.AddScaledRow(1.0, priors, 1.0);
+          nnet_out.AddVecToRows(1.0, priors, 1.0);
         } else {
           nnet_out.MulColsVec(priors);
         }

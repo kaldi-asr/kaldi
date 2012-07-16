@@ -7,6 +7,7 @@
 namespace kaldi {
 
 
+#if 0
 /*
  * implement float specialized methdos
  */
@@ -176,6 +177,6 @@ void CuVector<float>::InvertElements() {
   }
 }
 
-
+#endif
 
 } // namespace

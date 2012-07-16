@@ -1,4 +1,4 @@
-// cudamatrix/cu-randkernels.cc
+// cudamatrix/cu-randkernels.cu
 
 // Copyright 2012  Karel Vesely
 
@@ -17,35 +17,46 @@
 
 
 
-#include "cudamatrix/cu-randkernels.h"
+/*
+ * Hybrid Tauss/LCG random number generator
+ *
+ * Based on : http://http.developer.nvidia.com/GPUGems3/gpugems3_ch37.html
+ * 
+ * z1,z2,z3,z4 are matrices of IntType
+ * (inner state of grid-like random number generator)
+ *
+ * ie. each matrix elemnent has its own random number sequence, 
+ * which is given by z1,z2,z3,z4
+ *
+ * In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
+ *
+ */
+
+#include "cudamatrix/cu-randkernels-ansi.h"
 
 
 
-//
-//Hybrid Tauss/LCG random number generator
-//
-//http://http.developer.nvidia.com/GPUGems3/gpugems3_ch37.html
+/***********************************************************************
+ * CUDA kernels
+ * some functions are templated to have the float/double operations
+ */
 
-// S1, S2, S3, and M are all constants, and z is part of the  
-// private per-thread generator state.
+// S1, S2, S3, and M are all constants, z is the inner state  
 __device__
-static uint32_cuda TausStep(uint32_cuda &z, int32_cuda S1, int32_cuda S2, int32_cuda S3, uint32_cuda M)  
-{  
+static uint32_cuda TausStep(uint32_cuda &z, int32_cuda S1, int32_cuda S2, int32_cuda S3, uint32_cuda M) {  
   uint32_cuda b=(((z << S1) ^ z) >> S2);  
   return z = (((z & M) << S3) ^ b);  
 }  
 
 // A and C are constants  
 __device__
-static uint32_cuda LCGStep(uint32_cuda &z, uint32_cuda A, uint32_cuda C)  
-{  
+static uint32_cuda LCGStep(uint32_cuda &z, uint32_cuda A, uint32_cuda C) {  
   return z=(A*z+C);  
 } 
 
 template<typename Real>
 __device__
-static Real HybridTaus(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4)  
-{  
+static Real HybridTaus(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4) {  
   // Combined period is lcm(p1,p2,p3,p4)~ 2^121
   Real randval;
   do { 
@@ -61,8 +72,7 @@ static Real HybridTaus(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32
 
 template<typename Real>
 __global__
-static void _rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{
+static void _rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -75,21 +85,19 @@ static void _rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, 
  
 template<typename Real>
 __device__
-static Real BoxMuller(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4)  
-{
+static Real BoxMuller(uint32_cuda& z1, uint32_cuda& z2, uint32_cuda& z3, uint32_cuda& z4) {
   const Real M_2PI = 6.283185307179586476925286766558;
-
   Real u0 = HybridTaus<Real>(z1,z2,z3,z4), u1 = HybridTaus<Real>(z1,z2,z3,z4);
   Real r = sqrt(-2.0 * log(u0));
   Real theta = M_2PI * u1;
   return r*sin(theta);
-  
 }  
+
+
 
 template<typename Real>
 __global__
-static void _gauss_rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{
+static void _gauss_rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -102,8 +110,7 @@ static void _gauss_rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda
 
 template<typename Real>
 __global__
-static void _binarize_probs(Real* states, const Real* probs, const Real* rand, MatrixDim d)
-{
+static void _binarize_probs(Real* states, const Real* probs, const Real* rand, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
@@ -114,28 +121,41 @@ static void _binarize_probs(Real* states, const Real* probs, const Real* rand, M
 
 
 
-/************
- * :FLOAT:
+/***********************************************************************
+ * ANSI-C wrappers of CUDA kernels
  */
-void cudaF_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{ _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
 
-void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{ _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
-
-void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float* states, const float* probs, float* rand, MatrixDim d) 
-{ _binarize_probs<<<Gr,Bl>>>(states,probs,rand,d); }
-
-
-/************
- * :DOUBLE:
+/*
+ * float 
  */
-void cudaD_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{ _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
+void cudaF_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) { 
+  _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
+}
 
-void cudaD_gauss_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d)
-{ _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); }
+void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) { 
+  _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
+}
 
-void cudaD_binarize_probs(dim3 Gr, dim3 Bl, double* states, const double* probs, double* rand, MatrixDim d) 
-{ _binarize_probs<<<Gr,Bl>>>(states,probs,rand,d); }
+void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float* states, const float* probs, float* rand, MatrixDim d) { 
+  _binarize_probs<<<Gr,Bl>>>(states,probs,rand,d); 
+}
+
+
+
+/*
+ * double 
+ */
+void cudaD_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) { 
+  _rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
+}
+
+void cudaD_gauss_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) { 
+  _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
+}
+
+void cudaD_binarize_probs(dim3 Gr, dim3 Bl, double* states, const double* probs, double* rand, MatrixDim d) { 
+  _binarize_probs<<<Gr,Bl>>>(states,probs,rand,d); 
+}
+
+
 

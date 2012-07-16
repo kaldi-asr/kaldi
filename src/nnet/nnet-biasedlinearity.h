@@ -54,7 +54,7 @@ class BiasedLinearity : public UpdatableComponent {
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // precopy bias
-    out->AddScaledRow(1.0, bias_, 0.0);
+    out->AddVecToRows(1.0, bias_, 0.0);
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }

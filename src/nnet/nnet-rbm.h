@@ -120,7 +120,7 @@ class Rbm : public RbmBase {
   // UpdatableComponent API
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // precopy bias
-    out->AddScaledRow(1.0, hid_bias_, 0.0);
+    out->AddVecToRows(1.0, hid_bias_, 0.0);
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, vis_hid_, kTrans, 1.0);
     // optionally apply sigmoid
@@ -151,7 +151,7 @@ class Rbm : public RbmBase {
     }
 
     // precopy bias
-    vis_probs->AddScaledRow(1.0, vis_bias_, 0.0);
+    vis_probs->AddVecToRows(1.0, vis_bias_, 0.0);
     // multiply by weights
     vis_probs->AddMatMat(1.0, hid_state, kNoTrans, vis_hid_, kNoTrans, 1.0);
     // optionally apply sigmoid
