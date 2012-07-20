@@ -184,7 +184,6 @@ if (! $sync) { # We're not submitting with -sync y, so we
   $wait = 0.1;
   foreach $f (@syncfiles) {
     # wait for them to finish one by one.
-    sleep(5);
     while (! -f $f) {
       sleep($wait);
       $wait *= 1.2;
