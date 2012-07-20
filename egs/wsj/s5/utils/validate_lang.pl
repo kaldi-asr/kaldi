@@ -448,6 +448,17 @@ if(-s "$lang/phones/word_boundary.txt") {
   $internal  =~ s/ / |/g;
   $singleton =~ s/ $//g;
   $singleton =~ s/ / |/g;
+  
+  # Now handle the escape characters
+  foreach $esc(("^", "\$", "(", ")", "/", "|", "@", "[", "]", "{", "}", "?", ".", "+", "*")) {
+    $tmp = "\\" . $esc;
+    $nonword   =~ s/$tmp/\\$esc/g;
+    $begin     =~ s/$tmp/\\$esc/g;
+    $end       =~ s/$tmp/\\$esc/g;
+    $internal  =~ s/$tmp/\\$esc/g;
+    $singleton =~ s/$tmp/\\$esc/g;
+  }
+
   $wlen = int(rand(100)) + 1;
   print "--> generating a $wlen words sequence\n";
   $wordseq = "";

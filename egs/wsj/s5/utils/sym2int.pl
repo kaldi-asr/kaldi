@@ -21,6 +21,9 @@ for($x = 0; $x < 2; $x++) {
   if ($ARGV[0] eq "--map-oov") {
     shift @ARGV; $map_oov = shift @ARGV;
   }
+  if ($ARGV[0] eq "--ignore-oov") {
+    shift @ARGV; $ignore_oov = 1;
+  }
   if ($ARGV[0] eq "-f") {
     shift @ARGV; 
     $field_spec = shift @ARGV; 
@@ -82,6 +85,14 @@ while (<>) {
             }
           }
           $i = $map_oov;
+        } elsif ($ignore_oov == 1) {
+          if ($num_warning++ < $max_warning) {
+            print STDERR "sym2int.pl: ignoring OOV term $a\n";
+            if ($num_warning == $max_warning) {
+              print STDERR "sym2int.pl: not warning for OOVs any more times\n";
+            }
+          }
+          $i = $a;
         } else {
           $pos = $n+1;
           die "sym2int.pl: undefined symbol $a (in position $pos)\n";
