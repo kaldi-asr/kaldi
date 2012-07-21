@@ -450,7 +450,7 @@ if(-s "$lang/phones/word_boundary.txt") {
   $singleton =~ s/ / |/g;
   
   # Now handle the escape characters
-  foreach $esc(("^", "\$", "(", ")", "/", "|", "@", "[", "]", "{", "}", "?", ".", "+", "*")) {
+  foreach $esc(("^", "\$", "(", ")", "/", "@", "[", "]", "{", "}", "?", ".", "+", "*")) {
     $tmp = "\\" . $esc;
     $nonword   =~ s/$tmp/\\$esc/g;
     $begin     =~ s/$tmp/\\$esc/g;
