@@ -60,7 +60,10 @@ struct BasisFmllrOptions {
 };
 
 /** \class BasisFmllrAccus
- *  Stats for fMLLR subspace estimation.
+ *  Stats for fMLLR subspace estimation.  This class is only to estimate
+ *  the "basis", which is done in training time.  Class BasisFmllrEstimate
+ *  contains the functions that are used in test time.  (see the
+ *  function BasisFmllrCoefficients()).
  */
 class BasisFmllrAccus {
 

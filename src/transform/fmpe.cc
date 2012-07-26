@@ -444,7 +444,8 @@ BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
       proj_deriv_minus = stats.DerivMinus();
   // tot_linear_objf_impr is the change in the actual
   // objective function if it were linear, i.e.
-  //   objf-gradient . parameter-change  // Note: none of this is normalized by the #frames (we don't have
+  //   objf-gradient . parameter-change
+  // Note: none of this is normalized by the #frames (we don't have
   // this info here), so that is done at the script level.
   BaseFloat tot_linear_objf_impr = 0.0;
   int32 changed = 0; // Keep track of how many elements change sign.

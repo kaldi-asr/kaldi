@@ -90,7 +90,6 @@ class GaussClusterable: public Clusterable {
   // The next two functions are not const-correct, because of SubVector.
   SubVector<double> x_stats() const { return stats_.Row(0); }
   SubVector<double> x2_stats() const { return stats_.Row(1); }
-
  private:
   double count_;
   Matrix<double> stats_; // two rows: sum, then sum-squared.
