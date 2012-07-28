@@ -194,6 +194,11 @@ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
 
+# decoding train3b with basis fMLLR
+steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+  exp/tri3b/graph_tgpr data/train_si84 data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
+steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri3b/graph_tgpr data/train_si84 data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
 
  # steps/decode_fmllr_thresh.sh --nj 10 --cmd "$decode_cmd" \
  #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh || exit 1;
