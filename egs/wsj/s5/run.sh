@@ -65,6 +65,7 @@ for x in test_eval92 test_eval93 test_dev93 train_si284; do
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
 
+
 utils/subset_data_dir.sh --first data/train_si284 7138 data/train_si84 || exit 1
 
 # Now make subset with the shortest 2k utterances from si-84.
@@ -194,11 +195,11 @@ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
 
-# decoding train3b with basis fMLLR
-steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/train_si84 data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
-steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/train_si84 data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
+# At this point you could run the command below; this gets
+# results that demonstrate the basis-fMLLR adaptation (adaptation
+# on small amounts of adaptation data).
+# local/run_basis_fmllr.sh
+
 
  # steps/decode_fmllr_thresh.sh --nj 10 --cmd "$decode_cmd" \
  #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh || exit 1;
