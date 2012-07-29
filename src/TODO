@@ -1,3 +1,4 @@
+
  Help needed:
   - Proofread documentation and make suggestions for 
     changes/clarification.
@@ -6,16 +7,12 @@
 
 =====
 dan's TODO:
+ change on-disk formats to make memory mapping easier?
  address roundoff issues RE lattice generation?
- wali_to_ctm.sh assumes that conv-side is spk-{A,B}, not always true.
- eventually remove warning RE thread-test 
- fix SGMM w/ resizing spk vecs.
+  
+ fix SGMM w/ resizing spk vecs. [not fure if done]
  change usage message so standard and program-specific options printed
   separately.
-major:
- look at Stefan's code for nnet rescoring.  
- finalize biglm stuff.
- ? remove occs when doing next version of script, keep tacc?
 
 minor:
  Add something in training tools, to verify that spk-id is prefix of utt-id.
@@ -31,8 +28,7 @@ minor:
    cerr to KALDI_ERR.  Consider doing same in fstext/
  Modify reading-in function for vectors, matrices, etc., so they
    successfully read in -inf and -nan.
- make it possible to sum tree accs.
- normalize binaries so they never take summed accs (unless sum-accs program)
+ normalize binaries so they never take summed accs (unless sum-accs program)?
  remove mix-up, mix-down options from gmm-est (have separate program)
  possibly remove gmm-align (modifiy scripts accordingly).
  make questions on disk be in text form (use sym2int.pl etc.)... same

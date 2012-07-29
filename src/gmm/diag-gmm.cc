@@ -472,7 +472,7 @@ BaseFloat DiagGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &data,
     KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
   if (static_cast<int32>(data.Dim()) != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << " vs. "<< (Dim());
+        << "mismatch " << (data.Dim()) << " vs. "<< (Dim());
   }
   BaseFloat loglike;
   Vector<BaseFloat> data_sq(data);
@@ -503,7 +503,7 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->CopyFromVec(gconsts_);
   if (static_cast<int32>(data.Dim()) != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << " vs. "<< (Dim());
+        << "mismatch " << (data.Dim()) << " vs. "<< (Dim());
   }
   Vector<BaseFloat> data_sq(data);
   data_sq.ApplyPow(2.0);

@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
     std::string update_flags_str = "mvwt";
     std::string occs_out_filename;
 
-
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("mix-up", &mixup, "Increase number of mixture components to "

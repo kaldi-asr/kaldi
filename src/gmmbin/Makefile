@@ -24,7 +24,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-fmpe-acc-stats gmm-acc-stats2 gmm-init-model-flat gmm-info \
            gmm-scale-accs gmm-get-stats-deriv gmm-est-rescale gmm-boost-silence \
            gmm-diff-accs gmm-basis-fmllr-accs gmm-basis-fmllr-training gmm-est-basis-fmllr \
-           gmm-est-map gmm-latgen-map
+           gmm-est-map gmm-latgen-map gmm-basis-fmllr-accs-gpost gmm-est-basis-fmllr-gpost
  
 OBJFILES =
 

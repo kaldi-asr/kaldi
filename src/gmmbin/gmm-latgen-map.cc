@@ -163,9 +163,12 @@ int main(int argc, char *argv[]) {
         typedef kaldi::int32 int32;
 
         const char *usage = "Decode features using GMM-based model.\n"
+            "This version reads a separate model per (utterance or speaker)\n"
+            "typically from an archive piped in from gmm-est-map.\n"
             "Usage: gmm-latgen-map [options] model-in "
             "map-rspecifier fsts-rspecifier features-rspecifier "
             "words-wspecifier [alignments-wspecifier lattice-wspecifier]\n";
+        
         ParseOptions po(usage);
         bool binary = true;
         bool allow_partial = true;

@@ -105,6 +105,10 @@ class HmmTopology {
 
     explicit HmmState(int32 p): pdf_class(p) { }
 
+    bool operator == (const HmmState &other) const {
+      return (pdf_class == other.pdf_class && transitions == other.transitions);
+    }
+    
     HmmState(): pdf_class(-1) { }
   };
 
@@ -145,6 +149,10 @@ class HmmTopology {
                                                   phone2idx_(other.phone2idx_),
                                                   entries_(other.entries_) { }
 
+  bool operator == (const HmmTopology &other) const {
+    return phones_ == other.phones_ && phone2idx_ == other.phone2idx_
+        && entries_ == other.entries_;
+  }
  private:
   std::vector<int32> phones_;  // list of all phones we have topology for.  Sorted, uniq.  no epsilon (zero) phone.
   std::vector<int32> phone2idx_;  // map from phones to indexes into the entries vector (or -1 for not present).

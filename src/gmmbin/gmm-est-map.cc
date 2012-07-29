@@ -34,8 +34,11 @@ int main(int argc, char *argv[]) {
             "Compute MAP estimates per-utterance (default) or per-speaker for "
             "the supplied set of speakers (spk2utt option).  \n"
             "Usage: gmm-est-map  [options] <model-in> <feature-rspecifier> "
-            "<posteriors-rspecifier> <map-am-wspecifier>\n";
-
+            "<posteriors-rspecifier> <map-am-wspecifier>\n"
+            "Note: the output is typically piped into gmm-latgen-map\n"
+            "For MAP adaptation that's not per speaker, you can use\n"
+            "gmm-acc-stats-*, gmm-ismooth-stats, and gmm-est.";
+        
         ParseOptions po(usage);
         string spk2utt_rspecifier;
         BaseFloat tau = 0.0;

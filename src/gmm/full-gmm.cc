@@ -539,7 +539,7 @@ BaseFloat FullGmm::ComponentLogLikelihood(const VectorBase<BaseFloat> &data,
     KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
   if (data.Dim() != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
-        << "mismatch" << (data.Dim()) << "vs. "<< (Dim());
+        << "mismatch " << (data.Dim()) << "vs. "<< (Dim());
   }
   BaseFloat loglike;
 

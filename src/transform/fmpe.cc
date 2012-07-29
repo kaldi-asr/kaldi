@@ -412,7 +412,7 @@ void Fmpe::AccStats(const MatrixBase<BaseFloat> &feat_in,
   
   // We do the "*Reverse" version of each stage now, in reverse order.
   ApplyCReverse(&feat_deriv);
-
+  
   Matrix<BaseFloat> intermed_feat_deriv(feat_in.NumRows(), dim*ncontexts);
   ApplyContextReverse(feat_deriv, &intermed_feat_deriv);
   

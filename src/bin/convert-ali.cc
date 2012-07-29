@@ -88,8 +88,7 @@ int main(int argc, char *argv[]) {
       ReadPhoneMap(phone_map_rxfilename,
                    &phone_map);
     }
-
-
+    
     SequentialInt32VectorReader alignment_reader(old_alignments_rspecifier);
     Int32VectorWriter alignment_writer(new_alignments_wspecifier);
 
@@ -99,6 +98,11 @@ int main(int argc, char *argv[]) {
     TransitionModel new_trans_model;
     ReadKaldiObject(new_model_filename, &new_trans_model);
 
+    if (!(old_trans_model.GetTopo() == new_trans_model.GetTopo()))
+      KALDI_WARN << "Toplogies of models are not equal: "
+                 << "conversion may not be correct or may fail.";
+    
+    
     ContextDependency new_ctx_dep;  // the tree.
     ReadKaldiObject(new_tree_filename, &new_ctx_dep);
 

@@ -298,11 +298,11 @@ double BasisFmllrEstimate::BasisFmllrCoefficients(
 	  // Check auxiliary function
 	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
-      // For diagnose, maybe too verbose
-//    if (iter <= 3) {
-//      KALDI_LOG << "Objective function (iter=" << iter << "): " << startObj / spk_stats.beta_
-//                << " -> " << endObj / spk_stats.beta_ << " over " << spk_stats.beta_ << " frames";
-//	  }
+      KALDI_VLOG(2) << "Objective function (iter=" << iter << "): "
+                    << startObj / spk_stats.beta_  << " -> "
+                    << (endObj / spk_stats.beta_) << " over "
+                    << spk_stats.beta_ << " frames";
+
 	  impr_spk += (endObj - startObj);
     }  // loop over iters
 

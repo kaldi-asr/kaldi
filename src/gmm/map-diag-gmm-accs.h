@@ -30,6 +30,18 @@ using std::vector;
 
 namespace kaldi {
 
+/*
+  Note: this class does MAP adaptation of the means and weights only.
+  It is mainly used in gmmbin/gmm-est-map.cc, where it outputs an archive
+  containing a MAP-adapted model for each speaker, which
+  can then be used to decode (e.g. using gmm-latgen-map).
+  This is not the only way to do MAP adaptation in Kaldi; for per-corpus
+  adaptation you can use gmm-ismooth-stats and gmm-est, although
+  you have to be careful about the weights (e.g. it might not be appropriate to
+  estimate them given I-smoothed stats.)
+*/
+
+
 class MapDiagGmmAccs {
 public:
     void Init(int32 num_pdf);
