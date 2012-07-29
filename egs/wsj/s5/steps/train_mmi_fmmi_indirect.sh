@@ -141,11 +141,14 @@ while [ $x -lt $num_iters ]; do
     n=`echo $dir/{num,den}_acc.$x.*.acc | wc -w`;
     [ "$n" -ne $[$nj*2] ] && \
       echo "Wrong number of MMI accumulators $n versus 2*$nj" && exit 1;
+    rm $dir/.error 2>/dev/null
     $cmd $dir/log/den_acc_sum.$x.log \
-      gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || exit 1;
-    rm $dir/den_acc.$x.*.acc
+      gmm-sum-accs $dir/den_acc.$x.acc $dir/den_acc.$x.*.acc || touch $dir/.error &
     $cmd $dir/log/num_acc_sum.$x.log \
-      gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
+      gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || touch $dir/.error &
+    wait
+    [ -f $dir/.error ] && echo "Error summing accs" && exit 1;
+    rm $dir/den_acc.$x.*.acc
     rm $dir/num_acc.$x.*.acc
   fi
 

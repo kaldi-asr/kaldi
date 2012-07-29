@@ -197,7 +197,7 @@ while [ $x -lt $num_iters ]; do
     objf_nf=`grep Overall $dir/log/acc.$x.*.log | grep gmm-acc-stats2 | awk '{ p+=$10*$12; nf+=$12; } END{print p/nf, nf;}'`
     objf=`echo $objf_nf | awk '{print $1}'`;
     nf=`echo $objf_nf | awk '{print $2}'`;
-    impr=`grep Overall $dir/log/update.$x.log | head -1 | awk '{print $10*$12;}'`
+    impr=`grep -w Overall $dir/log/update.$x.log | awk '{x += $10*$12;} END{print x;}'`
     impr=`perl -e "print ($impr/$nf);"` # renormalize by "real" #frames, to correct
     # for the canceling of stats.
     echo On iter $x, objf was $objf, auxf improvement was $impr | tee $dir/objf.$x.log

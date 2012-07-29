@@ -31,7 +31,6 @@ first_max_active=2000 # max-active used in initial pass.
 alignment_model=
 adapt_model=
 final_model=
-fmllr_basis=
 stage=0
 acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in 
               # lattice generation.
@@ -48,14 +47,13 @@ nj=4
 silence_weight=0.01
 cmd=run.pl
 si_dir=
-fmllr_update_type=full
 # End configuration section
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# != 4 ]; then
-   echo "Usage: steps/decode_basis_fmllr.sh [options] <graph-dir> <train-data-dir> <data-dir> <decode-dir>"
+if [ $# != 3 ]; then
+   echo "Usage: steps/decode_basis_fmllr.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo " e.g.: steps/decode_basis_fmllr.sh exp/tri2b/graph_tgpr data/train_si84 data/test_dev93 exp/tri2b/decode_dev93_tgpr"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                   # config containing options"
@@ -65,7 +63,6 @@ if [ $# != 4 ]; then
    echo "  --alignment-model <ali-mdl>              # Model to get Gaussian-level alignments for"
    echo "                                           # 1st pass of transform computation."
    echo "  --final-model <finald-mdl>               # Model to finally decode with"
-   echo "  --fmllr-basis <fmllr-basis>              # Base matrices used in fMLLR"
    echo "  --si-dir <speaker-indep-decoding-dir>    # use this to skip 1st pass of decoding"
    echo "                                           # Caution-- must be with same tree"
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
@@ -75,12 +72,10 @@ fi
 
 
 graphdir=$1
-train_data=$2
-data=$3
+data=$2
 dir=`echo $3 | sed 's:/$::g'` # remove any trailing slash.
 
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
-train_sdata=${train_data}/split$nj;
 sdata=$data/split$nj;
 
 mkdir -p $dir/log
@@ -92,7 +87,7 @@ silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
 # Some checks.  Note: we don't need $srcdir/tree but we expect
 # it should exist, given the current structure of the scripts.
-for f in $graphdir/HCLG.fst ${train_data}/feats.scp $data/feats.scp $srcdir/tree; do
+for f in $graphdir/HCLG.fst $data/feats.scp $srcdir/tree $srcdir/fmllr.basis; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -103,63 +98,6 @@ if [ -z "$alignment_model" ]; then
 fi
 [ ! -f "$alignment_model" ] && echo "$0: no alignment model $alignment_model " && exit 1;
 ##
-
-## Judge whether the base matrices have been computed.
-if [ -z "$fmllr_basis" ]; then
-  stage=$[$stage-1];
-fi
-##
-
-## Compute basis matrices used in fMLLR.
-if [ $stage -lt 0 ]; then
-  # Set up the unadapted features "$sifeats" for training set.
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-  echo "$0: feature type is $feat_type";
-  case $feat_type in
-    delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:${train_sdata}/JOB/utt2spk scp:${train_sdata}/JOB/cmvn.scp scp:${train_sdata}/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-    lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:${train_sdata}/JOB/utt2spk scp:${train_sdata}/JOB/cmvn.scp scp:${train_sdata}/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
-    *) echo "Invalid feature type $feat_type" && exit 1;
-  esac
-
-  # Set up the adapted features "$feats" for training set.
-  if [ -f $srcdir/trans.1 ]; then 
-    feats="$sifeats transform-feats --utt2spk=ark:${train_sdata}/JOB/utt2spk ark:${train_sdata}/trans.JOB ark:- ark:- |";
-  else
-    feats="$sifeats";
-  fi
-
-  # Get the alignment of training data. 
-  if [ ! -f $srcdir/fsts.1.gz ]; then
-    echo "$0: compiling graphs of transcripts"
-    $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-      compile-train-graphs $srcdir/tree $final_model $lang/L.fst \
-       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < ${train_sdata}/JOB/text |" \
-       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
-  else
-    cp $srcdir/fsts.*.gz $dir;
-  fi
-
-  echo "$0: aligning training data"
-  $cmd JOB=1:$nj $dir/log/train_align.JOB.log \
-    gmm-align-compiled $scale_opts --beam=$align_beam --retry-beam=$retry_beam $final_model \
-     "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
-     "ark:|gzip -c >$dir/train.ali.JOB.gz" || exit 1;
-
-  # Accumulate stats for basis training.
-  $cmd JOB=1:$nj $dir/log/basis.acc.JOB.log \
-    ali-to-post "ark:gunzip -c $dir/train.ali.JOB.gz|" ark:- \| \
-    weight-silence-post $silence_weight $silphonelist $final_model ark:- ark:- \| \
-    gmm-post-to-gpost $final_model "$feats" ark:- ark:- \| \
-    gmm-basis-fmllr-accs-gpost --spk2utt=ark:${train_sdata}/JOB/spk2utt \
-    $final_model "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
-
-  # Compute the base matrices.
-  $cmd $dir/log/basis.training.log \
-    gmm-basis-fmllr-training $final_model $dir/fmllr.base.mats $dir/basis.acc.* || exit 1;
-  fmllr_basis=$dir/fmllr.base.mats
-fi
-##
-[ ! -f "$fmllr_basis" ] && echo "$0: no basis matrices $fmllr_basis " && exit 1;
 
 ## Do the speaker-independent decoding, if --si-dir option not present. ##
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
@@ -202,7 +140,7 @@ if [ $stage -le 1 ]; then
     gmm-est-basis-fmllr-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
     --fmllr-min-count=200  --num-iters=10 --size-scale=0.2 \
     --step-size-iters=3 --write-weights=ark:$dir/pre_wgt.JOB \
-    $adapt_model $fmllr_basis "$sifeats" ark,s,cs:- \
+     $adapt_model $srcdir/fmllr.basis "$sifeats" ark,s,cs:- \
     ark:$dir/pre_trans.JOB || exit 1;
 fi
 ##
@@ -235,7 +173,7 @@ if [ $stage -le 3 ]; then
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
     gmm-est-basis-fmllr --fmllr-min-count=200 \
     --spk2utt=ark:$sdata/JOB/spk2utt --write-weights=ark:$dir/trans_tmp_wgt.JOB \
-    $adapt_model $fmllr_basis "$pass1feats" ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
+    $adapt_model $srcdir/fmllr.basis "$pass1feats" ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
     compose-transforms --b-is-affine=true ark:$dir/trans_tmp.JOB ark:$dir/pre_trans.JOB \
     ark:$dir/trans.JOB  || exit 1;
 fi
@@ -264,4 +202,3 @@ local/score.sh --cmd "$cmd" $data $graphdir $dir
 rm $dir/{trans_tmp,pre_trans}.*
 
 exit 0;
-
