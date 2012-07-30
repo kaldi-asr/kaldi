@@ -20,7 +20,7 @@ steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/sgmm2_4a/graph data/test exp/sgmm2_4a/decode_fmllr || exit 1;
 
- #  Now we'll align the SGMM system to prepare for discriminative training.
+ # Now we'll align the SGMM system to prepare for discriminative training.
  steps/align_sgmm2.sh --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b \
     --use-graphs true --use-gselect true data/train data/lang exp/sgmm2_4a exp/sgmm2_4a_ali || exit 1;
  steps/make_denlats_sgmm2.sh --nj 8 --sub-split 20 --cmd "$decode_cmd" --transform-dir exp/tri3b \

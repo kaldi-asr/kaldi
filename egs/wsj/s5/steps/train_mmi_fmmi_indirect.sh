@@ -13,7 +13,7 @@
 cmd=run.pl
 schedule="fmmi mmi fmmi mmi fmmi mmi fmmi mmi"
 boost=0.0
-learning_rate=0.01
+learning_rate=0.02
 tau=200 # For model.  Note: we're doing smoothing "to the previous iteration",
     # so --smooth-from-model so 200 seems like a more sensible default
     # than 100.  We smooth to the previous iteration because now

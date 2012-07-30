@@ -1,4 +1,7 @@
 
+# These results are slightly out of date: since then I changed
+# the LDA+MLLT to use 7, not 9 frames of context, and also increased
+# the learning rate for the "indirect" fMMI.
 
 for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null

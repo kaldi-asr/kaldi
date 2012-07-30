@@ -1,3 +1,8 @@
+# These results are slightly out of date: since then I changed
+# the LDA+MLLT to use 7, not 9 frames of context, and also increased
+# the learning rate for the "indirect" fMMI.
+
+
 # The suffixes on the "wer" numbers are the inverses of the acoustic
 # scales.  Here, we show the best number on each test set.
 # [really, these scales should be tuned on a dev set, but we think it's

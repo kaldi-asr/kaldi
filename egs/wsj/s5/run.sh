@@ -144,6 +144,7 @@ steps/decode.sh --nj 8 --cmd "$decode_cmd" \
 
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
+   --splice-opts "--left-context=3 --right-context=3" \
    2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr || exit 1;

@@ -124,6 +124,7 @@ steps/align_si.sh --nj 30 --cmd "$train_cmd" \
 
 # Train tri3a, which is LDA+MLLT, on 30k_nodup data.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
+   --splice-opts "--left-context=3 --right-context=3" \
    2500 20000 data/train_30k_nodup data/lang exp/tri2_ali exp/tri3a || exit 1;
 (
   utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;

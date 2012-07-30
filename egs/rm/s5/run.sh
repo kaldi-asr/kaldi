@@ -83,6 +83,7 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 
 # train and decode tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" 1800 9000 \
+   --splice-opts "--left-context=3 --right-context=3" \
   data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
@@ -122,6 +123,7 @@ steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exi
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode || exit 1;
+
 
 
 # Align all data with LDA+MLLT+SAT system (tri3b)
@@ -167,7 +169,7 @@ for iter in 3 4 5 6 7 8; do
 done
 
 # for indirect one, use twice the learning rate.
-steps/train_mmi_fmmi_indirect.sh --learning-rate 0.002 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
+steps/train_mmi_fmmi_indirect.sh --learning-rate 0.01 --schedule "fmmi fmmi fmmi fmmi mmi mmi mmi mmi" \
   --boost 0.1 --cmd "$train_cmd" data/train data/lang exp/tri3b_ali exp/dubm3b exp/tri3b_denlats \
   exp/tri3b_fmmi_d || exit 1;
 
