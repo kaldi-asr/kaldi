@@ -82,9 +82,9 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
 # train and decode tri2b [LDA+MLLT]
-steps/train_lda_mllt.sh --cmd "$train_cmd" 1800 9000 \
-   --splice-opts "--left-context=3 --right-context=3" \
-  data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+steps/train_lda_mllt.sh --cmd "$train_cmd" \
+  --splice-opts "--left-context=3 --right-context=3" \
+ 1800 9000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b/decode
