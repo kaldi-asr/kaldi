@@ -132,10 +132,10 @@ class BasisFmllrEstimate {
   /// explicitly. Finally, it returns objective function improvement over
   /// all the iterations.
   /// See section 5.3 of the paper for more details.
-  double BasisFmllrCoefficients(const AffineXformStats &spk_stats,
-  	                            Matrix<BaseFloat> *out_xform,
-  	                            Vector<BaseFloat> *coefficient,
-    	                        BasisFmllrOptions options);
+  double ComputeTransform(const AffineXformStats &spk_stats,
+                          Matrix<BaseFloat> *out_xform,
+                          Vector<BaseFloat> *coefficients,
+                          BasisFmllrOptions options);
 
   /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases

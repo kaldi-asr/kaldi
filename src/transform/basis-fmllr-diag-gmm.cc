@@ -219,11 +219,11 @@ void BasisFmllrEstimate::EstimateFmllrBasis(
   }
 }
 
-double BasisFmllrEstimate::BasisFmllrCoefficients(
-                              const AffineXformStats &spk_stats,
-	                          Matrix<BaseFloat> *out_xform,
-	                          Vector<BaseFloat> *coefficient,
-	                          BasisFmllrOptions options) {
+double BasisFmllrEstimate::ComputeTransform(
+    const AffineXformStats &spk_stats,
+    Matrix<BaseFloat> *out_xform,
+    Vector<BaseFloat> *coefficient,
+    BasisFmllrOptions options) {
   KALDI_ASSERT(dim_ == spk_stats.dim_);
   if (spk_stats.beta_ < options.min_count) {
     KALDI_WARN << "Not updating fMLLR since count is below min-count: "
