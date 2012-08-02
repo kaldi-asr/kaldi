@@ -31,8 +31,44 @@ namespace kaldi {
 
 CuDevice::CuDevice()
  : enabled_(false), verbose_(true) {
-  int32 ret;
-  if ((ret = cublasInit()) == 0) {
+  //get number of devices
+  int32 N_GPU = 0;
+  cudaGetDeviceCount(&N_GPU);
+  //select device if more than one
+  if(N_GPU > 1) {
+    char name[128];
+#if (CUDA_VERSION >= 4000)
+    size_t free, total;
+#else
+    unsigned int free, total;
+#endif
+    std::vector<float> free_mem_ratio;
+    //get ratios of memory use
+    KALDI_LOG << "Selecting from " << N_GPU << " GPUs";
+    for(int32 n=0; n<N_GPU; n++) {
+      cuSafeCall(cudaSetDevice(n));//context created by cuSafeCall(...)
+      cuDeviceGetName(name,128,n);
+      cuSafeCall(cuMemGetInfo(&free,&total));
+      KALDI_LOG << "cudaSetDevice(" << n << "): " <<
+                << name << "\t";
+                << "free: " << free/1024/1024 << "M, "
+                << "total: "<< total/1024/1024 << "M, "
+                << "ratio: "<< free/(float)total;
+      free_mem_ratio.push_back(free/(float)total);
+      cudaThreadExit();//destroy context
+    }
+    //find GPU with max free memory
+    int32 max_id=0;
+    for(int32 n=1; n<free_mem_ratio.size(); n++) {
+      if(free_mem_ratio[n] > free_mem_ratio[max_id]) max_id=n;
+    }
+    KALDI_LOG << "Selected device: " << max_id << " (automatically)";
+    cuSafeCall(cudaSetDevice(max_id));
+  }
+    
+  if(N_GPU > 0) {
+    //initialize the CUBLAS
+    cuSafeCall(cublasInit());
     enabled_ = true;
   } else {
     KALDI_WARN << "CUDA will NOT be used!!! The cublasInit() returns: " << ret;
