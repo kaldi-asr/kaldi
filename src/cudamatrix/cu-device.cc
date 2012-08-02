@@ -22,6 +22,8 @@
 #include <cublas.h>
 #include <cuda.h>
 
+#include <vector>
+
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
 #include "base/kaldi-error.h"
@@ -49,8 +51,8 @@ CuDevice::CuDevice()
       cuSafeCall(cudaSetDevice(n));//context created by cuSafeCall(...)
       cuDeviceGetName(name,128,n);
       cuSafeCall(cuMemGetInfo(&free,&total));
-      KALDI_LOG << "cudaSetDevice(" << n << "): " <<
-                << name << "\t";
+      KALDI_LOG << "cudaSetDevice(" << n << "): "
+                << name << "\t"
                 << "free: " << free/1024/1024 << "M, "
                 << "total: "<< total/1024/1024 << "M, "
                 << "ratio: "<< free/(float)total;
@@ -71,7 +73,7 @@ CuDevice::CuDevice()
     cuSafeCall(cublasInit());
     enabled_ = true;
   } else {
-    KALDI_WARN << "CUDA will NOT be used!!! The cublasInit() returns: " << ret;
+    KALDI_WARN << "CUDA will NOT be used!!! No CUDA capable GPU detected...";
   }
 }
 
