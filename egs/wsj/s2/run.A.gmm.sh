@@ -5,6 +5,21 @@
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # might want to run this script on a machine that has plenty of memory.
 
+# you can change these commands to just run.pl to make them run
+# locally, but in that case you should change the num-jobs to
+# the #cpus on your machine or fewer.
+decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
+train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
+
+# put the scripts to path
+source path.sh
+
+
+######################################################
+### PREPARE THE DATA-SET                           ###
+######################################################
 
 # The next command line is an example; you have to give the script
 # command-line arguments corresponding to the WSJ disks from LDC.  
@@ -19,19 +34,6 @@ local/wsj_prepare_dict.sh || exit 1;
 
 local/wsj_format_data.sh || exit 1;
 
-# We suggest to run the next three commands in the background,
-# as they are not a precondition for the system building and
-# most of the tests: these commands build a dictionary
-# containing many of the OOVs in the WSJ LM training data,
-# and an LM trained directly on that data (i.e. not just
-# copying the arpa files from the disks from LDC).
-(
-# on CSLP: local/wsj_extend_dict.sh /export/corpora5/LDC/LDC94S13B/13-32.1/ && \
- local/wsj_extend_dict.sh /mnt/matylda2/data/WSJ1/13-32.1  && \
- local/wsj_prepare_local_dict.sh && \
- local/wsj_train_lms.sh && \
- local/wsj_format_data_local.sh
-) &
 
 
 # Now make MFCC features.
@@ -39,11 +41,16 @@ local/wsj_format_data.sh || exit 1;
 # want to store MFCC features.
 featdir=$PWD/exp/kaldi_wsj_feats
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
-  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 2
-  steps/make_fbank.sh data/$x exp/make_fbank/$x $featdir/fbank 2
+  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 4
+  steps/make_fbank.sh data/$x exp/make_fbank/$x $featdir/fbank 4
   ln -s $PWD/data/$x/feats.scp.mfcc data/$x/feats.scp #select mfcc as default
 done
 
+
+
+######################################################
+### PREPARE THE SUBSETS                            ###
+######################################################
 
 mkdir data/train_si84
 for x in feats.scp feats.scp.fbank text utt2spk wav.scp; do
@@ -58,23 +65,10 @@ scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2ksho
 # Now make subset with half of the data from si-84.
 scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 
-# you can change these commands to just run.pl to make them run
-# locally, but in that case you should change the num-jobs to
-# the #cpus on your machine or fewer.
-decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
-train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
-mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
-
-# put the scripts to path
-source path.sh
-
-
-
 
 
 ######################################################
-### FIRST WE NEED THE GMM MODELS TO GET ALIGNMENTS ###
+### TRAIN THE BASELINE GMM SYSTEMS                 ###
 ######################################################
 
 # ### A : mono0a ### #
@@ -209,9 +203,33 @@ done
 
 
 
+# ### F : tri3b ### #
+# Train tri2b, which is LDA+MLLT+SAT, on si84 data.
+numleavesL=(2500)
+for numleaves in ${numleavesL[@]}; do
+  dir=exp/tri3b-$numleaves
+  # Train
+  steps/train_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
+    $numleaves 15000 data/train_si84 data/lang exp/tri2b-2500_ali_si84 $dir || exit 1;
+  # Decode
+  (
+  $mkgraph_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh $dir/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt_sat.sh $dir/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
+  )&
 
+  # Align si84 with tri3b-2500
+ (steps/align_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
+    --use-graphs data/train_si84 data/lang $dir ${dir}_ali_si84)&
+  # Align si284 with tri2b-2500
+ (steps/align_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
+    data/train_si284 data/lang $dir ${dir}_ali_si284)&
+  # Align dev93 with tri2b-2500
+ (steps/align_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
+    data/test_dev93 data/lang $dir ${dir}_ali_dev93)&
 
-
+ wait 
+done
 
 
 
