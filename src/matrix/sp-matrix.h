@@ -245,13 +245,22 @@ class SpMatrix : public PackedMatrix<Real> {
   /// The following function does:
   /// this <-- beta*this  +  alpha * T * A * T^T.
   /// (*this) and A are allowed to be the same.
-  /// If transM == kTrans, then we do it as M^T * A * M.
+  /// If transM == kTrans, then we do it as alpha * T^T * A * T.
   /// Currently it just calls AddMat2Sp, but if needed we
   /// can implement it more efficiently.
   void AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
                 MatrixTransposeType transM, const SpMatrix<Real> &A,
                 const Real beta = 0.0);
 
+  /// The following function does:
+  /// this <-- beta*this  +  alpha * T * T^T.
+  /// (*this) and A are allowed to be the same.
+  /// If transM == kTrans, then we do it as alpha * T^T *  T
+  /// Currently it just calls AddMat2, but if needed we
+  /// can implement it more efficiently.
+  void AddTp2(const Real alpha, const TpMatrix<Real> &T,
+              MatrixTransposeType transM, const Real beta = 0.0);
+  
   
   /// Extension of rank-N update:
   /// this <-- beta*this + alpha * M * diag(v) * M^T.

@@ -27,6 +27,7 @@
 #include "matrix/tp-matrix.h"
 #include "matrix/matrix-functions.h"
 #include "matrix/srfft.h"
+#include "matrix/compressed-matrix.h"
 
 #endif
 

@@ -1263,5 +1263,20 @@ void SpMatrix<double>::AddTp2Sp(const double alpha, const TpMatrix<double> &T,
                                 MatrixTransposeType transM, const SpMatrix<double> &A,
                                 const double beta);
 
+template<class Real>
+void SpMatrix<Real>::AddTp2(const Real alpha, const TpMatrix<Real> &T,
+                            MatrixTransposeType transM, const Real beta) {
+  Matrix<Real> Tmat(T);
+  AddMat2(alpha, Tmat, transM, beta);
+}
+
+// Force instantiation.
+template
+void SpMatrix<float>::AddTp2(const float alpha, const TpMatrix<float> &T,
+                             MatrixTransposeType transM, const float beta);
+template
+void SpMatrix<double>::AddTp2(const double alpha, const TpMatrix<double> &T,
+                              MatrixTransposeType transM, const double beta);
+
 
 } // namespace kaldi

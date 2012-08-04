@@ -27,7 +27,7 @@ void AffineXformStats::Init(int32 dim, int32 num_gs) {
   if (dim == 0) {
     if (num_gs != 0) {
       KALDI_WARN << "Ignoring 'num_gs' (=" << num_gs << ") argument since "
-          << "dim = 0.";
+                 << "dim = 0.";
     }
     beta_ = 0.0;
     K_.Resize(0, 0);

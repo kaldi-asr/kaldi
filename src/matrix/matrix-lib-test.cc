@@ -1358,6 +1358,24 @@ static void UnitTestTp2Sp() {
   }
 }
 
+template<class Real>
+static void UnitTestTp2() {
+  // Tests AddTp2()
+  for (int iter = 0; iter < 4; iter++) {
+	MatrixIndexT dimM = 10 + rand()%3;    
+  
+    TpMatrix<Real> T(dimM);
+    InitRand(&T);
+
+    Matrix<Real> M(T);
+
+    SpMatrix<Real> A(dimM), B(dimM);
+    A.AddTp2(0.5, T, (iter < 2 ? kNoTrans : kTrans), 0.0);
+    B.AddMat2(0.5, M, (iter < 2 ? kNoTrans : kTrans), 0.0);
+    AssertEqual(A, B);
+  }
+}
+
 
 template<class Real>
 static void UnitTestTransposeScatter() {
@@ -2769,8 +2787,73 @@ static void UnitTestPca() {
 }
 
 
+template<class Real> static void UnitTestCompressedMatrix() {
+  // This is the basic test.
+  for (int32 n = 0; n < 100; n++) {
+    int32 num_rows = rand() % 10, num_cols = rand() % 10;
+    if (num_rows * num_cols == 0) {
+      num_rows = 0;
+      num_cols = 0;
+    }
+    Matrix<Real> M(num_rows, num_cols);
+    if (rand() % 3 != 0) InitRand(&M);
+    else {
+      M.Add(RandGauss());
+    }
+    if (rand() % 2 == 0 && num_rows != 0) { // set one row to all the same value,
+      // which is one possible pathology.
+      // Give it large dynamic range to increase chance that it
+      // is the largest or smallest value in the matrix.
+      M.Row(rand() % num_rows).Set(RandGauss() * 4.0);
+    }
+    double rand_val = RandGauss() * 4.0;
+    // set a bunch of elements to all one value: increases
+    // chance of pathologies.
+    int modulus = 1 + rand() % 5;
+    for (int r = 0; r < num_rows; r++)
+      for (int c = 0; c < num_cols; c++)
+        if (rand() % modulus == 0) M(r, c) = rand_val;
+
+    CompressedMatrix cmat(M);
+
+    Matrix<Real> M2;
+    cmat.CopyToMat(&M2);
+    
+    Matrix<Real> diff(M2);
+    diff.AddMat(-1.0, M);
+
+    if (n < 5) { // test I/O.
+      bool binary = (n % 2 == 1);
+      {
+        std::ofstream outs("tmpf", std::ios_base::out |std::ios_base::binary);
+        InitKaldiOutputStream(outs, binary);
+        cmat.Write(outs, binary);
+      }
+      CompressedMatrix cmat2;
+      {
+        bool binary_in;
+        std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
+        InitKaldiInputStream(ins, &binary_in);
+        cmat2.Read(ins, binary_in);
+      }
+      Matrix<Real> M3;
+      cmat2.CopyToMat(&M3);
+      AssertEqual(M2, M3); // tests I/O of CompressedMatrix.
+    }
+    std::cout << "M = " << M;
+    std::cout << "M2 = " << M2;
+    double tot = M.FrobeniusNorm(), err = diff.FrobeniusNorm();
+    KALDI_LOG << "Compressed matrix, tot = " << tot << ", diff = "
+              << err;
+    KALDI_ASSERT(err <= 0.01 * tot);
+  }
+}
+  
+
+
 template<class Real> static void MatrixUnitTest() {
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
+  UnitTestCompressedMatrix<Real>();
   UnitTestResize<Real>();
   UnitTestMatrixExponentialBackprop();
   UnitTestMatrixExponential<Real>();
@@ -2859,6 +2942,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestAddVecToCols<Real>();
   UnitTestAddVecCross();
   UnitTestTp2Sp<Real>();
+  UnitTestTp2<Real>();
   //  SlowMatMul<Real>();  
 }
 
