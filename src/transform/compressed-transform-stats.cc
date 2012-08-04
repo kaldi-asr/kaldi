@@ -57,14 +57,7 @@ void CompressedAffineXformStats::CopyFromAffineXformStats(
     SubVector<double> this_row(Gtmp, i);
     PrepareOneG(input.G_[i], beta_, &this_row);
     ExtractOneG(this_row, beta_, &Gi_tmp);
-    { // TESTING
-      SpMatrix<double> diff(Gi_tmp);
-      diff.AddSp(-1.0, input.G_[i]);
-      double diff_norm = diff.FrobeniusNorm();
-      double orig_norm = input.G_[i].FrobeniusNorm();
-      KALDI_LOG << "diff_norm is " << diff_norm << ", orig_norm is " << orig_norm;
-      KALDI_ASSERT(diff_norm <= 0.001 * orig_norm);
-    }
+
     // At this stage we use the difference betwen Gi and Gi_tmp to
     // make a correction to K_.
     Vector<double> old_g_row(dim+1), new_g_row(dim+1);
