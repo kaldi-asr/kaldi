@@ -2,7 +2,7 @@
 
 . cmd.sh
 
-
+mfccdir=mfcc
 # Make "per-utterance" versions of the test sets where the speaker
 # information corresponds to utterances-- to demonstrate adaptation on
 # short utterances, particularly for basis fMLLR
@@ -61,4 +61,5 @@ steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri3b/graph_tgpr data/test_dev93_utt exp/tri3b/decode_tgpr_dev93_basis_utt || exit 1;
 steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3b/graph_tgpr data/test_eval92_utt exp/tri3b/decode_tgpr_eval92_basis_utt || exit 1;
+
 
