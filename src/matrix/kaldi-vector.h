@@ -218,7 +218,7 @@ class VectorBase {
   /// Extracts a row of the symmetric matrix S.
   template<typename OtherReal>
   void CopyRowFromSp(const SpMatrix<OtherReal> &S, MatrixIndexT row);
-
+  
   /// Extracts a column of the matrix M.
   void CopyColFromMat(const MatrixBase<Real>& M , MatrixIndexT col);
 

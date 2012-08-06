@@ -90,7 +90,7 @@ void VectorBase<float>::AddMatVec(const float alpha,
                                   const VectorBase<float> &rv,
                                   const float beta) {
   KALDI_ASSERT((trans == kNoTrans && rM.NumCols() == rv.dim_ && rM.NumRows() == dim_)
-      || (trans == kTrans && rM.NumRows() == rv.dim_ && rM.NumCols() == dim_));
+               || (trans == kTrans && rM.NumRows() == rv.dim_ && rM.NumCols() == dim_));
   KALDI_ASSERT(&rv != this);
   cblas_sgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), rM.NumRows(),
               rM.NumCols(), alpha, rM.Data(), rM.Stride(), rv.Data(), 1, beta,
@@ -104,7 +104,7 @@ void VectorBase<double>::AddMatVec(const double alpha,
                                    const VectorBase<double> &rv,
                                    const double beta) {
   KALDI_ASSERT((trans == kNoTrans && rM.NumCols() == rv.dim_ && rM.NumRows() == dim_)
-      || (trans == kTrans && rM.NumRows() == rv.dim_ && rM.NumCols() == dim_));
+               || (trans == kTrans && rM.NumRows() == rv.dim_ && rM.NumCols() == dim_));
   KALDI_ASSERT(&rv != this);
   cblas_dgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), rM.NumRows(),
               rM.NumCols(), alpha, rM.Data(), rM.Stride(), rv.Data(), 1, beta,
@@ -424,7 +424,7 @@ void VectorBase<Real>::ApplyPow(Real power) {
     for (MatrixIndexT i = 0; i < dim_; i++) {
       if (!(data_[i] >= 0.0))
         KALDI_ERR << "Cannot take square root of negative value "
-                   << data_[i];
+                  << data_[i];
       data_[i] = sqrt(data_[i]);
     }
   } else {
@@ -462,14 +462,14 @@ Real VectorBase<Real>::Norm(Real p) const {
       tmp = pow(std::abs(data_[i]), p);
       if (tmp == HUGE_VAL) {  // HUGE_VAL is what pow returns on error.
         KALDI_ERR << "Could not raise element " << i << "to power " << p
-            << ": returned value = " << tmp;
+                  << ": returned value = " << tmp;
       }
       sum += tmp;
     }
     tmp = pow(sum, static_cast<Real>(1.0/p));
     if (tmp == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
       KALDI_ERR << "Could not take the " << p << "-th root of " << sum
-          << "; returned value = " << tmp;
+                << "; returned value = " << tmp;
     }
     return tmp;
   }
@@ -478,7 +478,7 @@ Real VectorBase<Real>::Norm(Real p) const {
 template<typename Real>
 bool VectorBase<Real>::ApproxEqual(const VectorBase<Real> &other, float tol) const {
   if (dim_ != other.dim_) KALDI_ERR << "ApproxEqual: size mismatch "
-                                   << dim_ << " vs. " << other.dim_;
+                                    << dim_ << " vs. " << other.dim_;
   Vector<Real> tmp(*this);
   tmp.AddVec(-1.0, other);
   return (tmp.Norm(2.0) <= static_cast<Real>(tol) * this->Norm(2.0));

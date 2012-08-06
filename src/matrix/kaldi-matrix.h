@@ -646,7 +646,8 @@ bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr);
 template<typename Real>
 class SubMatrix : public MatrixBase<Real> {
  public:
-  // Input matrix is not really const since SubMatrix can change its contents.
+  // This initializer is against the proper semantics of "const", since
+  // SubMatrix can change its contents.
   SubMatrix(const MatrixBase<Real>& T,
             const MatrixIndexT ro,  // row offset, 0 < ro < NumRows()
             const MatrixIndexT r,   // number of rows, r > 0
@@ -654,7 +655,7 @@ class SubMatrix : public MatrixBase<Real> {
             const MatrixIndexT c);  // number of columns, c > 0
 
   ~SubMatrix<Real>() {}
-
+  
   /// This type of constructor is needed for Range() to work [in Matrix base
   /// class]. Cannot make it explicit.
   SubMatrix<Real> (const SubMatrix &other) :
@@ -662,7 +663,7 @@ class SubMatrix : public MatrixBase<Real> {
           other.stride_) {}
 
  private:
-  /// Disallow assignment. If needed can add.
+  /// Disallow assignment.
   SubMatrix<Real> &operator = (const SubMatrix<Real> &other);
 };
 /// @} End of "addtogroup matrix_funcs_io".
