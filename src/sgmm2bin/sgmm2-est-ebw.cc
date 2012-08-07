@@ -18,7 +18,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 #include "hmm/transition-model.h"
 #include "sgmm2/estimate-am-sgmm-ebw.h"
 

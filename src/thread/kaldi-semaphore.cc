@@ -18,12 +18,12 @@
 
 
 #include "base/kaldi-error.h"
-#include "util/kaldi-semaphore.h"
+#include "thread/kaldi-semaphore.h"
 
 namespace kaldi {
 
   
-Semaphore::Semaphore(int initValue) {
+Semaphore::Semaphore(int32 initValue) {
   counter_ = initValue;
   if(0 != pthread_mutex_init(&mutex_, NULL)) {
     KALDI_ERR << "Cannot initialize pthread mutex";
@@ -47,7 +47,7 @@ Semaphore::~Semaphore() {
 
 
 bool Semaphore::TryWait() {
-  int ret = 0;
+  int32 ret = 0;
   bool try_wait_succeeded = false;
   ret |= pthread_mutex_lock(&mutex_);
   if(counter_ > 0) {
@@ -64,7 +64,7 @@ bool Semaphore::TryWait() {
 
 
 void Semaphore::Wait() {
-  int ret = 0;
+  int32 ret = 0;
   ret |= pthread_mutex_lock(&mutex_);
   while(counter_ <= 0) {
     ret |= pthread_cond_wait(&cond_, &mutex_);
@@ -79,7 +79,7 @@ void Semaphore::Wait() {
 
 
 void Semaphore::Post() {
-  int ret = 0;
+  int32 ret = 0;
   ret |= pthread_mutex_lock(&mutex_);
   counter_++;
   ret |= pthread_cond_signal(&cond_);

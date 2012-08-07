@@ -1,16 +1,13 @@
+
 all:
 
-OPENFST_CXXFLAGS = 
-OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = am-sgmm-test estimate-am-sgmm-test fmllr-sgmm-test \
-	estimate-am-sgmm-multi-test
+TESTFILES = kaldi-thread-test
 
-OBJFILES = am-sgmm.o estimate-am-sgmm.o fmllr-sgmm.o sgmm-clusterable.o \
-         estimate-am-sgmm-ebw.o estimate-am-sgmm-multi.o
+OBJFILES =  kaldi-thread.o kaldi-mutex.o kaldi-semaphore.o kaldi-barrier.o
 
-LIBFILE = kaldi-sgmm.a
+LIBFILE = kaldi-thread.a
 
 all:  $(LIBFILE)
 
@@ -20,8 +17,7 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 
-$(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
-   ../thread/kaldi-thread.a ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a
+$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:

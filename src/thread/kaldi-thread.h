@@ -60,8 +60,8 @@ class ExampleClass {
     return NULL;
   }  
  public:
-  int thread_id_; // 0 <= thread_number < num_threads
-  int num_threads_;
+  int32 thread_id_; // 0 <= thread_number < num_threads
+  int32 num_threads_;
   
  private:
   // Have additional member variables as needed.
@@ -85,7 +85,7 @@ template<class C> void RunMultiThreaded(const C &c_in) {
     for (int32 thread = 0; thread < g_num_threads; thread++) {
       cvec[thread].thread_id_ = thread;
       cvec[thread].num_threads_ = g_num_threads;
-      int ret;
+      int32 ret;
       if ((ret=pthread_create(&(threads[thread]),
                               &pthread_attr, C::run, &(cvec[thread])))) {
         const char *c = strerror(ret);

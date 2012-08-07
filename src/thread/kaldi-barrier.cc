@@ -18,14 +18,14 @@
 
 #include <pthread.h>
 #include "base/kaldi-error.h"
-#include "util/kaldi-barrier.h"
+#include "thread/kaldi-barrier.h"
 
 
 namespace kaldi {
 
 
 
-Barrier::Barrier(int threshold)
+Barrier::Barrier(int32 threshold)
  : threshold_(threshold), counter_(threshold), cycle_(0) {
 
   if(0 != pthread_mutex_init(&mutex_, NULL))
@@ -60,7 +60,7 @@ Barrier::~Barrier() {
 
 
 
-void Barrier::SetThreshold(int thr) {
+void Barrier::SetThreshold(int32 thr) {
   if(counter_ != threshold_) {
     KALDI_ERR << "Cannot set threshold, while some thread(s) are waiting";
   }
@@ -74,16 +74,16 @@ void Barrier::SetThreshold(int thr) {
  * A broadcast wakes all the waiting threads when the counter_ reaches 0.
  * The last incoming thread returns -1, the others 0.
  */
-int Barrier::Wait() {
+int32 Barrier::Wait() {
   if(threshold_ == 0)
     KALDI_ERR << "Cannot wait when ``threshold'' value was not set";
 
   if(0 != pthread_mutex_lock(&mutex_)) 
     KALDI_ERR << "Cannot lock pthread mutex";
 
-  int cycle = cycle_;   // memorize which cycle we're in 
+  int32 cycle = cycle_;   // memorize which cycle we're in 
 
-  int ret;
+  int32 ret;
   if(--counter_ == 0) { ///<< THIS IS LAST THREAD
     cycle_ = !cycle_;
     counter_ = threshold_;
@@ -101,7 +101,7 @@ int Barrier::Wait() {
      * Wait with thread cancellation disabled, barrier waiting
      * should not be a cancellation point.
      */
-    int cancel, tmp;
+    int32 cancel, tmp;
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel);
 
     /*

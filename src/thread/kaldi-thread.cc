@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 int32 g_num_threads = 8; // Initialize this global variable.

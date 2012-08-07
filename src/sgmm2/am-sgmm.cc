@@ -26,7 +26,7 @@
 using std::vector;
 
 #include "sgmm2/am-sgmm.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 

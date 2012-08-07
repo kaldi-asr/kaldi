@@ -1,4 +1,4 @@
-// util/kaldi-mutex.h
+// util/kaldi-semaphore.h
 
 // Copyright 2012  Karel Vesely (Brno University of Technology)
 
@@ -16,41 +16,40 @@
 // limitations under the License.
 
 
-#ifndef KALDI_UTIL_KALDI_MUTEX_H_
-#define KALDI_UTIL_KALDI_MUTEX_H_ 1
+#ifndef KALDI_THREAD_KALDI_SEMAPHORE_H_
+#define KALDI_THREAD_KALDI_SEMAPHORE_H_ 1
 
 #include <pthread.h>
 
 namespace kaldi {
-
-/**
- * This class encapsulates mutex to ensure 
- * exclusive access to some critical section
- * which manipulates shared resources.
- *
- * Note.: The mutex MUST BE UNLOCKED from 
- * the SAME THREAD which has locked it!
- */
-class Mutex {
+  
+class Semaphore {
  public:
-  Mutex();
-  ~Mutex();
+  Semaphore(int32 initValue = 0); 
+  ~Semaphore();
 
-  void Lock();
+  bool TryWait(); ///< Returns true if Wait() goes through
+  void Wait(); ///< decrease the counter
+  void Post(); ///< increase the counter
 
   /**
-   * Try to lock the mutex without waiting for it.
-   * Returns: true when lock successfull,
-   *         false when mutex was already locked
-   */
-  bool TryLock();
-
-  void Unlock();
+   * retrns the counter value, 
+   * zero means no resources, the Wait() will block
+   */ 
+  int32 GetValue() {
+    return counter_; 
+  }
 
  private:
+  int32 counter_; ///< the semaphore counter, 0 means block on Wait() 
+  
   pthread_mutex_t mutex_;
+  pthread_cond_t cond_;
+
 };
 
-} // namespace kaldi
 
-#endif // KALDI_UTIL_KALDI_MUTEX_H_
+
+} //namespace
+
+#endif // KALDI_THREAD_KALDI_SEMAPHORE_H_

@@ -24,7 +24,7 @@
 using std::vector;
 
 #include "sgmm2/am-sgmm-project.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 #include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm-normal.h"
 

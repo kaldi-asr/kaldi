@@ -46,14 +46,15 @@ bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnetbin_cpu l
 base:
 matrix : base
 util: base matrix
+thread: util
 feat: base matrix util gmm transform
 tree: base util matrix
 optimization: base matrix
 gmm: base util matrix tree
 tied: base util matrix gmm tree transform
 transform: base util matrix gmm tree
-sgmm: base util matrix gmm tree transform
-sgmm2: base util matrix gmm tree transform
+sgmm: base util matrix gmm tree transform thread
+sgmm2: base util matrix gmm tree transform thread
 fstext: base util matrix tree
 hmm: base tree matrix 
 lm: base util

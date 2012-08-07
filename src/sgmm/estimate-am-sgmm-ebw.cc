@@ -17,7 +17,7 @@
 
 #include "base/kaldi-common.h"
 #include "sgmm/estimate-am-sgmm-ebw.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 using std::vector;
 
 namespace kaldi {

@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_UTIL_KALDI_BARRIER_H_
-#define KALDI_UTIL_KALDI_BARRIER_H_ 1
+#ifndef KALDI_THREAD_KALDI_BARRIER_H_
+#define KALDI_THREAD_KALDI_BARRIER_H_ 1
 
 
 #include <pthread.h>
@@ -32,23 +32,23 @@ namespace kaldi {
  */
 class Barrier {
  public:
-  Barrier(int threshold=0);
+  Barrier(int32 threshold=0);
   ~Barrier();
 
-  void SetThreshold(int thr); ///< number of threads to wait for
-  int Wait(); ///< last thread returns -1, the others 0
+  void SetThreshold(int32 thr); ///< number of threads to wait for
+  int32 Wait(); ///< last thread returns -1, the others 0
 
  private:
   pthread_mutex_t     mutex_;     ///< Mutex which control access to barrier 
   pthread_cond_t      cv_;        ///< Conditional variable to make barrier wait
 
-  int                 threshold_; ///< size of thread-group
-  int                 counter_;   ///< number of threads we wait for
-  int                 cycle_;     ///< cycle flag to keep synchronized
+  int32                 threshold_; ///< size of thread-group
+  int32                 counter_;   ///< number of threads we wait for
+  int32                 cycle_;     ///< cycle flag to keep synchronized
 
 };
 
 } // namespace kaldi
 
-#endif // KALDI_UTIL_KALDI_BARRIER_H_
+#endif // KALDI_THREAD_KALDI_BARRIER_H_
 

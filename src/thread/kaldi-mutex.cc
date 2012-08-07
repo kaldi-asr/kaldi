@@ -20,7 +20,7 @@
 #include <cerrno>
 
 #include "base/kaldi-error.h"
-#include "util/kaldi-mutex.h"
+#include "thread/kaldi-mutex.h"
 
 namespace kaldi {
   
@@ -44,7 +44,7 @@ void Mutex::Lock() {
 
  
 bool Mutex::TryLock() {
-  int ret = pthread_mutex_trylock(&mutex_);
+  int32 ret = pthread_mutex_trylock(&mutex_);
   bool lock_succeeded = false;
   switch (ret) {
     case 0: lock_succeeded = true;

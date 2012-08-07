@@ -17,7 +17,7 @@
 
 
 #include "base/kaldi-common.h"
-#include "util/kaldi-thread.h"
+#include "thread/kaldi-thread.h"
 
 
 
@@ -30,10 +30,10 @@ class MyThreadClass { // Sums up integers from 0 to max_to_count-1.
                                                private_counter_(0) { }
   // Use default copy constructor and assignment operators.
   void operator () () {
-    int block_size = (max_to_count_+ (num_threads_-1) ) / num_threads_;
-    int start = block_size * thread_id_,
+    int32 block_size = (max_to_count_+ (num_threads_-1) ) / num_threads_;
+    int32 start = block_size * thread_id_,
         end = std::min(max_to_count_, start + block_size);
-    for (int j = start; j < end; j++)
+    for (int32 j = start; j < end; j++)
       private_counter_ += j*j;
   }
   ~MyThreadClass() {
@@ -47,8 +47,8 @@ class MyThreadClass { // Sums up integers from 0 to max_to_count-1.
   }  
   
  public:
-  int thread_id_; // 0 <= thread_number < num_threads
-  int num_threads_;
+  int32 thread_id_; // 0 <= thread_number < num_threads
+  int32 num_threads_;
   
  private:
   MyThreadClass() { };  // Disallow empty constructor.
@@ -78,7 +78,7 @@ void TestThreads() {
 
 }  // end namespace kaldi.
 
-int main() {
+int32 main() {
   using namespace kaldi;
   TestThreads();
 }
