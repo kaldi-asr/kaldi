@@ -29,8 +29,8 @@ num_gselect=50 # Number of Gaussian-selection indices to use while training
 
 
 if [ $# != 5 ]; then
-  echo "Usage: steps/train_ubm_lda_etc.sh <num-gauss> <data> <lang> <alignment-dir|src-dir> <dir>"
-  echo " e.g.: steps/train_ubm_lda_etc.sh 400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c"
+  echo "Usage: steps/train_diag_ubm.sh <num-gauss> <data> <lang> <alignment-dir|src-dir> <dir>"
+  echo " e.g.: steps/train_diag_ubm.sh 400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm3c"
   echo "Options: "
   echo "  --silence-weight <sil-weight>                  # default 1.0.  Use to down-weight silence."
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."

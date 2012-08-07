@@ -44,6 +44,7 @@ sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
 mkdir -p $dir/log
+cp $srcdir/splice_opts $dir 2>/dev/null
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 

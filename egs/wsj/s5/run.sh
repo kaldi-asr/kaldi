@@ -1,4 +1,4 @@
-#!/bin/bash
+s#!/bin/bash
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -199,19 +199,7 @@ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
 # At this point you could run the command below; this gets
 # results that demonstrate the basis-fMLLR adaptation (adaptation
 # on small amounts of adaptation data).
-# local/run_basis_fmllr.sh
-
-
- # steps/decode_fmllr_thresh.sh --nj 10 --cmd "$decode_cmd" \
- #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh || exit 1;
- # steps/decode_fmllr_thresh.sh --nj 8 --cmd "$decode_cmd" \
- #   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92_thresh || exit 1;
-
- # steps/decode_fmllr_thresh.sh --threshold 0.99 --nj 10 --cmd "$decode_cmd" \
- #   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_thresh_2 || exit 1;
- # steps/decode_fmllr_thresh.sh --threshold 0.99 --nj 8 --cmd "$decode_cmd" \
- #   exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92_thresh_2 || exit 1;
-
+local/run_basis_fmllr.sh
 
 steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
   data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
