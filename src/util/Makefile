@@ -8,7 +8,8 @@ TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     kaldi-table-test kaldi-thread-test
 
 OBJFILES = text-utils.o kaldi-io.o \
-          kaldi-table.o parse-options.o simple-io-funcs.o kaldi-thread.o
+          kaldi-table.o parse-options.o simple-io-funcs.o kaldi-thread.o \
+	  kaldi-mutex.o kaldi-semaphore.o kaldi-barrier.o
 
 LIBFILE = kaldi-util.a
 
