@@ -1,6 +1,7 @@
 // lat/lattice-functions.h
 
-// Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
+//                       Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +76,14 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// we do reorder).
 void ConvertLatticeToPhones(const TransitionModel &trans_model,
                             Lattice *lat);
+
+
+/// Given a lattice, and a transition model to map pdf-ids to phones,
+/// replace the sequences of transition-ids with sequences of phones.
+/// Note that this is different from ConvertLatticeToPhones, in that
+/// we replace the transition-ids not the words.
+void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
+                                   CompactLattice *clat);
 
 /// Boosts LM probabilities by b * [#frame errors]; equivalently, adds
 /// -b*[#frame errors] to the graph-component of the cost of each arc/path.

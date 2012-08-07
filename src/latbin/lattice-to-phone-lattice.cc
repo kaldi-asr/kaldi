@@ -33,13 +33,17 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Convert the words (or whatever other output labels are on the lattice)\n"
-        "into phones, worked out from the alignment (needs the transition model\n"
-        "to work out the phone sequence from the transition-ids)\n"
+        "Convert the words or transition-ids into phones, which are worked out\n"
+        "from the transition-ids.  If --replace-words=true (true by default),\n"
+        "replaces the words with phones, otherwise replaces the transition-ids.\n"
+        "\n"
         "Usage: lattice-to-phone-lattice [options] model lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-to-phone-lattice 1.mdl ark:1.lats ark:phones.lats\n";
       
     ParseOptions po(usage);
+    bool replace_words = true;
+    po.Register("replace-words", &replace_words,
+                "If true, replace words with phones; otherwise replace transition-ids with phones.");
     
     po.Read(argc, argv);
 
@@ -48,8 +52,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string
-        model_rxfilename = po.GetArg(1),
+    std::string model_rxfilename = po.GetArg(1),
         lats_rspecifier = po.GetArg(2),
         lats_wspecifier = po.GetArg(3);
     
@@ -59,18 +62,28 @@ int main(int argc, char *argv[]) {
     
     ReadKaldiObject(model_rxfilename, &trans_model);
     
-    SequentialLatticeReader lattice_reader(lats_rspecifier); // read as
-    // regular lattice.
+    SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     CompactLatticeWriter clat_writer(lats_wspecifier); // write as compact.
-    for (; !lattice_reader.Done(); lattice_reader.Next(), n_done++) {
-      Lattice lat(lattice_reader.Value());
-      ConvertLatticeToPhones(trans_model, &lat);
-      CompactLattice clat;
-      ConvertLattice(lat, &clat);
-      clat_writer.Write(lattice_reader.Key(), clat);
+    for (; !clat_reader.Done(); clat_reader.Next(), n_done++) {
+      if (replace_words) {
+        Lattice lat;
+        ConvertLattice(clat_reader.Value(), &lat);
+        ConvertLatticeToPhones(trans_model, &lat); // this function replaces words -> phones
+        CompactLattice clat;
+        ConvertLattice(lat, &clat);
+        clat_writer.Write(clat_reader.Key(), clat);
+      } else { // replace transition-ids with phones.
+        CompactLattice clat(clat_reader.Value());
+        ConvertCompactLatticeToPhones(trans_model, &clat);
+        // this function replaces transition-ids with phones.  We do it in the
+        // CompactLattice form, in order to preserve the alignment of
+        // transition-id sequences/phones-sequences to words [e.g. if you just
+        // did lattice-align-words].
+        clat_writer.Write(clat_reader.Key(), clat);
+      }
       n_done++;
     }
-    KALDI_LOG << "Done copying " << n_done << " lattices.";
+    KALDI_LOG << "Done converting " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

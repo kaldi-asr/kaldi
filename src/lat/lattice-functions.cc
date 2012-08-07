@@ -217,6 +217,28 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
   }  // end looping over states
 }
 
+void ConvertCompactLatticeToPhones(const TransitionModel &trans,
+                                   CompactLattice *clat) {
+  typedef CompactLatticeArc Arc;
+  int32 num_states = clat->NumStates();
+  for (int32 state = 0; state < num_states; state++) {
+    for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+         !aiter.Done();
+         aiter.Next()) {
+      Arc arc(aiter.Value());
+      std::vector<int32> phone_seq;
+      const std::vector<int32> &tid_seq = arc.weight.String();
+      for (std::vector<int32>::const_iterator iter = tid_seq.begin();
+           iter != tid_seq.end(); ++iter) {
+        if (trans.IsFinal(*iter))// note: there is one of these per phone...
+          phone_seq.push_back(trans.TransitionIdToPhone(arc.ilabel));
+      }
+      arc.weight.SetString(phone_seq);
+      aiter.SetValue(arc);
+    } // end looping over arcs
+  }  // end looping over states
+}
+
 bool LatticeBoost(const TransitionModel &trans,
                   const std::vector<std::set<int32> > &active_phones,
                   const std::vector<int32> &silence_phones,
