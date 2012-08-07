@@ -23,12 +23,23 @@
     \ref tutorial_svn "Next: Version control with Subversion" <BR>
 
   The first step is to download and install Kaldi.  We will be using version 1 of
-  the toolkit, so that this tutorial does not get out of date.  Assuming
-  Subversion (svn) is installed, type:
+  the toolkit, so that this tutorial does not get out of date.  However, be aware
+ that the code and scripts in the "trunk" (which is always up to date) is easier to
+ install and is generally better.  If you use the "trunk" code you can also try to
+ use the most recent scripts, which are in directory "egs/rm/s5", rather than the
+ "s3" scripts mentioned in this tutorial.  But be aware that if you do that some
+ aspects of the tutorial may be out of date.
+
+  Assuming Subversion (svn) is installed, in order to get the "version-1" code 
+  you can type:
   \verbatim
     svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
   \endverbatim
-  Then cd to kaldi-1.  Look at the INSTALL file and follow the instructions 
+  or for the trunk, type:
+  \verbatim
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/trunk kaldi-trunk
+  \endverbatim
+  Then cd to kaldi-1 (or kaldi-trunk).  Look at the INSTALL file and follow the instructions 
   (it points you to two subdirectories).  Look carefully at the output of the
   installation scripts, as they try to guide you what to do.  Some installation
   errors are non-fatal, and the installation scripts will tell you so (i.e. there 
