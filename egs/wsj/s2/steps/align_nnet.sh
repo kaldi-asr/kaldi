@@ -18,7 +18,7 @@
 
 # This script does training-data alignment given a neural network
 # built using CMN and TRAPs-DCT feature extraction.
-# experimental directory, is ali, tree, final.nnet and transition.mdl
+# experimental directory, is ali, tree, final.nnet and final.mdl
 # (the last three are just copied from the source directory). 
 
 # Option to use precompiled graphs from last phase, if these
@@ -76,8 +76,7 @@ mkdir -p $dir
 cp $nnet $dir/final.nnet || exit 1;  # Create copy of that model...
 nnet=$dir/final.nnet
 cp $srcdir/tree $dir/tree || exit 1; # and the tree...
-cp $srcdir/transition.mdl $dir/transition.mdl || exit 1; # and the transition model...
-cp $dir/transition.mdl $dir/final.mdl
+cp $srcdir/final.mdl $dir/final.mdl || exit 1; # and the transition model...
 
 #TODO: same as GMMs?
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.12 --self-loop-scale=0.1"
@@ -101,11 +100,11 @@ if [ -z "$graphs" ]; then # --graphs option not supplied [-z means empty string]
   # compute integer form of transcripts.
   scripts/sym2int.pl --map-oov "$oov_sym" --ignore-first-field $lang/words.txt < $data/text > $dir/train.tra \
     || exit 1;
-  align-mapped $scale_opts --beam=8 --retry-beam=40 $dir/tree $dir/transition.mdl $lang/L.fst \
+  align-mapped $scale_opts --beam=8 --retry-beam=40 $dir/tree $dir/final.mdl $lang/L.fst \
    "$feats" ark:$dir/train.tra ark:$dir/ali 2> $dir/align.log || exit 1;
   rm $dir/train.tra
 else
-  align-compiled-mapped $scale_opts --beam=8 --retry-beam=40 $dir/transition.mdl \
+  align-compiled-mapped $scale_opts --beam=8 --retry-beam=40 $dir/final.mdl \
    "$graphs" "$feats" ark:$dir/ali 2> $dir/align.log || exit 1;
 fi
 

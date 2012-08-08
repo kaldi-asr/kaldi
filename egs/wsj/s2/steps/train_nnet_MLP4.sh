@@ -121,7 +121,7 @@ ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels 2> $dir/
 #get the priors, count the class examples from alignments
 scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
-copy-transition-model --binary=false $alidir/final.mdl $dir/transition.mdl
+copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
 cp $alidir/tree $dir/tree
 
 ###### PREPARE FEATURES ######
@@ -176,7 +176,7 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:-
 ###### INITIALIZE THE NNET ######
 echo -n "Initializng MLP: "
 num_fea=$((fea_dim*dct_basis))
-num_tgt=$(gmm-copy --print-args=false --binary=false $alidir/final.mdl - 2>$dir/gmm-copy.log | grep NUMPDFS | awk '{ print $4 }')
+num_tgt=$(hmm-info $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
 num_hid=$(awk "BEGIN{ num_hid= -($num_fea+$num_tgt) / 2 + sqrt(($num_fea+$num_tgt)^2 + 4*$modelsize) / 2; print int(num_hid) }") # D=sqrt(b^2-4ac); x=(-b+/-D) / 2a
 mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_hid}_${num_tgt}.init
 echo " $mlp_init"

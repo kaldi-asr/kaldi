@@ -64,7 +64,7 @@ if [ ! -f $srcdir/final.nnet ]; then
    exit 1;
 fi
 
-if [[ ! -f $graphdir/HCLG.fst || $graphdir/HCLG.fst -ot $srcdir/transition.mdl ]]; then
+if [[ ! -f $graphdir/HCLG.fst || $graphdir/HCLG.fst -ot $srcdir/final.mdl ]]; then
    echo "Graph $graphdir/HCLG.fst does not exist or is too old."
    exit 1;
 fi
@@ -86,7 +86,7 @@ feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:-
 # More normal, LVCSR setups would have a beam of 13 and acwt of 1/15 or so.
 # If you decode with a beam of 20 on an LVCSR setup it will be very slow.
 decode-faster-mapped --beam=$beam --acoustic-scale=${acousticscale:-0.1429} --word-symbol-table=$lang/words.txt \
-  $srcdir/transition.mdl $graphdir/HCLG.fst "$feats" ark,t:$dir/test.tra ark,t:$dir/test.ali \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" ark,t:$dir/test.tra ark,t:$dir/test.ali \
      2> $dir/decode.log || exit 1;
 
 

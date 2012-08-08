@@ -122,7 +122,7 @@ ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels 2> $dir/
 #get the priors, count the class examples from alignments
 scripts/count_class_frames.awk $dir/cur.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
-copy-transition-model --binary=false $alidir/final.mdl $dir/transition.mdl
+copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
 cp $alidir/tree $dir/tree
 
 ###### PREPARE FEATURES ######

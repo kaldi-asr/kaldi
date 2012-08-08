@@ -74,7 +74,7 @@ else
   mydata=$data
 fi
 
-requirements="$mydata/feats.scp.fbank $srcdir/final.nnet $srcdir/transition.mdl $graphdir/HCLG.fst"
+requirements="$mydata/feats.scp.fbank $srcdir/final.nnet $srcdir/final.mdl $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -s $f ]; then
      echo "decode_deltas.sh: no such file $f";
@@ -94,7 +94,7 @@ feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:-
 
 latgen-faster-mapped --max-active=7000 --beam=13.0 --lattice-beam=6.0 --acoustic-scale=${acousticscale:-0.1429} \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $srcdir/transition.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
+  $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
      2> $dir/decode$jobid.log || exit 1;
 
 
