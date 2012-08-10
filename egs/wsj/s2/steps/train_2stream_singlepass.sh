@@ -91,6 +91,12 @@ if [ ! -f $alidir/final.mdl ]; then
   exit 1;
 fi
 
+if [ ! -d $transf2dir ]; then
+  echo "transf2dir : $transf2dir does not exist!";
+  exit 1;
+fi
+
+
 echo scale_opts: ${scale_opts:="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"}
 realign_iters="10 20 30";
 oov_sym=`cat $lang/oov.txt`
@@ -115,6 +121,12 @@ fi
 
 rm $dir/.error 2>/dev/null
 
+# Copy the final transforms of individual streams
+[ ! -f $alidir/final.mat ] && echo "Feature transform for stream-1 '$alidir/final.mat' does not exist!" && exit 1;
+[ ! -f $transf2dir/final.mat ] && echo "Feature transform for stream-2 '$transf2dir/final.mat' does not exist!" && exit 1;
+cp $alidir/final.mat $dir/final_s1.mat
+cp $transf2dir/final.mat $dir/final_s2.mat
+
 
 echo "Computing CMVN stats"
 for n in `get_splits.pl $nj`; do
@@ -131,17 +143,15 @@ wait;
 # WITH THE TRANSFORM!
 for n in `get_splits.pl $nj`; do
   splicedfeatspart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$data/split$nj/$n/utt2spk ark:$dir/$n.cmvn scp:$data/split$nj/$n/feats.scp ark:- |"
-  featspart[$n]="${splicedfeatspart[$n]} transform-feats $transf2dir/final.mat ark:- ark:- |"
+  featspart[$n]="${splicedfeatspart[$n]} transform-feats $dir/final_s2.mat ark:- ark:- |"
 done
 
 # mfcc features with LDA + MLLT for single pass retraining 
 # WITH THE TRANSFORM!
 for n in `get_splits.pl $nj`; do
-  mfccpart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$mfcc/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$mfcc/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+  mfccpart[$n]="ark:apply-cmvn --norm-vars=false --utt2spk=ark:$mfcc/split$nj/$n/utt2spk ark:$alidir/$n.cmvn scp:$mfcc/split$nj/$n/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $dir/final_s1.mat ark:- ark:- |"
 done
 
-cp $alidir/final.mat $dir/final_s1.mat
-cp $transf2dir/final.mat $dir/final_s2.mat
 
 # define the nerged features
 for n in `get_splits.pl $nj`; do

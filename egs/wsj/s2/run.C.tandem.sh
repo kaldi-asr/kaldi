@@ -78,7 +78,7 @@ numleavesL=(2500)
 for numleaves in ${numleavesL[@]}; do
   dir=${nndir}_gmm-${numleaves}_2stream_singlepass
   ali=exp/tri2b-${numleaves}_ali
-  tnd=exp/mono1a_nnet-linBN-5L_lr1e-4_gmm-2500_singlepass
+  tnd=${nndir}_gmm-${numleaves}_singlepass #get dir 1-stream tandem experiment
   # Train
   steps/train_2stream_singlepass.sh --num-jobs 10 --cmd "$train_cmd" \
      $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang ${ali}_si84 $tnd $dir || exit 1;
