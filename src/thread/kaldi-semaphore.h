@@ -30,10 +30,10 @@ class Semaphore {
 
   bool TryWait(); ///< Returns true if Wait() goes through
   void Wait(); ///< decrease the counter
-  void Post(); ///< increase the counter
-
+  void Signal(); ///< increase the counter
+  
   /**
-   * retrns the counter value, 
+   * returns the counter value, 
    * zero means no resources, the Wait() will block
    */ 
   int32 GetValue() {

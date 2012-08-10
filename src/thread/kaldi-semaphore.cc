@@ -78,7 +78,7 @@ void Semaphore::Wait() {
 
 
 
-void Semaphore::Post() {
+void Semaphore::Signal() {
   int32 ret = 0;
   ret |= pthread_mutex_lock(&mutex_);
   counter_++;

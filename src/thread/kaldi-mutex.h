@@ -44,7 +44,7 @@ class Mutex {
    *         false when mutex was already locked
    */
   bool TryLock();
-
+  
   void Unlock();
 
  private:

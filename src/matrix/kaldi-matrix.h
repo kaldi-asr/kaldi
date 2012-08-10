@@ -366,7 +366,7 @@ class MatrixBase {
   
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
-               MatrixTransposeType transA = kNoTrans);
+              MatrixTransposeType transA = kNoTrans);
 
   /// *this += alpha * S
   template<class OtherReal>
