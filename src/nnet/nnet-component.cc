@@ -29,7 +29,9 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kBiasedLinearity,"<biasedlinearity>" },
   { Component::kSigmoid,"<sigmoid>" },
   { Component::kSoftmax,"<softmax>" },
-  { Component::kRbm,"<rbm>" }
+  { Component::kRbm,"<rbm>" },
+  { Component::kExpand,"<expand>" },
+  { Component::kCopy,"<copy>" }
 };
 
 

@@ -73,7 +73,7 @@ template<typename Real> inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32
 template<typename Real> inline void cuda_randomize(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
 //CURRENTLY UNUSED...
 template<typename Real> inline void cuda_expand(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
-template<typename Real> inline void cuda_rearrange(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
+template<typename Real> inline void cuda_copy(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
 
 
 
@@ -116,7 +116,7 @@ template<> inline void cuda_diff_xent<float>(dim3 Gr, dim3 Bl, const int32_cuda 
 template<> inline void cuda_randomize<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaF_randomize(Gr,Bl,y,x,copy_from,d_out,d_in); }
 //CURRENTLY UNUSED...
 template<> inline void cuda_expand<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaF_expand(Gr,Bl,y,x,off,d_out,d_in); }
-template<> inline void cuda_rearrange<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaF_rearrange(Gr,Bl,y,x,copy_from,d_out,d_in); }
+template<> inline void cuda_copy<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaF_copy(Gr,Bl,y,x,copy_from,d_out,d_in); }
 
 
 /*********************************************************
@@ -158,7 +158,7 @@ template<> inline void cuda_diff_xent<double>(dim3 Gr, dim3 Bl, const int32_cuda
 template<> inline void cuda_randomize<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaD_randomize(Gr,Bl,y,x,copy_from,d_out,d_in); }
 //CURRENTLY UNUSED...
 template<> inline void cuda_expand<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaD_expand(Gr,Bl,y,x,off,d_out,d_in); }
-template<> inline void cuda_rearrange<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaD_rearrange(Gr,Bl,y,x,copy_from,d_out,d_in); }
+template<> inline void cuda_copy<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaD_copy(Gr,Bl,y,x,copy_from,d_out,d_in); }
 
 } // namespace
 

@@ -305,6 +305,80 @@ void Randomize(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_id
 
 
 
+template<typename Real>
+void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt) {
+
+  assert(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
+  assert(src.NumRows() == tgt->NumRows());
+
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    
+    cuda_expand(dimGrid, dimBlock, tgt->Data(), src.Data(), frame_offsets.Data(), tgt->Dim(), src.Dim());
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    // expand in CPU
+    const MatrixBase<Real> &srcmat = src.Mat();
+    const std::vector<int32> &frame_offsetvec = frame_offsets.Vec();
+    MatrixBase<Real> &tgtmat = tgt->Mat();
+    //
+    for(int32 r=0; r < tgtmat.NumRows(); r++) {
+      for(int32 off=0; off < frame_offsetvec.size(); off++) {
+        int32 r_off = r + frame_offsetvec[off];
+        if(r_off < 0) r_off = 0;
+        if(r_off >= srcmat.NumRows()) r_off = srcmat.NumRows()-1;
+        memcpy(tgtmat.RowData(r)+off*srcmat.NumCols(),srcmat.RowData(r_off),sizeof(Real)*srcmat.NumCols());
+      }
+    }
+  }
+}
+
+
+
+template<typename Real>
+void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices, CuMatrix<Real> *tgt) { 
+
+  assert(copy_from_indices.Dim() == tgt->NumCols());
+  assert(src.NumRows() == tgt->NumRows());
+
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    
+    cuda_copy(dimGrid, dimBlock, tgt->Data(), src.Data(), copy_from_indices.Data(), tgt->Dim(), src.Dim());
+    cuSafeCall(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    // expand in CPU
+    const MatrixBase<Real> &srcmat = src.Mat();
+    const std::vector<int32> &copy_from_indicesvec = copy_from_indices.Vec();
+    MatrixBase<Real> &tgtmat = tgt->Mat();
+    //
+    for(int32 r=0; r < tgtmat.NumRows(); r++) {
+      for(int32 c=0; c < copy_from_indicesvec.size(); c++) {
+        tgtmat(r,c) = srcmat(r,copy_from_indicesvec[c]);
+      }
+    }
+  }
+}
+
+
+
+
 } //namespace cu
 
 } //namespace kaldi

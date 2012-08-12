@@ -379,7 +379,7 @@ static void _expand(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_o
 
 template<typename Real>
 __global__
-static void _rearrange(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
+static void _copy(Real* y, const Real* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d_out.stride;
@@ -599,8 +599,8 @@ void cudaF_expand(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* 
   _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
 }
 
-void cudaF_rearrange(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
-  _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+void cudaF_copy(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
+  _copy<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
 }
   
 void cudaF_randomize(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) { 
@@ -711,8 +711,8 @@ void cudaD_expand(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda
   _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
 }
 
-void cudaD_rearrange(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
-  _rearrange<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
+void cudaD_copy(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
+  _copy<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
 }
   
 void cudaD_randomize(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) { 

@@ -70,9 +70,18 @@ namespace cu {
   template<typename Real>
   void DiffXent(const CuStlVector<int32> &tgt, CuMatrix<Real> *net_out_or_diff, CuVector<Real> *log_post_tgt);
 
-  /// ie. switch rows according to copyFrom   
+  /// ie. switch rows according to copy_from_idx
   template<typename Real>
   void Randomize(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_idx, CuMatrix<Real> *tgt);
+
+  /// ie. concatenate the frames with offsets from frame_offsets
+  template<typename Real>
+  void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt);
+
+  /// ie. concatenate the frames with offsets from frame_offsets
+  template<typename Real>
+  void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices, CuMatrix<Real> *tgt);
+
 
 
 } // namespace cu
