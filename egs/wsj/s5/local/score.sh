@@ -24,12 +24,12 @@ mkdir -p $dir/scoring/log
 
 cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/test_filt.txt
 
-$cmd LMWT=9:20 $dir/scoring/log/best_path.LMWT.log \
+$cmd LMWT=5:30 $dir/scoring/log/best_path.LMWT.log \
   lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
     "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
 
 # Note: the double level of quoting for the sed command
-$cmd LMWT=9:20 $dir/scoring/log/score.LMWT.log \
+$cmd LMWT=5:30 $dir/scoring/log/score.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \
     utils/int2sym.pl -f 2- $symtab \| sed 's:\<UNK\>::g' \| \
     compute-wer --text --mode=present \

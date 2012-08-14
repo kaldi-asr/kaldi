@@ -1,4 +1,4 @@
-s#!/bin/bash
+#!/bin/bash
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -280,6 +280,8 @@ local/run_mmi_tri4b.sh
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
 
+# You probably wany to run the hybrid recipe as it is complementary:
+local/run_hybrid.sh
 
 
 # Getting results [see RESULTS file]
