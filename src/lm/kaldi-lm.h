@@ -74,12 +74,14 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
             GrammarType gtype,
             fst::SymbolTable *pst = NULL,
             bool useNaturalLog = true,
+            bool reverse = false,
             const string startSent = "<s>",
             const string endSent = "</s>") {
     if (pfst_) delete pfst_;
     pfst_ = ReadStream(strm, sourcename,
                        gtype, pst,
                        useNaturalLog,
+                       reverse,
                        startSent, endSent);
     return(pfst_ ? true : false);
   }
@@ -89,6 +91,7 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
             GrammarType gtype,
             fst::SymbolTable *pst = 0,
             bool useNaturalLog = true,
+            bool reverse = false,
             const string startSent = "<s>",
             const string endSent = "</s>") {
     if (pfst_) { delete pfst_; pfst_ = NULL; }
@@ -100,11 +103,13 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
       pfst_ = ReadStream(strm, filename,
                          gtype, pst,
                          useNaturalLog,
+                         reverse,
                          startSent, endSent);
     } else {
       pfst_ = ReadStream(std::cin, "standard input",
                          gtype, pst,
                          useNaturalLog,
+                         reverse,
                          startSent, endSent);
     }
     return(pfst_ ? true : false);
@@ -129,6 +134,7 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
                                           GrammarType gtype,
                                           fst::SymbolTable *pst,
                                           bool useNaturalLog,
+                                          bool reverse,
                                           const string startSent,
                                           const string endSent);
   void ReadTxtString(std::istream &strm);

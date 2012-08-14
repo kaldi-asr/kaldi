@@ -74,6 +74,7 @@ fst::StdVectorFst* LangModelFst::ReadStream(
                                             GrammarType gtype,
                                             fst::SymbolTable *pst,
                                             bool useNaturalLog,
+                                            bool reverse,
                                             const string startSent,
                                             const string endSent) {
   if (gtype == kArpaLm || gtype == kTextString) {
@@ -100,7 +101,7 @@ fst::StdVectorFst* LangModelFst::ReadStream(
 
     if (gtype == kArpaLm) {
       LmTable lmt;
-      lmt.ReadFstFromLmFile(strm, pfst_, useNaturalLog, startSent, endSent);
+      lmt.ReadFstFromLmFile(strm,pfst_,useNaturalLog,reverse,startSent,endSent);
     } else if (gtype== kTextString) {
       ReadTxtString(strm);
     }

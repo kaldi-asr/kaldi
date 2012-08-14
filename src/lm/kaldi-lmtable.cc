@@ -99,7 +99,7 @@ void LmFstConverter::AddArcsForNgramProb(
                          const string endSent) {
   fst::StdArc::StateId src, dst, dbo;
   std::string curwrd = ngs[1];
-  int64 ilab, olab;
+  int64 ilab, olab, bo_ilab, bo_olab;
   LmWeight prob = convertArpaLogProbToWeight(logProb);
   LmWeight bow  = convertArpaLogProbToWeight(logBow);
   bool newSrc, newDbo, newDst = false;
@@ -107,15 +107,7 @@ void LmFstConverter::AddArcsForNgramProb(
   if (ilev >= 2) {
     // General case works from N down to 2-grams
     src = AddStateFromSymb(ngs,   ilev,   2, "_", pfst, psst, newSrc);
-    if (ilev != maxlev) {
-	  // add all intermediate levels from 2 to current
-	  // last ones will be current backoff source and destination
-	  for (int iilev=2; iilev <= ilev; iilev++) {
-		dst = AddStateFromSymb(ngs, iilev,   1, "_", pfst, psst, newDst);
-		dbo = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDbo);
-		bkState_[dst] = dbo;
-	  }
-    } else {
+    if (ilev == maxlev) {
 	  // add all intermediate levels from 2 to current
 	  // last ones will be current backoff source and destination
 	  for (int iilev=2; iilev <= ilev; iilev++) {
@@ -123,42 +115,108 @@ void LmFstConverter::AddArcsForNgramProb(
 		dbo = AddStateFromSymb(ngs, iilev-2, 1, "_", pfst, psst, newDbo);
 		bkState_[dst] = dbo;
 	  }
+    } else {
+      // add all intermediate levels from 2 to current
+	  // last ones will be current backoff source and destination
+	  for (int iilev=2; iilev <= ilev; iilev++) {
+		dst = AddStateFromSymb(ngs, iilev,   1, "_", pfst, psst, newDst);
+		dbo = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDbo);
+		bkState_[dst] = dbo;
+	  }
     }
   } else {
     // special case for 1-grams: start from 0-gram
-    if (curwrd.compare(startSent) != 0) {
-      src = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newSrc);
-    } else {
-      // extra special case if in addition we are at beginning of sentence
-      // starts from initial state and has no cost
-      src = pfst->Start();
-      prob = fst::StdArc::Weight::One();
-    }
     dst = AddStateFromSymb(ngs, 1, 1, "_", pfst, psst, newDst);
     dbo = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newDbo);
 	bkState_[dst] = dbo;
+    if (curwrd.compare(startSent) != 0) {
+      src = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newSrc);
+    } else {
+      if (!reverse_) {
+        // extra special case if in addition we are at beginning of sentence
+        // starts from initial state and has no cost
+        src = pfst->Start();
+        prob = fst::StdArc::Weight::One();
+      } else { // becomes end of sentence when reversing
+        pfst->SetFinal(dst, fst::StdArc::Weight::One());
+        src = fst::kNoStateId;
+      }
+    }
   }
 
   // state is final if last word is end of sentence
   if (curwrd.compare(endSent) == 0) {
-    pfst->SetFinal(dst, fst::StdArc::Weight::One());
+    if (!reverse_) {
+      pfst->SetFinal(dst, fst::StdArc::Weight::One());
+    } else { // becomes sentence begin when reversing
+      dbo = pfst->Start();
+      bow = fst::StdArc::Weight::One();
+    }
   }
   // add labels to symbol tables
-  ilab = pfst->MutableInputSymbols()->AddSymbol(curwrd);
-  olab = pfst->MutableOutputSymbols()->AddSymbol(curwrd);
+  if (!reverse_) {
+    ilab = pfst->MutableInputSymbols()->AddSymbol(curwrd);
+    olab = pfst->MutableOutputSymbols()->AddSymbol(curwrd);
+    bo_ilab = 0;
+    bo_olab = 0;
+  } else {
+    KALDI_ASSERT(ilev <= 2 && ilev > 0);
+    if (ilev == 2) { // other word in bigram as label
+      std::string other = ngs[2];
+      if (other.compare(endSent) == 0) {
+        ilab = pfst->MutableInputSymbols()->AddSymbol(startSent);
+        olab = pfst->MutableOutputSymbols()->AddSymbol(startSent);
+      } else if (other.compare(startSent) == 0) {
+        ilab = pfst->MutableInputSymbols()->AddSymbol(endSent);
+        olab = pfst->MutableOutputSymbols()->AddSymbol(endSent);
+      } else {
+        ilab = pfst->MutableInputSymbols()->AddSymbol(other);
+        olab = pfst->MutableOutputSymbols()->AddSymbol(other);
+      }
+      // no backoff arcs needed at top-level
+    } else if (ilev == 1) {
+      ilab = 0;
+      olab = 0;
+      if (curwrd.compare(endSent) == 0) {
+        bo_ilab = pfst->MutableInputSymbols()->AddSymbol(startSent);
+        bo_olab = pfst->MutableOutputSymbols()->AddSymbol(startSent);
+      } else if (curwrd.compare(startSent) == 0) {
+        bo_ilab = pfst->MutableInputSymbols()->AddSymbol(endSent);
+        bo_olab = pfst->MutableOutputSymbols()->AddSymbol(endSent);
+      } else {
+        bo_ilab = pfst->MutableInputSymbols()->AddSymbol(curwrd);
+        bo_olab = pfst->MutableOutputSymbols()->AddSymbol(curwrd);
+      }
+    }
+  }
 
   // add arc with weight "prob" between source and destination states
   // cerr << "n-gram prob, fstAddArc: src "<< src << " dst " << dst;
   // cerr << " lab " << ilab << endl;
-  pfst->AddArc(src, fst::StdArc(ilab, olab, prob, dst));
+  if (!reverse_) {
+    pfst->AddArc(src, fst::StdArc(ilab, olab, prob, dst));
+  } else {
+    if (!IsFinal(pfst, dst)) {
+      pfst->AddArc(dst, fst::StdArc(ilab, olab, prob, src));
+    }
+  }
 
   // add backoffs to any newly created destination state
   // but only if non-final
-  if (!IsFinal(pfst, dst) && newDst && dbo != dst) {
-    ilab = olab = 0;
-    // cerr << "backoff, fstAddArc: src "<< src << " dst " << dst;
-    // cerr << " lab " << ilab << endl;
-    pfst->AddArc(dst, fst::StdArc(ilab, olab, bow, dbo));
+  if (newDst && dbo != dst) {
+    if (!reverse_) {
+      if (!IsFinal(pfst, dst)) {
+        // cerr << "backoff, fstAddArc: src "<< src << " dst " << dst;
+        // cerr << " lab " << ilab << endl;
+        pfst->AddArc(dst, fst::StdArc(bo_ilab, bo_olab, bow, dbo));
+      }
+    } else {
+      if (IsFinal(pfst, dst)) { // replace beginSent
+        bo_ilab = pfst->MutableInputSymbols()->AddSymbol(endSent);
+        bo_olab = pfst->MutableOutputSymbols()->AddSymbol(endSent);
+      }
+      pfst->AddArc(dbo, fst::StdArc(bo_ilab, bo_olab, bow, dst));
+    }
   }
 }
 
@@ -167,6 +225,7 @@ void LmFstConverter::AddArcsForNgramProb(
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                                 fst::StdVectorFst *pfst,
                                 bool useNaturalOpt,
+                                bool reverse,
                                 const string startSent,
                                 const string endSent) {
 #ifdef KALDI_PARANOID
@@ -175,6 +234,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 #endif
 
   conv_->UseNaturalLog(useNaturalOpt);
+  conv_->CreateFst(reverse);
 
   // use state symbol table for word histories
   fst::SymbolTable *pStateSymbs = new fst::SymbolTable("kaldi-lm-state");
@@ -216,7 +276,9 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     // reached end of loop without having found any n-gram
     KALDI_ERR << "No ngrams found in specified file";
   }
-
+  if (reverse && maxlev > 2) {
+    KALDI_ERR << "ARPA reversal for higher order ngrams not supported";
+  }
   // process "\N-grams:" sections, we may have already read a "\N-grams:" line
   // if so, process it, otherwise get another line
   while (inpline.find("-grams:") != string::npos
@@ -317,12 +379,15 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                                 fst::StdVectorFst *pfst,
                                 bool useNaturalOpt,
+                                bool reverse,
                                 const string startSent,
                                 const string endSent) {
+  if (reverse) KALDI_ERR << "ARPA reversal not supported by IRSTLM";
   load(istrm, "input name?", "output name?", 0, NONE);
   ngram ng(this->getDict(), 0);
 
   conv_->UseNaturalLog(useNaturalOpt);
+  conv_->CreateFst(reverse);
   DumpStart(ng, pfst, startSent, endSent);
 
   // should do some check before returning true
@@ -368,6 +433,9 @@ void LmTable::DumpContinue(ngram ng, int ilev, int elev,
   KALDI_ASSERT(ipos >= 0 && epos <= cursize[ilev] && ipos < epos);
   KALDI_ASSERT(pStateSymbs);
 #endif
+  if (reverse && maxlev > 2) {
+    KALDI_ERR << "ARPA reversal for higher order ngrams not supported";
+  }
 
   ng.pushc(0);
 
