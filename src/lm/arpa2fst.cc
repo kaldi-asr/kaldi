@@ -36,9 +36,7 @@ int main(int argc, char *argv[]) {
     kaldi::ParseOptions po(usage);
 
     bool natural_base = true;
-    bool reverse = false;
     po.Register("natural-base", &natural_base, "Use log-base e (not log-base 10)");
-    po.Register("reverse", &reverse, "Generate reversed FST");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 1 && po.NumArgs() != 2) {
@@ -52,7 +50,7 @@ int main(int argc, char *argv[]) {
 
     kaldi::LangModelFst lm;
     // read from standard input and write to standard output
-    lm.Read(arpa_filename, kaldi::kArpaLm, NULL, natural_base, reverse);
+    lm.Read(arpa_filename, kaldi::kArpaLm, NULL, natural_base);
     lm.Write(fst_filename);
     exit(0);
   } catch(const std::exception &e) {

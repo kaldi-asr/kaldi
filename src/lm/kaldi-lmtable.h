@@ -78,8 +78,6 @@ class LmFstConverter {
 
   void UseNaturalLog(bool use_natural) { use_natural_log_ = use_natural; }
 
-  void CreateFst(bool reverse) { reverse_ = reverse; }
-  
   void AddArcsForNgramProb(int ilev,
                            int maxlev,
                            float prob,
@@ -117,7 +115,6 @@ class LmFstConverter {
                             bool &newlyAdded);
 
   bool use_natural_log_;
-  bool reverse_;
   BkStateMap bkState_;
 };
 
@@ -136,7 +133,6 @@ class LmTable {
   bool ReadFstFromLmFile(std::istream &istrm,
                          fst::StdVectorFst *pfst,
                          bool useNaturalLog,
-                         bool reverse,
                          const string startSent,
                          const string endSent);
  private:
@@ -160,8 +156,7 @@ class LmTable : public lmtable {
   ///   void load(std::istream& inp, ...);
   bool ReadFstFromLmFile(std::istream &istrm,
                        fst::StdVectorFst *pfst,
-                       bool useNaturalOpt,
-                       bool reverse,
+                        bool useNaturalOpt,
                        const string startSent,
                        const string endSent);
  private:
