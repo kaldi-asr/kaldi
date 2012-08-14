@@ -57,7 +57,7 @@ class Expand : public Component {
     frame_offsets_.CopyFromVec(vec_i); 
   }
 
-  void WriteData(std::ostream &os, bool binary) {
+  void WriteData(std::ostream &os, bool binary) const {
     std::vector<int32> vec_i;
     frame_offsets_.CopyToVec(&vec_i);
     Vector<double> vec_d(vec_i.size());
@@ -111,7 +111,7 @@ class Copy : public Component {
     copy_from_indices_.CopyFromVec(vec_i); 
   }
 
-  void WriteData(std::ostream &os, bool binary) { 
+  void WriteData(std::ostream &os, bool binary) const { 
     std::vector<int32> vec_i;
     copy_from_indices_.CopyToVec(&vec_i);
     Vector<double> vec_d(vec_i.size());

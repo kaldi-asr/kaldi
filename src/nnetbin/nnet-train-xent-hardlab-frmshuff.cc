@@ -35,9 +35,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = false, 
-         crossvalidate = false;
+         crossvalidate = false,
+         randomize = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
+    po.Register("randomize", &randomize, "Perform the frame-level shuffling within the Cache::");
 
     BaseFloat learn_rate = 0.008,
         momentum = 0.0,
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
         time_next += t_features.Elapsed();
       }
       // randomize
-      if (!crossvalidate) {
+      if (!crossvalidate && randomize) {
         cache.Randomize();
       }
       // report
