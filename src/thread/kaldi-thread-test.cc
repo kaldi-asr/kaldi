@@ -78,7 +78,7 @@ void TestThreads() {
 
 }  // end namespace kaldi.
 
-int32 main() {
+int main() {
   using namespace kaldi;
   TestThreads();
 }

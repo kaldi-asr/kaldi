@@ -26,6 +26,7 @@
 #include "sgmm2/am-sgmm.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 

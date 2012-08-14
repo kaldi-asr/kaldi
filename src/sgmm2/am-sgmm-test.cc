@@ -247,7 +247,7 @@ void TestSgmm2PreXform(const AmSgmm2 &sgmm) {
   b_inv.CopyColFromMat(inv_xform, dim);
   kaldi::Matrix<BaseFloat> res_mat(dim, dim, kaldi::kSetZero);
   res_mat.AddMatMat(1.0, a_pre, kaldi::kNoTrans, a_inv, kaldi::kNoTrans, 0.0);
-  KALDI_ASSERT(res_mat.IsUnit(1.0e-6));
+  KALDI_ASSERT(res_mat.IsUnit(1.0e-5));
   kaldi::Vector<BaseFloat> res_vec(dim, kaldi::kSetZero);
   res_vec.AddMatVec(1.0, a_inv, kaldi::kNoTrans, b_pre, 0.0);
   res_vec.AddVec(1.0, b_inv);

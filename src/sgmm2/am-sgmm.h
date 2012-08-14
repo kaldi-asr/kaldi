@@ -30,6 +30,7 @@
 #include "gmm/full-gmm.h"
 #include "util/parse-options.h"
 #include "util/table-types.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 /*
