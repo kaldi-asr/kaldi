@@ -221,7 +221,9 @@ void SpliceFrames(const MatrixBase<BaseFloat> &input_features,
                   int32 right_context,
                   Matrix<BaseFloat> *output_features);
 
-
+// ReverseFrames reverses the frames in time (used for backwards decoding)
+void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
+                  Matrix<BaseFloat> *output_features);
 
 class MelBanks;
 

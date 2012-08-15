@@ -304,5 +304,17 @@ void SpliceFrames(const MatrixBase<BaseFloat> &input_features,
   }
 }
 
+void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
+                   Matrix<BaseFloat> *output_features) {
+  int32 T = input_features.NumRows(), D = input_features.NumCols();
+  if (T == 0 || D == 0)
+    KALDI_ERR << "ReverseFrames: empty input\n";
+  output_features->Resize(T, D);
+  for (int32 t = 0; t < T; t++) {
+    SubVector<BaseFloat> dst_row(*output_features, t);
+    SubVector<BaseFloat> src_row(input_features, T-1-t);
+    dst_row.CopyFromVec(src_row);
+  }
+}
 
 } // namespace kaldi

@@ -31,6 +31,7 @@ sil_prob=0.5
 num_sil_states=5
 num_nonsil_states=3
 share_silence_phones=false  # if true, then share pdfs of different silence phones
+reverse=false
   # together.
 # end configuration sections
 
@@ -45,6 +46,7 @@ if [ $# -ne 4 ]; then
   echo "     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models."
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all non-silence phones. "
+  echo "     --reverse (true|false)                          # reverse lexicon."
   exit 1;
 fi
 
@@ -65,7 +67,14 @@ utils/validate_dict_dir.pl $srcdir || exit 1;
 perl -ane '@A=split(" ",$_); $w = shift @A; @A>0||die;
   if(@A==1) { print "$w $A[0]_S\n"; } else { print "$w $A[0]_B ";
     for($n=1;$n<@A-1;$n++) { print "$A[$n]_I "; } print "$A[$n]_E\n"; } ' \
-  <$srcdir/lexicon.txt >$tmpdir/lexicon.txt || exit 1;
+  <$srcdir/lexicon.txt >$tmpdir/lexicon.original || exit 1;
+
+if $reverse; then
+  echo "reversing lexicon."
+  cat $tmpdir/lexicon.original | awk '{printf "%s ",$1;for(i=NF;i>1;i--){printf "%s ",$i;}printf "\n"}' >$tmpdir/lexicon.txt
+else
+  mv $tmpdir/lexicon.original $tmpdir/lexicon.txt
+fi
 
 # create $tmpdir/phone_map.txt
 # this has the format (on each line)

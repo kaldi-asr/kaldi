@@ -15,10 +15,12 @@
 
 N=3
 P=1
+reverse=false
 
 for x in `seq 2`; do 
   [ "$1" == "--mono" ] && N=1 && P=0 && shift;
   [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
+  [ "$1" == "--reverse" ] && reverse=true && shift;
 done
 
 if [ $# != 3 ]; then
@@ -74,9 +76,16 @@ fi
 
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
-    --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
-     > $dir/Ha.fst  || exit 1;
+  if $reverse; then
+    make-h-transducer --reverse=true --push_weights=true \
+      --disambig-syms-out=$dir/disambig_tid.int \
+      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+      > $dir/Ha.fst  || exit 1;
+  else
+    make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+      --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
+       > $dir/Ha.fst  || exit 1;
+  fi
 fi
 
 if [[ ! -s $dir/HCLGa.fst || $dir/HCLGa.fst -ot $dir/Ha.fst || \

@@ -25,6 +25,7 @@
 #include "decoder/lattice-faster-decoder.h"
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
+#include "feat/feature-functions.h"  // feature reversal
 
 
 namespace kaldi {
@@ -138,6 +139,7 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
+    bool reverse = false;
     
     std::string word_syms_filename;
     config.Register(&po);
@@ -145,6 +147,7 @@ int main(int argc, char *argv[]) {
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    po.Register("reverse", &reverse, "If true, decode on time-reversed features.");
     
     po.Read(argc, argv);
 
@@ -210,15 +213,20 @@ int main(int argc, char *argv[]) {
     
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
-          Matrix<BaseFloat> features (feature_reader.Value());
+          Matrix<BaseFloat> original_features (feature_reader.Value());
           feature_reader.FreeCurrent();
-          if (features.NumRows() == 0) {
+          if (original_features.NumRows() == 0) {
             KALDI_WARN << "Zero-length utterance: " << utt;
             num_fail++;
             continue;
           }
-      
-          DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
+          Matrix<BaseFloat> reversed_features;
+          Matrix<BaseFloat> *features = &original_features;
+          if (reverse) {
+            ReverseFrames(*features, &reversed_features);
+            features = &reversed_features;
+          }
+          DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, *features,
                                                  acoustic_scale);
 
 
@@ -227,7 +235,7 @@ int main(int argc, char *argv[]) {
                               determinize, allow_partial, &alignment_writer, &words_writer,
                               &compact_lattice_writer, &lattice_writer, &like)) {
             tot_like += like;
-            frame_count += features.NumRows();
+            frame_count += original_features.NumRows();
             num_success++;
           } else num_fail++;
         }
@@ -244,21 +252,28 @@ int main(int argc, char *argv[]) {
           num_fail++;
           continue;
         }
-        const Matrix<BaseFloat> &features = feature_reader.Value(utt);
-        if (features.NumRows() == 0) {
+        const Matrix<BaseFloat> &original_features = feature_reader.Value(utt);
+        if (original_features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << utt;
           num_fail++;
           continue;
         }
+        Matrix<BaseFloat> reversed_features;
+        Matrix<BaseFloat> *features = const_cast<Matrix<BaseFloat> *>(&original_features);
+        if (reverse) {
+          ReverseFrames(*features, &reversed_features);
+          features = &reversed_features;
+        }
+
         LatticeFasterDecoder decoder(fst_reader.Value(), config);
-        DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
+        DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, *features,
                                                acoustic_scale);
         double like;
         if (DecodeUtterance(decoder, gmm_decodable, word_syms, utt, acoustic_scale,
                             determinize, allow_partial, &alignment_writer, &words_writer,
                             &compact_lattice_writer, &lattice_writer, &like)) {
           tot_like += like;
-          frame_count += features.NumRows();
+          frame_count += original_features.NumRows();
           num_success++;
         } else num_fail++;
       }

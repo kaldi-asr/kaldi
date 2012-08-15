@@ -5,7 +5,9 @@
 [ -f ./path.sh ] && . ./path.sh
 
 cmd=run.pl
+reverse=false
 [ $1 == "--cmd" ] && cmd=$2 && shift 2;
+[ $1 == "--reverse" ] && reverse=$2 && shift 2;
 
 [ $# -ne 3 ] && \
   echo "Usage: local/score.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>" && exit 1;
@@ -27,6 +29,14 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/t
 $cmd LMWT=5:30 $dir/scoring/log/best_path.LMWT.log \
   lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
     "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
+
+if $reverse; then
+  for lmwt in `seq 5 30`; do
+    mv $dir/scoring/$lmwt.tra $dir/scoring/$lmwt.tra.orig
+    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
+       <$dir/scoring/$lmwt.tra.orig >$dir/scoring/$lmwt.tra
+  done
+fi
 
 # Note: the double level of quoting for the sed command
 $cmd LMWT=5:30 $dir/scoring/log/score.LMWT.log \
