@@ -19,9 +19,14 @@
 
   \page progress Recent progress and current activity
 
-
    Recently added features:
 
+    - Example setup using VoxForge data, which is available for free -- thanks to
+      Vassil Panayotov.  See egs/voxforge/s5/, and the blog post
+       <a href=http://vpanayotov.blogspot.com/2012/07/voxforge-scripts-for-kaldi.html> here </a>.
+    - Code for basis fMLLR adaptation-- this allows adaptation on shorter utterances
+      than would normally be required (thanks to Yajie Miao).  Currently, examples only
+      in older scripts, e.g. egs/wsj/s1/run.sh, search for "basis".
     - Script to produce ctm-format output with confidence scores.  See egs/swbd/s5/local/score_sclite_conf.sh.
       This script does Minimum Bayes Risk decoding by default (a bit like Consensus).  
     - MPE training scripts (thanks to Chao Weng).  Search for "mpe" in, for example,
