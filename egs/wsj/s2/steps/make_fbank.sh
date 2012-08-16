@@ -16,27 +16,29 @@
 
 # To be run from .. (one directory up from here)
 
-if [ $# != 4 ]; then
-   echo "usage: make_fbank.sh <data-dir> <log-dir> <abs-path-to-fbankdir> <num-cpus>";
+if [ $# != 5 ]; then
+   echo "usage: make_fbank.sh <new-data-dir> <old-data-dir> <log-dir> <abs-path-to-fbankdir> <num-cpus>";
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-logdir=$2
-fbankdir=$3
-ncpus=$4
-
-# use "name" as part of name of the archive.
-name=`basename $data`
+olddata=$2
+logdir=$3
+fbankdir=$4
+ncpus=$5
 
 mkdir -p $fbankdir || exit 1;
 mkdir -p $logdir || exit 1;
+mkdir -p $data || exit 1;
 
+cp $olddata/* $data >/dev/null
+
+oldscp=$olddata/wav.scp
 scp=$data/wav.scp
 config=conf/fbank.conf
-required="$scp $config"
+required="$oldscp $scp $config"
 
 for f in $required; do
   if [ ! -f $f ]; then
@@ -44,6 +46,11 @@ for f in $required; do
     exit 1;
   fi
 done
+
+
+# use "name" as part of name of the archive.
+name=`basename $data`
+
 
 # note: in general, the double-parenthesis construct in bash "((" is "C-style
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
@@ -74,7 +81,7 @@ fi
 # concatenate the .scp files together.
 rm $data/feats.scp.fbank 2>/dev/null
 for ((n=1; n<=ncpus; n++)); do
-  cat $fbankdir/raw_fbank_$name.$n.scp >> $data/feats.scp.fbank
+  cat $fbankdir/raw_fbank_$name.$n.scp >> $data/feats.scp
 done
 
 rm $logdir/wav*.scp

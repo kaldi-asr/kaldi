@@ -85,7 +85,7 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.12 --self-loop-scale=0.1"
 # prepare features
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp.fbank ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp.fbank ark:- |"
+feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp ark:- |"
 # Splice+Hamming+DCT
 feats="$feats splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- | transform-feats --print-args=false $transf ark:- ark:- |"
 # Norm+MLP

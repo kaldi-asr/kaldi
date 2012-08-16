@@ -26,7 +26,7 @@ featdir=$PWD/exp/kaldi_wsj_feats
 dir=exp/mono1a_nnet-linBN-5L
 ali=exp/mono1a_ali
 $cuda_cmd exp/mono1a_nnet-linBN-5L/_train_nnet.log \
-  steps/train_nnet_MLP5-linBN.sh --lrate 0.0001 --model-size 3000000 --bunchsize 256 data/train_si84 data/lang ${ali}_si84 $dir || exit 1;
+  steps/train_nnet_MLP5-linBN.sh --lrate 0.0001 --model-size 3000000 --bunchsize 256 data-fbank/train_si84 data/lang ${ali}_si84 $dir || exit 1;
 #Dump the BN-features
 nndir=$dir
 bnroot=$PWD/exp/make_bnfeats_$(basename $dir)
@@ -63,7 +63,7 @@ for numleaves in ${numleavesL[@]}; do
   ali=exp/tri2b-${numleaves}_ali
   # Train
   steps/train_lda_mllt_bnfeats_singlepass.sh --num-jobs 10 --cmd "$train_cmd" \
-     $numleaves 15000 $bnroot/train_si84 data/train_si84/ data/lang ${ali}_si84 $dir || exit 1;
+     $numleaves 15000 $bnroot/train_si84 data-fbank/train_si84/ data/lang ${ali}_si84 $dir || exit 1;
   # Decode
   scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.05 --scale-beams 1.25" steps/decode_lda_mllt_bnfeats.sh $dir/graph_tgpr $bnroot/test_eval92 $dir/decode_tgpr_eval92 || exit 1;

@@ -127,7 +127,7 @@ cp $alidir/tree $dir/tree
 ###### PREPARE FEATURES ######
 # shuffle the list
 echo "Preparing train/cv lists"
-cat $data/feats.scp.fbank | scripts/shuffle_list.pl ${seed:-777} > $dir/feats.scp
+cat $data/feats.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/feats.scp
 # split 90% train set 10% cross-validation set
 N=$(cat $dir/feats.scp | wc -l)
 head -n $[(N*9)/10] $dir/feats.scp > $dir/train.scp

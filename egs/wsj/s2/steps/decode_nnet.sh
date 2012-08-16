@@ -74,7 +74,7 @@ else
   mydata=$data
 fi
 
-requirements="$mydata/feats.scp.fbank $srcdir/final.nnet $srcdir/final.mdl $graphdir/HCLG.fst"
+requirements="$mydata/feats.scp $srcdir/final.nnet $srcdir/final.mdl $graphdir/HCLG.fst"
 for f in $requirements; do
   if [ ! -s $f ]; then
      echo "decode_deltas.sh: no such file $f";
@@ -86,7 +86,7 @@ done
 # prepare features
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp.fbank ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp.fbank ark:- |"
+feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- |"
 # Splice+Hamming+DCT
 feats="$feats splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- | transform-feats --print-args=false $transf ark:- ark:- |"
 # Norm+MLP

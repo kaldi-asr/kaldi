@@ -8,10 +8,17 @@
 # you can change these commands to just run.pl to make them run
 # locally, but in that case you should change the num-jobs to
 # the #cpus on your machine or fewer.
-decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
-train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
-mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
+
+#decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
+#train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
+#cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+#mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
+
+
+export train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu -S /bin/bash"
+export decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu -S /bin/bash"
+export cuda_cmd=run.pl
+export mkgraph_cmd=run.pl
 
 # put the scripts to path
 source path.sh
@@ -27,8 +34,8 @@ source path.sh
 # /ais/gobi2/speech/WSJ/*/??-{?,??}.?
 #  These must be absolute,  not relative, pathnames.
 
-local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
-#local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
+#local/wsj_data_prep.sh /mnt/matylda2/data/WSJ?/??-{?,??}.? || exit 1;
+local/wsj_data_prep.sh  /export/corpora5/LDC/LDC{93S6,94S13}B/??-{?,??}.? || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
 
@@ -41,9 +48,8 @@ local/wsj_format_data.sh || exit 1;
 # want to store MFCC features.
 featdir=$PWD/exp/kaldi_wsj_feats
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
-  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 4
-  steps/make_fbank.sh data/$x exp/make_fbank/$x $featdir/fbank 4
-  ln -s $PWD/data/$x/feats.scp.mfcc data/$x/feats.scp #select mfcc as default
+  steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 10
+  steps/make_fbank.sh data-fbank/$x data/$x exp/make_fbank/$x $featdir/fbank 10
 done
 
 
@@ -53,7 +59,7 @@ done
 ######################################################
 
 mkdir data/train_si84
-for x in feats.scp feats.scp.fbank text utt2spk wav.scp; do
+for x in feats.scp text utt2spk wav.scp; do
   head -7138 data/train_si284/$x > data/train_si84/$x
 done
 scripts/utt2spk_to_spk2utt.pl data/train_si84/utt2spk > data/train_si84/spk2utt || exit 1;
@@ -64,6 +70,14 @@ scripts/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2ksho
 
 # Now make subset with half of the data from si-84.
 scripts/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
+
+# subset si84 on fbank feats
+mkdir data-fbank/train_si84
+for x in feats.scp text utt2spk wav.scp; do
+  head -7138 data-fbank/train_si284/$x > data-fbank/train_si84/$x
+done
+scripts/utt2spk_to_spk2utt.pl data-fbank/train_si84/utt2spk > data-fbank/train_si84/spk2utt || exit 1;
+scripts/filter_scp.pl data-fbank/train_si84/spk2utt data-fbank/train_si284/spk2gender > data-fbank/train_si84/spk2gender || exit 1;
 
 
 

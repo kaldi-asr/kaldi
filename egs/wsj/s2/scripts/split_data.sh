@@ -36,7 +36,6 @@ fi
 
 n=0;
 feats=""
-feats_fbank=""
 wavs=""
 utt2spks=""
 texts=""
@@ -59,7 +58,6 @@ fi
 for n in `scripts/get_splits.pl $numsplit`; do
    mkdir -p $data/split$numsplit/$n
    feats="$feats $data/split$numsplit/$n/feats.scp"
-   feats_fbank="$feats_fbank $data/split$numsplit/$n/feats.scp.fbank"
    wavs="$wavs $data/split$numsplit/$n/wav.scp"
    texts="$texts $data/split$numsplit/$n/text"
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
@@ -75,8 +73,6 @@ fi
 scripts/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
 
 scripts/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
-
-scripts/split_scp.pl $utt2spk_opt $data/feats.scp.fbank $feats_fbank #|| exit 1 TODO
 
 [ -f $data/wav.scp ] && \
   scripts/split_scp.pl $utt2spk_opt $data/wav.scp $wavs

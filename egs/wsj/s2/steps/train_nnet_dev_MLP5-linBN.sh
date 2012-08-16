@@ -139,8 +139,8 @@ cp $alidir/tree $dir/tree
 ###### PREPARE FEATURES ######
 # shuffle the list
 echo "Preparing train/cv lists"
-cat $data/feats.scp.fbank | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
-cp $data_cv/feats.scp.fbank $dir/cv.scp
+cat $data/feats.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
+cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 

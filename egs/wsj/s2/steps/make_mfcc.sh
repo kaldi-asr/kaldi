@@ -74,7 +74,7 @@ fi
 # concatenate the .scp files together.
 rm $data/feats.scp.mfcc 2>/dev/null
 for ((n=1; n<=ncpus; n++)); do
-  cat $mfccdir/raw_mfcc_$name.$n.scp >> $data/feats.scp.mfcc || exit 1;
+  cat $mfccdir/raw_mfcc_$name.$n.scp >> $data/feats.scp || exit 1;
 done
 
 rm $logdir/wav*.scp
