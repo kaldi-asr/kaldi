@@ -76,10 +76,12 @@ function check_exists {
 function linux_configure_cuda {
   #check for CUDA toolkit in the system
   if [ ! $CUDATKDIR ]; then
-    if [ -f /usr/local/share/cuda/bin/nvcc ]; then
+    if [ -f /usr/local/share/cuda/bin/nvcc ]; then #BUT
       CUDATKDIR=/usr/local/share/cuda/
     elif [ -f /usr/local/cuda/bin/nvcc ]; then
       CUDATKDIR=/usr/local/cuda/
+    elif [ -f /pkgs_local/cuda-3.2/bin/nvcc ]; then #CS.TORONTO
+      CUDATKDIR=/pkgs_local/cuda-3.2/ 
     fi
   fi
 
