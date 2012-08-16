@@ -1,9 +1,9 @@
 #!/usr/bin/python
-#
 # This is a slightly modified version of a program that checks that C++
 # code confirms to the Google style guide.  Any modifications from the
 # original file (whose copright header is below) are licensed under the
-# Apache license.  Copyright on these changes is 2009-2012, Nagendra Goel.
+# Apache license.  Copyright on these changes is 2009-2012, Nagendra Goel,
+# Arnab Ghoshal, possibly others.
 #
 # Copyright (c) 2009 Google Inc. All rights reserved.
 #
@@ -1211,15 +1211,16 @@ def CheckPosixThreading(filename, clean_lines, linenum, error):
     error: The function to call with any errors found.
   """
   line = clean_lines.elided[linenum]
-  for single_thread_function, multithread_safe_function in threading_list:
-    ix = line.find(single_thread_function)
-    # Comparisons made explicit for clarity -- pylint: disable-msg=C6403
-    if ix >= 0 and (ix == 0 or (not line[ix - 1].isalnum() and
-                                line[ix - 1] not in ('_', '.', '>'))):
-      error(filename, linenum, 'runtime/threadsafe_fn', 2,
-            'Consider using ' + multithread_safe_function +
-            '...) instead of ' + single_thread_function +
-            '...) for improved thread safety.')
+# Not doing the threading stuff
+#  for single_thread_function, multithread_safe_function in threading_list:
+#    ix = line.find(single_thread_function)
+#    # Comparisons made explicit for clarity -- pylint: disable-msg=C6403
+#    if ix >= 0 and (ix == 0 or (not line[ix - 1].isalnum() and
+#                                line[ix - 1] not in ('_', '.', '>'))):
+#      error(filename, linenum, 'runtime/threadsafe_fn', 2,
+#            'Consider using ' + multithread_safe_function +
+#            '...) instead of ' + single_thread_function +
+#            '...) for improved thread safety.')
 
 
 # Matches invalid increment: *count++, which moves pointer instead of
@@ -2397,7 +2398,7 @@ def CheckLanguage(filename, clean_lines, linenum, file_extension, include_state,
     if not (Search(
         r'(swap|Swap|operator[<>][<>])\s*\(\s*(?:[\w:]|<.*>)+\s*&',
         fnline) or
-            Search(r'(istream|ostream) *\&',fnline)):
+            Search(r'(istream|ostream)',fnline)):
       error(filename, linenum, 'runtime/references', 2,
             'Is this a non-const reference? '
             'If so, make const or use a pointer.')
