@@ -5,7 +5,7 @@ include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 
-BINFILES = nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff nnet-train-mse-tgtmat-frmshuff nnet-forward nnet-copy rbm-train-cd1-frmshuff rbm-convert-to-nnet nnet-trim-n-last-transforms
+BINFILES = nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff nnet-train-mse-tgtmat-frmshuff nnet-forward nnet-copy rbm-train-cd1-frmshuff rbm-convert-to-nnet nnet-trim-n-last-transforms nnet-train-mmi-sequential
 
 OBJFILES =
 
@@ -15,7 +15,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../nnet/kaldi-nnet.a ../cudamatrix/cuda-matrix.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../nnet/kaldi-nnet.a ../cudamatrix/cuda-matrix.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 
