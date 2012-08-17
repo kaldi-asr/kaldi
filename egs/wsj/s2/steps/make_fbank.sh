@@ -33,7 +33,8 @@ mkdir -p $fbankdir || exit 1;
 mkdir -p $logdir || exit 1;
 mkdir -p $data || exit 1;
 
-cp $olddata/* $data >/dev/null
+cp $olddata/* $data 2>/dev/null
+rm $data/feats.scp
 
 oldscp=$olddata/wav.scp
 scp=$data/wav.scp

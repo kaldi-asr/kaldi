@@ -137,7 +137,7 @@ labels="ark:$dir/cur.pdf"
 cat $dir/train.pdf $dir/cv.pdf > $dir/cur.pdf
 
 #get the priors, count the class examples from alignments
-scripts/count_class_frames.awk $dir/train.pdf $dir/cur.counts
+pdf-to-counts ark:$dir/train.pdf $dir/cur.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
 cp $alidir/tree $dir/tree

@@ -69,7 +69,7 @@ labels="ark:$dir/ali_train_cv.pdf"
 cat $dir/ali_train.pdf $dir/ali_cv.pdf > $dir/ali_train_cv.pdf
 
 #get the priors, count the class examples from alignments
-utils/nnet/count_class_frames.awk $dir/ali_train.pdf $dir/ali_train.counts
+pdf-to-counts ark:$dir/ali_train.pdf $dir/ali_train.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
 cp $alidir/tree $dir/tree
