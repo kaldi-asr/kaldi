@@ -361,7 +361,10 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
     d2 = std::min(d2, -c / 10.0);
     // convergence judgment from fmllr-sgmm.cc
     // it seems to work well, though not sure whether 1e-06 is appropriate
-    if (std::fabs(d1 / d2) < 0.000001) { break; }
+    // note from Dan: commenting this out after someone complained it was
+    // causing a test to behave weirdly.  This doesn't dominate computation
+    // anyway, I don't think.
+    // if (std::fabs(d1 / d2) < 0.000001) { break; }
 
     // Eq. (52): update step_size
     double step_size_change = -(d1 / d2);

@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     // Register the options
     po.Register("output-format", &output_format, "Format of the output files [kaldi, htk]");
     po.Register("subtract-mean", &subtract_mean, "Subtract mean of each feature file [CMS]. ");
-    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor (only applicable if vtln-map not specified)");    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor");
+    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor (only applicable if vtln-map not specified)");
     po.Register("vtln-map", &vtln_map_rspecifier, "Map from utterance or speaker-id to vtln warp factor (rspecifier)");
     po.Register("utt2spk", &utt2spk_rspecifier, "Utterance to speaker-id map (if doing VTLN and you have warps per speaker)");
     po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
