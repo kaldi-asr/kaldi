@@ -16,9 +16,7 @@
 // limitations under the License.
 
 #include "matrix/compressed-matrix.h"
-#include "matrix/sp-matrix.h"
-#include "matrix/jama-svd.h"
-#include "matrix/jama-eig.h"
+#include <algorithm>
 
 namespace kaldi {
 

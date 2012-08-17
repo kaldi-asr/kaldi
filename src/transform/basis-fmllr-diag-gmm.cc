@@ -231,7 +231,7 @@ double BasisFmllrEstimate::ComputeTransform(
     coefficient->Resize(0);
     return 0.0;
   } else {
-    if (out_xform->NumRows() != dim_ || out_xform->NumRows() != (dim_ +1)) {
+    if (out_xform->NumRows() != dim_ || out_xform->NumCols() != (dim_ +1)) {
       out_xform->Resize(dim_, dim_ + 1, kSetZero);
     }
     // Initialized either as [I;0] or as the current transform
