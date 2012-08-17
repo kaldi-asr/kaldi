@@ -65,30 +65,49 @@ pushd $CONFDIR > /dev/null
 popd > /dev/null
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
 
-# (2) get the various file lists (for audio, transcription, etc.) for the
-# specified language.
-for L in $LANGUAGES; do
-  mkdir -p data/$L/local/{data,dict}
-  gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
-    --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
-    --work-dir=data $L 2>data/$L/prep_flists.log & 
-  # Running these in parallel since this does audio conversion (to figure out
-  # which files cannot be processed) and takes some time to run. 
-done
-wait;
+# # (2) get the various file lists (for audio, transcription, etc.) for the
+# # specified language.
+# printf "Preparing file lists ... "
+# for L in $LANGUAGES; do
+#   mkdir -p data/$L/local/{data,dict}
+#   gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
+#     --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
+#     --work-dir=data $L 2>data/$L/prep_flists.log & 
+#   # Running these in parallel since this does audio conversion (to figure out
+#   # which files cannot be processed) and takes some time to run. 
+# done
+# wait;
+# echo "Done"
 
 # (3) Normalize the dictionary and transcripts.
 for L in $LANGUAGES; do
+  printf "Language - ${L}: preparing pronunciation lexicon ... "
   full_name=`awk '/'$L'/ {print $2}' $CONFDIR/lang_codes.txt`;
-  gp_norm_dict_${L}.pl -i $GPDIR/Dictionaries/${L}/${full_name}-GPDict.txt | sort -u > data/$L/local/dict/lexicon_nosil_${L}.txt
-  (echo -e '!SIL\tSIL\n<UNK>\tSPN';) \
-    | cat - data/$L/local/dict/lexicon_nosil_${L}.txt \
-    > data/$L/local/dict/lexicon_${L}.txt;
+  gp_norm_dict_${L}.pl -i $GPDIR/Dictionaries/${L}/${full_name}-GPDict.txt | sort -u > data/$L/local/dict/lexicon_nosil.txt
+  (printf '!SIL\tsil\n<UNK>\tspn\n<NOISE>\tnsn\n';) \
+    | cat - data/$L/local/dict/lexicon_nosil.txt \
+    > data/$L/local/dict/lexicon.txt;
+  echo "Done"
 
+  printf "Language - ${L}: extracting phone lists ... "
+  # silence phones, one per line.
+  { echo sil; echo spn; echo nsn; } > data/$L/local/dict/silence_phones.txt
+  echo sil > data/$L/local/dict/optional_silence.txt
+  cut -f2- data/$L/local/dict/lexicon_nosil.txt | tr ' ' '\n' | sort -u \
+    > data/$L/local/dict/nonsilence_phones.txt
+  # Ask questions about the entire set of 'silence' and 'non-silence' phones. 
+  # These augment the questions obtained automatically by clustering. 
+  ( tr '\n' ' ' < data/$L/local/dict/silence_phones.txt; echo;
+    tr '\n' ' ' < data/$L/local/dict/nonsilence_phones.txt; echo;
+    ) > data/$L/local/dict/extra_questions.txt
+  echo "Done"
+
+  printf "Language - ${L}: normalizing transcripts ... "
   for x in train dev eval; do
     gp_norm_trans_${L}.pl -i data/$L/local/data/${x}_${L}.trans1 \
       > data/$L/local/data/${x}_${L}.txt;
   done
+  echo "Done"
 
 done
 

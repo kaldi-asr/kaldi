@@ -33,7 +33,7 @@ if(@ARGV != 1) {
 }
 
 ($map) = @ARGV;
-open(M, "<$map") || die "Opening map file $map";
+open(M, "<$map") || die "Error opening map file $map: $!";
 
 while (<M>) {
   @A = split(" ", $_);

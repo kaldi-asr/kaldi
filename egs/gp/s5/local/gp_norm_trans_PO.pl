@@ -46,9 +46,10 @@ while (<T>) {
   my $utt_id = $1;
   my $trans = $2;
 
-  # Normalize spaces
-  $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
   $trans =~ s/\`(.*?)\'/$1/g;  # Remove quotation marks.
+  $trans =~ s/</ </g;  # Fragments are enclosed in < & > : space them properly
+  $trans =~ s/>/> /g;
+
   $trans = &rmn2utf8_PO($trans) unless (defined($keep_rmn));
   if (defined($uppercase)) {
     $trans = uc($trans);
@@ -56,6 +57,8 @@ while (<T>) {
     $trans = lc($trans);
   }
 
+  # Normalize spaces
+  $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
   print "$utt_id $trans\n";
 }
 
