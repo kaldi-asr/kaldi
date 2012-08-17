@@ -2789,6 +2789,11 @@ static void UnitTestPca() {
 
 template<class Real> static void UnitTestCompressedMatrix() {
   // This is the basic test.
+
+  CompressedMatrix empty_cmat;  // some tests on empty matrix
+  KALDI_ASSERT(empty_cmat.NumRows() == 0);
+  KALDI_ASSERT(empty_cmat.NumCols() == 0);
+
   for (int32 n = 0; n < 100; n++) {
     int32 num_rows = rand() % 10, num_cols = rand() % 10;
     if (num_rows * num_cols == 0) {
@@ -2815,6 +2820,8 @@ template<class Real> static void UnitTestCompressedMatrix() {
         if (rand() % modulus == 0) M(r, c) = rand_val;
 
     CompressedMatrix cmat(M);
+    KALDI_ASSERT(cmat.NumRows() == num_rows);
+    KALDI_ASSERT(cmat.NumCols() == num_cols);
 
     Matrix<Real> M2;
     cmat.CopyToMat(&M2);

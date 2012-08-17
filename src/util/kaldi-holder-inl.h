@@ -634,7 +634,7 @@ class TokenVectorHolder {
       return false;  // probably eof.  fail in any case.
     }
     const char *white_chars = " \t\n\r\f\v";
-    SplitStringToVector(line, white_chars, &t_, true);  // true== omit empty strings e.g.
+    SplitStringToVector(line, white_chars, true, &t_);  // true== omit empty strings e.g.
     // between spaces.
     return true;
   }

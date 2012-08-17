@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     while (std::getline(ki.Stream(), line)) {
       num_lines++;
       std::vector<std::string> split_line;  
-      SplitStringToVector(line, " \t\r", &split_line, true);// split the line by space or tab
+      SplitStringToVector(line, " \t\r", true, &split_line);// split the line by space or tab
       if (split_line.size() != 4 && split_line.size() != 5) // check the number of elements in each line. each line must have atleast 4 elements . 5th element(channel info) is optional
         KALDI_ERR << "Invalid line in segments file: " << line;
       /* each line of segment file should have segment name , reacording wav file name, start time, end time respectively  */

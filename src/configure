@@ -13,9 +13,7 @@ function rel2abs {
 }
 
 function read_dirname {
-  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
-  local retval=`rel2abs $dir_name`
-  echo $retval
+  echo $1 | cut -d'=' -f 2
 }
 
 ##   First do some checks.  These verify that all the things are
@@ -54,7 +52,7 @@ do
   --mkl-libdir=*)
   MKLLIBDIR=`read_dirname $1`; shift ;;
   --mathlib=*)
-  MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; shift ;;
+  MATHLIB=`read_dirname $1`; shift ;;
   --cudatk-dir=*)
   CUDATKDIR=`read_dirname $1`; shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
@@ -106,7 +104,7 @@ function linux_configure_cuda {
       cat makefiles/linux_cuda.mk >> kaldi.mk
     fi
   else
-    echo "CUDA will not be used! If you have already installed cuda drivers and cuda toolkit, try using --cudatk-dir=... option"
+    echo "CUDA will not be used! If you have already installed cuda drivers and cuda toolkit, try using --cudatk-dir=... option.  Note: this is only relevant for neural net experiments"
   fi
 }
 
@@ -166,8 +164,8 @@ function linux_configure_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
 
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} /usr/local/atlas/lib{,64} \
-      `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
+    for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
+       /usr/local/atlas/lib{,64} `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
      linux_check_static &&  ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
@@ -378,9 +376,9 @@ if [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two 
     # libraries worked.  
 
-    linux_configure_debian || \
-      linux_configure_static || \
+    linux_configure_static || \
       linux_configure_dynamic || \
+      linux_configure_debian || \
       linux_atlas_failure "Failed to configure ATLAS lbiraries";
 
   elif [ $MATHLIB == "MKL" ]; then

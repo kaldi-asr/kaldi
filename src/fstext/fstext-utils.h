@@ -453,7 +453,7 @@ class VectorFstHolder {
         nline++;
         vector<string> col;
         // on Windows we'll write in text and read in binary mode.
-        kaldi::SplitStringToVector(line, separator.c_str(), &col);
+        kaldi::SplitStringToVector(line, separator.c_str(), true, &col);
         if (col.size() == 0) break; // Empty line is a signal to stop, in our
         // archive format.
         if (col.size() > 5) {

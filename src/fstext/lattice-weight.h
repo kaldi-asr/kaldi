@@ -84,6 +84,11 @@ class LatticeWeightTpl {
     return type;
   }
 
+  static const LatticeWeightTpl NoWeight() {
+    return LatticeWeightTpl(FloatLimits<FloatType>::kNumberBad,
+                            FloatLimits<FloatType>::kNumberBad);
+  }
+
   bool Member() const {
     // value1_ == value1_ tests for NaN.
     // also test for no -inf, and either both or neither

@@ -359,7 +359,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
   }
 
   std::string line, key, value;
-  while (!std::getline(is, line).eof()) {
+  while (std::getline(is, line)) {
     // trim out the comments
     size_t pos;
     if ((pos = line.find_first_of('#')) != std::string::npos) {

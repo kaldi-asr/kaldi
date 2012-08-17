@@ -36,10 +36,9 @@ namespace kaldi {
 /// the output will contain n+1 strings if there are n characters
 /// in the set "delim" within the input string.  In this case
 /// the empty string is split to a single empty string.
-
 void SplitStringToVector(const std::string &full, const char *delim,
-                         std::vector<std::string> *out,
-                         bool omit_empty_strings = true);
+                         bool omit_empty_strings,
+                         std::vector<std::string> *out);
 
 
 /// Split a string (e.g. 1:2:3) into a vector of integers.
@@ -62,7 +61,7 @@ bool SplitStringToIntegers(const std::string &full,
     return true;
   }
   std::vector<std::string> split;
-  SplitStringToVector(full, delim, &split, omit_empty_strings);
+  SplitStringToVector(full, delim, omit_empty_strings, &split);
   out->resize(split.size());
   for (size_t i = 0; i < split.size(); i++) {
     const char *this_str = split[i].c_str();
@@ -84,6 +83,14 @@ bool SplitStringToIntegers(const std::string &full,
   }
   return true;
 }
+
+// This is defined for F = float and double.
+template<class F>
+bool SplitStringToFloats(const std::string &full,
+                         const char *delim,
+                         bool omit_empty_strings, // typically false
+                         std::vector<F> *out);
+
 
 /// Converts a string into an integer via strtoll and
 /// returns false if there was any kind of problem (i.e. the string was not an

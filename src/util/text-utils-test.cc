@@ -40,11 +40,11 @@ void TestSplitStringToVector() {
 
   {
     std::vector<std::string> str_vec;
-    SplitStringToVector("", " ", &str_vec, false);
+    SplitStringToVector("", " ", false, &str_vec);
     assert(str_vec.size() == 1);  // If this fails it may just mean
     // that someone changed the
     // semantics of SplitStringToVector in a reasonable way.
-    SplitStringToVector("", " ", &str_vec, true);
+    SplitStringToVector("", " ", true, &str_vec);
     assert(str_vec.empty());
   }
   for (int j = 0; j < 100; j++) {
@@ -57,7 +57,7 @@ void TestSplitStringToVector() {
     std::string delim;
     delim.push_back(GetRandDelim());
     bool omit_empty_strings = (rand() %2 == 0)? true : false;
-    SplitStringToVector(full, delim.c_str(), &str_vec, omit_empty_strings);
+    SplitStringToVector(full, delim.c_str(), omit_empty_strings, &str_vec);
     std::string new_full;
     for (size_t i = 0; i < str_vec.size(); i++) {
       if (omit_empty_strings) assert(str_vec[i] != "");
@@ -105,6 +105,30 @@ void TestSplitStringToIntegers() {
     std::vector<uint32> v;
     assert(SplitStringToIntegers("-1:2:4", ":", false, &v) == false);
     // cannot put negative number in uint32.
+  }
+}
+
+
+
+void TestSplitStringToFloats() {
+  {
+    std::vector<float> v;
+    assert(SplitStringToFloats("-1:2.5:4", ":", false, &v) == true
+           && v.size() == 3 && v[0] == -1 && v[1] == 2.5 && v[2] == 4);
+    assert(SplitStringToFloats("-1:2.5:4:", ":", false, &v) == false);
+    assert(SplitStringToFloats(":-1::2:4:", ":", true, &v) == true
+           && v.size() == 3 && v[0] == -1 && v[1] == 2 && v[2] == 4);
+    assert(SplitStringToFloats("-1\n2.5\t4", " \n\t\r", false, &v) == true
+           && v.size() == 3 && v[0] == -1 && v[1] == 2.5 && v[2] == 4);
+    assert(SplitStringToFloats(" ", " \n\t\r", true, &v) == true
+           && v.size() == 0);
+    assert(SplitStringToFloats("", " \n\t\r", false, &v) == true
+           && v.size() == 0);
+  }
+
+  {
+    std::vector<double> v;
+    assert(SplitStringToFloats("-1:2:4", ":", false, &v) == true);
   }
 }
 
@@ -208,6 +232,7 @@ int main() {
   using namespace kaldi;
   TestSplitStringToVector();
   TestSplitStringToIntegers();
+  TestSplitStringToFloats();
   TestConvertStringToInteger();
   TestConvertStringToReal<float>();
   TestConvertStringToReal<double>();

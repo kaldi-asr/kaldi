@@ -55,6 +55,14 @@ class CompressedMatrix {
   void Write(std::ostream &os, bool binary) const;
   
   void Read(std::istream &is, bool binary);
+
+  /// Returns number of rows (or zero for emtpy matrix).
+  inline int32 NumRows() const { return (data_ == NULL) ? 0 : 
+      (*reinterpret_cast<GlobalHeader*>(data_)).num_rows; }
+
+  /// Returns number of columns (or zero for emtpy matrix).
+  inline int32 NumCols() const { return (data_ == NULL) ? 0 : 
+      (*reinterpret_cast<GlobalHeader*>(data_)).num_cols; }
   
   friend class Matrix<float>;
   friend class Matrix<double>;

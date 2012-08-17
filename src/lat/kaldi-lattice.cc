@@ -116,7 +116,7 @@ class LatticeReader {
       nline++;
       vector<string> col;
       // on Windows we'll write in text and read in binary mode.
-      SplitStringToVector(line, separator.c_str(), &col);
+      SplitStringToVector(line, separator.c_str(), true, &col);
       if (col.size() == 0) break; // Empty line is a signal to stop, in our
       // archive format.
       if (col.size() > 5) {
@@ -241,7 +241,7 @@ class LatticeReader {
         // be a bit futile since the calling code will get unhappy
         // about failing to read this one.
         while (std::getline(is, line)) {
-          SplitStringToVector(line, separator.c_str(), &col);
+          SplitStringToVector(line, separator.c_str(), true, &col);
           if (col.empty()) break;
         }
         return PairT(static_cast<Lattice*>(NULL), 

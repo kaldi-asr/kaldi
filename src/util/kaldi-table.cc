@@ -149,7 +149,7 @@ WspecifierType ClassifyWspecifier(const std::string &wspecifier,
   std::string before_colon(wspecifier, 0, pos), after_colon(wspecifier, pos+1);
 
   std::vector<std::string> split_first_part;  // Split part before ':' on ', '.
-  SplitStringToVector(before_colon, ", ", &split_first_part, false);  // false== don't omit empty strings
+  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false== don't omit empty strings
   // between commas.
 
   WspecifierType ws = kNoWspecifier;
@@ -237,7 +237,7 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
       after_colon(rspecifier, pos+1);
 
   std::vector<std::string> split_first_part;  // Split part before ':' on ', '.
-  SplitStringToVector(before_colon, ", ", &split_first_part, false);  // false== don't omit empty strings
+  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false== don't omit empty strings
   // between commas.
 
   RspecifierType rs = kNoRspecifier;

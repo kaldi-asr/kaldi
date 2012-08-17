@@ -642,7 +642,7 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
   std::string line;
   while (std::getline(ki.Stream(), line)) {
     std::vector<std::string> split_line;  
-    SplitStringToVector(line, " \t\r", &split_line, true);// split the line by space or tab
+    SplitStringToVector(line, " \t\r", true, &split_line);// split the line by space or tab
     int32 p;
     if (split_line.size() != 2 ||
         !ConvertStringToInteger(split_line[0], &p))

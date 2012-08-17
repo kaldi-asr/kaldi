@@ -30,15 +30,15 @@ void Fmpe::SetContexts(std::string context_str) {
   using std::string;
   contexts_.clear();
   vector<string> ctx_vec; // splitting context_str on ":"
-  SplitStringToVector(context_str, ":", &ctx_vec, false);
+  SplitStringToVector(context_str, ":", false, &ctx_vec);
   contexts_.resize(ctx_vec.size());
   for (size_t i = 0; i < ctx_vec.size(); i++) {
     vector<string> pair_vec; // splitting ctx_vec[i] on ";"
-    SplitStringToVector(ctx_vec[i], ";", &pair_vec, false);
+    SplitStringToVector(ctx_vec[i], ";", false, &pair_vec);
     KALDI_ASSERT(pair_vec.size() != 0 && "empty context!");
     for (size_t j = 0; j < pair_vec.size(); j++) {
       vector<string> one_pair;
-      SplitStringToVector(pair_vec[j], ",", &one_pair, false);
+      SplitStringToVector(pair_vec[j], ",", false, &one_pair);
       KALDI_ASSERT(one_pair.size() == 2 &&
                    "Mal-formed context string: bad --context-expansion option?");
       int32 pos;

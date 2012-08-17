@@ -496,7 +496,10 @@ class OffsetFileInputImpl: public InputImplBase {
     *filename = std::string(rxfilename, 0, pos);
     std::string number(rxfilename, pos+1);
     bool ans = ConvertStringToInteger(number, offset);
-    assert(ans);  // Or wrong format.
+    if (!ans)
+      KALDI_ERR << "Cannot get offset from filename " << rxfilename
+                << " (possibly you compiled in 32-bit and have a >32-bit"
+                << " byte offset into a file; you'll have to compile 64-bit.";
   }
 
   bool Seek(size_t offset) {
