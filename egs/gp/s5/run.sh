@@ -20,7 +20,7 @@
 # !!! NOTE: The current recipe assumes that you have pre-built LMs. 
 echo "This shell script may run as-is on your system, but it is recommended 
 that you run the commands one by one by copying and pasting into the shell."
-exit 1;
+#exit 1;
 
 [ -f cmd.sh ] && source ./cmd.sh \
   || echo "cmd.sh not found. Jobs may not execute properly."
@@ -29,9 +29,10 @@ exit 1;
 #  This recipe requires shorten and sox (we use shorten 3.6.1 and sox 14.3.2).
 #  If you don't have them, use the install.sh script to install them.
 ( which shorten >&/dev/null && which sox >&/dev/null && \
-  ehco "shorten and sox found: you may want to edit the path.sh file." ) || \
-  { echo "shorten and/or sox not found on PATH. Installing..."; 
-    install.sh }
+  echo "shorten and sox found: you may want to edit the path.sh file." ) || \
+  { echo "shorten and/or sox not found on PATH. Installing..."; install.sh; }
+
+. path.sh || { echo "Cannot source path.sh"; exit 1; }
 
 # Set the locations of the GlobalPhone corpus and language models
 GP_CORPUS=/mnt/matylda2/data/GLOBALPHONE
@@ -43,8 +44,8 @@ export GP_LANGUAGES="CZ GE PL PO SP"
 
 # The following data preparation step actually converts the audio files from 
 # shorten to WAV to take out the empty files and those with compression errors. 
-local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=$GP_CORPUS \
-  --languages="$GP_LANGUAGES"
+# local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=$GP_CORPUS \
+#   --languages="$GP_LANGUAGES"
 
 for L in $GP_LANGUAGES; do
   utils/prepare_lang.sh --position-dependent-phones false \
@@ -54,9 +55,8 @@ done
 
 # Convert the different available language models to FSTs, and create separate 
 # decoding configurations for each.
-( local/gp_format_data.sh --filter-vocab-sri false $GP_LANGUAGES;
-  local/gp_format_data.sh --filter-vocab-sri true $GP_LANGUAGES;
-) >& data/$L/format_data.log
+local/gp_format_data.sh --filter-vocab-sri false $GP_LM $GP_LANGUAGES;
+local/gp_format_data.sh --filter-vocab-sri true $GP_LM $GP_LANGUAGES;
 
 # Now make MFCC features.
 for L in $GP_LANGUAGES; do
@@ -105,7 +105,6 @@ for L in $GP_LANGUAGES; do
 #     exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
 #   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
 #     exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
-
 done
 
 for L in $GP_LANGUAGES; do
@@ -116,18 +115,9 @@ for L in $GP_LANGUAGES; do
 
   num_states=$(grep "^$L" conf/tri.conf | cut -f2)
   num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
-  mkdir -p exp/$L/tri1
+  mkdir -p exp/$L/tri2a
   steps/train_deltas.sh --nj 10 --cmd "$train_cmd" \
     $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
     exp/$L/tri2a >& exp/$L/tri2a/train.log
-
-#   # Like with the monophone systems, the following 3 commands will not run.
-#   # Edit the 'lang_test' to match what is available.
-#   utils/mkgraph.sh data/$L/lang_test_tgpr exp/$L/tri1 exp/$L/tri1/graph
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
-
 done
 

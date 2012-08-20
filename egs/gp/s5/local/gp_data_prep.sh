@@ -83,7 +83,12 @@ echo "Done"
 for L in $LANGUAGES; do
   printf "Language - ${L}: preparing pronunciation lexicon ... "
   full_name=`awk '/'$L'/ {print $2}' $CONFDIR/lang_codes.txt`;
-  gp_norm_dict_${L}.pl -i $GPDIR/Dictionaries/${L}/${full_name}-GPDict.txt | sort -u > data/$L/local/dict/lexicon_nosil.txt
+  pron_lex=$GPDIR/Dictionaries/${L}/${full_name}-GPDict.txt
+  if [ ! -f "$pron_lex" ]; then
+    pron_lex=$GPDIR/Dictionaries/${L}/${full_name}GP.dict  # Polish & Bulgarian
+    [ -f "$pron_lex" ] || { echo "Error: no dictionary found for $L"; exit 1; }
+  fi
+  gp_norm_dict_${L}.pl -i $pron_lex | sort -u > data/$L/local/dict/lexicon_nosil.txt
   (printf '!SIL\tsil\n<UNK>\tspn\n<NOISE>\tnsn\n';) \
     | cat - data/$L/local/dict/lexicon_nosil.txt \
     > data/$L/local/dict/lexicon.txt;
