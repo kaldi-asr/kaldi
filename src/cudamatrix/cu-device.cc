@@ -39,7 +39,7 @@ CuDevice::CuDevice()
   //select device if more than one
   if(N_GPU > 1) {
     char name[128];
-#if (CUDA_VERSION >= 4000)
+#if (CUDA_VERSION >= 3020)
     size_t free, total;
 #else
     unsigned int free, total;
