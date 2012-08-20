@@ -158,9 +158,9 @@ steps/align_deltas.sh --num-jobs 10 --cmd "$train_cmd" \
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
 # This system will produce alignment for MLP training,
 # optionally change number of leaves/PDFs.
-numleavesL=(2500)
-for numleaves in ${numleavesL[@]}; do
-  dir=exp/tri2a-$numleaves
+numleaves=2500
+dir=exp/tri2a
+{
   # Train
   steps/train_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
     $numleaves 15000 data/train_si84 data/lang exp/tri1_ali_si84 $dir || exit 1;
@@ -171,17 +171,16 @@ for numleaves in ${numleavesL[@]}; do
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh $dir/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
   )&
   # Align si84 with tri2a-2500
- (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
     --use-graphs data/train_si84 data/lang $dir ${dir}_ali_si84)&
   # Align si284 with tri2a-2500
- (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
     data/train_si284 data/lang $dir ${dir}_ali_si284)&
   # Align dev93 with tri2a-2500
- (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_deltas.sh  --num-jobs 10 --cmd "$train_cmd" \
     data/test_dev93 data/lang $dir ${dir}_ali_dev93)&
-
-  wait
-done
+}
+wait
 
 
 
@@ -189,9 +188,9 @@ done
 # Train tri2b, which is LDA+MLLT, on si84 data.
 # The alignments from this setup have been found worse
 # for the MLP training than tri2a.
-numleavesL=(2500)
-for numleaves in ${numleavesL[@]}; do
-  dir=exp/tri2b-$numleaves
+numleaves=2500
+{
+  dir=exp/tri2b
   # Train
   steps/train_lda_mllt.sh --num-jobs 10 --cmd "$train_cmd" \
      $numleaves 15000 data/train_si84 data/lang exp/tri1_ali_si84 $dir || exit 1;
@@ -201,27 +200,25 @@ for numleaves in ${numleavesL[@]}; do
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh $dir/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
   scripts/decode.sh --cmd "$decode_cmd" steps/decode_lda_mllt.sh $dir/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
   )&
-
   # Align si84 with tri2b-2500
- (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
     --use-graphs data/train_si84 data/lang $dir ${dir}_ali_si84)&
   # Align si284 with tri2b-2500
- (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
     data/train_si284 data/lang $dir ${dir}_ali_si284)&
   # Align dev93 with tri2b-2500
- (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
+  (steps/align_lda_mllt.sh  --num-jobs 10 --cmd "$train_cmd" \
     data/test_dev93 data/lang $dir ${dir}_ali_dev93)&
-
- wait 
-done
+}
+wait 
 
 
 
 # ### F : tri3b ### #
 # Train tri2b, which is LDA+MLLT+SAT, on si84 data.
-numleavesL=(2500)
-for numleaves in ${numleavesL[@]}; do
-  dir=exp/tri3b-$numleaves
+numleaves=2500
+{
+  dir=exp/tri3b
   # Train
   steps/train_lda_mllt_sat.sh --num-jobs 10 --cmd "$train_cmd" \
     $numleaves 15000 data/train_si84 data/lang exp/tri2b-2500_ali_si84 $dir || exit 1;
@@ -241,9 +238,8 @@ for numleaves in ${numleavesL[@]}; do
   # Align dev93 with tri2b-2500
  (steps/align_lda_mllt_sat.sh  --num-jobs 10 --cmd "$train_cmd" \
     data/test_dev93 data/lang $dir ${dir}_ali_dev93)&
-
- wait 
-done
+}
+wait 
 
 
 

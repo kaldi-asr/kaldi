@@ -21,66 +21,29 @@ source path.sh
 # we will use si84 data, and 2500 leaves
 
 # pre-train the MLPs
-numleaves=2500
-dir=exp/tri2a-${numleaves}_deep_nnet_pretrain/
-ali=exp/tri2a-${numleaves}_ali
+dir=exp/tri2a_deep_nnet_pretrain/
+ali=exp/tri2a_ali
 $cuda_cmd $dir/_pretrain_nnet.log \
-  steps/pretrain_nnet_dev_alter_rbm_xent.sh --lrate 0.002 data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
+  steps/pretrain_nnet_alter_rbm_xent.sh --lrate 0.002 --nn-depth 10 --nn-dimhid 1024 \
+  data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
 
 # finetune the MLPs
-hidL=$(seq -w 1 10)
-for hid in ${hidL[@]}; do
+pretrain=$dir
+for hid in $(seq -f '%02g' 1 10); do
 ( #do this in subshell
-  dir=exp/tri2a-${numleaves}_deep_nnet_pretrain_finetune_hid$hid/
-  ali=exp/tri2a-${numleaves}_ali
+  dir=exp/tri2a_deep_nnet_pretrain_finetune_hid$hid/
+  ali=exp/tri2a_ali
   $cuda_cmd $dir/_finetune_nnet.log \
-    steps/train_nnet_dev_MLPINIT.sh --lrate 0.001 \
-    --mlp-init exp/tri2a-${numleaves}_deep_nnet_pretrain/nnet/hid${hid}b_nnet.xent \
-    data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || { touch $dir/.error; exit 1; }
+    steps/train_nnet.sh --lrate 0.001 \
+    --mlp-init $pretrain/nnet/hid${hid}b_nnet.xent \
+    data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
   #decode
-  $decode_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} $dir/graph_tgpr || { touch $dir/.error; exit 1; }
-  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 || { touch $dir/.error; exit 1; }
-  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92 || { touch $dir/.error; exit 1; }
+  $mkgraph_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 || exit 1;
+  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
 )&
 done
-
 wait
-if [ $(ls  exp/tri2a-${numleaves}_deep_nnet_finetune*/.error | wc -l) -gt 0 ]; then
-  echo "Error occured in the Deep Network finetuning"
-fi 
 
-
-
-# B.
-# we will use si284 data, and 2500 leaves
-
-# pre-train the MLPs
-numleaves=2500
-dir=exp/tri2a-${numleaves}_deep_nnet_pretrain_si284/
-ali=exp/tri2a-${numleaves}_ali
-$cuda_cmd $dir/_pretrain_nnet.log \
-  steps/pretrain_nnet_dev_alter_rbm_xent.sh --lrate 0.002 data-fbank/train_si284 data-fbank/test_dev93 data/lang ${ali}_si284 ${ali}_dev93 $dir || exit 1;
-
-# finetune the MLPs
-hidL=$(seq -w 1 10)
-for hid in ${hidL[@]}; do
-( #do this in subshell
-  dir=exp/tri2a-${numleaves}_deep_nnet_pretrain_si284_finetune_hid$hid/
-  ali=exp/tri2a-${numleaves}_ali
-  $cuda_cmd $dir/_finetune_nnet.log \
-    steps/train_nnet_dev_MLPINIT.sh --lrate 0.001 \
-    --mlp-init exp/tri2a-${numleaves}_deep_nnet_pretrain/nnet/hid${hid}b_nnet.xent \
-    data-fbank/train_si284 data-fbank/test_dev93 data/lang ${ali}_si284 ${ali}_dev93 $dir || { touch $dir/.error; exit 1; }
-  #decode
-  $decode_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr exp/tri2a-${numleaves} $dir/graph_tgpr || { touch $dir/.error; exit 1; }
-  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 || { touch $dir/.error; exit 1; }
-  scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92 || { touch $dir/.error; exit 1; }
-)&
-done
-
-wait
-if [ $(ls  exp/tri2a-${numleaves}_deep_nnet_finetune*/.error | wc -l) -gt 0 ]; then
-  echo "Error occured in the Deep Network finetuning"
-fi 
 
 
