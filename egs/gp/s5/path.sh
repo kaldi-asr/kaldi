@@ -1,8 +1,7 @@
 # This contains the locations of the tools and data required for running
 # the GlobalPhone experiments.
 
-#KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
-KALDI_ROOT=/mnt/matylda6/ijanda/kaldi2/trunk
+KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
 KALDISRC=$KALDI_ROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
