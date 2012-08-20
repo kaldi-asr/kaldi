@@ -21,15 +21,24 @@
 #
 # The network is simple 3-layer MLP with 1 hidden layer.
 #
-# The dataset is randomly split to: trainset [90%] and cross-validation set [10%] 
-# (early stopping/model selection)
-# Beware of overlapping speakers for small sets...
-
+# Two datasets are used: trainset and devset (for early stopping/model selection)
 
 while [ 1 ]; do
   case $1 in
     --model-size)
       shift; modelsize=$1; shift;
+      ;;
+    --hid-layers)
+      shift; hid_layers=$1; shift;
+      ;;
+    --bn-dim)
+      shift; bn_dim=$1; shift;
+      ;;
+    --hid-dim)
+      shift; hid_dim=$1; shift;
+      ;;
+    --mlp-init)
+      shift; mlp_init=$1; shift;
       ;;
     --learn-rate)
       shift; lrate=$1; shift;
@@ -46,8 +55,11 @@ while [ 1 ]; do
     --norm-vars)
       shift; norm_vars=$1; shift;
       ;;
-    --fea-dim)
-      shift; fea_dim=$1; shift;
+    --feat-dim)
+      shift; feat_dim=$1; shift;
+      ;;
+    --feat-type)
+      shift; feat_type=$1; shift;
       ;;
     --splice-lr)
       shift; splice_lr=$1; shift;
@@ -65,18 +77,20 @@ while [ 1 ]; do
 done
 
 
-if [ $# != 4 ]; then
-   echo "Usage: steps/train_nnet.sh <data-dir> <lang-dir> <ali-dir> <exp-dir>"
-   echo " e.g.: steps/train_nnet.sh data/train data/lang exp/mono_ali exp/mono_nnet"
+if [ $# != 6 ]; then
+   echo "Usage: steps/train_nnet.sh <data-dir> <data-dev> <lang-dir> <ali-dir> <ali-dev> <exp-dir>"
+   echo " e.g.: steps/train_nnet.sh data/train data/cv data/lang exp/mono_ali exp/mono_ali_cv exp/mono_nnet"
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-lang=$2
-alidir=$3
-dir=$4
+data_cv=$2
+lang=$3
+alidir=$4
+alidir_cv=$5
+dir=$6
 
 if [ ! -f $alidir/final.mdl -o ! -f $alidir/ali.gz ]; then
   echo "Error: alignment dir $alidir does not contain final.mdl and ali.gz"
@@ -91,13 +105,15 @@ TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
 
 #feature config
 echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
-echo fea_dim: ${fea_dim:=23}     #FBANK dimension
+echo feat_type: ${feat_type:=traps}  #default features are traps
+echo feat_dim: ${feat_dim:=23}     #FBANK dimension
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
 
 #mlp size
 echo modelsize: ${modelsize:=1000000} #number of free parameters in the MLP
-
+echo hid_layers: ${hid_layers:=2} #number of hidden layers
+${bn_dim+: echo bn_dim: $bn_dim}
 
 #global config for trainig
 max_iters=20
@@ -116,10 +132,17 @@ mkdir -p $dir/{log,nnet}
 ###### PREPARE ALIGNMENTS ######
 echo "Preparing alignments"
 #convert ali to pdf
-labels="ark:$dir/cur.pdf"
-ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels 2> $dir/ali2pdf.log || exit 1
+labels_tr="ark:$dir/train.pdf"
+ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels_tr 2> $dir/ali2pdf_tr.log || exit 1
+#convert ali to pdf (cv set)
+labels_cv="ark:$dir/cv.pdf"
+ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" t,$labels_cv 2> $dir/ali2pdf_cv.log || exit 1
+#merge the two parts (scheduler expects one file in $labels)
+labels="ark:$dir/train_and_cv.pdf"
+cat $dir/train.pdf $dir/cv.pdf > $dir/train_and_cv.pdf
+
 #get the priors, count the class examples from alignments
-pdf-to-counts ark:$dir/cur.pdf $dir/cur.counts
+pdf-to-counts ark:$dir/train.pdf $dir/train.counts
 #copy the old transition model, will be needed by decoder
 copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
 cp $alidir/tree $dir/tree
@@ -127,43 +150,67 @@ cp $alidir/tree $dir/tree
 ###### PREPARE FEATURES ######
 # shuffle the list
 echo "Preparing train/cv lists"
-cat $data/feats.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/feats.scp
-# split 90% train set 10% cross-validation set
-N=$(cat $dir/feats.scp | wc -l)
-head -n $[(N*9)/10] $dir/feats.scp > $dir/train.scp
-tail -n $[N/10] $dir/feats.scp > $dir/cv.scp
+cat $data/feats.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
+cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
-wc -l $dir/feats.scp
 wc -l $dir/train.scp $dir/cv.scp
 
 #compute per-speaker CMVN
 echo "Computing cepstral mean and variance statistics"
 cmvn="ark:$dir/cmvn.ark"
-compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/feats.scp $cmvn 2>$dir/cmvn.log || exit 1
+cmvn_cv="ark:$dir/cmvn_cv.ark"
+compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/train.scp $cmvn 2>$dir/cmvn.log || exit 1
+compute-cmvn-stats --spk2utt=ark:$data_cv/spk2utt scp:$dir/cv.scp $cmvn_cv 2>$dir/cmvn_cv.log || exit 1
 feats_tr="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn scp:$dir/train.scp ark:- |"
-feats_cv="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn scp:$dir/cv.scp ark:- |"
+feats_cv="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk $cmvn_cv scp:$dir/cv.scp ark:- |"
+echo $norm_vars > $dir/norm_vars
 
 #add splicing
 feats_tr="$feats_tr splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- |"
 feats_cv="$feats_cv splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- |"
+echo $splice_lr > $dir/splice_lr
 
-#generate hamming+dct transform
-echo "Preparing Hamming DCT transform"
-transf=$dir/hamm_dct.mat
-scripts/gen_hamm_mat.py --fea-dim=$fea_dim --splice=$splice_lr > $dir/hamm.mat
-scripts/gen_dct_mat.py --fea-dim=$fea_dim --splice=$splice_lr --dct-basis=$dct_basis > $dir/dct.mat
-compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>$dir/hamm_dct.log || exit 1
-#convert transform to NNET format
-{
-  echo "<biasedlinearity> $((fea_dim*dct_basis)) $((fea_dim*(2*splice_lr+1)))"
-  cat $transf
-  echo -n ' [ '
-  for i in $(seq $((fea_dim*dct_basis))); do echo -n '0 '; done
-  echo ']'
-} > $transf.net
-#append transform to features
-feats_tr="$feats_tr nnet-forward --print-args=false --silent=true $transf.net ark:- ark:- |"
-feats_cv="$feats_cv nnet-forward --print-args=false --silent=true $transf.net ark:- ark:- |"
+#choose further processing of spliced features
+echo "Feature type : $feat_type"
+case $feat_type in
+  plain)
+  ;;
+  traps)
+    #generate hamming+dct transform
+    echo "Preparing Hamming DCT transform"
+    transf=$dir/hamm_dct.mat
+    scripts/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice_lr > $dir/hamm.mat
+    scripts/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice_lr --dct-basis=$dct_basis > $dir/dct.mat
+    compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>$dir/hamm_dct.log || exit 1
+    #convert transform to NNET format
+    {
+      echo "<biasedlinearity> $((feat_dim*dct_basis)) $((feat_dim*(2*splice_lr+1)))"
+      cat $transf
+      echo -n ' [ '
+      for i in $(seq $((feat_dim*dct_basis))); do echo -n '0 '; done
+      echo ']'
+    } > $transf.net
+    #append transform to features
+    feats_tr="$feats_tr nnet-forward --print-args=false --silent=true $transf.net ark:- ark:- |"
+    feats_cv="$feats_cv nnet-forward --print-args=false --silent=true $transf.net ark:- ark:- |"
+  ;;
+  transf)
+    transf=$dir/final.mat
+    [ ! -f $alidir/final.mat ] && echo "Missing transform $alidir/final.mat" && exit 1;
+    cp $alidir/final.mat $transf
+    echo "Copied transform $transf"
+    feats_tr="$feats_tr transform-feats $transf ark:- ark:- |"
+    feats_cv="$feats_cv transform-feats $transf ark:- ark:- |"
+  ;;
+  transf-sat)
+    echo yet unimplemented...
+    exit 1;
+  ;;
+  *)
+    echo "Unknown feature type $feat_type"
+    exit 1;
+esac
+echo $feat_type > $dir/feat_type #remember the type
 
 #renormalize the MLP input to zero mean and unit variance
 echo "Renormalizing MLP input features"
@@ -174,13 +221,90 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:-
 
 
 ###### INITIALIZE THE NNET ######
-echo -n "Initializng MLP: "
-num_fea=$((fea_dim*dct_basis))
-num_tgt=$(hmm-info $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
-num_hid=$((modelsize/(num_fea+num_tgt)))
-mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_tgt}.init
-echo " $mlp_init"
-scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 > $mlp_init
+
+if [ "" != "$mlp_init" ]; then
+  echo "Using pre-initalized netwk $mlp_init";
+else
+  echo -n "Initializng MLP: "
+  num_fea=$((feat_dim*dct_basis))
+  num_tgt=$(hmm-info $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
+  # What is the topology?
+  if [ "" == "$bn_dim" ]; then #MLP w/o bottleneck
+    case "$hid_layers" in
+      1) #3-layer MLP
+        if [ "" != "$hid_dim" ]; then
+          num_hid=$hid_dim
+        else
+          num_hid=$((modelsize/(num_fea+num_tgt)))
+        fi
+        mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_tgt}.init
+        echo " $mlp_init"
+        scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_tgt} \
+          --gauss --negbias --seed=777 > $mlp_init
+        ;;
+      2|3|4|5|6|7|8|9|10) #(>3)-layer MLP
+        if [ "" != "$hid_dim" ]; then
+          num_hid=$hid_dim
+        else
+          a=$((hid_layers-1))
+          b=$((num_fea+num_tgt))
+          c=$((-modelsize))
+          num_hid=$(awk "BEGIN{ num_hid= -$b/(2*$a) + sqrt($b^2 -4*$a*$c)/(2*$a); print int(num_hid) }") 
+        fi
+        mlp_init=$dir/nnet_${num_fea}
+        dim_arg=${num_fea}
+        for i in $(seq $hid_layers); do
+          mlp_init=${mlp_init}_$num_hid
+          dim_arg=${dim_arg}:${num_hid}
+        done
+        mlp_init=${mlp_init}_${num_tgt}.init
+        dim_arg=${dim_arg}:${num_tgt}
+        echo " $mlp_init"
+        scripts/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=777 > $mlp_init
+        ;;
+      *)
+        echo "Unsupported number of hidden layers $hid_layers"
+        exit 1;
+    esac
+  else #bn-syatem
+    num_bn=$bn_dim
+    case "$hid_layers" in # ie. number of layers in front of bottleneck
+      1) #5-layer MLP
+        if [ "" != "$hid_dim" ]; then
+          num_hid=$hid_dim
+        else
+          num_hid=$((modelsize/(num_fea+num_tgt+(2*num_bn))))
+        fi
+        mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_bn}_${num_hid}_${num_tgt}.init
+        echo " $mlp_init"
+        scripts/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_bn}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 --linBNdim=$num_bn > $mlp_init
+        ;;
+      2|3|4|5|6|7|8|9|10) #(>5)-layer MLP
+        if [ "" != "$hid_dim" ]; then
+          num_hid=$hid_dim
+        else
+          a=$((hid_layers-1))
+          b=$((num_fea+2*num_bn+num_tgt))
+          c=$((-modelsize))
+          num_hid=$(awk "BEGIN{ num_hid= -$b/(2*$a) + sqrt($b^2 -4*$a*$c)/(2*$a); print int(num_hid) }") 
+        fi
+        mlp_init=$dir/nnet_${num_fea}
+        dim_arg=${num_fea}
+        for i in $(seq $hid_layers); do
+          mlp_init=${mlp_init}_$num_hid
+          dim_arg=${dim_arg}:${num_hid}
+        done
+        mlp_init=${mlp_init}_${num_bn}lin_${num_hid}_${num_tgt}.init
+        dim_arg=${dim_arg}:${num_bn}:${num_hid}:${num_tgt}
+        echo " $mlp_init"
+        scripts/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=777 --linBNdim=$num_bn > $mlp_init
+        ;;
+      *)
+        echo "Unsupported number of hidden layers $hid_layers"
+        exit 1;
+    esac
+  fi
+fi
 
 
 

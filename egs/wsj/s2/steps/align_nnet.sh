@@ -62,13 +62,14 @@ oov_sym=`cat $lang/oov.txt`
 
 
 ######## CONFIGURATION
-echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
-echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
-transf=$srcdir/hamm_dct.mat #hamming DCT transform
 cmvn_g="$srcdir/cmvn_glob.mat"
-priors=$srcdir/cur.counts
+priors=$srcdir/train.counts
 nnet=$srcdir/final.nnet
 ########
+
+norm_vars=$(cat $srcdir/norm_vars)
+splice_lr=$(cat $srcdir/splice_lr)
+feat_type=$(cat $srcdir/feat_type)
 
 
 
@@ -85,10 +86,29 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.12 --self-loop-scale=0.1"
 # prepare features
 # We only do one decoding pass, so there is no point caching the
 # CMVN stats-- we make them part of a pipe.
-feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp ark:- |"
-# Splice+Hamming+DCT
-feats="$feats splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- | transform-feats --print-args=false $transf ark:- ark:- |"
-# Norm+MLP
+feats="ark:compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk ark:- scp:$data/feats.scp ark:- | splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- |"
+
+echo "Feature type : $feat_type"
+case $feat_type in
+  plain)
+  ;;
+  traps)
+    transf=$srcdir/hamm_dct.mat #hamming DCT transform
+    feats="$feats transform-feats --print-args=false $transf ark:- ark:- |"
+  ;;
+  transf)
+    feats="$feats transform-feats $srcdir/final.mat ark:- ark:- |"
+  ;;
+  transf-sat)
+    echo yet unimplemented...
+    exit 1;
+  ;;
+  *)
+    echo "Unknown feature type $feat_type"
+    exit 1;
+esac
+
+# Global normalization and the MLP
 feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- | nnet-forward --silent=true --print-args=false --apply-log=true --class-frame-counts=$priors $nnet ark:- ark:- |" #use priors! no prior-scale...
 
 

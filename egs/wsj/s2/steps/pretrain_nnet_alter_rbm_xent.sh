@@ -24,6 +24,12 @@
 
 while [ 1 ]; do
   case $1 in
+    --nn-depth)
+      shift; nn_depth=$1; shift;
+      ;;
+    --nn-dimhid)
+      shift; nn_dimhid=$1; shift;
+      ;;
     --rbm-iter)
       shift; iters_rbm=$1; shift;
       ;;
@@ -192,11 +198,11 @@ feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:-
 #get the DNN dimensions
 num_fea=$((fea_dim*dct_basis))
 num_hid=$nn_dimhid
-num_tgt=$(gmm-info $alidir/final.mdl 2>$dir/gmm-info.log | grep pdfs | awk '{print $NF}')
+num_tgt=$(hmm-info $alidir/final.mdl 2>$dir/gmm-info.log | grep pdfs | awk '{print $NF}')
 
 
 ###### PERFORM THE PRE-TRAINING ######
-for depth in $(seq -w 1 $nn_depth); do
+for depth in $(seq -f '%02g' 1 $nn_depth); do
   echo "%%%%%%% PRE-TRAINING DEPTH $depth"
   RBM=$dir/nnet/hid${depth}a_rbm.d/nnet/hid${depth}a_rbm
   mkdir -p $(dirname $RBM); mkdir -p $(dirname $RBM)/../log
