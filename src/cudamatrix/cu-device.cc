@@ -112,7 +112,7 @@ void CuDevice::PrintProfile() {
 std::string CuDevice::GetFreeMemory() {
 //fix the 64-bit compilation issue,
 //the CUDA API is inconsistent!
-#if (CUDA_VERSION >= 4000)
+#if (CUDA_VERSION >= 3020)
   size_t mem_free, mem_total;
 #else
   unsigned int mem_free, mem_total;
