@@ -47,8 +47,8 @@ while (<T>) {
   my $trans = $2;
 
   $trans =~ s/\`(.*?)\'/$1/g;  # Remove quotation marks.
-  $trans =~ s/</ </g;  # Fragments are enclosed in < & > : space them properly
-  $trans =~ s/>/> /g;
+  $trans =~ s/</ /g;  # Fragments are enclosed in < & > : space them properly
+  $trans =~ s/\-?>/ /g;
   
   $trans = &rmn2utf8_SP($trans) unless (defined($keep_rmn));
   if (defined($uppercase)) {

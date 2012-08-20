@@ -39,7 +39,7 @@ GP_LM=/mnt/matylda6/ijanda/GLOBALPHONE_LM
 
 # Set the languages that will actually be processed
 # export GP_LANGUAGES="CZ FR GE PL PO RU SP VN"
-export GP_LANGUAGES="GE PL PO SP"
+export GP_LANGUAGES="CZ GE PL PO SP"
 
 # The following data preparation step actually converts the audio files from 
 # shorten to WAV to take out the empty files and those with compression errors. 
@@ -54,8 +54,9 @@ done
 
 # Convert the different available language models to FSTs, and create separate 
 # decoding configurations for each.
-local/gp_format_data.sh --filter-vocab-sri false $GP_LANGUAGES \
-  >& data/$L/format_data.log 
+( local/gp_format_data.sh --filter-vocab-sri false $GP_LANGUAGES;
+  local/gp_format_data.sh --filter-vocab-sri true $GP_LANGUAGES;
+) >& data/$L/format_data.log
 
 # Now make MFCC features.
 for L in $GP_LANGUAGES; do
@@ -72,15 +73,15 @@ for L in $GP_LANGUAGES; do
   mkdir -p exp/$L/mono;
   steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
     data/$L/train data/$L/lang exp/$L/mono >& exp/$L/mono/train.log
-  # The following 3 commands will not run as written, since the LM directories
-  # will be different across sites. Edit the 'lang_test' to match what is 
-  # available
-  utils/mkgraph.sh --mono data/$L/lang_test_tgpr exp/$L/mono \
-    exp/$L/mono/graph
-  utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-    exp/$L/mono/graph data/$L/dev exp/$L/mono/decode_dev
-  utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-    exp/$L/mono/graph data/$L/eval exp/$L/mono/decode_eval
+#   # The following 3 commands will not run as written, since the LM directories
+#   # will be different across sites. Edit the 'lang_test' to match what is 
+#   # available
+#   utils/mkgraph.sh --mono data/$L/lang_test_tgpr exp/$L/mono \
+#     exp/$L/mono/graph
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/mono/graph data/$L/dev exp/$L/mono/decode_dev
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/mono/graph data/$L/eval exp/$L/mono/decode_eval
 done
 
 
@@ -97,12 +98,36 @@ for L in $GP_LANGUAGES; do
     $num_states $num_gauss data/$L/train data/$L/lang exp/$L/mono_ali \
     exp/$L/tri1 >& exp/$L/tri1/train.log
 
-  # Like with the monophone systems, the following 3 commands will not run.
-  # Edit the 'lang_test' to match what is available.
-  utils/mkgraph.sh data/$L/lang_test_tgpr exp/$L/tri1 exp/$L/tri1/graph
-  utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-    exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
-  utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-    exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
+#   # Like with the monophone systems, the following 3 commands will not run.
+#   # Edit the 'lang_test' to match what is available.
+#   utils/mkgraph.sh data/$L/lang_test_tgpr exp/$L/tri1 exp/$L/tri1/graph
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
 
 done
+
+for L in $GP_LANGUAGES; do
+  mkdir -p exp/$L/tri1_ali
+  steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+    data/$L/train data/$L/lang exp/$L/tri1 exp/$L/tri1_ali \
+    >& exp/$L/tri1_ali/align.log
+
+  num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+  num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+  mkdir -p exp/$L/tri1
+  steps/train_deltas.sh --nj 10 --cmd "$train_cmd" \
+    $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
+    exp/$L/tri2a >& exp/$L/tri2a/train.log
+
+#   # Like with the monophone systems, the following 3 commands will not run.
+#   # Edit the 'lang_test' to match what is available.
+#   utils/mkgraph.sh data/$L/lang_test_tgpr exp/$L/tri1 exp/$L/tri1/graph
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
+#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
+#     exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
+
+done
+
