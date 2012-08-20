@@ -65,19 +65,19 @@ pushd $CONFDIR > /dev/null
 popd > /dev/null
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
 
-# # (2) get the various file lists (for audio, transcription, etc.) for the
-# # specified language.
-# printf "Preparing file lists ... "
-# for L in $LANGUAGES; do
-#   mkdir -p data/$L/local/{data,dict}
-#   gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
-#     --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
-#     --work-dir=data $L 2>data/$L/prep_flists.log & 
-#   # Running these in parallel since this does audio conversion (to figure out
-#   # which files cannot be processed) and takes some time to run. 
-# done
-# wait;
-# echo "Done"
+# (2) get the various file lists (for audio, transcription, etc.) for the
+# specified language.
+printf "Preparing file lists ... "
+for L in $LANGUAGES; do
+  mkdir -p data/$L/local/{data,dict}
+  gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
+    --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
+    --work-dir=data $L >& data/$L/prep_flists.log & 
+  # Running these in parallel since this does audio conversion (to figure out
+  # which files cannot be processed) and takes some time to run. 
+done
+wait;
+echo "Done"
 
 # (3) Normalize the dictionary and transcripts.
 for L in $LANGUAGES; do

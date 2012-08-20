@@ -42,7 +42,7 @@ for f in phones.txt words.txt L.fst L_disambig.fst phones/; do
 done
 
 lm_base=$(basename $lm '.gz')
-gunzip -c $lm | $utils/find_arpa_oovs.pl $out_dir/words.txt \
+gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \
   > $out_dir/oovs_${lm_base}.txt
 
 # Removing all "illegal" combinations of <s> and </s>, which are supposed to 
@@ -54,11 +54,15 @@ gunzip -c $lm \
 
 awk '{print $1}' $out_dir/words.txt > $tmpdir/voc
 
+# Change the LM vocabulary to be the intersection of the current LM vocabulary
+# and the set of words in the pronunciation lexicon. This also renormalizes the 
+# LM by recomputing the backoff weights, and remove those ngrams whose 
+# probabilities are lower than the backed-off estimates.
 change-lm-vocab -vocab $tmpdir/voc -lm $tmpdir/lm.gz -write-lm $tmpdir/out_lm \
   -subset -prune-lowprobs
 
 arpa2fst $tmpdir/out_lm | fstprint \
-  | $utils/eps2disambig.pl | $utils/s2eps.pl \
+  | utils/eps2disambig.pl | utils/s2eps.pl \
   | fstcompile --isymbols=$out_dir/words.txt --osymbols=$out_dir/words.txt \
     --keep_isymbols=false --keep_osymbols=false \
   | fstrmepsilon > $out_dir/G.fst

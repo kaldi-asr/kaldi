@@ -29,7 +29,7 @@ use strict;
 
 while(<STDIN>) {
   chomp;
-  $_ =~ m:\S+/(\S+).rmn: || die "Bad line in transcription file list: $_";
+  $_ =~ m:\S+/(\S+).(rmn|trl): || die "Bad line in transcription file list: $_";
   my $spk = $1;
   open(F, "<$_") || die "Error opening transcription file $_\n";
   while(<F>) {

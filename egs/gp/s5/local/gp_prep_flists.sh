@@ -97,6 +97,18 @@ find $GPDIR/$full_name/trl -name '*.trl' > $tmpdir/trans_trl.list
 num_trans_trl=$(wc -l $tmpdir/trans_trl.list | awk '{print $1}')
 set -e
 
+if [ $num_trans_rmn -eq 0 ]; then
+  echo "No rmn found for $LCODE: using trl (possibly ISO 8859 encoded)"
+  trans=$tmpdir/trans_trl.list
+  [ $num_trans_trl -eq 0 ] && \
+    { echo "Error: no trl transcripts found for $LCODE"; exit 1; }
+elif [ $num_trans_trl -eq 0 ]; then
+  echo "No trl found for $LCODE: using rmn (GlobalPhone style ASCII encoded)"
+elif [ $num_trans_trl -ne $num_trans_rmn ]; then
+  echo "Warning: # of rmn ($num_trans_rmn) and # of trl ($num_trans_trl) do not match."
+  echo "There is possibly an error. Using rmn transcripts."
+fi
+
 
 ODIR=$WDIR/$LCODE/local/data     # Directory to write file lists & transcripts
 mkdir -p $ODIR $WDIR/$LCODE/wav  # Directory for WAV files

@@ -22,6 +22,8 @@ power=0.2 # exponent to determine number of gaussians from occurrence counts
 feat_dim=39
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
