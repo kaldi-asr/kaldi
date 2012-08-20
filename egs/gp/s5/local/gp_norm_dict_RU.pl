@@ -65,7 +65,7 @@ while (<L>) {
   # Next, normalize the word:
   next if ($word =~ /^\$|^$|^\(|^\)/);
   $word =~ s/\(.*\)//g;  # Pron variants should have same orthography
-  $word = &rmn2utf8_SP($word) unless (defined($keep_rmn));
+  $word = &rmn2utf8_RU($word) unless (defined($keep_rmn));
   if (defined($uppercase)) {
     $word = uc($word);
   } else {
