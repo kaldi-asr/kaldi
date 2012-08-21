@@ -5,6 +5,7 @@
 
 # Begin configuration.
 stage=-4 #  This allows restarting after partway, when something when wrong.
+config=
 cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="10 20 30";

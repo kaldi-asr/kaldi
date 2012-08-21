@@ -135,3 +135,30 @@ for L in $GP_LANGUAGES; do
   done
 done
 
+for L in $GP_LANGUAGES; do
+  mode=4
+# Doing this only for the LMs whose vocabs were limited using SRILM, since the
+# other approach didn't yield LMs for all languages.  
+  steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
+    data/$L/lang_test_tgpr_sri data/$L/lang_test_tg_sri data/$L/dev \
+    exp/$L/tri2a/decode_dev_tgpr_sri exp/$L/tri2a/decode_dev_tg_sri$mode
+done
+
+for L in $GP_LANGUAGES; do
+  num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+  num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+  mkdir -p exp/$L/tri2b
+  steps/train_lda_mllt.sh --cmd "$train_cmd" $num_states $num_gauss \
+    data/$L/train data/$L/lang exp/$L/tri1_ali exp/$L/tri2b \
+    >& exp/$L/tri2b/train.log
+
+  for lm_suffix in tgpr tgpr_sri; do
+    graph_dir=exp/$L/tri2a/graph_${lm_suffix}
+    mkdir -p $graph_dir
+    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
+      >& $graph_dir/mkgraph.log
+
+    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+      exp/$L/tri2a/decode_dev_${lm_suffix} &
+  done
+done

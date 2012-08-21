@@ -22,4 +22,16 @@ exp/PO/tri1/decode_dev_tgpr_sri/wer_15:%WER 32.62 [ 4251 / 13030, 541 ins, 1076 
 exp/SP/tri1/decode_dev_tgpr/wer_15:%WER 27.01 [ 5158 / 19098, 595 ins, 1198 del, 3365 sub ]
 exp/SP/tri1/decode_dev_tgpr_sri/wer_14:%WER 27.05 [ 5166 / 19098, 631 ins, 1115 del, 3420 sub ]
 
+$ for L in CZ GE PL PO SP; do grep WER exp/$L/tri2a/decode_dev_tgpr/wer_* | ./utils/best_wer.sh; grep WER exp/$L/tri2a/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh; done
+exp/CZ/tri2a/decode_dev_tgpr/wer_15:%WER 25.59 [ 4477 / 17495, 508 ins, 1608 del, 2361 sub ]
+exp/CZ/tri2a/decode_dev_tgpr_sri/wer_16:%WER 24.88 [ 4353 / 17495, 411 ins, 1698 del, 2244 sub ]
+exp/GE/tri2a/decode_dev_tgpr/wer_17:%WER 16.27 [ 2504 / 15387, 363 ins, 387 del, 1754 sub ]
+exp/GE/tri2a/decode_dev_tgpr_sri/wer_18:%WER 15.64 [ 2406 / 15387, 288 ins, 427 del, 1691 sub ]
+exp/PL/tri2a/decode_dev_tgpr/wer_12:%WER 58.61 [ 10351 / 17660, 511 ins, 5474 del, 4366 sub ]
+exp/PL/tri2a/decode_dev_tgpr_sri/wer_13:%WER 59.21 [ 10456 / 17660, 462 ins, 5569 del, 4425 sub ]
+exp/PO/tri2a/decode_dev_tgpr/wer_15:%WER 32.50 [ 4235 / 13030, 529 ins, 1067 del, 2639 sub ]
+exp/PO/tri2a/decode_dev_tgpr_sri/wer_15:%WER 32.51 [ 4236 / 13030, 542 ins, 1042 del, 2652 sub ]
+exp/SP/tri2a/decode_dev_tgpr/wer_15:%WER 26.49 [ 5060 / 19098, 572 ins, 1199 del, 3289 sub ]
+exp/SP/tri2a/decode_dev_tgpr_sri/wer_15:%WER 26.45 [ 5051 / 19098, 565 ins, 1201 del, 3285 sub ]
+
 
