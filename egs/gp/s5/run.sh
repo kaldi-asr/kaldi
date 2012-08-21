@@ -106,7 +106,7 @@ for L in $GP_LANGUAGES; do
     utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri1 $graph_dir \
       >& $graph_dir/mkgraph.log
 
-    steps/decode.sh --nj 10 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
       exp/$L/tri1/decode_dev_${lm_suffix} &
   done
 done
@@ -130,7 +130,7 @@ for L in $GP_LANGUAGES; do
     utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
       >& $graph_dir/mkgraph.log
 
-    steps/decode.sh --nj 10 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
       exp/$L/tri2a/decode_dev_${lm_suffix} &
   done
 done
