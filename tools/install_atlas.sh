@@ -27,11 +27,11 @@
 # You may under some circumstances have to specify -b 32 to the configure
 # script (e.g. if you are compiling Kaldi in 32-bit on a 64-bit CPU).
 
-if [ ! -f atlas3.8.3.tar.gz ]; then
-  wget -T 10 -t 3 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || exit 1;
+if [ ! -f atlas3.10.0.tar.bz2 ]; then
+  wget -T 10 -t 3 http://sourceforge.net/projects/math-atlas/files/Stable/3.10.0/atlas3.10.0.tar.bz2 || exit 1;
 fi
 
-tar -xvzf atlas3.8.3.tar.gz  || exit 1;
+tar -xvjf atlas3.10.0.tar.bz2  || exit 1;
 
 cd ATLAS
 mkdir build # you should probably have a name that reflects OS, CPU, etc... but this is fine
