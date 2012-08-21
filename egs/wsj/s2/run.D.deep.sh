@@ -3,10 +3,25 @@
 # you can change these commands to just run.pl to make them run
 # locally, but in that case you should change the num-jobs to
 # the #cpus on your machine or fewer.
+
+#1)BUT
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+#cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
 mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
+
+#2)JHU
+#export train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu -S /bin/bash"
+#export decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu -S /bin/bash"
+
+#3)LOCAL
+#export train_cmd=run.pl
+#export decode_cmd=run.pl
+#export cuda_cmd=run.pl
+#export mkgraph_cmd=run.pl
+
+
 
 # put the scripts to path
 source path.sh
