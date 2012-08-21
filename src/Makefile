@@ -16,13 +16,16 @@ all: test_install $(SUBDIRS)
 	echo Done
 
 # Compile optional stuff 
-ext: test_install $(SUBDIRS) $(EXT_SUBDIRS)
+ext: test_install check_portaudio $(SUBDIRS) $(EXT_SUBDIRS)
 
 # Note: if you have put the OpenFst installation somewhere else, you can just
 # delete or comment out the lines below.
 OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
 test_install:
 	@[ $(OPENFST_VER) == '1.2.10' ] || ( echo "You now need openfst-1.2.10.	 Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
+
+check_portaudio:
+	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
 
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done
