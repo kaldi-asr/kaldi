@@ -38,79 +38,86 @@ if (defined($ARGV[0])) {
 }
 
 while (<STDIN>) {
-  s/~/\x{00D8}/g; # mekky znak - zmekcuje souhlasku pred nim napr t~ => Tb
+  s/~/\x{044C}/g; # Cyrillic Soft Sign - soften consonant before that, e.g. t~ => Tb
 
-  s/schTsch/\x{00DD}/g;
-  s/SchTsch/\x{00DD}/g;
+  s/schTsch/\x{0449}/g;
+  s/SchTsch/\x{0429}/g;
 
-  s/jscH/\x{00D6}/g;
-  s/JscH/\x{00D6}/g;
-  s/tscH/\x{00DE}/g;
-  s/TscH/\x{00DE}/g;
-  s/sch/\x{00DB}/g;
-  s/Sch/\x{00DB}/g;
-  s/ts/\x{00C3}/g;
-  s/tS/\x{00C3}/g;
-  s/Ts/\x{00C3}/g;
-  s/TS/\x{00C3}/g;
+  s/jscH/\x{0436}/g;
+  s/JscH/\x{0416}/g;
 
-  s/ye/\x{00C5}/g;
-  s/yo/\x{00A3}/g; # neni v textu
-  s/yu/\x{00C0}/g;
-  s/ya/\x{00D1}/g;
+  s/tscH/\x{0447}/g;
+  s/TscH/\x{0427}/g;
 
-  s/Ye/\x{00C5}/g;
-  s/Yo/\x{00A3}/g; # neni v textu
-  s/Yu/\x{00C0}/g;
-  s/Ya/\x{00D1}/g;
+  s/sch/\x{0448}/g;
+  s/Sch/\x{0428}/g;
 
-  s/i2/\x{00D9}/g;
-  s/I2/\x{00D9}/g;
-  s/Q/\x{00DF}/g;
+  s/ts/\x{0446}/g;
+  s/tS/\x{0446}/g;
 
-  s/a/\x{00C1}/g;
-  s/b/\x{00C2}/g;
-  s/w/\x{00D7}/g;
-  s/g/\x{00C7}/g;
-  s/d/\x{00C4}/g;
-  s/z/\x{00DA}/g;
-  s/i/\x{00C9}/g;
-  s/j/\x{00CA}/g;
-  s/k/\x{00CB}/g;
-  s/l/\x{00CC}/g;
-  s/m/\x{00CD}/g;
-  s/n/\x{00CE}/g;
-  s/o/\x{00CF}/g;
-  s/p/\x{00D0}/g;
-  s/r/\x{00D2}/g;
-  s/s/\x{00D3}/g;
-  s/t/\x{00D4}/g;
-  s/u/\x{00D5}/g;
-  s/f/\x{00C6}/g;
-  s/h/\x{00C8}/g;
-  s/e/\x{00DC}/g;
+  s/Ts/\x{0426}/g;
+  s/TS/\x{0426}/g;
 
-  s/A/\x{00C1}/g;
-  s/B/\x{00C2}/g;
-  s/W/\x{00D7}/g;
-  s/G/\x{00C7}/g;
-  s/D/\x{00C4}/g;
-  s/Z/\x{00DA}/g;
-  s/I/\x{00C9}/g;
-  s/J/\x{00CA}/g;
-  s/K/\x{00CB}/g;
-  s/L/\x{00CC}/g;
-  s/M/\x{00CD}/g;
-  s/N/\x{00CE}/g;
-  s/O/\x{00CF}/g;
-  s/P/\x{00D0}/g;
-  s/R/\x{00D2}/g;
-  s/S/\x{00D3}/g;
-  s/T/\x{00D4}/g;
-  s/U/\x{00D5}/g;
-  s/F/\x{00C6}/g;
-  s/H/\x{00C8}/g;
-  s/E/\x{00DC}/g;
+  s/ye/\x{0435}/g;
+  s/yo/\x{0451}/g; # non in text
+  s/yu/\x{044E}/g;
+  s/ya/\x{044F}/g;
+
+  s/Ye/\x{0415}/g;
+  s/Yo/\x{0401}/g; # non in text
+  s/Yu/\x{042E}/g;
+  s/Ya/\x{042F}/g;
+
+  s/i2/\x{044B}/g;
+  s/I2/\x{042B}/g;
+
+  s/Q/\x{044A}/g;
+  s/q/\x{042A}/g; # non in text
+
+  s/a/\x{0430}/g;
+  s/b/\x{0431}/g;
+  s/w/\x{0432}/g;
+  s/g/\x{0433}/g;
+  s/d/\x{0434}/g;
+  s/z/\x{0437}/g;
+  s/i/\x{0438}/g;
+  s/j/\x{0439}/g;
+  s/k/\x{043A}/g;
+  s/l/\x{043B}/g;
+  s/m/\x{043C}/g;
+  s/n/\x{043D}/g;
+  s/o/\x{043E}/g;
+  s/p/\x{043F}/g;
+  s/r/\x{0440}/g;
+  s/s/\x{0441}/g;
+  s/t/\x{0442}/g;
+  s/u/\x{0443}/g;
+  s/f/\x{0444}/g;
+  s/h/\x{0445}/g;
+  s/e/\x{044D}/g;
+
+  s/A/\x{0410}/g;
+  s/B/\x{0411}/g;
+  s/W/\x{0412}/g;
+  s/G/\x{0413}/g;
+  s/D/\x{0414}/g;
+  s/Z/\x{0417}/g;
+  s/I/\x{0418}/g;
+  s/J/\x{0419}/g;
+  s/K/\x{041A}/g;
+  s/L/\x{041B}/g;
+  s/M/\x{041C}/g;
+  s/N/\x{041D}/g;
+  s/O/\x{041E}/g;
+  s/P/\x{041F}/g;
+  s/R/\x{0420}/g;
+  s/S/\x{0421}/g;
+  s/T/\x{0422}/g;
+  s/U/\x{0423}/g;
+  s/F/\x{0424}/g;
+  s/H/\x{0425}/g;
+  s/E/\x{042D}/g;
+
   
   print NFC($_);  # recompose & reorder canonically
 }

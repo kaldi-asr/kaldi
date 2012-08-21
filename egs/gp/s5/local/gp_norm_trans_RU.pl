@@ -64,81 +64,86 @@ while (<T>) {
 
 sub rmn2utf8_RU {
   my ($in_str) = "@_";
-  
-  $in_str =~ s/~/\x{00D8}/g; # mekky znak - zmekcuje souhlasku pred nim napr t~ => Tb
 
-  $in_str =~ s/schTsch/\x{00DD}/g;
-  $in_str =~ s/SchTsch/\x{00DD}/g;
+  $in_str =~ s/~/\x{044C}/g; # Cyrillic Soft Sign - soften consonant before that, e.g. t~ => Tb
 
-  $in_str =~ s/jscH/\x{00D6}/g;
-  $in_str =~ s/JscH/\x{00D6}/g;
-  $in_str =~ s/tscH/\x{00DE}/g;
-  $in_str =~ s/TscH/\x{00DE}/g;
-  $in_str =~ s/sch/\x{00DB}/g;
-  $in_str =~ s/Sch/\x{00DB}/g;
-  $in_str =~ s/ts/\x{00C3}/g;
-  $in_str =~ s/tS/\x{00C3}/g;
-  $in_str =~ s/Ts/\x{00C3}/g;
-  $in_str =~ s/TS/\x{00C3}/g;
+  $in_str =~ s/schTsch/\x{0449}/g;
+  $in_str =~ s/SchTsch/\x{0429}/g;
 
-  $in_str =~ s/ye/\x{00C5}/g;
-  $in_str =~ s/yo/\x{00A3}/g; # neni v textu
-  $in_str =~ s/yu/\x{00C0}/g;
-  $in_str =~ s/ya/\x{00D1}/g;
+  $in_str =~ s/jscH/\x{0436}/g;
+  $in_str =~ s/JscH/\x{0416}/g;
 
-  $in_str =~ s/Ye/\x{00C5}/g;
-  $in_str =~ s/Yo/\x{00A3}/g; # neni v textu
-  $in_str =~ s/Yu/\x{00C0}/g;
-  $in_str =~ s/Ya/\x{00D1}/g;
+  $in_str =~ s/tscH/\x{0447}/g;
+  $in_str =~ s/TscH/\x{0427}/g;
 
-  $in_str =~ s/i2/\x{00D9}/g;
-  $in_str =~ s/I2/\x{00D9}/g;
-  $in_str =~ s/Q/\x{00DF}/g;
+  $in_str =~ s/sch/\x{0448}/g;
+  $in_str =~ s/Sch/\x{0428}/g;
 
-  $in_str =~ s/a/\x{00C1}/g;
-  $in_str =~ s/b/\x{00C2}/g;
-  $in_str =~ s/w/\x{00D7}/g;
-  $in_str =~ s/g/\x{00C7}/g;
-  $in_str =~ s/d/\x{00C4}/g;
-  $in_str =~ s/z/\x{00DA}/g;
-  $in_str =~ s/i/\x{00C9}/g;
-  $in_str =~ s/j/\x{00CA}/g;
-  $in_str =~ s/k/\x{00CB}/g;
-  $in_str =~ s/l/\x{00CC}/g;
-  $in_str =~ s/m/\x{00CD}/g;
-  $in_str =~ s/n/\x{00CE}/g;
-  $in_str =~ s/o/\x{00CF}/g;
-  $in_str =~ s/p/\x{00D0}/g;
-  $in_str =~ s/r/\x{00D2}/g;
-  $in_str =~ s/s/\x{00D3}/g;
-  $in_str =~ s/t/\x{00D4}/g;
-  $in_str =~ s/u/\x{00D5}/g;
-  $in_str =~ s/f/\x{00C6}/g;
-  $in_str =~ s/h/\x{00C8}/g;
-  $in_str =~ s/e/\x{00DC}/g;
+  $in_str =~ s/ts/\x{0446}/g;
+  $in_str =~ s/tS/\x{0446}/g;
 
-  $in_str =~ s/A/\x{00C1}/g;
-  $in_str =~ s/B/\x{00C2}/g;
-  $in_str =~ s/W/\x{00D7}/g;
-  $in_str =~ s/G/\x{00C7}/g;
-  $in_str =~ s/D/\x{00C4}/g;
-  $in_str =~ s/Z/\x{00DA}/g;
-  $in_str =~ s/I/\x{00C9}/g;
-  $in_str =~ s/J/\x{00CA}/g;
-  $in_str =~ s/K/\x{00CB}/g;
-  $in_str =~ s/L/\x{00CC}/g;
-  $in_str =~ s/M/\x{00CD}/g;
-  $in_str =~ s/N/\x{00CE}/g;
-  $in_str =~ s/O/\x{00CF}/g;
-  $in_str =~ s/P/\x{00D0}/g;
-  $in_str =~ s/R/\x{00D2}/g;
-  $in_str =~ s/S/\x{00D3}/g;
-  $in_str =~ s/T/\x{00D4}/g;
-  $in_str =~ s/U/\x{00D5}/g;
-  $in_str =~ s/F/\x{00C6}/g;
-  $in_str =~ s/H/\x{00C8}/g;
-  $in_str =~ s/E/\x{00DC}/g;
+  $in_str =~ s/Ts/\x{0426}/g;
+  $in_str =~ s/TS/\x{0426}/g;
 
+  $in_str =~ s/ye/\x{0435}/g;
+  $in_str =~ s/yo/\x{0451}/g; # non in text
+  $in_str =~ s/yu/\x{044E}/g;
+  $in_str =~ s/ya/\x{044F}/g;
+
+  $in_str =~ s/Ye/\x{0415}/g;
+  $in_str =~ s/Yo/\x{0401}/g; # non in text
+  $in_str =~ s/Yu/\x{042E}/g;
+  $in_str =~ s/Ya/\x{042F}/g;
+
+  $in_str =~ s/i2/\x{044B}/g;
+  $in_str =~ s/I2/\x{042B}/g;
+
+  $in_str =~ s/Q/\x{044A}/g;
+  $in_str =~ s/q/\x{042A}/g; # non in text
+
+  $in_str =~ s/a/\x{0430}/g;
+  $in_str =~ s/b/\x{0431}/g;
+  $in_str =~ s/w/\x{0432}/g;
+  $in_str =~ s/g/\x{0433}/g;
+  $in_str =~ s/d/\x{0434}/g;
+  $in_str =~ s/z/\x{0437}/g;
+  $in_str =~ s/i/\x{0438}/g;
+  $in_str =~ s/j/\x{0439}/g;
+  $in_str =~ s/k/\x{043A}/g;
+  $in_str =~ s/l/\x{043B}/g;
+  $in_str =~ s/m/\x{043C}/g;
+  $in_str =~ s/n/\x{043D}/g;
+  $in_str =~ s/o/\x{043E}/g;
+  $in_str =~ s/p/\x{043F}/g;
+  $in_str =~ s/r/\x{0440}/g;
+  $in_str =~ s/s/\x{0441}/g;
+  $in_str =~ s/t/\x{0442}/g;
+  $in_str =~ s/u/\x{0443}/g;
+  $in_str =~ s/f/\x{0444}/g;
+  $in_str =~ s/h/\x{0445}/g;
+  $in_str =~ s/e/\x{044D}/g;
+
+  $in_str =~ s/A/\x{0410}/g;
+  $in_str =~ s/B/\x{0411}/g;
+  $in_str =~ s/W/\x{0412}/g;
+  $in_str =~ s/G/\x{0413}/g;
+  $in_str =~ s/D/\x{0414}/g;
+  $in_str =~ s/Z/\x{0417}/g;
+  $in_str =~ s/I/\x{0418}/g;
+  $in_str =~ s/J/\x{0419}/g;
+  $in_str =~ s/K/\x{041A}/g;
+  $in_str =~ s/L/\x{041B}/g;
+  $in_str =~ s/M/\x{041C}/g;
+  $in_str =~ s/N/\x{041D}/g;
+  $in_str =~ s/O/\x{041E}/g;
+  $in_str =~ s/P/\x{041F}/g;
+  $in_str =~ s/R/\x{0420}/g;
+  $in_str =~ s/S/\x{0421}/g;
+  $in_str =~ s/T/\x{0422}/g;
+  $in_str =~ s/U/\x{0423}/g;
+  $in_str =~ s/F/\x{0424}/g;
+  $in_str =~ s/H/\x{0425}/g;
+  $in_str =~ s/E/\x{042D}/g;
 
   return NFC($in_str);  # recompose & reorder canonically
 }
