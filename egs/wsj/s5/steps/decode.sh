@@ -8,7 +8,6 @@ transform_dir=
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
 nj=4
-reverse=false
 cmd=run.pl
 max_active=7000
 beam=13.0
@@ -37,7 +36,6 @@ if [ $# != 3 ]; then
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
    echo "                                                   # speaker-adapted decoding"
-   echo "  --reverse [true/false]                           # time reversal of features"
    exit 1;
 fi
 
@@ -82,13 +80,13 @@ fi
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
  gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-   --acoustic-scale=$acwt --allow-partial=true --reverse=$reverse \
+   --acoustic-scale=$acwt --allow-partial=true \
    --word-symbol-table=$graphdir/words.txt \
    $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" --reverse $reverse $data $graphdir $dir
+local/score.sh --cmd "$cmd" $data $graphdir $dir
 
 echo "Decoding done."
 exit 0;
