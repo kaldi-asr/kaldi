@@ -76,7 +76,7 @@ class FasterDecoder {
 
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
 
- private:
+ protected:
 
   class Token {
    public:
