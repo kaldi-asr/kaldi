@@ -89,14 +89,14 @@ for L in $LANGUAGES; do
     [ -f "$pron_lex" ] || { echo "Error: no dictionary found for $L"; exit 1; }
   fi
   gp_norm_dict_${L}.pl -i $pron_lex | sort -u > data/$L/local/dict/lexicon_nosil.txt
-  (printf '!SIL\tsil\n<UNK>\tspn\n<NOISE>\tnsn\n';) \
+  (printf '!SIL\tsil\n<UNK>\tspn\n';) \
     | cat - data/$L/local/dict/lexicon_nosil.txt \
     > data/$L/local/dict/lexicon.txt;
   echo "Done"
 
   printf "Language - ${L}: extracting phone lists ... "
   # silence phones, one per line.
-  { echo sil; echo spn; echo nsn; } > data/$L/local/dict/silence_phones.txt
+  { echo sil; echo spn; } > data/$L/local/dict/silence_phones.txt
   echo sil > data/$L/local/dict/optional_silence.txt
   cut -f2- data/$L/local/dict/lexicon_nosil.txt | tr ' ' '\n' | sort -u \
     > data/$L/local/dict/nonsilence_phones.txt

@@ -55,8 +55,9 @@ done
 
 # Convert the different available language models to FSTs, and create separate 
 # decoding configurations for each.
-local/gp_format_data.sh --filter-vocab-sri false $GP_LM $GP_LANGUAGES;
-local/gp_format_data.sh --filter-vocab-sri true $GP_LM $GP_LANGUAGES;
+( local/gp_format_data.sh --filter-vocab-sri false $GP_LM $GP_LANGUAGES;
+  local/gp_format_data.sh --filter-vocab-sri true $GP_LM $GP_LANGUAGES;
+) >& data/format_data.log &
 
 # Now make MFCC features.
 for L in $GP_LANGUAGES; do
@@ -73,15 +74,16 @@ for L in $GP_LANGUAGES; do
   mkdir -p exp/$L/mono;
   steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
     data/$L/train data/$L/lang exp/$L/mono >& exp/$L/mono/train.log
-#   # The following 3 commands will not run as written, since the LM directories
-#   # will be different across sites. Edit the 'lang_test' to match what is 
-#   # available
-#   utils/mkgraph.sh --mono data/$L/lang_test_tgpr exp/$L/mono \
-#     exp/$L/mono/graph
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/mono/graph data/$L/dev exp/$L/mono/decode_dev
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/mono/graph data/$L/eval exp/$L/mono/decode_eval
+
+  for lm_suffix in tgpr tgpr_sri; do
+    graph_dir=exp/$L/mono/graph_${lm_suffix}
+    mkdir -p $graph_dir
+    utils/mkgraph.sh --mono data/$L/lang_test_${lm_suffix} exp/$L/mono \
+      $graph_dir >& $graph_dir/mkgraph.log
+
+    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+      exp/$L/mono/decode_dev_${lm_suffix} &
+  done
 done
 
 
@@ -94,17 +96,19 @@ for L in $GP_LANGUAGES; do
   num_states=$(grep "^$L" conf/tri.conf | cut -f2)
   num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
   mkdir -p exp/$L/tri1
-  steps/train_deltas.sh --nj 10 --cmd "$train_cmd" \
-    $num_states $num_gauss data/$L/train data/$L/lang exp/$L/mono_ali \
-    exp/$L/tri1 >& exp/$L/tri1/train.log
+  steps/train_deltas.sh --cmd "$train_cmd" $num_states $num_gauss \
+    data/$L/train data/$L/lang exp/$L/mono_ali exp/$L/tri1 \
+    >& exp/$L/tri1/train.log
 
-#   # Like with the monophone systems, the following 3 commands will not run.
-#   # Edit the 'lang_test' to match what is available.
-#   utils/mkgraph.sh data/$L/lang_test_tgpr exp/$L/tri1 exp/$L/tri1/graph
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/tri1/graph data/$L/dev exp/$L/tri1/decode_dev
-#   utils/decode.sh --cmd "$decode_cmd" steps/decode_deltas.sh \
-#     exp/$L/tri1/graph data/$L/eval exp/$L/tri1/decode
+  for lm_suffix in tgpr tgpr_sri; do
+    graph_dir=exp/$L/tri1/graph_${lm_suffix}
+    mkdir -p $graph_dir
+    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri1 $graph_dir \
+      >& $graph_dir/mkgraph.log
+
+    steps/decode.sh --nj 10 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+      exp/$L/tri1/decode_dev_${lm_suffix} &
+  done
 done
 
 for L in $GP_LANGUAGES; do
@@ -116,8 +120,18 @@ for L in $GP_LANGUAGES; do
   num_states=$(grep "^$L" conf/tri.conf | cut -f2)
   num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
   mkdir -p exp/$L/tri2a
-  steps/train_deltas.sh --nj 10 --cmd "$train_cmd" \
-    $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
-    exp/$L/tri2a >& exp/$L/tri2a/train.log
+  steps/train_deltas.sh --cmd "$train_cmd" $num_states $num_gauss \
+    data/$L/train data/$L/lang exp/$L/tri1_ali exp/$L/tri2a \
+    >& exp/$L/tri2a/train.log
+
+  for lm_suffix in tgpr tgpr_sri; do
+    graph_dir=exp/$L/tri2a/graph_${lm_suffix}
+    mkdir -p $graph_dir
+    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
+      >& $graph_dir/mkgraph.log
+
+    steps/decode.sh --nj 10 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+      exp/$L/tri2a/decode_dev_${lm_suffix} &
+  done
 done
 
