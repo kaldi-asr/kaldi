@@ -19,8 +19,15 @@
 
   \page progress Recent progress and current activity
 
-   Recently added features:
-
+   Recently added features (and works in progress)
+    - Neural network progress: there is currently continuous progress on neural network 
+      based acoustic models.  We will announce when this stabilizes to a particular recipe;
+      hopefully this will happen within the next few months.
+    - Online decoder (e.g. this will enable you to create a demo which takes audio
+      from the sound card of your computer -- thanks to Matthias Paulik (Cisco) and
+      Vassil Panayotov.  See egs/voxforge/online_demo
+    - Multilingual recipe (GlobalPhone).  Currently work is progressing on recipes for
+      the multilingual GlobalPhone database; see egs/gp/s5/.
     - Example setup using VoxForge data, which is available for free -- thanks to
       Vassil Panayotov.  See egs/voxforge/s5/, and the blog post
        <a href=http://vpanayotov.blogspot.com/2012/07/voxforge-scripts-for-kaldi.html> here </a>.
