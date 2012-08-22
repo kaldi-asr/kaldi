@@ -13,6 +13,8 @@ max_active=7000
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
+min_lmwt=9
+max_lmwt=20
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -35,6 +37,9 @@ if [ $# != 3 ]; then
    echo "                                                   # specify the final.alimdl)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
+   echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
+   echo "  --min-lmwt <int>                                 # minumum LM-weight for lattice rescoring "
+   echo "  --max-lmwt <int>                                 # maximum LM-weight for lattice rescoring "
    echo "                                                   # speaker-adapted decoding"
    exit 1;
 fi
@@ -86,7 +91,7 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
+local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
 
 echo "Decoding done."
 exit 0;
