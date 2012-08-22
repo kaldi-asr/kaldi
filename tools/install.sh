@@ -132,7 +132,9 @@ fi
   # use it (they use our own Kaldi-based scorer).
   echo "**** (5) install sclite (optional; useful for detailed scoring output but the default scripts don't use it)"
   rm sctk-2.4.0-20091110-0958.tar.bz2  2>/dev/null
-  wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
+  wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2 || \
+   wget --no-check-certificate -T 10 -t 3 https://sourceforge.net/projects/kaldi/files/sctk-2.4.0-20091110-0958.tar.bz2
+  
 
   if [ ! -e sctk-2.4.0-20091110-0958.tar.bz2 ]; then
     echo "download sctk-2.4.0-20091110-0958.tar.bz2 failed."
