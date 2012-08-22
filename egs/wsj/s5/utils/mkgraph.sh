@@ -112,9 +112,10 @@ fi
 
 cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
-cp $lang/phones/word_boundary.int $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
   # but ignore the error if it's not there.
 cp $lang/phones/silence.csl $dir/phones/ || exit 1;
+cp $lang/phones.txt $dir/ 2>/dev/null # ignore the error if it's not there.
 
 # to make const fst:
 # fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
