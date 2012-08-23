@@ -36,23 +36,22 @@
 echo "****() Installing portaudio"
 
 if [ ! -e pa_stable_v19_20111121.tgz ]; then
-
     echo "Could not find portaudio tarball pa_stable_v19_20111121.tgz"
     echo "Trying to download it via wget!"
     
-   if ! which wget >&/dev/null; then
-   	echo "This script requires you to first install wget"
-    echo "You can also just download pa_stable_v19_20111121.tgz from"
-    echo "http://www.portaudio.com/download.html)"
-   	exit 1;
-   fi
+    if ! which wget >&/dev/null; then
+        echo "This script requires you to first install wget"
+        echo "You can also just download pa_stable_v19_20111121.tgz from"
+        echo "http://www.portaudio.com/download.html)"
+        exit 1;
+    fi
 
    wget -T 10 -t 3 http://www.portaudio.com/archives/pa_stable_v19_20111121.tgz
 
    if [ ! -e pa_stable_v19_20111121.tgz ]; then
-    	echo "Download of pa_stable_v19_20111121.tgz - failed!"
+        echo "Download of pa_stable_v19_20111121.tgz - failed!"
         echo "Aborting script. Please download and install port audio manually!"
-	exit 1;
+    exit 1;
    fi
 fi
 
@@ -81,24 +80,31 @@ read -d '' pa_patch << "EOF"
 
 EOF
 
+MACOS=`uname 2>/dev/null | grep Darwin`
+
 cd portaudio
-echo "Patching Makefile.in to include ring buffer functionality..."
-echo "${pa_patch}" | patch -p0 Makefile.in
+
+if [ -z "$MACOS" ]; then
+    echo "Patching Makefile.in to include ring buffer functionality..."
+    echo "${pa_patch}" | patch -p0 Makefile.in
+fi
+
 ./configure --prefix=`pwd`/install
 
-MACOS=`hostinfo 2>/dev/null | grep Darwin`
+
 if [ "$MACOS" != "" ]; then
     echo "detected MacOS operating system ... trying to fix Makefile"
     mv Makefile Makefile.bck
     cat Makefile.bck | sed 's/\-isysroot\ \/Developer\/SDKs\/MacOSX10\.4u\.sdk//g' | sed 's/-Werror//g' | sed 's/-arch i386//g' | sed 's/-arch ppc//g' > Makefile
     mv include/pa_mac_core.h include/pa_mac_core.h.bck
     cat include/pa_mac_core.h.bck | sed 's/\/\/\#include \<AudioToolbox\/AudioToolbox.h\>/#include \<AudioToolbox\/AudioToolbox.h\>/g' > include/pa_mac_core.h 
-
 fi
 
 make
 make install
 
+if [ "$MACOS" != "" ]; then
+    cp src/common/pa_ringbuffer.h src/common/pa_memory_barrier.h install/include
+fi
+
 cd ..
-
-

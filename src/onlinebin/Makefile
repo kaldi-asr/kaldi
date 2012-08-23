@@ -1,7 +1,12 @@
 all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
-EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a -lrt -lasound
+EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+UNAME=$(shell uname)
+ifeq ($(UNAME), Linux)
+    EXTRA_LDLIBS += -lasound
+endif
+
 include ../kaldi.mk
 
 BINFILES = online-net-client online-server-gmm-decode-faster online-gmm-decode-faster online-wav-gmm-decode-faster
