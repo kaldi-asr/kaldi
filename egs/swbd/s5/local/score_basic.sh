@@ -3,15 +3,19 @@
 
 # begin configuration section.
 cmd=run.pl
+min_lmwt=9
+max_lmwt=20
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/score_basic.sh [options] <data-dir> <lang-dir|graph-dir> <decode-dir>";
+  echo "Usage: local/score_basic.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
+  echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+  echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
   exit 1;
 fi
 
@@ -41,18 +45,18 @@ function filter_text {
    '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION'
 }
 
-$cmd LMWT=9:20 $dir/scoring/log/best_path.LMWT.log \
+$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
   lattice-best-path --lm-scale=LMWT --word-symbol-table=$lang/words.txt \
     "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
 
-for lmwt in `seq 9 20`; do
+for lmwt in `seq $min_lmwt $max_lmwt`; do
   utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.tra | \
    filter_text > $dir/scoring/$lmwt.txt || exit 1;
 done
 
 filter_text <$data/text >$dir/scoring/text.filt
 
-$cmd LMWT=9:20 $dir/scoring/log/score.LMWT.log \
+$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
   compute-wer --text --mode=present \
    ark:$dir/scoring/text.filt ark:$dir/scoring/LMWT.txt ">&" $dir/wer_LMWT || exit 1;
 

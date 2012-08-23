@@ -13,14 +13,14 @@ transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 cmd=run.pl
-beam=13.0
+beam=15.0
 gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
             # the first_pass_gselect variable is used for the 1st pass of
             # decoding and can be tighter.
 first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
             # the 1st pass of decoding (lattice generation).
 max_active=7000
-lat_beam=6.0 # Beam we use in lattice generation.
+lat_beam=8.0 # Beam we use in lattice generation.
 vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
     # speaker-vector computation.  Can be quite tight (actually we could
     # probably just do best-path.
@@ -185,6 +185,10 @@ rm $dir/pre_lat.*.gz
 if [ $stage -le 7 ]; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  echo "score best paths"
   local/score.sh --cmd "$cmd" $data $graphdir $dir
+  echo "score confidence and timing with sclite"
+  #local/score_sclite_conf.sh --cmd "$cmd" --language turkish $data $graphdir $dir
 fi
+echo "Decoding done."
 exit 0;

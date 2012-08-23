@@ -5,16 +5,21 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
+min_lmwt=9
+max_lmwt=20
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/score_sclite_conf.sh [options] <data-dir> <lang-dir|graph-dir> <decode-dir>" && exit;
+  echo "Usage: local/score_sclite_conf.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
+  echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
+  echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+  echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
   exit 1;
 fi
 
@@ -39,7 +44,7 @@ mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
   # the escaping gets a bit crazy here, sorry...
-  $cmd LMWT=9:20 $dir/scoring/log/get_ctm.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
     ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
     lattice-align-words $lang/phones/word_boundary.int $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
@@ -59,7 +64,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then  
-  $cmd LMWT=9:20 $dir/scoring/log/score.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     cp $data/stm $dir/score_LMWT/ '&&' \
     $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm || exit 1;
 fi

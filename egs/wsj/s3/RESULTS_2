@@ -3,7 +3,7 @@ LM:        |    Pruned trigram     |   Rescore Trigram     |
 Test set:  | Eval92    |   Dev93   | Eval92    |  Eval93   | 
 system:    |   WER acwt|           |   WER acwt|           | Train set   | Leaf/PDFs|
 mono0a    *| 24.72% 10 | 34.22%  9 |           |           | 2k short    |  146  1k | flat start,monophone,delta-deltas, CMN
-          +| 24.97%  9 | 34.37% 10 |           |           |
+          +| 25.13%  9 | 34.52% 10 |           |           |
 tri1      *| 13.98% 13 | 20.09% 15 | 13.08% 14 | 19.30% 16 | 3500 (half) | 2000 10k | mono_ali, triphones, delta-deltas, CMN
           +|           | 19.87% 16 |           | 19.16% 16 |  
 tri2a     *| 11.61% 15 | 17.55% 16 |                       | SI-84       | 2500 15k | tri1_ali, -"-

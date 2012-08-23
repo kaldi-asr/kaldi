@@ -4,16 +4,22 @@
 
 [ -f ./path.sh ] && . ./path.sh;
 
+# begin configuration section.
 cmd=run.pl
-[ $1 == "--cmd" ] && cmd=$2 && shift 2;
+min_lmwt=9
+max_lmwt=20
+#end configuration section.
 
-[ $# -ne 3 ] && \
-  echo "Usage: local/score_mbr.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>" && exit 1;
-
+[ -f ./path.sh ] && . ./path.sh
+. parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-   echo "Usage: scripts/score_mbr.sh <decode-dir> <word-symbol-table> <data-dir>"
-   exit 1;
+  echo "Usage: local/score_sclite_conf.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
+  echo " Options:"
+  echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
+  echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+  echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+  exit 1;
 fi
 
 data=$1
@@ -33,7 +39,7 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/t
 # We submit the jobs separately, not as an array, because it's hard
 # to get the inverse of the LM scales.
 rm $dir/.error 2>/dev/null
-for inv_acwt in `seq 9 20`; do
+for inv_acwt in `seq $min_lmwt $max_lmwt`; do
   acwt=`perl -e "print (1.0/$inv_acwt);"`
   $cmd $dir/scoring/rescore_mbr.${inv_acwt}.log \
     lattice-mbr-decode  --acoustic-scale=$acwt --word-symbol-table=$symtab \
@@ -44,7 +50,7 @@ wait;
 [ -f $dir/.error ] && echo "score_mbr.sh: errror getting MBR outout.";
      
 
-$cmd LMWT=9:20 $dir/scoring/log/score.LMWT.log \
+$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \
     utils/int2sym.pl -f 2- $symtab \| sed 's:\<UNK\>::g' \| \
     compute-wer --text --mode=present \

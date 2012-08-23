@@ -18,6 +18,8 @@ if [ $# -ne 3 ]; then
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
+  echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+  echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
   exit 1;
 fi
 

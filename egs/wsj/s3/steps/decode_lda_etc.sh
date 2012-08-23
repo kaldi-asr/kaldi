@@ -72,7 +72,7 @@ done
 # CMVN stats-- we make them part of a pipe.
 feats="ark:compute-cmvn-stats --spk2utt=ark:$mydata/spk2utt scp:$mydata/feats.scp ark:- | apply-cmvn --norm-vars=false --utt2spk=ark:$mydata/utt2spk ark:- scp:$mydata/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$mydata/utt2spk ark:$transdir/$jobid.trans ark:- ark:- |"
 
-gmm-latgen-faster --max-active=7000 --beam=$beam --lattice-beam=6.0 --acoustic-scale=0.083333 \
+gmm-latgen-faster --max-active=7000 --beam=$beam --lattice-beam=6.0 --acoustic-scale=0.055556 \
   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.$jobid.gz" \
      2> $dir/decode$jobid.log || exit 1;

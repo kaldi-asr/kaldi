@@ -28,6 +28,7 @@ utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/
 
 local/wsj_format_data.sh || exit 1;
 
+
  # We suggest to run the next three commands in the background,
  # as they are not a precondition for the system building and
  # most of the tests: these commands build a dictionary
@@ -53,7 +54,6 @@ local/wsj_format_data.sh || exit 1;
       --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
    )
  ) &
-
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -142,6 +142,19 @@ steps/decode.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri2a/graph_tgpr data/test_eval92 exp/tri2a/decode_tgpr_eval92 || exit 1;
 
+utils/mkgraph.sh data/lang_test_bg_5k exp/tri2a exp/tri2a/graph_bg5k
+steps/decode.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri2a/graph_bg5k data/test_eval92 exp/tri2a/decode_eval92_bg5k || exit 1;
+
+#prepare reverse lexicon and language model for backwards decoding
+utils/prepare_lang.sh --reverse true data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp.reverse data/lang.reverse || exit 1;
+local/wsj_reverse_lm.sh || exit 1;
+utils/mkgraph.sh --reverse data/lang_test_bg_5k.reverse exp/tri2a exp/tri2a/graph_bg5kr
+steps/decode_fwdbwd.sh --reverse true --nj 8 --cmd "$decode_cmd" \
+  exp/tri2a/graph_bg5kr data/test_eval92 exp/tri2a/decode_eval92_bg5k_reverse || exit 1;
+
+steps/decode_fwdbwd.sh --reverse true --nj 8 --cmd "$decode_cmd" \
+  --first_pass exp/tri2a/decode_eval92_bg5k exp/tri2a/graph_bg5kr data/test_eval92 exp/tri2a/decode_eval92_bg5k_pingpong || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
    --splice-opts "--left-context=3 --right-context=3" \

@@ -81,7 +81,7 @@ else
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
     compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" ark:- \
-      "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+      "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 echo "$0: done aligning data."

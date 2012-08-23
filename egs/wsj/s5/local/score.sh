@@ -4,16 +4,29 @@
 
 [ -f ./path.sh ] && . ./path.sh
 
+# begin configuration section.
 cmd=run.pl
+stage=0
+decode_mbr=true
 reverse=false
 min_lmwt=9
 max_lmwt=20
+#end configuration section.
 
-[ $1 == "--cmd" ] && cmd=$2 && shift 2;
-[ $1 == "--reverse" ] && reverse=$2 && shift 2;
+[ -f ./path.sh ] && . ./path.sh
+. parse_options.sh || exit 1;
 
-[ $# -ne 3 ] && \
-  echo "Usage: local/score.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>" && exit 1;
+if [ $# -ne 3 ]; then
+  echo "Usage: local/score.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
+  echo " Options:"
+  echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
+  echo "    --stage (0|1|2)                 # start scoring script from part-way through."
+  echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
+  echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+  echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+  echo "    --reverse (true/false)          # score with time reversed features "
+  exit 1;
+fi
 
 data=$1
 lang_or_graph=$2
