@@ -85,13 +85,11 @@ fi
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
  gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-   --acoustic-scale=$acwt --allow-partial=true \
-   --word-symbol-table=$graphdir/words.txt \
-   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+  $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
 local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
 
-echo "Decoding done."
 exit 0;

@@ -22,6 +22,8 @@ randprune=4.0 # This is approximately the ratio by which we will speed up the
 splice_opts=
 # End configuration.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -30,7 +32,6 @@ if [ $# != 6 ]; then
   echo " e.g.: steps/train_lda_mllt.sh 2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --nj <num-jobs>                                  # how many parallel jobs to run"
   echo "  --config <config-file>                           # config containing options"
   echo "  --stage <stage>                                  # stage to do partial re-run from."
   exit 1;
