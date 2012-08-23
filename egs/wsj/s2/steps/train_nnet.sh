@@ -55,9 +55,6 @@ while [ 1 ]; do
     --norm-vars)
       shift; norm_vars=$1; shift;
       ;;
-    --feat-dim)
-      shift; feat_dim=$1; shift;
-      ;;
     --feat-type)
       shift; feat_type=$1; shift;
       ;;
@@ -106,7 +103,6 @@ TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
 #feature config
 echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
 echo feat_type: ${feat_type:=traps}  #default features are traps
-echo feat_dim: ${feat_dim:=23}     #FBANK dimension
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
 
@@ -154,6 +150,11 @@ cat $data/feats.scp | scripts/shuffle_list.pl ${seed:-777} > $dir/train.scp
 cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
+
+#get feature dim
+echo -n "Getting feature dim"
+feat_dim=$(feat-to-dim scp:$dir/train.scp -)
+echo $feat_dim
 
 #compute per-speaker CMVN
 echo "Computing cepstral mean and variance statistics"

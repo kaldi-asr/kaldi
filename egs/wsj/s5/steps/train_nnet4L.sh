@@ -17,7 +17,7 @@ bunchsize=256     # size of the training block
 cachesize=16384   # size of the randimizatio cache
 randomize=true    # do the frame level randomization
 # feature config
-fea_dim=23      # feature dimensionality
+#fea_dim=23      # feature dimensionality
 norm_vars=false # normalize the FBANKs (CVN)
 splice_lr=15    # temporal splicing
 dct_basis=16    # nr. od DCT basis
@@ -83,6 +83,11 @@ cat $data/feats.scp | utils/shuffle_list.pl ${seed:-777} > $dir/train.scp
 cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
+
+#get feature dim
+echo -n "Getting feature dim"
+fea_dim=$(feat-to-dim scp:$dir/train.scp -)
+echo $fea_dim
 
 #compute per-speaker CMVN
 echo "Recalling cepstral mean and variance statistics"
