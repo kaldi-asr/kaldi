@@ -54,7 +54,6 @@ graphdir=$1
 data=$2
 dir=$3
 acwt=0.08333 # Just used for adaptation and beam-pruning..
-#acwt=0.0625 # Just used for adaptation and beam-pruning..
 silphonelist=`cat $graphdir/silphones.csl`
 
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.

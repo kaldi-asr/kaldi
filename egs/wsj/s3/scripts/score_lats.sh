@@ -37,8 +37,7 @@ fi
 
 trans=$data/text
 
-#cat $trans | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
-cat $trans | sed 's:<hes>::g' |  sed 's:<unk>::g' > $dir/test_trans.filt
+cat $trans | sed 's:<NOISE>::g' |  sed 's:<SPOKEN_NOISE>::g' > $dir/test_trans.filt
 
 for inv_acwt in 9 10 11 12 13 14 15 16 17 18 19 20; do 
    acwt=`perl -e "print (1.0/$inv_acwt);"`
