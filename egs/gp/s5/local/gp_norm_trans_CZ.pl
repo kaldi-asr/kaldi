@@ -47,6 +47,8 @@ while (<T>) {
   my $trans = $2;
 
   $trans =~ s/ \,(.*?)\'/ $1/g;  # Remove quotation marks.
+  # Remove all special characters  
+  $trans =~ s/[\;\:\`\<\>\,\.\-\?\!\@\#\$\%\&\(\)\[\]\{\}\"\/\']/ /g;
   # Normalize spaces
   $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
 
