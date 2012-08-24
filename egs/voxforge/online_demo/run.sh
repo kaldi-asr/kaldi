@@ -17,7 +17,7 @@ ac_model_type=tri2b_mmi
 decode_dir="./work"
 
 # Change this to "live" either here or using command line switch like:
-# --test_type live
+# --test-mode live
 test_mode="simulated"
 
 . parse_options.sh
