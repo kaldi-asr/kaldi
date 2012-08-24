@@ -1,6 +1,7 @@
 // matrix/compressed-matrix.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+//                 Frantisek Skala
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 namespace kaldi {
 
 /// \addtogroup matrix_group
-/// @{ 
+/// @{
 
 /// This class does lossy compression of a matrix.  It only
 /// supports copying to-from a KaldiMatrix.  For large matrices,
@@ -41,49 +42,75 @@ class CompressedMatrix {
  public:
   CompressedMatrix(): data_(NULL) { }
 
+  ~CompressedMatrix() { Destroy(); }
+  
   template<class Real>
   CompressedMatrix(const Matrix<Real> &mat): data_(NULL) { CopyFromMat(mat); }
-  
+
   template<class Real>
   void CopyFromMat(const Matrix<Real> &mat);
 
-  /// Caution: CopyToMat will resize the output matrix if necessary.
-  template<class Real>
-  void CopyToMat(Matrix<Real> *mat) const;
-
+  CompressedMatrix(const CompressedMatrix &mat);
   
+  CompressedMatrix &operator = (const CompressedMatrix &mat); // assignment operator.
+  
+  // Note: mat must have the correct size, CopyToMat no longer attempts
+  // to resize the matrix
+  template<class Real>
+  void CopyToMat(MatrixBase<Real> *mat) const;
+
   void Write(std::ostream &os, bool binary) const;
   
   void Read(std::istream &is, bool binary);
 
   /// Returns number of rows (or zero for emtpy matrix).
-  inline int32 NumRows() const { return (data_ == NULL) ? 0 : 
+  inline int32 NumRows() const { return (data_ == NULL) ? 0 :
       (*reinterpret_cast<GlobalHeader*>(data_)).num_rows; }
 
   /// Returns number of columns (or zero for emtpy matrix).
-  inline int32 NumCols() const { return (data_ == NULL) ? 0 : 
+  inline int32 NumCols() const { return (data_ == NULL) ? 0 :
       (*reinterpret_cast<GlobalHeader*>(data_)).num_cols; }
+
+  /// Copies row #row of the matrix into vector v.
+  /// Note: v must have same size as #cols.
+  template<typename Real>
+  void CopyRowToVec(MatrixIndexT row, VectorBase<Real> *v) const;
+
+  /// Copies column #col of the matrix into vector v.
+  /// Note: v must have same size as #rows.
+  template<typename Real>
+  void CopyColToVec(MatrixIndexT col, VectorBase<Real> *v) const;
+
+  /// Copies submatrix of compressed matrix into matrix dest.
+  /// Submatrix starts at row row_offset and column column_offset and it' size
+  /// is defined by size of provided matrix dest
+  template<typename Real>
+  void CopyToMat(int32 row_offset,
+                 int32 column_offset,
+                 MatrixBase<Real> *dest) const;
+
+  void Swap(CompressedMatrix *other) { std::swap(data_, other->data_); }
   
   friend class Matrix<float>;
   friend class Matrix<double>;
-  private:
-  
+ private:
+
   // allocates data using new [], ensures byte alignment
   // sufficient for float.
-  static unsigned char *AllocateData(int32 num_bytes);
-  
+  static void *AllocateData(int32 num_bytes);
+
   struct GlobalHeader {
     float min_value;
     float range;
     int32 num_rows;
     int32 num_cols;
   };
-  
+
   static MatrixIndexT DataSize(const GlobalHeader &header) {
     // Returns size in bytes of the data.
     return sizeof(GlobalHeader) +
         header.num_cols * (sizeof(PerColHeader) + header.num_rows);
-  }  
+  }
 
   struct PerColHeader {
     uint16 percentile_0;
@@ -105,7 +132,7 @@ class CompressedMatrix {
 
   static inline uint16 FloatToUint16(const GlobalHeader &global_header,
                                      float value);
-  
+
   static inline float Uint16ToFloat(const GlobalHeader &global_header,
                                      uint16 value);
   static inline unsigned char FloatToChar(float p0, float p25,
@@ -114,10 +141,13 @@ class CompressedMatrix {
   static inline float CharToFloat(float p0, float p25,
                                   float p75, float p100,
                                   unsigned char value);
-
-  unsigned char *data_; // first GlobalHeader, then PerColHeader (repeated), then
+  
+  void Destroy();
+  
+  void *data_; // first GlobalHeader, then PerColHeader (repeated), then
   // the byte data for each column (repeated).  Note: don't intersperse
   // the byte data with the PerColHeaders, because of alignment issues.
+
 };
 
 

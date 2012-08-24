@@ -561,8 +561,8 @@ class Matrix : public MatrixBase<Real> {
   void Read(std::istream & in, bool binary, bool add = false);
 
   /// Remove a specified row.
-  void  RemoveRow(MatrixIndexT i);
-
+  void RemoveRow(MatrixIndexT i);
+  
   /// Transpose the matrix.  Works for non-square
   /// matrices as well as square ones.
   void Transpose();

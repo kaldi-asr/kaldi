@@ -43,7 +43,7 @@ class VectorBase {
   /// Set all members of a vector to a specified value.
   void Set(Real f);
 
-  /// Set vector to random Gaussian noise.
+  /// Set vector to random normally-distributed noise.
   void SetRandn();
 
   /// Returns the  dimension of the vector.

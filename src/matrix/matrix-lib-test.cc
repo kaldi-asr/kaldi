@@ -2805,7 +2805,7 @@ template<class Real> static void UnitTestCompressedMatrix() {
     else {
       M.Add(RandGauss());
     }
-    if (rand() % 2 == 0 && num_rows != 0) { // set one row to all the same value,
+    if (rand() % 2 == 0 && num_rows != 0) {  // set one row to all the same value,
       // which is one possible pathology.
       // Give it large dynamic range to increase chance that it
       // is the largest or smallest value in the matrix.
@@ -2823,13 +2823,52 @@ template<class Real> static void UnitTestCompressedMatrix() {
     KALDI_ASSERT(cmat.NumRows() == num_rows);
     KALDI_ASSERT(cmat.NumCols() == num_cols);
 
-    Matrix<Real> M2;
+    Matrix<Real> M2(cmat.NumRows(), cmat.NumCols());
     cmat.CopyToMat(&M2);
-    
+
     Matrix<Real> diff(M2);
     diff.AddMat(-1.0, M);
 
-    if (n < 5) { // test I/O.
+    // test CopyRowToVec
+    for (int i = 0; i < num_rows; i++) {
+      Vector<Real> V(num_cols);
+      cmat.CopyRowToVec(i, &V);  // get row.
+      for (MatrixIndexT k = 0;k < num_cols;k++) {
+        AssertEqual(M2(i, k), V(k));
+      }
+    }
+
+    // test CopyColToVec
+    for (int i = 0; i < num_cols; i++) {
+      Vector<Real> V(num_rows);
+      cmat.CopyColToVec(i, &V);  // get col.
+      for (MatrixIndexT k = 0;k < num_rows;k++) {
+        AssertEqual(M2(k, i), V(k));
+      }
+    }
+
+    //test of getting a submatrix
+    if(num_rows != 0 && num_cols != 0){
+      int32 sub_row_offset = (num_rows == 1 ? 0 : rand() % (num_rows-1)),
+            sub_col_offset = (num_cols == 1 ? 0 : rand() % (num_cols-1));
+            // to make sure we don't mod by zero
+      int32 num_subrows = rand() % (num_rows-sub_row_offset),
+            num_subcols = rand() % (num_cols-sub_col_offset);
+      if(num_subrows == 0 || num_subcols == 0){  // in case we randomized to
+        // empty matrix, at least make it correct
+        num_subrows = 0;
+        num_subcols = 0;
+      }
+      Matrix<Real> Msub(num_subrows, num_subcols);
+      cmat.CopyToMat(sub_row_offset, sub_col_offset, &Msub);
+      for (int i = 0; i < num_subrows; i++) {
+        for (MatrixIndexT k = 0;k < num_subcols;k++) {
+          AssertEqual(M2(i+sub_row_offset, k+sub_col_offset), Msub(i, k));
+        }
+      }
+    }
+
+    if (n < 5) {  // test I/O.
       bool binary = (n % 2 == 1);
       {
         std::ofstream outs("tmpf", std::ios_base::out |std::ios_base::binary);
@@ -2843,9 +2882,15 @@ template<class Real> static void UnitTestCompressedMatrix() {
         InitKaldiInputStream(ins, &binary_in);
         cmat2.Read(ins, binary_in);
       }
-      Matrix<Real> M3;
+      Matrix<Real> M3(cmat2.NumRows(), cmat2.NumCols());
       cmat2.CopyToMat(&M3);
       AssertEqual(M2, M3); // tests I/O of CompressedMatrix.
+
+      CompressedMatrix cmat3(cmat2); // testing self-constructor, which
+      // tests assignment operator.
+      Matrix<Real> M4(cmat3.NumRows(), cmat3.NumCols());
+      cmat3.CopyToMat(&M4);
+      AssertEqual(M2, M4);
     }
     std::cout << "M = " << M;
     std::cout << "M2 = " << M2;
