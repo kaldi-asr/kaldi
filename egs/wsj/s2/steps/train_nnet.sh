@@ -101,7 +101,7 @@ fi
 TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
 
 #feature config
-echo norm_vars ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
+echo norm_vars: ${norm_vars:=false} #false:CMN, true:CMVN on fbanks
 echo feat_type: ${feat_type:=traps}  #default features are traps
 echo splice_lr: ${splice_lr:=15}   #left- and right-splice value
 echo dct_basis: ${dct_basis:=16}   #number of DCT basis computed from temporal trajectory of single band
@@ -129,19 +129,24 @@ mkdir -p $dir/{log,nnet}
 echo "Preparing alignments"
 #convert ali to pdf
 labels_tr="ark:$dir/train.pdf"
-ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" t,$labels_tr 2> $dir/ali2pdf_tr.log || exit 1
+ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" $labels_tr 2>$dir/train.pdf_log || exit 1
 #convert ali to pdf (cv set)
 labels_cv="ark:$dir/cv.pdf"
-ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" t,$labels_cv 2> $dir/ali2pdf_cv.log || exit 1
+ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" $labels_cv 2>$dir/cv.pdf_log || exit 1
 #merge the two parts (scheduler expects one file in $labels)
 labels="ark:$dir/train_and_cv.pdf"
-cat $dir/train.pdf $dir/cv.pdf > $dir/train_and_cv.pdf
+cat $dir/train.pdf $dir/cv.pdf > $dir/train_and_cv.pdf || exit 1
 
 #get the priors, count the class examples from alignments
-pdf-to-counts ark:$dir/train.pdf $dir/train.counts
+analyze-counts ark:$dir/train.pdf $dir/train.counts 2>$dir/train.counts_log || exit 1
 #copy the old transition model, will be needed by decoder
-copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl
-cp $alidir/tree $dir/tree
+copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl 2>$dir/final.mdl_log || exit 1
+cp $alidir/tree $dir/tree || exit 1
+
+#analyze the train/cv alignments
+scripts/analyze_alignments.sh "TRAINING SET" "ark:gunzip -c $alidir/ali.gz |" $dir/final.mdl $lang > $dir/__ali_stats_train
+scripts/analyze_alignments.sh "VALIDATION SET" "ark:gunzip -c $alidir_cv/ali.gz |" $dir/final.mdl $lang > $dir/__ali_stats_cv
+
 
 ###### PREPARE FEATURES ######
 # shuffle the list
@@ -160,8 +165,8 @@ echo $feat_dim
 echo "Computing cepstral mean and variance statistics"
 cmvn="ark:$dir/cmvn.ark"
 cmvn_cv="ark:$dir/cmvn_cv.ark"
-compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/train.scp $cmvn 2>$dir/cmvn.log || exit 1
-compute-cmvn-stats --spk2utt=ark:$data_cv/spk2utt scp:$dir/cv.scp $cmvn_cv 2>$dir/cmvn_cv.log || exit 1
+compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$dir/train.scp $cmvn 2>$dir/cmvn.ark_log || exit 1
+compute-cmvn-stats --spk2utt=ark:$data_cv/spk2utt scp:$dir/cv.scp $cmvn_cv 2>$dir/cmvn_cv.ark_log || exit 1
 feats_tr="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn scp:$dir/train.scp ark:- |"
 feats_cv="ark:apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk $cmvn_cv scp:$dir/cv.scp ark:- |"
 echo $norm_vars > $dir/norm_vars
@@ -182,7 +187,7 @@ case $feat_type in
     transf=$dir/hamm_dct.mat
     scripts/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice_lr > $dir/hamm.mat
     scripts/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice_lr --dct-basis=$dct_basis > $dir/dct.mat
-    compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>$dir/hamm_dct.log || exit 1
+    compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>$dir/hamm_dct.mat_log || exit 1
     #convert transform to NNET format
     {
       echo "<biasedlinearity> $((feat_dim*dct_basis)) $((feat_dim*(2*splice_lr+1)))"
@@ -216,7 +221,7 @@ echo $feat_type > $dir/feat_type #remember the type
 #renormalize the MLP input to zero mean and unit variance
 echo "Renormalizing MLP input features"
 cmvn_g="$dir/cmvn_glob.mat"
-compute-cmvn-stats --binary=false "$feats_tr" $cmvn_g 2> $dir/cmvn_glob.log || exit 1
+compute-cmvn-stats --binary=false "$feats_tr" $cmvn_g 2> $dir/cmvn_glob.mat_log || exit 1
 feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 
@@ -228,7 +233,7 @@ if [ "" != "$mlp_init" ]; then
 else
   echo -n "Initializng MLP: "
   num_fea=$((feat_dim*dct_basis))
-  num_tgt=$(hmm-info $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
+  num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
   # What is the topology?
   if [ "" == "$bn_dim" ]; then #MLP w/o bottleneck
     case "$hid_layers" in

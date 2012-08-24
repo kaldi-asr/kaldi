@@ -24,7 +24,7 @@ fi
 
 
 if [ $# != 5 ]; then
-   echo "usage: make_bnfea.sh [--bn-dim N] <data-dir> <nnet-dir> <log-dir> <abs-path-to-bnfeadir> <num-cpus>";
+   echo "usage: $0 [--bn-dim N] <data-dir> <nnet-dir> <log-dir> <abs-path-to-bnfeadir> <num-cpus>";
    exit 1;
 fi
 
@@ -52,17 +52,17 @@ name=`basename $data`
 mkdir -p $bnfeadir || exit 1;
 mkdir -p $logdir || exit 1;
 
-scp=$data/feats.scp.fbank
+scp=$data/feats.scp
 required="$scp"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_bnfea.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done
 
-if [ ! -d $data/split$ncpus -o $data/split$ncpus -ot $data/feats.scp.fbank ]; then
+if [ ! -d $data/split$ncpus -o $data/split$ncpus -ot $data/feats.scp ]; then
   scripts/split_data.sh $data $ncpus
 fi
 
@@ -79,12 +79,12 @@ rm $logdir/.error 2>/dev/null
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
 # The "for" loop in this style is a special construct.
 for ((n=0; n<ncpus; n++)); do
-  log=$logdir/make_bnfea.$n.log
+  log=$logdir/make_bnfeats.$n.log
 
   # prepare features
   # We only do one forward pass, so there is no point caching the
   # CMVN stats-- we make them part of a pipe.
-  feats="ark:compute-cmvn-stats --spk2utt=ark:$data/split$ncpus/$n/spk2utt scp:$data/split$ncpus/$n/feats.scp.fbank ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/split$ncpus/$n/utt2spk ark:- scp:$data/split$ncpus/$n/feats.scp.fbank ark:- |"
+  feats="ark:compute-cmvn-stats --spk2utt=ark:$data/split$ncpus/$n/spk2utt scp:$data/split$ncpus/$n/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/split$ncpus/$n/utt2spk ark:- scp:$data/split$ncpus/$n/feats.scp ark:- |"
   # Splice+Hamming+DCT
   feats="$feats splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- | transform-feats --print-args=false $transf ark:- ark:- |"
   # Norm

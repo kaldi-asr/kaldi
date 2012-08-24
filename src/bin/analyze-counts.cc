@@ -20,6 +20,8 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 
+#include <iomanip>
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -33,6 +35,12 @@ int main(int argc, char *argv[]) {
     
     bool binary = false;
     po.Register("binary", &binary, "write in binary mode");
+
+    bool rescale_to_probs = false;
+    po.Register("rescale-to-probs", &rescale_to_probs, "rescale the output to probablities instead");
+
+    bool show_histogram = false;
+    po.Register("show-histogram", &show_histogram, "show histgram to standard output");
 
     po.Read(argc, argv);
 
@@ -63,13 +71,43 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
 
-    //convert to BaseFloat and writ
+    //convert to BaseFloat and write
     Vector<BaseFloat> counts_f(counts.size());
     for(int32 i=0; i<counts.size(); i++) {
       counts_f(i) = counts[i];
     }
+    //optionally rescale to probs
+    if(rescale_to_probs) {
+      counts_f.Scale(1.0/counts_f.Sum());
+    }
     Output ko(wxfilename, binary);
     counts_f.Write(ko.Stream(),binary);
+    //optionally show histogram
+    if(show_histogram) {
+      int32 n_bins=20;
+      BaseFloat min = counts_f.Min(), max = counts_f.Max();
+      BaseFloat step = (max-min)/n_bins;
+      //accumulate bins
+      int32 zero_bin = 0;
+      std::vector<int32> hist_bin(n_bins+1);
+      for (int32 i=0; i<counts_f.Dim(); i++) {
+        if(counts_f(i) == 0.0) { 
+          zero_bin++;
+        } else {
+          hist_bin[floor((counts_f(i)-min)/step)]++;
+        }
+      }
+      //print the histogram
+      using namespace std;
+      int32 w=6, w2=3;
+      std::cerr << "\%\%\% Histogram of the vector elements \%\%\%\n";
+      std::cerr << "min : " << min << "  max: " << max << "\n";
+      std::cerr << setw(w) << zero_bin << "\t" << setprecision(w2) << 0.0 << " exactly\n";
+      for (int32 i=0; i<hist_bin.size(); i++) {
+        std::cerr << setw(w) << hist_bin[i] << "\t" << setprecision(w2) << min+i*step << " to " << setprecision(w2) <<  min+(i+1)*step << "\n";
+      }
+      std::cerr << "\%\%\%\n";
+    }
 
     KALDI_LOG << "Summed " << num_done << " int32 vectors to counts.";
     return 0;

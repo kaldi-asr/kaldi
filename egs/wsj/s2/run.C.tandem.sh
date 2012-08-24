@@ -7,8 +7,8 @@
 #1)BUT
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-#cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
-cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
+cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+#cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
 mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
 
 #2)JHU

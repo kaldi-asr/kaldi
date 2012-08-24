@@ -35,6 +35,7 @@ while [ 1 ]; do
       ;;
     --decoder-opts)
       shift; decoder_opts=$1; shift;
+      ;;
     *)
       break
       ;;

@@ -7,8 +7,8 @@
 #1)BUT
 decode_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
 train_cmd="queue.pl -q all.q@@blade -l ram_free=700M,mem_free=700M"
-#cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
-cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
+cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
+#cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
 mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
 
 #2)JHU
@@ -104,7 +104,7 @@ lrate=0.002
   ali=exp/tri3b_ali
   # Train 
   $cuda_cmd $dir/_train_nnet.log \
-    steps/train_nnet.sh --num-layers $hidlayers --model-size $modelsize --lrate $lrate --bunchsize 256 \
+    steps/train_nnet.sh --hid-layers $hidlayers --model-size $modelsize --lrate $lrate --bunchsize 256 \
     data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
   # Decode
   $mkgraph_cmd $dir/_mkgraph.log scripts/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
@@ -116,7 +116,6 @@ lrate=0.002
 wait #for (A+B+C+D)
 
 
-exit 0
 
 
 ######################################################
@@ -127,7 +126,7 @@ exit 0
 # use full training set si284
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.001
 {
   dir=exp/tri2a_nnet4L_3M_si284
   ali=exp/tri2a_ali
@@ -142,9 +141,9 @@ lrate=0.002
   scripts/decode.sh --cmd "$decode_cmd" --opts "--acoustic-scale 0.12" steps/decode_nnet.sh $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92 || exit 1;
   ) &
   # Re-align 
-  ($cuda_cmd $dir/_align_nnet.log \
+  ($cuda_cmd ${dir}_ali_si284/_align_nnet.log \
     steps/align_nnet.sh data-fbank/train_si284 data/lang $dir ${dir}_ali_si284)&
-  ($cuda_cmd $dir/_align_nnet.log \
+  ($cuda_cmd ${dir}_ali_dev93/_align_nnet.log \
     steps/align_nnet.sh data-fbank/test_dev93 data/lang $dir ${dir}_ali_dev93)&
   wait
 }
@@ -159,7 +158,7 @@ lrate=0.002
 # train on the MLP re-aligned training targets
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.001
 {
   dir=exp/tri2a_nnet4L_3M_si284_iter2
   ali=exp/tri2a_nnet4L_3M_si284_ali
