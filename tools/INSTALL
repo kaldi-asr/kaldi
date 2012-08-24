@@ -27,6 +27,7 @@ See below install instructions for:
   native Windows compilation without Intel MKL you have to compile this)
 (7) CLAPACK headers (required if you have the library available but
  no headers in a directory accessed by default; this is the case on Cygwin)
+(8) libportaudio (needed for the online recognition binaries)
 
 
 ####
@@ -183,3 +184,33 @@ for x in  clapack.h	f2c.h cblas.h; do
   wget http://www.netlib.org/clapack/$x; 
 done
 
+####
+
+(8) Install instructions for libportaudio.
+
+libportaudio is only needed for the online recognition binaries. It enables audio
+capture from the sound card. Unfortunately, the installer for libportaudio may not 
+work on all version of Linux or Mac OS. However, for most people it will be 
+sufficient to simply run the script
+
+./install_portaudio.sh
+
+We tested this installation script on various versions of Suse Linux and Red Hat as
+well as on Mac OS (Darwin). Please note that the installation script patches up the 
+default Makefile of portaudio when installing on Mac (for details, please have a look
+at the installation script itself). 
+
+!!IMPORTANT!! UNDER MAC OS, YOU MAY NEED TO COPY THE libportaudio.dylib TO
+/usr/local/lib SO THAT THE BINARIES CAN FIND THE LIBRARY. AFTER COMPILING 
+LIPPORTAUDIO, YOU CAN FIND THE DYLIB FILE(S) IN portaudio/install/lib
+
+The best bet for support on compiling libportaudio, should you face any problems, 
+would be the portaudio documentation:
+
+http://portaudio.com/docs/v19-doxydocs/tutorial_start.html
+
+We know of at least one instance were libportaudio  compiled fine, but only 
+produced garbage audio samples. This happened on a Linux system  that only had 
+Open Sound System (OSS) installed. We therefore recommend to install ALSA. This 
+is also reflected in our Makefile for the binaries in /src/onlinebin where we 
+include -lasound.

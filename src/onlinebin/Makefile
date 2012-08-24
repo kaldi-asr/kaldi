@@ -1,10 +1,12 @@
 all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
-EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
-    EXTRA_LDLIBS += -lasound
+    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a -lasound
+else
+    EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -lportaudio
 endif
 
 include ../kaldi.mk
