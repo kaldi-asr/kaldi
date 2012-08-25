@@ -6,7 +6,7 @@ UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
     EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
 ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
-	EXTRA_LDLIBS += -lasound
+    EXTRA_LDLIBS += -lasound
 endif
 else
     EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -lportaudio

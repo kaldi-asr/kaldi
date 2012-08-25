@@ -64,13 +64,14 @@ case $test_mode in
         echo "  The (bigram) language model used to build the decoding graph was"
         echo "  estimated on an audio book's text. The text in question is"
         echo "  \"King Solomon's Mines\" (http://www.gutenberg.org/ebooks/2166)."
-        echo "  The audio chunks to be decoded were taken from the same audio book"
+        echo "  The audio chunks to be decoded were taken from the audio book read"
+        echo "  by John Nicholson(http://librivox.org/king-solomons-mines-by-haggard/)"
         echo
         echo "  NOTE: Using utterances from the book, on which the LM was estimated"
         echo "        is considered to be \"cheating\" and we are doing this only for"
         echo "        the purposes of the demo."
         echo 
-        echo "  You can type \"./run.sh --test_mode live\" to try it using your"
+        echo "  You can type \"./run.sh --test-mode live\" to try it using your"
         echo "  own voice!"
         echo
         mkdir -p $decode_dir
@@ -88,7 +89,7 @@ case $test_mode in
             ark,t:$decode_dir/ali.txt $trans_matrix;;
     
     *)
-        echo "Invalid test type! Should be either \"live\" or \"simulated\"!";
+        echo "Invalid test mode! Should be either \"live\" or \"simulated\"!";
         exit 1;;
 esac
 

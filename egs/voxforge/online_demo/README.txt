@@ -14,8 +14,8 @@ You can start the demo in "simulated" mode by just calling:
 ./run.sh
 
 To try using your own voice(assuming you have a working microphone) call:
-./run.sh --test_mode live
+./run.sh --test-mode live
 
 By default a discriminatively trained acoustic models is used. To try a
-maximum likelihood trained one(usually have lower accuracy) add a
-"--ac_model_type tri2a" when running the above commands.
+maximum likelihood trained one(usually has lower accuracy) add
+"--ac-model-type tri2a" when running the above commands.
