@@ -109,6 +109,7 @@ typedef RandomAccessTableReader<PosteriorHolder> RandomAccessPosteriorReader;
 // typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
 typedef TableWriter<GauPostHolder> GauPostWriter;
 typedef SequentialTableReader<GauPostHolder> SequentialGauPostReader;
+
 typedef RandomAccessTableReader<GauPostHolder> RandomAccessGauPostReader;
 
 /// @}

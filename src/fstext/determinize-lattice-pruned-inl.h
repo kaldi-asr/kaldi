@@ -304,11 +304,23 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       
       if (new_total_size > static_cast<int32>(opts_.max_mem * 0.8)) {
         // Rebuilding didn't help enough-- we need a margin to stop
-        // having to rebuild too often.
+        // having to rebuild too often.  We'll just return to the user at
+        // this point, with a partial lattice that's pruned tighter than
+        // the specified beam.  Here we figure out what the effective
+        // beam was.
+        Weight effective_beam = Weight::Zero();
+        if (!queue_.empty()) { // Note: queue should probably not be empty; we're
+          // just being paranoid here.
+          Task *task = queue_.top();
+          Weight total_weight = backward_weights_[ifst_->Start()];
+          effective_beam = Divide(task->priority_weight, total_weight, DIVIDE_LEFT);
+        }
         KALDI_WARN << "Failure in determinize-lattice: size exceeds maximum "
                    << opts_.max_mem << " bytes; (repo,arcs,elems) = ("
                    << repo_size << "," << arcs_size << "," << elems_size
-                   << "), after rebuilding, repo size was " << new_repo_size;
+                   << "), after rebuilding, repo size was " << new_repo_size
+                   << ", effective beam was " << effective_beam
+                   << " vs. requested beam " << beam_;
         return false;
       }
     }
