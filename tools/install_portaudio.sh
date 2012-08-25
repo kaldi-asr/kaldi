@@ -104,7 +104,7 @@ make
 make install
 
 if [ "$MACOS" != "" ]; then
-    cp src/common/pa_ringbuffer.h src/common/pa_memory_barrier.h install/include
+    cp src/common/pa_ringbuffer.h install/include/
 fi
 
 cd ..
