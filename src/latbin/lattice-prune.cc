@@ -20,6 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -53,40 +54,38 @@ int main(int argc, char *argv[]) {
         lats_wspecifier = po.GetArg(2);
 
 
-    // Read as regular lattice-- this is the form we need it in for efficient
-    // pruning.
-    SequentialLatticeReader lattice_reader(lats_rspecifier);
     
-    // Write as compact lattice.
+    SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
-    int32 n_done = 0; // there is no failure mode, barring a crash.
+    int32 n_done = 0, n_err = 0;
     int64 n_arcs_in = 0, n_arcs_out = 0,
         n_states_in = 0, n_states_out = 0;
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
-    LatticeWeight beam_weight(beam, static_cast<BaseFloat>(0.0));
-    for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
-      Lattice lat = lattice_reader.Value();
-      lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
-      int64 narcs = NumArcs(lat), nstates = lat.NumStates();
+    
+    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
+      std::string key = compact_lattice_reader.Key();
+      CompactLattice clat = compact_lattice_reader.Value();
+      compact_lattice_reader.FreeCurrent();
+      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &clat);
+      int64 narcs = NumArcs(clat), nstates = clat.NumStates();
       n_arcs_in += narcs;
       n_states_in += nstates;
-      Lattice pruned_lat;
-      Prune(lat, &pruned_lat, beam_weight);
-      int64 pruned_narcs = NumArcs(pruned_lat),
-          pruned_nstates = pruned_lat.NumStates();
+      CompactLattice pruned_clat(clat);
+      if (!PruneLattice(beam, &pruned_clat)) {
+        KALDI_WARN << "Error pruning latice for utterance " << key;
+        n_err++;
+      }
+      int64 pruned_narcs = NumArcs(pruned_clat),          
+          pruned_nstates = pruned_clat.NumStates();
       n_arcs_out += pruned_narcs;
       n_states_out += pruned_nstates;
       KALDI_LOG << "For utterance " << key << ", pruned #states from "
                 << nstates << " to " << pruned_nstates << " and #arcs from "
                 << narcs << " to " << pruned_narcs;
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_lat);
-      CompactLattice pruned_clat;
-      ConvertLattice(pruned_lat, &pruned_clat);
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &pruned_clat);
       compact_lattice_writer.Write(key, pruned_clat);
       n_done++;
     }

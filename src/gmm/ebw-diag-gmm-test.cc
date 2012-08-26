@@ -47,7 +47,7 @@ void UnitTestEstimateMmieDiagGmm() {
     //          << "Vars = " << vars_f.Row(m) << '\n';
   }
    
-   // Numerator stats
+  // Numerator stats
   // second, generate 1000 feature vectors for each of the mixture components
   size_t counter_num = 0, multiple = 200;
   Matrix<BaseFloat> feats_num(nMix*multiple, dim);
@@ -91,11 +91,11 @@ void UnitTestEstimateMmieDiagGmm() {
   // std::cout << "Mean acc = " << mean_acc << '\n' << "Var acc = "
   //         << var_acc << '\n';
 
-   // write the feature vectors to a file
-   std::ofstream of("tmpfeats");
-   of.precision(10);
-   of << feats_num; 
-   of.close();
+  // write the feature vectors to a file
+  std::ofstream of("tmpfeats");
+  of.precision(10);
+  of << feats_num; 
+  of.close();
 
   // now generate randomly initial values for the GMM
   Vector<BaseFloat> weights(1);
@@ -151,23 +151,23 @@ void UnitTestEstimateMmieDiagGmm() {
     for (size_t i = 0; i < counter_num; i++) {
       featvec_num.CopyRowFromMat(feats_num, i);
       loglike_num += static_cast<double>(num.AccumulateFromDiag(*gmm,
-        featvec_num, 1.0F));
+                                                                featvec_num, 1.0F));
       // std::cout << "Mean accum_num: " <<  num.mean_accumulator() << '\n';
     }
     for (size_t i = 0; i < counter_den; i++) {
       featvec_den.CopyRowFromMat(feats_den, i);
       loglike_den += static_cast<double>(den.AccumulateFromDiag(*gmm,
-        featvec_den, 1.0F));
+                                                                featvec_den, 1.0F));
       // std::cout << "Mean accum_den: " <<  den.mean_accumulator() << '\n';
     }
 
     std::cout << "Loglikelihood Num before iteration " << iteration << " : "
-        << std::scientific << loglike_num << " number of components: "
-        << gmm->NumGauss() << '\n';
+              << std::scientific << loglike_num << " number of components: "
+              << gmm->NumGauss() << '\n';
 
     std::cout << "Loglikelihood Den before iteration " << iteration << " : "
-        << std::scientific << loglike_den << " number of components: "
-        << gmm->NumGauss() << '\n';
+              << std::scientific << loglike_den << " number of components: "
+              << gmm->NumGauss() << '\n';
 
     double loglike_diff = loglike_num - loglike_den;
     if (iteration > 0) {
@@ -179,33 +179,34 @@ void UnitTestEstimateMmieDiagGmm() {
     }
     last_log_like_diff = loglike_diff;
     
-   AccumDiagGmm num_smoothed(num);
-   IsmoothStatsDiagGmm(num, tau, &num_smoothed); // Apply I-smoothing.
+    AccumDiagGmm num_smoothed(num);
+    IsmoothStatsDiagGmm(num, tau, &num_smoothed); // Apply I-smoothing.
    
-   BaseFloat auxf_gauss, auxf_weight, count;
-   std::cout << "MEANX: " << gmm->weights() << '\n'; 
+    BaseFloat auxf_gauss, auxf_weight, count;
+    std::cout << "MEANX: " << gmm->weights() << '\n'; 
 
-   int32 num_floored;
-   UpdateEbwDiagGmm(num_smoothed, den, flags, ebw_opts,
-                    gmm, &auxf_gauss, &count, &num_floored);
+    int32 num_floored;
+    UpdateEbwDiagGmm(num_smoothed, den, flags, ebw_opts,
+                     gmm, &auxf_gauss, &count, &num_floored);
 
-   if (flags & kGmmWeights) {
-     UpdateEbwWeightsDiagGmm(num, den, ebw_weight_opts, gmm, &auxf_weight,
-                             &count);
-   }
+    if (flags & kGmmWeights) {
+      UpdateEbwWeightsDiagGmm(num, den, ebw_weight_opts, gmm, &auxf_weight,
+                              &count);
+    }
    
-   // mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
-   // std::cout << "MEANY: " << mean_hlp << '\n'; 
-   std::cout << "MEANY: " << gmm->weights() << '\n';
+    // mean_hlp.CopyFromVec(gmm->means_invvars().Row(0));
+    // std::cout << "MEANY: " << mean_hlp << '\n'; 
+    std::cout << "MEANY: " << gmm->weights() << '\n';
 
 
-   if ((iteration % 3 == 1) && (gmm->NumGauss() * 2 <= maxcomponents)) {
+    if ((iteration % 3 == 1) && (gmm->NumGauss() * 2 <= maxcomponents)) {
       gmm->Split(gmm->NumGauss() * 2, 0.001);
       std::cout << "Ngauss, Ndim: " << gmm->NumGauss() << " " << gmm->Dim() << '\n'; 
-   }
-
-   iteration++;
+    }
+    
+    iteration++;
   }
+  delete gmm;
 }
 
 }  // end namespace kaldi

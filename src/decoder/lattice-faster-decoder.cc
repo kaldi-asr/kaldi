@@ -34,6 +34,7 @@ LatticeFasterDecoder::LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
 bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
   // clean up from last time:
   ClearToks(toks_.Clear());
+  cost_offsets_.clear();
   ClearActiveTokens();
   warned_ = false;
   final_active_ = false;
@@ -125,8 +126,13 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
             tok_map.find(l->next_tok);
         StateId nextstate = iter->second;
         KALDI_ASSERT(iter != tok_map.end());
+        BaseFloat cost_offset = 0.0;
+        if (l->ilabel != 0) { // emitting..
+          KALDI_ASSERT(f >= 0 && f < cost_offsets_.size());
+          cost_offset = cost_offsets_[f];
+        }
         Arc arc(l->ilabel, l->olabel,
-                Weight(l->graph_cost, l->acoustic_cost),
+                Weight(l->graph_cost, l->acoustic_cost - cost_offset),
                 nextstate);
         ofst->AddArc(cur_state, arc);
       }
@@ -157,13 +163,12 @@ bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) 
   ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
   // lattice-determinization more efficient.
     
-  LatticeWeight beam(config_.lattice_beam, 0);
   fst::DeterminizeLatticePrunedOptions lat_opts;
   lat_opts.max_mem = config_.max_mem;
   lat_opts.max_loop = config_.max_loop;
   lat_opts.max_arcs = config_.max_arcs;
     
-  DeterminizeLatticePruned(raw_fst, beam, ofst, lat_opts);
+  DeterminizeLatticePruned(raw_fst, config_.lattice_beam, ofst, lat_opts);
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
   Connect(ofst); // Remove unreachable states... there might be
   // a small number of these, in some cases.
@@ -535,18 +540,24 @@ void LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable, int32 
   BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
   // pruning "online" before having seen all tokens
 
+  BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
+  // dynamic range.
+  
   // First process the best token to get a hopefully
-  // reasonably tight bound on the next cutoff.
+  // reasonably tight bound on the next cutoff.  The only
+  // products of the next block are "next_cutoff" and "cost_offset".
   if (best_elem) {
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
+    cost_offset = - tok->tot_cost;
     for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
          !aiter.Done();
          aiter.Next()) {
       Arc arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
         arc.weight = Times(arc.weight,
-                           Weight(-decodable->LogLikelihood(frame-1, arc.ilabel)));
+                           Weight(cost_offset -
+                                  decodable->LogLikelihood(frame-1, arc.ilabel)));
         BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
@@ -554,7 +565,12 @@ void LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable, int32 
     }
   }
 
-    
+  // Store the offset on the acoustic likelihoods that we're applying.
+  // Could just do cost_offsets_.push_back(cost_offset), but we
+  // do it this way as it's more robust to future code changes.
+  cost_offsets_.resize(frame, 0.0);
+  cost_offsets_[frame-1] = cost_offset;
+  
   // the tokens are now owned here, in last_toks, and the hash is empty.
   // 'owned' is a complex thing here; the point is we need to call DeleteElem
   // on each elem 'e' to let toks_ know we're done with them.
@@ -568,7 +584,8 @@ void LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable, int32 
            aiter.Next()) {
         const Arc &arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
-          BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel),
+          BaseFloat ac_cost = cost_offset -
+              decodable->LogLikelihood(frame-1, arc.ilabel),
               graph_cost = arc.weight.Value(),
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;

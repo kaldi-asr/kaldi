@@ -20,6 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
@@ -47,8 +48,7 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
     
     // The work gets done in the next line.  
     if (DeterminizeLattice(lat, clat, lat_opts, NULL)) { 
-      if (prune)
-        fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), clat);
+      if (prune) PruneLattice(cur_beam, clat);
       return true;
     } else { // failed to determinize..
       KALDI_WARN << "Failed to determinize lattice (presumably max-states "
@@ -57,15 +57,14 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
       for (; i < num_loops; i++) {
         cur_beam *= beam_ratio;
         Lattice pruned_lat(lat);
-        Prune(lat, &pruned_lat, LatticeWeight(cur_beam, 0));
+        PruneLattice(cur_beam, &pruned_lat);
         if (NumArcs(lat) == NumArcs(pruned_lat)) {
           cur_beam *= beam_ratio;
           KALDI_WARN << "Pruning did not have an effect on the original "
                      << "lattice size; reducing beam to "
                      << cur_beam << " and re-trying.";
         } else if (DeterminizeLattice(pruned_lat, clat, lat_opts, NULL)) {
-          if (prune)
-            fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), clat);
+          if (prune) PruneLattice(cur_beam, clat);
           return true;
         } else {
           KALDI_WARN << "Determinization failed again; reducing beam again to "

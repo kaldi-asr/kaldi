@@ -77,6 +77,10 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 void ConvertLatticeToPhones(const TransitionModel &trans_model,
                             Lattice *lat);
 
+/// Prunes a lattice or compact lattice.  Returns true on success, false if
+/// there was some kind of failure.
+template<class LatticeType>
+bool PruneLattice(BaseFloat beam, LatticeType *lat);
 
 /// Given a lattice, and a transition model to map pdf-ids to phones,
 /// replace the sequences of transition-ids with sequences of phones.

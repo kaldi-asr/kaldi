@@ -172,7 +172,7 @@ class LatticeFasterDecoder {
     TokenList(): toks(NULL), must_prune_forward_links(true),
                  must_prune_tokens(true) { }
   };
-
+  
   typedef HashList<StateId, Token*>::Elem Elem;
 
   void PossiblyResizeHash(size_t num_toks);
@@ -249,6 +249,9 @@ class LatticeFasterDecoder {
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
+  std::vector<BaseFloat> cost_offsets_; // This contains, for each
+  // frame, an offset that was added to the acoustic likelihoods on that
+  // frame in order to keep everything in a nice dynamic range.
   LatticeFasterDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
   bool warned_;

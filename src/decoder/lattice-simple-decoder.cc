@@ -144,13 +144,12 @@ bool LatticeSimpleDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) 
   ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
   // lattice-determinization more efficient.
     
-  LatticeWeight beam(config_.lattice_beam, 0);
   fst::DeterminizeLatticePrunedOptions lat_opts;
   lat_opts.max_mem = config_.max_mem;
   lat_opts.max_loop = config_.max_loop;
   lat_opts.max_arcs = config_.max_arcs;
     
-  DeterminizeLatticePruned(raw_fst, beam, ofst, lat_opts);
+  DeterminizeLatticePruned(raw_fst, config_.lattice_beam, ofst, lat_opts);
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
   Connect(ofst); // Remove unreachable states... there might be
   // a small number of these, in some cases.

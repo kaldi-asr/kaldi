@@ -187,7 +187,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // shallow copy.  We do it like this for memory safety, rather than
   // keeping a reference or pointer to ifst_.
   LatticeDeterminizerPruned(const ExpandedFst<Arc> &ifst,
-                            Weight beam,
+                            double beam,
                             DeterminizeLatticePrunedOptions opts):
       num_arcs_(0), num_elems_(0), ifst_(ifst.Copy()), beam_(beam), opts_(opts),
       equal_(opts_.delta), determinized_(false),
@@ -308,19 +308,20 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         // this point, with a partial lattice that's pruned tighter than
         // the specified beam.  Here we figure out what the effective
         // beam was.
-        Weight effective_beam = Weight::Zero();
+        double effective_beam = beam_;
         if (!queue_.empty()) { // Note: queue should probably not be empty; we're
           // just being paranoid here.
           Task *task = queue_.top();
-          Weight total_weight = backward_weights_[ifst_->Start()];
-          effective_beam = Divide(task->priority_weight, total_weight, DIVIDE_LEFT);
+          double total_weight = backward_costs_[ifst_->Start()]; // best weight of FST.
+          effective_beam = task->priority_cost - total_weight;
         }
         KALDI_WARN << "Failure in determinize-lattice: size exceeds maximum "
                    << opts_.max_mem << " bytes; (repo,arcs,elems) = ("
                    << repo_size << "," << arcs_size << "," << elems_size
                    << "), after rebuilding, repo size was " << new_repo_size
                    << ", effective beam was " << effective_beam
-                   << " vs. requested beam " << beam_;
+                   << " vs. requested beam " << beam_ << " (add any "
+                   << "comma-separated numbers). ";
         return false;
       }
     }
@@ -352,7 +353,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                       << " because of lattice-beam.  (#states, #arcs) is ( " 
                       << output_states_.size() << ", " << num_arcs_
                       << " ), versus limits ( " << opts_.max_states << ", "
-                      << opts_.max_arcs << " (else, may be memory limit).";
+                      << opts_.max_arcs << " ) (else, may be memory limit).";
         break;
         // we terminate the determinization here-- whatever we already expanded is
         // what we'll return...  because we expanded stuff in order of total
@@ -745,7 +746,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       }
     }
     if (is_final &&
-        fst::Compare(Times(final_weight, state.forward_weight), cutoff_) >= 0) {
+        ConvertToCost(final_weight) + ConvertToCost(state.forward_weight)
+        <= cutoff_) {
       // store final weights in TempArc structure, just like a transition.
       // Note: we only store the final-weight if it's inside the pruning beam, hence
       // the stuff with Compare.
@@ -931,29 +933,28 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       // Process ranges that share the same input symbol.
       Label ilabel = cur->first;
       task->state = output_state_id;
-      task->priority_weight = Weight::Zero();
+      task->priority_cost = std::numeric_limits<double>::infinity();
       task->label = ilabel;
       while (cur != end && cur->first == ilabel) {
         task->subset.push_back(cur->second);
         const Element &element = cur->second;
-        // This uses the fact that "Plus" has the "take-the-max" (tropical-like)
-        // semantics for the weights we'll be instantiating with.  Note: we'll
-        // later include the factor of "forward_weight" in the priority_weight.
-        task->priority_weight = Plus(task->priority_weight,
-                                     Times(element.weight,
-                                           backward_weights_[element.state]));
+        // Note: we'll later include the factor of "forward_weight" in the
+        // priority_cost.
+        task->priority_cost = std::min(task->priority_cost,
+                                       ConvertToCost(element.weight) +
+                                       backward_costs_[element.state]);
         cur++;
       }
       
-      // After the command below, the "priority_weight" is a value comparable to
+      // After the command below, the "priority_cost" is a value comparable to
       // the total-weight of the input FST, like a total-path weight... of
       // course, it will typically be less (in the semiring) than that.
-      task->priority_weight = Times(
-          output_states_[output_state_id]->forward_weight,
-          task->priority_weight);
+      // note: we represent it just as a double.
+      task->priority_cost +=
+          ConvertToCost(output_states_[output_state_id]->forward_weight);
 
-      if (fst::Compare(task->priority_weight, cutoff_) < 0) {
-        // This task would never get done as it's below the pruning cutoff.
+      if (task->priority_cost > cutoff_) {
+        // This task would never get done as it's past the pruning cutoff.
         delete task;
       } else {
         MakeSubsetUnique(&(task->subset)); // remove duplicate Elements with the same state.
@@ -994,17 +995,18 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   }
 
   void ComputeBackwardWeight() {
-    // Sets up the backward_weights_ array, and the cutoff_ variable.
-    assert(fst::Compare(beam_, Weight::One()) < 0); // beam_ should be < 1 in semiring.
+    // Sets up the backward_costs_ array, and the cutoff_ variable.
+    assert(beam_ > 0);
     if (ifst_->Properties(kTopSorted, true) != 0) { // is topologically sorted-> easier.
-      backward_weights_.resize(ifst_->NumStates());
+      backward_costs_.resize(ifst_->NumStates());
       for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
-        Weight &w = backward_weights_[s];
-        w = ifst_->Final(s);
+        double &cost = backward_costs_[s];
+        cost = ConvertToCost(ifst_->Final(s));
         for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, s); 
              !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
-          w = Plus(w, Times(arc.weight, backward_weights_[arc.nextstate]));
+          cost = std::min(cost,
+                          ConvertToCost(arc.weight) + backward_costs_[arc.nextstate]);
         }
       }
     } else {
@@ -1012,15 +1014,19 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       // Use the generic ShortestDistance algorithm.  Note: we could probably
       // set it up to use this for the top-sorted case and still be efficient,
       // but I'm not sure how.
+      std::vector<Weight> backward_weights_(ifst_->NumStates());
+      backward_costs_.resize(ifst_->NumStates());
       ShortestDistance(*ifst_, &backward_weights_, true);
+      for (int32 i = 0; i < ifst_->NumStates(); i++)
+        backward_costs_[i] = ConvertToCost(backward_weights_[i]);
     }
     if (ifst_->Start() == kNoStateId) return; // we'll be returning
     // an empty FST.
     
-    Weight total_weight = backward_weights_[ifst_->Start()];
-    if (total_weight == Weight::Zero())
+    double best_cost = backward_costs_[ifst_->Start()];
+    if (best_cost == numeric_limits<double>::infinity())
       KALDI_WARN << "Total weight of input latice is zero.";
-    cutoff_ = Times(beam_, total_weight);
+    cutoff_ = best_cost + beam_;
   }
   
   void InitializeDeterminization() {
@@ -1095,12 +1101,13 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // the keys of initial_hash_
   
   const ExpandedFst<Arc> *ifst_;
-  std::vector<Weight> backward_weights_; // This vector stores, for every state in ifst_,
+  std::vector<double> backward_costs_; // This vector stores, for every state in ifst_,
   // the minimal cost to the end-state (i.e. the sum of weights; they are guaranteed to
-  // have "take-the-minimum" semantics).  [TODO: compute this.]
-
-  Weight beam_;
-  Weight cutoff_; // beam plus total-weight of input (and note, the weight is
+  // have "take-the-minimum" semantics).  We get the double from the ConvertToCost()
+  // function on the lattice weights.
+  
+  double beam_;
+  double cutoff_; // beam plus total-weight of input (and note, the weight is
   // guaranteed to be "tropical-like" so the sum does represent a min-cost.
   
   DeterminizeLatticePrunedOptions opts_;
@@ -1126,20 +1133,16 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     OutputStateId state; // State from which we're processing the transition.
     Label label; // Label on the transition we're processing out of this state.
     vector<Element> subset; // Weighted subset of states (with strings)-- not normalized.
-    Weight priority_weight; // Weight used in deciding priority of tasks.  This equals
-    // the "forward_weight" of "state", times (the sum over the elements subset,
-    // of the weight on the element times the backward-weight of the state it goes to),
-    // which is a value comparable to the "total weight" of the FST (or the weight on
-    // the best path through the FST, since we assume we're in a tropical-like semiring).
+    double priority_cost; // Cost used in deciding priority of tasks.  Note:
+    // we assume there is a ConvertToCost() function that converts the semiring to double.
   };
 
   struct TaskCompare {
     inline int operator() (const Task *t1, const Task *t2) {
       // view this like operator <, which is the default template parameter
       // to std::priority_queue.
-      return (fst::Compare(t1->priority_weight, t2->priority_weight) < 0); // i.e. true
-      // if the "priority_weight" of t1 is "less than" that of t2 (equiv. to: the cost
-      // is more).
+      // returns true if t1 is worse than t2.
+      return (t1->priority_cost > t2->priority_cost);
     }
   };
 
@@ -1173,7 +1176,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
-                              Weight beam,
+                              double beam,
                               MutableFst<ArcTpl<Weight> > *ofst,
                               DeterminizeLatticePrunedOptions opts) {
   ofst->SetInputSymbols(ifst.InputSymbols());
@@ -1191,7 +1194,7 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> >&ifst,
-    Weight beam,
+    double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > >*ofst,
     DeterminizeLatticePrunedOptions opts) {
   ofst->SetInputSymbols(ifst.InputSymbols());

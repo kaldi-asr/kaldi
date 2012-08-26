@@ -781,6 +781,22 @@ inline void ConvertLatticeWeight(
   *w_out = Times(w1, w2);
 }
 
+template<class Float>
+inline double ConvertToCost(const LatticeWeightTpl<Float> &w) {
+  return static_cast<double>(w.Value1()) + static_cast<double>(w.Value2());
+}
+
+template<class Float, class Int>
+inline double ConvertToCost(const CompactLatticeWeightTpl<LatticeWeightTpl<Float>, Int> &w) {
+  return static_cast<double>(w.Weight().Value1()) + static_cast<double>(w.Weight().Value2());
+}
+
+template<class Float>
+inline double ConvertToCost(const TropicalWeightTpl<Float> &w) {
+  return w.Value();
+}
+
+
 
   
 } // end namespace fst

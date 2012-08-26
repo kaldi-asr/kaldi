@@ -62,8 +62,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       lat_opts.max_mem = ((rand() % 2 == 0) ? 100 : 1000);
       lat_opts.max_states = ((rand() % 2 == 0) ? -1 : 20);
       lat_opts.max_arcs = ((rand() % 2 == 0) ? -1 : 30);
-      Weight beam(10.0);
-      bool ans = DeterminizeLatticePruned<TropicalWeight, int32>(*fst, beam, &det_fst, lat_opts);
+      bool ans = DeterminizeLatticePruned<TropicalWeight, int32>(*fst, 10.0, &det_fst, lat_opts);
 
       std::cout << "FST after lattice-determinizing is:\n";
       {
@@ -77,7 +76,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
 
 
       VectorFst<Arc> pruned_fst;
-      Prune(*fst, &pruned_fst, beam);
+      Prune(*fst, &pruned_fst, 10.0);
       
       VectorFst<CompactArc> compact_pruned_fst, compact_pruned_det_fst;
       ConvertLattice<Weight, Int>(pruned_fst, &compact_pruned_fst, false);
@@ -116,8 +115,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
-    typename Arc::Weight beam(10.0);
-    DeterminizeLatticePruned<TropicalWeight, int32>(*fst, beam, &ofst);
+    DeterminizeLatticePruned<TropicalWeight, int32>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);

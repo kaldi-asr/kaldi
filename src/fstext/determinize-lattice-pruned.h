@@ -130,7 +130,7 @@ struct DeterminizeLatticePrunedOptions {
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
-    Weight prune,
+    double prune,
     MutableFst<ArcTpl<Weight> > *ofst, 
     DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 
@@ -147,7 +147,7 @@ bool DeterminizeLatticePruned(
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> >&ifst,
-    Weight prune,
+    double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
     DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 

@@ -14,73 +14,11 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
-
-
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "fstext/determinize-lattice-pruned.h"
-
-namespace kaldi {
-
-bool DeterminizeLatticeWrapper(const Lattice &lat,
-                               const std::string &key,
-                               bool prune,
-                               BaseFloat beam,
-                               BaseFloat beam_ratio,
-                               int32 max_mem,
-                               int32 max_loop,
-                               BaseFloat delta,
-                               int32 num_loops,
-                               CompactLattice *clat) {
-  fst::DeterminizeLatticeOptions lat_opts;
-  lat_opts.max_mem = max_mem;
-  lat_opts.max_loop = max_loop;
-  lat_opts.delta = delta;
-  BaseFloat cur_beam = beam;
-  for (int32 i = 0; i < num_loops;) { // we increment i below.
-
-    if (lat.Start() == fst::kNoStateId) {
-      KALDI_WARN << "Detected empty lattice, skipping " << key;
-      return false;
-    }
-    
-    // The work gets done in the next line.  
-    if (DeterminizeLattice(lat, clat, lat_opts, NULL)) { 
-      if (prune)
-        fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), clat);
-      return true;
-    } else { // failed to determinize..
-      KALDI_WARN << "Failed to determinize lattice (presumably max-states "
-                 << "reached), reducing lattice-beam to "
-                 << (cur_beam*beam_ratio) << " and re-trying.";
-      for (; i < num_loops; i++) {
-        cur_beam *= beam_ratio;
-        Lattice pruned_lat(lat);
-        Prune(lat, &pruned_lat, LatticeWeight(cur_beam, 0));
-        if (NumArcs(lat) == NumArcs(pruned_lat)) {
-          cur_beam *= beam_ratio;
-          KALDI_WARN << "Pruning did not have an effect on the original "
-                     << "lattice size; reducing beam to "
-                     << cur_beam << " and re-trying.";
-        } else if (DeterminizeLattice(pruned_lat, clat, lat_opts, NULL)) {
-          if (prune)
-            fst::PruneCompactLattice(LatticeWeight(cur_beam, 0), clat);
-          return true;
-        } else {
-          KALDI_WARN << "Determinization failed again; reducing beam again to "
-                     << (cur_beam*beam_ratio) << " and re-trying.";
-        }
-      }
-    }
-  }
-  KALDI_WARN << "Decreased pruning beam --num-loops=" << num_loops
-             << " times and was not able to determinize: failed for "
-             << key;
-  return false;
-}
-
-}
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -139,8 +77,7 @@ int main(int argc, char *argv[]) {
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
-    LatticeWeight beam_weight(beam, static_cast<BaseFloat>(0.0));
-    
+
     for (; !lat_reader.Done(); lat_reader.Next()) {
       std::string key = lat_reader.Key();
       Lattice lat = lat_reader.Value();
@@ -154,7 +91,7 @@ int main(int argc, char *argv[]) {
       }
       fst::ArcSort(&lat, fst::ILabelCompare<LatticeArc>());
       CompactLattice det_clat;
-      if (!DeterminizeLatticePruned(lat, beam_weight, &det_clat, opts)) {
+      if (!DeterminizeLatticePruned(lat, beam, &det_clat, opts)) {
         KALDI_WARN << "For key " << key << ", determinization did not succeed"
             "(partial output will be pruned tighter than the specified beam.)";
         n_warn++;
