@@ -13,6 +13,9 @@ use_phi=false  # This is kind of an obscure option.  If true, we'll remove the o
   # difference (if any) to WER, it's more so we know we are doing the right thing.
 test=false # Activate a testing option.
 stage=1 # Stage of this script, for partial reruns.
+# End configuration section.
+
+echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh

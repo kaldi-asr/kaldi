@@ -3,8 +3,12 @@
 # Copyright Johns Hopkins University (Author: Daniel Povey)  2012
 # Apache 2.0.
 
+# Begin configuration section.
 silence_label=0
 cmd=run.pl
+# End configuration section.
+
+echo "$0 $@"  # Print the command line for logging
 
 for x in `seq 2`; do
   [ "$1" == "--silence-label" ] && silence_label=$2 && shift 2;

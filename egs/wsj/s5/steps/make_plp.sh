@@ -5,9 +5,13 @@
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
 
+# Begin configuration section.
 nj=4
 cmd=run.pl
 plp_config=conf/plp.conf
+# End configuration section.
+
+echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;

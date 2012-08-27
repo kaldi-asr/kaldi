@@ -4,7 +4,7 @@
 # Create denominator lattices for MMI/MPE training.
 # Creates its output in $dir/lat.*.gz
 
-# Begin configuration.
+# Begin configuration section.
 nj=4
 cmd=run.pl
 sub_split=1
@@ -16,6 +16,9 @@ transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
+# End configuration section.
+
+echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;

@@ -16,6 +16,8 @@ realign_iters=3 # Space-separated list of iterations to realign on.
 stage=0
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 

@@ -18,6 +18,8 @@
 # speaker information does not have to correspond to actual
 # speakers, it's just the level you want to adapt at.
 
+echo "$0 $@"  # Print the command line for logging
+
 if [ $# != 3 ]; then
    echo "usage: compute_cmvn_stats.sh <data-dir> <log-dir> <path-to-cmvn-dir>";
    exit 1;

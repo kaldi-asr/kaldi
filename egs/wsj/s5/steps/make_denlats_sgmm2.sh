@@ -7,7 +7,7 @@
 # possibly a slight mismatch because the speaker vectors come from supervised
 # adaptation.
 
-# Begin configuration.
+# Begin configuration section.
 nj=4
 cmd=run.pl
 sub_split=1
@@ -17,6 +17,9 @@ acwt=0.1
 max_active=5000
 transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
+# End configuration section.
+
+echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;

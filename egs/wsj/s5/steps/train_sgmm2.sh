@@ -38,6 +38,8 @@ spk_dep_weights=true # [Symmetric SGMM] set this to false if you don't want "u" 
                       # symmetric SGMM.
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 

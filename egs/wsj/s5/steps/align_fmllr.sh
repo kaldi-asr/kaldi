@@ -25,6 +25,8 @@ boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
 # End configuration options.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f path.sh ] && . ./path.sh # source the path.
 . parse_options.sh || exit 1;
 

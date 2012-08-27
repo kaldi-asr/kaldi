@@ -16,6 +16,8 @@ update_opts=
 transform_dir=
 # End configuration section
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
