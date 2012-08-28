@@ -16,14 +16,14 @@
 # limitations under the License.
 
 
-# This script normalizes the GlobalPhone Polish dictionary. It (optionally) 
-# tags the phones with language ('PL') marker. It also converts the words to 
+# This script normalizes the GlobalPhone French dictionary. It (optionally) 
+# tags the phones with language ('FR') marker. It also converts the words to 
 # UTF8 and lowercases everything, either of which can be diabled with command 
 # line switches.
-# *No special treatment for acronyms since some words are already capitalized.
+# *No special treatment for acronyms !!! Acronyms are not somehow marked, so maybe some acronyms are really hidden in dico.
 
-my $usage = "Usage: gp_format_dict_PL.pl [-l|-u] -i dictionary > formatted\
-Normalizes pronunciation dictionary for GlobalPhone Polish.\
+my $usage = "Usage: gp_format_dict_FR.pl [-l|-u] -i dictionary > formatted\
+Normalizes pronunciation dictionary for GlobalPhone French.\
 There will probably be duplicates; so pipe the output through sort -u \
 Options:\
   -l\tAdd language tag to the phones
@@ -32,7 +32,7 @@ Options:\
 use strict;
 use Getopt::Long;
 use Unicode::Normalize;
-use open ':encoding(utf8)';
+use open ':encoding(iso-8859-1)';
 
 die "$usage" unless(@ARGV >= 1);
 my ($in_dict, $lang_tag, $uppercase);
@@ -44,7 +44,6 @@ binmode(STDOUT, ":encoding(utf8)");
 
 open(L, "<$in_dict") or die "Cannot open dictionary file '$in_dict': $!";
 while (<L>) {
-  #$_ = NFD($_);  # NO UTF8 decompose
   s/\r//g;  # Since files could have CRLF line-breaks!
   chomp;
   $_ =~ m:^\{?(\S*?)\}?\s+\{?(.+?)\}?$: or die "Bad line: $_";
@@ -58,7 +57,7 @@ while (<L>) {
   $pron =~ s/ WB\}//g;    
   $pron =~ s/\s+/ /g;  # Normalize spaces
   $pron =~ s/M_//g;    # Get rid of the M_ marker before the phones
-  $pron =~ s/(\S+)/$1_PL/g if(defined($lang_tag));
+  $pron =~ s/(\S+)/$1_FR/g if(defined($lang_tag));
 
   # Next, normalize the word:
   $word =~ s/\(.*\)//g;  # Pron variants should have same orthography
