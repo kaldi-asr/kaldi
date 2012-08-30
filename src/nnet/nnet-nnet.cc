@@ -58,62 +58,43 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> 
   // we need at least L-1 error bufers
   KALDI_ASSERT((int32)backpropagate_buf_.size() >= LayerCount()-1);
 
-  // find out when we can stop backprop
-  int32 backprop_stop = -1;
-  if (NULL == out_err) {
-    backprop_stop++;
-    while (1) {
-      if (nnet_[backprop_stop]->IsUpdatable()) {
-        if (0.0 != dynamic_cast<UpdatableComponent*>(nnet_[backprop_stop])->GetLearnRate()) {
-          break;
-        }
-      }
-      backprop_stop++;
-      if (backprop_stop == (int32)nnet_.size()) {
-        KALDI_ERR << "All layers have zero learning rate!";
-        break;
-      }
-    }
-  }
-  // disable!
-  backprop_stop=-1;
-
   //////////////////////////////////////
   // Backpropagation
   //
 
   // don't copy the in_err to buffers, use it as is...
   int32 i = nnet_.size()-1;
+  nnet_.back()->Backpropagate(in_err, &backpropagate_buf_[i-1]);
   if (nnet_[i]->IsUpdatable()) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
     if (uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[i], in_err);
     }
   }
-  nnet_.back()->Backpropagate(in_err, &backpropagate_buf_[i-1]);
 
   // backpropagate by using buffers
   for(i--; i >= 1; i--) {
+    nnet_[i]->Backpropagate(backpropagate_buf_[i], &backpropagate_buf_[i-1]);
     if (nnet_[i]->IsUpdatable()) {
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
       if (uc->GetLearnRate() > 0.0) {
         uc->Update(propagate_buf_[i], backpropagate_buf_[i]);
       }
     }
-    if (backprop_stop == i) break;
-    nnet_[i]->Backpropagate(backpropagate_buf_[i], &backpropagate_buf_[i-1]);
   }
 
-  // update first layer 
-  if (nnet_[0]->IsUpdatable()  &&  0 >= backprop_stop) {
+  // now backpropagate through first layer, 
+  // but only if asked to (by out_err pointer)
+  if (NULL != out_err) {
+    nnet_[0]->Backpropagate(backpropagate_buf_[0], out_err);
+  }
+
+  // update the first layer 
+  if (nnet_[0]->IsUpdatable()) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
     if (uc->GetLearnRate() > 0.0) {
       uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
     }
-  }
-  // now backpropagate through first layer, but only if asked to (by out_err pointer)
-  if (NULL != out_err) {
-    nnet_[0]->Backpropagate(backpropagate_buf_[0], out_err);
   }
 
   //

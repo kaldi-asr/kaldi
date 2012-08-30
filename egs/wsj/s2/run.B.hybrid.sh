@@ -50,7 +50,7 @@ source path.sh
 # ### A : mono1a labels, 4-layer MLP, 3M params, lrate, si84 ### #
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.008
 ( 
   dir=exp/mono1a_nnet4L_3M
   ali=exp/mono1a_ali
@@ -67,7 +67,7 @@ lrate=0.002
 # ### B : tri2a labels, 4-layer MLP, 3M params, lrate, si84 ### #
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.008
 ( dir=exp/tri2a_nnet4L_3M
   ali=exp/tri2a_ali
   # Train
@@ -83,7 +83,7 @@ lrate=0.002
 # ### C : tri2b labels, 4-layer MLP, 3M params, lrate, si84 ### #
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.008
 ( dir=exp/tri2b_nnet4L_3M
   ali=exp/tri2b_ali
   # Train
@@ -99,7 +99,7 @@ lrate=0.002
 # ### D : tri3b labels, 4-layer MLP, 3M params, lrate, si84 ### #
 hidlayers=2
 modelsize=3000000
-lrate=0.002
+lrate=0.008
 ( dir=exp/tri3b_nnet4L_3M
   ali=exp/tri3b_ali
   # Train 
@@ -126,7 +126,7 @@ wait #for (A+B+C+D)
 # use full training set si284
 hidlayers=2
 modelsize=3000000
-lrate=0.001
+lrate=0.008
 {
   dir=exp/tri2a_nnet4L_3M_si284
   ali=exp/tri2a_ali
@@ -158,7 +158,7 @@ lrate=0.001
 # train on the MLP re-aligned training targets
 hidlayers=2
 modelsize=3000000
-lrate=0.001
+lrate=0.008
 {
   dir=exp/tri2a_nnet4L_3M_si284_iter2
   ali=exp/tri2a_nnet4L_3M_si284_ali
