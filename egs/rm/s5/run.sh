@@ -46,9 +46,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono  
 
 
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
-# note: local/decode.sh calls the command line once for each
-# test, and afterwards averages the WERs into (in this case
-# exp/mono/decode/
+
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/mono/graph data/test exp/mono/decode
 
