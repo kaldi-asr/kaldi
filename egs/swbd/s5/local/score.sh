@@ -8,6 +8,8 @@ for x in "$@"; do orig_args="$orig_args '$x'"; done
 # score_basic.sh might need, or parse_options.sh will die.
 cmd=run.pl
 stage=0
+min_lmwt=6
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
