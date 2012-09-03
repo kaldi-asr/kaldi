@@ -64,6 +64,9 @@ while [ 1 ]; do
     --dct-basis)
       shift; dct_basis=$1; shift;
       ;;
+    --min-iters)
+      shift; min_iters=$1; shift;
+      ;;
     --*)
       echo "ERROR : Unknown argument $1"; exit 1;
       ;;
@@ -130,12 +133,16 @@ echo "Preparing alignments"
 #convert ali to pdf
 labels_tr="ark:$dir/train.pdf"
 ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.gz |" $labels_tr 2>$dir/train.pdf_log || exit 1
-#convert ali to pdf (cv set)
-labels_cv="ark:$dir/cv.pdf"
-ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" $labels_cv 2>$dir/cv.pdf_log || exit 1
-#merge the two parts (scheduler expects one file in $labels)
-labels="ark:$dir/train_and_cv.pdf"
-cat $dir/train.pdf $dir/cv.pdf > $dir/train_and_cv.pdf || exit 1
+if [[ "$alidir" == "$alidir_cv" ]]; then
+  labels=$labels_tr
+else
+  #convert ali to pdf (cv set)
+  labels_cv="ark:$dir/cv.pdf"
+  ali-to-pdf $alidir_cv/final.mdl "ark:gunzip -c $alidir_cv/ali.gz |" $labels_cv 2>$dir/cv.pdf_log || exit 1
+  #merge the two parts (scheduler expects one file in $labels)
+  labels="ark:$dir/train_and_cv.pdf"
+  cat $dir/train.pdf $dir/cv.pdf > $dir/train_and_cv.pdf || exit 1
+fi
 
 #get the priors, count the class examples from alignments
 analyze-counts ark:$dir/train.pdf $dir/train.counts 2>$dir/train.counts_log || exit 1

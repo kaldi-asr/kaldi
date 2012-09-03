@@ -17,7 +17,7 @@
 # To be run from .. (one directory up from here)
 
 if [ $# != 5 ]; then
-   echo "usage: make_fbank.sh <new-data-dir> <old-data-dir> <log-dir> <abs-path-to-fbankdir> <num-cpus>";
+   echo "usage: make_fbank.sh <tgt-data-dir> <old-data-dir> <log-dir> <abs-path-to-fbankdir> <num-cpus>";
    exit 1;
 fi
 

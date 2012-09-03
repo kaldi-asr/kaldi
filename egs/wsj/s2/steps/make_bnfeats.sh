@@ -16,43 +16,58 @@
 
 # To be run from .. (one directory up from here)
 
-if [ "$1" == "--bn-dim" ]; then
-  shift;
-  bndim=$1
-  shift;
-fi
+cmd=scripts/run.pl
+nj=4
+trim_transforms=4
+
+while [ 1 ]; do
+  case $1 in
+    --cmd)
+      shift; cmd=$1; shift;
+    ;;
+    --num-jobs)
+      shift; nj=$1; shift;
+    ;;
+    --trim-transforms)
+      shift; trim_transforms=$1; shift;
+    ;;
+    --*)
+      echo "Unknown option $1";
+      exit 1;
+    ;;
+    *)
+      break;
+    ;;
+  esac
+done
+      
 
 
-if [ $# != 5 ]; then
-   echo "usage: $0 [--bn-dim N] <data-dir> <nnet-dir> <log-dir> <abs-path-to-bnfeadir> <num-cpus>";
+if [ $# != 4 ]; then
+   echo "usage: $0 [--num-jobs N ] [--cmd CMD] [--trim-transforms N] <tgt-data-dir> <src-data-dir> <nnet-dir> <abs-path-to-bnfeadir>";
    exit 1;
 fi
 
 if [ -f path.sh ]; then . path.sh; fi
 
 data=$1
-nndir=$2
-logdir=$3
+olddata=$2
+nndir=$3
 bnfeadir=$4
-ncpus=$5
 
 ######## CONFIGURATION
-norm_vars=false #false:CMN, true:CMVN on fbanks
-splice_lr=15   #left- and right-splice value
-transf=$nndir/hamm_dct.mat
+norm_vars=$(cat $nndir/norm_vars)
+splice_lr=$(cat $nndir/splice_lr)
+feat_type=$(cat $nndir/feat_type)
 cmvn_g=$nndir/cmvn_glob.mat
-
-#default options
-echo bndim: ${bndim:=-1} #dimensionality of bottleneck, default disables trimming
-########
 
 # use "name" as part of name of the archive.
 name=`basename $data`
 
 mkdir -p $bnfeadir || exit 1;
-mkdir -p $logdir || exit 1;
+mkdir -p $data || exit 1;
 
-scp=$data/feats.scp
+scp=$olddata/feats.scp
 required="$scp"
 
 for f in $required; do
@@ -62,55 +77,78 @@ for f in $required; do
   fi
 done
 
-if [ ! -d $data/split$ncpus -o $data/split$ncpus -ot $data/feats.scp ]; then
-  scripts/split_data.sh $data $ncpus
+if [ ! -d $olddata/split$nj -o $olddata/split$nj -ot $olddata/feats.scp ]; then
+  scripts/split_data.sh $olddata $nj
 fi
 
 
 #cut the MLP
-nnet=$logdir/feature_extractor.nnet
-nnet-copy --print-args=false --binary=false $nndir/final.nnet - 2>$logdir/nnet-copy.log | \
-  awk '{ if(match($0,/<biasedlinearity> [0-9]+ '$bndim'/)) {stop=1;} if(stop==0) {print;}}' \
-  > $nnet
+nnet=$data/feature_extractor.nnet
+nnet-trim-n-last-transforms --n=$trim_transforms --binary=false $nndir/final.nnet $nnet 2>${nnet}_log
 
-rm $logdir/.error 2>/dev/null
+#copy source data to new data dir....
+cp $olddata/* $data 2>/dev/null; rm $data/feats.scp;
+
+rm $data/.error 2>/dev/null
+
+echo "Creating bnfeats into $data"
+
 
 # note: in general, the double-parenthesis construct in bash "((" is "C-style
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
 # The "for" loop in this style is a special construct.
-for ((n=0; n<ncpus; n++)); do
-  log=$logdir/make_bnfeats.$n.log
-
-  # prepare features
-  # We only do one forward pass, so there is no point caching the
-  # CMVN stats-- we make them part of a pipe.
-  feats="ark:compute-cmvn-stats --spk2utt=ark:$data/split$ncpus/$n/spk2utt scp:$data/split$ncpus/$n/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/split$ncpus/$n/utt2spk ark:- scp:$data/split$ncpus/$n/feats.scp ark:- |"
-  # Splice+Hamming+DCT
-  feats="$feats splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- | transform-feats --print-args=false $transf ark:- ark:- |"
+for ((n=0; n<nj; n++)); do
+  log=$data/make_bnfeats.$n.log
+  # prepare features : do per-speaker CMVN and splicing
+  feats="ark:compute-cmvn-stats --spk2utt=ark:$olddata/split$nj/$n/spk2utt scp:$olddata/split$nj/$n/feats.scp ark:- | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$olddata/split$nj/$n/utt2spk ark:- scp:$olddata/split$nj/$n/feats.scp ark:- | splice-feats --print-args=false --left-context=$splice_lr --right-context=$splice_lr ark:- ark:- |"
+  # Choose further processing by feat_type
+  case $feat_type in
+    plain)
+    ;;
+    traps)
+      transf=$nndir/hamm_dct.mat
+      feats="$feats transform-feats --print-args=false $transf ark:- ark:- |"
+    ;;
+    transf)
+      feats="$feats transform-feats $nndir/final.mat ark:- ark:- |"
+    ;;
+    transf-sat)
+      echo yet unimplemented...
+      exit 1;
+    ;;
+    *)
+      echo "Unknown feature type $feat_type"
+      exit 1;
+  esac
   # Norm
   feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
 
   # MLP forward 
-  nnet-forward $nnet "$feats" \
-   ark,scp:$bnfeadir/raw_bnfea_$name.$n.ark,$bnfeadir/raw_bnfea_$name.$n.scp \
-   2> $log || touch $logdir/.error &
+  $cmd $log \
+    nnet-forward $nnet "$feats" \
+    ark,scp:$bnfeadir/raw_bnfea_$name.$n.ark,$bnfeadir/raw_bnfea_$name.$n.scp \
+    || touch $data/.error &
  
 done
 wait;
 
-if [ -f $logdir/.error ]; then
+N0=$(cat $olddata/feats.scp | wc -l) 
+N1=$(cat $bnfeadir/raw_bnfea_$name.*.scp | wc -l)
+if [[ -f $data/.error && "$N0" != "$N1" ]]; then
   echo "Error producing bnfea features for $name:"
-  tail $logdir/make_bnfea.*.log
+  echo "Original feats : $N0  Bottleneck feats : $N1"
+  tail $data/make_bnfeats.*.log.bak.1
   exit 1;
 fi
 
+if [[ -f $data/.error ]]; then
+  echo "Warning : .error producing bnfea features, but all the $N1 features were computed...";
+fi
+
 # concatenate the .scp files together.
-rm $logdir/feats.scp 2>/dev/null
-for ((n=0; n<ncpus; n++)); do
-  cat $bnfeadir/raw_bnfea_$name.$n.scp >> $logdir/feats.scp
+for ((n=0; n<nj; n++)); do
+  cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
 done
-#copy rest of the files to bnfeadir....
-cp $data/{spk2gender,utt2spk,spk2utt,wav.scp,text} $logdir
 
 
 echo "Succeeded creating MLP-BN features for $name"
