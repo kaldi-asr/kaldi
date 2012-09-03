@@ -39,7 +39,7 @@ source path.sh
 dir=exp/tri2a_deep_nnet_pretrain/
 ali=exp/tri2a_ali
 $cuda_cmd $dir/_pretrain_nnet.log \
-  steps/pretrain_nnet_alter_rbm_xent.sh --lrate 0.002 --nn-depth 10 --nn-dimhid 1024 \
+  steps/pretrain_nnet_alter_rbm_xent.sh --lrate 0.008 --nn-depth 10 --nn-dimhid 1024 \
   data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
 
 # finetune the MLPs
@@ -49,7 +49,7 @@ for hid in $(seq -f '%02g' 1 10); do
   dir=exp/tri2a_deep_nnet_pretrain_finetune_hid$hid/
   ali=exp/tri2a_ali
   $cuda_cmd $dir/_finetune_nnet.log \
-    steps/train_nnet.sh --lrate 0.001 \
+    steps/train_nnet.sh --lrate 0.004 \
     --mlp-init $pretrain/nnet/hid${hid}b_nnet.xent \
     data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
   #decode
