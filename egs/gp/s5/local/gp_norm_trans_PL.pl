@@ -49,9 +49,10 @@ while (<T>) {
   my $trans = $2;
 
   $trans =~ s/\"/ /g;  # Remove quotation marks.
-  $trans =~ s/[\,\.\?\!\:]/ /g;
+  $trans =~ s/[\,\.\?\!\:\;\)\(\`]/ /g;
   $trans =~ s/(\- | \-)/ /g;
   $trans =~ s/\x{FEFF}/ /g;  # zero-width space character!
+  $trans =~ s/\x{00AB}\x{00BB}//g; # POINTING DOUBLE ANGLE QUOTATION MARKS
   # Normalize spaces
   $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
 
