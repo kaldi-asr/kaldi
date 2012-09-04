@@ -6,6 +6,8 @@
 
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
+
+
 # Now make FBANK features.
 # fbankdir should be some place with a largish disk where you
 # want to store FBANK features.
@@ -25,19 +27,25 @@ steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
   data/test_dev93 data/lang exp/tri2a exp/tri2a_ali_dev93  || exit 1;
 
+
+
+model_size=3000000
+hid_layers=2
+learn_rate=0.008
 ( # Train the MLP
-dir=exp/tri2a_nnet4L
-ali=exp/tri2a_ali
-$cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet4L.sh --modelsize 3000000 --learnrate 0.002 --bunchsize 256 data-fbank/train_si84 data-fbank/test_dev93 ${ali}_si84 ${ali}_dev93 $dir || exit 1;
-# build graph
-$mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
-# decode 
-steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.12 \
-  $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 && \
-steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.12 \
-  $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92
+  dir=exp/tri2a_nnet4L
+  ali=exp/tri2a_ali
+  $cuda_cmd $dir/_train_nnet.log \
+    steps/train_nnet.sh --model-size $model_size --hid-layers $hid_layers --learn-rate $learn_rate --bunch-size 256 \
+    data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
+  # Decode
+  $mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
+  steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.09 \
+    $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 && \
+  steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.09 \
+    $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92
 )
+
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done

@@ -4,13 +4,13 @@
 #check for obligatory parameters
 echo
 echo %%% CONFIG
-echo learnrate: ${learnrate?$0: learnrate not specified}
+echo learn_rate: ${learn_rate?$0: learn_rate not specified}
 echo momentum:  ${momentum?$0: momentum not specified}
-echo l1penalty: ${l1penalty?$0: l1penalty not specified}
-echo l2penalty: ${l2penalty?$0: l2penalty not specified}
+echo l1_penalty: ${l1_penalty?$0: l1_penalty not specified}
+echo l2_penalty: ${l2_penalty?$0: l2_penalty not specified}
 echo 
-echo bunchsize: ${bunchsize?$0: bunchsize not specified}
-echo cachesize: ${cachesize?$0: cachesize not specified}
+echo bunch_size: ${bunch_size?$0: bunch_size not specified}
+echo cache_size: ${cache_size?$0: cache_size not specified}
 echo randomize: ${randomize?$0: randomize not specified}
 echo
 echo max_iters: ${max_iters?$0: max_iters not specified}
@@ -25,6 +25,7 @@ echo feats_tr: ${feats_tr?$0: feats_tr not specified}
 echo labels: ${labels?$0: labels not specified}
 echo mlp_init: ${mlp_init?$0: mlp_init not specified}
 echo ${feature_transform:+feature_transform: $feature_transform}
+echo ${min_iters:+min_iters: $min_iters}
 echo %%% CONFIG
 echo
 
@@ -34,7 +35,7 @@ echo
 
 #prerun cross-validation
 $TRAIN_TOOL --cross-validate=true \
- --bunchsize=$bunchsize --cachesize=$cachesize \
+ --bunchsize=$bunch_size --cachesize=$cache_size \
  ${feature_transform:+ --feature-transform=$feature_transform} \
  $mlp_init "$feats_cv" "$labels" \
  2> $dir/log/prerun.log || exit 1;
@@ -54,18 +55,18 @@ for iter in $(seq -w $max_iters); do
   
   #training
   $TRAIN_TOOL \
-   --learn-rate=$learnrate --momentum=$momentum --l1-penalty=$l1penalty --l2-penalty=$l2penalty \
-   --bunchsize=$bunchsize --cachesize=$cachesize --randomize=$randomize \
+   --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
+   --bunchsize=$bunch_size --cachesize=$cache_size --randomize=$randomize \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    $mlp_best "$feats_tr" "$labels" $mlp_next \
    2> $dir/log/iter$iter.log || exit 1; 
 
   tr_acc=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
-  echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) LRATE $(printf "%.6g" $learnrate), "
+  echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) LRATE $(printf "%.6g" $learn_rate), "
   
   #cross-validation
   $TRAIN_TOOL --cross-validate=true \
-   --bunchsize=$bunchsize --cachesize=$cachesize \
+   --bunchsize=$bunch_size --cachesize=$cache_size \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    $mlp_next "$feats_cv" "$labels" \
    2>>$dir/log/iter$iter.log || exit 1;
@@ -77,17 +78,23 @@ for iter in $(seq -w $max_iters); do
   acc_prev=$acc
   if [ "1" == "$(awk "BEGIN{print($acc_new>$acc);}")" ]; then
     acc=$acc_new
-    mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learnrate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)
+    mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)
     mv $mlp_next $mlp_best
-    echo nnet $mlp_best accepted
+    echo "nnet accepted ($(basename $mlp_best))"
   else
-    mlp_reject=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learnrate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)_rejected
+    mlp_reject=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)_rejected
     mv $mlp_next $mlp_reject
-    echo nnet $mlp_reject rejected 
+    echo "nnet rejected ($(basename $mlp_reject))"
   fi
 
   #stopping criterion
   if [[ "1" == "$halving" && "1" == "$(awk "BEGIN{print($acc < $acc_prev+$end_halving_inc)}")" ]]; then
+    if [[ "$min_iters" != "" ]]; then
+      if [ $min_iters -gt $iter ]; then
+        echo we were supposed to finish, but we continue, min_iters : $min_iters
+        continue
+      fi
+    fi
     echo finished, too small improvement $(awk "BEGIN{print($acc-$acc_prev)}")
     break
   fi
@@ -99,14 +106,14 @@ for iter in $(seq -w $max_iters); do
   
   #do annealing
   if [ "1" == "$halving" ]; then
-    learnrate=$(awk "BEGIN{print($learnrate*$halving_factor)}")
+    learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
   fi
 done
 
 #select the best network
 if [ $mlp_best != $mlp_init ]; then 
   mlp_final=${mlp_best}_final_
-  cp $mlp_best $mlp_final
+  ( cd $dir/nnet; ln -s $(basename $mlp_best) $(basename $mlp_final); )
 fi
 
 

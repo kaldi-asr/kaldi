@@ -11,9 +11,11 @@ model= # You can specify the transition model to use (e.g. if you want to use th
 nj=4
 cmd=run.pl
 max_active=7000
-beam=13.0
-latbeam=6.0
-acwt=0.12 # note: only really affects pruning (scoring is on lattices).
+beam=19.0 # GMM:13.0
+latbeam=9.0 # GMM:6.0
+acwt=0.12 # GMM:0.0833, note: only really affects pruning (scoring is on lattices).
+min_lmwt=4
+max_lmwt=15
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -70,31 +72,54 @@ cmvn_g=$srcdir/cmvn_glob.mat
 
 #remove the softmax from the nnet
 nnet_i=$nnet; nnet=$dir/$(basename $nnet)_nosoftmax;
-nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/trim_softmax.log || exit 1;
+nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/$(basename $nnet)_nosoftmax_log || exit 1;
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $hamm_dct $cmvn_g $nnet_i $nnet $model $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-
-feat_type=nnet
-echo "$0: feature type is $feat_type";
-
+# PREPARE THE LOG-POSTERIOR COMPUTATION PIPELINE
 norm_vars=$(cat $srcdir/norm_vars 2>/dev/null)
 splice_opts=$(cat $srcdir/splice_opts 2>/dev/null)
+feat_type=$(cat $srcdir/feat_type 2>/dev/null)
 
+# We use the pre-computed CMVN as well as pre-defined splicing
+feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+
+# Transform feats
+echo "Feature type : $feat_type"
 case $feat_type in
-  nnet) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $hamm_dct ark:- ark:- | apply-cmvn --norm-vars=true $cmvn_g ark:- ark:- | nnet-forward --no-softmax=true --class-frame-counts=$srcdir/ali_train.counts $nnet ark:- ark:- |" ;;
-  *) echo "Invalid feature type $feat_type" && exit 1 ;;
+  plain)
+  ;;
+  traps)
+    transf=$srcdir/hamm_dct.mat
+    feats="$feats transform-feats $transf ark:- ark:- |"
+  ;;
+  transf)
+    feats="$feats transform-feats $srcdir/final.mat ark:- ark:- |"
+  ;;
+  transf-sat)
+    echo yet unimplemented...
+    exit 1;
+  ;;
+  *) 
+    echo "Unknown feature type $feat_type"
+    exit 1 
+  ;;
 esac
 
+# Global normalization and the MLP
+feats="$feats apply-cmvn --norm-vars=true $cmvn_g ark:- ark:- | nnet-forward --no-softmax=true --class-frame-counts=$srcdir/ali_train.counts $nnet ark:- ark:- |"
+
+# Run the decoding in the queue
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
   latgen-faster-mapped --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
+# Run the scoring
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
+local/score.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
 
 exit 0;
