@@ -320,8 +320,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                    << repo_size << "," << arcs_size << "," << elems_size
                    << "), after rebuilding, repo size was " << new_repo_size
                    << ", effective beam was " << effective_beam
-                   << " vs. requested beam " << beam_ << " (add any "
-                   << "comma-separated numbers). ";
+                   << " vs. requested beam " << beam_;
         return false;
       }
     }

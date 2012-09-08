@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Estimate global fMLLR transforms, either per utterance or for the supplied\n"
-        "set of speakers (spk2utt option).  Reads Gaussian-level posteriors.  Writes\n"
+        "set of speakers (spk2utt option).  Reads posteriors (on transition-ids).  Writes\n"
         "to a table of matrices.\n"
         "Usage: gmm-est-fmllr [options] <model-in> "
         "<feature-rspecifier> <post-rspecifier> <transform-wspecifier>\n";

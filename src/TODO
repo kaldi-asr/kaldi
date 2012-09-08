@@ -9,6 +9,9 @@
 dan's TODO:
  change on-disk formats to make memory mapping easier?
  address roundoff issues RE lattice generation?
+ suggestions from Sanjeev: modify decoding scripts to adjust num-jobs;
+   improve MMI training stuff or at least its docs, RE sub-split?
+ remove reverse stuff from gmm-latgen-faster
   
  fix SGMM w/ resizing spk vecs. [not fure if done]
  change usage message so standard and program-specific options printed

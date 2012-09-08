@@ -250,10 +250,16 @@ void MinimumBayesRisk::AccStats() {
   for (int32 q = 1; q <= Q; q++) {
     times_[q-1].first = tau_b(q);
     times_[q-1].second = tau_e(q);
-    if (times_[q-1].first > times_[q-1].second)
+    if (times_[q-1].first > times_[q-1].second) // this is quite bad.
       KALDI_WARN << "Times out of order";
-    if (q > 1 && times_[q-2].second > times_[q-1].first)
-      KALDI_WARN << "Times out of order (2)";
+    if (q > 1 && times_[q-2].second > times_[q-1].first) {
+      // We previously had a warning here, but now we'll just set both
+      // those values to their average.  It's quite possible for this
+      // condition to happen, but it seems like it would have a bad effect
+      // on the downstream processing, so we fix it.
+      double avg = 0.5 * (times_[q-2].second + times_[q-1].first);
+      times_[q-2].second = times_[q-1].first = avg;
+    }
   }  
 }
 
