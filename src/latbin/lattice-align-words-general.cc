@@ -1,4 +1,4 @@
-// latbin/lattice-align-words.cc
+// latbin/lattice-align-words-general.cc
 
 // Copyright 2012  Brno University of Technology (Author: Mirko Hannemann)
 
@@ -64,9 +64,12 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert lattices so that the arcs in the CompactLattice format correspond with\n"
-        "words (i.e. aligned with word boundaries).\n"
-        "Usage: lattice-align-words [options] <lexicon-fst> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-align-words data/lang/L.fst final.mdl ark:1.lats ark:aligned.lats\n";
+        "words (i.e. aligned with word boundaries).  Note: this does not produce quite the\n"
+        "same output as lattice-align-words; we only guarantee that the beginnings of words\n"
+        "are correctly aligned, and there may be epsilon arcs.  This program may change in\n"
+        "future.\n"
+        "Usage: lattice-align-words-general [options] <lexicon-fst> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-align-words-general data/lang/L.fst final.mdl ark:1.lats ark:aligned.lats\n";
     
     ParseOptions po(usage);
     po.Read(argc, argv);
