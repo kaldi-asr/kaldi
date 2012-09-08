@@ -97,9 +97,9 @@ $qdir = "$dir/q";
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
 $queue_logfile = "$qdir/$base";
 
-if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
+if (!-d $dir) { system "mkdir -p $dir 2>/dev/null"; } # another job may be doing this...
 if (!-d $dir) { die "Cannot make the directory $dir\n"; }
-if (!-d "$qdir") { system "mkdir $qdir 2>/dev/null"; } # make a directory called "q",
+if (!-d "$qdir") { system "mkdir -p $qdir 2>/dev/null"; } # make a directory called "q",
   # where we will put the log created by qsub... normally this doesn't contain
   # anything interesting, evertyhing goes to $logfile.
 

@@ -73,6 +73,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
       $cmd =~ s/$jobname/$jobid/g;
       $logfile =~ s/$jobname/$jobid/g;
     }
+    system("mkdir -p `dirname $logfile` 2>/dev/null");
     open(F, ">$logfile") || die "Error opening log file $logfile";
     print F "# " . $cmd . "\n";
     print F "# Started at " . `date`;

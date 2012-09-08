@@ -19,7 +19,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 4 ]; then
    echo "usage: make_fbank.sh [options] <tgt-data-dir> <src-data-dir> <log-dir> <path-to-fbankdir>";
    echo "options: "
-   echo "  --fbank-config <config-file>                      # config passed to compute-fbank-feats "
+   echo "  --fbank-config <config-file>                     # config passed to compute-fbank-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
@@ -51,7 +51,7 @@ required="$srcscp $scp $fbank_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_fbank.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done
