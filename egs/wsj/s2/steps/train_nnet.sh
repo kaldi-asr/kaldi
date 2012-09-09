@@ -331,4 +331,3 @@ else
   cp $mlp_final $dir/final.nnet
   echo "Final network $mlp_final"
 fi
-

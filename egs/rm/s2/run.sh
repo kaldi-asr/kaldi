@@ -6,6 +6,7 @@
 # subdirectories named as follows:
 #    rm1_audio1  rm1_audio2	rm2_audio
 local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
+# local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
 local/rm_format_data.sh || exit 1;
 

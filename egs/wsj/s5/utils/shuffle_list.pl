@@ -16,9 +16,11 @@
 # limitations under the License.
 
 
-#seeding is optional...
-if($#ARGV==0) {
-    srand($ARGV[0]);
+# seeding is optional...
+if ($#ARGV==0) {
+  srand($ARGV[0]);
+} else {
+  srand(0); # Seems to give inconsistent behavior if we don't seed.
 }
 
 

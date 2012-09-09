@@ -5,11 +5,12 @@
 # (make sure your --num-jobs options are no more than
 # the number of cpus on your machine.
 
+#train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
 train_cmd="run.pl"
 # Do training locally.  Note: for jobs on smallish subsets,
 # it's way faster to run on a single machine with a handful of CPUs, as
 # you avoid the latency of starting GridEngine jobs.
 
-decode_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
+decode_cmd="queue.pl -q all.q@[ah]*.clsp.jhu.edu"
 
 

@@ -18,11 +18,19 @@ for ($x = 1; $x <= 3; $x++) { # This for-loop is to
   # options to qsub.
   while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
     $switch = shift @ARGV;
-    $option = shift @ARGV;
-    if ($switch eq "-sync" && $option =~ m/^[yY]/) {
-      $sync = 1;
+    if ($switch eq "-V") {
+      $qsub_opts .= "-V ";
+    } else {
+      $option = shift @ARGV;
+      if ($switch eq "-sync" && $option =~ m/^[yY]/) {
+        $sync = 1;
+      }
+      $qsub_opts .= "$switch $option ";
+      if ($switch eq "-pe") { # e.g. -pe smp 5
+        $option2 = shift @ARGV;
+        $qsub_opts .= "$option2 ";
+      }
     }
-    $qsub_opts .= "$switch $option ";
   }
   if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) {
     $jobname = $1;
@@ -97,9 +105,9 @@ $qdir = "$dir/q";
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
 $queue_logfile = "$qdir/$base";
 
-if (!-d $dir) { system "mkdir -p $dir 2>/dev/null"; } # another job may be doing this...
+if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
 if (!-d $dir) { die "Cannot make the directory $dir\n"; }
-if (!-d "$qdir") { system "mkdir -p $qdir 2>/dev/null"; } # make a directory called "q",
+if (!-d "$qdir") { system "mkdir $qdir 2>/dev/null"; } # make a directory called "q",
   # where we will put the log created by qsub... normally this doesn't contain
   # anything interesting, evertyhing goes to $logfile.
 

@@ -13,9 +13,11 @@
 # want to store FBANK features.
 fbankdir=fbank
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
- steps/make_fbank.sh --cmd "$train_cmd" --nj 20 \
-   data-fbank/$x data/$x exp/make_fbank/$x $fbankdir || exit 1;
- steps/compute_cmvn_stats.sh data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
+  rm -rf data-fbank/$x; 
+  cp -r data/$x data-fbank/$x
+  steps/make_fbank.sh --cmd "$train_cmd" --nj 20 \
+   data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
 done
 # Make the SI-84 subset of FBANKs
 utils/subset_data_dir.sh --first data-fbank/train_si284 7138 data-fbank/train_si84 || exit 1

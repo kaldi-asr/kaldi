@@ -56,7 +56,9 @@ local/wsj_format_data.sh || exit 1;
 featdir=$PWD/exp/kaldi_wsj_feats
 for x in test_eval92 test_eval93 test_dev93 train_si284; do 
   steps/make_mfcc.sh data/$x exp/make_mfcc/$x $featdir/mfcc 10
-  steps/make_fbank.sh data-fbank/$x data/$x exp/make_fbank/$x $featdir/fbank 10
+  rm -rf data-fbank/$x; 
+  cp -r data/$x data-fbank/$x
+  steps/make_fbank.sh data-fbank/$x exp/make_fbank/$x $featdir/fbank 10
 done
 
 
