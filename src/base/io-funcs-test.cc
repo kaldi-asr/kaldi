@@ -88,15 +88,13 @@ void UnitTestIo(bool binary) {
       std::vector<char> vec3_in;
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
-      std::string  peek_token1_in, peek_token2_in;
       std::string  token1_in, token2_in;
       assert(Peek(infile, binary_in) == (int)*token1);
-      PeekToken(infile, binary_in, &peek_token1_in);
-      assert(peek_token1_in == std::string(token1));
+      assert(PeekToken(infile, binary_in) == (int)*token1); // Note:
+      // the stuff with skipping over '<' is tested in ../util/kaldi-io-test.cc,
+      // since we need to make sure it works with pipes.
       ReadToken(infile, binary_in, &token1_in);
       assert(token1_in == std::string(token1));
-      PeekToken(infile, binary_in, &peek_token2_in);
-      assert(peek_token2_in == std::string(token2));
       ReadToken(infile, binary_in, &token2_in);
       assert(token2_in == std::string(token2));
       if (rand() % 2 == 0)
@@ -116,6 +114,7 @@ void UnitTestIo(bool binary) {
       ReadBasicType(infile, binary_in, &d2_in);
       AssertEqual(d2_in, d2);
       assert(Peek(infile, binary_in) == -1);
+      assert(PeekToken(infile, binary_in) == -1);
     }
   }
 }

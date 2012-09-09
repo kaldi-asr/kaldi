@@ -1,6 +1,7 @@
 // sgmmbin/sgmm-latgen-faster.cc
 
-// Copyright 2009-2011  Saarland University;  Microsoft Corporation
+// Copyright 2009-2011  Saarland University;  Microsoft Corporation;
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,69 +30,6 @@ using std::string;
 
 namespace kaldi {
 
-
-// Takes care of output.  Returns total like.
-double ProcessDecodedOutput(const LatticeFasterDecoder &decoder,
-                            const fst::SymbolTable *word_syms,
-                            std::string utt,
-                            double acoustic_scale,
-                            bool determinize,
-                            Int32VectorWriter *alignment_writer,
-                            Int32VectorWriter *words_writer,
-                            CompactLatticeWriter *compact_lattice_writer,
-                            LatticeWriter *lattice_writer) {
-  using fst::VectorFst;
-  
-  double likelihood;
-  { // First do some stuff with word-level traceback...
-    VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded)) 
-      // Shouldn't really reach this point as already checked success.
-      KALDI_ERR << "Failed to get traceback for utterance " << utt;
-
-    std::vector<int32> alignment;
-    std::vector<int32> words;
-    LatticeWeight weight;
-    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    if (words_writer->IsOpen())
-      words_writer->Write(utt, words);
-    if (alignment_writer->IsOpen())
-      alignment_writer->Write(utt, alignment);
-    if (word_syms != NULL) {
-      std::cerr << utt << ' ';
-      for (size_t i = 0; i < words.size(); i++) {
-        std::string s = word_syms->Find(words[i]);
-        if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
-        std::cerr << s << ' ';
-      }
-      std::cerr << '\n';
-    }
-    likelihood = -(weight.Value1() + weight.Value2());
-  }
-
-  if (determinize) {
-    CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    compact_lattice_writer->Write(utt, fst);
-  } else {
-    Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    lattice_writer->Write(utt, fst);
-  }
-  return likelihood;
-}
-
 // the reference arguments at the beginning are not const as the style guide
 // requires, but are best viewed as inputs.
 bool ProcessUtterance(LatticeFasterDecoder &decoder,
@@ -108,7 +46,7 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
                       const std::string &utt,
                       bool determinize,
                       bool allow_partial,
-                      Int32VectorWriter *alignment_writer,
+                      Int32VectorWriter *alignments_writer,
                       Int32VectorWriter *words_writer,
                       CompactLatticeWriter *compact_lattice_writer,
                       LatticeWriter *lattice_writer,
@@ -148,28 +86,14 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
   DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
                                        trans_model, features, *gselect,
                                        log_prune, acoustic_scale);
-  if (!decoder.Decode(&sgmm_decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
-    return false;
-  }
-  if (!decoder.ReachedFinal()) {
-    if (allow_partial) {
-      KALDI_WARN << "Outputting partial output for utterance " << utt
-                 << " since no final-state reached";
-    } else {
-      KALDI_WARN << "Not producing output for utterance " << utt
-                 << " since no final-state reached and "
-                 << "--allow-partial=false.";
-      return false;
-    }
-  }
-  *like_ptr = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
-                                   determinize, alignment_writer, words_writer,
-                                   compact_lattice_writer, lattice_writer);
-  return true;
+
+  return DecodeUtteranceLatticeFaster(
+      decoder, sgmm_decodable, word_syms, utt, acoustic_scale, determinize,
+      allow_partial, alignments_writer, words_writer,
+      compact_lattice_writer, lattice_writer, like_ptr);
 }
 
-}
+} //  end namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {

@@ -17,7 +17,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         copy-vector copy-int-vector sum-post sum-matrices draw-tree \
         copy-int-vector-vector thresh-post \
         align-mapped align-compiled-mapped latgen-faster-mapped \
-	hmm-info analyze-counts
+        hmm-info analyze-counts
 
 OBJFILES = 
 
@@ -39,7 +39,7 @@ clean:
 	-rm -f *.o *.a $(TESTFILES) $(BINFILES) 
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

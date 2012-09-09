@@ -22,7 +22,7 @@ ext: test_install check_portaudio $(SUBDIRS) $(EXT_SUBDIRS)
 # delete or comment out the lines below.
 OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
 test_install:
-	@[ $(OPENFST_VER) == '1.2.10' ] || ( echo "You now need openfst-1.2.10.	 Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1 )
+	@[ $(OPENFST_VER) == '1.2.10' ] || { echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1; };
 
 check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
@@ -32,10 +32,10 @@ clean:
 
 # When testing, stop on first failure.
 test:
-	for x in $(SUBDIRS); do $(MAKE) -C $$x test || (echo "test $$x failed"; exit 1); done  
+	for x in $(SUBDIRS); do $(MAKE) -C $$x test || { echo "test $$x failed"; exit 1; }; done  
 
 valgrind:
-	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || (echo "valgrind on $$x failed"; exit 1); done
+	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
 depend: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done

@@ -1,7 +1,8 @@
 // util/parse-options.h
 
-// Copyright 2009-2011  Karel Vesely;  Microsoft Corporation;
+// Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
 //                      Saarland University
+//                      Frantisek Skala
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,35 +30,32 @@ namespace kaldi {
 /// \ref parse_options for more documentation.
 class ParseOptions {
  public:
-  explicit ParseOptions(const char *usage)
-      : print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL) {
-#ifndef _MSC_VER // This is just a convenient place to set the stderr to line 
-    setlinebuf(stderr); // buffering mode, since it's called at program start.
-#endif // This helps ensure different programs' output is not mixed up.
-    Register("config", &config_, "Configuration file with options");
-    Register("print-args", &print_args_, "Print the command line arguments (to stderr)");
-    Register("help", &help_, "Print out usage message");
-    Register("verbose", &g_kaldi_verbose_level, "Verbose level (higher->more warnings)");
+  explicit ParseOptions(const char *usage):
+      print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL) {
+#ifndef _MSC_VER  //This is just a convenient place to set the stderr to line
+    setlinebuf(stderr);  // buffering mode, since it's called at program start.
+#endif  // This helps ensure different programs' output is not mixed up.
+    RegisterStandard("config", &config_, "Configuration file with options");
+    RegisterStandard("print-args", &print_args_,
+                     "Print the command line arguments (to stderr)");
+    RegisterStandard("help", &help_, "Print out usage message");
+    RegisterStandard("verbose", &g_kaldi_verbose_level,
+                     "Verbose level (higher->more warnings)");
   }
-
+  
   ~ParseOptions() {}
+  
+  /// Template to register various variable types,
+  /// used for program-specific parameters
+  template<typename T>
+  void Register(const std::string &name,
+                T *ptr, const std::string &doc);
 
- public:
-  /// Register boolean variable
-  void Register(const std::string &name, bool *b, const std::string &doc);
-  /// Register int32 variable
-  void Register(const std::string &name, int32 *i, const std::string &doc);
-  /// Register unsinged  int32 variable
-  void Register(const std::string &name, uint32 *u,
-                const std::string &doc);
-  /// Register float variable
-  void Register(const std::string &name, float *f, const std::string &doc);
-  /// Register double variable [useful as we change BaseFloat type].
-  void Register(const std::string &name, double *f, const std::string &doc);
-  /// Register string variable
-  void Register(const std::string &name, std::string *s,
-                const std::string &doc);
-
+  /// This one is used for registering standard parameters of all the programs
+  template<typename T>
+  void RegisterStandard(const std::string &name,
+                        T *ptr, const std::string &doc);
+  
   /**
    * Parses the command line options and fills the ParseOptions-registered
    * variables. This must be called after all the variables were registered!!!
@@ -92,6 +90,36 @@ class ParseOptions {
   static std::string Escape(const std::string &str);
 
  private:
+
+  // Following functions do just the datatype-specific part of the job
+  /// Register boolean variable
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        bool *b, const std::string &doc, bool is_standard);
+  /// Register int32 variable
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        int32 *i, const std::string &doc, bool is_standard);
+  /// Register unsinged  int32 variable
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        uint32 *u,
+                        const std::string &doc, bool is_standard);
+  /// Register float variable
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        float *f, const std::string &doc, bool is_standard);
+  /// Register double variable [useful as we change BaseFloat type].
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        double *f, const std::string &doc, bool is_standard);
+  /// Register string variable
+  void RegisterSpecific(const std::string &name, const std::string &idx,
+                        std::string *s, const std::string &doc,
+                        bool is_standard);
+
+  /// Does the actual job for both kinds of parameters
+  /// Does the common part of the job for all datatypes,
+  /// then calls RegisterSpecific
+  template<typename T>
+  void RegisterCommon(const std::string &name,
+                      T *ptr, const std::string &doc, bool is_standard);
+  
   /// Reads the options values from a config file
   void ReadConfigFile(const std::string &filename);
 
@@ -120,10 +148,14 @@ class ParseOptions {
   struct DocInfo {
     DocInfo() {}
     DocInfo(const std::string &name, const std::string &usemsg)
-      : name_(name), use_msg_(usemsg) {}
-
+      : name_(name), use_msg_(usemsg), is_standard_(false) {}
+    DocInfo(const std::string &name, const std::string &usemsg,
+            bool is_standard)
+      : name_(name), use_msg_(usemsg),  is_standard_(is_standard) {}
+    
     std::string name_;
     std::string use_msg_;
+    bool is_standard_;
   };
   typedef std::map<std::string, DocInfo> DocMapType;
   DocMapType doc_map_;  ///< map for the documentation

@@ -8,12 +8,6 @@ BINFILES =
 
 OBJFILES = online-audio-source.o online-feat-input.o online-decodable.o online-faster-decoder.o onlinebin-util.o
 
-UNAME=$(shell uname)
-ifeq ($(UNAME), Darwin)
-    OBJFILES += ../../tools/portaudio/src/common/pa_ringbuffer.o
-endif
-
-
 LIBFILE = kaldi-online.a
 
 all:  $(LIBFILE) $(BINFILES)

@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm-tied.h
+// sgmm/estimate-am-sgmm-multi.h
 
 // Copyright 2012       Arnab Ghoshal
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;

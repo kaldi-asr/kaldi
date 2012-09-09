@@ -259,11 +259,7 @@ int main(int argc, char *argv[]) {
         old_model_filename = po.GetOptArg(6);
 
     ContextDependency ctx_dep;
-    {
-      bool binary_in;
-      Input ki(tree_filename.c_str(), &binary_in);
-      ctx_dep.Read(ki.Stream(), binary_in);
-    }
+    ReadKaldiObject(tree_filename, &ctx_dep);
 
     BuildTreeStatsType stats;
     {

@@ -178,9 +178,11 @@ int Peek(std::istream &is, bool binary);
 /// ReadToken gets the next token and puts it in str (exception on failure).
 void ReadToken(std::istream &is, bool binary, std::string *token);
 
-/// PeekToken gets the next token, puts it in str and seeks back to the
-/// beginning of the token (exception on failure).
-void PeekToken(std::istream &is, bool binary, std::string *token);
+/// PeekToken will return the first character of the next token, or -1 if end of
+/// file.  It's the same as Peek(), except if the first character is '<' it will
+/// skip over it and will return the next character.  It will unget the '<' so
+/// the stream is where it was before you did PeekToken().
+int PeekToken(std::istream &is, bool binary);
 
 /// ExpectToken tries to read in the given token, and throws an exception
 /// on failure.

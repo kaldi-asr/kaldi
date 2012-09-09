@@ -1039,6 +1039,40 @@ def GetHeaderGuardCPPVariable(filename):
   fileinfo = FileInfo(filename)
   return re.sub(r'[-./\s]', '_', fileinfo.RepositoryName()).upper() + '_'
 
+def CheckHeaderGuardVariants(cppvar, actual_var):
+  """Checks that the header guard has te form of one of allowed variants.
+
+  Args:
+    cppvar: The preferred version of header.
+    actual_var: Actual header found in the file.
+
+  Returns:
+    tuple: Error level, accepted guard variant.
+    Error level 0 means no error.
+  """
+
+  error_level = 0
+  accepted_var = actual_var
+  if actual_var == cppvar:
+    # exact match
+    pass
+  elif actual_var == cppvar + '_':
+    # variant with one more underscore at the end
+    pass
+  else:
+    if actual_var[:6] != 'KALDI_': # it must begin with KALDI_
+      error_level = 5;
+    elif actual_var[:6] + 'SRC_' + actual_var[6:] == cppvar:
+      # only the SRC_ part is missing, it's OK
+      error_level = 0
+    elif actual_var[:6] + 'SRC_' + actual_var[6:] == cppvar + '_':
+      # only the SRC_ part is missing, it's OK (version for extra _)
+      error_level = 0
+    else:
+      error_level = 5
+  
+  return error_level, accepted_var;
+
 
 def CheckForHeaderGuard(filename, lines, error):
   """Checks that the file contains a header guard.
@@ -1082,25 +1116,20 @@ def CheckForHeaderGuard(filename, lines, error):
 
   # The guard should be PATH_FILE_H_, but we also allow PATH_FILE_H__
   # for backward compatibility.
-  if ifndef != cppvar:
-    error_level = 0
-    if ifndef != cppvar + '_':
-      error_level = 5
-
+  error_level, accepted_var = CheckHeaderGuardVariants(cppvar, ifndef)
+  if error_level > 0:
     ParseNolintSuppressions(filename, lines[ifndef_linenum], ifndef_linenum,
                             error)
     error(filename, ifndef_linenum, 'build/header_guard', error_level,
           '#ifndef header guard has wrong style, please use: %s' % cppvar)
 
-  if endif != ('#endif  // %s' % cppvar):
-    error_level = 0
-    if endif != ('#endif  // %s' % (cppvar + '_')):
-      error_level = 5
+  if endif != ('#endif  // %s' % accepted_var):
+    error_level = 5
 
     ParseNolintSuppressions(filename, lines[endif_linenum], endif_linenum,
                             error)
     error(filename, endif_linenum, 'build/header_guard', error_level,
-          '#endif line should be "#endif  // %s"' % cppvar)
+          '#endif line should be "#endif  // %s"' % accepted_var)
 
 
 def CheckForUnicodeReplacementCharacters(filename, lines, error):

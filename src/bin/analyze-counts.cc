@@ -1,4 +1,4 @@
-// bin/vec-i32-to-counts.cc
+// bin/analyze-to-counts.cc
 
 // Copyright 2012 Karel Vesely (Brno University of Technology)
 

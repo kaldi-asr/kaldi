@@ -162,7 +162,7 @@ void UnitTestIoPipe(bool binary) {
     const char *filename_out = "|gzip -c > tmpf.gz",
         *filename_in = "gunzip -c tmpf.gz |";
 #endif
-
+    
     Output ko(filename_out, binary);
     std::ostream &outfile = ko.Stream();
     if (!binary) outfile << "\t";
@@ -181,6 +181,7 @@ void UnitTestIoPipe(bool binary) {
     for (size_t i = 0; i < 10; i++) vec2.push_back(rand()%100 - 10);
     WriteIntegerVector(outfile, binary, vec2);
     if (!binary) outfile << " \n";
+    WriteToken(outfile, binary, "<foo>");
     std::vector<char> vec3;
     for (size_t i = 0; i < 10; i++) vec3.push_back(rand()%100);
     WriteIntegerVector(outfile, binary, vec3);
@@ -231,6 +232,8 @@ void UnitTestIoPipe(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec2_in);
       assert(vec2_in == vec2);
       std::vector<char> vec3_in;
+      KALDI_ASSERT(PeekToken(infile, binary_in) == static_cast<int>('f'));
+      ExpectToken(infile, binary_in, "<foo>");
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
       std::string  token1_in, token2_in;

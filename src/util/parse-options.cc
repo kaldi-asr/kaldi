@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
 //                      Saarland University;  Johns Hopkins University (Author: Daniel Povey)
+//                      Frantisek Skala
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>  
+#include <iostream>
 #include <iomanip>
-#include <fstream>   
+#include <fstream>
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
@@ -32,80 +33,95 @@
 namespace kaldi {
 
 
-
-void ParseOptions::Register(const std::string &name, bool *b,
+// old-style, used for registering application-specific parameters
+template<typename T>
+void ParseOptions::Register(const std::string &name, T *ptr,
                             const std::string &doc) {
-  KALDI_ASSERT(b != NULL);
-  std::string idx = name;
-  NormalizeArgName(&idx);
-  if (doc_map_.find(idx) != doc_map_.end())
-    KALDI_WARN << "Registering option twice, ignoring second time: " << name;
-  bool_map_[idx] = b;
-  doc_map_[idx] = DocInfo(name, doc + " (bool, default = "
-                          + ((*b)? "true)" : "false)"));
+  this->RegisterCommon(name, ptr, doc, false);
 }
 
-void ParseOptions::Register(const std::string &name, int32 *i,
-                            const std::string &doc) {
-  KALDI_ASSERT(i != NULL);
+// does the common part of the job of registering a parameter
+template<typename T>
+void ParseOptions::RegisterCommon(const std::string &name, T *ptr,
+                            const std::string &doc, bool is_standard) {
+  KALDI_ASSERT(ptr != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
   if (doc_map_.find(idx) != doc_map_.end())
     KALDI_WARN << "Registering option twice, ignoring second time: " << name;
+  this->RegisterSpecific(name, idx, ptr, doc, is_standard);
+}
+
+// used to register standard parameters (those that are present in all of the
+// applications)
+template<typename T>
+void ParseOptions::RegisterStandard(const std::string &name, T *ptr,
+                            const std::string &doc) {
+  this->RegisterCommon(name, ptr, doc, true);
+}
+
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    bool *b,
+                                    const std::string &doc,
+                                    bool is_standard) {
+  bool_map_[idx] = b;
+  doc_map_[idx] = DocInfo(name, doc + " (bool, default = "
+                          + ((*b)? "true)" : "false)"), is_standard);
+}
+
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    int32 *i,
+                                    const std::string &doc,
+                                    bool is_standard) {
   int_map_[idx] = i;
   std::ostringstream ss;
   ss << doc << " (int, default = " << *i << ")";
-  doc_map_[idx] = DocInfo(name, ss.str());
+  doc_map_[idx] = DocInfo(name, ss.str(), is_standard);
 }
 
-void ParseOptions::Register(const std::string &name, uint32 *u,
-                            const std::string &doc) {
-  KALDI_ASSERT(u != NULL);
-  std::string idx = name;
-  NormalizeArgName(&idx);
-  if (doc_map_.find(idx) != doc_map_.end())
-    KALDI_WARN << "Registering option twice, ignoring second time: " << name;
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    uint32 *u,
+                                    const std::string &doc,
+                                    bool is_standard) {
   uint_map_[idx] = u;
   std::ostringstream ss;
   ss << doc << " (uint, default = " << *u << ")";
-  doc_map_[idx] = DocInfo(name, ss.str());
+  doc_map_[idx] = DocInfo(name, ss.str(), is_standard);
 }
 
-void ParseOptions::Register(const std::string &name, float *f,
-                            const std::string &doc) {
-  KALDI_ASSERT(f != NULL);
-  std::string idx = name;
-  NormalizeArgName(&idx);
-  if (doc_map_.find(idx) != doc_map_.end())
-    KALDI_WARN << "Registering option twice, ignoring second time: " << name;
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    float *f,
+                                    const std::string &doc,
+                                    bool is_standard) {
   float_map_[idx] = f;
   std::ostringstream ss;
   ss << doc << " (float, default = " << *f << ")";
-  doc_map_[idx] = DocInfo(name, ss.str());
+  doc_map_[idx] = DocInfo(name, ss.str(), is_standard);
 }
 
-void ParseOptions::Register(const std::string &name, double *f,
-                            const std::string &doc) {
-  KALDI_ASSERT(f != NULL);
-  std::string idx = name;
-  NormalizeArgName(&idx);
-  if (doc_map_.find(idx) != doc_map_.end())
-    KALDI_WARN << "Registering option twice, ignoring second time: " << name;
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    double *f,
+                                    const std::string &doc,
+                                    bool is_standard) {
   double_map_[idx] = f;
   std::ostringstream ss;
   ss << doc << " (double, default = " << *f << ")";
-  doc_map_[idx] = DocInfo(name, ss.str());
+  doc_map_[idx] = DocInfo(name, ss.str(), is_standard);
 }
 
-void ParseOptions::Register(const std::string &name, std::string *s,
-                            const std::string &doc) {
-  KALDI_ASSERT(s != NULL);
-  std::string idx = name;
-  NormalizeArgName(&idx);
-  if (doc_map_.find(idx) != doc_map_.end())
-    KALDI_WARN << "Registering option twice, ignoring second time: " << name;
+void ParseOptions::RegisterSpecific(const std::string &name,
+                                    const std::string &idx,
+                                    std::string *s,
+                                    const std::string &doc,
+                                    bool is_standard) {
   string_map_[idx] = s;
-  doc_map_[idx] = DocInfo(name, doc + " (string, default = \"" + *s + "\")");
+  doc_map_[idx] = DocInfo(name, doc + " (string, default = \"" + *s + "\")",
+                          is_standard);
 }
 
 int ParseOptions::NumArgs() {
@@ -121,7 +137,7 @@ std::string ParseOptions::GetArg(int i) {
 
 
 
-enum ShellType { kBash = 0 }; // We currently do not support any
+enum ShellType { kBash = 0 };  // We currently do not support any
 // other options.
 
 static ShellType kShellType = kBash;  // This can be changed in the
@@ -141,7 +157,7 @@ static bool MustBeQuoted(const std::string &str, ShellType st) {
   // But it's mostly a cosmetic issue as it basically affects how
   // the program echoes its command-line arguments to the screen.
 
-  KALDI_ASSERT(st == kBash); // Nothing else supported right now.
+  KALDI_ASSERT(st == kBash);  // Nothing else supported right now.
   const char *c = str.c_str();
   if (*c == '\0') return true;  // Must quote empty string
   else {
@@ -149,7 +165,7 @@ static bool MustBeQuoted(const std::string &str, ShellType st) {
     ok_chars[kBash] = "[]~#^_-+=:.,/";  // these seem not to be interpreted as long
     // as there are no other "bad" characters involved (e.g. "," would be interpreted
     // as part of something like a{b,c}, but not on its own.
-    
+
     KALDI_ASSERT(!strchr(ok_chars[kBash], ' ')); // Just want to make sure that
     // a space character doesn't get automatically inserted here via an automated
     // style-checking script, like it did before.
@@ -195,7 +211,7 @@ static std::string QuoteAndEscape(const std::string &str, ShellType st) {
     const char *c_str = str.c_str();
     if (strchr(c_str, '\'') && !strpbrk(c_str, "\"`$\\")) {
       quote_char = '"';
-      escape_str = "\\\""; //  should never be accessed.
+      escape_str = "\\\"";  // should never be accessed.
     } else {
       quote_char = '\'';
       escape_str = "'\\''";  // e.g. echo 'a'\''b' returns a'b
@@ -253,9 +269,10 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
     char *program_name = new char[strlen(c)+2];
     strcpy(program_name, c);
     strcat(program_name, ":");
+    if (g_program_name != NULL)
+      delete [] g_program_name;
     g_program_name = program_name;
   }
-  
   // first pass: look for config parameter, look for priority
   for (i = 1; i < argc; i++) {
     if (std::strncmp(argv[i], "--", 2) == 0) {
@@ -305,10 +322,29 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
 void ParseOptions::PrintUsage(bool print_command_line) {
   std::cerr << '\n' << usage_ << '\n';
   DocMapType::iterator it;
-  std::cerr << "Allowed options:" << '\n';
+  // first we print application-specific options
+  bool app_specific_header_printed = false;
   for (it = doc_map_.begin(); it != doc_map_.end(); ++it) {
-    std::cerr << "  --" << std::setw(25) << std::left << it->second.name_
-        << " : " << it->second.use_msg_ << '\n';
+    if (it->second.is_standard_ == false) {  // we have application-specific option
+      if (app_specific_header_printed == false) {  // header was not yet printed
+        std::cerr << "Options:" << '\n';
+        app_specific_header_printed = true;
+      }
+      std::cerr << "  --" << std::setw(25) << std::left << it->second.name_
+          << " : " << it->second.use_msg_ << '\n';
+    }
+  }
+  if (app_specific_header_printed == true) {
+    std::cerr << '\n';
+  }
+
+  // then the standard options
+  std::cerr << "Standard options:" << '\n';
+  for (it = doc_map_.begin(); it != doc_map_.end(); ++it) {
+    if (it->second.is_standard_ == true) {  // we have standard option
+      std::cerr << "  --" << std::setw(25) << std::left << it->second.name_
+          << " : " << it->second.use_msg_ << '\n';
+    }
   }
   std::cerr << '\n';
   if (print_command_line) {
@@ -354,7 +390,7 @@ void ParseOptions::PrintConfig(std::ostream &os) {
 void ParseOptions::ReadConfigFile(const std::string &filename) {
   std::ifstream is(filename.c_str(), std::ifstream::in);
   if (!is.good()) {
-    std::cerr << "Cannot open config file "<<filename <<'\n';
+    std::cerr << "Cannot open config file " << filename <<'\n';
     exit(1);
   }
 
@@ -448,7 +484,8 @@ bool ParseOptions::ToBool(std::string str) {
       || (str.compare("0") == 0)) {
     return false;
   }
-  std::cerr << "Invalid format for boolean argument [expected true or false]: "<<str<<'\n';
+  std::cerr << "Invalid format for boolean argument [expected true or false]: "
+      << str << '\n';
   PrintUsage(true);
   exit(1);
   return false;
@@ -505,5 +542,57 @@ double ParseOptions::ToDouble(std::string str) {
   }
   return ret;
 }
+
+// instantiate templates
+template void ParseOptions::Register(const std::string &name, bool *ptr,
+                            const std::string &doc);
+template void ParseOptions::Register(const std::string &name, int32 *ptr,
+                            const std::string &doc);
+template void ParseOptions::Register(const std::string &name, uint32 *ptr,
+                            const std::string &doc);
+template void ParseOptions::Register(const std::string &name, float *ptr,
+                            const std::string &doc);
+template void ParseOptions::Register(const std::string &name, double *ptr,
+                            const std::string &doc);
+template void ParseOptions::Register(const std::string &name, std::string *ptr,
+                            const std::string &doc);
+
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            bool *ptr,
+                            const std::string &doc);
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            int32 *ptr,
+                            const std::string &doc);
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            uint32 *ptr,
+                            const std::string &doc);
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            float *ptr,
+                            const std::string &doc);
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            double *ptr,
+                            const std::string &doc);
+template void ParseOptions::RegisterStandard(const std::string &name,
+                            std::string *ptr,
+                            const std::string &doc);
+
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            bool *ptr,
+                            const std::string &doc, bool is_standard);
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            int32 *ptr,
+                            const std::string &doc, bool is_standard);
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            uint32 *ptr,
+                            const std::string &doc, bool is_standard);
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            float *ptr,
+                            const std::string &doc, bool is_standard);
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            double *ptr,
+                            const std::string &doc, bool is_standard);
+template void ParseOptions::RegisterCommon(const std::string &name,
+                            std::string *ptr,
+                            const std::string &doc, bool is_standard);
 
 }  // namespace kaldi

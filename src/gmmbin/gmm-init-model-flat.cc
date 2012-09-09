@@ -73,20 +73,22 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Initialize GMM, with Gaussians initialized to mean and variance\n"
-        " of some provided example data\n"
-        "Usage:  gmm-init-model-flat [options] <tree-in> <topo-file> <model-out> <features-rspecifier>\n"        
+        "of some provided example data (or to 0,1 if not provided: in that\n"
+        "case, provide --dim option)\n"
+        "Usage:  gmm-init-model-flat [options] <tree-in> <topo-file> <model-out> [<features-rspecifier>]\n"
         "e.g.: \n"
         "  gmm-init-model-flat tree topo 1.mdl ark:feats.scp\n";
     
     bool binary = true;
-
+    int32 dim = 40;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-
+    po.Register("dim", &dim, "Dimension of model (this matters only if not providing features).");
+    
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -95,7 +97,7 @@ int main(int argc, char *argv[]) {
         tree_filename = po.GetArg(1),
         topo_filename = po.GetArg(2),
         model_out_filename = po.GetArg(3),
-        feats_rspecifier = po.GetArg(4);
+        feats_rspecifier = po.GetOptArg(4);
 
     ContextDependency ctx_dep;
     ReadKaldiObject(tree_filename, &ctx_dep);
@@ -104,15 +106,21 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(topo_filename, &topo);
 
     Vector<BaseFloat> global_inverse_var, global_mean;
-    GetFeatureMeanAndVariance(feats_rspecifier,
-                              &global_inverse_var,
-                              &global_mean);
+    if (po.NumArgs() == 4) {
+      GetFeatureMeanAndVariance(feats_rspecifier,
+                                &global_inverse_var,
+                                &global_mean);
+      dim = global_mean.Dim();
+    } else {
+      global_inverse_var.Resize(dim);
+      global_inverse_var.Set(1.0);
+      global_mean.Resize(dim); // leave it at zero.
+    }
 
     int32 num_pdfs = ctx_dep.NumPdfs();
 
     AmDiagGmm am_gmm;
     DiagGmm gmm;
-    int32 dim = global_mean.Dim();
     gmm.Resize(1, dim);
     {  // Initialize the gmm.
       Matrix<BaseFloat> inv_var(1, dim);

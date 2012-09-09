@@ -59,6 +59,8 @@ int main(int argc, char *argv[]) {
     int32 cmn_window = 600;
     int32 right_context = 4, left_context = 4;
 
+    kaldi::DeltaFeaturesOptions delta_opts;
+    delta_opts.Register(&po);
     OnlineFasterDecoderOpts decoder_opts;
     decoder_opts.Register(&po, true);
     po.Register("left-context", &left_context, "Number of frames of left context");

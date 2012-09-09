@@ -21,7 +21,7 @@ $(LIBFILE): $(OBJFILES)
 
 
 $(TESTFILES): $(LIBFILE) ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
-   ../thread/kaldi-thread.a ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a
+   ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:
@@ -35,7 +35,7 @@ clean:
 	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)

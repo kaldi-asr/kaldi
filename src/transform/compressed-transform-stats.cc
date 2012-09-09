@@ -96,8 +96,9 @@ void CompressedAffineXformStats::CopyToAffineXformStats(
   if (beta_ == 0.0) return; // Init() will have cleared it.
   output->beta_ = beta_;
   output->K_.CopyFromMat(K_);
-  Matrix<double> Gtmp;
-  G_.CopyToMat(&Gtmp); // Will resize Gtmp.
+  Matrix<double> Gtmp(G_.NumRows(), G_.NumCols());  // CopyToMat no longer
+  // resizes, we have to provide correctly-sized matrix
+  G_.CopyToMat(&Gtmp);
   for (int32 i = 0; i < dim; i++) {
     SubVector<double> this_row(Gtmp, i);
     ExtractOneG(this_row, beta_, &(output->G_[i]));

@@ -13,9 +13,7 @@ dan's TODO:
    improve MMI training stuff or at least its docs, RE sub-split?
  remove reverse stuff from gmm-latgen-faster
   
- fix SGMM w/ resizing spk vecs. [not fure if done]
- change usage message so standard and program-specific options printed
-  separately.
+ fix SGMM w/ resizing spk vecs. [not sure if done]
 
 minor:
  Add something in training tools, to verify that spk-id is prefix of utt-id.

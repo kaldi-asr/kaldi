@@ -161,17 +161,21 @@ void ReadToken(std::istream &is, bool binary, std::string *str) {
   is.get();  // consume the space.
 }
 
-
-void PeekToken(std::istream &is, bool binary, std::string *str) {
-  assert(str != NULL);
+int PeekToken(std::istream &is, bool binary) {
   if (!binary) is >> std::ws;  // consume whitespace.
-  std::streampos beg = is.tellg();
-  is >> *str;
-  if (is.fail()) {
-    KALDI_ERR << "PeekToken, failed to read token at file position "
-              << is.tellg();
+  bool read_bracket;
+  if (static_cast<char>(is.peek()) == '<') {
+    read_bracket = true;
+    is.get();
+  } else {
+    read_bracket = false;
   }
-  is.seekg(beg);
+  int ans = is.peek();
+  if (read_bracket) {
+    if (!is.unget())
+      KALDI_WARN << "Error ungetting '<' in PeekToken";
+  }
+  return ans;
 }
 
 

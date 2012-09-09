@@ -8,7 +8,7 @@ TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     kaldi-table-test
 
 OBJFILES = text-utils.o kaldi-io.o \
-          kaldi-table.o parse-options.o simple-io-funcs.o
+         kaldi-table.o parse-options.o simple-io-funcs.o
 
 LIBFILE = kaldi-util.a
 
@@ -34,7 +34,7 @@ clean:
 	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || (echo "***test $$x failed***"; exit 1); done  
+	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
 	echo Tests succeeded
 
 .valgrind: $(TESTFILES)
