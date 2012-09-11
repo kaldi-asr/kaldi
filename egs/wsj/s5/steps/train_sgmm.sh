@@ -29,6 +29,7 @@ spk_dim=  # You can use this to set the speaker subspace dim. [default: feat-dim
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 beam=8
 retry_beam=40
+cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -123,7 +124,7 @@ if [ $stage -le -5 ]; then
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
     build-tree --verbose=1 --max-leaves=$num_leaves \
-    $dir/treeacc $lang/phones/roots.int \
+    --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 fi
 

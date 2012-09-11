@@ -17,6 +17,7 @@ batch_size=750 # batch size to use while compiling graphs... memory/speed tradeo
 beam=10 # alignment beam.
 retry_beam=40
 stage=-5
+cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -101,7 +102,7 @@ if [ $stage -le -4 ]; then
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
     build-tree --verbose=1 --max-leaves=$numleaves \
-    $dir/treeacc $lang/phones/roots.int \
+    --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 fi
 

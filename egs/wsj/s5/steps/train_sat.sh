@@ -24,6 +24,7 @@ silence_weight=0.0 # Weight on silence in fMLLR estimation.
 num_iters=35   # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 power=0.2 # Exponent for number of gaussians according to occurrence counts
+cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -122,8 +123,8 @@ if [ $stage -le -2 ]; then
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
     build-tree --verbose=1 --max-leaves=$numleaves \
-     $dir/treeacc $lang/phones/roots.int \
-     $dir/questions.qst $lang/topo $dir/tree || exit 1;
+    --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
+    $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
   gmm-init-model  --write-occs=$dir/1.occs  \
     $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
