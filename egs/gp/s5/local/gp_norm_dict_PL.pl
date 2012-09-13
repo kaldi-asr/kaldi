@@ -35,9 +35,10 @@ use Unicode::Normalize;
 use open ':encoding(utf8)';
 
 die "$usage" unless(@ARGV >= 1);
-my ($in_dict, $lang_tag, $uppercase);
+my ($in_dict, $lang_tag, $keep_rmn, $uppercase);
 GetOptions ("l" => \$lang_tag,    # tag phones with language ID.
-	    "u" => \$uppercase,   # convert words to uppercase
+	     "r" => \$keep_rmn,    # keep words in GlobalPhone-style ASCII (rmn)
+ 	     "u" => \$uppercase,   # convert words to uppercase
             "i=s" => \$in_dict);  # Input lexicon
 
 binmode(STDOUT, ":encoding(utf8)");
@@ -62,6 +63,7 @@ while (<L>) {
 
   # Next, normalize the word:
   $word =~ s/\(.*\)//g;  # Pron variants should have same orthography
+  $word = &rmn2utf8_PL($word) unless (defined($keep_rmn));
   if (defined($uppercase)) {
     $word = uc($word);
   } else {
@@ -70,4 +72,52 @@ while (<L>) {
 
   print "$word\t$pron\n";
 }
-close(L);
+
+sub rmn2utf8_PL {
+  my ($in_str) = "@_";
+
+  # CAPITAL LETTERS
+  $in_str =~ s/A\~/\x{0104}/g; # A WITH OGONEK
+  $in_str =~ s/E\~/\x{0118}/g; # E WITH OGONEK
+
+  $in_str =~ s/Z0/\x{017B}/g; # Z WITH DOT ABOVE
+
+  $in_str =~ s/C1/\x{0106}/g; # LETTERS WITH ACUTE
+  $in_str =~ s/L1/\x{0141}/g;
+  $in_str =~ s/N1/\x{0143}/g;
+  $in_str =~ s/O1/\x{00D3}/g;
+  $in_str =~ s/S1/\x{015A}/g;
+  $in_str =~ s/Z1/\x{0179}/g;
+
+  $in_str =~ s/O2/\x{00D6}/g; # O WITH DIAERESIS (German umlaut)
+  $in_str =~ s/U2/\x{00DC}/g; # U WITH DIAERESIS (German umlaut)
+  $in_str =~ s/C2/\x{00C7}/g; # C WITH CEDILLA (from French)
+
+
+  # SMALL LETTERS
+  $in_str =~ s/a\~/\x{0105}/g;
+  $in_str =~ s/e\~/\x{0119}/g;
+
+  $in_str =~ s/z0/\x{017C}/g;
+
+  $in_str =~ s/c1/\x{0107}/g;
+  $in_str =~ s/l1/\x{0142}/g;
+  $in_str =~ s/n1/\x{0144}/g;
+  $in_str =~ s/o1/\x{00F3}/g;
+  $in_str =~ s/s1/\x{015B}/g;
+  $in_str =~ s/z1/\x{017A}/g;
+
+  $in_str =~ s/o2/\x{00F6}/g;
+  $in_str =~ s/u2/\x{00FC}/g;
+  $in_str =~ s/c2/\x{00E7}/g;
+
+  # OTHER STUFF
+  $in_str =~ s/a1/a}/g;
+  $in_str =~ s/A1/A}/g;
+  $in_str =~ s/e1/e}/g;
+  $in_str =~ s/E1/E}/g;
+
+  return NFC($in_str);  # recompose & reorder canonically
+}
+
+
