@@ -292,8 +292,10 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
         aiter.Next()) {
       Arc arc(aiter.Value());
       arc.olabel = 0; // remove any word.
-      if (arc.ilabel != 0 // has a transition-id on input..
-          && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
+      if ((arc.ilabel != 0) // has a transition-id on input..
+          && (trans.TransitionIdToHmmState(arc.ilabel) == 0)
+          && (!trans.IsSelfLoop(arc.ilabel)))
+         // && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
         arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
       aiter.SetValue(arc);
     }  // end looping over arcs
