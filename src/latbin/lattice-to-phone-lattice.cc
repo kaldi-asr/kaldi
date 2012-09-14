@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     CompactLatticeWriter clat_writer(lats_wspecifier); // write as compact.
-    for (; !clat_reader.Done(); clat_reader.Next(), n_done++) {
+    for (; !clat_reader.Done(); clat_reader.Next()) {
       if (replace_words) {
         Lattice lat;
         ConvertLattice(clat_reader.Value(), &lat);
