@@ -17,8 +17,7 @@ scripts for a sequence of experiments.
    data, just what is in the LDC corpus.  As a result there is a
    high-perplexity language model and small dictionary.
 
-  s5: This is the "new-new-style" recipe.  It's not yet finished.  It will
-    run up to a certain point.  All further work will be on top of this
-    style of recipe.
+  s5: This is the "new-new-style" recipe.  
+    All further work will be on top of this style of recipe.
 
 

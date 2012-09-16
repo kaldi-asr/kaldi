@@ -21,12 +21,7 @@ scripts at the moment.
   s2: This setup is experiments with pure hybrid system as well 
       as with Tandem bottleneck feature system.
 
-  s3: This is the "new-style" recipe.   We recommend to look here first.
-      The recipe uses a subset of the algorithms in s1, but adds
-      cepstral mean subtraction (cms), and also uses more flexible, 
-      general scripts.
+  s3: This is the "new-style" recipe, now superseded by s5.
 
-  s5: This is the newer-style recipe.  It should run, although the RESULTS
+  s5: This is the newest-style recipe.  It should run, although the RESULTS
       file is not finalized.
-
-
