@@ -16,11 +16,9 @@ OBJFILES = kaldi-lmtable.o kaldi-lm.o
 
 TESTOUTPUTS = composed.fst output.fst output1.fst output2.fst
 
-CMDFILES = arpa2fst
-
 LIBFILE = kaldi-lm.a
 
-all:  $(LIBFILE) $(CMDFILES)
+all:  $(LIBFILE)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
@@ -28,8 +26,6 @@ $(LIBFILE): $(OBJFILES)
 
 
 $(TESTFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a
-
-$(CMDFILES): $(LIBFILE) ../util/kaldi-util.a ../base/kaldi-base.a
 
 
 # Rule below would expand to, e.g.:
