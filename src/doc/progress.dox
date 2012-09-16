@@ -20,6 +20,13 @@
   \page progress Recent progress and current activity
 
    Recently added features (and works in progress)
+    - Added a "stable" branch; check it out with the command
+  \verbatim
+     svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/stable/ kaldi-stable
+  \endverbatim
+      This branch will be up-to-date with respect to bug fixes but will only
+      contain code that is both finished and useful.  So it is mostly a subset
+      of what is in "trunk", with additional quality control. 
     - Neural network progress: there is currently continuous progress on neural network 
       based acoustic models.  We will announce when this stabilizes to a particular recipe;
       hopefully this will happen within the next few months.

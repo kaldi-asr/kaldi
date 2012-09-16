@@ -20,19 +20,17 @@
 
  \section install_download  Dowloading Kaldi
 
-  You first need to install Subversion (SVN).  The most current version of Kaldi can
+  You first need to install Subversion (SVN).  The most current version of Kaldi,
+  possibly including unfinished and experimental features, can
    be downloaded by typing into a shell:
   \verbatim
     svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/trunk kaldi-trunk
   \endverbatim
-  A branch corresponding to version 1 of Kaldi may be obtained at:
+  You can check out the "stable" branch of Kaldi, which is mostly a subset of the
+  "trunk" with more stringent quality control, with:
   \verbatim
-    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
+    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/stable kaldi-stable
   \endverbatim
-  This may be more stable than the ``trunk'' version, which may occassionally
-  be broken by new changes.  However, at the present time we recommend to use the
- ``trunk'', as it has a lot more features than kaldi-1 (e.g. discriminative training),
-  and nicer scripts.
    If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim
