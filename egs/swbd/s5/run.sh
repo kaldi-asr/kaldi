@@ -36,7 +36,9 @@ local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/cor
 mfccdir=mfcc
 
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir || exit 1;
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir || exit 1;
+# Don't do "|| exit 1" because actually some speakers don't have data, 
+# we'll get rid of them later.  Ignore this error.
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
 
 # after this, the next command will remove the small number of utterances
 # that couldn't be extracted for some reason (e.g. too short; no such file).

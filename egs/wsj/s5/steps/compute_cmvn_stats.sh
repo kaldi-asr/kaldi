@@ -49,7 +49,6 @@ for f in $required; do
     exit 1;
   fi
 done
-
  
 ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
   2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;
@@ -59,7 +58,7 @@ cp $cmvndir/cmvn_$name.scp $data/cmvn.scp || exit 1;
 nc=`cat $data/cmvn.scp | wc -l` 
 nu=`cat $data/spk2utt | wc -l` 
 if [ $nc -ne $nu ]; then
-  echo "Error: it seems not all of the speakers got cmvn stats ($nf != $nu);"
+  echo "Error: it seems not all of the speakers got cmvn stats ($nc != $nu);"
   exit 1;
 fi
 

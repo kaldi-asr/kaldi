@@ -24,6 +24,7 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using kaldi::int32;
 
     const char *usage =
         "Compute cepstral mean and variance normalization statistics\n"
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    int32 num_done = 0, num_err = 0;
     std::string rspecifier = po.GetArg(1);
     std::string wspecifier_or_wxfilename = po.GetArg(2);
 
@@ -73,10 +75,13 @@ int main(int argc, char *argv[]) {
               AccCmvnStats(feats, NULL, &stats);
             }
           }
-          if (stats.NumRows() == 0)
+          if (stats.NumRows() == 0) {
+            num_err++;
             KALDI_WARN << "No stats accumulated for speaker " << spk;
-          else
+          } else {
+            num_done++;
             writer.Write(spk, stats);
+          }
         }
       } else {  // per-utterance normalization
         SequentialBaseFloatMatrixReader feat_reader(rspecifier);
@@ -86,6 +91,7 @@ int main(int argc, char *argv[]) {
           InitCmvnStats(feats.NumCols(), &stats);
           AccCmvnStats(feats, NULL, &stats);
           writer.Write(feat_reader.Key(), stats);
+          num_done++;
         }
       }
     } else { // accumulate global stats
@@ -107,7 +113,11 @@ int main(int argc, char *argv[]) {
       Matrix<float> fstats(stats);
       Output ko(wxfilename, binary);
       fstats.Write(ko.Stream(), binary);
+      num_done++;
     }
+    KALDI_LOG << "Done accumulating CMVN stats for " << num_done
+              << " separate entities (e.g. speakers); " << num_err
+              << " had errors.";
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
