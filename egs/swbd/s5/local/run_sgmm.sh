@@ -4,7 +4,7 @@
 
 
 # Build a SGMM system on just the 100k_nodup data, on top of LDA+MLLT+SAT.
-if [ ! -f exp/ubm5a/final.mdl ]; then
+if [ ! -f exp/ubm5a/final.ubm ]; then
   steps/train_ubm.sh --cmd "$train_cmd" 700 data/train_100k_nodup data/lang \
     exp/tri4a_ali_100k_nodup exp/ubm5a || exit 1;
 fi
