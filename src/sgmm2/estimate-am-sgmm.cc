@@ -617,7 +617,7 @@ void MleAmSgmm2Updater::Update(const MleAmSgmm2Accs &accs,
   
   Vector<double> gamma_i(accs.num_gaussians_);
   for (int32 j1 = 0; j1 < accs.num_groups_; j1++)
-    gamma_i.AddRowSumMat(accs.gamma_[j1]); // add sum of rows of
+    gamma_i.AddRowSumMat(1.0, accs.gamma_[j1]); // add sum of rows of
   // accs.gamma_[j1], to gamma_i.
   
   if (flags & kSgmmPhoneProjections)

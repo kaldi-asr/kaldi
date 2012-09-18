@@ -128,16 +128,19 @@ class MatrixBase {
   template<typename OtherReal>
   void CopyFromTp(const TpMatrix<OtherReal> &M,
                   MatrixTransposeType Trans = kNoTrans);
-
+  
   /// Inverse of vec() operator. Copies vector into matrix, row-by-row.
-  /// Note that rv.Dim() must equal NumRows()*NumCols().
+  /// Note that rv.Dim() must either equal NumRows()*NumCols() or
+  /// NumCols()-- this has two modes of operation.
   void CopyRowsFromVec(const VectorBase<Real> &v);
   template<typename OtherReal>
   void CopyRowsFromVec(const VectorBase<OtherReal> &v);
 
   /// Copies vector into matrix, column-by-column.
-  /// Note that rv.Dim() must equal NumRows()*NumCols().
+  /// Note that rv.Dim() must either equal NumRows()*NumCols() or NumRows();
+  /// this has two modes of operation.
   void CopyColsFromVec(const VectorBase<Real> &v);
+  
   /// Copy vector into specific column of matrix.
   void CopyColFromVec(const VectorBase<Real> &v, const MatrixIndexT col);
   /// Copy vector into specific row of matrix.
@@ -744,6 +747,12 @@ std::istream & operator >> (std::istream & In, MatrixBase<Real> & M);
 // The Matrix read allows resizing, so we override the MatrixBase one.
 template<typename Real>
 std::istream & operator >> (std::istream & In, Matrix<Real> & M);
+
+
+template<class Real>
+bool SameDim(const MatrixBase<Real> &M, const MatrixBase<Real> &N) {
+  return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols());
+}
 
 /// @} end of \addtogroup matrix_funcs_io
 

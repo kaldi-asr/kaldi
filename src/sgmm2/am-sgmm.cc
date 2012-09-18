@@ -538,7 +538,7 @@ BaseFloat AmSgmm2::LogLikelihood(const Sgmm2PerFrameDerivedVars &per_frame_vars,
     substate_cache.remaining_log_like = max;
     int32 num_substates = loglikes.NumCols();
     substate_cache.likes.Resize(num_substates); // zeroes it.
-    substate_cache.likes.AddRowSumMat(loglikes); // add likelihoods [not in log!] for
+    substate_cache.likes.AddRowSumMat(1.0, loglikes); // add likelihoods [not in log!] for
     // each column [i.e. summing over the rows], so we get the sum for
     // each substate index.  You have to multiply by exp(remaining_log_like)
     // to get a real likelihood.
@@ -613,7 +613,7 @@ void AmSgmm2::SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
     int32 split_m; // substate to split.
     {
       Vector<BaseFloat> substate_count(tgt_M);
-      substate_count.AddRowSumMat(c_j);
+      substate_count.AddRowSumMat(1.0, c_j);
       BaseFloat *data = substate_count.Data();
       split_m = std::max_element(data, data+cur_M) - data;
     }

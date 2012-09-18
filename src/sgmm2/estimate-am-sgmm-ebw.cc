@@ -50,10 +50,10 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
   
   Vector<double> gamma_num(num_accs.num_gaussians_);
   for (int32 j1 = 0; j1 < num_accs.num_groups_; j1++)
-    gamma_num.AddRowSumMat(num_accs.gamma_[j1]); 
+    gamma_num.AddRowSumMat(1.0, num_accs.gamma_[j1]); 
   Vector<double> gamma_den(den_accs.num_gaussians_);
   for (int32 j1 = 0; j1 < den_accs.num_groups_; j1++)
-    gamma_den.AddRowSumMat(den_accs.gamma_[j1]); 
+    gamma_den.AddRowSumMat(1.0, den_accs.gamma_[j1]); 
 
   BaseFloat tot_impr = 0.0;
 

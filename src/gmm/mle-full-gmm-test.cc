@@ -309,7 +309,7 @@ UnitTestEstimateFullGmm() {
     Vector<BaseFloat> mean(dim);
     cov.AddMatMat(1.0, feats, kTrans, feats, kNoTrans, 0.0);
     cov.Scale(1.0 / feats.NumRows());
-    mean.AddRowSumMat(feats);
+    mean.AddRowSumMat(1.0, feats);
     mean.Scale(1.0 / feats.NumRows());
     cov.AddVecVec(-1.0, mean, mean);
     BaseFloat logdet = cov.LogDet();

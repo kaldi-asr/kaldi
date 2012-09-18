@@ -242,11 +242,11 @@ class VectorBase {
   /// negative.
   Real SumLog() const;
 
-  /// Adds sum of the rows of M to existing contents.
-  void AddRowSumMat(const MatrixBase<Real>& M);
+  /// Adds sum of the rows of M to existing contents, times alpha.
+  void AddRowSumMat(Real alpha, const MatrixBase<Real>& M);
 
   /// Adds sum of the columns of M to existing contents.
-  void AddColSumMat(const MatrixBase<Real>& M);
+  void AddColSumMat(Real alpha, const MatrixBase<Real>& M);
 
   /// Returns log(sum(exp())) without exp overflow
   /// If prune > 0.0, ignores terms less than the max - prune.

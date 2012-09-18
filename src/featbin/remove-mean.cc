@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       Vector<BaseFloat> mean(feats.NumCols());
-      mean.AddRowSumMat(feats);
+      mean.AddRowSumMat(1.0, feats);
       mean.Scale(1.0 / feats.NumRows());
       for (int32 i = 0; i < feats.NumRows(); i++)
         feats.Row(i).AddVec(-1.0, mean);

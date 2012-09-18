@@ -72,7 +72,7 @@ class BiasedLinearity : public UpdatableComponent {
     // compute gradient
     linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
     bias_corr_.Scale(momentum_);
-    bias_corr_.AddRowSumMat(err);
+    bias_corr_.AddRowSumMat(1.0, err);
     // l2 regularization
     if (l2_penalty_ != 0.0) {
       linearity_.AddMat(-learn_rate_*l2_penalty_*input.NumRows(), linearity_);

@@ -390,7 +390,7 @@ bool LatticeWordAligner::ComputationState::OutputOnePhoneWordArc(
   if (info.reorder) // we have to consume the following self-loop transition-ids.
     while (i < len && tmodel.IsSelfLoop(transition_ids_[i])) i++;
   if (i == len) return false; // we don't know if it ends here... so can't output arc.
-
+  
   if (tmodel.TransitionIdToPhone(transition_ids_[i-1]) != phone
       && ! *error) { // another check.
     KALDI_WARN << "Phone changed unexpectedly in lattice "

@@ -63,7 +63,7 @@ void LdaEstimate::Estimate(int32 target_dim,
   // total covariance
   double sum = zero_acc_.Sum();
   Vector<double> total_mean(dim);
-  total_mean.AddRowSumMat(first_acc_);
+  total_mean.AddRowSumMat(1.0, first_acc_);
   total_mean.Scale(1/sum);
   SpMatrix<double> total_covar(total_second_acc_);
   total_covar.Scale(1/sum);

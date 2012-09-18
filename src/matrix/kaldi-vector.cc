@@ -551,7 +551,7 @@ Real VectorBase<Real>::SumLog() const {
 }
 
 template<typename Real>
-void VectorBase<Real>::AddRowSumMat(const MatrixBase<Real> &rM) {
+void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &rM) {
   // note the double accumulator
   double sum;
   KALDI_ASSERT(dim_ == rM.NumCols());
@@ -560,12 +560,12 @@ void VectorBase<Real>::AddRowSumMat(const MatrixBase<Real> &rM) {
     for (MatrixIndexT j = 0; j < rM.NumRows(); j++) {
       sum += rM(j, i);
     }
-    data_[i] += sum;
+    data_[i] += alpha * sum;
   }
 }
 
 template<typename Real>
-void VectorBase<Real>::AddColSumMat(const MatrixBase<Real> &rM) {
+void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &rM) {
   // note the double accumulator
   double sum;
   KALDI_ASSERT(dim_ == rM.NumRows());
@@ -574,7 +574,7 @@ void VectorBase<Real>::AddColSumMat(const MatrixBase<Real> &rM) {
     for (MatrixIndexT j = 0; j < rM.NumCols(); j++) {
       sum += rM(i, j);
     }
-    data_[i] += sum;
+    data_[i] += alpha * sum;
   }
 }
 

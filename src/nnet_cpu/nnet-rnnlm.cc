@@ -128,7 +128,7 @@ void Rnnlm::Backpropagate(const MatrixBase<BaseFloat> &in_err) {
   // update layer2
   W2_.AddMatMat(-learn_rate_, h2_, kTrans, in_err, kNoTrans, 1.0);
   b2_corr_.SetZero();
-  b2_corr_.AddRowSumMat(in_err);
+  b2_corr_.AddRowSumMat(1.0, in_err);
   b2_.AddVec(-learn_rate_, b2_corr_);
 
   // LAYER1
@@ -136,7 +136,7 @@ void Rnnlm::Backpropagate(const MatrixBase<BaseFloat> &in_err) {
   U1_corr_.SetZero();
   b1_corr_.SetZero();
   // accumulate gradient for layer1
-  b1_corr_.AddRowSumMat(e2_);
+  b1_corr_.AddRowSumMat(1.0, e2_);
   for(int32 r=0; r<e2_.NumRows();r++) {
     V1_corr_.Row(in_seq_[r]-1).AddVec(1.0, e2_.Row(r));
   }
@@ -174,7 +174,7 @@ void Rnnlm::Backpropagate(const MatrixBase<BaseFloat> &in_err) {
     }
 
     // accumulate graidient
-    b1_corr_.AddRowSumMat(E);
+    b1_corr_.AddRowSumMat(1.0, E);
     for(int32 r=0; r<E.NumRows();r++) {
       // :TODO: IS IT CORRECT?
       // V1_corr_.Row(in_seq_[r+step]).AddVec(1.0,E.Row(r));

@@ -763,37 +763,54 @@ void MatrixBase<double>::CopyFromTp(const TpMatrix<double> & M,
 
 template<typename Real>
 void MatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_*num_cols_);
-
-  if (stride_ == num_cols_) {
-    // one big copy operation.
-    const Real *rv_data = rv.Data();
-    std::memcpy(data_, rv_data, sizeof(Real)*num_rows_*num_cols_);
-  } else {
-    const Real *rv_data = rv.Data();
-    for (MatrixIndexT r = 0; r < num_rows_; r++) {
-      Real *row_data = RowData(r);
-      for (MatrixIndexT c = 0; c < num_cols_; c++) {
-        row_data[c] = rv_data[c];
+  if (rv.Dim() == num_rows_*num_cols_) {
+    if (stride_ == num_cols_) {
+      // one big copy operation.
+      const Real *rv_data = rv.Data();
+      std::memcpy(data_, rv_data, sizeof(Real)*num_rows_*num_cols_);
+    } else {
+      const Real *rv_data = rv.Data();
+      for (MatrixIndexT r = 0; r < num_rows_; r++) {
+        Real *row_data = RowData(r);
+        for (MatrixIndexT c = 0; c < num_cols_; c++) {
+          row_data[c] = rv_data[c];
+        }
+        rv_data += num_cols_;
       }
-      rv_data += num_cols_;
     }
+  } else if (rv.Dim() == num_cols_) {
+    const Real *rv_data = rv.Data();
+    for (MatrixIndexT r = 0; r < num_rows_; r++)
+      std::memcpy(RowData(r), rv_data, sizeof(Real)*num_cols_);
+  } else {
+    KALDI_ERR << "Wrong sized arguments";
   }
 }
 
 template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::CopyRowsFromVec(const VectorBase<OtherReal> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_*num_cols_);
-  const OtherReal *rv_data = rv.Data();
-  for (MatrixIndexT r = 0; r < num_rows_; r++) {
-    Real *row_data = RowData(r);
-    for (MatrixIndexT c = 0; c < num_cols_; c++) {
-      row_data[c] = static_cast<Real>(rv_data[c]);
+  if (rv.Dim() == num_rows_*num_cols_) {
+    const OtherReal *rv_data = rv.Data();
+    for (MatrixIndexT r = 0; r < num_rows_; r++) {
+      Real *row_data = RowData(r);
+      for (MatrixIndexT c = 0; c < num_cols_; c++) {
+        row_data[c] = static_cast<Real>(rv_data[c]);
+      }
+      rv_data += num_cols_;
     }
-    rv_data += num_cols_;
+  } else if (rv.Dim() == num_cols_) {
+    const OtherReal *rv_data = rv.Data();
+    Real *first_row_data = RowData(0);
+    for (MatrixIndexT c = 0; c < num_cols_; c++)
+      first_row_data[c] = rv_data[c];
+    for (MatrixIndexT r = 1; r < num_rows_; r++)
+      std::memcpy(RowData(r), first_row_data, sizeof(Real)*num_cols_);
+  } else {
+    KALDI_ERR << "Wrong sized arguments.";
   }
 }
+  
 
 template
 void MatrixBase<float>::CopyRowsFromVec(const VectorBase<double> &rv);
@@ -802,17 +819,28 @@ void MatrixBase<double>::CopyRowsFromVec(const VectorBase<float> &rv);
 
 template<typename Real>
 void MatrixBase<Real>::CopyColsFromVec(const VectorBase<Real> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_*num_cols_);
+  if (rv.Dim() == num_rows_*num_cols_) {
+    const Real *v_inc_data = rv.Data();
+    Real *m_inc_data = data_;
 
-  const Real *v_inc_data = rv.Data();
-  Real *m_inc_data = data_;
-
-  for (MatrixIndexT c = 0; c < num_cols_; c++) {
-    for (MatrixIndexT r = 0; r < num_rows_; r++) {
-      m_inc_data[r * stride_] = v_inc_data[r];
+    for (MatrixIndexT c = 0; c < num_cols_; c++) {
+      for (MatrixIndexT r = 0; r < num_rows_; r++) {
+        m_inc_data[r * stride_] = v_inc_data[r];
+      }
+      v_inc_data += num_rows_;
+      m_inc_data ++;
     }
-    v_inc_data += num_rows_;
-    m_inc_data ++;
+  } else if (rv.Dim() == num_rows_) {
+    const Real *v_inc_data = rv.Data();
+    Real *m_inc_data = data_;
+    for (MatrixIndexT r = 0; r < num_rows_; r++) {
+      BaseFloat value = *(v_inc_data++);
+      for (MatrixIndexT c = 0; c < num_cols_; c++)
+        m_inc_data[c] = value;
+      m_inc_data += stride_;
+    }
+  } else {
+    KALDI_ERR << "Wrong size of arguments.";
   }
 }
 

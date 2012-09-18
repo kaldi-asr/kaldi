@@ -310,9 +310,9 @@ void CuVector<Real>::AddRowSumMat(Real alpha, const CuMatrix<Real> &mat, Real be
   #endif
   {
     Vector<Real> tmp(mat.NumCols());
-    tmp.AddRowSumMat(mat.Mat());
+    tmp.AddRowSumMat(1.0, mat.Mat());
     if(beta != 1.0) vec_.Scale(beta);
-    vec_.AddVec(alpha,tmp);
+    vec_.AddVec(alpha, tmp);
   }
 }
 
@@ -360,7 +360,7 @@ void CuVector<Real>::AddColSumMat(Real alpha, const CuMatrix<Real> &mat, Real be
   #endif
   {
     Vector<Real> tmp(mat.NumRows());
-    tmp.AddColSumMat(mat.Mat());
+    tmp.AddColSumMat(1.0, mat.Mat());
     if(beta != 1.0) vec_.Scale(beta);
     vec_.AddVec(alpha,tmp);
   }
