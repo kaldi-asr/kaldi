@@ -392,7 +392,7 @@ static void UnitTestCuVectorAddRowSumMat() {
   Dv.AddRowSumMat(alpha,Dm,beta);
   
   Hv_accu.SetZero();
-  Hv_accu.AddRowSumMat(Hm);
+  Hv_accu.AddRowSumMat(1.0, Hm);
   Hv.Scale(beta);
   Hv.AddVec(alpha,Hv_accu);
 
@@ -420,7 +420,7 @@ static void UnitTestCuVectorAddRowSumMatLarge() {
   Dv.AddRowSumMat(0.5,Dm,0.7);
   
   Hv_accu.SetZero();
-  Hv_accu.AddRowSumMat(Hm);
+  Hv_accu.AddRowSumMat(1.0, Hm);
   Hv.Scale(0.7);
   Hv.AddVec(0.5,Hv_accu);
 
@@ -451,9 +451,9 @@ static void UnitTestCuVectorAddColSumMat() {
   Dv.AddColSumMat(alpha,Dm,beta);
   
   Hv_accu.SetZero();
-  Hv_accu.AddColSumMat(Hm);
+  Hv_accu.AddColSumMat(1.0, Hm);
   Hv.Scale(beta);
-  Hv.AddVec(alpha,Hv_accu);
+  Hv.AddVec(alpha, Hv_accu);
 
   Vector<Real> Hv2(X);
   Dv.CopyToVec(&Hv2);
@@ -476,10 +476,10 @@ static void UnitTestCuVectorAddColSumMatLarge() {
   Dm.CopyFromMat(Hm);
   Dv.CopyFromVec(Hv);
 
-  Dv.AddColSumMat(0.5,Dm,0.7);
+  Dv.AddColSumMat(0.5, Dm, 0.7);
   
   Hv_accu.SetZero();
-  Hv_accu.AddColSumMat(Hm);
+  Hv_accu.AddColSumMat(1.0, Hm);
   Hv.Scale(0.7);
   Hv.AddVec(0.5,Hv_accu);
 

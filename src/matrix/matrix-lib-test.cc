@@ -375,8 +375,10 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     Matrix<Real> M(dimM, dimN);
     InitRand(&M);
     Vector<Real> Vr(dimN), Vc(dimM);
-    Vr.AddRowSumMat(0.5, M);
-    Vc.AddColSumMat(0.5, M);
+    Vr.AddRowSumMat(0.4, M); 
+    Vr.AddRowSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
+    Vc.AddColSumMat(0.4, M);
+    Vc.AddColSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
     Vr.Scale(2.0);
     Vc.Scale(2.0);
 

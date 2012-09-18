@@ -308,12 +308,7 @@ void CuVector<Real>::AddRowSumMat(Real alpha, const CuMatrix<Real> &mat, Real be
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
-  {
-    Vector<Real> tmp(mat.NumCols());
-    tmp.AddRowSumMat(1.0, mat.Mat());
-    if(beta != 1.0) vec_.Scale(beta);
-    vec_.AddVec(alpha, tmp);
-  }
+    vec_.AddRowSumMat(alpha, mat.Mat(), beta);
 }
 
 
@@ -358,12 +353,7 @@ void CuVector<Real>::AddColSumMat(Real alpha, const CuMatrix<Real> &mat, Real be
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
-  {
-    Vector<Real> tmp(mat.NumRows());
-    tmp.AddColSumMat(1.0, mat.Mat());
-    if(beta != 1.0) vec_.Scale(beta);
-    vec_.AddVec(alpha,tmp);
-  }
+    vec_.AddColSumMat(alpha, mat.Mat(), beta);
 }
 
 
