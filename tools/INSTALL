@@ -34,6 +34,10 @@ See below install instructions for:
 
 (1)
 Install instructions for sph2pipe_v2.5.tar.gz
+#Note: you may need to try other sites, where the archive is available
+#For example:
+#	http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz
+
 
 wget ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
 tar -xovzf sph2pipe_v2.5.tar.gz 
@@ -149,12 +153,9 @@ This was obtained as follows:
   use username="anonymous" and an empty password
   cd pub
   get sctk-2.4.0-20091110-0958.tar.bz2
-(b)
-# Convert into gzip format (bunzip2 needs to be installed for this to work):
-bunzip2 sctk-2.4.0-20091110-0958.tar.bz2
-gzip sctk-2.4.0-20091110-0958.tar
-
-tar -xovzf sctk-2.4.0-20091110-0958.tar.gz 
+ 
+ (b) unpack, patch and compile
+tar -xovjf sctk-2.4.0-20091110-0958.tar.bz2 
 cd sctk-2.4.0
 for x in src/asclite/core/recording.{h,cpp}; do # Fix a compilation error that can occur with newer compiler versions.
   sed 's/Filter::Filter/::Filter/' $x > tmpf; mv tmpf $x;
@@ -180,10 +181,11 @@ tar -xovzf atlas3.8.3.tar.gz ATLAS/include
    already there).
 mkdir CLAPACK_include
 cd CLAPACK_include
-for x in  clapack.h	f2c.h cblas.h; do 
+for x in  clapack.h f2c.h ; do 
   wget http://www.netlib.org/clapack/$x; 
 done
-
+cp ATLAS/include/cblas.h CLAPACK_include
+ 
 ####
 
 (8) Install instructions for libportaudio.
