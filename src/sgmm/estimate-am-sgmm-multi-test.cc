@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm-tied-test.cc
+// sgmm/estimate-am-sgmm-multi-test.cc
 
 // Copyright 2009-2012  Arnab Ghoshal
 
@@ -29,14 +29,14 @@ namespace ut = kaldi::unittest;
 
 // Tests the MleAmSgmmUpdaterMulti (and MleAmSgmmGlobalAccs) classes.
 void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
-                      const std::vector< kaldi::Matrix<BaseFloat> > &feats) {
+                      const std::vector< kaldi::Matrix<BaseFloat> > &feats,
+                      kaldi::SgmmUpdateFlagsType flags) {
   using namespace kaldi;
   int32 num_gauss = models[0]->NumGauss(),
       feat_dim = models[0]->FeatureDim(),
       phn_dim = models[0]->PhoneSpaceDim(),
       spk_dim = models[0]->SpkSpaceDim(),
       num_models = models.size();
-  SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
   SgmmPerFrameDerivedVars frame_vars;
   SgmmPerSpkDerivedVars spk_vars;
   spk_vars.v_s.Resize(spk_dim);
@@ -46,10 +46,10 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
   sgmm_config.full_gmm_nbest = std::min(sgmm_config.full_gmm_nbest, num_gauss);
 
   std::vector<MleAmSgmmAccs*> accs(num_models);
+  BaseFloat loglike = 0.0;
   for (int32 i = 0; i < num_models; ++i) {
     MleAmSgmmAccs* acc = new MleAmSgmmAccs(*models[i], flags);
-    BaseFloat loglike = 0.0;
-    models[0]->ComputePerSpkDerivedVars(&spk_vars);
+    models[i]->ComputePerSpkDerivedVars(&spk_vars);
     for (int32 f = 0; f < feats[i].NumRows(); ++f) {
       std::vector<int32> gselect;
       models[i]->GaussianSelection(sgmm_config, feats[i].Row(f), &gselect);
@@ -74,8 +74,23 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
   // since it is assumed that they have the same global parameters.
   kaldi::MleAmSgmmUpdaterMulti updater(*models[0], update_opts);
   updater.Update(accs, new_models, flags);
-  kaldi::DeletePointers(&accs);
-  kaldi::DeletePointers(&new_models);
+
+  BaseFloat loglike1 = 0.0;
+  for (int32 i = 0; i < num_models; ++i) {
+    models[i]->ComputePerSpkDerivedVars(&spk_vars);
+    for (int32 f = 0; f < feats[i].NumRows(); ++f) {
+      std::vector<int32> gselect;
+      new_models[i]->GaussianSelection(sgmm_config, feats[i].Row(f), &gselect);
+      new_models[i]->ComputePerFrameVars(feats[i].Row(f), gselect, spk_vars, 0.0,
+                                     &frame_vars);
+      loglike1 += new_models[i]->LogLikelihood(frame_vars, 0);
+    }
+  }
+  KALDI_LOG << "LL = " << loglike << "; LL1 = " << loglike1;
+  AssertGeq(loglike1, loglike, 1e-6);
+
+  DeletePointers(&accs);
+  DeletePointers(&new_models);
 }
 
 void UnitTestEstimateSgmm() {
@@ -113,7 +128,14 @@ void UnitTestEstimateSgmm() {
       ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
-  TestMultiSgmmEst(models, feats);
+  kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
+  TestMultiSgmmEst(models, feats, flags);
+  flags = (kaldi::kSgmmPhoneProjections | kaldi::kSgmmPhoneWeightProjections |
+           kaldi::kSgmmCovarianceMatrix);
+  TestMultiSgmmEst(models, feats, flags);
+  flags = (kaldi::kSgmmSpeakerProjections | kaldi::kSgmmCovarianceMatrix |
+           kaldi::kSgmmPhoneVectors);
+  TestMultiSgmmEst(models, feats, flags);
   kaldi::DeletePointers(&models);
 }
 

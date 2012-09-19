@@ -1,9 +1,6 @@
 // sgmm/estimate-am-sgmm-multi.h
 
 // Copyright 2012       Arnab Ghoshal
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University (Author: Arnab Ghoshal);
-//                      Ondrej Glembek;  Yanmin Qian;
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,7 +94,7 @@ class MleAmSgmmUpdaterMulti {
   explicit MleAmSgmmUpdaterMulti(const AmSgmm &model,
                                  const MleAmSgmmOptions &options)
       : update_options_(options), global_SigmaInv_(model.SigmaInv_),
-        global_M_(model.M_), global_w_(model.w_) {}
+        global_M_(model.M_), global_N_(model.N_), global_w_(model.w_) {}
 
   void Update(const std::vector<MleAmSgmmAccs*> &accs,
               const std::vector<AmSgmm*> &models,
@@ -106,9 +103,9 @@ class MleAmSgmmUpdaterMulti {
   /// Various model dimensions.
   int32 NumGauss() const { return global_M_.size(); }
   int32 PhoneSpaceDim() const { return global_w_.NumCols(); }
-//  int32 SpkSpaceDim() const {
-//    return (global_N_.size() > 0) ? global_N_[0].NumCols() : 0;
-//  }
+  int32 SpkSpaceDim() const {
+    return (global_N_.size() > 0) ? global_N_[0].NumCols() : 0;
+  }
   int32 FeatureDim() const { return global_M_[0].NumRows(); }
 
  private:
@@ -118,14 +115,14 @@ class MleAmSgmmUpdaterMulti {
   /// different models:
   std::vector< SpMatrix<BaseFloat> > global_SigmaInv_;
   std::vector< Matrix<BaseFloat> > global_M_;
-//  std::vector< Matrix<BaseFloat> > global_N_;
+  std::vector< Matrix<BaseFloat> > global_N_;
   Matrix<BaseFloat> global_w_;
 
   BaseFloat UpdateGlobals(const MleAmSgmmGlobalAccs &glob_accs,
                           SgmmUpdateFlagsType flags);
 
   double UpdateM(const MleAmSgmmGlobalAccs &accs);
-//  double UpdateN(const MleAmSgmmGlobalAccs &accs);
+  double UpdateN(const MleAmSgmmGlobalAccs &accs);
   double UpdateVars(const MleAmSgmmGlobalAccs &accs);
   double UpdateWParallel(const std::vector<MleAmSgmmAccs*> &accs,
                          const std::vector<AmSgmm*> &models);

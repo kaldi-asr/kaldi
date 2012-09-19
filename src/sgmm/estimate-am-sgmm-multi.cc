@@ -1,9 +1,6 @@
 // sgmm/estimate-am-sgmm-multi.cc
 
-// Copyright 2012  Arnab Ghoshal
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University (Author: Arnab Ghoshal);
-//                      Ondrej Glembek;  Yanmin Qian;
+// Copyright 2012       Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +32,7 @@ void MleAmSgmmGlobalAccs::ResizeAccumulators(const AmSgmm &model,
   num_gaussians_ = model.NumGauss();
   feature_dim_ = model.FeatureDim();
   phn_space_dim_ = model.PhoneSpaceDim();
-//  spk_space_dim_ = model.SpkSpaceDim();
+  spk_space_dim_ = model.SpkSpaceDim();
 
   if (flags & (kSgmmPhoneProjections | kSgmmCovarianceMatrix)) {
     Y_.resize(num_gaussians_);
@@ -60,22 +57,21 @@ void MleAmSgmmGlobalAccs::ResizeAccumulators(const AmSgmm &model,
     S_.clear();
   }
 
-//  if (flags & kSgmmSpeakerProjections) {
-//    if (spk_space_dim_ == 0) {
-//      KALDI_ERR << "Cannot set up accumulators for speaker projections "
-//                << "because speaker subspace has not been set up";
-//    }
-//    Z_.resize(num_gaussians_);
-//    R_.resize(num_gaussians_);
-//    for (int32 i = 0; i < num_gaussians_; ++i) {
-//      Z_[i].Resize(feature_dim_, spk_space_dim_, kSetZero);
-//      R_[i].Resize(spk_space_dim_, kSetZero);
-//    }
-//  } else {
-//    Z_.clear();
-//    R_.clear();
-//  }
-//
+  if (flags & kSgmmSpeakerProjections) {
+    if (spk_space_dim_ == 0) {
+      KALDI_ERR << "Cannot set up accumulators for speaker projections "
+                << "because speaker subspace has not been set up";
+    }
+    Z_.resize(num_gaussians_);
+    R_.resize(num_gaussians_);
+    for (int32 i = 0; i < num_gaussians_; ++i) {
+      Z_[i].Resize(feature_dim_, spk_space_dim_, kSetZero);
+      R_[i].Resize(spk_space_dim_, kSetZero);
+    }
+  } else {
+    Z_.clear();
+    R_.clear();
+  }
 
   gamma_i_.Resize(num_gaussians_, kSetZero);
 }
@@ -86,16 +82,18 @@ void MleAmSgmmGlobalAccs::ZeroAccumulators(SgmmUpdateFlagsType flags) {
       Y_[i].SetZero();
   }
   if (flags & kSgmmCovarianceMatrix) {
-    for (int32 i = 0, end = S_.size(); i < end; ++i)
+    for (int32 i = 0, end = S_.size(); i < end; ++i) {
       S_[i].SetZero();
+      S_means_[i].SetZero();
+    }
   }
 
-//  if (flags & kSgmmSpeakerProjections) {
-//    for (int32 i = 0, end = Z_.size(); i < end; ++i) {
-//      Z_[i].SetZero();
-//      R_[i].SetZero();
-//    }
-//  }
+  if (flags & kSgmmSpeakerProjections) {
+    for (int32 i = 0, end = Z_.size(); i < end; ++i) {
+      Z_[i].SetZero();
+      R_[i].SetZero();
+    }
+  }
   gamma_i_.SetZero();
 }
 
@@ -107,10 +105,10 @@ void MleAmSgmmGlobalAccs::AddAccumulators(const AmSgmm &model,
   for (int32 i = 0; i < num_gaussians_; ++i) {
     if (flags & (kSgmmPhoneProjections | kSgmmCovarianceMatrix))
       Y_[i].AddMat(1.0, accs.Y_[i], kNoTrans);
-//    if (flags & kSgmmSpeakerProjections) {
-//      Z_[i].AddMat(1.0, accs.Z_[i], kNoTrans);
-//      R_[i].AddSp(1.0, accs.R_[i]);
-//    }
+    if (flags & kSgmmSpeakerProjections) {
+      Z_[i].AddMat(1.0, accs.Z_[i], kNoTrans);
+      R_[i].AddSp(1.0, accs.R_[i]);
+    }
     if (flags & kSgmmCovarianceMatrix)
       S_[i].AddSp(1.0, accs.S_[i]);
   }
@@ -155,7 +153,6 @@ void MleAmSgmmGlobalAccs::AddAccumulators(const AmSgmm &model,
         for (int32 m = 0; m < model.NumSubstates(j); ++m) {
           // Sigma_{i} += gamma_{jmi} * mu_{jmi}*mu_{jmi}^T
           model.GetSubstateMean(j, m, i, &mu_jmi);
-//          mu_jmi.AddMatVec(1.0, model.M_[i], kNoTrans, model.v_[j].Row(m), 0.0);
           tmp_S_means.AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)), mu_jmi);
         }
       }
@@ -174,11 +171,11 @@ BaseFloat MleAmSgmmUpdaterMulti::UpdateGlobals(const MleAmSgmmGlobalAccs &accs,
   if (flags & kSgmmCovarianceMatrix) {
     tot_impr += UpdateVars(accs);
   }
-//  if (flags & kSgmmSpeakerProjections) {
-//    tot_impr += UpdateN(accs);
-//    if (update_options_.renormalize_N)
-//      KALDI_WARN << "Not renormalizing N";
-//  }
+  if (flags & kSgmmSpeakerProjections) {
+    tot_impr += UpdateN(accs);
+    if (update_options_.renormalize_N)
+      KALDI_WARN << "Not renormalizing N";
+  }
 
   KALDI_LOG << "**Total auxf improvement for phone projections & covariances is "
             << (tot_impr) << " over " << accs.total_frames_ << " frames.";
@@ -198,6 +195,7 @@ void MleAmSgmmUpdaterMulti::Update(const std::vector<MleAmSgmmAccs*> &accs,
 
   SgmmUpdateFlagsType global_flags = (flags & (kSgmmPhoneProjections |
                                                kSgmmPhoneWeightProjections |
+                                               kSgmmSpeakerProjections |
                                                kSgmmCovarianceMatrix));
   SgmmUpdateFlagsType state_spec_flags = (flags & ~global_flags);
   MleAmSgmmGlobalAccs glob_accs;
@@ -262,13 +260,15 @@ void MleAmSgmmUpdaterMulti::Update(const std::vector<MleAmSgmmAccs*> &accs,
 
   // Now, copy the global parameters to the models
   for (int32 i = 0; i < num_models; ++i) {
-    if (flags & kSgmmPhoneProjections)
+//    if ((flags & kSgmmPhoneProjections) || update_options_.renormalize_V)
+    if ((flags & kSgmmPhoneProjections))
       models[i]->M_ = global_M_;
     if (flags & kSgmmCovarianceMatrix)
       models[i]->SigmaInv_ = global_SigmaInv_;
-//    if (flags & kSgmmSpeakerProjections)
-//      models[i]->N_ = global_N_;
-    if (flags & kSgmmPhoneWeightProjections)
+    if (flags & kSgmmSpeakerProjections)
+      models[i]->N_ = global_N_;
+//    if ((flags & kSgmmPhoneWeightProjections) || update_options_.renormalize_V)
+    if ((flags & kSgmmPhoneWeightProjections))
       models[i]->w_ = global_w_;
     models[i]->ComputeNormalizers();  // So that the models are ready to use.
   }
@@ -335,41 +335,41 @@ double MleAmSgmmUpdaterMulti::UpdateM(const MleAmSgmmGlobalAccs &accs) {
   return tot_like_impr;
 }
 
-//double MleAmSgmmUpdaterMulti::UpdateN(const MleAmSgmmGlobalAccs &accs) {
-//  double totcount = 0.0, tot_like_impr = 0.0;
-//  if (accs.spk_space_dim_ == 0 || accs.R_.size() == 0 || accs.Z_.size() == 0) {
-//    KALDI_ERR << "Speaker subspace dim is zero or no stats accumulated";
-//  }
-//
-//  for (int32 i = 0; i < accs.num_gaussians_; ++i) {
-//    if (accs.gamma_i_(i) < 2 * accs.spk_space_dim_) {
-//      KALDI_WARN << "Not updating speaker basis for i = " << (i)
-//                 << " because count is too small " << (accs.gamma_i_(i));
-//      continue;
-//    }
-//    Matrix<double> Ni(global_N_[i]);
-//    double impr =
-//        SolveQuadraticMatrixProblem(accs.R_[i], accs.Z_[i],
-//                                    SpMatrix<double>(global_SigmaInv_[i]),
-//                                    &Ni,
-//                                    static_cast<double>(update_options_.max_cond),
-//                                    static_cast<double>(update_options_.epsilon),
-//                                    "N", true);
-//    global_N_[i].CopyFromMat(Ni);
-//    if (i < 10) {
-//      KALDI_LOG << "Objf impr for spk projection N for i = " << (i)
-//                << ", is " << (impr / (accs.gamma_i_(i) + 1.0e-20)) << " over "
-//                << (accs.gamma_i_(i)) << " frames";
-//    }
-//    totcount += accs.gamma_i_(i);
-//    tot_like_impr += impr;
-//  }
-//
-//  tot_like_impr /= (totcount+1.0e-20);
-//  KALDI_LOG << "**Overall objf impr for N is " << tot_like_impr << " over "
-//            << totcount << " frames";
-//  return tot_like_impr;
-//}
+double MleAmSgmmUpdaterMulti::UpdateN(const MleAmSgmmGlobalAccs &accs) {
+  double totcount = 0.0, tot_like_impr = 0.0;
+  if (accs.spk_space_dim_ == 0 || accs.R_.size() == 0 || accs.Z_.size() == 0) {
+    KALDI_ERR << "Speaker subspace dim is zero or no stats accumulated";
+  }
+
+  for (int32 i = 0; i < accs.num_gaussians_; ++i) {
+    if (accs.gamma_i_(i) < 2 * accs.spk_space_dim_) {
+      KALDI_WARN << "Not updating speaker basis for i = " << (i)
+                 << " because count is too small " << (accs.gamma_i_(i));
+      continue;
+    }
+    Matrix<double> Ni(global_N_[i]);
+    double impr =
+        SolveQuadraticMatrixProblem(accs.R_[i], accs.Z_[i],
+                                    SpMatrix<double>(global_SigmaInv_[i]),
+                                    &Ni,
+                                    static_cast<double>(update_options_.max_cond),
+                                    static_cast<double>(update_options_.epsilon),
+                                    "N", true);
+    global_N_[i].CopyFromMat(Ni);
+    if (i < 10) {
+      KALDI_LOG << "Objf impr for spk projection N for i = " << (i)
+                << ", is " << (impr / (accs.gamma_i_(i) + 1.0e-20)) << " over "
+                << (accs.gamma_i_(i)) << " frames";
+    }
+    totcount += accs.gamma_i_(i);
+    tot_like_impr += impr;
+  }
+
+  tot_like_impr /= (totcount+1.0e-20);
+  KALDI_LOG << "**Overall objf impr for N is " << tot_like_impr << " over "
+            << totcount << " frames";
+  return tot_like_impr;
+}
 
 
 double MleAmSgmmUpdaterMulti::UpdateVars(const MleAmSgmmGlobalAccs &accs) {
