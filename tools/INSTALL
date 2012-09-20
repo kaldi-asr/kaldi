@@ -184,6 +184,7 @@ cd CLAPACK_include
 for x in  clapack.h f2c.h ; do 
   wget http://www.netlib.org/clapack/$x; 
 done
+cd ..
 cp ATLAS/include/cblas.h CLAPACK_include
  
 ####
