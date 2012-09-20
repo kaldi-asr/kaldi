@@ -53,9 +53,16 @@ class CuDevice {
  // Instance interface
  public:
  
-  /// Check if the CUDA device is in the system      
+  /// Check if the CUDA device is selected for use
   bool Enabled() { 
-    return enabled_; 
+    return (active_gpu_id_ > -1); 
+  }
+
+  /// Manually select GPU by id
+  void SelectGpuId(int32 gpu_id);
+  /// Get the active GPU id
+  int32 ActiveGpuId() {
+    return active_gpu_id_;
   }
 
   void Verbose(bool verbose) { 
@@ -65,16 +72,18 @@ class CuDevice {
   /// Sum the IO time
   void AccuProfile(const std::string &key, double time);
   void PrintProfile(); 
-
+  
   void ResetProfile() { 
     profile_map_.clear(); 
   }
+  
+  /// Get the actual GPU memory use stats
+  std::string GetFreeMemory(int64* free = NULL, int64* total = NULL);
 
-  std::string GetFreeMemory();
 
  private:
   std::map<std::string, double> profile_map_;
-  bool enabled_;
+  int32 active_gpu_id_;
   bool verbose_;
 
 }; // class CuDevice
