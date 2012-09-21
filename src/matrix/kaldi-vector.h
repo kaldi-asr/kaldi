@@ -309,20 +309,20 @@ class Vector: public VectorBase<Real> {
   /// Copy constructor.  The need for this is controversial.
   Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
     Resize(v.Dim());
-    CopyFromVec(v);
+    this->CopyFromVec(v);
   }
 
   /// Copy-constructor from base-class, needed to copy from SubVector.
   explicit Vector(const VectorBase<Real> &v) : VectorBase<Real>() {
     Resize(v.Dim());
-    CopyFromVec(v);
+    this->CopyFromVec(v);
   }
 
   /// Type conversion constructor.
   template<typename OtherReal>
   explicit Vector(const VectorBase<OtherReal> &v): VectorBase<Real>() {
     Resize(v.Dim());
-    CopyFromVec(v);
+    this->CopyFromVec(v);
   }
 
 // Took this out since it is unsafe : Arnab
@@ -363,7 +363,7 @@ class Vector: public VectorBase<Real> {
   /// Assignment operator, protected so it can only be used by std::vector
   Vector<Real> &operator = (const Vector <Real> &other) {
     Resize(other.Dim());
-    CopyFromVec(other);
+    this->CopyFromVec(other);
     return *this;
   }
  private:

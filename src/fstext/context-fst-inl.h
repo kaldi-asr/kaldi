@@ -72,7 +72,7 @@ typename ContextFstImpl<Arc, LabelT>::StateId ContextFstImpl<Arc, LabelT>::Start
     vector<LabelT> vec(N_-1, 0);  // Vector of N_-1 epsilons. [e.g. N = 3].
     StateId s = FindState(vec);
     assert(s == 0);
-    SetStart(s);
+    this->SetStart(s);
   }
   return CacheImpl<Arc>::Start();
 }
@@ -142,7 +142,7 @@ ContextFstImpl<Arc, LabelT>::ContextFstImpl(Label subsequential_symbol,  // epsi
 template<class Arc, class LabelT>
 typename ContextFstImpl<Arc, LabelT>::Weight ContextFstImpl<Arc, LabelT>::Final(StateId s) {
   assert(static_cast<size_t>(s) < state_seqs_.size());  // make sure state exists already.
-  if (!HasFinal(s)) {  // Work out final-state weight.
+  if (!this->HasFinal(s)) {  // Work out final-state weight.
     const vector<LabelT> &seq = state_seqs_[s];
 
     bool final_ok;
@@ -163,7 +163,7 @@ typename ContextFstImpl<Arc, LabelT>::Weight ContextFstImpl<Arc, LabelT>::Final(
       final_ok = true;
     }
     Weight w = final_ok ? Weight::One() : Weight::Zero();
-    SetFinal(s, w);
+    this->SetFinal(s, w);
     return w;
   }
   return CacheImpl<Arc>::Final(s);
@@ -171,21 +171,21 @@ typename ContextFstImpl<Arc, LabelT>::Weight ContextFstImpl<Arc, LabelT>::Final(
 
 template<class Arc, class LabelT>
 size_t ContextFstImpl<Arc, LabelT>::NumArcs(StateId s) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   return CacheImpl<Arc>::NumArcs(s);
 }
 
 template<class Arc, class LabelT>
 size_t ContextFstImpl<Arc, LabelT>::NumInputEpsilons(StateId s) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   return CacheImpl<Arc>::NumInputEpsilons(s);
 }
 
 template<class Arc, class LabelT>
 void ContextFstImpl<Arc, LabelT>::InitArcIterator(StateId s, ArcIteratorData<Arc> *data) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   CacheImpl<Arc>::InitArcIterator(s, data);
 }
@@ -296,18 +296,18 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
 
   // We just try adding all possible symbols on the output side.
   Arc arc;
-  if (CreateArc(s, subsequential_symbol_, &arc)) AddArc(s, arc);
+  if (this->CreateArc(s, subsequential_symbol_, &arc)) this->AddArc(s, arc);
   for (typename kaldi::ConstIntegerSet<Label>::iterator iter = phone_syms_.begin();
        iter != phone_syms_.end(); ++iter) {
     Label phone = *iter;
-    if (CreateArc(s, phone, &arc)) AddArc(s, arc);
+    if (this->CreateArc(s, phone, &arc)) this->AddArc(s, arc);
   }
   for (typename kaldi::ConstIntegerSet<Label>::iterator iter = disambig_syms_.begin();
        iter != disambig_syms_.end(); ++iter) {
     Label disambig_sym = *iter;
-    if (CreateArc(s, disambig_sym, &arc)) AddArc(s, arc);
+    if (this->CreateArc(s, disambig_sym, &arc)) this->AddArc(s, arc);
   }
-  SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
+  this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }
 
 

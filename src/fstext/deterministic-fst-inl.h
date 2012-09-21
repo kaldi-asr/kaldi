@@ -81,7 +81,7 @@ typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl
       s = fst1_->Start();
     }
     assert(s == 0);
-    SetStart(s);
+    this->SetStart(s);
     return s;
   }
   return CacheImpl<Arc>::Start();
@@ -122,7 +122,7 @@ DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Determinis
 template<class Arc>
 typename DeterministicOnDemandFstImpl<Arc>::Weight
 DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
-  if (!HasFinal(s)) {  
+  if (!this->HasFinal(s)) {  
     // Work out final-state weight.
     Weight w;
     if (fst2_){
@@ -132,7 +132,7 @@ DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
     } else {
       w = GetFinalFromNonDetFst(fst1_, s);
     }
-    SetFinal(s, w);
+    this->SetFinal(s, w);
     return w;
   }
   return CacheImpl<Arc>::Final(s);
@@ -140,21 +140,21 @@ DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
 
 template<class Arc>
 size_t DeterministicOnDemandFstImpl<Arc>::NumArcs(StateId s) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   return CacheImpl<Arc>::NumArcs(s);
 }
 
 template<class Arc>
 size_t DeterministicOnDemandFstImpl<Arc>::NumOutputEpsilons(StateId s) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   return CacheImpl<Arc>::NumOutputEpsilons(s);
 }
 
 template<class Arc>
 void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorData<Arc> *data) {
-  if (!HasArcs(s))
+  if (!this->HasArcs(s))
     Expand(s);
   CacheImpl<Arc>::InitArcIterator(s, data);
 }
@@ -256,9 +256,9 @@ void DeterministicOnDemandFstImpl<Arc>::Expand(StateId s) {  // expands arcs onl
   // Add all the arcs to the cache. Just for clarity, not efficiency.
   for (ArcIterator<Fst<Arc> > aiter(*fst1_, s); !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
-    AddArc(s, arc);
+    this->AddArc(s, arc);
   }  
-  SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
+  this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }
 
 template<class Arc>

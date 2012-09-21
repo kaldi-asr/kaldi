@@ -546,10 +546,10 @@ Matrix<Real>::Matrix (const MatrixBase<Real> & M,
     : MatrixBase<Real>() {
   if (trans == kNoTrans) {
     Resize(M.num_rows_, M.num_cols_);
-    CopyFromMat(M);
+    this->CopyFromMat(M);
   } else {
     Resize(M.num_cols_, M.num_rows_);
-    CopyFromMat(M, kTrans);
+    this->CopyFromMat(M, kTrans);
   }
 }
 
@@ -558,7 +558,7 @@ template<typename Real>
 Matrix<Real>::Matrix (const Matrix<Real> & M):
     MatrixBase<Real>() {
   Resize(M.num_rows_, M.num_cols_);
-  CopyFromMat(M);
+  this->CopyFromMat(M);
 }
 
 /// Copy constructor from another type.
@@ -568,10 +568,10 @@ Matrix<Real>::Matrix(const MatrixBase<OtherReal> & M,
                      MatrixTransposeType trans) : MatrixBase<Real>() {
   if (trans == kNoTrans) {
     Resize(M.NumRows(), M.NumCols());
-    CopyFromMat(M);
+    this->CopyFromMat(M);
   } else {
     Resize(M.NumCols(), M.NumRows());
-    CopyFromMat(M, kTrans);
+    this->CopyFromMat(M, kTrans);
   }
 }
 
@@ -1640,7 +1640,7 @@ void Matrix<Real>::Transpose() {
   if (this->num_rows_ != this->num_cols_) {
     Matrix<Real> tmp(*this, kTrans);
     Resize(this->num_cols_, this->num_rows_);
-    CopyFromMat(tmp);
+    this->CopyFromMat(tmp);
   } else {
     (static_cast<MatrixBase<Real>&>(*this)).Transpose();
   }

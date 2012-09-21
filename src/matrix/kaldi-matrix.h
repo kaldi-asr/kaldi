@@ -543,7 +543,7 @@ class Matrix : public MatrixBase<Real> {
   template<typename OtherReal>
   explicit Matrix(const SpMatrix<OtherReal> & M) : MatrixBase<Real>() {
     Resize(M.NumRows(), M.NumRows());
-    CopyFromSp(M);
+    this->CopyFromSp(M);
   }
 
   /// Copy constructor taking TpMatrix...
@@ -552,10 +552,10 @@ class Matrix : public MatrixBase<Real> {
                     MatrixTransposeType trans = kNoTrans) : MatrixBase<Real>() {
     if (trans == kNoTrans) {
       Resize(M.NumRows(), M.NumCols());
-      CopyFromTp(M);
+      this->CopyFromTp(M);
     } else {
       Resize(M.NumCols(), M.NumRows());
-      CopyFromTp(M, kTrans);
+      this->CopyFromTp(M, kTrans);
     }
   }
 
