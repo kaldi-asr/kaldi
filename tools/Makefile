@@ -129,7 +129,7 @@ sph2pipe_compiled: sph2pipe_v2.5/sph2pipe
 
 sph2pipe_v2.5/sph2pipe: | sph2pipe_v2.5
 		cd sph2pipe_v2.5/; \
-		gcc -o sph2pipe  *.c -lm
+		$(CC) -o sph2pipe  *.c -lm
 
 sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 		tar xzf sph2pipe_v2.5.tar.gz
