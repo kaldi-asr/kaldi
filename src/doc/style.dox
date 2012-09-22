@@ -63,6 +63,14 @@
     - We use C++-style casts like static_cast<int>, rather than C-style ones like (int)
     - We use const wherever possible.
     
+  Exceptions to the Google C++ style guide include:
+    - We make use of iostreams, and we allow non-const references to iostreams to be
+      passed to functions (this violates the no-non-const-references rule).
+    - For get/set methods, suppose the class member is called x_, the Google-style
+      get and set methods would be x() and set_x().  However, following the OpenFst
+      coding style we call them X() and SetX(): for example, Mean() and SetMean().
+      This particular rule is new; in the past we had an inconsistent approach, and
+      we will be changing the code to conform.
 
 
 */

@@ -27,7 +27,7 @@
   In addition to this page, you can refer to the data preparation scripts in those
  directories.  The top-level run.sh scripts (e.g. egs/rm/s5/run.sh) have a few commands at
  the top of them that relate to various phases of data preparation.  The parts in
- directory local/ are always specific to the database.  For example, in the
+ the sub-directory named local/ are always specific to the database.  For example, 
  in the Resource Management (RM) setup it is local/rm_data_prep.sh.  In the case of
  RM these commands are:
 \verbatim
@@ -62,7 +62,7 @@ to "the data" (directories like data/train/) and one relates to "the language"
 (directories like data/lang/).  The "data" part relates to the specific recordings you
 have, and the "lang" part contains things that relate more to the language itself,
 such as the lexicon, the phone set, and various extra information about the phone set
-that Kaldi needs.  If you want to prepare data which you will want to decode with an
+that Kaldi needs.  If you want to prepare data which you will decode with an
 already existing system and an already existing language model, the "data" part is
 all you need to touch.
 
@@ -88,7 +88,7 @@ files you have to create yourself are "utt2spk", "text" and "wav.scp" and possib
 We will describe the files in this directory, starting with the files you need to create
 yourself.
 
-\subsection Files you need to create yourself
+\subsection data_prep_data_yourself Files you need to create yourself
 
  The file "text" contains the transcriptions of each utterance.
 \verbatim
@@ -106,7 +106,7 @@ get mapped to a word specified in the file data/lang/oov.txt.
 \endverbatim
 Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim
-a02:s5: head -3 data/train/wav.scp
+s5# head -3 data/train/wav.scp
 sw02001-A /home/dpovey/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 1 /export/corpora3/LDC/LDC97S62/swb1/sw02001.sph |
 sw02001-B /home/dpovey/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 2 /export/corpora3/LDC/LDC97S62/swb1/sw02001.sph |
 \endverbatim
@@ -176,7 +176,7 @@ the speaker identities, you can just make the speaker-ids the same as the uttera
 so the format of the file would be just <DFN>\<utterance-id\> \<utterance-id\></DFN>.
 
 All of these files should be sorted.  If they are not sorted, you will get errors
-when you run the scripts.  Section \ref io_sec_tables explains why this is needed.
+when you run the scripts.  In \ref io_sec_tables we explain why this is needed.
 It has to do with the I/O framework; the ultimate reason for the sorting is to
 enable something equivalent to random-access lookup on a stream that doesn't support
 fseek(), such as a piped command.  Many Kaldi programs are reading multiple pipes 
@@ -191,7 +191,18 @@ export LC_ALL=C
 If you don't do this, the files will be sorted in an order that's different from how
 C++ sorts strings, and Kaldi will crash.  You have been warned!
 
-\subsection Files you don't need to create yourself
+If your data consists of a test set from NIST that has an "stm" and a "glm" file
+provided so that you can measure WER, then you can put these files in the data
+directory with the names "stm" and "glm".  Note that we put the scoring
+script (which measures WER) in <DFN>local/score.sh</DFN>, which means it is
+specific to the setup; not all of the scoring scripts in all of the setups will
+recognize the stm and glm file.  An example of a scoring script that uses those files is
+the one the Switchboard setup, i.e. <DFN>egs/swbd/s5/local/score_sclite.sh</DFN>,
+which is invoked by the top-level scoring script
+<DFN>egs/swbd/s5/local/score.sh</DFN> if it notices that your test set has the
+stm and glm files.
+
+\subsection data_prep_data_noneed Files you don't need to create yourself
 
 The other files in this directory can be generated from the files you provide.
 You can create the "spk2utt" file by a command like the following
@@ -199,21 +210,23 @@ You can create the "spk2utt" file by a command like the following
 \verbatim
 utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
 \endverbatim
-This can be done because the utt2spk and spk2utt files contain exactly
+This is possible because the utt2spk and spk2utt files contain exactly
 the same information; the format of the spk2utt file is
 <DFN>\<speaker-id\> \<utterance-id1\> \<utterance-id2\> ...</DFN>.
+
+Next we come to the <DFN>feats.scp</DFN> file.
 \verbatim
 s5# head -3 data/train/feats.scp
 sw02001-A_000098-001156 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24
 sw02001-A_001980-002131 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:54975
 sw02001-A_002736-002893 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:62762
 \endverbatim
-The feats.scp file contains the extracted features-- MFCC features in this case, because
-that is what we extracted.  The format is:
+This points to the extracted features-- MFCC features in this case, because
+that is what we use in this particular script.  The format is:
 \verbatim
 <utterance-id> <extended-filename-of-features>
 \endverbatim
-Each of the feature files containts simply a matrix, in Kaldi format. 
+Each of the feature files contains a matrix, in Kaldi format. 
 In this case the dimension of the matrix would be (the length of the file in 10ms intervals) by 13. 
 The "extended filename" <DFN>/home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24</DFN>
 means, open the "archive" file /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark, fseek()
@@ -224,7 +237,7 @@ This feats.scp file is created by the command
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir 
 \endverbatim
 which is invoked by the top-level "run.sh" script.  For the definitions of the
-shell variables, see that script.  <DFN>\$mfccdir</DFN> is an arbitrary directory where the
+shell variables, see that script.  <DFN>\$mfccdir</DFN> is a user-specified directory where the
 .ark files will be written. 
 
 The last file in the directory data/train is "cmvn.scp".  This contains statistics
@@ -237,6 +250,11 @@ s5# head -3 data/train/cmvn.scp
 2005-A /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/cmvn_train.ark:499
 \endverbatim
 Unlike feats.scp, this scp file is indexed by speaker-id, not utterance-id.
+This file is created by a command such as this: 
+\verbatim
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
+\endverbatim
+(this example is from <DFN>egs/swbd/s5/run.sh</DFN>).
 
 \section data_prep_lang Data preparation-- the "lang" directory.
 
@@ -252,7 +270,7 @@ G.fst that is a Finite State Transducer form of the language model:
 s5# ls data/lang_test
 G.fst  L.fst  L_disambig.fst  oov.int  oov.txt	phones	phones.txt  topo  words.txt
 \endverbatim
-Note that lang_test/ was created by copying lang/ and adding something else.
+Note that lang_test/ was created by copying lang/ and adding G.fst.
 Each of these directories seems to contain only a few files.  
 It's not quite as simple as this though, because "phones" is a directory:
 \verbatim
@@ -262,7 +280,7 @@ context_indep.int  extra_questions.int  optional_silence.csl  sets.int     word_
 context_indep.txt  extra_questions.txt  optional_silence.int  sets.txt     word_boundary.txt
 disambig.csl       nonsilence.csl       optional_silence.txt  silence.csl
 \endverbatim
-The phones directory contains various bits information about the phone set; there
+The phones directory contains various bits of information about the phone set; there
 are three versions of some of the files, with extensions .csl, .int and .txt, that contain
 the same information in three formats.  Fortunately you, as a Kaldi user, don't have
 to create all of these files because we have a script "utils/prepare_lang.sh" that
@@ -292,7 +310,7 @@ text forms of these symbols.  They are mostly only accessed by the scripts
 utils/int2sym.pl and utils/sym2int.pl, and by the OpenFst programs fstcompile and
 fstprint.
 
-The file <DFN>L.fst</DFN> is the Finite State Transducer form of the lexicon ($L$,
+The file <DFN>L.fst</DFN> is the Finite State Transducer form of the lexicon (L,
 see  <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition 
 with Weighted Finite-State Transducers" </a> by Mohri, Pereira and 
 Riley, in Springer Handbook on SpeechProcessing and Speech Communication, 2008). 
@@ -308,7 +326,7 @@ s5# cat data/lang/oov.txt
 <UNK>
 \endverbatim
 This is the word that we will map all out-of-vocabulary words to during
-training.  There is nothing special about "\<UNK\>" here, and it does not have
+training.  There is nothing special about "<UNK>" here, and it does not have
 to be this particular word; what is important is that this word should have a pronunciation
 containing just a phone that we designate as a "garbage phone"; this phone will
 align with various kinds of spoken noise.  In our particular setup, this phone
@@ -318,11 +336,14 @@ s5# grep -w UNK data/local/dict/lexicon.txt
 <UNK> SPN
 \endverbatim
 The file <DFN>oov.int</DFN> contains the integer form of this (extracted from <DFN>words.txt</DFN>),
-which happens to be 221 in this setup.
+which happens to be 221 in this setup.  You might notice that in the Resource Management
+setup, oov.txt contains the silence word, which in that setup happens to be called "!SIL".
+In that case we simply chose an arbitrary word from the vocabulary-- there are no out of vocabulary
+words in the training set, so the word we choose has no effect.
 
 The file data/lang/topo contains the following data:
 \verbatim
-a02:s5: cat data/lang/topo
+s5# cat data/lang/topo
 <Topology>
 <TopologyEntry>
 <ForPhones>
@@ -348,12 +369,12 @@ a02:s5: cat data/lang/topo
 \endverbatim
 This specifies the topology of the HMMs we use.  In this case, the "real" phones contain
 three emitting states 
-with the standard 3-state left-to-right topology (the so-called "Bakis model").
+with the standard 3-state left-to-right topology-- the "Bakis model".
 (Emitting states are states that "emit" feature vectors, as distinct from the "fake"
 non-emitting states that are just used to glue other states together).
-Phones 1 to 20 are various kinds of silence and noise (we have a lot because of word-position-dependency,
+Phones 1 to 20 are various kinds of silence and noise; we have a lot because of word-position-dependency,
 and in fact most of these will never be used; the real number excluding word position
-dependency is more like five).  The "silence phones" have a more complex topology with an 
+dependency is more like five.  The "silence phones" have a more complex topology with an 
 initial emitting state and an end emitting state, but then three emitting states in the middle.
 You don't have to create this file by hand.
 
@@ -367,7 +388,7 @@ SIL_E
 \endverbatim
 a ".int" form, e.g:
 \verbatim
-a02:s5: head -3 data/lang/phones/context_indep.int
+s5# head -3 data/lang/phones/context_indep.int
 1
 2
 3
@@ -380,13 +401,14 @@ s5# cat data/lang/phones/context_indep.csl
 \endverbatim
 These files always contain the same information, so let's focus on the ".txt" form which
 is more human-readable.  The file "context_indep.txt" contains a list of those phones
-for which we build context-independent models: that is, we do not build a decision tree
+for which we build context-independent models: that is, for those phones, we do not build a decision tree
 that gets to ask questions about the left and right phonetic context.  In fact, we do build
 smaller trees where we get to ask questions about the central phone and the HMM-state;
 this depends on the "roots.txt" file which we'll describe below.  See \ref tree_externals
 for more in-depth discussion of tree issues.
 
-The file <DFN>context_indep.txt</DFN> actually contains all the silence phones:
+The file <DFN>context_indep.txt</DFN> contains all the phones which are not "real phones":
+i.e. silence (SIL), spoken noise (SPN), non-spoken noise (NSN), and laughter (LAU):
 \verbatim
 # cat data/lang/phones/context_indep.txt
 SIL
@@ -410,30 +432,32 @@ LAU_E
 LAU_I
 LAU_S
 \endverbatim
-There are a lot of these because of word-position dependency; not all of these variants
+There are a lot of variants of these phones because of word-position dependency; not all of these variants
 will ever be used.  Here, <DFN>SIL</DFN> would be the silence that gets optionally inserted by the
 lexicon (not part of a word), <DFN>SIL_B</DFN> would be a silence phone at the beginning of a word
-(should never exist), <DFN>SIL_I</DFN> word-internal silence (unlikely to exist), <DFN>SIL_E</DFN>
+(which should never exist), <DFN>SIL_I</DFN> word-internal silence (unlikely to exist), <DFN>SIL_E</DFN>
 word-ending silence (should never exist), and <DFN>SIL_S</DFN> would be silence as a "singleton
 word", i.e. a phone with only one word-- this might be used if you had a "silence word" in your
-lexicon and explicit silences appeared in your transcriptions.  
+lexicon and explicit silences appear in your transcriptions.  
 
 The files <DFN>silence.txt</DFN> and <DFN>nonsilence.txt</DFN> contains lists of the silence
 phones and nonsilence phones respectively.  These should be mutually exclusive and together,
-should contain all the phones.  What we mean by "nonsilence" phones is, phones that we
-intend to estimate various kinds of linear transforms on, i.e. global transforms
-such as LDA and MLLT, and speaker adaptation transforms such as fMLLR; our belief based
+should contain all the phones.  In this particular setup, <DFN>silence.txt</DFN> is identical
+to <DFN>context_indep.txt</DFN>.
+What we mean by "nonsilence" phones is, phones that we
+intend to estimate various kinds of linear transforms on: that is, global transforms
+such as LDA and MLLT, and speaker adaptation transforms such as fMLLR.  Our belief based
 on prior experience is that it does not pay to include silence in the estimation of
 such transforms.  Our practice is
 to designate all silence, noise and vocalized-noise phones as "silence" phones, and all
 phones representing traditional phonemes as "nonsilence" phones.  We haven't experimented
-with the best way to do this.
+in Kaldi with the best way to do this.
 \verbatim
-a02:s5: head -3 data/lang/phones/silence.txt 
+s5# head -3 data/lang/phones/silence.txt 
 SIL
 SIL_B
 SIL_E
-a02:s5: head -3 data/lang/phones/nonsilence.txt 
+s5# head -3 data/lang/phones/nonsilence.txt 
 IY_B
 IY_E
 IY_I
@@ -447,7 +471,7 @@ s5# head -3 data/lang/phones/disambig.txt
 #1
 #2
 \endverbatim
-These symbols appear in the phones.txt file as if they were phones.
+These symbols appear in the file <DFN>phones.txt</DFN> as if they were phones.
 
 The file <DFN>optional_silence.txt</DFN> contains a single phone which can optionally
 appear between words:
@@ -510,8 +534,9 @@ we don't like to hardcode this in the text form of the phones-- for one thing, K
 never see the text form of the phones, but only an integerized form.  So it is specified
 by this file <DFN>word_boundary.txt</DFN>.  The main reason we need this information is
 in order to recover the word boundaries within lattices (for example, the program
-lattice-align-words reads this file).  This is useful for reasons including NIST sclite scoring, which requires
-the time markings for words, and for downstream processing.
+lattice-align-words reads the integer versin of this file, <DFN>word_boundaray.int</DFN>).  
+Finding the word boundaries is useful for reasons including NIST sclite scoring, which requires
+the time markings for words, and for other downstream processing.
 
 The file <DFN>roots.txt</DFN> contains information that relates to how we build the phonetic-context
 decision tree:
@@ -533,7 +558,8 @@ between those phones.  For stress and tone-dependent systems, typically
 all the stress or tone-dependent versions of a particular phone will appear on
 the same line.  In addition, all three states of a HMM (or all five states, for
 silences) share the root, and the decision-tree building process gets to
-ask about the state.  This is what "shared" means in the roots file.
+ask about the state.  This sharing of the decision-tree root
+between the HMM-states is what we mean by "shared" in the roots file.
 
 \section data_prep_lang_creating Creating the "lang" directory
 
@@ -545,43 +571,47 @@ utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
 \endverbatim
 Here, the inputs are the directory <DFN>data/local/dict/</DFN>, and the label <DFN>\<UNK\></DFN>
 which is the dictionary word we will map OOV words to when appear in transcripts
-(this becomes data/lang/oov.txt).  <DFN>data/local/lang/</DFN> is simply a 
-temporary directory which the script will use, and <DFN>data/lang/</DFN> is where
-the output goes.  
+(this becomes data/lang/oov.txt).  The location <DFN>data/local/lang/</DFN> is simply a 
+temporary directory which the script will use; <DFN>data/lang/</DFN> is where
+it actually puts its output.
 
-The main thing you, as the data-preparer, need to create, is the directory
-<DFN>data/local/dict/</DFN>.  The directory contains the following contents
+The thing which you, as the data-preparer, need to create, is the directory
+<DFN>data/local/dict/</DFN>.  The directory contains the following contents:
 \verbatim
 s5# ls data/local/dict
 extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt
 \endverbatim
-(in fact there are a few more files there, but they are just temporary files that were
-used while creating that directory, and we can ignore them).  The commands below give
+(in fact there are a few more files there which we haven't listed, but they are just temporary files that 
+were put there while creating that directory, and we can ignore them).  The commands below give
 you an idea what is in these files:
 \verbatim
 s5# head -3 data/local/dict/nonsilence_phones.txt 
 IY
 B
 D
-s5# head -3 data/local/dict/silence_phones.txt 
+s5# cat data/local/dict/silence_phones.txt 
 SIL
 SPN
 NSN
-s5# head -3 data/local/dict/extra_questions.txt 
-s5# head -3 data/local/dict/lexicon.txt 
+LAU
+s5# cat data/local/dict/extra_questions.txt 
+s5# head -5 data/local/dict/lexicon.txt 
 !SIL SIL
 -'S S
 -'S Z
+-'T K UH D EN T
+-1K W AH N K EY
 \endverbatim
-As you can see, the contents of this directory are very simple in the
-Switchboard setup.  We just have lists of the "real" phones and of the
-"silence" phones, an empty file called <DFN>extra_questions.txt</DFN>, and
+As you can see, the contents of this directory are very simple in this
+setup (the Switchboard setup).  We just have lists of the "real" phones and of the
+"silence" phones respectively, an empty file called <DFN>extra_questions.txt</DFN>, and
 a file called <DFN>lexicon.txt</DFN> which has the format
 \verbatim
 <word> <phone1> <phone2> ...
 \endverbatim
-Note: <DFN>lexicon.txt</DFN> may contain repeated entries for the same word,
-in case we have multiple pronunciations for it.  The current scripts currently don't
+Note: <DFN>lexicon.txt</DFN> will contain repeated entries for the same word,
+on separate lines,
+if we have multiple pronunciations for it.  The current scripts currently don't
 support pronunciation probabilities, but it wouldn't
 be that hard to add that support (it's just a question of modifying the
 scripts that produce <DFN>L.fst</DFN>).  
@@ -635,11 +665,11 @@ it appears that the script <DFN>prepare_lang.sh</DFN> adds such a question anywa
 and also a question corresponding to each of the different stress markers.
 These questions are necessary in order to get any benefit from the
 stress markers, because the fact that the different stress-dependent versions
-of each phone are together on the lines of <DFN>nonsilence_phones.txt</DFN> will
-mean that they stay together in <DFN>data/lang/phones/roots.txt</DFN> and
-<DFN>data/lang/phones/sets.txt</DFN>, which will mean respectively that they
+of each phone are together on the lines of <DFN>nonsilence_phones.txt</DFN>,
+ensures that they stay together in <DFN>data/lang/phones/roots.txt</DFN> and
+<DFN>data/lang/phones/sets.txt</DFN>, which in turn ensures that they
 share the same tree root and can never be distinguished by a question.  Thus,
-we have to provide a special question that allows the decision-tree building
+we have to provide a special question that affords the decision-tree building
 process a way to distinguish between the phones.  Note: the reason we put the
 phones together in the <DFN>sets.txt</DFN> and <DFN>roots.txt</DFN> is that some
 of the stress-dependent versions of phones may have too little data to
@@ -648,6 +678,35 @@ information that's used in producing the questions.  By grouping them together
 like this, we ensure that in the absence of enough data to estimate them
 separately, these different versions of the phone all "stay together" throughout 
 the decision-tree building process. 
+
+We should mention at this point that the script <DFN>utils/prepare_lang.sh</DFN>
+supports a number of options.  To give you an idea of what they are, here is
+the usage messages of that script:
+\verbatim
+usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>
+e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang
+options: 
+     --num-sil-states <number of states>             # default: 5, #states in silence models.
+     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models.
+     --position-dependent-phones (true|false)        # default: true; if true, use _B, _E, _S & _I
+                                                     # markers on phones to indicate word-internal positions.
+     --share-silence-phones (true|false)             # default: false; if true, share pdfs of
+                                                     # all non-silence phones.
+     --sil-prob <probability of silence>             # default: 0.5 [must have 0 < silprob < 1]
+\endverbatim
+A potentially important option is the <DFN>--share-silence-phones</DFN> option.
+The default is false.  If this option is true, all the pdf's (the Gaussian
+mixture models) of all the silence phones such as silence, vocalized-noise,
+noise and laughter, will be shared and only the transition probabilities will
+differ between those models.  It's not clear why this should help, but we found
+that it was extremely helpful for the Cantonese data of IARPA's BABEL project.
+That data is very messy and has long untranscribed portions that we try to
+align to a special phone which we designate for that purpose.  We suspect
+that the training data was somehow failing to align correctly, and for some reason
+setting this option to true changed that.
+
+Another potentially important option is the "--sil-prob" option.   In general, we have
+not experimented much with any of these options so we cannot give very detailed advice.
 
 \section data_prep_grammar Creating the language model or grammar
 
@@ -711,12 +770,15 @@ an OpenFst format.  Some of the key commands from that script are:
 \endverbatim
 Here, the variable <DFN>\$test</DFN> would be something like <DFN>data/lang_test_tg</DFN>.
 The most important of these commands is <DFN>arpa2fst</DFN> which is a Kaldi program.
+This program turns the ARPA-format language model into a Weight Finite State Transducer
+(actually, an acceptor).
 The <DFN>grep</DFN> commands remove certain "invalid" n-grams from the language model, which
-should not have been there in the first place; <DFN>remove_oovs.pl</DFN> removes
-N-grams containing words not in our vocabulary; <DFN>eps2disambig.pl</DFN> turns the
+should not have been there in the first place.  The program <DFN>remove_oovs.pl</DFN> removes
+N-grams containing words not in our vocabulary (which would cause a crash in <DFN>fstcompile</DFN>); <DFN>eps2disambig.pl</DFN> turns the
 <DFN>\<eps\></DFN> (\f$\epsilon\f$) symbols on backoff arcs into a special symbol <DFN>#0</DFN> which
-we use to make the grammar determinizable; see \ref graph_disambig.  The command
-<DFN>s2eps.pl</DFN> turns the
+we use to make the grammar determinizable; see \ref graph_disambig.  If you don't know
+what a "backoff arc" is, see the literature on backoff N-grams, for instance Goodman's "A bit of progress in
+language modeling", and the paper by Mohri we referenced above.  The command <DFN>s2eps.pl</DFN> turns the
 sentence-begin and sentence-end symbols <DFN>\<s\></DFN> and <DFN>\</s\></DFN> into
 epsilon (<DFN>\<eps\></DFN>), which means "no symbol"; <DFN>fstcompile</DFN> is an OpenFst
 command which turns the
