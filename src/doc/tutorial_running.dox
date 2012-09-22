@@ -440,7 +440,7 @@ to integer form by typing:
 scripts/int2sym.pl --ignore-first-field data/words.txt exp/decode_mono/test_mar87.tra | \
  scripts/sym2int.pl --ignore-first-field data/words.txt 
 \endverbatim
-The \verb|--ignore-first-field| option is so that it doesn't try to convert the utterance
+The <DFN>--ignore-first-field</DFN> option is so that it doesn't try to convert the utterance
 id to an integer.
 Next, try doing
 \verbatim

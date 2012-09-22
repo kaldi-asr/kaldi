@@ -269,7 +269,7 @@ less exp/tri1/acc_tree.log
 There won't be much information in this file, but you can see the command 
 line.  This program accumulates the single-Gaussian statistics for each HMM-state
 (actually, pdf-class) of each seen triphone context.
-The \verb|--ci-phones| options is so that it knows to avoid accumulating separate
+The <DFN>--ci-phones</DFN> options is so that it knows to avoid accumulating separate
 statistics for distinct context of phones like silence that we don't want to be
 context dependent (this is an optimization; it would work without this option).
 The output of this program can be thought of as being of the type BuildTreeStatsType
