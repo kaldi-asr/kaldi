@@ -1,0 +1,728 @@
+// doc/data_prep.dox
+
+// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page data_prep  Data preparation
+
+  \section data_prep_intro Introduction
+
+  After running the example scripts (see \ref tutorial), you may want to set up
+  Kaldi to run with your own data.  This section explains how to prepare the data.
+  This page will assume that you are using the latest version of the example scripts
+  (typically named "s5" in the example directories, e.g. egs/rm/s5/).  
+  In addition to this page, you can refer to the data preparation scripts in those
+ directories.  The top-level run.sh scripts (e.g. egs/rm/s5/run.sh) have a few commands at
+ the top of them that relate to various phases of data preparation.  The parts in
+ directory local/ are always specific to the database.  For example, in the
+ in the Resource Management (RM) setup it is local/rm_data_prep.sh.  In the case of
+ RM these commands are:
+\verbatim
+local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
+
+utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
+
+local/rm_prepare_grammar.sh || exit 1;
+\endverbatim
+
+In the WSJ case the commands are:
+\verbatim
+
+wsj0=/export/corpora5/LDC/LDC93S6B
+wsj1=/export/corpora5/LDC/LDC94S13B
+
+local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
+
+local/wsj_prepare_dict.sh || exit 1;
+
+utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
+
+local/wsj_format_data.sh || exit 1;
+\endverbatim
+There are more commands after these in the WSJ script that relate to training language
+models locally (rather than using the ones supplied by LDC), but the ones above are the most
+important ones.
+
+
+The output of the data preparation stage consists of two sets of things.  One relates
+to "the data" (directories like data/train/) and one relates to "the language"
+(directories like data/lang/).  The "data" part relates to the specific recordings you
+have, and the "lang" part contains things that relate more to the language itself,
+such as the lexicon, the phone set, and various extra information about the phone set
+that Kaldi needs.  If you want to prepare data which you will want to decode with an
+already existing system and an already existing language model, the "data" part is
+all you need to touch.
+
+\section data_prep_data Data preparation-- the "data" part.
+
+As an example of the "data" part of the data preparation, look at the directory
+"data/train" in one of the example directories (assuming you have already run
+the scripts there).  Note: there is nothing special about the directory name
+"data/train".  There are other directories such as "data/eval2000" (for a test set)
+that have essentially the same format ("essentially" because we may have an "sgm" and
+"glm" file in the test directory, to enable sclite scoring).
+The specific example we'll look at the Switchboard recipe
+in egs/swbd/s5.
+\verbatim
+s5# ls data/train
+cmvn.scp  feats.scp  reco2file_and_channel  segments  spk2utt  text  utt2spk  wav.scp
+\endverbatim
+Not all of the files are equally important.  For a simple setup where there is no
+"segmentation" information (i.e. each utterance corresponds to a single file), the only
+files you have to create yourself are "utt2spk", "text" and "wav.scp" and possibly
+"segments" and "reco2file_and_channel", and the rest will be created by standard scripts.  
+
+We will describe the files in this directory, starting with the files you need to create
+yourself.
+
+\subsection Files you need to create yourself
+
+ The file "text" contains the transcriptions of each utterance.
+\verbatim
+s5# head -3 data/train/text
+sw02001-A_000098-001156 HI UM YEAH I'D LIKE TO TALK ABOUT HOW YOU DRESS FOR WORK AND 
+sw02001-A_001980-002131 UM-HUM
+sw02001-A_002736-002893 AND IS
+\endverbatim
+The first element on each line is the utterance-id, which is an arbitrary text string,
+but if you have speaker information in your setup, you should make the speaker-id a
+prefix of the utterance id; this is important for reasons relating to the sorting of
+these files.  The rest of the line is the transcription of each sentence.  You don't
+have to make sure that all words in this file are in your vocabulary; out of vocabulary words will
+get mapped to a word specified in the file data/lang/oov.txt.    
+\endverbatim
+Another important file is \verb|wav.scp|.  In the Switchboard example,
+\verbatim
+a02:s5: head -3 data/train/wav.scp
+sw02001-A /home/dpovey/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 1 /export/corpora3/LDC/LDC97S62/swb1/sw02001.sph |
+sw02001-B /home/dpovey/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 2 /export/corpora3/LDC/LDC97S62/swb1/sw02001.sph |
+\endverbatim
+The format of this file is 
+\verbatim
+<recording-id> <extended-filename>
+\endverbatim
+where the "extended-filename" may be
+an actual filename, or as in this case, a command that extracts a wav-format file.  The pipe symbol
+on the end of the extended-filename specifies that it is to be interpreted as a pipe.  We will
+explain what "recording-id" is below, but we would first like to point out that if the "segments" file
+does not exist, the first token on each line of "wav.scp" file is just the utterance id.
+
+In the Switchboard setup we have the "segments" file, so we'll discuss this next.
+\verbatim
+s5# head -3 data/train/segments
+sw02001-A_000098-001156 sw02001-A 0.98 11.56
+sw02001-A_001980-002131 sw02001-A 19.8 21.31
+sw02001-A_002736-002893 sw02001-A 27.36 28.93
+\endverbatim
+The format of the "segments" file is: 
+\verbatim
+<utterance-id> <recording-id> <segment-begin> <segment-end>
+\endverbatim
+where the segment-begin and segment-end are measured in seconds.
+These specify time offsets into a recording.  The "recording-id"
+is the same identifier as is used in the "wav.scp" file-- again, this is
+an arbitrary identifier that you can choose.
+The file "reco2file_and_channel" is only used when scoring (measuring
+error rates) with NIST's "sclite" tool:
+\verbatim
+s5# head -3 data/train/reco2file_and_channel 
+sw02001-A sw02001 A
+sw02001-B sw02001 B
+sw02005-A sw02005 A
+\endverbatim
+The format is:
+\verbatim
+<recording-id> <filename> <recording-side (A or B)>
+\endverbatim
+The filename is typically the name of the .sph file, without the suffix, but in
+general it's whatever identifier you have in your "stm" file. 
+The recording side is a concept that relates to telephone conversations where there are
+two channels, and if not, it's probably safe to use "A". If you don't have
+an "stm" file or you have no idea what this is all about, then you don't need
+the "reco2file_and_channel" file.
+
+The last file you need to create yourself is the "utt2spk" file.  This says, for each
+utterance, which speaker spoke it.
+\verbatim
+s5# head -3 data/train/utt2spk
+sw02001-A_000098-001156 2001-A
+sw02001-A_001980-002131 2001-A
+sw02001-A_002736-002893 2001-A
+\endverbatim
+The format is
+\verbatim
+<utterance-id> <speaker-id>
+\endverbatim
+Note that the speaker-ids don't need to correspond in any very accurate sense
+to the names of actual speakers-- they simply need to represent a reasonable guess.
+In this case we assume each conversation side (each side of the telephone conversation)
+corresponds to a single speaker.  This is not entirely true -- sometimes one person
+may hand the phone to another person, or the same person may be speaking in multiple
+calls -- but it's good enough for our purposes.  If you have no information at all about
+the speaker identities, you can just make the speaker-ids the same as the utterance-ids,
+so the format of the file would be just \verb|<utterance-id> <utterance-id>|.
+
+All of these files should be sorted.  If they are not sorted, you will get errors
+when you run the scripts.  Section \ref io_sec_tables explains why this is needed.
+It has to do with the I/O framework; the ultimate reason for the sorting is to
+enable something equivalent to random-access lookup on a stream that doesn't support
+fseek(), such as a piped command.  Many Kaldi programs are reading multiple pipes 
+from other Kaldi commands, reading different types of object, and are doing something 
+roughly comparable to merge-sort
+on the different inputs; merge-sort, of course, requires that the inputs be sorted.
+Be careful when you sort that you have the shell variable LC_ALL defined as "C",
+for example (in bash),
+\verbatim
+export LC_ALL=C
+\endverbatim
+If you don't do this, the files will be sorted in an order that's different from how
+C++ sorts strings, and Kaldi will crash.  You have been warned!
+
+\subsection Files you don't need to create yourself
+
+The other files in this directory can be generated from the files you provide.
+You can create the "spk2utt" file by a command like the following
+(this one is extracted from egs/rm/s5/local/rm_data_prep.sh)
+\verbatim
+utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
+\endverbatim
+This can be done because the utt2spk and spk2utt files contain exactly
+the same information; the format of the spk2utt file is
+\verb|<speaker-id> <utterance-id1> <utterance-id2> ...|.
+\verbatim
+s5# head -3 data/train/feats.scp
+sw02001-A_000098-001156 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24
+sw02001-A_001980-002131 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:54975
+sw02001-A_002736-002893 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:62762
+\endverbatim
+The feats.scp file contains the extracted features-- MFCC features in this case, because
+that is what we extracted.  The format is:
+\verbatim
+<utterance-id> <extended-filename-of-features>
+\endverbatim
+Each of the feature files containts simply a matrix, in Kaldi format. 
+In this case the dimension of the matrix would be (the length of the file in 10ms intervals) by 13. 
+The "extended filename" \verb|/home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24|
+means, open the "archive" file /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark, fseek()
+to position 24, and read the data that's there.  
+
+This feats.scp file is created by the command
+\verbatim
+steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir 
+\endverbatim
+which is invoked by the top-level "run.sh" script.  For the definitions of the
+shell variables, see that script.  \verb|$mfccdir| is an arbitrary directory where the
+.ark files will be written. 
+
+The last file in the directory data/train is "cmvn.scp".  This contains statistics
+for cepstral mean and variance normalization, indexed by speaker.  Each set of
+statistics is a matrix, of dimension 2 by 14 in this case.  In our example, we have:
+\verbatim
+s5# head -3 data/train/cmvn.scp 
+2001-A /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/cmvn_train.ark:7
+2001-B /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/cmvn_train.ark:253
+2005-A /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/cmvn_train.ark:499
+\endverbatim
+Unlike feats.scp, this scp file is indexed by speaker-id, not utterance-id.
+
+\section data_prep_lang Data preparation-- the "lang" directory.
+
+Now we turn our attention to the "lang" directory.
+\verbatim
+s5# ls data/lang
+L.fst  L_disambig.fst  oov.int	oov.txt  phones  phones.txt  topo  words.txt
+\endverbatim
+There may other directories with a very similar format: in the case we have
+a directory "data/lang_test" that contains the same information but also a file
+G.fst that is a Finite State Transducer form of the language model:
+\verbatim
+s5# ls data/lang_test
+G.fst  L.fst  L_disambig.fst  oov.int  oov.txt	phones	phones.txt  topo  words.txt
+\endverbatim
+Note that lang_test/ was created by copying lang/ and adding something else.
+Each of these directories seems to contain only a few files.  
+It's not quite as simple as this though, because "phones" is a directory:
+\verbatim
+s5# ls data/lang/phones
+context_indep.csl  disambig.txt         nonsilence.txt        roots.txt    silence.txt
+context_indep.int  extra_questions.int  optional_silence.csl  sets.int     word_boundary.int
+context_indep.txt  extra_questions.txt  optional_silence.int  sets.txt     word_boundary.txt
+disambig.csl       nonsilence.csl       optional_silence.txt  silence.csl
+\endverbatim
+The phones directory contains various bits information about the phone set; there
+are three versions of some of the files, with extensions .csl, .int and .txt, that contain
+the same information in three formats.  Fortunately you, as a Kaldi user, don't have
+to create all of these files because we have a script "utils/prepare_lang.sh" that
+creates it all for you based on simpler inputs.  Before we describe that script
+and the simpler inputs it takes, we feel obligated to explain what is in the "lang" directory.
+After that we will explain the easy way to create it.  The user who is simply
+aiming to quickly build a system without needing to understand how Kaldi works
+may skip to \ref data_prep_lang_making below.
+
+\section data_prep_lang_contents Contents of the "lang" directory
+
+First there are the files \verb|phones.txt| and \verb|words.txt|.  These
+are both symbol-table files, in the OpenFst format, where each line is
+the text form and then the integer form:
+\verbatim
+s5# head -3 data/lang/phones.txt
+<eps> 0
+SIL 1
+SIL_B 2
+s5# head -3 data/lang/words.txt
+<eps> 0
+!SIL 1
+-'S 2
+\endverbatim
+These files are used by Kaldi to map back and forth between the integer and
+text forms of these symbols.  They are mostly only accessed by the scripts
+utils/int2sym.pl and utils/sym2int.pl, and by the OpenFst programs fstcompile and
+fstprint.
+
+The file \verb|L.fst| is the Finite State Transducer form of the lexicon ($L$,
+see  <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition 
+with Weighted Finite-State Transducers" </a> by Mohri, Pereira and 
+Riley, in Springer Handbook on SpeechProcessing and Speech Communication, 2008). 
+with phone symbols on the input and word symbols on the output.  The file
+\verb|L_disambig.fst| is the lexicon, as above but including the disambiguation
+symbols \#1, \#2, and so on, as well as the self-loop with \#0 on it to "pass through"
+the disambiguation symbol from the grammar.  See \ref graph_disambig for more
+explanation.  Anyway, you won't have to deal with this directly.
+
+The file \verb|data/lang/oov.txt| contains just a single line:
+\verbatim
+s5# cat data/lang/oov.txt
+<UNK>
+\endverbatim
+This is the word that we will map all out-of-vocabulary words to during
+training.  There is nothing special about "\<UNK\>" here, and it does not have
+to be this particular word; what is important is that this word should have a pronunciation
+containing just a phone that we designate as a "garbage phone"; this phone will
+align with various kinds of spoken noise.  In our particular setup, this phone
+is called \verb|<SPN>| (short for "spoken noise"):
+\verbatim
+s5# grep -w UNK data/local/dict/lexicon.txt 
+<UNK> SPN
+\endverbatim
+The file \verb|oov.int| contains the integer form of this (extracted from \verb|words.txt|),
+which happens to be 221 in this setup.
+
+The file data/lang/topo contains the following data:
+\verbatim
+a02:s5: cat data/lang/topo
+<Topology>
+<TopologyEntry>
+<ForPhones>
+21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188
+</ForPhones>
+<State> 0 <PdfClass> 0 <Transition> 0 0.75 <Transition> 1 0.25 </State>
+<State> 1 <PdfClass> 1 <Transition> 1 0.75 <Transition> 2 0.25 </State>
+<State> 2 <PdfClass> 2 <Transition> 2 0.75 <Transition> 3 0.25 </State>
+<State> 3 </State>
+</TopologyEntry>
+<TopologyEntry>
+<ForPhones>
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+</ForPhones>
+<State> 0 <PdfClass> 0 <Transition> 0 0.25 <Transition> 1 0.25 <Transition> 2 0.25 <Transition> 3 0.25 </State>
+<State> 1 <PdfClass> 1 <Transition> 1 0.25 <Transition> 2 0.25 <Transition> 3 0.25 <Transition> 4 0.25 </State>
+<State> 2 <PdfClass> 2 <Transition> 1 0.25 <Transition> 2 0.25 <Transition> 3 0.25 <Transition> 4 0.25 </State>
+<State> 3 <PdfClass> 3 <Transition> 1 0.25 <Transition> 2 0.25 <Transition> 3 0.25 <Transition> 4 0.25 </State>
+<State> 4 <PdfClass> 4 <Transition> 4 0.75 <Transition> 5 0.25 </State>
+<State> 5 </State>
+</TopologyEntry>
+</Topology>
+\endverbatim
+This specifies the topology of the HMMs we use.  In this case, the "real" phones contain
+three emitting states 
+with the standard 3-state left-to-right topology (the so-called "Bakis model").
+(Emitting states are states that "emit" feature vectors, as distinct from the "fake"
+non-emitting states that are just used to glue other states together).
+Phones 1 to 20 are various kinds of silence and noise (we have a lot because of word-position-dependency,
+and in fact most of these will never be used; the real number excluding word position
+dependency is more like five).  The "silence phones" have a more complex topology with an 
+initial emitting state and an end emitting state, but then three emitting states in the middle.
+You don't have to create this file by hand.
+
+There are a number of files in \verb|data/lang/phones/| that specify various things about
+the phone set.  Most of these files exist in three separate versions: a ".txt" form, e.g.:
+\verbatim
+s5# head -3 data/lang/phones/context_indep.txt 
+SIL
+SIL_B
+SIL_E
+\endverbatim
+a ".int" form, e.g:
+\verbatim
+a02:s5: head -3 data/lang/phones/context_indep.int
+1
+2
+3
+\endverbatim
+and a ".csl" form, which in a slight abuse of notation, denotes a colon-separated list,
+not a comma-separated list:
+\verbatim
+s5# cat data/lang/phones/context_indep.csl 
+1:2:3:4:5:6:7:8:9:10:11:12:13:14:15:16:17:18:19:20
+\endverbatim
+These files always contain the same information, so let's focus on the ".txt" form which
+is more human-readable.  The file "context_indep.txt" contains a list of those phones
+for which we build context-independent models: that is, we do not build a decision tree
+that gets to ask questions about the left and right phonetic context.  In fact, we do build
+smaller trees where we get to ask questions about the central phone and the HMM-state;
+this depends on the "roots.txt" file which we'll describe below.  See \ref tree_externals
+for more in-depth discussion of tree issues.
+
+The file \verb|context_indep.txt| actually contains all the silence phones:
+\verbatim
+# cat data/lang/phones/context_indep.txt
+SIL
+SIL_B
+SIL_E
+SIL_I
+SIL_S
+SPN
+SPN_B
+SPN_E
+SPN_I
+SPN_S
+NSN
+NSN_B
+NSN_E
+NSN_I
+NSN_S
+LAU
+LAU_B
+LAU_E
+LAU_I
+LAU_S
+\endverbatim
+There are a lot of these because of word-position dependency; not all of these variants
+will ever be used.  Here, \verb|SIL| would be the silence that gets optionally inserted by the
+lexicon (not part of a word), \verb|SIL_B| would be a silence phone at the beginning of a word
+(should never exist), \verb|SIL_I| word-internal silence (unlikely to exist), \verb|SIL_E|
+word-ending silence (should never exist), and \verb|SIL_S| would be silence as a "singleton
+word", i.e. a phone with only one word-- this might be used if you had a "silence word" in your
+lexicon and explicit silences appeared in your transcriptions.  
+
+The files \verb|silence.txt| and \verb|nonsilence.txt| contains lists of the silence
+phones and nonsilence phones respectively.  These should be mutually exclusive and together,
+should contain all the phones.  What we mean by "nonsilence" phones is, phones that we
+intend to estimate various kinds of linear transforms on, i.e. global transforms
+such as LDA and MLLT, and speaker adaptation transforms such as fMLLR; our belief based
+on prior experience is that it does not pay to include silence in the estimation of
+such transforms.  Our practice is
+to designate all silence, noise and vocalized-noise phones as "silence" phones, and all
+phones representing traditional phonemes as "nonsilence" phones.  We haven't experimented
+with the best way to do this.
+\verbatim
+a02:s5: head -3 data/lang/phones/silence.txt 
+SIL
+SIL_B
+SIL_E
+a02:s5: head -3 data/lang/phones/nonsilence.txt 
+IY_B
+IY_E
+IY_I
+\endverbatim
+
+The file \verb|disambig.txt| contains a list of the "disambiguation symbols"
+(see \ref graph_disambig):
+\verbatim
+s5# head -3 data/lang/phones/disambig.txt 
+#0
+#1
+#2
+\endverbatim
+These symbols appear in the phones.txt file as if they were phones.
+
+The file \verb|optional_silence.txt| contains a single phone which can optionally
+appear between words:
+\verbatim
+s5# cat data/lang/phones/optional_silence.txt 
+SIL
+\endverbatim
+The mechanism by which it appears optionally between words is that it appears
+optionally in the lexicon FST at the end of every word (and also the beginning of the
+utterance).  The reason it has to be specified in \verb|phones/| instead of just appearing
+in \verb|L.fst| is obscure and we won't go into it here.
+
+The file \verb|sets.txt| contains sets of phones that we group together (consider as
+the same phone) while clustering the phones in order to create the context-dependency questions
+(in Kaldi we use automatically generated questions when building decision trees,
+rather than linguistically meaningful ones).
+In this particular setup, \verb|sets.txt| groups together all the word-position-dependent
+versions of each phone:
+\verbatim
+s5# head -3 data/lang/phones/sets.txt 
+SIL SIL_B SIL_E SIL_I SIL_S
+SPN SPN_B SPN_E SPN_I SPN_S
+NSN NSN_B NSN_E NSN_I NSN_S
+\endverbatim
+
+The file \verb|extra_questions.txt| contains some extra questions which we'll include
+in addition to the automatically generated questions:
+\verbatim
+s5# cat data/lang/phones/extra_questions.txt 
+IY_B B_B D_B F_B G_B K_B SH_B L_B M_B N_B OW_B AA_B TH_B P_B OY_B R_B UH_B AE_B S_B T_B AH_B V_B W_B Y_B Z_B CH_B AO_B DH_B UW_B ZH_B EH_B AW_B AX_B EL_B AY_B EN_B HH_B ER_B IH_B JH_B EY_B NG_B 
+IY_E B_E D_E F_E G_E K_E SH_E L_E M_E N_E OW_E AA_E TH_E P_E OY_E R_E UH_E AE_E S_E T_E AH_E V_E W_E Y_E Z_E CH_E AO_E DH_E UW_E ZH_E EH_E AW_E AX_E EL_E AY_E EN_E HH_E ER_E IH_E JH_E EY_E NG_E 
+IY_I B_I D_I F_I G_I K_I SH_I L_I M_I N_I OW_I AA_I TH_I P_I OY_I R_I UH_I AE_I S_I T_I AH_I V_I W_I Y_I Z_I CH_I AO_I DH_I UW_I ZH_I EH_I AW_I AX_I EL_I AY_I EN_I HH_I ER_I IH_I JH_I EY_I NG_I 
+IY_S B_S D_S F_S G_S K_S SH_S L_S M_S N_S OW_S AA_S TH_S P_S OY_S R_S UH_S AE_S S_S T_S AH_S V_S W_S Y_S Z_S CH_S AO_S DH_S UW_S ZH_S EH_S AW_S AX_S EL_S AY_S EN_S HH_S ER_S IH_S JH_S EY_S NG_S 
+SIL SPN NSN LAU 
+SIL_B SPN_B NSN_B LAU_B 
+SIL_E SPN_E NSN_E LAU_E 
+SIL_I SPN_I NSN_I LAU_I 
+SIL_S SPN_S NSN_S LAU_S 
+\endverbatim
+You will observe that a question is simply a set of phones.
+The first four questions are asking about the word-position, for regular phones; and the last five do the same for
+the "silence phones".  The "silence" phones also come in a variety without a suffix like \verb|_B|,
+for example \verb|SIL|.  These may appear as optional silence in the lexicon, i.e. not inside an
+actual word.  In setups with things like tone dependency or stress markings, \verb|extra_questions.txt|
+may contain questions that relate to those features.  
+
+The file \verb|word_boundary.txt| explains how the phones relate to word positions:
+\verbatim
+s5# head  data/lang/phones/word_boundary.txt 
+SIL nonword
+SIL_B begin
+SIL_E end
+SIL_I internal
+SIL_S singleton
+SPN nonword
+SPN_B begin
+\endverbatim
+This is the same information as is in the suffixes of the phones (\verb|_B| and so on), but
+we don't like to hardcode this in the text form of the phones-- for one thing, Kaldi executables
+never see the text form of the phones, but only an integerized form.  So it is specified
+by this file \verb|word_boundary.txt|.  The main reason we need this information is
+in order to recover the word boundaries within lattices (for example, the program
+lattice-align-words reads this file).  This is useful for reasons including NIST sclite scoring, which requires
+the time markings for words, and for downstream processing.
+
+The file \verb|roots.txt| contains information that relates to how we build the phonetic-context
+decision tree:
+\verbatim
+head data/lang/phones/roots.txt 
+shared split SIL SIL_B SIL_E SIL_I SIL_S
+shared split SPN SPN_B SPN_E SPN_I SPN_S
+shared split NSN NSN_B NSN_E NSN_I NSN_S
+shared split LAU LAU_B LAU_E LAU_I LAU_S
+...
+shared split B_B B_E B_I B_S
+\endverbatim
+For now you can ignore the words "shared" and "split"-- these relate to certain options
+in how we build the decision tree (see \ref tree_externals for more information).
+The significance of having a number of phones on a single line, for
+example \verb|SIL SIL_B SIL_E SIL_I SIL_S|, is that all of these phones
+have a single "shared root" in the decision tree, so states may be shared
+between those phones.  For stress and tone-dependent systems, typically
+all the stress or tone-dependent versions of a particular phone will appear on
+the same line.  In addition, all three states of a HMM (or all five states, for
+silences) share the root, and the decision-tree building process gets to
+ask about the state.  This is what "shared" means in the roots file.
+
+\section data_prep_lang_creating Creating the "lang" directory
+
+The \verb|data/lang/| directory contains a lot of different files, so we have
+provided a script that creates it for you starting from a relatively simple
+input:
+\verbatim
+utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
+\endverbatim
+Here, the inputs are the directory \verb|data/local/dict/|, and the label \verb|<UNK>|
+which is the dictionary word we will map OOV words to when appear in transcripts
+(this becomes data/lang/oov.txt).  \verb|data/local/lang/| is simply a 
+temporary directory which the script will use, and \verb|data/lang/| is where
+the output goes.  
+
+The main thing you, as the data-preparer, need to create, is the directory
+\verb|data/local/dict/|.  The directory contains the following contents
+\verbatim
+s5# ls data/local/dict
+extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt
+\endverbatim
+(in fact there are a few more files there, but they are just temporary files that were
+used while creating that directory, and we can ignore them).  The commands below give
+you an idea what is in these files:
+\verbatim
+s5# head -3 data/local/dict/nonsilence_phones.txt 
+IY
+B
+D
+s5# head -3 data/local/dict/silence_phones.txt 
+SIL
+SPN
+NSN
+s5# head -3 data/local/dict/extra_questions.txt 
+s5# head -3 data/local/dict/lexicon.txt 
+!SIL SIL
+-'S S
+-'S Z
+\endverbatim
+As you can see, the contents of this directory are very simple in the
+Switchboard setup.  We just have lists of the "real" phones and of the
+"silence" phones, an empty file called \verb|extra_questions.txt|, and
+a file called \verb|lexicon.txt| which has the format
+\verbatim
+<word> <phone1> <phone2> ...
+\endverbatim
+Note: \verb|lexicon.txt| may contain repeated entries for the same word,
+in case we have multiple pronunciations for it.  The current scripts currently don't
+support pronunciation probabilities, but it wouldn't
+be that hard to add that support (it's just a question of modifying the
+scripts that produce \verb|L.fst|).  
+Notice that in this input there is no notion of word-position dependency,
+i.e. no suffixes like \verb|_B| and \verb|_E|.  This is because it is the
+scripts \verb|prepare_lang.sh| that adds those suffixes.
+
+You can see from the empty \verb|extra_questions.txt| file that there
+is some kind of potential here that is not being fully exploited.  This relates
+things like stress markings or tone markings.  You may want to have different
+versions of a particular phone that have different stress or tone.  In order
+to demonstrate what this looks like, we'll view the same files as above,
+but in the \verb|egs/wsj/s5/| setup.  The result is below:
+\verbatim
+s5# cat data/local/dict/silence_phones.txt 
+SIL
+SPN
+NSN
+s5# head data/local/dict/nonsilence_phones.txt 
+S 
+UW UW0 UW1 UW2 
+T 
+N 
+K 
+Y 
+Z 
+AO AO0 AO1 AO2 
+AY AY0 AY1 AY2 
+SH 
+s5# head -6 data/local/dict/lexicon.txt 
+!SIL SIL
+<SPOKEN_NOISE> SPN
+<UNK> SPN
+<NOISE> NSN
+!EXCLAMATION-POINT  EH2 K S K L AH0 M EY1 SH AH0 N P OY2 N T
+"CLOSE-QUOTE  K L OW1 Z K W OW1 T
+s5# cat data/local/dict/extra_questions.txt 
+SIL SPN NSN 
+S UW T N K Y Z AO AY SH W NG EY B CH OY JH D ZH G UH F V ER AA IH M DH L AH P OW AW HH AE R TH IY EH 
+UW1 AO1 AY1 EY1 OY1 UH1 ER1 AA1 IH1 AH1 OW1 AW1 AE1 IY1 EH1 
+UW0 AO0 AY0 EY0 OY0 UH0 ER0 AA0 IH0 AH0 OW0 AW0 AE0 IY0 EH0 
+UW2 AO2 AY2 EY2 OY2 UH2 ER2 AA2 IH2 AH2 OW2 AW2 AE2 IY2 EH2 
+s5# 
+\endverbatim
+You may notice that some of the lines in \verb|nonsilence_phones.txt| contain
+multiple phones on a single line.  These are the different stress-dependent
+versions of the vowels.  We use the stress markings present in the CMU
+dictionary.  The file extra_questions.txt contains a single question
+containing all of the "silence" phones (in fact this is unnecessary as
+it appears that the script \verb|prepare_lang.sh| adds such a question anyway),
+and also a question corresponding to each of the different stress markers.
+These questions are necessary in order to get any benefit from the
+stress markers, because the fact that the different stress-dependent versions
+of each phone are together on the lines of \verb|nonsilence_phones.txt| will
+mean that they stay together in \verb|data/lang/phones/roots.txt| and
+\verb|data/lang/phones/sets.txt|, which will mean respectively that they
+share the same tree root and can never be distinguished by a question.  Thus,
+we have to provide a special question that allows the decision-tree building
+process a way to distinguish between the phones.  Note: the reason we put the
+phones together in the \verb|sets.txt| and \verb|roots.txt| is that some
+of the stress-dependent versions of phones may have too little data to
+robustly estimate either a separate decision tree or the phone clustering
+information that's used in producing the questions.  By grouping them together
+like this, we ensure that in the absence of enough data to estimate them
+separately, these different versions of the phone all "stay together" throughout 
+the decision-tree building process. 
+
+\section data_prep_grammar Creating the language model or grammar
+
+Our tutorial above on how to create the \verb|lang/| directory did not address how
+to create the file \verb|G.fst|, which is the finite state transducer form of
+the language model or grammar that we'll decode with.  In fact, in some setups
+we may have many "lang" directories for testing purposes, with different
+language models and dictionaries.  The Wall Street Journal (WSJ) setup is an example:
+\verbatim
+s5# echo data/lang*
+data/lang data/lang_test_bd_fg data/lang_test_bd_tg data/lang_test_bd_tgpr data/lang_test_bg \
+ data/lang_test_bg_5k data/lang_test_tg data/lang_test_tg_5k data/lang_test_tgpr data/lang_test_tgpr_5k
+\endverbatim
+
+The process for creating \verb|G.fst| is different depending on whether we're using
+a statistical language model or some kind of grammar.  In the RM setup there is
+a bigram grammar, which only allows certain pairs of words.  We make this sum to
+one within each grammar state by assigning a probability of 1 over the number of
+outgoing arcs.  There is a statement in \verb|local/rm_data_prep.sh| that does:
+\verbatim
+local/make_rm_lm.pl $RMROOT/rm1_audio1/rm1/doc/wp_gram.txt  > $tmpdir/G.txt || exit 1;
+\endverbatim
+This script \verb|local/make_rm_lm.pl| creates a grammar in FST format (text format,
+not binary format).  It contains lines like the following:
+\verbatim
+s5# head data/local/tmp/G.txt 
+0    1    ADD    ADD    5.19849703126583
+0    2    AJAX+S    AJAX+S    5.19849703126583
+0    3    APALACHICOLA+S    APALACHICOLA+S    5.19849703126583
+\endverbatim
+See <a href=www.openfst.org> www.openfst.org </a> for more information on OpenFst (they
+have a useful tutorial).  The script \verb|local/rm_prepare_grammar.sh| will turn this into
+the binary-format file \verb|G.fst| using the following statement:
+\verbatim
+fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
+    --keep_osymbols=false $tmpdir/G.txt > data/lang/G.fst 
+\endverbatim
+If you want to create your own grammar, you will probably want to do something similar.
+Note: this type of procedure only applies to grammars of a certain class: it won't
+allow you to compile a complete Context Free Grammar, because it can't be represented
+in OpenFst format.  There are ways to do this in the WFST framework
+(e.g. see recent work by Mike Riley with push down transducers), but we have not yet
+worked with those ideas in Kaldi.
+
+In the WSJ setup, we use a statistical language model.  The script \verb|local/wsj_format_data.sh|
+deals with converting the ARPA-format language models supplied with the WSJ database, into
+an OpenFst format.  Some of the key commands from that script are:
+\verbatim
+  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
+   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
+ ...
+  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
+    grep -v '<s> <s>' | \
+    grep -v '</s> <s>' | \
+    grep -v '</s> </s>' | \
+    arpa2fst - | fstprint | \
+    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
+    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
+      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
+     fstrmepsilon > $test/G.fst
+\endverbatim
+Here, the variable \verb|$test| would be something like \verb|data/lang_test_tg|.
+The most important of these commands is \verb|arpa2fst| which is a Kaldi program.
+The \verb|grep| commands remove certain "invalid" n-grams from the language model, which
+should not have been there in the first place; \verb|remove_oovs.pl| removes
+N-grams containing words not in our vocabulary; \verb|eps2disambig.pl| turns the
+\verb|<eps>| ($\epsilon$) symbols on backoff arcs into a special symbol \verb|#0| which
+we use to make the grammar determinizable; see \ref graph_disambig.  The command
+\verb|s2eps.pl| turns the
+sentence-begin and sentence-end symbols \verb|<s>| and \verb|</s>| into
+epsilon (\verb|<eps>|), which means "no symbol"; \verb|fstcompile| is an OpenFst
+command which turns the
+FST from text form into OpenFst binary form; and \verb|fstrmepsilon| is also
+an OpenFst command, which removes the small number of \verb|<eps>| symbols from the
+FST, which were converted from \verb|<s>| and \verb|</s>|.
+
+
+*/

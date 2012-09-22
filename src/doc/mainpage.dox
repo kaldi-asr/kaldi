@@ -51,6 +51,7 @@
    - \ref legal
    - \ref progress
    - \ref tutorial
+   - \ref data_prep
    - \ref build_setup 
    - \ref style 
    - \ref dependencies
