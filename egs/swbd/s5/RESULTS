@@ -6,6 +6,8 @@
 for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
 
+exit 0
+
 exp/tri1/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 56.8   30.3   12.9    4.0  *47.2*   74.9 |
 exp/tri2/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 57.3   30.1   12.6    4.0   46.7   74.9 |
 exp/tri3a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 59.9   28.1   12.0    4.0   44.1   74.3 |
