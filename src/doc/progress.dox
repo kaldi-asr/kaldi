@@ -19,8 +19,8 @@
 
   \page progress Recent progress and current activity
 
-   Recently added features (and works in progress)
-    - Added a "stable" branch; check it out with the command
+   Recently added features (and work in progress)
+    - Added a "stable" branch; you can check it out with the command
   \verbatim
      svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/stable/ kaldi-stable
   \endverbatim

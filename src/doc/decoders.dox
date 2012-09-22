@@ -243,7 +243,7 @@ separate tokens created for nonemitting arcs.
 models larger than a few million arcs, for which it would be difficult to successfully
 build the decoding graph).  One way is to generate a lattice using a small LM,
 and to rescore this lattice with a large LM (see \ref decoders_lattice below,
-and \also ref lattices).  The other way is to use a "biglm" decoder, e.g.
+and also \ref lattices).  The other way is to use a "biglm" decoder, e.g.
 \ref BiglmFasterDecoder.  The basic idea is to create the decoding graph HCLG
 with a small grammar, and compose dynamically with the difference
 between a large grammar and the small grammar.  Note that while we use the word
@@ -297,7 +297,7 @@ with the big grammar, because the biglm decoder only updates the
 
  There are lattice-generating versions of some of the decoders described above.
 There is \ref LatticeFasterDecoder, \ref LatticeSimpleDecoder, and 
-\ref LatticeBiglmFasterDecoder.  See \ref lattice for more details on lattice
+\ref LatticeBiglmFasterDecoder.  See \ref lattices for more details on lattice
 generation.  
 
 

@@ -104,7 +104,7 @@ these files.  The rest of the line is the transcription of each sentence.  You d
 have to make sure that all words in this file are in your vocabulary; out of vocabulary words will
 get mapped to a word specified in the file data/lang/oov.txt.    
 \endverbatim
-Another important file is \verb|wav.scp|.  In the Switchboard example,
+Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim
 a02:s5: head -3 data/train/wav.scp
 sw02001-A /home/dpovey/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 1 /export/corpora3/LDC/LDC97S62/swb1/sw02001.sph |
@@ -173,7 +173,7 @@ corresponds to a single speaker.  This is not entirely true -- sometimes one per
 may hand the phone to another person, or the same person may be speaking in multiple
 calls -- but it's good enough for our purposes.  If you have no information at all about
 the speaker identities, you can just make the speaker-ids the same as the utterance-ids,
-so the format of the file would be just \verb|<utterance-id> <utterance-id>|.
+so the format of the file would be just <DFN>\<utterance-id\> \<utterance-id\></DFN>.
 
 All of these files should be sorted.  If they are not sorted, you will get errors
 when you run the scripts.  Section \ref io_sec_tables explains why this is needed.
@@ -201,7 +201,7 @@ utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
 \endverbatim
 This can be done because the utt2spk and spk2utt files contain exactly
 the same information; the format of the spk2utt file is
-\verb|<speaker-id> <utterance-id1> <utterance-id2> ...|.
+<DFN>\<speaker-id\> \<utterance-id1\> \<utterance-id2\> ...</DFN>.
 \verbatim
 s5# head -3 data/train/feats.scp
 sw02001-A_000098-001156 /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24
@@ -215,7 +215,7 @@ that is what we extracted.  The format is:
 \endverbatim
 Each of the feature files containts simply a matrix, in Kaldi format. 
 In this case the dimension of the matrix would be (the length of the file in 10ms intervals) by 13. 
-The "extended filename" \verb|/home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24|
+The "extended filename" <DFN>/home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark:24</DFN>
 means, open the "archive" file /home/dpovey/kaldi-trunk/egs/swbd/s5/mfcc/raw_mfcc_train.1.ark, fseek()
 to position 24, and read the data that's there.  
 
@@ -224,7 +224,7 @@ This feats.scp file is created by the command
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir 
 \endverbatim
 which is invoked by the top-level "run.sh" script.  For the definitions of the
-shell variables, see that script.  \verb|$mfccdir| is an arbitrary directory where the
+shell variables, see that script.  <DFN>\$mfccdir</DFN> is an arbitrary directory where the
 .ark files will be written. 
 
 The last file in the directory data/train is "cmvn.scp".  This contains statistics
@@ -270,11 +270,11 @@ creates it all for you based on simpler inputs.  Before we describe that script
 and the simpler inputs it takes, we feel obligated to explain what is in the "lang" directory.
 After that we will explain the easy way to create it.  The user who is simply
 aiming to quickly build a system without needing to understand how Kaldi works
-may skip to \ref data_prep_lang_making below.
+may skip to \ref data_prep_lang_creating below.
 
 \section data_prep_lang_contents Contents of the "lang" directory
 
-First there are the files \verb|phones.txt| and \verb|words.txt|.  These
+First there are the files <DFN>phones.txt</DFN> and <DFN>words.txt</DFN>.  These
 are both symbol-table files, in the OpenFst format, where each line is
 the text form and then the integer form:
 \verbatim
@@ -292,17 +292,17 @@ text forms of these symbols.  They are mostly only accessed by the scripts
 utils/int2sym.pl and utils/sym2int.pl, and by the OpenFst programs fstcompile and
 fstprint.
 
-The file \verb|L.fst| is the Finite State Transducer form of the lexicon ($L$,
+The file <DFN>L.fst</DFN> is the Finite State Transducer form of the lexicon ($L$,
 see  <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition 
 with Weighted Finite-State Transducers" </a> by Mohri, Pereira and 
 Riley, in Springer Handbook on SpeechProcessing and Speech Communication, 2008). 
 with phone symbols on the input and word symbols on the output.  The file
-\verb|L_disambig.fst| is the lexicon, as above but including the disambiguation
+<DFN>L_disambig.fst</DFN> is the lexicon, as above but including the disambiguation
 symbols \#1, \#2, and so on, as well as the self-loop with \#0 on it to "pass through"
 the disambiguation symbol from the grammar.  See \ref graph_disambig for more
 explanation.  Anyway, you won't have to deal with this directly.
 
-The file \verb|data/lang/oov.txt| contains just a single line:
+The file <DFN>data/lang/oov.txt</DFN> contains just a single line:
 \verbatim
 s5# cat data/lang/oov.txt
 <UNK>
@@ -312,12 +312,12 @@ training.  There is nothing special about "\<UNK\>" here, and it does not have
 to be this particular word; what is important is that this word should have a pronunciation
 containing just a phone that we designate as a "garbage phone"; this phone will
 align with various kinds of spoken noise.  In our particular setup, this phone
-is called \verb|<SPN>| (short for "spoken noise"):
+is called <DFN>\<SPN\></DFN> (short for "spoken noise"):
 \verbatim
 s5# grep -w UNK data/local/dict/lexicon.txt 
 <UNK> SPN
 \endverbatim
-The file \verb|oov.int| contains the integer form of this (extracted from \verb|words.txt|),
+The file <DFN>oov.int</DFN> contains the integer form of this (extracted from <DFN>words.txt</DFN>),
 which happens to be 221 in this setup.
 
 The file data/lang/topo contains the following data:
@@ -357,7 +357,7 @@ dependency is more like five).  The "silence phones" have a more complex topolog
 initial emitting state and an end emitting state, but then three emitting states in the middle.
 You don't have to create this file by hand.
 
-There are a number of files in \verb|data/lang/phones/| that specify various things about
+There are a number of files in <DFN>data/lang/phones/</DFN> that specify various things about
 the phone set.  Most of these files exist in three separate versions: a ".txt" form, e.g.:
 \verbatim
 s5# head -3 data/lang/phones/context_indep.txt 
@@ -386,7 +386,7 @@ smaller trees where we get to ask questions about the central phone and the HMM-
 this depends on the "roots.txt" file which we'll describe below.  See \ref tree_externals
 for more in-depth discussion of tree issues.
 
-The file \verb|context_indep.txt| actually contains all the silence phones:
+The file <DFN>context_indep.txt</DFN> actually contains all the silence phones:
 \verbatim
 # cat data/lang/phones/context_indep.txt
 SIL
@@ -411,14 +411,14 @@ LAU_I
 LAU_S
 \endverbatim
 There are a lot of these because of word-position dependency; not all of these variants
-will ever be used.  Here, \verb|SIL| would be the silence that gets optionally inserted by the
-lexicon (not part of a word), \verb|SIL_B| would be a silence phone at the beginning of a word
-(should never exist), \verb|SIL_I| word-internal silence (unlikely to exist), \verb|SIL_E|
-word-ending silence (should never exist), and \verb|SIL_S| would be silence as a "singleton
+will ever be used.  Here, <DFN>SIL</DFN> would be the silence that gets optionally inserted by the
+lexicon (not part of a word), <DFN>SIL_B</DFN> would be a silence phone at the beginning of a word
+(should never exist), <DFN>SIL_I</DFN> word-internal silence (unlikely to exist), <DFN>SIL_E</DFN>
+word-ending silence (should never exist), and <DFN>SIL_S</DFN> would be silence as a "singleton
 word", i.e. a phone with only one word-- this might be used if you had a "silence word" in your
 lexicon and explicit silences appeared in your transcriptions.  
 
-The files \verb|silence.txt| and \verb|nonsilence.txt| contains lists of the silence
+The files <DFN>silence.txt</DFN> and <DFN>nonsilence.txt</DFN> contains lists of the silence
 phones and nonsilence phones respectively.  These should be mutually exclusive and together,
 should contain all the phones.  What we mean by "nonsilence" phones is, phones that we
 intend to estimate various kinds of linear transforms on, i.e. global transforms
@@ -439,7 +439,7 @@ IY_E
 IY_I
 \endverbatim
 
-The file \verb|disambig.txt| contains a list of the "disambiguation symbols"
+The file <DFN>disambig.txt</DFN> contains a list of the "disambiguation symbols"
 (see \ref graph_disambig):
 \verbatim
 s5# head -3 data/lang/phones/disambig.txt 
@@ -449,7 +449,7 @@ s5# head -3 data/lang/phones/disambig.txt
 \endverbatim
 These symbols appear in the phones.txt file as if they were phones.
 
-The file \verb|optional_silence.txt| contains a single phone which can optionally
+The file <DFN>optional_silence.txt</DFN> contains a single phone which can optionally
 appear between words:
 \verbatim
 s5# cat data/lang/phones/optional_silence.txt 
@@ -457,14 +457,14 @@ SIL
 \endverbatim
 The mechanism by which it appears optionally between words is that it appears
 optionally in the lexicon FST at the end of every word (and also the beginning of the
-utterance).  The reason it has to be specified in \verb|phones/| instead of just appearing
-in \verb|L.fst| is obscure and we won't go into it here.
+utterance).  The reason it has to be specified in <DFN>phones/</DFN> instead of just appearing
+in <DFN>L.fst</DFN> is obscure and we won't go into it here.
 
-The file \verb|sets.txt| contains sets of phones that we group together (consider as
+The file <DFN>sets.txt</DFN> contains sets of phones that we group together (consider as
 the same phone) while clustering the phones in order to create the context-dependency questions
 (in Kaldi we use automatically generated questions when building decision trees,
 rather than linguistically meaningful ones).
-In this particular setup, \verb|sets.txt| groups together all the word-position-dependent
+In this particular setup, <DFN>sets.txt</DFN> groups together all the word-position-dependent
 versions of each phone:
 \verbatim
 s5# head -3 data/lang/phones/sets.txt 
@@ -473,7 +473,7 @@ SPN SPN_B SPN_E SPN_I SPN_S
 NSN NSN_B NSN_E NSN_I NSN_S
 \endverbatim
 
-The file \verb|extra_questions.txt| contains some extra questions which we'll include
+The file <DFN>extra_questions.txt</DFN> contains some extra questions which we'll include
 in addition to the automatically generated questions:
 \verbatim
 s5# cat data/lang/phones/extra_questions.txt 
@@ -489,12 +489,12 @@ SIL_S SPN_S NSN_S LAU_S
 \endverbatim
 You will observe that a question is simply a set of phones.
 The first four questions are asking about the word-position, for regular phones; and the last five do the same for
-the "silence phones".  The "silence" phones also come in a variety without a suffix like \verb|_B|,
-for example \verb|SIL|.  These may appear as optional silence in the lexicon, i.e. not inside an
-actual word.  In setups with things like tone dependency or stress markings, \verb|extra_questions.txt|
+the "silence phones".  The "silence" phones also come in a variety without a suffix like <DFN>_B</DFN>,
+for example <DFN>SIL</DFN>.  These may appear as optional silence in the lexicon, i.e. not inside an
+actual word.  In setups with things like tone dependency or stress markings, <DFN>extra_questions.txt</DFN>
 may contain questions that relate to those features.  
 
-The file \verb|word_boundary.txt| explains how the phones relate to word positions:
+The file <DFN>word_boundary.txt</DFN> explains how the phones relate to word positions:
 \verbatim
 s5# head  data/lang/phones/word_boundary.txt 
 SIL nonword
@@ -505,15 +505,15 @@ SIL_S singleton
 SPN nonword
 SPN_B begin
 \endverbatim
-This is the same information as is in the suffixes of the phones (\verb|_B| and so on), but
+This is the same information as is in the suffixes of the phones (<DFN>_B</DFN> and so on), but
 we don't like to hardcode this in the text form of the phones-- for one thing, Kaldi executables
 never see the text form of the phones, but only an integerized form.  So it is specified
-by this file \verb|word_boundary.txt|.  The main reason we need this information is
+by this file <DFN>word_boundary.txt</DFN>.  The main reason we need this information is
 in order to recover the word boundaries within lattices (for example, the program
 lattice-align-words reads this file).  This is useful for reasons including NIST sclite scoring, which requires
 the time markings for words, and for downstream processing.
 
-The file \verb|roots.txt| contains information that relates to how we build the phonetic-context
+The file <DFN>roots.txt</DFN> contains information that relates to how we build the phonetic-context
 decision tree:
 \verbatim
 head data/lang/phones/roots.txt 
@@ -527,7 +527,7 @@ shared split B_B B_E B_I B_S
 For now you can ignore the words "shared" and "split"-- these relate to certain options
 in how we build the decision tree (see \ref tree_externals for more information).
 The significance of having a number of phones on a single line, for
-example \verb|SIL SIL_B SIL_E SIL_I SIL_S|, is that all of these phones
+example <DFN>SIL SIL_B SIL_E SIL_I SIL_S</DFN>, is that all of these phones
 have a single "shared root" in the decision tree, so states may be shared
 between those phones.  For stress and tone-dependent systems, typically
 all the stress or tone-dependent versions of a particular phone will appear on
@@ -537,20 +537,20 @@ ask about the state.  This is what "shared" means in the roots file.
 
 \section data_prep_lang_creating Creating the "lang" directory
 
-The \verb|data/lang/| directory contains a lot of different files, so we have
+The <DFN>data/lang/</DFN> directory contains a lot of different files, so we have
 provided a script that creates it for you starting from a relatively simple
 input:
 \verbatim
 utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
 \endverbatim
-Here, the inputs are the directory \verb|data/local/dict/|, and the label \verb|<UNK>|
+Here, the inputs are the directory <DFN>data/local/dict/</DFN>, and the label <DFN>\<UNK\></DFN>
 which is the dictionary word we will map OOV words to when appear in transcripts
-(this becomes data/lang/oov.txt).  \verb|data/local/lang/| is simply a 
-temporary directory which the script will use, and \verb|data/lang/| is where
+(this becomes data/lang/oov.txt).  <DFN>data/local/lang/</DFN> is simply a 
+temporary directory which the script will use, and <DFN>data/lang/</DFN> is where
 the output goes.  
 
 The main thing you, as the data-preparer, need to create, is the directory
-\verb|data/local/dict/|.  The directory contains the following contents
+<DFN>data/local/dict/</DFN>.  The directory contains the following contents
 \verbatim
 s5# ls data/local/dict
 extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt
@@ -575,26 +575,26 @@ s5# head -3 data/local/dict/lexicon.txt
 \endverbatim
 As you can see, the contents of this directory are very simple in the
 Switchboard setup.  We just have lists of the "real" phones and of the
-"silence" phones, an empty file called \verb|extra_questions.txt|, and
-a file called \verb|lexicon.txt| which has the format
+"silence" phones, an empty file called <DFN>extra_questions.txt</DFN>, and
+a file called <DFN>lexicon.txt</DFN> which has the format
 \verbatim
 <word> <phone1> <phone2> ...
 \endverbatim
-Note: \verb|lexicon.txt| may contain repeated entries for the same word,
+Note: <DFN>lexicon.txt</DFN> may contain repeated entries for the same word,
 in case we have multiple pronunciations for it.  The current scripts currently don't
 support pronunciation probabilities, but it wouldn't
 be that hard to add that support (it's just a question of modifying the
-scripts that produce \verb|L.fst|).  
+scripts that produce <DFN>L.fst</DFN>).  
 Notice that in this input there is no notion of word-position dependency,
-i.e. no suffixes like \verb|_B| and \verb|_E|.  This is because it is the
-scripts \verb|prepare_lang.sh| that adds those suffixes.
+i.e. no suffixes like <DFN>_B</DFN> and <DFN>_E</DFN>.  This is because it is the
+scripts <DFN>prepare_lang.sh</DFN> that adds those suffixes.
 
-You can see from the empty \verb|extra_questions.txt| file that there
+You can see from the empty <DFN>extra_questions.txt</DFN> file that there
 is some kind of potential here that is not being fully exploited.  This relates
 things like stress markings or tone markings.  You may want to have different
 versions of a particular phone that have different stress or tone.  In order
 to demonstrate what this looks like, we'll view the same files as above,
-but in the \verb|egs/wsj/s5/| setup.  The result is below:
+but in the <DFN>egs/wsj/s5/</DFN> setup.  The result is below:
 \verbatim
 s5# cat data/local/dict/silence_phones.txt 
 SIL
@@ -626,22 +626,22 @@ UW0 AO0 AY0 EY0 OY0 UH0 ER0 AA0 IH0 AH0 OW0 AW0 AE0 IY0 EH0
 UW2 AO2 AY2 EY2 OY2 UH2 ER2 AA2 IH2 AH2 OW2 AW2 AE2 IY2 EH2 
 s5# 
 \endverbatim
-You may notice that some of the lines in \verb|nonsilence_phones.txt| contain
+You may notice that some of the lines in <DFN>nonsilence_phones.txt</DFN> contain
 multiple phones on a single line.  These are the different stress-dependent
 versions of the vowels.  We use the stress markings present in the CMU
 dictionary.  The file extra_questions.txt contains a single question
 containing all of the "silence" phones (in fact this is unnecessary as
-it appears that the script \verb|prepare_lang.sh| adds such a question anyway),
+it appears that the script <DFN>prepare_lang.sh</DFN> adds such a question anyway),
 and also a question corresponding to each of the different stress markers.
 These questions are necessary in order to get any benefit from the
 stress markers, because the fact that the different stress-dependent versions
-of each phone are together on the lines of \verb|nonsilence_phones.txt| will
-mean that they stay together in \verb|data/lang/phones/roots.txt| and
-\verb|data/lang/phones/sets.txt|, which will mean respectively that they
+of each phone are together on the lines of <DFN>nonsilence_phones.txt</DFN> will
+mean that they stay together in <DFN>data/lang/phones/roots.txt</DFN> and
+<DFN>data/lang/phones/sets.txt</DFN>, which will mean respectively that they
 share the same tree root and can never be distinguished by a question.  Thus,
 we have to provide a special question that allows the decision-tree building
 process a way to distinguish between the phones.  Note: the reason we put the
-phones together in the \verb|sets.txt| and \verb|roots.txt| is that some
+phones together in the <DFN>sets.txt</DFN> and <DFN>roots.txt</DFN> is that some
 of the stress-dependent versions of phones may have too little data to
 robustly estimate either a separate decision tree or the phone clustering
 information that's used in producing the questions.  By grouping them together
@@ -651,8 +651,8 @@ the decision-tree building process.
 
 \section data_prep_grammar Creating the language model or grammar
 
-Our tutorial above on how to create the \verb|lang/| directory did not address how
-to create the file \verb|G.fst|, which is the finite state transducer form of
+Our tutorial above on how to create the <DFN>lang/</DFN> directory did not address how
+to create the file <DFN>G.fst</DFN>, which is the finite state transducer form of
 the language model or grammar that we'll decode with.  In fact, in some setups
 we may have many "lang" directories for testing purposes, with different
 language models and dictionaries.  The Wall Street Journal (WSJ) setup is an example:
@@ -662,15 +662,15 @@ data/lang data/lang_test_bd_fg data/lang_test_bd_tg data/lang_test_bd_tgpr data/
  data/lang_test_bg_5k data/lang_test_tg data/lang_test_tg_5k data/lang_test_tgpr data/lang_test_tgpr_5k
 \endverbatim
 
-The process for creating \verb|G.fst| is different depending on whether we're using
+The process for creating <DFN>G.fst</DFN> is different depending on whether we're using
 a statistical language model or some kind of grammar.  In the RM setup there is
 a bigram grammar, which only allows certain pairs of words.  We make this sum to
 one within each grammar state by assigning a probability of 1 over the number of
-outgoing arcs.  There is a statement in \verb|local/rm_data_prep.sh| that does:
+outgoing arcs.  There is a statement in <DFN>local/rm_data_prep.sh</DFN> that does:
 \verbatim
 local/make_rm_lm.pl $RMROOT/rm1_audio1/rm1/doc/wp_gram.txt  > $tmpdir/G.txt || exit 1;
 \endverbatim
-This script \verb|local/make_rm_lm.pl| creates a grammar in FST format (text format,
+This script <DFN>local/make_rm_lm.pl</DFN> creates a grammar in FST format (text format,
 not binary format).  It contains lines like the following:
 \verbatim
 s5# head data/local/tmp/G.txt 
@@ -679,8 +679,8 @@ s5# head data/local/tmp/G.txt
 0    3    APALACHICOLA+S    APALACHICOLA+S    5.19849703126583
 \endverbatim
 See <a href=www.openfst.org> www.openfst.org </a> for more information on OpenFst (they
-have a useful tutorial).  The script \verb|local/rm_prepare_grammar.sh| will turn this into
-the binary-format file \verb|G.fst| using the following statement:
+have a useful tutorial).  The script <DFN>local/rm_prepare_grammar.sh</DFN> will turn this into
+the binary-format file <DFN>G.fst</DFN> using the following statement:
 \verbatim
 fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
     --keep_osymbols=false $tmpdir/G.txt > data/lang/G.fst 
@@ -692,7 +692,7 @@ in OpenFst format.  There are ways to do this in the WFST framework
 (e.g. see recent work by Mike Riley with push down transducers), but we have not yet
 worked with those ideas in Kaldi.
 
-In the WSJ setup, we use a statistical language model.  The script \verb|local/wsj_format_data.sh|
+In the WSJ setup, we use a statistical language model.  The script <DFN>local/wsj_format_data.sh</DFN>
 deals with converting the ARPA-format language models supplied with the WSJ database, into
 an OpenFst format.  Some of the key commands from that script are:
 \verbatim
@@ -709,20 +709,20 @@ an OpenFst format.  Some of the key commands from that script are:
       --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
      fstrmepsilon > $test/G.fst
 \endverbatim
-Here, the variable \verb|$test| would be something like \verb|data/lang_test_tg|.
-The most important of these commands is \verb|arpa2fst| which is a Kaldi program.
-The \verb|grep| commands remove certain "invalid" n-grams from the language model, which
-should not have been there in the first place; \verb|remove_oovs.pl| removes
-N-grams containing words not in our vocabulary; \verb|eps2disambig.pl| turns the
-\verb|<eps>| ($\epsilon$) symbols on backoff arcs into a special symbol \verb|#0| which
+Here, the variable <DFN>\$test</DFN> would be something like <DFN>data/lang_test_tg</DFN>.
+The most important of these commands is <DFN>arpa2fst</DFN> which is a Kaldi program.
+The <DFN>grep</DFN> commands remove certain "invalid" n-grams from the language model, which
+should not have been there in the first place; <DFN>remove_oovs.pl</DFN> removes
+N-grams containing words not in our vocabulary; <DFN>eps2disambig.pl</DFN> turns the
+<DFN>\<eps\></DFN> (\f$\epsilon\f$) symbols on backoff arcs into a special symbol <DFN>#0</DFN> which
 we use to make the grammar determinizable; see \ref graph_disambig.  The command
-\verb|s2eps.pl| turns the
-sentence-begin and sentence-end symbols \verb|<s>| and \verb|</s>| into
-epsilon (\verb|<eps>|), which means "no symbol"; \verb|fstcompile| is an OpenFst
+<DFN>s2eps.pl</DFN> turns the
+sentence-begin and sentence-end symbols <DFN>\<s\></DFN> and <DFN>\</s\></DFN> into
+epsilon (<DFN>\<eps\></DFN>), which means "no symbol"; <DFN>fstcompile</DFN> is an OpenFst
 command which turns the
-FST from text form into OpenFst binary form; and \verb|fstrmepsilon| is also
-an OpenFst command, which removes the small number of \verb|<eps>| symbols from the
-FST, which were converted from \verb|<s>| and \verb|</s>|.
+FST from text form into OpenFst binary form; and <DFN>fstrmepsilon</DFN> is also
+an OpenFst command, which removes the small number of <DFN>\<eps\></DFN> symbols from the
+FST, which were converted from <DFN>\<s\></DFN> and <DFN>\</s\></DFN>.
 
 
 */
