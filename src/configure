@@ -331,6 +331,9 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ $osx_ver == "10.7" ]; then
     check_exists makefiles/darwin_10_7.mk
     cat makefiles/darwin_10_7.mk >> kaldi.mk 
+  elif [ $osx_ver == "10.8" ]; then
+    check_exists makefiles/darwin_10_8.mk
+    cat makefiles/darwin_10_8.mk >> kaldi.mk 
   else 
     failure "OS X version '$osx_ver' not supported"
   fi
