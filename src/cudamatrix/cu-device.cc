@@ -77,6 +77,8 @@ CuDevice::CuDevice()
           KALDI_LOG << "cudaSetDevice(" << n << "): "
                     << "returned " << ret << ", " << cudaGetErrorString((cudaError_t)ret);
       }
+      //reset the error state to cudaSuccess
+      cudaGetLastError(); 
     }
     //find GPU with max free memory
     int32 max_id=0;
@@ -147,6 +149,8 @@ void CuDevice::SelectGpuId(int32 gpu_id) {
       KALDI_ERR << "cudaSetDevice(" << gpu_id << "): "
                 << "returned " << ret << ", " << cudaGetErrorString((cudaError_t)ret);
   }
+  //reset the error state to cudaSuccess
+  cudaGetLastError(); 
 }
 
 
