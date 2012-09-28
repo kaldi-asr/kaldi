@@ -41,7 +41,7 @@ FSTROOT=`rel2abs ../tools/openfst`
 
 function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
-  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK]';
+  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK] [--cudatk-dir=CUDATKDIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
