@@ -1,4 +1,4 @@
-	#!/bin/bash
+#!/bin/bash
 # 
 # This configure script is hand-generated, not auto-generated.
 # It creates the file kaldi.mk, which is %included by the Makefiles
@@ -17,12 +17,12 @@ function read_dirname {
 }
 
 function is_set {
-	local myvar=${1:-notset}
-	if [ "$myvar" == "notset" ]; then	
-		return 1
-	else
-		return 0
-	fi
+  local myvar=${1:-notset}
+  if [ "$myvar" == "notset" ]; then 
+    return 1
+  else
+    return 0
+  fi
 }
 
 
@@ -97,91 +97,91 @@ function check_exists {
 
 
 function linux_configure_mkllibdir {
-	local mklroot=$1
+  local mklroot=$1
 
-	if [ -d $mklroot/lib/em64t ]; then
-		echo $mklroot/lib/em64t
-	elif [ -d $mklroot/lib/intel64 ]; then
-		echo $mklroot/lib/intel64
-	else
-		return 1;
-	fi
+  if [ -d $mklroot/lib/em64t ]; then
+    echo $mklroot/lib/em64t
+  elif [ -d $mklroot/lib/intel64 ]; then
+    echo $mklroot/lib/intel64
+  else
+    return 1;
+  fi
 }
 
 function linux_configure_mkl_libraries {
-	local mkllibdir=$1
-	local static=$2
-	local threaded=$3
+  local mkllibdir=$1
+  local static=$2
+  local threaded=$3
 
-	#these lines were generated using the Intel Link Line Advisor 2.2
-	local threaded_libs="mkl_intel_lp64 mkl_intel_thread mkl_core"	
-	local sequential_libs="mkl_intel_lp64 mkl_sequential mkl_core"	
+  #these lines were generated using the Intel Link Line Advisor 2.2
+  local threaded_libs="mkl_intel_lp64 mkl_intel_thread mkl_core"  
+  local sequential_libs="mkl_intel_lp64 mkl_sequential mkl_core"  
 
-	if  ! $static && $threaded ; then
-		for file in $threaded_libs; do
-			local libfile=/$mkllibdir/lib$file.so 
-			check_exists $libfile
-		done 
-		echo  "-L$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
-	elif  ! $static && ! $threaded ; then
-		for file in $sequential_libs; do
-			local libfile=/$mkllibdir/lib$file.so 
-			check_exists $libfile
-		done 	
-		echo "-L$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
-	elif  $static && $threaded ; then
-		local linkline=""
-		test -f "$mkllibdir/libmkl_solver_lp64.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
-		linkline="$linkline -Wl,--start-group"
-		for file in $threaded_libs; do
-			local libfile=$mkllibdir/lib$file.a 
-			check_exists $libfile
-			linkline="$linkline $libfile"
-		done 	
-		linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
- 		echo $linkline
-	elif  $static && ! $threaded ; then
-		local linkline=""
-		test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
-		linkline="$linkline -Wl,--start-group"
-		for file in $sequential_libs; do
-			local libfile=$mkllibdir/lib$file.a 
-			check_exists $libfile
-			linkline="$linkline $libfile"
-		done 	
-		linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
- 		echo $linkline
-	else
-		return 1;
-	fi
+  if  ! $static && $threaded ; then
+    for file in $threaded_libs; do
+      local libfile=/$mkllibdir/lib$file.so 
+      check_exists $libfile
+    done 
+    echo  "-L$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
+  elif  ! $static && ! $threaded ; then
+    for file in $sequential_libs; do
+      local libfile=/$mkllibdir/lib$file.so 
+      check_exists $libfile
+    done  
+    echo "-L$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
+  elif  $static && $threaded ; then
+    local linkline=""
+    test -f "$mkllibdir/libmkl_solver_lp64.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
+    linkline="$linkline -Wl,--start-group"
+    for file in $threaded_libs; do
+      local libfile=$mkllibdir/lib$file.a 
+      check_exists $libfile
+      linkline="$linkline $libfile"
+    done  
+    linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    echo $linkline
+  elif  $static && ! $threaded ; then
+    local linkline=""
+    test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
+    linkline="$linkline -Wl,--start-group"
+    for file in $sequential_libs; do
+      local libfile=$mkllibdir/lib$file.a 
+      check_exists $libfile
+      linkline="$linkline $libfile"
+    done  
+    linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    echo $linkline
+  else
+    return 1;
+  fi
 }
 
 
 function linux_configure_mkl_includes {
-	test -d $1/include && echo "$1/include" && return;
-	test -d $2/../../include && echo "$2/../../include" && return;
-	failure "Could not find the MKL include directory"
+  test -d $1/include && echo "$1/include" && return;
+  test -d $2/../../include && echo "$2/../../include" && return;
+  failure "Could not find the MKL include directory"
 }
 
 function linux_configure_omplibdir {
-	local mklroot=$1
-	local mkllibdir=$2
-	
-	test -f "$mkllibdir/libiomp5.so" && echo "$mkllibdir" && return;
+  local mklroot=$1
+  local mkllibdir=$2
   
-	local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
-	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-	local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
-	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-	
-	local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
-	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-	local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
-	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+  test -f "$mkllibdir/libiomp5.so" && echo "$mkllibdir" && return;
+  
+  local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
+  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+  local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
+  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+  
+  local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
+  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+  local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
+  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
 
 
-	failure "Could not find the library iomp5, use the configure switch --omp-libdir"
-	return 1
+  failure "Could not find the library iomp5, use the configure switch --omp-libdir"
+  return 1
 }
 
 #Check if at least one of these variables is set
