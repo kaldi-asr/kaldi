@@ -1,4 +1,4 @@
-#!/bin/bash
+	#!/bin/bash
 # 
 # This configure script is hand-generated, not auto-generated.
 # It creates the file kaldi.mk, which is %included by the Makefiles
@@ -16,6 +16,17 @@ function read_dirname {
   echo $1 | cut -d'=' -f 2
 }
 
+function is_set {
+	local myvar=${1:-notset}
+	if [ "$myvar" == "notset" ]; then	
+		return 1
+	else
+		return 0
+	fi
+}
+
+
+
 ##   First do some checks.  These verify that all the things are
 ##   here that should be here.
 if [ "`basename $PWD`" != "src" ]; then
@@ -30,10 +41,12 @@ FSTROOT=`rel2abs ../tools/openfst`
 
 function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
-  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--mathlib=ATLAS|MKL|CLAPACK]';
+  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
+threaded_math=${threaded_atlas}
+static_math=false
 
 while [ $# -gt 0 ];
 do
@@ -45,12 +58,22 @@ do
   threaded_atlas=true; shift ;;
   --threaded-atlas=no)
   threaded_atlas=false; shift ;;
+  --threaded-math=yes)
+  threaded_atlas=true; threaded_math=true; shift ;;
+  --threaded-math=no)
+  threaded_atlas=false; threaded_math=false; shift ;;
+  --static-math=yes)
+  static_math=true; shift ;;
+  --static-math=no)
+  static_math=false; shift ;;
   --fst-root=*)
   FSTROOT=`read_dirname $1`; shift ;;
   --mkl-root=*)
   MKLROOT=`read_dirname $1`; shift ;;
   --mkl-libdir=*)
   MKLLIBDIR=`read_dirname $1`; shift ;;
+  --omp-libdir=*)
+  OMPLIBDIR=`read_dirname $1`; shift ;;
   --mathlib=*)
   MATHLIB=`read_dirname $1`; shift ;;
   --cudatk-dir=*)
@@ -58,6 +81,8 @@ do
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
+
+
 
 function failure {
     echo "***configure failed: $* ***"
@@ -70,6 +95,99 @@ function check_exists {
 }
 
 
+
+function linux_configure_mkllibdir {
+	local mklroot=$1
+
+	if [ -d $mklroot/lib/em64t ]; then
+		echo $mklroot/lib/em64t
+	elif [ -d $mklroot/lib/intel64 ]; then
+		echo $mklroot/lib/intel64
+	else
+		return 1;
+	fi
+}
+
+function linux_configure_mkl_libraries {
+	local mkllibdir=$1
+	local static=$2
+	local threaded=$3
+
+	#these lines were generated using the Intel Link Line Advisor 2.2
+	local threaded_libs="mkl_intel_lp64 mkl_intel_thread mkl_core"	
+	local sequential_libs="mkl_intel_lp64 mkl_sequential mkl_core"	
+
+	if  ! $static && $threaded ; then
+		for file in $threaded_libs; do
+			local libfile=/$mkllibdir/lib$file.so 
+			check_exists $libfile
+		done 
+		echo  "-L$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
+	elif  ! $static && ! $threaded ; then
+		for file in $sequential_libs; do
+			local libfile=/$mkllibdir/lib$file.so 
+			check_exists $libfile
+		done 	
+		echo "-L$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
+	elif  $static && $threaded ; then
+		local linkline=""
+		test -f "$mkllibdir/libmkl_solver_lp64.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
+		linkline="$linkline -Wl,--start-group"
+		for file in $threaded_libs; do
+			local libfile=$mkllibdir/lib$file.a 
+			check_exists $libfile
+			linkline="$linkline $libfile"
+		done 	
+		linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+ 		echo $linkline
+	elif  $static && ! $threaded ; then
+		local linkline=""
+		test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
+		linkline="$linkline -Wl,--start-group"
+		for file in $sequential_libs; do
+			local libfile=$mkllibdir/lib$file.a 
+			check_exists $libfile
+			linkline="$linkline $libfile"
+		done 	
+		linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+ 		echo $linkline
+	else
+		return 1;
+	fi
+}
+
+
+function linux_configure_mkl_includes {
+	test -d $1/include && echo "$1/include" && return;
+	test -d $2/../../include && echo "$2/../../include" && return;
+	failure "Could not find the MKL include directory"
+}
+
+function linux_configure_omplibdir {
+	local mklroot=$1
+	local mkllibdir=$2
+	
+	test -f "$mkllibdir/libiomp5.so" && echo "$mkllibdir" && return;
+  
+	local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
+	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+	local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
+	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+	
+	local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
+	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+	local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
+	test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+
+
+	failure "Could not find the library iomp5, use the configure switch --omp-libdir"
+	return 1
+}
+
+#Check if at least one of these variables is set
+#If yes, we want to switch to using the MKL
+is_set $MKLLIBDIR && echo "Force-configuring KALDI to use MKL" && export MATHLIB="MKL"
+is_set $MKLROOT && echo "Force-configuring KALDI to use MKL"&& export MATHLIB="MKL"
 
 function linux_configure_cuda {
   #check for CUDA toolkit in the system
@@ -389,11 +507,32 @@ if [ "`uname`" == "Linux" ]; then
       failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64). 
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
-    if [ -z $MKLROOT ]; then
-      failure "Must specify the location of MKL with --mkl-root option"
-    elif [ ! -f $MKLROOT/include/mkl.h ]; then
-      failure "Could not find mkl.h in '$MKLROOT/include'"
+    
+    if  is_set $MKLROOT -a ! is_set $MKLLIBDIR; then
+        echo -n "Configuring MKL library directory: "
+        MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
+        if [ $? -ne 0 ]; then
+            failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
+        else
+            echo "Found: $MKLLIBDIR"
+        fi
     fi
+
+    MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $threaded_math`
+
+    MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"`
+    echo "MKL include directory configured as: $MKL_COMPILE_LINE"
+    MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
+    
+    if is_set $OMPLIBDIR; then
+        OMP_LINK_LINE=$OMPLIBDIR
+    else 
+        OMP_LINK_LINE=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR"`
+    fi
+    test -f "$OMP_LINK_LINE/libiomp5.so" || failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
+    echo "OMP library directory configured as: $OMP_LINK_LINE"
+    OMP_LINK_LINE="-L${OMP_LINK_LINE}"
+ 
     echo "Using Intel MKL as the linear algebra library."
 
     echo MKLROOT = $MKLROOT >> kaldi.mk
@@ -402,6 +541,8 @@ if [ "`uname`" == "Linux" ]; then
     fi
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
+    echo "MKLFLAGS = ${OMP_LINK_LINE} ${MKL_LINK_LINE}" >> kaldi.mk
+
     linux_configure_cuda
     echo "Configured for Linux with MKL libs from $MKLROOT"
     exit 0;
