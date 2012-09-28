@@ -70,7 +70,7 @@
 #else
 #  define KALDI_ISNAN std::isnan
 #  define KALDI_ISINF std::isinf
-#  define KALDI_ISFINITE(x) (!(std::isnan(x-x)))
+#  define KALDI_ISFINITE(x) std::isfinite(x)
 #endif
 #if !defined(KALDI_SQR)
 # define KALDI_SQR(x) ((x) * (x))
