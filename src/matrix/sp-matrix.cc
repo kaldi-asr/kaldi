@@ -1241,9 +1241,6 @@ float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B) {
   return cblas_sdot(dim, A.Data(), 1, B.Data(), 1);
 }
 
-// Force instantiation.
-template class SpMatrix<float>;
-template class SpMatrix<double>;
 
 template<class Real>
 void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
@@ -1253,15 +1250,6 @@ void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
   AddMat2Sp(alpha, Tmat, transM, A, beta);
 }
 
-// Force instantiation.
-template
-void SpMatrix<float>::AddTp2Sp(const float alpha, const TpMatrix<float> &T,
-                               MatrixTransposeType transM, const SpMatrix<float> &A,
-                               const float beta);
-template
-void SpMatrix<double>::AddTp2Sp(const double alpha, const TpMatrix<double> &T,
-                                MatrixTransposeType transM, const SpMatrix<double> &A,
-                                const double beta);
 
 template<class Real>
 void SpMatrix<Real>::AddTp2(const Real alpha, const TpMatrix<Real> &T,
@@ -1270,13 +1258,13 @@ void SpMatrix<Real>::AddTp2(const Real alpha, const TpMatrix<Real> &T,
   AddMat2(alpha, Tmat, transM, beta);
 }
 
-// Force instantiation.
-template
-void SpMatrix<float>::AddTp2(const float alpha, const TpMatrix<float> &T,
-                             MatrixTransposeType transM, const float beta);
-template
-void SpMatrix<double>::AddTp2(const double alpha, const TpMatrix<double> &T,
-                              MatrixTransposeType transM, const double beta);
 
+//Explicit instantiation of the classes
+//Apparently, it seems to be necessary that the instantiation 
+//happens at the end of the file. Otherwise, not all the member 
+//functions will get instantiated.
+
+template class SpMatrix<float>;
+template class SpMatrix<double>;
 
 } // namespace kaldi

@@ -1739,13 +1739,6 @@ void MatrixBase<Real>::Eig(MatrixBase<Real> *P,
 }
 
 
-template class Matrix<float>;
-template class Matrix<double>;
-template class MatrixBase<float>;
-template class MatrixBase<double>;
-template class SubMatrix<float>;
-template class SubMatrix<double>;
-
 
 // Begin non-member function definitions.
 
@@ -2126,9 +2119,6 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
   }
   return max_elem + std::log(sum_relto_max_elem);
 }
-// instantiate.
-template float MatrixBase<float>::LogSumExp(float) const;
-template double MatrixBase<double>::LogSumExp(double) const;
 
 template<typename Real>
 Real MatrixBase<Real>::ApplySoftMax() {
@@ -2141,9 +2131,6 @@ Real MatrixBase<Real>::ApplySoftMax() {
   return max + log(sum);
 }
 
-// instantiate.
-template float MatrixBase<float>::ApplySoftMax();
-template double MatrixBase<double>::ApplySoftMax();
 
 template<class Real>
 template<class OtherReal>
@@ -2195,6 +2182,17 @@ template void MatrixBase<double>::AddVecToCols(const double alpha,
 template void MatrixBase<double>::AddVecToCols(const double alpha,
                                                const VectorBase<double> &v);
 
+//Explicit instantiation of the classes
+//Apparently, it seems to be necessary that the instantiation 
+//happens at the end of the file. Otherwise, not all the member 
+//functions will get instantiated.
+
+template class Matrix<float>;
+template class Matrix<double>;
+template class MatrixBase<float>;
+template class MatrixBase<double>;
+template class SubMatrix<float>;
+template class SubMatrix<double>;
 
 } // namespace kaldi
 
