@@ -128,13 +128,13 @@ function linux_configure_mkl_libraries {
       local libfile=$mkllibdir/lib$file.so 
       check_exists $libfile
     done 
-    echo  "-L$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
+    echo  "-L$mkllibdir -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
   elif  ! $static && ! $threaded ; then
     for file in $sequential_libs; do
       local libfile=$mkllibdir/lib$file.so 
       check_exists $libfile
     done  
-    echo "-L$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
+    echo "-L$mkllibdir  -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
   elif  $static && $threaded ; then
     local linkline=""
     test -f "$mkllibdir/libmkl_solver_lp64.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
@@ -144,7 +144,8 @@ function linux_configure_mkl_libraries {
       check_exists $libfile
       linkline="$linkline $libfile"
     done  
-    linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    #linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    linkline="$linkline -Wl,--end-group  "
     echo $linkline
   elif  $static && ! $threaded ; then
     local linkline=""
@@ -155,7 +156,8 @@ function linux_configure_mkl_libraries {
       check_exists $libfile
       linkline="$linkline $libfile"
     done  
-    linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    #linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
+    linkline="$linkline -Wl,--end-group  "
     echo $linkline
   else
     return 1;
@@ -169,24 +171,44 @@ function linux_configure_mkl_includes {
   failure "Could not find the MKL include directory"
 }
 
+function check_library {
+  local libpath=$1
+  local libname=$2
+  local libext=$3
+  
+  local full_libname="$libpath/$libname.$libext"
+  ##echo "Testing $full_libname" >&2
+  test -f "$full_libname" && return ;
+  return 1
+}
+
+
 function linux_configure_omplibdir {
   local mklroot=$1
   local mkllibdir=$2
+  local libexts=$3
   
-  test -f "$mkllibdir/libiomp5.so" && echo "$mkllibdir" && return;
   
-  local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
-  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-  local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
-  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-  
-  local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
-  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
-  local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
-  test -d $testdir && test -f "$testdir/libiomp5.so" && echo "`readlink -f $testdir`" && return;
+  ##First we try to use the library in the same directory 
+  ##where the mkl libraries reside
+  ##Afterwards, just try some possibilities for different MKL layouts 
+  for libext in $libexts; do
+    echo "Testing $libext from [$libexts] " >&2
 
+    check_library $mkllibdir "libiomp5" $libext && return
+    
+    local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
+    test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
+    local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
+    test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
+    
+    local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
+    test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
+    local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
+    test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
+  done
 
-  failure "Could not find the library iomp5, use the configure switch --omp-libdir"
+  #failure "Could not find the library iomp5, use the configure switch --omp-libdir"
   return 1
 }
 
@@ -530,17 +552,27 @@ if [ "`uname`" == "Linux" ]; then
     echo "MKL include directory configured as: $MKL_COMPILE_LINE"
     MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
     
-    if ! is_set $OMPLIBDIR; then
-      OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR"`
+    if ! is_set $OMPLIBDIR ; then
+      if  $static_math ; then
+        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "a"` 
+      else
+        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "so"` 
+      fi
     fi
-    test -f "$OMPLIBDIR/libiomp5.so" || test -f "$OMPLIBDIR/libiomp5.a" \
-      | failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
+    check_library $OMPLIBDIR "libiomp5" "a" || check_library $OMPLIBDIR "libiomp5" "so" \
+      || failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
     echo "OMP library directory configured as: $OMPLIBDIR"
     OMP_LINK_LINE=''
     # TODO(arnab): in the following conditional, the $static_math test is needed since 
     # the OpenMP library is assumed to be dynamic.
-    if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] || [ $static_math ] ; then
+    if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] ; then
       OMP_LINK_LINE="-L${OMPLIBDIR}"
+      #if the libiomp5 library is dynamic, we add the rpath attribute
+      if ! $static_math ; then
+        OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-rpath=$OMPLIBDIR"
+      else
+        OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-Bstatic -liomp5 -Wl,-Bdynamic"
+      fi
     fi
  
     echo "Using Intel MKL as the linear algebra library."
@@ -551,7 +583,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
-    echo "MKLFLAGS = ${OMP_LINK_LINE} ${MKL_LINK_LINE}" >> kaldi.mk
+    echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk
 
     linux_configure_cuda
     echo "Configured for Linux with MKL libs from $MKLROOT"
