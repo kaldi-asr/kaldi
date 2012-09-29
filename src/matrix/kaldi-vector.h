@@ -356,12 +356,15 @@ class Vector: public VectorBase<Real> {
   /// Remove one element and shifts later elements down.
   void RemoveElement(MatrixIndexT i);
 
-  // In order to have access to copy-ctor & assignment operator. [NOT WORKING]
-//  friend class std::vector<Vector<Real>, std::allocator<Vector<Real> > >;
-
-// protected:
   /// Assignment operator, protected so it can only be used by std::vector
-  Vector<Real> &operator = (const Vector <Real> &other) {
+  Vector<Real> &operator = (const Vector<Real> &other) {
+    Resize(other.Dim());
+    this->CopyFromVec(other);
+    return *this;
+  }
+
+  /// Assignment operator that takes VectorBase.
+  Vector<Real> &operator = (const VectorBase<Real> &other) {
     Resize(other.Dim());
     this->CopyFromVec(other);
     return *this;

@@ -587,6 +587,16 @@ class Matrix : public MatrixBase<Real> {
               const MatrixIndexT c,
               MatrixResizeType resize_type = kSetZero);
 
+  /// Assignment operator that takes MatrixBase.
+  Matrix<Real> &operator = (const MatrixBase<Real> &other) {
+    if (MatrixBase<Real>::NumRows() != other.NumRows() ||
+        MatrixBase<Real>::NumCols() != other.NumCols()) {
+      Resize(other.NumRows(), other.NumCols());
+    }
+    MatrixBase<Real>::CopyFromMat(other);
+    return *this;
+  }
+
   /// Assignment operator. Needed for inclusion in std::vector.
   Matrix<Real> &operator = (const Matrix<Real> &other) {
     if (MatrixBase<Real>::NumRows() != other.NumRows() ||
@@ -596,7 +606,7 @@ class Matrix : public MatrixBase<Real> {
     MatrixBase<Real>::CopyFromMat(other);
     return *this;
   }
-
+  
 
  private:
   /// Init assumes the current class contents are invalid (i.e. junk or have
