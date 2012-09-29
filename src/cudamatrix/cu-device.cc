@@ -38,6 +38,27 @@ CuDevice::CuDevice()
   cudaGetDeviceCount(&N_GPU);
   //look which GPUs are available, get free memory stats
   if(N_GPU > 0) {
+#if (CUDA_VERSION > 3020)
+    // First check if operating under Compute Exclusive Mode:
+    int32 gpu_id = -1;
+    cudaGetDevice(&gpu_id);
+    cudaDeviceProp gpu_prop;
+    cudaGetDeviceProperties(&gpu_prop, gpu_id);
+    if (gpu_prop.computeMode == cudaComputeModeExclusive
+        || gpu_prop.computeMode == cudaComputeModeExclusiveProcess) {
+      cudaDeviceSynchronize();
+      char gpu_name[128];
+      cuDeviceGetName(gpu_name, 128, gpu_id);
+      std::string mem_stats = GetFreeMemory(NULL, NULL);
+      KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.\n"
+                << "  Using device " << gpu_id << ": " << gpu_name << "\t" << mem_stats;
+      active_gpu_id_ = gpu_id;
+      cuSafeCall(cublasInit());
+      return;
+    }
+#endif
+    // If not operating under Compute Exclusive Mode, or using a version of CUDA
+    // where such a check cannot be performed, select the GPU with most free memory.
     std::vector<float> free_mem_ratio(N_GPU+1, 0.0);
     //get ratios of memory use, if possible
     KALDI_LOG << "Selecting from " << N_GPU << " GPUs";
@@ -63,8 +84,8 @@ CuDevice::CuDevice()
           cudaThreadExit(); //deprecated, but for legacy reason...
         } break;
 
-#if (CUDA_VERSION >= 3020)
-        case cudaErrorDeviceAlreadyInUse : 
+#if (CUDA_VERSION > 3020)
+        case cudaErrorDeviceAlreadyInUse :
           KALDI_LOG << "cudaSetDevice(" << n << "): "
                     << "Device cannot be accessed, used EXCLUSIVE-THREAD mode...";
           break;
@@ -77,8 +98,8 @@ CuDevice::CuDevice()
           KALDI_LOG << "cudaSetDevice(" << n << "): "
                     << "returned " << ret << ", " << cudaGetErrorString((cudaError_t)ret);
       }
-      //reset the error state to cudaSuccess
-      cudaGetLastError(); 
+//      //reset the error state to cudaSuccess
+//      cudaGetLastError();
     }
     //find GPU with max free memory
     int32 max_id=0;
@@ -135,8 +156,8 @@ void CuDevice::SelectGpuId(int32 gpu_id) {
       cuSafeCall(cublasInit());
       KALDI_LOG << "Selected device: " << gpu_id << " (manual override...)";
       return; //we are done!
-#if (CUDA_VERSION >= 3020)
-    case cudaErrorDeviceAlreadyInUse : 
+#if (CUDA_VERSION > 3020)
+    case cudaErrorDeviceAlreadyInUse :
       KALDI_ERR << "cudaSetDevice(" << gpu_id << "): "
                 << "Device cannot be accessed, used EXCLUSIVE-THREAD mode...";
       break;
@@ -149,8 +170,8 @@ void CuDevice::SelectGpuId(int32 gpu_id) {
       KALDI_ERR << "cudaSetDevice(" << gpu_id << "): "
                 << "returned " << ret << ", " << cudaGetErrorString((cudaError_t)ret);
   }
-  //reset the error state to cudaSuccess
-  cudaGetLastError(); 
+//  //reset the error state to cudaSuccess
+//  cudaGetLastError();
 }
 
 
@@ -180,7 +201,7 @@ void CuDevice::PrintProfile() {
 
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) {
 // WARNING! the CUDA API is inconsistent accross versions!
-#if (CUDA_VERSION >= 3020)
+#if (CUDA_VERSION > 3020)
   size_t mem_free, mem_total;
 #else
   unsigned int mem_free, mem_total;

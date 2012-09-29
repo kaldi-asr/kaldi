@@ -25,7 +25,7 @@ all:  $(LIBFILE)
 #symlink in necessary for cross-compilation at BUT
 %.o : %.cu
 	-ln -s `which $(CC)` gcc
-	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PWD)/cudamatrix:$(PATH); ln -s `which $(CC)` gcc; $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
+	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PWD)/cudamatrix:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -I../
 	-unlink gcc
 
 
@@ -36,7 +36,6 @@ $(LIBFILE): $(OBJFILES)
 
 $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 
 
-
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
 # 	make -c ../base kaldi-base.a
@@ -45,7 +44,7 @@ $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	rm *.o *.a $(TESTFILES)
+	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test: $(TESTFILES)
 	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
