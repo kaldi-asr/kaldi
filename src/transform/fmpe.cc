@@ -399,9 +399,8 @@ void Fmpe::AccStats(const MatrixBase<BaseFloat> &feat_in,
   int32 dim = FeatDim(), ncontexts = NumContexts();
   KALDI_ASSERT(feat_in.NumRows() != 0 && feat_in.NumCols() == dim);
   KALDI_ASSERT(feat_in.NumRows() == static_cast<int32>(gselect.size()));
-  AssertSameDim(stats_plus, projT_);
-  AssertSameDim(stats_minus, projT_);
-  AssertSameDim(feat_in, direct_feat_deriv);
+  KALDI_ASSERT(SameDim(stats_plus, projT_) && SameDim(stats_minus, projT_) &&
+               SameDim(feat_in, direct_feat_deriv));
 
   if (indirect_feat_deriv != NULL)
     fmpe_stats->AccumulateChecks(feat_in, direct_feat_deriv, *indirect_feat_deriv);
@@ -449,8 +448,7 @@ BaseFloat Fmpe::Update(const FmpeUpdateOptions &config,
   // this info here), so that is done at the script level.
   BaseFloat tot_linear_objf_impr = 0.0;
   int32 changed = 0; // Keep track of how many elements change sign.
-  AssertSameDim(proj_deriv_plus, projT_);
-  AssertSameDim(proj_deriv_minus, projT_);
+  KALDI_ASSERT(SameDim(proj_deriv_plus, projT_) && SameDim(proj_deriv_minus, projT_));
   KALDI_ASSERT(proj_deriv_plus.Min() >= 0);
   KALDI_ASSERT(proj_deriv_minus.Min() >= 0);
   BaseFloat learning_rate = config.learning_rate,

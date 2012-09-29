@@ -39,11 +39,11 @@ namespace kaldi {
 /// This is set by util/parse-options.{h, cc} if you set --verbose = ? option
 extern int32 g_kaldi_verbose_level;
 
-/// This is set by util/parse-options.{h, cc} (from argv[0]) and used (if set) in
-/// error reporting code to display the name of the program (this is because in
-/// our scripts, we often mix together the stderr of many programs).
-/// it is the base-name of the program (no directory), followed by ':'
-/// We don't use std::string, due to the static initialization order fiasco.
+/// This is set by util/parse-options.{h, cc} (from argv[0]) and used (if set)
+/// in error reporting code to display the name of the program (this is because
+/// in our scripts, we often mix together the stderr of many programs).  it is
+/// the base-name of the program (no directory), followed by ':' We don't use
+/// std::string, due to the static initialization order fiasco.
 extern const char *g_program_name;
 
 inline int32 GetVerboseLevel() { return g_kaldi_verbose_level; }

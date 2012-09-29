@@ -61,7 +61,7 @@
 
 #ifndef M_LN2
 #define M_LN2 0.693147180559945309417232121458
-#endif 
+#endif
 
 #ifdef _MSC_VER
 #  define KALDI_ISNAN _isnan
