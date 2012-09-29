@@ -84,7 +84,7 @@ irstlm/Makefile: irstlm/.patched
 
 
 irstlm/.patched: | irstlm
-		cd irstlm;\
+		-cd irstlm;\
 		patch -N -p0 < ../interpolatedwrite-5.60.02.patch
 		touch $@ 		
 
