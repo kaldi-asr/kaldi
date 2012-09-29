@@ -13,7 +13,9 @@ function rel2abs {
 }
 
 function read_dirname {
-  echo $1 | cut -d'=' -f 2
+  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
+  local retval=`rel2abs $dir_name`
+  echo $retval
 }
 
 function is_set {
@@ -44,7 +46,8 @@ unset MKLLIBDIR
 
 function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
-  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK] [--cudatk-dir=CUDATKDIR]';
+  [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] 
+  [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK] [--cudatk-dir=CUDATKDIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -88,13 +91,13 @@ done
 
 
 function failure {
-    echo "***configure failed: $* ***"
-    if [ -f kaldi.mk ]; then rm kaldi.mk; fi
-    exit 1;
+  echo "***configure failed: $* ***"
+  if [ -f kaldi.mk ]; then rm kaldi.mk; fi
+  exit 1;
 } 
 
 function check_exists {
-    if [ ! -f $1 ]; then failure "$1 not found."; fi
+  if [ ! -f $1 ]; then failure "$1 not found."; fi
 }
 
 
@@ -122,13 +125,13 @@ function linux_configure_mkl_libraries {
 
   if  ! $static && $threaded ; then
     for file in $threaded_libs; do
-      local libfile=/$mkllibdir/lib$file.so 
+      local libfile=$mkllibdir/lib$file.so 
       check_exists $libfile
     done 
     echo  "-L$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
   elif  ! $static && ! $threaded ; then
     for file in $sequential_libs; do
-      local libfile=/$mkllibdir/lib$file.so 
+      local libfile=$mkllibdir/lib$file.so 
       check_exists $libfile
     done  
     echo "-L$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
@@ -512,13 +515,13 @@ if [ "`uname`" == "Linux" ]; then
     fi
     
     if  is_set $MKLROOT -a ! is_set $MKLLIBDIR; then
-        echo -n "Configuring MKL library directory: "
-        MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
-        if [ $? -ne 0 ]; then
-            failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
-        else
-            echo "Found: $MKLLIBDIR"
-        fi
+      echo -n "Configuring MKL library directory: "
+      MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
+      if [ $? -ne 0 ]; then
+        failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
+      else
+        echo "Found: $MKLLIBDIR"
+      fi
     fi
 
     MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $threaded_math`
@@ -527,14 +530,18 @@ if [ "`uname`" == "Linux" ]; then
     echo "MKL include directory configured as: $MKL_COMPILE_LINE"
     MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
     
-    if is_set $OMPLIBDIR; then
-        OMP_LINK_LINE=$OMPLIBDIR
-    else 
-        OMP_LINK_LINE=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR"`
+    if ! is_set $OMPLIBDIR; then
+      OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR"`
     fi
-    test -f "$OMP_LINK_LINE/libiomp5.so" || failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
-    echo "OMP library directory configured as: $OMP_LINK_LINE"
-    OMP_LINK_LINE="-L${OMP_LINK_LINE}"
+    test -f "$OMPLIBDIR/libiomp5.so" || test -f "$OMPLIBDIR/libiomp5.a" \
+      | failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
+    echo "OMP library directory configured as: $OMPLIBDIR"
+    OMP_LINK_LINE=''
+    # TODO(arnab): in the following conditional, the $static_math test is needed since 
+    # the OpenMP library is assumed to be dynamic.
+    if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] || [ $static_math ] ; then
+      OMP_LINK_LINE="-L${OMPLIBDIR}"
+    fi
  
     echo "Using Intel MKL as the linear algebra library."
 

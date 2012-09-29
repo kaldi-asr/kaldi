@@ -46,7 +46,7 @@ MKL_DYN_SEQ = -L$(MKLLIB) -lmkl_solver_lp64_sequential -Wl,--start-group \
 MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 	-lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread
 
-MKLFLAGS = $(MKL_DYN_MUL)
+# MKLFLAGS = $(MKL_DYN_MUL)
 
 LDFLAGS = -rdynamic -L$(FSTROOT)/lib -Wl,-R$(FSTROOT)/lib
 LDLIBS =  $(EXTRA_LDLIBS) -lfst -ldl $(MKLFLAGS) -lm -lpthread
