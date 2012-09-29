@@ -90,13 +90,9 @@
 
   for iter in 1 2 3 4; do
     for test in eval92; do # dev93
-      #steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
-        #--transform-dir exp/tri4b/decode_${test}_tgpr data/lang_test_tgpr data/test_${test} exp/sgmm2_5b/decode_${test}_tgpr \
-        #exp/sgmm2_5b_mmi_b0.1/decode_${test}_tgpr_it$iter &
-
       steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
-        --transform-dir exp/tri4b/decode_${test}_bd_tgpr data/lang_test_bd_fg data/test_${test} exp/sgmm2_5b/decode_${test}_bd_tgpr \
-        exp/sgmm2_5b_mmi_b0.1/decode_${test}_bd_tgpr_it$iter &
+        --transform-dir exp/tri4b/decode_bd_tgpr_${test} data/lang_test_bd_fg data/test_${test} exp/sgmm2_5b/decode_bd_tgpr_${test} \
+        exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_${test}_it$iter &
      done
   done
 ) &

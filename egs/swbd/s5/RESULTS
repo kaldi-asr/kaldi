@@ -3,37 +3,31 @@
 # the LDA+MLLT to use 7, not 9 frames of context, and also increased
 # the learning rate for the "indirect" fMMI.
 
-for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
 
 exit 0
 
-exp/tri1/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 56.8   30.3   12.9    4.0  *47.2*   74.9 |
-exp/tri2/decode/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 57.3   30.1   12.6    4.0   46.7   74.9 |
-exp/tri3a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 59.9   28.1   12.0    4.0   44.1   74.3 |
-exp/tri4a/decode_eval2000/score_14/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 67.2   23.2    9.6    3.6   36.4   70.1 |
-exp/tri4a/decode_train_dev/wer_14:%WER 36.12 [ 17503 / 48460, 2057 ins, 4271 del, 11175 sub ]
 
-exp/tri5a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 71.6   20.9    7.5    3.9   32.2   68.2 |
+# Note: the 2nd to last number is the WER.
+exp/tri1/decode_eval2000/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 57.0   31.6   11.4    4.7   47.8   75.7 |
+exp/tri2/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 56.9   31.1   11.9    4.4   47.4   75.3 |
 
-  exp/tri5a_mmi_b0.1/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 73.5   18.8    7.7    3.1   29.7   65.8 |
+exp/tri3a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 60.3   28.2   11.4    3.9   43.5   74.3 |
 
-  exp/tri5a_fmmi_b0.1/decode_eval2000_it4/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 72.8   19.3    7.9    3.3   30.5   66.5 |
-  exp/tri5a_fmmi_b0.1/decode_eval2000_it5/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 73.8   18.7    7.5    3.4   29.6   65.8 |
-  exp/tri5a_fmmi_b0.1/decode_eval2000_it6/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.5   18.7    6.8    3.7   29.2   65.7 |
-  exp/tri5a_fmmi_b0.1/decode_eval2000_it7/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.4   18.2    7.4    3.3   28.9   65.5 |
-  exp/tri5a_fmmi_b0.1/decode_eval2000_it8/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.5   18.1    7.4    3.4   *28.9*   65.5 |
+exp/tri4a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 67.2   23.7    9.1    3.9   36.7   70.3 |
+exp/tri4a/decode_train_dev/wer_13:%WER 35.60 [ 17252 / 48460, 1946 ins, 4232 del, 11074 sub ]
+exp/tri4a/decode_eval2000.si/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 59.3   29.8   11.0    4.4   45.2   75.2 |
+exp/tri4a/decode_train_dev.si/wer_13:%WER 45.38 [ 21989 / 48460, 2154 ins, 5464 del, 14371 sub ]
 
-   exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it4/score_12/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 73.3   18.9    7.8    3.1    29.8   65.8 |
-  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it5/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 73.7   18.9    7.4    3.3    29.6   65.8 |
-  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it6/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.1   18.6    7.3    3.3    29.2   65.6 |
-  exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it7/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.4   18.3    7.3    3.3    28.9   65.4 |
-   exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it8/score_11/eval2000.ctm.filt.sys:    | Sum/Avg    | 4459  42989  | 74.4   18.2    7.4    3.3    *28.9*   65.4 |
-
-
-exp/sgmm5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.2   18.6    7.2    3.3   *29.0*   65.8 |
-exp/sgmm5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 75.5   17.8    6.7    3.2   27.7   64.4 |
-exp/sgmm5a_mmi_b0.1/decode_eval2000_it2/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.3   17.2    6.5    3.2   26.9   63.6 |
-exp/sgmm5a_mmi_b0.1/decode_eval2000_it3/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.6   17.0    6.4    3.3   26.7   63.6 |
-exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.9   16.9    6.2    3.4   *26.5*   63.5 |
+exp/sgmm2_5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.9   17.7    7.5    3.1   28.3   64.6 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.2   16.9    7.0    3.1   27.0   63.7 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it2/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.7   16.6    6.6    3.2   26.4   63.2 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it3/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.1   16.4    6.5    3.2   26.1   63.0 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it4/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.4   16.3    6.3    3.4   26.0   62.8 |
+exp/sgmm5a/decode_eval2000/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.1   18.5    7.4    3.5   29.4   66.3 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 75.1   17.6    7.3    3.2   28.0   64.9 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it2/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.3   17.3    6.5    3.4   27.1   64.1 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it3/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.9   17.0    6.1    3.5   26.6   63.7 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.2   16.9    5.9    3.6   26.4   63.4 |
 

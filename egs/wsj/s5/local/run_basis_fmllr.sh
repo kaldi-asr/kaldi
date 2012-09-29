@@ -9,8 +9,8 @@ mfccdir=mfcc
 # short utterances, particularly for basis fMLLR
 for x in test_eval92 test_eval93 test_dev93 ; do
   y=${x}_utt
+  rm -r data/$y
   cp -r data/$x data/$y
-  rm -r data/$y/split* 2>/dev/null
   cat data/$x/utt2spk | awk '{print $1, $1;}' > data/$y/utt2spk;
   cp data/$y/utt2spk data/$y/spk2utt;
   steps/compute_cmvn_stats.sh data/$y exp/make_mfcc/$y $mfccdir || exit 1; 
