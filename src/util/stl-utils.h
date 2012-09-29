@@ -37,14 +37,11 @@ using std::tr1::unordered_set;
 
 namespace kaldi {
 
-template<typename T>
-inline void Uniq(std::vector<T> *vec);
-
 /// Sorts and uniq's (removes duplicates) from a vector.
 template<typename T>
 inline void SortAndUniq(std::vector<T> *vec) {
   std::sort(vec->begin(), vec->end());
-  Uniq(vec);
+  vec->erase(std::unique(vec->begin(), vec->end()), vec->end());
 }
 
 
