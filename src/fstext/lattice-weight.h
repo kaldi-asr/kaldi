@@ -620,7 +620,7 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Times(
 template<class WeightType, class IntType>
 inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeWeightTpl<WeightType, IntType> &w1,
                                                           const CompactLatticeWeightTpl<WeightType, IntType> &w2,
-                                                          DivideType div) {
+                                                          DivideType div = DIVIDE_ANY) {
   if (w1.Weight() == WeightType::Zero()) {
     if (w2.Weight() != WeightType::Zero()) {
       return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
