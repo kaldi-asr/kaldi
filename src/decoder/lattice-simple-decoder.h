@@ -134,8 +134,8 @@ class LatticeSimpleDecoder {
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
     BaseFloat extra_cost; // >= 0.  After calling PruneForwardLinks, this equals
-    // the minimum difference between the cost of the best path, and the cost of
-    // this is on, and the cost of the absolute best path, under the assumption
+    // the minimum difference between the cost of the best path this is on,
+    // and the cost of the absolute best path, under the assumption
     // that any of the currently active states at the decoding front may
     // eventually succeed (e.g. if you were to take the currently active states
     // one by one and compute this difference, and then take the minimum).
