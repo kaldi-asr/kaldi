@@ -49,21 +49,6 @@ done
 
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
 
-printf "Preparing train/test data ... "
-
-for L in $LANGUAGES; do
-# (0) Create a directory to contain files needed in training:
-  for x in train dev eval; do 
-    mkdir -p data/$L/$x
-    cp data/$L/local/data/${x}_${L}_wav.scp data/$L/$x/wav.scp
-    cp data/$L/local/data/${x}_${L}.txt data/$L/$x/text
-    cp data/$L/local/data/${x}_${L}.spk2utt data/$L/$x/spk2utt
-    cp data/$L/local/data/${x}_${L}.utt2spk data/$L/$x/utt2spk
-  done
-done
-
-echo "Done"
-
 for L in $LANGUAGES; do
   lm=$LMDIR/${L}.3gram.lm.gz
   [ -f $lm ] || { echo "LM '$lm' not found"; exit 1; }

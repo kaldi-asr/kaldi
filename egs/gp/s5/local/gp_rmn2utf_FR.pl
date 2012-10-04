@@ -56,7 +56,6 @@ while (<STDIN>) {
   s/E\+/\x{00C9}/g; # E WITH ACUTE
   s/C\~/\x{00C7}/g; # C WITH CEDILLA
 
-
   # SMALL LETTERS
   s/a\`/\x{00E0}/g; # LETTERS WITH GRAVE
   s/e\`/\x{00E8}/g; 
@@ -76,5 +75,5 @@ while (<STDIN>) {
   s/e\+/\x{00E9}/g; # E WITH ACUTE
   s/c\~/\x{00E7}/g; # C WITH CEDILLA
 
-  return NFC($in_str);  # recompose & reorder canonically
+  print NFC($_);  # recompose & reorder canonically
 }

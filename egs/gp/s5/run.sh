@@ -25,39 +25,39 @@ that you run the commands one by one by copying and pasting into the shell."
 [ -f cmd.sh ] && source ./cmd.sh \
   || echo "cmd.sh not found. Jobs may not execute properly."
 
-# INSTALLING REQUIRED TOOLS:
-#  This recipe requires shorten and sox (we use shorten 3.6.1 and sox 14.3.2).
-#  If you don't have them, use the install.sh script to install them.
-( which shorten >&/dev/null && which sox >&/dev/null && \
-  echo "shorten and sox found: you may want to edit the path.sh file." ) || \
-  { echo "shorten and/or sox not found on PATH. Installing..."; install.sh; }
+# CHECKING FOR AND INSTALLING REQUIRED TOOLS:
+#  This recipe requires shorten (3.6.1) and sox (14.3.2).
+#  If they are not found, the local/gp_install.sh script will install them.
+local/gp_check_tools.sh $PWD path.sh
 
 . path.sh || { echo "Cannot source path.sh"; exit 1; }
 
 # Set the locations of the GlobalPhone corpus and language models
 GP_CORPUS=/mnt/matylda2/data/GLOBALPHONE
-GP_LM=/mnt/matylda6/ijanda/GLOBALPHONE_LM
+# GP_LM=/mnt/matylda6/ijanda/GLOBALPHONE_LM
+GP_LM=$PWD/language_models
 
 # Set the languages that will actually be processed
 # export GP_LANGUAGES="CZ FR GE PL PO RU SP VN"
-export GP_LANGUAGES="CZ GE PL PO SP"
+export GP_LANGUAGES="CZ FR GE PL PO RU SP"
 
 # The following data preparation step actually converts the audio files from 
 # shorten to WAV to take out the empty files and those with compression errors. 
-# local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=$GP_CORPUS \
-#   --languages="$GP_LANGUAGES"
+local/gp_data_prep.sh --config-dir=$PWD/conf --corpus-dir=$GP_CORPUS \
+  --languages="$GP_LANGUAGES"
 
 for L in $GP_LANGUAGES; do
-  utils/prepare_lang.sh --position-dependent-phones false \
+  utils/prepare_lang.sh --position-dependent-phones true \
     data/$L/local/dict "<UNK>" data/$L/local/lang_tmp data/$L/lang \
     >& data/$L/prepare_lang.log || exit 1;
 done
 
 # Convert the different available language models to FSTs, and create separate 
 # decoding configurations for each.
-( local/gp_format_data.sh --filter-vocab-sri false $GP_LM $GP_LANGUAGES;
-  local/gp_format_data.sh --filter-vocab-sri true $GP_LM $GP_LANGUAGES;
-) >& data/format_data.log &
+( 
+#  local/gp_format_lm.sh --filter-vocab-sri false $GP_LM $GP_LANGUAGES;
+  local/gp_format_lm.sh --filter-vocab-sri true $GP_LM $GP_LANGUAGES;
+) >& data/format_lm.log &
 
 # Now make MFCC features.
 for L in $GP_LANGUAGES; do
@@ -73,92 +73,121 @@ wait;
 for L in $GP_LANGUAGES; do
   mkdir -p exp/$L/mono;
   steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
-    data/$L/train data/$L/lang exp/$L/mono >& exp/$L/mono/train.log
-
-  for lm_suffix in tgpr tgpr_sri; do
-    graph_dir=exp/$L/mono/graph_${lm_suffix}
-    mkdir -p $graph_dir
-    utils/mkgraph.sh --mono data/$L/lang_test_${lm_suffix} exp/$L/mono \
-      $graph_dir >& $graph_dir/mkgraph.log
-
-    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
-      exp/$L/mono/decode_dev_${lm_suffix} &
-  done
+    data/$L/train data/$L/lang exp/$L/mono >& exp/$L/mono/train.log &
 done
+wait;
+
+# for L in $GP_LANGUAGES; do
+#   for lm_suffix in tgpr_sri; do
+#     graph_dir=exp/$L/mono/graph_${lm_suffix}
+#     mkdir -p $graph_dir
+#     utils/mkgraph.sh --mono data/$L/lang_test_${lm_suffix} exp/$L/mono \
+#       $graph_dir >& $graph_dir/mkgraph.log
+
+#     steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+#       exp/$L/mono/decode_dev_${lm_suffix} &
+#   done
+# done
 
 
 for L in $GP_LANGUAGES; do
-  mkdir -p exp/$L/mono_ali
-  steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-    data/$L/train data/$L/lang exp/$L/mono exp/$L/mono_ali \
-    >& exp/$L/mono_ali/align.log
+  (
+    mkdir -p exp/$L/mono_ali
+    steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+      data/$L/train data/$L/lang exp/$L/mono exp/$L/mono_ali \
+      >& exp/$L/mono_ali/align.log 
 
-  num_states=$(grep "^$L" conf/tri.conf | cut -f2)
-  num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
-  mkdir -p exp/$L/tri1
-  steps/train_deltas.sh --cmd "$train_cmd" $num_states $num_gauss \
-    data/$L/train data/$L/lang exp/$L/mono_ali exp/$L/tri1 \
-    >& exp/$L/tri1/train.log
-
-  for lm_suffix in tgpr tgpr_sri; do
-    graph_dir=exp/$L/tri1/graph_${lm_suffix}
-    mkdir -p $graph_dir
-    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri1 $graph_dir \
-      >& $graph_dir/mkgraph.log
-
-    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
-      exp/$L/tri1/decode_dev_${lm_suffix} &
-  done
+    num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+    num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+    mkdir -p exp/$L/tri1
+    steps/train_deltas.sh --cmd "$train_cmd" --cluster-thresh 100 \
+      $num_states $num_gauss data/$L/train data/$L/lang exp/$L/mono_ali \
+      exp/$L/tri1 >& exp/$L/tri1/train.log
+    ) &
 done
+wait;
+
+
+# for L in $GP_LANGUAGES; do
+#   for lm_suffix in tgpr_sri; do
+#     graph_dir=exp/$L/tri1/graph_${lm_suffix}
+#     mkdir -p $graph_dir
+#     utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri1 $graph_dir \
+#       >& $graph_dir/mkgraph.log
+
+#     steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+#       exp/$L/tri1/decode_dev_${lm_suffix} &
+#   done
+# done
 
 for L in $GP_LANGUAGES; do
-  mkdir -p exp/$L/tri1_ali
-  steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-    data/$L/train data/$L/lang exp/$L/tri1 exp/$L/tri1_ali \
-    >& exp/$L/tri1_ali/align.log
+  (
+    mkdir -p exp/$L/tri1_ali
+    steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+      data/$L/train data/$L/lang exp/$L/tri1 exp/$L/tri1_ali \
+      >& exp/$L/tri1_ali/align.log
 
-  num_states=$(grep "^$L" conf/tri.conf | cut -f2)
-  num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
-  mkdir -p exp/$L/tri2a
-  steps/train_deltas.sh --cmd "$train_cmd" $num_states $num_gauss \
-    data/$L/train data/$L/lang exp/$L/tri1_ali exp/$L/tri2a \
-    >& exp/$L/tri2a/train.log
-
-  for lm_suffix in tgpr tgpr_sri; do
-    graph_dir=exp/$L/tri2a/graph_${lm_suffix}
-    mkdir -p $graph_dir
-    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
-      >& $graph_dir/mkgraph.log
-
-    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
-      exp/$L/tri2a/decode_dev_${lm_suffix} &
-  done
+    num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+    num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+    mkdir -p exp/$L/tri2a
+    steps/train_deltas.sh --cmd "$train_cmd" --cluster-thresh 100 \
+      $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
+      exp/$L/tri2a >& exp/$L/tri2a/train.log
+  ) &
 done
+wait;
+
+# for L in $GP_LANGUAGES; do
+#   for lm_suffix in tgpr_sri; do
+#     graph_dir=exp/$L/tri2a/graph_${lm_suffix}
+#     mkdir -p $graph_dir
+#     utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
+#       >& $graph_dir/mkgraph.log
+
+#     steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
+#       exp/$L/tri2a/decode_dev_${lm_suffix} &
+#   done
+# done
+
+# for L in $GP_LANGUAGES; do
+#   mode=4
+# # Doing this only for the LMs whose vocabs were limited using SRILM, since the
+# # other approach didn't yield LMs for all languages.  
+#   steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
+#     data/$L/lang_test_tgpr_sri data/$L/lang_test_tg_sri data/$L/dev \
+#     exp/$L/tri2a/decode_dev_tgpr_sri exp/$L/tri2a/decode_dev_tg_sri$mode
+# done
 
 for L in $GP_LANGUAGES; do
-  mode=4
-# Doing this only for the LMs whose vocabs were limited using SRILM, since the
-# other approach didn't yield LMs for all languages.  
-  steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
-    data/$L/lang_test_tgpr_sri data/$L/lang_test_tg_sri data/$L/dev \
-    exp/$L/tri2a/decode_dev_tgpr_sri exp/$L/tri2a/decode_dev_tg_sri$mode
+  (
+    steps/train_ubm.sh --cmd "$train_cmd" \
+      400 data/$L/train data/$L/lang exp/$L/tri1_ali exp/$L/ubm2b || exit 1;
+
+    num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+    num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+    mkdir -p exp/$L/sgmm2b
+    steps/train_sgmm.sh --cmd "$train_cmd" --cluster-thresh 100 \
+      $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali \
+      exp/$L/ubm2b/final.ubm exp/$L/sgmm2b >& exp/$L/sgmm2b/train.log
+  ) &
 done
+wait
 
 for L in $GP_LANGUAGES; do
-  num_states=$(grep "^$L" conf/tri.conf | cut -f2)
-  num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
-  mkdir -p exp/$L/tri2b
-  steps/train_lda_mllt.sh --cmd "$train_cmd" $num_states $num_gauss \
-    data/$L/train data/$L/lang exp/$L/tri1_ali exp/$L/tri2b \
-    >& exp/$L/tri2b/train.log
+  (
+    steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
+      data/$L/train data/$L/lang exp/$L/tri1 exp/$L/tri1_ali_fmllr || exit 1;
 
-  for lm_suffix in tgpr tgpr_sri; do
-    graph_dir=exp/$L/tri2a/graph_${lm_suffix}
-    mkdir -p $graph_dir
-    utils/mkgraph.sh data/$L/lang_test_${lm_suffix} exp/$L/tri2a $graph_dir \
-      >& $graph_dir/mkgraph.log
+    steps/train_ubm.sh --cmd "$train_cmd" \
+      400 data/$L/train data/$L/lang exp/$L/tri1_ali_fmllr exp/$L/ubm2c \
+      || exit 1;
 
-    steps/decode.sh --nj 5 --cmd "$decode_cmd" $graph_dir data/$L/dev \
-      exp/$L/tri2a/decode_dev_${lm_suffix} &
-  done
+    num_states=$(grep "^$L" conf/tri.conf | cut -f2)
+    num_gauss=$(grep "^$L" conf/tri.conf | cut -f3)
+    mkdir -p exp/$L/sgmm2c
+    steps/train_sgmm.sh --cmd "$train_cmd" --cluster-thresh 100 \
+      $num_states $num_gauss data/$L/train data/$L/lang exp/$L/tri1_ali_fmllr \
+      exp/$L/ubm2c/final.ubm exp/$L/sgmm2c >& exp/$L/sgmm2c/train.log
+  ) &
 done
+wait

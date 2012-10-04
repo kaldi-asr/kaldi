@@ -118,9 +118,12 @@ for x in dev eval train; do
     | grep -f $tmpdir/${x}_spk > $ODIR/${x}_${LCODE}.flist
   # The audio conversion is done here since some files cannot be converted,
   # and those need to be removed from the file lists.
+  # Unfortunately this needs to be done here, since sox doesn't play nice when
+  # called directly from compute-mfcc-feats as a piped command.
   gp_convert_audio.sh --input-list=$ODIR/${x}_${LCODE}.flist \
     --output-dir=$WDIR/$LCODE/wav \
     --output-list=$ODIR/${x}_${LCODE}_wav.flist
+
   # Get the utterance IDs for the audio files successfully converted to WAV
   sed -e "s?.*/??" -e 's?.wav$??' $ODIR/${x}_${LCODE}_wav.flist \
     > $tmpdir/${x}_basenames_wav

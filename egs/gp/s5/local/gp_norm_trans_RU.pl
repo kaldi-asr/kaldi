@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2012  Arnab Ghoshal
+# Copyright 2012  Milos Janda
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 # This script normalizes the GlobalPhone Russian transcripts that have been 
 # extracted in a format where each line contains an utterance ID followed by
 # the transcript, e.g:
-# The normalization is similar to that in 'gp_format_dict_GE.pl' script.
+# The normalization is similar to that in 'gp_norm_dict_RU.pl' script.
 
 my $usage = "Usage: gp_norm_trans_SP.pl -i transcript > formatted\
 Normalizes transcriptions for GlobalPhone Spanish. The input format is \

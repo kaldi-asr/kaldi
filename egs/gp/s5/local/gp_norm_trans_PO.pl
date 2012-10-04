@@ -20,7 +20,7 @@
 # extracted in a format where each line contains an utterance ID followed by
 # the transcript, e.g:
 # PO001_64 o grupo na~o mencionou ataques a bomba
-# The normalization is similar to that in 'gp_format_dict_PO.pl' script.
+# The normalization is similar to that in 'gp_norm_dict_PO.pl' script.
 
 my $usage = "Usage: gp_norm_trans_PO.pl -i transcript > formatted\
 Normalizes transcriptions for GlobalPhone Portuguese. The input format is \
@@ -40,7 +40,7 @@ binmode(STDOUT, ":encoding(utf8)") unless (defined($keep_rmn));
 
 open(T, "<$in_trans") or die "Cannot open transcription file '$in_trans': $!";
 while (<T>) {
-  s/\r//g;  # Since files could have CRLF line-breaks!
+  s/\r//g;  # Since files may have CRLF line-breaks!
   chomp;
   $_ =~ m:^(\S+)\s+(.+): or die "Bad line: $_";
   my $utt_id = $1;

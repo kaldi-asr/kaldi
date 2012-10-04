@@ -23,7 +23,7 @@
 # the words to UTF8 and lowercases everything, either of which can be diabled 
 # with command line switches.
 
-my $usage = "Usage: gp_format_dict_GE.pl [-a|-l|-r|-u] -i dictionary > formatted \
+my $usage = "Usage: gp_norm_dict_GE.pl [-a|-l|-r|-u] -i dictionary > formatted \
 Normalizes pronunciation dictionary for GlobalPhone German.\
 There will probably be duplicates; so pipe the output through sort -u \
 Options:\
@@ -48,7 +48,7 @@ binmode(STDOUT, ":encoding(utf8)") unless (defined($keep_rmn));
 
 open(L, "<$in_dict") or die "Cannot open dictionary file '$in_dict': $!";
 while (<L>) {
-  s/\r//g;  # Since files could have CRLF line-breaks!
+  s/\r//g;  # Since files may have CRLF line-breaks!
   next if($_=~/\+|\=|^\{\'|^\{\-|\<_T\>/);  # Usually incomplete or empty prons
   $_ =~ m:^\{?(\S*?)\}?\s+\{?(.+?)\}?$: or die "Bad line: $_";
   my $word = $1;

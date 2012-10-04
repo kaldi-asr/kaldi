@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2012  Arnab Ghoshal
+# Copyright 2012  Arnab Ghoshal;  Milos Janda
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 # line switches.
 # *No special treatment for acronyms since some words are already capitalized.
 
-my $usage = "Usage: gp_format_dict_PL.pl [-l|-u] -i dictionary > formatted\
+my $usage = "Usage: gp_norm_dict_PL.pl [-l|-u] -i dictionary > formatted\
 Normalizes pronunciation dictionary for GlobalPhone Polish.\
 There will probably be duplicates; so pipe the output through sort -u \
 Options:\
@@ -33,20 +33,19 @@ use strict;
 use Getopt::Long;
 use Unicode::Normalize;
 use open ':encoding(utf8)';
+binmode(STDOUT, ":encoding(utf8)");
 
 die "$usage" unless(@ARGV >= 1);
 my ($in_dict, $lang_tag, $keep_rmn, $uppercase);
 GetOptions ("l" => \$lang_tag,    # tag phones with language ID.
-	     "r" => \$keep_rmn,    # keep words in GlobalPhone-style ASCII (rmn)
- 	     "u" => \$uppercase,   # convert words to uppercase
+	    "r" => \$keep_rmn,    # keep words in GlobalPhone-style ASCII (rmn)
+	    "u" => \$uppercase,   # convert words to uppercase
             "i=s" => \$in_dict);  # Input lexicon
-
-binmode(STDOUT, ":encoding(utf8)");
 
 open(L, "<$in_dict") or die "Cannot open dictionary file '$in_dict': $!";
 while (<L>) {
   #$_ = NFD($_);  # NO UTF8 decompose
-  s/\r//g;  # Since files could have CRLF line-breaks!
+  s/\r//g;  # Since files may have CRLF line-breaks!
   chomp;
   $_ =~ m:^\{?(\S*?)\}?\s+\{?(.+?)\}?$: or die "Bad line: $_";
   my $word = $1;
@@ -59,7 +58,7 @@ while (<L>) {
   $pron =~ s/ WB\}//g;    
   $pron =~ s/\s+/ /g;  # Normalize spaces
   $pron =~ s/M_//g;    # Get rid of the M_ marker before the phones
-  $pron =~ s/(\S+)/$1_PL/g if(defined($lang_tag));
+  $pron =~ s/(\S+)/$1_PL/g if (defined($lang_tag));
 
   # Next, normalize the word:
   $word =~ s/\(.*\)//g;  # Pron variants should have same orthography
@@ -119,5 +118,3 @@ sub rmn2utf8_PL {
 
   return NFC($in_str);  # recompose & reorder canonically
 }
-
-

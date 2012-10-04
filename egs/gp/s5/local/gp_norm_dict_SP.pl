@@ -23,7 +23,7 @@
 # diabled with command line switches.
 # *No special treatment for acronyms since some words are already capitalized.
 
-my $usage = "Usage: gp_format_dict_SP.pl [-l|-r|-u] -i dictionary > formatted\
+my $usage = "Usage: gp_norm_dict_SP.pl [-l|-r|-u] -i dictionary > formatted\
 Normalizes pronunciation dictionary for GlobalPhone Spanish.\
 There will probably be duplicates; so pipe the output through sort -u \
 Options:\
@@ -46,7 +46,7 @@ binmode(STDOUT, ":encoding(utf8)") unless (defined($keep_rmn));
 
 open(L, "<$in_dict") or die "Cannot open dictionary file '$in_dict': $!";
 while (<L>) {
-  s/\r//g;  # Since files could be in DOS format!
+  s/\r//g;  # Since files may have CRLF line breaks!
   chomp;
   next if($_=~/\#/);  # Usually incomplete or empty prons
   $_ =~ m:^\{?(\S*?)\}?\s+\{?(.+?)\}?$: or die "Bad line: $_";

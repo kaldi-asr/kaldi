@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2012  Arnab Ghoshal
+# Copyright 2012  Milos Janda
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 # diabled with command line switches.
 # *No special treatment for acronyms since some words are already capitalized.
 
-my $usage = "Usage: gp_format_dict_RU.pl [-l|-r|-u] -i dictionary > formatted\
+my $usage = "Usage: gp_norm_dict_RU.pl [-l|-r|-u] -i dictionary > formatted\
 Normalizes pronunciation dictionary for GlobalPhone Spanish.\
 There will probably be duplicates; so pipe the output through sort -u \
 Options:\
@@ -48,6 +48,7 @@ open(L, "<$in_dict") or die "Cannot open dictionary file '$in_dict': $!";
 while (<L>) {
   s/\r//g;  # Since files could be in DOS format!
   chomp;
+  next if /^$/;  # Skip empty lines
   next if($_=~/\#/);  # Usually incomplete or empty prons
   $_ =~ m:^\{?(\S*?)\}?\s+\{?(.+?)\}?$: or die "Bad line: $_";
   my $word = $1;

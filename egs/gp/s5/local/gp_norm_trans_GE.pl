@@ -20,7 +20,7 @@
 # GlobalPhone style ASCII (rmn) that have been extracted in a format where each 
 # line contains an utterance ID followed by the transcript, e.g:
 # GE008_10 man mag es drehen und wenden wie man will
-# The normalization is similar to that in 'gp_format_dict_GE.pl' script.
+# The normalization is similar to that in 'gp_norm_dict_GE.pl' script.
 
 my $usage = "Usage: gp_format_trans_GE.pl [-a|-r|-u] -i transcript > formatted\
 Normalizes transcriptions for GlobalPhone German. The input format is assumed\
@@ -45,7 +45,7 @@ binmode(STDOUT, ":encoding(utf8)") unless (defined($keep_rmn));
 
 open(T, "<$in_trans") or die "Cannot open transcription file '$in_trans': $!";
 while (<T>) {
-  s/\r//g;  # Since files could have CRLF line-breaks!
+  s/\r//g;  # Since files may have CRLF line-breaks!
   s/\$//g;  # Some letters & acronyms written with $, e.g $A
   chomp;
   $_ =~ m:^(\S+)\s+(.+): || die "Bad line: $_";

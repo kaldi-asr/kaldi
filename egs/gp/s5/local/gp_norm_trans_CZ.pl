@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2012  Arnab Ghoshal
+# Copyright 2012  Milos Janda
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,17 +20,19 @@
 # extracted in a format where each line contains an utterance ID followed by
 # the transcript, e.g:
 # CZ001_2 je tento reklamní slogan pravdivý?
-# The normalization is similar to that in 'gp_format_dict_GE.pl' script.
+# The normalization is similar to that in 'gp_norm_dict_CZ.pl' script.
 
-my $usage = "Usage: gp_norm_trans_CZ.pl -i transcript > formatted\
+my $usage = "Usage: gp_norm_trans_CZ.pl [-u] -i transcript > formatted\
 Normalizes transcriptions for GlobalPhone Czech. The input format is \
-assumed to be utterance ID followed by transcript on the same line.\n";
+assumed to be utterance ID followed by transcript on the same line. \
+Input is assumed to be ISO-8859-2 encoded, and output is in UTF-8. \
+Transcript is lowercased by default, but can be uppercased with the -u option.
+\n";
 
 use strict;
 use Getopt::Long;
 use Unicode::Normalize;
 use open ':encoding(iso-8859-2)';
-
 binmode(STDOUT, ":encoding(utf8)");
 
 die "$usage" unless(@ARGV >= 1);
@@ -40,7 +42,7 @@ GetOptions ("u" => \$uppercase,    # convert words to uppercase
 
 open(T, "<$in_trans") or die "Cannot open transcription file '$in_trans': $!";
 while (<T>) {
-  s/\r//g;  # Since files could have CRLF line-breaks!
+  s/\r//g;  # Since files may have CRLF line-breaks!
   chomp;
   $_ =~ m:^(\S+)\s+(.+): or die "Bad line: $_";
   my $utt_id = $1;

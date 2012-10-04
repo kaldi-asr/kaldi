@@ -70,7 +70,7 @@ popd > /dev/null
 printf "Preparing file lists ... "
 for L in $LANGUAGES; do
   mkdir -p data/$L/local/{data,dict}
-  gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
+  local/gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
     --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
     --work-dir=data $L >& data/$L/prep_flists.log & 
   # Running these in parallel since this does audio conversion (to figure out
@@ -88,7 +88,8 @@ for L in $LANGUAGES; do
     pron_lex=$GPDIR/Dictionaries/${L}/${full_name}GP.dict  # Polish & Bulgarian
     [ -f "$pron_lex" ] || { echo "Error: no dictionary found for $L"; exit 1; }
   fi
-  gp_norm_dict_${L}.pl -i $pron_lex | sort -u > data/$L/local/dict/lexicon_nosil.txt
+  local/gp_norm_dict_${L}.pl -i $pron_lex | sort -u \
+    > data/$L/local/dict/lexicon_nosil.txt
   (printf '!SIL\tsil\n<UNK>\tspn\n';) \
     | cat - data/$L/local/dict/lexicon_nosil.txt \
     > data/$L/local/dict/lexicon.txt;
@@ -109,11 +110,25 @@ for L in $LANGUAGES; do
 
   printf "Language - ${L}: normalizing transcripts ... "
   for x in train dev eval; do
-    gp_norm_trans_${L}.pl -i data/$L/local/data/${x}_${L}.trans1 \
+    local/gp_norm_trans_${L}.pl -i data/$L/local/data/${x}_${L}.trans1 \
       > data/$L/local/data/${x}_${L}.txt;
   done
   echo "Done"
 
 done
+
+# (4) Create a directories to contain files needed in training and testing:
+for L in $LANGUAGES; do
+  printf "Language - ${L}: formatting train/test data ... "
+  for x in train dev eval; do
+    mkdir -p data/$L/$x
+    cp data/$L/local/data/${x}_${L}_wav.scp data/$L/$x/wav.scp
+    cp data/$L/local/data/${x}_${L}.txt data/$L/$x/text
+    cp data/$L/local/data/${x}_${L}.spk2utt data/$L/$x/spk2utt
+    cp data/$L/local/data/${x}_${L}.utt2spk data/$L/$x/utt2spk
+  done
+  echo "Done"
+done
+
 
 echo "Finished data preparation."

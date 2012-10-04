@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2012  Arnab Ghoshal
+# Copyright 2012  Milos Janda;  Arnab Ghoshal
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 # extracted in a format where each line contains an utterance ID followed by
 # the transcript, e.g:
 # PO007_8 Aktualny sekretarz generalny PS Franc2ois Hollande pozyskal1 jednak wie~kszos1c1
-# The normalization is similar to that in 'gp_format_dict_PO.pl' script.
+# The normalization is similar to that in 'gp_norm_dict_PL.pl' script.
 
 my $usage = "Usage: gp_norm_trans_PL.pl -i transcript > formatted\
 Normalizes transcriptions for GlobalPhone Polish. The input format is \
@@ -41,7 +41,6 @@ GetOptions ("r" => \$keep_rmn,     # keep words in GlobalPhone-style ASCII (rmn)
 
 open(T, "<$in_trans") or die "Cannot open transcription file '$in_trans': $!";
 while (<T>) {
-  #$_ = NFD($_);  # NO UTF8 decompose !!!
   s/\r//g;  # Since files could have CRLF line-breaks!
   chomp;
   $_ =~ m:^(\S+)\s+(.+): or die "Bad line: $_";
@@ -51,8 +50,8 @@ while (<T>) {
   $trans =~ s/\"/ /g;  # Remove quotation marks.
   $trans =~ s/[\,\.\?\!\:\;\)\(\`]/ /g;
   $trans =~ s/(\- | \-)/ /g;
-  $trans =~ s/\x{FEFF}/ /g;  # zero-width space character!
-  $trans =~ s/\x{00AB}\x{00BB}//g; # POINTING DOUBLE ANGLE QUOTATION MARKS
+  $trans =~ s/\x{FEFF}/ /g;         # zero-width space character!
+  $trans =~ s/\x{00AB}\x{00BB}//g;  # DOUBLE ANGLE QUOTATION MARKS
   # Normalize spaces
   $trans =~ s/^\s*//; $trans =~ s/\s*$//; $trans =~ s/\s+/ /g;
 

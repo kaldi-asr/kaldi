@@ -1,6 +1,8 @@
 # This contains the locations of the tools and data required for running
 # the GlobalPhone experiments.
 
+export LC_ALL=C  # For expected sorting and joining behaviour
+
 KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
 KALDISRC=$KALDI_ROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
@@ -19,14 +21,12 @@ export kaldi_utils=$PWD/utils
 export kaldi_steps=$PWD/steps
 SCRIPTS=$kaldi_local:$kaldi_utils:$kaldi_steps
 
-# # If you already have shorten and sox on your path, comment the following out.
-# # Else use install.sh to install them first in the specified locations.
-# SHORTEN=$PWD/tools/shorten-3.6.1/bin
-# SOX=$PWD/tools/sox-14.3.2/bin
-# [ -x $SHORTEN/shorten ] || { echo "Cannot find shorten executable"; }
-# [ -x $SOX/sox ] || { echo "Cannot find sox executable"; }
-# TOOLS=$SHORTEN:$SOX
-
 export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS
-#export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS:$TOOLS
-export LC_COLLATE=C  # For expected sorting behaviour
+
+# If the correct version of shorten and sox are not on the path, 
+# the following will be set by local/gp_check_tools.sh
+SHORTEN_BIN=
+# e.g. $PWD/tools/shorten-3.6.1/bin
+SOX_BIN=
+# e.g. $PWD/tools/sox-14.3.2/bin
+
