@@ -70,7 +70,7 @@ class AmDiagGmm {
 
   BaseFloat LogLikelihood(const int32 pdf_index,
                           const VectorBase<BaseFloat> &data) const;
-
+  
   void Read(std::istream &in_stream, bool binary);
   void Write(std::ostream &out_stream, bool binary) const;
 

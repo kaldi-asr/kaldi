@@ -501,8 +501,8 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
   return true;
 }
 
-// returns true if this vector of transition-ids could be a valid
-// word (note: doesn't do exhaustive checks, just sanity checks).
+// Returns true if this vector of transition-ids could be a valid
+// word.  Note: the checks are not 100% exhaustive.
 static bool IsPlausibleWord(const WordBoundaryInfo &info,
                             const TransitionModel &tmodel,
                             const std::vector<int32> &transition_ids) {
@@ -517,8 +517,9 @@ static bool IsPlausibleWord(const WordBoundaryInfo &info,
     if (! info.reorder) {
       return (tmodel.IsFinal(transition_ids.back()));
     } else {
-      return (tmodel.IsFinal(transition_ids.back())
-              || tmodel.IsSelfLoop(transition_ids.back()));
+      int32 i = transition_ids.size() - 1;
+      while (i > 0 && tmodel.IsSelfLoop(transition_ids[i])) i--;
+      return tmodel.IsFinal(transition_ids[i]);
     }
   } else return false;
 }
@@ -574,6 +575,16 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
         // So we make it fatal.
         KALDI_ERR << "Broken silence arc at end of utterance (the phone "
             "changed); code error";
+      }
+      if (!*error) { // Check that it ends at the end state of silence; error otherwise.
+        int32 i = transition_ids_.size() - 1;
+        if (info.reorder)
+          while(tmodel.IsSelfLoop(transition_ids_[i]) && i > 0) i--;
+        if (!tmodel.IsFinal(transition_ids_[i])) {
+          *error = true;
+          KALDI_WARN << "Broken silence arc at end of utterance (does not "
+              "reach end of silence)";
+        }
       }
       CompactLatticeWeight cw(weight_, transition_ids_);
       *arc_out = CompactLatticeArc(info.silence_label, info.silence_label,
@@ -679,10 +690,8 @@ class WordAlignedLatticeTester {
   WordAlignedLatticeTester(const CompactLattice &lat,
                            const TransitionModel &tmodel,
                            const WordBoundaryInfo &info,
-                           const CompactLattice &aligned_lat,
-                           bool was_ok):
-      lat_(lat), tmodel_(tmodel), info_(info), aligned_lat_(aligned_lat),
-      was_ok_(was_ok) {}
+                           const CompactLattice &aligned_lat):
+      lat_(lat), tmodel_(tmodel), info_(info), aligned_lat_(aligned_lat) { }
   
   void Test() {
     // First test that each aligned arc is valid.
@@ -697,13 +706,12 @@ class WordAlignedLatticeTester {
         TestFinal(aligned_lat_.Final(s));
       }
     }
-    if (was_ok_)
-      TestEquivalent();
+    TestEquivalent();
   }
  private:
   void TestArc(const CompactLatticeArc &arc) {
-    if (! (TestArcSilence(arc, was_ok_) || TestArcNormalWord(arc) || TestArcOnePhoneWord(arc)
-           || TestArcEmpty(arc) || (!was_ok_ && TestArcPartialWord(arc))))
+    if (! (TestArcSilence(arc) || TestArcNormalWord(arc) || TestArcOnePhoneWord(arc)
+           || TestArcEmpty(arc)))
       KALDI_ERR << "Invalid arc in aligned CompactLattice: "
                 << arc.ilabel << " " << arc.olabel << " " << arc.nextstate
                 << " " << arc.weight;
@@ -713,7 +721,7 @@ class WordAlignedLatticeTester {
     const std::vector<int32> &tids = arc.weight.String();
     return tids.empty();
   }
-  bool TestArcSilence(const CompactLatticeArc &arc, bool was_ok) {
+  bool TestArcSilence(const CompactLatticeArc &arc) {
     // This only applies when silence doesn't have word labels.
     if (arc.ilabel !=  info_.silence_label) return false; // Check the label is
     // the silence label. Note, ilabel==olabel.
@@ -739,11 +747,7 @@ class WordAlignedLatticeTester {
           return true;
         }
       }
-      if (!was_ok_)
-        return false; // fell off loop.  No final-state present.
-      else
-        return true; // OK for no final-state to be present if
-      // this is a partial lattice.
+      return false; // fell off loop.  No final-state present.
     }
   }
 
@@ -823,7 +827,7 @@ class WordAlignedLatticeTester {
         }
       }
     }
-    return false; // Found no final phone.
+    return false; // Found no final state.
   }
 
   bool TestArcPartialWord(const CompactLatticeArc &arc) {
@@ -857,18 +861,19 @@ class WordAlignedLatticeTester {
   const TransitionModel &tmodel_;
   const WordBoundaryInfo &info_;
   const CompactLattice &aligned_lat_;
-  bool was_ok_;
 };
   
   
 
 
+/// You should only test a lattice if WordAlignLattice returned true (i.e. it
+/// succeeded and it wasn't a forced-out lattice); otherwise the test will most
+/// likely fail.
 void TestWordAlignedLattice(const CompactLattice &lat,
                             const TransitionModel &tmodel,
                             const WordBoundaryInfo &info,
-                            const CompactLattice &aligned_lat,
-                            bool was_ok) {
-  WordAlignedLatticeTester t(lat, tmodel, info, aligned_lat, was_ok);
+                            const CompactLattice &aligned_lat) {
+  WordAlignedLatticeTester t(lat, tmodel, info, aligned_lat);
   t.Test();
 }
 

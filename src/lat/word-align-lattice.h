@@ -191,8 +191,7 @@ bool WordAlignLattice(const CompactLattice &lat,
 void TestWordAlignedLattice(const CompactLattice &lat,
                             const TransitionModel &tmodel,
                             const WordBoundaryInfo &info,
-                            const CompactLattice &aligned_lat,
-                            bool was_ok);
+                            const CompactLattice &aligned_lat);
 
 } // end namespace kaldi
 #endif

@@ -77,8 +77,8 @@ int main(int argc, char *argv[]) {
       CompactLattice aligned_clat;
       bool ok = WordAlignLattice(clat, tmodel, info, &aligned_clat);
       
-      if (do_test)
-        TestWordAlignedLattice(clat, tmodel, info, aligned_clat, ok);
+      if (do_test && ok)
+        TestWordAlignedLattice(clat, tmodel, info, aligned_clat);
 
       if (!ok) {
         num_err++;

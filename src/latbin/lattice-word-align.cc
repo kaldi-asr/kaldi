@@ -83,7 +83,8 @@ int main(int argc, char *argv[]) {
       CompactLattice aligned_lat;
       bool ans = WordAlignLattice(lat, tmodel, info, &aligned_lat);
 
-      if (test) TestWordAlignedLattice(lat, tmodel, info, aligned_lat, ans);
+      if (test && ans)
+        TestWordAlignedLattice(lat, tmodel, info, aligned_lat);
 
       if (!ans) {
         if (!output_error_lats) {
