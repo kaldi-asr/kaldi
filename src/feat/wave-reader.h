@@ -74,6 +74,9 @@ class WaveData {
 
   BaseFloat SampFreq() const { return samp_freq_; }
 
+  // Returns the duration in seconds
+  BaseFloat Duration() const { return data_.NumCols()/samp_freq_; }
+
   void CopyFrom(const WaveData &other) {
     samp_freq_ = other.samp_freq_;
     data_.CopyFromMat(other.data_);

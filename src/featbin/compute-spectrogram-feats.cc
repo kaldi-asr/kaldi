@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
     SpectrogramOptions spec_opts;
     bool subtract_mean = false;
     int32 channel = -1;
+    BaseFloat min_duration = 0.0;
     // Define defaults for gobal options
     std::string output_format = "kaldi";
 
@@ -42,6 +43,7 @@ int main(int argc, char *argv[]) {
     po.Register("output-format", &output_format, "Format of the output files [kaldi, htk]");
     po.Register("subtract-mean", &subtract_mean, "Subtract mean of each feature file [CMS]; not recommended to do it this way. ");
     po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
+    po.Register("min-duration", &min_duration, "Minimum duration of segments to process (in seconds).");
 
     // OPTION PARSING ..........................................................
     //
@@ -81,6 +83,11 @@ int main(int argc, char *argv[]) {
       num_utts++;
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
+      if (wave_data.Duration() < min_duration) {
+        KALDI_WARN << "File: " << utt << " is too short ("
+                   << wave_data.Duration() << " sec): producing no output.";
+        continue;
+      }
       int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
       {  // This block works out the channel (0=left, 1=right...)
         KALDI_ASSERT(num_chan > 0);  // should have been caught in

@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
     std::string vtln_map_rspecifier;
     std::string utt2spk_rspecifier;
     int32 channel = -1;
+    BaseFloat min_duration = 0.0;
     // Define defaults for gobal options
     std::string output_format = "kaldi";
 
@@ -46,6 +47,8 @@ int main(int argc, char *argv[]) {
     po.Register("vtln-map", &vtln_map_rspecifier, "Map from utterance or speaker-id to vtln warp factor (rspecifier)");
     po.Register("utt2spk", &utt2spk_rspecifier, "Utterance to speaker-id map (if doing VTLN and you have warps per speaker)");
     po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
+    po.Register("min-duration", &min_duration, "Minimum duration of segments to process (in seconds).");
+
     // Register the option struct
     plp_opts.Register(&po);
 
@@ -100,6 +103,11 @@ int main(int argc, char *argv[]) {
       num_utts++;
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
+      if (wave_data.Duration() < min_duration) {
+        KALDI_WARN << "File: " << utt << " is too short ("
+                   << wave_data.Duration() << " sec): producing no output.";
+        continue;
+      }
       int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
       {  // This block works out the channel (0=left, 1=right...)
         KALDI_ASSERT(num_chan > 0);  // should have been caught in
