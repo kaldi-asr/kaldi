@@ -57,6 +57,33 @@ namespace kaldi {
  *     by the Mathworks and NIST; see  http://math.nist.gov/javanumerics/jama).
  */
 
+// a version of srot and drot that is called inside the templated jama code.
+inline void cblas_Xrot(const int N, float *X, const int incX, float *Y,
+                       const int incY, const float c, const float s) {
+  cblas_srot(N, X, incX, Y, incY, c, s);
+}
+inline void cblas_Xrot(const int N, double *X, const int incX, double *Y,
+                       const int incY, const double c, const double s) {
+  cblas_drot(N, X, incX, Y, incY, c, s);
+}
+inline float cblas_Xdot(const int N, float *X, const int incX, float *Y,
+                        const int incY) {
+  return cblas_sdot(N, X, incX, Y, incY);
+}
+inline double cblas_Xdot(const int N, double *X, const int incX, double *Y,
+                        const int incY) {
+  return cblas_ddot(N, X, incX, Y, incY);
+}
+
+inline void cblas_Xaxpy(const int N, const float alpha, const float *X,
+                        const int incX, float *Y, const int incY) {
+  cblas_saxpy(N, alpha, X, incX, Y, incY);
+}
+inline void cblas_Xaxpy(const int N, const double alpha, const double *X,
+                        const int incX, double *Y, const int incY) {
+  cblas_daxpy(N, alpha, X, incX, Y, incY);
+}
+
 template<class Real>
 bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
                                MatrixBase<Real> *U_in,
@@ -116,14 +143,17 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
 
         // Apply the transformation.
 
-        Real t(0.0);
-        for (i = k; i < m; i++) {
+        Real t = cblas_Xdot(m - k, adata + astride*k + k, astride,
+                            adata + astride*k + j, astride);
+        /*for (i = k; i < m; i++) {
           t += adata[i*astride + k]*adata[i*astride + j];  //   A(i, k)*A(i, j); // 3
-        }
+          }*/
         t = -t/A(k, k);
-        for (i = k; i < m; i++) {
+        cblas_Xaxpy(m - k, t, adata + k*astride + k, astride,
+                    adata + k*astride + j, astride);
+        /*for (i = k; i < m; i++) {
           adata[i*astride + j] += t*adata[i*astride + k];  // A(i, j) += t*A(i, k); // 5
-        }
+          }*/
       }
 
       // Place the k-th row of A into e for the
@@ -173,9 +203,12 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
         }
         for (j = k+1; j < n; j++) {
           Real t(-e(j)/e(k+1));
+          cblas_Xaxpy(m - (k+1), t, workdata + (k+1), 1,
+                      adata + (k+1)*astride + j, astride);
+          /*
           for (i = k+1; i < m; i++) {
             adata[i*astride + j] += t*workdata[i];  // A(i, j) += t*work(i); // 5
-          }
+            }*/
         }
       }
       if (wantv) {
@@ -216,14 +249,16 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
     for (k = nct-1; k >= 0; k--) {
       if (s(k) != 0.0) {
         for (j = k+1; j < nu; j++) {
-          Real t(0.0);
-          for (i = k; i < m; i++) {
-            t += udata[i*ustride + k]*udata[i*ustride + j];  // t += U(i, k)*U(i, j); // 8
-          }
+          Real t = cblas_Xdot(m - k, udata + k*ustride + k, ustride, udata + k*ustride + j, ustride);
+          //for (i = k; i < m; i++) {
+          //  t += udata[i*ustride + k]*udata[i*ustride + j];  // t += U(i, k)*U(i, j); // 8
+          // }
           t = -t/U(k, k);
-          for (i = k; i < m; i++) {
+          cblas_Xaxpy(m - k, t, udata + ustride*k + k, ustride,
+                      udata + k*ustride + j, ustride);
+          /*for (i = k; i < m; i++) {
             udata[i*ustride + j] += t*udata[i*ustride + k];  // U(i, j) += t*U(i, k); // 4
-          }
+            }*/
         }
         for (i = k; i < m; i++ ) {
           U(i, k) = -U(i, k);
@@ -247,14 +282,18 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
     for (k = n-1; k >= 0; k--) {
       if ((k < nrt) & (e(k) != 0.0)) {
         for (j = k+1; j < nu; j++) {
-          Real t(0.0);
+          Real t = cblas_Xdot(n - (k+1), vdata + (k+1)*vstride + k, vstride,
+                              vdata + (k+1)*vstride + j, vstride); 
+          /*Real t (0.0);
           for (i = k+1; i < n; i++) {
             t += vdata[i*vstride + k]*vdata[i*vstride + j];  // t += V(i, k)*V(i, j); // 7
-          }
+            }*/
           t = -t/V(k+1, k);
-          for (i = k+1; i < n; i++) {
+          cblas_Xaxpy(n - (k+1), t, vdata + (k+1)*vstride + k, vstride,
+                      vdata + (k+1)*vstride + j, vstride);
+          /*for (i = k+1; i < n; i++) {
             vdata[i*vstride + j] += t*vdata[i*vstride + k];  // V(i, j) += t*V(i, k); // 7
-          }
+            }*/
         }
       }
       for (i = 0; i < n; i++) {
@@ -434,11 +473,12 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
           g = sn*s(j+1);
           s(j+1) = cs*s(j+1);
           if (wantv) {
-            for (i = 0; i < n; i++) {
+            cblas_Xrot(n, vdata + j, vstride, vdata + j+1, vstride, cs, sn);
+            /*for (i = 0; i < n; i++) {
               t = cs*vdata[i*vstride + j] + sn*vdata[i*vstride + j+1];  // t = cs*V(i, j) + sn*V(i, j+1);         // 13
               vdata[i*vstride + j+1] = -sn*vdata[i*vstride + j] + cs*vdata[i*vstride + j+1];  // V(i, j+1) = -sn*V(i, j) + cs*V(i, j+1); // 5
               vdata[i*vstride + j] = t;  // V(i, j) = t; // 4
-            }
+              }*/
           }
           t = hypot(f, g);
           cs = f/t;
@@ -449,11 +489,12 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
           g = sn*e(j+1);
           e(j+1) = cs*e(j+1);
           if (wantu && (j < m-1)) {
-            for (i = 0; i < m; i++) {
+            cblas_Xrot(m, udata + j, ustride, udata + j+1, ustride, cs, sn);
+            /*for (i = 0; i < m; i++) {
               t = cs*udata[i*ustride + j] + sn*udata[i*ustride + j+1];  // t = cs*U(i, j) + sn*U(i, j+1); // 7
               udata[i*ustride + j+1] = -sn*udata[i*ustride + j] +cs*udata[i*ustride + j+1];  // U(i, j+1) = -sn*U(i, j) + cs*U(i, j+1); // 8
               udata[i*ustride + j] = t;  // U(i, j) = t; // 1
-            }
+              }*/
           }
         }
         e(p-2) = f;

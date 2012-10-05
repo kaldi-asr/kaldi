@@ -183,6 +183,7 @@ class SpMatrix : public PackedMatrix<Real> {
   void Eig(VectorBase<Real> *s, MatrixBase<Real> *P,
            Real tolerance = 2.0e-05) const { EigInternal(s, P, tolerance, 0); }
 
+  
   /// Takes log of the matrix (does eigenvalue decomposition then takes
   /// log of eigenvalues and reconstructs).  Will throw of not +ve definite.
   void Log();

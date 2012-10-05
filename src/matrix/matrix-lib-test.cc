@@ -19,6 +19,7 @@
 // limitations under the License.
 
 #include "matrix/matrix-lib.h"
+#include <numeric>
 
 namespace kaldi {
 
@@ -1401,6 +1402,30 @@ static void UnitTestTp2() {
   }
 }
 
+
+template<class Real>
+static void UnitTestOrthogonalizeRows() {
+  for (int iter = 0; iter < 100; iter++) {
+    int32 dimM = 4 + rand() % 5, dimN = dimM + (rand() % 2);
+    Matrix<Real> M(dimM, dimN);
+    for (int32 i = 0; i < dimM; i++) {
+      if (rand() % 5 != 0) M.Row(i).SetRandn();
+    }
+    if (rand() % 2 != 0) { // Multiply by a random square matrix;
+      // keeps it low rank but will be correlated.  Harder
+      // test case.
+      Matrix<Real> N(dimM, dimM);
+      N.SetRandn();
+      Matrix<Real> tmp(dimM, dimN);
+      tmp.AddMatMat(1.0, N, kNoTrans, M, kNoTrans, 0.0);
+      M.CopyFromMat(tmp);
+    }
+    M.OrthogonalizeRows();
+    Matrix<Real> I(dimM, dimM);
+    I.AddMatMat(1.0, M, kNoTrans, M, kTrans, 0.0);
+    KALDI_ASSERT(I.IsUnit(1.0e-05));
+  }  
+}
 
 template<class Real>
 static void UnitTestTransposeScatter() {
@@ -3021,6 +3046,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestAddVecCross();
   UnitTestTp2Sp<Real>();
   UnitTestTp2<Real>();
+  UnitTestOrthogonalizeRows<Real>();
   //  SlowMatMul<Real>();  
 }
 

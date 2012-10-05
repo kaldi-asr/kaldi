@@ -862,28 +862,7 @@ void ComputePca(const MatrixBase<Real> &X,
     // Now orthogonalize.  This is mainly useful in
     // case there were zero eigenvalues, but we do it
     // for all of them.
-    for (MatrixIndexT g = 0; g < G; g++) {
-      while (1) {
-        for (MatrixIndexT h = 0; h < g; h++) {
-          Real prod = VecVec(U->Row(g), U->Row(h));
-          U->Row(g).AddVec(-prod, U->Row(h));
-        }
-        Real prod = VecVec(U->Row(g), U->Row(g));
-        if (prod > 0.001) {  // we were not close to singular... all is OK.
-          U->Row(g).Scale(1.0 / sqrt(prod));
-          break;
-        } else {
-          // We almost got to the zero vector, so we'll lose precision
-          // if we scale by 1.0 / sqrt(prod).
-          // We set U->Row(g) to random vector, and
-          // try again.  This vector will have unit variance
-          // in any arbitrary direction, so shouldn't lead
-          // to "prod <= 0.001" very often.
-          for (MatrixIndexT i = 0; i < D; i++)
-            (*U)(g, i) = RandGauss();
-        }
-      }
-    }
+    U->OrthogonalizeRows();
     if (print_eigs)
       KALDI_LOG << "(inner-product) PCA eigenvalues are " << l;
   }

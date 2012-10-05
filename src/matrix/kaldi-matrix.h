@@ -447,6 +447,12 @@ class MatrixBase {
                const SpMatrix<Real>& A, const SpMatrix<Real>& B,
                const Real beta);
 
+  /// This function orthogonalizes the rows of a matrix using the Gram-Schmidt
+  /// process.  It is only applicable if NumRows() <= NumCols().  It will use
+  /// random number generation to fill in rows with something nonzero, in cases
+  /// where the original matrix was of deficient row rank.
+  void OrthogonalizeRows();
+
   /// stream read.
   /// Use instead of stream<<*this, if you want to add to existing contents.
   // Will throw exception on failure.
@@ -493,7 +499,6 @@ class MatrixBase {
   inline Real*  Data_workaround() const {
     return data_;
   }
-
 
   /// data memory area
   Real*   data_;

@@ -668,18 +668,20 @@ template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> & M,
                                    MatrixTransposeType Trans) {
-  // CopyFromMat called from ourself.  Nothing to do.
   if (sizeof(Real) == sizeof(OtherReal) && (void*)(&M) == (void*)this)
-    return;
+    return; // CopyFromMat called from ourself.  Nothing to do.
   if (Trans == kNoTrans) {
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == M.NumCols());
     for (MatrixIndexT i = 0; i < num_rows_; i++)
       (*this).Row(i).CopyFromVec(M.Row(i));
   } else {
     KALDI_ASSERT(num_cols_ == M.NumRows() && num_rows_ == M.NumCols());
+    int32 this_stride = stride_, other_stride = M.Stride();
+    Real *this_data = data_;
+    const OtherReal *other_data = M.Data();
     for (MatrixIndexT i = 0; i < num_rows_; i++)
       for (MatrixIndexT j = 0; j < num_cols_; j++)
-        (*this)(i, j) = M(j, i);
+        this_data[i * this_stride + j] += other_data[j * other_stride + i];
   }
 }
 
@@ -1544,6 +1546,39 @@ Real MatrixBase<Real>::LargestAbsElem() const{
   return largest;
 }
 
+
+template<class Real>
+void MatrixBase<Real>::OrthogonalizeRows() {
+  KALDI_ASSERT(NumRows() <= NumCols());
+  int32 num_rows = num_rows_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    int32 counter = 0;
+    while (1) {
+      Real start_prod = VecVec(this->Row(i), this->Row(i));
+      for (MatrixIndexT j = 0; j < i; j++) {
+        Real prod = VecVec(this->Row(i), this->Row(j));
+        this->Row(i).AddVec(-prod, this->Row(j));
+      }
+      Real end_prod = VecVec(this->Row(i), this->Row(i));
+      if (end_prod <= 0.01 * start_prod) { // We removed
+        // almost all of the vector during orthogonalization,
+        // so we have reason to doubt (for roundoff reasons)
+        // that it's still orthogonal to the other vectors.
+        // We need to orthogonalize again.
+        if (end_prod == 0.0) { // Row is exactly zero:
+          // generate random direction.
+          this->Row(i).SetRandn();
+        }
+        counter++;
+        if (counter > 100)
+          KALDI_ERR << "Loop detected while orthogalizing matrix.";
+      } else {
+        this->Row(i).Scale(1.0 / sqrt(end_prod));
+        break;
+      } 
+    }
+  }
+}
 
 
 // Uses Svd to compute the eigenvalue decomposition of a symmetric positive semidefinite
