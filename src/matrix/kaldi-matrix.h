@@ -726,9 +726,14 @@ float TraceMatMat(const MatrixBase<float> &A, const MatrixBase<float> &B,
 /// @{
 
 
-/// Function to ensure that SVD is sorted.
+/// Function to ensure that SVD is sorted.  This function is made as generic as
+/// possible, to be applicable to other types of problems.  s->Dim() should be
+/// the same as U->NumCols(), and we sort s from greatest to least absolute
+/// value, moving the columns of U (and the rows of Vt, if it exists) around in
+/// the same way.  Note: the "absolute value" part won't matter if this is an
+/// actual SVD, since singular values are non-negative.
 template<class Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-                                     MatrixBase<Real>* Vt = NULL);
+                                  MatrixBase<Real>* Vt = NULL);
 
 /// Creates the eigenvalue matrix D that is part of the decomposition used Matrix::Eig.
 /// D will be block-diagonal with blocks of size 1 (for real eigenvalues) or 2x2

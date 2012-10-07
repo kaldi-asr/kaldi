@@ -995,6 +995,8 @@ template<class Real> static void UnitTestSvdNodestroy() {
       }
 
       SortSvd(&v, &U, &Vt);  // and re-check...
+      for (int32 i = 0; i + 1 < v.Dim(); i++) // check SortSvd is working.
+        KALDI_ASSERT(std::abs(v(i+1)) <= std::abs(v(i)));
     }
   }
 }
@@ -2952,6 +2954,52 @@ template<class Real> static void UnitTestCompressedMatrix() {
 }
   
 
+template<class Real>
+static void UnitTestTopEigs() {
+  for (int32 i = 0; i < 2; i++) {
+    // Previously tested with this but takes too long.
+    //int32 dim = 200, num_eigs = 20;
+    int32 dim = 100, num_eigs = 10;
+    SpMatrix<Real> mat(dim);
+    for (int32 i = 0; i < dim; i++)
+      for (int32 j = 0; j <= i; j++)
+        mat(i, j) = RandGauss();
+
+    Matrix<Real> P(dim, num_eigs);
+    Vector<Real> s(num_eigs);
+    mat.TopEigs(&s, &P);
+    { // P should have orthogonal columns.  Check this.
+      SpMatrix<Real> S(num_eigs);
+      S.AddMat2(1.0, P, kTrans, 0.0);
+      KALDI_ASSERT(S.IsUnit());
+    }
+    // Note: we call the matrix "mat" by the name "S" below.
+    Matrix<Real> SP(dim, num_eigs); // diag of P^T SP should be eigs.
+    SP.AddSpMat(1.0, mat, P, kNoTrans, 0.0);
+    Matrix<Real> PSP(num_eigs, num_eigs);
+    PSP.AddMatMat(1.0, P, kTrans, SP, kNoTrans, 0.0);
+    Vector<Real> s2(num_eigs);
+    s2.CopyDiagFromMat(PSP);
+    AssertEqual(s, s2);
+    // Now check that eigs are close to real top eigs.
+    {
+      Matrix<Real> fullP(dim, dim);
+      Vector<Real> fulls(dim);
+      mat.Eig(&fulls, &fullP);
+      KALDI_LOG << "Approximate eigs are " << s;
+      // find sum of largest-abs-value eigs.
+      fulls.Abs();
+      std::sort(fulls.Data(), fulls.Data() + dim);
+      SubVector<Real> tmp(fulls, dim - num_eigs, num_eigs);
+      KALDI_LOG << "abs(real eigs) are " << tmp;
+      BaseFloat real_sum = tmp.Sum();
+      s.Abs();
+      BaseFloat approx_sum = s.Sum();
+      KALDI_LOG << "real sum is " << real_sum << ", approx_sum = " << approx_sum;
+    }
+  }
+}
+
 
 template<class Real> static void MatrixUnitTest() {
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
@@ -3047,6 +3095,7 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestTp2Sp<Real>();
   UnitTestTp2<Real>();
   UnitTestOrthogonalizeRows<Real>();
+  UnitTestTopEigs<Real>();
   //  SlowMatMul<Real>();  
 }
 

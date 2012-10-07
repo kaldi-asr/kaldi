@@ -868,6 +868,7 @@ void ComputePca(const MatrixBase<Real> &X,
   }
 }
 
+
 template
 void ComputePca(const MatrixBase<float> &X,
                 MatrixBase<float> *U,

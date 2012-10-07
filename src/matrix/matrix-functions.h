@@ -192,7 +192,6 @@ void ComputePca(const MatrixBase<Real> &X,
 
 
 
-
 // This function does: *plus += max(0, a b^T),
 // *minus += max(0, -(a b^T)).
 template<class Real>

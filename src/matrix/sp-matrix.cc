@@ -490,11 +490,11 @@ void SpMatrix<Real>::EigInternal(VectorBase<Real> *eigs, MatrixBase<Real> *P,
                                  Real tolerance, int recurse) const {
   MatrixIndexT dim = this->NumRows();
   KALDI_ASSERT(eigs->Dim() == dim && P->NumRows() == dim && P->NumCols() == dim);
-
+  
   if (recurse > 5) {
     tolerance *= 2.0;
     KALDI_WARN << "Doing symmetric eigenvalue problem: recursed to level "
-               << recurse << ", decreasing tolerance to " << tolerance;
+               << recurse << ", increasing tolerance to " << tolerance;
   } else if (recurse > 20) {
     KALDI_ERR << "Doing symmetric eigenvalue problem: recursed 20 times and "
         "still no success. ";
@@ -526,7 +526,7 @@ void SpMatrix<Real>::EigInternal(VectorBase<Real> *eigs, MatrixBase<Real> *P,
     // gap in eigenvalues or something, but right now we just add 10^{-5}
     // times the maximum eigenvalue.  It will fail extremely rarely, and
     // in those cases we'll just recurse again.
-    Real to_add = max_abs_eig * 1.0e-3;
+    Real to_add = (recurse < 2 ? max_abs_eig * 1.0e-3 : max_abs_eig*1.1);
     SpMatrix<Real> perturbed(*this);
     for (MatrixIndexT d = 0; d < dim; d++)
       perturbed(d, d) += to_add;
@@ -1256,6 +1256,96 @@ void SpMatrix<Real>::AddTp2(const Real alpha, const TpMatrix<Real> &T,
                             MatrixTransposeType transM, const Real beta) {
   Matrix<Real> Tmat(T);
   AddMat2(alpha, Tmat, transM, beta);
+}
+
+template<class Real>
+void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
+                             MatrixIndexT lanczos_dim) const {
+  const SpMatrix<Real> &S(*this); // call this "S" for easy notation.
+  MatrixIndexT eig_dim = s->Dim(); // Space of dim we want to retain.
+  if (lanczos_dim <= 0)
+    lanczos_dim = std::max(eig_dim + 50, eig_dim + eig_dim/2);
+  MatrixIndexT dim = this->NumRows();
+  if (lanczos_dim > dim) {
+    KALDI_WARN << "Limiting lanczos dim from " << lanczos_dim << " to "
+               << dim << " (you will get no speed advantage from TopEigs())";
+    lanczos_dim = dim;
+  }
+  KALDI_ASSERT(eig_dim <= dim && eig_dim > 0);
+  KALDI_ASSERT(P->NumRows() == dim && P->NumCols() == eig_dim); // each column
+  // is one eigenvector.
+
+  Matrix<Real> Q(lanczos_dim, dim); // The rows of Q will be the
+  // orthogonal vectors of the Krylov subspace.
+
+  SpMatrix<Real> T(lanczos_dim); // This will be equal to Q S Q^T,
+  // i.e. *this projected into the Krylov subspace.  Note: only the
+  // diagonal and off-diagonal fo T are nonzero, i.e. it's tridiagonal,
+  // but we don't have access to the low-level algorithms that work
+  // on that type of matrix (since we want to use ATLAS).  So we just
+  // do normal SVD, on a full matrix; it won't typically dominate.
+
+  Q.Row(0).SetRandn();
+  Q.Row(0).Scale(1.0 / Q.Row(0).Norm(2));
+  for (MatrixIndexT d = 0; d < lanczos_dim; d++) {
+    Vector<Real> r(dim);
+    r.AddSpVec(1.0, S, Q.Row(d));
+    // r = S * q_d
+    int32 counter = 0;
+    BaseFloat end_prod;
+    while (1) { // Normally we'll do this loop only once:
+      // we repeat to handle cases where r gets very much smaller
+      // and we want to orthogonalize again.
+      BaseFloat start_prod = VecVec(r, r);
+      for (MatrixIndexT e = 0; e <= d; e++) {
+        SubVector<Real> q_e(Q, e);
+        Real prod = VecVec(r, q_e);
+        if (counter == 0) T(d, e) = prod;
+        r.AddVec(-prod, q_e); // Subtract component in q_e.
+      }
+      end_prod = VecVec(r, r);
+      if (end_prod <= 0.01 * start_prod) {
+        // also handles case where both are 0.
+        // We're not confident any more that it's completely
+        // orthogonal to the rest so we want to re-do.
+        if (end_prod == 0.0)
+          r.SetRandn(); // "Restarting".
+        counter++;
+        if (counter > 100)
+          KALDI_ERR << "Loop detected in Lanczos iteration.";
+      } else {
+        break;
+      }
+    }
+    // OK, at this point we're satisfied that r is orthogonal
+    // to all previous rows.
+    KALDI_ASSERT(end_prod != 0.0); // should have looped.
+    r.Scale(1.0 / sqrt(end_prod)); // make it unit.
+    if (d + 1 < lanczos_dim)
+      Q.Row(d+1).CopyFromVec(r);
+  }
+
+  Vector<Real> s_tmp(lanczos_dim);
+  Matrix<Real> R(lanczos_dim, lanczos_dim);
+  T.Eig(&s_tmp, &R);
+  // Now T = R * diag(s_tmp) * R^T.
+  // The next call sorts the elements of s from greatest to least absolute value,
+  // and moves around the columns of R in the corresponding way.  This picks out
+  // the largest (absolute) eigenvalues.
+  SortSvd(&s_tmp, &R);
+  // Keep only the initial columns of R, those corresponding to greatest (absolute)
+  // eigenvalues.
+  SubMatrix<Real> Rsub(R, 0, lanczos_dim, 0, eig_dim);
+  SubVector<Real> s_sub(s_tmp, 0, eig_dim);
+  s->CopyFromVec(s_sub);
+      
+  // For working out what to do now, just assume the other eigenvalues were
+  // zero.  This is just for purposes of knowing how to get the result, and
+  // not getting things transposed.
+  // We have T = Rsub * diag(s_sub) * Rsub^T.
+  // Now, T = Q S Q^T, with Q orthogonal,  so S = Q^T T Q = Q^T Rsub * diag(s) * Rsub^T * Q.
+  // The output is P and we want S = P * diag(s) * P^T, so we need P = Q^T Rsub.
+  P->AddMatMat(1.0, Q, kTrans, Rsub, kNoTrans, 0.0);
 }
 
 

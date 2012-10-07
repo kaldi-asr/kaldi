@@ -1986,39 +1986,44 @@ double TraceMatMatMatMat(const MatrixBase<double> &A, MatrixTransposeType transA
                          const MatrixBase<double> &C, MatrixTransposeType transC,
                          const MatrixBase<double> &D, MatrixTransposeType transD);
 
-template<class Real> void  SortSvd(VectorBase<Real> *rs, MatrixBase<Real> *rU,
-                                   MatrixBase<Real> *rVt) {
-  // Makes sure the Svd is sorted (from greatest to least element).
-  MatrixIndexT D = rs->Dim();
-  KALDI_ASSERT(rU->NumCols() == D && (!rVt || rVt->NumRows() == D) && rs->Min() >= 0);
-  std::vector<std::pair<Real, MatrixIndexT> > vec(D);
-  for (MatrixIndexT d = 0;d<D;d++) vec[d] = std::pair<Real, MatrixIndexT>(-(*rs)(d), d);  // negative because we want reverse order.
+template<class Real> void  SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
+                                   MatrixBase<Real> *Vt) {
+  /// Makes sure the Svd is sorted (from greatest to least absolute value).
+  MatrixIndexT num_singval = s->Dim();
+  KALDI_ASSERT(U->NumCols() == num_singval &&
+               (!Vt || Vt->NumRows() == num_singval));
+
+  std::vector<std::pair<Real, MatrixIndexT> > vec(num_singval);
+  // negative because we want revese order.
+  for (MatrixIndexT d = 0; d < num_singval; d++)
+    vec[d] = std::pair<Real, MatrixIndexT>(-std::abs((*s)(d)), d); 
   std::sort(vec.begin(), vec.end());
-  for (MatrixIndexT d = 0;d < D;d++) (*rs)(d) = -vec[d].first;
+  Vector<Real> s_copy(*s);
+  for (MatrixIndexT d = 0; d < num_singval; d++)
+    (*s)(d) = s_copy(vec[d].second);
   {
-    Matrix<Real> rUtmp(*rU);
-    MatrixIndexT R = rU->NumRows();
-    for (MatrixIndexT d = 0;d < D;d++) {
+    Matrix<Real> Utmp(*U);
+    int32 dim = Utmp.NumRows();
+    for (MatrixIndexT d = 0; d < num_singval; d++) {
       MatrixIndexT oldidx = vec[d].second;
-      for (MatrixIndexT r = 0;r < R;r++) (*rU)(r, d) = rUtmp(r, oldidx);
+      for (MatrixIndexT e = 0; e < dim; e++)
+        (*U)(e, d) = Utmp(e, oldidx);
     }
   }
-  if (rVt) {
-    Matrix<Real> rVttmp(*rVt);
-    for (MatrixIndexT d = 0;d < D;d++) {
-      MatrixIndexT oldidx = vec[d].second;
-      (*rVt).Row(d).CopyFromVec(rVttmp.Row(oldidx));
-    }
+  if (Vt) {
+    Matrix<Real> Vttmp(*Vt);
+    for (MatrixIndexT d = 0; d < num_singval; d++)
+      (*Vt).Row(d).CopyFromVec(Vttmp.Row(vec[d].second));
   }
 }
 
 template
-void SortSvd(VectorBase<float> *rs, MatrixBase<float> *rU,
-             MatrixBase<float> *rVt);
+void SortSvd(VectorBase<float> *s, MatrixBase<float> *U,
+             MatrixBase<float> *Vt);
 
 template
-void SortSvd(VectorBase<double> *rs, MatrixBase<double> *rU,
-             MatrixBase<double> *rVt);
+void SortSvd(VectorBase<double> *s, MatrixBase<double> *U,
+             MatrixBase<double> *Vt);
 
 template<class Real>
 void CreateEigenvalueMatrix(const VectorBase<Real> &re, const VectorBase<Real> &im,
