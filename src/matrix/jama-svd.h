@@ -29,6 +29,7 @@
 
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sp-matrix.h"
+#include "matrix/cblas-wrappers.h"
 
 namespace kaldi {
 
@@ -57,32 +58,6 @@ namespace kaldi {
  *     by the Mathworks and NIST; see  http://math.nist.gov/javanumerics/jama).
  */
 
-// a version of srot and drot that is called inside the templated jama code.
-inline void cblas_Xrot(const int N, float *X, const int incX, float *Y,
-                       const int incY, const float c, const float s) {
-  cblas_srot(N, X, incX, Y, incY, c, s);
-}
-inline void cblas_Xrot(const int N, double *X, const int incX, double *Y,
-                       const int incY, const double c, const double s) {
-  cblas_drot(N, X, incX, Y, incY, c, s);
-}
-inline float cblas_Xdot(const int N, float *X, const int incX, float *Y,
-                        const int incY) {
-  return cblas_sdot(N, X, incX, Y, incY);
-}
-inline double cblas_Xdot(const int N, double *X, const int incX, double *Y,
-                        const int incY) {
-  return cblas_ddot(N, X, incX, Y, incY);
-}
-
-inline void cblas_Xaxpy(const int N, const float alpha, const float *X,
-                        const int incX, float *Y, const int incY) {
-  cblas_saxpy(N, alpha, X, incX, Y, incY);
-}
-inline void cblas_Xaxpy(const int N, const double alpha, const double *X,
-                        const int incX, double *Y, const int incY) {
-  cblas_daxpy(N, alpha, X, incX, Y, incY);
-}
 
 template<class Real>
 bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,

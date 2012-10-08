@@ -20,6 +20,8 @@
 
 #include "matrix/matrix-lib.h"
 #include <numeric>
+#include <time.h> // This is only needed for UnitTestSvdSpeed, you can
+// comment it (and that function) out if it causes problems.
 
 namespace kaldi {
 
@@ -209,6 +211,28 @@ static void UnitTestSpAddVec() {
     AssertEqual(S, T);
   }
 }
+
+
+template<class Real>
+static void UnitTestSpAddVecVec() {
+  for (MatrixIndexT i = 0;i< 10;i++) {
+    BaseFloat alpha = (i<5 ? 1.0 : 0.5);
+    MatrixIndexT dimM = 10+rand()%10;
+    SpMatrix<Real> S(dimM);
+    InitRand(&S);
+    Matrix<Real> T(S);
+
+    Vector<Real> v(dimM), w(dimM);
+    InitRand(&v);
+    InitRand(&w);
+    S.AddVecVec(alpha, v, w);
+    T.AddVecVec(alpha, v, w);
+    T.AddVecVec(alpha, w, v);
+    Matrix<Real> U(S);
+    AssertEqual(U, T);
+  }
+}
+
 
 template<class Real> static void UnitTestCopyRowsAndCols() {
   // Test other mode of CopyRowsFromVec, and CopyColsFromVec,
@@ -1160,6 +1184,137 @@ template<class Real> static void UnitTestEigSp() {
     }
     KALDI_ASSERT(S.ApproxEqual(S2, 1.0e-03f));
   }    
+}
+
+// TEMP!
+template<class Real>
+static Real NonOrthogonality(const MatrixBase<Real> &M, MatrixTransposeType transM) {
+  SpMatrix<Real> S(transM == kTrans ? M.NumCols() : M.NumRows());
+  S.SetUnit();
+  S.AddMat2(-1.0, M, transM, 1.0);
+  Real max = 0.0;
+  for (int i = 0; i < S.NumRows(); i++)
+    for (int32 j = 0; j <= i; j++)
+      max = std::max(max, std::abs(S(i, j)));
+  return max;
+}
+
+template<class Real>
+static Real NonDiagonalness(const SpMatrix<Real> &S) {
+  Real max_diag = 0.0, max_offdiag = 0.0;
+  for (int i = 0; i < S.NumRows(); i++)
+    for (int32 j = 0; j <= i; j++) {
+      if (i == j) { max_diag = std::max(max_diag, std::abs(S(i, j))); }
+      else {  max_offdiag = std::max(max_offdiag, std::abs(S(i, j))); }
+    }
+  if (max_diag == 0.0) {
+    if (max_offdiag == 0.0) return 0.0; // perfectly diagonal.
+    else return 1.0; // perfectly non-diagonal.
+  } else {
+    return max_offdiag / max_diag;
+  }
+}
+
+
+template<class Real>
+static Real NonUnitness(const SpMatrix<Real> &S) {
+  SpMatrix<Real> tmp(S.NumRows());
+  tmp.SetUnit();
+  tmp.AddSp(-1.0, S);
+  Real max = 0.0;
+  for (int i = 0; i < tmp.NumRows(); i++)
+    for (int32 j = 0; j <= i; j++)
+      max = std::max(max, std::abs(tmp(i, j)));
+  return max;
+}
+
+template<class Real>
+static void UnitTestTridiagonalize() {
+
+  {
+    float tmp[5];
+    tmp[4] = 1.0;
+    cblas_sspmv(CblasRowMajor, CblasLower, 1, 0.0, tmp+2,
+                tmp+1, 1, 0.0, tmp+4, 1);
+    KALDI_ASSERT(tmp[4] == 0.0);
+  }
+  for (int32 i = 0; i < 4; i++) {
+    int32 dim = 40 + rand() % 4;
+    SpMatrix<Real> S(dim), S2(dim), R(dim), S3(dim);
+    Matrix<Real> Q(dim, dim);
+    InitRand(&S);
+    SpMatrix<Real> T(S);
+    T.Tridiagonalize(&Q);
+    KALDI_LOG << "S trace " << S.Trace() << ", T trace " << T.Trace();
+    //KALDI_LOG << S << "\n" << T;
+    AssertEqual(S.Trace(), T.Trace());
+    // Also test Trace().
+    Real ans = 0.0;
+    for (int32 j = 0; j < dim; j++) ans += T(j, j);
+    AssertEqual(ans, T.Trace());
+    AssertEqual(T.LogDet(), S.LogDet());
+    R.AddMat2(1.0, Q, kNoTrans);
+    KALDI_LOG << "Non-unit-ness of R is " << NonUnitness(R);
+    KALDI_ASSERT(R.IsUnit(0.01)); // Check Q is orthogonal.
+    S2.AddMat2Sp(1.0, Q, kTrans, T, 0.0);
+    S3.AddMat2Sp(1.0, Q, kNoTrans, S, 0.0);
+    //KALDI_LOG << "T is " << T;
+    //KALDI_LOG << "S is " << S;
+    //KALDI_LOG << "S2 (should be like S) is " << S2;
+    //KALDI_LOG << "S3 (should be like T) is " << S3;
+    AssertEqual(S, S2);
+    AssertEqual(T, S3);        
+  }
+}
+
+template<class Real>
+static void UnitTestTridiagonalizeAndQr() {
+
+  {
+    float tmp[5];
+    tmp[4] = 1.0;
+    cblas_sspmv(CblasRowMajor, CblasLower, 1, 0.0, tmp+2,
+                tmp+1, 1, 0.0, tmp+4, 1);
+    KALDI_ASSERT(tmp[4] == 0.0);
+  }
+  for (int32 i = 0; i < 4; i++) {
+    int32 dim = 50 + rand() % 4;
+    SpMatrix<Real> S(dim), S2(dim), R(dim), S3(dim), S4(dim);
+    Matrix<Real> Q(dim, dim);
+    InitRand(&S);
+    SpMatrix<Real> T(S);
+    T.Tridiagonalize(&Q);
+    KALDI_LOG << "S trace " << S.Trace() << ", T trace " << T.Trace();
+    // KALDI_LOG << S << "\n" << T;
+    AssertEqual(S.Trace(), T.Trace());
+    // Also test Trace().
+    Real ans = 0.0;
+    for (int32 j = 0; j < dim; j++) ans += T(j, j);
+    AssertEqual(ans, T.Trace());
+    AssertEqual(T.LogDet(), S.LogDet());
+    R.AddMat2(1.0, Q, kNoTrans, 0.0);
+    KALDI_LOG << "Non-unit-ness of R after tridiag is " << NonUnitness(R);
+    KALDI_ASSERT(R.IsUnit(0.001)); // Check Q is orthogonal.
+    S2.AddMat2Sp(1.0, Q, kTrans, T, 0.0);
+    S3.AddMat2Sp(1.0, Q, kNoTrans, S, 0.0);
+    //KALDI_LOG << "T is " << T;
+    //KALDI_LOG << "S is " << S;
+    //KALDI_LOG << "S2 (should be like S) is " << S2;
+    //KALDI_LOG << "S3 (should be like T) is " << S3;
+    AssertEqual(S, S2);
+    AssertEqual(T, S3);
+    SpMatrix<Real> T2(T);
+    T2.Qr(&Q);
+    R.AddMat2(1.0, Q, kNoTrans, 0.0);
+    KALDI_LOG << "Non-unit-ness of R after QR is " << NonUnitness(R);
+    KALDI_ASSERT(R.IsUnit(0.001)); // Check Q is orthogonal.
+    AssertEqual(T.Trace(), T2.Trace());
+    KALDI_ASSERT(T2.IsDiagonal());
+    AssertEqual(T.LogDet(), T2.LogDet());
+    S4.AddMat2Sp(1.0, Q, kTrans, T2, 0.0);
+    //KALDI_LOG << "S4 (should be like S) is " << S4;
+    AssertEqual(S, S4);
+  }
 }
 
 
@@ -2193,6 +2348,17 @@ template<class Real> static void UnitTestSolve() {
   }
 }
 
+template<class Real> static void UnitTestMaxAbsEig() {
+  for (int32 i = 0; i < 1; i++) {
+    SpMatrix<Real> M(10);
+    M.SetRandn();
+    Matrix<Real> P(10, 10);
+    Vector<Real> s(10);
+    M.Eig(&s, (i == 0 ? static_cast<Matrix<Real>*>(NULL) : &P));
+    Real max_eig = std::max(-s.Min(), s.Max());
+    AssertEqual(max_eig, M.MaxAbsEig());
+  }
+}
 template<class Real> static void UnitTestMaxMin() {
 
   MatrixIndexT M = 1 + rand() % 10, N = 1 + rand() % 10;
@@ -2806,30 +2972,38 @@ static void UnitTestMatrixExponentialBackprop() {
   }
 }
 template<class Real>
-static void UnitTestPca() {
+static void UnitTestPca(bool full_test) {
   // We'll test that we can exactly reconstruct the vectors, if
   // the PCA dim is <= the "real" dim that the vectors live in.
   for (int32 i = 0; i < 10; i++) {
-    int32 true_dim = 5 + rand() % 5,
-        feat_dim = true_dim + rand() % 5,
-        num_points = true_dim + rand() % 5,
+    bool exact = i % 2 == 0;
+    int32 true_dim = (full_test ? 200 : 50) + rand() % 5, //dim of subspace points live in
+        feat_dim = true_dim + rand() % 5,  // dim of feature space
+        num_points = true_dim + rand() % 5, // number of training points.
         G = std::min(feat_dim,
                      std::min(num_points,
                               static_cast<int32>(true_dim + rand() % 5)));
 
     Matrix<Real> Proj(feat_dim, true_dim);
-    InitRand(&Proj);
+    Proj.SetRandn();
     Matrix<Real> true_X(num_points, true_dim);
-    InitRand(&true_X);
+    true_X.SetRandn();
     Matrix<Real> X(num_points, feat_dim);
     X.AddMatMat(1.0, true_X, kNoTrans, Proj, kTrans, 0.0);
 
-    Matrix<Real> U(G, feat_dim);
-    Matrix<Real> A(num_points, G);
-    ComputePca(X, &U, &A, true);
+    Matrix<Real> U(G, feat_dim); // the basis
+    Matrix<Real> A(num_points, G); // projection of points into the basis..
+    ComputePca(X, &U, &A, true, exact);
+    {
+      SpMatrix<Real> I(G);
+      I.AddMat2(1.0, U, kNoTrans, 0.0);
+      KALDI_LOG << "Non-unit-ness of U is " << NonUnitness(I);
+      KALDI_ASSERT(I.IsUnit(0.001));
+    }
     Matrix<Real> X2(num_points, feat_dim);
     X2.AddMatMat(1.0, A, kNoTrans, U, kNoTrans, 0.0);
     // Check reproduction.
+    KALDI_LOG << "A.Sum() " << A.Sum() << ", U.Sum() " << U.Sum();
     AssertEqual(X, X2, 0.01);
     // Check basis is orthogonal.
     Matrix<Real> tmp(G, G);
@@ -2838,6 +3012,124 @@ static void UnitTestPca() {
   }
 }
 
+
+/* UnitTestPca2 test the same function, but it's more geared towards
+    the 'inexact' method and for when you want less than the full number
+    of PCA dimensions.
+ */
+
+template<class Real>
+static void UnitTestPca2(bool full_test) {
+  for (int32 i = 0; i < 5; i++) {
+    // int32 feat_dim = 600, num_points = 300;
+    int32 feat_dim = (full_test ? 600 : 100),
+        num_points = (i%2 == 0 ? feat_dim * 2 : feat_dim / 2); // test
+    // both branches of PCA code,  inner + outer.
+
+    Matrix<Real> X(num_points, feat_dim);
+    X.SetRandn();
+    
+    int32 pca_dim = 30;
+
+    Matrix<Real> U(pca_dim, feat_dim); // rows PCA directions.
+    bool print_eigs = true, exact = false;
+    ComputePca(X, &U, static_cast<Matrix<Real>*>(NULL), print_eigs, exact);
+
+    Real non_orth = NonOrthogonality(U, kNoTrans);
+    KALDI_ASSERT(non_orth < 0.001);
+    KALDI_LOG << "Non-orthogonality of U is " << non_orth;
+    Matrix<Real> U2(pca_dim, feat_dim);
+
+    {
+      SpMatrix<Real> Scatter(feat_dim);
+      Scatter.AddMat2(1.0, X, kTrans, 0.0);
+      Matrix<Real> V(feat_dim, feat_dim);
+      Vector<Real> l(feat_dim);
+      Scatter.Eig(&l, &V); // cols of V are eigenvectors.
+      SortSvd(&l, &V);  // Get top dims.
+      U2.CopyFromMat(SubMatrix<Real>(V, 0, feat_dim, 0, pca_dim), kTrans);
+      Real non_orth = NonOrthogonality(U2, kNoTrans);
+      KALDI_ASSERT(non_orth < 0.001);
+      KALDI_LOG << "Non-orthogonality of U2 is " << non_orth;
+
+      SpMatrix<Real> ScatterProjU(pca_dim), ScatterProjU2(pca_dim);
+      ScatterProjU.AddMat2Sp(1.0, U, kNoTrans, Scatter, 0.0);
+      ScatterProjU2.AddMat2Sp(1.0, U2, kNoTrans, Scatter, 0.0);
+      KALDI_LOG << "Non-diagonality of proj with U is "
+                << NonDiagonalness(ScatterProjU);
+      KALDI_LOG << "Non-diagonality of proj with U2 is "
+                << NonDiagonalness(ScatterProjU2);
+      KALDI_ASSERT(ScatterProjU.IsDiagonal(0.01)); // Algorithm is statistical,
+      // so it ends up being less accurate.
+      KALDI_ASSERT(ScatterProjU2.IsDiagonal());
+      KALDI_LOG << "Trace proj with U is " << ScatterProjU.Trace()
+                << " with U2 is " << ScatterProjU2.Trace();
+      AssertEqual(ScatterProjU.Trace(), ScatterProjU2.Trace(), 0.1);// Algorithm is
+      // statistical so give it some leeway.
+    }
+  }
+}
+
+template<class Real>
+static void UnitTestSvdSpeed() {
+  std::vector<int32> sizes;
+  sizes.push_back(100);
+  sizes.push_back(150);
+  sizes.push_back(200);
+  sizes.push_back(300);
+  sizes.push_back(500);
+  sizes.push_back(750);
+  sizes.push_back(1000);
+  sizes.push_back(2000);
+  time_t start, end;
+  for (size_t i = 0; i < sizes.size(); i++) {
+    int32 size = sizes[i];
+    {
+      start = time(NULL);
+      SpMatrix<Real> S(size);
+      Vector<Real> l(size);
+      S.Eig(&l);
+      end = time(NULL);
+      double diff = difftime(end, start);
+      KALDI_LOG << "For size " << size << ", Eig without eigenvectors took " << diff
+                << " seconds.";
+    }
+    {
+      start = time(NULL);
+      SpMatrix<Real> S(size);
+      S.SetRandn();
+      Vector<Real> l(size);
+      Matrix<Real> P(size, size);
+      S.Eig(&l, &P);
+      end = time(NULL);
+      double diff = difftime(end, start);
+      KALDI_LOG << "For size " << size << ", Eig with eigenvectors took " << diff
+                << " seconds.";
+    }
+    {
+      start = time(NULL);
+      Matrix<Real> M(size, size);
+      M.SetRandn();
+      Vector<Real> l(size);
+      M.Svd(&l, NULL, NULL);
+      end = time(NULL);
+      double diff = difftime(end, start);
+      KALDI_LOG << "For size " << size << ", SVD without eigenvectors took " << diff
+                << " seconds.";
+    }
+    {
+      start = time(NULL);
+      Matrix<Real> M(size, size), U(size, size), V(size, size);
+      M.SetRandn();
+      Vector<Real> l(size);
+      M.Svd(&l, &U, &V);
+      end = time(NULL);
+      double diff = difftime(end, start);
+      KALDI_LOG << "For size " << size << ", SVD with eigenvectors took " << diff
+                << " seconds.";
+    }
+  }
+}
 
 template<class Real> static void UnitTestCompressedMatrix() {
   // This is the basic test.
@@ -2955,11 +3247,23 @@ template<class Real> static void UnitTestCompressedMatrix() {
   
 
 template<class Real>
+static void UnitTestTridiag() {
+  SpMatrix<Real> A(3);
+  A(1,1) = 1.0;
+  A(1, 2) = 1.0;
+  KALDI_ASSERT(A.IsTridiagonal());
+  A(0, 2) = 1.0;
+  KALDI_ASSERT(!A.IsTridiagonal());
+  A(0, 2) = 0.0;
+  A(0, 1) = 1.0;
+  KALDI_ASSERT(A.IsTridiagonal());
+}
+
+template<class Real>
 static void UnitTestTopEigs() {
   for (int32 i = 0; i < 2; i++) {
     // Previously tested with this but takes too long.
-    //int32 dim = 200, num_eigs = 20;
-    int32 dim = 100, num_eigs = 10;
+    int32 dim = 400, num_eigs = 100;
     SpMatrix<Real> mat(dim);
     for (int32 i = 0; i < dim; i++)
       for (int32 j = 0; j <= i; j++)
@@ -2971,7 +3275,8 @@ static void UnitTestTopEigs() {
     { // P should have orthogonal columns.  Check this.
       SpMatrix<Real> S(num_eigs);
       S.AddMat2(1.0, P, kTrans, 0.0);
-      KALDI_ASSERT(S.IsUnit());
+      KALDI_LOG << "Non-unit-ness of S is " << NonUnitness(S);
+      KALDI_ASSERT(S.IsUnit(1.0e-04));
     }
     // Note: we call the matrix "mat" by the name "S" below.
     Matrix<Real> SP(dim, num_eigs); // diag of P^T SP should be eigs.
@@ -3001,7 +3306,7 @@ static void UnitTestTopEigs() {
 }
 
 
-template<class Real> static void MatrixUnitTest() {
+template<class Real> static void MatrixUnitTest(bool full_test) {
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
   UnitTestResize<Real>();
@@ -3013,6 +3318,8 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestComplexPower<Real>();
   UnitTestEig<Real>();
   UnitTestEigSp<Real>();
+  UnitTestTridiagonalize<Real>();
+  UnitTestTridiagonalizeAndQr<Real>();  
   // commenting these out for now-- they test the speed, but take a while.
   // UnitTestSplitRadixRealFftSpeed<Real>();
   // UnitTestRealFftSpeed<Real>();   // won't exit!/
@@ -3030,7 +3337,8 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestSvdNodestroy<Real>();
   UnitTestSvdJustvec<Real>();
   UnitTestSpAddVec<Real, float>();
-  UnitTestSpAddVec<Real, double>();  
+  UnitTestSpAddVec<Real, double>();
+  UnitTestSpAddVecVec<Real>();
   UnitTestSpInvert<Real>();
   KALDI_LOG << " Point D";
   UnitTestTpInvert<Real>();
@@ -3056,7 +3364,6 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestDeterminantSign<Real>();
   UnitTestSger<Real>();
   UnitTestAddOuterProductPlusMinus<Real>();
-  UnitTestPca<Real>();
   UnitTestTraceProduct<Real>();
   UnitTestTransposeScatter<Real>(); 
   UnitTestRankNUpdate<Real>();
@@ -3096,7 +3403,14 @@ template<class Real> static void MatrixUnitTest() {
   UnitTestTp2<Real>();
   UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
-  //  SlowMatMul<Real>();  
+  UnitTestTridiag<Real>();
+  //  SlowMatMul<Real>();
+  UnitTestMaxAbsEig<Real>();
+  UnitTestPca<Real>(full_test);
+  UnitTestPca2<Real>(full_test);
+  if (full_test)
+    UnitTestSvdSpeed<Real>();
+
 }
 
 
@@ -3105,8 +3419,9 @@ template<class Real> static void MatrixUnitTest() {
 
 
 int main() {
-  kaldi::MatrixUnitTest<float>();
-  kaldi::MatrixUnitTest<double>();
+  bool full_test = true;
+  kaldi::MatrixUnitTest<float>(full_test);
+  kaldi::MatrixUnitTest<double>(full_test);
   std::cout << "Tests succeeded.\n";
 }
 

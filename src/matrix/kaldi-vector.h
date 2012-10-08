@@ -225,8 +225,15 @@ class VectorBase {
   /// Extracts the diagonal of the matrix M.
   void CopyDiagFromMat(const MatrixBase<Real>& M);
 
-  /// Extracts the diagonal of a packed matrix M.
+  /// Extracts the diagonal of a packed matrix M; works for Sp or Tp.
   void CopyDiagFromPacked(const PackedMatrix<Real>& M);
+
+
+  /// Extracts the diagonal of a symmetric matrix.
+  inline void CopyDiagFromSp(const SpMatrix<Real>& M) { CopyDiagFromPacked(M); }
+
+  /// Extracts the diagonal of a triangular matrix.
+  inline void CopyDiagFromTp(const TpMatrix<Real>& M) { CopyDiagFromPacked(M); }
 
   /// Returns the maximum value of any element.
   Real Max() const;

@@ -26,6 +26,15 @@
 
 namespace kaldi {
 
+template<class Real>
+void PackedMatrix<Real>::SetRandn() {
+  Real *data = data_;
+  MatrixIndexT dim = num_rows_, size = ((dim*(dim+1))/2);
+  for (MatrixIndexT i = 0; i < size; i++)
+    data[i] = RandGauss();  
+}
+
+
 template<>
 void PackedMatrix<float>::AddPacked(const float alpha,
                                     const PackedMatrix<float> &rMa) {

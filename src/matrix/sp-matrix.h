@@ -155,35 +155,20 @@ class SpMatrix : public PackedMatrix<Real> {
   /// (to within a tolerance)
   void ApplyPow(Real exponent);
 
-  /// This is the version of SVD that we implement for symmetric matrices.
-  /// It uses the singular value decomposition algorithm to compute the
-  /// eigenvalue decomposition (*this) = P * diag(s) * P^T with P orthogonal.
-  /// Will throw exception if input is not positive semidefinite to within a
-  /// tolerance. This is the same as SVD, for the +ve semidefinite case.
-  /// (The reason we don't have generic symmetric eigenvalue decomposition,
-  /// syev in Lapack, is that it's not in the "minimal" ATLAS).  We haven't
-  /// yet needed the non-positive-semidefinite case.
-  /// Any tolerance >= 1.0 is interpreted as "no checking", and it saves
-  /// some computation this way.
-
+  /// This is the version of SVD that we implement for symmetric positive
+  /// definite matrices.  This exists for historical reasons; right now its
+  /// internal implementation is the same as Eig().  It computes the eigenvalue
+  /// decomposition (*this) = P * diag(s) * P^T with P orthogonal.  Will throw
+  /// exception if input is not positive semidefinite to within a tolerance.
   void SymPosSemiDefEig(VectorBase<Real> *s, MatrixBase<Real> *P,
                         Real tolerance = 0.001) const;
 
-  /// Solves the symmetric eigenvalue problem: at end we should have
-  /// (*this) = P * diag(s) * P^T.  Currently, since we don't assume
-  /// we have Lapack and we don't want to deal with the hassle of writing this
-  /// function in two ways, it does the computation using one and possibly more
-  /// calls to (generic, full-matrix) SVD code.  This gives us the answer
-  /// directly, except in the case where there are positive and negative
-  /// eigenvalues with the same absolute value, that can "mix up" the two
-  /// eigenspaces-- in this case the routines will add some amount times the identity and try
-  /// again.  Note: if we really cared about efficiency we'd do the
-  /// re-computation in just the two eigenspaces of opposite sign but same
-  /// magnitude, but this is rare anyway.
-  void Eig(VectorBase<Real> *s, MatrixBase<Real> *P,
-           Real tolerance = 2.0e-05) const { EigInternal(s, P, tolerance, 0); }
-
-
+  /// Solves the symmetric eigenvalue problem: at end we should have (*this) = P
+  /// * diag(s) * P^T.  We solve the problem using the symmetric QR method.
+  /// P may be NULL.
+  /// Implemented in qr.cc. 
+  void Eig(VectorBase<Real> *s, MatrixBase<Real> *P = NULL) const;
+  
   /// This function gives you, approximately, the largest eigenvalues of the
   /// symmetric matrix and the corresponding eigenvectors.  (largest meaning,
   /// further from zero).  It does this by doing a SVD within the Krylov
@@ -248,10 +233,14 @@ class SpMatrix : public PackedMatrix<Real> {
 
   Real LogDet(Real *det_sign = NULL) const;
 
-  /// rank-one update, this <-- this + alpha V V'
+  /// rank-one update, this <-- this + alpha v v'
   template<class OtherReal>
   void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
+  /// rank-two update, this <-- this + alpha (v w' + w v').
+  void AddVecVec(const Real alpha, const VectorBase<Real> &v,
+                 const VectorBase<Real> &w);
+  
   /// diagonal update, this <-- this + diag(v)
   template<class OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
@@ -323,6 +312,7 @@ class SpMatrix : public PackedMatrix<Real> {
   bool IsDiagonal(Real cutoff = 1.0e-05) const;
   bool IsUnit(Real cutoff = 1.0e-05) const;
   bool IsZero(Real cutoff = 1.0e-05) const;
+  bool IsTridiagonal(Real cutoff = 1.0e-05) const;
 
   /// sqrt of sum of square elements.
   Real FrobeniusNorm() const;
@@ -350,8 +340,27 @@ class SpMatrix : public PackedMatrix<Real> {
     (*this).CopyFromSp(dmat);
     return ans;
   }
+  Real Trace() const;
+
+  /// Tridiagonalize the matrix with an orthogonal transformation.  If
+  /// *this starts as S, produce T (and Q, if non-NULL) such that
+  /// T = Q A Q^T, i.e. S = Q^T T Q.  Caution: this is the other way
+  /// round from most authors (it's more efficient in row-major indexing).
+  void Tridiagonalize(MatrixBase<Real> *Q);
+
+  /// The symmetric QR algorithm.  This will mostly be useful in internal code.
+  /// Typically, you will call this after Tridiagonalize(), on the same object.
+  /// When called, *this (call it A at this point) must be tridiagonal; at exit,
+  /// *this will be a diagonal matrix D that is similar to A via orthogonal
+  /// transformations.  This algorithm right-multiplies Q by orthogonal
+  /// transformations.  It turns *this from a tridiagonal into a diagonal matrix
+  /// while maintaining that (Q *this Q^T) has the same value at entry and exit.
+  /// At entry Q should probably be either NULL or orthogonal, but we don't check
+  /// this.
+  void Qr(MatrixBase<Real> *Q);
+  
  private:
-  void EigInternal(VectorBase<Real> *s, MatrixBase<Real> *P,
+ void EigInternal(VectorBase<Real> *s, MatrixBase<Real> *P,
                    Real tolerance, int recurse) const;
 };
 

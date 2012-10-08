@@ -275,14 +275,15 @@ class MatrixBase {
      In Svd, *this = U*diag(S)*Vt.
      Null pointers for U and/or Vt at input mean we do not want that output.  We
      expect that S.Dim() == m, U is either NULL or m by n,
-     and v is either NULL or n by n. */
+     and v is either NULL or n by n.
+     The singular values are not sorted (use SortSvd for that).  */
   void DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                       MatrixBase<Real> *Vt);  // Destroys calling matrix.
 
-  /// Compute SVD (*this) = U diag(s) Vt.   Note that the v in the call is already
+  /// Compute SVD (*this) = U diag(s) Vt.   Note that the V in the call is already
   /// transposed; the normal formulation is U diag(s) V^T.
   /// Null pointers for U or V mean we don't want that output (this saves
-  /// compute).
+  /// compute).  The singular values are not sorted (use SortSvd for that).
   void Svd(VectorBase<Real> *s, MatrixBase<Real> *U,
            MatrixBase<Real> *Vt) const;
   /// Compute SVD but only retain the singular values.
@@ -729,11 +730,13 @@ float TraceMatMat(const MatrixBase<float> &A, const MatrixBase<float> &B,
 /// Function to ensure that SVD is sorted.  This function is made as generic as
 /// possible, to be applicable to other types of problems.  s->Dim() should be
 /// the same as U->NumCols(), and we sort s from greatest to least absolute
-/// value, moving the columns of U (and the rows of Vt, if it exists) around in
-/// the same way.  Note: the "absolute value" part won't matter if this is an
-/// actual SVD, since singular values are non-negative.
+/// value (if sort_on_absolute_value == true) or greatest to least value
+/// otherwise, moving the columns of U, if it exists, and the rows of Vt, if it
+/// exists around in the same way.  Note: the "absolute value" part won't matter
+/// if this is an actual SVD, since singular values are non-negative.
 template<class Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-                                  MatrixBase<Real>* Vt = NULL);
+                                  MatrixBase<Real>* Vt = NULL,
+                                  bool sort_on_absolute_value = true);
 
 /// Creates the eigenvalue matrix D that is part of the decomposition used Matrix::Eig.
 /// D will be block-diagonal with blocks of size 1 (for real eigenvalues) or 2x2

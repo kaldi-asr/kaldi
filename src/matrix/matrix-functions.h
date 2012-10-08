@@ -182,13 +182,17 @@ class MatrixExponential {
          in x_i.
     @param print_eigs [in] If true, prints out diagnostic information about the
          eigenvalues.
+    @param exact [in] If true, does the exact computation; if false, does
+         a much faster (but almost exact) computation based on the Lanczos
+         method.
 */
 
 template<class Real>
 void ComputePca(const MatrixBase<Real> &X,
                 MatrixBase<Real> *U,
                 MatrixBase<Real> *A,
-                bool print_eigs = false);
+                bool print_eigs = false,
+                bool exact = true);
 
 
 

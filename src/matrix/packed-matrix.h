@@ -59,6 +59,9 @@ template<typename Real> class PackedMatrix {
   void SetZero();
   void SetUnit();  /// < Set to unit matrix.
 
+  /// Sets to random values of a normal distribution
+  void SetRandn();
+
   Real Trace() const;
 
   // Needed for inclusion in std::vector
