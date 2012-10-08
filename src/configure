@@ -195,7 +195,8 @@ function linux_configure_omplibdir {
   for libext in $libexts; do
     echo "Testing $libext from [$libexts] " >&2
 
-    check_library $mkllibdir "libiomp5" $libext && return
+    check_library $mkllibdir "libiomp5" $libext \
+	&& echo `readlink -f $mkllibdir` && return
     
     local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
