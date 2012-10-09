@@ -4,8 +4,8 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
-TESTFILES = am-sgmm-test estimate-am-sgmm-test 
-# fmllr-sgmm-test
+TESTFILES = am-sgmm-test estimate-am-sgmm-test  \
+   fmllr-sgmm-test
 
 OBJFILES = am-sgmm.o estimate-am-sgmm.o estimate-am-sgmm-ebw.o fmllr-sgmm.o \
           am-sgmm-project.o

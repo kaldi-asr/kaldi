@@ -1,4 +1,4 @@
-// sgmm/fmllr-sgmm-test.cc
+// sgmm2/fmllr-sgmm-test.cc
 
 // Copyright 2009-2011  Saarland University (author:  Arnab Ghoshal)
 //           2012  Johns Hopkins University (author: Daniel Povey)
@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "gmm/model-test-common.h"
-#include "sgmm/am-sgmm.h"
-#include "sgmm/fmllr-sgmm.h"
+#include "sgmm2/am-sgmm.h"
+#include "sgmm2/fmllr-sgmm.h"
 #include "util/kaldi-io.h"
 
 using kaldi::AmSgmm2;
@@ -74,12 +74,12 @@ void TestSgmm2FmllrAccsIO(const AmSgmm2 &sgmm,
   FmllrSgmm2Accs accs;
   accs.Init(sgmm.FeatureDim(), sgmm.NumGauss());
   BaseFloat loglike = 0.0;
-  Vector<BaseFloat> empty_spk;
   std::vector<int32> gselect;
   for (int32 i = 0; i < feats.NumRows(); i++) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
-    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
-    loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
+    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, &frame_vars);
+    loglike += accs.Accumulate(sgmm, feats.Row(i), frame_vars, 0, 1.0,
+                               &empty);
   }
 
   kaldi::Sgmm2FmllrConfig update_opts;
@@ -92,8 +92,11 @@ void TestSgmm2FmllrAccsIO(const AmSgmm2 &sgmm,
   Vector<BaseFloat> xformed_feat(dim);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
-  BaseFloat loglike1 = sgmm.LogLikelihood(frame_vars, 0);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, &frame_vars);
+
+  Sgmm2LikelihoodCache like_cache(sgmm.NumGroups(), sgmm.NumPdfs());
+  BaseFloat loglike1 = sgmm.LogLikelihood(frame_vars, 0,
+                                          &like_cache, &empty);
 
   bool binary_in;
   // First, non-binary write
@@ -107,8 +110,10 @@ void TestSgmm2FmllrAccsIO(const AmSgmm2 &sgmm,
   accs1->Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
-  BaseFloat loglike2 = sgmm.LogLikelihood(frame_vars, 0);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, &frame_vars);
+  like_cache.NextFrame();
+  BaseFloat loglike2 = sgmm.LogLikelihood(frame_vars, 0,
+                                          &like_cache, &empty);
   std::cout << "LL1 = " << loglike1 << ", LL2 = " << loglike2 << std::endl;
   kaldi::AssertEqual(loglike1, loglike2, 1e-2);
   delete accs1;
@@ -124,8 +129,9 @@ void TestSgmm2FmllrAccsIO(const AmSgmm2 &sgmm,
   accs2->Update(sgmm, fmllr_globals, update_opts, &xform_mat, NULL, NULL);
   ApplyFmllrXform(feats.Row(0), xform_mat, &xformed_feat);
   sgmm.GaussianSelection(sgmm_config, xformed_feat, &gselect);
-  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty, 0.0, &frame_vars);
-  BaseFloat loglike3 = sgmm.LogLikelihood(frame_vars, 0);
+  sgmm.ComputePerFrameVars(xformed_feat, gselect, empty,  &frame_vars);
+  BaseFloat loglike3 = sgmm.LogLikelihood(frame_vars, 0,
+                                          &like_cache, &empty);
   std::cout << "LL1 = " << loglike1 << ", LL3 = " << loglike3 << std::endl;
   kaldi::AssertEqual(loglike1, loglike3, 1e-4);
   delete accs2;
@@ -159,12 +165,12 @@ void TestSgmm2FmllrSubspace(const AmSgmm2 &sgmm,
   FmllrSgmm2Accs accs;
   accs.Init(sgmm.FeatureDim(), sgmm.NumGauss());
   BaseFloat loglike = 0.0;
-  Vector<BaseFloat> empty_spk;
   std::vector<int32> gselect;
   for (int32 i = 0; i < feats.NumRows(); i++) {
     sgmm.GaussianSelection(sgmm_config, feats.Row(i), &gselect);
-    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, 0.0, &frame_vars);
-    loglike += accs.Accumulate(sgmm, empty, feats.Row(i), frame_vars, 0, 1.0);
+    sgmm.ComputePerFrameVars(feats.Row(i), gselect, empty, &frame_vars);
+    loglike += accs.Accumulate(sgmm, feats.Row(i), frame_vars, 0, 1.0,
+                               &empty);
   }
 
   SpMatrix<double> grad_scatter(dim * (dim+1));
@@ -186,10 +192,11 @@ void TestSgmm2Fmllr() {
   kaldi::FullGmm full_gmm;
   ut::InitRandFullGmm(dim, num_comp, &full_gmm);
 
-  int32 num_states = 1;
   AmSgmm2 sgmm;
   kaldi::Sgmm2GselectConfig config;
-  sgmm.InitializeFromFullGmm(full_gmm, num_states, dim+1, dim);
+  std::vector<int32> pdf2group;
+  pdf2group.push_back(0);
+  sgmm.InitializeFromFullGmm(full_gmm, pdf2group, dim+1, dim, true, 0.9);
   sgmm.ComputeNormalizers();
 
   kaldi::Matrix<BaseFloat> feats;

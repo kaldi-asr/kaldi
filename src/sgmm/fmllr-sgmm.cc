@@ -1,7 +1,7 @@
 // sgmm/fmllr-sgmm.cc
 
-// Copyright 2009-2011       Saarland University
-// Author:  Arnab Ghoshal
+// Copyright 2009-2011       Saarland University  (author:  Arnab Ghoshal)
+//                2012  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -515,15 +515,13 @@ void EstimateSgmmFmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
 
   Vector<double> s(fmllr_grad_scatter.NumRows());
   Matrix<double> U(fmllr_grad_scatter.NumRows(),
-                      fmllr_grad_scatter.NumRows());
-  Matrix<double> Scatter(fmllr_grad_scatter);
+                   fmllr_grad_scatter.NumRows());
   try {
-    Scatter.Svd(&s, &U, NULL);
+    fmllr_grad_scatter.Eig(&s, &U);
     SortSvd(&s, &U);  // in case was not exactly sorted.
     KALDI_VLOG(1) << "Eigenvalues (max 200) of CMLLR scatter are: "
                   << (SubVector<double>(s, 0, std::min(200, s.Dim())));
-
-
+    
 //    for (int32 b = 2; b < num_fmllr_bases; b++) {
 //      if (s(b) < min_eig) {
 //        num_fmllr_bases = b;

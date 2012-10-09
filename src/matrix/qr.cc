@@ -231,9 +231,11 @@ void QrStep(MatrixIndexT n,
     // T by in some sense the opposite/transpose of the Givens rotation.
     if (k > 0) { // Note, in rotations, going backward, (x,y) -> ((cx - sy), (sx + cy))
       Real &elem_k_km1 = off_diag[k-1],
-          elem_kp1_km1 = z, tmp = elem_k_km1;
+          elem_kp1_km1 = z; // , tmp = elem_k_km1;
       elem_k_km1 = c*elem_k_km1 - s*elem_kp1_km1;
-      elem_kp1_km1 = s*tmp + c*elem_kp1_km1;
+      // The next line will set elem_kp1_km1 to zero and we'll never access this
+      // value, so we comment it out.
+      // elem_kp1_km1 = s*tmp + c*elem_kp1_km1;
     }
     if (Q != NULL)
       cblas_Xrot(Qcols, Qdata + k*Qstride, 1,

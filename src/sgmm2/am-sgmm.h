@@ -192,6 +192,7 @@ class Sgmm2PerSpkDerivedVars {
 /// You need to call NextFrame() on the cache, between frames.
 struct Sgmm2LikelihoodCache {
  public:
+  // you'll typically initialize with (sgmm.NumGroups(), sgmm.NumPdfs()).
   Sgmm2LikelihoodCache(int32 num_groups, int32 num_pdfs):
       substate_cache(num_groups), pdf_cache(num_pdfs), t(1) { }
   

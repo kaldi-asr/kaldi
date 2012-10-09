@@ -3408,8 +3408,9 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestMaxAbsEig<Real>();
   UnitTestPca<Real>(full_test);
   UnitTestPca2<Real>(full_test);
-  if (full_test)
-    UnitTestSvdSpeed<Real>();
+  // The next one is slow.  The upshot is that Eig is up to ten times faster
+  // than SVD. 
+  // UnitTestSvdSpeed<Real>();
 
 }
 
@@ -3419,7 +3420,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
 
 
 int main() {
-  bool full_test = true;
+  bool full_test = false;
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   std::cout << "Tests succeeded.\n";
