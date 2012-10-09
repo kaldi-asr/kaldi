@@ -9,6 +9,7 @@
 
 # Begin configuration section.
 stage=1
+alignment_model=
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
@@ -42,6 +43,7 @@ if [ $# -ne 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --transform-dir <decoding-dir>           # directory of previous decoding"
   echo "                                           # where we can find transforms for SAT systems."
+  echo "  --alignment-model <ali-mdl>              # Model for the first-pass decoding."
   echo "  --config <config-file>                   # config containing options"
   echo "  --nj <nj>                                # number of parallel jobs"
   echo "  --cmd <cmd>                              # Command to run in parallel with"
@@ -91,97 +93,153 @@ elif grep 'transform-feats --utt2spk' $srcdir/log/acc.0.1.log 2>/dev/null; then
 fi
 ##
 
+## Calculate FMLLR pre-transforms if needed. We are doing this here since this
+## step is requried by models both with and without speaker vectors
+if $use_fmllr; then
+  if [ ! -f $srcdir/final.fmllr_mdl ] || [ $srcdir/final.fmllr_mdl -ot $srcdir/final.mdl ]; then
+    echo "$0: computing pre-transform for fMLLR computation."
+    sgmm-comp-prexform $srcdir/final.mdl $srcdir/final.occs $srcdir/final.fmllr_mdl || exit 1;
+  fi
+fi
+
 ## Save Gaussian-selection info to disk.
 # Note: we can use final.mdl regardless of whether there is an alignment model--
 # they use the same UBM.
-
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/gselect.JOB.log \
     sgmm-gselect --full-gmm-nbest=$gselect $srcdir/final.mdl \
     "$feats" "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
 fi
 
-# Generate state-level lattice which we can rescore.  This is done with the alignment
-# model and no speaker-vectors.
+## Work out name of alignment model. ##
+if [ -z "$alignment_model" ]; then
+  if [ -f "$srcdir/final.alimdl" ]; then alignment_model=$srcdir/final.alimdl;
+  else alignment_model=$srcdir/final.mdl; fi
+fi
+[ ! -f "$alignment_model" ] && echo "$0: no alignment model $alignment_model " && exit 1;
+
+# Generate state-level lattice which we can rescore.  This is done with the 
+# alignment model and no speaker-vectors.
 if [ $stage -le 2 ]; then
   $cmd JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
-    --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $srcdir/final.alimdl \
+    --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $alignment_model \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
 fi
+
+## Check if the model has speaker vectors
+spkdim=`sgmm-info $srcdir/final.mdl | grep 'speaker vector' | awk '{print $NF}'`
+
+if [ $spkdim -gt 0 ]; then  ### For models with speaker vectors:
 
 # Estimate speaker vectors (1st pass).  Prune before determinizing
 # because determinization can take a while on un-pruned lattices.
 # Note: the sgmm-post-to-gpost stage is necessary because we have
 # a separate alignment-model and final model, otherwise we'd skip it 
 # and use sgmm-est-spkvecs.
-if [ $stage -le 3 ]; then
-  $cmd JOB=1:$nj $dir/log/vecs_pass1.JOB.log \
-    gunzip -c $dir/pre_lat.JOB.gz \| \
-    lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- \| \
-    sgmm-post-to-gpost "$gselect_opt" $srcdir/final.alimdl "$feats" ark:- ark:- \| \
-    sgmm-est-spkvecs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
-     $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/pre_vecs.JOB" || exit 1;
-fi
+  if [ $stage -le 3 ]; then
+    $cmd JOB=1:$nj $dir/log/vecs_pass1.JOB.log \
+      gunzip -c $dir/pre_lat.JOB.gz \| \
+      lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+      lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
+      weight-silence-post 0.0 $silphonelist $alignment_model ark:- ark:- \| \
+      sgmm-post-to-gpost "$gselect_opt" $alignment_model "$feats" ark:- ark:- \| \
+      sgmm-est-spkvecs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
+      $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/pre_vecs.JOB" || exit 1;
+  fi
 
 # Estimate speaker vectors (2nd pass).  Since we already have spk vectors,
 # at this point we need to rescore the lattice to get the correct posteriors.
-if [ $stage -le 4 ]; then
-  $cmd JOB=1:$nj $dir/log/vecs_pass2.JOB.log \
-    gunzip -c $dir/pre_lat.JOB.gz \| \
-    sgmm-rescore-lattice --spk-vecs=ark:$dir/pre_vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
-      "$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
-    lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
-    lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
-    sgmm-est-spkvecs --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/pre_vecs.JOB \
-     $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/vecs.JOB" || exit 1;
-fi
-rm $dir/pre_vecs.*
-
-if $use_fmllr; then
-  # Estimate fMLLR transforms (note: these may be on top of any
-  # fMLLR transforms estimated with the baseline GMM system.
-  if [ $stage -le 5 ]; then # compute fMLLR transforms.
-    echo "$0: computing fMLLR transforms."
-    if [ ! -f $srcdir/final.fmllr_mdl ] || [ $srcdir/final.fmllr_mdl -ot $srcdir/final.mdl ]; then
-      echo "$0: computing pre-transform for fMLLR computation."
-      sgmm-comp-prexform $srcdir/final.mdl $srcdir/final.occs $srcdir/final.fmllr_mdl || exit 1;
-    fi
-    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+  if [ $stage -le 4 ]; then
+    $cmd JOB=1:$nj $dir/log/vecs_pass2.JOB.log \
       gunzip -c $dir/pre_lat.JOB.gz \| \
-      sgmm-rescore-lattice --spk-vecs=ark:$dir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
+      sgmm-rescore-lattice --spk-vecs=ark:$dir/pre_vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
       "$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
       lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
       lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
-      sgmm-est-fmllr --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/vecs.JOB \
-       --fmllr-iters=$fmllr_iters --fmllr-min-count=$fmllr_min_count \
-      $srcdir/final.fmllr_mdl "$feats" ark,s,cs:- "ark:$dir/trans.JOB" || exit 1;
+      sgmm-est-spkvecs --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/pre_vecs.JOB \
+      $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/vecs.JOB" || exit 1;
   fi
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"  
-fi
+  rm $dir/pre_vecs.*
+
+  if $use_fmllr; then
+  # Estimate fMLLR transforms (note: these may be on top of any
+  # fMLLR transforms estimated with the baseline GMM system.
+    if [ $stage -le 5 ]; then # compute fMLLR transforms.
+      echo "$0: computing fMLLR transforms."
+      $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+	gunzip -c $dir/pre_lat.JOB.gz \| \
+	sgmm-rescore-lattice --spk-vecs=ark:$dir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
+	"$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
+	lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+	lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+	lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
+	weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
+	sgmm-est-fmllr --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" --spk-vecs=ark:$dir/vecs.JOB \
+	--fmllr-iters=$fmllr_iters --fmllr-min-count=$fmllr_min_count \
+	$srcdir/final.fmllr_mdl "$feats" ark,s,cs:- "ark:$dir/trans.JOB" || exit 1;
+    fi
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"  
+  fi
 
 # Now rescore the state-level lattices with the adapted features and the
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
-if [ $stage -le 6 ]; then
-  $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
-    sgmm-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
-    $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
-    "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
-fi
-rm $dir/pre_lat.*.gz
+  if [ $stage -le 6 ]; then
+    $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
+      sgmm-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
+      $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+      "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+  fi
+  rm $dir/pre_lat.*.gz
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at different
-# acoustic scales to get the final output.
+else  ### For models without speaker vectors:
+
+  if $use_fmllr; then
+  # Estimate fMLLR transforms (note: these may be on top of any
+  # fMLLR transforms estimated with the baseline GMM system.
+    if [ $stage -le 5 ]; then # compute fMLLR transforms.
+      echo "$0: computing fMLLR transforms."
+      $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+	gunzip -c $dir/pre_lat.JOB.gz \| \
+	sgmm-rescore-lattice --utt2spk=ark:$sdata/JOB/utt2spk \
+	"$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
+	lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+	lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
+	lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
+	weight-silence-post 0.0 $silphonelist $srcdir/final.mdl ark:- ark:- \| \
+	sgmm-est-fmllr --spk2utt=ark:$sdata/JOB/spk2utt "$gselect_opt" \
+	--fmllr-iters=$fmllr_iters --fmllr-min-count=$fmllr_min_count \
+	$srcdir/final.fmllr_mdl "$feats" ark,s,cs:- "ark:$dir/trans.JOB" || exit 1;
+    fi
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"  
+  fi
+
+# Now rescore the state-level lattices with the adapted features and the
+# corresponding model.  Prune and determinize the lattices to limit
+# their size.
+  if [ $stage -le 6 ] && $use_fmllr; then
+    $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
+      sgmm-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk \
+      $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+      "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+    rm $dir/pre_lat.*.gz
+  else  # Already done with decoding if no adaptation needed.
+    for n in `seq 1 $nj`; do
+      mv $dir/pre_lat.${n}.gz $dir/lat.${n}.gz
+    done
+  fi
+
+fi
+
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at 
+# different acoustic scales to get the final output.
 
 
 if [ $stage -le 7 ]; then

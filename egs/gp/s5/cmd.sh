@@ -6,9 +6,9 @@
 # the number of cpus on your machine.
 
 # At BUT use:
-export train_cmd="queue.pl -q all.q@@stable"
-export decode_cmd="queue.pl -q all.q@@stable"
-export highmem_cmd="queue.pl -q all.q@@stable -l ram_free=4G,mem_free=4G"
+export train_cmd="queue.pl -q all.q@@stable -l ram_free=1G,mem_free=1G"
+export decode_cmd="queue.pl -q all.q@@stable -l ram_free=2G,mem_free=2G"
+export highmem_cmd="queue.pl -q all.q@@stable -l ram_free=2G,mem_free=2G"
 
 # On Eddie use:
 # export train_cmd="queue.pl -P inf_hcrc_cstr_general"

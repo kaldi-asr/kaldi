@@ -1,0 +1,140 @@
+# Copyright 2012  Egorova Ekaterina
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
+_amp	_amp
+_1	_1
+_2	_2
+_3	_3
+_3_backs	_3_backs
+_4	_4
+_6	_6
+_6_~ 	_6
+_7	_7
+_9	_9
+_at	_at
+A	A
+A:	A
+B	b
+C	C
+D	D
+E	E
+E:	E
+EU	E U
+F	m
+G	G
+I	I
+J	J
+L	L
+M	M
+M_backs	M_backs
+N	N
+N_backs	N_backs	
+Nm	Nm
+O	O
+OI	OI
+OU	OU
+P	P
+R	R
+R_backs	R_backs
+S	S
+S_a	S
+S_j:	S_j:
+T	T
+U	U
+V	V
+X	X
+Z	Z
+a	a
+a:	a
+aI	aI
+aU	aU
+b	b
+b_j	b_j
+c	c
+d	d
+dZ	dZ
+d_d	d
+d_j	d_j
+dz_j	d_j
+e	e
+e:	e
+eI	eI
+eU	e U
+e_~	e
+f	f
+f_j	f_j
+g	g
+gj_backs	g_j
+gG_j	g_j
+h	h
+h_backs	h_backs
+i	i
+i:	i
+i_~	i
+j	j
+j_backs	j_backs
+k	k
+kp	kp
+kC	k_j
+kx_j	k_j
+l	l
+l_d	l
+l_e_d	l
+l_j	l_j
+m	m
+m_j	m_j
+n	n
+n:	n
+n_d:	n
+n_d	n
+n_j	n_j
+n_j:	n_j
+o	o
+o:	o
+oI	OI
+oU	oU
+o_~	o
+p	p
+p_j	p_j
+r	r
+rZ	rZ
+r_backs	r_backs
+r_0	r_0
+r_j	r_j
+s	s
+s:	s
+s_j	s_j
+s_j:	s_j
+t	t
+tS	tS
+t_d	t
+t_j	t_j
+th	th
+ts	ts
+ts_j	t_j
+u	u
+u:	u
+u_~	u
+v	v
+v_j	v_j
+w	w
+w_~	w
+x	x
+y	y
+y:	y
+z	z
+z_j	z_j
+_<	_<
+_>	_>

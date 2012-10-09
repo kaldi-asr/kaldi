@@ -69,7 +69,7 @@ popd > /dev/null
 # specified language.
 printf "Preparing file lists ... "
 for L in $LANGUAGES; do
-  mkdir -p data/$L/local/{data,dict}
+  mkdir -p data/$L/local/data
   local/gp_prep_flists.sh --corpus-dir=$GPDIR --dev-spk=$CONFDIR/dev_spk.list \
     --eval-spk=$CONFDIR/eval_spk.list --lang-map=$CONFDIR/lang_codes.txt \
     --work-dir=data $L >& data/$L/prep_flists.log & 
@@ -79,42 +79,14 @@ done
 wait;
 echo "Done"
 
-# (3) Normalize the dictionary and transcripts.
+# (3) Normalize the transcripts.
 for L in $LANGUAGES; do
-  printf "Language - ${L}: preparing pronunciation lexicon ... "
-  full_name=`awk '/'$L'/ {print $2}' $CONFDIR/lang_codes.txt`;
-  pron_lex=$GPDIR/Dictionaries/${L}/${full_name}-GPDict.txt
-  if [ ! -f "$pron_lex" ]; then
-    pron_lex=$GPDIR/Dictionaries/${L}/${full_name}GP.dict  # Polish & Bulgarian
-    [ -f "$pron_lex" ] || { echo "Error: no dictionary found for $L"; exit 1; }
-  fi
-  local/gp_norm_dict_${L}.pl -i $pron_lex | sort -u \
-    > data/$L/local/dict/lexicon_nosil.txt
-  (printf '!SIL\tsil\n<UNK>\tspn\n';) \
-    | cat - data/$L/local/dict/lexicon_nosil.txt \
-    > data/$L/local/dict/lexicon.txt;
-  echo "Done"
-
-  printf "Language - ${L}: extracting phone lists ... "
-  # silence phones, one per line.
-  { echo sil; echo spn; } > data/$L/local/dict/silence_phones.txt
-  echo sil > data/$L/local/dict/optional_silence.txt
-  cut -f2- data/$L/local/dict/lexicon_nosil.txt | tr ' ' '\n' | sort -u \
-    > data/$L/local/dict/nonsilence_phones.txt
-  # Ask questions about the entire set of 'silence' and 'non-silence' phones. 
-  # These augment the questions obtained automatically by clustering. 
-  ( tr '\n' ' ' < data/$L/local/dict/silence_phones.txt; echo;
-    tr '\n' ' ' < data/$L/local/dict/nonsilence_phones.txt; echo;
-    ) > data/$L/local/dict/extra_questions.txt
-  echo "Done"
-
   printf "Language - ${L}: normalizing transcripts ... "
   for x in train dev eval; do
     local/gp_norm_trans_${L}.pl -i data/$L/local/data/${x}_${L}.trans1 \
       > data/$L/local/data/${x}_${L}.txt;
   done
   echo "Done"
-
 done
 
 # (4) Create a directories to contain files needed in training and testing:

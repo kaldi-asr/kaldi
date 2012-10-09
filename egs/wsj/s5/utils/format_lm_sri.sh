@@ -18,9 +18,21 @@
 
 set -o errexit
 
+# Begin configuration section.
+srilm_opts="-subset -prune-lowprobs -unk -tolower"
+# end configuration sections
+
+help_message="Usage: "`basename $0`" [options] lang_dir LM lexicon out_dir
+Convert ARPA-format language models to FSTs. Change the LM vocabulary using SRILM.\n
+options: 
+  --help                 # print this message and exit
+  --srilm-opts STRING    # options to pass to SRILM tools (default: '$srilm_opts')
+";
+
+. utils/parse_options.sh
+
 if [ $# -ne 4 ]; then
-  printf "Usage: %s lang_dir LM lexicon out_dir\n" `basename $0`
-  echo "  Convert ARPA-format language models to FSTs.";
+  printf "$help_message\n";
   exit 1;
 fi
 
@@ -60,7 +72,7 @@ awk '{print $1}' $out_dir/words.txt > $tmpdir/voc
 # LM by recomputing the backoff weights, and remove those ngrams whose 
 # probabilities are lower than the backed-off estimates.
 change-lm-vocab -vocab $tmpdir/voc -lm $tmpdir/lm.gz -write-lm $tmpdir/out_lm \
-  -subset -prune-lowprobs
+  $srilm_opts
 
 arpa2fst $tmpdir/out_lm | fstprint \
   | utils/eps2disambig.pl | utils/s2eps.pl \
