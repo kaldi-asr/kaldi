@@ -96,3 +96,6 @@
      done
   done
 ) &
+
+wait
+
