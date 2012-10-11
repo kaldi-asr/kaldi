@@ -42,7 +42,6 @@ int main(int argc, char *argv[]) {
     std::string disambig_rxfilename, disambig_wxfilename;
     int32 N = 3, P = 1;
     
-    OptimizeConfig cfg;
     ParseOptions po(usage);
     po.Register("read-disambig-syms", &disambig_rxfilename,
                 "List of disambiguation symbols to read");

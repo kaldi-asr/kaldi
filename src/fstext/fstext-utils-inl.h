@@ -859,51 +859,6 @@ void ApplyProbabilityScale(float scale, MutableFst<Arc> *fst) {
 }
 
 
-
-void Optimize(VectorFst<StdArc> *fst,
-              const OptimizeConfig &cfg) {
-  typedef StdArc::Label Label;
-  KALDI_VLOG(1) <<  "Optimize: about to determinize.";
-  {  // Determinize.
-    VectorFst<StdArc> det_fst;
-    if (cfg.maintain_log_stochasticity) SafeDeterminizeWrapperInLog(fst, &det_fst, cfg.delta);
-    else SafeDeterminizeWrapper(fst, &det_fst, cfg.delta);
-    *fst = det_fst;
-  }
-
-  if (cfg.maintain_log_stochasticity) RemoveEpsLocalSpecial(fst);
-  else RemoveEpsLocal(fst);
-
-  if (cfg.push_weights || cfg.push_labels) {  // need to do some kind of pushing...
-    KALDI_VLOG(1) <<  "Optimize: about to push.";
-    if (cfg.push_weights &&  cfg.push_in_log) {
-      VectorFst<LogArc> *log_fst = new VectorFst<LogArc>;
-      Cast(*fst, log_fst);
-      VectorFst<LogArc> *log_fst_pushed = new VectorFst<LogArc>;
-
-      Push<LogArc, REWEIGHT_TO_INITIAL>
-           (*log_fst, log_fst_pushed,
-            (cfg.push_weights?kPushWeights:0)|(cfg.push_labels?kPushLabels:0),
-            cfg.delta);
-
-      Cast(*log_fst_pushed, fst);
-      delete log_fst;
-      delete log_fst_pushed;
-    } else {
-      VectorFst<StdArc> fst_pushed;
-      Push<StdArc, REWEIGHT_TO_INITIAL>
-          (*fst, &fst_pushed,
-           (cfg.push_weights?kPushWeights:0)|(cfg.push_labels?kPushLabels:0),
-           cfg.delta);
-      *fst = fst_pushed;
-    }
-  }
-  KALDI_VLOG(1) <<  "Optimize: about to minimize.";
-  MinimizeEncoded(fst, cfg.delta);
-}
-
-
-
 // return arc-offset of self-loop with ilabel (or -1 if none exists).
 // if more than one such self-loop, pick first one.
 template<class Arc>

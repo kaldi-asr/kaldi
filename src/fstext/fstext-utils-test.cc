@@ -215,99 +215,6 @@ template<class Arc>  void TestAcceptorMinimize() {
   delete fst;
 }
 
-template<class Arc>  void TestOptimize() {
-  typedef typename Arc::Label Label;
-  typedef typename Arc::StateId StateId;
-  typedef typename Arc::Weight Weight;
-
-  VectorFst<Arc> *fst = RandFst<Arc>();
-
-
-  OptimizeConfig cfg;
-  cfg.delta = 0.0001;
-  cfg.maintain_log_stochasticity = (rand() % 2 == 1);  // either should work.
-  cfg.push_labels = (rand() % 2 == 1);
-
-  VectorFst<Arc> fst2(*fst);
-  Optimize(&fst2, cfg);
-
-  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
-
-  delete fst;
-}
-
-
-static void TestOptimizeStochastic() {
-  typedef VectorFst<LogArc> Fst;
-  typedef LogArc::Weight Weight;
-  typedef LogArc::StateId StateId;
-  typedef LogArc Arc;
-
-  // test that Optimize preserves equivalence in tropical while
-  // maintaining stochasticity in log.
-  VectorFst<LogArc> *logfst = RandFst<LogArc>();  
-
-
-  vector<float> garbage;
-
-  { // Make the FST stochastic.
-    for (StateId s = 0; s < logfst->NumStates(); s++) {
-      Weight w = logfst->Final(s);
-      for (ArcIterator<Fst> aiter(*logfst, s); !aiter.Done(); aiter.Next()) {
-        w = Plus(w, aiter.Value().weight);
-      }
-      if (w != Weight::Zero()) {
-        logfst->SetFinal(s, Divide(logfst->Final(s), w, DIVIDE_ANY));
-        for (MutableArcIterator<Fst> aiter(logfst, s); !aiter.Done(); aiter.Next()) {
-          Arc a = aiter.Value();
-          a.weight = Divide(a.weight, w, DIVIDE_ANY);
-          aiter.SetValue(a);
-        }
-      }
-    }
-  }        
-#if !defined(_MSC_VER)
-  assert(IsStochasticFst(*logfst, kDelta*10));
-#endif
-  {
-    std::cout << "logfst = \n";
-    FstPrinter<LogArc> fstprinter(*logfst, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-
-  VectorFst<StdArc> fst;
-  Cast(*logfst, &fst);
-  VectorFst<StdArc> fst_copy(fst);
-
-
-  OptimizeConfig cfg;
-  cfg.delta = kDelta;
-  cfg.maintain_log_stochasticity = true;  // must be in log for this to work.
-  cfg.push_labels = (rand() % 2 == 1);
-  Optimize(&fst, cfg);
-  // make sure equivalent.
-  assert(RandEquivalent(fst, fst_copy, 5, 0.01, rand(), 100));
-  VectorFst<LogArc> logfst2;
-  Cast(fst, &logfst2);
-
-  {
-    std::cout << "logfst2 = \n";
-    FstPrinter<LogArc> fstprinter(logfst2, NULL, NULL, NULL, false, true);
-    fstprinter.Print(&std::cout, "standard output");
-  }
-
-  LogWeight min, max;
-  bool ans = IsStochasticFst(logfst2, kDelta*100, &min, &max);
-  if (!ans) {
-    std::cout << "TestOptimizeStochastic, not stochastic, min = "<<min.Value()<<", max = "<<max.Value()<<'\n';
-    assert(ApproxEqual(LogWeight::One(), max, kDelta*100));
-    // it can become sub-stochastic (all sums are <= One) due to combination of paths in minimization.
-  }
-
-  delete logfst;
-}
-
-
 
 template<class Arc>  void TestMakeSymbolsSame() {
 
@@ -427,30 +334,6 @@ template<class Arc>  void TestMakeLoopFst() {
 }
 
 
-void TestDeterminizeSpecialCase() {
-  VectorFst<StdArc> fst;
-  typedef StdArc::Weight Weight;
-  typedef StdArc Arc;
-  fst.AddState();
-  fst.SetStart(0);
-  fst.AddState();
-  fst.SetFinal(1, Weight::One());
-  fst.AddState();
-  fst.SetFinal(2, Weight::One());
-  fst.AddArc(0, Arc(0, 0, Weight::One(), 1));
-  fst.AddArc(0, Arc(0, 0, Weight::One(), 2));
-
-  VectorFst<StdArc> fst1;
-  SafeDeterminizeMinimizeWrapperInLog(&fst, &fst1, kDelta);
-
-  VectorFst<StdArc> fst2(fst);
-  OptimizeConfig cfg;
-  Optimize(&fst2, cfg);
-
-  assert(RandEquivalent(fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
-  assert(RandEquivalent(fst, fst1, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
-}
-
 
 template<class Arc>
 void TestEqualAlign() {
@@ -541,15 +424,12 @@ int main() {
     fst::TestMakeLinearAcceptor<fst::StdArc, uint32>();
     fst::TestSafeDeterminizeWrapper<fst::StdArc>();
     fst::TestAcceptorMinimize<fst::StdArc>();
-    fst::TestOptimize<fst::StdArc>();
-    fst::TestOptimizeStochastic();  // make sure Optimize() preserves stochasticity.
     fst::TestMakeSymbolsSame<fst::StdArc>();
     fst::TestMakeSymbolsSame<fst::LogArc>();
     fst::TestMakeSymbolsSameClass<fst::StdArc>();
     fst::TestMakeSymbolsSameClass<fst::LogArc>();
     fst::TestMakeLoopFst<fst::StdArc>();
     fst::TestMakeLoopFst<fst::LogArc>();
-    fst::TestDeterminizeSpecialCase();
     fst::TestEqualAlign<fst::StdArc>();
     fst::TestEqualAlign<fst::LogArc>();
     fst::TestRemoveUselessArcs<fst::StdArc>();

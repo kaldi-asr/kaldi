@@ -323,40 +323,6 @@ void ApplyProbabilityScale(float scale, MutableFst<Arc> *fst);
 
 
 
-struct OptimizeConfig {   // The defaults should usually be good.
-  float delta;            // Delta used in determinization and minimization.
-  bool maintain_log_stochasticity;  //  Maintain stochasticity in log semiring (otherwise tropical).
-                                   // (but in either case equivalence in tropical).
-  bool push_weights;      // Should not usually be necessary if input was stochastic.  Not "safe" (may fail
-                          // for very non-stochastic inputs).
-  bool push_in_log;       // Only applicable if pushing weights: push in log.
-  bool push_labels;       // Push labels to start [recommended, helps minimize to work better]
-  OptimizeConfig(): delta(kDelta),
-                    maintain_log_stochasticity(true),
-                    push_weights(false),
-                    push_in_log(true),
-                    push_labels(true) { }
-};
-
-/// Optimize does a bunch of FST optimizations of the type that are useful in
-/// decoding-graph construction.  It basically does:
-/// predeterminization, determinization,
-/// remove special symbols, local epsilon removal,
-/// optional pushing (of symbols or weights) and
-/// encoded minimization.
-/// This is not recommended for graphs that have self-loops (e.g. HCLG), because
-/// the predeterminization algorithm will stop determinization from doing anything in that case.
-/// This will maintain stochasticity in the tropical semiring (if !determinize_in_log)
-/// or log semiring (if determinize_in_log), but not if the FST has duplicate paths
-/// with the same input and output symbols.
-
-inline void Optimize(VectorFst<StdArc> *fst,
-                     const OptimizeConfig &cfg);
-
-
-
-
-
 /// EqualAlign is similar to RandGen, but it generates a sequence with exactly "length"
 /// input symbols.  It returns true on success, false on failure (failure is partly
 /// random but should never happen in practice for normal speech models.)
