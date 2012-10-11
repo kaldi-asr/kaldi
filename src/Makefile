@@ -30,9 +30,15 @@ check_portaudio:
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done
 
-# When testing, stop on first failure.
-test:
-	for x in $(SUBDIRS); do $(MAKE) -C $$x test || { echo "test $$x failed"; exit 1; }; done  
+# the part after the ":" expands to "base/test matrix/test util/test ...."
+test: $(addsuffix /test, $(SUBDIRS))
+
+# Define an implicit rule, expands to e.g.:
+#  base/test: base
+#     $(MAKE) -C base test 
+%/test: %
+	$(MAKE) -C $< test
+
 
 valgrind:
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done

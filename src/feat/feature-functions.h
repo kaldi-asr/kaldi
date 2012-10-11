@@ -202,7 +202,6 @@ class DeltaFeatures {
 // to use the DeltaFeatures class directly, and do the computation frame by
 // frame.  Later we will have to come up with a nice mechanism to do this for
 // features coming in.
-
 void ComputeDeltas(const DeltaFeaturesOptions &delta_opts,
                    const MatrixBase<BaseFloat> &input_features,
                    Matrix<BaseFloat> *output_features);

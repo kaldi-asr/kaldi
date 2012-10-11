@@ -1022,6 +1022,55 @@ void Vector<Real>::Swap(Vector<Real> *other) {
 #endif
 }
 
+
+template<>
+void VectorBase<float>::AddDiagMat2(
+    float alpha, const MatrixBase<float> &M,
+    MatrixTransposeType trans, float beta) {
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(this->dim_ == M.NumRows());
+    MatrixIndexT rows = this->dim_, cols = M.NumCols(),
+           mat_stride = M.Stride();
+    float *data = this->data_;
+    const float *mat_data = M.Data();
+    for (MatrixIndexT i = 0; i < rows; i++, mat_data += mat_stride, data++)
+      *data = beta * *data + alpha * cblas_sdot(cols, mat_data, 1, mat_data, 1);
+  } else {
+    KALDI_ASSERT(this->dim_ == M.NumCols());
+    MatrixIndexT rows = M.NumRows(), cols = this->dim_,
+           mat_stride = M.Stride();
+    float *data = this->data_;
+    const float *mat_data = M.Data();
+    for (MatrixIndexT i = 0; i < cols; i++, mat_data++, data++)
+      *data = beta * *data + alpha * cblas_sdot(rows, mat_data, mat_stride,
+                                                mat_data, mat_stride);
+  }
+}
+
+template<>
+void VectorBase<double>::AddDiagMat2(
+    double alpha, const MatrixBase<double> &M,
+    MatrixTransposeType trans, double beta) {
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(this->dim_ == M.NumRows());
+    MatrixIndexT rows = this->dim_, cols = M.NumCols(),
+           mat_stride = M.Stride();
+    double *data = this->data_;
+    const double *mat_data = M.Data();
+    for (MatrixIndexT i = 0; i < rows; i++, mat_data += mat_stride, data++)
+      *data = beta * *data + alpha * cblas_ddot(cols, mat_data, 1, mat_data, 1);
+  } else {
+    KALDI_ASSERT(this->dim_ == M.NumCols());
+    MatrixIndexT rows = M.NumRows(), cols = this->dim_,
+           mat_stride = M.Stride();
+    double *data = this->data_;
+    const double *mat_data = M.Data();
+    for (MatrixIndexT i = 0; i < cols; i++, mat_data++, data++)
+      *data = beta * *data + alpha * cblas_ddot(rows, mat_data, mat_stride,
+                                                mat_data, mat_stride);
+  }
+}
+
 template class Vector<float>;
 template class Vector<double>;
 template class VectorBase<float>;

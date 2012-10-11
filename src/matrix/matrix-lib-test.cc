@@ -560,9 +560,9 @@ static void UnitTestSimpleForMat() {  // test some simple operates on all kinds 
   y.SetZero();
   y.Cholesky(x);
 
-  std::cout << "Matrix y is a lower triangular Cholesky decomposition of x:"
+  KALDI_LOG << "Matrix y is a lower triangular Cholesky decomposition of x:"
             << '\n';
-  std::cout << y << '\n';
+  KALDI_LOG << y << '\n';
 
   // test sp-matrix's LogPosDefDet() function
   Matrix<Real> B(x);
@@ -771,7 +771,7 @@ template<class Real> static void UnitTestDeterminant() {  // also tests matrix a
 	// symmetric so tmp should be zero.
 	if ( ! tmp.IsZero(1.0e-04)) {
 	  printf("KALDI_ERR: matrix is not zero\n");
-	  std::cout << tmp;
+	  KALDI_LOG << tmp;
 	  KALDI_ASSERT(0);
 	}
 
@@ -913,7 +913,7 @@ template<class Real> static void UnitTestTraceProduct() {
 	Matrix<Real> Nt(N, kTrans);
 	Real a = TraceMatMat(M, Nt), b = TraceMatMat(M, N, kTrans);
 	printf("m = %d, n = %d\n", dimM, dimN);
-	std::cout << a << " " << b << '\n';
+	KALDI_LOG << a << " " << b << '\n';
 	KALDI_ASSERT(std::abs(a-b) < 0.1);
   }
 }
@@ -928,13 +928,13 @@ template<class Real> static void UnitTestSvd() {
 	Matrix<Real> M(dimM, dimN);
 	Matrix<Real> U(dimM, dimN), Vt(dimN, dimN); Vector<Real> s(dimN);
 	InitRand(&M);
-	if (iter < 2) std::cout << "M " << M;
+	if (iter < 2) KALDI_LOG << "M " << M;
 	Matrix<Real> M2(dimM, dimN); M2.CopyFromMat(M);
 	M.LapackGesvd(&s, &U, &Vt);
 	if (iter < 2) {
-	  std::cout << " s " << s;
-	  std::cout << " U " << U;
-	  std::cout << " Vt " << Vt;
+	  KALDI_LOG << " s " << s;
+	  KALDI_LOG << " U " << U;
+	  KALDI_LOG << " Vt " << Vt;
 	}
 
     Matrix<Real> S(dimN, dimN);
@@ -978,7 +978,7 @@ template<class Real> static void UnitTestSvdZero() {
 	Matrix<Real> U(dimM, dimM), Vt(dimN, dimN); Vector<Real> v(std::min(dimM, dimN));
     if (iter%2 == 0) M.SetZero();
     else M.Unit();
-	if (iter < 2) std::cout << "M " << M;
+	if (iter < 2) KALDI_LOG << "M " << M;
 	Matrix<Real> M2(dimM, dimN); M2.CopyFromMat(M);
     bool ans = M.Svd(&v, &U, &Vt);
 	KALDI_ASSERT(ans);  // make sure works with zero matrix.
@@ -997,12 +997,12 @@ template<class Real> static void UnitTestSvdNodestroy() {
 	Matrix<Real> M(dimM, dimN);
 	Matrix<Real> U(dimM, minsz), Vt(minsz, dimN); Vector<Real> v(minsz);
 	InitRand(&M);
-	if (iter < 2) std::cout << "M " << M;
+	if (iter < 2) KALDI_LOG << "M " << M;
 	M.Svd(&v, &U, &Vt);
 	if (iter < 2) {
-	  std::cout << " v " << v;
-	  std::cout << " U " << U;
-	  std::cout << " Vt " << Vt;
+	  KALDI_LOG << " v " << v;
+	  KALDI_LOG << " U " << U;
+	  KALDI_LOG << " Vt " << Vt;
 	}
 
     for (MatrixIndexT it = 0;it < 2;it++) {
@@ -1326,10 +1326,10 @@ template<class Real> static void UnitTestMmul() {
 	InitRand(&A);
 	InitRand(&B);
 	//
-	// std::cout <<"a = " << A;
-	// std::cout<<"B = " << B;
+	// KALDI_LOG <<"a = " << A;
+	// KALDI_LOG<<"B = " << B;
 	C.AddMatMat(1.0, A, kNoTrans, B, kNoTrans, 0.0);  // C = A * B.
-	// 	std::cout << "c = " << C;
+	// 	KALDI_LOG << "c = " << C;
 	for (MatrixIndexT i = 0;i < dimM;i++) {
 	  for (MatrixIndexT j = 0;j < dimO;j++) {
 		double sum = 0.0;
@@ -1559,6 +1559,42 @@ static void UnitTestTp2() {
   }
 }
 
+template<class Real>
+static void UnitTestAddDiagMat2() {
+  for (int iter = 0; iter < 4; iter++) {
+	MatrixIndexT dimM = 10 + rand() % 3,
+                 dimN = 1 + rand() % 4;
+
+    Vector<Real> v(dimM);
+    InitRand(&v);
+    Vector<Real> w(v);
+
+    if (iter % 2 == 1) {
+      Matrix<Real> M(dimM, dimN);
+      InitRand(&M);
+      v.AddDiagMat2(0.5, M, kNoTrans, 0.3);
+      Matrix<Real> M2(dimM, dimM);
+      M2.AddMatMat(1.0, M, kNoTrans, M, kTrans, 0.0);
+      Vector<Real> diag(dimM);
+      diag.CopyDiagFromMat(M2);
+      w.Scale(0.3);
+      w.AddVec(0.5, diag);
+      AssertEqual(w, v);
+    } else {
+      Matrix<Real> M(dimN, dimM);
+      InitRand(&M);
+      v.AddDiagMat2(0.5, M, kTrans, 0.3);
+      Matrix<Real> M2(dimM, dimM);
+      M2.AddMatMat(1.0, M, kTrans, M, kNoTrans, 0.0);
+      Vector<Real> diag(dimM);
+      diag.CopyDiagFromMat(M2);
+      w.Scale(0.3);
+      w.AddVec(0.5, diag);
+      AssertEqual(w, v);
+    }
+  }
+}
+
 
 template<class Real>
 static void UnitTestOrthogonalizeRows() {
@@ -1621,9 +1657,9 @@ static void UnitTestTransposeScatter() {
     Op.AddMat2Sp(1.0, M, kNoTrans, Ap, 0.0);
 
 
-    //    std::cout << "A" << '\n' << Af << '\n';
-    //    std::cout << "M" << '\n' << M << '\n';
-    //    std::cout << "Op" << '\n' << Op << '\n';
+    //    KALDI_LOG << "A" << '\n' << Af << '\n';
+    //    KALDI_LOG << "M" << '\n' << M << '\n';
+    //    KALDI_LOG << "Op" << '\n' << Op << '\n';
 
     for (MatrixIndexT i = 0; i < dimO; i++) {
 	  for (MatrixIndexT j = 0; j<=i; j++) {
@@ -1636,8 +1672,8 @@ static void UnitTestTransposeScatter() {
     Af.AddMatMat(1.0, M, kTrans, A_MT, kNoTrans, 1.0);
     Ap.AddMat2Sp(1.0, M, kTrans, Op, 1.0);
 
-    //    std::cout << "Ap" << '\n' << Ap << '\n';
-    //    std::cout << "Af" << '\n' << Af << '\n';
+    //    KALDI_LOG << "Ap" << '\n' << Ap << '\n';
+    //    KALDI_LOG << "Af" << '\n' << Af << '\n';
 
     for (MatrixIndexT i = 0; i < dimA; i++) {
 	  for (MatrixIndexT j = 0; j<=i; j++) {
@@ -1759,7 +1795,7 @@ template<class Real> static void  UnitTestFloorChol() {
       Real ip_b = VecSpVec(v, B, v);
       Real ip_a = VecSpVec(v, BFloored, v);
       Real ip_c = alpha * VecSpVec(v, C, v);
-      if (i < 3) std::cout << "alpha = " << alpha << ", ip_a = " << ip_a << " ip_b = " << ip_b << " ip_c = " << ip_c <<'\n';
+      if (i < 3) KALDI_LOG << "alpha = " << alpha << ", ip_a = " << ip_a << " ip_b = " << ip_b << " ip_c = " << ip_c <<'\n';
       KALDI_ASSERT(ip_a>=ip_b*0.999 && ip_a>=ip_c*0.999);
     }
   }
@@ -2611,17 +2647,17 @@ template<class Real> static void UnitTestComplexFft2() {
         Vector<Real> v(N), vorig(N), v2(N);
         v(pos)  = 1.0;
         vorig.CopyFromVec(v);
-        // std::cout << "Original v:\n" << v;
+        // KALDI_LOG << "Original v:\n" << v;
         ComplexFft(&v, true);
-        // std::cout << "one fft:\n" << v;
+        // KALDI_LOG << "one fft:\n" << v;
         ComplexFt(vorig, &v2, true);
-        // std::cout << "one fft[baseline]:\n" << v2;
+        // KALDI_LOG << "one fft[baseline]:\n" << v2;
         if (!ApproxEqual(v, v2) ) {
           ComplexFft(&vorig, true);
           KALDI_ASSERT(0);
         }
         ComplexFft(&v, false);
-        // std::cout << "one more:\n" << v;
+        // KALDI_LOG << "one more:\n" << v;
         v.Scale(1.0/(N/2));
         if (!ApproxEqual(v, vorig)) {
           ComplexFft(&vorig, true);
@@ -2665,14 +2701,14 @@ template<class Real> static void UnitTestRealFft() {
     RealFftInefficient(&w, true);
     y.CopyFromVec(v);
     RealFft(&y, true);  // test efficient one.
-    // std::cout <<"v = "<<v;
-    // std::cout << "Inefficient real fft of v is: "<< w;
-    // std::cout << "Efficient real fft of v is: "<< y;
+    // KALDI_LOG <<"v = "<<v;
+    // KALDI_LOG << "Inefficient real fft of v is: "<< w;
+    // KALDI_LOG << "Efficient real fft of v is: "<< y;
     AssertEqual(w, y, 0.01*N);
     x.CopyFromVec(w);
     RealFftInefficient(&x, false);
     RealFft(&y, false);
-    // std::cout << "Inefficient real fft of v twice is: "<< x;
+    // KALDI_LOG << "Inefficient real fft of v twice is: "<< x;
     if (N != 0) x.Scale(1.0/N);
     if (N != 0) y.Scale(1.0/N);
     AssertEqual(v, x, 0.001*N);
@@ -2695,14 +2731,14 @@ template<class Real> static void UnitTestSplitRadixRealFft() {
       RealFftInefficient(&w, true);
       y.CopyFromVec(v);
       srfft.Compute(y.Data(), true);  // test efficient one.
-      // std::cout <<"v = "<<v;
-      // std::cout << "Inefficient real fft of v is: "<< w;
-      // std::cout << "Efficient real fft of v is: "<< y;
+      // KALDI_LOG <<"v = "<<v;
+      // KALDI_LOG << "Inefficient real fft of v is: "<< w;
+      // KALDI_LOG << "Efficient real fft of v is: "<< y;
       AssertEqual(w, y, 0.01*N);
       x.CopyFromVec(w);
       RealFftInefficient(&x, false);
       srfft.Compute(y.Data(), false);
-      // std::cout << "Inefficient real fft of v twice is: "<< x;
+      // KALDI_LOG << "Inefficient real fft of v twice is: "<< x;
       x.Scale(1.0/N);
       y.Scale(1.0/N);
       AssertEqual(v, x, 0.001*N);
@@ -2716,10 +2752,10 @@ template<class Real> static void UnitTestSplitRadixRealFft() {
 template<class Real> static void UnitTestRealFftSpeed() {
 
   // First, test RealFftInefficient.
-  std::cout << "starting. ";
+  KALDI_LOG << "starting. ";
   int sz = 512;  // fairly typical size.
   for (int i = 0; i < 3000; i++) {
-    if (i % 1000 == 0) std::cout << "done 1000 [ == ten seconds of speech]\n";
+    if (i % 1000 == 0) KALDI_LOG << "done 1000 [ == ten seconds of speech]\n";
     Vector<Real> v(sz);
     RealFft(&v, true);
   }
@@ -2728,11 +2764,11 @@ template<class Real> static void UnitTestRealFftSpeed() {
 template<class Real> static void UnitTestSplitRadixRealFftSpeed() {
 
   // First, test RealFftInefficient.
-  std::cout << "starting. ";
+  KALDI_LOG << "starting. ";
   int sz = 512;  // fairly typical size.
   SplitRadixRealFft<Real> srfft(sz);
   for (int i = 0; i < 6000; i++) {
-    if (i % 1000 == 0) std::cout << "done 1000 [ == ten seconds of speech, split-radix]\n";
+    if (i % 1000 == 0) KALDI_LOG << "done 1000 [ == ten seconds of speech, split-radix]\n";
     Vector<Real> v(sz);
     srfft.Compute(v.Data(), true);
   }
@@ -2827,13 +2863,13 @@ void UnitTestNonsymmetricPower() {
 
     Matrix<Real> MM2(M);
     if (!MM2.Power(2.0)) {  // possibly had negative eigenvalues
-      std::cout << "Could not take matrix to power (not an error)\n";
+      KALDI_LOG << "Could not take matrix to power (not an error)\n";
     } else {
       AssertEqual(MM2, MM);
     }
     Matrix<Real> MMMM2(M);
     if (!MMMM2.Power(4.0)) {  // possibly had negative eigenvalues
-      std::cout << "Could not take matrix to power (not an error)\n";
+      KALDI_LOG << "Could not take matrix to power (not an error)\n";
     } else {
       AssertEqual(MMMM2, MMMM);
     }
@@ -2965,8 +3001,8 @@ static void UnitTestMatrixExponentialBackprop() {
 
     double f_diff = f_after - f_before;  // computed using method of differnces
     double f_diff2 = TraceMatMat(Mdash, delta, kTrans);  // computed "analytically"
-    std::cout << "f_diff = " << f_diff << "\n";
-    std::cout << "f_diff2 = " << f_diff2 << "\n";
+    KALDI_LOG << "f_diff = " << f_diff << "\n";
+    KALDI_LOG << "f_diff2 = " << f_diff2 << "\n";
 
     AssertEqual(f_diff, f_diff2);
   }
@@ -3236,8 +3272,8 @@ template<class Real> static void UnitTestCompressedMatrix() {
       cmat3.CopyToMat(&M4);
       AssertEqual(M2, M4);
     }
-    std::cout << "M = " << M;
-    std::cout << "M2 = " << M2;
+    KALDI_LOG << "M = " << M;
+    KALDI_LOG << "M2 = " << M2;
     double tot = M.FrobeniusNorm(), err = diff.FrobeniusNorm();
     KALDI_LOG << "Compressed matrix, tot = " << tot << ", diff = "
               << err;
@@ -3401,6 +3437,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddVecCross();
   UnitTestTp2Sp<Real>();
   UnitTestTp2<Real>();
+  UnitTestAddDiagMat2<Real>();
   UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
   UnitTestTridiag<Real>();
@@ -3411,7 +3448,6 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
-
 }
 
 
@@ -3423,6 +3459,6 @@ int main() {
   bool full_test = false;
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.\n";
 }
 

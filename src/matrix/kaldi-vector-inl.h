@@ -83,6 +83,17 @@ void VectorBase<double>::Scale(double alpha);
 template<>
 void VectorBase<float>::Scale(float alpha);
 
+template<>
+void VectorBase<float>::AddDiagMat2(
+    float alpha, const MatrixBase<float> &M,
+    MatrixTransposeType trans, float beta);
+
+template<>
+void VectorBase<double>::AddDiagMat2(
+    double alpha, const MatrixBase<double> &M,
+    MatrixTransposeType trans, double beta);
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_MATRIX_KALDI_VECTOR_INL_H_
