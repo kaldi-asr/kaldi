@@ -1795,6 +1795,7 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
   Matrix<Real> &M = *M_ptr;
   HtkHeader htk_hdr;
 
+  // TODO(arnab): this fails if the HTK file has CRC cheksum or is compressed.
   is.read((char*)&htk_hdr, sizeof(htk_hdr));  // we're being really POSIX here!
   if (is.fail()) {
     KALDI_WARN << "Could not read header from HTK feature file ";
@@ -1805,6 +1806,11 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
   KALDI_SWAP4(htk_hdr.mSamplePeriod);
   KALDI_SWAP2(htk_hdr.mSampleSize);
   KALDI_SWAP2(htk_hdr.mSampleKind);
+
+  KALDI_VLOG(3) << "HTK header: Num Samples: " << htk_hdr.mNSamples
+                << "; Sample period: " << htk_hdr.mSamplePeriod
+                << "; Sample size: " << htk_hdr.mSampleSize
+                << "; Sample kind: " << htk_hdr.mSampleKind;
 
   M.Resize(htk_hdr.mNSamples, htk_hdr.mSampleSize / sizeof(float));
 

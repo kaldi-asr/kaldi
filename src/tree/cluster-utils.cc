@@ -244,9 +244,12 @@ class BottomUpClusterer {
 };
 
 BaseFloat BottomUpClusterer::Cluster() {
+  KALDI_VLOG(2) << "Initializing cluster assignments.";
   InitializeAssignments();
+  KALDI_VLOG(2) << "Setting initial distances.";
   SetInitialDistances();
 
+  KALDI_VLOG(2) << "Clustering...";
   while (nclusters_ > min_clust_ && !queue_.empty()) {
     std::pair<BaseFloat, std::pair<uint_smaller, uint_smaller> > pr = queue_.top();
     BaseFloat dist = pr.first;
@@ -254,20 +257,32 @@ BaseFloat BottomUpClusterer::Cluster() {
     queue_.pop();
     if (CanMerge(i, j, dist)) MergeClusters(i, j);
   }
+  KALDI_VLOG(2) << "Renumbering clusters to contiguous numbers.";
   Renumber();
   return ans_;
 }
 
 void BottomUpClusterer::Renumber() {
-  // first free up memory by getting rid of queue.  this is a special trick
-  // to force STL to free memory.
+  KALDI_VLOG(2) << "Freeing up distance vector.";
   {
-    QueueType tmp;
-    std::swap(tmp, queue_);
+    vector<BaseFloat> tmp;
+    tmp.swap(dist_vec_);
   }
+
+// Commented the following out since it was causing the process to take up too
+// much memory with larger models. While the swap() method of STL types swaps 
+// the data pointers, std::swap() creates a temporary copy. -Arnab
+//  KALDI_VLOG(2) << "Freeing up the queue";
+//   // first free up memory by getting rid of queue.  this is a special trick
+//   // to force STL to free memory.
+//  {
+//    QueueType tmp;
+//    std::swap(tmp, queue_);
+//  }
 
   // called after clustering, renumbers to make clusters contiguously
   // numbered. also processes assignments_ to remove chains of references.
+  KALDI_VLOG(2) << "Creating new copy of non-NULL clusters.";
   std::vector<uint_smaller> mapping(npoints_, static_cast<uint_smaller> (-1));  // mapping from intermediate to final clusters.
   std::vector<Clusterable*> new_clusters(nclusters_);
   int32 clust = 0;
@@ -280,6 +295,8 @@ void BottomUpClusterer::Renumber() {
     }
   }
   assert(clust == nclusters_);
+
+  KALDI_VLOG(2) << "Creating new copy of assignments.";
   std::vector<int32> new_assignments(npoints_);
   for (int32 i = 0; i < npoints_; i++) {  // now reprocess assignments_.
     int32 ii = i;
@@ -396,6 +413,7 @@ BaseFloat ClusterBottomUp(const std::vector<Clusterable*> &points,
   KALDI_ASSERT(sizeof(uint_smaller)==sizeof(uint32) ||
                npoints < static_cast<int32>(static_cast<uint_smaller>(-1)));
 
+  KALDI_VLOG(2) << "Initializing clustering object.";
   BottomUpClusterer bc(points, max_merge_thresh, min_clust, clusters_out, assignments_out);
   BaseFloat ans = bc.Cluster();
   if (clusters_out) assert(!ContainsNullPointers(*clusters_out));
