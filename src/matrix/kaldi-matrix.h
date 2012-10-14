@@ -633,6 +633,7 @@ class Matrix : public MatrixBase<Real> {
 /// @{
 
 /// A structure containing the HTK header.
+/// [TODO: change the style of the variables to Kaldi-compliant]
 struct HtkHeader {
   /// Number of samples.
   int32    mNSamples;
