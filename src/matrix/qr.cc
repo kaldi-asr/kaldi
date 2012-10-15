@@ -107,7 +107,7 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
 */
 template<class Real>
 void SpMatrix<Real>::Tridiagonalize(MatrixBase<Real> *Q) {
-  int32 n = this->NumRows();
+  MatrixIndexT n = this->NumRows();
   KALDI_ASSERT(Q == NULL || (Q->NumRows() == n &&
                              Q->NumCols() == n));
   if (Q != NULL) Q->SetUnit();
@@ -292,7 +292,9 @@ void QrInternal(MatrixIndexT n,
     // the part of size q is diagonal and the part of size n-p-p is
     // "unreduced", i.e. has no zero off-diagonal elements.
     MatrixIndexT q = 0;
-    while (q < n && (n-2-q < 0 || off_diag[n-2-q] == 0.0))
+    // Note: below, "n-q < 2" should more clearly be "n-2-q < 0", but that
+    // causes problems if MatrixIndexT is unsigned.
+    while (q < n && (n-q < 2 || off_diag[n-2-q] == 0.0))
       q++;
     if (q == n) break; // we're done.  It's diagonal.
     KALDI_ASSERT(n - q >= 2);
@@ -412,7 +414,7 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
     Vector<Real> r(dim);
     r.AddSpVec(1.0, S, Q.Row(d));
     // r = S * q_d
-    int32 counter = 0;
+    MatrixIndexT counter = 0;
     Real end_prod;
     while (1) { // Normally we'll do this loop only once:
       // we repeat to handle cases where r gets very much smaller
@@ -420,10 +422,10 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
       // We do "full orthogonalization" to preserve stability,
       // even though this is usually a waste of time.
       Real start_prod = VecVec(r, r);
-      for (int e = d; e >= 0; e--) { // e must be signed!
+      for (SignedMatrixIndexT e = d; e >= 0; e--) { // e must be signed!
         SubVector<Real> q_e(Q, e);
         Real prod = VecVec(r, q_e);
-        if (counter == 0 && e >= d-1) // Keep T tridiagonal, which
+        if (counter == 0 && static_cast<MatrixIndexT>(e) + 1 >= d) // Keep T tridiagonal, which
           T(d, e) = prod; // mathematically speaking, it is.
         r.AddVec(-prod, q_e); // Subtract component in q_e.
       }

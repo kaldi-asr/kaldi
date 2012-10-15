@@ -67,9 +67,9 @@ typedef int32 SignedMatrixIndexT;
 typedef uint32 UnsignedMatrixIndexT;
 
 // If you want to use size_t for the index type, do as follows instead:
-// typedef size_t MatrixIndexT;
-// typedef ssize_t SignedMatrixIndexT;
-// typedef size_t UnsignedMatrixIndexT;
+//typedef size_t MatrixIndexT;
+//typedef ssize_t SignedMatrixIndexT;
+//typedef size_t UnsignedMatrixIndexT;
 
 }
 

@@ -279,7 +279,7 @@ double GpsrBasic(const GpsrConfig &opts, const SpMatrix<double> &H,
     x->AddVec(-1.0, v_new);
 
     num_zeros = 0;
-    for (int32 i = 0; i < dim; i++)
+    for (MatrixIndexT i = 0; i < dim; i++)
       if ((*x)(i) == 0)
         num_zeros++;
 
@@ -435,7 +435,7 @@ double GpsrBB(const GpsrConfig &opts, const SpMatrix<double> &H,
     x->AddVec(-1.0, v);
 
     num_zeros = 0;
-    for (int32 i = 0; i < dim; i++)
+    for (MatrixIndexT i = 0; i < dim; i++)
       if ((*x)(i) == 0)
         num_zeros++;
 

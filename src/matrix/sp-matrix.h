@@ -194,7 +194,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// whole point of this function is to reduce the dimension of the SVD
   /// computation.
   void TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
-               int32 lanczos_dim = -1) const;
+               MatrixIndexT lanczos_dim = -1) const;
 
 
   

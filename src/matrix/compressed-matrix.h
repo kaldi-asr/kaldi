@@ -64,11 +64,11 @@ class CompressedMatrix {
   void Read(std::istream &is, bool binary);
 
   /// Returns number of rows (or zero for emtpy matrix).
-  inline int32 NumRows() const { return (data_ == NULL) ? 0 :
+  inline MatrixIndexT NumRows() const { return (data_ == NULL) ? 0 :
       (*reinterpret_cast<GlobalHeader*>(data_)).num_rows; }
 
   /// Returns number of columns (or zero for emtpy matrix).
-  inline int32 NumCols() const { return (data_ == NULL) ? 0 :
+  inline MatrixIndexT NumCols() const { return (data_ == NULL) ? 0 :
       (*reinterpret_cast<GlobalHeader*>(data_)).num_cols; }
 
   /// Copies row #row of the matrix into vector v.

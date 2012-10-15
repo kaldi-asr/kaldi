@@ -588,15 +588,18 @@ so: re(D_k)= 1/2 (im(B_k) + im(B_{N/2-k}))                             (z2)
  */
 
 template<class Real> void ComputeDctMatrix(Matrix<Real> *M) {
-  KALDI_ASSERT(M->NumRows() == M->NumCols());
-  MatrixIndexT N = M->NumRows();
+  //KALDI_ASSERT(M->NumRows() == M->NumCols());
+  MatrixIndexT K = M->NumRows();
+  MatrixIndexT N = M->NumCols();
+
+  KALDI_ASSERT(K > 0);
   KALDI_ASSERT(N > 0);
   Real normalizer = sqrt(1.0 / static_cast<Real>(N));  // normalizer for
   // X_0.
   for (MatrixIndexT j = 0; j < N; j++) (*M)(0, j) = normalizer;
   normalizer = sqrt(2.0 / static_cast<Real>(N));  // normalizer for other
    // elements.
-  for (MatrixIndexT k = 1; k < N; k++)
+  for (MatrixIndexT k = 1; k < K; k++)
     for (MatrixIndexT n = 0; n < N; n++)
       (*M)(k, n) = normalizer
           * cos( static_cast<double>(M_PI)/N * (n + 0.5) * k );
@@ -626,7 +629,8 @@ void MatrixExponential<Real>::Compute(const MatrixBase<Real> &M,
   MatrixIndexT dim = M.NumRows();
   P_.Resize(dim, dim);
   P_.CopyFromMat(M);
-  P_.Scale(std::pow(0.5, N_));
+  P_.Scale(std::pow(static_cast<Real>(0.5),
+                    static_cast<Real>(N_)));
   // would need to keep this code in sync with ComputeN().
   B_.resize(N_+1);
   B_[0].Resize(dim, dim);
@@ -736,7 +740,8 @@ void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &hX,
   // we have to backprop this and we get df/dP_.
   BackpropTaylor(dB, hM);  // at this point, hM is temporarily used to store
   // df/dP_.
-  hM->Scale(std::pow(0.5, N_));  // Since A_Scaled = A * std::pow(0.5, N_).
+  hM->Scale(std::pow(static_cast<Real>(0.5),
+                     static_cast<Real>(N_)));  // Since A_Scaled = A * std::pow(0.5, N_).
 }
 
 
