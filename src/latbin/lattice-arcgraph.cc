@@ -311,6 +311,8 @@ int main(int argc, char *argv[]) {
         bool debug_location = false;
         DeterminizeStar(fst_det, &fst_final, fst::kDelta, &debug_location, -1);
         DecodeGraphSymbols(&fst_final, &arc_map);
+        ArcSort(&fst_final, fst::OLabelCompare<fst::StdArc>());
+        // the decoders expects the arc numbers to be sorted
         arcs_writer.Write(key, fst_final);
 
         KALDI_LOG << key << " finished";
