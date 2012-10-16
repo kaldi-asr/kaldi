@@ -611,7 +611,6 @@ if [ "`uname`" == "Linux" ]; then
   else 
       failure "Unsupported linear algebra library '$MATHLIB'"
   fi
-
 fi
 
 failure Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers.

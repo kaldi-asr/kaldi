@@ -32,9 +32,6 @@
 typedef fst::StdArc::StateId StateId;
 typedef fst::StdArc::Weight Weight;
 typedef fst::StdArc::Label Label;
-//typedef std::tr1::unordered_set<StateId> StateSet;
-//typedef std::tr1::unordered_set<int32> IdSet;
-
 
 void ConvertFstToArcLattice(fst::StdVectorFst *net, kaldi::Lattice *lat,
                             std::vector<std::pair<int32,int32> > *arc_map,
@@ -185,8 +182,6 @@ int main(int argc, char *argv[]) {
     using fst::VectorFst;
     using fst::StdArc;
 
-    //BaseFloat acoustic_scale = 0.1;
-    //BaseFloat lat_beam = 10.0;
     std::string lattice_wspecifier;
     std::string fst_out_filename;
 

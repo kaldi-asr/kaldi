@@ -1,6 +1,7 @@
 // decoder/lattice-tracking-decoder.h
 
-// Copyright 2012 BUT (Author: Mirko Hannemann)  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012 BUT (Author: Mirko Hannemann) Johns Hopkins University
+// (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,9 +80,26 @@ struct LatticeTrackingDecoderConfig {
 };
 
 
-/** A bit more optimized version of the lattice decoder.
-   See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
-    for more information.
+/**
+   This is the "tracking" version of the lattice-generating decoder.  It relates
+   to a "forward-backward decoding" concept that Mirko Hannemann and Dan Povey
+   are pursuing.  The idea is to use information from, say, a forward pass over
+   the data to inform the search of a backward pass over the same data.
+   Note: this code is modified from lattice-faster-decoder.h.
+
+   The basic idea is we take a lattice, say from a backward-in-time decoding
+   (for complementarity with the forward-in-time one), and for the forward-in-time
+   HCLG graph, we work out which arcs in the graph each lattice arc corresponds to...
+   this is done in a shortest-path sense, in that we work out for each path through
+   the lattice the best path through HCLG that it corresponds to... then when
+   decoding forward in time, we make sure on each time to, to keep each of the
+   arcs in HCLG that the backwards lattice would require us to keep active..
+
+   The lattice that we give to the decoder to help the search, has a format where
+   the ilabels contain the state in HCLG (corresponding to the preceding-state of
+   the arc in the lattice), and the olabels contain the arc index corresponding to
+   that transition in the lattice, i.e. the offset into the list of arcs transitioning
+   from that state in HCLG.   
  */
 class LatticeTrackingDecoder {
  public:
@@ -89,12 +107,10 @@ class LatticeTrackingDecoder {
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
-  typedef std::tr1::unordered_map<Label, StateId> Arc2StateMap;
-  // maps graph arc to successor state
 
   // instantiate this class once for each thing you have to decode.
   LatticeTrackingDecoder(const fst::Fst<fst::StdArc> &fst,
-                       const LatticeTrackingDecoderConfig &config);
+                         const LatticeTrackingDecoderConfig &config);
 
   void SetOptions(const LatticeTrackingDecoderConfig &config) {
     config_ = config;
@@ -102,9 +118,15 @@ class LatticeTrackingDecoder {
 
   ~LatticeTrackingDecoder() { ClearActiveTokens(); }
 
-  // Returns true if any kind of traceback is available (not necessarily from
-  // a final state).
-  bool Decode(DecodableInterface *decodable,const fst::StdVectorFst *arc_graph);
+  /// Returns true if any kind of traceback is available (not necessarily from
+  /// a final state).
+  /// The "arc_graph" argument is a specially processed lattice derived from
+  /// a normal lattice (typically from decoding in an opposite direction in time),
+  /// and the HCLG decoding graph we're decoding with in this decoder.
+  /// Look at the comment for LatticeTrackingDecoder for more details on its
+  /// format.
+  bool Decode(DecodableInterface *decodable,
+              const fst::StdVectorFst *arc_graph);
   
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
