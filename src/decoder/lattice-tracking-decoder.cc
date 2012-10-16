@@ -32,8 +32,8 @@ LatticeTrackingDecoder::LatticeTrackingDecoder(const fst::Fst<fst::StdArc> &fst,
 // Returns true if any kind of traceback is available (not necessarily from
 // a final state).
 bool LatticeTrackingDecoder::Decode(DecodableInterface *decodable,
-                                    const fst::StdVectorFst *arc_graph) {
-  arc_graph_ = arc_graph;
+                                    const fst::StdVectorFst &arc_graph) {
+  arc_graph_ = &arc_graph;
   // clean up from last time:
   ClearToks(toks_.Clear());
   cost_offsets_.clear();
@@ -46,7 +46,7 @@ bool LatticeTrackingDecoder::Decode(DecodableInterface *decodable,
   KALDI_ASSERT(start_state != fst::kNoStateId);
   active_toks_.resize(1);
   // the initial token will be tracked and starts the arc_graph
-  Token *start_tok = new Token(0.0, 0.0, NULL, NULL, arc_graph->Start());
+  Token *start_tok = new Token(0.0, 0.0, NULL, NULL, arc_graph.Start());
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
@@ -881,7 +881,7 @@ bool DecodeUtteranceLatticeTracking(
     double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
 
-  if (!decoder.Decode(&decodable, &arc_graph)) {
+  if (!decoder.Decode(&decodable, arc_graph)) {
     KALDI_WARN << "Failed to decode file " << utt;
     return false;
   }

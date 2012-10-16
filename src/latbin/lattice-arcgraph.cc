@@ -15,33 +15,32 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-//#ifdef _MSC_VER
-//#include <unordered_set>
-//#else
-//#include <tr1/unordered_set>
-//#endif
-
 #include "fst/fstlib.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "hmm/transition-model.h"
-#include "tree/context-dep.h"
 
 typedef fst::StdArc::StateId StateId;
 typedef fst::StdArc::Weight Weight;
 typedef fst::StdArc::Label Label;
 
+/* does the same as ConvertFstToLattice, but
+ we encode HCLG state and transition into the output labels
+ (which is what we later use as HCLG arc graph)
+ and we replace transition-ids with transition states to make it independent
+ of whether self-loops occur before or after the normal transitions,
+ which is necessary, since the order was time reversed */
 void ConvertFstToArcLattice(fst::StdVectorFst *net, kaldi::Lattice *lat,
                             std::vector<std::pair<int32,int32> > *arc_map,
                             kaldi::TransitionModel *tmodel, bool keep_weights) {
-  // same as ConvertFstToLattice, but
-  // encodes the arc and transition in the transducer
-  // replaces transition-ids with transition states (self loop order)
-
-  arc_map->reserve(net->NumStates()*4); // average fan-out is maybe 3
-  for(int32 i = 0; i < net->NumStates(); i++) lat->AddState();
+  int32 num_arcs = 0; // count to reserve the size of arc_map
+  for(int32 i = 0; i < net->NumStates(); i++) {
+    lat->AddState();
+    num_arcs += net->NumArcs(i);
+  }
+  arc_map->reserve(num_arcs);
   lat->SetStart(net->Start());
   for(fst::StateIterator<fst::StdVectorFst> siter(*net); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
@@ -59,11 +58,8 @@ void ConvertFstToArcLattice(fst::StdVectorFst *net, kaldi::Lattice *lat,
       Label ilabel = arc.ilabel; // transition-id
       // transition state is independent of self-loop order
       if (ilabel > 0) ilabel = tmodel->TransitionIdToTransitionState(ilabel);
-      //Label olabel = arc.olabel; // word labels 
-      //Label olabel = s;
-      //new_weight.SetValue2(float(arc_id)); // hack that assumes that composed weight will be zero
       arc_map->push_back(std::make_pair(s, arc_id));
-      Label olabel = arc_map->size();
+      Label olabel = arc_map->size(); // new labels encode the unique index
       kaldi::LatticeArc new_arc(ilabel, olabel, new_weight, arc.nextstate);
       lat->AddArc(s, new_arc);
       arc_id ++;
@@ -120,7 +116,7 @@ void MapTransitionIdsToTransitionStates(kaldi::CompactLattice *lat,
       kaldi::CompactLatticeArc arc = aiter.Value();
       kaldi::CompactLatticeWeight w = arc.weight;
       std::vector<kaldi::int32> syms = w.String();
-    
+
       // map all transition-ids to transition-states
       for(std::vector<kaldi::int32>::iterator it = syms.begin();
           it != syms.end(); ++it) {
@@ -131,49 +127,6 @@ void MapTransitionIdsToTransitionStates(kaldi::CompactLattice *lat,
       kaldi::CompactLatticeWeight newwgt(new_w, syms); 
       arc.weight = newwgt;
       aiter.SetValue(arc);
-    }
-  }
-}
-
-void ConvertFstToLattice(fst::StdVectorFst *net, kaldi::Lattice *lat) {
-  for(int32 i = 0; i < net->NumStates(); i++) lat->AddState();
-  lat->SetStart(net->Start());
-  for(fst::StateIterator<fst::StdVectorFst> siter(*net); !siter.Done(); siter.Next()) {
-    StateId s = siter.Value();
-    Weight w_final = net->Final(s);
-    if (w_final != Weight::Zero()) { // final state
-      kaldi::LatticeWeight new_weight(kaldi::LatticeWeight::One());
-      new_weight.SetValue1(w_final.Value());
-      lat->SetFinal(s, new_weight);
-    }
-    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(net, s); !aiter.Done(); aiter.Next()) {
-      fst::StdArc arc = aiter.Value();
-      kaldi::LatticeWeight new_weight(kaldi::LatticeWeight::One());
-      new_weight.SetValue1(arc.weight.Value());
-      kaldi::LatticeArc new_arc(arc.ilabel, arc.olabel, new_weight, arc.nextstate);
-      lat->AddArc(s, new_arc);
-    }
-  }
-}
-
-void ConvertLatticeToFst(kaldi::Lattice *lat, kaldi::BaseFloat acoustic_scale,
-                         fst::StdVectorFst *net) {
-  for(int32 i = 0; i < lat->NumStates(); i++) net->AddState();
-  net->SetStart(lat->Start());
-  for(fst::StateIterator<kaldi::Lattice> siter(*lat);
-      !siter.Done(); siter.Next()) {
-    StateId s = siter.Value();
-    kaldi::LatticeWeight w_final = lat->Final(s);
-    if (w_final != kaldi::LatticeWeight::Zero()) { // final state
-      Weight new_weight( w_final.Value2()/acoustic_scale + w_final.Value1() );
-      net->SetFinal(s, new_weight);
-    }
-    for (fst::MutableArcIterator<kaldi::Lattice> aiter(lat, s);
-         !aiter.Done(); aiter.Next()) {
-      kaldi::LatticeArc arc = aiter.Value();
-      Weight new_weight( arc.weight.Value2()/acoustic_scale + arc.weight.Value1() );
-      fst::StdArc new_arc(arc.ilabel, arc.olabel, new_weight, arc.nextstate);
-      net->AddArc(s, new_arc);
     }
   }
 }
@@ -192,72 +145,48 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Compose decoding graph with given lattices to obtain active-arc lattices.\n"
-        "Usage: lattice-arcgraph [options] <tree-in> <topo-file or model-file> "
+        "Usage: lattice-arcgraph [options] <model-file> "
         "<decoding-graph-fst> <lattice-rspecifier> <arcs-wspecifier>\n"
-        " e.g.: lattice-arcgraph tree final.mdl HCLG.fst ark:in.lats ark:out.arcs\n";
-      
+        " e.g.: lattice-arcgraph final.mdl HCLG.fst ark:in.lats ark:out.arcs\n";
+
     ParseOptions po(usage);
-    bool topo = false;
-    po.Register("topo-file", &topo, "Read topo file instead of model file.");
-    po.Register("write-lattices", &lattice_wspecifier, 
+    po.Register("write-lattices", &lattice_wspecifier,
       "Write intermediate lattices to archive.");
-    po.Register("write-graph", &fst_out_filename,
-      "Write intermediate graph to file.");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 5) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string
-        tree_filename = po.GetArg(1),
-        topo_filename = po.GetArg(2),
-        fst_in_filename = po.GetArg(3),
-        lats_rspecifier = po.GetArg(4),
-        arcs_wspecifier = po.GetArg(5);
-    
+        model_filename = po.GetArg(1),
+        fst_in_filename = po.GetArg(2),
+        lats_rspecifier = po.GetArg(3),
+        arcs_wspecifier = po.GetArg(4);
+
     // options for lattice determinization
     fst::DeterminizeLatticeOptions lat_opts;
     lat_opts.max_mem = 50000000; // 50 MB
     lat_opts.max_loop = 500000;
     lat_opts.delta = fst::kDelta;
 
-    // load context dependency (tree)
-    ContextDependency ctx_dep;
-    ReadKaldiObject(tree_filename, &ctx_dep);
-
-    // load topograhpy/model and create transition model
-    bool binary_in;
-    Input ki(topo_filename, &binary_in);
-    HmmTopology *topology;
-    if (topo) { 
-      topology = new HmmTopology;
-      topology->Read(ki.Stream(), binary_in);
-    } else {
-      kaldi::TransitionModel tm;
-      tm.Read(ki.Stream(), binary_in);
-      topology = new HmmTopology(tm.GetTopo());
-    }
-    kaldi::TransitionModel trans_model(ctx_dep, *topology);
+    // load transition model as begin of model file
+    TransitionModel trans_model;
+    ReadKaldiObject(model_filename, &trans_model);
 
     // read decoding graph and convert to transition-state acceptor lattice
     fst::StdVectorFst *hclg = fst::ReadFstKaldi(fst_in_filename);
     Lattice graph;
-    // convert transition ids (input labels) to transition states
-    // and encode graph state in weight or output label
+    // encode HCLG state and transition into the output labels
+    // and replace transition-ids with transition states
     std::vector<std::pair<int32,int32> > arc_map; // maps state/arc to symbol-id
     ConvertFstToArcLattice(hclg, &graph, &arc_map, &trans_model, true); // keep weights
     fst::ArcSort(&graph, fst::ILabelCompare<kaldi::LatticeArc>());
 
-    //if (fst_out_filename != "") WriteFstKaldi(graph, fst_out_filename);
-
-    //LatticeWriter arcs_writer(arcs_wspecifier);
     TableWriter<fst::VectorFstHolder> arcs_writer(arcs_wspecifier);
-
     LatticeWriter lat_writer;
-    //TableWriter<fst::VectorFstHolder> lat_writer;
     if (lattice_wspecifier != "") lat_writer.Open(lattice_wspecifier);
 
     // convert all lattices and compose with acceptor HCLG
@@ -280,10 +209,6 @@ int main(int argc, char *argv[]) {
       Lattice lat_reverse;
       fst::Reverse(lat_mapped, &lat_reverse);
       RemoveEpsLocal(&lat_reverse);
-      // weight pushing (to make it stochastic) doesn't work with Lattice
-      //fst::PushInLog<fst::REWEIGHT_TO_INITIAL>(&lat_reverse, fst::kPushWeights, lat_opts.delta, removetotalweight);
-      //fst::ArcSort(&lat_reverse, fst::StdOLabelCompare()); //sufficient if one is sorted
-      //if (lattice_wspecifier != "") lat_writer.Write(key, lat_reverse);
 
       KALDI_LOG << "compose with lattice " << key;
       Lattice lat_composed;
@@ -296,7 +221,6 @@ int main(int argc, char *argv[]) {
         ScaleLattice(fst::LatticeScale(0.0, 0.0), &clat_determinized);
         Lattice lat_det;
         ConvertLattice(clat_determinized, &lat_det);
-        //if (lattice_wspecifier != "") lat_writer.Write(key, lat_det);
 
         // convert to StdFst, remove word labels
         fst::VectorFst<fst::StdArc> fst_det;
@@ -304,7 +228,6 @@ int main(int argc, char *argv[]) {
         Map(lat_det, &fst_det, mapper);
         Project(&fst_det, fst::PROJECT_INPUT);
         ArcSort(&fst_det, fst::ILabelCompare<fst::StdArc>()); //to improve speed
-        //if (lattice_wspecifier != "") lat_writer.Write(key, fst_det);
 
         // determinize again on the arc_ids
         fst::VectorFst<fst::StdArc> fst_final;
@@ -312,7 +235,7 @@ int main(int argc, char *argv[]) {
         DeterminizeStar(fst_det, &fst_final, fst::kDelta, &debug_location, -1);
         DecodeGraphSymbols(arc_map, &fst_final);
         ArcSort(&fst_final, fst::OLabelCompare<fst::StdArc>());
-        // the decoders expects the arc numbers to be sorted
+        // the decoder expects the arc numbers to be sorted
         arcs_writer.Write(key, fst_final);
 
         KALDI_LOG << key << " finished";

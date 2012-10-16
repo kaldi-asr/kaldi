@@ -126,7 +126,7 @@ class LatticeTrackingDecoder {
   /// Look at the comment for LatticeTrackingDecoder for more details on its
   /// format.
   bool Decode(DecodableInterface *decodable,
-              const fst::StdVectorFst *arc_graph);
+              const fst::StdVectorFst &arc_graph);
   
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
