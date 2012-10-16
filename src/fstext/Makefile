@@ -15,9 +15,9 @@ TESTFILES = determinize-star-test \
       context-fst-test factor-test table-matcher-test fstext-utils-test \
       remove-eps-local-test rescale-test lattice-weight-test  \
       determinize-lattice-test lattice-utils-test deterministic-fst-test \
-      determinize-lattice-pruned-test
+      determinize-lattice-pruned-test 
 
-OBJFILES = 
+OBJFILES =  
 
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 
@@ -37,9 +37,10 @@ $(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../base/
 clean:
 	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
-test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
-	echo Tests succeeded
+test_compile: $(TESTFILES)
+  
+test: test_compile
+	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(TESTFILES)
 

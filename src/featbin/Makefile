@@ -32,9 +32,10 @@ $(BINFILES): ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi
 clean:
 	-rm -f *.o *.a $(TESTFILES) $(BINFILES)
 
-test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
-	echo Tests succeeded
+test_compile: $(TESTFILES)
+  
+test: test_compile
+	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(TESTFILES)
 
