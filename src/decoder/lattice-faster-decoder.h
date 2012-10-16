@@ -61,7 +61,9 @@ struct LatticeFasterDecoderConfig {
     po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
     po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
     po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
-    po->Register("beam-delta", &beam_delta, "Increment used in decoding");
+    po->Register("beam-delta", &beam_delta, "Increment used in decoding-- this parameter is obscure"
+                 "and relates to a speedup in the way the max-active constraint is applied.  Larger"
+                 "is more accurate.");
     po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control hash behavior");
   }
   void Check() const {
@@ -185,7 +187,7 @@ class LatticeFasterDecoder {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
   inline Token *FindOrAddToken(StateId state, int32 frame, BaseFloat tot_cost,
-                               bool emitting, bool *changed);
+                               bool *changed);
   
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens

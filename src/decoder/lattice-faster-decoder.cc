@@ -190,7 +190,7 @@ void LatticeFasterDecoder::PossiblyResizeHash(size_t num_toks) {
 // (whose head is at active_toks_[frame]).
 inline LatticeFasterDecoder::Token *LatticeFasterDecoder::FindOrAddToken(
     StateId state, int32 frame, BaseFloat tot_cost,
-    bool emitting, bool *changed) {
+    bool *changed) {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
   // if the token was newly created or the cost changed.
   KALDI_ASSERT(frame < active_toks_.size());
@@ -592,8 +592,8 @@ void LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable, int32 
           if (tot_cost > next_cutoff) continue;
           else if (tot_cost + config_.beam < next_cutoff)
             next_cutoff = tot_cost + config_.beam; // prune by best current token
-          Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, true, NULL);
-          // true: emitting, NULL: no change indicator needed
+          Token *next_tok = FindOrAddToken(arc.nextstate, frame, tot_cost, NULL);
+          // NULL: no change indicator needed
           
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
           tok->links = new ForwardLink(next_tok, arc.ilabel, arc.olabel, 
@@ -658,7 +658,7 @@ void LatticeFasterDecoder::ProcessNonemitting(int32 frame) {
           bool changed;
 
           Token *new_tok = FindOrAddToken(arc.nextstate, frame, tot_cost,
-                                          false, &changed); // false: non-emit
+                                          &changed);
             
           tok->links = new ForwardLink(new_tok, 0, arc.olabel,
                                        graph_cost, 0, tok->links);
