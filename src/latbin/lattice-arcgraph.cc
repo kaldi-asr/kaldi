@@ -71,8 +71,13 @@ void ConvertFstToArcLattice(fst::StdVectorFst *net, kaldi::Lattice *lat,
   }
 }
 
-void DecodeGraphSymbols(fst::StdVectorFst *net,
-                        std::vector<std::pair<int32,int32> > *arc_map) {
+/* Discards the ilabel on an arc, and replaces the (ilabel, olabel) with a pair
+   obtained from the "arc_map" vector, indexed with the original olabel.  At
+   input the (ilabel, olabel) of the graph are (transition-ids, indexes into
+   arc_map), and when this function is done they are (states in HCLG,
+   indexes into the lists of arcs leaving those states).  */
+void DecodeGraphSymbols(const std::vector<std::pair<int32,int32> > &arc_map,
+                        fst::StdVectorFst *net) {
   // maps symbols back state/arc pairs
   for(fst::StateIterator<fst::StdVectorFst> siter(*net);
       !siter.Done(); siter.Next()) {
@@ -80,8 +85,8 @@ void DecodeGraphSymbols(fst::StdVectorFst *net,
     for (fst::MutableArcIterator<fst::StdVectorFst> aiter(net, s);
          !aiter.Done(); aiter.Next()) {
       fst::StdArc arc = aiter.Value();
-      Label ilabel = (*arc_map)[arc.ilabel-1].first; // state
-      Label olabel = (*arc_map)[arc.ilabel-1].second; // arc
+      Label ilabel = arc_map[arc.ilabel-1].first; // state
+      Label olabel = arc_map[arc.ilabel-1].second; // arc
       fst::StdArc new_arc(ilabel, olabel, arc.weight, arc.nextstate);
       aiter.SetValue(new_arc);
     }
@@ -305,7 +310,7 @@ int main(int argc, char *argv[]) {
         fst::VectorFst<fst::StdArc> fst_final;
         bool debug_location = false;
         DeterminizeStar(fst_det, &fst_final, fst::kDelta, &debug_location, -1);
-        DecodeGraphSymbols(&fst_final, &arc_map);
+        DecodeGraphSymbols(arc_map, &fst_final);
         ArcSort(&fst_final, fst::OLabelCompare<fst::StdArc>());
         // the decoders expects the arc numbers to be sorted
         arcs_writer.Write(key, fst_final);
