@@ -170,6 +170,47 @@ bool CheckFst(fst::StdVectorFst &fst, string name, string key) {
 #endif
 }
 
+
+// Guoguo Chen added the implementation for option "write-lattices". This
+// function does a depth first search on the lattice and remove the arcs that
+// don't correspond to the oracle path. By "remove" I actually point the next
+// state of the arc to some state that is not in the lattice and then use the
+// openfst connect function. This makes things much easier. 
+bool GetOracleLattice(Lattice *oracle_lat, 
+                      vector<int32> oracle_words, 
+                      LatticeArc::StateId bad_state,
+                      LatticeArc::StateId current_state, 
+                      int32 current_word) {
+  if (current_word == oracle_words.size()) {
+    if (oracle_lat->Final(current_state) != LatticeArc::Weight::Zero())
+      return true;
+  } else {
+    if (oracle_lat->Final(current_state) != LatticeArc::Weight::Zero())
+      return false;
+  }
+
+  bool status = false;
+  for (fst::MutableArcIterator<Lattice> aiter(oracle_lat, current_state);
+       !aiter.Done();
+       aiter.Next()) {
+    LatticeArc arc(aiter.Value());
+    LatticeArc::StateId nextstate = arc.nextstate;
+    if (arc.olabel == 0)
+      status = GetOracleLattice(oracle_lat, oracle_words, bad_state, nextstate, current_word) || status;
+    else if (current_word < oracle_words.size() && arc.olabel == oracle_words[current_word])
+      status = GetOracleLattice(oracle_lat, oracle_words, bad_state, nextstate, ++current_word) || status;
+    else {
+      arc.nextstate = bad_state;
+      aiter.SetValue(arc);
+    }
+  }
+
+  if (current_state == oracle_lat->Start())
+    fst::Connect(oracle_lat);
+
+  return status;
+}
+
 }
 
 int main(int argc, char *argv[]) {
@@ -215,6 +256,9 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32VectorReader reference_reader(reference_rspecifier);
 
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
+
+    // Guoguo Chen added the implementation for option "write-lattices".
+    CompactLatticeWriter lats_writer(lats_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
@@ -312,6 +356,20 @@ int main(int argc, char *argv[]) {
             std::cerr << s << ' ';
           }
           std::cerr << '\n';
+        }
+
+        // Guoguo Chen added the implementation for option "write-lattices".
+        // Currently it's just a naive implementation: traversal the original
+        // lattice and get the path corresponding to the oracle word sequence.
+        // Note that this new lattice has the alignment information.
+        if (lats_wspecifier != "") {
+          Lattice oracle_lat = lat;
+          LatticeArc::StateId bad_state = oracle_lat.AddState();
+          if (!GetOracleLattice(&oracle_lat, oracle_words, bad_state, oracle_lat.Start(), 0)) 
+            KALDI_WARN << "Fail to find the oracle path in the original lattice: " << key;
+          CompactLattice oracle_clat;
+          ConvertLattice(oracle_lat, &oracle_clat);
+          lats_writer.Write(key, oracle_clat);
         }
       }
       n_done++;
