@@ -48,8 +48,9 @@ typedef enum { kAllKeysInsistIdentical, kAllKeysIntersection, kAllKeysUnion } Al
 struct QuestionsForKey {  // Configuration class associated with a particular key
   // (of type EventKeyType).  It also contains the questions themselves.
   std::vector<std::vector<EventValueType> > initial_questions;
-  RefineClustersOptions refine_opts;  // if refine_cfg.max_iter == 0, we just pick from the initial questions.
-
+  RefineClustersOptions refine_opts;  // if refine_opts.max_iter == 0,
+  // we just pick from the initial questions.
+  
   QuestionsForKey(int32 num_iters = 5): refine_opts(num_iters, 2) {
     // refine_cfg with 5 iters and top-n = 2 (this is no restriction because
     // RefineClusters called with 2 clusters; would get set to that anyway as

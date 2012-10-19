@@ -6,6 +6,8 @@
 
 =====
 dan's TODO:
+ Read()->ReadNew in clusterable-classes.h, and Read_ -> Read
+
  change on-disk formats to make memory mapping easier?
  address roundoff issues RE lattice generation?
  suggestions from Sanjeev: modify decoding scripts to adjust num-jobs;

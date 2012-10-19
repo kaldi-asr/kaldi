@@ -288,7 +288,9 @@ BaseFloat ObjfGivenMap(const BuildTreeStatsType &stats_in, const EventMap &e) {
 
 // This function computes the best initial split of these stats [with this key].
 // Returns best objf change (>=0).
-BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats, const Questions &q_opts, EventKeyType key, std::vector<EventValueType> *yes_set) {
+BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
+                              const Questions &q_opts, EventKeyType key,
+                              std::vector<EventValueType> *yes_set) {
   assert(yes_set != NULL);
   yes_set->clear();
   const QuestionsForKey &key_opts = q_opts.GetQuestionsOf(key);
@@ -354,7 +356,9 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
   }
 
   std::vector<EventValueType> yes_set;
-  BaseFloat initial_impr = ComputeInitialSplit(summed_stats, q_opts, key, &yes_set);  // find best basic question.
+  BaseFloat improvement = ComputeInitialSplit(summed_stats,
+                                               q_opts, key, &yes_set);
+  // find best basic question.
 
   std::vector<int32> assignments(summed_stats.size(), 0);  // assigns to "no" (0) by default.
   for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); iter++) {
@@ -371,24 +375,26 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
   EnsureClusterableVectorNotNull(&summed_stats);
   EnsureClusterableVectorNotNull(&clusters);
 
-  // even if initial_impr == 0 we continue; if we do RefineClusters we may get further improvement.
+  // even if improvement == 0 we continue; if we do RefineClusters we may get further improvement.
   // now do the RefineClusters stuff.  Note that this is null-op if
   // q_opts.GetQuestionsOf(key).refine_opts.num_iters == 0.  We could check for this but don't bother;
   // it happens in RefineClusters anyway.
 
-  BaseFloat refine_impr = RefineClusters(summed_stats, &clusters, &assignments, q_opts.GetQuestionsOf(key).refine_opts);
-
-  assert(refine_impr > std::min(-1.0, -0.1*fabs(initial_impr)));  // refine_impr should always be positive
-
-  yes_set.clear();
-  for (size_t i = 0;i < assignments.size();i++) if (assignments[i] == 1) yes_set.push_back(i);
-  *yes_set_out = yes_set;
-
-  BaseFloat ans = initial_impr + refine_impr;
-  if (ans < initial_impr - 0.001*(fabs(initial_impr)+fabs(ans))) {
-    KALDI_ERR << "Objf decreased-- something bad happened. " << ans << " " << initial_impr;
+  if (q_opts.GetQuestionsOf(key).refine_opts.num_iters > 0) {
+    // If we want to refine the questions... (a bit like k-means w/ 2 classes).
+    // Note: the only reason we introduced the if-statement is so the yes_set
+    // doesn't get modified (truncated, actually) if we do the refine stuff with
+    // zero iters.
+    BaseFloat refine_impr = RefineClusters(summed_stats, &clusters, &assignments,
+                                           q_opts.GetQuestionsOf(key).refine_opts);
+    assert(refine_impr > std::min(-1.0, -0.1*fabs(improvement)));
+    // refine_impr should always be positive
+    improvement += refine_impr;
+    yes_set.clear();
+    for (size_t i = 0;i < assignments.size();i++) if (assignments[i] == 1) yes_set.push_back(i);
   }
-
+  *yes_set_out = yes_set;
+    
   DeletePointers(&clusters);
 #ifdef KALDI_PARANOID
   {  // Check the "ans" is correct.
@@ -404,7 +410,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
   }
 #endif
   DeletePointers(&summed_stats);
-  return ans;
+  return improvement; // objective-function improvement.
 }
 
 

@@ -89,7 +89,7 @@ void UnitTestIo(bool binary) {
       ReadIntegerVector(infile, binary_in, &vec3_in);
       assert(vec3_in == vec3);
       std::string  token1_in, token2_in;
-      assert(Peek(infile, binary_in) == (int)*token1);
+      assert(Peek(infile, binary_in) == static_cast<int>(*token1));
       assert(PeekToken(infile, binary_in) == (int)*token1); // Note:
       // the stuff with skipping over '<' is tested in ../util/kaldi-io-test.cc,
       // since we need to make sure it works with pipes.
