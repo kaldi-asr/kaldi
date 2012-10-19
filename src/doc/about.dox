@@ -122,14 +122,23 @@
 
  Currently, we have code and scripts for most standard techniques, including all standard
  linear transforms, MMI, boosted MMI and MCE discriminative training, and also feature-space
- discriminative training (like fMPE, but based on boosted MMI)-- however, this is not
- yet working as well as it should be.  We have working recipes for Wall Street Journal
- and Resource Management, and also for Switchboard (but the Switchboard recipe is not yet
- giving state-of-the-art results, probably due to vocabulary and language model issues-- we
- don't use any external data sources for this).  These features can be found in the "trunk/" code
- (see \ref install).  The only version number we currently have is "v1".  We may at some
- point create a "v2" version that has a stable, finalized version of the techniques 
- described here.
+ discriminative training (like fMPE, but based on boosted MMI).
+  We have working recipes for Wall Street Journal
+ and Resource Management, and also for Switchboard.   The Switchboard recipe is not yet
+ giving state-of-the-art results, due to vocabulary and language model issues-- we
+ don't use any external data sources for this.
+
+ Note: after an early phase in which we intended to use version numbers for
+ major releases of Kaldi ("v1" and so on), we realized that these type of
+ releases do not mesh well with the natural style of development, which is very
+ continuous.  Currently we maintain two major versions of Kaldi: the "trunk"
+ version and the "stable" version.  The "trunk" version is the one most people
+ commit to, and contains the most up-to-date features but may also contain
+ partially finished features.  The "stable" version is mostly a subset of
+ "trunk" that slightly lags in time, and has more thorough testing.  We also
+ maintain several "sandbox" versions that are for projects that are in earlier
+ stages of development.  All these versions are available from our subversion
+ repository on Sourceforge; see \ref install for more details.
 
   @section about_reference Referencing Kaldi in papers
 
