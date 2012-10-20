@@ -23,7 +23,7 @@ namespace kaldi {
 
 template<class Real>
 void CompressedMatrix::CopyFromMat(
-    const Matrix<Real> &mat) {
+    const MatrixBase<Real> &mat) {
   if (data_ != NULL) {
     delete [] static_cast<float*>(data_);  // call delete [] because was allocated with new float[]
     data_ = NULL;
@@ -87,10 +87,10 @@ void CompressedMatrix::CopyFromMat(
 
 // Instantiate the template for float and double.
 template
-void CompressedMatrix::CopyFromMat(const Matrix<float> &mat);
+void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat);
 
 template
-void CompressedMatrix::CopyFromMat(const Matrix<double> &mat);
+void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat);
 
 inline uint16 CompressedMatrix::FloatToUint16(
     const GlobalHeader &global_header,

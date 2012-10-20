@@ -1567,7 +1567,6 @@ static void UnitTestAddDiagMat2() {
     Vector<Real> v(dimM);
     InitRand(&v);
     Vector<Real> w(v);
-
     if (iter % 2 == 1) {
       Matrix<Real> M(dimM, dimN);
       InitRand(&M);

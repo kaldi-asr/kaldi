@@ -403,8 +403,9 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
     BaseFloat impr;
     if (clusters[0] == NULL || clusters[1] == NULL) impr = 0.0;
     else impr = clusters[0]->Distance(*(clusters[1]));
-    if (!ApproxEqual(impr, ans) && fabs(impr-ans) > 0.01) {
-      KALDI_WARN << "FindBestSplitForKey: improvements do not agree: "<< impr << " vs. " << ans;
+    if (!ApproxEqual(impr, improvement) && fabs(impr-improvement) > 0.01) {
+      KALDI_WARN << "FindBestSplitForKey: improvements do not agree: "<< impr
+                 << " vs. " << improvement;
     }
     DeletePointers(&clusters);
   }

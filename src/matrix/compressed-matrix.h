@@ -45,11 +45,11 @@ class CompressedMatrix {
   ~CompressedMatrix() { Destroy(); }
   
   template<class Real>
-  CompressedMatrix(const Matrix<Real> &mat): data_(NULL) { CopyFromMat(mat); }
+  CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
   template<class Real>
-  void CopyFromMat(const Matrix<Real> &mat);
-
+  void CopyFromMat(const MatrixBase<Real> &mat);
+  
   CompressedMatrix(const CompressedMatrix &mat);
   
   CompressedMatrix &operator = (const CompressedMatrix &mat); // assignment operator.

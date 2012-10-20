@@ -38,17 +38,32 @@ namespace kaldi {
 template<class Real>
 void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
+  // To avoid overflow, we first compute the max of x_ (or
+  // one if that's zero, and we'll replace "x" by x/max(x_i)
+  // below.  The householder vector is anyway invariant to
+  // the magnitude of x.  We could actually avoid this extra loop
+  // over x if we wanted to be a bit smarter, but anyway this
+  // doesn't dominate the O(N) performance of the algorithm.
+  Real s; // s is a scale on x.
+  {
+    Real max_x = 0.0;
+    for (MatrixIndexT i = 1; i < dim; i++)
+      max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
+    if (max_x == 0.0) max_x = 1.0;
+    s = 1.0 / max_x;
+  }
+  
   Real sigma = 0.0;
   v[0] = 1.0;
   for (MatrixIndexT i = 1; i < dim; i++) {
-    sigma += x[i] * x[i];
-    v[i] = x[i];
+    sigma += (x[i]*s) * (x[i]*s);
+    v[i] = x[i]*s;
   }
   if (sigma == 0.0) *beta = 0.0;
   else {
     // When we say x1 = x[0], we reference the one-based indexing
     // in Golub and Van Loan.
-    Real x1 = x[0], mu = sqrt(x1*x1 + sigma);
+    Real x1 = x[0] * s, mu = sqrt(x1*x1 + sigma);
     if (x1 <= 0) {
       v[0] = x1 - mu;
     } else {
@@ -70,15 +85,31 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
 template<class Real>
 void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
+  // To avoid overflow, we first compute the max of x_ (or
+  // one if that's zero, and we'll replace "x" by x/max(x_i)
+  // below.  The householder vector is anyway invariant to
+  // the magnitude of x.  We could actually avoid this extra loop
+  // over x if we wanted to be a bit smarter, but anyway this
+  // doesn't dominate the O(N) performance of the algorithm.
+  Real s; // s is a scale on x.
+  {
+    Real max_x = 0.0;
+    for (MatrixIndexT i = 1; i < dim; i++)
+      max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
+    if (max_x == 0.0) max_x = 1.0;
+    s = 1.0 / max_x;
+  }
   Real sigma = 0.0;
   v[dim-1] = 1.0;
   for (MatrixIndexT i = 0; i + 1  < dim; i++) {
-    sigma += x[i] * x[i];
-    v[i] = x[i];
+    sigma += (x[i]*s) * (x[i]*s);
+    v[i] = x[i]*s;
   }
+  KALDI_ASSERT(!isnan(sigma) &&
+               "Tridiagonalizing matrix that is too large or has NaNs.");
   if (sigma == 0.0) *beta = 0.0;
   else {
-    Real x1 = x[dim-1], mu = sqrt(x1*x1 + sigma);
+    Real x1 = x[dim-1]*s, mu = sqrt(x1*x1 + sigma);
     if (x1 <= 0) {
       v[dim-1] = x1 - mu;
     } else {
@@ -246,7 +277,7 @@ void QrStep(MatrixIndexT n,
       Real &elem_kp2_k = z, 
           &elem_kp2_kp1 = off_diag[k+1];
       // Note: elem_kp2_k == z would start off as zero because it's
-      // two off the diagonal, and not been touched yet.  Therefore
+       // two off the diagonal, and not been touched yet.  Therefore
       // we eliminate it in expressions below, commenting it out.
       // If we didn't do this we should set it to zero first.
       elem_kp2_k =  - s*elem_kp2_kp1; // + c*elem_kp2_k
@@ -278,7 +309,7 @@ void QrInternal(MatrixIndexT n,
                                            // loop when we converge.
     if (counter == large_iters) {
       KALDI_WARN << "Took " << large_iters
-                 << " iterations in QR (dim is " << n << ", doubling epsilon.";
+                 << " iterations in QR (dim is " << n << "), doubling epsilon.";
       epsilon *= 2.0;
     }
     for (MatrixIndexT i = 0; i+1 < n; i++) {

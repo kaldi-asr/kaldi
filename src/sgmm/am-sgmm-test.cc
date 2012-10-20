@@ -248,7 +248,8 @@ void TestSgmmPreXform(const AmSgmm &sgmm) {
 
 void UnitTestSgmm() {
   size_t dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
-  size_t num_comp = 1 + kaldi::RandInt(0, 9);  // random number of mixtures
+  size_t num_comp = 3 + kaldi::RandInt(0, 9);  // random number of mixtures;
+  // make sure it's more than one or we get errors initializing the SGMM.
   kaldi::FullGmm full_gmm;
   ut::InitRandFullGmm(dim, num_comp, &full_gmm);
 

@@ -953,7 +953,7 @@ BaseFloat AmSgmm2::GetDjms(int32 j1, int32 m,
 
 void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
                                   Matrix<BaseFloat> *xform,
-                                  Matrix<BaseFloat> *inv_xform,
+                                   Matrix<BaseFloat> *inv_xform,
                                   Vector<BaseFloat> *diag_mean_scatter) const {
   int32 num_pdfs = NumPdfs(),
       num_gauss = NumGauss(),
@@ -1030,8 +1030,13 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
   diag_mean_scatter->Resize(dim);
   xform->Resize(dim, dim + 1);
   inv_xform->Resize(dim, dim + 1);
+  
+  tmpB.Eig(diag_mean_scatter, &U);  // Eq. (B.5): B = U D V^T
 
-  tmpB.SymPosSemiDefEig(diag_mean_scatter, &U);  // Eq. (B.5): B = U D V^T
+  int32 n;
+  if ((n = diag_mean_scatter->ApplyFloor(1.0e-04)) != 0)
+    KALDI_WARN << "Floored " << n << " elements of the mean-scatter matrix.";
+  
   // Eq. (B.6): A_{pre} = U^T * L^{-1}
   SubMatrix<BaseFloat> Apre(*xform, 0, dim, 0, dim);
   Apre.AddMatMat(1.0, U, kTrans, tmpLInvFull, kNoTrans, 0.0);
@@ -1309,9 +1314,9 @@ void ComputeFeatureNormalizer(const FullGmm &gmm, Matrix<BaseFloat> *xform) {
   LBL.AddMat2Sp(1.0, chol_full, kNoTrans, between_class_covar, 0.0);
   Vector<BaseFloat> Dvec(dim);
   Matrix<BaseFloat> U(dim, dim);
-  LBL.SymPosSemiDefEig(&Dvec, &U);
+  LBL.Eig(&Dvec, &U);
   SortSvd(&Dvec, &U);
-
+  
   xform->Resize(dim, dim);
   chol_full.CopyFromTp(chol);
   // T := L U, eq (23)
