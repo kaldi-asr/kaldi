@@ -105,7 +105,7 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
     sigma += (x[i]*s) * (x[i]*s);
     v[i] = x[i]*s;
   }
-  KALDI_ASSERT(!isnan(sigma) &&
+  KALDI_ASSERT(!KALDI_ISNAN(sigma) &&
                "Tridiagonalizing matrix that is too large or has NaNs.");
   if (sigma == 0.0) *beta = 0.0;
   else {

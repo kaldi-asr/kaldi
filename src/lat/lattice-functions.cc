@@ -524,7 +524,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
       // check arc_scale NAN, 
       // this is to prevent partial paths in Lattices
       // i.e., paths dont survive to the final state 
-      if (std::isnan(arc_scale)) arc_scale = 0; 
+      if (KALDI_ISNAN(arc_scale)) arc_scale = 0; 
       beta_mpe[s] += arc_scale * (beta_mpe[arc.nextstate] + frame_acc);
 
       if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
