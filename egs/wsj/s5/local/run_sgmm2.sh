@@ -33,7 +33,7 @@
   steps/make_denlats_sgmm2.sh --nj 30 --sub-split 30 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si84 \
     data/train_si84 data/lang exp/sgmm2_5a_ali_si84 exp/sgmm2_5a_denlats_si84
 
-  steps/train_mmi_sgmm2.sh --cmd "$decodebig_cmd" --transform-dir exp/tri4b_ali_si84 --boost 0.1 \
+  steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si84 --boost 0.1 \
     data/train_si84 data/lang exp/sgmm2_5a_ali_si84 exp/sgmm2_5a_denlats_si84 exp/sgmm2_5a_mmi_b0.1
 
   for iter in 1 2 3 4; do
@@ -85,7 +85,7 @@
   steps/make_denlats_sgmm2.sh --nj 30 --sub-split 30 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si284 \
     data/train_si284 data/lang exp/sgmm2_5b_ali_si284 exp/sgmm2_5b_denlats_si284
 
-  steps/train_mmi_sgmm2.sh --cmd "$decodebig_cmd" --transform-dir exp/tri4b_ali_si284 --boost 0.1 \
+  steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si284 --boost 0.1 \
     data/train_si284 data/lang exp/sgmm2_5b_ali_si284 exp/sgmm2_5b_denlats_si284 exp/sgmm2_5b_mmi_b0.1
 
   for iter in 1 2 3 4; do
@@ -98,4 +98,3 @@
 ) &
 
 wait
-
