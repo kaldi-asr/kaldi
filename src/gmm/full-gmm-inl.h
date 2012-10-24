@@ -122,7 +122,7 @@ void FullGmm::GetMeans(Matrix<Real> *M) const {
     covar.CopyFromSp(inv_covars_[i]);
     covar.InvertDouble();
     mean_times_invcovar.CopyFromVec(means_invcovars_.Row(i));
-    (M->Row(i)).AddSpVec(1.0, covar, mean_times_invcovar);
+    (M->Row(i)).AddSpVec(1.0, covar, mean_times_invcovar, 0.0);
   }
 }
 
@@ -140,7 +140,7 @@ void FullGmm::GetCovarsAndMeans(std::vector< SpMatrix<Real> > *covars,
     (*covars)[i].CopyFromSp(inv_covars_[i]);
     (*covars)[i].InvertDouble();
     mean_times_invcovar.CopyFromVec(means_invcovars_.Row(i));
-    (means->Row(i)).AddSpVec(1.0, (*covars)[i], mean_times_invcovar);
+    (means->Row(i)).AddSpVec(1.0, (*covars)[i], mean_times_invcovar, 0.0);
   }
 }
 

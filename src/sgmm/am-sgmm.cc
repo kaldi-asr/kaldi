@@ -925,7 +925,7 @@ void AmSgmm::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
 
   // Eq. (B.7): b_{pre} = - A_{pre} \mu_{avg}
   Vector<BaseFloat> b_pre(dim);
-  b_pre.AddMatVec(-1.0, Apre, kNoTrans, global_mean);
+  b_pre.AddMatVec(-1.0, Apre, kNoTrans, global_mean, 0.0);
   for (int32 r = 0; r < dim; r++) {
     xform->Row(r)(dim) = b_pre(r);  // W_{pre} = [ A_{pre}, b_{pre} ]
   }

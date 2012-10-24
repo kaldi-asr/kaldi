@@ -1056,7 +1056,7 @@ void AmSgmm2::ComputeFmllrPreXform(const Vector<BaseFloat> &state_occs,
 
   // Eq. (B.7): b_{pre} = - A_{pre} \mu_{avg}
   Vector<BaseFloat> b_pre(dim);
-  b_pre.AddMatVec(-1.0, Apre, kNoTrans, global_mean);
+  b_pre.AddMatVec(-1.0, Apre, kNoTrans, global_mean, 0.0);
   for (int32 r = 0; r < dim; r++) {
     xform->Row(r)(dim) = b_pre(r);  // W_{pre} = [ A_{pre}, b_{pre} ]
   }
@@ -1359,7 +1359,7 @@ void AmSgmm2::ComputePerSpkDerivedVars(Sgmm2PerSpkDerivedVars *vars) const {
       vars->log_d_jms.clear();
       vars->log_d_jms.resize(NumGroups());
       vars->log_b_is.Resize(NumGauss());
-      vars->log_b_is.AddMatVec(1.0, u_, kNoTrans, vars->v_s);
+      vars->log_b_is.AddMatVec(1.0, u_, kNoTrans, vars->v_s, 0.0);
       vars->b_is.Resize(NumGauss());
       vars->b_is.CopyFromVec(vars->log_b_is);
       vars->b_is.ApplyExp();

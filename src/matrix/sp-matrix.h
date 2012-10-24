@@ -187,14 +187,14 @@ class SpMatrix : public PackedMatrix<Real> {
   /// than m: for example, if you want the 100 top eigenvalues of a 10k by 10k
   /// matrix.  This function calls rand() to initialize the lanczos
   /// iterations and also for restarting.
-  /// If lanczos_dim is negative, it will default to the greater of:
+  /// If lanczos_dim is zero, it will default to the greater of:
   /// s->Dim() + 50 or s->Dim() + s->Dim()/2, but not more than this->Dim().
   /// If lanczos_dim == this->Dim(), you might as well just call the function
   /// Eig() since the result will be the same, and Eig() would be faster; the
   /// whole point of this function is to reduce the dimension of the SVD
   /// computation.
   void TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
-               MatrixIndexT lanczos_dim = -1) const;
+               MatrixIndexT lanczos_dim = 0) const;
 
 
   

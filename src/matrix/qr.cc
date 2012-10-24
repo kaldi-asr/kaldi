@@ -443,7 +443,7 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
   Q.Row(0).Scale(1.0 / Q.Row(0).Norm(2));
   for (MatrixIndexT d = 0; d < lanczos_dim; d++) {
     Vector<Real> r(dim);
-    r.AddSpVec(1.0, S, Q.Row(d));
+    r.AddSpVec(1.0, S, Q.Row(d), 0.0);
     // r = S * q_d
     MatrixIndexT counter = 0;
     Real end_prod;

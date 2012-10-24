@@ -155,18 +155,18 @@ class VectorBase {
   /// Calls BLAS GEMV.
   void AddMatVec(const Real alpha, const MatrixBase<Real>&M,
                  const MatrixTransposeType trans,  const VectorBase<Real> &v,
-                 const Real beta = 0.0);
+                 const Real beta); // **beta previously defaulted to 0.0**
 
   /// Add symmetric positive definite matrix times vector:
   ///  this <-- beta*this + alpha*M*v.   Calls BLAS SPMV.
   void AddSpVec(const Real alpha, const SpMatrix<Real>&M,
-                const VectorBase<Real> &v, const Real beta = 0.0);
+                const VectorBase<Real> &v, const Real beta);  // **beta previously defaulted to 0.0**
 
   /// Add triangular matrix times vector: this <-- beta*this + alpha*M*v.
   /// Works even if rv == *this.
   void AddTpVec(const Real alpha, const TpMatrix<Real>&M,
                 const MatrixTransposeType trans, const VectorBase<Real> &v,
-                const Real beta = 0.0);
+                const Real beta);  // **beta previously defaulted to 0.0**
 
   /// Multipy element-by-element by another vector.
   void MulElements(const VectorBase<Real> &v);

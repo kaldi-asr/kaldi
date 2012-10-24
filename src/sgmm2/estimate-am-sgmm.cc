@@ -1704,7 +1704,7 @@ void MleSgmm2SpeakerAccs::UpdateWithU(const AmSgmm2 &model,
     Vector<double> g(y_s_); // g^{(p)} in the techreport.
     g.AddSpVec(-1.0, H_s, v_s, 1.0);
     Vector<double> log_b_is(num_gauss); // b_i^{(s)}, indexed by i.
-    log_b_is.AddMatVec(1.0, Matrix<double>(model.u_), kNoTrans, v_s);
+    log_b_is.AddMatVec(1.0, Matrix<double>(model.u_), kNoTrans, v_s, 0.0);
     Vector<double> tilde_w_is(log_b_is);
     Vector<double> log_a_s_(a_s_);
     log_a_s_.ApplyLog();

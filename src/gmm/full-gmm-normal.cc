@@ -66,7 +66,7 @@ void FullGmmNormal::CopyFromFullGmm(const FullGmm &fullgmm) {
 
     // multiply the (mean x icov) by (cov) to get the means back
     mean_times_invcovar.CopyFromVec(fullgmm.means_invcovars_.Row(i));
-    (means_.Row(i)).AddSpVec(1.0, vars_[i], mean_times_invcovar);
+    (means_.Row(i)).AddSpVec(1.0, vars_[i], mean_times_invcovar, 0.0);
   }
 }
 

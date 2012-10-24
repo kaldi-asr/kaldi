@@ -890,7 +890,7 @@ void ComputePca(const MatrixBase<Real> &X,
     for (MatrixIndexT g = 0; g < G; g++) {
       Real sqrtlg = sqrt(l(g));
       if (l(g) != 0.0) {
-        U->Row(g).AddMatVec(1.0 / sqrtlg, X, kTrans, Vtmp.Row(g));
+        U->Row(g).AddMatVec(1.0 / sqrtlg, X, kTrans, Vtmp.Row(g), 0.0);
       } else {
         U->Row(g).SetZero();
         (*U)(g, g) = 1.0;  // arbitrary direction.  Will later orthogonalize.

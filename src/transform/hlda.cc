@@ -284,7 +284,7 @@ void HldaAccsDiagGmm::Update(AmDiagGmm *am,
       else {
         SubVector<double> mean_stats(mean_accs_[p], g);
         // project mean with transform, to accepted dim.
-        mean.AddMatVec(1.0 / occ, Mpart_dbl, kNoTrans, mean_stats);
+        mean.AddMatVec(1.0 / occ, Mpart_dbl, kNoTrans, mean_stats, 0.0);
         Vector<BaseFloat> mean_flt(mean);
         am->SetGaussianMean(p, g, mean_flt);
       }
