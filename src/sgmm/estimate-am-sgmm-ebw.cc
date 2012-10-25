@@ -94,7 +94,7 @@ void EbwAmSgmmUpdater::Update(const MleAmSgmmAccs &num_accs,
 }
 
 
-class EbwUpdatePhoneVectorsClass { // For multi-threaded.
+class EbwUpdatePhoneVectorsClass: public MultiThreadable { // For multi-threaded.
  public:
   EbwUpdatePhoneVectorsClass(const EbwAmSgmmUpdater *updater,
                              const MleAmSgmmAccs &num_accs,
@@ -115,15 +115,6 @@ class EbwUpdatePhoneVectorsClass { // For multi-threaded.
     updater_->UpdatePhoneVectorsInternal(num_accs_, den_accs_, model_, H_,
                                          &auxf_impr_, num_threads_, thread_id_);
   }
-  // Copied and modified from example in kaldi-thread.h
-  static void *run(void *c_in) {
-    EbwUpdatePhoneVectorsClass *c = static_cast<EbwUpdatePhoneVectorsClass*>(c_in);
-    (*c)(); // call operator () on it.
-    return NULL;
-  }  
- public:
-  int thread_id_;
-  int num_threads_;
  private:
   const EbwAmSgmmUpdater *updater_;
   const MleAmSgmmAccs &num_accs_;

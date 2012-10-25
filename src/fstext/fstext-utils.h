@@ -86,7 +86,6 @@ void PushInLog(VectorFst<StdArc> *fst, uint32 ptype, float delta = kDelta) {
 
   // PushInLog pushes the FST
   // and returns a new pushed FST (labels and weights pushed to the left).
-
   VectorFst<LogArc> *fst_log = new VectorFst<LogArc>;  // Want to determinize in log semiring.
   Cast(*fst, fst_log);
   VectorFst<StdArc> tmp;

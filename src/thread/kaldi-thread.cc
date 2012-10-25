@@ -1,6 +1,7 @@
 // util/kaldi-thread.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+//                 Frantisek Skala
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +20,12 @@
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
-int32 g_num_threads = 8; // Initialize this global variable.
+int32 g_num_threads = 8;  // Initialize this global variable.
+
+MultiThreadable::~MultiThreadable() {
+  // default implementation does nothing
+}
+
+
 
 }  // end namespace kaldi

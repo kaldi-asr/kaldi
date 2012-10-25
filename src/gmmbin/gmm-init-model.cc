@@ -273,10 +273,6 @@ int main(int argc, char *argv[]) {
     HmmTopology topo;
     ReadKaldiObject(topo_filename, &topo);
 
-
-    std::vector<int32> phone2num_pdf_classes;
-    topo.GetPhoneToNumPdfClasses(&phone2num_pdf_classes);
-
     const EventMap &to_pdf = ctx_dep.ToPdfMap();  // not owned here.
 
     TransitionModel trans_model(ctx_dep, topo);

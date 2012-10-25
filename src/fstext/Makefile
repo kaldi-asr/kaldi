@@ -15,12 +15,12 @@ TESTFILES = determinize-star-test \
       context-fst-test factor-test table-matcher-test fstext-utils-test \
       remove-eps-local-test rescale-test lattice-weight-test  \
       determinize-lattice-test lattice-utils-test deterministic-fst-test \
-      determinize-lattice-pruned-test 
+      determinize-lattice-pruned-test push-special-test
 
-OBJFILES =  
+OBJFILES = push-special.o
 
-# actually, this library is currently empty.  Everything is a header.
-LIBFILE = 
+
+LIBFILE = kaldi-fstext.a
 
 all: $(LIBFILE)
 
@@ -29,7 +29,8 @@ $(LIBFILE): $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
 # tree and matrix archives needed for test-context-fst
-$(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a ../util/kaldi-util.a
+# matrix archive needed for push-special.
+$(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 %.a:
 	$(MAKE) -C ${@D} ${@F}
@@ -38,7 +39,7 @@ clean:
 	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
 test_compile: $(TESTFILES)
-  
+
 test: test_compile
 	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 

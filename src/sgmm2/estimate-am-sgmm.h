@@ -402,7 +402,7 @@ class MleSgmm2SpeakerAccs {
 // header so it can be used in estimate-am-sgmm-ebw.cc.  It is responsible for
 // computing, in parallel, the F_i and g_i quantities used in the updates of
 // w_i.
-class UpdateWClass {
+class UpdateWClass: public MultiThreadable {
  public:
   UpdateWClass(const MleAmSgmm2Accs &accs,
                const AmSgmm2 &model,
@@ -431,15 +431,6 @@ class UpdateWClass {
                                       &F_i_, &g_i_, &tot_like_,
                                       num_threads_, thread_id_);
   }
-  // Copied and modified from example in kaldi-thread.h
-  static void *run(void *c_in) {
-    UpdateWClass *c = static_cast<UpdateWClass*>(c_in);
-    (*c)(); // call operator () on it.
-    return NULL;
-  }  
- public:
-  int thread_id_;
-  int num_threads_;
  private:
   const MleAmSgmm2Accs &accs_;
   const AmSgmm2 &model_;

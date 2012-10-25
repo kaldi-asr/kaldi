@@ -1250,6 +1250,8 @@ bool IsStochasticFst(const Fst<LogArc> &fst,
   return ans;
 }
 
+/// Tests whether a tropical FST is stochastic in the log
+/// semiring (casts it and does the check.)
 bool IsStochasticFstInLog(const VectorFst<StdArc> &fst,
                           float delta,
                           StdArc::Weight *min_sum,

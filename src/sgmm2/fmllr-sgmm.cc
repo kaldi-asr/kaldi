@@ -520,7 +520,9 @@ void EstimateSgmm2FmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
     fmllr_grad_scatter.Eig(&s, &U);
     SortSvd(&s, &U);  // in case was not exactly sorted.
     KALDI_VLOG(1) << "Eigenvalues (max 200) of CMLLR scatter are: "
-                  << (SubVector<double>(s, 0, std::min(200, s.Dim())));
+                  << (SubVector<double>(s, 0,
+                                        std::min(static_cast<MatrixIndexT>(200),
+                                                 s.Dim())));
 
 
 //    for (int32 b = 2; b < num_fmllr_bases; b++) {

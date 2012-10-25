@@ -451,8 +451,7 @@ Real VectorBase<Real>::Norm(Real p) const {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += std::abs(data_[i]);
     return sum;
-  }
-  if (p == 2.0) {
+  } else if (p == 2.0) {
     for (MatrixIndexT i = 0; i < dim_; i++)
       sum += data_[i] * data_[i];
     return sqrt(sum);
@@ -479,9 +478,18 @@ template<typename Real>
 bool VectorBase<Real>::ApproxEqual(const VectorBase<Real> &other, float tol) const {
   if (dim_ != other.dim_) KALDI_ERR << "ApproxEqual: size mismatch "
                                     << dim_ << " vs. " << other.dim_;
-  Vector<Real> tmp(*this);
-  tmp.AddVec(-1.0, other);
-  return (tmp.Norm(2.0) <= static_cast<Real>(tol) * this->Norm(2.0));
+  KALDI_ASSERT(tol >= 0.0);
+  if (tol != 0.0) {
+    Vector<Real> tmp(*this);
+    tmp.AddVec(-1.0, other);
+    return (tmp.Norm(2.0) <= static_cast<Real>(tol) * this->Norm(2.0));
+  } else { // Test for exact equality.
+    const Real *data = data_;
+    const Real *other_data = other.data_;
+    for (MatrixIndexT dim = dim_, i = 0; i < dim; i++)
+      if (data[i] != other_data[i]) return false;
+    return true;
+  }
 }
 
 template<typename Real>

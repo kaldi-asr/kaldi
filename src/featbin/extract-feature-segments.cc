@@ -24,7 +24,7 @@
 #include "feat/feature-mfcc.h"
 #include "matrix/kaldi-matrix.h"
 
-/*! @brief This is a program for extracting segments from feature files/archives
+/** @brief This is a program for extracting segments from feature files/archives
  - usage : 
      - extract-feature-segments [options ..]  <scriptfile/archive> <segments-file> <features-written-specifier>
      - "segments-file" should have the information of the segments that needs to be extracted from the feature files

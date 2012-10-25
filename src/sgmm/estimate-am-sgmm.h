@@ -28,6 +28,7 @@
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 #include "sgmm/sgmm-clusterable.h"
+#include "thread/kaldi-thread.h"  // for MultiThreadable
 
 namespace kaldi {
 
@@ -401,7 +402,7 @@ class MleSgmmSpeakerAccs {
 // header so it can be used in estimate-am-sgmm-ebw.cc.  It is responsible for
 // computing, in parallel, the F_i and g_i quantities used in the updates of
 // w_i.
-class UpdateWParallelClass {
+class UpdateWParallelClass: public MultiThreadable {
  public:
   UpdateWParallelClass(const MleAmSgmmAccs &accs,
                        const AmSgmm &model,
@@ -429,15 +430,6 @@ class UpdateWParallelClass {
                                               &F_i_, &g_i_, &tot_like_,
                                               num_threads_, thread_id_);
   }
-  // Copied and modified from example in kaldi-thread.h
-  static void *run(void *c_in) {
-    UpdateWParallelClass *c = static_cast<UpdateWParallelClass*>(c_in);
-    (*c)(); // call operator () on it.
-    return NULL;
-  }  
- public:
-  int thread_id_;
-  int num_threads_;
  private:
   // MleAmSgmmUpdater *updater_;
   const MleAmSgmmAccs &accs_;

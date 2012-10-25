@@ -153,7 +153,7 @@ EventMap *BuildTree(Questions &qopts,
 
   // the inputs will be further checked in GetStubMap.
   int32 num_leaves = 0;  // allocator for leaves.
-
+  
   EventMap *tree_stub = GetStubMap(P,
                                    phone_sets,
                                    phone2num_pdf_classes,
