@@ -30,23 +30,10 @@
   \mainpage Kaldi
 
    (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
-  <p>
-  For the slides for a series of Kaldi lectures currently being delivered, 
-  see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>
- 
 
-   <p>
-   R.E. the presentation at the ICASSP meeting in Prague: the slides are 
-    <a href=Kaldi.pptx> here (intro)</a>, 
-    <a href=KaldiMatrix.pptx> here (matrix library)</a>, 
-    <a href=KaldiModels.pptx> here (models)</a>, and
-    <a href=KaldiScripts.pptx> here (scripts)</a>.  
-
-   Some recorded lectures about Kaldi, delivered at the ICASSP conference venue in Prague, are available <a href=http://superlectures.com/icassp2011/category.php?lang=en&id=131> here </a>.
-
-  <p>
   <p>
    - \ref about 
+   - \ref other
    - \ref install 
    - \ref legal
    - \ref progress

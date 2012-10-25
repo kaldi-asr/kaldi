@@ -658,7 +658,13 @@ s5#
 \endverbatim
 You may notice that some of the lines in <DFN>nonsilence_phones.txt</DFN> contain
 multiple phones on a single line.  These are the different stress-dependent
-versions of the vowels.  We use the stress markings present in the CMU
+versions of the vowels.  Note that four different versions of each phone
+appear in the CMU dictionary: for example, <DFN>UW UW0 UW1 UW2</DFN>;
+for some reason, one of these versions does not have a numeric suffix.
+The order of the phones on the line does not matter, but the grouping into
+different lines does matter; in general, we advise users to group all forms of
+each "real phone" on a separate line.
+We use the stress markings present in the CMU
 dictionary.  The file extra_questions.txt contains a single question
 containing all of the "silence" phones (in fact this is unnecessary as
 it appears that the script <DFN>prepare_lang.sh</DFN> adds such a question anyway),

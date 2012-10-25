@@ -1,0 +1,50 @@
+// doc/other.dox
+
+// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+/**
+ \page other Other Kaldi-related resources
+
+ The main places where Kaldi knowledge can be found are this website,
+ and in the subversion repository (see \ref install for instructions on
+ obtaining it.  The repository contains the Kaldi code, installation scripts,
+ and example scripts for a number of different datasets, which are located
+ in the sub-directory egs/).  
+
+ This page contains  pointers to a few Kaldi-related resources that are located elsewhere.
+
+ Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a> is useful
+ if you have questions to ask (there are lists there), and for a few other purposes.
+
+  For the slides for a short series of Kaldi lectures that were delivered in 2012, 
+  see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.
+
+
+   <p>
+   The slides for the presentation that was made at the ICASSP meeting in Prague in 2011 are here:
+    <a href=Kaldi.pptx> here (intro)</a>, 
+    <a href=KaldiMatrix.pptx> here (matrix library)</a>, 
+    <a href=KaldiModels.pptx> here (models)</a>, and
+    <a href=KaldiScripts.pptx> here (scripts)</a>.  
+<p>
+ The recorded lectures from that event are available <a href=http://superlectures.com/icassp2011/category.php?lang=en&id=131> here </a>.
+
+
+*/
+
+
