@@ -118,43 +118,49 @@ void CompressedMatrix::ComputeColHeader(
     const Real *data, MatrixIndexT stride,
     int32 num_rows, CompressedMatrix::PerColHeader *header) {
   assert(num_rows > 0);
-  std::vector<Real> sorted_data(num_rows);
-  for (size_t i = 0, size = sorted_data.size(); i < size; i++)
-    sorted_data[i] = data[i*stride];
-  // Note: might be more efficient to use repeated calls to nth_element, rather
-  // than sort().  If this proves to be using up a lot of CPU, we'll do that.
-  std::sort(sorted_data.begin(), sorted_data.end());
+  std::vector<Real> sdata(num_rows); // the sorted data.
+  for (size_t i = 0, size = sdata.size(); i < size; i++)
+    sdata[i] = data[i*stride];
 
   if (num_rows >= 5) {
-    int quarter_num_rows = num_rows/4;
-    header->percentile_0 = FloatToUint16(global_header, sorted_data[0]);
+    int quarter_nr = num_rows/4;
+    // The elements at positions 0, quarter_nr,
+    // 3*quarter_nr, and num_rows-1 need to be in sorted order.
+    std::nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata.end());
+    std::nth_element(sdata.begin(), sdata.begin(), sdata.begin() + quarter_nr);
+    std::nth_element(sdata.begin(), sdata.begin() + (3*quarter_nr), sdata.end());
+    std::nth_element(sdata.begin() + (3*quarter_nr), sdata.end() - 1,
+                     sdata.end());
+    
+    header->percentile_0 = FloatToUint16(global_header, sdata[0]);
     header->percentile_25 = std::max<uint16>(
-        FloatToUint16(global_header, sorted_data[quarter_num_rows]),
+        FloatToUint16(global_header, sdata[quarter_nr]),
         header->percentile_0 + static_cast<uint16>(1));
     header->percentile_75 = std::max<uint16>(
-        FloatToUint16(global_header, sorted_data[3*quarter_num_rows]),
+        FloatToUint16(global_header, sdata[3*quarter_nr]),
         header->percentile_25 + static_cast<uint16>(1));
     header->percentile_100 = std::max<uint16>(
-        FloatToUint16(global_header, sorted_data[num_rows-1]),
+        FloatToUint16(global_header, sdata[num_rows-1]),
         header->percentile_75 + static_cast<uint16>(1));
   } else {  // handle this pathological case.
+    std::sort(sdata.begin(), sdata.end());
     // Note: we know num_rows is at least 1.
-    header->percentile_0 = FloatToUint16(global_header, sorted_data[0]);
+    header->percentile_0 = FloatToUint16(global_header, sdata[0]);
     if (num_rows > 1)
       header->percentile_25 =
-          std::max<uint16>(FloatToUint16(global_header, sorted_data[1]),
+          std::max<uint16>(FloatToUint16(global_header, sdata[1]),
                            header->percentile_0 + 1);
     else
       header->percentile_25 = header->percentile_0 + 1;
     if (num_rows > 2)
       header->percentile_75 =
-          std::max<uint16>(FloatToUint16(global_header, sorted_data[2]),
+          std::max<uint16>(FloatToUint16(global_header, sdata[2]),
                            header->percentile_25 + 1);
     else
       header->percentile_75 = header->percentile_25 + 1;
     if (num_rows > 3)
       header->percentile_100 =
-          std::max<uint16>(FloatToUint16(global_header, sorted_data[3]),
+          std::max<uint16>(FloatToUint16(global_header, sdata[3]),
                            header->percentile_75 + 1);
     else
       header->percentile_100 = header->percentile_75 + 1;

@@ -127,7 +127,8 @@ void OptimizeLbfgs<Real>::ComputeNewDirection(Real function_value,
   // We're still within iteration k; we haven't yet finalized the step size.
   new_x_.Scale(-1.0);
   new_x_.AddVec(1.0, x_);
-  deriv_.CopyFromVec(gradient);
+  if (&deriv_ != &gradient)
+    deriv_.CopyFromVec(gradient);
   f_ = function_value;
   d_ = opts_.d;
   num_wolfe_i_failures_ = 0;
@@ -194,7 +195,8 @@ void OptimizeLbfgs<Real>::Restart(const VectorBase<Real> &x,
   }
   k_ = 0; // Restart the iterations!  [But note that the Hessian,
   // whatever it was, stays as before.]
-  x_.CopyFromVec(x);
+  if (&x_ != &x)
+    x_.CopyFromVec(x);
   new_x_.CopyFromVec(x);
   f_ = f;
   computation_state_ = kBeforeStep;

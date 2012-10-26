@@ -296,7 +296,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       NormalizeArgName(&key);
       Trim(&value);
       if (!SetOption(key, value)) {
-        std::cerr << "Invalid option " << argv[i] << '\n';
+        std::cerr << "*** Invalid option " << argv[i] << " ***\n";
         PrintUsage(true);
         exit(1);
       }
@@ -410,8 +410,8 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
     NormalizeArgName(&key);
     Trim(&value);
     if (!SetOption(key, value)) {
-      std::cerr << "Invalid option " << line << " in config file "
-                << filename << '\n';
+      std::cerr << "*** Invalid option " << line << " in config file "
+                << filename << " ***\n";
       PrintUsage(true);
       exit(1);
     }
@@ -484,8 +484,8 @@ bool ParseOptions::ToBool(std::string str) {
       || (str.compare("0") == 0)) {
     return false;
   }
-  std::cerr << "Invalid format for boolean argument [expected true or false]: "
-      << str << '\n';
+  std::cerr << "*** Invalid format for boolean argument [expected true or false]: "
+            << str << " ***\n";
   PrintUsage(true);
   exit(1);
   return false;
@@ -498,7 +498,7 @@ int32 ParseOptions::ToInt(std::string str) {
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   int32 ret = std::strtol(str.c_str(), &end_pos, 0);
   if (str.c_str() == end_pos) {
-    std::cerr << "Invalid integer option \"" << str << "\"\n";
+    std::cerr << "*** Invalid integer option \"" << str << "\" ***\n";
     PrintUsage(true);
     exit(1);
   }
@@ -511,7 +511,7 @@ uint32 ParseOptions::ToUInt(std::string str) {
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   uint32 ret = std::strtoul(str.c_str(), &end_pos, 0);
   if (str.c_str() == end_pos) {
-    std::cerr << "Invalid integer option  \"" << str << "\"\n";
+    std::cerr << "*** Invalid integer option  \"" << str << "\" ***\n";
     PrintUsage(true);
     exit(1);
   }
@@ -524,7 +524,7 @@ float ParseOptions::ToFloat(std::string str) {
   // strtod is cheaper than stringstream...
   float ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {
-    std::cerr << "Invalid floating-point option \"" << str << "\"\n";
+    std::cerr << "*** Invalid floating-point option \"" << str << "\" ***\n";
     PrintUsage(true);
     exit(1);
   }
@@ -536,7 +536,7 @@ double ParseOptions::ToDouble(std::string str) {
   // strtod is cheaper than stringstream...
   double ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {
-    std::cerr << "Invalid floating-point option  \"" << str << "\"\n";
+    std::cerr << "*** Invalid floating-point option  \"" << str << "\" ***\n";
     PrintUsage(true);
     exit(1);
   }
