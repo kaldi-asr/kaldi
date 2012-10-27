@@ -5,9 +5,9 @@
 SHELL := /bin/bash
 
 SUBDIRS = base matrix util feat tree gmm tied transform sgmm \
-          fstext hmm lm decoder lat cudamatrix nnet nnet_cpu \
+          fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnetbin nnetbin_cpu latbin sgmm2 sgmm2bin
+          nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin
@@ -30,7 +30,7 @@ check_portaudio:
 clean: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done
 
-# the part after the ":" expands to "base/test matrix/test util/test ...."
+# the part after the expands to "base/test matrix/test util/test ...."
 test: $(addsuffix /test, $(SUBDIRS))
 
 # Define an implicit rule, expands to e.g.:
@@ -38,7 +38,6 @@ test: $(addsuffix /test, $(SUBDIRS))
 #     $(MAKE) -C base test 
 %/test: %
 	$(MAKE) -C $< test
-
 
 valgrind:
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
@@ -59,7 +58,7 @@ $(EXT_SUBDIRS) :
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnetbin_cpu latbin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet_cpu rnn
+bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnet-cpubin latbin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu
 #2)The libraries have inter-dependencies
 base:
 matrix : base
@@ -80,8 +79,7 @@ decoder: base util matrix gmm sgmm hmm tree transform
 lat: base util
 cudamatrix: base util matrix	
 nnet: base util matrix cudamatrix
-nnet_cpu: base util matrix
-rnn: base util matrix lat
+nnet-cpu: base util matrix
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet_cpu rnn online
+onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu online
 online: decoder

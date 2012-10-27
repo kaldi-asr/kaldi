@@ -4,11 +4,15 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = nnet-test
+TESTFILES = nnet-component-test
 
-OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-rnnlm.o
+OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \
+     nnet-randomize.o nnet-compute.o am-nnet.o
 
-LIBFILE = kaldi-nnet.a 
+#nnet-compute.o nnet-train.o
+# nnet-nnet.o nnet-loss.o nnet-rnnlm.o
+
+LIBFILE = kaldi-nnet-cpu.a 
 
 all:  $(LIBFILE)
 
@@ -29,9 +33,10 @@ $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/
 clean:
 	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
 
-test: $(TESTFILES)
-	for x in $(TESTFILES); do ./$$x >/dev/null 2>&1 || { echo "***test $$x failed***"; exit 1; }; done  
-	echo Tests succeeded
+test_compile: $(TESTFILES)
+  
+test: test_compile
+	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(TESTFILES)
 

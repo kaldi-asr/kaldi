@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2010-2012 Microsoft Corporation
+#                     Johns Hopkins University (author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,22 +21,30 @@
 # file (or any file whose first field is an utterance id), printing
 # out only those lines whose first field is in id_list.
 
-if(@ARGV < 1 || @ARGV > 2) {
-    die "Usage: filter_scp.pl id_list [in.scp] > out.scp ";
+$exclude = 0;
+
+if ($ARGV[0] eq "--exclude") {
+  $exclude = 1;
+  shift @ARGV;
 }
+
+if(@ARGV < 1 || @ARGV > 2) {
+  die "Usage: filter_scp.pl [--exclude] id_list [in.scp] > out.scp ";
+}
+
 
 $idlist = shift @ARGV;
 open(F, "<$idlist") || die "Could not open id-list file $idlist";
 while(<F>) {
-    @A = split;
-    @A>=1 || die "Invalid id-list file line $_";
-    $seen{$A[0]} = 1;
+  @A = split;
+  @A>=1 || die "Invalid id-list file line $_";
+  $seen{$A[0]} = 1;
 }
 
 while(<>) {
-    @A = split;
-    @A > 0 || die "Invalid scp file line $_";
-    if($seen{$A[0]}) {
-        print $_;
-    }
+  @A = split;
+  @A > 0 || die "Invalid scp file line $_";
+  if((!$exclude && $seen{$A[0]}) || ($exclude && !defined $seen{$A[0]})) {
+    print $_;
+  }
 }
