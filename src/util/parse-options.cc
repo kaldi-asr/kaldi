@@ -135,16 +135,12 @@ std::string ParseOptions::GetArg(int i) {
   return positional_args_[i - 1];
 }
 
-
-
 enum ShellType { kBash = 0 };  // We currently do not support any
 // other options.
 
 static ShellType kShellType = kBash;  // This can be changed in the
 // code if it ever does need to be changed (as it's unlikely that one
 // compilation of this tool-set would use both shells).
-
-
 
 static bool MustBeQuoted(const std::string &str, ShellType st) {
   // returns true if we need to escape it before putting it into

@@ -40,7 +40,7 @@ class ParseOptions {
                      "Print the command line arguments (to stderr)");
     RegisterStandard("help", &help_, "Print out usage message");
     RegisterStandard("verbose", &g_kaldi_verbose_level,
-                     "Verbose level (higher->more warnings)");
+                     "Verbose level (higher->more logging)");
   }
   
   ~ParseOptions() {}
