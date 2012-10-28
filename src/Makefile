@@ -5,9 +5,9 @@
 SHELL := /bin/bash
 
 SUBDIRS = base matrix util feat tree gmm tied transform sgmm \
-          fstext hmm lm decoder lat cudamatrix nnet nnet_cpu \
+          thread fstext hmm lm decoder lat cudamatrix nnet nnet_cpu \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnetbin nnetbin_cpu latbin sgmm2 sgmm2bin
+          nnetbin nnetbin_cpu latbin sgmm2 sgmm2bin 
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin
