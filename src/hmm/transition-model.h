@@ -161,6 +161,11 @@ class TransitionModel {
   // an unseen phone has the highest-numbered pdf, this might be different.
   int32 NumPdfs() const { return num_pdfs_; }
 
+  // This loops over the triples and finds the highest phone index present. If
+  // the FST symbol table for the phones is created in the expected way, i.e.:
+  // starting from 1 (<eps> is 0) and numbered contiguously till the last phone,
+  // this will be the total number of phones.
+  int32 NumPhones() const;
 
   /// Returns a sorted, unique list of phones.
   const std::vector<int32> &GetPhones() const { return topo_.GetPhones(); }
