@@ -65,7 +65,7 @@ class Clusterable {
   /// Read data from a stream and return the corresponding object (const
   /// function; it's a class member because we need access to the vtable
   /// so generic code can read derived types).
-  virtual Clusterable* Read(std::istream &os, bool binary) const = 0;
+  virtual Clusterable* ReadNew(std::istream &os, bool binary) const = 0;
 
   virtual ~Clusterable() {}
 

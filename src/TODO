@@ -6,7 +6,8 @@
 
 =====
 dan's TODO:
- Read()->ReadNew in clusterable-classes.h, and Read_ -> Read
+
+ put informative text in local/score.sh RE how to see results.
 
  change on-disk formats to make memory mapping easier?
  address roundoff issues RE lattice generation?

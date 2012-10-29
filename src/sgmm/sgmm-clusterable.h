@@ -63,7 +63,7 @@ class SgmmClusterable: public Clusterable {
   virtual Clusterable *Copy() const;
   virtual void Scale(BaseFloat f);
   virtual void Write(std::ostream &os, bool binary) const;
-  virtual Clusterable *Read(std::istream &is, bool binary) const;
+  virtual Clusterable *ReadNew(std::istream &is, bool binary) const;
   virtual ~SgmmClusterable() {}
 
   const Vector<double> &gamma () const { return gamma_; }
