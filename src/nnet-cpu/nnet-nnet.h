@@ -100,7 +100,12 @@ class Nnet {
   /// layer of the network, as accepted by Component::InitFromString().
   /// An example non-comment line is:
   /// AffineComponent learning-rate=0.01 l2-penalty=0.001 input-dim=10 output-dim=15 param-stddev=0.1
-  void Init(std::istream &is); 
+  void Init(std::istream &is);
+
+  /// This Init method works from a vector of components.  It will take ownership
+  /// of the pointers and resize the vector to zero to avoid a chance of the
+  /// caller deallocating them.
+  void Init(std::vector<Component*> *components);
   
   ~Nnet() { Destroy(); }
 

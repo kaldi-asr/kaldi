@@ -181,3 +181,5 @@ local/run_sgmm.sh
 local/run_sgmm2.sh
 local/run_sgmm2x.sh
 
+# you can do:
+# local/run_nnet_cpu.sh

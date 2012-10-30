@@ -47,8 +47,8 @@ for ($x = 1; $x < 10; $x++) {
 }
 
 
-if (@ARGV != 4) {
-  print STDERR "Usage: make_nnet_config.pl  [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-parameters>  >config-file
+if (@ARGV != 5) {
+  print STDERR "Usage: make_nnet_config_block.pl  [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-blocks> <num-parameters>  >config-file
 Options:
    --input-left-context <n>        #  #frames of left context for input features; default 0.
    --input-right-context <n>       #  #frames of right context for input features; default 0.
@@ -63,12 +63,14 @@ Options:
      exit(1);
 }
 
-($feat_dim, $num_leaves, $num_hidden_layers, $num_params) = @ARGV;
+($feat_dim, $num_leaves, $num_hidden_layers, $num_blocks, $num_params) = @ARGV;
 
 ($input_left_context < 0) &&  die "Invalid input left context $input_left_context";
 ($input_right_context < 0) &&  die "Invalid input right context $input_right_context";
 ($feat_dim <= 0) &&  die "Invalid feature dimension $feat_dim";
 ($num_leaves <= 0) && die "Invalid number of leaves $num_leaves";
+($num_blocks <= 0) && die "Invalid number of blocks $num_blocks";
+($num_blocks > 20) && die "Implausibly high number of blocks $num_blocks";
 ($num_hidden_layers <= 0) && die "Invalid number of hidden layers $num_hidden_layers";
 if ($initial_num_hidden_layers < 0) {
   $initial_num_hidden_layers = $num_hidden_layers;
@@ -82,15 +84,15 @@ $context_size = 1 + $input_left_context + $input_right_context;
 ($num_params < ($num_leaves + ($feat_dim * $context_size) + $num_hidden_layers + 1))
   && die "Invalid number of params $num_params";
 
-## num_params = hidden_layer_size^2 * (num_hidden_layers-1)
+## num_params = hidden_layer_size^2/num_blocks * (num_hidden_layers-1)
 ##            + hidden_layer_size * (num_leaves + feat_dim * context_size)
 ## solve for hidden_layer_size = x.
 ## a x^2 + b  + c, with
-## a = num_hidden_layers - 1
+## a = (num_hidden_layers - 1) / num_blocks
 ## b = num_leaves + feat_dim * context_size
 ## c = -num_params
 
-$a = $num_hidden_layers - 1;
+$a = ($num_hidden_layers - 1) / ($num_blocks * 1.0); # * 1.0 to make sure it's float.
 $b = $num_leaves + $feat_dim * $context_size;
 $c = -$num_params;
 
@@ -99,13 +101,14 @@ if ($a > 0) {
 } else {
   $hidden_layer_size = int(-$c/$b);
 }
+##  make sure num_blocks divides hidden_layer_size.
+$hidden_layer_size -= $hidden_layer_size % $num_blocks;
 
-
-$actual_num_params = $hidden_layer_size * $hidden_layer_size * ($num_hidden_layers - 1)
+$actual_num_params = ($hidden_layer_size * $hidden_layer_size)/$num_blocks * ($num_hidden_layers - 1)
                    + $hidden_layer_size * ($num_leaves + $feat_dim * $context_size);
 
 if (abs($actual_num_params - $num_params) > 0.1 * $num_params) {
-  print STDERR "Warning: make_nnet_config.pl: possible failure $actual_num_params != $num_params";
+  print STDERR "Warning: $0: possible failure $actual_num_params != $num_params";
 }
 
 if ($input_left_context + $input_right_context != 0) {
@@ -118,18 +121,27 @@ if ($input_left_context + $input_right_context != 0) {
 $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
-  $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
-  print "AffineComponent input-dim=$cur_input_dim output-dim=$hidden_layer_size " .
-    "param-stddev=$param_stddev\n";
+  if ($hidden_layer == 0) {
+    $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
+    print "AffineComponent input-dim=$cur_input_dim output-dim=$hidden_layer_size " .
+      "param-stddev=$param_stddev\n";
+    print "TanhComponent dim=$hidden_layer_size\n";
+  } else {
+    $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim / $num_blocks);
+    print "PermuteComponent dim=$cur_input_dim\n";
+    print "BlockAffineComponent num-blocks=$num_blocks input-dim=$cur_input_dim output-dim=$hidden_layer_size " .
+      "param-stddev=$param_stddev\n";
+    print "TanhComponent dim=$hidden_layer_size\n";
+  }
   $cur_input_dim = $hidden_layer_size;
-  print "TanhComponent dim=$cur_input_dim\n";
 }
 
 if ($single_layer_config ne "") {
   # Create a config file we'll use to add new hidden layers.
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
-  print F "AffineComponent input-dim=$hidden_layer_size output-dim=$hidden_layer_size " .
+  print F "PermuteComponent dim=$hidden_layer_size\n";
+  print F "BlockAffineComponent num-blocks=$num_blocks input-dim=$hidden_layer_size output-dim=$hidden_layer_size " .
     "param-stddev=$param_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
   close (F) || die "Closing config file";

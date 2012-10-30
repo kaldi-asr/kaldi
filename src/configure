@@ -7,6 +7,11 @@
 # remove the options -g -O0 -DKALDI_PARANOID, or edit the 
 # -DKALDI_DOUBLE_PRECISION option (to be 1 not 0),
 
+
+#  Example command lines:
+# configure
+# configure --mkl-root=/opt/intel/mkl --threaded-math=yes
+
 function rel2abs {
   local retval=`cd $1 2>/dev/null && pwd || exit 1`
   echo $retval
@@ -582,6 +587,7 @@ if [ "`uname`" == "Linux" ]; then
     if [ ! -z $MKLLIBDIR ]; then 
       echo MKLLIB = $MKLLIBDIR >> kaldi.mk
     fi
+    echo FSTROOT = $FSTROOT >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk

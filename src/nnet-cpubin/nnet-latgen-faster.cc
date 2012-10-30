@@ -44,7 +44,6 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
-    bool reverse = false;
     std::string spkvecs_rspecifier = "", utt2spk_rspecifier = "";
     
     std::string word_syms_filename;
@@ -52,14 +51,13 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
-    po.Register("reverse", &reverse, "If true, decode on time-reversed features.");
     po.Register("spk-vecs", &spkvecs_rspecifier, "Rspecifier for a vector that describes each speaker; "
                 "only needed if the neural net was trained this way.");
     po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for map from utterance to speaker; only relevant "
                 "in conjunction with the --spk-vecs option.");
     
     po.Read(argc, argv);
-
+    
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);

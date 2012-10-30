@@ -157,7 +157,7 @@ class UpdatableComponent : public Component {
   /// changes necessary (there's a variable we have to set for the
   /// MixtureProbComponent).
   virtual void SetZero(bool treat_as_gradient) = 0;
-
+  
   /// Note: l2_penalty is per frame.
   UpdatableComponent(): learning_rate_(0.001), l2_penalty_(1.0e-06) { }
   
@@ -261,7 +261,7 @@ class TanhComponent: public NonlinearComponent {
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
-  SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
+  SoftmaxComponent(int32 dim) { Init(dim); }
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }  // Make it lower case
   // because each type of Component needs a different first letter.

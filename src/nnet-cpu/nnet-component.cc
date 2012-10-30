@@ -247,10 +247,14 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
 
 void NonlinearComponent::InitFromString(std::string args) {
   std::string orig_args(args);
-  bool ok = ParseFromString("dim", &args, &dim_);
-  if (!ok || !args.empty() || dim_ <= 0)
+  int32 dim;
+  bool ok = ParseFromString("dim", &args, &dim);
+  if (!ok || !args.empty() || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << orig_args << "\"";
+  Init(dim); // calls a virtual function that will generally
+  // just set dim, but does more for SoftmaxComponent
+  // (sets up counts).
 }
 
 void SigmoidComponent::Propagate(const MatrixBase<BaseFloat> &in,

@@ -58,4 +58,14 @@ std::string AmNnet::Info() const {
   return nnet_.Info() + ostr.str();
 }
 
+void AmNnet::Init(const Nnet &nnet) {
+  nnet_ = nnet;
+  if (priors_.Dim() != 0 && priors_.Dim() != nnet.OutputDim()) {
+    KALDI_WARN << "Initializing neural net: prior dimension mismatch, "
+               << "discarding old priors.";
+    priors_.Resize(0);
+  }
+}
+
+
 } // namespace kaldi

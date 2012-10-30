@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-init.cc
+// nnet-cpubin/nnet-am-copy.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 
@@ -27,46 +27,45 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
-    // TODO: specify in the usage message where the example scripts are.
     const char *usage =
-        "Initialize the neural network from a config file with a line for each\n"
-        "component.  Note, this only outputs the neural net itself, not the associated\n"
-        "information such as the transition-model; you'll probably want to pipe\n"
-        "the output into something like am-nnet-init.\n"
+        "Copy a (cpu-based) neural net and its associated transition model,\n"
+        "possibly changing the binary mode\n"
         "\n"
-        "Usage:  nnet-init [options] <config-in> <raw-nnet-out>\n"
+        "Usage:  nnet-am-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-init tree topo nnet.config 1.nnet\n";
+        " nnet-am-copy --binary=false 1.mdl text.mdl\n";
     
     bool binary_write = true;
-    int32 srand_seed = 0;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("srand", &srand_seed, "Seed for random number generator");
     
     po.Read(argc, argv);
-    srand(srand_seed);
     
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string config_rxfilename = po.GetArg(1),
-        raw_nnet_wxfilename = po.GetArg(2);
+    std::string nnet_rxfilename = po.GetArg(1),
+        nnet_wxfilename = po.GetArg(2);
     
-    Nnet nnet;
+    TransitionModel trans_model;
+    AmNnet am_nnet;
     {
       bool binary;
-      Input ki(config_rxfilename, &binary);
-      KALDI_ASSERT(!binary && "Expect config file to contain text.");
-      nnet.Init(ki.Stream());
+      Input ki(nnet_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
-
-    WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
-    KALDI_LOG << "Initialized raw neural net and wrote it to "
-              << raw_nnet_wxfilename;
+    
+    {
+      Output ko(nnet_wxfilename, binary_write);
+      trans_model.Write(ko.Stream(), binary_write);
+      am_nnet.Write(ko.Stream(), binary_write);
+    }
+    KALDI_LOG << "Copied neural net from " << nnet_rxfilename
+              << " to " << nnet_wxfilename;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

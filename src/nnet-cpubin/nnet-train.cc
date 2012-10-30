@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
       
       int32 num_done = 0, num_err = 0;
     
-      while (!feat_reader.Done()) {
+      for (; !feat_reader.Done(); feat_reader.Next()) {
         std::string key = feat_reader.Key();
         const Matrix<BaseFloat> &feats = feat_reader.Value();
         if (!pdf_ali_reader.HasKey(key)) {
@@ -120,6 +120,7 @@ int main(int argc, char *argv[]) {
           BaseFloat utterance_weight = 1.0; // We don't support weighting
           // for now, at this level.
           validation_set.AddUtterance(feats, spk_info, pdf_ali, utterance_weight);
+          num_done++;
         }
       }
       KALDI_LOG << "Read " << num_done << " utterances from the validation set; "

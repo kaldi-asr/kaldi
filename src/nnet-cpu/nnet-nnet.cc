@@ -29,7 +29,7 @@ int32 Nnet::OutputDim() const {
 
 int32 Nnet::InputDim() const {
   KALDI_ASSERT(!components_.empty());
-  return components_.back()->InputDim();
+  return components_.front()->InputDim();
 }
 
 
@@ -89,7 +89,7 @@ void Nnet::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Components>");
   components_.resize(num_components);
   for (int32 c = 0; c < num_components; c++) 
-    components_[c]->Read(is, binary);
+    components_[c] = Component::ReadNew(is, binary);
   ExpectToken(is, binary, "</Components>");
   ExpectToken(is, binary, "</Nnet>");  
 }
@@ -186,6 +186,11 @@ void Nnet::Init(std::istream &is) {
   Check();
 }
 
+void Nnet::Init(std::vector<Component*> *components) {
+  Destroy();
+  components_.swap(*components);
+  Check();
+}
 
 void Nnet::AdjustLearningRatesAndL2Penalties(
     const VectorBase<BaseFloat> &start_dotprod, // param@start . valid-grad@end
@@ -226,11 +231,11 @@ void Nnet::AdjustLearningRatesAndL2Penalties(
   std::ostringstream lrate_str;
   for (size_t i = 0; i < new_lrates.size(); i++)
     lrate_str << new_lrates[i] << ' ';
-  KALDI_VLOG(2) << "Learning rates are " << lrate_str.str();
+  KALDI_VLOG(1) << "Learning rates are " << lrate_str.str();
   std::ostringstream l2_penalty_str;
   for (size_t i = 0; i < new_l2_penalties.size(); i++)
     l2_penalty_str << new_l2_penalties[i] << ' ';
-  KALDI_VLOG(3) << "Shrinkage rates are " << l2_penalty_str.str();
+  KALDI_VLOG(2) << "L2 penalties are " << l2_penalty_str.str();
 }
 
 } // namespace

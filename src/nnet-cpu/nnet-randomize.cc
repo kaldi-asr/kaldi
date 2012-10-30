@@ -222,6 +222,7 @@ void NnetDataRandomizer::GetExample(const std::pair<int32, int32> &pair,
   int32 label = tf.labels[frame_index];
   KALDI_ASSERT(label >= 0 && label < pdf_weights_.Dim());
   example->weight = pdf_weights_(label);
+  example->label = label;
   example->spk_info = tf.spk_info;
   example->input_frames.Resize(left_context_ + 1 + right_context_,
                                tf.feats.NumCols());

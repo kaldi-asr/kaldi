@@ -6,9 +6,8 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 
 BINFILES = nnet-randomize-frames nnet-info nnet-train nnet-init \
-   nnet-train-transitions nnet-latgen-faster
-
-##nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff nnet-train-mse-tgtmat-frmshuff nnet-forward nnet-copy rbm-train-cd1-frmshuff rbm-convert-to-nnet nnet-trim-n-last-transforms nnet-train-mmi-sequential
+   nnet-train-transitions nnet-latgen-faster nnet-am-copy \
+   nnet-add-hidden-layer nnet-am-init nnet-insert
 
 OBJFILES =
 
@@ -33,7 +32,7 @@ clean:
 	rm *.o $(TESTFILES) $(BINFILES)
 
 test_compile: $(TESTFILES)
-  
+
 test: test_compile
 	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 

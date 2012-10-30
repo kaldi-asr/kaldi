@@ -41,7 +41,11 @@ class AmNnet {
   /// At this point the priors won't be initialized; you'd have to do
   /// SetPriors for that.
   void Init(std::istream &config_is);
-  
+
+  /// Initialize from a neural network that's already been set up.
+  /// Again, the priors will be empty at this point.
+  void Init(const Nnet &nnet);
+
   int32 NumPdfs() const { return nnet_.OutputDim(); }
 
   void Write(std::ostream &os, bool binary) const;

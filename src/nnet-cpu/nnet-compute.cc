@@ -164,6 +164,7 @@ void NnetComputer::Backprop(BaseFloat utterance_weight,
     Matrix<BaseFloat> input_deriv;
     component.Backprop(input, output, output_deriv, per_chunk_weights,
                        component_to_update, &input_deriv);
+    *tmp_deriv = input_deriv;
   }
 }
 

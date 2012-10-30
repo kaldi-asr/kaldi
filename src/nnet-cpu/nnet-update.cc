@@ -146,11 +146,12 @@ void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
                                       &(nnet_to_update_->GetComponent(c)));
     Matrix<BaseFloat> &input = forward_data_[c],
                      &output = forward_data_[c+1];
-    Matrix<BaseFloat> input_deriv(input.NumRows(), output.NumRows());
+    Matrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const Matrix<BaseFloat> &output_deriv(*deriv);
-
+ 
     component.Backprop(input, output, output_deriv, sample_weights,
                        component_to_update, &input_deriv);
+    *deriv = input_deriv;
   }
 }
 
@@ -171,13 +172,13 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   forward_data_[0].Resize(num_splice * num_chunks_,
                           tot_dim);
   for (int32 chunk = 0; chunk < num_chunks_; chunk++) {
-    SubMatrix<BaseFloat> dest(forward_data_[chunk],
+    SubMatrix<BaseFloat> dest(forward_data_[0],
                               chunk * num_splice, num_splice,
                               0, feat_dim);
     const Matrix<BaseFloat> &src(data[chunk].input_frames);
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
-      SubMatrix<BaseFloat> spk_dest(forward_data_[chunk],
+      SubMatrix<BaseFloat> spk_dest(forward_data_[0],
                                     chunk * num_splice, num_splice,
                                     feat_dim, spk_dim);
       spk_dest.CopyRowsFromVec(data[chunk].spk_info);

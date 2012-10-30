@@ -48,6 +48,8 @@ class DecodableAmNnet: public DecodableInterface {
     log_probs_.Resize(feats.NumRows(), trans_model.NumPdfs());
     // the following function is declared in nnet-compute.h
     NnetComputation(am_nnet.GetNnet(), feats, spk_info, pad_input, &log_probs_);
+    log_probs_.ApplyFloor(1.0e-20);
+    log_probs_.ApplyLog();
     Vector<BaseFloat> priors(am_nnet.Priors());
     KALDI_ASSERT(priors.Dim() == trans_model.NumPdfs() &&
                  "Priors in neural network not set up.");

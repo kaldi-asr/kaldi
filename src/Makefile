@@ -4,7 +4,7 @@
 
 SHELL := /bin/bash
 
-SUBDIRS = base matrix util feat tree gmm tied transform sgmm \
+SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin
