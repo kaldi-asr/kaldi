@@ -135,7 +135,11 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
                                    std::vector<int32> *words,
                                    std::vector<int32> *begin_times,
                                    std::vector<int32> *lengths);
-                                   
+
+/// A form of the shortest-path algorithm that's specially coded for
+/// CompactLattice.   Requires that clat be acyclic.
+void CompactLatticeShortestPath(const CompactLattice &clat,
+                                CompactLattice *shortest_path);
 
 }  // namespace kaldi
 

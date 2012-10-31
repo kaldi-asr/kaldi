@@ -20,6 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -58,10 +59,8 @@ int main(int argc, char *argv[]) {
         transcriptions_wspecifier = po.GetOptArg(2),
         alignments_wspecifier = po.GetOptArg(3);
 
-    // Read as regular lattice, not compact lattice--
-    // this is the form we need it in for efficient best-path.
-    SequentialLatticeReader lattice_reader(lats_rspecifier);
-
+    SequentialCompactLatticeReader clat_reader(lats_rspecifier);
+    
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
 
     Int32VectorWriter alignments_writer(alignments_wspecifier);
@@ -77,13 +76,16 @@ int main(int argc, char *argv[]) {
     int64 n_frame = 0;
     LatticeWeight tot_weight = LatticeWeight::One();
     
-    for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
-      Lattice lat = lattice_reader.Value();
-      lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
+    for (; !clat_reader.Done(); clat_reader.Next()) {
+      std::string key = clat_reader.Key();
+      CompactLattice clat = clat_reader.Value();
+      clat_reader.FreeCurrent();
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
+      CompactLattice clat_best_path;
+      CompactLatticeShortestPath(clat, &clat_best_path);  // A specialized
+      // implementation of shortest-path for CompactLattice.
       Lattice best_path;
-      fst::ShortestPath(lat, &best_path);
+      ConvertLattice(clat_best_path, &best_path);
       if (best_path.Start() == fst::kNoStateId) {
         KALDI_WARN << "Best-path failed for key " << key;
         n_fail++;
