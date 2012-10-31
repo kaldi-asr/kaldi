@@ -134,6 +134,8 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
    exp/tri3a/graph data/eval2000 exp/tri3a/decode_eval2000 || exit 1;
 )&
 
+# Some experiments with neural nets:
+#local/run_nnet_cpu.sh &
 
 # From now, we start building a more serious system (with SAT), and we'll
 # do the alignment with fMLLR.

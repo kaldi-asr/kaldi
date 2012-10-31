@@ -29,7 +29,7 @@
 
 namespace kaldi {
 
-/// DecodableAmNnet1 is a decodable object that decodes
+/// DecodableAmNnet is a decodable object that decodes
 /// with a neural net acoustic model of type AmNnet.
 
 class DecodableAmNnet: public DecodableInterface {

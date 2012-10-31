@@ -23,6 +23,11 @@ num_hidden_layers=2
 initial_num_hidden_layers=1  # we'll add the rest one by one.
 num_parameters=2000000 # 2 million parameters by default.
 stage=-4
+realign_iters=""
+beam=10
+retry_beam=40
+scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+parallel_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -60,12 +65,14 @@ num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print
 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
+sdata=$data/split$nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir 2>/dev/null # any LDA matrix...
+cp $alidir/tree $dir
 
 
 
@@ -87,9 +94,11 @@ echo "$0: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
+     split_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
    ;;
   lda) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+      split_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
       valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
     ;;
@@ -98,6 +107,7 @@ esac
 if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
   feats="$feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/trans.*|' ark:- ark:- |"
+  split_feats="$split_feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"
   valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/trans.*|' ark:- ark:- |"
 fi
 
@@ -127,6 +137,18 @@ if [ $stage -le -3 ]; then
     nnet-train-transitions $dir/0.mdl "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl \
     || exit 1;
 fi
+
+if [ $stage -le -2 ]; then
+  echo "Compiling graphs of transcripts"
+  $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
+    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst  \
+     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
+      "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
+fi
+
+
+cp $alidir/ali.*.gz $dir
+
 x=0
 while [ $x -lt $num_iters ]; do
   # note: archive for aligments won't be sorted as the shell glob "*" expands
@@ -134,6 +156,13 @@ while [ $x -lt $num_iters ]; do
   # ark,cs which means the features are in sorted order [hence alignments will
   # be called in sorted order (cs).
   if [ $stage -le $x ]; then
+    if echo $realign_iters | grep -w $x >/dev/null; then
+      echo "Realigning data (pass $x)"
+      $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
+        nnet-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$dir/$x.mdl" \
+         "ark:gunzip -c $dir/fsts.JOB.gz|" "$split_feats" \
+        "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+    fi
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && [ $x -le $[$num_hidden_layers-$initial_num_hidden_layers] ]; then
       mdl="nnet-init --srand=$x $dir/hidden_layer.config - | nnet-insert $dir/$x.mdl - - |"
@@ -142,10 +171,10 @@ while [ $x -lt $num_iters ]; do
     fi
     m=$minibatches_per_phase
     [ $x -eq 0 ] && m=$minibatches_per_phase_it1
-    $cmd $dir/log/train.$x.log \
+    $cmd $parallel_opts $dir/log/train.$x.log \
       nnet-randomize-frames --num-samples=$samples_per_iteration \
       --frequency-power=$frequency_power --srand=$x \
-      "$feats" "ark,cs:gunzip -c $alidir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
+      "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
       nnet-train --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
         --verbose=2 "$mdl" "$valid_feats" "ark,cs:gunzip -c $dir/pdfs.valid.gz|" ark:- $dir/$[$x+1].mdl \
       || exit 1;

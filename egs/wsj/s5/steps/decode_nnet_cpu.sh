@@ -83,8 +83,7 @@ fi
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
     nnet-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
-    --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
-    --word-symbol-table=$graphdir/words.txt "$model" \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt "$model" \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 

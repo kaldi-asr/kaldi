@@ -23,14 +23,6 @@
 #include "nnet-cpu/am-nnet.h"
 
 
-/*
-  Note: the features will be split into validation and train parts
-  while we're still at the scp files, using the commands
-  grep -w -F -f valid_uttlist
-  grep -v -w -F -f valid_uttlist
-  or filter_scp.pl (using the --exclude option for the second case).
-*/
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -55,11 +47,14 @@ int main(int argc, char *argv[]) {
         "   ark:- 2.nnet\n";
     
     bool binary_write = true;
+    bool zero_occupancy = true;
     std::string valid_spk_vecs_rspecifier;
     NnetAdaptiveTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
+                "counts stored with the neural net (only affects mixing up).");
     po.Register("valid-spk-vecs", &valid_spk_vecs_rspecifier,
                 "Rspecifier for speaker vectors for validation set");
     
@@ -87,6 +82,8 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary_read);
       am_nnet.Read(ki.Stream(), binary_read);
     }
+
+    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
     
     NnetValidationSet validation_set; // stores validation utterances.
 
@@ -129,15 +126,18 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Read no validation set data.";
     }
 
-    NnetAdaptiveTrainer trainer(train_config,
-                                validation_set,
-                                &(am_nnet.GetNnet()));
+    { // want to make sure this object deinitializes before
+      // we write the model, as it does something in the destructor.
+      NnetAdaptiveTrainer trainer(train_config,
+                                  validation_set,
+                                  &(am_nnet.GetNnet()));
     
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+      SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 
-    int64 num_examples = 0;
-    for (; !example_reader.Done(); example_reader.Next(), num_examples++)
-      trainer.TrainOnExample(example_reader.Value());  // It all happens here!
+      int64 num_examples = 0;
+      for (; !example_reader.Done(); example_reader.Next(), num_examples++)
+        trainer.TrainOnExample(example_reader.Value());  // It all happens here!
+    }
     
     {
       Output ko(nnet_wxfilename, binary_write);
