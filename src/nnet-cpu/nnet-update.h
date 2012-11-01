@@ -65,6 +65,7 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > Random
 /// TotalNnetTrainingWeight(examples)).  It is mostly a wrapper for
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.
+/// All these examples will be treated as one minibatch.
 BaseFloat DoBackprop(const Nnet &nnet,
                      const std::vector<NnetTrainingExample> &examples,
                      Nnet *net_to_update);

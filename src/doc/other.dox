@@ -28,8 +28,11 @@
 
  This page contains  pointers to a few Kaldi-related resources that are located elsewhere.
 
- Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a> is useful
- if you have questions to ask (there are lists there), and for a few other purposes.
+ Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a> contains
+ a number of useful resources.
+
+ The <a href=https://sourceforge.net/projects/kaldi/forums> Kaldi forums on Sourceforge </a> are
+ a good place to ask questions.
 
   For the slides for a short series of Kaldi lectures that were delivered in 2012, 
   see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.

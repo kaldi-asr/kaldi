@@ -194,7 +194,7 @@ void Nnet::Init(std::vector<Component*> *components) {
 
 void Nnet::AdjustLearningRatesAndL2Penalties(
     const VectorBase<BaseFloat> &start_dotprod, // param@start . valid-grad@end
-    const VectorBase<BaseFloat>  &end_dotprod, // param@end . valid-grad@end
+    const VectorBase<BaseFloat> &end_dotprod, // param@end . valid-grad@end
     BaseFloat ratio, // e.g. 1.1
     BaseFloat max_learning_rate,
     BaseFloat min_l2_penalty,

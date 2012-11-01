@@ -222,7 +222,8 @@ Component *PermuteComponent::Copy() const {
 
 std::string Component::Info() const {
   std::stringstream stream;
-  stream << Type() << " component, inputDim=" << InputDim() <<", outputDim=" << OutputDim();
+  stream << Type() << " component, inputDim=" << InputDim()
+         << ", outputDim=" << OutputDim();
   return stream.str();
 }
 
@@ -450,6 +451,24 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
   Vector<BaseFloat> temp_bias_params(bias_params_);
   temp_bias_params.SetRandn();
   bias_params_.AddVec(stddev, temp_bias_params);
+}
+
+std::string AffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+                linear_params_size),
+      bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                              bias_params_.Dim());
+  stream << Type() << " component, inputDim=" << InputDim()
+         << ", outputDim=" << OutputDim()
+         << ", linear-params stddev = " << linear_stddev
+         << ", bias-params stddev = " << bias_stddev
+         << ", learning rate = " << LearningRate()
+         << ", l2penalty = " << L2Penalty();
+  return stream.str();
 }
 
 Component* AffineComponent::Copy() const {

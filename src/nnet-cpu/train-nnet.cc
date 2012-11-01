@@ -67,13 +67,40 @@ BaseFloat NnetValidationSet::TotalWeight() const {
   return ans;
 }
 
-NnetAdaptiveTrainer::NnetAdaptiveTrainer(const NnetAdaptiveTrainerConfig &config,
-                                         const NnetValidationSet &validation_set,
-                                         Nnet *nnet):
+NnetAdaptiveTrainer::NnetAdaptiveTrainer(
+    const NnetAdaptiveTrainerConfig &config,
+    const std::vector<NnetTrainingExample> &validation_set,
+    Nnet *nnet):
     config_(config), validation_set_(validation_set), nnet_(nnet) {
   num_phases_ = 0;
+  validation_tot_weight_ = TotalNnetTrainingWeight(validation_set);
   bool first_time = true;
   BeginNewPhase(first_time);
+}
+
+BaseFloat NnetAdaptiveTrainer::ComputeValidationSetGradient(
+    Nnet *gradient) const {
+  bool treat_as_gradient = true;
+  gradient->SetZero(treat_as_gradient);
+  int32 batch_size = 2000;
+  std::vector<NnetTrainingExample> batch;
+  batch.reserve(batch_size);
+  BaseFloat tot_objf = 0.0;
+  for (int32 start_pos = 0;
+       start_pos < static_cast<int32>(validation_set_.size());
+       start_pos += batch_size) {
+    batch.clear();
+    for (int32 i = start_pos;
+         i < std::min(start_pos + batch_size,
+                      static_cast<int32>(validation_set_.size()));
+         i++) {
+      batch.push_back(validation_set_[i]);
+    }
+    tot_objf += DoBackprop(*nnet_,
+                           batch,
+                           gradient);
+  }
+  return tot_objf / validation_tot_weight_;
 }
 
 void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
@@ -89,11 +116,10 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
     nnet_->ComponentDotProducts(validation_gradient_,
                                 &new_model_old_gradient);
     BaseFloat old_objf = validation_objf_;
-    BaseFloat new_objf = validation_set_.ComputeGradient(*nnet_,
-                                                         &validation_gradient_);
+    BaseFloat new_objf = ComputeValidationSetGradient(&validation_gradient_);
     validation_objf_ = new_objf;
     nnet_snapshot_.ComponentDotProducts(validation_gradient_,
-                                         &old_model_new_gradient);
+                                        &old_model_new_gradient);
     nnet_->ComponentDotProducts(validation_gradient_,
                                 &new_model_new_gradient);
     // old_gradient_delta is the old gradient * delta-parameters.
@@ -112,7 +138,7 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
 
     // For ease of viewing, scale down the progress stats by
     // the total weight of the validation-set frames.
-    progress_this_iter.Scale(1.0 / validation_set_.TotalWeight());
+    progress_this_iter.Scale(1.0 / validation_tot_weight_);
     
     if (new_objf < old_objf) {
       KALDI_LOG << "Objf degraded from " << old_objf << " to " << new_objf
@@ -146,8 +172,7 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
     KALDI_VLOG(3) << "Current model info: " << nnet_->Info();
   } else { // first time.
     validation_gradient_ = *nnet_;
-    validation_objf_ = validation_set_.ComputeGradient(*nnet_,
-                                                       &validation_gradient_);
+    validation_objf_ = ComputeValidationSetGradient(&validation_gradient_);
     initial_validation_objf_ = validation_objf_;
     progress_stats_.Resize(num_components);
   }

@@ -20,6 +20,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -55,9 +56,7 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
-    // Read as regular lattice-- this is the form we need it in for efficient
-    // pruning.
-    SequentialLatticeReader lattice_reader(lats_rspecifier);
+    SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     
     // Write as compact lattice.
     CompactLatticeWriter compact_1best_writer(lats_wspecifier); 
@@ -66,14 +65,14 @@ int main(int argc, char *argv[]) {
 
     if (acoustic_scale == 0.0 || lm_scale == 0.0)
       KALDI_ERR << "Do not use exactly zero acoustic or LM scale (cannot be inverted)";
-    for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
-      Lattice lat = lattice_reader.Value();
-      lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
+    for (; !clat_reader.Done(); clat_reader.Next()) {
+      std::string key = clat_reader.Key();
+      CompactLattice clat = clat_reader.Value();
+      clat_reader.FreeCurrent();
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
 
-      Lattice best_path;
-      fst::ShortestPath(lat, &best_path);
+      CompactLattice best_path;
+      CompactLatticeShortestPath(clat, &best_path);
       
       if (best_path.Start() == fst::kNoStateId) {
         KALDI_WARN << "Possibly empty lattice for utterance-id " << key
@@ -82,9 +81,7 @@ int main(int argc, char *argv[]) {
       } else {
         fst::ScaleLattice(fst::LatticeScale(1.0 / lm_scale, 1.0/acoustic_scale),
                           &best_path);
-        CompactLattice compact_best_path;
-        ConvertLattice(best_path, &compact_best_path);
-        compact_1best_writer.Write(key, compact_best_path);
+        compact_1best_writer.Write(key, best_path);
         n_done++;
       }
     }

@@ -62,5 +62,10 @@ steps/train_nnet_cpu.sh --num-valid-utts 150 \
 
 
 
+steps/train_nnet_cpu.sh --num-iters 10 --num-parameters 4000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+  data/train_30k_nodup data/lang exp/tri4b exp/tri5b3_nnet
 
-
+steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+  --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b3_nnet/decode_train_dev

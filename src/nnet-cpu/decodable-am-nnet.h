@@ -63,7 +63,7 @@ class DecodableAmNnet: public DecodableInterface {
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
     return log_probs_(frame,
-                     trans_model_.TransitionIdToPdf(transition_id));
+                      trans_model_.TransitionIdToPdf(transition_id));
   }
 
   int32 NumFrames() { return log_probs_.NumRows(); }

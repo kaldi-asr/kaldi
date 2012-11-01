@@ -26,7 +26,7 @@ namespace kaldi {
 
 
 
-/// Class Nnet1ValidationSet stores the validation set feature data and labels,
+/// Class NnetValidationSet stores the validation set feature data and labels,
 /// and is responsible for calling code that computes the objective function and
 /// gradient on the validation set.
 class NnetValidationSet {
@@ -112,7 +112,7 @@ struct NnetAdaptiveTrainerConfig {
 class NnetAdaptiveTrainer {
  public:
   NnetAdaptiveTrainer(const NnetAdaptiveTrainerConfig &config,
-                      const NnetValidationSet &validation_set,
+                      const std::vector<NnetTrainingExample> &validation_set,
                       Nnet *nnet);
   
   /// TrainOnExample will take the example and add it to a buffer;
@@ -123,6 +123,10 @@ class NnetAdaptiveTrainer {
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NnetAdaptiveTrainer);
 
+  // returns objf per sample, sets "gradient" to the gradient
+  // on the validation set, computed at value *nnet_.
+  BaseFloat ComputeValidationSetGradient(Nnet *gradient) const;
+  
   void TrainOneMinibatch();
   
   // The following function is called by TrainOneMinibatch()
@@ -131,7 +135,8 @@ class NnetAdaptiveTrainer {
   
   // Things we were given in the initializer:
   NnetAdaptiveTrainerConfig config_;
-  const NnetValidationSet &validation_set_; // Stores validation data, used
+  const std::vector<NnetTrainingExample> &validation_set_; // Stores validation data, used
+  BaseFloat validation_tot_weight_;
   // to compute gradient on validation set.
   Nnet *nnet_; // the nnet we're training.
 

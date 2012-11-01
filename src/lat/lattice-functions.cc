@@ -605,5 +605,90 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 }
 
 
+void CompactLatticeShortestPath(const CompactLattice &clat,
+                                CompactLattice *shortest_path) {
+  using namespace fst;
+  if (clat.Properties(fst::kTopSorted, true) == 0) {
+    CompactLattice clat_copy(clat);
+    if (!TopSort(&clat_copy))
+      KALDI_ERR << "Was not able to topologically sort lattice (cycles found?)";
+    CompactLatticeShortestPath(clat_copy, shortest_path);
+    return;
+  }
+  // Now we can assume it's topologically sorted.
+  shortest_path->DeleteStates();
+  if (clat.Start() == kNoStateId) return;
+  KALDI_ASSERT(clat.Start() == 0); // since top-sorted.
+  typedef CompactLatticeArc Arc;
+  typedef Arc::StateId StateId;
+  typedef CompactLatticeWeight Weight;
+  vector<std::pair<double, StateId> > best_cost_and_pred(clat.NumStates() + 1);
+  StateId superfinal = clat.NumStates();
+  for (StateId s = 0; s <= clat.NumStates(); s++) {
+    best_cost_and_pred[s].first = numeric_limits<double>::infinity();
+    best_cost_and_pred[s].second = fst::kNoStateId;
+  }
+  best_cost_and_pred[0].first = 0;
+  for (StateId s = 0; s < clat.NumStates(); s++) {
+    double my_cost = best_cost_and_pred[s].first;
+    for (ArcIterator<CompactLattice> aiter(clat, s);
+         !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_cost = ConvertToCost(arc.weight),
+          next_cost = my_cost + arc_cost;
+      if (next_cost < best_cost_and_pred[arc.nextstate].first) {
+        best_cost_and_pred[arc.nextstate].first = next_cost;
+        best_cost_and_pred[arc.nextstate].second = s;
+      }
+    }
+    double final_cost = ConvertToCost(clat.Final(s)),
+        tot_final = my_cost + final_cost;
+    if (tot_final < best_cost_and_pred[superfinal].first) {
+      best_cost_and_pred[superfinal].first = tot_final;
+      best_cost_and_pred[superfinal].second = s;
+    }
+  }
+  std::vector<StateId> states; // states on best path.
+  StateId cur_state = superfinal;
+  while (cur_state != 0) {
+    StateId prev_state = best_cost_and_pred[cur_state].second;
+    if (prev_state == kNoStateId) {
+      KALDI_WARN << "Failure in best-path algorithm for lattice (infinite costs?)";
+      return; // return empty best-path.
+    }
+    states.push_back(prev_state);
+    KALDI_ASSERT(cur_state != prev_state && "Lattice with cycles");
+    cur_state = prev_state;
+  }
+  std::reverse(states.begin(), states.end());
+  for (size_t i = 0; i < states.size(); i++)
+    shortest_path->AddState();
+  for (StateId s = 0; static_cast<size_t>(s) < states.size(); s++) {
+    if (s == 0) shortest_path->SetStart(s);
+    if (static_cast<size_t>(s + 1) < states.size()) { // transition to next state.
+      bool have_arc = false;
+      Arc cur_arc;
+      for (ArcIterator<CompactLattice> aiter(clat, states[s]);
+           !aiter.Done();
+           aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        if (arc.nextstate == states[s+1]) {
+          if (!have_arc ||
+              ConvertToCost(arc.weight) < ConvertToCost(cur_arc.weight)) {
+            cur_arc = arc;
+            have_arc = true;
+          }
+        }
+      }
+      KALDI_ASSERT(have_arc && "Code error.");
+      shortest_path->AddArc(s, Arc(cur_arc.ilabel, cur_arc.olabel,
+                                   cur_arc.weight, s+1));
+    } else { // final-prob.
+      shortest_path->SetFinal(s, clat.Final(states[s]));
+    }
+  }
+}
+
 
 }  // namespace kaldi

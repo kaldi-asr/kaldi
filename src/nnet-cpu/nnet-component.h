@@ -176,11 +176,11 @@ class UpdatableComponent : public Component {
   /// Sets the learning rate of gradient descent
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
   /// Gets the learning rate of gradient descent
-  BaseFloat LearningRate() { return learning_rate_; }
+  BaseFloat LearningRate() const { return learning_rate_; }
   /// Sets L2 penalty (weight decay)
   void SetL2Penalty(BaseFloat l2) { l2_penalty_ = l2;  }
   /// Gets L2 penalty (weight decay)
-  BaseFloat L2Penalty() { return l2_penalty_; }
+  BaseFloat L2Penalty() const { return l2_penalty_; }
  protected:
   BaseFloat learning_rate_; ///< learning rate (0.0..0.01)
   BaseFloat l2_penalty_; ///< L2 regularization constant (0.0..1e-4)
@@ -302,7 +302,7 @@ class AffineComponent: public UpdatableComponent {
   virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev);
-
+  virtual std::string Info() const;
   virtual void InitFromString(std::string args);
   
   AffineComponent() { } // use Init to really initialize.
@@ -422,7 +422,6 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev, int32 num_blocks);
-
   virtual void InitFromString(std::string args);
   
   BlockAffineComponent() { } // use Init to really initialize.

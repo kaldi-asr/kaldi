@@ -167,6 +167,3 @@ int main() {
   }
   std::cout << "Test OK\n";
 }
-
-
-

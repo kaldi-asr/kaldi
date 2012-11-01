@@ -184,7 +184,7 @@ void SgmmClusterable::Write(std::ostream &os, bool binary) const {
   y_.Write(os, binary);
 }
 
-Clusterable *SgmmClusterable::Read(std::istream &is, bool binary) const {
+Clusterable *SgmmClusterable::ReadNew(std::istream &is, bool binary) const {
   SgmmClusterable *ans = new SgmmClusterable(sgmm_, H_);
   ans->gamma_.Read(is, binary);
   ans->y_.Read(is, binary);

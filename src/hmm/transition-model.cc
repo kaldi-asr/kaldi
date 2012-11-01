@@ -195,6 +195,17 @@ int32 TransitionModel::PairToTransitionId(int32 trans_state, int32 trans_index) 
   return state2id_[trans_state] + trans_index;
 }
 
+int32 TransitionModel::NumPhones() const {
+  int32 num_trans_state = triples_.size();
+  int32 max_phone_id = 0;
+  for (int32 i = 0; i < num_trans_state; ++i) {
+    if (triples_[i].phone > max_phone_id)
+      max_phone_id = triples_[i].phone;
+  }
+  return max_phone_id;
+}
+
+
 bool TransitionModel::IsFinal(int32 trans_id) const {
   KALDI_ASSERT(static_cast<size_t>(trans_id) < id2state_.size());
   int32 trans_state = id2state_[trans_id];

@@ -104,13 +104,13 @@ void ScalarClusterable::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, count_);
 }
 
-Clusterable* ScalarClusterable::Read(std::istream &is, bool binary) const {
+Clusterable* ScalarClusterable::ReadNew(std::istream &is, bool binary) const {
   ScalarClusterable *sc = new ScalarClusterable();
-  sc->Read_(is, binary);
+  sc->Read(is, binary);
   return sc;
 }
 
-void ScalarClusterable::Read_(std::istream &is, bool binary) {
+void ScalarClusterable::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "SCL");
   ReadBasicType(is, binary, &x_);
   ReadBasicType(is, binary, &x2_);
@@ -175,13 +175,13 @@ void GaussClusterable::Write(std::ostream &os, bool binary) const {
   stats_.Write(os, binary);
 }
 
-Clusterable* GaussClusterable::Read(std::istream &is, bool binary) const {
+Clusterable* GaussClusterable::ReadNew(std::istream &is, bool binary) const {
   GaussClusterable *gc = new GaussClusterable();
-  gc->Read_(is, binary);
+  gc->Read(is, binary);
   return gc;
 }
 
-void GaussClusterable::Read_(std::istream &is, bool binary) {
+void GaussClusterable::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "GCL");  // magic string.
   ReadBasicType(is, binary, &count_);
   ReadBasicType(is, binary, &var_floor_);

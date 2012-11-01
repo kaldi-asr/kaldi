@@ -628,6 +628,15 @@ template<typename Real>
 void Matrix<Real>::Resize(const MatrixIndexT rows,
                           const MatrixIndexT cols,
                           MatrixResizeType resize_type) {
+  if (sizeof(MatrixIndexT) != 8 &&
+      static_cast<int64>(rows * cols) != static_cast<int64>(rows)
+      * static_cast<int64>(cols)) {
+    KALDI_ERR << "You are initializing a matrix with size "
+              << rows << " by " << cols << ", which will not work "
+              << "with MatrixIndexT defined as int32.  Change it "
+              << "to size_t in src/matrix/matrix-common.h (assuming "
+              << "you are compiling in 64-bit.)";
+  }
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {

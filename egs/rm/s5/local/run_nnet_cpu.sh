@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# WARNING to all those who enter here.
+# This setup works OK on RM, but has not worked well on other
+# setups-- it's been as much as 10% absolute worse than Karel's setup.
+# We think that the issue is, the automatic setting of learning-rates is
+# setting them lower than they should be.  We're working on it.
+# Just be aware of the issue.
+
 . cmd.sh
 
 steps/train_nnet_cpu.sh data/train data/lang exp/tri3b_ali exp/tri4b_nnet
@@ -93,4 +100,15 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    --transform-dir exp/tri3b/decode \
    exp/tri3b/graph data/test exp/tri4i_nnet/decode
+)
+
+
+( # 4j is as 4i, but running again after I changed the way the
+  # validation set is selected (more utts, subset of frames.)
+  steps/train_nnet_cpu.sh --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+  --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4j_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4j_nnet/decode
 )

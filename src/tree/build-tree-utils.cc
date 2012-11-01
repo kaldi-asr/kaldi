@@ -52,7 +52,7 @@ void ReadBuildTreeStats(std::istream &is, bool binary, const Clusterable &exampl
     ReadEventType(is, binary, &((*stats)[i].first));
     bool nonNull;
     ReadBasicType(is, binary, &nonNull);
-    if (nonNull) (*stats)[i].second = example.Read(is, binary);
+    if (nonNull) (*stats)[i].second = example.ReadNew(is, binary);
     else (*stats)[i].second = NULL;
   }
 }

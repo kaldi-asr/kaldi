@@ -13,7 +13,8 @@
 # Begin configuration section.
 cmd=run.pl
 num_iters=5   # Total number of iterations
-num_valid_utts=50
+num_valid_utts=300 # held-out utterances.
+num_valid_frames=5000 # a subset of the frames in "valid_utts".
 minibatch_size=1000
 minibatches_per_phase_it1=50
 minibatches_per_phase=200
@@ -22,7 +23,7 @@ frequency_power=1.0 # Power used in sampling and corresonding reweighting of sta
 num_hidden_layers=2
 initial_num_hidden_layers=1  # we'll add the rest one by one.
 num_parameters=2000000 # 2 million parameters by default.
-stage=-4
+stage=-5
 realign_iters=""
 beam=10
 retry_beam=40
@@ -80,12 +81,6 @@ cp $alidir/tree $dir
 awk '{print $1}' $data/utt2spk | sort -R | head -$num_valid_utts \
     > $dir/valid_uttlist || exit 1;
 
-$cmd $dir/log/convert_valid_alignments.log \
-  copy-int-vector "ark,cs:gunzip -c $alidir/ali.*.gz|" ark,t:- \| \
-    utils/filter_scp.pl $dir/valid_uttlist \| \
-    ali-to-pdf $alidir/final.mdl ark:- "ark,t:|gzip -c >$dir/pdfs.valid.gz" || exit 1;
-
-
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
@@ -118,6 +113,7 @@ if [ $initial_num_hidden_layers -gt $num_hidden_layers ]; then
   exit 1;
 fi
 
+
 if [ $stage -le -4 ]; then
   echo "$0: initializing neural net";
   # to hidden.config it will write the part of the config corresponding to a
@@ -146,8 +142,18 @@ if [ $stage -le -2 ]; then
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
-
 cp $alidir/ali.*.gz $dir
+
+if [ $stage -le -1 ]; then
+  echo "Creating subset of frames of validation set."
+  $cmd $dir/log/create_valid_subset.log \
+    nnet-randomize-frames --num-samples=$num_valid_frames \
+      --frequency-power=$frequency_power --srand=0 \
+       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- |" \
+     ark:$dir/valid.egs || exit 1;
+fi
+
+
 
 x=0
 while [ $x -lt $num_iters ]; do
@@ -176,7 +182,7 @@ while [ $x -lt $num_iters ]; do
       --frequency-power=$frequency_power --srand=$x \
       "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
       nnet-train --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
-        --verbose=2 "$mdl" "$valid_feats" "ark,cs:gunzip -c $dir/pdfs.valid.gz|" ark:- $dir/$[$x+1].mdl \
+        --verbose=2 "$mdl" ark:- ark:$dir/valid.egs $dir/$[$x+1].mdl \
       || exit 1;
   fi
   x=$[$x+1]

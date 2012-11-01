@@ -48,7 +48,7 @@ class ScalarClusterable: public Clusterable {
 
   // Function to write data to stream. Will organize input later [more complex]
   virtual void Write(std::ostream &os, bool binary) const;
-  virtual Clusterable* Read(std::istream &is, bool binary) const;
+  virtual Clusterable* ReadNew(std::istream &is, bool binary) const;
 
   std::string Info();  // For debugging.
   BaseFloat Mean() { return (count_ != 0 ? x_/count_ : 0.0); }
@@ -57,7 +57,7 @@ class ScalarClusterable: public Clusterable {
   BaseFloat x2_;
   BaseFloat count_;
 
-  void Read_(std::istream &is, bool binary);
+  void Read(std::istream &is, bool binary);
 };
 
 
@@ -83,7 +83,7 @@ class GaussClusterable: public Clusterable {
   virtual Clusterable *Copy() const;
   virtual void Scale(BaseFloat f);
   virtual void Write(std::ostream &os, bool binary) const;
-  virtual Clusterable *Read(std::istream &is, bool binary) const;
+  virtual Clusterable *ReadNew(std::istream &is, bool binary) const;
   virtual ~GaussClusterable() {}
 
   BaseFloat count() const { return count_; }
@@ -95,7 +95,7 @@ class GaussClusterable: public Clusterable {
   Matrix<double> stats_; // two rows: sum, then sum-squared.
   double var_floor_;  // should be common for all objects created.
 
-  void Read_(std::istream &is, bool binary);
+  void Read(std::istream &is, bool binary);
 };
 
 /// @} end of "addtogroup clustering_group"
