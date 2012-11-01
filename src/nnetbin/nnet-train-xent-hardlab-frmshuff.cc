@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
           const std::vector<int32> &alignment = alignments_reader.Value(key);
           // chech for dimension
           if ((int32)alignment.size() != mat.NumRows()) {
-            KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
+            KALDI_WARN << "Alignment has wrong size, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << key;
             num_other_error++;
             continue;
           }
