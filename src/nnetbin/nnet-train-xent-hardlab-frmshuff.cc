@@ -126,15 +126,15 @@ int main(int argc, char *argv[]) {
           if ((int32)alignment.size() != mat.NumRows()) {
             KALDI_WARN << "Alignment has wrong size, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << key;
             num_other_error++;
-            continue;
+          } else { //dimension OK
+            // push features to GPU
+            feats.CopyFromMat(mat);
+            // possibly apply transform
+            nnet_transf.Feedforward(feats, &feats_transf);
+            // add to cache
+            cache.AddData(feats_transf, alignment);
+            num_done++;
           }
-          // push features to GPU
-          feats.CopyFromMat(mat);
-          // possibly apply transform
-          nnet_transf.Feedforward(feats, &feats_transf);
-          // add to cache
-          cache.AddData(feats_transf, alignment);
-          num_done++;
         }
         Timer t_features;
         feature_reader.Next(); 
