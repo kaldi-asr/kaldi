@@ -90,7 +90,8 @@ int main(int argc, char *argv[]) {
       in.OpenTextMode(class_frame_counts);
       tmp_priors.Read(in.Stream(), false);
       in.Close();
-      
+     
+      //create inv. priors, or log inv priors 
       BaseFloat sum = tmp_priors.Sum();
       tmp_priors.Scale(1.0/sum);
       if (apply_log || no_softmax) {
@@ -98,6 +99,22 @@ int main(int argc, char *argv[]) {
         tmp_priors.Scale(-prior_scale);
       } else {
         tmp_priors.ApplyPow(-prior_scale);
+      }
+
+      //detect the inf, replace by something reasonable (maximal non-inf value)
+      //a) replace inf by -inf
+      for(int32 i=0; i<tmp_priors.Dim(); i++) {
+        if(tmp_priors(i) == std::numeric_limits<BaseFloat>::infinity()) {
+          tmp_priors(i) *= -1.0;
+        }
+      }
+      //b) find max
+      BaseFloat max = tmp_priors.Max();
+      //c) replace -inf by max prior
+      for(int32 i=0; i<tmp_priors.Dim(); i++) {
+        if(tmp_priors(i) == -std::numeric_limits<BaseFloat>::infinity()) {
+          tmp_priors(i) = max;
+        }
       }
 
       // push priors to GPU
