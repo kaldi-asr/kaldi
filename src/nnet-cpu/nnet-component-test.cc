@@ -206,13 +206,13 @@ void UnitTestGenericComponent() { // works if it has an initializer from int,
 
 void UnitTestAffineComponent() {
   BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
-             param_stddev = 0.1;
+      param_stddev = 0.1, bias_stddev = 1.0;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
 
   {
     AffineComponent component;
     component.Init(learning_rate, l2_penalty, input_dim, output_dim,
-                   param_stddev);
+                   param_stddev, bias_stddev);
     UnitTestGenericComponentInternal(component);
   }
   {
@@ -225,13 +225,14 @@ void UnitTestAffineComponent() {
 
 void UnitTestAffinePreconInputComponent() {
   BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
-             param_stddev = 0.1, avg_samples = 100.0;
+      param_stddev = 0.1, bias_stddev = 1.0,
+      avg_samples = 100.0;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
 
   {
     AffinePreconInputComponent component;
     component.Init(learning_rate, l2_penalty, input_dim, output_dim,
-                   param_stddev, avg_samples);
+                   param_stddev, bias_stddev, avg_samples);
     UnitTestGenericComponentInternal(component);
   }
   {
@@ -244,7 +245,7 @@ void UnitTestAffinePreconInputComponent() {
 
 void UnitTestBlockAffineComponent() {
   BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
-             param_stddev = 0.1;
+      param_stddev = 0.1, bias_stddev = 1.0;
   int32 num_blocks = 1 + rand() % 3,
          input_dim = num_blocks * (2 + rand() % 4),
         output_dim = num_blocks * (2 + rand() % 4);
@@ -252,7 +253,7 @@ void UnitTestBlockAffineComponent() {
   {
     BlockAffineComponent component;
     component.Init(learning_rate, l2_penalty, input_dim, output_dim,
-                   param_stddev, num_blocks);
+                   param_stddev, bias_stddev, num_blocks);
     UnitTestGenericComponentInternal(component);
   }
   {

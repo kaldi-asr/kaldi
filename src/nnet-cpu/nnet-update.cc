@@ -21,13 +21,15 @@ namespace kaldi {
 
 
 // This class NnetUpdater contains functions for updating the neural net or
-// computing its gradient, given a set of NnetTrainingExamples.  Its functionality
-// is exported by DoBackprop(), so we define it in the .cc file.
+// computing its gradient, given a set of NnetTrainingExamples.  Its
+// functionality is exported by DoBackprop(), and by ComputeNnetObjf(), so we
+// define it in the .cc file.
 class NnetUpdater {
  public:
   // Note: in the case of training with SGD, "nnet" and "nnet_to_update" will
   // be identical.  They'll be different if we're accumulating the gradient
-  // for a held-out set and don't want to update the model.
+  // for a held-out set and don't want to update the model.  Note: nnet_to_update
+  // may be NULL if you don't want do do backprop.
   NnetUpdater(const Nnet &nnet,
               Nnet *nnet_to_update);
   
@@ -81,7 +83,9 @@ BaseFloat NnetUpdater::ComputeForMinibatch(
   Propagate();
   Matrix<BaseFloat> tmp_deriv;
   BaseFloat ans = ComputeObjfAndDeriv(data, &tmp_deriv);
-  Backprop(data, &tmp_deriv); // this is summed (after weighting), not averaged.
+  if (nnet_to_update_ != NULL)
+    Backprop(data, &tmp_deriv); // this is summed (after weighting), not
+                                // averaged.
   return ans;
 }
 
@@ -196,9 +200,17 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
 BaseFloat DoBackprop(const Nnet &nnet,
                      const std::vector<NnetTrainingExample> &examples,
                      Nnet *nnet_to_update) {
+  KALDI_ASSERT(nnet_to_update != NULL && "Call ComputeNnetObjf() instead.");
   NnetUpdater updater(nnet, nnet_to_update);
   return updater.ComputeForMinibatch(examples);  
 }
+
+BaseFloat ComputeNnetObjf(const Nnet &nnet,
+                          const std::vector<NnetTrainingExample> &examples) {
+  NnetUpdater updater(nnet, NULL);
+  return updater.ComputeForMinibatch(examples);
+}
+
 
 void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a

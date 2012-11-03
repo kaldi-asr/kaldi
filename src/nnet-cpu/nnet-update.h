@@ -75,6 +75,10 @@ BaseFloat DoBackprop(const Nnet &nnet,
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs);
 
 
+BaseFloat ComputeNnetObjf(const Nnet &nnet,
+                          const std::vector<NnetTrainingExample> &examples);
+
+
 } // namespace
 
 #endif // KALDI_NNET_CPU_NNET_UPDATE_H_

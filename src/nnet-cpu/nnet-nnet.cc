@@ -193,31 +193,44 @@ void Nnet::Init(std::vector<Component*> *components) {
 }
 
 void Nnet::AdjustLearningRatesAndL2Penalties(
-    const VectorBase<BaseFloat> &start_dotprod, // param@start . valid-grad@end
-    const VectorBase<BaseFloat> &end_dotprod, // param@end . valid-grad@end
-    BaseFloat ratio, // e.g. 1.1
+    const VectorBase<BaseFloat> &old_model_old_gradient,
+    const VectorBase<BaseFloat> &new_model_old_gradient,
+    const VectorBase<BaseFloat> &old_model_new_gradient,
+    const VectorBase<BaseFloat> &new_model_new_gradient,
+    BaseFloat measure_at, // where to measure gradient, on line between old and new model;
+                          // 0.5 < measure_at <= 1.0.
+    BaseFloat ratio, // e.g. 1.1; ratio by  which we change learning rate.
     BaseFloat max_learning_rate,
     BaseFloat min_l2_penalty,
     BaseFloat max_l2_penalty) {
   std::vector<BaseFloat> new_lrates, new_l2_penalties;
-  KALDI_ASSERT(start_dotprod.Dim() == NumComponents() &&
-               end_dotprod.Dim() == NumComponents());
-  KALDI_ASSERT(ratio >= 1.0);  
+  KALDI_ASSERT(old_model_old_gradient.Dim() == NumComponents() &&
+               new_model_old_gradient.Dim() == NumComponents() &&
+               old_model_new_gradient.Dim() == NumComponents() &&
+               new_model_new_gradient.Dim() == NumComponents());
+  KALDI_ASSERT(ratio >= 1.0);
+  KALDI_ASSERT(measure_at > 0.5 && measure_at <= 1.0);
   BaseFloat inv_ratio = 1.0 / ratio;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
     if (uc == NULL) { // Non-updatable component.
-      KALDI_ASSERT(start_dotprod(c) == 0.0);
+      KALDI_ASSERT(old_model_old_gradient(c) == 0.0);
       continue; 
     }
-    BaseFloat this_end_dotprod = end_dotprod(c),
-        grad_dotprod = this_end_dotprod - start_dotprod(c);
-    // Will be positive if we want more of the gradient term -> faster learning
-    // rate for this component
+    BaseFloat this_end_dotprod = new_model_new_gradient(c);
+    BaseFloat grad_dotprod_at_end =
+        new_model_new_gradient(c) - old_model_new_gradient(c),
+        grad_dotprod_at_start =
+        new_model_old_gradient(c) - old_model_old_gradient(c),
+        grad_dotprod_interp =
+        measure_at * grad_dotprod_at_end +
+        (1.0 - measure_at) * grad_dotprod_at_start;
+    // grad_dotprod_interp will be positive if we want more of the gradient term
+    // -> faster learning rate for this component
 
     BaseFloat lrate = uc->LearningRate(),
         l2_penalty = uc->L2Penalty();
-    lrate *= (grad_dotprod > 0 ? ratio : inv_ratio);
+    lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
     l2_penalty *= (this_end_dotprod > 0 ? inv_ratio : ratio);
     if (lrate > max_learning_rate) lrate = max_learning_rate;
     if (l2_penalty > max_l2_penalty) l2_penalty = max_l2_penalty;

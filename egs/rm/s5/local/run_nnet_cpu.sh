@@ -112,3 +112,131 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    --transform-dir exp/tri3b/decode \
    exp/tri3b/graph data/test exp/tri4j_nnet/decode
 )
+
+( # 4k is as 4j, but with --learning-rate-ratio=1.0 so it never decreases 
+  # learning rate.
+  steps/train_nnet_cpu.sh --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+  --learning-rate-ratio 1.0 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4k_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4k_nnet/decode
+)
+
+( # 4l is as 4j, but with --measure-gradient-at 0.6 for faster learning.
+  steps/train_nnet_cpu.sh --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+  --measure-gradient-at 0.6 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4l_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4l_nnet/decode
+)
+
+
+( # 4m is as 4l, but --measure-gradient-at now 0.8 not 0.6.
+  steps/train_nnet_cpu.sh --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+  --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4m_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4m_nnet/decode
+)
+
+( # 4n is as 4l, but --measure-gradient-at now 0.55 not 0.6.
+  steps/train_nnet_cpu.sh --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+  --measure-gradient-at 0.55 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4n_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4n_nnet/decode
+)
+
+( # 4o is as 4m, but changing initial l2 penalty to 0.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4o_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4o_nnet/decode
+)
+( # 4o2 is as 4o, but actually doing what we said we were doing (fixed bug)
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4o2_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4o2_nnet/decode
+)
+
+( # 4p is as 4o (no l2 penalty, which is actually how all the previous expts were
+  # but now making it explicit as we may have fixed the bug which caused that)
+  # *and* smaller minibatch size; changing minibatches-per-phase to compensate.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4p_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4p_nnet/decode
+)
+
+
+( # 4q is as 4p, but the binaries and script are now changed so bias-stddev is 1.0.
+ # [not replicable now, use --bias-stddev 1.0]
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4q_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4q_nnet/decode
+)
+
+( # 4r is as 4q, but the binaries and script are now changed so bias-stddev is 2.0 by default.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4r_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4r_nnet/decode
+)
+
+( # 4s is as 4r but bias-stddev is 4.0 not 2.0.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0 --bias-stddev 4.0" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4s_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4s_nnet/decode
+)
+
+( # 4t is as 4r but rerunning-- code should not have changed but we
+ # want to check. [yes, it was the same.]
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4t_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4t_nnet/decode
+)
+
+( # 4u is as 4t but setting precondition to true.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--l2-penalty 0.0 --precondition true" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4t_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4t_nnet/decode
+)

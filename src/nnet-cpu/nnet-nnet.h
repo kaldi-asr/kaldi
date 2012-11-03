@@ -161,8 +161,12 @@ class Nnet {
   /// the "shrinkage rate"... note, we view the shrinkage rate as a product
   /// of two separate things: a learning rate times an l2 penalty.
   void AdjustLearningRatesAndL2Penalties(
-      const VectorBase<BaseFloat> &start_dotprod, // param@start . valid-grad@end
-      const VectorBase<BaseFloat>  &end_dotprod, // param@end . valid-grad@end
+      const VectorBase<BaseFloat> &old_model_old_gradient,
+      const VectorBase<BaseFloat> &new_model_old_gradient,
+      const VectorBase<BaseFloat> &old_model_new_gradient,
+      const VectorBase<BaseFloat> &new_model_new_gradient,
+      BaseFloat measure_at, // where to measure gradient, on line between old
+                            // and new model; 0.5 < measure_at <= 1.0.
       BaseFloat learning_rate_ratio,
       BaseFloat max_learning_rate,
       BaseFloat min_l2_penalty,

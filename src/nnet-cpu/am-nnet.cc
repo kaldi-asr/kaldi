@@ -53,8 +53,11 @@ void AmNnet::SetPriors(const VectorBase<BaseFloat> &priors) {
 
 std::string AmNnet::Info() const {
   std::ostringstream ostr;
-  ostr << "prior dimension: " << priors_.Dim() << ", prior sum: "
-       << priors_.Sum() << ", prior min: " << priors_.Min() << "\n";
+  ostr << "prior dimension: " << priors_.Dim();
+  if (priors_.Dim() != 0) {
+    ostr << ", prior sum: " << priors_.Sum() << ", prior min: " << priors_.Min()
+         << "\n";
+  }
   return nnet_.Info() + ostr.str();
 }
 

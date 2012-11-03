@@ -29,6 +29,9 @@ beam=10
 retry_beam=40
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 parallel_opts=
+learning_rate_ratio=1.1
+measure_gradient_at=1.0
+nnet_config_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -77,8 +80,8 @@ cp $alidir/tree $dir
 
 
 
-# Get list of validation utterances.  sort -R is random sort.
-awk '{print $1}' $data/utt2spk | sort -R | head -$num_valid_utts \
+# Get list of validation utterances. 
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_valid_utts \
     > $dir/valid_uttlist || exit 1;
 
 ## Set up features.  Note: these are different from the normal features
@@ -92,9 +95,9 @@ case $feat_type in
      split_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
    ;;
-  lda) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-      split_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-      valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+  lda) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+      split_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+      valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -118,7 +121,7 @@ if [ $stage -le -4 ]; then
   echo "$0: initializing neural net";
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers.
-  utils/nnet-cpu/make_nnet_config.pl  \
+  utils/nnet-cpu/make_nnet_config.pl $nnet_config_opts \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
      $feat_dim $num_leaves $num_hidden_layers $num_parameters \
       > $dir/nnet.config || exit 1;
@@ -181,7 +184,9 @@ while [ $x -lt $num_iters ]; do
       nnet-randomize-frames --num-samples=$samples_per_iteration \
       --frequency-power=$frequency_power --srand=$x \
       "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
-      nnet-train --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
+      nnet-train --learning-rate-ratio=$learning_rate_ratio \
+        --measure-gradient-at=$measure_gradient_at \
+        --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
         --verbose=2 "$mdl" ark:- ark:$dir/valid.egs $dir/$[$x+1].mdl \
       || exit 1;
   fi

@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-info.cc
+// nnet-cpubin/nnet-am-info.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 
@@ -26,11 +26,11 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Print human-readable information about the neural network to\n"
-        "the standard output\n"
-        "Usage:  nnet-info [options] <nnet-in>\n"
+        "Print human-readable information about the neural network\n"
+        "acoustic model to the standard output\n"
+        "Usage:  nnet-am-info [options] <nnet-in>\n"
         "e.g.:\n"
-        " nnet-info 1.nnet\n";
+        " nnet-am-info 1.nnet\n";
         
     ParseOptions po(usage);
     

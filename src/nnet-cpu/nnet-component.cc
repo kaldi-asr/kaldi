@@ -441,6 +441,12 @@ void AffineComponent::SetZero(bool treat_as_gradient) {
   }
   linear_params_.SetZero();
   bias_params_.SetZero();
+  is_gradient_ = treat_as_gradient;
+}
+
+void AffineComponent::ZeroOccupancy() {
+  avg_input_count_ = 0.0;
+  avg_input_.Set(0.0);
 }
 
 void AffineComponent::PerturbParams(BaseFloat stddev) {
@@ -477,6 +483,9 @@ Component* AffineComponent::Copy() const {
   ans->l2_penalty_ = l2_penalty_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
+  ans->avg_input_ = avg_input_;
+  ans->avg_input_count_ = avg_input_count_;
+  ans->precondition_ = precondition_;
   return ans;
 }
 
@@ -489,7 +498,8 @@ BaseFloat AffineComponent::DotProduct(const UpdatableComponent &other_in) const 
 
 void AffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                            int32 input_dim, int32 output_dim,
-                           BaseFloat param_stddev) {
+                           BaseFloat param_stddev, BaseFloat bias_stddev,
+                           bool precondition) {
   UpdatableComponent::Init(learning_rate, l2_penalty);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -497,7 +507,10 @@ void AffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
-  bias_params_.Scale(param_stddev);
+  bias_params_.Scale(bias_stddev);
+  avg_input_.Resize(input_dim);
+  avg_input_count_ = 0.0;
+  precondition_ = precondition;
 }
 
 void AffineComponent::InitFromString(std::string args) {
@@ -505,19 +518,24 @@ void AffineComponent::InitFromString(std::string args) {
   bool ok = true;
   BaseFloat learning_rate = learning_rate_,
                l2_penalty = l2_penalty_;
+  bool precondition = false;
   int32 input_dim = -1, output_dim = -1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
   ParseFromString("l2-penalty", &args, &l2_penalty); // optional.
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim);
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
   ParseFromString("param-stddev", &args, &param_stddev);
+  ParseFromString("bias-stddev", &args, &bias_stddev);
+  ParseFromString("precondition", &args, &precondition);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, input_dim, output_dim, param_stddev);
+  Init(learning_rate, l2_penalty, input_dim, output_dim,
+       param_stddev, bias_stddev, precondition);
 }
 
 
@@ -530,6 +548,78 @@ void AffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
   // of *out.
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
+
+// This function does the gradient-descent update.
+void AffineComponent::UpdateNormal(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv,
+    const VectorBase<BaseFloat> &chunk_weights) {
+  BaseFloat old_weight = OldWeight(chunk_weights.Sum());
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, old_weight);
+  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+                           in_value, kNoTrans, old_weight);
+}
+
+// This is an improved, preconditioned update with mean removal
+// for the features.
+void AffineComponent::UpdatePreconditioned(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv,
+    const VectorBase<BaseFloat> &chunk_weights) {
+  BaseFloat old_weight = OldWeight(chunk_weights.Sum());
+
+  // The idea with the linear_params is: take an input dimension
+  // m and and output dimension n.  Let mu be the mean of this
+  // input feature, and f be the feature value.  Let's train as
+  // if (f - mu) were the feature.  So in this case the gradient
+  // descent rule would be not learning_rate . in_value . output_deriv,
+  // but learning_rate . (in_value - mu) . output_deriv.
+  // And we'll represent in this model in the normal way, so we
+  // need to update the bias parameter to take into account this change
+  // in value of our (f - mu) feature.  So the bias term would change as:
+  // bias_n += -mu * (learning_rate . (in_value - mu) . output_deriv).
+  
+  
+  Vector<BaseFloat> out_deriv_sum(OutputDim());
+  out_deriv_sum.AddRowSumMat(1.0, out_deriv, 0.0);
+  if (old_weight != 1.0) bias_params_.Scale(old_weight);
+
+  // The following term is already there in the basic update.
+  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+                           in_value, kNoTrans, old_weight);
+  // The next term is the new term for updating the linear params,
+  // corresponding to (learning_rate . -mu . output_deriv.).  Here,
+  // mu is avg_input_(i) / avg_input_count_.
+  linear_params_.AddVecVec(-learning_rate_/avg_input_count_,
+                           out_deriv_sum, avg_input_);
+
+  // The next term is the "normal" term for updating the bias parameters.
+  bias_params_.AddVec(learning_rate_, out_deriv_sum);   
+
+  /*
+  // Net we handle the expression (from above)
+  // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
+  // Here, we do this for each frame, and for each frame it happens
+  // with "bias_weight" and "output" deriv both indexed by the same value
+  // (the output dim)-- and the parts involving mu and in_value are summed
+  // over the input dimensions.
+  Vector<BaseFloat> sum(in_value.NumRows());  
+  sum.Set(VecVec(avg_input_, avg_input_) /
+          (avg_input_count_ * avg_input_count_));
+  // now sum(frame) = \sum_i (-mu(i) *  -mu(i)),
+  // where \mu_i is avg_input_(i)/avg_input_count_.
+  // the next line does: sum(frame) -= \sum_i mu(i) * input(i), giving
+  // sum(frame) = - \sum_i mu(i) * (in_value(i) - mu(i)).
+  sum.AddMatVec(-1.0 / avg_input_count_,
+                in_value, kNoTrans, avg_input_, 1.0);
+  // The next line updates the bias params with this "correction term":
+  // for a scalar, it's doing:
+  // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
+  bias_params_.AddMatVec(learning_rate_, out_deriv, kTrans,
+  sum, 1.0);*/
+}
+
+
 
 void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                                const MatrixBase<BaseFloat> &,  // out_value
@@ -544,15 +634,34 @@ void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                       0.0);
 
   if (to_update) {
-    BaseFloat old_weight = to_update->OldWeight(chunk_weights.Sum());
     // Next update the model (must do this 2nd so the derivatives we propagate
     // are accurate, in case this == to_update_in.)
-    // add the sum of the rows of out_deriv, to the bias_params_.
-    to_update->bias_params_.AddRowSumMat(to_update->learning_rate_, out_deriv,
-                                         old_weight);
-    to_update->linear_params_.AddMatMat(to_update->learning_rate_,
-                                        out_deriv, kTrans, in_value, kNoTrans,
-                                        old_weight);
+    
+    if (to_update->avg_input_count_ != 0.0 &&
+        to_update->precondition_ &&
+        !to_update->is_gradient_)
+      to_update->UpdatePreconditioned(in_value, out_deriv, chunk_weights);
+    else
+      to_update->UpdateNormal(in_value, out_deriv, chunk_weights);
+    if (!to_update->is_gradient_) {
+      // Update the stats on the average input.   See also SoftmaxComponent::
+      // Backprop which has similar code and more comments.
+      if (to_update->avg_input_.Dim() != to_update->InputDim())
+        to_update->avg_input_.Resize(to_update->InputDim());
+      int32 num_chunks = chunk_weights.Dim(),
+          chunk_size = in_value.NumRows() / num_chunks;
+      for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+        BaseFloat chunk_weight = chunk_weights(chunk) / chunk_size; 
+        SubMatrix<BaseFloat> input_chunk(in_value, chunk * chunk_size, chunk_size,
+                                         0, in_value.NumCols());
+        to_update->avg_input_.AddRowSumMat(chunk_weight, input_chunk, 1.0);
+        to_update->avg_input_count_ += chunk_weight;
+      }
+      BaseFloat scale_per_minibatch = 0.95; // Should be configurable, but for now
+      // this will do.  Average over ~20 minibatches.
+      to_update->avg_input_.Scale(scale_per_minibatch);
+      to_update->avg_input_count_ *= scale_per_minibatch;
+    }
   }
 }
 
@@ -566,7 +675,22 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "</AffineComponent>");  
+  std::string tok;
+  ReadToken(is, binary, &tok); // TODO: remove back-compat code.
+  if (tok == "<AvgInput>") {
+    avg_input_.Read(is, binary);
+    ExpectToken(is, binary, "<AvgInputCount>");
+    ReadBasicType(is, binary, &avg_input_count_);
+    ReadToken(is, binary, &tok);
+    if (tok == "<Precondition>") {
+      ReadBasicType(is, binary, &precondition_);
+      ReadToken(is, binary, &tok);
+    } else { precondition_ = false; }
+  } else {
+    avg_input_count_ = 0.0;
+    precondition_ = false;
+  }
+  KALDI_ASSERT(tok == "</AffineComponent>");
 }
 
 void AffineComponent::Write(std::ostream &os, bool binary) const {
@@ -579,6 +703,12 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<AvgInput>");
+  avg_input_.Write(os, binary);
+  WriteToken(os, binary, "<AvgInputCount>");
+  WriteBasicType(os, binary, avg_input_count_);
+  WriteToken(os, binary, "<Precondition>");
+  WriteBasicType(os, binary, precondition_);
   WriteToken(os, binary, "</AffineComponent>");  
 }
 
@@ -693,6 +823,7 @@ void AffinePreconInputComponent::Init(
     BaseFloat learning_rate, BaseFloat l2_penalty,
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev,
+    BaseFloat bias_stddev,
     BaseFloat avg_samples) {
   is_gradient_ = false;
   UpdatableComponent::Init(learning_rate, l2_penalty);
@@ -702,7 +833,7 @@ void AffinePreconInputComponent::Init(
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
-  bias_params_.Scale(param_stddev);
+  bias_params_.Scale(bias_stddev);
   avg_samples_ = avg_samples;
   KALDI_ASSERT(avg_samples_ > 1.0);
   input_precision_.Resize(input_dim);
@@ -722,15 +853,17 @@ void AffinePreconInputComponent::InitFromString(std::string args) {
   ParseFromString("avg-samples", &args, &avg_samples); // optional.
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim);
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
   ParseFromString("param-stddev", &args, &param_stddev);
+  ParseFromString("bias-stddev", &args, &bias_stddev);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
   Init(learning_rate, l2_penalty, input_dim, output_dim,
-       param_stddev, avg_samples);
+       param_stddev, bias_stddev, avg_samples);
 }
 
 Component* AffinePreconInputComponent::Copy() const {
@@ -741,6 +874,7 @@ Component* AffinePreconInputComponent::Copy() const {
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   ans->input_precision_ = input_precision_;
+  ans->precondition_ = precondition_;
   return ans;
 }
 
@@ -870,15 +1004,26 @@ void BlockAffineComponent::Backprop(
   }  
 }
 
+
+
+// OldWeight is the weight given to the previous parameters, in
+// stocastic gradient descent; would be 1.0 if not for l2 regularization.
 BaseFloat UpdatableComponent::OldWeight(BaseFloat tot_weight) const {
   // tot_weight would equal #frames if we did not have frame weighting.
-  return std::pow(static_cast<BaseFloat>(1.0 - 2.0 * learning_rate_ * l2_penalty_),
-                  static_cast<BaseFloat>(tot_weight));
+  BaseFloat ans = 1.0 -
+      (2.0 * learning_rate_ * l2_penalty_ * tot_weight);
+  if (ans < 0.9) {
+    KALDI_ERR << "Implausibly low OldWeight: " << ans << " (l2 regularization "
+              << "getting too strong? info: " << this->Info();
+  }
+  return ans;
 }
 
 void BlockAffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                                 int32 input_dim, int32 output_dim,
-                                BaseFloat param_stddev, int32 num_blocks) {
+                                BaseFloat param_stddev,
+                                BaseFloat bias_stddev,
+                                int32 num_blocks) {
   UpdatableComponent::Init(learning_rate, l2_penalty);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
   KALDI_ASSERT(input_dim % num_blocks == 0 && output_dim % num_blocks == 0);
@@ -889,7 +1034,7 @@ void BlockAffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
-  bias_params_.Scale(param_stddev);
+  bias_params_.Scale(bias_stddev);
   num_blocks_ = num_blocks;
 }
 
@@ -904,15 +1049,17 @@ void BlockAffineComponent::InitFromString(std::string args) {
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   ok = ok && ParseFromString("num-blocks", &args, &num_blocks);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim);
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
   ParseFromString("param-stddev", &args, &param_stddev);
+  ParseFromString("bias-stddev", &args, &bias_stddev);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, input_dim, output_dim, param_stddev,
-       num_blocks);
+  Init(learning_rate, l2_penalty, input_dim, output_dim,
+       param_stddev, bias_stddev, num_blocks);
 }
   
 

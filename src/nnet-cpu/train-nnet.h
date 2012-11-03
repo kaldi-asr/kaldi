@@ -73,6 +73,7 @@ struct NnetAdaptiveTrainerConfig {
   int32 minibatch_size;
   int32 minibatches_per_phase;
   BaseFloat learning_rate_ratio;
+  BaseFloat measure_gradient_at;
   BaseFloat max_learning_rate;
   BaseFloat min_l2_penalty;
   BaseFloat max_l2_penalty;
@@ -81,6 +82,7 @@ struct NnetAdaptiveTrainerConfig {
   NnetAdaptiveTrainerConfig():
       minibatch_size(500), minibatches_per_phase(50),
       learning_rate_ratio(1.1),
+      measure_gradient_at(1.0),
       max_learning_rate(0.1),
       min_l2_penalty(1.0e-10), max_l2_penalty(1.0) { }
   
@@ -101,6 +103,10 @@ struct NnetAdaptiveTrainerConfig {
                  "Minimum allowed l2 penalty.");
     po->Register("max-l2-penalty", &max_l2_penalty,
                  "Maximum allowed l2 penalty.");
+    po->Register("measure-gradient-at", &measure_gradient_at,
+                 "This parameter controls automatic setting of learning rates. "
+                 "Must be >0.5 and >= 1.0.  Closer to 0.5 leads to faster "
+                 "learning rates.");
   }  
 };
 

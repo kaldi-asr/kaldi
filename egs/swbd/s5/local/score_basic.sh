@@ -3,7 +3,7 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=9
+min_lmwt=5
 max_lmwt=20
 #end configuration section.
 

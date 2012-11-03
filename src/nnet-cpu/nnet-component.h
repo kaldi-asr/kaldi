@@ -109,6 +109,10 @@ class Component {
   /// Copy component (deep copy).
   virtual Component* Copy() const = 0;
 
+  /// By default this does nothing; it's used in a couple of classes.
+  /// For things like zeroing the stored average occupation count.
+  virtual void ZeroOccupancy() { }
+  
   /// Initialize the Component from one line that will contain
   /// first the type, e.g. SigmoidComponent, and then
   /// a number of tokens (typically integers or floats) that will
@@ -145,7 +149,7 @@ class UpdatableComponent : public Component {
  public:
   void Init(BaseFloat learning_rate, BaseFloat l2_penalty) {
     learning_rate_ = learning_rate;
-    l2_penalty_ = l2_penalty_;
+    l2_penalty_ = l2_penalty;
   }
   UpdatableComponent(BaseFloat learning_rate, BaseFloat l2_penalty) {
     Init(learning_rate, l2_penalty);
@@ -278,9 +282,7 @@ class SoftmaxComponent: public NonlinearComponent {
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   
-  /// This function is unique to SoftmaxComponent; it sets to zero
-  /// the occupation counts that are stored in this layer.
-  void ZeroOccupancy() { counts_.SetZero(); }
+  virtual void ZeroOccupancy() { counts_.SetZero(); }
   
   // The functions below are already implemented at the
   // NonlinearComponent level, but we override them for reasons relating
@@ -301,7 +303,8 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                     int32 input_dim, int32 output_dim,
-                    BaseFloat param_stddev);
+                    BaseFloat param_stddev, BaseFloat bias_stddev,
+                    bool precondition);
   virtual std::string Info() const;
   virtual void InitFromString(std::string args);
   
@@ -324,10 +327,30 @@ class AffineComponent: public UpdatableComponent {
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual Component* Copy() const;
   virtual void PerturbParams(BaseFloat stddev);
+  virtual void ZeroOccupancy();
  protected:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponent);
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
+
+  // The following may be used to precondition the learning...
+  Vector<BaseFloat> avg_input_;
+  double avg_input_count_;
+  bool precondition_; // If true, a preconditioned learning
+  // that's as if we were working on the mean-removed inputs.
+  bool is_gradient_; // If true, treat this as just a gradient.
+ private:
+  // This function does the gradient update.
+  void UpdateNormal(const MatrixBase<BaseFloat> &in_value,
+                    const MatrixBase<BaseFloat> &out_deriv,
+                    const VectorBase<BaseFloat> &chunk_weights);
+  // This is an improved, preconditioned update with mean removal
+  // for the features.
+  void UpdatePreconditioned(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv,
+      const VectorBase<BaseFloat> &chunk_weights);
+  
 };
 
 /// Splices a context window of frames together.
@@ -381,6 +404,7 @@ class AffinePreconInputComponent: public AffineComponent {
   virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev,
+                    BaseFloat bias_stddev,
                     BaseFloat avg_samples);
   
   AffinePreconInputComponent() { } // use Init to really initialize.
@@ -421,7 +445,8 @@ class BlockAffineComponent: public UpdatableComponent {
   // Note: num_blocks must divide input_dim.
   virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
                     int32 input_dim, int32 output_dim,
-                    BaseFloat param_stddev, int32 num_blocks);
+                    BaseFloat param_stddev, BaseFloat bias_stddev,
+                    int32 num_blocks);
   virtual void InitFromString(std::string args);
   
   BlockAffineComponent() { } // use Init to really initialize.
