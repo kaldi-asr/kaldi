@@ -82,6 +82,7 @@ namespace kaldi {
 //    Get the probability (or log-probability) associated with a particular transition-id.
 
 
+// Note: this was previously called TransitionUpdateConfig.
 struct MleTransitionUpdateConfig {
   BaseFloat floor;
   BaseFloat mincount;
@@ -207,7 +208,7 @@ class TransitionModel {
   BaseFloat GetNonSelfLoopLogProb(int32 trans_state) const;
 
   /// Does Maximum Likelihood estimation.  The stats are counts/weights, indexed
-  /// by transition-id.
+  /// by transition-id.  This was previously called Update().
   void MleUpdate(const Vector<double> &stats, 
                  const MleTransitionUpdateConfig &cfg,
                  BaseFloat *objf_impr_out,
