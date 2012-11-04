@@ -1,6 +1,7 @@
 // fstext/fstext-utils.h
 
 // Copyright 2009-2011  Microsoft Corporation
+// Copyright 2012       Johns Hopkins University (Author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -339,17 +340,24 @@ bool EqualAlign(const Fst<Arc> &ifst, typename Arc::StateId length,
                 int rand_seed, MutableFst<Arc> *ofst);
 
 
-// This is a Holder class with T = VectorFst<StdArc>, that
-// meets the requirements of a Holder class as described
-// in ../util/kaldi-holder.h.  This enables us to read/write
-// collections of FSTs indexed by strings, using the Table
-// concept (see ../util/kaldi-table.h).
+// This is a Holder class with T = VectorFst<Arc>, that meets the requirements
+// of a Holder class as described in ../util/kaldi-holder.h. This enables us to
+// read/write collections of FSTs indexed by strings, using the Table comcpet (
+// see ../util/kaldi-table.h).
+// Originally it was only templated on T = VectorFst<StdArc>, but as the keyword
+// spotting stuff introduced more types of FSTs, we made it also templated on
+// the arc.
 
-class VectorFstHolder {
+template<class Arc>
+class VectorFstTplHolder {
  public:
-  typedef VectorFst<StdArc> T;
+  // We use "typename" to claim that "Arc::Weight" is actually a "type name", not
+  // the static member of the class "Arc"
+  typedef VectorFst<Arc> T;
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
 
-  VectorFstHolder(): t_(NULL) { }
+  VectorFstTplHolder(): t_(NULL) { }
 
   static bool Write(std::ostream &os, bool binary, const T &t) {
     if (!binary) {
@@ -360,8 +368,8 @@ class VectorFstHolder {
       // on its own line.
       os << '\n';
       bool acceptor = false, write_one = false;
-      FstPrinter<StdArc> printer(t, t.InputSymbols(), t.OutputSymbols(),
-                                 NULL, acceptor, write_one);
+      FstPrinter<Arc> printer(t, t.InputSymbols(), t.OutputSymbols(),
+                              NULL, acceptor, write_one);
       printer.Print(&os, "<unknown>");
       if (os.fail())
         KALDI_WARN << "Stream failure detected.\n";
@@ -407,9 +415,6 @@ class VectorFstHolder {
       using std::vector;
       using kaldi::SplitStringToIntegers;
       using kaldi::ConvertStringToInteger;
-      typedef TropicalWeight Weight;
-      typedef StdArc Arc;
-      typedef Arc::StateId StateId;
       t_ = new VectorFst<Arc>();
       string line;
       size_t nline = 0;
@@ -488,7 +493,7 @@ class VectorFstHolder {
       return true;
     } else { // Binary-mode reading.
       // We don't have access to the filename here..
-      t_ = VectorFst<StdArc>::Read(is, fst::FstReadOptions((std::string)"[unknown]"));
+      t_ = VectorFst<Arc>::Read(is, fst::FstReadOptions((std::string)"[unknown]"));
       return (t_ != NULL);
     }
   }
@@ -499,7 +504,7 @@ class VectorFstHolder {
 
   const T &Value() {
     // code error if !t_.
-    if (!t_) KALDI_ERR << "VectorFstHolder::Value() called wrongly.";
+    if (!t_) KALDI_ERR << "VectorFstTplHolder::Value() called wrongly.";
     return *t_;
   }
 
@@ -510,22 +515,26 @@ class VectorFstHolder {
     }
   }
 
-  ~VectorFstHolder() { Clear(); }
+  ~VectorFstTplHolder() { Clear(); }
   // No destructor.  Assignment and
   // copy constructor take their default implementations.
  private:
-  static bool StrToWeight(const std::string &s, bool allow_zero, TropicalWeight *w) {
+  static bool StrToWeight(const std::string &s, bool allow_zero, Weight *w) {
     std::istringstream strm(s);
     strm >> *w;
-    if (!strm || (!allow_zero && *w == TropicalWeight::Zero())) {
+    if (!strm || (!allow_zero && *w == Weight::Zero())) {
       return false;
     }
     return true;
   }
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(VectorFstHolder);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(VectorFstTplHolder);
   T *t_;
 };
+
+// Now make the original VectorFstHolder as the typedef o VectorFstHolder<StdArc>.
+typedef VectorFstTplHolder<StdArc> VectorFstHolder;
+
 
 
 // RemoveUselessArcs removes arcs such that there is no input symbol

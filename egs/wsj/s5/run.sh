@@ -290,3 +290,22 @@ local/run_hybrid.sh
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+# KWS setup. We leave it commented out by default
+#duration=
+#local/kws_data_prep.sh keywords.txt data/lang/ data/eval/ data/kws/
+#steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
+#  data/kws/ data/lang_test_bd_tgpr/ \
+#  exp/tri4b/decode_bd_tgpr_eval92/ \
+#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#
+#steps/search_index.sh --cmd "$decode_cmd" \
+#  data/kws \
+#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#
+#cat exp/tri4b/decode_bd_tgpr_eval92/kws/result.* | \
+#  utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+#  --segments=data/test_eval92/segments --normalize=true \
+#  --map-utter=data/kws/utter_map \
+#  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
+
