@@ -111,18 +111,6 @@ inline float CompressedMatrix::Uint16ToFloat(
       + global_header.range * 1.52590218966964e-05 * value;
 }
 
-template <class Itr>
-void my_nth_element(Itr beg, Itr nth, Itr end) {
-  std::nth_element(beg, nth, end);
-  KALDI_ASSERT(beg <= nth);
-  KALDI_ASSERT(nth < end);
-  for (Itr it=beg; it < nth; ++it)
-    KALDI_ASSERT(*it <= *nth);
-  for (Itr it=nth; it < end; ++it)
-    KALDI_ASSERT(*nth <= *it);
-}
-
-
 template<class Real>  // static
 void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
@@ -140,14 +128,12 @@ void CompressedMatrix::ComputeColHeader(
     // 3*quarter_nr, and num_rows-1 need to be in sorted order.
     // Note: the + 1's below are not necessary but may speed things
     // up slightly.
-    my_nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata.end());
-    my_nth_element(sdata.begin(), sdata.begin(), sdata.begin() + quarter_nr);
-    my_nth_element(sdata.begin() + quarter_nr + 1,
-                   sdata.begin() + (3*quarter_nr) + 1, sdata.end());
-    my_nth_element(sdata.begin() + (3*quarter_nr), sdata.end() - 1,
-                   sdata.end());
-
-    // std::sort(sdata.begin(), sdata.end());
+    std::nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata.end());
+    std::nth_element(sdata.begin(), sdata.begin(), sdata.begin() + quarter_nr);
+    std::nth_element(sdata.begin() + quarter_nr + 1,
+                     sdata.begin() + (3*quarter_nr) + 1, sdata.end());
+    std::nth_element(sdata.begin() + (3*quarter_nr), sdata.end() - 1,
+                     sdata.end());
     
     header->percentile_0 = FloatToUint16(global_header, sdata[0]);
     header->percentile_25 = std::max<uint16>(
