@@ -84,3 +84,4 @@ nnet_cpu: base util matrix
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet_cpu online
 online: decoder
+kwsbin: fstext lat base util
