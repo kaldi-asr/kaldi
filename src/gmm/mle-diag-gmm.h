@@ -1,7 +1,9 @@
 // gmm/mle-diag-gmm.h
 
-// Copyright 2009-2011  Saarland University;  Georg Stemmer;
+// Copyright 2009-2012  Saarland University;  Georg Stemmer;
 //                      Microsoft Corporation;  Jan Silovsky; Yanmin Qian
+//                      Johns Hopkins University (author: Daniel Povey)
+//                      Cisco Systems (author: Neha Agarwal)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,8 +34,6 @@ namespace kaldi {
  *  needed in the estimation process.
  */
 struct MleDiagGmmOptions {
-  /// Flags to control which parameters to update
-
   /// Variance floor for each dimension [empty if not supplied].
   /// It is in double since the variance is computed in double precision.
   Vector<double> variance_floor_vector;
@@ -66,6 +66,40 @@ struct MleDiagGmmOptions {
                  module+"If true, remove Gaussians that fall below the floors.");
   }
 };
+
+
+/** \struct MapDiagGmmOptions
+ *  Configuration variables for Maximum A Posteriori (MAP) update.
+ */
+struct MapDiagGmmOptions {
+  /// Tau value for the means.
+  BaseFloat mean_tau;
+
+  /// Tau value for the variances.  (Note:
+  /// whether or not the variances are updated at all will
+  /// be controlled by flags.)
+  BaseFloat variance_tau;
+
+  /// Tau value for the weights-- this tau value is applied
+  /// per state, not per Gaussian.
+  BaseFloat weight_tau;
+  
+  MapDiagGmmOptions(): mean_tau(10.0),
+                             variance_tau(50.0),
+                             weight_tau(10.0) { }
+
+  void Register(ParseOptions *po) {
+    po->Register("mean-tau", &mean_tau,
+                 "Tau value for updating means.");
+    po->Register("variance-tau", &mean_tau,
+                 "Tau value for updating variances (note: only relevant if "
+                 "update-flags contains \"v\".");
+    po->Register("weight-tau", &weight_tau,
+                 "Tau value for updating weights.");
+  }
+};
+
+
 
 class AccumDiagGmm {
  public:
@@ -116,7 +150,7 @@ class AccumDiagGmm {
 
   /// Increment with stats from this other accumulator (times scale)
   void Add(double scale, const AccumDiagGmm &acc);
-
+  
   /// Smooths the accumulated counts by adding 'tau' extra frames. An example
   /// use for this is I-smoothing for MMIE.   Calls SmoothWithAccum.
   void SmoothStats(BaseFloat tau);
@@ -163,7 +197,15 @@ inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
 /// a Gaussian mixture model.
 /// Update using the DiagGmm: exponential form
 void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
-                      const AccumDiagGmm &diaggmm_acc,
+                      const AccumDiagGmm &diag_gmm_acc,
+                      GmmFlagsType flags,
+                      DiagGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out);
+
+/// Maximum A Posteriori estimation of the model.
+void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
+                      const AccumDiagGmm &diag_gmm_acc,
                       GmmFlagsType flags,
                       DiagGmm *gmm,
                       BaseFloat *obj_change_out,

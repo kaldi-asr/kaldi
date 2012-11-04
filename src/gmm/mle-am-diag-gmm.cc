@@ -183,35 +183,60 @@ void ResizeModel (int32 dim, AmDiagGmm *am_gmm) {
 }
 
 void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
-                         const AccumAmDiagGmm &amdiaggmm_acc,
+                         const AccumAmDiagGmm &am_diag_gmm_acc,
                          GmmFlagsType flags,
                          AmDiagGmm *am_gmm,
                          BaseFloat *obj_change_out,
                          BaseFloat *count_out) {
-  if (amdiaggmm_acc.Dim() != am_gmm->Dim()) {
-    KALDI_ASSERT(amdiaggmm_acc.Dim() != 0);
-    KALDI_WARN << "Dimensions of accumulator " << amdiaggmm_acc.Dim()
+  if (am_diag_gmm_acc.Dim() != am_gmm->Dim()) {
+    KALDI_ASSERT(am_diag_gmm_acc.Dim() != 0);
+    KALDI_WARN << "Dimensions of accumulator " << am_diag_gmm_acc.Dim()
                << " and gmm " << am_gmm->Dim() << " do not match, resizing "
                << " GMM and setting to zero-mean, unit-variance.";
-    ResizeModel(amdiaggmm_acc.Dim(), am_gmm);
+    ResizeModel(am_diag_gmm_acc.Dim(), am_gmm);
   }
   
   KALDI_ASSERT(am_gmm != NULL);
-  KALDI_ASSERT(amdiaggmm_acc.NumAccs() == am_gmm->NumPdfs());
+  KALDI_ASSERT(am_diag_gmm_acc.NumAccs() == am_gmm->NumPdfs());
   if (obj_change_out != NULL) *obj_change_out = 0.0;
   if (count_out != NULL) *count_out = 0.0;
   BaseFloat tmp_obj_change, tmp_count;
   BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
             *p_count   = (count_out != NULL) ? &tmp_count : NULL;
 
-  for (size_t i = 0; i < amdiaggmm_acc.NumAccs(); i++) {
-    MleDiagGmmUpdate(config, amdiaggmm_acc.GetAcc(i), flags,
+  for (int32 i = 0; i < am_diag_gmm_acc.NumAccs(); i++) {
+    MleDiagGmmUpdate(config, am_diag_gmm_acc.GetAcc(i), flags,
                      &(am_gmm->GetPdf(i)), p_obj, p_count);
 
     if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
     if (count_out != NULL) *count_out += tmp_count;
   }
 }
+
+
+void MapAmDiagGmmUpdate (const MapDiagGmmOptions &config,
+                         const AccumAmDiagGmm &am_diag_gmm_acc,
+                         GmmFlagsType flags,
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *obj_change_out,
+                         BaseFloat *count_out) {
+  KALDI_ASSERT(am_gmm != NULL && am_diag_gmm_acc.Dim() == am_gmm->Dim() &&
+               am_diag_gmm_acc.NumAccs() == am_gmm->NumPdfs());
+  if (obj_change_out != NULL) *obj_change_out = 0.0;
+  if (count_out != NULL) *count_out = 0.0;
+  BaseFloat tmp_obj_change, tmp_count;
+  BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
+      *p_count   = (count_out != NULL) ? &tmp_count : NULL;
+
+  for (int32 i = 0; i < am_diag_gmm_acc.NumAccs(); i++) {
+    MapDiagGmmUpdate(config, am_diag_gmm_acc.GetAcc(i), flags,
+                     &(am_gmm->GetPdf(i)), p_obj, p_count);
+
+    if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
+    if (count_out != NULL) *count_out += tmp_count;
+  }
+}
+
 
 BaseFloat AccumAmDiagGmm::TotStatsCount() const {
   double ans = 0.0;

@@ -1,7 +1,9 @@
 // gmm/mle-diag-gmm.cc
 
-// Copyright 2009-2011  Saarland University;  Georg Stemmer;  Jan Silovsky;
-//                      Microsoft Corporation; Yanmin Qian
+// Copyright 2009-2012  Saarland University;  Georg Stemmer;  Jan Silovsky;
+//                      Microsoft Corporation; Yanmin Qian;
+//                      Johns Hopkins University (author: Daniel Povey);
+//                      Cisco Systems (author: Neha Agarwal)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -255,11 +257,11 @@ AccumDiagGmm::AccumDiagGmm(const AccumDiagGmm &other)
       variance_accumulator_(other.variance_accumulator_) {}
 
 BaseFloat MlObjective(const DiagGmm &gmm,
-                      const AccumDiagGmm &diaggmm_acc) {
-  GmmFlagsType acc_flags = diaggmm_acc.Flags();
-  Vector<BaseFloat> occ_bf(diaggmm_acc.occupancy());
-  Matrix<BaseFloat> mean_accs_bf(diaggmm_acc.mean_accumulator());
-  Matrix<BaseFloat> variance_accs_bf(diaggmm_acc.variance_accumulator());
+                      const AccumDiagGmm &diag_gmm_acc) {
+  GmmFlagsType acc_flags = diag_gmm_acc.Flags();
+  Vector<BaseFloat> occ_bf(diag_gmm_acc.occupancy());
+  Matrix<BaseFloat> mean_accs_bf(diag_gmm_acc.mean_accumulator());
+  Matrix<BaseFloat> variance_accs_bf(diag_gmm_acc.variance_accumulator());
   BaseFloat obj = VecVec(occ_bf, gmm.gconsts());
   if (acc_flags & kGmmMeans)
     obj += TraceMatMat(mean_accs_bf, gmm.means_invvars(), kTrans);
@@ -269,38 +271,35 @@ BaseFloat MlObjective(const DiagGmm &gmm,
 }
 
 void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
-                      const AccumDiagGmm &diaggmm_acc,
+                      const AccumDiagGmm &diag_gmm_acc,
                       GmmFlagsType flags,
                       DiagGmm *gmm,
                       BaseFloat *obj_change_out,
                       BaseFloat *count_out) {
   KALDI_ASSERT(gmm != NULL);
 
-  if (flags & ~diaggmm_acc.Flags())
+  if (flags & ~diag_gmm_acc.Flags())
     KALDI_ERR << "Flags in argument do not match the active accumulators";
-  
-  // Korbinian: I removed checks that validate if the referenced gmm matches
-  // the accumulator, as this should be responsibility of the caller.
-  // Furthermore, the re-estimation of the normal representation is done 
-  // regardless of the flags, but the transfer to the natural form is
-  // done with respect to the flags.
+
+  KALDI_ASSERT(diag_gmm_acc.NumGauss() == gmm->NumGauss() &&
+               diag_gmm_acc.Dim() == gmm->Dim());
 
   int32 num_gauss = gmm->NumGauss();
-  double occ_sum = diaggmm_acc.occupancy().Sum();
+  double occ_sum = diag_gmm_acc.occupancy().Sum();
 
   int32 tot_floored = 0, gauss_floored = 0;
 
   // remember old objective value
   gmm->ComputeGconsts();
-  BaseFloat obj_old = MlObjective(*gmm, diaggmm_acc);
+  BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
 
-  // allocate the gmm in normal representation; all parameters of this will be 
-  // updated, but only the flagged ones will be transferred back to gmm
+  // First get the gmm in "normal" representation (not the exponential-model
+  // form).
   DiagGmmNormal ngmm(*gmm);
 
   std::vector<int32> to_remove;
   for (int32 i = 0; i < num_gauss; i++) {
-    double occ = diaggmm_acc.occupancy()(i);
+    double occ = diag_gmm_acc.occupancy()(i);
     double prob;
     if (occ_sum > 0.0)
       prob = occ / occ_sum;
@@ -313,55 +312,47 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
       ngmm.weights_(i) = prob;
       
       // copy old mean for later normalizations
-      Vector<double> oldmean(ngmm.means_.Row(i));
+      Vector<double> old_mean(ngmm.means_.Row(i));
       
       // update mean, then variance, as far as there are accumulators 
-      if (diaggmm_acc.Flags() & kGmmMeans) {
-        Vector<double> mean(diaggmm_acc.mean_accumulator().Row(i));
+      if (diag_gmm_acc.Flags() & kGmmMeans) {
+        Vector<double> mean(diag_gmm_acc.mean_accumulator().Row(i));
         mean.Scale(1.0 / occ);
-
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }
-      
-      if (diaggmm_acc.Flags() & kGmmVariances) {
-        KALDI_ASSERT(diaggmm_acc.Flags() & kGmmMeans);
-        Vector<double> var(diaggmm_acc.variance_accumulator().Row(i));
+      if (diag_gmm_acc.Flags() & kGmmVariances) {
+        KALDI_ASSERT(diag_gmm_acc.Flags() & kGmmMeans);
+        Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
         var.Scale(1.0 / occ);
         var.AddVec2(-1.0, ngmm.means_.Row(i));  // subtract squared means.
-     
+        
         // if we intend to only update the variances, we need to compensate by 
         // adding the difference between the new and old mean
         if (!(flags & kGmmMeans)) {
-          oldmean.AddVec(-1.0, ngmm.means_.Row(i));
-          var.AddVec2(1.0, oldmean);
+          old_mean.AddVec(-1.0, ngmm.means_.Row(i));
+          var.AddVec2(1.0, old_mean);
         }
-   
         int32 floored;
         if (config.variance_floor_vector.Dim() != 0) {
           floored = var.ApplyFloor(config.variance_floor_vector);
-//          floored = FloorVariance(config.variance_floor_vector, &var);
         } else {
           floored = var.ApplyFloor(config.min_variance);
-//          floored = FloorVariance(config.min_variance, &var);
         }
-      
         if (floored != 0) {
           tot_floored += floored;
           gauss_floored++;
         }
-
         // transfer to estimate
         ngmm.vars_.CopyRowFromVec(var, i);
       }
-      
     } else {  // Insufficient occupancy.
       if (config.remove_low_count_gaussians &&
           static_cast<int32>(to_remove.size()) < num_gauss-1) {
         // remove the component, unless it is the last one.
         KALDI_WARN << "Too little data - removing Gaussian (weight "
                    << std::fixed << prob
-                   << ", occupation count " << std::fixed << diaggmm_acc.occupancy()(i)
+                   << ", occupation count " << std::fixed << diag_gmm_acc.occupancy()(i)
                    << ", vector size " << gmm->Dim() << ")";
         to_remove.push_back(i);
       } else {
@@ -369,7 +360,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
                    << (config.remove_low_count_gaussians ?
                        " it is the last Gaussian: i = "
                        : " remove-low-count-gaussians == false: g = ") << i
-                   << ", occ = " << diaggmm_acc.occupancy()(i) << ", weight = " << prob;
+                   << ", occ = " << diag_gmm_acc.occupancy()(i) << ", weight = " << prob;
         ngmm.weights_(i) =
             std::max(prob, static_cast<double>(config.min_gaussian_weight));
       }
@@ -380,7 +371,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   ngmm.CopyToDiagGmm(gmm, flags);
 
   gmm->ComputeGconsts();  // or MlObjective will fail.
-  BaseFloat obj_new = MlObjective(*gmm, diaggmm_acc);
+  BaseFloat obj_new = MlObjective(*gmm, diag_gmm_acc);
   
   if (obj_change_out) 
     *obj_change_out = (obj_new - obj_old);
@@ -405,6 +396,82 @@ void AccumDiagGmm::Add(double scale, const AccumDiagGmm &acc) {
     mean_accumulator_.AddMat(scale, acc.mean_accumulator_);
   if (flags_ & kGmmVariances)
     variance_accumulator_.AddMat(scale, acc.variance_accumulator_);
+}
+
+
+void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
+                      const AccumDiagGmm &diag_gmm_acc,
+                      GmmFlagsType flags,
+                      DiagGmm *gmm,
+                      BaseFloat *obj_change_out,
+                      BaseFloat *count_out) {
+  KALDI_ASSERT(gmm != NULL);
+
+  if (flags & ~diag_gmm_acc.Flags())
+    KALDI_ERR << "Flags in argument do not match the active accumulators";
+  
+  KALDI_ASSERT(diag_gmm_acc.NumGauss() == gmm->NumGauss() &&
+               diag_gmm_acc.Dim() == gmm->Dim());
+  
+  int32 num_gauss = gmm->NumGauss();
+  double occ_sum = diag_gmm_acc.occupancy().Sum();
+  
+  // remember the old objective function value
+  gmm->ComputeGconsts();
+  BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
+
+  // allocate the gmm in normal representation; all parameters of this will be 
+  // updated, but only the flagged ones will be transferred back to gmm
+  DiagGmmNormal ngmm(*gmm);
+
+  for (int32 i = 0; i < num_gauss; i++) {
+    double occ = diag_gmm_acc.occupancy()(i);
+
+    // First update the weight.  The weight_tau is a tau for the
+    // whole state.
+    ngmm.weights_(i) = (occ + ngmm.weights_(i) * config.weight_tau) /
+        (occ_sum + config.weight_tau);
+
+
+    if (occ > 0.0 && (flags & kGmmMeans)) {
+      // Update the Gaussian mean.
+      Vector<double> old_mean(ngmm.means_.Row(i));
+      Vector<double> mean(diag_gmm_acc.mean_accumulator().Row(i));
+      mean.Scale(1.0 / (occ + config.mean_tau));
+      mean.AddVec(config.mean_tau / (occ + config.mean_tau), old_mean);
+      ngmm.means_.CopyRowFromVec(mean, i);
+    }
+    
+    if (occ > 0.0 && (flags & kGmmVariances)) {
+      // Computing the variance around the updated mean; this is:
+      // E( (x - mu)^2 ) = E( x^2 - 2 x mu + mu^2 ) =
+      // E(x^2) + mu^2 - 2 mu E(x).
+      Vector<double> old_var(ngmm.vars_.Row(i));
+      Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
+      var.Scale(1.0 / occ);
+      var.AddVec2(1.0, ngmm.means_.Row(i));
+      SubVector<double> mean_acc(diag_gmm_acc.mean_accumulator(), i),
+          mean(ngmm.means_, i);
+      var.AddVecVec(-2.0 / occ, mean_acc, mean, 1.0);
+      // now var is E(x^2) + m^2 - 2 mu E(x).
+      // Next we do the appropriate weighting usnig the tau value.
+      var.Scale(occ / (config.variance_tau + occ));
+      var.AddVec(config.variance_tau / (config.variance_tau + occ), old_var);
+      // Now write to the model.
+      ngmm.vars_.Row(i).CopyFromVec(var);
+    }
+  }
+  
+  // Copy to natural/exponential representation.
+  ngmm.CopyToDiagGmm(gmm, flags);
+
+  gmm->ComputeGconsts();  // or MlObjective will fail.
+  BaseFloat obj_new = MlObjective(*gmm, diag_gmm_acc);
+  
+  if (obj_change_out) 
+    *obj_change_out = (obj_new - obj_old);
+  
+  if (count_out) *count_out = occ_sum;
 }
 
 
