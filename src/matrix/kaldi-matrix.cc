@@ -598,18 +598,19 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     return;
   }
   // initialize some helping vars
-  MatrixIndexT  skip;
-  MatrixIndexT  real_cols;
-  MatrixIndexT  size;
+  MatrixIndexT skip;
+  MatrixIndexT real_cols;
+  size_t size;
   void*   data;       // aligned memory block
   void*   free_data;  // memory block to be really freed
 
   // compute the size of skip and real cols
-  skip      = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
+  skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
       % (16 / sizeof(Real));
   real_cols = cols + skip;
-  size      = rows * real_cols * sizeof(Real);
-
+  size = static_cast<size_t>(rows) * static_cast<size_t>(real_cols)
+      * sizeof(Real);
+  
   // allocate the memory and set the right dimensions and parameters
   if (NULL != (data = KALDI_MEMALIGN(16, size, &free_data))) {
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
@@ -628,15 +629,6 @@ template<typename Real>
 void Matrix<Real>::Resize(const MatrixIndexT rows,
                           const MatrixIndexT cols,
                           MatrixResizeType resize_type) {
-  if (sizeof(MatrixIndexT) != 8 &&
-      static_cast<int64>(rows * cols) != static_cast<int64>(rows)
-      * static_cast<int64>(cols)) {
-    KALDI_ERR << "You are initializing a matrix with size "
-              << rows << " by " << cols << ", which will not work "
-              << "with MatrixIndexT defined as int32.  Change it "
-              << "to size_t in src/matrix/matrix-common.h (assuming "
-              << "you are compiling in 64-bit.)";
-  }
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
@@ -963,8 +955,8 @@ Real MatrixBase<Real>::Sum() const {
 template<>
 void MatrixBase<float>::Scale(float alpha) {
   if (num_cols_ == stride_) {
-    cblas_sscal(num_rows_ * num_cols_, alpha,
-                data_, 1);
+    cblas_sscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_),
+                alpha, data_, 1);
   } else {
     float *data = data_;
     for (MatrixIndexT i = 0; i < num_rows_; ++i, data += stride_) {
@@ -976,7 +968,7 @@ void MatrixBase<float>::Scale(float alpha) {
 template<>
 void MatrixBase<double>::Scale(double alpha) {
   if (num_cols_ == stride_) {
-    cblas_dscal(num_rows_ * num_cols_, alpha,
+    cblas_dscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_), alpha,
                 data_, 1);
   } else {
     double *data = data_;
@@ -1064,7 +1056,7 @@ void MatrixBase<Real>::Write(std::ostream &os, bool binary) const {
     }
     if (Stride() == NumCols())
       os.write(reinterpret_cast<const char*> (Data()), sizeof(Real)
-               * num_rows_ * num_cols_);
+               * static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_));
     else
       for (MatrixIndexT i = 0; i < num_rows_; i++)
         os.write(reinterpret_cast<const char*> (RowData(i)), sizeof(Real)
@@ -1332,7 +1324,7 @@ Real MatrixBase<Real>::Trace(bool check_square) const  {
 
 template<class Real>
 Real MatrixBase<Real>::Max() const {
-  KALDI_ASSERT(num_rows_ * num_cols_ > 0);
+  KALDI_ASSERT(num_rows_ > 0 && num_cols_ > 0);
   Real ans= *data_;
   for (MatrixIndexT r = 0; r < num_rows_; r++)
     for (MatrixIndexT c = 0; c < num_cols_; c++)
@@ -1343,7 +1335,7 @@ Real MatrixBase<Real>::Max() const {
 
 template<class Real>
 Real MatrixBase<Real>::Min() const {
-  KALDI_ASSERT(num_rows_ * num_cols_ > 0);
+  KALDI_ASSERT(num_rows_ > 0 && num_cols_ > 0);
   Real ans= *data_;
   for (MatrixIndexT r = 0; r < num_rows_; r++)
     for (MatrixIndexT c = 0; c < num_cols_; c++)

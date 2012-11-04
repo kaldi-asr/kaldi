@@ -900,7 +900,8 @@ void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &M, M
   const float *p_A_data = A.Data();
   float *p_row_data = this->Data();
 
-  if (this->Data() <= A.Data() + A.SizeInBytes() && this->Data() + this->SizeInBytes() >= A.Data()) {
+  if (this->Data() <= A.Data() + A.SizeInBytes() &&
+      this->Data() + this->SizeInBytes() >= A.Data()) {
     // Matrices A and *this overlap. Make copy of A
     tmp_A.Resize(A.NumRows());
     tmp_A.CopyFromSp(A);

@@ -99,8 +99,9 @@ template<typename Real> class PackedMatrix {
   const Real* Data() const { return data_; }
   inline MatrixIndexT NumRows() const { return num_rows_; }
   inline MatrixIndexT NumCols() const { return num_rows_; }
-  MatrixIndexT SizeInBytes() const {
-    return ((num_rows_ * (num_rows_ + 1)) / 2) * sizeof(Real);
+  size_t SizeInBytes() const {
+    size_t nr = static_cast<size_t>(num_rows_);
+    return ((nr * (nr+1)) / 2) * sizeof(Real);
   }
 
   // This code is duplicated in child classes to avoid extra levels of calls.
