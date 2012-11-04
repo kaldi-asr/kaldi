@@ -1,4 +1,4 @@
-// kws/transcripts-to-fsts.cc
+// kwsbin/transcripts-to-fsts.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 

@@ -1,4 +1,4 @@
-// kws/kws-functions.h
+// lat/kws-functions.h
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 
@@ -16,11 +16,11 @@
 // limitations under the License.
 
 
-#ifndef KALDI_KWS_KWS_FUNCTIONS_H_
-#define KALDI_KWS_KWS_FUNCTIONS_H_
+#ifndef KALDI_LAT_KWS_FUNCTIONS_H_
+#define KALDI_LAT_KWS_FUNCTIONS_H_
 
 #include "lat/kaldi-lattice.h"
-#include "kws/kaldi-kws.h"
+#include "lat/kaldi-kws.h"
 
 namespace kaldi {
 
@@ -104,4 +104,4 @@ void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer);
 
 } // namespace kaldi
 
-#endif  // KALDI_KWS_KWS_FUNCTIONS_H_
+#endif  // KALDI_LAT_KWS_FUNCTIONS_H_

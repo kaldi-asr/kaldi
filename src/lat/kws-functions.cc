@@ -1,4 +1,4 @@
-// kws/kws-functions.cc
+// lat/kws-functions.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 
@@ -16,7 +16,7 @@
 // limitations under the License.
 
 
-#include "kws/kws-functions.h"
+#include "lat/kws-functions.h"
 #include "fstext/determinize-star.h"
 
 namespace kaldi {

@@ -1,4 +1,4 @@
-// kws/lattice-to-kws-index.cc
+// kwsbin/lattice-to-kws-index.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 //                 Lucas Ondel
@@ -22,8 +22,8 @@
 #include "fstext/fstext-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "kws/kaldi-kws.h"
-#include "kws/kws-functions.h"
+#include "lat/kaldi-kws.h"
+#include "lat/kws-functions.h"
 
 int main(int argc, char *argv[]) {
   try {

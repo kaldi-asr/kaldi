@@ -1,4 +1,4 @@
-// kws/kws-search.cc
+// kwsbin/kws-search.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 
@@ -19,7 +19,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-utils.h"
-#include "kws/kaldi-kws.h"
+#include "lat/kaldi-kws.h"
 
 namespace kaldi {
 
@@ -27,26 +27,15 @@ typedef KwsLexicographicArc Arc;
 typedef Arc::Weight Weight;
 typedef Arc::StateId StateId;
 
-std::string StateIdToString(StateId label) {
-  std::stringstream ss;
-  ss << label;
-  return ss.str();
-}
-
-std::string EncodeLabel(StateId ilabel,
-                        StateId olabel) {
-  return StateIdToString(ilabel) 
-      + "_" 
-      + StateIdToString(olabel);
+uint64 EncodeLabel(StateId ilabel,
+                   StateId olabel) {
+  return (((int64)olabel)<<32)+((int64)ilabel);
 
 }
 
-StateId DecodeLabelUid(std::string osymbol) {
+StateId DecodeLabelUid(uint64 osymbol) {
   // We only need the utterance id
-  vector<StateId> labels;
-  SplitStringToIntegers(osymbol, "_", false, &labels);
-  KALDI_ASSERT(labels.size() == 2);
-  return labels[1];
+  return ((StateId)(osymbol>>32));
 }
 
 class VectorFstToKwsLexicographicFstMapper {
@@ -84,6 +73,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace fst;
     typedef kaldi::int32 int32;
+    typedef kaldi::uint32 uint32;
     typedef kaldi::uint64 uint64;
     typedef KwsLexicographicArc Arc;
     typedef Arc::Weight Weight;
@@ -131,7 +121,9 @@ int main(int argc, char *argv[]) {
     // removing them totally, we actually move them from input side to output
     // side, making the output symbol a "combined" symbol of the disambiguation
     // symbols and the utterance id's.
-    SymbolTable *osyms = new SymbolTable("tmp");
+    int32 label_count = 1;
+    std::tr1::unordered_map<uint64, uint32> label_encoder;
+    std::tr1::unordered_map<uint32, uint64> label_decoder;
     for (StateIterator<KwsLexicographicFst> siter(index); !siter.Done(); siter.Next()) {
       StateId state_id = siter.Value();
       for (MutableArcIterator<KwsLexicographicFst> 
@@ -142,13 +134,15 @@ int main(int argc, char *argv[]) {
           continue;
         // Encode the input and output label of the final arc, and this is the
         // new output label for this arc; set the input label to <epsilon>
-        std::string osymbol = EncodeLabel(arc.ilabel, arc.olabel);
+        uint64 osymbol = EncodeLabel(arc.ilabel, arc.olabel);
         arc.ilabel = 0;
-        if (osyms->Find(osymbol) == -1) {
-          arc.olabel = osyms->AvailableKey();
-          osyms->AddSymbol(osymbol, arc.olabel);
+        if (label_encoder.find(osymbol) == label_encoder.end()) {
+          arc.olabel = label_count;
+          label_encoder[osymbol] = label_count;
+          label_decoder[label_count] = osymbol;
+          label_count++;
         } else { 
-          arc.olabel = osyms->Find(osymbol);
+          arc.olabel = label_encoder[osymbol];
         }
         aiter.SetValue(arc);
       }
@@ -189,7 +183,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        std::string osymbol = osyms->Find(arc.olabel);
+        uint64 osymbol = label_decoder[arc.olabel];
         uid = (int32)DecodeLabelUid(osymbol);
         tbeg = weight.Value2().Value1().Value();
         tend = weight.Value2().Value2().Value();

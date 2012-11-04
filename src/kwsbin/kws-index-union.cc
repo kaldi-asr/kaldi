@@ -1,4 +1,4 @@
-// kws/kws-index-union.cc
+// kwsbin/kws-index-union.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 //                 Lucas Ondel
@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-utils.h"
-#include "kws/kaldi-kws.h"
+#include "lat/kaldi-kws.h"
 
 int main(int argc, char *argv[]) {
   try {

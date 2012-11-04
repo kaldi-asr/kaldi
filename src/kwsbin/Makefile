@@ -7,9 +7,9 @@ include ../kaldi.mk
 BINFILES = lattice-to-kws-index kws-index-union transcripts-to-fsts \
 		   kws-search
 
-OBJFILES = kws-functions.o
+OBJFILES =
 
-LIBFILE = kaldi-kws.a
+LIBFILE =
 
 all:  $(BINFILES)
 
@@ -17,14 +17,9 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
+$(BINFILES): ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
   ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
   ../fstext/kaldi-fstext.a
-
-$(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
-
 
 
 # Rule below would expand to, e.g.:
