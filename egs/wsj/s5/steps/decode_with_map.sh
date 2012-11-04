@@ -1,33 +1,31 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey), BUT (Author: Mirko Hannemann)
+# Copyright 2012  Neha Agrawal, Cisco Systems;
+#                 Johns Hopkins University (Author: Daniel Povey);
+#                 
 # Apache 2.0
 
 # Begin configuration section.  
 transform_dir=
-first_pass=
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
 nj=4
-reverse=false
 cmd=run.pl
 max_active=7000
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
-extra_beam=0.0 # small additional beam over varying beam
-max_beam=100.0 # maximum of varying beam
-min_lmwt=9
-max_lmwt=24
+mean_tau=20
+weight_tau=10
+flags=mw  # could also contain "v" for variance; the default
+          # tau for that is 50.
+stage=1
 # End configuration section.
-
-echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
-
 if [ $# != 3 ]; then
-   echo "Usage: steps/decode_fwdbwd.sh [options] <graph-dir> <data-dir> <decode-dir>"
+   echo "Usage: steps/decode.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo "... where <decode-dir> is assumed to be a sub-directory of the directory"
    echo " where the model is."
    echo "e.g.: steps/decode.sh exp/mono/graph_tgpr data/test_dev93 exp/mono/decode_dev93_tgpr"
@@ -37,17 +35,13 @@ if [ $# != 3 ]; then
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
-   echo "  --first_pass <decode-dir>                        # decoding dir of first pass"
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --iter <iter>                                    # Iteration of model to test."
    echo "  --model <model>                                  # which model to use (e.g. to"
    echo "                                                   # specify the final.alimdl)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --transform_dir <trans-dir>                      # dir to find fMLLR transforms "
+   echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
    echo "                                                   # speaker-adapted decoding"
-   echo "  --min-lmwt <int>                                 # minimum LM-weight for lattice rescoring "
-   echo "  --max-lmwt <int>                                 # maximum LM-weight for lattice rescoring "
-   echo "  --reverse [true/false]                           # time reversal of features"
    exit 1;
 fi
 
@@ -67,18 +61,16 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $srcdir/tree $graphdir/HCLG.fst $graphdir/words.txt; do
-  [ ! -f $f ] && echo "decode_fwdbwd.sh: no such file $f" && exit 1;
+for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
+  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
 done
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "decode_fwdbwd.sh: feature type is $feat_type";
-
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+echo "decode.sh: feature type is $feat_type";
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
@@ -88,37 +80,32 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
      echo "Mismatch in number of jobs with $transform_dir";
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 fi
-if $reverse; then
-  feats="$feats reverse-feats ark:- ark:- |"
+
+if [ $stage -le 1 ]; then
+  echo "Doing first-pass decoding before MAP decoding."
+  $cmd JOB=1:$nj $dir/log/decode_pass1.JOB.log \
+    gmm-decode-faster --max-active=$max_active --beam=$beam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $model $graphdir/HCLG.fst "$feats" ark:$dir/tmp.JOB.tra ark:$dir/pass1_decode.JOB.ali || exit 1;
 fi
 
-if [ -f $first_pass/lat.1.gz ]; then
-  echo "converting first pass lattice to graph arc acceptor"
-  $cmd JOB=1:$nj $dir/log/arc_graph.JOB.log \
-    time lattice-arcgraph --write-graph=HCLG_mapped.fst --write-lattices=ark,t:$dir/lat.det \
-      $srcdir/tree $model $graphdir/HCLG.fst "ark:gunzip -c $first_pass/lat.JOB.gz|" \
-      ark,t:$dir/lat.JOB.arcs || exit 1;
-    #  --acoustic-scale=$acwt --lattice-beam=$latbeam --prune=false \
-
-  echo "decode with tracking first pass lattice"
-  $cmd JOB=1:$nj $dir/log/decode_fwdbwd.JOB.log \
-    gmm-latgen-tracking --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-      --acoustic-scale=$acwt --allow-partial=true \
-      --extra-beam=$extra_beam --max-beam=$max_beam \
-      --word-symbol-table=$graphdir/words.txt  --verbose=2 \
-      $model $graphdir/HCLG.fst "$feats" ark:$dir/lat.JOB.arcs "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
-
-else
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-   gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-     --acoustic-scale=$acwt --allow-partial=true \
-     --word-symbol-table=$graphdir/words.txt \
-     $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+if [ $stage -le 2 ]; then
+  echo "Computing MAP stats and doing MAP-adapted decoding"
+  $cmd JOB=1:$nj $dir/log/decode_pass2.JOB.log \
+    ali-to-post ark:$dir/pass1_decode.JOB.ali ark:- \| \
+  gmm-est-map --mean-tau=$mean_tau --weight-tau=$weight_tau \
+       --update-flags=$flags --spk2utt=ark:$sdata/JOB/spk2utt \
+     $model "$feats" ark:- ark:- \| \
+  gmm-latgen-map --lattice-beam=$latbeam --acoustic-scale=$acwt \
+   --utt2spk=ark:$sdata/JOB/utt2spk --max-active=$max_active --beam=$beam \
+   --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+   $model ark,s,cs:- $graphdir/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz"
 fi
+#rm -f $dir/pass1_decode.*.ali
+#rm -f $dir/tmp.*.tra
 
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" --reverse $reverse --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
+local/score.sh --cmd "$cmd" $data $graphdir $dir
 
-echo "Decoding done."
 exit 0;

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Note:  this is a work in progress, but should run up to the point where it says:
-# I AM HERE 
-
 exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
@@ -101,11 +98,15 @@ steps/align_si.sh --nj 30 --cmd "$train_cmd" \
 
 steps/train_deltas.sh --cmd "$train_cmd" \
     2500 20000 data/train_30k_nodup data/lang exp/mono0a_ali exp/tri1 || exit 1;
-
+ 
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
 
 steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
   exp/tri1/graph data/eval2000 exp/tri1/decode_eval2000
+
+#MAP-adapted decoding example.
+#steps/decode_with_map.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+#  exp/tri1/graph data/eval2000 exp/tri1/decode_eval2000_map
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali || exit 1;
