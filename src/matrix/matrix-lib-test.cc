@@ -3232,8 +3232,8 @@ template<class Real> static void UnitTestCompressedMatrix() {
   KALDI_ASSERT(empty_cmat.NumRows() == 0);
   KALDI_ASSERT(empty_cmat.NumCols() == 0);
 
-  for (MatrixIndexT n = 0; n < 100; n++) {
-    MatrixIndexT num_rows = rand() % 10, num_cols = rand() % 10;
+  for (MatrixIndexT n = 0; n < 102; n++) {
+    MatrixIndexT num_rows = rand() % 15, num_cols = rand() % 15;
     if (num_rows * num_cols == 0) {
       num_rows = 0;
       num_cols = 0;
