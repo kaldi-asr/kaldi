@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     std::string update_flags_str = "vMNwucSt";
     std::string write_flags_str = "gsnu";
-    kaldi::TransitionUpdateConfig tcfg;
+    kaldi::MleTransitionUpdateConfig tcfg;
     kaldi::MleAmSgmm2Options sgmm_opts;
     kaldi::Sgmm2SplitSubstatesConfig split_opts;
     int32 increase_phn_dim = 0;
@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
 
     if (update_flags & kSgmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
-      trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
-      KALDI_LOG << "Transition model update: average " << (objf_impr/count)
+      trans_model.MleUpdate(transition_accs, tcfg, &objf_impr, &count);
+      KALDI_LOG << "Transition model update: Overall " << (objf_impr/count)
                 << " log-like improvement per frame over " << (count)
                 << " frames.";
     }
