@@ -293,7 +293,8 @@ local/run_hybrid.sh
 
 # KWS setup. We leave it commented out by default
 #duration=
-#local/kws_data_prep.sh keywords.txt data/lang/ data/eval/ data/kws/
+#local/generate_example_kws.l data/test_eval92/ data/kws/
+#local/kws_data_prep.sh data/kws/keywords.txt data/lang/ data/eval/ data/kws/
 #steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
 #  data/kws/ data/lang_test_bd_tgpr/ \
 #  exp/tri4b/decode_bd_tgpr_eval92/ \
