@@ -104,7 +104,15 @@ BaseFloat NnetAdaptiveTrainer::ComputeValidationSetGradient(
 }
 
 void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
-  int32 num_components = nnet_->NumComponents();  
+  int32 num_components = nnet_->NumComponents();
+  { // First take care of training objf.
+    if (!first_time)
+      KALDI_LOG << "Training objective function (this phase) is "
+                << (logprob_this_phase_/weight_this_phase_) << " over "
+                << weight_this_phase_ << " frames.";
+    logprob_this_phase_ = 0.0;
+    weight_this_phase_ = 0.0;
+  }
   if (!first_time) { // normal case-- end old phase + begin new one.
     // Declare dot products (each element is a layer's dot product)
     Vector<BaseFloat> old_model_old_gradient(num_components),
@@ -188,9 +196,10 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
 void NnetAdaptiveTrainer::TrainOneMinibatch() {
   KALDI_ASSERT(!buffer_.empty());
   // The following function is declared in nnet-update.h.
-  DoBackprop(*nnet_,
-             buffer_,
-             nnet_);
+  logprob_this_phase_ += DoBackprop(*nnet_,
+                                    buffer_,
+                                    nnet_);
+  weight_this_phase_ += TotalNnetTrainingWeight(buffer_);
   buffer_.clear();
   minibatches_seen_this_phase_++;
   if (minibatches_seen_this_phase_ == config_.minibatches_per_phase) {

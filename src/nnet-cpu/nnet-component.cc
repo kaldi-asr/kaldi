@@ -567,7 +567,7 @@ void AffineComponent::UpdatePreconditioned(
     const MatrixBase<BaseFloat> &out_deriv,
     const VectorBase<BaseFloat> &chunk_weights) {
   BaseFloat old_weight = OldWeight(chunk_weights.Sum());
-
+  
   // The idea with the linear_params is: take an input dimension
   // m and and output dimension n.  Let mu be the mean of this
   // input feature, and f be the feature value.  Let's train as
@@ -584,39 +584,46 @@ void AffineComponent::UpdatePreconditioned(
   out_deriv_sum.AddRowSumMat(1.0, out_deriv, 0.0);
   if (old_weight != 1.0) bias_params_.Scale(old_weight);
 
+  Vector<BaseFloat> avg_input(InputDim());
+  avg_input.AddRowSumMat(1.0 / in_value.NumRows(), in_value, 0.0);
+  BaseFloat avg_input_count = 1.0;
+  
   // The following term is already there in the basic update.
   linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
                            in_value, kNoTrans, old_weight);
   // The next term is the new term for updating the linear params,
   // corresponding to (learning_rate . -mu . output_deriv.).  Here,
   // mu is avg_input_(i) / avg_input_count_.
-  linear_params_.AddVecVec(-learning_rate_/avg_input_count_,
-                           out_deriv_sum, avg_input_);
+  linear_params_.AddVecVec(-learning_rate_/avg_input_count,
+                           out_deriv_sum, avg_input);
 
   // The next term is the "normal" term for updating the bias parameters.
   bias_params_.AddVec(learning_rate_, out_deriv_sum);   
 
-  /*
-  // Net we handle the expression (from above)
+  // Next we handle the expression (from above)
   // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
   // Here, we do this for each frame, and for each frame it happens
   // with "bias_weight" and "output" deriv both indexed by the same value
   // (the output dim)-- and the parts involving mu and in_value are summed
   // over the input dimensions.
   Vector<BaseFloat> sum(in_value.NumRows());  
-  sum.Set(VecVec(avg_input_, avg_input_) /
-          (avg_input_count_ * avg_input_count_));
+  sum.Set(VecVec(avg_input, avg_input) /
+          (avg_input_count * avg_input_count));
+  // note: below, "sum" in sum(frame) just refers to the variable named "sum".
   // now sum(frame) = \sum_i (-mu(i) *  -mu(i)),
   // where \mu_i is avg_input_(i)/avg_input_count_.
   // the next line does: sum(frame) -= \sum_i mu(i) * input(i), giving
   // sum(frame) = - \sum_i mu(i) * (in_value(i) - mu(i)).
-  sum.AddMatVec(-1.0 / avg_input_count_,
-                in_value, kNoTrans, avg_input_, 1.0);
+  sum.AddMatVec(-1.0 / avg_input_count,
+                in_value, kNoTrans, avg_input, 1.0);
   // The next line updates the bias params with this "correction term":
   // for a scalar, it's doing:
   // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
   bias_params_.AddMatVec(learning_rate_, out_deriv, kTrans,
-  sum, 1.0);*/
+                         sum, 1.0);
+  if (bias_params_.Max() > 100.0 || bias_params_.Min() < -100.0) {
+    KALDI_ERR << "Bias params getting too large.";
+  }
 }
 
 

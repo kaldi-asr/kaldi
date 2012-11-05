@@ -13,6 +13,8 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph
   steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
    exp/tri4b/graph data/train_dev exp/tri4b/decode_train_dev
+  steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+   exp/tri4b/graph data/eval2000 exp/tri4b/decode_eval2000
 )&
 
   
@@ -163,6 +165,10 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
    exp/tri4b/graph data/train_dev exp/tri5b1b_nnet/decode_train_dev
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000 \
+   exp/tri4b/graph data/train_dev exp/tri5b1b_nnet/decode_eval2000
 )&
   ## evaluated likelihood of the previous on train_dev, just like Karel did, but
   ## values were similar to his.

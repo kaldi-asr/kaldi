@@ -7,6 +7,8 @@
 =====
 dan's TODO:
 
+ remove the weighting in my neural net setup-- not helpful
+
  put informative text in local/score.sh RE how to see results.
 
  change on-disk formats to make memory mapping easier?

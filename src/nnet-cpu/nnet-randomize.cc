@@ -172,8 +172,8 @@ void NnetDataRandomizer::RandomizeSamples() {
   // integerized counts, because otherwise I think expectations would  be
   // wrong in some exremely small way (due to the nonlinearity in the inverse
   // function).
-  pdf_weights_.Scale(VecVec(pdf_weights_, reweighted_counts) /
-                     reweighted_counts.Sum());
+  pdf_weights_.Scale(reweighted_counts.Sum()/
+                     VecVec(pdf_weights_, reweighted_counts));
 
   if (num_samples_tgt_ == -1) { // set this variable.
     if (config_.num_samples > 0 && config_.num_epochs > 0) 

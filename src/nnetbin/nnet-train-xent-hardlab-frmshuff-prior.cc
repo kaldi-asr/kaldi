@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #include "nnet/nnet-nnet.h"
-#include "nnet/nnet-loss.h"
+#include "nnet/nnet-loss-prior.h"
 #include "nnet/nnet-cache.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -57,6 +57,15 @@ int main(int argc, char *argv[]) {
     int32 bunchsize=512, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+
+    std::string prior_rxfile;
+    po.Register("prior", &prior_rxfile, "Priors of the training data to scale down gradients of represented PDFs [REQUIRED]");
+    BaseFloat prior_softener = 1000; // ie. use uniform prior (disable reweighting)
+    BaseFloat prior_silence_amount = 1.0; // ie. disable silence downscaling (use all the silence data available)
+    po.Register("prior-softener", &prior_softener, "Prior softener, scales uniform part added to prior before doing the inverse");
+    po.Register("prior-silence-amount", &prior_silence_amount, "Define how much of ``effective silence data'' should be used for training, (1.0 will bypass silence scaling)");
+    int32 prior_silence_numpdf = 5;
+    po.Register("prior-silence-numpdf", &prior_silence_numpdf, "Number of initial PDFs which model the silence");
 
     po.Read(argc, argv);
 
@@ -101,8 +110,12 @@ int main(int argc, char *argv[]) {
     cachesize = (cachesize/bunchsize)*bunchsize; // ensure divisibility
     cache.Init(cachesize, bunchsize);
 
-    Xent xent;
-
+    XentPrior xent;
+    if(prior_rxfile != "") {
+      xent.ReadPriors(prior_rxfile, prior_softener, prior_silence_amount, prior_silence_numpdf);
+    } else {
+      KALDI_ERR << "Missing prior file!";
+    }
     
     CuMatrix<BaseFloat> feats, feats_transf, nnet_in, nnet_out, glob_err;
     std::vector<int32> targets;
@@ -124,17 +137,17 @@ int main(int argc, char *argv[]) {
           const std::vector<int32> &alignment = alignments_reader.Value(key);
           // chech for dimension
           if ((int32)alignment.size() != mat.NumRows()) {
-            KALDI_WARN << "Alignment has wrong size, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << key;
+            KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
             num_other_error++;
-          } else { //dimension OK
-            // push features to GPU
-            feats.CopyFromMat(mat);
-            // possibly apply transform
-            nnet_transf.Feedforward(feats, &feats_transf);
-            // add to cache
-            cache.AddData(feats_transf, alignment);
-            num_done++;
+            continue;
           }
+          // push features to GPU
+          feats.CopyFromMat(mat);
+          // possibly apply transform
+          nnet_transf.Feedforward(feats, &feats_transf);
+          // add to cache
+          cache.AddData(feats_transf, alignment);
+          num_done++;
         }
         Timer t_features;
         feature_reader.Next(); 
