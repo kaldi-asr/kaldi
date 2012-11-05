@@ -12,7 +12,7 @@ fi
 steps/train_sgmm2.sh  --spk-dep-weights false --cmd "$train_cmd" 5000 7000 \
   data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm2x_4a || exit 1;
 
-utils/mkgraph.sh data/lang exp/sgmm2x_4a exp/sgmm2x_4a/graph || exit 1;
+utils/mkgraph.sh data/lang_test exp/sgmm2x_4a exp/sgmm2x_4a/graph || exit 1;
 
 steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/sgmm2x_4a/graph data/test exp/sgmm2x_4a/decode || exit 1;
