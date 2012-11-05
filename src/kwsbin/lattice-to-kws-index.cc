@@ -34,7 +34,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Create an inverted index of the given lattices. The output index is in the T*T*T\n"
-        "semiring."
+        "semiring. For details for the semiring, please refer to Dogan Can and Muran Saraclar's"
+        "lattice indexing paper."
         "\n"
         "Usage: lattice-to-kws-index [options]  utter-symtab-rspecifier lattice-rspecifier index-wspecifier\n"
         " e.g.: lattice-to-kws-index ark:utter.symtab ark:1.lats ark:global.idx\n";
@@ -94,6 +95,10 @@ int main(int argc, char *argv[]) {
 
       // Cluster the arcs in the CompactLattice, write the cluster_id on the
       // output label side.
+      // ClusterLattice() corresponds to the second part of the preprocessing in
+      // Dogan and Murat's paper -- clustering. Note that we do the first part
+      // of preprocessing (the weight pushing step) later when generating the
+      // factor transducer.
       bool success = false;
       success = ClusterLattice(&clat, state_times);
       if (!success) {
@@ -103,6 +108,9 @@ int main(int argc, char *argv[]) {
       }
 
       // Generate factor transducer
+      // CreateFactorTransducer() corresponds to the "Factor Generation" part of
+      // Dogan and Murat's paper. But we also move the weight pushing step to
+      // this function as we have to compute the alphas and betas anyway.
       KwsProductFst factor_transducer;
       int32 utterance_id = usymtab_reader.Value(key);
       success = CreateFactorTransducer(clat, state_times, utterance_id, &factor_transducer);
@@ -112,16 +120,21 @@ int main(int argc, char *argv[]) {
       }
 
       // Remove long silence arc
+      // We add the filtering step in our implementation. This is because gap
+      // between two successive words in a query term should be less than 0.5s
       RemoveLongSilences(max_silence_frames, state_times, &factor_transducer);
 
-      // Do factor merging, and return a transducer in T*T*T semiring
+      // Do factor merging, and return a transducer in T*T*T semiring. This step
+      // corresponds to the "Factor Merging" part in Dogan and Murat's paper.
       KwsLexicographicFst index_transducer;
       DoFactorMerging(factor_transducer, &index_transducer);
 
-      // Do factor disambiguation
+      // Do factor disambiguation. It corresponds to the "Factor Disambiguation"
+      // step in Dogan and Murat's paper.
       DoFactorDisambiguation(&index_transducer);
 
-      // Optimize the above factor transducer
+      // Optimize the above factor transducer. It corresponds to the
+      // "Optimization" step in the paper.
       OptimizeFactorTransducer(&index_transducer);
 
       // Write result

@@ -93,7 +93,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 n_best = -1;
+    double negative_tolerance = -0.1;
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
+    po.Register("negative-tolerance", &negative_tolerance, 
+                "The program will die if we get negative score smaller than the tolerance.");
     if (n_best < 0 && n_best != -1) {
       KALDI_ERR << "Bad number for nbest";
       exit (1);
@@ -121,6 +124,10 @@ int main(int argc, char *argv[]) {
     // removing them totally, we actually move them from input side to output
     // side, making the output symbol a "combined" symbol of the disambiguation
     // symbols and the utterance id's.
+    // Note that in Dogan and Murat's original paper, they simply remove the
+    // disambiguation symbol on the input symbol side, which will not allow us
+    // to do epsilon removal after composition with the keyword FST. They have
+    // to traversal the result FST.
     int32 label_count = 1;
     std::tr1::unordered_map<uint64, uint32> label_encoder;
     std::tr1::unordered_map<uint32, uint64> label_decoder;
@@ -189,6 +196,10 @@ int main(int argc, char *argv[]) {
         tend = weight.Value2().Value2().Value();
         score = weight.Value1().Value();
 
+        if (score < 0) {
+          KALDI_ASSERT(score >= negative_tolerance);
+          score = 0.0;
+        }
         vector<double> result;
         result.push_back(uid);
         result.push_back(tbeg);
