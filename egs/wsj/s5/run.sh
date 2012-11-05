@@ -292,7 +292,7 @@ local/run_hybrid.sh
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
 # KWS setup. We leave it commented out by default
-#duration=
+#duration=3600 # ($duration is the length of the search collection, in seconds)
 #local/generate_example_kws.sh data/test_eval92/ data/kws/
 #local/kws_data_prep.sh data/kws/keywords.txt data/lang/ data/eval/ data/kws/
 #steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
