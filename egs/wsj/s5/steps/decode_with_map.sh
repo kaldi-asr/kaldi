@@ -93,7 +93,7 @@ if [ $stage -le 2 ]; then
   echo "Computing MAP stats and doing MAP-adapted decoding"
   $cmd JOB=1:$nj $dir/log/decode_pass2.JOB.log \
     ali-to-post ark:$dir/pass1_decode.JOB.ali ark:- \| \
-  gmm-est-map --mean-tau=$mean_tau --weight-tau=$weight_tau \
+  gmm-adapt-map --mean-tau=$mean_tau --weight-tau=$weight_tau \
        --update-flags=$flags --spk2utt=ark:$sdata/JOB/spk2utt \
      $model "$feats" ark:- ark:- \| \
   gmm-latgen-map --lattice-beam=$latbeam --acoustic-scale=$acwt \
