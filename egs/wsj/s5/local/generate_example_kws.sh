@@ -16,38 +16,95 @@ text=$datadir/text;
 
 mkdir -p $kwsdatadir;
 
-# Generate keywords; we randomly generate 100 keywords with at least 5 counts
-# in text 
+# Generate keywords; we generate 20 unigram keywords with at least 20 counts,
+# 20 bigram keywords with at least 10 counts and 10 trigram keywords with at
+# least 5 counts.
 cat $text | perl -e '
-  %counts = ();
+  %unigram = ();
+  %bigram = ();
+  %trigram = ();
   while(<>) {
     chomp;
     @col=split(" ", $_);
     shift @col;
-    foreach $x (@col) {
-      if (!defined($counts{$x})) {
-        $counts{$x} = 1;
-      } else {
-        $counts{$x} = $counts{$x}+1;
+    for($i = 0; $i < @col; $i++) {
+      # unigram case
+      if (!defined($unigram{$col[$i]})) {
+        $unigram{$col[$i]} = 0;
+      }
+      $unigram{$col[$i]}++;
+
+      # bigram case
+      if ($i < @col-1) {
+        $word = $col[$i] . " " . $col[$i+1];
+        if (!defined($bigram{$word})) {
+          $bigram{$word} = 0;
+        }
+        $bigram{$word}++;
+      }
+
+      # trigram case
+      if ($i < @col-2) {
+        $word = $col[$i] . " " . $col[$i+1] . " " . $col[$i+2];
+        if (!defined($trigram{$word})) {
+          $trigram{$word} = 0;
+        }
+        $trigram{$word}++;
       }
     }
   }
 
-  $total = 50;
+  $max_count = 100;
+  $total = 20;
   $current = 0;
-  $print_count = 15;
-  while ($current < $total) {
-    foreach $x (keys %counts) {
-      if ($counts{$x} == $print_count) {
+  $min_count = 20;
+  while ($current < $total && $min_count <= $max_count) {
+    foreach $x (keys %unigram) {
+      if ($unigram{$x} == $min_count) {
         print "$x\n";
-        $counts{$x} = 0;
+        $unigram{$x} = 0;
         $current++;
       }
       if ($current == $total) {
         last;
       }
     }
-    $print_count++;
-  }' > $kwsdatadir/keywords.txt
+    $min_count++;
+  }
+  
+  $total = 20;
+  $current = 0;
+  $min_count = 4;
+  while ($current < $total && $min_count <= $max_count) {
+    foreach $x (keys %bigram) {
+      if ($bigram{$x} == $min_count) {
+        print "$x\n";
+        $bigram{$x} = 0;
+        $current++;
+      }
+      if ($current == $total) {
+        last;
+      }
+    }
+    $min_count++;
+  }
+  
+  $total = 10;
+  $current = 0;
+  $min_count = 3;
+  while ($current < $total && $min_count <= $max_count) {
+    foreach $x (keys %trigram) {
+      if ($trigram{$x} == $min_count) {
+        print "$x\n";
+        $trigram{$x} = 0;
+        $current++;
+      }
+      if ($current == $total) {
+        last;
+      }
+    }
+    $min_count++;
+  }
+  ' > $kwsdatadir/raw_keywords.txt
 
 echo "Keywords generation succeeded"

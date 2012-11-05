@@ -4,27 +4,24 @@
 # Apache 2.0.
 
 
-if [ $# -ne 4 ]; then
-   echo "Usage: local/kws_data_prep.sh keyword_list <lang-dir> <data-dir> <kws-data-dir>"
-   echo " e.g.: local/kws_data_prep.sh keywords data/lang/ data/eval/ data/kws/"
+if [ $# -ne 3 ]; then
+   echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>"
+   echo " e.g.: local/kws_data_prep.sh data/lang_test_bd_tgpr/ data/test_eval92/ data/kws/"
    exit 1;
 fi
 
-keywords=$1;
-langdir=$2;
-datadir=$3;
-kwsdatadir=$4;
+langdir=$1;
+datadir=$2;
+kwsdatadir=$3;
 
 mkdir -p $kwsdatadir;
 
-# This script is an example for the Babel Cantonese STD task
-
 # Create keyword id for each keyword
-cat $keywords | perl -e '
+cat $kwsdatadir/raw_keywords.txt | perl -e '
   $idx=1;
   while(<>) {
     chomp;
-    printf "KW101-%04d $_\n", $idx;
+    printf "WSJ-%04d $_\n", $idx;
     $idx++;
   }' > $kwsdatadir/keywords.txt
 
@@ -37,8 +34,9 @@ cat $kwsdatadir/keywords.txt | \
 # Compile keywords into FSTs
 transcripts-to-fsts ark:$kwsdatadir/keywords.int ark:$kwsdatadir/keywords.fsts
 
-# Create utterance id for each utterance
-cat $datadir/segments | \
+# Create utterance id for each utterance; Note that by "utterance" here I mean
+# the keys that will appear in the lattice archive. You may have to modify here
+cat $datadir/wav.scp | \
   awk '{print $1}' | \
   sort | uniq | perl -e '
   $idx=1;
@@ -49,21 +47,14 @@ cat $datadir/segments | \
   }' > $kwsdatadir/utter_id
 
 # Map utterance to the names that will appear in the rttm file. You have 
-# to modify the commands below accoring to your rttm file
-cat $datadir/segments | \
+# to modify the commands below accoring to your rttm file. In the WSJ case
+# since each file is an utterance, we assume that the actual file names will 
+# be the "names" in the rttm, so the utterance names map to themselves.
+cat $datadir/wav.scp | \
   awk '{print $1}' | \
   sort | uniq | perl -e '
   while(<>) {
     chomp;
-    print "$_ ";
-    s/_[0-9]{6}$//g;
-    if (m/_inLine/) {
-      s/_inLine//g;
-      $_.="_inLine";
-    } else {
-      s/_outLine//g;
-      $_.="_outLine";
-    }
-    print "$_\n";
+    print "$_ $_\n";
   }' > $kwsdatadir/utter_map;
 echo "Kws data preparation succeeded"
