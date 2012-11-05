@@ -82,20 +82,38 @@ namespace kaldi {
 //    Get the probability (or log-probability) associated with a particular transition-id.
 
 
-struct TransitionUpdateConfig {
+// Note: this was previously called TransitionUpdateConfig.
+struct MleTransitionUpdateConfig {
   BaseFloat floor;
   BaseFloat mincount;
   bool share_for_pdfs; // If true, share all transition parameters that have the same pdf.
-  TransitionUpdateConfig(BaseFloat floor = 0.01,
-                         BaseFloat mincount = 5.0,
-                         bool share_for_pdfs = false):
+  MleTransitionUpdateConfig(BaseFloat floor = 0.01,
+                            BaseFloat mincount = 5.0,
+                            bool share_for_pdfs = false):
       floor(floor), mincount(mincount), share_for_pdfs(share_for_pdfs) {}
+  
+  void Register (ParseOptions *po) {
+    po->Register("transition-floor", &floor,
+                 "Floor for transition probabilities");
+    po->Register("transition-min-count", &mincount,
+                 "Minimum count required to update transitions from a state");
+    po->Register("share-for-pdfs", &share_for_pdfs,
+                 "If true, share all transition parameters where the states "
+                 "have the same pdf.");
+  }
+};
+
+struct MapTransitionUpdateConfig {
+  BaseFloat tau;
+  bool share_for_pdfs; // If true, share all transition parameters that have the same pdf.
+  MapTransitionUpdateConfig(): tau(5.0), share_for_pdfs(false) { }
 
   void Register (ParseOptions *po) {
-    po->Register("transition-floor", &floor, "Floor for transition probabilities");
-    po->Register("transition-min-count", &mincount, "Minimum count required to update transitions from a state");
+    po->Register("transition-tau", &tau, "Tau value for MAP estimation of transition "
+                 "probabilities.");
     po->Register("share-for-pdfs", &share_for_pdfs,
-                 "If true, share all transition parameters where the states have the same pdf.");
+                 "If true, share all transition parameters where the states "
+                 "have the same pdf.");
   }
 };
 
@@ -189,11 +207,20 @@ class TransitionModel {
   /// exists, by/ calling GetTransitionLogProb(SelfLoopOf(trans_state)).
   BaseFloat GetNonSelfLoopLogProb(int32 trans_state) const;
 
-  void Update(const Vector<double> &stats,  // stats are counts/weights, indexed by transition-id.
-              const TransitionUpdateConfig &cfg,
-              BaseFloat *objf_impr_out,
-              BaseFloat *count_out);
+  /// Does Maximum Likelihood estimation.  The stats are counts/weights, indexed
+  /// by transition-id.  This was previously called Update().
+  void MleUpdate(const Vector<double> &stats, 
+                 const MleTransitionUpdateConfig &cfg,
+                 BaseFloat *objf_impr_out,
+                 BaseFloat *count_out);
 
+  /// Does Maximum A Posteriori (MAP) estimation.  The stats are counts/weights,
+  /// indexed by transition-id.
+  void MapUpdate(const Vector<double> &stats, 
+                 const MapTransitionUpdateConfig &cfg,
+                 BaseFloat *objf_impr_out,
+                 BaseFloat *count_out);
+  
   /// Print will print the transition model in a human-readable way, for purposes of human
   /// inspection.  The "occs" are optional (they are indexed by pdf-id).
   void Print(std::ostream &os,
@@ -210,8 +237,12 @@ class TransitionModel {
   }
 
  private:
-  void UpdateShared(const Vector<double> &stats, const TransitionUpdateConfig &cfg,
-                    BaseFloat *objf_impr_out, BaseFloat *count_out); // called from Update.
+  void MleUpdateShared(const Vector<double> &stats,
+                       const MleTransitionUpdateConfig &cfg,
+                       BaseFloat *objf_impr_out, BaseFloat *count_out);
+  void MapUpdateShared(const Vector<double> &stats,
+                       const MapTransitionUpdateConfig &cfg,
+                       BaseFloat *objf_impr_out, BaseFloat *count_out);
   void ComputeTriples(const ContextDependency &ctx_dep);  // called from constructor.  initializes triples_.
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just

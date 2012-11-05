@@ -26,7 +26,6 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
-    MleDiagGmmOptions gmm_opts;
 
     const char *usage =
         "Do Maximum Likelihood re-estimation of GMM-based acoustic model\n"
@@ -34,7 +33,8 @@ int main(int argc, char *argv[]) {
         "e.g.: gmm-est 1.mdl 1.acc 2.mdl\n";
 
     bool binary_write = true;
-    TransitionUpdateConfig tcfg;
+    MleTransitionUpdateConfig tcfg;
+    MleDiagGmmOptions gmm_opts;
     int32 mixup = 0;
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;
@@ -96,8 +96,8 @@ int main(int argc, char *argv[]) {
 
     if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
-      trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
-      KALDI_LOG << "Transition model update: average " << (objf_impr/count)
+      trans_model.MleUpdate(transition_accs, tcfg, &objf_impr, &count);
+      KALDI_LOG << "Transition model update: Overall " << (objf_impr/count)
                 << " log-like improvement per frame over " << (count)
                 << " frames.";
     }
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
           tot_t = gmm_accs.TotCount();
       MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags, &am_gmm,
                          &objf_impr, &count);
-      KALDI_LOG << "GMM update: average " << (objf_impr/count)
+      KALDI_LOG << "GMM update: Overall " << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  count <<  " frames";
       KALDI_LOG << "GMM update: Overall avg like per frame = "
@@ -129,9 +129,8 @@ int main(int argc, char *argv[]) {
                             power, min_count);
 
       if (!occs_out_filename.empty()) {
-        bool binary = true;  // write this in text mode-- useful to look at.
-        kaldi::Output ko(occs_out_filename, binary);
-        state_occs.Write(ko.Stream(), binary);
+        bool binary = false;
+        WriteKaldiObject(state_occs, occs_out_filename, binary);
       }
     }
 

@@ -300,16 +300,19 @@ void QrInternal(MatrixIndexT n,
   KALDI_ASSERT(Q == NULL || Q->NumCols() == n); // We may
   // later relax the condition that Q->NumCols() == n.
 
-  MatrixIndexT counter = 0, max_iters = 500 + 2*n, // Should never take this many iters.
+  MatrixIndexT counter = 0, max_iters = 500 + 4*n, // Should never take this many iters.
       large_iters = 100 + 2*n;
   Real epsilon = (pow(2.0, sizeof(Real) == 4 ? -23.0 : -52.0));
   
   for (; counter < max_iters; counter++) { // this takes the place of "until
                                            // q=n"... we'll break out of the
                                            // loop when we converge.
-    if (counter == large_iters) {
-      KALDI_WARN << "Took " << large_iters
+    if (counter == large_iters ||
+        (counter > large_iters && (counter - large_iters) % 50 == 0)) {
+      KALDI_WARN << "Took " << counter
                  << " iterations in QR (dim is " << n << "), doubling epsilon.";
+      SubVector<Real> d(diag, n), o(off_diag, n);
+      KALDI_WARN << "Diag, off-diag are " << d << " and " << o;
       epsilon *= 2.0;
     }
     for (MatrixIndexT i = 0; i+1 < n; i++) {

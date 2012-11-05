@@ -22,6 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
+#include "gmm/mle-am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "transform/fmllr-diag-gmm.h"
 #include "fstext/fstext-lib.h"
@@ -29,7 +30,6 @@
 #include "decoder/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
-#include "gmm/map-diag-gmm-accs.h"
 
 using fst::SymbolTable;
 using fst::VectorFst;
