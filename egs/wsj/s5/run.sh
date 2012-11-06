@@ -290,3 +290,28 @@ local/run_hybrid.sh
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+
+# KWS setup. We leave it commented out by default
+# $duration is the length of the search collection, in seconds
+#duration=`feat-to-len scp:data/test_eval92/feats.scp  ark,t:- | awk '{x+=$2} END{print x/100;}'`
+#local/generate_example_kws.sh data/test_eval92/ data/kws/
+#local/kws_data_prep.sh data/lang_test_bd_tgpr/ data/test_eval92/ data/kws/
+#
+#steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
+#  data/kws/ data/lang_test_bd_tgpr/ \
+#  exp/tri4b/decode_bd_tgpr_eval92/ \
+#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#
+#steps/search_index.sh --cmd "$decode_cmd" \
+#  data/kws \
+#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#
+# If you want to provide the start time for each utterance, you can use the --segments
+# option. In WSJ each file is an utterance, so we don't have to set the start time.
+#cat exp/tri4b/decode_bd_tgpr_eval92/kws/result.* | \
+#  utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+#  --normalize=true --map-utter=data/kws/utter_map \
+#  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
+
+
