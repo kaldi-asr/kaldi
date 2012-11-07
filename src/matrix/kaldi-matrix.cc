@@ -1551,7 +1551,7 @@ Real MatrixBase<Real>::LargestAbsElem() const{
 template<class Real>
 void MatrixBase<Real>::OrthogonalizeRows() {
   KALDI_ASSERT(NumRows() <= NumCols());
-  int32 num_rows = num_rows_;
+  MatrixIndexT num_rows = num_rows_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {
     int32 counter = 0;
     while (1) {
@@ -2030,7 +2030,7 @@ template<class Real> void  SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
     (*s)(d) = s_copy(vec[d].second);
   if (U != NULL) {
     Matrix<Real> Utmp(*U);
-    int32 dim = Utmp.NumRows();
+    MatrixIndexT dim = Utmp.NumRows();
     for (MatrixIndexT d = 0; d < num_singval; d++) {
       MatrixIndexT oldidx = vec[d].second;
       for (MatrixIndexT e = 0; e < dim; e++)
