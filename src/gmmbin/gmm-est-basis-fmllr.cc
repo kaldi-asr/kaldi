@@ -196,6 +196,7 @@ int main(int argc, char *argv[]) {
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                             &weights, basis_fmllr_opts);
           utt_tot_t = spk_stats.beta_;
+          wgt_size = weights.Dim();
           transform_writer.Write(utt, transform);
           // Optionally write out the base weights
           if (!weights_out_filename.empty() && weights.Dim() > 0)
