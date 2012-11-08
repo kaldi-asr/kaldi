@@ -61,8 +61,10 @@ int main(int argc, char *argv[]) {
         "structure.  The program is called linear-to-nbest because very often\n"
         "the archives concerned will represent N-best lists\n"
         "Usage:  linear-to-nbest [options] <alignments-rspecifier> "
-        "<transcriptions-rspecifier> <lm-cost-rspecifier> <ac-cost-rspecifier> "
+        "<transcriptions-rspecifier> [<lm-cost-rspecifier>|''] [<ac-cost-rspecifier>|''] "
         "<nbest-wspecifier>\n"
+        "Note: if the rspecifiers for lm-cost or ac-cost are the empty string,\n"
+        "these value will default to zero.\n"
         " e.g.: linear-to-nbest ark:1.ali ark:1.tra ark:1.lmscore ark:1.acscore "
         "ark:1.nbest\n";
     
@@ -99,20 +101,21 @@ int main(int argc, char *argv[]) {
         n_err++;
         continue;
       }
-      if (!lm_cost_reader.HasKey(key)) {
+      if (lm_cost_rspecifier != "" && !lm_cost_reader.HasKey(key)) {
         KALDI_ERR << "No LM cost for key " << key;
         n_err++;
         continue;
       }
-      if (!ac_cost_reader.HasKey(key)) {
+      if (ac_cost_rspecifier != "" && !ac_cost_reader.HasKey(key)) {
         KALDI_ERR << "No acoustic cost for key " << key;
         n_err++;
         continue;
       }
       const std::vector<int32> &ali = ali_reader.Value();
       const std::vector<int32> &words = trans_reader.Value(key);
-      BaseFloat ac_cost = ac_cost_reader.Value(key),
-          lm_cost = lm_cost_reader.Value(key);
+      BaseFloat
+          ac_cost = (ac_cost_rspecifier == "") ? 0.0 : ac_cost_reader.Value(key),
+          lm_cost = (lm_cost_rspecifier == "") ? 0.0 : lm_cost_reader.Value(key);
       Lattice lat;
       MakeLatticeFromLinear(ali, words, lm_cost, ac_cost, &lat);
       CompactLattice clat;
