@@ -125,6 +125,7 @@ int main(int argc, char *argv[]) {
           num_done++;
         }  // end looping over all utterances of this speaker
         basis_accs.AccuGradientScatter(spk_stats);
+        num_spk++;
       }  // end looping over speakers
       KALDI_LOG << "Accumulate statistics from " << num_spk << " speakers";
 
