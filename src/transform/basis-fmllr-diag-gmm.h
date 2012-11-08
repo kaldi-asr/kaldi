@@ -72,6 +72,7 @@ class BasisFmllrAccus {
   BasisFmllrAccus() { }
   explicit BasisFmllrAccus(int32 dim) {
 	  dim_ = dim;
+	  beta_ = 0;
 	  ResizeAccus(dim);
   }
 
@@ -92,6 +93,8 @@ class BasisFmllrAccus {
   SpMatrix<BaseFloat> grad_scatter_;
   /// Feature dimension
   int32 dim_;
+  /// Occupancy count
+  double beta_;
 };
 
 /** \class BasisFmllrEstimate
