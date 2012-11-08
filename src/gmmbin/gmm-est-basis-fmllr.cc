@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
           num_done++;
         }  // end looping over all utterances of the current speaker
 
-        double impr, spk_tot_t;
+        double impr, spk_tot_t; int32 wgt_size;
         {
           // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim() + 1);
@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                            &weights, basis_fmllr_opts);
           spk_tot_t = spk_stats.beta_;
+          wgt_size = weights.Dim();
           transform_writer.Write(spk, transform);
           // Optionally write out the base weights
           if (!weights_out_filename.empty() && weights.Dim() > 0)
@@ -159,7 +160,8 @@ int main(int argc, char *argv[]) {
         }
 
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from Basis fMLLR is "
-                  << (impr / spk_tot_t) << ", over " << spk_tot_t << " frames.";
+                  << (impr / spk_tot_t) << ", over " << spk_tot_t << " frames, "
+                  << "the top " << wgt_size << " basis elements have been used";
         tot_impr += impr;
         tot_t += spk_tot_t;
       }  // end looping over speakers
@@ -186,7 +188,7 @@ int main(int argc, char *argv[]) {
         AccumulateForUtterance(feats, post, trans_model, am_gmm, &spk_stats);
         num_done++;
 
-        BaseFloat impr, utt_tot_t;
+        BaseFloat impr, utt_tot_t; int32 wgt_size;
         {  // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim()+1);
           transform.SetUnit();
@@ -200,7 +202,8 @@ int main(int argc, char *argv[]) {
             weights_writer.Write(utt, weights);
         }
         KALDI_LOG << "For utterance " << utt << ", auxf-impr from Basis fMLLR is "
-                  << (impr / utt_tot_t) << ", over " << utt_tot_t << " frames.";
+                  << (impr / utt_tot_t) << ", over " << utt_tot_t << " frames, "
+                  << "the top " << wgt_size << " basis elements have been used";
         tot_impr += impr;
         tot_t += utt_tot_t;
       }  // end looping over all the utterances
