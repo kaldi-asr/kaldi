@@ -93,7 +93,7 @@ void AccumFullGmm::Scale(BaseFloat f, GmmFlagsType flags) {
 
 void AccumFullGmm::AccumulateForComponent(
     const VectorBase<BaseFloat> &data, int32 comp_index, BaseFloat weight) {
-  assert(data.Dim() == Dim());
+  KALDI_ASSERT(data.Dim() == Dim());
   double wt = static_cast<double>(weight);
 
   // accumulate
@@ -110,8 +110,8 @@ void AccumFullGmm::AccumulateForComponent(
 void AccumFullGmm::AccumulateFromPosteriors(
     const VectorBase<BaseFloat> &data,
     const VectorBase<BaseFloat> &gauss_posteriors) {
-  assert(gauss_posteriors.Dim() == NumGauss());
-  assert(data.Dim() == Dim());
+  KALDI_ASSERT(gauss_posteriors.Dim() == NumGauss());
+  KALDI_ASSERT(data.Dim() == Dim());
   Vector<double> data_d(data.Dim());
   data_d.CopyFromVec(data);
   Vector<double> post_d(gauss_posteriors.Dim());
@@ -140,8 +140,8 @@ void AccumFullGmm::AccumulateFromPosteriors(
 
 BaseFloat AccumFullGmm::AccumulateFromFull(const FullGmm &gmm,
     const VectorBase<BaseFloat> &data, BaseFloat frame_posterior) {
-  assert(gmm.NumGauss() == NumGauss());
-  assert(gmm.Dim() == Dim());
+  KALDI_ASSERT(gmm.NumGauss() == NumGauss());
+  KALDI_ASSERT(gmm.Dim() == Dim());
 
   Vector<BaseFloat> component_posterior(NumGauss());
 
@@ -154,8 +154,8 @@ BaseFloat AccumFullGmm::AccumulateFromFull(const FullGmm &gmm,
 
 BaseFloat AccumFullGmm::AccumulateFromDiag(const DiagGmm &gmm,
     const VectorBase<BaseFloat> &data, BaseFloat frame_posterior) {
-  assert(gmm.NumGauss() == NumGauss());
-  assert(gmm.Dim() == Dim());
+  KALDI_ASSERT(gmm.NumGauss() == NumGauss());
+  KALDI_ASSERT(gmm.Dim() == Dim());
 
   Vector<BaseFloat> component_posterior(NumGauss());
 
@@ -241,7 +241,7 @@ void AccumFullGmm::Write(std::ostream &out_stream, bool binary) const {
   WriteToken(out_stream, binary, "<MEANACCS>");
   mean_accumulator_bf.Write(out_stream, binary);
 
-  if (num_comp_ != 0) assert(((flags_ & kGmmVariances) != 0 )
+  if (num_comp_ != 0) KALDI_ASSERT(((flags_ & kGmmVariances) != 0 )
       == (covariance_accumulator_.size() != 0));  // sanity check.
   if (covariance_accumulator_.size() != 0) {
     WriteToken(out_stream, binary, "<FULLVARACCS>");

@@ -24,8 +24,6 @@
 
 namespace kaldi {
 
-using fst::VectorFst;
-
 // We store the time information of the arc into class "Interval". "Interval"
 // has a public function "int32 overlap(Interval interval)" which takes in
 // another interval and returns the overlap of that interval and the current

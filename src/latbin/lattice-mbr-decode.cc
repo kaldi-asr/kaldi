@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 1 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }

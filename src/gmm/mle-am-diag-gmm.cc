@@ -23,12 +23,12 @@
 namespace kaldi {
 
 const AccumDiagGmm& AccumAmDiagGmm::GetAcc(int32 index) const {
-  assert(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
+  KALDI_ASSERT(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
   return *(gmm_accumulators_[index]);
 }
 
 AccumDiagGmm& AccumAmDiagGmm::GetAcc(int32 index) {
-  assert(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
+  KALDI_ASSERT(index >= 0 && index < static_cast<int32>(gmm_accumulators_.size()));
   return *(gmm_accumulators_[index]);
 }
 

@@ -102,7 +102,7 @@ void FullGmm::SetInvCovars(const std::vector<SpMatrix<Real> > &v) {
 
 template<class Real>
 void FullGmm::GetCovars(std::vector<SpMatrix<Real> > *v) const {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->resize(inv_covars_.size());
   size_t dim = Dim();
   for (size_t i = 0; i < inv_covars_.size(); i++) {
@@ -114,7 +114,7 @@ void FullGmm::GetCovars(std::vector<SpMatrix<Real> > *v) const {
 
 template<class Real>
 void FullGmm::GetMeans(Matrix<Real> *M) const {
-  assert(M != NULL);
+  KALDI_ASSERT(M != NULL);
   M->Resize(NumGauss(), Dim());
   SpMatrix<Real> covar(Dim());
   Vector<Real> mean_times_invcovar(Dim());
@@ -129,7 +129,7 @@ void FullGmm::GetMeans(Matrix<Real> *M) const {
 template<class Real>
 void FullGmm::GetCovarsAndMeans(std::vector< SpMatrix<Real> > *covars,
                                 Matrix<Real> *means) const {
-  assert(covars != NULL && means != NULL);
+  KALDI_ASSERT(covars != NULL && means != NULL);
   size_t dim = Dim();
   size_t num_gauss = NumGauss();
   covars->resize(num_gauss);
@@ -148,8 +148,8 @@ void FullGmm::GetCovarsAndMeans(std::vector< SpMatrix<Real> > *covars,
 template<class Real>
 void FullGmm::GetComponentMean(int32 gauss,
                                VectorBase<Real> *out) const {
-  assert(gauss < NumGauss() && out != NULL);
-  assert(out->Dim() == Dim());
+  KALDI_ASSERT(gauss < NumGauss() && out != NULL);
+  KALDI_ASSERT(out->Dim() == Dim());
   out->SetZero();
   SpMatrix<Real> covar(Dim());
   Vector<Real> mean_times_invcovar(Dim());

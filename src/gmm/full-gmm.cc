@@ -285,7 +285,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
     }
 
     // make sure that different components will be merged
-    assert(max_i != max_j);
+    KALDI_ASSERT(max_i != max_j);
 
     // remember history
     if (history != NULL) {
