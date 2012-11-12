@@ -145,6 +145,7 @@ void CompressedMatrix::ComputeColHeader(
     header->percentile_100 = std::max<uint16>(
         FloatToUint16(global_header, sdata[num_rows-1]),
         header->percentile_75 + static_cast<uint16>(1));
+    
   } else {  // handle this pathological case.
     std::sort(sdata.begin(), sdata.end());
     // Note: we know num_rows is at least 1.
