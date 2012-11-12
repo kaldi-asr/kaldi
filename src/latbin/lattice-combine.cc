@@ -109,7 +109,8 @@ int main(int argc, char *argv[]) {
 
     // Inputs
     SequentialCompactLatticeReader clat_reader1(lats_rspecifier1);
-    vector<RandomAccessCompactLatticeReader*> clat_reader_vec(num_args-2, NULL);
+    vector<RandomAccessCompactLatticeReader*> clat_reader_vec(
+        num_args-2, static_cast<RandomAccessCompactLatticeReader*>(NULL));
     vector<string> clat_rspec_vec(num_args-2);
     for (int32 i = 3; i <= num_args; ++i) {
       clat_reader_vec[i-3] = new RandomAccessCompactLatticeReader(po.GetArg(i));
