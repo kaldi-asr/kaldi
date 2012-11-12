@@ -192,7 +192,7 @@ void Nnet::Init(std::vector<Component*> *components) {
   Check();
 }
 
-void Nnet::AdjustLearningRatesAndL2Penalties(
+void Nnet::AdjustLearningRates(
     const VectorBase<BaseFloat> &old_model_old_gradient,
     const VectorBase<BaseFloat> &new_model_old_gradient,
     const VectorBase<BaseFloat> &old_model_new_gradient,
@@ -200,16 +200,15 @@ void Nnet::AdjustLearningRatesAndL2Penalties(
     BaseFloat measure_at, // where to measure gradient, on line between old and new model;
                           // 0.5 < measure_at <= 1.0.
     BaseFloat ratio, // e.g. 1.1; ratio by  which we change learning rate.
-    BaseFloat max_learning_rate,
-    BaseFloat min_l2_penalty,
-    BaseFloat max_l2_penalty) {
-  std::vector<BaseFloat> new_lrates, new_l2_penalties;
+    BaseFloat max_learning_rate) {
+  std::vector<BaseFloat> new_lrates;
   KALDI_ASSERT(old_model_old_gradient.Dim() == NumComponents() &&
                new_model_old_gradient.Dim() == NumComponents() &&
                old_model_new_gradient.Dim() == NumComponents() &&
                new_model_new_gradient.Dim() == NumComponents());
   KALDI_ASSERT(ratio >= 1.0);
   KALDI_ASSERT(measure_at > 0.5 && measure_at <= 1.0);
+  std::string changes_str;
   BaseFloat inv_ratio = 1.0 / ratio;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
@@ -217,7 +216,6 @@ void Nnet::AdjustLearningRatesAndL2Penalties(
       KALDI_ASSERT(old_model_old_gradient(c) == 0.0);
       continue; 
     }
-    BaseFloat this_end_dotprod = new_model_new_gradient(c);
     BaseFloat grad_dotprod_at_end =
         new_model_new_gradient(c) - old_model_new_gradient(c),
         grad_dotprod_at_start =
@@ -228,27 +226,19 @@ void Nnet::AdjustLearningRatesAndL2Penalties(
     // grad_dotprod_interp will be positive if we want more of the gradient term
     // -> faster learning rate for this component
 
-    BaseFloat lrate = uc->LearningRate(),
-        l2_penalty = uc->L2Penalty();
+    BaseFloat lrate = uc->LearningRate();
     lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
-    l2_penalty *= (this_end_dotprod > 0 ? inv_ratio : ratio);
+    changes_str = changes_str + (grad_dotprod_interp > 0 ? " increase" : " decrease");
     if (lrate > max_learning_rate) lrate = max_learning_rate;
-    if (l2_penalty > max_l2_penalty) l2_penalty = max_l2_penalty;
-    if (l2_penalty < min_l2_penalty) l2_penalty = min_l2_penalty;
     
     new_lrates.push_back(lrate);
-    new_l2_penalties.push_back(l2_penalty);
     uc->SetLearningRate(lrate);
-    uc->SetL2Penalty(l2_penalty);
   }
+  KALDI_VLOG(1) << "Changes to learning rates: " << changes_str;
   std::ostringstream lrate_str;
   for (size_t i = 0; i < new_lrates.size(); i++)
     lrate_str << new_lrates[i] << ' ';
   KALDI_VLOG(1) << "Learning rates are " << lrate_str.str();
-  std::ostringstream l2_penalty_str;
-  for (size_t i = 0; i < new_l2_penalties.size(); i++)
-    l2_penalty_str << new_l2_penalties[i] << ' ';
-  KALDI_VLOG(2) << "L2 penalties are " << l2_penalty_str.str();
 }
 
 } // namespace

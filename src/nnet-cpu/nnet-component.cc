@@ -437,7 +437,6 @@ void SoftmaxComponent::Write(std::ostream &os, bool binary) const {
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
-    SetL2Penalty(0.0);
   }
   linear_params_.SetZero();
   bias_params_.SetZero();
@@ -472,15 +471,13 @@ std::string AffineComponent::Info() const {
          << ", outputDim=" << OutputDim()
          << ", linear-params stddev = " << linear_stddev
          << ", bias-params stddev = " << bias_stddev
-         << ", learning rate = " << LearningRate()
-         << ", l2penalty = " << L2Penalty();
+         << ", learning rate = " << LearningRate();
   return stream.str();
 }
 
 Component* AffineComponent::Copy() const {
   AffineComponent *ans = new AffineComponent();
   ans->learning_rate_ = learning_rate_;
-  ans->l2_penalty_ = l2_penalty_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   ans->avg_input_ = avg_input_;
@@ -496,11 +493,11 @@ BaseFloat AffineComponent::DotProduct(const UpdatableComponent &other_in) const 
       + VecVec(bias_params_, other->bias_params_);
 }
 
-void AffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+void AffineComponent::Init(BaseFloat learning_rate, 
                            int32 input_dim, int32 output_dim,
                            BaseFloat param_stddev, BaseFloat bias_stddev,
                            bool precondition) {
-  UpdatableComponent::Init(learning_rate, l2_penalty);
+  UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
@@ -516,12 +513,10 @@ void AffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
 void AffineComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
-  BaseFloat learning_rate = learning_rate_,
-               l2_penalty = l2_penalty_;
+  BaseFloat learning_rate = learning_rate_;
   bool precondition = false;
   int32 input_dim = -1, output_dim = -1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("l2-penalty", &args, &l2_penalty); // optional.
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
@@ -534,7 +529,7 @@ void AffineComponent::InitFromString(std::string args) {
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, input_dim, output_dim,
+  Init(learning_rate, input_dim, output_dim,
        param_stddev, bias_stddev, precondition);
 }
 
@@ -554,10 +549,9 @@ void AffineComponent::UpdateNormal(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv,
     const VectorBase<BaseFloat> &chunk_weights) {
-  BaseFloat old_weight = OldWeight(chunk_weights.Sum());
-  bias_params_.AddRowSumMat(learning_rate_, out_deriv, old_weight);
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
   linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
-                           in_value, kNoTrans, old_weight);
+                           in_value, kNoTrans, 1.0);
 }
 
 // This is an improved, preconditioned update with mean removal
@@ -565,8 +559,7 @@ void AffineComponent::UpdateNormal(
 void AffineComponent::UpdatePreconditioned(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv,
-    const VectorBase<BaseFloat> &chunk_weights) {
-  BaseFloat old_weight = OldWeight(chunk_weights.Sum());
+    const VectorBase<BaseFloat> &) { // chunk_weights..
   
   // The idea with the linear_params is: take an input dimension
   // m and and output dimension n.  Let mu be the mean of this
@@ -582,7 +575,6 @@ void AffineComponent::UpdatePreconditioned(
   
   Vector<BaseFloat> out_deriv_sum(OutputDim());
   out_deriv_sum.AddRowSumMat(1.0, out_deriv, 0.0);
-  if (old_weight != 1.0) bias_params_.Scale(old_weight);
 
   Vector<BaseFloat> avg_input(InputDim());
   avg_input.AddRowSumMat(1.0 / in_value.NumRows(), in_value, 0.0);
@@ -590,7 +582,7 @@ void AffineComponent::UpdatePreconditioned(
   
   // The following term is already there in the basic update.
   linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
-                           in_value, kNoTrans, old_weight);
+                           in_value, kNoTrans, 1.0);
   // The next term is the new term for updating the linear params,
   // corresponding to (learning_rate . -mu . output_deriv.).  Here,
   // mu is avg_input_(i) / avg_input_count_.
@@ -676,8 +668,6 @@ void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
 void AffineComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<AffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
-  ExpectToken(is, binary, "<L2Penalty>");
-  ReadBasicType(is, binary, &l2_penalty_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
@@ -704,8 +694,6 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<AffineComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
-  WriteToken(os, binary, "<L2Penalty>");
-  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
@@ -723,7 +711,6 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
 void AffinePreconInputComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
-    SetL2Penalty(0.0);
     is_gradient_ = true;
   }
   linear_params_.SetZero();
@@ -745,17 +732,16 @@ void AffinePreconInputComponent::Backprop(
                       0.0);
 
   if (to_update) {
-    BaseFloat old_weight = to_update->OldWeight(chunk_weights.Sum());
     // Next update the model (must do this 2nd so the derivatives we propagate
     // are accurate, in case this == to_update_in.)
     // add the sum of the rows of out_deriv, to the bias_params_.
     to_update->bias_params_.AddRowSumMat(to_update->learning_rate_, out_deriv,
-                                         old_weight);
+                                         1.0);
     if (to_update->is_gradient_) { // simple update, getting gradient.
       to_update->linear_params_.AddMatMat(to_update->learning_rate_,
                                           out_deriv, kTrans,
                                           in_value, kNoTrans,
-                                          old_weight);
+                                          1.0);
     } else {
       // more complex update, correcting for variance of input features.  Note:
       // most likely to_update == this, but we don't insist on this.
@@ -766,7 +752,7 @@ void AffinePreconInputComponent::Backprop(
     
       to_update->linear_params_.AddMatMat(to_update->learning_rate_,
                                           out_deriv, kTrans, in_value_tmp,
-                                          kNoTrans, old_weight);
+                                          kNoTrans, 1.0);
       // Next update input_precision_.  Note: we don't use any scaling on the
       // samples at this point.  This really won't matter in practice, it's just
       // for preconditioning.  Note: avg_samples_ is not very precisely a number
@@ -792,8 +778,6 @@ void AffinePreconInputComponent::Backprop(
 void AffinePreconInputComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<AffinePreconInputComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
-  ExpectToken(is, binary, "<L2Penalty>");
-  ReadBasicType(is, binary, &l2_penalty_);
   ExpectToken(is, binary, "<AvgSamples>");
   ReadBasicType(is, binary, &avg_samples_);
   ExpectToken(is, binary, "<IsGradient>");
@@ -811,8 +795,6 @@ void AffinePreconInputComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<AffinePreconInputComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
-  WriteToken(os, binary, "<L2Penalty>");
-  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, "<AvgSamples>");
   WriteBasicType(os, binary, avg_samples_);
   WriteToken(os, binary, "<IsGradient>");
@@ -827,13 +809,13 @@ void AffinePreconInputComponent::Write(std::ostream &os, bool binary) const {
 }
 
 void AffinePreconInputComponent::Init(
-    BaseFloat learning_rate, BaseFloat l2_penalty,
+    BaseFloat learning_rate,
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev,
     BaseFloat bias_stddev,
     BaseFloat avg_samples) {
   is_gradient_ = false;
-  UpdatableComponent::Init(learning_rate, l2_penalty);
+  UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
@@ -852,11 +834,9 @@ void AffinePreconInputComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
   BaseFloat learning_rate = learning_rate_,
-               l2_penalty = l2_penalty_,
              avg_samples = 2000.0;
   int32 input_dim = -1, output_dim = -1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("l2-penalty", &args, &l2_penalty); // optional.
   ParseFromString("avg-samples", &args, &avg_samples); // optional.
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
@@ -869,14 +849,13 @@ void AffinePreconInputComponent::InitFromString(std::string args) {
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, input_dim, output_dim,
+  Init(learning_rate, input_dim, output_dim,
        param_stddev, bias_stddev, avg_samples);
 }
 
 Component* AffinePreconInputComponent::Copy() const {
   AffinePreconInputComponent *ans = new AffinePreconInputComponent();
   ans->learning_rate_ = learning_rate_;
-  ans->l2_penalty_ = l2_penalty_;
   ans->avg_samples_ = avg_samples_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
@@ -888,7 +867,6 @@ Component* AffinePreconInputComponent::Copy() const {
 void BlockAffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
-    SetL2Penalty(0.0);
   }
   linear_params_.SetZero();
   bias_params_.SetZero();
@@ -915,7 +893,6 @@ BaseFloat BlockAffineComponent::DotProduct(
 Component* BlockAffineComponent::Copy() const {
   BlockAffineComponent *ans = new BlockAffineComponent();
   ans->learning_rate_ = learning_rate_;
-  ans->l2_penalty_ = l2_penalty_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   ans->num_blocks_ = num_blocks_;
@@ -963,7 +940,7 @@ void BlockAffineComponent::Backprop(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &, // out_value
     const MatrixBase<BaseFloat> &out_deriv,
-    const VectorBase<BaseFloat> &chunk_weights,
+    const VectorBase<BaseFloat> &, // chunk_weights
     Component *to_update_in,
     Matrix<BaseFloat> *in_deriv) const {
   // This code mirrors the code in Propagate().
@@ -979,7 +956,7 @@ void BlockAffineComponent::Backprop(
   // add the sum of the rows of out_deriv, to the bias_params_.
   if (to_update)
     to_update->bias_params_.AddRowSumMat(to_update->learning_rate_, out_deriv,
-                                         to_update->OldWeight(chunk_weights.Sum()));
+                                         1.0);
   
   for (int32 b = 0; b < num_blocks_; b++) {
     SubMatrix<BaseFloat> in_value_block(in_value, 0, num_frames,
@@ -1005,33 +982,18 @@ void BlockAffineComponent::Backprop(
       // Update the parameters.
       param_block_to_update.AddMatMat(
           to_update->learning_rate_,
-          out_deriv_block, kTrans, in_value_block, kNoTrans,
-          to_update->OldWeight(chunk_weights.Sum()));
+          out_deriv_block, kTrans, in_value_block, kNoTrans, 1.0);
     }
   }  
 }
 
 
-
-// OldWeight is the weight given to the previous parameters, in
-// stocastic gradient descent; would be 1.0 if not for l2 regularization.
-BaseFloat UpdatableComponent::OldWeight(BaseFloat tot_weight) const {
-  // tot_weight would equal #frames if we did not have frame weighting.
-  BaseFloat ans = 1.0 -
-      (2.0 * learning_rate_ * l2_penalty_ * tot_weight);
-  if (ans < 0.9) {
-    KALDI_ERR << "Implausibly low OldWeight: " << ans << " (l2 regularization "
-              << "getting too strong? info: " << this->Info();
-  }
-  return ans;
-}
-
-void BlockAffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+void BlockAffineComponent::Init(BaseFloat learning_rate,
                                 int32 input_dim, int32 output_dim,
                                 BaseFloat param_stddev,
                                 BaseFloat bias_stddev,
                                 int32 num_blocks) {
-  UpdatableComponent::Init(learning_rate, l2_penalty);
+  UpdatableComponent::Init(learning_rate);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
   KALDI_ASSERT(input_dim % num_blocks == 0 && output_dim % num_blocks == 0);
 
@@ -1048,11 +1010,9 @@ void BlockAffineComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
 void BlockAffineComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
-  BaseFloat learning_rate = learning_rate_,
-               l2_penalty = l2_penalty_;
+  BaseFloat learning_rate = learning_rate_;
   int32 input_dim = -1, output_dim = -1, num_blocks = 1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("l2-penalty", &args, &l2_penalty); // optional.
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   ok = ok && ParseFromString("num-blocks", &args, &num_blocks);
@@ -1065,7 +1025,7 @@ void BlockAffineComponent::InitFromString(std::string args) {
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, input_dim, output_dim,
+  Init(learning_rate, input_dim, output_dim,
        param_stddev, bias_stddev, num_blocks);
 }
   
@@ -1073,8 +1033,6 @@ void BlockAffineComponent::InitFromString(std::string args) {
 void BlockAffineComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<BlockAffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
-  ExpectToken(is, binary, "<L2Penalty>");
-  ReadBasicType(is, binary, &l2_penalty_);
   ExpectToken(is, binary, "<NumBlocks>");
   ReadBasicType(is, binary, &num_blocks_);
   ExpectToken(is, binary, "<LinearParams>");
@@ -1088,8 +1046,6 @@ void BlockAffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<BlockAffineComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
-  WriteToken(os, binary, "<L2Penalty>");
-  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, "<NumBlocks>");
   WriteBasicType(os, binary, num_blocks_);
   WriteToken(os, binary, "<LinearParams>");
@@ -1175,7 +1131,6 @@ void MixtureProbComponent::PerturbParams(BaseFloat stddev) {
 Component* MixtureProbComponent::Copy() const {
   MixtureProbComponent *ans = new MixtureProbComponent();
   ans->learning_rate_ = learning_rate_;
-  ans->l2_penalty_ = l2_penalty_;
   ans->params_ = params_;
   ans->input_dim_ = input_dim_;
   ans->output_dim_ = output_dim_;
@@ -1195,10 +1150,10 @@ BaseFloat MixtureProbComponent::DotProduct(
   return ans;
 }
 
-void MixtureProbComponent::Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+void MixtureProbComponent::Init(BaseFloat learning_rate,
                                 BaseFloat diag_element,
                                 const std::vector<int32> &sizes) {
-  UpdatableComponent::Init(learning_rate, l2_penalty);
+  UpdatableComponent::Init(learning_rate);
   is_gradient_ = false;
   input_dim_ = 0;
   output_dim_ = 0;
@@ -1229,11 +1184,9 @@ void MixtureProbComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
   BaseFloat learning_rate = learning_rate_,
-               l2_penalty = l2_penalty_,
              diag_element = 0.9;
   std::vector<int32> dims;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("l2-penalty", &args, &l2_penalty); // optional.
   ParseFromString("diag-element", &args, &diag_element); // optional.
   ok = ok && ParseFromString("dims", &args, &dims);
   if (!args.empty())
@@ -1241,15 +1194,13 @@ void MixtureProbComponent::InitFromString(std::string args) {
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, l2_penalty, diag_element, dims);
+  Init(learning_rate, diag_element, dims);
 }
 
 
 void MixtureProbComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<MixtureProbComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
-  ExpectToken(is, binary, "<L2Penalty>");
-  ReadBasicType(is, binary, &l2_penalty_);
   ExpectToken(is, binary, "<Params>");
   int32 size;
   ReadBasicType(is, binary, &size);
@@ -1271,8 +1222,6 @@ void MixtureProbComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<MixtureProbComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
-  WriteToken(os, binary, "<L2Penalty>");
-  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, "<Params>");
   int32 size = params_.size();
   WriteBasicType(os, binary, size);
@@ -1286,7 +1235,6 @@ void MixtureProbComponent::Write(std::ostream &os, bool binary) const {
 void MixtureProbComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
-    SetL2Penalty(0.0);
     is_gradient_ = true;
   }
   for (size_t i = 0; i < params_.size(); i++)
@@ -1353,10 +1301,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
       Matrix<BaseFloat> &param_block_to_update(to_update->params_[i]);
       if (to_update->is_gradient_) { // We're just storing
         // the gradient there, so it's a linear update rule as for any other layer.
-        // Note: most likely the learning_rate_ will be 1.0 and OldWeight() will
-        // be 1.0 because of zero l2_penalty_.
-        KALDI_ASSERT(to_update->OldWeight(chunk_weights.Sum()) == 1.0 &&
-                     to_update->learning_rate_ == 1.0);
+        KALDI_ASSERT(to_update->learning_rate_ == 1.0);
         param_block_to_update.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block,
                                         kNoTrans, 1.0);
       } else {
@@ -1383,13 +1328,12 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
         Matrix<BaseFloat> gradient(num_rows, num_cols);
         gradient.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block, kNoTrans,
                            0.0);
-        BaseFloat old_weight = to_update->OldWeight(chunk_weights.Sum());
         for (int32 col = 0; col < num_cols; col++) {
           Vector<BaseFloat> param_col(num_rows);
           param_col.CopyColFromMat(param_block_to_update, col);
           Vector<BaseFloat> log_param_col(param_col);
           log_param_col.ApplyLog(); // note: works even for zero, but may have -inf
-          log_param_col.Scale(old_weight); // relates to l2 regularization-- applied at log
+          log_param_col.Scale(1.0); // relates to l2 regularization-- applied at log
           // parameter level.
           for (int32 i = 0; i < num_rows; i++)
             if (log_param_col(i) < -1.0e+20)
@@ -1780,3 +1724,5 @@ void DctComponent::Read(std::istream &is, bool binary) {
 }
 
 } // namespace kaldi
+
+

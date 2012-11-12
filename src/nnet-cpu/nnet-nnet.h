@@ -157,10 +157,8 @@ class Nnet {
   /// This is used to separately adjust learning rates of each layer,
   /// after each "phase" of training.  We basically ask (using the validation
   /// gradient), do we wish we had gone further in this direction?  Yes->
-  /// increase learning rate, no -> decrease it.  A similar logic updates
-  /// the "shrinkage rate"... note, we view the shrinkage rate as a product
-  /// of two separate things: a learning rate times an l2 penalty.
-  void AdjustLearningRatesAndL2Penalties(
+  /// increase learning rate, no -> decrease it. 
+  void AdjustLearningRates(
       const VectorBase<BaseFloat> &old_model_old_gradient,
       const VectorBase<BaseFloat> &new_model_old_gradient,
       const VectorBase<BaseFloat> &old_model_new_gradient,
@@ -168,9 +166,7 @@ class Nnet {
       BaseFloat measure_at, // where to measure gradient, on line between old
                             // and new model; 0.5 < measure_at <= 1.0.
       BaseFloat learning_rate_ratio,
-      BaseFloat max_learning_rate,
-      BaseFloat min_l2_penalty,
-      BaseFloat max_l2_penalty);
+      BaseFloat max_learning_rate);
   
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
   // separately for each component; zero for non-updatable components.

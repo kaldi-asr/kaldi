@@ -26,16 +26,11 @@ $initial_num_hidden_layers = -1; # if >= 0, the number of hidden layers
   # (the final number is used to calculate the #neurons).
 $single_layer_config = "";
 $bias_stddev = 2.0;
-$l2_penalty = 1.0e-06;
 $precondition = "false";
 
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
     $input_left_context = $ARGV[1];
-    shift; shift;
-  }
-  if ($ARGV[0] eq "--l2-penalty") {
-    $l2_penalty = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--input-right-context") {
@@ -77,19 +72,16 @@ Options:
                                    #  In this case, the positional parameter <num-hidden-layers> is only
                                    #  used to work out the number of units per hidden layer (based on
                                    #  parameter count), and we write to <config-file> the config corresponding
-                                   #  to a single hidden layer.
-   --l2-penalty <penalty>          #  l2 penalty per frame, default 1.0e-06\n";
+                                   #  to a single hidden layer.\n";
      exit(1);
 }
 
 ($feat_dim, $num_leaves, $num_hidden_layers, $num_params) = @ARGV;
-
 ($input_left_context < 0) &&  die "Invalid input left context $input_left_context";
 ($input_right_context < 0) &&  die "Invalid input right context $input_right_context";
 ($feat_dim <= 0) &&  die "Invalid feature dimension $feat_dim";
 ($num_leaves <= 0) && die "Invalid number of leaves $num_leaves";
 ($num_hidden_layers <= 0) && die "Invalid number of hidden layers $num_hidden_layers";
-($l2_penalty < 0) && die "Invalid l2 penalty";
 if ($initial_num_hidden_layers < 0) {
   $initial_num_hidden_layers = $num_hidden_layers;
 }
@@ -140,7 +132,7 @@ $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
   print "AffineComponent input-dim=$cur_input_dim output-dim=$hidden_layer_size precondition=$precondition " .
-    "param-stddev=$param_stddev bias-stddev=$bias_stddev l2-penalty=$l2_penalty\n";
+    "param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "TanhComponent dim=$cur_input_dim\n";
 }
@@ -150,14 +142,14 @@ if ($single_layer_config ne "") {
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
   print F "AffineComponent input-dim=$hidden_layer_size output-dim=$hidden_layer_size precondition=$precondition " .
-    "param-stddev=$param_stddev bias-stddev=$bias_stddev l2-penalty=$l2_penalty\n";
+    "param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
   close (F) || die "Closing config file";
 }
 
 ## Now the output layer.
 print "AffineComponent input-dim=$cur_input_dim output-dim=$num_leaves precondition=$precondition " .
-  "param-stddev=0 bias-stddev=0 l2-penalty=$l2_penalty\n"; # we just set the parameters to zero for this layer.
+  "param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";
 

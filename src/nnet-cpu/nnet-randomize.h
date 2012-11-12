@@ -50,7 +50,7 @@ struct NnetDataRandomizerConfig {
                  "the frequencies of samples.");
     po->Register("num-epochs", &num_epochs, "If >0, this will define how many "
                  "times to train on the whole data.  Note, you will see some "
-                 "samples more than once if frequency-power < 1.0.  You must"
+                 "samples more than once if frequency-power < 1.0.  You must "
                  "define num-samples or num-epochs.");
     po->Register("num-samples", &num_samples, "The number of samples of training "
                  "data to train on.  You must define num-samples or num-epochs.");

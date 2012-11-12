@@ -147,12 +147,11 @@ class Component {
  */
 class UpdatableComponent : public Component {
  public:
-  void Init(BaseFloat learning_rate, BaseFloat l2_penalty) {
+  void Init(BaseFloat learning_rate) {
     learning_rate_ = learning_rate;
-    l2_penalty_ = l2_penalty;
   }
-  UpdatableComponent(BaseFloat learning_rate, BaseFloat l2_penalty) {
-    Init(learning_rate, l2_penalty);
+  UpdatableComponent(BaseFloat learning_rate) {
+    Init(learning_rate);
   }
 
   /// Set parameters to zero,
@@ -163,7 +162,7 @@ class UpdatableComponent : public Component {
   virtual void SetZero(bool treat_as_gradient) = 0;
   
   /// Note: l2_penalty is per frame.
-  UpdatableComponent(): learning_rate_(0.001), l2_penalty_(1.0e-06) { }
+  UpdatableComponent(): learning_rate_(0.001) { }
   
   virtual ~UpdatableComponent() { }
 
@@ -181,20 +180,8 @@ class UpdatableComponent : public Component {
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
   /// Gets the learning rate of gradient descent
   BaseFloat LearningRate() const { return learning_rate_; }
-  /// Sets L2 penalty (weight decay)
-  void SetL2Penalty(BaseFloat l2) { l2_penalty_ = l2;  }
-  /// Gets L2 penalty (weight decay)
-  BaseFloat L2Penalty() const { return l2_penalty_; }
  protected:
   BaseFloat learning_rate_; ///< learning rate (0.0..0.01)
-  BaseFloat l2_penalty_; ///< L2 regularization constant (0.0..1e-4)
-
-  /// This function is used in SGD with l2 regularization; it uses
-  /// total weight of all labels we're training on in this minibatch,
-  /// together with the learning rate, to work out by how much we
-  /// should scale down the previous parameter values during this step
-  /// of SGD.
-  BaseFloat OldWeight(BaseFloat tot_weight) const;
 };
 
 /// This kind of Component is a base-class for things like
@@ -301,7 +288,7 @@ class AffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
-  virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+  virtual void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev, BaseFloat bias_stddev,
                     bool precondition);
@@ -401,7 +388,7 @@ class SpliceComponent: public Component {
 // which we average the variance of the input data.
 class AffinePreconInputComponent: public AffineComponent {
  public:
-  virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+  virtual void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev,
                     BaseFloat bias_stddev,
@@ -443,7 +430,7 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   // Note: num_blocks must divide input_dim.
-  virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+  virtual void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev, BaseFloat bias_stddev,
                     int32 num_blocks);
@@ -495,7 +482,7 @@ class MixtureProbComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
-  virtual void Init(BaseFloat learning_rate, BaseFloat l2_penalty,
+  virtual void Init(BaseFloat learning_rate,
                     BaseFloat diag_element,
                     const std::vector<int32> &sizes);
   virtual void InitFromString(std::string args);  

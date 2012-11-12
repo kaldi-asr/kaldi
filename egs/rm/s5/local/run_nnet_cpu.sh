@@ -241,3 +241,26 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    exp/tri3b/graph data/test exp/tri4v_nnet/decode
 )
 
+
+( # 4w is as 4v but rerunning after I changed the code to remove l2 regularization;
+  # just checking it still runs.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--precondition true" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4w_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4w_nnet/decode
+)
+
+( # running more iters on 4w.
+  steps/train_nnet_cpu.sh --nnet-config-opts "--precondition true" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4w_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4w_nnet/decode
+)

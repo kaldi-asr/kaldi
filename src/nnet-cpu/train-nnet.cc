@@ -171,15 +171,13 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
 
     // Update the learning rates.  This is done after possibly reverting
     // the model, so the changed learning rates don't get thrown away.
-    nnet_->AdjustLearningRatesAndL2Penalties(old_model_old_gradient,
-                                             new_model_old_gradient,
-                                             old_model_new_gradient,
-                                             new_model_new_gradient,
-                                             config_.measure_gradient_at,
-                                             config_.learning_rate_ratio,
-                                             config_.max_learning_rate,
-                                             config_.min_l2_penalty,
-                                             config_.max_l2_penalty);
+    nnet_->AdjustLearningRates(old_model_old_gradient,
+                               new_model_old_gradient,
+                               old_model_new_gradient,
+                               new_model_new_gradient,
+                               config_.measure_gradient_at,
+                               config_.learning_rate_ratio,
+                               config_.max_learning_rate);
     KALDI_VLOG(3) << "Current model info: " << nnet_->Info();
   } else { // first time.
     validation_gradient_ = *nnet_;

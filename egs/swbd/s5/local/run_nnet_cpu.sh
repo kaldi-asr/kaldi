@@ -155,6 +155,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
 ## Rerunning the quite-large 5b1 setup with more recent code (and with
 ## bias-stddev=2.0 now by default, for 15 iterations.
 ## Also reducing minibatch-size to 250- I think I got instability on the 1st iter.
+## Caution--  there still seems to be instability here, it got worse at first.
 (
  steps/train_nnet_cpu.sh --num_hidden_layers 3 \
    --num-iters 15 --num-parameters 6000000 --samples_per_iteration 800000 \
@@ -173,3 +174,86 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
   ## evaluated likelihood of the previous on train_dev, just like Karel did, but
   ## values were similar to his.
   ##     steps/eval_nnet_like.sh --iter 15 data/train_dev/ exp/tri4b_ali_train_dev/ exp/tri5b1_nnet/
+
+## tri5b9 will be as 5b7 (the 1st 5 iters) but just rerunning after
+## changing the code to remove l2 regularization.
+( 
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b9_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b9_nnet/decode_train_dev
+)
+
+
+## tri5b10 is as tri5b9, but adding --precondition true.
+( 
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+  --nnet-config-opts "--precondition true" \
+   --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b10_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b10_nnet/decode_train_dev
+)
+
+
+(  # Doing more iters of training tri5b10.
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+   --num-iters 15 --stage 5 \
+  --nnet-config-opts "--precondition true" \
+   --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b10_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b10_nnet/decode_train_dev_it15
+)
+
+
+## tri5b11 is as tri5b10, but changing learning-rate-ratio from 1.1 (the
+## default to 1.02.  This means the learning rate can only change very slowly,
+## so it stays high for longer.   Doing a large number of iterations (20).
+( 
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+  --num-iters 20 --learning-rate-ratio 1.02 \
+  --nnet-config-opts "--precondition true" \
+   --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b11_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b11_nnet/decode_train_dev
+)
+
+## tri5b12 is as tri5b11 but with an even smaller ratio (1.01) on the
+## learning rate, and more iterations (30).
+( 
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+  --num-iters 30 --learning-rate-ratio 1.01 \
+  --nnet-config-opts "--precondition true" \
+   --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b12_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b12_nnet/decode_train_dev
+)

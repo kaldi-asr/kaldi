@@ -205,18 +205,18 @@ void UnitTestGenericComponent() { // works if it has an initializer from int,
 }
 
 void UnitTestAffineComponent() {
-  BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
+  BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
-
+  bool precondition = (rand() % 2 == 1);
   {
     AffineComponent component;
-    component.Init(learning_rate, l2_penalty, input_dim, output_dim,
-                   param_stddev, bias_stddev);
+    component.Init(learning_rate, input_dim, output_dim,
+                   param_stddev, bias_stddev, precondition);
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 l2-penalty=0.001 input-dim=10 output-dim=15 param-stddev=0.1";
+    const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1";
     AffineComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
@@ -224,19 +224,19 @@ void UnitTestAffineComponent() {
 }
 
 void UnitTestAffinePreconInputComponent() {
-  BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
+  BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0,
       avg_samples = 100.0;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
 
   {
     AffinePreconInputComponent component;
-    component.Init(learning_rate, l2_penalty, input_dim, output_dim,
+    component.Init(learning_rate, input_dim, output_dim,
                    param_stddev, bias_stddev, avg_samples);
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 l2-penalty=0.001 input-dim=10 output-dim=15 param-stddev=0.1 avg-samples=100";
+    const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1 avg-samples=100";
     AffinePreconInputComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
@@ -244,7 +244,7 @@ void UnitTestAffinePreconInputComponent() {
 }
 
 void UnitTestBlockAffineComponent() {
-  BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
+  BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0;
   int32 num_blocks = 1 + rand() % 3,
          input_dim = num_blocks * (2 + rand() % 4),
@@ -252,12 +252,12 @@ void UnitTestBlockAffineComponent() {
   
   {
     BlockAffineComponent component;
-    component.Init(learning_rate, l2_penalty, input_dim, output_dim,
+    component.Init(learning_rate, input_dim, output_dim,
                    param_stddev, bias_stddev, num_blocks);
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 l2-penalty=0.001 input-dim=10 output-dim=15 param-stddev=0.1 num-blocks=5";
+    const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1 num-blocks=5";
     BlockAffineComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
@@ -265,7 +265,7 @@ void UnitTestBlockAffineComponent() {
 }
 
 void UnitTestMixtureProbComponent() {
-  BaseFloat learning_rate = 0.01, l2_penalty = 0.001,
+  BaseFloat learning_rate = 0.01,
       diag_element = 0.8;
   std::vector<int32> sizes;
   int32 num_sizes = 1 + rand() % 5; // allow 
@@ -275,11 +275,11 @@ void UnitTestMixtureProbComponent() {
   
   {
     MixtureProbComponent component;
-    component.Init(learning_rate, l2_penalty, diag_element, sizes);
+    component.Init(learning_rate, diag_element, sizes);
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 l2-penalty=0.001 diag-element=0.9 dims=3:4:5";
+    const char *str = "learning-rate=0.01 diag-element=0.9 dims=3:4:5";
     MixtureProbComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
