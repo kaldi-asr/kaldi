@@ -65,9 +65,10 @@ int main(int argc, char *argv[]) {
           } else {
             if (key.compare(rd->Key()) != 0) {
               KALDI_ERR << "Error in input " << (i+1) << ";  expected key "
-							<< key << " but got " << rd->Key();
+						<< key << " but got " << rd->Key();
             } else if (feats.NumRows() != rd->Value().NumRows()) {
-              KALDI_ERR << "Error in input " << (i+1) << ";  wrong number of rows in " << rd->Key();
+              KALDI_ERR << "Error in input " << (i+1) << ";  wrong number of rows in " << rd->Key() 
+			            << ": expecting " << feats.NumRows() << " but got " << rd->Value().NumRows();
             }
           }
           int displ = feats.NumCols();

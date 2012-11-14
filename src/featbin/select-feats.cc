@@ -48,8 +48,6 @@ int main(int argc, char *argv[]) {
     string rspecifier = po.GetArg(2);
     string wspecifier = po.GetArg(3);
     
-    KALDI_LOG << "sspecifier=" << sspecifier << " rspecifier=" << rspecifier << " wspecifier=" << wspecifier;
-
     // figure out the selected dimensions
     istringstream iss(sspecifier);
     vector<string> tokens;
