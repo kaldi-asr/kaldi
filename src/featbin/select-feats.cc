@@ -18,6 +18,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <utility>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -32,8 +33,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "Select certain dimensions of the feature file;  think of it as the unix\n"
       "command cut -f ...\n"
-      "Usage: merge-feats selection in-rspecifier out-wspecifier\n"
-      "  e.g. merge-feats \"0 1 3-12\" scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n";
+      "Usage: select-feats selection in-rspecifier out-wspecifier\n"
+      "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n";
     
     ParseOptions po(usage);
     
@@ -48,46 +49,83 @@ int main(int argc, char *argv[]) {
     string rspecifier = po.GetArg(2);
     string wspecifier = po.GetArg(3);
     
+    // set up input (we'll need that to validate the selected indices)
+    SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
+    
+    if (kaldi_reader.Done()) {
+      KALDI_WARN << "Empty archive provided.";
+      return 0;
+    }
+    
+    int32 dimIn = kaldi_reader.Value().NumCols();
+    int32 dimOut = 0;
+    
     // figure out the selected dimensions
     istringstream iss(sspecifier);
-    vector<string> tokens;
-    copy(istream_iterator<string>(iss),
-         istream_iterator<string>(),
-         back_inserter<vector<string> >(tokens));
-    
-    vector<int> indices;
-    for (vector<string>::iterator it = tokens.begin(); it != tokens.end(); it++) {
-      size_t p = it->find('-');
+    string token;
+    vector<pair<int32, int32> > ranges;
+    vector<int32> offsets;
+    while (getline(iss, token, ',')) {
+      size_t p = token.find('-');
       if (p != string::npos) {
         int s, e;
-        istringstream(it->substr(0, it->length() - p - 1)) >> s;
-        istringstream(it->substr(p+1)) >> e;
-        for (int j = s; j <= e; ++j)
-            indices.push_back(j);
+        istringstream(token.substr(0, token.length() - p - 1)) >> s;
+        istringstream(token.substr(p+1)) >> e;
+        
+        if (s < 0 || s > (dimIn-1)) {
+          KALDI_ERR << "Invalid range start: " << s;
+          return 1;
+        } else if (e < 0 || e > (dimIn-1)) {
+          KALDI_ERR << "Invalid range end: " << e;
+          return 1;
+        }
+        
+        // reverse range? make individual selections
+        if (s > e) {
+          for (int32 i = s; i >= e; --i) {
+            ranges.push_back(pair<int32, int32>(i, i));
+            offsets.push_back(dimOut);
+            dimOut += 1;
+          }
+        } else {
+          ranges.push_back(pair<int32, int32>(s, e));
+          offsets.push_back(dimOut);
+          dimOut += (e - s + 1);
+        }
       } else {
         int i;
-        istringstream(*it) >> i;
-        indices.push_back(i);
+        istringstream(token) >> i;
+        
+        if (i < 0 || i > (dimIn-1)) {
+          KALDI_ERR << "Invalid selection index: " << i;
+          return 1;
+        }
+        
+        ranges.push_back(pair<int32, int32>(i, i));
+        offsets.push_back(dimOut);
+        dimOut += 1;
       }
     }
     
-    if (indices.size() < 1)
-      KALDI_ERR << "No indices in format string!";
+    if (ranges.size() < 1) {
+      KALDI_ERR << "No ranges or indices in selection string!";
+      return 1;
+    }
     
-    // set up i/o
-    
-    SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
+    // set up output
     BaseFloatMatrixWriter kaldi_writer(wspecifier);
 
     // process all keys
     for (; !kaldi_reader.Done(); kaldi_reader.Next()) {
-      Matrix<BaseFloat> feats(kaldi_reader.Value().NumRows(), indices.size());
+      Matrix<BaseFloat> feats(kaldi_reader.Value().NumRows(), dimOut);
       
-      // extract the desired columns
-      for (int i = 0; i < kaldi_reader.Value().NumRows(); ++i) {
-        for (int j = 0; j < indices.size(); ++j) {
-          feats(i, j) = kaldi_reader.Value()(i, indices[j]);
-        }
+      // extract the desired ranges
+      for (int32 i = 0; i < ranges.size(); ++i) {
+        int32 f = ranges[i].first;
+        int32 ncol = ranges[i].second - f + 1;
+        
+        feats.Range(0, feats.NumRows(), offsets[i], ncol)
+          .CopyFromMat(kaldi_reader.Value().Range(0, feats.NumRows(), f, ncol));
       }
       
       kaldi_writer.Write(kaldi_reader.Key(), feats);

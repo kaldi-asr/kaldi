@@ -23,11 +23,13 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace std;
     
     const char *usage =
       "Merge feature files (assuming they have the same lengths);  think of the\n"
-      "unix command paste a b\n"
-      "Usage: merge-feats in-rspecifier1 in-rspecifier2 [in-rspecifier3 ...] out-wspecifier\n";
+      "unix command paste a b. You might be interested in select-feats, too.\n"
+      "Usage: merge-feats in-rspecifier1 in-rspecifier2 [in-rspecifier3 ...] out-wspecifier\n"
+      "  e.g. merge-feats ark:feats1.ark \"ark:select-feats 0-3 ark:feats2.ark ark:- |\" ark:feats-out.ark\n";
     
     ParseOptions po(usage);
     
@@ -39,56 +41,81 @@ int main(int argc, char *argv[]) {
     }
     
     // last argument is output
-    std::string wspecifier = po.GetArg(po.NumArgs());
+    string wspecifier = po.GetArg(po.NumArgs());
     BaseFloatMatrixWriter kaldi_writer(wspecifier);
     
-    // assemble vector of input readers
-    std::vector<SequentialBaseFloatMatrixReader *> input;
+    // assemble vector of input readers, peek dimensions
+    vector<SequentialBaseFloatMatrixReader *> input;
+    vector<int32> offsets;
+    int32 dim = 0;
     for (int i = 1; i < po.NumArgs(); ++i) {
-      std::string rspecifier = po.GetArg(i);
-      input.push_back(new SequentialBaseFloatMatrixReader(rspecifier));
+      string rspecifier = po.GetArg(i);
+      SequentialBaseFloatMatrixReader *rd = new SequentialBaseFloatMatrixReader(rspecifier);
+      input.push_back(rd);
+      offsets.push_back(dim);
+      dim += rd->Value().NumCols();
     }
     
     bool done = false;
     while (!done) {
-      std::string key = "";
-      
+      string key = "";
       Matrix<BaseFloat> feats;
+      int32 num;
+      
+      bool incomplete = false;
       for (int i = 0; i < input.size(); ++i) {
         SequentialBaseFloatMatrixReader *rd = input[i];
-        if (!rd->Done()) {
-          if (key.length() == 0) {
-            key = rd->Key();
-            feats = rd->Value();
-            rd->Next();
-            continue;
+        
+        // the first input specifies the output keys
+        if (i == 0) {
+          if (rd->Done()) {
+            done = true;
+            break;
           } else {
-            if (key.compare(rd->Key()) != 0) {
-              KALDI_ERR << "Error in input " << (i+1) << ";  expected key "
-						<< key << " but got " << rd->Key();
-            } else if (feats.NumRows() != rd->Value().NumRows()) {
-              KALDI_ERR << "Error in input " << (i+1) << ";  wrong number of rows in " << rd->Key() 
-			            << ": expecting " << feats.NumRows() << " but got " << rd->Value().NumRows();
-            }
+            key = rd->Key();
+            num = rd->Value().NumRows();
+            feats.Resize(num, dim);
+            incomplete = false;
           }
-          int displ = feats.NumCols();
-          feats.Resize(feats.NumRows(), feats.NumCols() + rd->Value().NumCols(), kCopyData);
-          for (int j = 0; j < feats.NumRows(); j++) {
-            for (int k = 0; k < rd->Value().NumCols(); ++k) {
-              feats(j, displ + k) = rd->Value()(j, k);
-            }
-          }
-          
-          rd->Next();
-        } else {
+        } else if (rd->Done()) {
+          // we will ignore incomplete utts
+          KALDI_WARN << "Unexpected end of archive in input " << (i+1)
+                     << ";  expected key " << key;
+          incomplete = true;
+          break;
+        } else if (key.compare(rd->Key()) != 0) {
+          KALDI_WARN << "Error in input " << (i+1) << ";  expected key "
+                     << key << " but got " << rd->Key() << ".  Terminating.";
+          incomplete = true;
           done = true;
+          break;
+        } else if (num != rd->Value().NumRows()) {
+          KALDI_WARN << "Error in input " << (i+1) << ";  got " << rd->Value().NumRows()
+                     << " instead of " << num << " samples.  Ignoring utt " << key;
+          incomplete = true;
+          break;
         }
-      }	
-      if (done) 
+
+        // copy features
+        if (!incomplete && !done) {
+          feats.Range(0, num, offsets[i], rd->Value().NumCols()).CopyFromMat(rd->Value());
+        }
+        
+        rd->Next();
+      }
+
+      if (done)
         break;
-      kaldi_writer.Write(key, feats);
+      
+      if (!incomplete)
+        kaldi_writer.Write(key, feats);
     }
     
+    // delete the readers
+    for (vector<SequentialBaseFloatMatrixReader *>::iterator it = input.begin();
+         it != input.end(); it++) {
+      delete (*it);
+    }
     
     return 0;
   } catch(const std::exception &e) {
