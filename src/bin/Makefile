@@ -17,7 +17,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         copy-vector copy-int-vector sum-post sum-matrices draw-tree \
         copy-int-vector-vector thresh-post \
         align-mapped align-compiled-mapped latgen-faster-mapped \
-        hmm-info pdf-to-counts analyze-counts
+        hmm-info pdf-to-counts analyze-counts extract-ctx
 
 OBJFILES = 
 
