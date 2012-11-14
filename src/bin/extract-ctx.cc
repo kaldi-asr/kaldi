@@ -66,6 +66,7 @@ static std::string EventTypeToString(EventType &e,
 
 int main(int argc, char *argv[]) {
   try {
+    typedef kaldi::int32 int32;
     const char *usage =
       "Given the tree stats and the resulting tree, output a mapping of phones\n"
       "in context (and pdf-class) to the pdf-id.  This can be used to link the\n"
