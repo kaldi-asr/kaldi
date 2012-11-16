@@ -62,7 +62,7 @@ void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> 
   cu::FindRowMaxId(net_out, &max_id_);
   max_id_.CopyToVec(&max_id_host_);
   KALDI_ASSERT(max_id_host_.size() == target.size());
-  for(int32 i=0; i<target.size(); i++) {
+  for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
     if (target[i] == max_id_host_[i]) correct++;
   }
   

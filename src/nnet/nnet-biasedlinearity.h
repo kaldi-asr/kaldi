@@ -26,7 +26,7 @@ namespace kaldi {
 
 class BiasedLinearity : public UpdatableComponent {
  public:
-  BiasedLinearity(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
+  BiasedLinearity(int32 dim_in, int32 dim_out, Nnet *nnet) 
     : UpdatableComponent(dim_in, dim_out, nnet), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
@@ -59,16 +59,17 @@ class BiasedLinearity : public UpdatableComponent {
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) {
-    // multiply error by weights
-    out_err->AddMatMat(1.0, in_err, kNoTrans, linearity_, kNoTrans, 0.0);
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+    // multiply error derivative by weights
+    in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &err) {
+  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
     // compute gradient
-    linearity_corr_.AddMatMat(1.0, err, kTrans, input, kNoTrans, momentum_);
-    bias_corr_.AddRowSumMat(1.0, err, momentum_);
+    linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, momentum_);
+    bias_corr_.AddRowSumMat(1.0, diff, momentum_);
     // l2 regularization
     if (l2_penalty_ != 0.0) {
       BaseFloat l2 = learn_rate_*l2_penalty_*input.NumRows();

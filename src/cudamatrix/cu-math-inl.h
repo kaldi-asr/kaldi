@@ -331,7 +331,7 @@ void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, 
     MatrixBase<Real> &tgtmat = tgt->Mat();
     //
     for(int32 r=0; r < tgtmat.NumRows(); r++) {
-      for(int32 off=0; off < frame_offsetvec.size(); off++) {
+      for(int32 off=0; off < static_cast<int32>(frame_offsetvec.size()); off++) {
         int32 r_off = r + frame_offsetvec[off];
         if(r_off < 0) r_off = 0;
         if(r_off >= srcmat.NumRows()) r_off = srcmat.NumRows()-1;
@@ -369,7 +369,7 @@ void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices
     MatrixBase<Real> &tgtmat = tgt->Mat();
     //
     for(int32 r=0; r < tgtmat.NumRows(); r++) {
-      for(int32 c=0; c < copy_from_indicesvec.size(); c++) {
+      for(int32 c=0; c < static_cast<int32>(copy_from_indicesvec.size()); c++) {
         tgtmat(r,c) = srcmat(r,copy_from_indicesvec[c]);
       }
     }

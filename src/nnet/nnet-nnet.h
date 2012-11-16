@@ -43,17 +43,17 @@ class Nnet {
   /// Perform forward pass through the network
   void Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
   /// Perform backward pass through the network
-  void Backpropagate(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err);
+  void Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff);
   /// Perform forward pass through the network, don't keep buffers (use it when not training)
   void Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
 
-  MatrixIndexT InputDim() const; ///< Dimensionality of the input features
-  MatrixIndexT OutputDim() const; ///< Dimensionality of the desired vectors
+  int32 InputDim() const; ///< Dimensionality of the input features
+  int32 OutputDim() const; ///< Dimensionality of the desired vectors
 
-  MatrixIndexT LayerCount() const { ///< Get number of layers
+  int32 LayerCount() const { ///< Get number of layers
     return nnet_.size(); 
   }
-  Component* Layer(MatrixIndexT index) { ///< Access to individual layer
+  Component* Layer(int32 index) { ///< Access to individual layer
     return nnet_[index]; 
   }
   int IndexOfLayer(const Component& comp) const; ///< Get the position of layer in network
@@ -118,7 +118,7 @@ inline Nnet::~Nnet() {
 }
 
    
-inline MatrixIndexT Nnet::InputDim() const { 
+inline int32 Nnet::InputDim() const { 
   if (LayerCount() > 0) {
    return nnet_.front()->InputDim(); 
   } else {
@@ -127,7 +127,7 @@ inline MatrixIndexT Nnet::InputDim() const {
 }
 
 
-inline MatrixIndexT Nnet::OutputDim() const { 
+inline int32 Nnet::OutputDim() const { 
   if (LayerCount() > 0) {
     return nnet_.back()->OutputDim(); 
   } else {

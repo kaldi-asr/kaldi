@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
     if(nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
-      KALDI_ERR << "The MLP has to be without sotmax...";
+      KALDI_ERR << "The MLP has to be without softmax...";
     }
 
     nnet.SetLearnRate(learn_rate, NULL);
@@ -167,8 +167,8 @@ int main(int argc, char *argv[]) {
 
     //Xent xent; TODO, OBJECTIVE!
     
-    CuMatrix<BaseFloat> feats, feats_transf, nnet_out, nnet_err;
-    Matrix<BaseFloat> nnet_out_h, nnet_err_h;
+    CuMatrix<BaseFloat> feats, feats_transf, nnet_out, nnet_diff;
+    Matrix<BaseFloat> nnet_out_h, nnet_diff_h;
 
     std::vector<int32> targets;
 
@@ -262,23 +262,23 @@ int main(int argc, char *argv[]) {
         total_ali_ac_like += ali_ac_like;
 
         //6) convert the Posterior to a matrix
-        nnet_err_h.Resize(nnet_out_h.NumRows(), nnet_out_h.NumCols());
+        nnet_diff_h.Resize(nnet_out_h.NumRows(), nnet_out_h.NumCols());
         nnet_out_h.SetZero();
         for(int32 t=0; t<post.size(); t++) {
           for(int32 arc=0; arc<post[t].size(); arc++) {
             int32 pdf = trans_model.TransitionIdToPdf(post[t][arc].first);
-            nnet_err_h(t, pdf) += post[t][arc].second;
+            nnet_diff_h(t, pdf) += post[t][arc].second;
           }
         }
         //subtract the pdf-Viterbi-path
-        for(int32 t=0; t<nnet_err_h.NumRows(); t++) {
-          nnet_err_h(t, num_ali[t]) -= 1.0;
+        for(int32 t=0; t<nnet_diff_h.NumRows(); t++) {
+          nnet_diff_h(t, num_ali[t]) -= 1.0;
         }
 
         //7) backpropagate through the nnet
         if (!crossvalidate) {
-          nnet_err.CopyFromMat(nnet_err_h);
-          nnet.Backpropagate(nnet_err, NULL);
+          nnet_diff.CopyFromMat(nnet_diff_h);
+          nnet.Backpropagate(nnet_diff, NULL);
         }
 
         //increase time counter

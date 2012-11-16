@@ -39,7 +39,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
   cu::FindRowMaxId(net_out, &max_id_);
   max_id_.CopyToVec(&max_id_host_);
   KALDI_ASSERT(max_id_host_.size() == target.size());
-  for(int32 i=0; i<target.size(); i++) {
+  for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
     if (target[i] == max_id_host_[i]) correct++;
   }
   
@@ -72,7 +72,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
     double loss_nosil = 0.0;
     int32 frames_nosil = 0;
     int32 correct_nosil = 0;
-    for(int32 i=0; i<target.size(); i++) { 
+    for(int32 i=0; i<static_cast<int32>(target.size()); i++) { 
       if(target[i] >= sil_pdfs_) {
         loss_nosil += log_post_tgt_host_(i);
         frames_nosil++;
@@ -98,7 +98,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
   // accumulate error quantities
   {
     double correct_scaled = 0.0;
-    for(int32 i=0; i<target.size(); i++) {
+    for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
       if(target[i] == max_id_host_[i]) correct_scaled += mask_host(i);
     }
     loss_scaled_    -= log_post_tgt_host_.Sum();
@@ -110,7 +110,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
     double loss_scaled_nosil = 0.0;
     double frames_scaled_nosil = 0.0;
     double correct_scaled_nosil = 0.0;
-    for(int32 i=0; i<target.size(); i++) { 
+    for(int32 i=0; i<static_cast<int32>(target.size()); i++) { 
       if(target[i] >= sil_pdfs_) {
         loss_scaled_nosil += log_post_tgt_host_(i);
         frames_scaled_nosil += mask_host(i);

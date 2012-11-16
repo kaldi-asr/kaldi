@@ -61,7 +61,7 @@ IntType* CuStlVector<IntType>::Data() {
 
 
 template<typename IntType>
-CuStlVector<IntType>& CuStlVector<IntType>::Resize(size_t dim) {
+CuStlVector<IntType>& CuStlVector<IntType>::Resize(MatrixIndexT dim) {
   if (dim_ == dim) {
     // SetZero();
     return *this;
@@ -128,7 +128,7 @@ CuStlVector<IntType>& CuStlVector<IntType>::CopyFromVec(const std::vector<IntTyp
 
 template<typename IntType>
 void CuStlVector<IntType>::CopyToVec(std::vector<IntType> *dst) const {
-  if (dst->size() != dim_) {
+  if (static_cast<MatrixIndexT>(dst->size()) != dim_) {
     dst->resize(dim_);
   }
 

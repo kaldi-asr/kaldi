@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     Mse mse;
 
     
-    CuMatrix<BaseFloat> feats, feats_transf, targets, nnet_in, nnet_out, nnet_tgt, glob_err;
+    CuMatrix<BaseFloat> feats, feats_transf, targets, nnet_in, nnet_out, nnet_tgt, obj_diff;
 
     Timer tim;
     double time_next=0;
@@ -167,9 +167,9 @@ int main(int argc, char *argv[]) {
         cache.GetBunch(&nnet_in, &nnet_tgt);
         // train 
         nnet.Propagate(nnet_in, &nnet_out);
-        mse.Eval(nnet_out, nnet_tgt, &glob_err);
+        mse.Eval(nnet_out, nnet_tgt, &obj_diff);
         if (!crossvalidate) {
-          nnet.Backpropagate(glob_err, NULL);
+          nnet.Backpropagate(obj_diff, NULL);
         }
         tot_t += nnet_in.NumRows();
       }

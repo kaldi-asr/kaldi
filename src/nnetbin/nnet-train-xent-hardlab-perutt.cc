@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     Xent xent;
 
     
-    CuMatrix<BaseFloat> feats, feats_transf, nnet_out, glob_err;
+    CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
     Timer tim;
     double time_next=0;
@@ -127,10 +127,10 @@ int main(int argc, char *argv[]) {
         nnet_transf.Feedforward(feats, &feats_transf);
         nnet.Propagate(feats_transf, &nnet_out);
         
-        xent.EvalVec(nnet_out, alignment, &glob_err);
+        xent.EvalVec(nnet_out, alignment, &obj_diff);
         
         if (!crossvalidate) {
-          nnet.Backpropagate(glob_err, NULL);
+          nnet.Backpropagate(obj_diff, NULL);
         }
 
         tot_t += mat.NumRows();
