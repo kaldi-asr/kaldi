@@ -201,7 +201,7 @@ void CuDevice::PrintProfile() {
 
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) {
 // WARNING! the CUDA API is inconsistent accross versions!
-#if (CUDA_VERSION > 3020)
+#if (CUDA_VERSION >= 3020)
   size_t mem_free, mem_total;
 #else
   unsigned int mem_free, mem_total;
