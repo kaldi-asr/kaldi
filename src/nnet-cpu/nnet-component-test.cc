@@ -108,7 +108,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
 
   if (ucomponent != NULL) { // Test parameter derivative is correct.
 
-    int32 num_ok = 0, num_bad = 0, num_tries = 5;
+    int32 num_ok = 0, num_bad = 0, num_tries = 10;
     KALDI_LOG << "Comparing model gradients " << num_tries << " times.";
     for (int32 i = 0; i < num_tries; i++) {    
       UpdatableComponent *perturbed_ucomponent =
@@ -117,7 +117,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
           dynamic_cast<UpdatableComponent*>(ucomponent->Copy());
       KALDI_ASSERT(perturbed_ucomponent != NULL);
       gradient_ucomponent->SetZero(true); // set params to zero and treat as gradient.
-      BaseFloat perturb_stddev = 1.0e-05;
+      BaseFloat perturb_stddev = 1.0e-04;
       perturbed_ucomponent->PerturbParams(perturb_stddev);
 
       Vector<BaseFloat> output_objfs(num_egs);
@@ -154,7 +154,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
       KALDI_LOG << "Model gradients: comparing " << delta_objf_observed
                 << " and " << delta_objf_predicted;
       if (fabs(delta_objf_predicted - delta_objf_observed) >
-          0.1 * fabs((delta_objf_predicted + delta_objf_observed)/2)) {
+          0.05 * fabs((delta_objf_predicted + delta_objf_observed)/2)) {
         KALDI_WARN << "Bad difference!";
         num_bad++;
       } else {
