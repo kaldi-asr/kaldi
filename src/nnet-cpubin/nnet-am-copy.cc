@@ -64,6 +64,9 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
     }
+
+    if (learning_rate_factor != 1.0)
+      am_nnet.GetNnet().ScaleLearningRates(learning_rate_factor);
     
     {
       Output ko(nnet_wxfilename, binary_write);

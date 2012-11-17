@@ -20,12 +20,43 @@
 
 namespace kaldi {
 
+void UnitTestPreconditionDirections() {
+  MatrixIndexT N = 2 + rand() % 30,
+               D = 1 + rand() % 20;
+  BaseFloat lambda = 0.1;
+  Matrix<BaseFloat> R(N, D), P(N, D);
+  R.SetRandn();
+  P.SetRandn(); // contents should be overwritten.
+
+  PreconditionDirections(R, lambda, &P);
+  // The rest of this function will do the computation the function is doing in
+  // a different, less efficient way and compare with the function call.
+  
+  SpMatrix<BaseFloat> G(D);
+  G.SetUnit();
+  G.ScaleDiag(lambda);
+  // G += R^T R.
+  G.AddMat2(1.0/(N-1), R, kTrans, 1.0);
+  
+  for (int32 n = 0; n < N; n++) {
+    SubVector<BaseFloat> rn(R, n);
+    SpMatrix<BaseFloat> Gn(G);
+    Gn.AddVec2(-1.0/(N-1), rn); // subtract the
+    // outer product of "this" vector.
+    Gn.Invert();
+    SubVector<BaseFloat> pn(P, n);
+    Vector<BaseFloat> pn_compare(D);
+    pn_compare.AddSpVec(1.0, Gn, rn, 0.0);
+    KALDI_ASSERT(pn.ApproxEqual(pn_compare, 0.1));
+  }
+}
+
 
 }
 
 
 int main() {
   using namespace kaldi;
-
-  
+  for (int32 i = 0; i < 10; i++)
+    UnitTestPreconditionDirections();
 }

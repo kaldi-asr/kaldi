@@ -192,6 +192,21 @@ void Nnet::Init(std::vector<Component*> *components) {
   Check();
 }
 
+
+void Nnet::ScaleLearningRates(BaseFloat factor) {
+  std::ostringstream ostr;
+  for (int32 c = 0; c < NumComponents(); c++) {
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
+    if (uc != NULL) { // Updatable component...
+      uc->SetLearningRate(uc->LearningRate() * factor);
+      ostr << uc->LearningRate() << " ";
+    }
+  }
+  KALDI_LOG << "Scaled learning rates by " << factor
+            << ", new learning rates are "
+            << ostr.str();
+}
+
 void Nnet::AdjustLearningRates(
     const VectorBase<BaseFloat> &old_model_old_gradient,
     const VectorBase<BaseFloat> &new_model_old_gradient,

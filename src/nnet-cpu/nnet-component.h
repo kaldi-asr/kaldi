@@ -188,7 +188,7 @@ class UpdatableComponent : public Component {
 /// sigmoid and softmax.
 class NonlinearComponent: public Component {
  public:
-  virtual void Init(int32 dim) { dim_ = dim; }
+  void Init(int32 dim) { dim_ = dim; }
   NonlinearComponent(int32 dim) { Init(dim); }
   NonlinearComponent(): dim_(0) { } // e.g. prior to Read().
   
@@ -274,7 +274,7 @@ class SoftmaxComponent: public NonlinearComponent {
   // The functions below are already implemented at the
   // NonlinearComponent level, but we override them for reasons relating
   // to the occupation counts.
-  virtual void Init(int32 dim) { dim_ = dim; counts_.Resize(dim); }
+  void Init(int32 dim) { dim_ = dim; counts_.Resize(dim); }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
  private:
@@ -283,15 +283,19 @@ class SoftmaxComponent: public NonlinearComponent {
   KALDI_DISALLOW_COPY_AND_ASSIGN(SoftmaxComponent);
 };
 
+
 // Affine means a linear function plus an offset.
+// Note: although this class can be instantiated, it also
+// function as a base-class for more specialized versions of
+// AffineComponent.
 class AffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
-  virtual void Init(BaseFloat learning_rate,
-                    int32 input_dim, int32 output_dim,
-                    BaseFloat param_stddev, BaseFloat bias_stddev,
-                    bool precondition);
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            bool precondition);
   virtual std::string Info() const;
   virtual void InitFromString(std::string args);
   
@@ -316,29 +320,62 @@ class AffineComponent: public UpdatableComponent {
   virtual void PerturbParams(BaseFloat stddev);
   virtual void ZeroOccupancy();
  protected:
+  // This function Update() is for extensibility; child classes override this.
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  void UpdateSimple(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);  
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponent);
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 
-  // The following may be used to precondition the learning...
+  // The following is stored mostly for diagnostics: the
+  // average input value in each dimension.
   Vector<BaseFloat> avg_input_;
   double avg_input_count_;
-  bool precondition_; // If true, a preconditioned learning
-  // that's as if we were working on the mean-removed inputs.
   bool is_gradient_; // If true, treat this as just a gradient.
- private:
-  // This function does the gradient update.
-  void UpdateNormal(const MatrixBase<BaseFloat> &in_value,
-                    const MatrixBase<BaseFloat> &out_deriv,
-                    const VectorBase<BaseFloat> &chunk_weights);
-  // This is an improved, preconditioned update with mean removal
-  // for the features.
-  void UpdatePreconditioned(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv,
-      const VectorBase<BaseFloat> &chunk_weights);
-  
 };
+
+class AffineComponentNobias: public AffineComponent {
+ public:
+  virtual std::string Type() const { return "AffineComponentNobias"; }
+  // The Read and Write functions are shared with AffineComponent,
+  // which calls the virtual Type() function.
+  virtual Component* Copy() const;
+ private:
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+};
+
+// This is an idea Dan is trying out, a little bit like
+// preconditioning the update with the Fisher matrix.
+class AffineComponentPreconditioned: public AffineComponent {
+ public:
+  virtual std::string Type() const { return "AffineComponentPreconditioned"; }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            bool precondition, BaseFloat alpha);
+  virtual void InitFromString(std::string args);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;  
+
+ private:
+  BaseFloat alpha_;
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+};
+
 
 /// Splices a context window of frames together.
 class SpliceComponent: public Component {
@@ -388,21 +425,20 @@ class SpliceComponent: public Component {
 // which we average the variance of the input data.
 class AffinePreconInputComponent: public AffineComponent {
  public:
-  virtual void Init(BaseFloat learning_rate,
+  void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev,
                     BaseFloat bias_stddev,
                     BaseFloat avg_samples);
-  
-  AffinePreconInputComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "AffinePreconInputComponent"; }
-  virtual void InitFromString(std::string args);
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
                         const VectorBase<BaseFloat> &chunk_weights,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
+  AffinePreconInputComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "AffinePreconInputComponent"; }
+  virtual void InitFromString(std::string args);
   virtual void SetZero(bool treat_as_gradient);
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
@@ -430,7 +466,7 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   // Note: num_blocks must divide input_dim.
-  virtual void Init(BaseFloat learning_rate,
+  void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
                     BaseFloat param_stddev, BaseFloat bias_stddev,
                     int32 num_blocks);
@@ -482,7 +518,7 @@ class MixtureProbComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
-  virtual void Init(BaseFloat learning_rate,
+  void Init(BaseFloat learning_rate,
                     BaseFloat diag_element,
                     const std::vector<int32> &sizes);
   virtual void InitFromString(std::string args);  
@@ -519,7 +555,7 @@ class MixtureProbComponent: public UpdatableComponent {
 /// conjunction with block-diagonal transforms.
 class PermuteComponent: public Component {
  public:
-  virtual void Init(int32 dim);
+  void Init(int32 dim);
   PermuteComponent(int32 dim) { Init(dim); }
   PermuteComponent() { } // e.g. prior to Read() or Init()
   

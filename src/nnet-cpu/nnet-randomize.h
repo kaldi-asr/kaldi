@@ -28,13 +28,8 @@ namespace kaldi {
 /// Configuration variables that will be given to the program that
 /// randomizes and weights the data for us.
 struct NnetDataRandomizerConfig {
-  /// If a particular class appears with a certain frequency f, we'll make it
-  /// appear at frequency f^{frequency_power}, and reweight the samples with a
-  /// higher weight to compensate.  Note: we'll give these weights an overall
-  /// scale such that the expected weight of any given sample is 1; this helps
-  /// keep this independent from the learning rates.  frequency_power=1.0
-  /// means "normal" training.  We probably want 0.5 or so.
-  BaseFloat frequency_power;
+  bool local_balance; // If true, we try to ensure a local balance among
+  // classes (proportional to their overall counts), as far as possible.
   
   int32 num_samples; // Total number of samples we want to train on (if >0).  The program
   // will select this many samples before it stops.
@@ -42,12 +37,13 @@ struct NnetDataRandomizerConfig {
   BaseFloat num_epochs; // Total number of epochs we want (if >0).  The program will run
   // for this many epochs before it stops.
 
-  NnetDataRandomizerConfig(): frequency_power(1.0), num_samples(-1),
+  NnetDataRandomizerConfig(): local_balance(true), num_samples(-1),
                               num_epochs(-1) { }
 
   void Register(ParseOptions *po) {
-    po->Register("frequency-power", &frequency_power, "Power by which we rescale "
-                 "the frequencies of samples.");
+    po->Register("local-balance", &local_balance,
+                 "If true, we try to ensure the ratio of class labels is as "
+                 "constant as possible (over reasonably long timescales)");
     po->Register("num-epochs", &num_epochs, "If >0, this will define how many "
                  "times to train on the whole data.  Note, you will see some "
                  "samples more than once if frequency-power < 1.0.  You must "
@@ -100,9 +96,12 @@ class NnetDataRandomizer {
   static void RandomizeSamplesRecurse(
       std::vector<std::vector<std::pair<int32, int32> > > *samples_by_pdf_input,
       std::vector<std::pair<int32, int32> > *samples);
+
+  static void RandomizeSamplesSimple(
+      const std::vector<std::vector<std::pair<int32, int32> > > &samples_by_pdf,
+      std::vector<std::pair<int32, int32> > *samples);
   
-  /// Called when samples_ is empty: sets
-  /// up samples_ and pdf_weights_.  
+  /// Called when samples_ is empty: sets up samples_.
   void RandomizeSamples(); 
 
   struct TrainingFile {

@@ -167,6 +167,9 @@ class Nnet {
                             // and new model; 0.5 < measure_at <= 1.0.
       BaseFloat learning_rate_ratio,
       BaseFloat max_learning_rate);
+
+  /// Scale all the learning rates in the neural net by this factor.
+  void ScaleLearningRates(BaseFloat factor);
   
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
   // separately for each component; zero for non-updatable components.
