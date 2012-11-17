@@ -125,11 +125,6 @@ class NnetDataRandomizer {
   std::vector<std::pair<int32, int32> > samples_; // each time we randomize
   // the whole data, we store pairs here that record the (file, frame) index
   // of each randomized sample.  We pop elements off this list.
-
-  Vector<BaseFloat> pdf_weights_; // each time we randomize the data,
-  // we compute a new weighting for each pdf, which is to cancel out the
-  // difference in frequency between the original frequency and the sampled
-  // frequency.
   
   NnetTrainingExample cur_example_; // Returned from Value().  NnetDataRandomizerConfig_ config_;
 };

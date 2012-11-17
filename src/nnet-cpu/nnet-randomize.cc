@@ -166,7 +166,6 @@ void NnetDataRandomizer::GetExample(const std::pair<int32, int32> &pair,
   const TrainingFile &tf = *(data_[file_index]);
   KALDI_ASSERT(static_cast<size_t>(frame_index) < tf.labels.size());
   int32 label = tf.labels[frame_index];
-  KALDI_ASSERT(label >= 0 && label < pdf_weights_.Dim());
   example->weight = 1.0;  // We only envisage this being not 1.0 for MMI/MPE.
   example->label = label;
   example->spk_info = tf.spk_info;
