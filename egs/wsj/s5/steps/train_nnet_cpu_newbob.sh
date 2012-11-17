@@ -15,10 +15,13 @@ cmd=run.pl
 num_iters=5   # Total number of iterations
 num_valid_utts=300 # held-out utterances.
 num_valid_frames=5000 # a subset of the frames in "valid_utts".
-minibatch_size=1000
-minibatches_per_phase_it1=50
-minibatches_per_phase=200
-samples_per_iteration=400000 # each iteration of training, see this many samples.
+minibatch_size=256
+minibatches_per_phase=200 # This just affects how often we measure
+   # the validation set objf and gradient, so only really affects
+   # logging info.  But there should be at least one minibatch per
+   # phase, or we won't get the info we need to update the network.
+epochs_per_iteration=1   # each iteration of training, go over the whole data
+                         # this many times.
 num_hidden_layers=2
 initial_num_hidden_layers=1  # we'll add the rest one by one.
 num_parameters=2000000 # 2 million parameters by default.
@@ -28,9 +31,8 @@ beam=10
 retry_beam=40
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 parallel_opts=
-learning_rate_ratio=1.1
-measure_gradient_at=1.0
 nnet_config_opts=
+learning_rate=0.001 # Initial learning rate.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
 # End configuration section.
@@ -61,7 +63,6 @@ dir=$4
 for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
-
 
 # Set some variables.
 oov=`cat $lang/oov.int`
@@ -124,18 +125,20 @@ if [ $stage -le -4 ]; then
   # single hidden layer; we need this to add new layers.
   if [ ! -z "$alpha" ]; then
     utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
+      --learning-rate $learning_rate \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
       $feat_dim $num_leaves $num_hidden_layers $num_parameters \
       > $dir/nnet.config || exit 1;
   else
     utils/nnet-cpu/make_nnet_config.pl $nnet_config_opts \
+      --learning-rate $learning_rate \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
       $feat_dim $num_leaves $num_hidden_layers $num_parameters \
       > $dir/nnet.config || exit 1;
   fi
   $cmd $dir/log/nnet_init.log \
-     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
-       $dir/0.mdl || exit 1;
+    nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
+      $dir/0.mdl || exit 1;
 fi
 
 if [ $stage -le -3 ]; then
@@ -191,8 +194,7 @@ while [ $x -lt $num_iters ]; do
       nnet-randomize-frames --num-samples=$samples_per_iteration \
        --srand=$x "$feats" \
       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
-      nnet-train --learning-rate-ratio=$learning_rate_ratio \
-        --measure-gradient-at=$measure_gradient_at \
+      nnet-train --learning-rate-ratio=1.0 \
         --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
         --verbose=2 "$mdl" ark:- ark:$dir/valid.egs $dir/$[$x+1].mdl \
       || exit 1;

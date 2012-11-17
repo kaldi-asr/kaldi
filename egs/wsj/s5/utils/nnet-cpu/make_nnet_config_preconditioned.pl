@@ -24,10 +24,13 @@ $param_stddev_factor = 1.0;  # can be used to adjust initial variance
 $initial_num_hidden_layers = -1; # if >= 0, the number of hidden layers
   # the model should start with, which may be less than the final number
   # (the final number is used to calculate the #neurons).
-$single_layer_config = "";
-$bias_stddev = 2.0;
+$single_layer_config = ""; # a file to which we'll output a config corresponding
+       # to a single layer; we'll later use this to add layers to the neural
+       # network.
+$bias_stddev = 2.0;  # Standard deviation for random initialization of the
+                     # bias terms (mean is zero).
 $learning_rate = 0.001;
-$precondition = "false";
+$alpha = 0.1;
 
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
@@ -46,11 +49,8 @@ for ($x = 1; $x < 10; $x++) {
     $bias_stddev = $ARGV[1];
     shift; shift;
   }
-  if ($ARGV[0] eq "--precondition") {
-    $precondition = $ARGV[1];
-    if ($precondition ne "true" && $precondition ne "false") {
-      die "Invalid option --precondition \"$precondition\"";
-    }
+  if ($ARGV[0] eq "--alpha") {
+    $alpha = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--learning-rate") {
@@ -66,7 +66,7 @@ for ($x = 1; $x < 10; $x++) {
 
 
 if (@ARGV != 4) {
-  print STDERR "Usage: make_nnet_config.pl  [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-parameters>  >config-file
+  print STDERR "Usage: make_nnet_config_preconditioned.pl  [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-parameters>  >config-file
 Options:
    --input-left-context <n>        #  #frames of left context for input features; default 0.
    --input-right-context <n>       #  #frames of right context for input features; default 0.
@@ -78,6 +78,9 @@ Options:
                                    #  used to work out the number of units per hidden layer (based on
                                    #  parameter count), and we write to <config-file> the config corresponding
                                    #  to a single hidden layer.
+   --alpha <f>                     #  Factor (default 0.1) which affects the preconditioning.  0 < alpha <= 1;
+                                   #  smaller means more aggressive preconditioning / less smoothing of the Fisher
+                                   #  matrix.
    --learning-rate <f>             # Initial learning rate, default 0.001\n";
      exit(1);
 }
@@ -137,7 +140,7 @@ $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
-  print "AffineComponent input-dim=$cur_input_dim output-dim=$hidden_layer_size precondition=$precondition " .
+  print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "TanhComponent dim=$cur_input_dim\n";
@@ -147,14 +150,14 @@ if ($single_layer_config ne "") {
   # Create a config file we'll use to add new hidden layers.
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
-  print F "AffineComponent input-dim=$hidden_layer_size output-dim=$hidden_layer_size precondition=$precondition " .
+  print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
   close (F) || die "Closing config file";
 }
 
 ## Now the output layer.
-print "AffineComponent input-dim=$cur_input_dim output-dim=$num_leaves precondition=$precondition " .
+print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_leaves alpha=$alpha " .
   "learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";
