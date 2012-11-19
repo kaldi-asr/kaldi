@@ -21,7 +21,9 @@
 // Speech and Language, 2011. However, instead of averaging the posteriors, as
 // described in the paper, this removes the total backward probability from the
 // individual lattices being combined and outputs the union of them. The output
-// should be used with lattice-mbr-decode (without any acoustic or LM scaling).
+// should be used with lattice-mbr-decode (without any acoustic or LM scaling)
+// or with lattice-to-ctm-conf with --decode-mbr=true (also without any scaling)
+
 // IMPORTANT CAVEAT: the total backward probability (which is a float) is
 // removed from value1_ of arc weight. So graph scores are no longer correct
 // but instead only the combined acoustic and graph scores are valid. So no
@@ -43,10 +45,15 @@ namespace kaldi {
 // score is in log likelihood domain, and the lattice weights are in negative
 // log likelihood domain, the total weight is *added* to the weight of the final
 // states. This is equivalent to dividing the probability of each path by the
-// total probability over all paths.
-bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight) {
-  if (weight < 0.0) {
-    KALDI_ERR << "Cannot use negative weight: " << weight;
+// total probability over all paths. There is an additional weight to control
+// the relative contribution of individual lattices, which can be used as an
+// exponent (i.e. multiply the log scores) or as a multiplicative weight (i.e.
+// log of the weight is subtracted from the total backward score).
+bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight,
+                             bool exp_weights) {
+  if (weight <= 0.0) {
+    KALDI_WARN << "Weights must be positive; found: " << weight;
+    return false;
   }
 
   if (clat->Properties(fst::kTopSorted, false) == 0) {
@@ -55,6 +62,11 @@ bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight) {
       return false;
     }
   }
+
+  // If exp_weights = true, multiply the log AM & LM scores.
+  if (exp_weights)
+    fst::ScaleLattice(fst::LatticeScale(weight, weight), clat);
+
   vector<double> beta;
   if (!ComputeCompactLatticeBetas(*clat, &beta)) {
     KALDI_WARN << "Failed to compute backward probabilities on lattice.";
@@ -65,16 +77,22 @@ bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight) {
   StateId start = clat->Start();  // Should be 0
   BaseFloat total_backward_cost = beta[start];
 
+  // If exp_weights = false, add to the log AM & LM scores.
+  if (!exp_weights)
+    total_backward_cost -= std::log(weight);
+
   for (fst::StateIterator<CompactLattice> sit(*clat); !sit.Done(); sit.Next()) {
     CompactLatticeWeight f = clat->Final(sit.Value());
     LatticeWeight w = f.Weight();
-    w.SetValue1(w.Value1() + total_backward_cost + std::log(weight));
+    w.SetValue1(w.Value1() + total_backward_cost);
     f.SetWeight(w);
     clat->SetFinal(sit.Value(), f);
   }
   return true;
 }
 
+// This is a wrapper for SplitStringToFloats, with added checks to make sure
+// the weights are valid probabilities.
 void SplitStringToWeights(const string &full, const char *delim,
                           vector<BaseFloat> *out) {
   vector<BaseFloat> tmp;
@@ -121,12 +139,17 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat ac_scale = 1.0, lm_scale = 1.0;
     string weight_str;
+    bool exp_weights = false;
     po.Register("acoustic-scale", &ac_scale, "Scaling factor for "
                 "acoustic likelihoods");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("lat-weights", &weight_str, "Colon-separated list of weights "
                 "for each lattice that sum to 1");
+    // The lattice weights can be used either as exponents or as multiplicative
+    // weights, determined by the exp_weights flag.
+    po.Register("exp-weights", &exp_weights, "If true, lattice weights are "
+                "exponents, else they are multiplicative");
     po.Read(argc, argv);
 
     int32 num_args = po.NumArgs();
@@ -152,7 +175,8 @@ int main(int argc, char *argv[]) {
     }
 
     vector<BaseFloat> lat_weights(num_args-1, 1.0/(num_args-1));
-    SplitStringToWeights(weight_str, ":", &lat_weights);
+    if (!weight_str.empty())
+      SplitStringToWeights(weight_str, ":", &lat_weights);
 
     int32 n_utts = 0, n_total_lats = 0, n_success = 0, n_missing = 0,
         n_other_errors = 0;
@@ -165,7 +189,7 @@ int main(int argc, char *argv[]) {
       n_utts++;
       n_total_lats++;
       fst::ScaleLattice(lat_scale, &clat1);
-      bool success = CompactLatticeNormalize(&clat1, lat_weights[0]);
+      bool success = CompactLatticeNormalize(&clat1, lat_weights[0], exp_weights);
       if (!success) {
         KALDI_WARN << "Could not normalize lattice for system 1, utterance: "
                    << key;
@@ -178,7 +202,7 @@ int main(int argc, char *argv[]) {
           CompactLattice clat2 = clat_reader_vec[i]->Value(key);
           n_total_lats++;
           fst::ScaleLattice(lat_scale, &clat2);
-          success = CompactLatticeNormalize(&clat2, lat_weights[i+1]);
+          success = CompactLatticeNormalize(&clat2, lat_weights[i+1], exp_weights);
           if (!success) {
             KALDI_WARN << "Could not normalize lattice for system "<< (i + 2)
                        << ", utterance: " << key;
