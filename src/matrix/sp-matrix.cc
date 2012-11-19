@@ -245,6 +245,20 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
 }
 #endif
 
+template<typename Real>
+void SpMatrix<Real>::InvertDouble(Real *logdet, Real *det_sign,
+                                  bool inverse_needed) {
+  SpMatrix<double> dmat(*this);
+  double logdet_tmp, det_sign_tmp;
+  dmat.Invert(logdet ? &logdet_tmp : NULL,
+              det_sign ? &det_sign_tmp : NULL,
+              inverse_needed);
+  if (logdet) *logdet = logdet_tmp;
+  if (det_sign) *det_sign = det_sign_tmp;
+  (*this).CopyFromSp(dmat);
+}
+
+
 
 double TraceSpSp(const SpMatrix<double> &A, const SpMatrix<double> &B) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
