@@ -2266,6 +2266,34 @@ template<class Real> static void UnitTestTraceSpSpLower() {
   AssertEqual(TraceSpSp(S, T), TraceSpSpLower(Sfast, T));
 }
 
+template<class Real> static void UnitTestAddMat2() {
+  MatrixIndexT extra = 1;
+  // Test AddMat2 function of SpMatrix.
+  for (MatrixIndexT i = 0; i < 5; i++) {
+    MatrixIndexT dimM = (rand()%10) + extra,
+        dimN = (rand() % 10) + extra;
+    Real alpha = 0.2 * (rand() % 6),
+        beta = 0.2 * (rand() % 6);
+    SpMatrix<Real> S(dimM);
+    S.SetRandn();
+    MatrixTransposeType trans = (i % 2 == 1 ? kTrans: kNoTrans),
+        other_trans = (trans == kTrans ? kNoTrans : kTrans);
+    Matrix<Real> M;
+    if (trans == kNoTrans) M.Resize(dimM, dimN);
+    else M.Resize(dimN, dimM);
+    M.SetRandn();
+
+    Matrix<Real> Sfull(S);
+
+    S.AddMat2(alpha, M, trans, beta);
+    
+    Sfull.AddMatMat(alpha, M, trans, M, other_trans, beta);
+
+    Matrix<Real> Sfull2(S);
+    AssertEqual(Sfull, Sfull2);
+  }
+}
+
 
 template<class Real> static void UnitTestSolve() {
 
@@ -2395,7 +2423,7 @@ template<class Real> static void UnitTestMaxAbsEig() {
 }
 
 template<class Real> static void UnitTestLbfgs() {
-  int32 temp = g_kaldi_verbose_level;
+  MatrixIndexT temp = g_kaldi_verbose_level;
   //   g_kaldi_verbose_level = 4;
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
     bool minimize = (iter % 2 == 0);
@@ -3232,7 +3260,7 @@ template<class Real> static void UnitTestCompressedMatrix() {
   KALDI_ASSERT(empty_cmat.NumRows() == 0);
   KALDI_ASSERT(empty_cmat.NumCols() == 0);
 
-  int32 num_failure = 0, num_tot = 10;
+  MatrixIndexT num_failure = 0, num_tot = 10;
   for (MatrixIndexT n = 0; n < num_tot; n++) {
     MatrixIndexT num_rows = 10 * (rand() % 3), num_cols = rand() % 15;
     if (num_rows * num_cols == 0) {
@@ -3491,6 +3519,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();
+  UnitTestAddMat2<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
   UnitTestScaleDiag<Real>();
@@ -3522,9 +3551,12 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
 
 
 int main() {
+  using namespace kaldi;
   bool full_test = false;
   kaldi::MatrixUnitTest<double>(full_test);
   kaldi::MatrixUnitTest<float>(full_test);
   KALDI_LOG << "Tests succeeded.\n";
+
+
 }
 

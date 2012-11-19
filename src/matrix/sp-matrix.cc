@@ -1027,46 +1027,35 @@ void SpMatrix<double>::AddMat2Vec(const double alpha,
   }
 }
 
-template<>
-void SpMatrix<float>::AddMat2(const float alpha, const MatrixBase<float> &M, MatrixTransposeType transM, const float beta) {
+
+
+template<class Real>
+void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
+                             MatrixTransposeType transM, const Real beta)  {
   KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
                || (transM == kTrans && this->NumRows() == M.NumCols()));
-  Vector<float> tmp_vec(transM == kTrans ? M.NumRows() : 0);
-  SpMatrix<float> tmp_A;
-  float *p_row_data = this->Data();
+  
+  // Cblas has no function *sprk (i.e. symmetric packed rank-k update), so we
+  // use as temporary storage a regular matrix of which we only access its lower
+  // triangle
+  
+  MatrixIndexT this_dim = this->NumRows(),
+      m_other_dim = (transM == kNoTrans ? M.NumCols() : M.NumRows());
 
-  for (MatrixIndexT r = 0; r < this->NumRows(); r++, p_row_data += r) {
-    SubVector<float> out_row_vec(p_row_data, r+1);
-
-    if (transM == kNoTrans) {
-      // tmp_vec =
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, r+1 , 0, M.NumCols()), transM, M.Row(r), beta);  // M.Row(r) is a SubVector...
-    } else {
-      tmp_vec.CopyColFromMat(M, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
-      out_row_vec.AddMatVec(alpha, SubMatrix<float>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
-    }
+  if (this_dim == 0) return;
+  if (alpha == 0.0) {
+    if (beta != 1.0) this->Scale(beta);
+    return;
   }
-}
 
-template<>
-void SpMatrix<double>::AddMat2(const double alpha, const MatrixBase<double> &M, MatrixTransposeType transM, const double beta)  {
-  KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
-         || (transM == kTrans && this->NumRows() == M.NumCols()));
+  Matrix<Real> temp_mat(*this); // wastefully copies upper triangle too, but this
+  // doesn't dominate O(N) time.
 
-  Vector<double> tmp_vec(transM == kTrans ? M.NumRows() : 0);
-  SpMatrix<double> tmp_A;
-  double *p_row_data = this->Data();
+  // This function call is hard-coded to update the lower triangle.
+  cblas_Xsyrk(transM, this_dim, m_other_dim, alpha, M.Data(),
+              M.Stride(), beta, temp_mat.Data(), temp_mat.Stride());
 
-  for (MatrixIndexT r = 0; r < this->NumRows(); r++, p_row_data += r) {
-    SubVector<double> out_row_vec(p_row_data, r+1);
-
-    if (transM == kNoTrans) {
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, r+1 , 0, M.NumCols()), transM, M.Row(r), beta);  // M.Row(r) is a SubVector...
-    } else {
-      tmp_vec.CopyColFromMat(M, r);  // copy the r'th row of M.  A few extra cycles but may help for caching reasons ( + simpler)
-      out_row_vec.AddMatVec(alpha, SubMatrix<double>(M, 0, M.NumRows() , 0, r+1), transM, tmp_vec, beta);
-    }
-  }
+  this->CopyFromMat(temp_mat, kTakeLower);
 }
 
 
