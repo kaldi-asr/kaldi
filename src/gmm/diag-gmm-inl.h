@@ -111,7 +111,7 @@ void DiagGmm::SetComponentInvVar(int32 g, const VectorBase<Real> &v) {
 
 template<class Real>
 void DiagGmm::GetVars(Matrix<Real> *v) const {
-  assert(v != NULL);
+  KALDI_ASSERT(v != NULL);
   v->Resize(NumGauss(), Dim());
   v->CopyFromMat(inv_vars_);
   v->InvertElements();
@@ -119,7 +119,7 @@ void DiagGmm::GetVars(Matrix<Real> *v) const {
 
 template<class Real>
 void DiagGmm::GetMeans(Matrix<Real> *m) const {
-  assert(m != NULL);
+  KALDI_ASSERT(m != NULL);
   m->Resize(NumGauss(), Dim());
   Matrix<Real> vars(NumGauss(), Dim());
   vars.CopyFromMat(inv_vars_);
@@ -131,8 +131,8 @@ void DiagGmm::GetMeans(Matrix<Real> *m) const {
 
 template<class Real>
 void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real> *out) const {
-  assert(gauss < NumGauss());
-  assert(static_cast<int32>(out->Dim()) == Dim());
+  KALDI_ASSERT(gauss < NumGauss());
+  KALDI_ASSERT(static_cast<int32>(out->Dim()) == Dim());
   Vector<Real> tmp(Dim());
   tmp.CopyRowFromMat(inv_vars_, gauss);
   out->CopyRowFromMat(means_invvars_, gauss);
@@ -141,8 +141,8 @@ void DiagGmm::GetComponentMean(int32 gauss, VectorBase<Real> *out) const {
 
 template<class Real>
 void DiagGmm::GetComponentVariance(int32 gauss, VectorBase<Real> *out) const {
-  assert(gauss < NumGauss());
-  assert(static_cast<int32>(out->Dim()) == Dim());
+  KALDI_ASSERT(gauss < NumGauss());
+  KALDI_ASSERT(static_cast<int32>(out->Dim()) == Dim());
   out->CopyRowFromMat(inv_vars_, gauss);
   out->InvertElements();
 }

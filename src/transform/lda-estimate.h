@@ -44,10 +44,16 @@ class LdaEstimate {
   /// Accumulates data
   void Accumulate(const VectorBase<BaseFloat> &data, int32 class_id, BaseFloat weight = 1.0);
 
-  /// Estimates the LDA transform matrix m.   If Mfull != NUL, it
-  /// also outputs the full matrix (without dimensionality reduction), which
-  /// is useful for some purposes.
+  /// Estimates the LDA transform matrix m.  If Mfull != NULL, it also outputs
+  /// the full matrix (without dimensionality reduction), which is useful for
+  /// some purposes.  If remove_offset == true, it will output both matrices
+  /// with an extra column which corresponds to mean-offset removal (the matrix
+  /// should be multiplied by the feature with a 1 appended to give the correct
+  /// result, as with other Kaldi transforms.)
+  /// The "remove_offset" argument is new and should be set to false for back
+  /// compatibility.
   void Estimate(int32 target_dim,
+                bool remove_offset,
                 Matrix<BaseFloat> *M,
                 Matrix<BaseFloat> *Mfull = NULL) const;
 
@@ -59,6 +65,11 @@ class LdaEstimate {
   Matrix<double> first_acc_;
   SpMatrix<double> total_second_acc_;
 
+  /// This function modifies the LDA matrix so that it
+  /// also subtracts the mean feature value.
+  void AddMeanOffset(const VectorBase<double> &total_mean,
+                     Matrix<BaseFloat> *projection) const;
+  
   // Disallow assignment operator.
   LdaEstimate &operator = (const LdaEstimate &other);
 };

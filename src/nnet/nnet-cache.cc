@@ -53,7 +53,7 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
     KALDI_ERR << "Cannot add data, cache already full";
   }
 
-  assert(features.NumRows() == targets.size());
+  assert(features.NumRows() == static_cast<int32>(targets.size()));
 
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
@@ -98,7 +98,7 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
   }
 
   assert(state_ == FILLING);
-  assert(features.NumRows() == targets.size());
+  assert(features.NumRows() == static_cast<MatrixIndexT>(targets.size()));
 
   int cache_space = cachesize_ - filling_pos_;
   int feature_length = features.NumRows();

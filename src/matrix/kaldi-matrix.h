@@ -55,7 +55,10 @@ class MatrixBase {
   inline MatrixIndexT Stride() const {  return stride_; }
 
   /// Returns size in bytes of the data held by the matrix.
-  MatrixIndexT  SizeInBytes() const { return num_rows_ * stride_ * sizeof(Real); }
+  size_t  SizeInBytes() const {
+    return static_cast<size_t>(num_rows_) * static_cast<size_t>(stride_) *
+        sizeof(Real);
+  }
 
   /// Gives pointer to raw data (const).
   inline const Real* Data() const {

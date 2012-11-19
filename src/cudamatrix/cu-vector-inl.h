@@ -61,7 +61,7 @@ Real* CuVector<Real>::Data() {
 
 
 template<typename Real>
-CuVector<Real>& CuVector<Real>::Resize(size_t dim) {
+CuVector<Real>& CuVector<Real>::Resize(MatrixIndexT dim) {
   if (dim_ == dim) {
     // SetZero();
     return *this;

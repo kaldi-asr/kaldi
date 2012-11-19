@@ -107,9 +107,17 @@ $queue_logfile = "$qdir/$base";
 
 if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
 if (!-d $dir) { die "Cannot make the directory $dir\n"; }
-if (!-d "$qdir") { system "mkdir $qdir 2>/dev/null"; } # make a directory called "q",
-  # where we will put the log created by qsub... normally this doesn't contain
-  # anything interesting, evertyhing goes to $logfile.
+# make a directory called "q",
+# where we will put the log created by qsub... normally this doesn't contain
+# anything interesting, evertyhing goes to $logfile.
+if (! -d "$qdir") { 
+  system "mkdir $qdir 2>/dev/null";
+  sleep(5); ## This is to fix an issue we encountered in denominator lattice creation,
+  ## where if e.g. the exp/tri2b_denlats/log/15/q directory had just been
+  ## created and the job immediately ran, it would die with an error because nfs
+  ## had not yet synced.  I'm also decreasing the acdirmin and acdirmax in our
+  ## NFS settings to something like 5 seconds.
+} 
 
 if (defined $jobname) { # It's an array job.
   $queue_array_opt = "-t $jobstart:$jobend"; 

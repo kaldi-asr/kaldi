@@ -85,7 +85,7 @@ class Component {
   /// Convert marker to component type
   static ComponentType MarkerToType(const std::string &s);
 
-  Component(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet *nnet) 
+  Component(int32 input_dim, int32 output_dim, Nnet *nnet) 
       : input_dim_(input_dim), output_dim_(output_dim), nnet_(nnet) { }
   virtual ~Component() { }
    
@@ -98,19 +98,22 @@ class Component {
   }
 
   /// Get size of input vectors
-  MatrixIndexT InputDim() const { 
+  int32 InputDim() const { 
     return input_dim_; 
   }  
   /// Get size of output vectors 
-  MatrixIndexT OutputDim() const { 
+  int32 OutputDim() const { 
     return output_dim_; 
   }
  
   /// Perform forward pass propagateion Input->Output
   void Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
-  /// Perform backward pass propagateion ErrorInput->ErrorOutput
-  void Backpropagate(const CuMatrix<BaseFloat> &in_err,
-                     CuMatrix<BaseFloat> *out_err); 
+  /// Perform backward pass propagation, out_diff -> in_diff
+  /// '&in' and '&out' will often be unused... 
+  void Backpropagate(const CuMatrix<BaseFloat> &in,
+                     const CuMatrix<BaseFloat> &out,
+                     const CuMatrix<BaseFloat> &out_diff,
+                     CuMatrix<BaseFloat> *in_diff); 
 
   /// Read component from stream
   static Component* Read(std::istream &is, bool binary, Nnet *nnet);
@@ -124,8 +127,10 @@ class Component {
   virtual void PropagateFnc(const CuMatrix<BaseFloat> &in,
                             CuMatrix<BaseFloat> *out) = 0;
   /// Backward pass transformation (to be implemented by descendents...)
-  virtual void BackpropagateFnc(const CuMatrix<BaseFloat> &in_err,
-                                CuMatrix<BaseFloat> *out_err) = 0;
+  virtual void BackpropagateFnc(const CuMatrix<BaseFloat> &in,
+                                const CuMatrix<BaseFloat> &out,
+                                const CuMatrix<BaseFloat> &out_diff,
+                                CuMatrix<BaseFloat> *in_diff) = 0;
 
   /// Reads the component content
   virtual void ReadData(std::istream &is, bool binary) { }
@@ -136,8 +141,8 @@ class Component {
 
   // data members
  protected:
-  MatrixIndexT input_dim_;  ///< Size of input vectors
-  MatrixIndexT output_dim_; ///< Size of output vectors
+  int32 input_dim_;  ///< Size of input vectors
+  int32 output_dim_; ///< Size of output vectors
   
   Nnet *nnet_; ///< Pointer to the whole network
  private:
@@ -153,7 +158,7 @@ class Component {
  */
 class UpdatableComponent : public Component {
  public: 
-  UpdatableComponent(MatrixIndexT input_dim, MatrixIndexT output_dim, Nnet *nnet)
+  UpdatableComponent(int32 input_dim, int32 output_dim, Nnet *nnet)
     : Component(input_dim, output_dim, nnet),
       learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0) { }
   virtual ~UpdatableComponent() { }
@@ -165,7 +170,7 @@ class UpdatableComponent : public Component {
 
   /// Compute gradient and update parameters
   virtual void Update(const CuMatrix<BaseFloat> &input,
-                      const CuMatrix<BaseFloat> &err) = 0;
+                      const CuMatrix<BaseFloat> &diff) = 0;
 
   /// Sets the learning rate of gradient descent
   void SetLearnRate(BaseFloat lrate) { 
@@ -227,18 +232,27 @@ inline void Component::Propagate(const CuMatrix<BaseFloat> &in,
 }
 
 
-inline void Component::Backpropagate(const CuMatrix<BaseFloat> &in_err,
-                                     CuMatrix<BaseFloat> *out_err) {
-  if (output_dim_ != in_err.NumCols()) {
-    KALDI_ERR << "Nonmatching dims, component:" << output_dim_ 
-              << " data:" << in_err.NumCols();
+inline void Component::Backpropagate(const CuMatrix<BaseFloat> &in,
+                                     const CuMatrix<BaseFloat> &out,
+                                     const CuMatrix<BaseFloat> &out_diff,
+                                     CuMatrix<BaseFloat> *in_diff) {
+  //check the dims
+  if (output_dim_ != out_diff.NumCols()) {
+    KALDI_ERR << "Nonmatching output dims, component:" << output_dim_ 
+              << " data:" << out_diff.NumCols();
   }
-  
-  if (input_dim_ != out_err->NumCols() || in_err.NumRows() != out_err->NumRows()) {
-    out_err->Resize(in_err.NumRows(), input_dim_);
+  //allocate buffer
+  if (input_dim_ != in_diff->NumCols() || out_diff.NumRows() != in_diff->NumRows()) {
+    in_diff->Resize(out_diff.NumRows(), input_dim_);
   }
-
-  BackpropagateFnc(in_err, out_err);
+  //asserts on the dims
+  KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
+               (in.NumRows() == out_diff.NumRows()) &&
+               (in.NumRows() == in_diff->NumRows()));
+  KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
+  KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
+  //call the backprop implementation of the component
+  BackpropagateFnc(in, out, out_diff, in_diff);
 }
 
 

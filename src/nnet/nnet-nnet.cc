@@ -50,51 +50,48 @@ void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
 }
 
 
-void Nnet::Backpropagate(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) {
+void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
   if(LayerCount() == 0) { KALDI_ERR << "Cannot backpropagate on empty network"; }
 
   // we need at least L+1 input bufers
   KALDI_ASSERT((int32)propagate_buf_.size() >= LayerCount()+1);
-  // we need at least L-1 error bufers
+  // we need at least L-1 error derivative bufers
   KALDI_ASSERT((int32)backpropagate_buf_.size() >= LayerCount()-1);
 
   //////////////////////////////////////
   // Backpropagation
   //
 
-  // don't copy the in_err to buffers, use it as is...
+  // don't copy the out_diff to buffers, use it as is...
   int32 i = nnet_.size()-1;
-  nnet_.back()->Backpropagate(in_err, &backpropagate_buf_[i-1]);
+  nnet_.back()->Backpropagate(propagate_buf_[i], propagate_buf_[i+1], 
+                              out_diff, &backpropagate_buf_[i-1]);
   if (nnet_[i]->IsUpdatable()) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
-    if (uc->GetLearnRate() > 0.0) {
-      uc->Update(propagate_buf_[i], in_err);
-    }
+    uc->Update(propagate_buf_[i], out_diff);
   }
 
   // backpropagate by using buffers
   for(i--; i >= 1; i--) {
-    nnet_[i]->Backpropagate(backpropagate_buf_[i], &backpropagate_buf_[i-1]);
+    nnet_[i]->Backpropagate(propagate_buf_[i], propagate_buf_[i+1],
+                            backpropagate_buf_[i], &backpropagate_buf_[i-1]);
     if (nnet_[i]->IsUpdatable()) {
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[i]);
-      if (uc->GetLearnRate() > 0.0) {
-        uc->Update(propagate_buf_[i], backpropagate_buf_[i]);
-      }
+      uc->Update(propagate_buf_[i], backpropagate_buf_[i]);
     }
   }
 
   // now backpropagate through first layer, 
-  // but only if asked to (by out_err pointer)
-  if (NULL != out_err) {
-    nnet_[0]->Backpropagate(backpropagate_buf_[0], out_err);
+  // but only if asked to (by in_diff pointer)
+  if (NULL != in_diff) {
+    nnet_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
+                            backpropagate_buf_[0], in_diff);
   }
 
   // update the first layer 
   if (nnet_[0]->IsUpdatable()) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(nnet_[0]);
-    if (uc->GetLearnRate() > 0.0) {
-      uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
-    }
+    uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
   }
 
   //

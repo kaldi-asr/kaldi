@@ -15,8 +15,8 @@ max_active=7000
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
-extra_beam=0.0 # small additional beam over variational beam
-max_beam=100.0 # maximum of variational beam
+extra_beam=0.0 # small additional beam over varying beam
+max_beam=100.0 # maximum of varying beam
 min_lmwt=9
 max_lmwt=24
 # End configuration section.
@@ -95,10 +95,11 @@ fi
 if [ -f $first_pass/lat.1.gz ]; then
   echo "converting first pass lattice to graph arc acceptor"
   $cmd JOB=1:$nj $dir/log/arc_graph.JOB.log \
-    time lattice-arcgraph $model $graphdir/HCLG.fst \
-      "ark:gunzip -c $first_pass/lat.JOB.gz|" ark,t:$dir/lat.JOB.arcs || exit 1;
-  # --write-lattices=ark,t:$dir/lat.det
-  
+    time lattice-arcgraph --write-graph=HCLG_mapped.fst --write-lattices=ark,t:$dir/lat.det \
+      $srcdir/tree $model $graphdir/HCLG.fst "ark:gunzip -c $first_pass/lat.JOB.gz|" \
+      ark,t:$dir/lat.JOB.arcs || exit 1;
+    #  --acoustic-scale=$acwt --lattice-beam=$latbeam --prune=false \
+
   echo "decode with tracking first pass lattice"
   $cmd JOB=1:$nj $dir/log/decode_fwdbwd.JOB.log \
     gmm-latgen-tracking --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \

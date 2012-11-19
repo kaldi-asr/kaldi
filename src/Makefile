@@ -7,7 +7,7 @@ SHELL := /bin/bash
 SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin
+          nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin
@@ -84,3 +84,4 @@ nnet-cpu: base util matrix
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu online
 online: decoder
+kwsbin: fstext lat base util

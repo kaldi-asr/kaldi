@@ -266,6 +266,7 @@ function linux_atlas_failure { # function we use when we couldn't find
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
    cat makefiles/linux_atlas.mk >> kaldi.mk
    echo "** $* ***"
+   echo "**  ERROR   **"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
    echo "** you may be able to proceed (replace [somewhere] with a directory),"
    echo "** or install the ATLAS package on your machine,"
@@ -443,7 +444,8 @@ if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
 fi
 echo Checking OpenFst library was patched.
 if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
-    echo "**Error: $FSTROOT/include/fst/minimize.h seems not to be patched:"
+    echo "**  ERROR  **"
+    echo "** $FSTROOT/include/fst/minimize.h seems not to be patched:"
     echo "patch not applied?  FST tools will not work in our recipe."
     exit 1;
 fi

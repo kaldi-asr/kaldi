@@ -67,11 +67,12 @@ test_io(const LdaEstimate &lda_est, bool binary) {
 
   Matrix<BaseFloat> m1;
   Matrix<BaseFloat> m2;
-  lda_est.Estimate(dim, &m1);
-  lda_est.Estimate(dim, &m2);
-
+  bool remove_mean_offset = false;
+  lda_est.Estimate(dim, remove_mean_offset, &m1);
+  lda_est2.Estimate(dim, remove_mean_offset, &m2);
+  
   m1.AddMat(-1.0, m2, kNoTrans);
-  assert(m1.IsZero(1.0e-10));
+  assert(m1.IsZero(1.0e-02));
 }
 
 void
@@ -155,9 +156,20 @@ UnitTestEstimateLda() {
   for (size_t i = 0; i < counter; i++) {
     lda_est.Accumulate(feats.Row(i), feats_class[i]);
   }
-  Matrix<BaseFloat> lda_mat_bf(dim, dim);
-  lda_est.Estimate(dim, &lda_mat_bf);
+  Matrix<BaseFloat> lda_mat_bf,
+      lda_mat_bf_mean_remove;
+  lda_est.Estimate(dim, false, &lda_mat_bf);
+  lda_est.Estimate(dim, true, &lda_mat_bf_mean_remove);
 
+  {
+    Vector<BaseFloat> mean_ext(total_mean);
+    mean_ext.Resize(mean_ext.Dim() + 1, kCopyData);
+    mean_ext(mean_ext.Dim() - 1) = 1.0;
+    Vector<BaseFloat> zero(mean_ext.Dim() - 1);
+    zero.AddMatVec(1.0, lda_mat_bf_mean_remove, kNoTrans, mean_ext, 0.0);
+    KALDI_ASSERT(zero.IsZero(0.001));
+  }
+  
   // Check lda_mat
   Matrix<double> lda_mat(lda_mat_bf);
   Matrix<double> tmp_mat(dim, dim);

@@ -26,7 +26,7 @@ namespace kaldi {
 
 class Sigmoid : public Component {
  public:
-  Sigmoid(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
+  Sigmoid(int32 dim_in, int32 dim_out, Nnet *nnet) 
     : Component(dim_in, dim_out, nnet)
   { }
   ~Sigmoid()
@@ -41,17 +41,17 @@ class Sigmoid : public Component {
     cu::Sigmoid(in, out);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) {
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     // ey = y(1-y)ex
-    const CuMatrix<BaseFloat> &y = nnet_->PropagateBuffer()[nnet_->IndexOfLayer(*this)+1];
-    cu::DiffSigmoid(in_err, y, out_err);
+    cu::DiffSigmoid(out_diff, out, in_diff);
   }
 };
 
 
 class Softmax : public Component {
  public:
-  Softmax(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
+  Softmax(int32 dim_in, int32 dim_out, Nnet *nnet) 
     : Component(dim_in, dim_out, nnet)
   { }
   ~Softmax()
@@ -66,13 +66,14 @@ class Softmax : public Component {
     cu::Softmax(in, out);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) {
-    // simply copy the error
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+    // simply copy the error derivative
     // (ie. assume crossentropy error function, 
-    // while in_err contains (net_output-target) :
+    // while in_diff contains (net_output-target) :
     // this is already derivative of the error with 
     // respect to activations of last layer neurons)
-    out_err->CopyFromMat(in_err);
+    in_diff->CopyFromMat(out_diff);
   }
 };
 

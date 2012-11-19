@@ -101,7 +101,6 @@ else
   fi
 fi
 
-
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
    gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

@@ -577,7 +577,7 @@ void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real 
   // note the double accumulator
   double sum;
   KALDI_ASSERT(dim_ == M.NumRows());
-  int32 num_cols = M.NumCols();
+  MatrixIndexT num_cols = M.NumCols();
   for (MatrixIndexT i = 0; i < dim_; i++) {
     sum = 0.0;
     const Real *src = M.RowData(i);

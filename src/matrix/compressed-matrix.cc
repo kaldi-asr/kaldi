@@ -111,7 +111,6 @@ inline float CompressedMatrix::Uint16ToFloat(
       + global_header.range * 1.52590218966964e-05 * value;
 }
 
-
 template<class Real>  // static
 void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
@@ -125,10 +124,14 @@ void CompressedMatrix::ComputeColHeader(
   if (num_rows >= 5) {
     int quarter_nr = num_rows/4;
     // The elements at positions 0, quarter_nr,
+    // std::sort(sdata.begin(), sdata.end());
     // 3*quarter_nr, and num_rows-1 need to be in sorted order.
+    // Note: the + 1's below are not necessary but may speed things
+    // up slightly.
     std::nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata.end());
     std::nth_element(sdata.begin(), sdata.begin(), sdata.begin() + quarter_nr);
-    std::nth_element(sdata.begin(), sdata.begin() + (3*quarter_nr), sdata.end());
+    std::nth_element(sdata.begin() + quarter_nr + 1,
+                     sdata.begin() + (3*quarter_nr) + 1, sdata.end());
     std::nth_element(sdata.begin() + (3*quarter_nr), sdata.end() - 1,
                      sdata.end());
     
@@ -142,6 +145,7 @@ void CompressedMatrix::ComputeColHeader(
     header->percentile_100 = std::max<uint16>(
         FloatToUint16(global_header, sdata[num_rows-1]),
         header->percentile_75 + static_cast<uint16>(1));
+    
   } else {  // handle this pathological case.
     std::sort(sdata.begin(), sdata.end());
     // Note: we know num_rows is at least 1.

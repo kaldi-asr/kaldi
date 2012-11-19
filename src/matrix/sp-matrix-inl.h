@@ -48,15 +48,6 @@ void SpMatrix<double>::AddMat2Vec(const double alpha, const MatrixBase<double> &
                                  const VectorBase<double> &A, const double beta);
 
 template<>
-void SpMatrix<float>::AddMat2(const float alpha, const MatrixBase<float> &M,
-                              MatrixTransposeType transM, const float beta);
-
-template<>
-void SpMatrix<double>::AddMat2(const double alpha, const MatrixBase<double> &M,
-                               MatrixTransposeType transM, const double beta);
-
-
-template<>
 double SolveQuadraticProblem(const SpMatrix<double> &H, const VectorBase<double> &g,
                              VectorBase<double> *x, double K, double eps,
                              const char *debug_str, bool optimizeDelta);

@@ -1,7 +1,8 @@
 // gmm/mle-am-diag-gmm.h
 
-// Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal);
-//                      Yanmin Qian
+// Copyright 2009-2012  Saarland University (author: Arnab Ghoshal);
+//                      Yanmin Qian; Johns Hopkins University (author: Daniel Povey)
+//                      Cisco Systems (author: Neha Agarwal)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
+#include "util/common-utils.h"
 
 namespace kaldi {
 
@@ -105,9 +107,28 @@ class AccumAmDiagGmm {
 
 /// for computing the maximum-likelihood estimates of the parameters of
 /// an acoustic model that uses diagonal Gaussian mixture models as emission densities.
-void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config, const AccumAmDiagGmm &amdiaggmm_acc,
-                        GmmFlagsType flags, AmDiagGmm *am_gmm, BaseFloat *obj_change_out,
+void MleAmDiagGmmUpdate(const MleDiagGmmOptions &config,
+                        const AccumAmDiagGmm &amdiaggmm_acc,
+                        GmmFlagsType flags,
+                        AmDiagGmm *am_gmm,
+                        BaseFloat *obj_change_out,
                         BaseFloat *count_out);
+
+/// Maximum A Posteriori update.
+void MapAmDiagGmmUpdate(const MapDiagGmmOptions &config,
+                        const AccumAmDiagGmm &diag_gmm_acc,
+                        GmmFlagsType flags,
+                        AmDiagGmm *gmm,
+                        BaseFloat *obj_change_out,
+                        BaseFloat *count_out);
+
+// These typedefs are needed to write GMMs to and from pipes, for MAP
+// adaptation and decoding.  Note: this doesn't handle the transition
+// model, you have to read that in separately.
+typedef TableWriter< KaldiObjectHolder<AmDiagGmm> >  MapAmDiagGmmWriter;
+typedef RandomAccessTableReader< KaldiObjectHolder<AmDiagGmm> > RandomAccessMapAmDiagGmmReader;
+typedef SequentialTableReader< KaldiObjectHolder<AmDiagGmm> > MapAmDiagGmmSeqReader;
+
 
 }  // End namespace kaldi
 

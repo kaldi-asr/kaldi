@@ -1105,14 +1105,19 @@ void MleAmSgmmUpdater::RenormalizeV(const MleAmSgmmAccs &accs,
       Sigma.AddVec2(static_cast<BaseFloat>(1.0), model->v_[j].Row(m));
     }
   }
+  Sigma.Scale(1.0 / count);
+  int32 fixed_eigs = Sigma.LimitCondDouble(update_options_.max_cond);
+  if (fixed_eigs != 0) {
+    KALDI_WARN << "Scatter of vectors v is poorly conditioned. Fixed up "
+               << fixed_eigs << " eigenvalues.";
+  }
+  KALDI_LOG << "Eigenvalues of scatter of vectors v is : ";
+  Sigma.PrintEigs("Sigma");
   if (!Sigma.IsPosDef()) {
     KALDI_LOG << "Not renormalizing v because scatter is not positive definite"
               << " -- maybe first iter?";
     return;
   }
-  Sigma.Scale(1.0 / count);
-  KALDI_LOG << "Scatter of vectors v is : ";
-  Sigma.PrintEigs("Sigma");
 
   // Want to make variance of v unit and H_sm (like precision matrix) diagonal.
   TpMatrix<double> L(accs.phn_space_dim_);

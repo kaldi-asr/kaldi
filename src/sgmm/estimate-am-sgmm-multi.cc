@@ -103,8 +103,9 @@ void MleAmSgmmGlobalAccs::AddAccumulators(const AmSgmm &model,
   total_frames_ += accs.total_frames_;
   total_like_ += accs.total_like_;
   for (int32 i = 0; i < num_gaussians_; ++i) {
-    if (flags & (kSgmmPhoneProjections | kSgmmCovarianceMatrix))
+    if (flags & (kSgmmPhoneProjections | kSgmmCovarianceMatrix)) {
       Y_[i].AddMat(1.0, accs.Y_[i], kNoTrans);
+    }
     if (flags & kSgmmSpeakerProjections) {
       Z_[i].AddMat(1.0, accs.Z_[i], kNoTrans);
       R_[i].AddSp(1.0, accs.R_[i]);
@@ -121,13 +122,15 @@ void MleAmSgmmGlobalAccs::AddAccumulators(const AmSgmm &model,
   }
 
   //  Compute the Q_i quantities (Eq. 64).
-  for (int32 i = 0; i < num_gaussians_; ++i) {
-    for (int32 j = 0; j < accs.num_states_; ++j) {
-      const Matrix<BaseFloat> &state_vec(model.StateVectors(j));
-      for (int32 m = 0; m < model.NumSubstates(j); ++m) {
-        if (accs.gamma_[j](m, i) > 0.0) {
-          Q_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)),
-                        state_vec.Row(m));
+  if (flags & kSgmmPhoneProjections) {
+    for (int32 i = 0; i < num_gaussians_; ++i) {
+      for (int32 j = 0; j < accs.num_states_; ++j) {
+        const Matrix<BaseFloat> &state_vec(model.StateVectors(j));
+        for (int32 m = 0; m < model.NumSubstates(j); ++m) {
+          if (accs.gamma_[j](m, i) > 0.0) {
+            Q_[i].AddVec2(static_cast<BaseFloat>(accs.gamma_[j](m, i)),
+                          state_vec.Row(m));
+          }
         }
       }
     }
@@ -260,15 +263,13 @@ void MleAmSgmmUpdaterMulti::Update(const std::vector<MleAmSgmmAccs*> &accs,
 
   // Now, copy the global parameters to the models
   for (int32 i = 0; i < num_models; ++i) {
-//    if ((flags & kSgmmPhoneProjections) || update_options_.renormalize_V)
-    if ((flags & kSgmmPhoneProjections))
+    if ((flags & kSgmmPhoneProjections) || update_options_.renormalize_V)
       models[i]->M_ = global_M_;
     if (flags & kSgmmCovarianceMatrix)
       models[i]->SigmaInv_ = global_SigmaInv_;
-    if (flags & kSgmmSpeakerProjections)
+    if ((flags & kSgmmSpeakerProjections) || update_options_.renormalize_N)
       models[i]->N_ = global_N_;
-//    if ((flags & kSgmmPhoneWeightProjections) || update_options_.renormalize_V)
-    if ((flags & kSgmmPhoneWeightProjections))
+    if ((flags & kSgmmPhoneWeightProjections) || update_options_.renormalize_V)
       models[i]->w_ = global_w_;
     models[i]->ComputeNormalizers();  // So that the models are ready to use.
   }
@@ -648,14 +649,19 @@ void MleAmSgmmUpdaterMulti::RenormalizeV(const SpMatrix<double> &H_sm,
       }
     }
   }
+  Sigma.Scale(1.0 / count);
+  int32 fixed_eigs = Sigma.LimitCondDouble(update_options_.max_cond);
+  if (fixed_eigs != 0) {
+    KALDI_WARN << "Scatter of vectors v is poorly conditioned. Fixed up "
+               << fixed_eigs << " eigenvalues.";
+  }
+  KALDI_LOG << "Eigenvalues of scatter of vectors v is : ";
+  Sigma.PrintEigs("Sigma");
   if (!Sigma.IsPosDef()) {
     KALDI_LOG << "Not renormalizing v because scatter is not positive definite"
               << " -- maybe first iter?";
     return;
   }
-  Sigma.Scale(1.0 / count);
-  KALDI_LOG << "Scatter of vectors v is : ";
-  Sigma.PrintEigs("Sigma");
 
   // Want to make variance of v unit and H_sm (like precision matrix) diagonal.
   TpMatrix<double> L(phn_dim);

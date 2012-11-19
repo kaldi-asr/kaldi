@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Missing prior file!";
     }
     
-    CuMatrix<BaseFloat> feats, feats_transf, nnet_in, nnet_out, glob_err;
+    CuMatrix<BaseFloat> feats, feats_transf, nnet_in, nnet_out, obj_diff;
     std::vector<int32> targets;
 
     Timer tim;
@@ -168,9 +168,9 @@ int main(int argc, char *argv[]) {
         cache.GetBunch(&nnet_in, &targets);
         // train 
         nnet.Propagate(nnet_in, &nnet_out);
-        xent.EvalVec(nnet_out, targets, &glob_err);
+        xent.EvalVec(nnet_out, targets, &obj_diff);
         if (!crossvalidate) {
-          nnet.Backpropagate(glob_err, NULL);
+          nnet.Backpropagate(obj_diff, NULL);
         }
         tot_t += nnet_in.NumRows();
       }

@@ -65,6 +65,16 @@ void PreconditionDirectionsAlpha(
     double alpha,
     MatrixBase<BaseFloat> *P);
 
+/**
+   This wrapper for PreconditionDirections computes lambda
+   using \lambda = \alpha/(N D) trace(R^T, R), and calls
+   PreconditionDirections.  It then rescales *P so that
+   its 2-norm is the same as that of R. */
+void PreconditionDirectionsAlphaRescaled(
+    const MatrixBase<BaseFloat> &R,
+    double alpha,
+    MatrixBase<BaseFloat> *P);
+
 
 
   

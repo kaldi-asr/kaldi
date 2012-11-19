@@ -136,13 +136,8 @@ class SpMatrix : public PackedMatrix<Real> {
 
   // Below routine does inversion in double precision,
   // even for single-precision object.
-  void InvertDouble(Real *logdet = NULL, Real *det_sign = NULL) {
-    SpMatrix<double> dmat(*this);
-    dmat.Invert();
-    (*this).CopyFromSp(dmat);
-    // georg: commented this out as function returns void:
-    // return *this;
-  }
+  void InvertDouble(Real *logdet = NULL, Real *det_sign = NULL,
+                    bool inverse_needed = true);
 
   /// Returns maximum ratio of singular values.
   inline Real Cond() const {

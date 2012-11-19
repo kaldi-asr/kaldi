@@ -34,7 +34,7 @@ namespace kaldi {
  */
 class Expand : public Component {
  public:
-  Expand(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet)
+  Expand(int32 dim_in, int32 dim_out, Nnet *nnet)
     : Component(dim_in, dim_out, nnet)
   { }
   ~Expand()
@@ -71,7 +71,8 @@ class Expand : public Component {
     cu::Expand(in, frame_offsets_, out); 
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in_err, CuMatrix<BaseFloat> *out_err) { 
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     KALDI_ERR << __func__ << "Not implemented!";
   }
 
@@ -86,7 +87,7 @@ class Expand : public Component {
  */
 class Copy : public Component {
  public:
-  Copy(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet)
+  Copy(int32 dim_in, int32 dim_out, Nnet *nnet)
     : Component(dim_in, dim_out, nnet)
   { }
   ~Copy()
@@ -100,7 +101,7 @@ class Copy : public Component {
     //read double vector
     Vector<double> vec_d;
     vec_d.Read(is, binary);
-    //sobtract 1
+    //subtract 1
     vec_d.Add(-1.0);
     //convert to int vector
     std::vector<int32> vec_i(vec_d.Dim());
@@ -126,7 +127,8 @@ class Copy : public Component {
     cu::Copy(in,copy_from_indices_,out); 
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &err_in, CuMatrix<BaseFloat> *err_out) { 
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     KALDI_ERR << __func__ << "Not implemented!";
   }
 

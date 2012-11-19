@@ -28,7 +28,7 @@ void TransitionModel::ComputeTriples(const ContextDependency &ctx_dep) {
   KALDI_ASSERT(!phones.empty());
   std::vector<int32> num_pdf_classes( 1 + *std::max_element(phones.begin(), phones.end()), -1);
   for (size_t i = 0; i < phones.size(); i++)
-    num_pdf_classes[phones[i]] = topo_.NumPdfClasses(phones[i]);
+   num_pdf_classes[phones[i]] = topo_.NumPdfClasses(phones[i]);
   ctx_dep.GetPdfInfo(phones, num_pdf_classes, &pdf_info);
   // pdf_info is list indexed by pdf of which (phone, pdf_class) it
   // can correspond to.
@@ -219,7 +219,7 @@ bool TransitionModel::IsFinal(int32 trans_id) const {
   // return true if the transition goes to the final state of the
   // topology entry.
   return (entry[triple.hmm_state].transitions[trans_index].first + 1 == 
-          entry.size());
+          static_cast<int32>(entry.size()));
 }
 
 
@@ -334,12 +334,13 @@ BaseFloat TransitionModel::GetTransitionLogProbIgnoringSelfLoops(int32 trans_id)
   return log_probs_(trans_id) - GetNonSelfLoopLogProb(TransitionIdToTransitionState(trans_id));
 }
 
-void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/weights, indexed by transition-id.
-                             const TransitionUpdateConfig &cfg,
-                             BaseFloat *objf_impr_out,
-                             BaseFloat *count_out) {
+// stats are counts/weights, indexed by transition-id.
+void TransitionModel::MleUpdate(const Vector<double> &stats,  
+                                const MleTransitionUpdateConfig &cfg,
+                                BaseFloat *objf_impr_out,
+                                BaseFloat *count_out) {
   if (cfg.share_for_pdfs) {
-    UpdateShared(stats, cfg, objf_impr_out, count_out);
+    MleUpdateShared(stats, cfg, objf_impr_out, count_out);
     return;
   }
   BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
@@ -398,13 +399,70 @@ void TransitionModel::Update(const Vector<double> &stats,  // stats are counts/w
   ComputeDerivedOfProbs();
 }
 
+
+// stats are counts/weights, indexed by transition-id.
+void TransitionModel::MapUpdate(const Vector<double> &stats,  
+                                const MapTransitionUpdateConfig &cfg,
+                                BaseFloat *objf_impr_out,
+                                BaseFloat *count_out) {
+  KALDI_ASSERT(cfg.tau > 0.0);
+  if (cfg.share_for_pdfs) {
+    MapUpdateShared(stats, cfg, objf_impr_out, count_out);
+    return;
+  }
+  BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
+  KALDI_ASSERT(stats.Dim() == NumTransitionIds()+1);
+  for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
+    int32 n = NumTransitionIndices(tstate);
+    KALDI_ASSERT(n>=1);
+    if (n > 1) {  // no point updating if only one transition...
+      Vector<double> counts(n);
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        int32 tid = PairToTransitionId(tstate, tidx);
+        counts(tidx) = stats(tid);
+      }
+      double tstate_tot = counts.Sum();
+      count_sum += tstate_tot;
+      Vector<BaseFloat> old_probs(n), new_probs(n);
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        int32 tid = PairToTransitionId(tstate, tidx);
+        old_probs(tidx) = new_probs(tidx) = GetTransitionProb(tid);
+      }
+      for (int32 tidx = 0; tidx < n; tidx++)
+        new_probs(tidx) = (counts(tidx) + cfg.tau * old_probs(tidx)) /
+            (cfg.tau + tstate_tot);
+      // Compute objf change
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        double objf_change = counts(tidx) * (log(new_probs(tidx))
+                                             - log(old_probs(tidx)));
+        objf_impr_sum += objf_change;
+      }
+      // Commit updated values.
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        int32 tid = PairToTransitionId(tstate, tidx);
+        log_probs_(tid) = log(new_probs(tidx));
+        if (log_probs_(tid) - log_probs_(tid) != 0.0)
+          KALDI_ERR << "Log probs is inf or NaN: error in update or bad stats?";
+      }
+    }
+  }
+  KALDI_LOG << "Objf change is " << (objf_impr_sum / count_sum)
+            << " per frame over " << count_sum
+            << " frames.";
+  if (objf_impr_out) *objf_impr_out = objf_impr_sum;
+  if (count_out) *count_out = count_sum;
+  ComputeDerivedOfProbs();
+}
+
+
+
 /// This version of the Update() function is for if the user specifies
 /// --share-for-pdfs=true.  We share the transitions for all states that
 /// share the same pdf.
-void TransitionModel::UpdateShared(const Vector<double> &stats,
-                                   const TransitionUpdateConfig &cfg,
-                                   BaseFloat *objf_impr_out,
-                                   BaseFloat *count_out) {
+void TransitionModel::MleUpdateShared(const Vector<double> &stats,
+                                      const MleTransitionUpdateConfig &cfg,
+                                      BaseFloat *objf_impr_out,
+                                      BaseFloat *count_out) {
   KALDI_ASSERT(cfg.share_for_pdfs);
 
   BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
@@ -483,10 +541,96 @@ void TransitionModel::UpdateShared(const Vector<double> &stats,
       }
     }
   }
-  KALDI_LOG << "TransitionModel::Update (shared update), objf change is "
-            << (objf_impr_sum / count_sum) << " per frame over " << count_sum
-            << " frames; " << num_floored << " probabilities floored, "
+  KALDI_LOG << "Objf change is " << (objf_impr_sum / count_sum)
+            << " per frame over " << count_sum << " frames; "
+            << num_floored << " probabilities floored, "
             << num_skipped << " pdf-ids skipped due to insuffient data.";
+  if (objf_impr_out) *objf_impr_out = objf_impr_sum;
+  if (count_out) *count_out = count_sum;
+  ComputeDerivedOfProbs();
+}
+
+
+/// This version of the MapUpdate() function is for if the user specifies
+/// --share-for-pdfs=true.  We share the transitions for all states that
+/// share the same pdf.
+void TransitionModel::MapUpdateShared(const Vector<double> &stats,
+                                      const MapTransitionUpdateConfig &cfg,
+                                      BaseFloat *objf_impr_out,
+                                      BaseFloat *count_out) {
+  KALDI_ASSERT(cfg.share_for_pdfs);
+
+  BaseFloat count_sum = 0.0, objf_impr_sum = 0.0;
+  KALDI_ASSERT(stats.Dim() == NumTransitionIds()+1);
+  std::map<int32, std::set<int32> > pdf_to_tstate;
+
+  for (int32 tstate = 1; tstate <= NumTransitionStates(); tstate++) {
+    int32 pdf = TransitionStateToPdf(tstate);
+    pdf_to_tstate[pdf].insert(tstate);
+  }
+  std::map<int32, std::set<int32> >::iterator map_iter;
+  for (map_iter = pdf_to_tstate.begin();
+       map_iter != pdf_to_tstate.end();
+       ++map_iter) {
+    // map_iter->first is pdf-id... not needed.
+    const std::set<int32> &tstates = map_iter->second;
+    KALDI_ASSERT(!tstates.empty());
+    int32 one_tstate = *(tstates.begin());
+    int32 n = NumTransitionIndices(one_tstate);
+    KALDI_ASSERT(n >= 1);
+    if (n > 1) { // Only update if >1 transition...
+      Vector<double> counts(n);
+      for (std::set<int32>::const_iterator iter = tstates.begin();
+           iter != tstates.end();
+           ++iter) {
+        int32 tstate = *iter;
+        if (NumTransitionIndices(tstate) != n)
+          KALDI_ERR << "Mismatch in #transition indices: you cannot "
+              "use the --share-for-pdfs option with this topology "
+              "and sharing scheme.";
+        for (int32 tidx = 0; tidx < n; tidx++) {
+          int32 tid = PairToTransitionId(tstate, tidx);
+          counts(tidx) += stats(tid);
+        }
+      }
+      double pdf_tot = counts.Sum();
+      count_sum += pdf_tot;
+
+      // Note: when calculating objf improvement, we
+      // assume we previously had the same tying scheme so
+      // we can get the params from one_tstate and they're valid
+      // for all.
+      Vector<BaseFloat> old_probs(n), new_probs(n);
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        int32 tid = PairToTransitionId(one_tstate, tidx);
+        old_probs(tidx) = new_probs(tidx) = GetTransitionProb(tid);
+      }
+      for (int32 tidx = 0; tidx < n; tidx++)
+        new_probs(tidx) = (counts(tidx) + old_probs(tidx) * cfg.tau) /
+            (pdf_tot + cfg.tau);
+      // Compute objf change
+      for (int32 tidx = 0; tidx < n; tidx++) {
+        double objf_change = counts(tidx) * (log(new_probs(tidx))
+                                             - log(old_probs(tidx)));
+        objf_impr_sum += objf_change;
+      }
+      // Commit updated values.
+      for (std::set<int32>::const_iterator iter = tstates.begin();
+           iter != tstates.end();
+           ++iter) {
+        int32 tstate = *iter;
+        for (int32 tidx = 0; tidx < n; tidx++) {
+          int32 tid = PairToTransitionId(tstate, tidx);
+          log_probs_(tid) = log(new_probs(tidx));
+          if (log_probs_(tid) - log_probs_(tid) != 0.0)
+            KALDI_ERR << "Log probs is inf or NaN: error in update or bad stats?";
+        }
+      }
+    }
+  }
+  KALDI_LOG << "Objf change is " << (objf_impr_sum / count_sum)
+            << " per frame over " << count_sum
+            << " frames.";
   if (objf_impr_out) *objf_impr_out = objf_impr_sum;
   if (count_out) *count_out = count_sum;
   ComputeDerivedOfProbs();

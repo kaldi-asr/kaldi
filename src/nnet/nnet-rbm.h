@@ -32,7 +32,7 @@ class RbmBase : public UpdatableComponent {
     GAUSSIAN
   } RbmNodeType;
  
-  RbmBase(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
+  RbmBase(int32 dim_in, int32 dim_out, Nnet *nnet) 
    : UpdatableComponent(dim_in, dim_out, nnet)
   { }
   
@@ -64,7 +64,7 @@ class RbmBase : public UpdatableComponent {
 
 class Rbm : public RbmBase {
  public:
-  Rbm(MatrixIndexT dim_in, MatrixIndexT dim_out, Nnet *nnet) 
+  Rbm(int32 dim_in, int32 dim_out, Nnet *nnet) 
    : RbmBase(dim_in, dim_out, nnet)
   { } 
   ~Rbm()
@@ -129,12 +129,13 @@ class Rbm : public RbmBase {
     }
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     KALDI_ERR << "Cannot backpropagate through RBM!"
               << "Better convert it to <BiasedLinearity>";
   }
   virtual void Update(const CuMatrix<BaseFloat> &input,
-                      const CuMatrix<BaseFloat> &err) {
+                      const CuMatrix<BaseFloat> &diff) {
     KALDI_ERR << "Cannot update RBM by backprop!"
               << "Better convert it to <BiasedLinearity>";
   }
@@ -244,8 +245,6 @@ protected:
   CuMatrix<BaseFloat> vis_hid_corr_;   ///< Matrix for linearity updates
   CuVector<BaseFloat> vis_bias_corr_;  ///< Vector for bias updates
   CuVector<BaseFloat> hid_bias_corr_;  ///< Vector for bias updates
-
-  // CuMatrix<BaseFloat> backprop_err_buf_;
 
   RbmNodeType vis_type_;
   RbmNodeType hid_type_;

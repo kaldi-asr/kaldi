@@ -205,7 +205,4 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
 done
 
-# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2x.sh
-local/run_sgmm.sh
-local/run_sgmm2.sh
 local/run_sgmm2x.sh

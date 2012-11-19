@@ -16,7 +16,7 @@ dim=40
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
-power=0.2 # Exponent for number of gaussians according to occurrence counts
+power=0.25 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
 splice_opts=

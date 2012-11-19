@@ -734,7 +734,7 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
   ParseFromString("precondition", &args, &precondition);
-  ParseFromString("alpha", &args, &learning_rate);
+  ParseFromString("alpha", &args, &alpha);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
@@ -760,6 +760,7 @@ void AffineComponentPreconditioned::Init(
   avg_input_.Resize(input_dim);
   avg_input_count_ = 0.0;
   alpha_ = alpha;
+  KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0);
 }
 
 
@@ -808,10 +809,10 @@ Component* AffineComponentPreconditioned::Copy() const {
   ans->bias_params_ = bias_params_;
   ans->avg_input_ = avg_input_;
   ans->avg_input_count_ = avg_input_count_;
+  ans->alpha_ = alpha_;
   return ans;
 }
 
-// TODO!  This is the baseline update.
 void AffineComponentPreconditioned::Update(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv) {
@@ -824,8 +825,8 @@ void AffineComponentPreconditioned::Update(
   // matrix that has been estimated from all the other rows,
   // smoothed by some appropriate amount times the identity
   // matrix (this amount is proportional to \alpha).
-  PreconditionDirectionsAlpha(in_value, alpha_, &in_value_precon);
-  PreconditionDirectionsAlpha(out_deriv, alpha_, &out_deriv_precon);
+  PreconditionDirectionsAlphaRescaled(in_value, alpha_, &in_value_precon);
+  PreconditionDirectionsAlphaRescaled(out_deriv, alpha_, &out_deriv_precon);
   
   bias_params_.AddRowSumMat(learning_rate_, out_deriv_precon, 1.0);
   linear_params_.AddMatMat(learning_rate_, out_deriv_precon, kTrans,

@@ -255,12 +255,82 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 )
 
 ( # running more iters on 4w.
-  steps/train_nnet_cpu.sh --nnet-config-opts "--precondition true" \
+  steps/train_nnet_cpu.sh --num-iters 20 --stage 5 \
+  --nnet-config-opts "--precondition true" \
     --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
     --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
     --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4w_nnet
 
  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
    --transform-dir exp/tri3b/decode \
-   exp/tri3b/graph data/test exp/tri4w_nnet/decode
+   exp/tri3b/graph data/test exp/tri4w_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4w_nnet/decode_it15
 )
+
+( # Trying preconditioned update.. this is different from the previous preconditioning which
+  # was just bias removal.  Baseline is probably 4w.
+  steps/train_nnet_cpu.sh --alpha 0.1 \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4x_nnet
+
+)
+
+# version of 4x that has alpha=1.0
+( # preconditioned update with higher learning rate.
+  steps/train_nnet_cpu.sh --alpha 1.0 \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4x2_nnet
+)
+# 4x3 is as 4x2 but with larger minibatch size.
+( 
+  steps/train_nnet_cpu.sh --alpha 1.0 \
+    --minibatch-size 500 --minibatches-per-phase-it1 100 --minibatches-per-phase 400 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4x3_nnet
+)
+# 4x4 is as 4x3 but with even larger minibatch size.
+( 
+  steps/train_nnet_cpu.sh --alpha 1.0 \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4x4_nnet
+)
+
+
+( # variant of 4y that has higher alpha value, 0.25 vs 0.1
+  steps/train_nnet_cpu.sh --alpha 0.25 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y2_nnet
+)
+
+( # variant of 4y that has even higher alpha value, 1.0 vs 0.1
+  steps/train_nnet_cpu.sh --alpha 1.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y3_nnet
+)
+
+( # 4y4 is as 4y3 but larger minibatch size (1000)
+  steps/train_nnet_cpu.sh --alpha 1.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y4_nnet
+)
+
+
+
+( # preconditioned update with even higher learning rate.
+  steps/train_nnet_cpu.sh --alpha 0.1 --nnet-config-opts "--learning-rate 0.005" \
+    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z_nnet
+)
+

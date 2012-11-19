@@ -41,7 +41,7 @@ class CuVector {
    : dim_(0), data_(NULL) { 
   }
   /// Constructor with memory initialisation
-  CuVector<Real>(size_t dim)
+  CuVector<Real>(MatrixIndexT dim)
    : dim_(0), data_(NULL) { 
     Resize(dim); 
   }
@@ -52,7 +52,7 @@ class CuVector {
   }
 
   /// Dimensions
-  size_t Dim() const { 
+  MatrixIndexT Dim() const { 
     return dim_; 
   }
 
@@ -61,7 +61,7 @@ class CuVector {
   Real* Data();
  
   /// Allocate the memory
-  ThisType& Resize(size_t dim);
+  ThisType& Resize(MatrixIndexT dim);
 
   /// Deallocate the memory
   void Destroy();
@@ -94,7 +94,7 @@ class CuVector {
   }
 
 private:
-  size_t dim_; ///< dimension of the vector
+  MatrixIndexT dim_; ///< dimension of the vector
   Real *data_; ///< GPU data pointer
   Vector<Real> vec_; ///< non-GPU vector as back-up
 };

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = false;
     std::string update_flags_str = "mvwt";
-    TransitionUpdateConfig tcfg;
+    MleTransitionUpdateConfig tcfg;
     std::string occs_out_filename;
 
     ParseOptions po(usage);
@@ -84,10 +84,10 @@ int main(int argc, char *argv[]) {
       transition_accs.Read(ki.Stream(), binary);
       gmm_accs.Read(ki.Stream(), binary, true);  // true == add; doesn't matter here.
     }
-
+    
     if (update_flags & kGmmTransitions) {  // Update transition model.
       BaseFloat objf_impr, count;
-      trans_model.Update(transition_accs, tcfg, &objf_impr, &count);
+      trans_model.MleUpdate(transition_accs, tcfg, &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
                 << " log-like improvement per frame over " << (count)
                 << " frames.";

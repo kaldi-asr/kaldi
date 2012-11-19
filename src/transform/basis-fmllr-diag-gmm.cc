@@ -33,6 +33,9 @@ namespace kaldi {
 void BasisFmllrAccus::Write(std::ostream &out_stream, bool binary) const {
 
   WriteToken(out_stream, binary, "<BASISFMLLRACCUS>");
+  WriteToken(out_stream, binary, "<BETA>");
+  WriteBasicType(out_stream, binary, beta_);
+  if (!binary) out_stream << '\n';
   if (grad_scatter_.NumCols() != 0) {
     WriteToken(out_stream, binary, "<GRADSCATTER>");
     grad_scatter_.Write(out_stream, binary);
@@ -43,11 +46,17 @@ void BasisFmllrAccus::Write(std::ostream &out_stream, bool binary) const {
 void BasisFmllrAccus::Read(std::istream &in_stream, bool binary,
                            bool add) {
   ExpectToken(in_stream, binary, "<BASISFMLLRACCUS>");
-
+  ExpectToken(in_stream, binary, "<BETA>");
+  double tmp_beta = 0;
+  ReadBasicType(in_stream, binary, &tmp_beta);
+  if (add) {
+    beta_ += tmp_beta;
+  } else {
+	beta_ = tmp_beta;
+  }
   ExpectToken(in_stream, binary, "<GRADSCATTER>");
   grad_scatter_.Read(in_stream, binary, add);
   ExpectToken(in_stream, binary, "</BASISFMLLRACCUS>");
-
 }
 
 void BasisFmllrAccus::ResizeAccus(int32 dim) {
@@ -78,8 +87,10 @@ void BasisFmllrAccus::AccuGradientScatter(
   // The amount of data beta_ is likely to be ZERO, especially
   // when silence-weight is set to be 0 and we are using the
   // per-utt mode.
-  if (spk_stats.beta_ > 0)
+  if (spk_stats.beta_ > 0) {
+	beta_ += spk_stats.beta_;
     grad_scatter_.AddVec2(BaseFloat(1.0 / spk_stats.beta_), grad_vec);
+  }
 }
 
 void BasisFmllrEstimate::WriteBasis(std::ostream &out_stream, bool binary) const {
@@ -221,6 +232,16 @@ void BasisFmllrEstimate::EstimateFmllrBasis(
     // Convert stacked vectors to matrix
     fmllr_basis_[n].CopyRowsFromVec(basis_vec);
   }
+  // Output the eigenvalues of the gradient scatter matrix
+  // The eigenvalues are divided by twice the number of frames
+  // in the training data, to get the per-frame values.
+  Vector<double> Lvec_scaled(Lvec);
+  Lvec_scaled.Scale(1.0 / (2 * basis_accus.beta_));
+  KALDI_LOG << "The [per-frame] eigenvalues sorted from largest to smallest: " << Lvec_scaled;
+  /// The sum of the [per-frame] eigenvalues is roughly equal to
+  /// the improvement of log-likelihood of the training data.
+  KALDI_LOG << "Sum of the [per-frame] eigenvalues, that is"
+		  " the log-likelihood improvement, is " << Lvec_scaled.Sum();
 }
 
 double BasisFmllrEstimate::ComputeTransform(

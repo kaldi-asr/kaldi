@@ -39,7 +39,8 @@ template<>
 void PackedMatrix<float>::AddPacked(const float alpha,
                                     const PackedMatrix<float> &rMa) {
   KALDI_ASSERT(num_rows_ == rMa.NumRows());
-  MatrixIndexT sz =  ((num_rows_ * (num_rows_+1)) / 2);
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
   cblas_saxpy(sz, alpha, rMa.Data(), 1, data_, 1);
 }
 
@@ -47,7 +48,8 @@ template<>
 void PackedMatrix<double>::AddPacked(const double alpha,
                                      const PackedMatrix<double> &rMa) {
   KALDI_ASSERT(num_rows_ == rMa.NumRows());
-  MatrixIndexT sz = ((num_rows_ * (num_rows_+1)) / 2);
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
   cblas_daxpy(sz, alpha, rMa.Data(), 1, data_, 1);
 }
 
@@ -144,8 +146,9 @@ void PackedMatrix<Real>::CopyFromPacked(const PackedMatrix<OtherReal> &orig) {
   } else {
     Real *dst = data_;
     const OtherReal *src = orig.Data();
-    MatrixIndexT size = (NumRows() * (NumRows()+1) / 2);
-    for (MatrixIndexT i = 0; i < size; i++, dst++, src++)
+    size_t nr = NumRows(),
+        size = (nr * (nr + 1)) / 2;
+    for (size_t i = 0; i < size; i++, dst++, src++)
       *dst = *src;
   }
 }
@@ -225,13 +228,15 @@ void PackedMatrix<Real>::Destroy() {
 
 template<>
 void PackedMatrix<float>::Scale(float alpha) {
-  MatrixIndexT sz = ((num_rows_ * (num_rows_+1)) / 2);
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
   cblas_sscal(sz, alpha, data_, 1);
 }
 
 template<>
 void PackedMatrix<double>::Scale(double alpha) {
-  MatrixIndexT sz = ((num_rows_ * (num_rows_+1)) / 2);
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
   cblas_dscal(sz, alpha, data_, 1);
 }
 

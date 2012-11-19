@@ -74,8 +74,13 @@ void PreconditionDirectionsAlpha(
     MatrixBase<BaseFloat> *P) {
   KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0); // alpha > 1.0
   // probably does not really make sense.
-  double t = TraceMatMat(R, R, kNoTrans),
-    lambda = t * alpha / R.NumRows() / R.NumCols();
+  double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;
+  if (t < floor) {
+    KALDI_WARN << "Flooring trace from " << t
+               << " to " << floor;
+    t = floor;
+  }
+  double lambda = t * alpha / R.NumRows() / R.NumCols();
   // see the extended comment below for an explanation of this.
   if (lambda <= 0.0) {
     // This should never really happen, it would probably indicate a bug
@@ -85,7 +90,35 @@ void PreconditionDirectionsAlpha(
   }
   PreconditionDirections(R, lambda, P);
 }
-  
+
+
+void PreconditionDirectionsAlphaRescaled(
+    const MatrixBase<BaseFloat> &R,
+    double alpha,
+    MatrixBase<BaseFloat> *P) {
+  KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0); // alpha > 1.0
+  // probably does not really make sense.
+  double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;
+  if (t == 0.0) {
+    P->CopyFromMat(R);
+    return;
+  }
+  if (t < floor) {
+    KALDI_WARN << "Flooring trace from " << t
+               << " to " << floor;
+    t = floor;
+  }
+  double lambda = t * alpha / R.NumRows() / R.NumCols();
+  // see the extended comment below for an explanation of this.
+  KALDI_ASSERT(lambda != 0.0);
+  PreconditionDirections(R, lambda, P);
+  double p_trace = TraceMatMat(*P, *P, kTrans),
+      rescale = sqrt(t / p_trace);
+  KALDI_ASSERT(p_trace != 0.0);
+  P->Scale(rescale);
+}
+
+
 }
 
 /*

@@ -126,6 +126,31 @@ inline void cblas_Xger(MatrixIndexT num_rows, MatrixIndexT num_cols, double alph
              Mdata, stride);
 }
 
+// syrk: symmetric rank-k update.
+// if trans==kNoTrans, then C = alpha A A^T + beta C
+// else C = alpha A^T A + beta C.
+// note: dim_c is dim(C), other_dim_a is the "other" dimension of A, i.e.
+// num-cols(A) if kNoTrans, or num-rows(A) if kTrans.
+// We only need the row-major and lower-triangular option of this, and this
+// is hard-coded.
+inline void cblas_Xsyrk (
+    const MatrixTransposeType trans, const MatrixIndexT dim_c,
+    const MatrixIndexT other_dim_a, const float alpha, const float *A,
+    const MatrixIndexT a_stride, const float beta, float *C,
+    const MatrixIndexT c_stride) {
+  cblas_ssyrk(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
+}
+
+inline void cblas_Xsyrk (
+    const MatrixTransposeType trans, const MatrixIndexT dim_c,
+    const MatrixIndexT other_dim_a, const double alpha, const double *A,
+    const MatrixIndexT a_stride, const double beta, double *C,
+    const MatrixIndexT c_stride) {
+  cblas_dsyrk(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
+}
+
 
 
 }

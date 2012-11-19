@@ -53,6 +53,7 @@ void LdaEstimate::Accumulate(const VectorBase<BaseFloat> &data,
 }
 
 void LdaEstimate::Estimate(int32 target_dim,
+                           bool remove_offset,
                            Matrix<BaseFloat> *m,
                            Matrix<BaseFloat> *mfull) const {
   KALDI_ASSERT(target_dim > 0);
@@ -111,12 +112,30 @@ void LdaEstimate::Estimate(int32 target_dim,
   // finally, copy first target_dim rows to m
   m->Resize(target_dim, dim);
   m->CopyFromMat(lda_mat.Range(0, target_dim, 0, dim));
+  if (remove_offset)
+    AddMeanOffset(total_mean, m);
 
   if (mfull) {
     mfull->Resize(dim, dim);
     mfull->CopyFromMat(lda_mat);
+    if (remove_offset)
+      AddMeanOffset(total_mean, mfull);
   }
 }
+
+void LdaEstimate::AddMeanOffset(const VectorBase<double> &mean_dbl,
+                                Matrix<BaseFloat> *projection) const {
+  Vector<BaseFloat> mean(mean_dbl);
+  Vector<BaseFloat> neg_projected_mean(projection->NumRows());
+  // the negative
+  neg_projected_mean.AddMatVec(-1.0, *projection, kNoTrans, mean, 0.0);
+  projection->Resize(projection->NumRows(),
+                     projection->NumCols() + 1,
+                     kCopyData);
+  projection->CopyColFromVec(neg_projected_mean, projection->NumCols() - 1);
+}
+
+
 
 void LdaEstimate::Read(std::istream &in_stream, bool binary, bool add) {
   int32 num_classes, dim;

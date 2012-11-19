@@ -36,7 +36,6 @@ int main(int argc, char *argv[]) {
         " gmm-mixup --merge=2000 1.mdl 1.occs 2.mdl\n";
         
     bool binary_write = true;
-    TransitionUpdateConfig tcfg;
     int32 mixup = 0;
     int32 mixdown = 0;
     BaseFloat perturb_factor = 0.01;

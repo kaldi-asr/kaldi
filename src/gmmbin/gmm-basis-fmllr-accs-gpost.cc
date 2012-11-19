@@ -94,6 +94,7 @@ int main(int argc, char *argv[]) {
       SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
+      int32 num_spk = 0;
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         FmllrDiagGmmAccs spk_stats(am_gmm.Dim());
         string spk = spk2utt_reader.Key();
@@ -124,8 +125,10 @@ int main(int argc, char *argv[]) {
           num_done++;
         }  // end looping over all utterances of this speaker
         basis_accs.AccuGradientScatter(spk_stats);
-
+        num_spk++;
       }  // end looping over speakers
+      KALDI_LOG << "Accumulate statistics from " << num_spk << " speakers";
+
     } else {  // per-utterance mode
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {

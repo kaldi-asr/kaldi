@@ -100,14 +100,18 @@ void OptimizeLbfgs<Real>::ComputeNewDirection(Real function_value,
     q.CopyFromVec(gradient); // q <-- \nabla f_k.
   Vector<Real> alpha(m);
   // for i = k - 1, k - 2, ... k - m
-  for (SignedMatrixIndexT i = k - 1; i >= std::max(k - m, 0); i--) { 
+  for (SignedMatrixIndexT i = k - 1;
+       i >= std::max(k - m, static_cast<SignedMatrixIndexT>(0));
+       i--) { 
     alpha(i % m) = rho_(i % m) * VecVec(S(i), q); // \alpha_i <-- \rho_i s_i^T q.
     q.AddVec(-alpha(i % m), Y(i)); // q <-- q - \alpha_i y_i
   }
   r.SetZero();
   r.AddVecVec(1.0, H_, q, 0.0); // r <-- H_k^{(0)} q.
   // for k = k - m, k - m + 1, ... , k - 1
-  for (SignedMatrixIndexT i = std::max(k - m, 0); i < k; i++) {
+  for (SignedMatrixIndexT i = std::max(k - m, static_cast<SignedMatrixIndexT>(0));
+       i < k;
+       i++) {
     Real beta = rho_(i % m) * VecVec(Y(i), r); // \beta <-- \rho_i y_i^T r
     r.AddVec(alpha(i % m) - beta, S(i)); // r <-- r + s_i (\alpha_i - \beta)
   }
