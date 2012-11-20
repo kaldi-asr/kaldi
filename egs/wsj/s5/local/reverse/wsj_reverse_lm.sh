@@ -57,7 +57,7 @@ gunzip -c $lm | \
   grep -v '</s> <s>' | \
   grep -v '</s> </s>' > $test/forward.arpa
 echo "Mapping ARPA to reverse ARPA"
-python local/reverse_arpa.py $test/forward.arpa > $test/reverse.arpa
+python local/reverse/reverse_arpa.py $test/forward.arpa > $test/reverse.arpa
 arpa2fst $test/reverse.arpa | fstprint | \
   grep -v "230258.5" | \
   utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
