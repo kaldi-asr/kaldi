@@ -95,7 +95,7 @@ fi
 if [ -f $first_pass/lat.1.gz ]; then
   echo "converting first pass lattice to graph arc acceptor"
   $cmd JOB=1:$nj $dir/log/arc_graph.JOB.log \
-    time lattice-arcgraph --write-graph=HCLG_mapped.fst --write-lattices=ark,t:$dir/lat.det \
+    time lattice-arcgraph --write-lattices=ark,t:$dir/lat.det \
       $srcdir/tree $model $graphdir/HCLG.fst "ark:gunzip -c $first_pass/lat.JOB.gz|" \
       ark,t:$dir/lat.JOB.arcs || exit 1;
     #  --acoustic-scale=$acwt --lattice-beam=$latbeam --prune=false \
