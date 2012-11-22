@@ -110,28 +110,31 @@ while (<$source>) {
   chomp;
   my @col = split(" ", $_);
   @col == 5 || die "Bad number of columns in raw results\n";
-  my $term_id = shift @col;
-  my $utt = $col[0];
+  my $keyword = shift @col;
+  my $utter = $col[0];
   my $start = $col[1]*$flen;
   my $dur = $col[2]*$flen-$start;
   my $score = exp(-$col[3]);
 
   if ($segment) {
-    $start += $tbeg{$utt};
+    $start += $tbeg{$utter};
+  }
+  if ($map_utter) {
+    $utter = $utter_mapper{$utter};
   }
 
-  push(@{$results{$term_id}}, [$utt, $start, $dur, $score]);
+  push(@{$results{$keyword}}, [$utter, $start, $dur, $score]);
 }
 
 my $key;
-my $iterm;
+my $item;
 my %Ntrue = ();
 foreach $key (keys %results) {
-  foreach $iterm (@{$results{$key}}) {
+  foreach $item (@{$results{$key}}) {
     if (!defined($Ntrue{$key})) {
       $Ntrue{$key} = 0.0;
     }
-    $Ntrue{$key} += @{$iterm}[3];
+    $Ntrue{$key} += @{$item}[3];
   }
 }
 
@@ -139,33 +142,27 @@ eval "print $sourceout \'<kwslist kwlist_filename=\"$ecf_filename\" language=\"$
 foreach $key (sort {($a =~ /([0-9]*)$/)[0] <=> ($b =~ /([0-9]*)$/)[0]} (keys %results)) {
   my $term_search_time = "1";
   my $oov_term_count = "0";
-  $key =~ m/-([0-9]*)$/;
-  my $suffix = sprintf("%04d", $1);
   eval "print $sourceout \'<detected_kwlist kwid=\"$key\" search_time=\"$term_search_time\" oov_count=\"$oov_term_count\">\n\'";
   # Collect results
   my %list = ();
   my @list = ();
-  foreach $iterm (@{$results{$key}}) {
+  foreach $item (@{$results{$key}}) {
     my $decision = "NO";
-    my $bias = 0.0;
-    my $score = ($Ntrue{$key}+$bias)/($duration/$beta+($beta-1)/$beta*($Ntrue{$key}+$bias)); 
-    if (@{$iterm}[3] > $score) {
-      # if (@{$iterm}[3] > $score && @{$iterm}[2] > 0.05 && @{$iterm}[2] < 2) {
+    my $score = $Ntrue{$key}/($duration/$beta+($beta-1)/$beta*$Ntrue{$key}); 
+    if (@{$item}[3] > $score) {
+      # if (@{$item}[3] > $score && @{$item}[2] > 0.05 && @{$item}[2] < 2) {
       $decision = "YES";
     }
     if ($normalize eq "true") {
-      $score = (@{$iterm}[3]-$score+1)/2;             # Normalize here
+      $score = (@{$item}[3]-$score+1)/2;             # Normalize here
     } else {
-      $score = @{$iterm}[3];
+      $score = @{$item}[3];
     }
-    @{$iterm}[1] = sprintf("%.2f", @{$iterm}[1]);
-    @{$iterm}[2] = sprintf("%.2f", @{$iterm}[2]);
+    @{$item}[1] = sprintf("%.2f", @{$item}[1]);
+    @{$item}[2] = sprintf("%.2f", @{$item}[2]);
     $score = sprintf("%.2f", $score);
-    my $utter = @{$iterm}[0];
-    if ($map_utter) {
-      $utter = $utter_mapper{$utter};
-    }
-    push (@list, "<kw file=\"$utter\" channel=\"1\" tbeg=\"@{$iterm}[1]\" dur=\"@{$iterm}[2]\" score=\"$score\" decision=\"$decision\"/>\n");
+    my $utter = @{$item}[0];
+    push (@list, "<kw file=\"$utter\" channel=\"1\" tbeg=\"@{$item}[1]\" dur=\"@{$item}[2]\" score=\"$score\" decision=\"$decision\"/>\n");
     $list{$score} = 1;
   }
   # Now sort results by score
@@ -180,5 +177,6 @@ foreach $key (sort {($a =~ /([0-9]*)$/)[0] <=> ($b =~ /([0-9]*)$/)[0]} (keys %re
 eval "print $sourceout \'</kwslist>\n\'";
 
 if ($segment) {close(SEG);}
+if ($map_utter) {close(UTT);}
 if ($filein  ne "-") {close(I);}
 if ($fileout ne "-") {close(O);}
