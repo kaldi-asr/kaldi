@@ -2266,6 +2266,33 @@ template<class Real> static void UnitTestTraceSpSpLower() {
   AssertEqual(TraceSpSp(S, T), TraceSpSpLower(Sfast, T));
 }
 
+template<class Real> static void UnitTestAddMat2Sp() {
+  for (MatrixIndexT i = 0; i < 5; i++) {
+    MatrixIndexT dimM = (rand()%10) + 1,
+        dimN = (rand()%10 + 1);
+    BaseFloat alpha = 0.8, beta = 0.9;
+    SpMatrix<Real> S(dimM), T(dimN);
+    S.SetRandn();
+    T.SetRandn();
+    Matrix<Real> M(dimM, dimN);
+    M.SetRandn();
+    MatrixTransposeType trans = (i % 2 == 1 ? kTrans: kNoTrans);
+    if (trans == kTrans) M.Transpose();
+    SpMatrix<Real> S2(S);
+    S.AddMat2Sp(alpha, M, trans, T, beta);
+
+    // M[trans?] * T.
+    Matrix<Real> A(dimM, dimN);
+    A.AddMatSp(1.0, M, trans, T, 0.0);
+    Matrix<Real> B(dimM, dimM); // M[trans] * T * M[trans]'
+    B.AddMatMat(1.0, A, kNoTrans, M, trans == kTrans ? kNoTrans : kTrans, 0.0);
+    SpMatrix<Real> tmp(B);
+    S2.Scale(beta);
+    S2.AddSp(alpha, tmp);
+    AssertEqual(S, S2);
+  }
+}
+
 template<class Real> static void UnitTestAddMat2() {
   MatrixIndexT extra = 1;
   // Test AddMat2 function of SpMatrix.
@@ -3435,6 +3462,7 @@ static void UnitTestTopEigs() {
 
 
 template<class Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestAddMat2Sp<Real>();
   UnitTestLbfgs<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();

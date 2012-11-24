@@ -27,27 +27,6 @@ namespace kaldi {
 // separately for the different template arguments (float, double).
 
 template<>
-void SpMatrix<float>::AddMat2Sp(const float alpha, const MatrixBase<float> &M,
-                                MatrixTransposeType transM,
-                                const SpMatrix<float> &A, const float beta);
-
-template<>
-void SpMatrix<double>::AddMat2Sp(const double alpha, const MatrixBase<double> &M,
-                                 MatrixTransposeType transM,
-                                 const SpMatrix<double> &A, const double beta);
-
-
-template<>
-void SpMatrix<float>::AddMat2Vec(const float alpha, const MatrixBase<float> &M,
-                                 MatrixTransposeType transM,
-                                 const VectorBase<float> &A, const float beta);
-
-template<>
-void SpMatrix<double>::AddMat2Vec(const double alpha, const MatrixBase<double> &M,
-                                 MatrixTransposeType transM,
-                                 const VectorBase<double> &A, const double beta);
-
-template<>
 double SolveQuadraticProblem(const SpMatrix<double> &H, const VectorBase<double> &g,
                              VectorBase<double> *x, double K, double eps,
                              const char *debug_str, bool optimizeDelta);
@@ -92,13 +71,6 @@ double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
                                          MatrixBase<double> *M,
                                          double K, double eps,
                                          const char *debug_str);
-
-
-template<>
-double TraceSpSpLower(const SpMatrix<double> &A, const SpMatrix<double> &B);
-
-template<>
-float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B);
 
 
 }  // namespace kaldi

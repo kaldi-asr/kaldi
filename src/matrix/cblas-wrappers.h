@@ -40,15 +40,16 @@ inline void cblas_Xrot(const int N, double *X, const int incX, double *Y,
                        const int incY, const double c, const double s) {
   cblas_drot(N, X, incX, Y, incY, c, s);
 }
-inline float cblas_Xdot(const int N, float *X, const int incX, float *Y,
+inline float cblas_Xdot(const int N, const float *const X,
+                        const int incX, const float *const Y,
                         const int incY) {
   return cblas_sdot(N, X, incX, Y, incY);
 }
-inline double cblas_Xdot(const int N, double *X, const int incX, double *Y,
+inline double cblas_Xdot(const int N, const double *const X,
+                        const int incX, const double *const Y,
                         const int incY) {
   return cblas_ddot(N, X, incX, Y, incY);
 }
-
 inline void cblas_Xaxpy(const int N, const float alpha, const float *X,
                         const int incX, float *Y, const int incY) {
   cblas_saxpy(N, alpha, X, incX, Y, incY);
@@ -142,7 +143,7 @@ inline void cblas_Xsyrk (
               dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
 }
 
-inline void cblas_Xsyrk (
+inline void cblas_Xsyrk(
     const MatrixTransposeType trans, const MatrixIndexT dim_c,
     const MatrixIndexT other_dim_a, const double alpha, const double *A,
     const MatrixIndexT a_stride, const double beta, double *C,
@@ -150,8 +151,6 @@ inline void cblas_Xsyrk (
   cblas_dsyrk(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
               dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
 }
-
-
 
 }
 // namespace kaldi
