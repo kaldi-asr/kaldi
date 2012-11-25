@@ -150,7 +150,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
       BaseFloat delta_objf_observed = objf_perturbed - objf,
           delta_objf_predicted = (perturbed_ucomponent->DotProduct(*gradient_ucomponent) -
                                   ucomponent->DotProduct(*gradient_ucomponent));
-
+      
       KALDI_LOG << "Model gradients: comparing " << delta_objf_observed
                 << " and " << delta_objf_predicted;
       if (fabs(delta_objf_predicted - delta_objf_observed) >

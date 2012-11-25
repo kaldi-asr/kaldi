@@ -224,6 +224,7 @@ void Nnet::AdjustLearningRates(
   KALDI_ASSERT(ratio >= 1.0);
   KALDI_ASSERT(measure_at > 0.5 && measure_at <= 1.0);
   std::string changes_str;
+  std::string dotprod_str;
   BaseFloat inv_ratio = 1.0 / ratio;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
@@ -244,12 +245,15 @@ void Nnet::AdjustLearningRates(
     BaseFloat lrate = uc->LearningRate();
     lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
     changes_str = changes_str + (grad_dotprod_interp > 0 ? " increase" : " decrease");
+    dotprod_str = dotprod_str + (new_model_new_gradient(c) > 0 ? " positive" : " negative");
     if (lrate > max_learning_rate) lrate = max_learning_rate;
     
     new_lrates.push_back(lrate);
     uc->SetLearningRate(lrate);
   }
   KALDI_VLOG(1) << "Changes to learning rates: " << changes_str;
+  KALDI_VLOG(1) << "Dot product of model with validation gradient is "
+                << dotprod_str;
   std::ostringstream lrate_str;
   for (size_t i = 0; i < new_lrates.size(); i++)
     lrate_str << new_lrates[i] << ' ';

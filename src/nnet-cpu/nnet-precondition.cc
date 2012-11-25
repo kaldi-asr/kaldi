@@ -72,7 +72,7 @@ void PreconditionDirectionsAlpha(
     const MatrixBase<BaseFloat> &R,
     double alpha,
     MatrixBase<BaseFloat> *P) {
-  KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0); // alpha > 1.0
+  KALDI_ASSERT(alpha > 0.0);
   // probably does not really make sense.
   double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;
   if (t < floor) {
@@ -96,7 +96,7 @@ void PreconditionDirectionsAlphaRescaled(
     const MatrixBase<BaseFloat> &R,
     double alpha,
     MatrixBase<BaseFloat> *P) {
-  KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0); // alpha > 1.0
+  KALDI_ASSERT(alpha > 0.0); // alpha > 1.0
   // probably does not really make sense.
   double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;
   if (t == 0.0) {

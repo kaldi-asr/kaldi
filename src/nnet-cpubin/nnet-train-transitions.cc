@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     bool set_priors = true; // Also set the per-pdf priors in the model.
     BaseFloat prior_floor = 1.0e-08;
-    TransitionUpdateConfig transition_update_config;
+    MleTransitionUpdateConfig transition_update_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -109,8 +109,8 @@ int main(int argc, char *argv[]) {
 
     {
       BaseFloat objf_impr, count;
-      trans_model.Update(transition_accs, transition_update_config,
-                         &objf_impr, &count);
+      trans_model.MleUpdate(transition_accs, transition_update_config,
+                            &objf_impr, &count);
       KALDI_LOG << "Transition model update: average " << (objf_impr/count)
                 << " log-like improvement per frame over " << count
                 << " frames.";

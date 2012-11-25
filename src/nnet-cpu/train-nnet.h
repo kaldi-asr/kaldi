@@ -25,50 +25,6 @@
 namespace kaldi {
 
 
-
-/// Class NnetValidationSet stores the validation set feature data and labels,
-/// and is responsible for calling code that computes the objective function and
-/// gradient on the validation set.
-class NnetValidationSet {
- public:
-  NnetValidationSet() { }
-
-  /// This is used while initializing the object.
-  void AddUtterance(const MatrixBase<BaseFloat> &features,
-                    const VectorBase<BaseFloat> &spk_info, // may be empty
-                    const std::vector<int32> &pdf_ids,
-                    BaseFloat utterance_weight = 1.0);
-
-  /// Here, "nnet" will be a neural net and "gradient" will be a copy of it that
-  /// this function will overwrite with the gradient.  This function will compute
-  /// the gradient and return the *average* per-frame objective function
-  BaseFloat ComputeGradient(const Nnet &nnet,
-                            Nnet *gradient) const;
-
-  /// Returns the total #frames weighted by the utterance_weight (which is
-  /// typically one).
-  BaseFloat TotalWeight() const; 
-                    
-  ~NnetValidationSet();
- private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetValidationSet);
-  struct Utterance {
-    Matrix<BaseFloat> features;
-    Vector<BaseFloat> spk_info;
-    std::vector<int32> pdf_ids;
-    BaseFloat weight;
-    Utterance(const MatrixBase<BaseFloat> &features_in,
-              const VectorBase<BaseFloat> &spk_info_in,
-              const std::vector<int32> &pdf_ids_in,
-              BaseFloat weight_in): features(features_in),
-                                    spk_info(spk_info_in),
-                                    pdf_ids(pdf_ids_in),
-                                    weight(weight_in) { }
-  };
-  std::vector<Utterance*> utterances_;
-};
-  
-
 struct NnetAdaptiveTrainerConfig {
   int32 minibatch_size;
   int32 minibatches_per_phase;
@@ -76,13 +32,15 @@ struct NnetAdaptiveTrainerConfig {
   BaseFloat measure_gradient_at;
   BaseFloat max_learning_rate;
   int32 num_phases;
+  bool always_accept;
   
   NnetAdaptiveTrainerConfig():
       minibatch_size(500), minibatches_per_phase(50),
       learning_rate_ratio(1.1),
       measure_gradient_at(1.0),
       max_learning_rate(0.1),
-      num_phases(20) { }
+      num_phases(20),
+      always_accept(false) { }
   
   void Register (ParseOptions *po) {
     po->Register("minibatch-size", &minibatch_size,
@@ -101,6 +59,9 @@ struct NnetAdaptiveTrainerConfig {
                  "This parameter controls automatic setting of learning rates. "
                  "Must be >0.5 and >= 1.0.  Closer to 0.5 leads to faster "
                  "learning rates.");
+    po->Register("always-accept", &always_accept,
+                 "If true, always accept steps even if the validation objective "
+                 "becomes worse.");
   }  
 };
 
@@ -122,10 +83,6 @@ class NnetAdaptiveTrainer {
   ~NnetAdaptiveTrainer();
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NnetAdaptiveTrainer);
-
-  // returns objf per sample, sets "gradient" to the gradient
-  // on the validation set, computed at value *nnet_.
-  BaseFloat ComputeValidationSetGradient(Nnet *gradient) const;
   
   void TrainOneMinibatch();
   
@@ -155,7 +112,6 @@ class NnetAdaptiveTrainer {
   BaseFloat initial_validation_objf_; // validation objf at start.
   Vector<BaseFloat> progress_stats_; // Per-layer stats on progress so far.
 };
-
 
 
 

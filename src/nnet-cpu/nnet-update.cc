@@ -212,6 +212,34 @@ BaseFloat ComputeNnetObjf(const Nnet &nnet,
 }
 
 
+BaseFloat ComputeNnetGradient(
+    const Nnet &nnet,
+    const std::vector<NnetTrainingExample> &validation_set,
+    int32 batch_size,
+    Nnet *gradient) {
+  bool treat_as_gradient = true;
+  gradient->SetZero(treat_as_gradient);
+  std::vector<NnetTrainingExample> batch;
+  batch.reserve(batch_size);
+  BaseFloat tot_objf = 0.0;
+  for (int32 start_pos = 0;
+       start_pos < static_cast<int32>(validation_set.size());
+       start_pos += batch_size) {
+    batch.clear();
+    for (int32 i = start_pos;
+         i < std::min(start_pos + batch_size,
+                      static_cast<int32>(validation_set.size()));
+         i++) {
+      batch.push_back(validation_set[i]);
+    }
+    tot_objf += DoBackprop(nnet,
+                           batch,
+                           gradient);
+  }
+  return tot_objf / TotalNnetTrainingWeight(validation_set);
+}
+
+
 void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.

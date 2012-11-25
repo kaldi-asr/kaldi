@@ -437,6 +437,12 @@ void SoftmaxComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</SoftmaxComponent>");
 }
 
+
+void AffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
@@ -760,7 +766,7 @@ void AffineComponentPreconditioned::Init(
   avg_input_.Resize(input_dim);
   avg_input_count_ = 0.0;
   alpha_ = alpha;
-  KALDI_ASSERT(alpha > 0.0 && alpha <= 1.0);
+  KALDI_ASSERT(alpha > 0.0);
 }
 
 
@@ -1024,6 +1030,11 @@ Component* BlockAffineComponent::Copy() const {
   return ans;
 }
 
+void BlockAffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
 void BlockAffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                      int32, // num_chunks
                                      Matrix<BaseFloat> *out) const {
@@ -1245,10 +1256,24 @@ void PermuteComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
 
 
 void MixtureProbComponent::PerturbParams(BaseFloat stddev) {
+  // We need to preserve the sum-to-one constraint when
+  // perturbing these parameters.
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> temp_params(params_[i]);
-    temp_params.SetRandn();
-    params_[i].AddMat(stddev, temp_params);
+    Matrix<BaseFloat> params(params_[i]);
+    params.ApplyFloor(1.0e-20);
+    params.ApplyLog();
+    Vector<BaseFloat> col(params.NumRows()),
+        rand(params.NumRows());
+    for (int32 j = 0; j < params.NumCols(); j++) {
+      col.CopyColFromMat(params, j);
+      rand.SetRandn();
+      col.AddVec(stddev, rand);  // *Perturb the parameters.*
+      col.ApplyExp(); // convert back to non-log form.
+      KALDI_ASSERT(col.Sum() > 0.0);
+      col.Scale(1.0 / col.Sum()); // make it sum to one.
+      params.CopyColFromVec(col, j);
+    }      
+    params_[i].CopyFromMat(params);
   }
 }
 
@@ -1263,16 +1288,50 @@ Component* MixtureProbComponent::Copy() const {
   return ans;
 }
 
-
+/// dot product is only possible between parameters and gradients.
 BaseFloat MixtureProbComponent::DotProduct(
     const UpdatableComponent &other_in) const {
   const MixtureProbComponent *other =
       dynamic_cast<const MixtureProbComponent*>(&other_in);
   BaseFloat ans = 0.0;
   KALDI_ASSERT(params_.size() == other->params_.size());
-  for (size_t i = 0; i < params_.size(); i++)
-    ans += TraceMatMat(params_[i], other->params_[i], kTrans);
+  if (this->is_gradient_) {
+    KALDI_ASSERT(!other->is_gradient_);
+    return other_in.DotProduct(*this);
+  }
+  KALDI_ASSERT(other->is_gradient_ && !this->is_gradient_);
+  for (size_t i = 0; i < params_.size(); i++) {
+    Matrix<BaseFloat> log_params(params_[i]);
+    log_params.ApplyFloor(1.0e-20);
+    log_params.ApplyLog();
+    ans += TraceMatMat(log_params, other->params_[i], kTrans);
+  }
   return ans;
+}
+
+void MixtureProbComponent::Scale(BaseFloat scale) {
+  for (size_t i = 0; i < params_.size(); i++) {
+    if (this->is_gradient_) { // just scale.
+      params_[i].Scale(scale);
+    } else {
+      // scale in log-space.  From its external interface, this class acts like
+      // its parameters are stored in log space, although they are not.
+      Matrix<BaseFloat> params(params_[i]);
+      params.ApplyFloor(1.0e-20);
+      params.ApplyLog();
+      params.Scale(scale);  // **scale in log-space.**
+      params.ApplyExp();
+      // Now re-normalize each column to sum to one.
+      Vector<BaseFloat> col(params.NumRows());
+      for (int32 c = 0; c < params.NumCols(); c++) {
+        col.CopyColFromMat(params, c);
+        KALDI_ASSERT(col.Sum() > 0.0);
+        col.Scale(1.0 / col.Sum()); // make it sum to one.
+        params.CopyColFromVec(col, c);
+      }
+      params_[i].CopyFromMat(params);
+    }
+  }
 }
 
 void MixtureProbComponent::Init(BaseFloat learning_rate,
@@ -1417,7 +1476,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
         out_deriv_block(out_deriv, 0, num_frames,
                         output_offset, this_output_dim);
     const Matrix<BaseFloat> &param_block(params_[i]);
-
+    
     // Propagate gradient back to in_deriv.
     in_deriv_block.AddMatMat(1.0, out_deriv_block, kNoTrans, param_block,
                              kNoTrans, 0.0);
@@ -1425,16 +1484,43 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
     if (to_update != NULL) {
       Matrix<BaseFloat> &param_block_to_update(to_update->params_[i]);
       if (to_update->is_gradient_) { // We're just storing
-        // the gradient there, so it's a linear update rule as for any other layer.
+        // the gradient there-- w.r.t. the unnormalized log params.
         KALDI_ASSERT(to_update->learning_rate_ == 1.0);
-        param_block_to_update.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block,
-                                        kNoTrans, 1.0);
+        // tmp_mat will be d/d(probs).  We want to store d/d(unnormalized
+        // log-probs).
+        Matrix<BaseFloat> tmp_mat(param_block_to_update.NumRows(),
+                                  param_block_to_update.NumCols());
+        tmp_mat.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block,
+                          kNoTrans, 1.0);
+        // we want param_block_to_update to be d/d(unnormalized log-probs).
+        // First multiply each element by the corresponding parameter
+        // (which is a probability).  This comes from differentiating the exp.
+        tmp_mat.MulElements(this->params_[i]);
+        // Now, the sum-to-one constraint is per column of the params.
+        // We normalize from the unnormalized log-probs, e.g.
+        // p_i = exp(l_i) / \sum_j exp(l_j)
+        // and this translates into invariance w.r.t. a constant aded
+        // factor on the log-probs, which means there should be no
+        // gradient w.r.t. adding to a given column of the matrix,
+        // or the sum of the gradients over the column should be zero.
+        // So we subtract the average from each column.
+        Vector<BaseFloat> tmp_col(param_block_to_update.NumRows()),
+            param_col(param_block_to_update.NumRows());
+        for (int32 j = 0; j < param_block_to_update.NumCols(); j++) {
+          tmp_col.CopyColFromMat(tmp_mat, j);
+          param_col.CopyColFromMat(this->params_[i], j);
+          // The next line relates to the sum-to-one constraint.
+          tmp_col.AddVec(-1.0 * VecVec(param_col, tmp_col),
+                         param_col);
+          tmp_mat.CopyColFromVec(tmp_col, j);
+        }
+        param_block_to_update.AddMat(1.0, tmp_mat);
       } else {
         /*
           We do gradient descent in the space of log probabilities.  We enforce the
           sum-to-one constraint; this affects the gradient (I think you can derive
           this using lagrangian multipliers).
-        
+          
           For a column c of the matrix, we have a gradient g.
           Let l be the vector of unnormalized log-probs of that row; it has an arbitrary
           offset, but we just choose the point where it coincides with correctly normalized

@@ -175,6 +175,12 @@ class UpdatableComponent : public Component {
   /// We introduce a new virtual function that only applies to
   /// class UpdatableComponent.  This is used in testing.
   virtual void PerturbParams(BaseFloat stddev) = 0;
+
+  /// This new virtual function only applies to
+  /// class UpdatableComponent; it scales the parameters
+  /// by this amount.  It's used in "parameter shrinkage",
+  /// which is related to l2 regularization.
+  virtual void Scale(BaseFloat scale) = 0;
   
   /// Sets the learning rate of gradient descent
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
@@ -305,7 +311,8 @@ class AffineComponent: public UpdatableComponent {
   virtual bool BackpropNeedsOutput() const { return false; }
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
                          int32 num_chunks,
-                         Matrix<BaseFloat> *out) const; 
+                         Matrix<BaseFloat> *out) const;
+  virtual void Scale(BaseFloat scale);
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
@@ -491,6 +498,7 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual Component* Copy() const;
   virtual void PerturbParams(BaseFloat stddev);
+  virtual void Scale(BaseFloat scale);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponent);
   // The matrix linear_parms_ has a block structure, with num_blocks_ blocks fo
@@ -514,13 +522,22 @@ class BlockAffineComponent: public UpdatableComponent {
 // implements a linear transformation that's a block matrix... not quite
 // block diagonal, because the component matrices aren't necessarily square.
 // They start off square, but as we mix up, they may get non-square.
+//
+// From its external interface, i.e. DotProduct(), Scale(), and Backprop(), if
+// you use this class in the expected way (e.g. only calling DotProduct()
+// between a gradient and the parameters), it behaves as if the parameters
+// were stored as unnormalized log-prob and the gradients were taken
+// w.r.t. that representation.  This is the only way for the Scale() function
+// to make sense.  In reality, the parameters are stored as actual
+// probabilities (normalized to sum to one for each row).
+
 class MixtureProbComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   void Init(BaseFloat learning_rate,
-                    BaseFloat diag_element,
-                    const std::vector<int32> &sizes);
+            BaseFloat diag_element,
+            const std::vector<int32> &sizes);
   virtual void InitFromString(std::string args);  
   MixtureProbComponent() { }
   virtual void SetZero(bool treat_as_gradient);
@@ -542,6 +559,7 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual void Scale(BaseFloat scale);
   virtual void PerturbParams(BaseFloat stddev);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(MixtureProbComponent);
