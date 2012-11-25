@@ -1053,8 +1053,11 @@ void SpMatrix<float>::Invert(float *logdet, float *det_sign, bool need_inverse) 
       if (det_sign != NULL) *det_sign = sign;
     }
   }
-  if (!need_inverse) return;  // Don't need what is computed next.
-
+  if (!need_inverse) {
+    delete [] p_ipiv;
+    delete [] p_work;
+    return;  // Don't need what is computed next.
+  }
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
   // of the data. We have a row-wise storage, therefore, we need to "invert"
   ssptri_(const_cast<char *>("U"), &rows, data_, p_ipiv, p_work, &result);
@@ -1121,7 +1124,11 @@ void SpMatrix<double>::Invert(double *logdet, double *det_sign, bool need_invers
       if (det_sign != NULL) *det_sign = sign;
     }
   }
-  if (!need_inverse) return;  // Don't need what is computed next.
+  if (!need_inverse) {
+    delete [] p_ipiv;
+    delete [] p_work;
+    return;  // Don't need what is computed next.
+  }
 
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
   // of the data. We have a row-wise storage, therefore, we need to "invert"

@@ -74,7 +74,7 @@ template<class Real>
 class OptimizeLbfgs {
  public:
   /// Initializer takes the starting value of x.
-  OptimizeLbfgs(VectorBase<Real> &x,
+  OptimizeLbfgs(const VectorBase<Real> &x,
                 const LbfgsOptions &opts);
 
   /// This returns the value of the variable x that has the best objective

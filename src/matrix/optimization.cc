@@ -27,7 +27,7 @@ namespace kaldi {
 // Below, N&W refers to Nocedal and Wright, "Numerical Optimization", 2nd Ed.
 
 template<class Real>
-OptimizeLbfgs<Real>::OptimizeLbfgs(VectorBase<Real> &x,
+OptimizeLbfgs<Real>::OptimizeLbfgs(const VectorBase<Real> &x,
                                    const LbfgsOptions &opts):
     opts_(opts), k_(0), computation_state_(kBeforeStep), H_was_set_(false) {
   KALDI_ASSERT(opts.m > 0); // dimension.
