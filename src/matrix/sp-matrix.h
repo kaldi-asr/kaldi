@@ -408,14 +408,9 @@ Real TraceMatSpMatSp(const MatrixBase<Real> &A, MatrixTransposeType transA,
 
 /// Returns \f$ v_1^T M v_2 \f$
 /// Not as efficient as it could be where v1 == v2.
-float VecSpVec(const VectorBase<float> &v1, const SpMatrix<float> &M,
-               const VectorBase<float> &v2);
-
-
-/// Returns \f$ v_1^T M v_2 \f$
-/// Not as efficient as it could be where v1 == v2.
-double VecSpVec(const VectorBase<double> &v1, const SpMatrix<double> &M,
-                const VectorBase<double> &v2);
+template<class Real>
+Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
+               const VectorBase<Real> &v2);
 
 
 /// @} \addtogroup matrix_funcs_scalar

@@ -311,7 +311,7 @@ void QrInternal(MatrixIndexT n,
         (counter > large_iters && (counter - large_iters) % 50 == 0)) {
       KALDI_WARN << "Took " << counter
                  << " iterations in QR (dim is " << n << "), doubling epsilon.";
-      SubVector<Real> d(diag, n), o(off_diag, n);
+      SubVector<Real> d(diag, n), o(off_diag, n-1);
       KALDI_WARN << "Diag, off-diag are " << d << " and " << o;
       epsilon *= 2.0;
     }

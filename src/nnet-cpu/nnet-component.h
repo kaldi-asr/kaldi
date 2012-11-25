@@ -175,12 +175,16 @@ class UpdatableComponent : public Component {
   /// We introduce a new virtual function that only applies to
   /// class UpdatableComponent.  This is used in testing.
   virtual void PerturbParams(BaseFloat stddev) = 0;
-
-  /// This new virtual function only applies to
-  /// class UpdatableComponent; it scales the parameters
+  
+  /// This new virtual function scales the parameters
   /// by this amount.  It's used in "parameter shrinkage",
   /// which is related to l2 regularization.
   virtual void Scale(BaseFloat scale) = 0;
+
+  /// This new virtual function adds the parameters of another
+  /// updatable component, times some constant, to the current
+  /// parameters.
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other) = 0;
   
   /// Sets the learning rate of gradient descent
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
@@ -313,6 +317,7 @@ class AffineComponent: public UpdatableComponent {
                          int32 num_chunks,
                          Matrix<BaseFloat> *out) const;
   virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
@@ -499,6 +504,7 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual Component* Copy() const;
   virtual void PerturbParams(BaseFloat stddev);
   virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponent);
   // The matrix linear_parms_ has a block structure, with num_blocks_ blocks fo
@@ -560,6 +566,7 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void Write(std::ostream &os, bool binary) const;
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
   virtual void PerturbParams(BaseFloat stddev);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(MixtureProbComponent);

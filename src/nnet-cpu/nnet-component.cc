@@ -443,6 +443,15 @@ void AffineComponent::Scale(BaseFloat scale) {
   bias_params_.Scale(scale);
 }
 
+void AffineComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const AffineComponent *other =
+      dynamic_cast<const AffineComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
@@ -1035,6 +1044,15 @@ void BlockAffineComponent::Scale(BaseFloat scale) {
   bias_params_.Scale(scale);
 }
 
+void BlockAffineComponent::Add(BaseFloat alpha,
+                               const UpdatableComponent &other_in) {
+  const BlockAffineComponent *other =
+      dynamic_cast<const BlockAffineComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
 void BlockAffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                      int32, // num_chunks
                                      Matrix<BaseFloat> *out) const {
@@ -1333,6 +1351,40 @@ void MixtureProbComponent::Scale(BaseFloat scale) {
     }
   }
 }
+
+void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const MixtureProbComponent *other =
+      dynamic_cast<const MixtureProbComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL && other->is_gradient_ == is_gradient_
+               && other->params_.size() == params_.size());
+
+  for (size_t i = 0; i < params_.size(); i++) {
+    if (this->is_gradient_) { // just add in the normal way.
+      params_[i].AddMat(alpha, other->params_[i]);
+    } else {
+      // Do the addition in log-space.  From its external interface, this class
+      // acts like its parameters are stored in log space, although they are
+      // not.
+      Matrix<BaseFloat> params(params_[i]), other_params(other->params_[i]);
+      params.ApplyFloor(1.0e-20);
+      params.ApplyLog();
+      other_params.ApplyFloor(1.0e-20);
+      other_params.ApplyLog();
+      params.AddMat(alpha, other_params);  // **add in log-space.**
+      params.ApplyExp();
+      // Now re-normalize each column to sum to one.
+      Vector<BaseFloat> col(params.NumRows());
+      for (int32 c = 0; c < params.NumCols(); c++) {
+        col.CopyColFromMat(params, c);
+        KALDI_ASSERT(col.Sum() > 0.0);
+        col.Scale(1.0 / col.Sum()); // make it sum to one.
+        params.CopyColFromVec(col, c);
+      }
+      params_[i].CopyFromMat(params);
+    }
+  }
+}
+
 
 void MixtureProbComponent::Init(BaseFloat learning_rate,
                                 BaseFloat diag_element,
