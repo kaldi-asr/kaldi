@@ -70,7 +70,7 @@ void OptimizeLbfgs<Real>::ComputeHifNeeded(const VectorBase<Real> &gradient) {
         // We are setting up H for the first time.
         Real gradient_length = gradient.Norm(2.0);
         learning_rate = (gradient_length > 0.0 ?
-                         opts_.first_step_length :
+                         opts_.first_step_length / gradient_length :
                          1.0);
       } else {
         learning_rate = opts_.first_step_learning_rate;
