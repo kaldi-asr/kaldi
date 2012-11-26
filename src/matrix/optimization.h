@@ -51,6 +51,10 @@ struct LbfgsOptions {
   float first_step_learning_rate; // The very first step of L-BFGS is
   // like gradient descent.  If you want to configure the size of that step,
   // you can do it using this variable.
+  float first_step_length; // If this variable is >0.0, it overrides
+  // first_step_learning_rate; on the first step we choose an approximate
+  // Hessian that is the multiple of the identity that would generate this
+  // step-length, or 1.0 if the gradient is zero.
   float c1; // A constant in Armijo rule = Wolfe condition i)
   float c2; // A constant in Wolfe condition ii)
   float d; // An amount > 1.0 (default 2.0) that we initially multiply or
@@ -62,7 +66,8 @@ struct LbfgsOptions {
   LbfgsOptions (bool minimize = true):
       minimize(minimize),
       m(10),
-      first_step_learning_rate(1.0), 
+      first_step_learning_rate(1.0),
+      first_step_length(0.0),
       c1(1.0e-04),
       c2(0.9),
       d(2.0),
@@ -144,7 +149,7 @@ class OptimizeLbfgs {
                const VectorBase<Real> &gradient);
   void ComputeNewDirection(Real function_value,
                            const VectorBase<Real> &gradient);
-  void ComputeHifNeeded();
+  void ComputeHifNeeded(const VectorBase<Real> &gradient);
   void StepSizeIteration(Real function_value,
                          const VectorBase<Real> &gradient);
   void RecordStepLength(Real s);
