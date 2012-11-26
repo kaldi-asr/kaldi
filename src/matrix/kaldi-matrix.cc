@@ -275,10 +275,10 @@ template<>
 void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& A,
                                MatrixTransposeType transA) {
   if (&A == this) {  // Make it work in this case.
-    if (!transA) {
+    if (transA == kNoTrans) {
       Scale(alpha + 1.0);
     } else {
-      KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self(transposed): not symmetric.");
+      KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self (transposed): not symmetric.");
       float *data = data_;
       if (alpha == 1.0) {  // common case-- handle separately.
         for (MatrixIndexT row = 0; row < num_rows_; row++) {
@@ -324,7 +324,7 @@ template<>
 void MatrixBase<double>::AddMat(const double alpha,
                                 const MatrixBase<double>& A, MatrixTransposeType transA) {
   if (&A == this) {  // Make it work in this case.
-    if (!transA) {
+    if (transA == kNoTrans) {
       Scale(alpha+1.0);
     } else {
       KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self(transposed): not symmetric.");
