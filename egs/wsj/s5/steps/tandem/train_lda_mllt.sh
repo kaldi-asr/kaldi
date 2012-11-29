@@ -1,9 +1,8 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#                 Korbinian Riedhammer
 # Apache 2.0.
-
-# Korbinian: This script trains MLLT _only_ (i.e. no initial LDA);  not very useful though ;)
 
 # Begin configuration.
 cmd=run.pl
@@ -14,14 +13,16 @@ realign_iters="10 20 30";
 mllt_iters="2 4 6 12";
 num_iters=35    # Number of iterations of training
 max_iter_inc=25  # Last iter to increase #Gauss on.
+dim=40
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
+splice_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-normft2=false
+normft2=false # typically the tandem features will already be normalized due to pca
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -30,8 +31,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 7 ]; then
-  echo "Usage: steps/train_tandem_mllt.sh [options] <#leaves> <#gauss> <data1> <data2> <lang> <alignments> <dir>"
-  echo " e.g.: steps/train_tandem_mllt.sh 2500 15000 {mfcc,bottleneck}/data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
+  echo "Usage: steps/tandem/train_lda_mllt.sh [options] <#leaves> <#gauss> <data1> <data2> <lang> <alignments> <dir>"
+  echo " e.g.: steps/tandem/train_lda_mllt.sh 2500 15000 {mfcc,bottleneck}/data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
@@ -49,7 +50,7 @@ alidir=$6
 dir=$7
 
 for f in $alidir/final.mdl $alidir/ali.1.gz $data1/feats.scp $data2/feats.scp $lang/phones.txt; do
-  [ ! -f $f ] && echo "train_tandem_mllt.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "train_tandem_lda_mllt.sh: no such file $f" && exit 1;
 done
 
 numgauss=$numleaves
@@ -62,29 +63,57 @@ ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 mkdir -p $dir/log
 echo $nj >$dir/num_jobs
 
+
+# Set up features.
+
 sdata1=$data1/split$nj;
 sdata2=$data2/split$nj;
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;
 [[ -d $sdata2 && $data2/feats.scp -ot $sdata2 ]] || split_data.sh $data2 $nj || exit 1;
 
-# If we only do MLLT but not LDA, we'll use deltas
-feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+# set up feature stream 1;  here we assume spectral features which we will 
+# splice instead of deltas
+feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 
+# Now estimate LDA, which will only be applied to the spectral features
+# (assuming that the tandem features were already discriminatively trained)
+if [ $stage -le -4 ]; then
+  echo "Accumulating LDA statistics (this only applies to the base feature part)."
+  $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
+    ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
+      weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
+      acc-lda --rand-prune=$randprune $alidir/final.mdl "$feats1" ark,s,cs:- \
+       $dir/lda.JOB.acc || exit 1;
+  est-lda --write-full-matrix=$dir/full.mat --dim=$dim $dir/lda.mat $dir/lda.*.acc \
+      2>$dir/log/lda_est.log || exit 1;
+  rm $dir/lda.*.acc
+fi
+
+# add transform to the features
+feats1="$feats1 transform-feats $dir/lda.mat ark:- ark:- |"
+
+# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
-if [ "$normft2" == true ]; then
+
+if [ "$normft2" == "true" ]; then
   feats2="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata2/JOB/utt2spk scp:$sdata2/JOB/cmvn.scp $feats2 ark:- |"
 fi
 
+# assemble tandem features;  note: $feats gets overwritten later in the script
+# once we have MLLT matrices
 tandemfeats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
-
-# Note: $feats gets overwritten later in the script.
 feats="$tandemfeats"
 
+# keep track of splicing/normalization options
+echo $splice_opts > $dir/splice_opts
 echo $feats > $dir/tandem
 echo $normft2 > $dir/normft2
 
 
-# accumulate tree stats without the transformation
+# Begin training;  initially, we have no MLLT matrix
+cur_mllt_iter=0
+
 if [ $stage -le -3 ]; then
   echo "Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
@@ -136,7 +165,6 @@ if [ $stage -le 0 ]; then
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
-cur_lda_iter=0
 
 x=1
 while [ $x -lt $num_iters ]; do
@@ -160,15 +188,20 @@ while [ $x -lt $num_iters ]; do
       est-mllt $dir/$x.mat.new $dir/$x.*.macc 2> $dir/log/mupdate.$x.log || exit 1;
       gmm-transform-means  $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \
         2> $dir/log/transform_means.$x.log || exit 1;
-	  if [ $cur_lda_iter -gt 0 ]; then
-        compose-transforms --print-args=false $dir/$x.mat.new $dir/$cur_lda_iter.mat $dir/$x.mat || exit 1;
-	  else
-	    mv $dir/$x.mat.new $dir/$x.mat
-	  fi
+      
+      # see if this is the first MLLT iteration;  otherwise compose transforms
+      if [ $cur_mllt_iter == 0 ]; then
+        mv $dir/$x.mat.new $dir/$x.mat || exit 1;
+      else
+        compose-transforms --print-args=false $dir/$x.mat.new $dir/$cur_mllt_iter.mat $dir/$x.mat || exit 1;
+      fi
+
       rm $dir/$x.*.macc
     fi
+
+    # update features
     feats="$tandemfeats transform-feats $dir/$x.mat ark:- ark:- |"
-    cur_lda_iter=$x
+    cur_mllt_iter=$x
   fi
 
   if [ $stage -le $x ]; then
@@ -187,10 +220,10 @@ done
 rm $dir/final.{mdl,mat,occs} 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
-ln -s $cur_lda_iter.mat $dir/final.mat
+ln -s $cur_mllt_iter.mat $dir/final.mat
 
 # Summarize warning messages...
 
 utils/summarize_warnings.pl $dir/log
 
-echo Done training system with MLLT tandem features in $dir
+echo Done training system with LDA+MLLT tandem features in $dir

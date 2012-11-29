@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#                 Korbinian Riedhammer
 
 # Decoding script that does fMLLR.  This can be on top of delta+delta-delta, or
 # LDA+MLLT features.
@@ -50,7 +51,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 4 ]; then
    echo "Usage: steps/decode_fmllr.sh [options] <graph-dir> <data1-dir> <data2-dir> <decode-dir>"
-   echo " e.g.: steps/decode_fmllr.sh exp/tri2b/graph_tgpr {mfcc,bottleneck}/data/test_dev93 exp/tri2b/decode_dev93_tgpr"
+   echo " e.g.: steps/decode_fmllr.sh exp/tri2b/graph {mfcc,bottleneck}/data/test_dev93 exp/tri2b/decode_dev93"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                   # config containing options"
    echo "  --nj <nj>                                # number of parallel jobs"
@@ -104,7 +105,7 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/decode_tandem.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active $graphdir $data1 $data2 $si_dir || exit 1;
+    steps/tandem/decode_si.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active $graphdir $data1 $data2 $si_dir || exit 1;
   fi
 fi
 ##
@@ -126,26 +127,15 @@ done
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 normft2=`cat $srcdir/normft2 2>/dev/null`
 
-if [ -f $srcdir/final.mat ]; then
-  if [ -f $srcdir/splice_opts ]; then 
-    feat_type=lda
-  else 
-    feat_type=mllt
-  fi
-else
-  feat_type=tandem
-fi
+if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  tandem) 
-	echo "$0: feature type is $feat_type"
-	;;
+  delta) 
+  	echo "$0: feature type is $feat_type"
+  	;;
   lda) 
-	echo "$0: feature type is $feat_type"
-   ;;
-  mllt)
-    echo "$0: feature type is $feat_type"
-	;;
+  	echo "$0: feature type is $feat_type"
+    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
 
@@ -153,17 +143,18 @@ esac
 # deltas or splice them
 feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- |"
 
-if [ "$feat_type" == "tandem" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "delta" ]; then
   feats1="$feats1 add-deltas ark:- ark:- |"
 elif [ "$feat_type" == "lda" ]; then
-  feats1="$feats1 splice-feats $splice_opts ark:- ark:- |"
+  feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/lda.mat ark:- ark:- |"
 fi
 
 # set up feature stream 2;  this are usually bottleneck or posterior features, 
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
-if $normft2; then
+if [ "$normft2" == "true" ]; then
+  echo "Using cmvn for feats2"
   feats2="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata2/JOB/utt2spk scp:$sdata2/JOB/cmvn.scp $feats2 ark:- |"
 fi
 
@@ -171,7 +162,7 @@ fi
 sifeats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 
 # add transformation, if applicable
-if [ "$feat_type" == "lda" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "lda" ]; then
   sifeats="$sifeats transform-feats $srcdir/final.mat ark:- ark:- |"
 fi
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#                 Korbinian Riedhammer
 # Apache 2.0
 
 # Begin configuration.
@@ -16,7 +17,7 @@ retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-normft2=false
+normft2=false  # typically, the tandem features will be normalized already b/c of pca
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -25,8 +26,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 7 ]; then
-   echo "Usage: steps/train_tandem.sh <num-leaves> <tot-gauss> <data1-dir> <data2-dir> <lang-dir> <alignment-dir> <exp-dir>"
-   echo " e.g.: steps/train_tandem.sh 2000 10000 {mfcc,bottleneck}/data/train_si84_half data/lang exp/mono_ali exp/tri1"
+   echo "Usage: steps/tandem/train_deltas.sh <num-leaves> <tot-gauss> <data1-dir> <data2-dir> <lang-dir> <alignment-dir> <exp-dir>"
+   echo " e.g.: steps/tandem/train_deltas.sh 2000 10000 {mfcc,bottleneck}/data/train_si84_half data/lang exp/mono_ali exp/tri1"
    echo "main options (for others, see top of script file)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --config <config-file>                           # config containing options"
@@ -73,6 +74,7 @@ fi
 
 feats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 
+# save config
 echo $feats > $dir/tandem
 echo $normft2 > $dir/normft2
 
@@ -157,5 +159,5 @@ ln -s $x.occs $dir/final.occs
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
 
-echo "$0: Done training system with tandem features in $dir"
+echo "$0: Done training tandem system in $dir"
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+#                 Korbinian Riedhammer
 
 # Create denominator lattices for MMI/MPE training, with SGMM models.  If the
 # features have fMLLR transforms you have to supply the --transform-dir option.
@@ -25,8 +26,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-   echo "Usage: steps/make_tandem_denlats_sgmm2.sh [options] <data1-dir> <data2-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
-   echo "  e.g.: steps/make_tandem_denlats_sgmm2.sh {mfcc,bottleneck}/data1/train data1/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
+   echo "Usage: steps/tandem/make_denlats_sgmm2.sh [options] <data1-dir> <data2-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
+   echo "  e.g.: steps/tandem/make_denlats_sgmm2.sh {mfcc,bottleneck}/data1/train data1/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
    echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
    echo " plus transforms."
    echo ""
@@ -83,28 +84,16 @@ fi
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 normft2=`cat $srcir/normft2 2>/dev/null`
 
-if [ -f $srcdir/final.mat ]; then
-  if [ -f $srcdir/splice_opts ]; then 
-    feat_type=lda
-  else 
-    feat_type=mllt
-  fi
-else
-  feat_type=tandem
-fi
+if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  tandem) 
-	echo "$0: feature type is $feat_type"
-	;;
+  delta) 
+  	echo "$0: feature type is $feat_type"
+  	;;
   lda) 
-	echo "$0: feature type is $feat_type"
-    cp $srcdir/final.mat $dir/   
-   ;;
-  mllt)
-    echo "$0: feature type is $feat_type"
-	cp $srcdir/final.mat $dir/
-	;;
+	  echo "$0: feature type is $feat_type"
+    cp $srcdir/{lda,final}.mat $dir/ || exit 1;
+    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
 
@@ -112,10 +101,10 @@ esac
 # deltas or splice them
 feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- |"
 
-if [ "$feat_type" == "tandem" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "delta" ]; then
   feats1="$feats1 add-deltas ark:- ark:- |"
 elif [ "$feat_type" == "lda" ]; then
-  feats1="$feats1 splice-feats $splice_opts ark:- ark:- |"
+  feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
 # set up feature stream 2;  this are usually bottleneck or posterior features, 
@@ -130,7 +119,7 @@ fi
 feats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 
 # add transformation, if applicable
-if [ "$feat_type" == "lda" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "lda" ]; then
   feats="$feats transform-feats $dir/final.mat ark:- ark:- |"
 fi
 

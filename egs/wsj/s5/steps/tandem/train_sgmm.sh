@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+#                 Korbinian Riedhammer
 
 # SGMM training, with speaker vectors.  This script would normally be called on
 # top of fMLLR features obtained from a conventional system, but it also works
@@ -40,8 +41,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 8 ]; then
-  echo "Usage: steps/train_tandem_sgmm.sh <num-leaves> <num-substates> <data1> <data2> <lang> <ali-dir> <ubm> <exp-dir>"
-  echo " e.g.: steps/train_tandem_sgmm.sh 3500 10000 {mfcc,bottleneck},data/train_si84 data/lang \\"
+  echo "Usage: steps/tandem/train_sgmm.sh <num-leaves> <num-substates> <data1> <data2> <lang> <ali-dir> <ubm> <exp-dir>"
+  echo " e.g.: steps/tandem/train_sgmm.sh 3500 10000 {mfcc,bottleneck},data/train_si84 data/lang \\"
   echo "                      exp/tri3b_ali_si84 exp/ubm4a/final.ubm exp/sgmm4a"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
@@ -93,28 +94,16 @@ gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 normft2=`cat $alidir/normft2 2>/dev/null`
 
-if [ -f $alidir/final.mat ]; then
-  if [ -f $alidir/splice_opts ]; then 
-    feat_type=lda
-  else 
-    feat_type=mllt
-  fi
-else
-  feat_type=tandem
-fi
+if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  tandem) 
-	echo "$0: feature type is $feat_type"
-	;;
+  delta) 
+  	echo "$0: feature type is $feat_type"
+  	;;
   lda) 
-	echo "$0: feature type is $feat_type"
-    cp $alidir/final.mat $dir/   
-   ;;
-  mllt)
-    echo "$0: feature type is $feat_type"
-	cp $alidir/final.mat $dir/
-	;;
+	  echo "$0: feature type is $feat_type"
+    cp $alidir/{lda,final}.mat $dir/ || exit 1; 
+    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
 
@@ -122,10 +111,10 @@ esac
 # deltas or splice them
 feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- |"
 
-if [ "$feat_type" == "tandem" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "delta" ]; then
   feats1="$feats1 add-deltas ark:- ark:- |"
 elif [ "$feat_type" == "lda" ]; then
-  feats1="$feats1 splice-feats $splice_opts ark:- ark:- |"
+  feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
 # set up feature stream 2;  this are usually bottleneck or posterior features, 
@@ -140,7 +129,7 @@ fi
 feats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 
 # add transformation, if applicable
-if [ "$feat_type" == "lda" -o "$feat_type" == "mllt" ]; then
+if [ "$feat_type" == "lda" ]; then
   feats="$feats transform-feats $dir/final.mat ark:- ark:- |"
 fi
 

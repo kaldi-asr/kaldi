@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#                 Korbinian Riedhammer
 # Apache 2.0
 
 
@@ -19,7 +20,7 @@ realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
 stage=-4
 power=0.2 # exponent to determine number of gaussians from occurrence counts
-normft2=false
+normft2=false # typically, the tandem features will already be normalized due to pca
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -28,8 +29,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-  echo "Usage: steps/train_tandem_mono.sh [options] <data1-dir> <data2-dir> <lang-dir> <exp-dir>"
-  echo " e.g.: steps/train_tandem_mono.sh mfcc/data/train.1k bottleneck/data/train.1k data/lang exp/mono"
+  echo "Usage: steps/tandem/train_mono.sh [options] <data1-dir> <data2-dir> <lang-dir> <exp-dir>"
+  echo " e.g.: steps/tandem/train_mono.sh {mfcc,bottleneck}/data/train.1k data/lang exp/mono"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --nj <nj>                                        # number of parallel jobs"
@@ -66,12 +67,15 @@ if [ "$normft2" == "true" ]; then
   feats2="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata2/JOB/utt2spk scp:$sdata2/JOB/cmvn.scp $feats2 ark:- |"
 fi
 
+# paste features
 feats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 example_feats="`echo '$feats' | sed s/JOB/1/g`";
 
+# get dimension
 allfeats=$(echo $feats | sed s:JOB:..:g)
 feat_dim=$(feat-to-dim --print-args=false "$allfeats" - 2> $dir/log/feat_dim)
 
+# save stats
 echo $feats > $dir/tandem
 echo $normft2 > $dir/normft2
 
@@ -150,7 +154,7 @@ done
 
 utils/summarize_warnings.pl $dir/log
 
-echo Done
+echo "Done training tandem mono-phone system in $dir"
 
 # example of showing the alignments:
 # show-alignments data/lang/phones.txt $dir/30.mdl "ark:gunzip -c $dir/ali.0.gz|" | head -4
