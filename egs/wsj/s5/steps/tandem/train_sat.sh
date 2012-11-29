@@ -78,7 +78,7 @@ sdata2=$data2/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 normft2=`cat $alidir/normft2 2>/dev/null`
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
   delta) 
