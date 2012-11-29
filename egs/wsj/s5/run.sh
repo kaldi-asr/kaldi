@@ -314,4 +314,8 @@ local/run_hybrid.sh
 #  --normalize=true --map-utter=data/kws/utter_map \
 #  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
 
+# # forward-backward decoding example [way to speed up decoding by decoding forward
+# # and backward in time]
+# local/run_fwdbwd.sh
+
 
