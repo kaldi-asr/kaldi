@@ -15,6 +15,7 @@ num_gselect1=50 # first stage of Gaussian-selection
 num_gselect2=25 # second stage.
 intermediate_num_gauss=2000
 num_iters=3
+no_fmllr=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -30,7 +31,8 @@ if [ $# != 5 ]; then
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --silence-weight <sil-weight>                    # weight for silence (e.g. 0.5 or 0.0)"
-  echo "  --num-iters <#iters>                             # Number of iterations of E-M"
+  echo "  --num-iters <#iters>                             # Number of iterations of E-M"\
+  echo "  --no-fmllr (true|false)                          # ignore speaker matrices even if present"
   exit 1;
 fi
 
@@ -72,9 +74,15 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
+
+
 if [ -f $alidir/trans.1 ]; then
-  echo "$0: using transforms from $alidir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+  if $no_fmllr; then
+    echo "$0: deliberately ignoring speaker transforms from $alidir"
+  else
+    echo "$0: using transforms from $alidir"
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+  fi
 fi
 ##
 
