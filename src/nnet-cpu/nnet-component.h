@@ -660,6 +660,44 @@ class DctComponent: public Component {
 };
 
 
+/// FixedLinearComponent is a linear transform that is supplied
+/// at network initialization time and is not trainable.
+class FixedLinearComponent: public Component {
+ public:
+  FixedLinearComponent() { } 
+  virtual std::string Type() const { return "FixedLinearComponent"; }
+  virtual std::string Info() const;
+  
+  void Init(const MatrixBase<BaseFloat> &matrix) { mat_ = matrix; }
+
+  // InitFromString takes only the option matrix=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return mat_.NumCols(); }
+  virtual int32 OutputDim() const { return mat_.NumRows(); }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const;
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        const VectorBase<BaseFloat> &chunk_weights,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+ private:
+  Matrix<BaseFloat> mat_;
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedLinearComponent);
+};
+
+
+
 /// Functions used in Init routines.  Suppose name=="foo", if "string" has a
 /// field like foo=12, this function will set "param" to 12 and remove that
 /// element from "string".  It returns true if the parameter was read.

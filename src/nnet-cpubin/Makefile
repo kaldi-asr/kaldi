@@ -8,7 +8,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-train-simple nnet-train-transitions nnet-latgen-faster nnet-am-copy \
    nnet-add-hidden-layer nnet-am-init nnet-insert nnet-align-compiled \
-   nnet-compute-prob nnet-copy-egs nnet-shrink
+   nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine
 
 OBJFILES =
 

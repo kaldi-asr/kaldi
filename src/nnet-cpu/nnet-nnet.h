@@ -87,7 +87,22 @@ class Nnet {
   void ZeroOccupancy(); // calls ZeroOccupancy() on the softmax layers.  This
   // resets the occupancy counters; it makes sense to do this once in
   // a while, e.g. at the start of an epoch of training.
+
+  int32 NumUpdatableComponents() const;
   
+  /// Scales the parameters of each of the updatable components.
+  /// Here, scale_params is a vector of size equal to
+  /// NumUpdatableComponents()
+  void ScaleComponents(const VectorBase<BaseFloat> &scales);
+
+  /// For each updatatable component, adds to it
+  /// the corresponding element of "other" times the
+  /// appropriate element of "scales" (which has the
+  /// same format as for ScaleComponents(), i.e.
+  /// one entry for each updatable component).
+  void AddNnet(const VectorBase<BaseFloat> &scales,
+               const Nnet &other);
+ 
   Nnet(const Nnet &other); // Copy constructor.
   
   Nnet() { }
@@ -170,6 +185,15 @@ class Nnet {
 
   /// Scale all the learning rates in the neural net by this factor.
   void ScaleLearningRates(BaseFloat factor);
+
+  /// Set all the learning rates in the neural net to this value.
+  void SetLearningRates(BaseFloat learning_rates);
+
+  /// Set all the learning rates in the neural net to these values
+  /// (one for each updatable layer).
+  void SetLearningRates(const VectorBase<BaseFloat> &learning_rates);
+  
+
   
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
   // separately for each component; zero for non-updatable components.

@@ -222,6 +222,35 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
   exp/tri4b/graph data/train_dev exp/tri5b10_nnet/decode_train_dev_it15
 )
 
+(  # Rerunning 5b10 after rearranging the code so that the
+  # "precondition" stuff is now called "nobias".
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+   --num-iters 15 \
+  --nnet-config-opts "--nobias" \
+   --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b10rerun_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b10rerun_nnet/decode_train_dev_it15
+)
+
+(  # Rerunning 5b9 after code changes.
+  steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 250 \
+   --num-iters 15 --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b9rerun_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b9rerun_nnet/decode_train_dev_it15
+)
+
 
 ## tri5b11 is as tri5b10, but changing learning-rate-ratio from 1.1 (the
 ## default to 1.02.  This means the learning rate can only change very slowly,
@@ -256,4 +285,284 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
   exp/tri4b/graph data/train_dev exp/tri5b12_nnet/decode_train_dev
+)
+
+# tri5b13 is as tri5b10, but with alpha=1.0 (the preconditioned update),
+# and using a larger minibatch size.
+
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --alpha 1.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b13_nnet
+
+# tri5b14 is as tri5b13, but with a larger learning rate (doubled)
+# and using a larger minibatch size.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 1.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b14_nnet
+
+# tri5b15 is as tri5b14, but with a learning-rate-ratio closer to 1.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+ --learning-rate-ratio 1.02 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 1.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b15_nnet
+
+
+# tri5b16 is as tri5b14, but with alpha=0.5.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 0.5 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b16_nnet
+
+# tri5b17 is as tri5b14, but with alpha=2.0 [also c.f. 16].
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 2.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b17_nnet
+
+# tri5b18 is as tri5b14, but with alpha=4.0 [also c.f. 16,17].
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b18_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b18_nnet/decode_train_dev
+
+# tri5b19 is as tri5b14, but with alpha=8.0 [also c.f. 16,17,18].
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 8.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b19_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b19_nnet/decode_train_dev
+
+# tri5b20 is as tri5b18, but borrowing from tri5b15 the idea of using
+# a learning-rate-ratio closer to 1.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --learning-rate-ratio 1.02 \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b20_nnet
+
+# tri5b21 is as tri5b18, but with "shrinkage"
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b21_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b21_nnet/decode_train_dev
+
+# tri5b22 is as tri5b21 but with alpha=1.0; possibly a more aggressive
+# update will combine well with shrinkage. [canceled this before finished.]
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 1.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b22_nnet
+
+# tri5b23 is as tri5b21 but with 3 not 2 hidden layers.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --num-hidden-layers 3 --shrink true \
+  --nnet-config-opts "--learning-rate 0.002" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b23_nnet
+
+# tri5b24 is as tri5b21 but with double the learning rate, initially.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true \
+  --nnet-config-opts "--learning-rate 0.004" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b24_nnet
+
+
+# tri5b25 is as tri5b23 but with but with double the learning rate, initially
+# [ or like tri5b24 but with 3 hidden layers]
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true --num-hidden-layers 3 \
+  --nnet-config-opts "--learning-rate 0.004" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b25_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b25_nnet/decode_train_dev
+
+
+# tri5b26 is like tri5b25 but double the #parameters.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true --num-hidden-layers 3 \
+  --nnet-config-opts "--learning-rate 0.004" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 4000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b26_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b26_nnet/decode_train_dev
+
+# tri5b27 is as tri5b25 but with learning-rate-ratio closer to 1.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --learning-rate-ratio 1.02 \
+  --shrink true --num-hidden-layers 3 \
+  --nnet-config-opts "--learning-rate 0.004" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b27_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b27_nnet/decode_train_dev
+
+# tri5b28 is like tri5b25 but the script is changed so that now it does
+# LDA.
+steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
+  --shrink true --num-hidden-layers 3 \
+  --nnet-config-opts "--learning-rate 0.004" \
+  --alpha 4.0 --num-iters 15  --num-valid-frames 15000 \
+  --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+   --num-parameters 2000000 --samples_per_iteration 800000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 16" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b28_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter 15 \
+   --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+  exp/tri4b/graph data/train_dev exp/tri5b28_nnet/decode_train_dev
+
+
+(
+ # tri5b29 is like tri5b28 (i.e. with LDA), but now with parallel training.
+ # note: we're now running 8 jobs and it's with twice the data per iteration
+ # we had previously (but divided among 8 jobs, as sample-per-iteration is 200k,
+ # which times 8 is 16, vs. 800k in the jobs above).
+ # Reducing the number of validation frames as we now see that data more (in
+ # the nnet-combine stage).
+
+ steps/train_nnet_cpu_parallel.sh --minibatch-size 1000 \
+   --num-jobs-nnet 8 --shrink true --num-hidden-layers 3 \
+   --nnet-config-opts "--learning-rate 0.004" \
+   --alpha 4.0 --num-iters 15  --num-valid-frames 8000 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b29_nnet
+
+ for iter in 5 10 15; do
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter $iter \
+     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+    exp/tri4b/graph data/train_dev exp/tri5b29_nnet/decode_train_dev_it$iter &
+ done
+)
+
+(
+ # tri5b30 is like tri5b29 (with LDA + parallel training), but now without automatic
+ # updating of learning rates but instead including the last iter in the space we
+ # optimize over.  [note: broken, was not using that last iter.]
+ # Limiting to 10 iterations.
+
+ steps/train_nnet_cpu_parallel2.sh --minibatch-size 1000 \
+   --num-jobs-nnet 8 --shrink true --num-hidden-layers 3 \
+   --nnet-config-opts "--learning-rate 0.004" \
+   --alpha 4.0 --num-iters 10  --num-valid-frames 8000 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b30_nnet
+
+ for iter in 5 10; do
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter $iter \
+     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+    exp/tri4b/graph data/train_dev exp/tri5b30_nnet/decode_train_dev_it$iter &
+ done
+)
+
+(# tri5b31 is rerunning tri5b30 after script fix so that it uses the last iter
+ # when optimizing weights.
+ # tri5b31 is like tri5b29 (with LDA + parallel training), but now without automatic
+ # updating of learning rates but instead including the last iter in the space we
+ # optimize over.  Limiting to 10 iterations.
+
+ steps/train_nnet_cpu_parallel2.sh --minibatch-size 1000 \
+   --num-jobs-nnet 8 --shrink true --num-hidden-layers 3 \
+   --nnet-config-opts "--learning-rate 0.004" \
+   --alpha 4.0 --num-iters 20  --num-valid-frames 8000 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b31_nnet
+
+ for iter in 5 10 15 20; do
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter $iter \
+     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+    exp/tri4b/graph data/train_dev exp/tri5b31_nnet/decode_train_dev_it$iter &
+ done
+)
+
+
+(
+ # tri5b32 is like tri5b29 (parallel training + automatic updating of learning
+ # rates), but using double the #samples per iteration, and reducing the #valid frames,
+ # in order to try to balance the time taken in SGD vs. validation-set tuning.
+
+ steps/train_nnet_cpu_parallel.sh --minibatch-size 1000 \
+   --samples-per-iteration 400000 \
+   --num-jobs-nnet 8 --shrink true --num-hidden-layers 3 \
+   --nnet-config-opts "--learning-rate 0.004" \
+   --alpha 4.0 --num-iters 15  --num-valid-frames 5000 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b32_nnet
+
+ for iter in 5 10 15; do
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 --iter $iter \
+     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+    exp/tri4b/graph data/train_dev exp/tri5b32_nnet/decode_train_dev_it$iter &
+ done
 )

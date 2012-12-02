@@ -162,5 +162,54 @@ void NnetAdaptiveTrainer::TrainOnExample(const NnetTrainingExample &value) {
   if (static_cast<int32>(buffer_.size()) == config_.minibatch_size)
     TrainOneMinibatch();
 }
-  
+
+NnetSimpleTrainer::NnetSimpleTrainer(
+    const NnetSimpleTrainerConfig &config,
+    Nnet *nnet):
+    config_(config), nnet_(nnet) {
+  num_phases_ = 0;
+  bool first_time = true;
+  BeginNewPhase(first_time);
+}
+
+void NnetSimpleTrainer::TrainOnExample(const NnetTrainingExample &value) {
+  buffer_.push_back(value);
+  if (static_cast<int32>(buffer_.size()) == config_.minibatch_size)
+    TrainOneMinibatch();
+}
+
+void NnetSimpleTrainer::TrainOneMinibatch() {
+  KALDI_ASSERT(!buffer_.empty());
+  // The following function is declared in nnet-update.h.
+  logprob_this_phase_ += DoBackprop(*nnet_,
+                                    buffer_,
+                                    nnet_);
+  weight_this_phase_ += TotalNnetTrainingWeight(buffer_);
+  buffer_.clear();
+  minibatches_seen_this_phase_++;
+  if (minibatches_seen_this_phase_ == config_.minibatches_per_phase) {
+    bool first_time = false;
+    BeginNewPhase(first_time);
+  }
+}
+
+void NnetSimpleTrainer::BeginNewPhase(bool first_time) {
+  if (!first_time)
+    KALDI_LOG << "Training objective function (this phase) is "
+              << (logprob_this_phase_/weight_this_phase_) << " over "
+              << weight_this_phase_ << " frames.";
+  logprob_this_phase_ = 0.0;
+  weight_this_phase_ = 0.0;
+}
+
+
+NnetSimpleTrainer::~NnetSimpleTrainer() {
+  if (!buffer_.empty()) {
+    KALDI_LOG << "Doing partial minibatch of size "
+              << buffer_.size();
+    TrainOneMinibatch();
+  }
+}
+
+
 } // namespace

@@ -31,20 +31,28 @@ int main(int argc, char *argv[]) {
         "Copy a (cpu-based) neural net and its associated transition model,\n"
         "possibly changing the binary mode\n"
         "Also supports multiplying all the learning rates by a factor\n"
-        "(the --learning-rate-factor option)\n"
+        "(the --learning-rate-factor option) and setting them all to a given\n"
+        "value (the --learning-rate options)\n"
         "\n"
         "Usage:  nnet-am-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
         " nnet-am-copy --binary=false 1.mdl text.mdl\n";
     
     bool binary_write = true;
-    BaseFloat learning_rate_factor = 1.0;
+    BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
+    std::string learning_rates = "";
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("learning-rate-factor", &learning_rate_factor,
                 "Before copying, multiply all the learning rates in the "
                 "model by this factor.");
+    po.Register("learning-rate", &learning_rate,
+                "If supplied, all the learning rates of \"updatable\" layers"
+                "are set to this value.");
+    po.Register("learning-rates", &learning_rates,
+                "If supplied (a colon-separated list of learning rates), sets "
+                "the learning rates of \"updatable\" layers to these values.");
     
     po.Read(argc, argv);
     
@@ -67,6 +75,24 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate_factor != 1.0)
       am_nnet.GetNnet().ScaleLearningRates(learning_rate_factor);
+
+    if (learning_rate >= 0)
+      am_nnet.GetNnet().SetLearningRates(learning_rate);
+
+    if (learning_rates != "") {
+      std::vector<BaseFloat> learning_rates_vec;
+      if (!SplitStringToFloats(learning_rates, ":", false, &learning_rates_vec)
+          || static_cast<int32>(learning_rates_vec.size()) !=
+             am_nnet.GetNnet().NumUpdatableComponents()) {
+        KALDI_ERR << "Expected --learning-rates option to be a "
+                  << "colon-separated string with "
+                  << am_nnet.GetNnet().NumUpdatableComponents()
+                  << " elements, instead got \"" << learning_rates << '"';
+      }
+      SubVector<BaseFloat> learning_rates_vector(&(learning_rates_vec[0]),
+                                                 learning_rates_vec.size());
+      am_nnet.GetNnet().SetLearningRates(learning_rates_vector);
+    }
     
     {
       Output ko(nnet_wxfilename, binary_write);

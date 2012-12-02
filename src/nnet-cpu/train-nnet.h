@@ -113,6 +113,62 @@ class NnetAdaptiveTrainer {
   Vector<BaseFloat> progress_stats_; // Per-layer stats on progress so far.
 };
 
+struct NnetSimpleTrainerConfig {
+  int32 minibatch_size;
+  int32 minibatches_per_phase;
+  
+  NnetSimpleTrainerConfig(): minibatch_size(500),
+                             minibatches_per_phase(50) { }
+  
+  void Register (ParseOptions *po) {
+    po->Register("minibatch-size", &minibatch_size,
+                 "Number of samples per minibatch of training data.");
+    po->Register("minibatches-per-phase", &minibatches_per_phase,
+                 "Number of minibatches to wait before printing training-set "
+                 "objective.");
+  }  
+};
+
+
+// Class NnetSimpleTrainer doesn't do much apart from batching up the
+// input into minibatches and giving it to the neural net code 
+// to call Update(), which will typically do stochastic gradient
+// descent.  It also reports training-set
+// It takes in the training examples through the call
+// "TrainOnExample()".
+class NnetSimpleTrainer {
+ public:
+  NnetSimpleTrainer(const NnetSimpleTrainerConfig &config,
+                    Nnet *nnet);
+  
+  /// TrainOnExample will take the example and add it to a buffer;
+  /// if we've reached the minibatch size it will do the training.
+  void TrainOnExample(const NnetTrainingExample &value);
+
+  ~NnetSimpleTrainer();
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetSimpleTrainer);
+  
+  void TrainOneMinibatch();
+  
+  // The following function is called by TrainOneMinibatch()
+  // when we enter a new phase.
+  void BeginNewPhase(bool first_time);
+  
+  // Things we were given in the initializer:
+  NnetSimpleTrainerConfig config_;
+
+  Nnet *nnet_; // the nnet we're training.
+
+  // State information:
+  int32 num_phases_;
+  int32 minibatches_seen_this_phase_;
+  std::vector<NnetTrainingExample> buffer_;
+
+  double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
+  double weight_this_phase_; // weight corresponding to the above.
+};
+
 
 
 } // namespace

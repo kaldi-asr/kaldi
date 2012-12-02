@@ -207,6 +207,17 @@ void Nnet::ScaleLearningRates(BaseFloat factor) {
             << ostr.str();
 }
 
+void Nnet::SetLearningRates(BaseFloat learning_rate) {
+  for (int32 c = 0; c < NumComponents(); c++) {
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
+    if (uc != NULL) { // Updatable component...
+      uc->SetLearningRate(learning_rate);
+    }
+  }
+  KALDI_LOG << "Set learning rates to " << learning_rate;
+}
+
+
 void Nnet::AdjustLearningRates(
     const VectorBase<BaseFloat> &old_model_old_gradient,
     const VectorBase<BaseFloat> &new_model_old_gradient,
@@ -258,6 +269,65 @@ void Nnet::AdjustLearningRates(
   for (size_t i = 0; i < new_lrates.size(); i++)
     lrate_str << new_lrates[i] << ' ';
   KALDI_VLOG(1) << "Learning rates are " << lrate_str.str();
+}
+
+
+int32 Nnet::NumUpdatableComponents() const {
+  int32 ans = 0;
+  for (int32 i = 0; i < NumComponents(); i++)
+    if (dynamic_cast<const UpdatableComponent*>(&(GetComponent(i))) != NULL)
+      ans++;
+  return ans;
+}
+
+void Nnet::ScaleComponents(const VectorBase<BaseFloat> &scale_params) {
+  KALDI_ASSERT(scale_params.Dim() == this->NumUpdatableComponents());
+  int32 i = 0;
+  for (int32 j = 0; j < NumComponents(); j++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(j)));
+    if (uc!= NULL) {
+      uc->Scale(scale_params(i));
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scale_params.Dim());
+}
+
+
+void Nnet::SetLearningRates(const VectorBase<BaseFloat> &learning_rates) {
+  KALDI_ASSERT(learning_rates.Dim() == this->NumUpdatableComponents());
+  KALDI_ASSERT(learning_rates.Min() >= 0.0); // we allow zero learning rate.
+  int32 i = 0;
+  for (int32 j = 0; j < NumComponents(); j++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(j)));
+    if (uc!= NULL) {
+      uc->SetLearningRate(learning_rates(i));
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == learning_rates.Dim());
+}
+
+
+void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
+                   const Nnet &other) {
+  KALDI_ASSERT(scale_params.Dim() == this->NumUpdatableComponents());
+  int32 i = 0;
+  for (int32 j = 0; j < NumComponents(); j++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(j)));
+    const UpdatableComponent *uc_other =
+        dynamic_cast<const UpdatableComponent*>(&(other.GetComponent(j)));
+    if (uc != NULL) {
+      KALDI_ASSERT(uc_other != NULL);
+      BaseFloat alpha = scale_params(i);
+      uc->Add(alpha, *uc_other);
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == scale_params.Dim());
 }
 
 } // namespace

@@ -2304,6 +2304,18 @@ template<class Real> static void UnitTestAddMat2Sp() {
   }
 }
 
+template<class Real> static void UnitTestAddMatSelf() {
+  MatrixIndexT dimM = (rand() % 10) + 1;
+  Matrix<Real> M(dimM, dimM), N(dimM, dimM);
+  M.SetRandn();
+  N.AddMat(1.5, M);
+  M.AddMat(0.5, M);
+  AssertEqual(M, N);
+  N.AddMat(0.5, M, kTrans);
+  M.AddMat(0.5, M, kTrans);
+  AssertEqual(M, N);
+}
+
 template<class Real> static void UnitTestAddMat2() {
   MatrixIndexT extra = 1;
   // Test AddMat2 function of SpMatrix.
@@ -3559,6 +3571,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();
   UnitTestAddMat2<Real>();
+  UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
   UnitTestScaleDiag<Real>();

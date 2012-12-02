@@ -33,17 +33,14 @@ struct NnetShrinkConfig {
   // vectors to be the same as the dimension of the space.  Note: this
   // num-iters is in reality the number of function evaluations.
 
-  BaseFloat initial_change;
-  BaseFloat min_initial_2nd_deriv;
+  BaseFloat initial_step;
   
-  NnetShrinkConfig(): num_bfgs_iters(10), initial_change(0.05),
-                      min_initial_2nd_deriv(1.0e-05) { }
+  NnetShrinkConfig(): num_bfgs_iters(10), initial_step(0.1) { }
   void Register(ParseOptions *po) {
     po->Register("num-bfgs-iters", &num_bfgs_iters, "Number of iterations of "
                  "BFGS to use when optimizing shrinkage parameters");
-    po->Register("initial-change", &initial_change, "Parameter in the optimization, "
-                 "used to set the initial step length; the default value should be "
-                 "suitable.");
+    po->Register("initial-step", &initial_step, "Parameter in the optimization, "
+                 "used to set the initial step length");
   }  
 };
 

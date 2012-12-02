@@ -368,6 +368,18 @@ void UnitTestDctComponent() {
 }
 
 
+void UnitTestFixedLinearComponent() {
+  int32 m = 1 + rand() % 4, n = 1 + rand() % 4;
+  {
+    Matrix<BaseFloat> mat(m, n);
+    FixedLinearComponent component;
+    component.Init(mat);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+
+
 void UnitTestParsing() {
   int32 i;
   BaseFloat f;
@@ -478,6 +490,7 @@ int main() {
     UnitTestBlockAffineComponent();
     UnitTestMixtureProbComponent();
     UnitTestDctComponent();
+    UnitTestFixedLinearComponent();
     UnitTestAffineComponentNobias();
     UnitTestAffineComponentPreconditioned();
     UnitTestParsing();

@@ -1062,7 +1062,8 @@ void SpMatrix<float>::Invert(float *logdet, float *det_sign, bool need_inverse) 
   // of the data. We have a row-wise storage, therefore, we need to "invert"
   ssptri_(const_cast<char *>("U"), &rows, data_, p_ipiv, p_work, &result);
 
-  KALDI_ASSERT(result >=0 &&"Call to CLAPACK ssptri_ called with wrong arguments");
+  KALDI_ASSERT(result >=0 &&
+               "Call to CLAPACK ssptri_ called with wrong arguments");
 
   if (result != 0) {
     KALDI_ERR << "CLAPACK ssptrf_ : Matrix is singular";
@@ -1088,7 +1089,8 @@ void SpMatrix<double>::Invert(double *logdet, double *det_sign, bool need_invers
   // of the data. We have a row-wise storage, therefore, we need to "invert"
   dsptrf_(const_cast<char *>("U"), &rows, data_, p_ipiv, &result);
 
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dsptrf_ called with wrong arguments");
+  KALDI_ASSERT(result >= 0 &&
+               "Call to CLAPACK dsptrf_ called with wrong arguments");
 
   if (result > 0) {  // Singular...
     if (det_sign) *det_sign = 0;

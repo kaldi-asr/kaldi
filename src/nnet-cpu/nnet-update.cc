@@ -97,7 +97,7 @@ void NnetUpdater::Propagate() {
     Matrix<BaseFloat> &output = forward_data_[c+1];
     // Note: the Propagate function will automatically resize the
     // output.
-    component.Propagate(input, 1, &output);
+    component.Propagate(input, num_chunks_, &output);
     // If we won't need the output of the previous layer for
     // backprop, delete it to save memory.
     bool need_last_output =
@@ -237,6 +237,28 @@ BaseFloat ComputeNnetGradient(
                            gradient);
   }
   return tot_objf / TotalNnetTrainingWeight(validation_set);
+}
+
+BaseFloat ComputeNnetObjf(
+    const Nnet &nnet,
+    const std::vector<NnetTrainingExample> &validation_set,
+    int32 batch_size) {
+  std::vector<NnetTrainingExample> batch;
+  batch.reserve(batch_size);
+  BaseFloat tot_objf = 0.0;
+  for (int32 start_pos = 0;
+       start_pos < static_cast<int32>(validation_set.size());
+       start_pos += batch_size) {
+    batch.clear();
+    for (int32 i = start_pos;
+         i < std::min(start_pos + batch_size,
+                      static_cast<int32>(validation_set.size()));
+         i++) {
+      batch.push_back(validation_set[i]);
+    }
+    tot_objf += ComputeNnetObjf(nnet, batch);
+  }
+  return tot_objf;
 }
 
 

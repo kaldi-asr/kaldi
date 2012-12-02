@@ -33,21 +33,17 @@ int main(int argc, char *argv[]) {
         "Train the neural network parameters with backprop and stochastic\n"
         "gradient descent using minibatches.  The training frames and labels\n"
         "are read via a pipe from nnet-randomize-frames.  This version of the\n"
-        "training program does not update the learning rate.  It is designed\n"
-        "for use with a modified form \"newbob\", where the phase of training\n"
-        "with any given learning rate will be stopped after the validation-set\n"
-        "per-frame log-prob fails to improve by a given threshold, from one\n"
-        "phase to the next.\n"
+        "training program does not update the learning rate, but uses\n"
+        "the learning rates stored in the neural nets.\n"
         "\n"
-        "UNFINISHED!\n"
-        "Usage:  nnet-train [options] <model-in> <training-examples-in> <valid-examples-in> <model-out>\n"
+        "Usage:  nnet-train-simple [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train 1.nnet ark:- ark:valid.egs 2.nnet\n";
+        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
     bool zero_occupancy = true;
-    NnetAdaptiveTrainerConfig train_config;
+    NnetSimpleTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -59,15 +55,14 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
     
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
-        valid_examples_rspecifier = po.GetArg(3),
-        nnet_wxfilename = po.GetArg(4);
+        nnet_wxfilename = po.GetArg(3);
 
 
     TransitionModel trans_model;
@@ -81,26 +76,12 @@ int main(int argc, char *argv[]) {
 
     if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
     
-    std::vector<NnetTrainingExample> validation_set; // stores validation
-    // frames.
-
-    { // This block adds samples to "validation_set".
-      SequentialNnetTrainingExampleReader example_reader(
-          valid_examples_rspecifier);
-      for (; !example_reader.Done(); example_reader.Next())
-        validation_set.push_back(example_reader.Value());
-      KALDI_LOG << "Read " << validation_set.size() << " examples from the "
-                << "validation set.";
-      KALDI_ASSERT(validation_set.size() > 0);
-    }
-
     int64 num_examples = 0;
     { // want to make sure this object deinitializes before
       // we write the model, as it does something in the destructor.
-      NnetAdaptiveTrainer trainer(train_config,
-                                  validation_set,
-                                  &(am_nnet.GetNnet()));
-    
+      NnetSimpleTrainer trainer(train_config,
+                                &(am_nnet.GetNnet()));
+      
       SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 
       for (; !example_reader.Done(); example_reader.Next(), num_examples++)

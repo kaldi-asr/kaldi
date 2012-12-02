@@ -254,7 +254,8 @@ static void ComputeTreeMapping(const EventMap &small_tree,
   int32 num_leaves_big = big_tree.MaxResult() + 1,
       num_leaves_small = small_tree.MaxResult() + 1;
   SplitStatsByMap(stats, small_tree, &split_stats_small);
-  KALDI_ASSERT(split_stats_small.size() <= num_leaves_small);
+  KALDI_ASSERT(static_cast<int32>(split_stats_small.size()) <=
+               num_leaves_small);
   leaf_map->clear();
   leaf_map->resize(num_leaves_big, -1); // fill with -1.
 
@@ -264,8 +265,9 @@ static void ComputeTreeMapping(const EventMap &small_tree,
   // you initialize your model), but at this point we will try to handle it
   // gracefully.
   
-  for (size_t i = 0; i < num_leaves_small; i++) {
-    if (i >= split_stats_small.size() || split_stats_small[i].empty()) {
+  for (int32 i = 0; i < num_leaves_small; i++) {
+    if (static_cast<size_t>(i) >= split_stats_small.size() ||
+        split_stats_small[i].empty()) {
       KALDI_WARN << "No stats mapping to " << i << " in small tree. "
                  << "Continuing but this is a serious error.";
       small_leaves_unseen.push_back(i);
@@ -288,7 +290,7 @@ static void ComputeTreeMapping(const EventMap &small_tree,
   // assigned to them.  If not we try to clean up... this should never normally
   // happen and if it does it's due to trying to assign tree roots to unseen phones,
   // which will anyway cause an error in a later stage of system building.
-  for (size_t leaf = 0; leaf < num_leaves_big; leaf++) {
+  for (int32 leaf = 0; leaf < num_leaves_big; leaf++) {
     int32 small_leaf = (*leaf_map)[leaf];
     if (small_leaf == -1) {
       KALDI_WARN << "In ComputeTreeMapping, could not get mapping from leaf "

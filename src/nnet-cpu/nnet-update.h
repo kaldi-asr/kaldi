@@ -74,12 +74,22 @@ BaseFloat DoBackprop(const Nnet &nnet,
 /// utility function.
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs);
 
+/// Computes objective function over a minibatch.  Returns the *total* weighted
+/// objective function over the minibatch.
 BaseFloat ComputeNnetObjf(const Nnet &nnet,
                           const std::vector<NnetTrainingExample> &examples);
 
+/// This version of ComputeNnetObjf breaks up the examples into
+/// multiple minibatches to do the computation.
+/// Returns the *total* (weighted) objective function.
+BaseFloat ComputeNnetObjf(const Nnet &nnet,                          
+                          const std::vector<NnetTrainingExample> &examples,
+                          int32 minibatch_size);
+
+
 /// ComputeNnetGradient is mostly used to compute gradients on validation sets;
 /// it divides the example into batches and calls DoBackprop() on each.
-/// It returns the average (weighted) objective function per frame.
+/// It returns the *average* (weighted) objective function per frame.
 BaseFloat ComputeNnetGradient(
     const Nnet &nnet,
     const std::vector<NnetTrainingExample> &examples,

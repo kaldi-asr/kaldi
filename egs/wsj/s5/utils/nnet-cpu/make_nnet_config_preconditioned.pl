@@ -32,10 +32,21 @@ $bias_stddev = 2.0;  # Standard deviation for random initialization of the
 $learning_rate = 0.001;
 $alpha = 0.1;
 
+$splice_context = 0;
+$lda_dim = 0;
+$lda_mat = "";
+
+
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
     $input_left_context = $ARGV[1];
     shift; shift;
+  }
+  if ($ARGV[0] eq "--lda-mat") {
+    $splice_context = $ARGV[1];
+    $lda_dim = $ARGV[2];
+    $lda_mat = $ARGV[3];
+    shift; shift; shift; shift;
   }
   if ($ARGV[0] eq "--input-right-context") {
     $input_right_context = $ARGV[1];
@@ -128,6 +139,13 @@ $actual_num_params = $hidden_layer_size * $hidden_layer_size * ($num_hidden_laye
 if (abs($actual_num_params - $num_params) > 0.1 * $num_params) {
   print STDERR "Warning: make_nnet_config.pl: possible failure $actual_num_params != $num_params";
 }
+
+if ($splice_context > 0) { # --lda-mat <splice-context> <lda-matrix> was specified...
+  print "SpliceComponent input-dim=$feat_dim left-context=$splice_context right-context=$splice_context\n";
+  print "FixedLinearComponent matrix=$lda_mat\n"; # specify the filename.
+  $feat_dim = $lda_dim; # This is now the input dimension.
+}
+
 
 if ($input_left_context + $input_right_context != 0) {
   # First component has to be splicing component...

@@ -27,7 +27,7 @@ $initial_num_hidden_layers = -1; # if >= 0, the number of hidden layers
 $single_layer_config = "";
 $bias_stddev = 2.0;
 $learning_rate = 0.001;
-$precondition = "false";
+$nobias = "";
 
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
@@ -46,12 +46,9 @@ for ($x = 1; $x < 10; $x++) {
     $bias_stddev = $ARGV[1];
     shift; shift;
   }
-  if ($ARGV[0] eq "--precondition") {
-    $precondition = $ARGV[1];
-    if ($precondition ne "true" && $precondition ne "false") {
-      die "Invalid option --precondition \"$precondition\"";
-    }
-    shift; shift;
+  if ($ARGV[0] eq "--nobias") {
+    $nobias = "Nobias";
+    shift;
   }
   if ($ARGV[0] eq "--learning-rate") {
     $learning_rate = $ARGV[1];
@@ -137,7 +134,7 @@ $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
-  print "AffineComponent input-dim=$cur_input_dim output-dim=$hidden_layer_size precondition=$precondition " .
+  print "AffineComponent$nobias input-dim=$cur_input_dim output-dim=$hidden_layer_size " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "TanhComponent dim=$cur_input_dim\n";
@@ -147,14 +144,14 @@ if ($single_layer_config ne "") {
   # Create a config file we'll use to add new hidden layers.
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
-  print F "AffineComponent input-dim=$hidden_layer_size output-dim=$hidden_layer_size precondition=$precondition " .
+  print F "AffineComponent$nobias input-dim=$hidden_layer_size output-dim=$hidden_layer_size " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
   close (F) || die "Closing config file";
 }
 
 ## Now the output layer.
-print "AffineComponent input-dim=$cur_input_dim output-dim=$num_leaves precondition=$precondition " .
+print "AffineComponent$nobias input-dim=$cur_input_dim output-dim=$num_leaves " .
   "learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";

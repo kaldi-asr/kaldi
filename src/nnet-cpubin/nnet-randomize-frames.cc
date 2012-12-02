@@ -58,6 +58,8 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator");
     po.Register("left-context", &left_context, "Number of frames of left context "
                 "the neural net requires.");
+    po.Register("right-context", &right_context, "Number of frames of right context "
+                "the neural net requires.");
     
     randomize_config.Register(&po);
     

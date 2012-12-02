@@ -20,6 +20,7 @@
 #include "nnet-cpu/nnet-component.h"
 #include "nnet-cpu/nnet-precondition.h"
 #include "util/text-utils.h"
+#include "util/kaldi-io.h"
 
 namespace kaldi {
 
@@ -62,6 +63,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new PermuteComponent();
   } else if (component_type == "DctComponent") {
     ans = new DctComponent();
+  } else if (component_type == "FixedLinearComponent") {
+    ans = new FixedLinearComponent();
   } else if (component_type == "SpliceComponent") {
     ans = new SpliceComponent();
   }
@@ -177,6 +180,32 @@ bool ParseFromString(const std::string &name, std::string *string,
         KALDI_ERR << "Bad option " << split_string[i];
       *string = "";
       // Set "string" to all the pieces but the one we used.
+      for (size_t j = 0; j < split_string.size(); j++) {
+        if (j != i) {
+          if (!string->empty()) *string += " ";
+          *string += split_string[j];
+        }
+      }
+      return true;      
+    }
+  }
+  return false;
+}
+
+bool ParseFromString(const std::string &name, std::string *string,
+                     std::string *param) {
+  std::vector<std::string> split_string;
+  SplitStringToVector(*string, " \t", true,
+                      &split_string);
+  std::string name_equals = name + "="; // the name and then the equals sign.
+  size_t len = name_equals.length();
+  
+  for (size_t i = 0; i < split_string.size(); i++) {
+    if (split_string[i].compare(0, len, name_equals) == 0) {
+      *param = split_string[i].substr(len);
+
+      // Set "string" to all the pieces but the one we used.
+      *string = "";
       for (size_t j = 0; j < split_string.size(); j++) {
         if (j != i) {
           if (!string->empty()) *string += " ";
@@ -1984,6 +2013,68 @@ void DctComponent::Read(std::istream &is, bool binary) {
   Init(dim_, dct_dim, reorder_, dct_keep_dim);
   //idct_mat_.Resize(dct_keep_dim, dct_dim);
   //ComputeDctMatrix(&dct_mat_);
+}
+
+std::string FixedLinearComponent::Info() const {
+  std::stringstream stream;
+  stream << Component::Info() << ", input_dim=" << mat_.NumCols()
+         << ", output_dim = " << mat_.NumRows();
+  return stream.str();
+}
+
+void FixedLinearComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("matrix", &args, &filename);
+
+  if (!ok || !args.empty()) 
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  bool binary;
+  Input ki(filename, &binary);
+  Matrix<BaseFloat> mat;
+  mat.Read(ki.Stream(), binary);
+  KALDI_ASSERT(mat.NumRows() != 0);
+  Init(mat);
+}
+
+
+void FixedLinearComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     Matrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), mat_.NumRows());
+  out->AddMatMat(1.0, in, kNoTrans, mat_, kTrans, 0.0);
+}
+
+void FixedLinearComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                                    const MatrixBase<BaseFloat> &, // out_value
+                                    const MatrixBase<BaseFloat> &out_deriv,
+                                    const VectorBase<BaseFloat> &, // chunk_weights,
+                                    Component *, // to_update
+                                    Matrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(out_deriv.NumRows(), mat_.NumCols());
+  in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, mat_, kNoTrans, 0.0);
+}
+
+Component* FixedLinearComponent::Copy() const {
+  FixedLinearComponent *ans = new FixedLinearComponent();
+  ans->Init(mat_);
+  return ans;
+}
+
+
+void FixedLinearComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedLinearComponent>");
+  WriteToken(os, binary, "<Matrix>");
+  mat_.Write(os, binary);
+  WriteToken(os, binary, "</FixedLinearComponent>");  
+}
+
+void FixedLinearComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedLinearComponent>", "<Matrix>");
+  mat_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedLinearComponent>");
 }
 
 } // namespace kaldi

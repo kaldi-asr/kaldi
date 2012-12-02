@@ -8,7 +8,7 @@
 # can be set via the --dim option to the script train_lda_mllt.sh ].
 # This is a relatively simple neural net training setup that doesn't
 # use a two-level tree or any mixture-like stuff.
-# We've added another frame-splicing plus LDA+MLLT as input to this.
+
 
 # Begin configuration section.
 cmd=run.pl
@@ -16,9 +16,11 @@ num_iters=5   # Total number of iterations
 num_valid_utts=300 # held-out utterances.
 num_valid_frames=5000 # a subset of the frames in "valid_utts".
 minibatch_size=1000
-minibatches_per_phase_it1=50
-minibatches_per_phase=200
-samples_per_iteration=400000 # each iteration of training, see this many samples.
+minibatches_per_phase=100
+samples_per_iteration=200000 # each iteration of training, see this many samples
+                             # per job.
+num_jobs_nnet=4 # Number of neural net jobs to run in parallel.
+start_parallel=1 # First iteration (in zero-based numbering) to actually do in parallel.
 num_hidden_layers=2
 initial_num_hidden_layers=1  # we'll add the rest one by one.
 num_parameters=2000000 # 2 million parameters by default.
@@ -28,15 +30,13 @@ beam=10
 retry_beam=40
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 parallel_opts=
-learning_rate_ratio=1.1
-measure_gradient_at=1.0
 nnet_config_opts=
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 lda_dim=250
 randprune=4.0 # speeds up LDA.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
-shrink=false
+shrink=false # only applies to iterations before "start_parallel".
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -69,15 +69,16 @@ done
 
 # Set some variables.
 oov=`cat $lang/oov.int`
+feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{print $NF}'` || exit 1;
 num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{print $NF}'` || exit 1;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir 2>/dev/null # any LDA matrix...
@@ -130,6 +131,7 @@ if [ $stage -le -5 ]; then
 fi
 
 
+##
 if [ $initial_num_hidden_layers -gt $num_hidden_layers ]; then
   echo "Initial num-hidden-layers $initial_num_hidden_layers is greater than final number $num_hidden_layers";
   exit 1;
@@ -158,8 +160,6 @@ if [ $stage -le -4 ]; then
        $dir/0.mdl || exit 1;
 fi
 
-nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl  | grep -w left-context | awk '{print $2}'` --right-context=`nnet-am-info $dir/0.mdl  | grep -w right-context | awk '{print $2}'`" || exit 1;
-
 if [ $stage -le -3 ]; then
   echo "Training transition probabilities and setting priors"
   $cmd $dir/log/train_trans.log \
@@ -176,6 +176,9 @@ if [ $stage -le -2 ]; then
 fi
 
 cp $alidir/ali.*.gz $dir
+
+
+nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w left-context | awk '{print $2}'` --right-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w right-context | awk '{print $2}'`" || exit 1;
 
 if [ $stage -le -1 ]; then
   echo "Creating subset of frames of validation set."
@@ -208,22 +211,47 @@ while [ $x -lt $num_iters ]; do
       mdl=$dir/$x.mdl
     fi
     m=$minibatches_per_phase
-    [ $x -eq 0 ] && m=$minibatches_per_phase_it1
-    extra_opts=
-    $shrink && extra_opts="--always-accept=true"  # necessary when shrinking parameters.
-    $cmd $parallel_opts $dir/log/train.$x.log \
-      nnet-randomize-frames $nnet_context_opts --num-samples=$samples_per_iteration \
-       --srand=$x "$feats" \
-      "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
-      nnet-train $extra_opts --learning-rate-ratio=$learning_rate_ratio \
-        --measure-gradient-at=$measure_gradient_at \
-        --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
-        --verbose=2 "$mdl" ark:- ark:$dir/valid.egs $dir/$[$x+1].mdl \
-      || exit 1;
-    if $shrink; then
-      $cmd $parallel_opts $dir/log/shrink.$x.log \
-        nnet-shrink $dir/$[$x+1].mdl ark:$dir/valid.egs $dir/$[$x+1].mdl \
+
+    if [ $x -lt $start_parallel ]; then # Not parallel; just train in the standard way.
+      $cmd $parallel_opts $dir/log/train.$x.log \
+        nnet-randomize-frames $nnet_context_opts --num-samples=$samples_per_iteration \
+        --srand=$x "$feats" \
+        "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
+        nnet-train-simple --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
+          --verbose=2 "$mdl" ark:- $dir/$[$x+1].mdl \
         || exit 1;
+      if $shrink; then
+        $cmd $parallel_opts $dir/log/shrink.$x.log \
+          nnet-shrink $dir/$[$x+1].mdl ark:$dir/valid.egs $dir/$[$x+1].mdl \
+          || exit 1;
+      fi
+    else
+      egs_list=
+      nnets_list=
+      for n in `seq 1 $num_jobs_nnet`; do
+         egs_list="$egs_list ark:$dir/egs.tmp.$n"
+         nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
+      done
+      $cmd $parallel_opts $dir/log/randomize.$x.log \
+        nnet-randomize-frames $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
+        --srand=$x "$feats" \
+        "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/$x.mdl ark:- ark:- |" ark:- \| \
+         nnet-copy-egs ark:- $egs_list || exit 1;
+      $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
+        nnet-train-simple \
+          --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
+          --verbose=2 "$mdl" ark:$dir/egs.tmp.JOB $dir/$[$x+1].JOB.mdl \
+         || exit 1;
+
+      if [ $x -gt 0 ] && [ "`nnet-am-info "$mdl" 2>/dev/null | grep num-components`" == \
+            "`nnet-am-info "$dir/$[$x-1].mdl" 2>/dev/null | grep num-components`" ]; then
+        last_model=$dir/$[$x-1].mdl  # include previous model in space we optimize over.
+      else
+        last_model=
+      fi
+      $cmd $parallel_opts $dir/log/combine.$x.log \
+         nnet-combine $last_model "$mdl" $nnets_list ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
+      rm  $nnets_list
     fi
   fi
   x=$[$x+1]

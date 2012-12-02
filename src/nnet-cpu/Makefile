@@ -8,7 +8,7 @@ TESTFILES = nnet-component-test nnet-precondition-test
 
 OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \
      nnet-randomize.o nnet-compute.o am-nnet.o nnet-functions.o  \
-     nnet-precondition.o shrink-nnet.o
+     nnet-precondition.o shrink-nnet.o combine-nnet.o
 
 #nnet-compute.o nnet-train.o
 # nnet-nnet.o nnet-loss.o nnet-rnnlm.o

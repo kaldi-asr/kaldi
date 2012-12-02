@@ -19,30 +19,6 @@
 
 namespace kaldi {
 
-static int32 NumUpdatableComponents(const Nnet &nnet) {
-  int32 ans = 0;
-  for (int32 i = 0; i < nnet.NumComponents(); i++)
-    if (dynamic_cast<const UpdatableComponent*>(&(nnet.GetComponent(i))) != NULL)
-      ans++;
-  return ans;
-}
-
-
-static void ScaleNnet(const Vector<BaseFloat> &scale_params,
-                      Nnet *nnet) {
-  int32 i = 0;
-  for (int32 j = 0; j < nnet->NumComponents(); j++) {
-    UpdatableComponent *uc =
-        dynamic_cast<UpdatableComponent*>(&(nnet->GetComponent(j)));
-    if (uc != NULL) {
-      uc->Scale(scale_params(i));
-      i++;
-    }
-  }
-  KALDI_ASSERT(i == scale_params.Dim());
-}
-
-
 static BaseFloat ComputeObjfAndGradient(
     const std::vector<NnetTrainingExample> &validation_set,
     const Vector<double> &log_scale_params,
@@ -51,7 +27,7 @@ static BaseFloat ComputeObjfAndGradient(
   Vector<BaseFloat> scale_params(log_scale_params);
   scale_params.ApplyExp();
   Nnet nnet_scaled(nnet);
-  ScaleNnet(scale_params, &nnet_scaled);
+  nnet_scaled.ScaleComponents(scale_params);
   
   Nnet nnet_gradient(nnet);
   bool is_gradient = true;
@@ -88,42 +64,32 @@ void ShrinkNnet(const NnetShrinkConfig &shrink_config,
                 const std::vector<NnetTrainingExample> &validation_set,
                 Nnet *nnet) {
 
-  int32 dim = NumUpdatableComponents(*nnet);
+  int32 dim = nnet->NumUpdatableComponents();
   KALDI_ASSERT(dim > 0);
-  Vector<double> log_scale(dim), gradient(dim),
-      diag_approx_2nd_deriv(dim); // will be zero.
+  Vector<double> log_scale(dim), gradient(dim); // will be zero.
   
   // Get initial gradient.
-  double objf = ComputeObjfAndGradient(validation_set, log_scale,
-                                       *nnet,
-                                       &gradient),
-      initial_objf = objf;
+  double objf, initial_objf;
+
 
   LbfgsOptions lbfgs_options;
   lbfgs_options.minimize = false; // We're maximizing.
   lbfgs_options.m = dim; // Store the same number of vectors as the dimension
   // itself, so this is BFGS.
+  lbfgs_options.first_step_length = shrink_config.initial_step;
   
-  // set diag_approx_2nd_deriv (should be negative, we're maximizing).
-  // We set this on the assumption that we want the change in log-scale
-  // to have absolute value initial_change=0.05, which seems reasonable.
-  for (int32 d = 0; d < dim; d++) {
-    diag_approx_2nd_deriv(d) =
-        -std::min(static_cast<double>(shrink_config.min_initial_2nd_deriv),
-                  std::abs(gradient(d)) / shrink_config.initial_change);
-  }
-
   OptimizeLbfgs<double> lbfgs(log_scale,
                               lbfgs_options);
   
   for (int32 i = 0; i < shrink_config.num_bfgs_iters; i++) {
-    KALDI_VLOG(2) << "log-scale = " << log_scale << ", objf = " << objf
-                  << ", gradient = " << gradient;
-
     log_scale.CopyFromVec(lbfgs.GetProposedValue());
     objf = ComputeObjfAndGradient(validation_set, log_scale,
                                   *nnet,
                                   &gradient);
+
+    KALDI_VLOG(2) << "log-scale = " << log_scale << ", objf = " << objf
+                  << ", gradient = " << gradient;
+    if (i == 0) initial_objf = objf;
 
     lbfgs.DoStep(objf, gradient);
   }
@@ -135,7 +101,7 @@ void ShrinkNnet(const NnetShrinkConfig &shrink_config,
   KALDI_LOG << "Shrinking nnet, validation objf per frame changed from "
             << initial_objf << " to " << objf << ", scale factors per layer are "
             << scale;
-  ScaleNnet(scale, nnet);
+  nnet->ScaleComponents(scale);
 }
  
   

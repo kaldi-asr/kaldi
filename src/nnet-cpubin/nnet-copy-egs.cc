@@ -28,19 +28,22 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Copy examples (typically single frames) for neural network training,\n"
-        "possibly changing the binary mode.\n"
+        "possibly changing the binary mode.  Supports multiple wspecifiers, in\n"
+        "which case it will write the examples round-robin to the outputs.\n"
         "\n"
-        "Usage:  nnet-copy-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
+        "Usage:  nnet-copy-egs [options] <egs-rspecifier> <egs-wspecifier1> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet-copy-egs ark:train.egs ark,t:text.egs\n";
+        "nnet-copy-egs ark:train.egs ark,t:text.egs\n"
+        "or:\n"
+        "nnet-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
         
 
     ParseOptions po(usage);
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() < 2) {
       po.PrintUsage();
       exit(1);
     }
@@ -49,14 +52,21 @@ int main(int argc, char *argv[]) {
         examples_wspecifier = po.GetArg(2);
 
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    NnetTrainingExampleWriter example_writer(examples_wspecifier);
+
+    int32 num_outputs = po.NumArgs() - 1;
+    std::vector<NnetTrainingExampleWriter*> example_writers(num_outputs);
+    for (int32 i = 0; i < num_outputs; i++)
+      example_writers[i] = new NnetTrainingExampleWriter(po.GetArg(i+2));
+
     
     int64 num_done = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_done++)
-      example_writer.Write(example_reader.Key(), example_reader.Value());
+      example_writers[num_done % num_outputs]->Write(example_reader.Key(),
+                                                     example_reader.Value());
 
-    KALDI_LOG << "Copied " << num_done << " neural-network training examples "
-              << " to " << examples_wspecifier;
+    for (int32 i = 0; i < num_outputs; i++)
+      delete example_writers[i];
+    KALDI_LOG << "Copied " << num_done << " neural-network training examples ";
     return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

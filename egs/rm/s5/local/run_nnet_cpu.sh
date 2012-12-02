@@ -325,12 +325,198 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y4_nnet
 )
 
-
-
-( # preconditioned update with even higher learning rate.
-  steps/train_nnet_cpu.sh --alpha 0.1 --nnet-config-opts "--learning-rate 0.005" \
-    --minibatch-size 250 --minibatches-per-phase-it1 200 --minibatches-per-phase 800 \
+( # 4y5 is as 4y4 but larger alpha (4.0)
+  steps/train_nnet_cpu.sh --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
     --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
-   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z_nnet
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y5_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 5 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y5_nnet/decode_it5
+
+  # more iters
+  steps/train_nnet_cpu.sh --stage 5 --num-iters 10 --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y5_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y5_nnet/decode_it10
+
+  # shrinkage.
+  nnet-shrink exp/tri4y5_nnet/10.mdl ark:exp/tri4y5_nnet/valid.egs exp/tri4y5_nnet/10shrunk.mdl
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --iter 10shrunk \
+     --transform-dir exp/tri3b/decode \
+    exp/tri3b/graph data/test exp/tri4y5_nnet/decode_it10shrunk
+
+)
+
+( # 4y6 is as 4y5 but adding shrinkage.
+  steps/train_nnet_cpu.sh --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y6_nnet
+)
+
+( # 4y7 is as 4y6 but fixing something-- continuing to update of
+  # validation objf change is negative.  Also doing more iterations (15).
+  steps/train_nnet_cpu.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y7_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y7_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y7_nnet/decode_it15
+)
+
+( # 4y8 is as 4y7 but using alpha=1.0
+  steps/train_nnet_cpu.sh --num-iters 15 --shrink true --alpha 1.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y8_nnet
+)
+
+( # 4y9 is as 4y7 but double the learning rate.
+  steps/train_nnet_cpu.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.005" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y9_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y9_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y9_nnet/decode_it15
+)
+
+
+( # 4y10 is as 4y7, but more recent code in which there's LDA after
+  # splicing +- 4 frames..
+  steps/train_nnet_cpu.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase-it1 50 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+   --measure-gradient-at 0.8 --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y10_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y10_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y10_nnet/decode_it15
+
+)
+
+
+( # 4y11 is as 4y10 (also splicing +- 4 frames), but with the "parallel" mode.
+  # Note: the learning rate will not be updated in this code (we'll add this
+  # option later).
+
+  steps/train_nnet_cpu_parallel.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y11_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y11_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y11_nnet/decode_it15
+
+)
+
+
+( # 4y12 is as 4y11 (parallel mode), but added the automatic updating of
+  # learning rates.  Note: this seemed to hurt.
+  steps/train_nnet_cpu_parallel.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y12_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 5 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y12_nnet/decode_it5
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y12_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y12_nnet/decode_it15
+
+)
+
+
+(  # Broken-- 4y13 was identical to 4y11, gave slightly diff. results for some reason.
+   # old comment:
+   # 4y13 is as 4y11 (parallel mode), but removed the automatic updating of
+  # learning rates and instead adding (where possible) the previous iteration's model
+  # into the space we optimize over.
+  steps/train_nnet_cpu_parallel2.sh --num-iters 10 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y13_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 5 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y13_nnet/decode_it5
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y13_nnet/decode_it10
+)
+
+(
+   # 4y14 is as 4y11 (parallel mode), but removed the automatic updating of
+   # learning rates and instead adding (where possible) the previous iteration's model
+   # into the space we optimize over.
+  steps/train_nnet_cpu_parallel2.sh --num-iters 15 --shrink true --alpha 4.0 --nnet-config-opts "--learning-rate 0.0025" \
+    --minibatch-size 1000 --minibatches-per-phase 200 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "4" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y14_nnet
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 5 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y14_nnet/decode_it5
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 10 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y14_nnet/decode_it10
+
+ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+   --iter 15 \
+   --transform-dir exp/tri3b/decode \
+   exp/tri3b/graph data/test exp/tri4y14_nnet/decode_it15
 )
 
