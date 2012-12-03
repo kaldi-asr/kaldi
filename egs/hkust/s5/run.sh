@@ -12,11 +12,6 @@
 . cmd.sh
 
 
-case 0 in    #goto here
-    1)
-;;           #here:
-esac
-
 # Data Preparation, 
 local/hkust_data_prep.sh /mnt/spdb/LDC2005S15
 # Lexicon Preparation,
