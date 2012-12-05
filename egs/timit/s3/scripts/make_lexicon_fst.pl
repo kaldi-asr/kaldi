@@ -42,7 +42,7 @@ open(L, "<$lexfn") || die "Error opening lexicon $lexfn";
 
 if( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) state which is numbered zero.
     $loopstate = 0;
-    $nexststate = 1; # next unallocated state.
+    $nextstate = 1; # next unallocated state.
     while(<L>) {
         @A = split(" ", $_);
         $w = shift @A;
