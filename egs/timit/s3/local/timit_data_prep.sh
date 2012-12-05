@@ -35,7 +35,7 @@ if [ $# != 1 ]; then
 fi 
 
 TIMIT_ROOT=$1
-
+S3_ROOT=`pwd`
 mkdir -p data/local
 cd data/local
 
@@ -48,7 +48,7 @@ if [ -d $TIMIT_ROOT/TIMIT/TRAIN -a -d $TIMIT_ROOT/TIMIT/TEST ];
    test_folder=$TIMIT_ROOT/TIMIT/TEST
    spkr_info_file=$TIMIT_ROOT/TIMIT/DOC/SPKRINFO.TXT
 elif [ -d $TIMIT_ROOT/timit/train -a -d $TIMIT_ROOT/timit/test ];
-   then
+ then
    lower_case=1
    train_folder=$TIMIT_ROOT/timit/train
    test_folder=$TIMIT_ROOT/timit/test
@@ -65,12 +65,12 @@ fi
 
 
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
-../../local/make_trans.pl trn train_sph.flist train_trans.txt train_sph.scp || exit 1;
+$S3_ROOT/local/make_trans.pl trn train_sph.flist train_trans.txt train_sph.scp || exit 1;
 mv train_trans.txt tmp; sort -k 1 tmp > train_trans.txt
 mv train_sph.scp tmp; sort -k 1 tmp > train_sph.scp
 rm tmp
 
-sph2pipe=`cd ../../../../..; echo $PWD/tools/sph2pipe_v2.5/sph2pipe`
+sph2pipe=`cd $S3_ROOT ; cd ../../..; echo $PWD/tools/sph2pipe_v2.5/sph2pipe`
 if [ ! -f $sph2pipe ]; then
     echo "Could not find the sph2pipe program at $sph2pipe";
     exit 1;
@@ -78,7 +78,7 @@ fi
 awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < train_sph.scp > train_wav.scp
 
 cat train_wav.scp | perl -ane 'm/^(\w+_(\w+)\w_\w+) / || die; print "$1 $2\n"' > train.utt2spk
-cat train.utt2spk | sort -k 2 | ../../scripts/utt2spk_to_spk2utt.pl > train.spk2utt
+cat train.utt2spk | sort -k 2 | $S3_ROOT/scripts/utt2spk_to_spk2utt.pl > train.spk2utt
 
 echo "Creating coretest set."
 test_speakers="mdab0 mwbt0 felc0 mtas1 mwew0 fpas0 mjmp0 mlnt0 fpkt0 mlll0 mtls0 fjlm0 mbpm0 mklt0 fnlp0 mcmj0 mjdh0 fmgd0 mgrt0 mnjm0 fdhc0 mjln0 mpam0 fmld0"
@@ -119,14 +119,14 @@ echo "# of utterances in dev set = ${num_lines}"
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
 for test in test dev ; do
     echo "Finalizing ${test}"
-    ../../local/make_trans.pl ${test} ${test}_sph.flist ${test}_trans.txt ${test}_sph.scp || exit 1;
+    $S3_ROOT/local/make_trans.pl ${test} ${test}_sph.flist ${test}_trans.txt ${test}_sph.scp || exit 1;
     mv ${test}_trans.txt tmp; sort -k 1 tmp > ${test}_trans.txt
     mv ${test}_sph.scp tmp; sort -k 1 tmp > ${test}_sph.scp
     rm tmp;
     awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${test}_sph.scp  > ${test}_wav.scp
 
     cat ${test}_wav.scp | perl -ane 'm/^(\w+_(\w+)\w_\w+) / || die; print "$1 $2\n"' > ${test}.utt2spk
-    cat ${test}.utt2spk | sort -k 2 | ../../scripts/utt2spk_to_spk2utt.pl > ${test}.spk2utt
+    cat ${test}.utt2spk | sort -k 2 | $S3_ROOT/scripts/utt2spk_to_spk2utt.pl > ${test}.spk2utt
 done
 
 
