@@ -5,6 +5,7 @@
 cmd=run.pl
 min_lmwt=9
 max_lmwt=20
+reverse=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -16,6 +17,7 @@ if [ $# -ne 3 ]; then
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -52,6 +54,11 @@ $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
 for lmwt in `seq $min_lmwt $max_lmwt`; do
   utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.tra | \
    filter_text > $dir/scoring/$lmwt.txt || exit 1;
+  if $reverse; then
+    mv $dir/scoring/$lmwt.txt $dir/scoring/$lmwt.txt.orig
+    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
+       <$dir/scoring/$lmwt.txt.orig >$dir/scoring/$lmwt.txt
+  fi
 done
 
 filter_text <$data/text >$dir/scoring/text.filt
