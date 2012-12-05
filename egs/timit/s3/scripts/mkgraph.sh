@@ -74,7 +74,7 @@ grep '#' $lang/phones_disambig.txt | awk '{print $2}' > $lang/tmp/disambig_phone
 
 clg=$lang/tmp/CLG_${N}_${P}.fst
 
-if [[ ! -f $clg || $clg -ot $lang/LG.fst ]]; then
+if [[ ! -f $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/tmp/disambig_phones.list \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.list \
