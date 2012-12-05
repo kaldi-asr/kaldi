@@ -420,7 +420,8 @@ void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
   }
 
   // The SoftmaxComponent does not have any real trainable parameters, but
-  // during the backprop we
+  // during the backprop we store some statistics on the average counts;
+  // these may be used in mixing-up.
   if (to_update != NULL) {
     SoftmaxComponent *to_update_softmax =
         dynamic_cast<SoftmaxComponent*>(to_update);
@@ -1680,7 +1681,7 @@ void SpliceComponent::InitFromString(std::string args) {
 
   int32 const_component_dim = 0;
   ParseFromString("const-component-dim", &args, &const_component_dim);
-
+  
   if (!ok || !args.empty() || input_dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << orig_args << "\"";
@@ -1721,21 +1722,23 @@ void SpliceComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                       c, output_chunk_size,
                                       0, input_dim - const_component_dim_),
                            output_part(output_chunk, 
-                                      0, output_chunk_size,
-                                      (input_dim - const_component_dim_) * c, input_dim - const_component_dim_);
+                                       0, output_chunk_size,
+                                       (input_dim - const_component_dim_) * c,
+                                       input_dim - const_component_dim_);
       output_part.CopyFromMat(input_part);
     }
     //Append the constant component at the end of the output vector
     if (const_component_dim_ != 0) {
       SubMatrix<BaseFloat> input_part(input_chunk, 
-                                    0, output_chunk_size,
-                                    InputDim() - const_component_dim_, const_component_dim_),
+                                      0, output_chunk_size,
+                                      InputDim() - const_component_dim_,
+                                      const_component_dim_),
                            output_part(output_chunk, 
-                                    0, output_chunk_size,
-                                    OutputDim() - const_component_dim_, const_component_dim_);
+                                       0, output_chunk_size,
+                                       OutputDim() - const_component_dim_,
+                                       const_component_dim_);
       output_part.CopyFromMat(input_part);
     }
-
   }  
 }
 

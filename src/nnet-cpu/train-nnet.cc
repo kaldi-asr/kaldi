@@ -200,6 +200,8 @@ void NnetSimpleTrainer::BeginNewPhase(bool first_time) {
               << weight_this_phase_ << " frames.";
   logprob_this_phase_ = 0.0;
   weight_this_phase_ = 0.0;
+  minibatches_seen_this_phase_ = 0;
+  num_phases_++;
 }
 
 
@@ -208,6 +210,8 @@ NnetSimpleTrainer::~NnetSimpleTrainer() {
     KALDI_LOG << "Doing partial minibatch of size "
               << buffer_.size();
     TrainOneMinibatch();
+    bool first_time = false;
+    BeginNewPhase(first_time);
   }
 }
 

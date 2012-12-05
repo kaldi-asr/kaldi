@@ -94,7 +94,7 @@ class Nnet {
   /// Here, scale_params is a vector of size equal to
   /// NumUpdatableComponents()
   void ScaleComponents(const VectorBase<BaseFloat> &scales);
-
+  
   /// For each updatatable component, adds to it
   /// the corresponding element of "other" times the
   /// appropriate element of "scales" (which has the
