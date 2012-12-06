@@ -6,6 +6,7 @@ cmd=run.pl
 stage=0
 min_lmwt=9
 max_lmwt=20
+reverse=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -18,6 +19,7 @@ if [ $# -ne 3 ]; then
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -41,14 +43,26 @@ name=`basename $data`; # e.g. eval2000
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-    mkdir -p $dir/score_LMWT/ '&&' \
-    lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-    nbest-to-ctm ark:- - \| \
-    utils/int2sym.pl -f 5 $lang/words.txt  \| \
-    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_LMWT/$name.ctm || exit 1;
+  if $reverse; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-reverse ark:- ark:- \| \
+      lattice-align-words --reorder=false $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      nbest-to-ctm ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt  \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_LMWT/$name.ctm || exit 1;
+  else
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      nbest-to-ctm ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt  \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_LMWT/$name.ctm || exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then

@@ -10,6 +10,7 @@ cmd=run.pl
 stage=0
 min_lmwt=9
 max_lmwt=20
+reverse=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -22,6 +23,7 @@ if [ $# -ne 3 ]; then
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
