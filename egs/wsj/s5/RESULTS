@@ -1,3 +1,11 @@
+# Use caution when comparing these results with other published results.
+# We use the "20k open" test condition, also known as the "60k vocabulary"
+# test condition, in which test utterances are not excluded even if they
+# contain words not in the language model.  This is the hardest test condition,
+# and most published results are in the easier 5k and 20k-closed conditions,
+# in which we only test on utterances that are in either a 5k or 20k subset
+# of the vocabulary.
+
 # The following results are updated with LDA+MLLT to use 7, not 9 frames of context,
 # and also increased the learning rate for the "indirect" fMMI.
 
