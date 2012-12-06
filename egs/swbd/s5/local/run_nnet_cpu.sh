@@ -865,3 +865,95 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
    exp/tri4b/graph data/train_dev exp/tri5b47_nnet/decode_train_dev &
 )
+
+
+(
+ # tri5b48 is as tri5b47 but larger final learning rate.
+ # Final validation objf was slightly better than 47, -2.08 -> -2.07,
+ # but WER was a bit worse.  (Note: this was also what we
+ # saw in the RM setup, although it's probably not significant in
+ # either case.)
+ steps/train_nnet_cpu_parallel7.sh --minibatch-size 1000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b48_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b48_nnet/decode_train_dev &
+)
+
+(
+ # tri5b49 is as tri5b48 but using the "8" script which does 
+ # "combine" on each stage instead of averaging then shrinking.
+ #  This does seem to be a bit better than 48, 32.02->31.85, but probably
+ # random.  The validation objf at the end is very slightly better, -2.07 -> 2.06.
+ # not sure that I believe this.    Early on in training, 49 was worse.
+ steps/train_nnet_cpu_parallel8.sh --minibatch-size 1000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b49_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b49_nnet/decode_train_dev &
+)
+
+(
+ # tri5b50 is as tri5b48 but larger initial learning rate and smaller final.
+ # (also c.f. 47.)  Note: doesn't seem to make much difference either way, but
+ # about 0.1% better.
+ steps/train_nnet_cpu_parallel7.sh --minibatch-size 1000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0004 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b50_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b50_nnet/decode_train_dev &
+)
+
+
+(
+ # tri5b51 may be compared to tri5b50, but we're using larger both
+ # initial and final learning rates to make it more like the RM setup (see 4y29).
+ # It's still not quite comparable to that because it has more samples per iter.
+ # It's more than 1% absolute worse-- clearly these learning rates are too high.
+ steps/train_nnet_cpu_parallel7.sh --minibatch-size 1000 \
+   --initial-learning-rate 0.02 --final-learning-rate 0.002 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b51_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b51_nnet/decode_train_dev &
+)
+
+
+( 
+  # tri5b52 is as tri5b48 but using the "9" script which is 
+  # faster than the "7" script.
+  steps/train_nnet_cpu_parallel9.sh --minibatch-size 1000 \
+    --initial-learning-rate 0.008 --final-learning-rate 0.0004 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b52_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b52_nnet/decode_train_dev &
+)

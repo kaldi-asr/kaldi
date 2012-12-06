@@ -42,8 +42,8 @@ void AmNnet::SetPriors(const VectorBase<BaseFloat> &priors) {
   priors_ = priors;
   if (priors_.Dim() > NumPdfs())    
     KALDI_ERR << "Dimension of priors cannot exceed number of pdfs.";
-  KALDI_ASSERT(priors.Dim() > 0);
-  if (priors_.Dim() < NumPdfs()) {
+
+  if (priors_.Dim() > 0 && priors_.Dim() < NumPdfs()) {
     KALDI_WARN << "Dimension of priors is " << priors_.Dim() << " < "
                << NumPdfs() << ": extending with zeros, in case you had "
                << "unseen pdf's, but this possibly indicates a serious problem.";

@@ -310,6 +310,12 @@ void Nnet::SetLearningRates(const VectorBase<BaseFloat> &learning_rates) {
   KALDI_ASSERT(i == learning_rates.Dim());
 }
 
+void Nnet::Resize(int32 new_size) {
+  KALDI_ASSERT(new_size <= static_cast<int32>(components_.size()));
+  for (size_t i = new_size; i < components_.size(); i++)
+    delete components_[i];
+  components_.resize(new_size);
+}
 
 void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
                    const Nnet &other) {

@@ -102,7 +102,11 @@ class Nnet {
   /// one entry for each updatable component).
   void AddNnet(const VectorBase<BaseFloat> &scales,
                const Nnet &other);
- 
+
+  /// Removes final components from the neural network (used for
+  /// debugging).
+  void Resize(int32 num_components);
+  
   Nnet(const Nnet &other); // Copy constructor.
   
   Nnet() { }

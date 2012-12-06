@@ -685,6 +685,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 
 ( # 4y23 is related to 4y{20,21,22}-- in this case we have double initial
   # learning rate but the same final one, so it decreases faster than before.
+  # CAUTION: code was broken!  Only 1st model was taken.
   steps/train_nnet_cpu_parallel6.sh --num-iters 30  --alpha 4.0 \
     --initial-learning-rate 0.005 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
@@ -698,6 +699,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 
 
 ( # 4y24 is the most similar to 4y23, but again doubling the initial learning rate.
+  # CAUTION: code was broken!  Only 1st model was taken.
   steps/train_nnet_cpu_parallel6.sh --num-iters 30  --alpha 4.0 \
     --initial-learning-rate 0.01 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
@@ -711,6 +713,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 
 
 ( # 4y25 is as 4y24, but with shrinking (the default in the 7 script)
+  # CAUTION: code was broken!  Only 1st model was taken.
   steps/train_nnet_cpu_parallel7.sh --num-iters 30  --alpha 4.0 \
     --initial-learning-rate 0.01 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
@@ -724,6 +727,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 
 ( # 4y26 is as 4y25, but with fewer iterations-- seeing if we can get the
   # same performance quicker.  Note: it's a bit worse (2.19 vs 1.97).
+  # CAUTION: code was broken!  Only 1st model was taken.
   steps/train_nnet_cpu_parallel7.sh --num-iters 20  --alpha 4.0 \
     --initial-learning-rate 0.01 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
@@ -736,6 +740,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 )
 
 ( # 4y27 is as 4y26, but with even higher initial learning rate.
+  #[ Note: 4y26 was with broken code, so don't compare!]
   steps/train_nnet_cpu_parallel7.sh --num-iters 20  --alpha 4.0 \
     --initial-learning-rate 0.02 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
@@ -753,9 +758,93 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
     --initial-learning-rate 0.01 --final-learning-rate 0.00025 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
     --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
-    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y25_nnet
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y28_nnet
 
    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
-     exp/tri3b/graph data/test exp/tri4y25_nnet/decode
+     exp/tri3b/graph data/test exp/tri4y28_nnet/decode
+)
+
+( # 4y29 is as 4y27, but with a 10x higher final learning rate.
+  # NOTE: it's taking about as long to do the "shrinking" each time
+  # than it is to do the training, so we need to make the validation
+  # set smaller.
+  steps/train_nnet_cpu_parallel7.sh --num-iters 20  --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.002 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y29_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y29_nnet/decode
+)
+
+( # 4y30 is as 4y29, but with even higher final learning rate.
+  # *after* the "combine" stage, the validation objf is *very* slightly better
+  # than 4y29, but the WER is non-significantly worse.
+  steps/train_nnet_cpu_parallel7.sh --num-iters 20  --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y30_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y30_nnet/decode
+)
+
+( # 4y31 is as 4y30, but fewer iters (15).  WER is worse (1.85->2.03).
+  steps/train_nnet_cpu_parallel7.sh --num-iters 15  --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y31_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y31_nnet/decode
+)
+
+( # 4y32 is as 4y30, but using the "8" script which does "combine" instead
+  # of average and then shrink.  WER is a bit worse, and also validation set
+  # performance is slightly worse.
+  steps/train_nnet_cpu_parallel8.sh --num-iters 20  --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y32_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y32_nnet/decode
+)
+
+
+( # 4y33 is as 4y30, but more iterations (30 not 20).
+  # It's worse, not better.  And the objf is worse, 1.25 vs 1.22.
+  steps/train_nnet_cpu_parallel7.sh --num-iters 30 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y33_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y33_nnet/decode
+)
+
+( # 4y34 is as 4y30, but using the "9" version of the script which
+  # is faster in clock time because it doesn't usually wait for the
+  # "shrink" process.
+  # (Good-- it gives basically the same results: 1.84 vs 1.85.)
+  steps/train_nnet_cpu_parallel9.sh --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y34_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y34_nnet/decode
 )

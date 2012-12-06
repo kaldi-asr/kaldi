@@ -35,7 +35,7 @@ namespace kaldi {
   the output-dim of the network, typically representing state-level
   posteriors.   If pad_input==false we won't do this and the
   output will have a lower #frames than the input; we lose
-  nnet.LeftContet() at the left and nnet.RightContext() at the
+  nnet.LeftContext() at the left and nnet.RightContext() at the
   output.
 */
 void NnetComputation(const Nnet &nnet,

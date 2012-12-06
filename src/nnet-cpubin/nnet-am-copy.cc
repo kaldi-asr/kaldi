@@ -37,10 +37,12 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-am-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
         " nnet-am-copy --binary=false 1.mdl text.mdl\n";
-    
+
+    int32 truncate = -1;
     bool binary_write = true;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
+    std::string scales = "";
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -53,6 +55,11 @@ int main(int argc, char *argv[]) {
     po.Register("learning-rates", &learning_rates,
                 "If supplied (a colon-separated list of learning rates), sets "
                 "the learning rates of \"updatable\" layers to these values.");
+    po.Register("scales", &scales,
+                "A colon-separated list of scaling factors, one for each updatable "
+                "layer: a mechanism to scale the parameters.");
+    po.Register("truncate", &truncate, "If set, will truncate the neural net "
+                "to this many components by removing the last components.");
     
     po.Read(argc, argv);
     
@@ -92,6 +99,29 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> learning_rates_vector(&(learning_rates_vec[0]),
                                                  learning_rates_vec.size());
       am_nnet.GetNnet().SetLearningRates(learning_rates_vector);
+    }
+
+    if (scales != "") {
+      std::vector<BaseFloat> scales_vec;
+      if (!SplitStringToFloats(scales, ":", false, &scales_vec)
+          || static_cast<int32>(scales_vec.size()) !=
+             am_nnet.GetNnet().NumUpdatableComponents()) {
+        KALDI_ERR << "Expected --scales option to be a "
+                  << "colon-separated string with "
+                  << am_nnet.GetNnet().NumUpdatableComponents()
+                  << " elements, instead got \"" << scales << '"';
+      }
+      SubVector<BaseFloat> scales_vector(&(scales_vec[0]),
+                                         scales_vec.size());
+      am_nnet.GetNnet().ScaleComponents(scales_vector);
+    }
+
+    if (truncate >= 0) {
+      am_nnet.GetNnet().Resize(truncate);
+      if (am_nnet.GetNnet().OutputDim() != am_nnet.Priors().Dim()) {
+        Vector<BaseFloat> empty_priors;
+        am_nnet.SetPriors(empty_priors); // so dims don't disagree.
+      }
     }
     
     {
