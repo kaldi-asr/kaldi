@@ -1364,7 +1364,7 @@ void MixtureProbComponent::Scale(BaseFloat scale) {
     } else {
       // scale in log-space.  From its external interface, this class acts like
       // its parameters are stored in log space, although they are not.
-      Matrix<BaseFloat> params(params_[i]);
+      Matrix<BaseFloat> &params(params_[i]);
       params.ApplyFloor(1.0e-20);
       params.ApplyLog();
       params.Scale(scale);  // **scale in log-space.**
@@ -1377,7 +1377,6 @@ void MixtureProbComponent::Scale(BaseFloat scale) {
         col.Scale(1.0 / col.Sum()); // make it sum to one.
         params.CopyColFromVec(col, c);
       }
-      params_[i].CopyFromMat(params);
     }
   }
 }
@@ -1392,6 +1391,10 @@ void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_
     if (this->is_gradient_) { // just add in the normal way.
       params_[i].AddMat(alpha, other->params_[i]);
     } else {
+      KALDI_ASSERT(!other->is_gradient_); // if we need this to work when
+      // "other" is a gradient, we'd do it slightly differently; don't support
+      // this for now.
+      
       // Do the addition in log-space.  From its external interface, this class
       // acts like its parameters are stored in log space, although they are
       // not.
@@ -1563,7 +1566,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
     // Propagate gradient back to in_deriv.
     in_deriv_block.AddMatMat(1.0, out_deriv_block, kNoTrans, param_block,
                              kNoTrans, 0.0);
-
+    
     if (to_update != NULL) {
       Matrix<BaseFloat> &param_block_to_update(to_update->params_[i]);
       if (to_update->is_gradient_) { // We're just storing
@@ -1574,7 +1577,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
         Matrix<BaseFloat> tmp_mat(param_block_to_update.NumRows(),
                                   param_block_to_update.NumCols());
         tmp_mat.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block,
-                          kNoTrans, 1.0);
+                          kNoTrans, 0.0);
         // we want param_block_to_update to be d/d(unnormalized log-probs).
         // First multiply each element by the corresponding parameter
         // (which is a probability).  This comes from differentiating the exp.
@@ -1593,8 +1596,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
           tmp_col.CopyColFromMat(tmp_mat, j);
           param_col.CopyColFromMat(this->params_[i], j);
           // The next line relates to the sum-to-one constraint.
-          tmp_col.AddVec(-1.0 * VecVec(param_col, tmp_col),
-                         param_col);
+          tmp_col.AddVec(-1.0 * tmp_col.Sum(), param_col);
           tmp_mat.CopyColFromVec(tmp_col, j);
         }
         param_block_to_update.AddMat(1.0, tmp_mat);

@@ -30,12 +30,13 @@ $single_layer_config = ""; # a file to which we'll output a config corresponding
 $bias_stddev = 2.0;  # Standard deviation for random initialization of the
                      # bias terms (mean is zero).
 $learning_rate = 0.001;
-$alpha = 0.1;
+$alpha = 4.0;
+$tree_map = ""; # If supplied, a text file that maps from l2 to l1 tree nodes (output
+   # by build-tree-two-level).  Used for initializing mixture-prob component.
 
 $splice_context = 0;
 $lda_dim = 0;
 $lda_mat = "";
-
 
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
@@ -72,6 +73,10 @@ for ($x = 1; $x < 10; $x++) {
     $initial_num_hidden_layers = $ARGV[1];
     $single_layer_config = $ARGV[2];
     shift; shift; shift;
+  }
+  if ($ARGV[0] eq "--tree-map") {
+    $tree_map = $ARGV[1];
+    shift; shift;
   }
 }
 
@@ -179,5 +184,25 @@ print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_le
   "learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";
+
+if ($tree_map ne "") {
+  # Create a MixtureProbComponent at the end, that shares "Gaussians"
+  # among leaves that share the same level-1 tree index.
+  open(F, "<$tree_map") || die "opening tree map file $tree_map";
+  $map = <F>;
+  close(F);
+  $map =~ s/\s*\[\s*// || die "Unexpected data in tree map file $tree_map";
+  $map =~ s/\s*\]\s*// || die "Unexpected data in tree map file $tree_map";
+  @map = split(" ", $map);
+  @dims = ();
+  while (@map > 0) {
+    $index = shift @map;
+    $n = 1;
+    while (@map > 0 && $map[0] == $index) { shift @map; $n++; }
+    push @dims, $n;
+  }
+  $dims = join(":", @dims);
+  print "MixtureProbComponent learning-rate=$learning_rate diag-element=0.9 dims=$dims\n";
+}
 
 ##

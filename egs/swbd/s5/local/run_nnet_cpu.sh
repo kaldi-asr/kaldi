@@ -1038,3 +1038,46 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
    exp/tri4b/graph data/train_dev exp/tri5b57_nnet/decode_train_dev
 )
+
+
+
+( 
+  # tri5b58 is as tri5b54 but using the "12" script which
+  # builds a two-level tree.  This is a baseline for the next
+  # experiment; we don't use the mixture components here.
+
+  steps/train_nnet_cpu_parallel12.sh --minibatch-size 1000 \
+   --use-mixtures false \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b58_nnet 500 2500
+
+  utils/mkgraph.sh data/lang_test exp/tri5b58_nnet exp/tri5b58_nnet/graph
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri5b58_nnet/graph data/train_dev exp/tri5b58_nnet/decode_train_dev
+)
+
+( 
+ # tri5b59 is as tri5b58, but using the mixture-probabilities with the
+ # two-level tree.
+
+  steps/train_nnet_cpu_parallel12.sh --minibatch-size 1000 \
+   --use-mixtures true \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b59_nnet 500 2500
+
+  utils/mkgraph.sh data/lang_test exp/tri5b59_nnet exp/tri5b59_nnet/graph
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri5b59_nnet/graph data/train_dev exp/tri5b59_nnet/decode_train_dev
+)

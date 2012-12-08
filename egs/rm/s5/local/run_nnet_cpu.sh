@@ -926,10 +926,11 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
   # (Yes, it works; actually it's better, 1.83 vs 1.93.  Probably this is becaudse
   # is has more leaves; 1648 vs 1487.)
   steps/train_nnet_cpu_parallel12.sh --num-iters 20 --alpha 4.0 \
+    --use-mixtures false \
     --initial-learning-rate 0.02 --final-learning-rate 0.004 \
     --samples-per-iteration 100000 --minibatch-size 1000 \
     --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
-    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y38_nnet 1000 1800
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y38_nnet 500 1800
 
    utils/mkgraph.sh data/lang exp/tri4y38_nnet exp/tri4y38_nnet/graph || exit 1;
 
@@ -938,6 +939,22 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      exp/tri4y38_nnet/graph data/test exp/tri4y38_nnet/decode
 )
 
+( # 4y38b is running 4y38 again after modifying the scripts to add
+  # the MixtureProbComponent.  I'm making this done by options,
+  # so we can replicate the old results.
+  steps/train_nnet_cpu_parallel12.sh --num-iters 20 --alpha 4.0 \
+    --use-mixtures false \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y38b_nnet 500 1800
+
+   utils/mkgraph.sh data/lang exp/tri4y38b_nnet exp/tri4y38b_nnet/graph || exit 1;
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri4y38b_nnet/graph data/test exp/tri4y38b_nnet/decode
+)
 
 
 

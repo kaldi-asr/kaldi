@@ -77,6 +77,7 @@ randprune=4.0 # speeds up LDA.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
 shrink=true
+use_mixtures=true
 
 # End configuration section.
 
@@ -210,8 +211,12 @@ if [ $stage -le -5 ]; then
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers.
   actual_num_leaves=`gmm-init-model-flat $dir/tree $lang/topo - 2>/dev/null | gmm-info - 2>/dev/null | grep 'number of pdfs' | awk '{print $NF}'` || exit 1;
+  if $use_mixtures; then
+    tree_map_opt="--tree-map $dir/tree.map";
+  fi
   if [ ! -z "$alpha" ]; then
     utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
+      $tree_map_opt \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
@@ -219,6 +224,7 @@ if [ $stage -le -5 ]; then
       > $dir/nnet.config || exit 1;
   else
     utils/nnet-cpu/make_nnet_config.pl $nnet_config_opts \
+      $tree_map_opt \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
