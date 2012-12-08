@@ -115,6 +115,7 @@ class OptimizeLbfgs {
   void DoStep(Real function_value,
               const VectorBase<Real> &gradient,
               const VectorBase<Real> &diag_approx_2nd_deriv);
+  
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(OptimizeLbfgs);
 

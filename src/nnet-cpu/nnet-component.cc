@@ -1446,6 +1446,7 @@ void MixtureProbComponent::Init(BaseFloat learning_rate,
   }
 }  
 
+// e.g. args="learning-rate=0.01 diag-element=0.9 dims=3:4:5"
 void MixtureProbComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
@@ -1454,7 +1455,7 @@ void MixtureProbComponent::InitFromString(std::string args) {
   std::vector<int32> dims;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
   ParseFromString("diag-element", &args, &diag_element); // optional.
-  ok = ok && ParseFromString("dims", &args, &dims);
+  ok = ok && ParseFromString("dims", &args, &dims); // dims is colon-separated list.
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;

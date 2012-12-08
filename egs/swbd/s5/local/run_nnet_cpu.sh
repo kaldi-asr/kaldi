@@ -944,9 +944,9 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
 
 ( 
   # tri5b52 is as tri5b48 but using the "9" script which is 
-  # faster than the "7" script.
+  # faster than the "7" script.  WER is better 32.02->31.68.
   steps/train_nnet_cpu_parallel9.sh --minibatch-size 1000 \
-    --initial-learning-rate 0.008 --final-learning-rate 0.0004 \
+    --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
    --num-jobs-nnet 8 --num-hidden-layers 3 \
    --alpha 4.0 --num-iters 40 \
    --num-parameters 2000000 \
@@ -956,4 +956,85 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
     --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
    exp/tri4b/graph data/train_dev exp/tri5b52_nnet/decode_train_dev &
+)
+
+( 
+  # tri5b54 is as tri5b52 but using the "10" script which is more
+  # stable than the "9" script.  (Does the shrinking every 3 iters
+  # and in between, applies the parameters from the last time we
+  # shrunk.)
+  # Likelihood on validation is
+  # worse (-2.067 -> -2.079) and WER is worse 32.02 -> 31.68.
+  # Possibly it's due to waiting between adding layers.  I'm going
+  # to run a version below that waits 1 iter (not 2) between adding layers.
+
+  steps/train_nnet_cpu_parallel10.sh --minibatch-size 1000 \
+    --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b54_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b54_nnet/decode_train_dev &
+)
+
+
+( 
+  # tri5b55 is as tri5b54 but using double the #parameters: 4M vs 2M.
+  # (Using the "10" script).
+  # It's better: 30.79%, vs. 32.02%.
+
+  steps/train_nnet_cpu_parallel10.sh --minibatch-size 1000 \
+    --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 4000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b55_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b55_nnet/decode_train_dev &
+)
+
+(
+ # tri5b56 is as tri5b54 but waiting 1 not 2 iters between adding
+ # layers. 
+ # It's actually a bit worse: 32.02 -> 32.24% WER, and the validatin
+ # performance is worse, -2.08 -> -2.09.
+
+  steps/train_nnet_cpu_parallel10.sh --minibatch-size 1000 \
+   --add-layers-period 1 --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b56_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b56_nnet/decode_train_dev
+)
+
+
+(
+ # tri5b57 is as tri5b54 (also c.f. tri5b56), but adding all the layers
+ # at the beginning.
+ # It's worse: 32.02 -> 32.31% WER, and the validatin
+ # performance is worse, -2.08 -> -2.11.
+ 
+  steps/train_nnet_cpu_parallel10.sh --minibatch-size 1000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 8 --initial-num-hidden-layers 3 --num-hidden-layers 3 \
+   --alpha 4.0 --num-iters 40 \
+   --num-parameters 2000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_30k_nodup data/lang exp/tri4b exp/tri5b57_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4b/decode_train_dev \
+   exp/tri4b/graph data/train_dev exp/tri5b57_nnet/decode_train_dev
 )
