@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
         "Usage:  extract-segments [options...] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
         " (segments-file has lines like: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
         " or: spkabc_seg1 spkabc_recording1 1.10 2.36\n"
+        " or: spkabc_seg1 spkabc_recording1 0 -1\n"
         " [if channel not provided as last element, expects mono.] ";
         
 
@@ -49,9 +50,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     BaseFloat min_segment_length = 0.1; // Minimum segment length in seconds.
-
+    bool ignore_inf = true; // Ignore very long segment issues
     // Register the options
     po.Register("min-segment-length", &min_segment_length, "Minimum segment length in seconds (will reject shorter segments)");
+    po.Register("ignore-inf", &ignore_inf, "ignore too long segments and jsut use the whole file");
 
     // OPTION PARSING ...
     // parse options  (+filling the registered variables)
@@ -91,7 +93,7 @@ int main(int argc, char *argv[]) {
          real. they must be specified like "1234.56" in seg file */
       /* start time and end time must be greater than 0 secs and start
          time should be greater than end time */ 
-      if (start < 0 || end < 0 || start >= end) {
+      if (start < 0 || end < -1.001 || ((start >= end) && (end > 0))) {
         KALDI_WARN << "Invalid line in segments file [empty or invalid segment] "
                    << line;
         continue;
@@ -115,14 +117,17 @@ int main(int argc, char *argv[]) {
       const WaveData &wave = reader.Value(recording);
       const Matrix<BaseFloat> &wave_data = wave.Data();// read wav file data to matrix format
       BaseFloat samp_freq = wave.SampFreq(); // read sampling fequency
-      int32 start_samp = start * samp_freq, // convert starting time
+      int32 start_samp = start * samp_freq,end_samp; // convert starting time
                                             // of the segment to
                                             // corresponding sample
                                             // number
-          end_samp = end * samp_freq,// convert ending time of the segment
-                               // to corresponding sample number
-          num_samp = wave_data.NumCols(), // total number of samples present in wav data
-          num_chan = wave_data.NumRows(); // total number of channels present in wav file
+	if (end > 0) {
+          end_samp = end * samp_freq;// convert ending time of the segment
+	} else {
+	  end_samp = -1;              // to corresponding sample number
+	}
+      int32 num_samp = wave_data.NumCols(), // total number of samples present in wav data
+	num_chan = wave_data.NumRows(); // total number of channels present in wav file
       /* start sample must be less than total number of samples 
        * otherwise skip the segment
        */
@@ -134,14 +139,17 @@ int main(int argc, char *argv[]) {
       /* end sample must be less than total number samples 
        * otherwise skip the segment
        */
-      if (end_samp > num_samp) {
-        if (end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) {
+      if (end_samp > 0 && end_samp > num_samp) {
+        if ((end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) && !ignore_inf) {
           KALDI_WARN << "End sample too far out of range " << end_samp
                      << " [length:] " << num_samp << ", skipping segment "
                      << segment;
           continue;
         }
         end_samp = num_samp; // for small differences, just truncate.
+      }
+      if ( end_samp < 0 ) {
+	end_samp = num_samp; // Convention to use the whole file
       }
       /* check whether the segment size is less than minimum segment length(default 0.1 sec)
        * if yes, skip the segment
