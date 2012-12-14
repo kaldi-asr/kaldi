@@ -1,7 +1,9 @@
 // gmm/diag-gmm.cc
 
-// Copyright 2009-2011  Microsoft Corporation;  Saarland University;
+// Copyright 2009-2011  Microsoft Corporation;
+//                      Saarland University (Author: Arnab Ghoshal);
 //                      Georg Stemmer;  Jan Silovsky
+// Copyright 2012       Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +30,34 @@
 #include "tree/clusterable-classes.h"
 
 namespace kaldi {
+
+// Constructor that allows us to merge GMMs.
+DiagGmm::DiagGmm(const std::vector<std::pair<BaseFloat, const DiagGmm*> > &gmms)
+  : valid_gconsts_(false) {
+  if (gmms.empty()) {
+    return;  // GMM will be empty.
+  } else {
+    int32 num_gauss = 0, dim = gmms[0].second->Dim();
+    for (size_t i = 0; i < gmms.size(); i++)
+      num_gauss += gmms[i].second->NumGauss();
+    Resize(num_gauss, dim);
+    int32 cur_gauss = 0;
+    for (size_t i = 0; i < gmms.size(); i++) {
+      BaseFloat weight = gmms[i].first;
+      KALDI_ASSERT(weight > 0.0);
+      const DiagGmm &gmm = *(gmms[i].second);
+      for (int32 g = 0; g < gmm.NumGauss(); g++, cur_gauss++) {
+        means_invvars_.Row(cur_gauss).CopyFromVec(gmm.means_invvars().Row(g));
+        inv_vars_.Row(cur_gauss).CopyFromVec(gmm.inv_vars().Row(g));
+        weights_(cur_gauss) = weight * gmm.weights()(g);
+      }
+    }
+    KALDI_ASSERT(cur_gauss == NumGauss());
+    ComputeGconsts();
+  }
+}
+
+
 
 void DiagGmm::Resize(int32 nmix, int32 dim) {
   KALDI_ASSERT(nmix > 0 && dim > 0);
@@ -117,7 +147,8 @@ int32 DiagGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<int32> *history) {
+void DiagGmm::Split(int32 target_components, float perturb_factor,
+                    std::vector<int32> *history) {
   if (target_components < NumGauss() || NumGauss() == 0) {
     KALDI_ERR << "Cannot split from "  << NumGauss() << " to "
               << target_components  << " components";
@@ -176,29 +207,20 @@ void DiagGmm::Split(int32 target_components, float perturb_factor, std::vector<i
   ComputeGconsts();
 }
 
-// Initializer that allows us to merge GMMs.
-DiagGmm::DiagGmm(const std::vector<std::pair<BaseFloat, const DiagGmm*> > &gmms):
-    valid_gconsts_(false) {
-  if (gmms.empty()) return; // GMM will be empty.
-  else {
-    int32 num_gauss = 0, dim = gmms[0].second->Dim();
-    for (size_t i = 0; i < gmms.size(); i++)
-      num_gauss += gmms[i].second->NumGauss();
-    Resize(num_gauss, dim);
-    int32 cur_gauss = 0;
-    for (size_t i = 0; i < gmms.size(); i++) {
-      BaseFloat weight = gmms[i].first;
-      KALDI_ASSERT(weight > 0.0);
-      const DiagGmm &gmm = *(gmms[i].second);
-      for (int32 g = 0; g < gmm.NumGauss(); g++, cur_gauss++) {
-        means_invvars_.Row(cur_gauss).CopyFromVec(gmm.means_invvars().Row(g));
-        inv_vars_.Row(cur_gauss).CopyFromVec(gmm.inv_vars().Row(g));
-        weights_(cur_gauss) = weight * gmm.weights()(g);
-      }
+
+void DiagGmm::Perturb(float perturb_factor) {
+  int32 num_comps = NumGauss(),
+      dim = Dim();
+  Matrix<BaseFloat> rand_mat(num_comps, dim);
+  for (int32 i = 0; i < num_comps; i++) {
+    for (int32 d = 0; d < dim; d++) {
+      rand_mat(i, d) = RandGauss() * std::sqrt(inv_vars_(i, d));
+      // as in DiagGmm::Split, we perturb the means_invvars using a random
+      // fraction of inv_vars_
     }
-    KALDI_ASSERT(cur_gauss == NumGauss());
-    ComputeGconsts();
   }
+  means_invvars_.AddMat(perturb_factor, rand_mat, kNoTrans);
+  ComputeGconsts();
 }
 
 
@@ -211,7 +233,7 @@ void DiagGmm::MergeKmeans(int32 target_components,
   if (NumGauss() == target_components) {
     KALDI_VLOG(2) << "No components merged, as target (" << target_components
                   << ") = total.";
-    return; // Nothing to do.
+    return;  // Nothing to do.
   }
   double min_var = 1.0e-10;
   std::vector<Clusterable*> clusterable_vec;
@@ -226,18 +248,20 @@ void DiagGmm::MergeKmeans(int32 target_components,
 
     SubVector<BaseFloat> inv_var(inv_vars_, g),
         mean_invvar(means_invvars_, g);
-    x_stats.AddVecDivVec(1.0, mean_invvar, inv_var, count); // x_stats is now mean.
-    x2_stats.CopyFromVec(inv_var); 
-    x2_stats.InvertElements(); // x2_stats is now var.
-    x2_stats.AddVec2(1.0, x_stats); // x2_stats is now var + mean^2
-    x_stats.Scale(count); // x_stats is now scaled by count.
-    x2_stats.Scale(count); // x2_stats is now scaled by count.
-    clusterable_vec.push_back(new GaussClusterable(x_stats, x2_stats, min_var, count));
+    x_stats.AddVecDivVec(1.0, mean_invvar, inv_var, count);  // x_stats is now mean.
+    x2_stats.CopyFromVec(inv_var);
+    x2_stats.InvertElements();  // x2_stats is now var.
+    x2_stats.AddVec2(1.0, x_stats);  // x2_stats is now var + mean^2
+    x_stats.Scale(count);  // x_stats is now scaled by count.
+    x2_stats.Scale(count);  // x2_stats is now scaled by count.
+    clusterable_vec.push_back(new GaussClusterable(x_stats, x2_stats, min_var,
+                                                   count));
   }
   if (clusterable_vec.size() <= target_components) {
-    KALDI_WARN << "Not doing clustering phase since lost too many Gaussians due to zero weight."
-        "Warning: zero-weight Gaussians are still there.";
-    DeletePointers(&clusterable_vec);    
+    KALDI_WARN << "Not doing clustering phase since lost too many Gaussians "
+               << "due to zero weight. Warning: zero-weight Gaussians are "
+               << "still there.";
+    DeletePointers(&clusterable_vec);
     return;
   } else {
     std::vector<Clusterable*> clusters;
@@ -251,14 +275,14 @@ void DiagGmm::MergeKmeans(int32 target_components,
       SubVector<BaseFloat> inv_var(inv_vars_, g),
           mean_invvar(means_invvars_, g);
       inv_var.CopyFromVec(gc->x2_stats());
-      inv_var.Scale(1.0 / gc->count()); // inv_var is now the var + mean^2
+      inv_var.Scale(1.0 / gc->count());  // inv_var is now the var + mean^2
       mean_invvar.CopyFromVec(gc->x_stats());
-      mean_invvar.Scale(1.0 / gc->count()); // mean_invvar is now the mean.
-      inv_var.AddVec2(-1.0, mean_invvar); // subtract mean^2; inv_var is now the var
-      inv_var.InvertElements(); // inv_var is now the inverse var.
-      mean_invvar.MulElements(inv_var); // mean_invvar is now the mean * inverse var.
+      mean_invvar.Scale(1.0 / gc->count());  // mean_invvar is now the mean.
+      inv_var.AddVec2(-1.0, mean_invvar);  // subtract mean^2; inv_var is now the var
+      inv_var.InvertElements();  // inv_var is now the inverse var.
+      mean_invvar.MulElements(inv_var);  // mean_invvar is now mean * inverse var.
     }
-    ComputeGconsts();    
+    ComputeGconsts();
     DeletePointers(&clusterable_vec);
     DeletePointers(&clusters);
   }
@@ -272,7 +296,7 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (NumGauss() == target_components) {
     KALDI_VLOG(2) << "No components merged, as target (" << target_components
                   << ") = total.";
-    return; // Nothing to do.
+    return;  // Nothing to do.
   }
 
   int32 num_comp = NumGauss(), dim = Dim();
@@ -366,7 +390,7 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
         }
       }
     }
-    
+
     // make sure that different components will be merged
     KALDI_ASSERT(max_i != max_j && max_i != -1 && max_j != -1);
 
@@ -518,11 +542,10 @@ void DiagGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
 void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
                                       const std::vector<int32> &indices,
                                       Vector<BaseFloat> *loglikes) const {
-  KALDI_ASSERT(data.Dim() == Dim());  
-
+  KALDI_ASSERT(data.Dim() == Dim());
   Vector<BaseFloat> data_sq(data);
   data_sq.ApplyPow(2.0);
-  
+
   int32 num_indices = static_cast<int32>(indices.size());
   loglikes->Resize(num_indices, kUndefined);
   if (indices.back() + 1 - indices.front() == num_indices) {
@@ -538,8 +561,8 @@ void DiagGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
     // loglikes += -0.5 * inv(vars) * data_sq.
     loglikes->AddMatVec(-0.5, inv_vars_sub, kNoTrans, data_sq, 1.0);
   } else {
-    for(int32 i = 0; i < num_indices; i++) {
-      int32 idx = indices[i]; // The Gaussian index.
+    for (int32 i = 0; i < num_indices; i++) {
+      int32 idx = indices[i];  // The Gaussian index.
       BaseFloat this_loglike =
           gconsts_(idx) + VecVec(means_invvars_.Row(idx), data)
           - 0.5*VecVec(inv_vars_.Row(idx), data_sq);
@@ -595,7 +618,7 @@ void DiagGmm::RemoveComponents(const std::vector<int32> &gauss_in,
   }
 }
 
-void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm &source, 
+void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm &source,
                           GmmFlagsType flags) {
   KALDI_ASSERT(NumGauss() == source.NumGauss());
   KALDI_ASSERT(Dim() == source.Dim());
@@ -623,7 +646,7 @@ void DiagGmm::Interpolate(BaseFloat rho, const DiagGmm &source,
   ComputeGconsts();
 }
 
-void DiagGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+void DiagGmm::Interpolate(BaseFloat rho, const FullGmm &source,
                           GmmFlagsType flags) {
   KALDI_ASSERT(NumGauss() == source.NumGauss());
   KALDI_ASSERT(Dim() == source.Dim());

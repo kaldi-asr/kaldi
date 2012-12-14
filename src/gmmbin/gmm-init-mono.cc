@@ -61,10 +61,15 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     std::string train_feats;
     std::string shared_phones_rxfilename;
+    BaseFloat perturb_factor = 0.0;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("train-feats", &train_feats, "Rspecifier for training features [used to set mean and variance]");
-    po.Register("shared-phones", &shared_phones_rxfilename, "rxfilename containing, on each line, a list of phones whose pdfs should be shared.");
+    po.Register("train-feats", &train_feats,
+                "rspecifier for training features [used to set mean and variance]");
+    po.Register("shared-phones", &shared_phones_rxfilename,
+                "rxfilename containing, on each line, a list of phones whose pdfs should be shared.");
+    po.Register("pertrub-factor", &perturb_factor,
+                "Perturb the means using this fraction of standard deviation.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -149,6 +154,11 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_pdfs; i++)
       am_gmm.AddPdf(gmm);
+
+    if (perturb_factor != 0.0) {
+      for (int i = 0; i < num_pdfs; i++)
+        am_gmm.GetPdf(i).Perturb(perturb_factor);
+    }
 
     // Now the transition model:
     TransitionModel trans_model(*ctx_dep, topo);

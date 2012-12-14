@@ -69,7 +69,8 @@ void init_rand_diag_gmm(DiagGmm *gmm) {
   vars.InvertElements();
   gmm->SetWeights(weights);
   gmm->SetInvVarsAndMeans(vars, means);
-  gmm->ComputeGconsts();
+  gmm->Perturb(0.5 * RandUniform());
+  gmm->ComputeGconsts();  // this is unnecassary; computed in Perturb
 }
 
 void
