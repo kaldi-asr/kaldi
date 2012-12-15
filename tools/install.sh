@@ -194,10 +194,11 @@ fi
 
     # Linux or Darwin:
     if [ "`uname`" == "Linux"  ] || [ "`uname`" == "Darwin"  ]; then
-        ./configure --prefix=`pwd` --enable-static --disable-shared || exit 1
+        ./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts || exit 1
     elif [ "`uname -o`" == "Cygwin"  ]; then
         which gcc-4.exe || exit 1
-        ./configure --prefix=`pwd` CXX=g++-4.exe CC=gcc-4.exe --enable-static --disable-shared  || exit 1
+        ./configure --prefix=`pwd` CXX=g++-4.exe CC=gcc-4.exe --enable-static \
+                --disable-shared --enable-far --enable-ngram-fsts || exit 1
     else
         echo "Platform detection error"
         exit 1
