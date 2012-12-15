@@ -50,10 +50,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     BaseFloat min_segment_length = 0.1; // Minimum segment length in seconds.
-    bool ignore_inf = true; // Ignore very long segment issues
+    bool accept_anyend = false; // Ignore very long segment issues
     // Register the options
     po.Register("min-segment-length", &min_segment_length, "Minimum segment length in seconds (will reject shorter segments)");
-    po.Register("ignore-inf", &ignore_inf, "ignore too long segments and jsut use the whole file");
+    po.Register("accept-invalid-end-times", &accept_anyend, "accept overshooting end times and use the whole file (default is set to false to reject such segments)");
 
     // OPTION PARSING ...
     // parse options  (+filling the registered variables)
@@ -121,13 +121,13 @@ int main(int argc, char *argv[]) {
                                             // of the segment to
                                             // corresponding sample
                                             // number
-	if (end > 0) {
+        if (end > 0) {
           end_samp = end * samp_freq;// convert ending time of the segment
-	} else {
-	  end_samp = -1;              // to corresponding sample number
-	}
+        } else {
+          end_samp = -1;              // to corresponding sample number
+        }
       int32 num_samp = wave_data.NumCols(), // total number of samples present in wav data
-	num_chan = wave_data.NumRows(); // total number of channels present in wav file
+        num_chan = wave_data.NumRows(); // total number of channels present in wav file
       /* start sample must be less than total number of samples 
        * otherwise skip the segment
        */
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
        * otherwise skip the segment
        */
       if (end_samp > 0 && end_samp > num_samp) {
-        if ((end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) && !ignore_inf) {
+        if ((end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) && !accept_anyend) {
           KALDI_WARN << "End sample too far out of range " << end_samp
                      << " [length:] " << num_samp << ", skipping segment "
                      << segment;
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
         end_samp = num_samp; // for small differences, just truncate.
       }
       if ( end_samp < 0 ) {
-	end_samp = num_samp; // Convention to use the whole file
+        end_samp = num_samp; // Convention to use the whole file
       }
       /* check whether the segment size is less than minimum segment length(default 0.1 sec)
        * if yes, skip the segment
