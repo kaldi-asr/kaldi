@@ -1,6 +1,6 @@
-// fstext/lattice-weight.h
-
-// Copyright 2009-2011  Microsoft Corporation
+//
+// Copyright 2009-2012  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,7 +72,8 @@ class LatticeWeightTpl {
   }
   
   static const LatticeWeightTpl Zero() {
-    return LatticeWeightTpl(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
+    return LatticeWeightTpl(numeric_limits<T>::infinity(),
+                            numeric_limits<T>::infinity());
   }
 
   static const LatticeWeightTpl One() {
@@ -85,8 +86,8 @@ class LatticeWeightTpl {
   }
 
   static const LatticeWeightTpl NoWeight() {
-    return LatticeWeightTpl(FloatLimits<FloatType>::kNumberBad,
-                            FloatLimits<FloatType>::kNumberBad);
+    return LatticeWeightTpl(numeric_limits<FloatType>::quiet_NaN(),
+                            numeric_limits<FloatType>::quiet_NaN());
   }
 
   bool Member() const {
@@ -94,22 +95,22 @@ class LatticeWeightTpl {
     // also test for no -inf, and either both or neither
     // must be +inf, and
     if (value1_ != value1_ || value2_ != value2_) return false; // NaN
-    if (value1_ == FloatLimits<T>::kNegInfinity  ||
-       value2_ == FloatLimits<T>::kNegInfinity) return false; // -infty not allowed
-    if (value1_ == FloatLimits<T>::kPosInfinity ||
-       value2_ == FloatLimits<T>::kPosInfinity) {
-      if (value1_ != FloatLimits<T>::kPosInfinity ||
-         value2_ != FloatLimits<T>::kPosInfinity) return false; // both must be +infty;
+    if (value1_ == -numeric_limits<T>::infinity()  ||
+       value2_ == -numeric_limits<T>::infinity()) return false; // -infty not allowed
+    if (value1_ == numeric_limits<T>::infinity() ||
+        value2_ == numeric_limits<T>::infinity()) {
+      if (value1_ != numeric_limits<T>::infinity() ||
+          value2_ != numeric_limits<T>::infinity()) return false; // both must be +infty;
       // this is necessary so that the semiring has only one zero.
     }
     return true;
   }
   
   LatticeWeightTpl Quantize(float delta = kDelta) const {
-    if (value1_+value2_ == FloatLimits<T>::kNegInfinity) {
-      return LatticeWeightTpl(FloatLimits<T>::kNegInfinity, FloatLimits<T>::kNegInfinity);
-    } else if (value1_+value2_ == FloatLimits<T>::kPosInfinity) {
-      return LatticeWeightTpl(FloatLimits<T>::kPosInfinity, FloatLimits<T>::kPosInfinity);
+    if (value1_+value2_ == -numeric_limits<T>::infinity()) {
+      return LatticeWeightTpl(-numeric_limits<T>::infinity(), -numeric_limits<T>::infinity());
+    } else if (value1_+value2_ == numeric_limits<T>::infinity()) {
+      return LatticeWeightTpl(numeric_limits<T>::infinity(), numeric_limits<T>::infinity());
     } else if (value1_+value2_ != value1_+value2_) { // NaN
       return LatticeWeightTpl(value1_+value2_, value1_+value2_);
     } else {
@@ -157,9 +158,9 @@ class LatticeWeightTpl {
 
  protected:
   inline static void WriteFloatType(ostream &strm, const T &f) {
-    if (f == FloatLimits<T>::kPosInfinity)
+    if (f == numeric_limits<T>::infinity())
       strm << "Infinity";
-    else if (f == FloatLimits<T>::kNegInfinity)
+    else if (f == -numeric_limits<T>::infinity())
       strm << "-Infinity";
     else if (f != f)
       strm << "BadNumber";
@@ -172,12 +173,12 @@ class LatticeWeightTpl {
     string s;
     strm >> s;
     if (s == "Infinity") {
-      f = FloatLimits<T>::kPosInfinity;
+      f = numeric_limits<T>::infinity();
     } else if (s == "-Infinity") {
-      f = FloatLimits<T>::kNegInfinity;
+      f = -numeric_limits<T>::infinity();
     } else if (s == "BadNumber") {
-      f = FloatLimits<T>::kPosInfinity;
-      f -= f;; // get NaN
+      f = numeric_limits<T>::infinity();
+      f -= f; // get NaN
     } else {
       char *p;
       f = strtod(s.c_str(), &p);
@@ -231,7 +232,7 @@ inline LatticeWeightTpl<FloatType> ScaleTupleWeight(
     const LatticeWeightTpl<FloatType> &w,
     const vector<vector<ScaleFloatType> > &scale) {
   // Without the next special case we'd get NaNs from infinity * 0
-  if (w.Value1() == FloatLimits<FloatType>::kPosInfinity)    
+  if (w.Value1() == numeric_limits<FloatType>::infinity())
     return LatticeWeightTpl<FloatType>::Zero();
   return LatticeWeightTpl<FloatType>(scale[0][0] * w.Value1() + scale[0][1] * w.Value2(),
                                      scale[1][0] * w.Value1() + scale[1][1] * w.Value2());
@@ -339,14 +340,14 @@ inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
                                           DivideType typ = DIVIDE_ANY) {
   typedef FloatType T;
   T a = w1.Value1() - w2.Value1(), b = w1.Value2() - w2.Value2();
-  if (a!=a || b!=b || a == FloatLimits<T>::kNegInfinity
-     || b == FloatLimits<T>::kNegInfinity) {
+  if (a!=a || b!=b || a == -numeric_limits<T>::infinity()
+     || b == -numeric_limits<T>::infinity()) {
     std::cerr << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
               << "[dividing by zero?]  Returning zero.";
     return LatticeWeightTpl<T>::Zero();
   }
-  if (a == FloatLimits<T>::kPosInfinity ||
-     b == FloatLimits<T>::kPosInfinity)
+  if (a == numeric_limits<T>::infinity() ||
+     b == numeric_limits<T>::infinity())
     return LatticeWeightTpl<T>::Zero(); // not a valid number if only one is infinite.
   return LatticeWeightTpl<T>(a, b);
 }
@@ -405,7 +406,7 @@ class CompactLatticeWeightTpl {
 
   CompactLatticeWeightTpl(const WeightType &w, const vector<IntType> &s):
       weight_(w), string_(s) { }
-
+  
   CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
     weight_ = w.weight_;
     string_ = w.string_;
@@ -442,6 +443,12 @@ class CompactLatticeWeightTpl {
     return type;
   }
 
+  static const CompactLatticeWeightTpl<WeightType, IntType> NoWeight() {
+    return CompactLatticeWeightTpl<WeightType, IntType>(
+        WeightType::NoWeight(), std::vector<IntType>());
+  }
+
+  
   CompactLatticeWeightTpl<WeightType, IntType> Reverse() const {
     size_t s = string_.size();
     vector<IntType> v(s);

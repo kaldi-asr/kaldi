@@ -41,7 +41,7 @@ class ArcticWeightTpl : public FloatWeightTpl<T> {
   ArcticWeightTpl(const ArcticWeightTpl<T> &w) : FloatWeightTpl<T>(w) {}
 
   static const ArcticWeightTpl<T> Zero() {
-    return ArcticWeightTpl<T>(FloatLimits<T>::kNegInfinity); }
+    return ArcticWeightTpl<T>(-numeric_limits<T>::infinity()); }
 
   static const ArcticWeightTpl<T> One() {
     return ArcticWeightTpl<T>(0.0F); }
@@ -52,14 +52,18 @@ class ArcticWeightTpl : public FloatWeightTpl<T> {
     return type;
   }
 
+  static ArcticWeightTpl<T> NoWeight() {
+    return ArcticWeightTpl<T>(numeric_limits<T>::infinity());
+  }
+  
   bool Member() const {
     // First part fails for IEEE NaN
-    return Value() == Value() && Value() != FloatLimits<T>::kPosInfinity;
+    return Value() == Value() && Value() != numeric_limits<T>::infinity();
   }
 
   ArcticWeightTpl<T> Quantize(float delta = kDelta) const {
-    if (Value() == FloatLimits<T>::kNegInfinity ||
-        Value() == FloatLimits<T>::kPosInfinity ||
+    if (Value() == -numeric_limits<T>::infinity() ||
+        Value() == numeric_limits<T>::infinity() ||
         Value() != Value())
       return *this;
     else
@@ -97,9 +101,9 @@ template <class T>
 inline ArcticWeightTpl<T> Times(const ArcticWeightTpl<T> &w1,
                                   const ArcticWeightTpl<T> &w2) {
   T f1 = w1.Value(), f2 = w2.Value();
-  if (f1 == FloatLimits<T>::kNegInfinity)
+  if (f1 == -numeric_limits<T>::infinity())
     return w1;
-  else if (f2 == FloatLimits<T>::kNegInfinity)
+  else if (f2 == -numeric_limits<T>::infinity())
     return w2;
   else
     return ArcticWeightTpl<T>(f1 + f2);
@@ -120,10 +124,10 @@ inline ArcticWeightTpl<T> Divide(const ArcticWeightTpl<T> &w1,
                                    const ArcticWeightTpl<T> &w2,
                                    DivideType typ = DIVIDE_ANY) {
   T f1 = w1.Value(), f2 = w2.Value();
-  if (f2 == FloatLimits<T>::kNegInfinity)
-    return FloatLimits<T>::kNumberBad;
-  else if (f1 == FloatLimits<T>::kNegInfinity)
-    return FloatLimits<T>::kNegInfinity;
+  if (f2 == -numeric_limits<T>::infinity())
+    return numeric_limits<T>::quiet_NaN();
+  else if (f1 == -numeric_limits<T>::infinity())
+    return -numeric_limits<T>::infinity();
   else
     return ArcticWeightTpl<T>(f1 - f2);
 }
