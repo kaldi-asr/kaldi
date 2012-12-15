@@ -5,7 +5,7 @@ all: sph2pipe atlas clapack irstlm_tgt sclite_tgt openfst_tgt
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
 openfst_cleaned:
-		$(MAKE) -C openfst-1.2.10 clean
+		$(MAKE) -C openfst-1.3.2 clean
 
 irstlm_cleaned:
 		$(MAKE) -C irstlm clean 
@@ -14,7 +14,7 @@ sclite_cleaned:
 		$(MAKE) -C sctk-2.4.0 clean
 
 distclean:
-		rm -rf openfst-1.2.10/
+		rm -rf openfst-1.3.2/
 		rm -rf sctk-2.4.0/
 		rm -rf ATLAS/
 		rm -rf CLAPACK_include/
@@ -23,32 +23,32 @@ distclean:
 		rm -rf sph2pipe_v2.5.tar.gz
 		rm -rf atlas3.8.3.tar.gz
 		rm -rf sctk-2.4.0-20091110-0958.tar.bz2
-		rm -rf openfst-1.2.10.tar.gz
+		rm -rf openfst-1.3.2.tar.gz
 		rm -f openfst
 
-		
 openfst_tgt: openfst_compiled
 
 .PHONY: openfst_compiled
-openfst_compiled: openfst-1.2.10/Makefile
-		cd openfst-1.2.10/; \
+openfst_compiled: openfst-1.3.2/Makefile
+		cd openfst-1.3.2/; \
 		$(MAKE) install
 
-openfst-1.2.10/Makefile: openfst-1.2.10/.patched
-		cd openfst-1.2.10/; \
-		./configure --prefix=`pwd` --enable-static --disable-shared 
+openfst-1.3.2/Makefile: openfst-1.3.2/.patched
+		cd openfst-1.3.2/; \
+		./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts
 
-openfst-1.2.10/.patched: | openfst-1.2.10
-		-cd openfst-1.2.10/src/include/fst; \
+openfst-1.3.2/.patched: | openfst-1.3.2
+		-cd openfst-1.3.2/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
 		touch $@ 	
 
-openfst-1.2.10: openfst-1.2.10.tar.gz
-		tar xozf openfst-1.2.10.tar.gz
-		-ln -s openfst-1.2.10 openfst 
+openfst-1.3.2: openfst-1.3.2.tar.gz
+		tar xozf openfst-1.3.2.tar.gz
+		-rm openfst
+		-ln -s openfst-1.3.2 openfst 
 
-openfst-1.2.10.tar.gz: 
-		wget -T 10 -t 3 --no-check-certificate https://sourceforge.net/projects/kaldi/files/openfst-1.2.10.tar.gz
+openfst-1.3.2.tar.gz: 
+		wget -T 10 -t 3 --no-check-certificate http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.3.2.tar.gz
 
 sclite_tgt: sclite_compiled
 
@@ -91,7 +91,7 @@ irstlm/.patched: | irstlm
 irstlm:
 		svn -r 398 co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm
 
-		
+
 clapack: clapack_download cblas_download
 
 clapack_download: | CLAPACK_include/clapack.h CLAPACK_include/f2c.h
@@ -136,6 +136,4 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 
 sph2pipe_v2.5.tar.gz:
 		wget -T 10 -t 3 http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz
-		
-	 
 
