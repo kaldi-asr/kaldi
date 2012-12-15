@@ -2,6 +2,13 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# the parallel14 script is as the parallel10 script but is designed to use
+# smaller amounts of data each iteration, and more iterations.  It's organized
+# into epochs, where each epoch we divide the data up among the iterations
+# of the epoch, and from then we divide it up to the individual jobs of the
+# iteration.  
+
+
 # the parallel10 script is as the parallel9 script but doing the shrinking
 # in a different way that doesn't lead to instability: after the first few
 # iters, we do the shrinking every 3 iters, and on iterations between those,

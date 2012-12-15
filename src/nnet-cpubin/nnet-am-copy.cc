@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
 
     int32 truncate = -1;
     bool binary_write = true;
+    bool remove_dropout = false;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
     std::string scales = "";
@@ -60,6 +61,8 @@ int main(int argc, char *argv[]) {
                 "layer: a mechanism to scale the parameters.");
     po.Register("truncate", &truncate, "If set, will truncate the neural net "
                 "to this many components by removing the last components.");
+    po.Register("remove-dropout", &remove_dropout, "Set this to true to remove "
+                "any dropout components.");
     
     po.Read(argc, argv);
     
@@ -123,6 +126,8 @@ int main(int argc, char *argv[]) {
         am_nnet.SetPriors(empty_priors); // so dims don't disagree.
       }
     }
+
+    if (remove_dropout) am_nnet.GetNnet().RemoveDropout();
     
     {
       Output ko(nnet_wxfilename, binary_write);

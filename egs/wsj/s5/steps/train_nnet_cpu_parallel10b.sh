@@ -2,6 +2,10 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# 10b is as 10, but extra parameter apply-shrinking [affects whether
+# we apply shrinking on the iterations "between" when we compute the
+# shrinking parameters.
+
 # the parallel10 script is as the parallel9 script but doing the shrinking
 # in a different way that doesn't lead to instability: after the first few
 # iters, we do the shrinking every 3 iters, and on iterations between those,
@@ -46,6 +50,7 @@ num_valid_frames_shrink=2000 # a subset of the frames in "valid_utts", used only
                              # objective-function reporting.
 shrink_interval=3 # Re-compute the shrinkage parameters every 3 iters,
                 # except at the start of training when we do it every iter.
+apply_shrinking=true
 num_valid_frames_combine=10000 # combination weights at the very end.
 minibatch_size=1000
 minibatches_per_phase=100 # only affects diagnostic messages.
@@ -318,8 +323,10 @@ while [ $x -lt $num_iters ]; do
         scales=`grep 'scale factors per layer are' $dir/log/shrink.$last_shrink_iter.log | \
                 sed 's/.*\[//' | sed 's/\]//' | perl -ane 'print join(":", split(" ", $_));'`
         [ -z "$scales" ] && echo "Error getting scale factors from log for shrinking" && exit 1;
-        $cmd $dir/log/apply_shrinking.$x.log \
-          nnet-am-copy --scales=$scales $dir/$[$x+1].mdl $dir/$[$x+1].mdl  || exit 1;
+        if $apply_shrinking; then
+           $cmd $dir/log/apply_shrinking.$x.log \
+             nnet-am-copy --scales=$scales $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
+        fi
       fi
     fi
     rm $nnets_list $egs_list

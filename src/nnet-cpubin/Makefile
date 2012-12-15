@@ -9,7 +9,7 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-train-simple nnet-train-transitions nnet-latgen-faster nnet-am-copy \
    nnet-add-hidden-layer nnet-am-init nnet-insert nnet-align-compiled \
    nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine nnet-combine-a \
-   nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink
+   nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup
 
 OBJFILES =
 
@@ -19,7 +19,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../nnet-cpu/kaldi-nnet-cpu.a ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../nnet-cpu/kaldi-nnet-cpu.a ../gmm/kaldi-gmm.a ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 

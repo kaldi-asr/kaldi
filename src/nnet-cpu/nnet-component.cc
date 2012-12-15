@@ -67,6 +67,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedLinearComponent();
   } else if (component_type == "SpliceComponent") {
     ans = new SpliceComponent();
+  } else if (component_type == "DropoutComponent") {
+    ans = new DropoutComponent();
+  } else if (component_type == "AdditiveNoiseComponent") {
+    ans = new AdditiveNoiseComponent();
   }
   return ans;
 }
@@ -489,6 +493,17 @@ void AffineComponent::SetZero(bool treat_as_gradient) {
   linear_params_.SetZero();
   bias_params_.SetZero();
   is_gradient_ = treat_as_gradient;
+}
+
+void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
+                                const MatrixBase<BaseFloat> &linear) {
+  if (linear.NumRows() != linear_params_.NumRows()) {
+    avg_input_.Resize(linear.NumRows()); // zeroes it.
+    avg_input_count_ = 0.0;
+  }
+  bias_params_ = bias;
+  linear_params_ = linear;
+  KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
 }
 
 void AffineComponent::ZeroOccupancy() {
@@ -1531,8 +1546,9 @@ void MixtureProbComponent::Propagate(const MatrixBase<BaseFloat> &in,
     const Matrix<BaseFloat> &param_block(params_[i]);
     out_block.AddMatMat(1.0, in_block, kNoTrans, param_block, kTrans, 0.0);
     input_offset += this_input_dim;
-    output_offset += this_input_dim;   
+    output_offset += this_output_dim;   
   }
+  KALDI_ASSERT(input_offset == InputDim() && output_offset == OutputDim());
 }
 
 void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
@@ -1649,8 +1665,9 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
       }
     }
     input_offset += this_input_dim;
-    output_offset += this_input_dim;   
+    output_offset += this_output_dim;   
   }
+  KALDI_ASSERT(input_offset == InputDim() && output_offset == OutputDim());
 }
 
 
@@ -2082,6 +2099,139 @@ void FixedLinearComponent::Read(std::istream &is, bool binary) {
   mat_.Read(is, binary);
   ExpectToken(is, binary, "</FixedLinearComponent>");
 }
+
+void DropoutComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat dropout_proportion = 0.5;
+  bool ok = ParseFromString("dim", &args, &dim);
+  ParseFromString("dropout-proportion", &args, &dropout_proportion);  
+  
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type DropoutComponent: \""
+              << orig_args << "\"";
+  Init(dim, dropout_proportion);
+}
+
+void DropoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  ExpectToken(is, binary, "</DropoutComponent>");
+}
+
+void DropoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<DropoutComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "</DropoutComponent>");  
+}
+
+
+void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion){
+  dim_ = dim;
+  dropout_proportion_ = dropout_proportion;
+}
+  
+void DropoutComponent::Propagate(
+    const MatrixBase<BaseFloat> &in,
+    int32 num_chunks,
+    Matrix<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumCols() == this->InputDim());
+  out->Resize(in.NumRows(), in.NumCols());
+
+  KALDI_ASSERT(dropout_proportion_ < 1.0 && dropout_proportion_ >= 0.0);
+  int32 dim = InputDim(), num_keep = static_cast<int32>(dim * dropout_proportion_);
+  KALDI_ASSERT(num_keep > 0);
+  BaseFloat scale = dim / static_cast<BaseFloat>(num_keep); // scale on the
+  // dimensions that we keep.
+  Vector<BaseFloat> scales(dim);
+  BaseFloat *begin = scales.Data(), *end = begin + dim;
+  std::fill(begin, begin + num_keep, scale);
+  std::fill(begin + num_keep, end, 0.0);
+
+  out->CopyFromMat(in);
+  for (int32 r = 0; r < out->NumRows(); r++) {
+    SubVector<BaseFloat> out_row(*out, r);
+    std::random_shuffle(begin, end); // get new random ordering of kept components.
+    out_row.MulElements(scales);
+  }
+}
+
+void DropoutComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
+                                const MatrixBase<BaseFloat> &out_value,
+                                const MatrixBase<BaseFloat> &out_deriv,
+                                const VectorBase<BaseFloat> &, // chunk_weights,
+                                Component *, // to_update
+                                Matrix<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(SameDim(in_value, out_value) && SameDim(in_value, out_deriv));
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
+  for (int32 r = 0; r < in_value.NumRows(); r++) { // each frame...
+    for (int32 c = 0; c < in_value.NumCols(); c++) {
+      BaseFloat i = in_value(r, c), o = out_value(r, c), od = out_deriv(r, c),
+          id;
+      if (i != 0.0) {
+        id = od * (o / i); /// o / i is either zero or "scale".
+      } else {
+        id = od; /// Just imagine the scale was 1.0.  This is somehow true in
+        /// expectation; anyway, this case should basically never happen so it doesn't
+        /// really matter.
+      }
+      (*in_deriv)(r, c) = id;
+    }
+  }
+}
+
+
+void AdditiveNoiseComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat stddev = 1.0;
+  bool ok = ParseFromString("dim", &args, &dim);
+  ParseFromString("stddev", &args, &stddev);  
+  
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type AdditiveNoiseComponent: \""
+              << orig_args << "\"";
+  Init(dim, stddev);
+}
+
+void AdditiveNoiseComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<AdditiveNoiseComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<Stddev>");
+  ReadBasicType(is, binary, &stddev_);
+  ExpectToken(is, binary, "</AdditiveNoiseComponent>");
+}
+
+void AdditiveNoiseComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<AdditiveNoiseComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Stddev>");
+  WriteBasicType(os, binary, stddev_);
+  WriteToken(os, binary, "</AdditiveNoiseComponent>");  
+}
+
+
+void AdditiveNoiseComponent::Init(int32 dim, BaseFloat stddev) {
+  dim_ = dim;
+  stddev_ = stddev;
+}
+  
+void AdditiveNoiseComponent::Propagate(
+    const MatrixBase<BaseFloat> &in,
+    int32 num_chunks,
+    Matrix<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumCols() == this->InputDim());
+  *out = in;
+  Matrix<BaseFloat> rand(in.NumRows(), in.NumCols());
+  out->AddMat(stddev_, rand);
+}
+
 
 } // namespace kaldi
 

@@ -35,12 +35,22 @@ $tree_map = ""; # If supplied, a text file that maps from l2 to l1 tree nodes (o
    # by build-tree-two-level).  Used for initializing mixture-prob component.
 
 $splice_context = 0;
+$dropout_proportion = 0.0;
+$additive_noise_stddev = 0.0;
 $lda_dim = 0;
 $lda_mat = "";
 
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
     $input_left_context = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--dropout-proportion") {
+    $dropout_proportion = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--additive-noise-stddev") {
+    $additive_noise_stddev = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--lda-mat") {
@@ -167,6 +177,12 @@ for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_laye
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "TanhComponent dim=$cur_input_dim\n";
+  if ($dropout_proportion != 0.0) {
+    print "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
+  }
+  if ($additive_noise_stddev != 0.0) {
+    print "AdditiveNoiseComponent dim=$cur_input_dim stddev=$additive_noise_stddev\n";
+  }
 }
 
 if ($single_layer_config ne "") {
@@ -176,6 +192,12 @@ if ($single_layer_config ne "") {
   print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
+  if ($dropout_proportion != 0.0) {
+    print F "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
+  }
+  if ($additive_noise_stddev != 0.0) {
+    print F "AdditiveNoiseComponent dim=$cur_input_dim stddev=$additive_noise_stddev\n";
+  }
   close (F) || die "Closing config file";
 }
 

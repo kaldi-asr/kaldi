@@ -2,6 +2,9 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# the parallel13 script is as the parallel10 script but doing dropout, if
+# specified.
+
 # the parallel10 script is as the parallel9 script but doing the shrinking
 # in a different way that doesn't lead to instability: after the first few
 # iters, we do the shrinking every 3 iters, and on iterations between those,
@@ -70,7 +73,7 @@ randprune=4.0 # speeds up LDA.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
 shrink=true
-local_balance=true # set to false to speed up "randomize" process.
+dropout_proportion=0.0
 
 # End configuration section.
 
@@ -179,6 +182,7 @@ if [ $stage -le -4 ]; then
   # single hidden layer; we need this to add new layers.
   if [ ! -z "$alpha" ]; then
     utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
+      --dropout-proportion $dropout_proportion \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
@@ -254,8 +258,7 @@ while [ $x -lt $num_iters ]; do
     # run the next randomization in the background, so it can run
     # while we're doing the training and combining.
     $cmd $parallel_opts $dir/log/randomize.$y.log \
-     nnet-randomize-frames --local-balance=$local_balance \
-        $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
+     nnet-randomize-frames $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
       --srand=$y "$feats" \
        "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- |" ark:- \| \
        nnet-copy-egs ark:- $egs_list &
@@ -266,7 +269,8 @@ while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     # Set off a job that does diagnostics, in the background.
     $cmd $parallel_opts $dir/log/compute_prob.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$dir/valid_shrink.egs &
+      nnet-compute-prob "nnet-am-copy --remove-dropout=true $dir/$x.mdl - |" \
+        ark:$dir/valid_shrink.egs &
 
     if echo $realign_iters | grep -w $x >/dev/null; then
       wait; # Wait for any "randomize" processes that are running, as
@@ -311,16 +315,18 @@ while [ $x -lt $num_iters ]; do
         # For earlier iterations (while we've recently beeen adding layers), or every
         # $shrink_interval=3 iters , just do shrinking normally.
         $cmd $parallel_opts $dir/log/shrink.$x.log \
-          nnet-shrink $dir/$[$x+1].mdl ark:$dir/valid_shrink.egs $dir/$[$x+1].mdl || exit 1;
+          nnet-shrink "nnet-am-copy --remove-dropout=true $dir/$[$x+1].mdl -|" \
+            ark:$dir/valid_shrink.egs /dev/null || exit 1;
+        last_shrink_iter=$x;
       else
         last_shrink_iter=$[$x - ($x % $shrink_interval)];
-        # Get the shrinking parameters from the last shrinking log.
-        scales=`grep 'scale factors per layer are' $dir/log/shrink.$last_shrink_iter.log | \
-                sed 's/.*\[//' | sed 's/\]//' | perl -ane 'print join(":", split(" ", $_));'`
-        [ -z "$scales" ] && echo "Error getting scale factors from log for shrinking" && exit 1;
-        $cmd $dir/log/apply_shrinking.$x.log \
-          nnet-am-copy --scales=$scales $dir/$[$x+1].mdl $dir/$[$x+1].mdl  || exit 1;
       fi
+      # Get the shrinking parameters from the last shrinking log (possibly this iter).
+      scales=`grep 'scale factors per layer are' $dir/log/shrink.$last_shrink_iter.log | \
+              sed 's/.*\[//' | sed 's/\]//' | perl -ane 'print join(":", split(" ", $_));'`
+      [ -z "$scales" ] && echo "Error getting scale factors from log for shrinking" && exit 1;
+      $cmd $dir/log/apply_shrinking.$x.log \
+        nnet-am-copy --scales=$scales $dir/$[$x+1].mdl $dir/$[$x+1].mdl  || exit 1;
     fi
     rm $nnets_list $egs_list
   fi
@@ -332,10 +338,13 @@ rm $dir/final.mdl 2>/dev/null
 # At the end, final.mdl will be a combination of the last e.g. 10 models.
 nnets_list=
 for x in `seq $[$num_iters-$num_iters_final+1] $num_iters`; do
-  nnets_list="$nnets_list $dir/$x.mdl"
+  nnet-am-copy --remove-dropout=true $dir/$x.mdl $dir/$x.mdl.nodropout
+  nnets_list="$nnets_list $dir/$x.mdl.nodropout"
 done
 $cmd $parallel_opts $dir/log/combine.log \
   nnet-am-combine $nnets_list ark:$dir/valid_combine.egs $dir/final.mdl || exit 1;
+
+rm $dir/*.mdl.nodropout
 
 # Compute the probability of the final, combined model with
 # the same subset we used for the previous compute_probs, as the

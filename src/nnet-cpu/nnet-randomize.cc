@@ -76,7 +76,12 @@ void NnetDataRandomizer::RandomizeSamplesRecurse(
 void NnetDataRandomizer::RandomizeSamplesSimple(
     const std::vector<std::vector<std::pair<int32, int32> > > &samples_by_pdf,
     std::vector<std::pair<int32, int32> > *samples) {
-  for (size_t i = 0; i < samples->size(); i++)
+  size_t total_size = 0;
+  for (size_t i = 0; i < samples_by_pdf.size(); i++)
+    total_size += samples_by_pdf[i].size();
+  samples->clear();
+  samples->reserve(total_size);
+  for (size_t i = 0; i < samples_by_pdf.size(); i++)
     samples->insert(samples->end(),
                     samples_by_pdf[i].begin(),
                     samples_by_pdf[i].end());

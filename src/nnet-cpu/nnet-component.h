@@ -260,6 +260,9 @@ class TanhComponent: public NonlinearComponent {
   KALDI_DISALLOW_COPY_AND_ASSIGN(TanhComponent);
 };
 
+class MixtureProbComponent; // Forward declaration.
+class AffineComponent; // Forward declaration.
+
 class SoftmaxComponent: public NonlinearComponent {
  public:
   SoftmaxComponent(int32 dim) { Init(dim); }
@@ -278,7 +281,8 @@ class SoftmaxComponent: public NonlinearComponent {
                         const VectorBase<BaseFloat> &chunk_weights,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
-  
+
+  const Vector<BaseFloat> &Occupancy(){ return counts_; }
   virtual void ZeroOccupancy() { counts_.SetZero(); }
   
   // The functions below are already implemented at the
@@ -287,6 +291,12 @@ class SoftmaxComponent: public NonlinearComponent {
   void Init(int32 dim) { dim_ = dim; counts_.Resize(dim); }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
+  void MixUp(int32 num_mixtures, // implemented in mixup-nnet.cc
+             BaseFloat power,
+             BaseFloat min_count,
+             BaseFloat perturb_stddev,
+             AffineComponent *ac,
+             MixtureProbComponent *mc);
  private:
   Vector<BaseFloat> counts_; // Occupation counts per dim.
   
@@ -299,6 +309,7 @@ class SoftmaxComponent: public NonlinearComponent {
 // function as a base-class for more specialized versions of
 // AffineComponent.
 class AffineComponent: public UpdatableComponent {
+  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
@@ -331,6 +342,9 @@ class AffineComponent: public UpdatableComponent {
   virtual Component* Copy() const;
   virtual void PerturbParams(BaseFloat stddev);
   virtual void ZeroOccupancy();
+  // This new function is used when mixing up:
+  virtual void SetParams(const VectorBase<BaseFloat> &bias,
+                         const MatrixBase<BaseFloat> &linear);
  protected:
   // This function Update() is for extensibility; child classes override this.
   virtual void Update(
@@ -538,6 +552,8 @@ class BlockAffineComponent: public UpdatableComponent {
 // probabilities (normalized to sum to one for each row).
 
 class MixtureProbComponent: public UpdatableComponent {
+  friend class SoftmaxComponent; // Mixing-up done by a function
+  // in that class.
  public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
@@ -694,6 +710,78 @@ class FixedLinearComponent: public Component {
   Matrix<BaseFloat> mat_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedLinearComponent);
+};
+
+/// This Component, if present, randomly zeroes half of
+/// the inputs and multiplies the other half by two.
+/// Typically you would use this in training but not in
+/// test or when computing validation-set objective functions.
+class DropoutComponent: public Component {
+ public:
+  void Init(int32 dim, BaseFloat dropout_proportion = 0.5);
+  DropoutComponent(int32 dim, BaseFloat dp = 0.5) { Init(dim, dp); }
+  DropoutComponent(): dim_(0), dropout_proportion_(0.5) { }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromString(std::string args);
+
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual void Write(std::ostream &os, bool binary) const;
+      
+  virtual std::string Type() const { return "DropoutComponent"; }
+
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return true; }  
+  virtual Component* Copy() const { return new DropoutComponent(dim_); }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        const VectorBase<BaseFloat> &chunk_weights,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+ private:
+  int32 dim_;  
+  BaseFloat dropout_proportion_;
+};
+
+/// This is a bit similar to dropout but adding (not multiplying) Gaussian
+/// noise with a given standard deviation.
+class AdditiveNoiseComponent: public Component {
+ public:
+  void Init(int32 dim, BaseFloat noise_stddev);
+  AdditiveNoiseComponent(int32 dim, BaseFloat stddev) { Init(dim, stddev); }
+  AdditiveNoiseComponent(): dim_(0), stddev_(1.0) { }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromString(std::string args);
+
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual void Write(std::ostream &os, bool binary) const;
+      
+  virtual std::string Type() const { return "AdditiveNoiseComponent"; }
+
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }  
+  virtual Component* Copy() const {
+    return new AdditiveNoiseComponent(dim_, stddev_);
+  }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        const VectorBase<BaseFloat> &chunk_weights,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const { *in_deriv = out_deriv; }
+ private:
+  int32 dim_;  
+  BaseFloat stddev_;
 };
 
 

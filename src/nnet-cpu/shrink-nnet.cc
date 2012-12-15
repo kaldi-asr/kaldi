@@ -1,4 +1,4 @@
-// nnet/train-nnet.cc
+// nnet/shrink-nnet.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

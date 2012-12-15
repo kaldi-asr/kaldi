@@ -78,6 +78,8 @@ SgmmWriteFlagsType StringToSgmmWriteFlags(std::string str);
 /// each Gaussian [or sub-state] would get a count of at least
 /// "min-count", assuming counts were evenly distributed between
 /// Gaussians in a state.
+/// The vector "targets" will be resized to the appropriate dimension;
+/// its value at input is ignored.
 void GetSplitTargets(const Vector<BaseFloat> &state_occs,
                      int32 target_components,
                      BaseFloat power,

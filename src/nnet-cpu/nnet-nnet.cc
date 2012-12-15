@@ -157,6 +157,7 @@ std::string Nnet::Info() const {
 void Nnet::Check() const {
   KALDI_ASSERT(!components_.empty());
   for (size_t i = 0; i + 1 < components_.size(); i++) {
+    KALDI_ASSERT(components_[i] != NULL);
     int32 output_dim = components_[i]->OutputDim(),
       next_input_dim = components_[i+1]->InputDim();
     KALDI_ASSERT(output_dim == next_input_dim);
@@ -317,6 +318,23 @@ void Nnet::Resize(int32 new_size) {
   components_.resize(new_size);
 }
 
+void Nnet::RemoveDropout() {
+  std::vector<Component*> components;
+  int32 removed = 0;
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (dynamic_cast<DropoutComponent*>(components_[i]) != NULL ||
+        dynamic_cast<AdditiveNoiseComponent*>(components_[i]) != NULL) {
+      delete components_[i];
+      removed++;
+    } else {
+      components.push_back(components_[i]);
+    }
+  }
+  components_ = components;
+  if (removed > 0)
+    KALDI_LOG << "Removed " << removed << " dropout components.";
+}
+
 void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
                    const Nnet &other) {
   KALDI_ASSERT(scale_params.Dim() == this->NumUpdatableComponents());
@@ -335,5 +353,11 @@ void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
   }
   KALDI_ASSERT(i == scale_params.Dim());
 }
+
+void Nnet::Append(Component *new_component) {
+  components_.push_back(new_component);
+  Check();
+}
+
 
 } // namespace

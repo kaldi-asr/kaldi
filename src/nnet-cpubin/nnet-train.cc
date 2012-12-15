@@ -45,17 +45,20 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     bool zero_occupancy = true;
+    int32 srand_seed = 0;
     NnetAdaptiveTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
                 "counts stored with the neural net (only affects mixing up).");
-
+    po.Register("srand", &srand_seed,
+                "Seed for random number generator (e.g., for dropout)");
     
     train_config.Register(&po);
     
     po.Read(argc, argv);
+    srand(srand_seed);
     
     if (po.NumArgs() != 4) {
       po.PrintUsage();

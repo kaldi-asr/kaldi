@@ -94,6 +94,9 @@ class Nnet {
   /// Here, scale_params is a vector of size equal to
   /// NumUpdatableComponents()
   void ScaleComponents(const VectorBase<BaseFloat> &scales);
+
+  /// Excise any components of type DropoutComponent.
+  void RemoveDropout();
   
   /// For each updatatable component, adds to it
   /// the corresponding element of "other" times the
@@ -125,15 +128,12 @@ class Nnet {
   /// of the pointers and resize the vector to zero to avoid a chance of the
   /// caller deallocating them.
   void Init(std::vector<Component*> *components);
+
+  /// Appends this component to the components already in the neural net.
+  /// Takes ownership of the pointer.
+  void Append(Component *new_component);
   
   ~Nnet() { Destroy(); }
-
-  /*  
-  // Add a new tanh layer (hidden layer).  
-  // Use #nodes of top hidden layer.  The new layer will have zero-valued parameters
-  void AddTanhLayer(int32 left_context, int32 right_context,
-                    BaseFloat learning_rate);
-  */
 
   std::string Info() const; // some human-readable summary info.
 

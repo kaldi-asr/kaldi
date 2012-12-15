@@ -986,3 +986,307 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4y40_nnet/decode
 )
+
+
+( # 4y41 is as 4y35 but using dropout-- rate of 0.5. (with the 13 script)
+  # The learning seemed to be noisy or unstable -> halved the initial learning rate.
+  steps/train_nnet_cpu_parallel13.sh --dropout-proportion 0.5 --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.01 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y41_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y41_nnet/decode
+)
+
+
+( # 4y42 is as 4y35 (also c.f. 4y41), but using additive noise with a standard
+  # deviation of 0.2.  Went back to original learning rate of 4y35.
+  steps/train_nnet_cpu_parallel13b.sh --additive-noise-stddev 0.2 --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y42_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y42_nnet/decode
+)
+
+( # 4y43 is as 4y42 but using a larger standard deviation, 0.5 rather than 0.2.
+  steps/train_nnet_cpu_parallel13b.sh --additive-noise-stddev 0.5 --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y43_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y43_nnet/decode
+)
+
+( # 4y44 is as 4y43 but doubling the #parameters.
+  # c.f. 4y44b which is the real baseline.  The additive noise does not help:
+  # this (1.95 WER) is worse than 4y44b (1.99 WER).  Also validation performance
+  # is worse here (-1.210 vs  -1.207).
+  steps/train_nnet_cpu_parallel13b.sh --additive-noise-stddev 0.5 --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 2000000  data/train data/lang exp/tri3b_ali exp/tri4y44_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y44_nnet/decode
+)
+
+( # 4y44b is a baseline for 4y44 with no additive noise.
+  steps/train_nnet_cpu_parallel13b.sh --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 2000000  data/train data/lang exp/tri3b_ali exp/tri4y44b_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y44b_nnet/decode
+)
+
+( # 4y45 is as 4y35, but using --local-balance false.
+  # This is needed for speed on larger setups; here, I just want to
+  # see if it affects the WER.
+  # WER almost the same, 1.97 -> 1.94.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 20 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 100000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45_nnet/decode
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode --iter 20 \
+     exp/tri3b/graph data/test exp/tri4y45_nnet/decode_it20 
+)
+
+
+( # 4y45b is as 4y45, but using double the #iters and add-layers-period and
+  # shrink-interval, and half the samples per iter.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 40 --add-layers-period 4 \
+    --shrink-interval 6 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 50000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45b_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45b_nnet/decode
+)
+
+( # 4y45b2 is as 4y45b, but reverting shrink-interval to 3. [might have been causing problems.]
+  # and also removing realign-iters.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 40 --add-layers-period 4 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 50000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45b2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45b2_nnet/decode
+)
+
+
+( # 4y45c is as 4y45, but using half the #iters and add-layers-period and
+  # shrink-interval, and double the samples per iter.  Also c.f. 4y45b.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 10 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 200000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45c_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45c_nnet/decode
+)
+
+
+( # 4y45c3 is as 4y45c, but using twice the initial learning rate.
+  # (compare also with 4y45d3)
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 10 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.04 --final-learning-rate 0.004 \
+    --samples-per-iteration 200000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45c3_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45c3_nnet/decode
+)
+
+
+( # 4y45d is as 4y45, but using 4x the #iters and add-layers-period and
+  # shrink-interval, and 1/4 the samples per iter.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 80 --add-layers-period 8 \
+    --shrink-interval 12 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 25000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45d_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45d_nnet/decode
+)
+
+( # 4y45d2 is as 4y45d, but with shrink-interval 3, as it was somehow unstable; also
+  # removing --realign-iters.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 80 --add-layers-period 8 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 25000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45d2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45d2_nnet/decode
+)
+
+
+( # 4y45d3 is as 4y45d2, but with double the initial learning rate.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 80 --add-layers-period 8 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.04 --final-learning-rate 0.004 \
+    --samples-per-iteration 25000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45d3_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45d3_nnet/decode
+)
+
+( # 4y45d4 is as 4y45d, but using the 10b script and --apply-shrinking false,
+  # so it doesn't apply the shrinking between iters.  Also not realigning.
+  # Interesting!! WER goes from 2.05% -> 1.85%, similar to 4y45e.
+
+  steps/train_nnet_cpu_parallel10b.sh --apply-shrinking false \
+    --local-balance false --num-iters 80 --add-layers-period 8 \
+    --shrink-interval 12 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 25000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45d4_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45d4_nnet/decode
+)
+
+( # 4y45d5 is as 4y45d, but --shrink-interval 1.  Trying to see why
+  # 4y45d5e was better than 4y45d5.
+  # Interesting!  It is worse than 4y45d4, 1.85 -> 2.01.
+  # Objf also a bit worse, -1.24 -> -1.25.
+
+  steps/train_nnet_cpu_parallel10.sh \
+    --local-balance false --num-iters 80 --add-layers-period 8 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 25000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45d5_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45d5_nnet/decode
+)
+
+
+( # 4y45e is as 4y45, but using around 1/4 the #iters and add-layers-period and
+  # shrink-interval, and 4x the samples per iter.  Also c.f. 4y45c (which has
+  # double the #samples per iter
+  # Note: we actually use 6 iters not 5, because the after the first iter we add a layer. 
+  # This is really weird.  The WER performance is *better* than the baseline 4y45,
+  # 1.94 -> 1.86.  However, objf is worse, -1.24 -> -1.26.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 6 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45e_nnet/decode
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     --iter 6 exp/tri3b/graph data/test exp/tri4y45e_nnet/decode_it6
+)
+
+
+( # 4y45e2 is as 4y45e (400k samples per iter), but using more iters, 6->10.
+ # Note: WER is better than 4y45e, 1.86->1.84, and
+ # validation objf is much better, -1.26 -> -1.20.
+ # This seems very promising.
+ # CAUTION: I seem to have overwritten this directory below.
+
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 10 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45e2_nnet/decode
+)
+
+
+( # 4y45e2 is as 4y45e but shrink=false.  [ worse, 1.86 -> 1.99% WER]
+  # CAUTION: I seem to have overwritten a directory of the same name above.
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 6 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink false --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45e2_nnet/decode
+)
+
+( # 4y45e4 is as 4y45e but with shrink-interval=2.
+  # Still trying to find out how frequently we should
+  # "shrink"-- seems to be helpful but not if done too
+  # often.
+  # (it's almost the same as 4y45e, in both WER (1.86->1.88), and
+  # validation objf).
+  steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 6 --add-layers-period 1 \
+    --num-iters-final 5 \
+    --shrink-interval 2 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e4_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y45e4_nnet/decode
+)
