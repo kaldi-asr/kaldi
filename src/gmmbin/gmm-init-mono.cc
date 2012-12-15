@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
                 "rspecifier for training features [used to set mean and variance]");
     po.Register("shared-phones", &shared_phones_rxfilename,
                 "rxfilename containing, on each line, a list of phones whose pdfs should be shared.");
-    po.Register("pertrub-factor", &perturb_factor,
+    po.Register("perturb-factor", &perturb_factor,
                 "Perturb the means using this fraction of standard deviation.");
     po.Read(argc, argv);
 
