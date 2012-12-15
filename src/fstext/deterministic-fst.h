@@ -179,7 +179,47 @@ class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
   StateId num_cached_arcs_;  
   std::vector<std::pair<StateId, Arc> > cached_arcs_;
 };
+
+
+/// This class is for didactic purposes, it does not really do anything.
+/// It shows how you would wrap a language model.  Note: you should probably
+/// have <s> and </s> not be real words in your LM, but <s> correspond somehow
+/// to the initial-state of the LM, and </s> be encoded in the final-probs.
+template<class Arc>
+class LmExampleDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
+ public:
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::Label Label;
   
+  LmExampleDeterministicOnDemandFst(void *lm,
+                                    Label bos_symbol,
+                                    Label eos_symbol);
+  
+  virtual StateId Start() { return start_state_; }
+
+  /// We don't bother caching the final-probs, just the arcs.
+  virtual Weight Final(StateId s);
+  
+  virtual bool GetArc(StateId s, Label ilabel, Arc *oarc);
+  
+ private:
+  // Get index for cached arc.
+  inline size_t GetIndex(StateId src_state, Label ilabel);
+
+  typedef unordered_map<std::vector<Label>, StateId, kaldi::VectorHasher<Label> > MapType;
+  void *lm_;
+  Label bos_symbol_; // beginning of sentence symbol
+  Label eos_symbol_; // end of sentence symbol.
+  // This example code does not handle <UNK>; we assume the LM has the same vocab as
+  // the recognizer.
+  MapType state_map_;
+  StateId start_state_;
+  std::vector<std::vector<Label> > state_vec_; // maps from history-state to pair.
+
+  void *lm; // wouldn't really be void.
+};
+
 
 /// @}
 

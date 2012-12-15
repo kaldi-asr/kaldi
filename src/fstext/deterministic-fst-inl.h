@@ -121,7 +121,7 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
         std::pair<StateId, StateId>(arc1.nextstate, pr.second),
         next_state_);
     
-    std::pair<IterType, bool> result = state_map_.insert(new_value);    
+    std::pair<IterType, bool> result = state_map_.insert(new_value);
     oarc->ilabel = ilabel;
     oarc->olabel = 0;
     oarc->nextstate = result.first->second;
@@ -203,7 +203,61 @@ bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   }  
 }
 
+template<class Arc>
+LmExampleDeterministicOnDemandFst<Arc>::LmExampleDeterministicOnDemandFst(
+    void *lm, Label bos_symbol, Label eos_symbol):
+    lm_(lm), bos_symbol_(bos_symbol), eos_symbol_(eos_symbol) {
+  std::vector<Label> begin_state; // history state corresponding to beginning of sentence
+  begin_state.push_back(bos_symbol); // Depending how your LM is set up, you might
+  // want to have a history vector with more than one bos_symbol on it.
 
+  state_vec_.push_back(begin_state);
+  start_state_ = 0;
+  state_map_[begin_state] = 0;
+}
+
+template<class Arc>
+typename Arc::Weight LmExampleDeterministicOnDemandFst<Arc>::Final(StateId s) {
+  KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
+  const std::vector<Label> &wseq = state_vec_[s];
+  float log_prob = -0.5; // e.g. log_prob = lm->GetLogProb(wseq, eos_symbol_);
+  return Weight(-log_prob); // assuming weight is FloatWeight.
+}
+
+template<class Arc>
+bool LmExampleDeterministicOnDemandFst<Arc>::GetArc(
+    StateId s, Label ilabel, Arc *oarc) {
+  KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
+  std::vector<Label> wseq = state_vec_[s];
+  float log_prob = -0.25; // e.g. log_prob = lm->GetLogProb(wseq, ilabel);
+  wseq.push_back(ilabel); // the code might be different if your histories are the
+  // other way around.
+
+  while (0) { // e.g. while !lm->HistoryStateExists(wseq)
+    wseq.erase(wseq.begin(), wseq.begin() + 1); // remove most distant element of history.
+    // note: if your histories are the other way round, you might just do
+    // wseq.pop() here.  
+  }
+  if (log_prob == -numeric_limits<float>::infinity()) { // assume this
+    // is what happens if prob of the word is zero.  Some LMs will never
+    // return zero.
+    return false; // no arc.
+  }
+  std::pair<const std::vector<Label>, StateId> new_value(
+      wseq,
+      static_cast<Label>(state_vec_.size()));
+  
+  // Now get state id for destination state.
+  typedef typename MapType::iterator IterType;  
+  std::pair<IterType, bool> result = state_map_.insert(new_value);
+  if (result.second == true) // was inserted
+    state_vec_.push_back(wseq);
+  oarc->ilabel = ilabel;
+  oarc->olabel = ilabel;
+  oarc->nextstate = result.first->second; // the next-state id.
+  oarc->weight = Weight(-log_prob);
+  return true;
+}
 
 } // end namespace fst
 

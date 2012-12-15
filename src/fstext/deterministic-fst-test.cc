@@ -204,6 +204,16 @@ void TestCompose() {
 
   delete rfst;
   delete nfst;
+
+  { // Mostly checking for compilation errors here.
+    LmExampleDeterministicOnDemandFst<StdArc> lm_eg(NULL, 2, 3);
+    KALDI_ASSERT(lm_eg.Start() == 0);
+    KALDI_ASSERT(lm_eg.Final(0).Value() == 0.5); // I made it this value.
+    StdArc arc;
+    bool b = lm_eg.GetArc(0, 100, &arc);
+    KALDI_ASSERT(b && arc.nextstate == 1 && arc.ilabel == 100 && arc.olabel == 100
+                 && arc.weight.Value() == 0.25);
+  }
 }
 
 }
