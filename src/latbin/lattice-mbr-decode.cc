@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
         "each sausage position, or for each one-best entry if --one-best-times=true.\n"
         "Note: use ark:/dev/null or the empty string for unwanted outputs.\n"
         "Note: times will only be very meaningful if you first use lattice-word-align.\n"
+        "If you need ctm-format output, don't use this program but use lattice-to-ctm-conf\n"
+        "with --decode-mbr=true.\n"
         "\n"
         "Usage: lattice-mbr-decode [options]  lattice-rspecifier "
         "transcriptions-wspecifier [ bayes-risk-wspecifier "
