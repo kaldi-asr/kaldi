@@ -53,14 +53,14 @@ class LatticeBiglmFasterDecoder {
   typedef Arc::Weight Weight;
   // instantiate this class once for each thing you have to decode.
   LatticeBiglmFasterDecoder(
-      const fst::Fst<fst::StdArc> &fst,
-      const fst::DeterministicOnDemandFst<fst::StdArc> &lm_diff_fst,
-      const LatticeBiglmFasterDecoderConfig &config):
+      const fst::Fst<fst::StdArc> &fst,      
+      const LatticeBiglmFasterDecoderConfig &config,
+      fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst):
       fst_(fst), lm_diff_fst_(lm_diff_fst), config_(config),
       warned_noarc_(false), num_toks_(0) {
     config.Check();
     KALDI_ASSERT(fst.Start() != fst::kNoStateId &&
-                 lm_diff_fst.Start() != fst::kNoStateId);
+                 lm_diff_fst->Start() != fst::kNoStateId);
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
   }
  void SetOptions(const LatticeBiglmFasterDecoderConfig &config) { config_ = config; }  
@@ -78,7 +78,7 @@ class LatticeBiglmFasterDecoder {
     final_active_ = false;
     final_costs_.clear();
     num_toks_ = 0;
-    PairId start_pair = ConstructPair(fst_.Start(), lm_diff_fst_.Start());
+    PairId start_pair = ConstructPair(fst_.Start(), lm_diff_fst_->Start());
     active_toks_.resize(1);
     Token *start_tok = new Token(0.0, 0.0, NULL, NULL);
     active_toks_[0].toks = start_tok;
@@ -434,7 +434,7 @@ class LatticeBiglmFasterDecoder {
           lm_state = PairToLmState(state_pair);
       Token *tok = e->val;
       BaseFloat final_cost = fst_.Final(state).Value() +
-          lm_diff_fst_.Final(lm_state).Value();
+          lm_diff_fst_->Final(lm_state).Value();
       tok_to_final_cost[tok] = final_cost;
       best_cost_final = std::min(best_cost_final, tok->tot_cost + final_cost);
       best_cost_nofinal = std::min(best_cost_nofinal, tok->tot_cost);
@@ -651,7 +651,7 @@ class LatticeBiglmFasterDecoder {
       return lm_state; // no change in LM state if no word crossed.
     } else { // Propagate in the LM-diff FST.
       Arc lm_arc;
-      bool ans = lm_diff_fst_.GetArc(lm_state, arc->olabel, &lm_arc);
+      bool ans = lm_diff_fst_->GetArc(lm_state, arc->olabel, &lm_arc);
       if (!ans) { // this case is unexpected for statistical LMs.
         if (!warned_noarc_) {
           warned_noarc_ = true;
@@ -824,7 +824,7 @@ class LatticeBiglmFasterDecoder {
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
-  const fst::DeterministicOnDemandFst<fst::StdArc> &lm_diff_fst_;  
+  fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst_;  
   LatticeBiglmFasterDecoderConfig config_;
   bool warned_noarc_;  
   int32 num_toks_; // current total #toks allocated...

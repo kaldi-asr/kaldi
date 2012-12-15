@@ -180,9 +180,12 @@ int main(int argc, char *argv[]) {
     
     VectorFst<StdArc> *new_lm_fst = ReadFstKaldi(new_lm_fst_rxfilename);
 
-    fst::DeterministicOnDemandFst<StdArc> *lm_diff_fst =
-        new fst::DeterministicOnDemandFst<StdArc>(*old_lm_fst, *new_lm_fst);
-    
+    fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
+    fst::BackoffDeterministicOnDemandFst<StdArc> new_lm_dfst(*new_lm_fst);
+    fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
+                                                              &new_lm_dfst);
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst);
+
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
@@ -221,7 +224,7 @@ int main(int argc, char *argv[]) {
       }
 
       {
-        LatticeBiglmFasterDecoder decoder(*decode_fst, *lm_diff_fst, config);
+        LatticeBiglmFasterDecoder decoder(*decode_fst, config, &cache_dfst);
     
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
@@ -265,7 +268,8 @@ int main(int argc, char *argv[]) {
           num_fail++;
           continue;
         }
-        LatticeBiglmFasterDecoder decoder(fst_reader.Value(), *lm_diff_fst, config);
+        LatticeBiglmFasterDecoder decoder(fst_reader.Value(), config,
+                                          &cache_dfst);
         DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                                acoustic_scale);
         double like;
