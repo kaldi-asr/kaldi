@@ -41,7 +41,7 @@ for i in range(len(dimStrL)):
 #print dimL,'linBN',options.linBNdim
 
 for layer in range(len(dimL)-1):
-    print '<biasedlinearity>', dimL[layer+1], dimL[layer]
+    print '<affinetransform>', dimL[layer+1], dimL[layer]
     #weight matrix
     print '['
     for row in range(dimL[layer+1]):
