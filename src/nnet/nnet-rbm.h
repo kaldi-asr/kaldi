@@ -132,12 +132,12 @@ class Rbm : public RbmBase {
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     KALDI_ERR << "Cannot backpropagate through RBM!"
-              << "Better convert it to <BiasedLinearity>";
+              << "Better convert it to <affinetransform> and <sigmoid>";
   }
   virtual void Update(const CuMatrix<BaseFloat> &input,
                       const CuMatrix<BaseFloat> &diff) {
     KALDI_ERR << "Cannot update RBM by backprop!"
-              << "Better convert it to <BiasedLinearity>";
+              << "Better convert it to <affinetransform> and <sigmoid>";
   }
 
   // RBM training API
@@ -221,7 +221,7 @@ class Rbm : public RbmBase {
 
   void WriteAsNnet(std::ostream& os, bool binary) const {
     //header
-    WriteToken(os,binary,Component::TypeToMarker(Component::kBiasedLinearity));
+    WriteToken(os,binary,Component::TypeToMarker(Component::kAffineTransform));
     WriteBasicType(os,binary,OutputDim());
     WriteBasicType(os,binary,InputDim());
     if(!binary) os << "\n";

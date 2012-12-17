@@ -75,6 +75,9 @@ fi
 nnet=$bnfeadir/feature_extractor.nnet
 nnet-trim-n-last-transforms --n=$trim_transforms --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
 
+#get the feature transform
+feature_transform=$nndir/$(readlink $nndir/final.feature_transform)
+
 
 rm $data/.error 2>/dev/null
 
@@ -86,33 +89,22 @@ echo "Creating bn-feats into $data"
 # The "for" loop in this style is a special construct.
 for ((n=1; n<=nj; n++)); do
   log=$logdir/make_bnfeats.$n.log
-  # Prepare features : do per-speaker CMVN and splicing
-  feats="ark:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$srcdata/split$nj/$n/utt2spk scp:$srcdata/cmvn.scp scp:$srcdata/split$nj/$n/feats.scp ark:- | splice-feats --print-args=false $splice_opts ark:- ark:- |"
-  # Choose further processing according to : feat_type
-  case $feat_type in
-    plain)
-    ;;
-    traps)
-      transf=$nndir/hamm_dct.mat
-      feats="$feats transform-feats --print-args=false $transf ark:- ark:- |"
-    ;;
-    transf)
-      feats="$feats transform-feats $nndir/final.mat ark:- ark:- |"
-    ;;
-    transf-sat)
-      echo yet unimplemented...
-      exit 1;
-    ;;
-    *)
-      echo "Unknown feature type $feat_type"
-      exit 1;
-  esac
-  # Rescale to zero mean and unit variance
-  feats="$feats apply-cmvn --print-args=false --norm-vars=true $cmvn_g ark:- ark:- |"
+  # Prepare feature pipeline
+  feats="ark,s,cs:copy-feats scp:$srcdata/cmvn.scp ark:- |"
+  # Optionally add cmvn
+  if [ -f $nndir/norm_vars ]; then
+    norm_vars=$(cat $nndir/norm_vars 2>/dev/null)
+    feats="$feats apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$srcdata/utt2spk scp:$srcdata/cmvn.scp ark:- ark:- |"
+  fi
+  # Optionally add deltas
+  if [ -f $nndir/delta_order ]; then
+    delta_order=$(cat $nndir/delta_order)
+    feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
+  fi
 
-  # MLP forward 
+  # MLP forward (with feature transform) 
   $cmd $log \
-    nnet-forward $nnet "$feats" \
+    nnet-forward --feature-transform=$feature_transform $nnet "$feats" \
     ark,scp:$bnfeadir/raw_bnfea_$name.$n.ark,$bnfeadir/raw_bnfea_$name.$n.scp \
     || touch $data/.error &
  

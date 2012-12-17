@@ -53,6 +53,14 @@ int main(int argc, char *argv[]) {
     int32 bunchsize=512, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+    
+    BaseFloat drop_data = 0.0; 
+    po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (dropping is done before feature_transform, this must not splice accross time!)");
+
+#if HAVE_CUDA==1
+    int32 use_gpu_id=-2 ;
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#endif
 
     po.Read(argc, argv);
 
@@ -71,6 +79,11 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    //Select the GPU
+#if HAVE_CUDA==1
+    if(use_gpu_id > -2)
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
 
     Nnet rbm_transf;
     if(feature_transform != "") {
@@ -113,12 +126,24 @@ int main(int argc, char *argv[]) {
       while (!cache.Full() && !feature_reader.Done()) {
         // get feature matrix
         const Matrix<BaseFloat> &mat = feature_reader.Value();
-        // resize the dummy vector to fill Cache:: with
-        dummy_cache_vec.resize(mat.NumRows());
         // push features to GPU
         feats.CopyFromMat(mat);
-        // possibly apply transform
+        // possibly apply transform (may contain splicing)
         rbm_transf.Feedforward(feats, &feats_transf);
+        // subsample the feats to get faster epochs
+        if(drop_data > 0.0) {
+          Matrix<BaseFloat> mat2;
+          feats_transf.CopyToMat(&mat2);
+          for(int32 r=mat2.NumRows()-1; r >= 0; r--) {
+            if(RandUniform() < drop_data) {
+              mat2.RemoveRow(r);
+            }
+          }
+          if(mat2.NumRows() == 0) continue;
+          feats_transf.CopyFromMat(mat2);
+        }
+        // resize the dummy vector to fill Cache:: with
+        dummy_cache_vec.resize(feats_transf.NumRows());
         // add to cache
         cache.AddData(feats_transf, dummy_cache_vec);
         num_done++;

@@ -6,7 +6,9 @@
 # Begin configuration section.  
 iter=
 nnet= # You can specify the nnet to use (e.g. if you want to use the .alinnet)
+feature_transform= # You can specify the feature transform to use for the feedforward
 model= # You can specify the transition model to use (e.g. if you want to use the .alimdl)
+class_frame_counts= # You can specify frame count to compute PDF priors 
 
 nj=4
 cmd=run.pl
@@ -16,6 +18,7 @@ latbeam=9.0 # GMM:6.0
 acwt=0.12 # GMM:0.0833, note: only really affects pruning (scoring is on lattices).
 min_lmwt=4
 max_lmwt=15
+score_args=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -66,50 +69,46 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   model=$srcdir/final.mdl;
 fi
 
-#hard-select feature-extraction files
-hamm_dct=$srcdir/hamm_dct.mat
-cmvn_g=$srcdir/cmvn_glob.mat
+# find the feature_transform to use
+if [ -z "$feature_transform" ]; then
+  feature_transform=$srcdir/$(readlink $srcdir/final.feature_transform)
+fi
+if [ ! -f $feature_transform ]; then
+  echo "Missing feature_transform '$feature_transform'"
+  exit 1
+fi
 
-#remove the softmax from the nnet
+# remove the softmax from the nnet
 nnet_i=$nnet; nnet=$dir/$(basename $nnet)_nosoftmax;
-nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/$(basename $nnet)_nosoftmax_log || exit 1;
+nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/$(basename $nnet)_log || exit 1;
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $hamm_dct $cmvn_g $nnet_i $nnet $model $graphdir/HCLG.fst; do
+for f in $sdata/1/feats.scp $nnet_i $nnet $model $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 # PREPARE THE LOG-POSTERIOR COMPUTATION PIPELINE
-norm_vars=$(cat $srcdir/norm_vars 2>/dev/null)
-splice_opts=$(cat $srcdir/splice_opts 2>/dev/null)
-feat_type=$(cat $srcdir/feat_type 2>/dev/null)
+if [ "" == "$class_frame_counts" ]; then
+  class_frame_counts=$srcdir/ali_train_pdf.counts
+else
+  echo "Overriding class_frame_counts by $class_frame_counts"
+fi
 
 # We use the pre-computed CMVN as well as pre-defined splicing
-feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
+# Optionally add cmvn
+if [ -f $srcdir/norm_vars ]; then
+  norm_vars=$(cat $srcdir/norm_vars 2>/dev/null)
+  [ ! -f $sdata/1/cmvn.scp ] && echo "$0: cannot find cmvn stats $sdata/1/cmvn.scp" && exit 1
+  feats="$feats apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+fi
+# Optionally add deltas
+if [ -f $srcdir/delta_order ]; then
+  delta_order=$(cat $srcdir/delta_order)
+  feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
+fi
 
-# Transform feats
-echo "Feature type : $feat_type"
-case $feat_type in
-  plain)
-  ;;
-  traps)
-    transf=$srcdir/hamm_dct.mat
-    feats="$feats transform-feats $transf ark:- ark:- |"
-  ;;
-  transf)
-    feats="$feats transform-feats $srcdir/final.mat ark:- ark:- |"
-  ;;
-  transf-sat)
-    echo yet unimplemented...
-    exit 1;
-  ;;
-  *) 
-    echo "Unknown feature type $feat_type"
-    exit 1 
-  ;;
-esac
-
-# Global normalization and the MLP
-feats="$feats apply-cmvn --norm-vars=true $cmvn_g ark:- ark:- | nnet-forward --no-softmax=true --class-frame-counts=$srcdir/ali_train.counts $nnet ark:- ark:- |"
+# Finally add feature_transform and the MLP
+feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts $nnet ark:- ark:- |"
 
 # Run the decoding in the queue
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
@@ -120,6 +119,6 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
 # Run the scoring
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
+local/score.sh $score_args --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
 
 exit 0;

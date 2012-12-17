@@ -28,20 +28,20 @@ namespace kaldi {
 
 
 /**
- * Expands the time context of the input features
+ * Splices the time context of the input features
  * in N, out k*N, FrameOffset o_1,o_2,...,o_k
  * FrameOffset example 11frames: -5 -4 -3 -2 -1 0 1 2 3 4 5
  */
-class Expand : public Component {
+class Splice : public Component {
  public:
-  Expand(int32 dim_in, int32 dim_out, Nnet *nnet)
+  Splice(int32 dim_in, int32 dim_out, Nnet *nnet)
     : Component(dim_in, dim_out, nnet)
   { }
-  ~Expand()
+  ~Splice()
   { }
 
   ComponentType GetType() const { 
-    return kExpand; 
+    return kSplice; 
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -68,7 +68,7 @@ class Expand : public Component {
   }
    
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
-    cu::Expand(in, frame_offsets_, out); 
+    cu::Splice(in, frame_offsets_, out); 
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
@@ -135,6 +135,117 @@ class Copy : public Component {
  protected:
   CuStlVector<int32> copy_from_indices_;
 };
+
+
+
+/**
+ * Adds shift to all the lines of the matrix
+ * (can be used for global mean normalization)
+ */
+class AddShift : public Component {
+ public:
+  AddShift(int32 dim_in, int32 dim_out, Nnet *nnet)
+    : Component(dim_in, dim_out, nnet), shift_data_(dim_in)
+  { }
+  ~AddShift()
+  { }
+
+  ComponentType GetType() const { 
+    return kAddShift; 
+  }
+
+  void ReadData(std::istream &is, bool binary) { 
+    //read the shift data
+    shift_data_.Read(is, binary);
+  }
+
+  void WriteData(std::ostream &os, bool binary) const { 
+    shift_data_.Write(os, binary);
+  }
+   
+  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
+    out->CopyFromMat(in);
+    //add the shift
+    out->AddVecToRows(1.0, shift_data_, 1.0);
+  }
+
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+    //derivative of additive constant is zero...
+    in_diff->CopyFromMat(out_diff);
+  }
+
+  //Data accessors
+  const CuVector<BaseFloat>& GetShiftVec() {
+    return shift_data_;
+  }
+
+  void SetShiftVec(const CuVector<BaseFloat>& shift_data) {
+    KALDI_ASSERT(shift_data.Dim() == shift_data_.Dim());
+    shift_data_.CopyFromVec(shift_data);
+  }
+
+ protected:
+  CuVector<BaseFloat> shift_data_;
+};
+
+
+
+/**
+ * Rescale the data column-wise by a vector
+ * (can be used for global variance normalization)
+ */
+class Rescale : public Component {
+ public:
+  Rescale(int32 dim_in, int32 dim_out, Nnet *nnet)
+    : Component(dim_in, dim_out, nnet), scale_data_(dim_in)
+  { }
+  ~Rescale()
+  { }
+
+  ComponentType GetType() const { 
+    return kRescale; 
+  }
+
+  void ReadData(std::istream &is, bool binary) { 
+    //read the shift data
+    scale_data_.Read(is, binary);
+  }
+
+  void WriteData(std::ostream &os, bool binary) const { 
+    scale_data_.Write(os, binary);
+  }
+   
+  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
+    out->CopyFromMat(in);
+    //rescale the data
+    out->MulColsVec(scale_data_);
+  }
+
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+    in_diff->CopyFromMat(out_diff);
+    //derivative gets also scaled by the scale_data_
+    in_diff->MulColsVec(scale_data_);
+  }
+
+  //Data accessors
+  const CuVector<BaseFloat>& GetScaleVec() {
+    return scale_data_;
+  }
+
+  void SetScaleVec(const CuVector<BaseFloat>& scale_data) {
+    KALDI_ASSERT(scale_data.Dim() == scale_data_.Dim());
+    scale_data_.CopyFromVec(scale_data);
+  }
+
+ protected:
+  CuVector<BaseFloat> scale_data_;
+};
+
+
+
+
 
 
 } // namespace kaldi

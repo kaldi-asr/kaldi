@@ -71,6 +71,11 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
 
+    //need at least one occurence for each tgt, so there is no nan during decoding
+    for(size_t i = 0; i < counts.size(); i++) {
+      if(counts[i] == 0) counts[i]++;
+    }
+
     //convert to BaseFloat and write
     Vector<BaseFloat> counts_f(counts.size());
     for(int32 i=0; i<counts.size(); i++) {

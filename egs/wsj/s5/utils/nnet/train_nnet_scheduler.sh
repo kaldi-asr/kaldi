@@ -26,6 +26,7 @@ echo labels: ${labels?$0: labels not specified}
 echo mlp_init: ${mlp_init?$0: mlp_init not specified}
 echo ${feature_transform:+feature_transform: $feature_transform}
 echo ${min_iters:+min_iters: $min_iters}
+echo ${use_gpu_id:+use_gpu_id: $use_gpu_id}
 echo %%% CONFIG
 echo
 
@@ -37,6 +38,7 @@ echo
 $TRAIN_TOOL --cross-validate=true \
  --bunchsize=$bunch_size --cachesize=$cache_size \
  ${feature_transform:+ --feature-transform=$feature_transform} \
+ ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
  $mlp_init "$feats_cv" "$labels" \
  2> $dir/log/prerun.log || exit 1;
 
@@ -58,6 +60,7 @@ for iter in $(seq -w $max_iters); do
    --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
    --bunchsize=$bunch_size --cachesize=$cache_size --randomize=$randomize \
    ${feature_transform:+ --feature-transform=$feature_transform} \
+   ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    $mlp_best "$feats_tr" "$labels" $mlp_next \
    2> $dir/log/iter$iter.log || exit 1; 
 
@@ -68,6 +71,7 @@ for iter in $(seq -w $max_iters); do
   $TRAIN_TOOL --cross-validate=true \
    --bunchsize=$bunch_size --cachesize=$cache_size \
    ${feature_transform:+ --feature-transform=$feature_transform} \
+   ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    $mlp_next "$feats_cv" "$labels" \
    2>>$dir/log/iter$iter.log || exit 1;
   

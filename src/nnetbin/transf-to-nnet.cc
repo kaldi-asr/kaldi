@@ -1,6 +1,6 @@
-// nnetbin/nnet-trim-last-n-layers.cc
+// gmmbin/transf-to-nnet.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012  Brno University of Technology
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-affine-transform.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -25,19 +26,16 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Trim ending part of the MLP\n"
-        "Usage:  nnet-trim-last-n-layers [options] <model-in> <model-out>\n"
+        "Convert transformation matrix to <affine-transform>\n"
+        "Usage:  transf-to-nnet [options] <transf-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-trim-last-n-layers --binary=false nnet.mdl nnet_txt.mdl\n";
+        " transf-to-nnet --binary=false transf.mat nnet.mdl\n";
 
 
     bool binary_write = false;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-
-    int32 trim_num = 0;
-    po.Register("n", &trim_num, "Number of transforms to be trimmed (include simgoid/softmax)");
 
     po.Read(argc, argv);
 
@@ -46,20 +44,37 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
+    std::string transform_rxfilename = po.GetArg(1),
         model_out_filename = po.GetArg(2);
 
-    Nnet nnet; 
+    //read the matrix
+    Matrix<BaseFloat> transform;
     {
       bool binary_read;
-      Input ki(model_in_filename, &binary_read);
-      nnet.Read(ki.Stream(), binary_read);
+      Input ki(transform_rxfilename, &binary_read);
+      transform.Read(ki.Stream(), binary_read);
     }
+    
+    //we will put the transform to the nnet
+    Nnet nnet;
+    //create affine transform layer
+    AffineTransform* layer = new AffineTransform(transform.NumCols(),transform.NumRows(),&nnet);
+    //the pointer will be given to the nnet, so we don't need to call delete
 
+    //convert Matrix to CuMatrix
+    CuMatrix<BaseFloat> cu_transform;
+    cu_transform.CopyFromMat(transform);
+
+    //set the weights
+    layer->SetLinearity(cu_transform);
+
+    //append layer to the nnet
+    nnet.AppendLayer(layer);
+    
+    //write the nnet
     {
       Output ko(model_out_filename, binary_write);
-      int32 write_num_layers = nnet.LayerCount() - trim_num;
-      nnet.WriteFrontLayers(ko.Stream(), binary_write, write_num_layers);
+      nnet.Write(ko.Stream(), binary_write);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;

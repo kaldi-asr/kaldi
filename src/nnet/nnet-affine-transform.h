@@ -1,4 +1,4 @@
-// nnet/nnet-biasedlinearity.h
+// nnet/nnet-affine-transform.h
 
 // Copyright 2011  Karel Vesely
 
@@ -16,26 +16,27 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_BIASEDLINEARITY_H
-#define KALDI_NNET_BIASEDLINEARITY_H
+#ifndef KALDI_NNET_AFFINE_TRANSFORM_H
+#define KALDI_NNET_AFFINE_TRANSFORM_H
 
 
 #include "nnet/nnet-component.h"
+#include "cudamatrix/cu-math.h"
 
 namespace kaldi {
 
-class BiasedLinearity : public UpdatableComponent {
+class AffineTransform : public UpdatableComponent {
  public:
-  BiasedLinearity(int32 dim_in, int32 dim_out, Nnet *nnet) 
+  AffineTransform(int32 dim_in, int32 dim_out, Nnet *nnet) 
     : UpdatableComponent(dim_in, dim_out, nnet), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
   { }
-  ~BiasedLinearity()
+  ~AffineTransform()
   { }
 
   ComponentType GetType() const {
-    return kBiasedLinearity;
+    return kAffineTransform;
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -84,6 +85,27 @@ class BiasedLinearity : public UpdatableComponent {
     linearity_.AddMat(-learn_rate_, linearity_corr_);
     bias_.AddVec(-learn_rate_, bias_corr_);
   }
+
+  /// Accessors to the component parameters
+  const CuVector<BaseFloat>& GetBias() {
+    return bias_;
+  }
+
+  void SetBias(const CuVector<BaseFloat>& bias) {
+    KALDI_ASSERT(bias.Dim() == bias_.Dim());
+    bias_.CopyFromVec(bias);
+  }
+
+  const CuMatrix<BaseFloat>& GetLinearity() {
+    return linearity_;
+  }
+
+  void SetLinearity(const CuMatrix<BaseFloat>& linearity) {
+    KALDI_ASSERT(linearity.NumRows() == linearity_.NumRows());
+    KALDI_ASSERT(linearity.NumCols() == linearity_.NumCols());
+    linearity_.CopyFromMat(linearity);
+  }
+
 
  private:
   CuMatrix<BaseFloat> linearity_;

@@ -52,6 +52,11 @@ int main(int argc, char *argv[]) {
 
     po.Register("silent", &silent, "Don't print any messages");
 
+#if HAVE_CUDA==1
+    int32 use_gpu_id=-2;
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#endif
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -65,6 +70,12 @@ int main(int argc, char *argv[]) {
         
     using namespace kaldi;
     typedef kaldi::int32 int32;
+
+    //Select the GPU
+#if HAVE_CUDA==1
+    if(use_gpu_id > -2)
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
 
     Nnet nnet_transf;
     if(feature_transform != "") {
