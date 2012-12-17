@@ -78,7 +78,7 @@ static BaseFloat ComputeObjfAndGradient(
                                       batch_size,
                                       &nnet_gradient);
 
-  BaseFloat tot_count = TotalNnetTrainingWeight(validation_set);
+  BaseFloat tot_count = validation_set.size();
   int32 i = 0; // index into scale_params.
   for (int32 j = 0; j < nnet_combined.NumComponents(); j++) {
     const UpdatableComponent *uc_direction =

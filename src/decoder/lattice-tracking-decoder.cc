@@ -753,7 +753,8 @@ void LatticeTrackingDecoder::ProcessNonemitting(int32 frame) {
       warned_ = true;
     }
   }
-  if (frame > 0) KALDI_ASSERT(worst_tracked > 0.0); // track at least one token
+  //KALDI_VLOG(2) << "nonemit:" << frame << ":" << best_cost;
+  //if (frame > 0) KALDI_ASSERT(worst_tracked > 0.0); // track at least one token
 
   BaseFloat cutoff = best_cost + config_.beam; // original beam
   BaseFloat extra_cutoff = std::min(worst_tracked + config_.extra_beam,

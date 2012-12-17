@@ -33,13 +33,13 @@ namespace kaldi {
    using a heuristic involving validation-set gradients.
 */
 
-// NnetTrainingExample is the label (the pdf) and input data for
-// one frame of input.  
+// NnetTrainingExample is the input data and corresponding labels (or labels)
+// for one frame of input.  In the normal case there will be just one label,
+// with a weight of 1.0.  But, for example, in discriminative training there
+// might be a mixture of labels with different weights.
 struct NnetTrainingExample {
-  BaseFloat weight; // Allows us to put a weight on each training
-  // sample.  Might just be 1.0.
   
-  int32 label; // Typically the pdf-id of the example.
+  std::vector<std::pair<int32, BaseFloat> > labels;  
   
   Matrix<BaseFloat> input_frames; // The input data-- typically a number of frames
   // (nnet.LeftContext() + 1 + nnet.RightContext()) of raw features, not

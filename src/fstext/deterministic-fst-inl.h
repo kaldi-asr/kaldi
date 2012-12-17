@@ -1,6 +1,6 @@
 // fstext/deterministic-fst-inl.h
 
-// Copyright 2011 Gilles Boulianne
+// Copyright 2011-2012 Gilles Boulianne  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,261 +20,244 @@
 #include "base/kaldi-common.h"
 #include "fstext/fstext-utils.h"
 
-// Do not include this file directly.  It is included by deterministic-fst.h.
-
-// NOTES: normally only the composition case should use the CacheImpl. In the
-//        single FST case we could just return values from the FST without
-//        recording anything to the cache. However the cache is used anyway
-//        to make it clearer what will be needed for the composition implementation.
-
 
 namespace fst {
+// Do not include this file directly.  It is included by deterministic-fst.h.
 
-/// \addtogroup deterministic_fst_group
-/// @{
-
-// in addition to CacheImpl, there is a cache for GetArc() results
 template<class Arc>
-bool DeterministicOnDemandFstImpl<Arc>::HasArc(StateId s, Label l) {
-  cache_calls_++;
-  StateLabelPair sl = make_pair(s, l);
-  scm_it_ = state_cache_map_.find(sl);
-  if (scm_it_ != state_cache_map_.end()){
-    cache_hits_++;
-    return true;
+typename Arc::StateId
+BackoffDeterministicOnDemandFst<Arc>::GetBackoffState(StateId s,
+                                                      Weight *w) {
+  ArcIterator<Fst<Arc> > aiter(fst_, s);
+  if (aiter.Done()) // no arcs.
+    return kNoStateId;
+  const Arc &arc = aiter.Value();
+  if (arc.ilabel == 0) {
+    *w = arc.weight;
+    return arc.nextstate;
   } else {
-    return false;
+    return kNoStateId;
   }
 }
 
 template<class Arc>
-void DeterministicOnDemandFstImpl<Arc>::AddSingleArc(StateId s, Label l, Arc &a) {
-  StateLabelPair sl = make_pair(s, l);
-  state_cache_map_[sl] = a;
-}
-
-template<class Arc>
-void DeterministicOnDemandFstImpl<Arc>::SetArc(StateId s, Label l) {
-  // add an invalid arc with a kNoStateId nextstate
-  Arc a(0, 0, 0, kNoStateId);
-  DeterministicOnDemandFstImpl<Arc>::AddSingleArc(s, l, a);
-}
-
-template<class Arc>
-bool DeterministicOnDemandFstImpl<Arc>::GetCachedArc(StateId s, Label l, Arc *oarc) {
-  // assume HasArc() was just called and return true, thus scm_it_ is properly set
-  *oarc = scm_it_->second;
-  return (oarc->nextstate != kNoStateId);  // return true if valid arc
-}
-
-template<class Arc>
-typename DeterministicOnDemandFstImpl<Arc>::StateId DeterministicOnDemandFstImpl<Arc>::Start() {
-  if (! CacheImpl<Arc>::HasStart()) {
-    StateId s = 0;
-    if (fst2_) {
-      // composition
-      StateId s1 = fst1_->Start(), s2 = fst2_->Start();
-      if (s1 == kNoStateId || s2 == kNoStateId) return kNoStateId;
-      if (composed_state_.size()==0) AddComposedState(s1, s2);
-    } else {
-      // single FST case
-      s = fst1_->Start();
-    }
-    assert(s == 0);
-    this->SetStart(s);
-    return s;
-  }
-  return CacheImpl<Arc>::Start();
-}
-
-// Constructor from single FST
-template<class Arc>
-  DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc>&fst): 
-      cache_calls_(0), cache_hits_(0), fst1_(&fst), fst2_(NULL),
-      scm_it_(state_cache_map_.end()) { // initialize scm_it_ to keep older compilers happy.
-    if (!fst1_->Properties(kILabelSorted, true))
-      KALDI_ERR << "DeterministicOnDemandFst: error: input FST must be input label sorted";
-    if (!fst1_->Properties(kIDeterministic, true))
-      KALDI_ERR << "DeterministicOnDemandFst: error: input Fst must be input-label deterministic.";
-  SetType("deterministic");
-}
-
-// Constructor from 2 DODF
-template<class Arc>
-DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const Fst<Arc> &fst1, const Fst<Arc> &fst2):
-    cache_calls_(0), cache_hits_(0), fst1_(&fst1), fst2_(&fst2),
-    scm_it_(state_cache_map_.end())  { // initialize iterator to keep older compilers happy
-  if (!fst1_->Properties(kILabelSorted, true) || !fst2_->Properties(kILabelSorted, true))
-	KALDI_ERR << "DeterministicOnDemandFst: error: input FST's must be input label sorted";
-  if (!fst1_->Properties(kIDeterministic, true) || !fst2_->Properties(kIDeterministic, true))
-	KALDI_ERR << "DeterministicOnDemandFst: error: input FST's must be input-label deterministic";
-  SetType("deterministic");
-}
-
-template<class Arc>
-DeterministicOnDemandFstImpl<Arc>::DeterministicOnDemandFstImpl(const DeterministicOnDemandFstImpl<Arc> &other):
-    scm_it_(state_cache_map_.end()) // initialize iterator to keep older compilers happy.
-{
-  /* to be implemented */
-  KALDI_ERR << "DeterministicOnDemandFst copying not yet supported.";
-}
-
-template<class Arc>
-typename DeterministicOnDemandFstImpl<Arc>::Weight
-DeterministicOnDemandFstImpl<Arc>::Final(StateId s) {
-  if (!this->HasFinal(s)) {  
-    // Work out final-state weight.
-    Weight w;
-    if (fst2_){
-      StatePair sp = composed_state_[s];
-      w = Times(GetFinalFromNonDetFst(fst1_, sp.first),
-                GetFinalFromNonDetFst(fst2_, sp.second));
-    } else {
-      w = GetFinalFromNonDetFst(fst1_, s);
-    }
-    this->SetFinal(s, w);
-    return w;
-  }
-  return CacheImpl<Arc>::Final(s);
-}
-
-template<class Arc>
-size_t DeterministicOnDemandFstImpl<Arc>::NumArcs(StateId s) {
-  if (!this->HasArcs(s))
-    Expand(s);
-  return CacheImpl<Arc>::NumArcs(s);
-}
-
-template<class Arc>
-size_t DeterministicOnDemandFstImpl<Arc>::NumOutputEpsilons(StateId s) {
-  if (!this->HasArcs(s))
-    Expand(s);
-  return CacheImpl<Arc>::NumOutputEpsilons(s);
-}
-
-template<class Arc>
-void DeterministicOnDemandFstImpl<Arc>::InitArcIterator(StateId s, ArcIteratorData<Arc> *data) {
-  if (!this->HasArcs(s))
-    Expand(s);
-  CacheImpl<Arc>::InitArcIterator(s, data);
-}
-
-
-template<class Arc>
-typename Arc::Weight DeterministicOnDemandFstImpl<Arc>::GetFinalFromNonDetFst(
-    const Fst<Arc> *fst, StateId s) {
-  Weight w = fst->Final(s);
+typename Arc::Weight BackoffDeterministicOnDemandFst<Arc>::Final(StateId state) {
+  Weight w = fst_.Final(state);
   if (w != Weight::Zero()) return w;
-  SortedMatcher<Fst<Arc> > sm(*fst, MATCH_INPUT, 1); // enable matching epsilons as well
-  sm.SetState(s);
-  if (sm.Find(kNoLabel)) {   // kNoLabel will match epsilons, but not
-    // the implicit self-loop; see matcher.h.
-    const Arc &arc = sm.Value();
-    return Times(arc.weight, GetFinalFromNonDetFst(fst, arc.nextstate));
-  }
-  return Weight::Zero();
+  Weight backoff_w;
+  StateId backoff_state = GetBackoffState(state, &backoff_w);
+  if (backoff_state == kNoStateId) return Weight::Zero();
+  else return Times(backoff_w, this->Final(backoff_state));
 }
 
-// helper method for GetArc()
 template<class Arc>
-bool DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
-    const Fst<Arc> *fst, StateId s, Label ilabel, Arc *oarc,
-    typename Arc::Weight iweight) {
-  
-  // use a SortedMatcher
-  // fst should already have been tested for correct "sortedness"
-  SortedMatcher<Fst<Arc> > sm(*fst, MATCH_INPUT, 1);
+BackoffDeterministicOnDemandFst<Arc>::BackoffDeterministicOnDemandFst(
+    const Fst<Arc> &fst): fst_(fst) {
+#ifdef KALDI_PARANOID
+  KALDI_ASSERT(fst_.Properties(kILabelSorted|kIDeterministic, true) ==
+               (kILabelSorted|kIDeterministic) &&
+               "Input FST is not i-label sorted and deterministic.");
+#endif
+}
+
+template<class Arc>
+bool BackoffDeterministicOnDemandFst<Arc>::GetArc(
+    StateId s, Label ilabel, Arc *oarc) {
+  KALDI_ASSERT(ilabel != 0); //  We don't allow GetArc for epsilon.
+
+  SortedMatcher<Fst<Arc> > sm(fst_, MATCH_INPUT, 1);
   sm.SetState(s);
   if (sm.Find(ilabel)) {
     const Arc &arc = sm.Value();
-    *oarc = Arc(ilabel, arc.olabel, Times(arc.weight, iweight), arc.nextstate);
+    *oarc = arc;
+    return true;
+  } else {
+    Weight backoff_w;
+    StateId backoff_state = GetBackoffState(s, &backoff_w);
+    if (backoff_state == kNoStateId) return false;
+    if (!this->GetArc(backoff_state, ilabel, oarc)) return false;
+    oarc->weight = Times(oarc->weight, backoff_w);
     return true;
   }
-  // didn't find matching ilabel, look for an epsilon transition and take it
-  // Note: "kNoLabel" matches any "non-consuming" transitions including epsilons;
-  // we use this not 0 because 0 would match the implicit self-loop and we don't
-  // want this.
-  if (sm.Find(kNoLabel)) {
-    const Arc &arc = sm.Value();
-    return DeterministicOnDemandFstImpl<Arc>::GetArcFromNonDetFst(
-        fst, arc.nextstate, ilabel, oarc, Times(arc.weight, iweight));
-
-  }    
-  return false;  // otherwise, no match is possible
 }
 
-// This function is specific to DeterministicOnDemandFst.
 template<class Arc>
-bool DeterministicOnDemandFstImpl<Arc>::GetArc(StateId s, Label ilabel, Arc *oarc) {
+ComposeDeterministicOnDemandFst<Arc>::ComposeDeterministicOnDemandFst(
+    DeterministicOnDemandFst<Arc> *fst1,
+    DeterministicOnDemandFst<Arc> *fst2): fst1_(fst1), fst2_(fst2) {
+  KALDI_ASSERT(fst1 != NULL && fst2 != NULL);
+  if (fst1_->Start() == -1 || fst2_->Start() == -1) {
+    start_state_ = -1;
+    next_state_ = 0; // actually we don't care about this value.
+  } else {
+    start_state_ = 0;
+    std::pair<StateId,StateId> start_pair(fst1_->Start(), fst2_->Start());
+    state_map_[start_pair] = start_state_;
+    state_vec_.push_back(start_pair);
+    next_state_ = 1;
+  }
+}
 
-  // Check first if we already have the result in cache
-  if (HasArc(s, ilabel)) {
-    return(GetCachedArc(s, ilabel, oarc));
-  } 
-  // otherwise compute the arc and set cache info
-  if (fst2_) {
-    // composition case
-    KALDI_PARANOID_ASSERT(static_cast<size_t>(s) < composed_state_.size());
-    StatePair sp = composed_state_[s];
-    Arc arc1, arc2;
-    bool r1 = GetArcFromNonDetFst(fst1_, sp.first, ilabel, &arc1); 
-    if (!r1) {
-      SetArc(s, ilabel); // set without arc added
-      return false;
+template<class Arc>
+typename Arc::Weight ComposeDeterministicOnDemandFst<Arc>::Final(StateId s) {
+  KALDI_ASSERT(s < static_cast<StateId>(state_vec_.size()));
+  const std::pair<StateId, StateId> &pr (state_vec_[s]);
+  return Times(fst1_->Final(pr.first), fst2_->Final(pr.second));
+}
+
+template<class Arc>
+bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
+                                                  Arc *oarc) {
+  typedef typename MapType::iterator IterType;
+  KALDI_ASSERT(ilabel != 0);
+  KALDI_ASSERT(s < static_cast<StateId>(state_vec_.size()));
+  const std::pair<StateId, StateId> pr (state_vec_[s]);
+  
+  Arc arc1;
+  if (!fst1_->GetArc(pr.first, ilabel, &arc1)) return false;
+  if (arc1.olabel == 0) { // There is no output label on the
+    // arc, so only the first state changes.
+    std::pair<const std::pair<StateId, StateId>, StateId> new_value(
+        std::pair<StateId, StateId>(arc1.nextstate, pr.second),
+        next_state_);
+    
+    std::pair<IterType, bool> result = state_map_.insert(new_value);
+    oarc->ilabel = ilabel;
+    oarc->olabel = 0;
+    oarc->nextstate = result.first->second;
+    oarc->weight = arc1.weight;
+    if (result.second == true) { // was inserted
+      next_state_++;
+      const std::pair<StateId, StateId> &new_pair (new_value.first);
+      state_vec_.push_back(new_pair);
     }
-    if (arc1.olabel == 0) {
-      // we don't move in fst2_
-      *oarc = Arc(ilabel, 0, arc1.weight, AddComposedState(arc1.nextstate, sp.second));
-      AddSingleArc(s, ilabel, *oarc); // add 1 arc and set
+    return true;
+  }
+  // There is an output label, so we need to traverse an arc on the
+  // second fst also.
+  Arc arc2;
+  if (!fst2_->GetArc(pr.second, arc1.olabel, &arc2)) return false;
+  std::pair<const std::pair<StateId, StateId>, StateId> new_value(
+      std::pair<StateId, StateId>(arc1.nextstate, arc2.nextstate),
+      next_state_);
+  std::pair<IterType, bool> result =
+      state_map_.insert(new_value);
+  oarc->ilabel = ilabel;
+  oarc->olabel = arc2.olabel;
+  oarc->nextstate = result.first->second;
+  oarc->weight = Times(arc1.weight, arc2.weight);
+  if (result.second == true) { // was inserted
+    next_state_++;
+    const std::pair<StateId, StateId> &new_pair (new_value.first);
+    state_vec_.push_back(new_pair);
+  }
+  return true;
+}
+
+template<class Arc>
+inline size_t CacheDeterministicOnDemandFst<Arc>::GetIndex(
+    StateId src_state, Label ilabel) {
+  const StateId p1 = 26597, p2 = 50329; // these are two
+  // values that I drew at random from a table of primes.
+  // note: num_cached_arcs_ > 0.
+
+  // We cast to size_t before the modulus, to ensure the
+  // result is positive.
+  return static_cast<size_t>(src_state * p1 + ilabel * p2) %
+      static_cast<size_t>(num_cached_arcs_);
+}
+
+template<class Arc>
+CacheDeterministicOnDemandFst<Arc>::CacheDeterministicOnDemandFst(
+    DeterministicOnDemandFst<Arc> *fst,
+    StateId num_cached_arcs): fst_(fst),
+                              num_cached_arcs_(num_cached_arcs),
+                              cached_arcs_(num_cached_arcs) {
+  KALDI_ASSERT(num_cached_arcs > 0);
+  for (StateId i = 0; i < num_cached_arcs; i++)
+    cached_arcs_[i].first = kNoStateId; // Invalidate all elements of the cache.
+}
+      
+template<class Arc>
+bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
+                                                Arc *oarc) {
+  // Note: we don't cache anything in case a requested arc does not exist.
+  // In the uses that we imagine this will be put to, essentially all the
+  // requested arcs will exist.  This only affects efficiency.
+  KALDI_ASSERT(s >= 0 && ilabel != 0);
+  size_t index = this->GetIndex(s, ilabel);
+  if (cached_arcs_[index].first == s &&
+      cached_arcs_[index].second.ilabel == ilabel) {
+    *oarc = cached_arcs_[index].second;
+    return true;
+  } else {
+    Arc arc;
+    if (fst_->GetArc(s, ilabel, &arc)) {
+      cached_arcs_[index].first = s;
+      cached_arcs_[index].second = arc;
+      *oarc = arc;
       return true;
-    }
-    bool r2 = GetArcFromNonDetFst(fst2_, sp.second, arc1.olabel, &arc2);
-    if (!r2) {
-      SetArc(s,ilabel); // set without arc added
+    } else {
       return false;
     }
-    // we have matching arcs from both FSTs, compute composed arc
-    *oarc = Arc(ilabel, arc2.olabel,
-				Times(arc1.weight, arc2.weight), 
-				AddComposedState(arc1.nextstate, arc2.nextstate));
-    AddSingleArc(s, ilabel, *oarc); // add 1 arc and set
-    return true;
-  } else {
-    // single FST case: not cached
-    return GetArcFromNonDetFst(fst1_, s, ilabel, oarc);
-  }
-}
-
-// Note that Expand is not called if we do the composition using
-// GetArc(), which is the normal case.
-template<class Arc>
-void DeterministicOnDemandFstImpl<Arc>::Expand(StateId s) {  // expands arcs only [not final state weight].
-
-  if (fst2_) {
-    KALDI_ERR << "DeterministicOnDemandFstImpl<Arc>::Expand() not implemented for the composition case.";
-  }
-  // Add all the arcs to the cache. Just for clarity, not efficiency.
-  for (ArcIterator<Fst<Arc> > aiter(*fst1_, s); !aiter.Done(); aiter.Next()) {
-    const Arc &arc = aiter.Value();
-    this->AddArc(s, arc);
   }  
-  this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }
 
 template<class Arc>
-DeterministicOnDemandFst<Arc>::DeterministicOnDemandFst(const DeterministicOnDemandFst<Arc> &fst, bool reset) {
-  if (reset) {
-    impl_ = new DeterministicOnDemandFstImpl<Arc>(*(fst.impl_));
-    // Copy constructor of DeterministicOnDemandFstImpl.
-    // Main use of calling with reset = true is to free up memory
-    // (e.g. then you could delete original one).
-  } else {
-    impl_ = fst.impl_;
-    impl_->IncrRefCount();
-  }
+LmExampleDeterministicOnDemandFst<Arc>::LmExampleDeterministicOnDemandFst(
+    void *lm, Label bos_symbol, Label eos_symbol):
+    lm_(lm), bos_symbol_(bos_symbol), eos_symbol_(eos_symbol) {
+  std::vector<Label> begin_state; // history state corresponding to beginning of sentence
+  begin_state.push_back(bos_symbol); // Depending how your LM is set up, you might
+  // want to have a history vector with more than one bos_symbol on it.
+
+  state_vec_.push_back(begin_state);
+  start_state_ = 0;
+  state_map_[begin_state] = 0;
 }
 
-///
+template<class Arc>
+typename Arc::Weight LmExampleDeterministicOnDemandFst<Arc>::Final(StateId s) {
+  KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
+  const std::vector<Label> &wseq = state_vec_[s];
+  float log_prob = -0.5; // e.g. log_prob = lm->GetLogProb(wseq, eos_symbol_);
+  return Weight(-log_prob); // assuming weight is FloatWeight.
+}
+
+template<class Arc>
+bool LmExampleDeterministicOnDemandFst<Arc>::GetArc(
+    StateId s, Label ilabel, Arc *oarc) {
+  KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
+  std::vector<Label> wseq = state_vec_[s];
+  float log_prob = -0.25; // e.g. log_prob = lm->GetLogProb(wseq, ilabel);
+  wseq.push_back(ilabel); // the code might be different if your histories are the
+  // other way around.
+
+  while (0) { // e.g. while !lm->HistoryStateExists(wseq)
+    wseq.erase(wseq.begin(), wseq.begin() + 1); // remove most distant element of history.
+    // note: if your histories are the other way round, you might just do
+    // wseq.pop() here.  
+  }
+  if (log_prob == -numeric_limits<float>::infinity()) { // assume this
+    // is what happens if prob of the word is zero.  Some LMs will never
+    // return zero.
+    return false; // no arc.
+  }
+  std::pair<const std::vector<Label>, StateId> new_value(
+      wseq,
+      static_cast<Label>(state_vec_.size()));
+  
+  // Now get state id for destination state.
+  typedef typename MapType::iterator IterType;  
+  std::pair<IterType, bool> result = state_map_.insert(new_value);
+  if (result.second == true) // was inserted
+    state_vec_.push_back(wseq);
+  oarc->ilabel = ilabel;
+  oarc->olabel = ilabel;
+  oarc->nextstate = result.first->second; // the next-state id.
+  oarc->weight = Weight(-log_prob);
+  return true;
+}
 
 } // end namespace fst
 

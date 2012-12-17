@@ -1187,3 +1187,24 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
     --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
    exp/tri4a/graph data/train_dev exp/tri5c1c_nnet/decode_train_dev &
 )
+
+( 
+ # tri5c1d is as tri5c1c (80 iterations, double samples per iter),
+ # but using the newer code [warning, using temporary Path.sh script],
+ # and mixing up.  We have about 3k leaves in this system, so mixnig
+ # up to 8k. 
+ steps/train_nnet_cpu_parallel10c.sh --minibatch-size 1000 \
+   --mix-up 8000 \
+   --apply-shrinking false \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 16 --num-hidden-layers 4 \
+   --alpha 4.0 --num-iters 80 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c1d_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c1d_nnet/decode_train_dev &
+)

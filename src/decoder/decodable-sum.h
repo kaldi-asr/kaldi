@@ -1,7 +1,7 @@
 // decoder/decodable-sum.h
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
-//                      Lukas Burget
+//                      Lukas Burget, Pawel Swietojanski
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #define KALDI_DECODER_DECODABLE_SUM_H_
 
 #include <vector>
+#include <utility>
 
 #include "base/kaldi-common.h"
 #include "itf/decodable-itf.h"
@@ -41,8 +42,9 @@ class DecodableSum: public DecodableInterface {
     CheckSizes();
   }
 
-  // Does not take ownership of pointers! 
-  DecodableSum(const std::vector<std::pair<DecodableInterface*, BaseFloat> > &decodables):
+  // Does not take ownership of pointers!
+  DecodableSum(
+      const std::vector<std::pair<DecodableInterface*, BaseFloat> > &decodables) :
       decodables_(decodables) { CheckSizes(); }
 
   void CheckSizes() {
@@ -53,15 +55,21 @@ class DecodableSum: public DecodableInterface {
                    decodables_[i].first->NumIndices() ==
                    decodables_[0].first->NumIndices());
   }
-  
+
   // Note, frames are numbered from zero.  But state_index is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 state_index) {
     BaseFloat sum = 0.0;
+    // int32 i=1;
     for (std::vector<std::pair<DecodableInterface*, BaseFloat> >::iterator iter = decodables_.begin();
          iter != decodables_.end();
-         ++iter)
+         ++iter) {
       sum += iter->first->LogLikelihood(frame, state_index) * iter->second;
+      // BaseFloat tmp = iter->first->LogLikelihood(frame, state_index);
+      // KALDI_LOG << "ITEM " << i << " contributed with loglike=" << tmp << " scaled by=" << iter->second;
+      // i+=1;
+      // sum += tmp * iter->second;
+     }
     return sum;
   }
 
@@ -70,14 +78,32 @@ class DecodableSum: public DecodableInterface {
   virtual bool IsLastFrame(int32 frame) {
     // We require all the decodables have the same #frames.  We don't check this though.
     return decodables_[0].first->IsLastFrame(frame);
-  }    
+  }
 
  private:
   std::vector<std::pair<DecodableInterface*, BaseFloat> > decodables_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableSum);
 };
 
+class DecodableSumScaled : public DecodableSum {
+ public:
+  DecodableSumScaled(DecodableInterface *d1, BaseFloat w1,
+                     DecodableInterface *d2, BaseFloat w2,
+                     BaseFloat scale)
+    : DecodableSum(d1, w1, d2, w2), scale_(scale) {}
 
+  DecodableSumScaled(const std::vector<std::pair<DecodableInterface*, BaseFloat> > &decodables,
+                     BaseFloat scale)
+    : DecodableSum(decodables), scale_(scale) {}
+
+  virtual BaseFloat LogLikelihood(int32 frame, int32 state_index) {
+    return scale_ * DecodableSum::LogLikelihood(frame, state_index);
+  }
+
+ private:
+  BaseFloat scale_;
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableSumScaled);
+};
 
 }  // namespace kaldi
 

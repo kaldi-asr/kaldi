@@ -51,6 +51,7 @@ static void GiveNnetCorrectTopology(Nnet *nnet,
   Component* component = &(nnet->GetComponent(nc - 1));
   if ((*mixture_prob_component =
        dynamic_cast<MixtureProbComponent*>(component)) == NULL) {
+    KALDI_LOG << "Adding MixtureProbComponent to neural net.";
     int32 dim = component->OutputDim();
     // Give it the same learning rate as the first updatable layer we have.
     BaseFloat learning_rate = GetFirstLearningRate(*nnet),
@@ -65,13 +66,15 @@ static void GiveNnetCorrectTopology(Nnet *nnet,
     nc++;
   }
   component = &(nnet->GetComponent(nc - 2));    
-  if ((*softmax_component = dynamic_cast<SoftmaxComponent*>(component)) != NULL)
+  if ((*softmax_component = dynamic_cast<SoftmaxComponent*>(component)) == NULL)
     KALDI_ERR << "Neural net has wrong topology: expected second-to-last "
-              << "component to be SoftmaxComponent.";
+              << "component to be SoftmaxComponent, type is "
+              << component->Type();
   component = &(nnet->GetComponent(nc - 3));
-  if ((*affine_component = dynamic_cast<AffineComponent*>(component)) != NULL)
+  if ((*affine_component = dynamic_cast<AffineComponent*>(component)) == NULL)
     KALDI_ERR << "Neural net has wrong topology: expected third-to-last "
-              << "component to be AffineComponent.";
+              << "component to be AffineComponent, type is "
+              << component->Type();
 }
 
 
@@ -110,6 +113,7 @@ void MixupNnet(const NnetMixupConfig &mixup_config,
                            mixup_config.perturb_stddev,
                            affine_component,
                            mixture_prob_component);
+  nnet->Check(); // Checks that dimensions all match up.
 }
 
 

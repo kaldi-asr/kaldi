@@ -220,7 +220,8 @@ class VectorBase {
   void CopyRowFromSp(const SpMatrix<OtherReal> &S, MatrixIndexT row);
   
   /// Extracts a column of the matrix M.
-  void CopyColFromMat(const MatrixBase<Real>& M , MatrixIndexT col);
+  template<typename OtherReal>
+  void CopyColFromMat(const MatrixBase<OtherReal>& M , MatrixIndexT col);
 
   /// Extracts the diagonal of the matrix M.
   void CopyDiagFromMat(const MatrixBase<Real>& M);

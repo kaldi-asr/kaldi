@@ -28,22 +28,15 @@ namespace kaldi {
 /// Configuration variables that will be given to the program that
 /// randomizes and weights the data for us.
 struct NnetDataRandomizerConfig {
-  bool local_balance; // If true, we try to ensure a local balance among
-  // classes (proportional to their overall counts), as far as possible.
-  
   int32 num_samples; // Total number of samples we want to train on (if >0).  The program
   // will select this many samples before it stops.
 
   BaseFloat num_epochs; // Total number of epochs we want (if >0).  The program will run
   // for this many epochs before it stops.
 
-  NnetDataRandomizerConfig(): local_balance(true), num_samples(-1),
-                              num_epochs(-1) { }
+  NnetDataRandomizerConfig(): num_samples(-1), num_epochs(-1) { }
 
   void Register(ParseOptions *po) {
-    po->Register("local-balance", &local_balance,
-                 "If true, we try to ensure the ratio of class labels is as "
-                 "constant as possible (over reasonably long timescales)");
     po->Register("num-epochs", &num_epochs, "If >0, this will define how many "
                  "times to train on the whole data.  Note, you will see some "
                  "samples more than once if frequency-power < 1.0.  You must "
@@ -54,11 +47,7 @@ struct NnetDataRandomizerConfig {
 
 };
 
-/// This class does the job of randomizing and reweighting the data,
-/// before training on it (the weights on samples are a mechanism
-/// to make common classes less common, to avoid wasting time,
-/// but then upweighting the samples so all the expectations are the
-/// the same.
+/// This class does the job of randomizing the data.
 class NnetDataRandomizer {
  public:
   NnetDataRandomizer(int32 left_context,
@@ -67,7 +56,8 @@ class NnetDataRandomizer {
       
   void AddTrainingFile(const Matrix<BaseFloat> &feats,
                        const Vector<BaseFloat> &spk_info,
-                       const std::vector<int32> &labels);
+                       const Posterior &pdf_post); // the "pdf_post" gives the
+  // pdf-level posteriors, e.g. as output by post-to-pdf-post.
   
   bool Done();
   void Next();
@@ -77,29 +67,9 @@ class NnetDataRandomizer {
   void Init(); // This function is called the first time Next() or Value() is
   // called.
   
-  /// Called from RandomizeSamples().  Get samples indexed first
-  /// by pdf-id, without any randomization or reweighting.
-  void GetRawSamples(
-      std::vector<std::vector<std::pair<int32, int32> > > *pdf_counts);
   /// Called from Next().
   void GetExample(const std::pair<int32, int32> &pair,
                   NnetTrainingExample *example) const;
-  
-  /// Called from RandomizeSamples().  Takes the samples indexed first by pdf,
-  /// which are assumed to be in random order for each pdf, and writes them in
-  /// pseudo-random order to *samples as one long sequence.  Uses a recursive
-  /// algorithm (based on splitting in two) that is designed to ensure a kind
-  /// of balance, e.g. each time we split in two we try to distribute examples
-  /// of a pdf equally between the two splits.  This will tend to reduce
-  /// the variance of the parameter estimates.  Note: the samples_by_pdf_input
-  /// is the input but is destroyed by the algorithm to save memory.
-  static void RandomizeSamplesRecurse(
-      std::vector<std::vector<std::pair<int32, int32> > > *samples_by_pdf_input,
-      std::vector<std::pair<int32, int32> > *samples);
-
-  static void RandomizeSamplesSimple(
-      const std::vector<std::vector<std::pair<int32, int32> > > &samples_by_pdf,
-      std::vector<std::pair<int32, int32> > *samples);
   
   /// Called when samples_ is empty: sets up samples_.
   void RandomizeSamples(); 
@@ -107,11 +77,12 @@ class NnetDataRandomizer {
   struct TrainingFile {
     CompressedMatrix feats;
     Vector<BaseFloat> spk_info;
-    std::vector<int32> labels; // Vector of pdf-ids (targets for training).
+    Posterior pdf_post; // pdf-level posteriors.  Typically a single
+    // element per frame, with weight 1.0, for ML/Viterbi training.
     TrainingFile(const MatrixBase<BaseFloat> &feats_in,
                  const VectorBase<BaseFloat> &spk_info_in,
-                 const std::vector<int32> &labels_in):
-        feats(feats_in), spk_info(spk_info_in), labels(labels_in) { }
+                 const Posterior &pdf_post_in):
+        feats(feats_in), spk_info(spk_info_in), pdf_post(pdf_post) { }
   };
   
   int32 left_context_;

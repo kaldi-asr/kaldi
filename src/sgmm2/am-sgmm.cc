@@ -474,8 +474,8 @@ void AmSgmm2::ComponentLogLikes(const Sgmm2PerFrameDerivedVars &per_frame_vars,
   bool speaker_dep_weights =
       (spk_vars->v_s.Dim() != 0 && HasSpeakerDependentWeights());
   if (speaker_dep_weights) {
-    KALDI_ASSERT(spk_vars->log_d_jms.size() == NumGroups());
-    KALDI_ASSERT(w_jmi_.size() == NumGroups() ||
+    KALDI_ASSERT(static_cast<int32>(spk_vars->log_d_jms.size()) == NumGroups());
+    KALDI_ASSERT(static_cast<int32>(w_jmi_.size()) == NumGroups() ||
                  "You need to call ComputeWeights().");
   }
   for (int32 ki = 0;  ki < num_gselect; ki++) {

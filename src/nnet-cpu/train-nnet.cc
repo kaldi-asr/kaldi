@@ -25,7 +25,6 @@ NnetAdaptiveTrainer::NnetAdaptiveTrainer(
     Nnet *nnet):
     config_(config), validation_set_(validation_set), nnet_(nnet) {
   num_phases_ = 0;
-  validation_tot_weight_ = TotalNnetTrainingWeight(validation_set);
   bool first_time = true;
   BeginNewPhase(first_time);
 }
@@ -35,10 +34,10 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
   { // First take care of training objf.
     if (!first_time)
       KALDI_LOG << "Training objective function (this phase) is "
-                << (logprob_this_phase_/weight_this_phase_) << " over "
-                << weight_this_phase_ << " frames.";
+                << (logprob_this_phase_/count_this_phase_) << " over "
+                << count_this_phase_ << " frames.";
     logprob_this_phase_ = 0.0;
-    weight_this_phase_ = 0.0;
+    count_this_phase_ = 0.0;
   }
   if (!first_time) { // normal case-- end old phase + begin new one.
     // Declare dot products (each element is a layer's dot product)
@@ -77,7 +76,7 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
 
     // For ease of viewing, scale down the progress stats by
     // the total weight of the validation-set frames.
-    progress_this_iter.Scale(1.0 / validation_tot_weight_);
+    progress_this_iter.Scale(1.0 / validation_set_.size());
     
     if (new_objf < old_objf && !config_.always_accept) {
       KALDI_LOG << "Objf degraded from " << old_objf << " to " << new_objf
@@ -132,7 +131,7 @@ void NnetAdaptiveTrainer::TrainOneMinibatch() {
   logprob_this_phase_ += DoBackprop(*nnet_,
                                     buffer_,
                                     nnet_);
-  weight_this_phase_ += TotalNnetTrainingWeight(buffer_);
+  count_this_phase_ += buffer_.size();
   buffer_.clear();
   minibatches_seen_this_phase_++;
   if (minibatches_seen_this_phase_ == config_.minibatches_per_phase) {
@@ -184,7 +183,7 @@ void NnetSimpleTrainer::TrainOneMinibatch() {
   logprob_this_phase_ += DoBackprop(*nnet_,
                                     buffer_,
                                     nnet_);
-  weight_this_phase_ += TotalNnetTrainingWeight(buffer_);
+  count_this_phase_ += buffer_.size();
   buffer_.clear();
   minibatches_seen_this_phase_++;
   if (minibatches_seen_this_phase_ == config_.minibatches_per_phase) {
@@ -196,10 +195,10 @@ void NnetSimpleTrainer::TrainOneMinibatch() {
 void NnetSimpleTrainer::BeginNewPhase(bool first_time) {
   if (!first_time)
     KALDI_LOG << "Training objective function (this phase) is "
-              << (logprob_this_phase_/weight_this_phase_) << " over "
-              << weight_this_phase_ << " frames.";
+              << (logprob_this_phase_/count_this_phase_) << " over "
+              << count_this_phase_ << " frames.";
   logprob_this_phase_ = 0.0;
-  weight_this_phase_ = 0.0;
+  count_this_phase_ = 0.0;
   minibatches_seen_this_phase_ = 0;
   num_phases_++;
 }

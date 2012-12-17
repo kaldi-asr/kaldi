@@ -49,6 +49,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SoftmaxComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
+  } else if (component_type == "AffineComponentA") {
+    ans = new AffineComponentA();
   } else if (component_type == "AffineComponentNobias") {
     ans = new AffineComponentNobias();
   } else if (component_type == "AffineComponentPreconditioned") {
@@ -318,7 +320,7 @@ void SigmoidComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void SigmoidComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
-                                const VectorBase<BaseFloat> &, //chunk_weights
+                                int32, // num_chunks
                                 Component *, // to_update
                                 Matrix<BaseFloat> *in_deriv) const {
   // we ignore in_value and to_update.
@@ -363,7 +365,7 @@ void TanhComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                              const MatrixBase<BaseFloat> &out_value,
                              const MatrixBase<BaseFloat> &out_deriv,
-                             const VectorBase<BaseFloat> &, // chunk_weights
+                             int32, // num_chunks
                              Component *, // to_update
                              Matrix<BaseFloat> *in_deriv) const {
   /*
@@ -398,7 +400,7 @@ void SoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
-                                const VectorBase<BaseFloat> &chunk_weights, // chunk_weights
+                                int32 num_chunks,
                                 Component *to_update, // only thing updated is counts_.
                                 Matrix<BaseFloat> *in_deriv) const {
   /*
@@ -431,26 +433,9 @@ void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
         dynamic_cast<SoftmaxComponent*>(to_update);
     // The next loop updates the counts_ variable, which is the soft-count of
     // each output dimension.
-    int32 num_chunks = chunk_weights.Dim(),
-          chunk_size = out_value.NumRows() / num_chunks;
+    int32 chunk_size = out_value.NumRows() / num_chunks;
     KALDI_ASSERT(num_chunks > 0 && chunk_size * num_chunks == out_value.NumRows());
-    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      BaseFloat chunk_weight = chunk_weights(chunk) / chunk_size; // the "chunk_weights"
-      // variable stores the weighting factor times the number of labeled frames
-      // in the chunk, which happens to be convenient when implementing l2
-      // regularization with SGD.  Here we want the actual weighting factor on
-      // the chunk; typically these weights will be close to one.  Note: this
-      // code assumes that this softmax layer doesn't undergo any frame splicing
-      // before the output, so the chunk_size equals the number of labels at the
-      // output.  This is a safe assumption, as we anticipate we won't be
-      // needing this count information in cases where such splicing might be
-      // applied.
-      SubMatrix<BaseFloat> output_chunk(out_value, chunk * chunk_size, chunk_size,
-                                        0, out_value.NumCols());
-      to_update_softmax->counts_.AddRowSumMat(chunk_weight, output_chunk, 1.0);
-      // Add the sum of the frames in the chunk to the counts, weighted by the
-      // chunk weight.
-    }
+    to_update_softmax->counts_.AddRowSumMat(1.0, out_value, 1.0);
   }
 }
 
@@ -678,7 +663,7 @@ void AffineComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
 void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                                const MatrixBase<BaseFloat> &,  // out_value
                                const MatrixBase<BaseFloat> &out_deriv,
-                               const VectorBase<BaseFloat> &chunk_weights,
+                               int32, //  num_chunks
                                Component *to_update_in,
                                Matrix<BaseFloat> *in_deriv) const {
   AffineComponent *to_update = dynamic_cast<AffineComponent*>(to_update_in);
@@ -737,7 +722,16 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   avg_input_.Read(is, binary);
   ExpectToken(is, binary, "<AvgInputCount>");
   ReadBasicType(is, binary, &avg_input_count_);
-  ExpectToken(is, binary, ostr_end.str());
+  std::string tok;
+  // back-compatibility code.  TODO: re-do this later.
+  ReadToken(is, binary, &tok);
+  if (tok == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ExpectToken(is, binary, ostr_end.str());
+  } else {
+    is_gradient_ = false;
+    KALDI_ASSERT(tok == ostr_end.str());
+  }
 }
 
 void AffineComponent::Write(std::ostream &os, bool binary) const {
@@ -755,6 +749,8 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   avg_input_.Write(os, binary);
   WriteToken(os, binary, "<AvgInputCount>");
   WriteBasicType(os, binary, avg_input_count_);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -907,7 +903,7 @@ void AffinePreconInputComponent::Backprop(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &, // out_value
     const MatrixBase<BaseFloat> &out_deriv,
-    const VectorBase<BaseFloat> &chunk_weights,
+    int32, //  num_chunks
     Component *to_update_in,
     Matrix<BaseFloat> *in_deriv) const {
   AffinePreconInputComponent *to_update =
@@ -1139,7 +1135,7 @@ void BlockAffineComponent::Backprop(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &, // out_value
     const MatrixBase<BaseFloat> &out_deriv,
-    const VectorBase<BaseFloat> &, // chunk_weights
+    int32, // num_chunks
     Component *to_update_in,
     Matrix<BaseFloat> *in_deriv) const {
   // This code mirrors the code in Propagate().
@@ -1302,7 +1298,7 @@ void PermuteComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void PermuteComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
-                                const VectorBase<BaseFloat> &, // chunk_weights
+                                int32, // num_chunks
                                 Component *to_update,
                                 Matrix<BaseFloat> *in_deriv) const {
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
@@ -1554,7 +1550,7 @@ void MixtureProbComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                                     const MatrixBase<BaseFloat> &,// out_value
                                     const MatrixBase<BaseFloat> &out_deriv,
-                                    const VectorBase<BaseFloat> &chunk_weights,
+                                    int32, // num_chunks
                                     Component *to_update_in,
                                     Matrix<BaseFloat> *in_deriv) const {
   MixtureProbComponent *to_update = dynamic_cast<MixtureProbComponent*>(
@@ -1765,10 +1761,9 @@ void SpliceComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void SpliceComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                const MatrixBase<BaseFloat> &, // out_value,
                                const MatrixBase<BaseFloat> &out_deriv,
-                               const VectorBase<BaseFloat> &chunk_weights,
+                               int32 num_chunks,
                                Component *to_update, // may == "this".
                                Matrix<BaseFloat> *in_deriv) const {
-  int32 num_chunks = chunk_weights.Dim();
  
  KALDI_ASSERT(out_deriv.NumRows() > 0 && num_chunks > 0);
 
@@ -1953,7 +1948,7 @@ void DctComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void DctComponent::Backprop(const MatrixBase<BaseFloat>&, // in_value,
                             const MatrixBase<BaseFloat>&, // out_value,
                             const MatrixBase<BaseFloat> &out_deriv,
-                            const VectorBase<BaseFloat> &chunk_weights,
+                            int32, // num_chunks
                             Component*,// to_update
                             Matrix<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(out_deriv.NumCols() == OutputDim());
@@ -2073,7 +2068,7 @@ void FixedLinearComponent::Propagate(const MatrixBase<BaseFloat> &in,
 void FixedLinearComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                     const MatrixBase<BaseFloat> &, // out_value
                                     const MatrixBase<BaseFloat> &out_deriv,
-                                    const VectorBase<BaseFloat> &, // chunk_weights,
+                                    int32, // num_chunks
                                     Component *, // to_update
                                     Matrix<BaseFloat> *in_deriv) const {
   in_deriv->Resize(out_deriv.NumRows(), mat_.NumCols());
@@ -2164,7 +2159,7 @@ void DropoutComponent::Propagate(
 void DropoutComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
-                                const VectorBase<BaseFloat> &, // chunk_weights,
+                                int32, // num_chunks
                                 Component *, // to_update
                                 Matrix<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(SameDim(in_value, out_value) && SameDim(in_value, out_deriv));
@@ -2230,6 +2225,209 @@ void AdditiveNoiseComponent::Propagate(
   *out = in;
   Matrix<BaseFloat> rand(in.NumRows(), in.NumCols());
   out->AddMat(stddev_, rand);
+}
+
+void AffineComponentA::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<AffineComponentA>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<AvgInput>");
+  avg_input_.Read(is, binary);
+  ExpectToken(is, binary, "<AvgInputCount>");
+  ReadBasicType(is, binary, &avg_input_count_);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "<InputScatter>");
+  input_scatter_.Read(is, binary);
+  ExpectToken(is, binary, "<OutputScatter>");
+  output_scatter_.Read(is, binary);  
+  ExpectToken(is, binary, "</AffineComponentA>");
+}
+
+void AffineComponentA::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<AffineComponentA>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<AvgInput>");
+  avg_input_.Write(os, binary);
+  WriteToken(os, binary, "<AvgInputCount>");
+  WriteBasicType(os, binary, avg_input_count_);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<InputScatter>");
+  input_scatter_.Write(os, binary);
+  WriteToken(os, binary, "<OutputScatter>");
+  output_scatter_.Write(os, binary);  
+  WriteToken(os, binary, "</AffineComponentA>");
+}
+
+AffineComponentA::AffineComponentA(const AffineComponent &component):
+    AffineComponent(component) { }
+
+void AffineComponentA::InitializeScatter() {
+  KALDI_ASSERT(is_gradient_ &&
+               "InitializeScatter should only be called on gradients.");
+  KALDI_ASSERT(input_scatter_.NumRows() == 0 &&
+               output_scatter_.NumRows() == 0 &&
+               "InitializeScatter called when already initialized.");
+  input_scatter_.Resize(InputDim() + 1); // + 1 because of the bias; we include
+  // that in the input dimension.
+  output_scatter_.Resize(OutputDim() + 1);  
+}
+
+void AffineComponentA::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+  input_scatter_.Scale(scale);
+  output_scatter_.Scale(scale);
+}
+
+void AffineComponentA::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const AffineComponentA *other =
+      dynamic_cast<const AffineComponentA*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+  input_scatter_.AddSp(alpha, other->input_scatter_);
+  output_scatter_.AddSp(alpha, other->output_scatter_);  
+}
+
+Component* AffineComponentA::Copy() const {
+  // The initializer below will be the one that takes AffineComponent,
+  // so we need to take care of the remaining parameters.
+  AffineComponentA *ans = new AffineComponentA(*this);
+  ans->input_scatter_ = input_scatter_;
+  ans->output_scatter_ = output_scatter_;
+  return ans;
+}
+
+void AffineComponentA::UpdateSimple(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv) {
+  KALDI_ASSERT(this->is_gradient_);
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
+  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
+                           in_value, kNoTrans, 1.0);
+
+  // The rest of this function is about updating the scatters.
+  if (input_scatter_.NumRows() != 0) { // scatter is to be accumulated..
+    Matrix<double> in_value_dbl(in_value.NumCols() + 1,
+                                in_value.NumRows());
+
+    in_value_dbl.Range(0, in_value.NumCols(),
+                       0, in_value.NumRows()).CopyFromMat(in_value, kTrans);
+    in_value_dbl.Row(in_value.NumRows()).Set(1.0);
+    input_scatter_.AddMat2(1.0, in_value_dbl, kNoTrans, 1.0);
+  }
+  if (output_scatter_.NumRows() != 0) {
+    Matrix<double> out_deriv_dbl(out_deriv, kTrans);
+    output_scatter_.AddMat2(1.0, out_deriv_dbl, kNoTrans, 1.0);
+  }
+}
+
+// static
+void AffineComponentA::ComputeTransform(const SpMatrix<double> &scatter_in,
+                                        const PreconditionConfig &config,
+                                        double tot_count,
+                                        bool forward,
+                                        bool is_gradient,
+                                        TpMatrix<double> *transform,
+                                        MatrixTransposeType *trans) {
+  SpMatrix<double> scatter(scatter_in);
+  KALDI_ASSERT(scatter.Trace() > 0);
+
+  scatter.Scale(1.0 / tot_count);
+  // Smooth using "alpha"-- smoothing with the unit matrix.
+
+  double d = config.alpha * scatter.Trace() / scatter.NumRows();
+  for (int32 i = 0; i < scatter.NumRows(); i++)
+    scatter(i, i) += d;
+  
+  transform->Resize(scatter.NumRows());
+  transform->Cholesky(scatter);
+  // "transform" is now the cholesky factor C.
+
+  // Now, the scatter may be viewed as a scatter of gradients (not parameters),
+  // so call it S = \sum g g^T.  [we omit the index on g.]  We now have S = C
+  // C^T.  the transformed g would be g' = C^{-1} g.  [this would make S' unit.]
+  // If renormalize == true, we want to ensure that trace(C^{-1} S C^{-T}) equals
+  // trace(S).  This is a way of ensuring that the magnitude of the gradients is
+  // about the same after transformation.  Now, trace(C^{-1} S C^{-T}) is trace(I) =
+  // dim(S).  So to renormalize to make it equal to trace(S), we'd have to scale
+  // by trace(S)/dim(S), which is equivalent to scaling C itself by
+  // [trace(S)/dim(S)]^{-0.5}.  Note: this assumes that alpha is small.
+  // We may have to revisit this later
+
+  transform->Scale(pow(scatter.Trace() / scatter.NumRows(), -0.5));
+
+  // Now take care of whether it should be inverted or not, and
+  // transposed or not.
+  if (is_gradient) {
+    if (forward) transform->Invert(); // g' <-- C^{-1} g
+    // else: g <-- C g'
+    *trans = kNoTrans;  
+  } else {
+    if (!forward) transform->Invert(); // p <-- C^{-T} p'
+    // else: p' <-- C^T p
+    *trans = kTrans;
+  }
+}
+
+
+void AffineComponentA::Transform(
+    const PreconditionConfig &config,
+    bool forward,
+    AffineComponent *component) const {
+  if (!config.do_precondition) return; // There is nothing to do in this case.
+  // (this option will probably only be used for testing.)
+  
+  KALDI_ASSERT(component != NULL);
+
+  // "params" are the parameters of "component" that we'll be changing.
+  // Get them as a single matrix.
+  Matrix<double> params(InputDim() + 1, OutputDim());
+  params.Range(0, InputDim(), 0, OutputDim()).CopyFromMat(
+      component->linear_params_);
+  params.CopyColFromVec(Vector<double>(component->bias_params_),
+                        InputDim());
+  
+  double tot_count = input_scatter_(InputDim(), InputDim());
+  // This equals the total count, because for each frame the last
+  // element of the extended input vector is 1.
+
+  // Compute the input-side cholesky factor.
+  TpMatrix<double> C_in;
+  MatrixTransposeType transpose_in;
+  ComputeTransform(input_scatter_, config, tot_count,
+                   forward, component->is_gradient_,
+                   &C_in, &transpose_in);
+
+  Matrix<double> params_temp(InputDim() + 1, OutputDim());
+  params_temp.AddTpMat(1.0, C_in, transpose_in, params_temp, kNoTrans, 0.0);
+
+  TpMatrix<double> &C_out(C_in); // reuse the memory.
+  MatrixTransposeType transpose_out;
+  ComputeTransform(output_scatter_, config, tot_count,
+                   forward, component->is_gradient_,
+                   &C_out, &transpose_out);
+  // we'll be multiplying on the right, so we reverse the transpose-ness.
+  transpose_out = (transpose_out == kNoTrans ? kTrans : kNoTrans);
+  params.AddMatTp(1.0, params_temp, kNoTrans, C_out, transpose_out, 0.0);
+  
+  // OK, we've done transforming the parameters or gradients.
+
+  // Copy the "params" back to "component".
+  component->linear_params_.CopyFromMat(
+      params.Range(0, InputDim(), 0, OutputDim()));
+  component->bias_params_.CopyColFromMat(params,
+                                         InputDim());  
 }
 
 

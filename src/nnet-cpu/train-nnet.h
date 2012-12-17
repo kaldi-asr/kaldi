@@ -93,7 +93,7 @@ class NnetAdaptiveTrainer {
   // Things we were given in the initializer:
   NnetAdaptiveTrainerConfig config_;
   const std::vector<NnetTrainingExample> &validation_set_; // Stores validation data, used
-  BaseFloat validation_tot_weight_;
+
   // to compute gradient on validation set.
   Nnet *nnet_; // the nnet we're training.
 
@@ -106,7 +106,7 @@ class NnetAdaptiveTrainer {
   Nnet validation_gradient_; // validation gradient at start of this phase.
   Nnet nnet_snapshot_; // snapshot of nnet params at start of this phase.
   double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
-  double weight_this_phase_; // weight corresponding to the above.
+  double count_this_phase_; // frame count corresponding to the above.
   
   // Stuff that's not really specific to a phase:
   BaseFloat initial_validation_objf_; // validation objf at start.
@@ -166,7 +166,7 @@ class NnetSimpleTrainer {
   std::vector<NnetTrainingExample> buffer_;
 
   double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
-  double weight_this_phase_; // weight corresponding to the above.
+  double count_this_phase_; // count corresponding to the above.
 };
 
 

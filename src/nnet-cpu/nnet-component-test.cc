@@ -65,10 +65,9 @@ void UnitTestGenericComponentInternal(const Component &component) {
         (component_copy->BackpropNeedsInput() ? input : empty_mat),
         &output_ref =
         (component_copy->BackpropNeedsOutput() ? output : empty_mat);
-    Vector<BaseFloat> chunk_weights(1);
-    chunk_weights(0) = output.NumRows();
+    int32 num_chunks = 1;
     component_copy->Backprop(input_ref, output_ref,
-                             output_deriv, chunk_weights, NULL, &input_deriv);
+                             output_deriv, num_chunks, NULL, &input_deriv);
 
     int32 num_ok = 0, num_bad = 0, num_tries = 7;
     KALDI_LOG << "Comparing feature gradients " << num_tries << " times.";
@@ -129,11 +128,10 @@ void UnitTestGenericComponentInternal(const Component &component) {
         output_deriv.Row(i).CopyFromVec(objf_vec);
       Matrix<BaseFloat> input_deriv; // (input.NumRows(), input.NumCols());
 
-      Vector<BaseFloat> chunk_weights(1);
-      chunk_weights(0) = output.NumRows();
+      int32 num_chunks = 1;
 
       // This will compute the parameter gradient.
-      ucomponent->Backprop(input, output, output_deriv, chunk_weights,
+      ucomponent->Backprop(input, output, output_deriv, num_chunks,
                            gradient_ucomponent, &input_deriv);
 
       // Now compute the perturbed objf.
@@ -460,9 +458,8 @@ int BasicDebugTestForSplice (bool output=false) {
   if (output)
     KALDI_WARN << out;
   
-  Vector<BaseFloat> chunk_weights(1);
-  chunk_weights(0) = 1;
-  c->Backprop(in, in, out, chunk_weights, c, &in);
+  int32 num_chunks = 1;
+  c->Backprop(in, in, out, num_chunks, c, &in);
   
   if (output)
     KALDI_WARN << in ;

@@ -1137,6 +1137,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 
 ( # 4y45d is as 4y45, but using 4x the #iters and add-layers-period and
   # shrink-interval, and 1/4 the samples per iter.
+  # This is kind of broken-- there was an instability RE shrinking.
   steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 80 --add-layers-period 8 \
     --shrink-interval 12 --alpha 4.0 \
     --initial-learning-rate 0.02 --final-learning-rate 0.004 \
@@ -1242,6 +1243,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
  # validation objf is much better, -1.26 -> -1.20.
  # This seems very promising.
  # CAUTION: I seem to have overwritten this directory below.
+ # Renaming it to 4y45e2old, and rerunning.
 
   steps/train_nnet_cpu_parallel10.sh --local-balance false --num-iters 10 --add-layers-period 1 \
     --num-iters-final 5 \
@@ -1249,11 +1251,11 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
     --initial-learning-rate 0.02 --final-learning-rate 0.004 \
     --samples-per-iteration 400000 --minibatch-size 1000 \
     --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
-    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e2_nnet
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y45e2old_nnet
 
    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
-     exp/tri3b/graph data/test exp/tri4y45e2_nnet/decode
+     exp/tri3b/graph data/test exp/tri4y45e2old_nnet/decode
 )
 
 
@@ -1290,3 +1292,48 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4y45e4_nnet/decode
 )
+
+
+
+( 
+  # 4y46 is as 4y45e2, but the *old* version (see above) where I was using 10 iters
+  # (WER was 1.84%, validation objf was -1.20).  I am adding the "mixing up" to it.
+  # Now, 1800 was the target #leaves in the original system (tri3b), so I'm using
+  # 4000 as a reasonable number to mix up to.
+  # using the 10c script which supports the --mix-up option.
+  # It is better than the baseline, 1.84% -> 1.78%, -1.20 -> -1.16.
+
+  steps/train_nnet_cpu_parallel10c.sh --local-balance false --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y46_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y46_nnet/decode
+)
+
+
+( 
+  # 4y47 is as 4y46 but redoing it after changing the code.
+  # Caution: I temporarily changed the script to say Path not path, so I could
+  # use a different binary directory.
+  # (almost the same: 1.78 -> 1.75% WER)
+  steps/train_nnet_cpu_parallel10c.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y47_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y47_nnet/decode
+)
+

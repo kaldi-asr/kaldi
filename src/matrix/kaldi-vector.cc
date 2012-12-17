@@ -510,13 +510,23 @@ Real VectorBase<Real>::Min() const {
 
 
 template<typename Real>
-void VectorBase<Real>::CopyColFromMat(const MatrixBase<Real> &mat, MatrixIndexT col) {
+template<typename OtherReal>
+void VectorBase<Real>::CopyColFromMat(const MatrixBase<OtherReal> &mat, MatrixIndexT col) {
   KALDI_ASSERT(col < mat.NumCols());
   KALDI_ASSERT(dim_ == mat.NumRows());
   for (MatrixIndexT i = 0; i < dim_; i++)
     data_[i] = mat(i, col);
   // can't do this very efficiently so don't really bother. could improve this though.
 }
+// instantiate the template above.
+template
+void VectorBase<float>::CopyColFromMat(const MatrixBase<float> &mat, MatrixIndexT col);
+template
+void VectorBase<float>::CopyColFromMat(const MatrixBase<double> &mat, MatrixIndexT col);
+template
+void VectorBase<double>::CopyColFromMat(const MatrixBase<float> &mat, MatrixIndexT col);
+template
+void VectorBase<double>::CopyColFromMat(const MatrixBase<double> &mat, MatrixIndexT col);
 
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromMat(const MatrixBase<Real> &M) {

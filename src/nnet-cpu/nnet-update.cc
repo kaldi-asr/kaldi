@@ -118,19 +118,22 @@ BaseFloat NnetUpdater::ComputeObjfAndDeriv(
   const Matrix<BaseFloat> &output(forward_data_[num_components]);
   KALDI_ASSERT(SameDim(output, *deriv));
   for (int32 m = 0; m < num_chunks_; m++) {
-    int32 label = data[m].label;
-    BaseFloat weight = data[m].weight;
-    KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
-    BaseFloat this_prob = output(m, label);
-    if (this_prob < floor) {
-      KALDI_WARN << "Probability is " << this_prob << ", flooring to "
-                 << floor;
-      this_prob = floor;
-    }
-    tot_objf += weight * log(this_prob);
-    tot_weight += weight;
-    (*deriv)(m, label) = weight / this_prob;
-    
+    for (size_t i = 0; i < data[m].labels.size(); i++) {
+      int32 label = data[m].labels[i].first;
+      BaseFloat weight = data[m].labels[i].second;
+      KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
+      BaseFloat this_prob = output(m, label);
+      if (this_prob < floor) {
+        KALDI_WARN << "Probability is " << this_prob << ", flooring to "
+                   << floor;
+        this_prob = floor;
+      }
+      tot_objf += weight * log(this_prob);
+      tot_weight += weight;
+      (*deriv)(m, label) += weight / this_prob; // note: we could equally
+      // well have said = instead of += above, based on the assumption that
+      // the labels are unique for each data[m].
+    }    
   }
   KALDI_VLOG(4) << "Objective function is " << (tot_objf/tot_weight) << " over "
                 << tot_weight << " samples (weighted).";
@@ -140,9 +143,7 @@ BaseFloat NnetUpdater::ComputeObjfAndDeriv(
 
 void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
                            Matrix<BaseFloat> *deriv) {
-  Vector<BaseFloat> sample_weights(data.size());
-  for (size_t i = 0; i < data.size(); i++)
-    sample_weights(i) = data[i].weight;
+  int32 num_chunks = data.size();
   // We assume ComputeObjfAndDeriv has already been called.
   for (int32 c = nnet_.NumComponents() - 1; c >= 0; c--) {
     const Component &component = nnet_.GetComponent(c);
@@ -153,7 +154,7 @@ void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
     Matrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const Matrix<BaseFloat> &output_deriv(*deriv);
  
-    component.Backprop(input, output, output_deriv, sample_weights,
+    component.Backprop(input, output, output_deriv, num_chunks,
                        component_to_update, &input_deriv);
     *deriv = input_deriv;
   }
@@ -193,7 +194,8 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
   double ans = 0.0;
   for (size_t i = 0; i < egs.size(); i++)
-    ans += egs[i].weight;
+    for (size_t j = 0; j < egs[i].labels.size(); j++)
+      ans += egs[i].labels[j].second;
   return ans;
 }
 
@@ -236,7 +238,7 @@ BaseFloat ComputeNnetGradient(
                            batch,
                            gradient);
   }
-  return tot_objf / TotalNnetTrainingWeight(validation_set);
+  return tot_objf / validation_set.size();
 }
 
 BaseFloat ComputeNnetObjf(
@@ -266,10 +268,13 @@ void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
   WriteToken(os, binary, "<NnetTrainingExample>");
-  WriteToken(os, binary, "<Weight>");
-  WriteBasicType(os, binary, weight);
-  WriteToken(os, binary, "<Label>");
-  WriteBasicType(os, binary, label);
+  WriteToken(os, binary, "<Labels>");
+  int32 size = labels.size();
+  WriteBasicType(os, binary, size);
+  for (int32 i = 0; i < size; i++) {
+    WriteBasicType(os, binary, labels[i].first);
+    WriteBasicType(os, binary, labels[i].second);
+  }
   WriteToken(os, binary, "<InputFrames>");
   input_frames.Write(os, binary);
   WriteToken(os, binary, "<SpkInfo>");
@@ -279,11 +284,15 @@ void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
 void NnetTrainingExample::Read(std::istream &is, bool binary) {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
-  ExpectToken(is, binary, "<NnetTrainingExample>");
-  ExpectToken(is, binary, "<Weight>");
-  ReadBasicType(is, binary, &weight);
-  ExpectToken(is, binary, "<Label>");
-  ReadBasicType(is, binary, &label);
+  ExpectToken(is, binary, "<NnetTrainingExample>");  
+  ExpectToken(is, binary, "<Labels>");
+  int32 size;
+  ReadBasicType(is, binary, &size);
+  labels.resize(size);
+  for (int32 i = 0; i < size; i++) {
+    ReadBasicType(is, binary, &(labels[i].first));
+    ReadBasicType(is, binary, &(labels[i].second));
+  }
   ExpectToken(is, binary, "<InputFrames>");
   input_frames.Read(is, binary);
   ExpectToken(is, binary, "<SpkInfo>");

@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #include "nnet-cpu/nnet-compute.h"
+#include "util/kaldi-holder.h" // for Posterior
 
 namespace kaldi {
 
@@ -38,18 +39,13 @@ class NnetComputer {
   /// The forward-through-the-layers part of the computation.
   void Propagate();
   
-  /// Backprop does not currently support individual weights for individual
-  /// frames, but we could add this if it were needed.  Note: the
-  /// utterance_weight is needed by this function only for obscure reasons.
-  void Backprop(BaseFloat utterance_weight,
-                Matrix<BaseFloat> *tmp_deriv);
+  void Backprop(Matrix<BaseFloat> *tmp_deriv);
                 
   
   /// Computes objf derivative at last layer, and returns objective
   /// function summed over labels and multiplied by utterance_weight.
   /// [Note: utterance_weight will normally be 1.0].
-  BaseFloat ComputeLastLayerDeriv(const std::vector<int32> &labels,
-                                  BaseFloat utterance_weight,
+  BaseFloat ComputeLastLayerDeriv(const Posterior &pdf_post,
                                   Matrix<BaseFloat> *deriv) const;
   
   MatrixBase<BaseFloat> &GetOutput() { return forward_data_.back(); }
@@ -113,8 +109,7 @@ void NnetComputer::Propagate() {
   }
 }
 
-BaseFloat NnetComputer::ComputeLastLayerDeriv(const std::vector<int32> &labels,
-                                              BaseFloat utterance_weight,
+BaseFloat NnetComputer::ComputeLastLayerDeriv(const Posterior &pdf_post,
                                               Matrix<BaseFloat> *deriv) const {
   int32 num_components = nnet_.NumComponents();
   double tot_objf = 0.0, tot_weight = 0.0;
@@ -122,20 +117,24 @@ BaseFloat NnetComputer::ComputeLastLayerDeriv(const std::vector<int32> &labels,
   const Matrix<BaseFloat> &last_layer_output = forward_data_[num_components];
   int32 num_frames = last_layer_output.NumRows(),
           num_pdfs = last_layer_output.NumCols();
-  KALDI_ASSERT(labels.size() == static_cast<size_t>(num_frames));
+  KALDI_ASSERT(pdf_post.size() == static_cast<size_t>(num_frames));
   deriv->Resize(num_frames, num_pdfs); // will zero it.
   for (int32 i = 0; i < deriv->NumRows(); i++) {
-    int32 label = labels[i];
-    KALDI_ASSERT(label >= 0 && label < num_pdfs);
-    BaseFloat this_prob = last_layer_output(i, label);
-    if (this_prob < floor) {
-      KALDI_WARN << "Probability is " << this_prob << ", flooring to "
-                 << floor;
-      this_prob = floor;
+    for (size_t j = 0; j < pdf_post[i].size(); j++) {
+      int32 label = pdf_post[i][j].first;
+      BaseFloat weight = pdf_post[i][j].second;
+      KALDI_ASSERT(label >= 0 && label < num_pdfs);
+      BaseFloat this_prob = last_layer_output(i, label);
+      if (this_prob < floor) {
+        KALDI_WARN << "Probability is " << this_prob << ", flooring to "
+                   << floor;
+        this_prob = floor;
+      }
+      tot_objf += weight * log(this_prob);
+      tot_weight += weight;
+      (*deriv)(i, label) += weight / this_prob; // could be "=", assuming the
+      // labels are all distinct.
     }
-    tot_objf += utterance_weight * log(this_prob);
-    tot_weight += utterance_weight;
-    (*deriv)(i, label) = utterance_weight / this_prob;
   }
   KALDI_VLOG(4) << "Objective function is " << (tot_objf/tot_weight) <<
       " per frame over " << tot_weight << " samples.";
@@ -143,17 +142,12 @@ BaseFloat NnetComputer::ComputeLastLayerDeriv(const std::vector<int32> &labels,
 }
 
 
-void NnetComputer::Backprop(BaseFloat utterance_weight,
-                            Matrix<BaseFloat> *tmp_deriv) {
+void NnetComputer::Backprop(Matrix<BaseFloat> *tmp_deriv) {
   KALDI_ASSERT(nnet_to_update_ != NULL); // Or why do backprop?
   // If later this reasoning changes, we can change this
   // statement and add logic to make component_to_update, below,
   // NULL if necessary.
-  Vector<BaseFloat> per_chunk_weights(1);
-  int32 num_frames = forward_data_.back().NumRows();
-  per_chunk_weights(0) = utterance_weight * num_frames; // This is what
-  // the Component code expects as the vector of chunk weights.  Note:
-  // we are using just one block of features so the number of chunks is 1.
+  int32 num_chunks = 1;
   
   for (int32 c = nnet_.NumComponents() - 1; c >= 0; c--) {
     const Component &component = nnet_.GetComponent(c);
@@ -162,7 +156,7 @@ void NnetComputer::Backprop(BaseFloat utterance_weight,
                             &output = forward_data_[c+1],
                       &output_deriv = *tmp_deriv;
     Matrix<BaseFloat> input_deriv;
-    component.Backprop(input, output, output_deriv, per_chunk_weights,
+    component.Backprop(input, output, output_deriv, num_chunks,
                        component_to_update, &input_deriv);
     *tmp_deriv = input_deriv;
   }
@@ -182,15 +176,14 @@ BaseFloat NnetGradientComputation(const Nnet &nnet,
                                   const MatrixBase<BaseFloat> &input,
                                   const VectorBase<BaseFloat> &spk_info,
                                   bool pad_input,
-                                  BaseFloat utterance_weight,
-                                  const std::vector<int32> &labels,
+                                  const Posterior &pdf_post,
                                   Nnet *nnet_to_update) {
   NnetComputer nnet_computer(nnet, input, spk_info, pad_input, nnet_to_update);
   nnet_computer.Propagate();
   Matrix<BaseFloat> deriv;
   BaseFloat ans;
-  ans = nnet_computer.ComputeLastLayerDeriv(labels, utterance_weight, &deriv);  
-  nnet_computer.Backprop(utterance_weight, &deriv);
+  ans = nnet_computer.ComputeLastLayerDeriv(pdf_post, &deriv);  
+  nnet_computer.Backprop(&deriv);
   return ans;
 }
 

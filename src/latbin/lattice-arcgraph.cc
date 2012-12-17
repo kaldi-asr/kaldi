@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
 
     // options for lattice determinization
     fst::DeterminizeLatticeOptions lat_opts;
-    lat_opts.max_mem = 50000000; // 50 MB
+    lat_opts.max_mem = 200000000; // 200 MB
     lat_opts.max_loop = 500000;
     lat_opts.delta = fst::kDelta;
 

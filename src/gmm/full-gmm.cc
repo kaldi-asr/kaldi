@@ -1,8 +1,10 @@
 // gmm/full-gmm.cc
 
-// Copyright 2009-2012  Jan Silovsky;  Saarland University;
-//                      Microsoft Corporation;  Georg Stemmer;
-//                      Johns Hopkins University (author: Daniel Povey)
+// Copyright 2009-2011  Jan Silovsky;
+//                      Saarland University (Author: Arnab Ghoshal);
+//                      Microsoft Corporation
+// Copyright 2012       Johns Hopkins University (author: Daniel Povey);
+//                      Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +19,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 #include <limits>
+#include <string>
 #include <queue>
+#include <utility>
+using std::pair;
+#include <vector>
+using std::vector;
+
 #include "gmm/full-gmm.h"
 #include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm.h"
@@ -117,8 +126,8 @@ int32 FullGmm::ComputeGconsts() {
   return num_bad;
 }
 
-void FullGmm::Split(int32 target_components, float perturb_factor, 
-                    std::vector<int32> *history) {
+void FullGmm::Split(int32 target_components, float perturb_factor,
+                    vector<int32> *history) {
   if (target_components <= NumGauss() || NumGauss() == 0) {
     KALDI_WARN << "Cannot split from " << NumGauss() <<  " to "
                << target_components << " components";
@@ -176,7 +185,22 @@ void FullGmm::Split(int32 target_components, float perturb_factor,
   ComputeGconsts();
 }
 
-void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
+void FullGmm::Perturb(float perturb_factor) {
+  int32 num_comps = NumGauss(),
+      dim = Dim();
+  Vector<BaseFloat> rand_vec(dim);
+  for (int32 i = 0; i < num_comps; i++) {
+    rand_vec.SetRandn();
+    TpMatrix<BaseFloat> invcovar_l(dim);
+    invcovar_l.Cholesky(inv_covars_[i]);
+    rand_vec.MulTp(invcovar_l, kTrans);
+    means_invcovars_.Row(i).AddVec(perturb_factor, rand_vec);
+  }
+  ComputeGconsts();
+}
+
+
+void FullGmm::Merge(int32 target_components, vector<int32> *history) {
   if (target_components <= 0 || NumGauss() < target_components) {
     KALDI_ERR << "Invalid argument for target number of Gaussians (="
         << target_components << ")";
@@ -191,7 +215,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   if (target_components == 1) {  // global mean and variance
     Vector<BaseFloat> weights(weights_);
     // Undo variance inversion and multiplication of mean by this
-    std::vector<SpMatrix<BaseFloat> > covars(num_comp);
+    vector<SpMatrix<BaseFloat> > covars(num_comp);
     Matrix<BaseFloat> means(num_comp, dim);
     for (int32 i = 0; i < num_comp; i++) {
       covars[i].Resize(dim);
@@ -230,7 +254,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
   // If more than 1 merged component is required, do greedy bottom-up
   // clustering, always picking the pair of components that lead to the smallest
   // decrease in likelihood.
-  std::vector<bool> discarded_component(num_comp);
+  vector<bool> discarded_component(num_comp);
   Vector<BaseFloat> logdet(num_comp);   // logdet for each component
   logdet.SetZero();
   for (int32 i = 0; i < num_comp; i++) {
@@ -241,7 +265,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
 
   // Undo variance inversion and multiplication of mean by this
   // Makes copy of means and vars for all components.
-  std::vector<SpMatrix<BaseFloat> > vars(num_comp);
+  vector<SpMatrix<BaseFloat> > vars(num_comp);
   Matrix<BaseFloat> means(num_comp, dim);
   for (int32 i = 0; i < num_comp; i++) {
     vars[i].Resize(dim);
@@ -353,7 +377,7 @@ void FullGmm::Merge(int32 target_components, std::vector<int32> *history) {
 }
 
 BaseFloat FullGmm::MergePreselect(int32 target_components,
-                                  const std::vector<std::pair<int32, int32> > &preselect) {
+                                  const vector<pair<int32, int32> > &preselect) {
   KALDI_ASSERT(!preselect.empty());
   double ans = 0.0;
   if (target_components <= 0 || NumGauss() < target_components) {
@@ -366,16 +390,15 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
     KALDI_WARN << "No components merged, as target = total.";
     return 0.0;
   }
-  typedef std::pair<BaseFloat, std::pair<int32, int32> > QueueElem; // this is
-  // the likelihood change (a negative or zero value), and then the pair of
-  // indices.
+  // likelihood change (a negative or zero value), and then the pair of indices.
+  typedef pair<BaseFloat, pair<int32, int32> > QueueElem;
   std::priority_queue<QueueElem> queue;
-  
+
   int32 num_comp = NumGauss(), dim = Dim();
-  
+
   // Do greedy bottom-up clustering, always picking the pair of components that
   // lead to the smallest decrease in likelihood.
-  std::vector<bool> discarded_component(num_comp);
+  vector<bool> discarded_component(num_comp);
   Vector<BaseFloat> logdet(num_comp);   // logdet for each component
   logdet.SetZero();
   for (int32 i = 0; i < num_comp; i++) {
@@ -387,7 +410,7 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
   // Undo variance inversion and multiplication of mean by
   // inverse variance.
   // Makes copy of means and vars for all components.
-  std::vector<SpMatrix<BaseFloat> > vars(num_comp);
+  vector<SpMatrix<BaseFloat> > vars(num_comp);
   Matrix<BaseFloat> means(num_comp, dim);
   for (int32 i = 0; i < num_comp; i++) {
     vars[i].Resize(dim);
@@ -412,8 +435,8 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
         delta_like = w_sum * merged_logdet - w1 * logdet(idx1) - w2 * logdet(idx2);
     queue.push(std::make_pair(delta_like, preselect[i]));
   }
-  
-  std::vector<int32> mapping(num_comp); // map of old index to where it
+
+  vector<int32> mapping(num_comp);  // map of old index to where it
   // got merged to.
   for (int32 i = 0; i < num_comp; i++) mapping[i] = i;
 
@@ -431,8 +454,8 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
     // their data is.]
     while (discarded_component[idx1]) idx1 = mapping[idx1];
     while (discarded_component[idx2]) idx2 = mapping[idx2];
-    if (idx1 == idx2) continue; // can't merge something with itself.
-    
+    if (idx1 == idx2) continue;  // can't merge something with itself.
+
     BaseFloat delta_log_like;
     { // work out delta_log_like.
       BaseFloat w1 = weights_(idx1), w2 = weights_(idx2), w_sum = w1 + w2;
@@ -442,11 +465,11 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
       delta_log_like = w_sum * merged_logdet - w1 * logdet(idx1) - w2 * logdet(idx2);
     }
     if (ApproxEqual(delta_log_like, delta_log_like_old) ||
-        delta_log_like > delta_log_like_old) { // if the log-like change did
-      // not change, or if it actually got smaller (closer to zero, more
-      // positive), then merge the components-- otherwise put it back on the
-      // queue.  Note: there is no test for "freshness"-- we assume nothing
-      // is fresh.
+        delta_log_like > delta_log_like_old) {
+      // if the log-like change did not change, or if it actually got smaller
+      // (closer to zero, more positive), then merge the components; otherwise
+      // put it back on the queue.  Note: there is no test for "freshness" --
+      // we assume nothing is fresh.
       BaseFloat w1 = weights_(idx1), w2 = weights_(idx2);
       BaseFloat w_sum = w1 + w2;
       // merge means
@@ -483,14 +506,14 @@ BaseFloat FullGmm::MergePreselect(int32 target_components,
       removed++;
     } else {
       QueueElem new_elem(delta_log_like, std::make_pair(idx1, idx2));
-      queue.push(new_elem); // push back more accurate elem.
+      queue.push(new_elem);  // push back more accurate elem.
     }
   }
 
   // Renumber the components.
   int32 cur_idx = 0;
   for (int32 i = 0; i < num_comp; i++) {
-    if (mapping[i] == i) { // This component is kept, not merged into another.
+    if (mapping[i] == i) {  // This component is kept, not merged into another.
       weights_(cur_idx) = weights_(i);
       means_invcovars_.Row(cur_idx).CopyFromVec(means_invcovars_.Row(i));
       inv_covars_[cur_idx].CopyFromSp(inv_covars_[i]);
@@ -567,7 +590,7 @@ void FullGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
   loglikes->Resize(gconsts_.Dim(), kUndefined);
   loglikes->CopyFromVec(gconsts_);
   int32 dim = Dim();
-  KALDI_ASSERT(dim == data.Dim());  
+  KALDI_ASSERT(dim == data.Dim());
   SpMatrix<BaseFloat> data_sq(dim);  // Initialize and make zero
   data_sq.AddVec2(1.0, data);
   // The following enables an optimization below: TraceSpSpLower, which is
@@ -585,13 +608,13 @@ void FullGmm::LogLikelihoods(const VectorBase<BaseFloat> &data,
 }
 
 void FullGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
-                                      const std::vector<int32> &indices,
+                                      const vector<int32> &indices,
                                       Vector<BaseFloat> *loglikes) const {
   int32 dim = Dim();
-  KALDI_ASSERT(dim == data.Dim());  
-  int32 num_indices = static_cast<int32>(indices.size());  
+  KALDI_ASSERT(dim == data.Dim());
+  int32 num_indices = static_cast<int32>(indices.size());
   loglikes->Resize(num_indices, kUndefined);
-  
+
   SpMatrix<BaseFloat> data_sq(dim);  // Initialize and make zero
   data_sq.AddVec2(1.0, data);
   // The following enables an optimization below: TraceSpSpLower, which is
@@ -634,8 +657,8 @@ void FullGmm::RemoveComponent(int32 gauss, bool renorm_weights) {
   }
 }
 
-void FullGmm::RemoveComponents(const std::vector<int32> &gauss_in, bool renorm_weights) {
-  std::vector<int32> gauss(gauss_in);
+void FullGmm::RemoveComponents(const vector<int32> &gauss_in, bool renorm_weights) {
+  vector<int32> gauss(gauss_in);
   std::sort(gauss.begin(), gauss.end());
   KALDI_ASSERT(IsSortedAndUniq(gauss));
   // If efficiency is later an issue, will code this specially (unlikely,
@@ -673,7 +696,7 @@ std::ostream & operator <<(std::ostream & out_stream,
 }
 
 /// this = rho x source + (1-rho) x this
-void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source, 
+void FullGmm::Interpolate(BaseFloat rho, const FullGmm &source,
                           GmmFlagsType flags) {
   KALDI_ASSERT(NumGauss() == source.NumGauss());
   KALDI_ASSERT(Dim() == source.Dim());

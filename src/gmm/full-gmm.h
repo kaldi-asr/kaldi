@@ -1,7 +1,9 @@
 // gmm/full-gmm.h
 
-// Copyright 2009-2011  Jan Silovsky;  Saarland University;
+// Copyright 2009-2011  Jan Silovsky;
+//                      Saarland University (Author: Arnab Ghoshal);
 //                      Microsoft Corporation
+// Copyright 2012       Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +21,7 @@
 #ifndef KALDI_GMM_FULL_GMM_H_
 #define KALDI_GMM_FULL_GMM_H_
 
+#include <utility>
 #include <vector>
 
 #include "base/kaldi-common.h"
@@ -34,17 +37,18 @@ class FullGmmNormal;
 /** \class Definition for Gaussian Mixture Model with full covariances
   */
 class FullGmm {
- 
- /// this makes it a little easier to modify the internals
- friend class FullGmmNormal;
+  /// this makes it a little easier to modify the internals
+  friend class FullGmmNormal;
 
  public:
   /// Empty constructor.
   FullGmm() : valid_gconsts_(false) {}
 
-  explicit FullGmm(const FullGmm &gmm): valid_gconsts_(false) { CopyFromFullGmm(gmm); }
+  explicit FullGmm(const FullGmm &gmm): valid_gconsts_(false) {
+    CopyFromFullGmm(gmm);
+  }
 
-  FullGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }  
+  FullGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }
 
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
@@ -67,10 +71,9 @@ class FullGmm {
   void LogLikelihoods(const VectorBase<BaseFloat> &data,
                       Vector<BaseFloat> *loglikes) const;
 
-  /// Outputs the per-component log-likelihoods of a subset
-  /// of mixture components.  Note: indices.size() will
-  /// equal loglikes->Dim() at output.  loglikes[i] will 
-  /// correspond to the log-likelihood of the Gaussian
+  /// Outputs the per-component log-likelihoods of a subset of mixture
+  /// components. Note: indices.size() will equal loglikes->Dim() at output.
+  /// loglikes[i] will correspond to the log-likelihood of the Gaussian
   /// indexed indices[i].
   void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
                                const std::vector<int32> &indices,
@@ -91,28 +94,32 @@ class FullGmm {
   /// zero weights or variances.
   int32 ComputeGconsts();
 
-  /// Merge the components and remember the order in which the components were 
+  /// Merge the components and remember the order in which the components were
   /// merged (flat list of pairs)
-  void Split(int32 target_components, float perturb_factor, 
+  void Split(int32 target_components, float perturb_factor,
              std::vector<int32> *history = NULL);
 
-  /// Merge the components and remember the order in which the components were 
+  /// Perturbs the component means with a random vector multiplied by the
+  /// pertrub factor.
+  void Perturb(float perturb_factor);
+
+  /// Merge the components and remember the order in which the components were
   /// merged (flat list of pairs)
   void Merge(int32 target_components,
              std::vector<int32> *history = NULL);
 
-  /// Merge the components and remember the order in which the components were 
+  /// Merge the components and remember the order in which the components were
   /// merged (flat list of pairs); this version only considers merging
   /// pairs in "preselect_pairs" (or their descendants after merging).
   /// This is for efficiency, for large models.  Returns the delta likelihood.
   BaseFloat MergePreselect(int32 target_components,
                            const std::vector<std::pair<int32, int32> > &preselect_pairs);
-  
+
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
-  
+
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const FullGmm &source, 
+  void Interpolate(BaseFloat rho, const FullGmm &source,
                    GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
@@ -133,7 +140,7 @@ class FullGmm {
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>
   void SetMeans(const Matrix<Real> &m);
-  
+
   /// Use SetInvCovarsAndMeans if updating both means and (inverse) covariances
   template<class Real>
   void SetInvCovarsAndMeans(const std::vector<SpMatrix<Real> > &invcovars,
@@ -190,7 +197,7 @@ class FullGmm {
                                      const SpMatrix<BaseFloat> &s1,
                                      const SpMatrix<BaseFloat> &s2) const;
 
-  const FullGmm &operator=(FullGmm &other); // Disallow assignment.
+  const FullGmm &operator=(const FullGmm &other);  // Disallow assignment.
 };
 
 /// ostream operator that calls FullGmm::Write()

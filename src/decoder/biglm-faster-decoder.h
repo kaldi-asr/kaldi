@@ -64,13 +64,13 @@ class BiglmFasterDecoder {
   // Whenever we cross a word, we need to propagate the state within
   // lm_diff_fst.
   BiglmFasterDecoder(const fst::Fst<fst::StdArc> &fst,
-                     const fst::DeterministicOnDemandFst<fst::StdArc> &lm_diff_fst,
-                     const BiglmFasterDecoderOptions &opts):
+                     const BiglmFasterDecoderOptions &opts,
+                     fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst):
       fst_(fst), lm_diff_fst_(lm_diff_fst), opts_(opts), warned_noarc_(false) {
     KALDI_ASSERT(opts_.hash_ratio >= 1.0);  // less doesn't make much sense.
     KALDI_ASSERT(opts_.max_active > 1);
     KALDI_ASSERT(fst.Start() != fst::kNoStateId &&
-                 lm_diff_fst.Start() != fst::kNoStateId);
+                 lm_diff_fst->Start() != fst::kNoStateId);
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
   }
   
@@ -83,7 +83,7 @@ class BiglmFasterDecoder {
   void Decode(DecodableInterface *decodable) {
     // clean up from last time:
     ClearToks(toks_.Clear());
-    PairId start_pair = ConstructPair(fst_.Start(), lm_diff_fst_.Start());
+    PairId start_pair = ConstructPair(fst_.Start(), lm_diff_fst_->Start());
     Arc dummy_arc(0, 0, Weight::One(), fst_.Start()); // actually, the last element of
     // the Arcs (fst_.Start(), here) is never needed.
     toks_.Insert(start_pair, new Token(dummy_arc, NULL));
@@ -102,7 +102,7 @@ class BiglmFasterDecoder {
           lm_state = PairToLmState(state_pair);
       Weight this_weight =
           Times(e->val->weight_,
-                Times(fst_.Final(state), lm_diff_fst_.Final(lm_state)));
+                Times(fst_.Final(state), lm_diff_fst_->Final(lm_state)));
       if (this_weight != Weight::Zero())
         return true;
     }
@@ -128,7 +128,7 @@ class BiglmFasterDecoder {
       Weight best_weight = Weight::Zero();
       for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
         Weight fst_final = fst_.Final(PairToState(e->key)),
-            lm_final = lm_diff_fst_.Final(PairToLmState(e->key)),
+            lm_final = lm_diff_fst_->Final(PairToLmState(e->key)),
             final = Times(fst_final, lm_final);
         Weight this_weight = Times(e->val->weight_, final);
         if (this_weight != Weight::Zero() &&
@@ -294,7 +294,7 @@ class BiglmFasterDecoder {
       return lm_state; // no change in LM state if no word crossed.
     } else { // Propagate in the LM-diff FST.
       Arc lm_arc;
-      bool ans = lm_diff_fst_.GetArc(lm_state, arc->olabel, &lm_arc);
+      bool ans = lm_diff_fst_->GetArc(lm_state, arc->olabel, &lm_arc);
       if (!ans) { // this case is unexpected for statistical LMs.
         if (!warned_noarc_) {
           warned_noarc_ = true;
@@ -453,7 +453,7 @@ class BiglmFasterDecoder {
   // them at a time can be indexed by PairId.
   HashList<PairId, Token*> toks_;
   const fst::Fst<fst::StdArc> &fst_;
-  const fst::DeterministicOnDemandFst<fst::StdArc> &lm_diff_fst_;
+  fst::DeterministicOnDemandFst<fst::StdArc> *lm_diff_fst_;
   BiglmFasterDecoderOptions opts_;
   bool warned_noarc_;
   std::vector<PairId> queue_;  // temp variable used in ProcessNonemitting,

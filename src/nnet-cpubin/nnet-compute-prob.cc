@@ -64,31 +64,31 @@ int main(int argc, char *argv[]) {
 
 
     std::vector<NnetTrainingExample> examples;
-    double tot_like = 0, tot_weight = 0;
+    double tot_like = 0, tot_frames = 0;
     int64 num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
       if (examples.size() == 1000) {
         tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);
-        tot_weight += TotalNnetTrainingWeight(examples);
+        tot_frames += examples.size();
         examples.clear();
       }
       examples.push_back(example_reader.Value());
       if (num_examples % 5000 == 0 && num_examples > 0)
-        KALDI_LOG << "Saw " << num_examples << " examples, average (weighted) "
-                  << "probability is " << (tot_like / tot_weight) << " with "
-                  << "total weight " << tot_weight;
+        KALDI_LOG << "Saw " << num_examples << " examples, average "
+                  << "probability is " << (tot_like / tot_frames) << " with "
+                  << "total weight " << tot_frames;
     }
     if (!examples.empty()) {
       tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);
-      tot_weight += TotalNnetTrainingWeight(examples);
+      tot_frames += examples.size();
     }
 
-    KALDI_LOG << "Saw " << num_examples << " examples, average (weighted) "
-              << "probability is " << (tot_like / tot_weight) << " with "
-              << "total weight " << tot_weight;
+    KALDI_LOG << "Saw " << num_examples << " examples, average "
+              << "probability is " << (tot_like / tot_frames) << " with "
+              << "total weight " << tot_frames;
     
-    std::cout << (tot_like / tot_weight) << "\n";
+    std::cout << (tot_like / tot_frames) << "\n";
     return (num_examples == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

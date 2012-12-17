@@ -20,6 +20,7 @@
 #define KALDI_NNET_CPU_COMPONENT_H_
 
 #include "base/kaldi-common.h"
+#include "util/parse-options.h"
 #include "matrix/matrix-lib.h"
 
 #include <iostream>
@@ -82,19 +83,12 @@ class Component {
   /// BackpropNeedsInput() or BackpropNeedsOutput() return false for
   /// that component (not all components need these).
   ///
-  /// chunk_weights is a vector, indexed by chunk (i.e. the same size as the
-  /// "num_chunks" argument to Propagate()), that gives a weighting for each
-  /// chunk; in the normal case each of these would be equal to the number of
-  /// labels in the chunk (one label per chunk, for standard SGD); but we
-  /// support weighting of samples so there may be an additional factor.  This
-  /// is only needed for reasons relating to l2 regularization and the storing
-  /// of occupation counts.  For SGD we don't need this information, because the
-  /// code that computes the objective-function derivative at the output layer
-  /// incorporates this weighting. 
+  /// num_chunks lets us treat the input matrix as n contiguous-in-time
+  /// chunks of equal size; it only matters if splicing is involved.
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,                        
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const = 0;
   
@@ -145,7 +139,7 @@ class Component {
  * (learning rate, L2 regularization constant).
  * This is a base-class for Components with parameters.
  */
-class UpdatableComponent : public Component {
+class UpdatableComponent: public Component {
  public:
   void Init(BaseFloat learning_rate) {
     learning_rate_ = learning_rate;
@@ -190,6 +184,22 @@ class UpdatableComponent : public Component {
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
   /// Gets the learning rate of gradient descent
   BaseFloat LearningRate() const { return learning_rate_; }
+
+
+  // The next few functions are not implemented everywhere; they are
+  // intended for use by L-BFGS code, and we won't implement them
+  // for all child classes.
+  
+  /// The following new virtual function returns the total dimension of
+  /// the parameters in this class.  E.g. used for L-BFGS update
+  virtual int32 GetParameterDim() { KALDI_ASSERT(0); return 0; }
+  /// Turns the parameters into vector form.
+  virtual void Vectorize(SubVector<BaseFloat> *params) { KALDI_ASSERT(0); }
+  /// Converts the parameters from vector form.
+  virtual void UnVectorize(const SubVector<BaseFloat> &params) {
+    KALDI_ASSERT(0);
+  }
+  
  protected:
   BaseFloat learning_rate_; ///< learning rate (0.0..0.01)
 };
@@ -232,7 +242,7 @@ class SigmoidComponent: public NonlinearComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
  private:
@@ -253,7 +263,7 @@ class TanhComponent: public NonlinearComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
  private:
@@ -278,7 +288,7 @@ class SoftmaxComponent: public NonlinearComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
 
@@ -332,7 +342,7 @@ class AffineComponent: public UpdatableComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   virtual void SetZero(bool treat_as_gradient);
@@ -346,13 +356,16 @@ class AffineComponent: public UpdatableComponent {
   virtual void SetParams(const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
  protected:
-  // This function Update() is for extensibility; child classes override this.
+  friend class AffineComponentA;
+  // This function Update() is for extensibility; child classes may override this.
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
   }
-  void UpdateSimple(
+  // UpdateSimple is used when *this is a gradient.  Child classes may
+  // or may not override this.
+  virtual void UpdateSimple(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);  
   
@@ -380,7 +393,9 @@ class AffineComponentNobias: public AffineComponent {
 };
 
 // This is an idea Dan is trying out, a little bit like
-// preconditioning the update with the Fisher matrix.
+// preconditioning the update with the Fisher matrix, but the
+// Fisher matrix has a special structure.
+// [note: it is currently used in the standard receipe].
 class AffineComponentPreconditioned: public AffineComponent {
  public:
   virtual std::string Type() const { return "AffineComponentPreconditioned"; }
@@ -398,6 +413,107 @@ class AffineComponentPreconditioned: public AffineComponent {
  private:
   BaseFloat alpha_;
   virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+};
+
+
+struct PreconditionConfig { // relates to AffineComponentA
+  BaseFloat alpha;
+  bool do_precondition;
+  bool renormalize;
+  
+  PreconditionConfig(): alpha(0.1), do_precondition(true),
+                        renormalize(true) { }
+  void Register(ParseOptions *po) {
+    po->Register("alpha", &alpha, "Smoothing constant used in "
+                 "preconditioning of updates.");
+    po->Register("do-precondition", &do_precondition, "Controls whether "
+                 "or not preconditioning is applied in the L-BFGS update.");
+    po->Register("renormalize", &renormalize, "If true, in the preconditioning "
+                 "we renormalize with a scalar so the projected scatter has the "
+                 "same trace as before preconditioning.");
+  }
+};
+
+
+/**
+   AffineComponentA is a special type of AffineComponent, that
+   stores matrices for preconditioning similar to those used
+   in the update function of AffineComponentPreconditioned.  This is
+   intended for use as a preconditioner in L-BFGS updates.
+   In this case we optionally store the preconditioning
+   information with the gradient information, in a separate
+   copy of the component.
+*/
+class AffineComponentA: public AffineComponent {
+ public:
+  AffineComponentA() { }
+  
+  virtual std::string Type() const { return "AffineComponentA"; }
+  
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  // There is no Init function for now; we only have the
+  // ability to initialize from another AffineComponent (or child
+  // class).  This is because we imagine that the L-BFGS training
+  // will be initialized from a system trained with SGD, for which
+  // something like AffineComponentPreconditioned will be more
+  // appropriate; we'll then convert the model.
+  AffineComponentA(const AffineComponent &component);
+
+  // We're not supporting initializing as this type.
+  virtual void InitFromString(std::string args) { KALDI_ASSERT(0); }
+  virtual Component* Copy() const;
+
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+
+  
+  // Some functions that are specific to this class:
+  void InitializeScatter(); // Lets the class
+  // know that it should accumulate the scatter matrix; sets
+  // up input_scatter_ and output_scatter_.
+
+
+  // This function uses the input_scatter_ and output_scatter_ variables of the
+  // current class to transform the linear_params_ and bias_params_ variables of
+  // "component".  If forward == true then we transform to the preconditioned
+  // space; otherwise we transform back from the preconditioned to the canonical
+  // space.  This is done differently depending if component->is_gradient_ ==
+  // true, because gradients and parameters transform differently.  The alpha
+  // value relates to smoothing with the unit matrix; it's not defined in quite
+  // the same way as for AffineComponentPreconditioned.  See the code for
+  // details.
+  void Transform(const PreconditionConfig &config,
+                 bool forward,
+                 AffineComponent *component) const;
+  
+ private:
+
+  // The following variables are not used for the actual neural net, but
+  // only when is_gradient_ == true (when it's being used to store gradients),
+
+  SpMatrix<double> input_scatter_; // scatter of (input vectors extended with 1.)
+  // This is only set up if this->is_gradient = true, and InitializeScatter()
+  // has been called.
+  SpMatrix<double> output_scatter_;
+
+  // This function computes the matrix (and corresponding transpose-ness) that
+  // we'd left-multiply a vector by when transforming the parameter/gradient
+  // space.
+  static void ComputeTransform(const SpMatrix<double> &scatter,
+                               const PreconditionConfig &config,
+                               double tot_count,
+                               bool forward,
+                               bool is_gradient,
+                               TpMatrix<double> *transform,
+                               MatrixTransposeType *trans);
+  
+  // The following update function is called when *this is
+  // a gradient.  We only override this one.
+  virtual void UpdateSimple(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
 };
@@ -424,7 +540,7 @@ class SpliceComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   virtual bool BackpropNeedsInput() const { return false; }
@@ -459,7 +575,7 @@ class AffinePreconInputComponent: public AffineComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   AffinePreconInputComponent() { } // use Init to really initialize.
@@ -508,7 +624,7 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".                        
                         Matrix<BaseFloat> *in_deriv) const;
   virtual void SetZero(bool treat_as_gradient);
@@ -573,7 +689,7 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
@@ -616,7 +732,7 @@ class PermuteComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value, // dummy
                         const MatrixBase<BaseFloat> &out_value, // dummy
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // dummy
                         Matrix<BaseFloat> *in_deriv) const;
   
@@ -649,7 +765,7 @@ class DctComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   virtual bool BackpropNeedsInput() const { return false; }
@@ -698,7 +814,7 @@ class FixedLinearComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
   virtual bool BackpropNeedsInput() const { return false; }
@@ -740,7 +856,7 @@ class DropoutComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
  private:
@@ -776,7 +892,7 @@ class AdditiveNoiseComponent: public Component {
   virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
-                        const VectorBase<BaseFloat> &chunk_weights,
+                        int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const { *in_deriv = out_deriv; }
  private:

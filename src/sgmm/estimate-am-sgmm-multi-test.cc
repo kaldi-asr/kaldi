@@ -77,7 +77,7 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
 
   BaseFloat loglike1 = 0.0;
   for (int32 i = 0; i < num_models; ++i) {
-    models[i]->ComputePerSpkDerivedVars(&spk_vars);
+    new_models[i]->ComputePerSpkDerivedVars(&spk_vars);
     for (int32 f = 0; f < feats[i].NumRows(); ++f) {
       std::vector<int32> gselect;
       new_models[i]->GaussianSelection(sgmm_config, feats[i].Row(f), &gselect);

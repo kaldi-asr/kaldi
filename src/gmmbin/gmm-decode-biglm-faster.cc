@@ -162,9 +162,14 @@ int main(int argc, char *argv[])
         num_fail++;
         continue;
       }
-      fst::DeterministicOnDemandFst<StdArc> lm_diff_fst(*old_lm_fst, *new_lm_fst);
-      BiglmFasterDecoder decoder(*decode_fst, lm_diff_fst, decoder_opts);
-
+      fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
+      fst::BackoffDeterministicOnDemandFst<StdArc> new_lm_dfst(*new_lm_fst);
+      fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
+                                                                &new_lm_dfst);
+      fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst);
+      
+      BiglmFasterDecoder decoder(*decode_fst, decoder_opts, &cache_dfst);
+      
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);

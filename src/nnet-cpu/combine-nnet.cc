@@ -49,13 +49,13 @@ static void GetInitialScaleParams(
     Vector<double> *scale_params) {
   int32 minibatch_size = 1024;
   KALDI_ASSERT(!nnets.empty());
-  BaseFloat tot_weight = TotalNnetTrainingWeight(validation_set);
+  BaseFloat tot_frames = validation_set.size();
   int32 best_n = -1;
   BaseFloat best_objf;
   Vector<BaseFloat> objfs(nnets.size());
   for (int32 n = 0; n < static_cast<int32>(nnets.size()); n++) {
     BaseFloat objf = ComputeNnetObjf(nnets[n], validation_set,
-                                     minibatch_size) / tot_weight;
+                                     minibatch_size) / tot_frames;
     
     if (n == 0 || objf > best_objf) {
       best_objf = objf;
@@ -73,7 +73,7 @@ static void GetInitialScaleParams(
     Vector<BaseFloat> scale_params_float(*scale_params);
     CombineNnets(scale_params_float, nnets, &average_nnet);
     BaseFloat objf = ComputeNnetObjf(average_nnet, validation_set,
-                                     minibatch_size) / tot_weight;
+                                     minibatch_size) / tot_frames;
     KALDI_LOG << "Objf with all neural nets averaged is "
               << objf;
     if (objf > best_objf) {
@@ -116,7 +116,7 @@ static BaseFloat ComputeObjfAndGradient(
                                       batch_size,
                                       &nnet_gradient);
 
-  BaseFloat tot_count = TotalNnetTrainingWeight(validation_set);
+  BaseFloat tot_frames = validation_set.size();
   int32 i = 0; // index into scale_params.
   for (int32 n = 0; n < static_cast<int32>(nnets.size()); n++) {
     for (int32 j = 0; j < nnet_combined.NumComponents(); j++) {
@@ -125,7 +125,7 @@ static BaseFloat ComputeObjfAndGradient(
           *uc_gradient =
           dynamic_cast<const UpdatableComponent*>(&(nnet_gradient.GetComponent(j)));
       if (uc != NULL) {
-        BaseFloat dotprod = uc->DotProduct(*uc_gradient) / tot_count;
+        BaseFloat dotprod = uc->DotProduct(*uc_gradient) / tot_frames;
         (*gradient)(i) = dotprod; 
         i++;
       }

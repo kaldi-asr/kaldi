@@ -52,7 +52,6 @@ typedef fst::StdArc          StdArc;
 typedef fst::StdArc::Label   Label;
 typedef fst::StdArc::StateId StateId;
 typedef fst::StdVectorFst    StdVectorFst;
-typedef fst::DeterministicOnDemandFst<StdArc> StdDeterministicOnDemandFst;
 typedef fst::StdArc::Weight  Weight;
 
 
@@ -113,7 +112,7 @@ void DeleteTestFst(StdVectorFst *fst) {
 
 // Follow paths from an input fst representing a string
 // (poor man's composition)
-Weight WalkSinglePath(StdVectorFst *ifst, StdDeterministicOnDemandFst *dfst) {
+Weight WalkSinglePath(StdVectorFst *ifst, DeterministicOnDemandFst<StdArc> *dfst) {
   StdArc *oarc =  new StdArc();
   StateId isrc=ifst->Start();
   StateId dsrc=dfst->Start();
@@ -131,19 +130,17 @@ Weight WalkSinglePath(StdVectorFst *ifst, StdDeterministicOnDemandFst *dfst) {
 	  exit(1);
 	}
 	isrc = iarc.nextstate;
+    KALDI_LOG << "Setting dsrc = " << oarc->nextstate;
 	dsrc = oarc->nextstate;
   }
+  totalCost = Times(totalCost, dfst->Final(dsrc));
+                    
   cout << "  Total cost: " << totalCost << endl;
   return totalCost;
 }
 
 
-}
-
-
-int main() {
-  // --------------- Test without files ---------------------
-  using namespace fst;
+void TestBackoffAndCache() {
   // Build from existing fst
   cout << "Test with single generated backoff FST" << endl;
   StdVectorFst *nfst = CreateBackoffFst();
@@ -151,20 +148,21 @@ int main() {
 
   // before using, make sure that it is input sorted
   ArcSort(nfst, StdILabelCompare());
-  StdDeterministicOnDemandFst *dfst1 = new StdDeterministicOnDemandFst(*nfst);
+  BackoffDeterministicOnDemandFst<StdArc> dfst1a(*nfst);
+  CacheDeterministicOnDemandFst<StdArc> dfst1(&dfst1a);
   
   // Compare all arcs in dfst1 with expected result
   for (StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
 	StateId rsrc = riter.Value();
 	// verify that states have same weight (or final status)
-	assert(ApproxEqual(rfst->Final(rsrc), dfst1->Final(rsrc)));
+	assert(ApproxEqual(rfst->Final(rsrc), dfst1.Final(rsrc)));
 	for (ArcIterator<StdVectorFst> aiter(*rfst, rsrc); !aiter.Done(); aiter.Next()) {
 	  StdArc rarc = aiter.Value();
 	  StdArc darc;
-	  if (dfst1->GetArc(rsrc, rarc.ilabel, &darc)) {
+	  if (dfst1.GetArc(rsrc, rarc.ilabel, &darc)) {
 		assert(ApproxEqual(rarc.weight, darc.weight, 0.001));
 		assert(rarc.ilabel==darc.ilabel);
-		assert(rarc.olabel==darc.olabel);
+        assert(rarc.olabel==darc.olabel);
 		assert(rarc.nextstate == darc.nextstate);
 		cerr << "  Got same arc at state "<<rsrc<<": "<<rarc.ilabel<<" "<<darc.ilabel<<endl;
 	  } else {
@@ -173,57 +171,57 @@ int main() {
 	  }
 	}
   }
-
   delete nfst;
   delete rfst;
-  delete dfst1;
-
-  // Tests with files Gm.fst, Gp.fst, str.fst, strbg.fst -------
-  // Skipped if these files are absent
-  if (!FileExists("Gm.fst") || !FileExists("Gp.fst") || !FileExists("str.fst") ||!FileExists("strbg.fst")) {
-	cout << "Skipped test with external files." << endl;
-	cout << "Test succeeded." << endl;
-	exit(0);
-  }
-  
-
-  // ----------------- Test with files, single FST case --------------
-  Weight cost2;
-  cout << "Single FST case: string with G'" <<  endl;
-  cout << "  Reading Gp.fst" << endl << std::flush;
-  StdVectorFst *gpfst = StdVectorFst::Read("Gp.fst");
-  cout << "  Creating SDODF from Gp.fst" << endl << std::flush;
-  StdDeterministicOnDemandFst *dfst2 = new StdDeterministicOnDemandFst(*gpfst);
-  StdVectorFst *strfst = StdVectorFst::Read("str.fst");
-  cost2 = WalkSinglePath(strfst, dfst2);
-  delete dfst2; delete strfst;
-
-  // ----------------- Test with files, composition case (with string transducer)
-  Weight cost3;
-  cout << "Composition case: string*bg with G^-1 * G'" << endl;
-  cout << "  Reading Gm.fst" << endl << std::flush;
-  StdVectorFst *gmfst = StdVectorFst::Read("Gm.fst");
-  StdDeterministicOnDemandFst *dfst3 = new StdDeterministicOnDemandFst(*gmfst, *gpfst);
-  StdVectorFst *strbgfst = StdVectorFst::Read("strbg.fst");
-  cost3 = WalkSinglePath(strbgfst, dfst3);
-  cout << "Cache had "<<dfst3->CacheCalls()<<" calls and "<<dfst3->CacheHits()<<" hits"<< endl;
-  delete gmfst; delete gpfst; 
-
-  if ( !ApproxEqual(cost2, cost3)) {
-	cout << "Test failed." << endl;
-	exit(1);
-  }
-
-  // ----------------- Exercise cache, composition case (with string transducer)
-  Weight cost4;
-  cout << "Exercise cache: string*bg with G^-1 * G'" << endl;
-  cost4 = WalkSinglePath(strbgfst, dfst3);
-  if ( !ApproxEqual(cost2, cost4)) {
-	cout << "Test failed." << endl;
-	exit(1);
-  }
-  cout << "Cache had "<<dfst3->CacheCalls()<<" calls and "<<dfst3->CacheHits()<<" hits"<< endl;
-  delete strbgfst;
-
-  cout << "Test succeeded." << endl;
 }
+
+void TestCompose() {
+  cout << "Test with single generated backoff FST" << endl;
+  StdVectorFst *nfst = CreateBackoffFst();
+  StdVectorFst *rfst = CreateResultFst();
+
+  StdVectorFst composed_fst;
+  Compose(*rfst, *rfst, &composed_fst);
+
+  // before using, make sure that it is input sorted
+  ArcSort(nfst, StdILabelCompare());
+  BackoffDeterministicOnDemandFst<StdArc> dfst1a(*nfst);
+  ComposeDeterministicOnDemandFst<StdArc> dfst1b(&dfst1a, &dfst1a);
+  CacheDeterministicOnDemandFst<StdArc> dfst1(&dfst1b);
+
+  typedef StdArc::StateId StateId;
+  std::map<StateId, StateId> state_map;
+  state_map[composed_fst.Start()] = dfst1.Start();
+
+  VectorFst<StdArc> path_fst;
+  ShortestPath(composed_fst, &path_fst);
+  
+  BackoffDeterministicOnDemandFst<StdArc> dfst2(composed_fst);
+  
+  Weight w1 = WalkSinglePath(&path_fst, &dfst1),
+      w2 = WalkSinglePath(&path_fst, &dfst2);
+  KALDI_ASSERT(ApproxEqual(w1, w2));
+
+  delete rfst;
+  delete nfst;
+
+  { // Mostly checking for compilation errors here.
+    LmExampleDeterministicOnDemandFst<StdArc> lm_eg(NULL, 2, 3);
+    KALDI_ASSERT(lm_eg.Start() == 0);
+    KALDI_ASSERT(lm_eg.Final(0).Value() == 0.5); // I made it this value.
+    StdArc arc;
+    bool b = lm_eg.GetArc(0, 100, &arc);
+    KALDI_ASSERT(b && arc.nextstate == 1 && arc.ilabel == 100 && arc.olabel == 100
+                 && arc.weight.Value() == 0.25);
+  }
+}
+
+}
+
+
+int main() {
+  using namespace fst;
+  TestBackoffAndCache();
+  TestCompose();
+}
+  

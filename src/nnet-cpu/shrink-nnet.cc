@@ -40,7 +40,7 @@ static BaseFloat ComputeObjfAndGradient(
                                       batch_size,
                                       &nnet_gradient);
 
-  BaseFloat tot_count = TotalNnetTrainingWeight(validation_set);
+  BaseFloat tot_count = validation_set.size();
   int32 i = 0; // index into log_scale_params.
   for (int32 j = 0; j < nnet_scaled.NumComponents(); j++) {
     const UpdatableComponent *uc =

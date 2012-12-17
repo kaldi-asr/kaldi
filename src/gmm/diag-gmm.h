@@ -1,7 +1,9 @@
 // gmm/diag-gmm.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Saarland University;
+// Copyright 2009-2011  Microsoft Corporation;
+//                      Saarland University (Author: Arnab Ghoshal);
 //                      Georg Stemmer;  Jan Silovsky
+// Copyright 2012       Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +21,11 @@
 #ifndef KALDI_GMM_DIAG_GMM_H_
 #define KALDI_GMM_DIAG_GMM_H_ 1
 
-#include<vector>
+#include <utility>
+#include <vector>
 
 #include "base/kaldi-common.h"
-#include "model-common.h"
+#include "gmm/model-common.h"
 #include "matrix/matrix-lib.h"
 #include "tree/cluster-utils.h"
 
@@ -34,26 +37,27 @@ class DiagGmmNormal;
 /** \class DiagGmm Definition for Gaussian Mixture Model with diagonal covariances
  */
 class DiagGmm {
-
- /// this makes it a little easier to modify the internals
- friend class DiagGmmNormal;
+  /// this makes it a little easier to modify the internals
+  friend class DiagGmmNormal;
 
  public:
   /// Empty constructor.
   DiagGmm() : valid_gconsts_(false) { }
 
-  explicit DiagGmm(const DiagGmm &gmm): valid_gconsts_(false) { CopyFromDiagGmm(gmm); }
+  explicit DiagGmm(const DiagGmm &gmm): valid_gconsts_(false) {
+    CopyFromDiagGmm(gmm);
+  }
 
   DiagGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }
-  
-  // Constructor that allows us to merge GMMs with weights.  Weights must
-  // sum to one, or this GMM will not be properly normalized (we don't check this).
-  // Weights must be positive (we check this).
+
+  /// Constructor that allows us to merge GMMs with weights.  Weights must sum
+  /// to one, or this GMM will not be properly normalized (we don't check this).
+  /// Weights must be positive (we check this).
   explicit DiagGmm(const std::vector<std::pair<BaseFloat, const DiagGmm*> > &gmms);
-  
+
   /// Resizes arrays to this dim. Does not initialize data.
   void Resize(int32 nMix, int32 dim);
-  
+
   /// Returns the number of mixture components in the GMM
   int32 NumGauss() const { return weights_.Dim(); }
   /// Returns the dimensionality of the Gaussian mean vectors
@@ -71,16 +75,14 @@ class DiagGmm {
   void LogLikelihoods(const VectorBase<BaseFloat> &data,
                       Vector<BaseFloat> *loglikes) const;
 
-  /// Outputs the per-component log-likelihoods of a subset
-  /// of mixture components.  Note: at output, loglikes->Dim()
-  /// will equal indices.size().  loglikes[i] will 
-  /// correspond to the log-likelihood of the Gaussian
+  /// Outputs the per-component log-likelihoods of a subset of mixture
+  /// components.  Note: at output, loglikes->Dim() will equal indices.size().
+  /// loglikes[i] will correspond to the log-likelihood of the Gaussian
   /// indexed indices[i].
   void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;
 
-  
   /// Computes the posterior probabilities of all Gaussian components given
   /// a data point. Returns the log-likehood of the data given the GMM.
   BaseFloat ComponentPosteriors(const VectorBase<BaseFloat> &data,
@@ -99,30 +101,33 @@ class DiagGmm {
   /// Generates a random data-point from this distribution.
   void Generate(VectorBase<BaseFloat> *output);
 
-  /// Split the components and remember the order in which the components were 
+  /// Split the components and remember the order in which the components were
   /// split
-  void Split(int32 target_components, float perturb_factor, 
+  void Split(int32 target_components, float perturb_factor,
              std::vector<int32> *history = NULL);
 
-  /// Merge the components and remember the order in which the components were 
+  /// Perturbs the component means with a random vector multiplied by the
+  /// pertrub factor.
+  void Perturb(float perturb_factor);
+
+  /// Merge the components and remember the order in which the components were
   /// merged (flat list of pairs)
   void Merge(int32 target_components, std::vector<int32> *history = NULL);
-
 
   /// Merge the components to a specified target #components: this
   // version uses a different approach based on K-means.
   void MergeKmeans(int32 target_components,
                    ClusterKMeansOptions cfg = ClusterKMeansOptions());
-                   
-  
+
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &in, bool binary);
 
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const DiagGmm &source, 
-                   GmmFlagsType flags = kGmmAll); 
+  void Interpolate(BaseFloat rho, const DiagGmm &source,
+                   GmmFlagsType flags = kGmmAll);
+
   /// this = rho x source + (1-rho) x this
-  void Interpolate(BaseFloat rho, const FullGmm &source, 
+  void Interpolate(BaseFloat rho, const FullGmm &source,
                    GmmFlagsType flags = kGmmAll);
 
   /// Const accessors
@@ -173,7 +178,7 @@ class DiagGmm {
   void SetComponentInvVar(int32 gauss, const VectorBase<Real> &in);
   /// Set weight for single component.
   inline void SetComponentWeight(int32 gauss, BaseFloat weight);
-  
+
   /// Accessor for single component mean
   template<class Real>
   void GetComponentMean(int32 gauss, VectorBase<Real> *out) const;
@@ -200,7 +205,7 @@ class DiagGmm {
                                      const VectorBase<BaseFloat> &s2) const;
 
  private:
-  const DiagGmm &operator=(DiagGmm &other); // Disallow assignment.
+  const DiagGmm &operator=(const DiagGmm &other);  // Disallow assignment
 };
 
 /// ostream operator that calls DiagGMM::Write()
