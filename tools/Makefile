@@ -37,12 +37,12 @@ openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
 		./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts
 
-openfst-1.3.2/.patched: | openfst-1.3.2
+openfst-1.3.2/.patched: | openfst-1.3.2_tgt
 		-cd openfst-1.3.2/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
 		touch $@ 	
 
-openfst-1.3.2: openfst-1.3.2.tar.gz
+openfst-1.3.2_tgt: openfst-1.3.2.tar.gz
 		tar xozf openfst-1.3.2.tar.gz
 		-rm openfst
 		-ln -s openfst-1.3.2 openfst 
