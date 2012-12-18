@@ -8,7 +8,7 @@
 
 
 ###
-### First we need to dump the fMMI features, so we can train on them easily
+### First we need to dump the fMLLR features, so we can train on them easily
 ###
 
 gmmdir=exp/tri5a
@@ -30,6 +30,10 @@ steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
    $dir data/train_dev $gmmdir $dir/_log $dir/_data || exit 1
 
 # train_100k_nodup
+# we need fMLLR transforms, so we run alignment...
+steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+  data/train_100k_nodup data/lang exp/tri5a exp/tri5a_ali_100k_nodup || exit 1
+# generate the features
 dir=data-fmllr/train_100k_nodup
 steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
    --transform-dir exp/tri5a_ali_100k_nodup \
@@ -40,14 +44,14 @@ steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
 ###
 ### Now we can train the Deep Neural Network in a hybrid setup
 ###
-### The fMMI features are 
+### The fMLLR features are 
 ###   -spliced, 
 ###   -decorrelated by LDA 
 ###   -rescaled by CMVN over dataset
 ###
 
 ( # Train the MLP
-dir=exp/tri5a_fmllr_nnet6L_1200hid_lda300
+dir=exp/tri5a_dnn
 ali=exp/tri5a_ali
 $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --hid-layers 4 --hid-dim 1200 \

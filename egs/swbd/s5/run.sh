@@ -208,6 +208,13 @@ steps/train_mmi_fmmi_indirect.sh \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it$iter &
  done
 
+
+# Recipe with DNN system on top of fMLLR features
+local/run_hybrid.sh
+
+
+
+
 # Note: we haven't yet run with all the data.
 
 # utils/make_phone_bigram_lang.sh data/lang exp/tri4a_ali_100k_nodup data/lang_phone_bg
