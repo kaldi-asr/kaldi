@@ -4,6 +4,8 @@
   - Try to run the scripts and compile on various platforms, and
     report problems.
 
+  - eventually convert the refs to numeric_limits in fstext/lattice-weight.h
+    and lat/arctic-weight.h, back to fst::FloatLimits
 =====
 dan's TODO:
 
