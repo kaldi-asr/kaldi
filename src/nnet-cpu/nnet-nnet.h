@@ -63,9 +63,14 @@ class Nnet {
   /// so the number of components will be more than the number of layers.
   int32 NumComponents() const { return components_.size(); }
 
-  const Component &GetComponent(int32 component) const;
+  const Component &GetComponent(int32 c) const;
 
-  Component &GetComponent(int32 component);
+  Component &GetComponent(int32 c);
+
+  /// Sets the c'th component to "component", taking ownership
+  /// of the pointer and deleting the corresponding one that
+  /// we own.
+  void SetComponent(int32 c, Component *component);
   
   /// Returns the LeftContext() summed over all the Components... this is the
   /// entire left-context in frames that the network requires.

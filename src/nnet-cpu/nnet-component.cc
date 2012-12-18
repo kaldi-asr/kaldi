@@ -754,6 +754,19 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_end.str());
 }
 
+int32 AffineComponent::GetParameterDim() const {
+  return (InputDim() + 1) * OutputDim();
+}
+void AffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
+  params->Range(InputDim() * OutputDim(),
+                OutputDim()).CopyFromVec(bias_params_);
+}
+void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
+  bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
+                                        OutputDim()));
+}
 
 void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
@@ -1664,6 +1677,31 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
     output_offset += this_output_dim;   
   }
   KALDI_ASSERT(input_offset == InputDim() && output_offset == OutputDim());
+}
+
+int32 MixtureProbComponent::GetParameterDim() const {
+  int32 ans = 0;
+  for (size_t i = 0; i < params_.size(); i++)
+    ans += params_[i].NumRows() * params_[i].NumCols();
+  return ans;
+}
+void MixtureProbComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  int32 offset = 0;
+  for (size_t i = 0; i < params_.size(); i++) {
+    int32 size = params_[i].NumRows() * params_[i].NumCols();
+    params->Range(offset, size).CopyRowsFromMat(params_[i]);
+    offset += size;
+  }
+  KALDI_ASSERT(offset == params->Dim());
+}
+void MixtureProbComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  int32 offset = 0;
+  for (size_t i = 0; i < params_.size(); i++) {
+    int32 size = params_[i].NumRows() * params_[i].NumCols();
+    params_[i].CopyRowsFromVec(params.Range(offset, size));
+    offset += size;
+  }
+  KALDI_ASSERT(offset == params.Dim());
 }
 
 

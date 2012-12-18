@@ -192,11 +192,11 @@ class UpdatableComponent: public Component {
   
   /// The following new virtual function returns the total dimension of
   /// the parameters in this class.  E.g. used for L-BFGS update
-  virtual int32 GetParameterDim() { KALDI_ASSERT(0); return 0; }
+  virtual int32 GetParameterDim() const { KALDI_ASSERT(0); return 0; }
   /// Turns the parameters into vector form.
-  virtual void Vectorize(SubVector<BaseFloat> *params) { KALDI_ASSERT(0); }
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const { KALDI_ASSERT(0); }
   /// Converts the parameters from vector form.
-  virtual void UnVectorize(const SubVector<BaseFloat> &params) {
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params) {
     KALDI_ASSERT(0);
   }
   
@@ -355,6 +355,10 @@ class AffineComponent: public UpdatableComponent {
   // This new function is used when mixing up:
   virtual void SetParams(const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
+
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
  protected:
   friend class AffineComponentA;
   // This function Update() is for extensibility; child classes may override this.
@@ -700,6 +704,10 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
   virtual void PerturbParams(BaseFloat stddev);
+
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(MixtureProbComponent);
   std::vector<Matrix<BaseFloat> > params_;

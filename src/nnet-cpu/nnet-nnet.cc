@@ -359,5 +359,11 @@ void Nnet::Append(Component *new_component) {
   Check();
 }
 
+void Nnet::SetComponent(int32 c, Component *component) {
+  KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
+  delete components_[c];
+  components_[c] = component;
+  Check(); // Check that all the dimensions still match up.
+}
 
 } // namespace
