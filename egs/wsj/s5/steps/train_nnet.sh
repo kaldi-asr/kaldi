@@ -80,6 +80,9 @@ printf "\t CV-set    : $data_cv $alidir_cv \n"
 
 mkdir -p $dir/{log,nnet}
 
+#skip when already trained
+[ -e $dir/final.nnet ] && printf "\nSKIPPING TRAINING... ($0)\nnnet already trained : $dir/final.nnet ($(readlink $dir/final.nnet))\n\n" && exit 0
+
 ###### PREPARE ALIGNMENTS ######
 echo "Preparing alignments"
 #convert ali to pdf
@@ -230,11 +233,15 @@ case $feat_type in
   lda)
     transf=$dir/lda$lda_dim.mat
     #get the LDA statistics
-    echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
-    ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
-      weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
-    echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
-    acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
+    if [ ! -r "$dir/lda.acc" ]; then
+      echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
+      ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
+        weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
+      echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
+      acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
+    else
+      echo "LDA: Using pre-computed stats $dir/lda.acc"
+    fi
     #estimate the transform  
     echo "Estimating LDA transform $dir/lda.mat from the statistics $dir/lda.acc"
     est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>${transf}_log || exit 1;
