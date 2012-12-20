@@ -8,6 +8,9 @@
 
 
 
+#false && \
+(
+
 ###
 ### First we need to generate the alignments, 
 ###
@@ -47,7 +50,7 @@ steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
    --transform-dir exp/tri4a_ali_si284 \
    $dir data/train_si284 $gmmdir $dir/_log $dir/_data || exit 1
 
-
+)
 
 ###
 ### Now we can train the Deep Neural Network in a hybrid setup
@@ -69,9 +72,9 @@ $cuda_cmd $dir/_train_nnet.log \
 # build graph
 $mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
 # decode 
-steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --acwt 0.10 \
+steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.10 \
   $dir/graph data-fmllr/test_dev93 $dir/decode_tgpr_dev93 &&
-steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --acwt 0.10 \
+steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.10 \
   $dir/graph data-fmllr/test_eval92 $dir/decode_tgpr_eval92
 )
 
