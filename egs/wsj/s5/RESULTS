@@ -170,3 +170,8 @@ exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it2/wer_10:%WER 6.43 [ 363 / 5643, 108 
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it3/wer_11:%WER 6.40 [ 361 / 5643, 106 ins, 10 del, 245 sub ]
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it4/wer_11:%WER 6.34 [ 358 / 5643, 110 ins, 9 del, 239 sub ]
 
+
+# DNN on fMLLR features
+exp/tri4a_dnn/decode_tgpr_dev93/wer_10:%WER 10.08 [ 830 / 8234, 192 ins, 91 del, 547 sub ]
+exp/tri4a_dnn/decode_tgpr_eval92/wer_10:%WER 6.40 [ 361 / 5643, 98 ins, 13 del, 250 sub ]
+

@@ -73,9 +73,9 @@ $cuda_cmd $dir/_train_nnet.log \
 $mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
 # decode 
 steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.10 \
-  $dir/graph data-fmllr/test_dev93 $dir/decode_tgpr_dev93 &&
+  $dir/graph_tgpr data-fmllr/test_dev93 $dir/decode_tgpr_dev93 &&
 steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.10 \
-  $dir/graph data-fmllr/test_eval92 $dir/decode_tgpr_eval92
+  $dir/graph_tgpr data-fmllr/test_eval92 $dir/decode_tgpr_eval92
 )
 
 
