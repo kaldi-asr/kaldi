@@ -19,6 +19,7 @@
 #include "matrix/tp-matrix.h"
 #include "matrix/sp-matrix.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/cblas-wrappers.h"
 
 namespace kaldi {
 
@@ -136,26 +137,22 @@ void TpMatrix<Real>::Swap(TpMatrix<Real> *other) {
 
 
 template<typename Real>
-void TpMatrix<Real>::Cholesky(const SpMatrix<Real> &rOrig) {
-  KALDI_ASSERT(rOrig.NumRows() == this->NumRows());
+void TpMatrix<Real>::Cholesky(const SpMatrix<Real> &orig) {
+  KALDI_ASSERT(orig.NumRows() == this->NumRows());
   MatrixIndexT n = this->NumRows();
   this->SetZero();
   Real *data = this->data_, *jdata = data;  // start of j'th row of matrix.
-  const Real *orig_jdata = rOrig.Data(); // start of j'th row of matrix.
+  const Real *orig_jdata = orig.Data(); // start of j'th row of matrix.
   for (MatrixIndexT j = 0; j < n; j++, jdata += j, orig_jdata += j) {
     Real *kdata = data; // start of k'th row of matrix.
     Real d(0.0);
     for (MatrixIndexT k = 0; k < j; k++, kdata += k) {
-      Real s(0.0);
-      for (MatrixIndexT i = 0; i < k; i++) {
-        // s += (*this)(k, i) * (*this)(j, i);
-        s += kdata[i] * jdata[i];
-      }
-      // (*this)(j, k) = s = (rOrig(j, k) - s)/(*this)(k, k);
+      Real s = cblas_Xdot(k, kdata, 1, jdata, 1);
+      // (*this)(j, k) = s = (orig(j, k) - s)/(*this)(k, k);
       jdata[k] = s = (orig_jdata[k] - s)/kdata[k];
       d = d + s*s;
     }
-    // d = rOrig(j, j) - d;
+    // d = orig(j, j) - d;
     d = orig_jdata[j] - d;
     
     if (d >= 0.0) {
