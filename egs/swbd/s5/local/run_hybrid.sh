@@ -7,6 +7,9 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 
+#false && \
+(
+
 ###
 ### First we need to dump the fMLLR features, so we can train on them easily
 ###
@@ -38,7 +41,7 @@ dir=data-fmllr/train_100k_nodup
 steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
    --transform-dir exp/tri5a_ali_100k_nodup \
    $dir data/train_100k_nodup $gmmdir $dir/_log $dir/_data || exit 1
-
+)
 
 
 ###
@@ -62,7 +65,7 @@ $cuda_cmd $dir/_train_nnet.log \
 $mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test $dir $dir/graph || exit 1;
 # decode 
 steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --acwt 0.10 \
-  $dir/graph data-fmllr/train_dev $dir/decode_dev &&
+  $dir/graph data-fmllr/train_dev $dir/decode_train_dev &&
 steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --acwt 0.10 \
   $dir/graph data-fmllr/eval2000 $dir/decode_eval2000
 )
