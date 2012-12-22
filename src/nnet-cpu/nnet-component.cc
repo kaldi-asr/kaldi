@@ -470,6 +470,13 @@ void AffineComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
+AffineComponent::AffineComponent(const AffineComponent &component):
+    UpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    bias_params_(component.bias_params_),
+    avg_input_(component.avg_input_),
+    avg_input_count_(component.avg_input_count_),
+    is_gradient_(component.is_gradient_) { }
 
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
@@ -530,6 +537,7 @@ Component* AffineComponent::Copy() const {
   ans->bias_params_ = bias_params_;
   ans->avg_input_ = avg_input_;
   ans->avg_input_count_ = avg_input_count_;
+  ans->is_gradient_ = is_gradient_;
   return ans;
 }
 
@@ -879,6 +887,7 @@ Component* AffineComponentPreconditioned::Copy() const {
   ans->avg_input_ = avg_input_;
   ans->avg_input_count_ = avg_input_count_;
   ans->alpha_ = alpha_;
+  ans->is_gradient_ = is_gradient_;
   return ans;
 }
 
@@ -2309,6 +2318,7 @@ void AffineComponentA::Write(std::ostream &os, bool binary) const {
 AffineComponentA::AffineComponentA(const AffineComponent &component):
     AffineComponent(component) { }
 
+
 void AffineComponentA::InitializeScatter() {
   KALDI_ASSERT(is_gradient_ &&
                "InitializeScatter should only be called on gradients.");
@@ -2317,7 +2327,7 @@ void AffineComponentA::InitializeScatter() {
                "InitializeScatter called when already initialized.");
   input_scatter_.Resize(InputDim() + 1); // + 1 because of the bias; we include
   // that in the input dimension.
-  output_scatter_.Resize(OutputDim() + 1);  
+  output_scatter_.Resize(OutputDim());
 }
 
 void AffineComponentA::Scale(BaseFloat scale) {
@@ -2358,10 +2368,9 @@ void AffineComponentA::UpdateSimple(
   if (input_scatter_.NumRows() != 0) { // scatter is to be accumulated..
     Matrix<double> in_value_dbl(in_value.NumCols() + 1,
                                 in_value.NumRows());
-
     in_value_dbl.Range(0, in_value.NumCols(),
                        0, in_value.NumRows()).CopyFromMat(in_value, kTrans);
-    in_value_dbl.Row(in_value.NumRows()).Set(1.0);
+    in_value_dbl.Row(in_value.NumCols()).Set(1.0);
     input_scatter_.AddMat2(1.0, in_value_dbl, kNoTrans, 1.0);
   }
   if (output_scatter_.NumRows() != 0) {
@@ -2371,25 +2380,27 @@ void AffineComponentA::UpdateSimple(
 }
 
 // static
-void AffineComponentA::ComputeTransform(const SpMatrix<double> &scatter_in,
-                                        const PreconditionConfig &config,
-                                        double tot_count,
-                                        bool forward,
-                                        bool is_gradient,
-                                        TpMatrix<double> *transform,
-                                        MatrixTransposeType *trans) {
+void AffineComponentA::ComputeTransforms(const SpMatrix<double> &scatter_in,
+                                         const PreconditionConfig &config,
+                                         double tot_count,
+                                         TpMatrix<double> *C,
+                                         TpMatrix<double> *C_inv) {
   SpMatrix<double> scatter(scatter_in);
   KALDI_ASSERT(scatter.Trace() > 0);
 
   scatter.Scale(1.0 / tot_count);
   // Smooth using "alpha"-- smoothing with the unit matrix.
-
+  
   double d = config.alpha * scatter.Trace() / scatter.NumRows();
   for (int32 i = 0; i < scatter.NumRows(); i++)
     scatter(i, i) += d;
   
-  transform->Resize(scatter.NumRows());
-  transform->Cholesky(scatter);
+  C->Resize(scatter.NumRows());
+  C->Cholesky(scatter);
+  *C_inv = *C;
+  C_inv->Invert();
+}
+/*
   // "transform" is now the cholesky factor C.
 
   // Now, the scatter may be viewed as a scatter of gradients (not parameters),
@@ -2403,8 +2414,9 @@ void AffineComponentA::ComputeTransform(const SpMatrix<double> &scatter_in,
   // [trace(S)/dim(S)]^{-0.5}.  Note: this assumes that alpha is small.
   // We may have to revisit this later
 
-  transform->Scale(pow(scatter.Trace() / scatter.NumRows(), -0.5));
-
+  if (config.renormalize)
+    transform->Scale(pow(scatter.Trace() / scatter.NumRows(), -0.5));
+  
   // Now take care of whether it should be inverted or not, and
   // transposed or not.
   if (is_gradient) {
@@ -2417,53 +2429,54 @@ void AffineComponentA::ComputeTransform(const SpMatrix<double> &scatter_in,
     *trans = kTrans;
   }
 }
-
+*/
 
 void AffineComponentA::Transform(
     const PreconditionConfig &config,
     bool forward,
-    AffineComponent *component) const {
+    AffineComponent *component) {
   if (!config.do_precondition) return; // There is nothing to do in this case.
   // (this option will probably only be used for testing.)
   
   KALDI_ASSERT(component != NULL);
 
+  if (in_C_.NumRows() == 0) { // Need to pre-compute some things.
+    double tot_count = input_scatter_(InputDim(), InputDim());
+    // This equals the total count, because for each frame the last
+    // element of the extended input vector is 1.
+    ComputeTransforms(input_scatter_, config, tot_count, &in_C_, &in_C_inv_);
+    ComputeTransforms(output_scatter_, config, tot_count, &out_C_, &out_C_inv_);
+  }
+
+  // "invert" is true if these two bools have the same value.
+  bool is_gradient = component->is_gradient_,
+      invert = (is_gradient == forward);
+  
   // "params" are the parameters of "component" that we'll be changing.
   // Get them as a single matrix.
-  Matrix<double> params(InputDim() + 1, OutputDim());
-  params.Range(0, InputDim(), 0, OutputDim()).CopyFromMat(
+  Matrix<double> params(OutputDim(), InputDim() + 1);
+  params.Range(0, OutputDim(), 0, InputDim()).CopyFromMat(
       component->linear_params_);
   params.CopyColFromVec(Vector<double>(component->bias_params_),
                         InputDim());
   
-  double tot_count = input_scatter_(InputDim(), InputDim());
-  // This equals the total count, because for each frame the last
-  // element of the extended input vector is 1.
 
-  // Compute the input-side cholesky factor.
-  TpMatrix<double> C_in;
-  MatrixTransposeType transpose_in;
-  ComputeTransform(input_scatter_, config, tot_count,
-                   forward, component->is_gradient_,
-                   &C_in, &transpose_in);
+  MatrixTransposeType transpose_in = (is_gradient ? kTrans : kNoTrans);
+  
+  Matrix<double> params_temp(OutputDim(), InputDim() + 1);
+  params_temp.AddMatTp(1.0, params, kNoTrans,
+                       invert ? in_C_inv_ : in_C_,
+                       transpose_in, 0.0);
 
-  Matrix<double> params_temp(InputDim() + 1, OutputDim());
-  params_temp.AddTpMat(1.0, C_in, transpose_in, params_temp, kNoTrans, 0.0);
-
-  TpMatrix<double> &C_out(C_in); // reuse the memory.
-  MatrixTransposeType transpose_out;
-  ComputeTransform(output_scatter_, config, tot_count,
-                   forward, component->is_gradient_,
-                   &C_out, &transpose_out);
-  // we'll be multiplying on the right, so we reverse the transpose-ness.
-  transpose_out = (transpose_out == kNoTrans ? kTrans : kNoTrans);
-  params.AddMatTp(1.0, params_temp, kNoTrans, C_out, transpose_out, 0.0);
+  MatrixTransposeType transpose_out = (is_gradient ? kNoTrans : kTrans);
+  params.AddTpMat(1.0, invert ? out_C_inv_ : out_C_, transpose_out,
+                  params_temp, kNoTrans, 0.0);
   
   // OK, we've done transforming the parameters or gradients.
-
+  
   // Copy the "params" back to "component".
   component->linear_params_.CopyFromMat(
-      params.Range(0, InputDim(), 0, OutputDim()));
+      params.Range(0, OutputDim(), 0, InputDim()));
   component->bias_params_.CopyColFromMat(params,
                                          InputDim());  
 }

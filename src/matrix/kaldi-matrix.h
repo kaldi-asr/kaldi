@@ -716,16 +716,6 @@ Real TraceMatMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
 
 /// @} end "addtogroup matrix_funcs_scalar"
 
-// The following two template specializations don't need to be separately
-// documented.
-template <>
-double TraceMatMat(const MatrixBase<double> &A, const MatrixBase<double> &B,
-                   MatrixTransposeType trans);
-
-template <>
-float TraceMatMat(const MatrixBase<float> &A, const MatrixBase<float> &B,
-                    MatrixTransposeType trans);
-
 
 /// \addtogroup matrix_funcs_misc
 /// @{

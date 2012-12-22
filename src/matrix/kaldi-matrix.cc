@@ -2120,49 +2120,42 @@ template
 bool AttemptComplexPower(double *x_re, double *x_im, double power);
 
 
-template <>  // non-member but friend!
-double TraceMatMat(const MatrixBase<double> &A, const MatrixBase<double> &B, MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
+
+template <class Real>
+Real TraceMatMat(const MatrixBase<Real> &A,
+                  const MatrixBase<Real> &B,
+                  MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
   MatrixIndexT aStride = A.stride_, bStride = B.stride_;
   if (trans == kNoTrans) {
     KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());
-    double ans = 0.0;
-    double *adata = A.data_, *bdata = B.data_;
+    Real ans = 0.0;
+    Real *adata = A.data_, *bdata = B.data_;
     MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
     for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata++)
-      ans += cblas_ddot(acols, adata, 1, bdata, bStride);
+      ans += cblas_Xdot(acols, adata, 1, bdata, bStride);
     return ans;
   } else {
     KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-    double ans = 0.0;
-    double *adata = A.data_, *bdata = B.data_;
+    Real ans = 0.0;
+    Real *adata = A.data_, *bdata = B.data_;
     MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
     for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata+=bStride)
-      ans += cblas_ddot(acols, adata, 1, bdata, 1);
+      ans += cblas_Xdot(acols, adata, 1, bdata, 1);
     return ans;
   }
 }
 
-template <>  // non-member but friend!
-float TraceMatMat(const MatrixBase<float> &A, const MatrixBase<float> &B, MatrixTransposeType trans) {  // tr(A B), equivalent to sum of each element of A times same element in B'
-  MatrixIndexT aStride = A.stride_, bStride = B.stride_;
-  if (trans == kNoTrans) {
-    KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());
-    float ans = 0.0;
-    float *adata = A.data_, *bdata = B.data_;
-    MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
-    for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata++)
-      ans += cblas_sdot(acols, adata, 1, bdata, bStride);
-    return ans;
-  } else {
-    KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-    float ans = 0.0;
-    float *adata = A.data_, *bdata = B.data_;
-    MatrixIndexT arows = A.NumRows(), acols = A.NumCols();
-    for (MatrixIndexT row = 0;row < arows;row++, adata+=aStride, bdata+=bStride)
-      ans += cblas_sdot(acols, adata, 1, bdata, 1);
-    return ans;
-  }
-}
+
+// Instantiate the template above for float and double.
+template
+float TraceMatMat(const MatrixBase<float> &A,
+                  const MatrixBase<float> &B,
+                  MatrixTransposeType trans);
+template
+double TraceMatMat(const MatrixBase<double> &A,
+                  const MatrixBase<double> &B,
+                  MatrixTransposeType trans);
+
 
 template<typename Real>
 Real MatrixBase<Real>::LogSumExp(Real prune) const {

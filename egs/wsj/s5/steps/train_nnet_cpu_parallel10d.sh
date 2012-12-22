@@ -2,6 +2,10 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# 10d should be basically the same as 10c, but changed slightly so as to
+# accommodate some reworked code where nnet-randomize takes posteriors, not
+# alignments.
+
 # 10c is as 10b, but adding the ability to mix up, increasing the #neurons in
 # the last layer.
 
@@ -229,15 +233,14 @@ if [ $stage -le -1 ]; then
   echo "Creating subset of frames of validation set for shrinking."
   $cmd $dir/log/create_valid_subset_shrink.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_shrink --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- |" \
+       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/valid_shrink.egs || exit 1;
   echo "Creating subset of frames of validation set for estimating combination weights."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_combine --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- |" \
+       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/valid_combine.egs || exit 1;
 fi
-
 
 # up till $last_normal_shrink_iter we will shrink the parameters
 # in the normal way using the dev set, but after that we will
@@ -266,7 +269,7 @@ while [ $x -lt $num_iters ]; do
      nnet-randomize-frames \
         $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
       --srand=$y "$feats" \
-       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- |" ark:- \| \
+       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
        nnet-copy-egs ark:- $egs_list &
     last_randomize_process=$! # process-id of the process what we just spawned.
   fi

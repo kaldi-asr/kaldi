@@ -213,6 +213,13 @@ class Nnet {
       VectorBase<BaseFloat> *dot_prod) const;
 
   void Check() const; // Consistency check.
+
+
+  // The following three functions are used for vectorizing
+  // the parameters-- used, for example, in L-BFGS.
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   
   friend class NnetUpdater;
   friend class DecodableNnet;

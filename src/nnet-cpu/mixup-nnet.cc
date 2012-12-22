@@ -106,7 +106,7 @@ void MixupNnet(const NnetMixupConfig &mixup_config,
                           &affine_component,
                           &softmax_component,
                           &mixture_prob_component); // Adds a MixtureProbComponent if needed.
-
+  
   softmax_component->MixUp(mixup_config.num_mixtures,
                            mixup_config.power,
                            mixup_config.min_count,

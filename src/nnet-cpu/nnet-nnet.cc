@@ -366,4 +366,44 @@ void Nnet::SetComponent(int32 c, Component *component) {
   Check(); // Check that all the dimensions still match up.
 }
 
+int32 Nnet::GetParameterDim() const {
+  int32 ans = 0;
+  for (int32 c = 0; c < NumComponents(); c++) {
+    const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+        &(GetComponent(c)));
+    if (uc != NULL)
+      ans += uc->GetParameterDim();
+  }
+  return ans;
+}
+
+void Nnet::Vectorize(VectorBase<BaseFloat> *params) const {
+  int32 offset = 0;
+  for (int32 c = 0; c < NumComponents(); c++) {
+    const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(
+        &(GetComponent(c)));
+    if (uc != NULL) {
+      int32 size = uc->GetParameterDim();
+      SubVector<BaseFloat> temp(*params, offset, size);
+      uc->Vectorize(&temp);
+      offset += size;
+    }
+  }
+  KALDI_ASSERT(offset == GetParameterDim());
+}
+
+void Nnet::UnVectorize(const VectorBase<BaseFloat> &params) {
+  int32 offset = 0;
+  for (int32 c = 0; c < NumComponents(); c++) {
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(
+        &(GetComponent(c)));
+    if (uc != NULL) {
+      int32 size = uc->GetParameterDim();
+      uc->UnVectorize(params.Range(offset, size));
+      offset += size;
+    }
+  }
+  KALDI_ASSERT(offset == GetParameterDim());
+}
+
 } // namespace

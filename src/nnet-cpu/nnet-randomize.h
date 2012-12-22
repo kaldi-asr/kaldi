@@ -82,7 +82,7 @@ class NnetDataRandomizer {
     TrainingFile(const MatrixBase<BaseFloat> &feats_in,
                  const VectorBase<BaseFloat> &spk_info_in,
                  const Posterior &pdf_post_in):
-        feats(feats_in), spk_info(spk_info_in), pdf_post(pdf_post) { }
+        feats(feats_in), spk_info(spk_info_in), pdf_post(pdf_post_in) { }
   };
   
   int32 left_context_;

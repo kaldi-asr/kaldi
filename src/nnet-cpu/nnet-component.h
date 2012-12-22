@@ -141,6 +141,9 @@ class Component {
  */
 class UpdatableComponent: public Component {
  public:
+  UpdatableComponent(const UpdatableComponent &other):
+      learning_rate_(other.learning_rate_){ }
+  
   void Init(BaseFloat learning_rate) {
     learning_rate_ = learning_rate;
   }
@@ -200,8 +203,10 @@ class UpdatableComponent: public Component {
     KALDI_ASSERT(0);
   }
   
- protected:
+ protected: 
   BaseFloat learning_rate_; ///< learning rate (0.0..0.01)
+ private:
+  const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };
 
 /// This kind of Component is a base-class for things like
@@ -321,6 +326,7 @@ class SoftmaxComponent: public NonlinearComponent {
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
+  AffineComponent(const AffineComponent &other);
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   void Init(BaseFloat learning_rate,
@@ -330,7 +336,7 @@ class AffineComponent: public UpdatableComponent {
   virtual std::string Info() const;
   virtual void InitFromString(std::string args);
   
-  AffineComponent() { } // use Init to really initialize.
+  AffineComponent(): is_gradient_(false) { } // use Init to really initialize.
   virtual std::string Type() const { return "AffineComponent"; }
   virtual bool BackpropNeedsInput() const { return true; }
   virtual bool BackpropNeedsOutput() const { return false; }
@@ -372,8 +378,8 @@ class AffineComponent: public UpdatableComponent {
   virtual void UpdateSimple(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);  
-  
-  KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponent);
+
+  const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 
@@ -412,9 +418,11 @@ class AffineComponentPreconditioned: public AffineComponent {
             bool precondition, BaseFloat alpha);
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
-  virtual Component* Copy() const;  
+  virtual Component* Copy() const;
+  AffineComponentPreconditioned() { }
 
  private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
   BaseFloat alpha_;
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,
@@ -492,8 +500,8 @@ class AffineComponentA: public AffineComponent {
   // details.
   void Transform(const PreconditionConfig &config,
                  bool forward,
-                 AffineComponent *component) const;
-  
+                 AffineComponent *component);
+
  private:
 
   // The following variables are not used for the actual neural net, but
@@ -504,17 +512,22 @@ class AffineComponentA: public AffineComponent {
   // has been called.
   SpMatrix<double> output_scatter_;
 
+  // The following four quantities may be cached by the function "Transform",
+  // to avoid duplicating work.
+  TpMatrix<double> in_C_;
+  TpMatrix<double> in_C_inv_;
+  TpMatrix<double> out_C_;
+  TpMatrix<double> out_C_inv_;
+
   // This function computes the matrix (and corresponding transpose-ness) that
   // we'd left-multiply a vector by when transforming the parameter/gradient
   // space.
-  static void ComputeTransform(const SpMatrix<double> &scatter,
-                               const PreconditionConfig &config,
-                               double tot_count,
-                               bool forward,
-                               bool is_gradient,
-                               TpMatrix<double> *transform,
-                               MatrixTransposeType *trans);
-  
+  static void ComputeTransforms(const SpMatrix<double> &scatter,
+                                const PreconditionConfig &config,
+                                double tot_count,
+                                TpMatrix<double> *C,
+                                TpMatrix<double> *C_inv);
+
   // The following update function is called when *this is
   // a gradient.  We only override this one.
   virtual void UpdateSimple(

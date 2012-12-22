@@ -1337,3 +1337,22 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      exp/tri3b/graph data/test exp/tri4y47_nnet/decode
 )
 
+
+( 
+  # 4y48 is as 4y47 but after another code change to use posteriors not
+  # alignments in the nnet-egs code.
+  # WER slightly worse (1.75 -> 1.80%) but probably random.
+  steps/train_nnet_cpu_parallel10d.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y48_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y48_nnet/decode
+)
+

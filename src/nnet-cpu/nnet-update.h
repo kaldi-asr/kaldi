@@ -89,7 +89,7 @@ BaseFloat ComputeNnetObjf(const Nnet &nnet,
 
 /// ComputeNnetGradient is mostly used to compute gradients on validation sets;
 /// it divides the example into batches and calls DoBackprop() on each.
-/// It returns the *average* (weighted) objective function per frame.
+/// It returns the *average* objective function per frame.
 BaseFloat ComputeNnetGradient(
     const Nnet &nnet,
     const std::vector<NnetTrainingExample> &examples,

@@ -28,17 +28,20 @@ namespace kaldi {
 struct NnetLbfgsTrainerConfig {
   PreconditionConfig precondition_config;
   int32 minibatch_size;
-  int32 num_iters; // more precisely, the number of function evaluations.
+  int32 lbfgs_dim; // Number of steps to keep in L-BFGS.
+  int32 lbfgs_num_iters; // more precisely, the number of function evaluations.
   BaseFloat initial_impr;
 
-  NnetLbfgsTrainerConfig(): minibatch_size(1024), num_iters(20),
-                            initial_impr(0.1) { }
+  NnetLbfgsTrainerConfig(): minibatch_size(1024), lbfgs_dim(10),
+                            lbfgs_num_iters(20), initial_impr(0.1) { }
 
   void Register(ParseOptions *po) {
     precondition_config.Register(po);
     po->Register("minibatch-size", &minibatch_size, "Size of minibatches used to "
                  "compute gradient information (only affects speed)");
-    po->Register("num-iters", &num_iters, "Number of function evaluations to do "
+    po->Register("lbfgs-dim", &lbfgs_dim, "Number of parameter/gradient vectors "
+                 "to keep in L-BFGS (parameter \"m\" of L-BFGS).");
+    po->Register("lbfgs-num-iters", &lbfgs_num_iters, "Number of function evaluations to do "
                  "in L-BFGS");
     po->Register("initial-impr", &initial_impr, "Improvement in objective "
                  "function per frame to aim for on initial iteration.");
@@ -52,8 +55,25 @@ class NnetLbfgsTrainer {
   void AddTrainingExample(const NnetTrainingExample &eg) { egs_.push_back(eg); }
   
   void Train(Nnet *nnet);
-  
+
+  ~NnetLbfgsTrainer();
  private:
+  void Initialize(Nnet *nnet);
+
+  void CopyParamsOrGradientFromNnet(const Nnet &nnet,
+                                    VectorBase<BaseFloat> *params);
+  void CopyParamsOrGradientToNnet(const VectorBase<BaseFloat> &params,
+                                  Nnet *nnet);
+  
+  BaseFloat GetObjfAndGradient(const VectorBase<BaseFloat> &cur_value,
+                               VectorBase<BaseFloat> *gradient);
+
+  const Nnet *nnet_; // the original neural net.
+  Nnet *nnet_precondition_; // This object stores the preconditioning
+  // information, if do_precondition == true
+  Vector<BaseFloat> params_; // Neural net parameters, stored as a vector.
+  OptimizeLbfgs<BaseFloat> *lbfgs_;
+  BaseFloat initial_objf_;
   const NnetLbfgsTrainerConfig &config_;
   std::vector<NnetTrainingExample> egs_;  
 };
