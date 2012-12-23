@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-randomize-frames.cc
+// nnet-cpubin/nnet-get-egs.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 
@@ -20,26 +20,62 @@
 #include "hmm/transition-model.h"
 #include "nnet-cpu/nnet-randomize.h"
 
+namespace kaldi {
+static void ProcessFile(const MatrixBase<BaseFloat> &feats,
+                        const Posterior &pdf_post,
+                        const Vector<BaseFloat> &spk_info,
+                        int32 left_context,
+                        int32 right_context,
+                        int64 *num_frames_written,
+                        NnetTrainingExampleWriter *example_writer) {
+  KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
+  NnetTrainingExample eg;
+  eg.input_frames.Resize(left_context + 1 + right_context,
+                         feats.NumCols());
+  eg.spk_info = spk_info;
+  for (int32 i = 0; i < feats.NumRows(); i++) {
+    // Set up "input_frames".
+    for (int32 j = -left_context; j <= right_context; j++) {
+      int32 j2 = j;
+      if (j2 < 0) j2 = 0;
+      if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
+      SubVector<BaseFloat> src(feats, j2), dest(eg.input_frames,
+                                                j + left_context);
+      dest.CopyFromVec(src);
+    }
+    eg.labels = pdf_post[i];
+
+    std::ostringstream os;
+    os << ((*num_frames_written)++);
+    std::string key = os.str(); // key in the archive is the number of the
+    // example.
+    example_writer->Write(key, eg);
+  }
+}
+
+} // namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
 
     const char *usage =
-        "Randomize frames of data for neural network training.\n"
-        "Will typically output data to a pipe that is fed into the trainer.\n"
-        "Note: this program keeps all the utterances it is given in memory,\n"
-        "in compressed form (about one byte per element), so it can use a\n"
-        "fair amount of memory (about 15M per hour of speech at 40 dims, 100\n"
-        "frames/sec).  Note: pdf-post-rspecifier is for pdf-level posteriors,\n"
-        "e.g. obtained by post-to-pdf-post\n"
+        "Get frame-by-frame examples of data for neural network training.\n"
+        "Essentially this is a format change from features and posteriors\n"
+        "into a special frame-by-frame format.  To split randomly into\n"
+        "different subsets, do nnet-copy-egs with --randomize=true, but\n"
+        "note that this does not randomize the order of frames.\n"
+        "Also see nnet-randomize-frames, which uses more memory but also\n"
+        "randomizes the order\n"
         "\n"
-        "Usage:  nnet-randomize-frames [options] <features-rspecifier> "
+        "Usage:  nnet-get-egs [options] <features-rspecifier> "
         "<pdf-post-rspecifier> <training-examples-out>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "nnet-randomize-frames --left-context=8 --right-context=8 \\\n"
-        "  --num-samples=100000 exp/nnet/1.nnet \"$feats\" \\\n"
+        "nnet-get-egs --left-context=8 --right-context=8 \\\n"
+        "  exp/nnet/1.nnet \"$feats\" \\\n"
         "  \"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n"
         "Note: you must set either --num-samples or --num-epochs, and the\n"
@@ -47,14 +83,12 @@ int main(int argc, char *argv[]) {
         "Note: the --left-context and --right-context would be derived from\n"
         "the output of nnet-info.";
         
-    bool local_balance = false; // TODO: remove this.
+    
     int32 left_context = 0, right_context = 0;
     int32 srand_seed = 0;
     std::string spk_vecs_rspecifier;
-    NnetDataRandomizerConfig randomize_config;
     
     ParseOptions po(usage);
-    po.Register("local-balance", &local_balance, "This parameter no longer has any effect."); // TODO: remove it.
     po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors");
     po.Register("srand", &srand_seed, "Seed for random number generator");
     po.Register("left-context", &left_context, "Number of frames of left context "
@@ -62,10 +96,7 @@ int main(int argc, char *argv[]) {
     po.Register("right-context", &right_context, "Number of frames of right context "
                 "the neural net requires.");
     
-    randomize_config.Register(&po);
-    
     po.Read(argc, argv);
-
     srand(srand_seed);
     
     if (po.NumArgs() != 3) {
@@ -77,9 +108,6 @@ int main(int argc, char *argv[]) {
         pdf_post_rspecifier = po.GetArg(2),
         examples_wspecifier = po.GetArg(3);
 
-    NnetDataRandomizer randomizer(left_context,
-                                  right_context,
-                                  randomize_config);
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
@@ -87,6 +115,8 @@ int main(int argc, char *argv[]) {
     NnetTrainingExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
+    int32 spk_dim = -1;
+    int64 num_frames_written = 0;
     
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
@@ -103,7 +133,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         Vector<BaseFloat> spk_info;
-
+        
         if (spk_vecs_rspecifier != "") {
           if (!vecs_reader.HasKey(key)) {
             KALDI_WARN << "No speaker vector for key " << key;
@@ -112,23 +142,26 @@ int main(int argc, char *argv[]) {
           } else {
             spk_info = vecs_reader.Value(key);
           }
+          if (spk_dim == -1) spk_dim = spk_info.Dim();
+          else if (spk_info.Dim() != spk_dim) {
+            KALDI_WARN << "Invalid dimension of speaker vector, "
+                << spk_info.Dim() << " (expected "
+                << spk_dim << " ).";
+            num_err++;
+            continue;
+          }
         }
-        randomizer.AddTrainingFile(feats, spk_info, pdf_post);
+        ProcessFile(feats, pdf_post, spk_info,
+                    left_context, right_context,
+                    &num_frames_written, &example_writer);
         num_done++;
       }
     }
 
-    kaldi::int64 num_written = 0;
-    for (; !randomizer.Done(); randomizer.Next(), num_written++) {
-      std::ostringstream os;
-      os << num_written;
-      std::string key = os.str(); // key in the archive is
-      // the number of the example.
-      example_writer.Write(key, randomizer.Value());
-    }
-    KALDI_LOG << "Finished randomizing features, wrote "
-              << num_written << " examples, successfully processed " << num_done
-              << " feature files, " << num_err << " with errors.";
+    KALDI_LOG << "Finished generating examples, "
+              << "successfully processed " << num_done
+              << " feature files, wrote " << num_frames_written << " examples, "
+              << num_err << " files had errors.";
     return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

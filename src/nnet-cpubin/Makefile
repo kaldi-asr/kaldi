@@ -10,7 +10,7 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-add-hidden-layer nnet-am-init nnet-insert nnet-align-compiled \
    nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine nnet-combine-a \
    nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup \
-   nnet-train-lbfgs
+   nnet-train-lbfgs nnet-get-egs
 
 OBJFILES =
 

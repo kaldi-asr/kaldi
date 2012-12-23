@@ -38,10 +38,17 @@ int main(int argc, char *argv[]) {
         "or:\n"
         "nnet-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
         
-
+    bool random = false;
+    int32 srand_seed = 0;
     ParseOptions po(usage);
+    po.Register("random", &random, "If true, will write frames to output "
+                "archives randomly, not round-robin.");
+    po.Register("srand", &srand_seed, "Seed for random number generator "
+                "(only relevant if --random=true)");
     
     po.Read(argc, argv);
+
+    srand(srand_seed);
     
     if (po.NumArgs() < 2) {
       po.PrintUsage();
@@ -60,10 +67,12 @@ int main(int argc, char *argv[]) {
 
     
     int64 num_done = 0;
-    for (; !example_reader.Done(); example_reader.Next(), num_done++)
-      example_writers[num_done % num_outputs]->Write(example_reader.Key(),
-                                                     example_reader.Value());
-
+    for (; !example_reader.Done(); example_reader.Next(), num_done++) {
+      int32 index = (random ? rand() : num_done) % num_outputs;
+      example_writers[index]->Write(example_reader.Key(),
+                                    example_reader.Value());
+    }
+    
     for (int32 i = 0; i < num_outputs; i++)
       delete example_writers[i];
     KALDI_LOG << "Copied " << num_done << " neural-network training examples ";
