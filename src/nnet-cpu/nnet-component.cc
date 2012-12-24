@@ -484,7 +484,8 @@ void AffineComponent::SetZero(bool treat_as_gradient) {
   }
   linear_params_.SetZero();
   bias_params_.SetZero();
-  is_gradient_ = treat_as_gradient;
+  if (treat_as_gradient)
+    is_gradient_ = true;
 }
 
 void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,

@@ -68,7 +68,7 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > Random
 /// All these examples will be treated as one minibatch.
 BaseFloat DoBackprop(const Nnet &nnet,
                      const std::vector<NnetTrainingExample> &examples,
-                     Nnet *net_to_update);
+                     Nnet *nnet_to_update);
 
 /// Returns the total weight summed over all the examples... just a simple
 /// utility function.

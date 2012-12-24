@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         "Get frame-by-frame examples of data for neural network training.\n"
         "Essentially this is a format change from features and posteriors\n"
         "into a special frame-by-frame format.  To split randomly into\n"
-        "different subsets, do nnet-copy-egs with --randomize=true, but\n"
+        "different subsets, do nnet-copy-egs with --random=true, but\n"
         "note that this does not randomize the order of frames.\n"
         "Also see nnet-randomize-frames, which uses more memory but also\n"
         "randomizes the order\n"

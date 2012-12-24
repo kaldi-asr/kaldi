@@ -20,8 +20,6 @@
 #include "base/kaldi-common.h"
 #include "thread/kaldi-thread.h"
 
-
-
 namespace kaldi {
 
 class MyThreadClass {  // Sums up integers from 0 to max_to_count-1.

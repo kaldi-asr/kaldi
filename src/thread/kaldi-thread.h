@@ -89,11 +89,12 @@ class MultiThreadable {
 
 class ExampleClass: public MultiThreadable {
  public:
-  ExampleClass(const ExampleClass &other) {
-    // .. optional initalizer.  Run sequentially; each of the parallel
-    // ExampleClass members that we'll run in parallel will in turn
-    // be initialized from the object passed by user.
-  }
+  ExampleClass(int32 *foo); // Typically there will be an initializer that
+  // takes arguments.
+  
+  ExampleClass(const ExampleClass &other); // A copy constructor is also needed;
+  // some example classes use the default version of this.
+
   void operator() () {
     // Does the main function of the class.  This
     // function will typically want to look at the values of the 
@@ -109,42 +110,43 @@ class ExampleClass: public MultiThreadable {
   // Have additional member variables as needed.
 };
 
-/// RunMultiThreaded takes a class C similar to ExampleClass above, and runs the
-/// code inside it in parallel; it waits till all threads are done and then
-/// returns.  The number of threads used is g_num_threads.
-template<class C> void RunMultiThreaded(const C &c_in) {
-  KALDI_ASSERT(g_num_threads > 0);
-  if (g_num_threads == 1) {  // Just run one copy.
-    C c(c_in);  // create a copy of the object, just for consistency
-    c.thread_id_ = 0;
-    c.num_threads_ = 1;
-    // with what happens in the multi-threaded case.
-    C::run(&c);  // Note: this is the same as calling c(), but
-    // we do it like this in case the user (ill-advisedly) put any
-    // other statements in the static "run" function.
-  } else {
-    pthread_t *threads = new pthread_t[g_num_threads];
-    std::vector<C> cvec(g_num_threads, c_in);  // all initialized with same
-    // object.
+template<class C>
+class MultiThreader {
+ public:
+  MultiThreader(int32 num_threads,
+                const C &c_in):
+      threads_(new pthread_t[num_threads]),
+      cvec_(num_threads, c_in) {
     pthread_attr_t pthread_attr;
     pthread_attr_init(&pthread_attr);
     for (int32 thread = 0; thread < g_num_threads; thread++) {
-      cvec[thread].thread_id_ = thread;
-      cvec[thread].num_threads_ = g_num_threads;
+      cvec_[thread].thread_id_ = thread;
+      cvec_[thread].num_threads_ = g_num_threads;
       int32 ret;
-      if ((ret=pthread_create(&(threads[thread]),
-                              &pthread_attr, C::run, &(cvec[thread])))) {
+      if ((ret=pthread_create(&(threads_[thread]),
+                              &pthread_attr, C::run, &(cvec_[thread])))) {
         const char *c = strerror(ret);
         if (c == NULL) { c = "[NULL]"; }
         KALDI_ERR << "Error creating thread, errno was: " << c;
       }
     }
-    for (int32 thread = 0; thread < g_num_threads; thread++)
-      if (pthread_join(threads[thread], NULL))
-        KALDI_ERR << "Error rejoining thread.";
-    delete [] threads;
   }
+  ~MultiThreader() {
+    for (int32 thread = 0; thread < g_num_threads; thread++)
+      if (pthread_join(threads_[thread], NULL))
+        KALDI_ERR << "Error rejoining thread.";
+    delete [] threads_;
+  }
+ private:
+  pthread_t *threads_;
+  std::vector<C> cvec_;
+};
+  
+template<class C> void RunMultiThreaded(const C &c_in) {
+  MultiThreader<C> m(g_num_threads, c_in);
 }
+
+
 
 } // namespace kaldi
 #endif  // KALDI_THREAD_KALDI_THREAD_H_
