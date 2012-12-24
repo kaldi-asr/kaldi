@@ -161,7 +161,7 @@ void Tanh(const CuMatrix<Real>& X, CuMatrix<Real>* Y) {
     for(MatrixIndexT r=0; r<x.NumRows(); r++) {
       for(MatrixIndexT c=0; c<x.NumCols(); c++) {
         Real exp_2x = exp(2.0*x(r, c));
-        if(isinf(exp_2x)) {
+        if(KALDI_ISINF(exp_2x)) {
           y(r, c) = 1.0;
         } else {
           y(r, c) = (exp_2x - 1.0) / (exp_2x + 1.0);
