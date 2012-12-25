@@ -1,6 +1,7 @@
 // matrix/cblas-wrappers.h
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012  Johns Hopkins University (author: Daniel Povey);
+//                 Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +17,6 @@
 // limitations under the License.
 
 #include <limits>
-
 #include "matrix/sp-matrix.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
@@ -57,6 +57,34 @@ inline void cblas_Xaxpy(const int N, const float alpha, const float *X,
 inline void cblas_Xaxpy(const int N, const double alpha, const double *X,
                         const int incX, double *Y, const int incY) {
   cblas_daxpy(N, alpha, X, incX, Y, incY);
+}
+inline void cblas_Xscal(const int N,const float alpha,float*data,
+                        const int inc) {
+  cblas_sscal(N, alpha, data, inc);
+}
+inline void cblas_Xscal(const int N,const double alpha,double*data, 
+                        const int inc) {
+  cblas_dscal(N, alpha, data, inc);
+}
+inline void cblas_Xspmv(const float alpha, const int num_rows, const float *Mdata,
+                        const float *v, const int v_inc,
+                        const float beta, float *y, const int y_inc) {
+  cblas_sspmv(CblasRowMajor, CblasLower, num_rows, alpha, Mdata, v, v_inc, beta, y, y_inc);
+}
+inline void cblas_Xspmv(const double alpha, const int num_rows, const double *Mdata,
+                        const double *v, const int v_inc,
+                        const double beta, double *y, const int y_inc) {
+  cblas_dspmv(CblasRowMajor, CblasLower, num_rows, alpha, Mdata, v, v_inc, beta, y, y_inc);
+}
+inline void cblas_Xtpmv(MatrixTransposeType trans, const float *Mdata,
+                        const int num_rows, float *y, const int y_inc) {
+  cblas_stpmv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              CblasNonUnit, num_rows, Mdata, y, y_inc);
+}
+inline void cblas_Xtpmv(MatrixTransposeType trans, const double *Mdata,
+                        const int num_rows, double *y, const int y_inc) {
+  cblas_dtpmv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              CblasNonUnit, num_rows, Mdata, y, y_inc);
 }
 
 // x = alpha * M * y + beta * x
@@ -112,7 +140,54 @@ inline void cblas_Xgemv(MatrixTransposeType trans, MatrixIndexT num_rows,
   cblas_dgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), num_rows,
               num_cols, alpha, Mdata, stride, xdata, incX, beta, ydata, incY);
 }
-
+inline void cblas_Xgemm(const float alpha,
+                        MatrixTransposeType transA,
+                        const float *Adata,
+                        MatrixIndexT a_num_rows, MatrixIndexT a_num_cols, MatrixIndexT a_stride,
+                        MatrixTransposeType transB, 
+                        const float *Bdata, MatrixIndexT b_stride,
+                        const float beta,
+                        float *Mdata, 
+                        MatrixIndexT num_rows, MatrixIndexT num_cols,MatrixIndexT stride) {
+  cblas_sgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), 
+              static_cast<CBLAS_TRANSPOSE>(transB),
+              num_rows, num_cols, transA == kNoTrans ? a_num_cols : a_num_rows,
+              alpha, Adata, a_stride, Bdata, b_stride,
+              beta, Mdata, stride); 
+}
+inline void cblas_Xgemm(const double alpha,
+                        MatrixTransposeType transA,
+                        const double *Adata,
+                        MatrixIndexT a_num_rows, MatrixIndexT a_num_cols, MatrixIndexT a_stride,
+                        MatrixTransposeType transB, 
+                        const double *Bdata, MatrixIndexT b_stride,
+                        const double beta,
+                        double *Mdata, 
+                        MatrixIndexT num_rows, MatrixIndexT num_cols,MatrixIndexT stride) {
+  cblas_dgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), 
+              static_cast<CBLAS_TRANSPOSE>(transB),
+              num_rows, num_cols, transA == kNoTrans ? a_num_cols : a_num_rows,
+              alpha, Adata, a_stride, Bdata, b_stride,
+              beta, Mdata, stride); 
+}
+inline void cblas_Xsymm(const float alpha,
+                        MatrixIndexT sz,
+                        const float *Adata,MatrixIndexT a_stride,
+                        const float *Bdata,MatrixIndexT b_stride,
+                        const float beta,
+                        float *Mdata, MatrixIndexT stride) {
+  cblas_ssymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, Adata,
+              a_stride, Bdata, b_stride, beta, Mdata, stride);
+}
+inline void cblas_Xsymm(const double alpha,
+                        MatrixIndexT sz,
+                        const double *Adata,MatrixIndexT a_stride,
+                        const double *Bdata,MatrixIndexT b_stride,
+                        const double beta,
+                        double *Mdata, MatrixIndexT stride) {
+  cblas_dsymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, Adata,
+              a_stride, Bdata, b_stride, beta, Mdata, stride);
+}
 // ger: M += alpha x y^T.
 inline void cblas_Xger(MatrixIndexT num_rows, MatrixIndexT num_cols, float alpha,
                        const float *xdata, MatrixIndexT incX, const float *ydata,
@@ -151,6 +226,110 @@ inline void cblas_Xsyrk(
   cblas_dsyrk(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
               dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
 }
+// add clapack here
+#ifndef HAVE_ATLAS
+inline void clapack_Xtptri(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *result) {
+  stptri_(const_cast<char *>("U"), const_cast<char *>("N"), num_rows, Mdata, result);
+}
+inline void clapack_Xtptri(KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *result) {
+  dtptri_(const_cast<char *>("U"), const_cast<char *>("N"), num_rows, Mdata, result);
+}
+// 
+inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols, 
+                            float *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot, 
+                            KaldiBlasInt *result) {
+  sgetrf_(num_rows, num_cols, Mdata, stride, pivot, result);
+}
+inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols, 
+                            double *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot, 
+                            KaldiBlasInt *result) {
+  dgetrf_(num_rows, num_cols, Mdata, stride, pivot, result);
+}
+
+// 
+inline void clapack_Xgetri2(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
+                           KaldiBlasInt *pivot, float *p_work, 
+                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
+  sgetri_(num_rows, Mdata, stride, pivot, p_work, l_work, result);
+}
+inline void clapack_Xgetri2(KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
+                           KaldiBlasInt *pivot, double *p_work, 
+                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
+  dgetri_(num_rows, Mdata, stride, pivot, p_work, l_work, result);
+}
+//
+inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
+                    KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
+                    float *sv, float *Vdata, KaldiBlasInt *vstride,
+                    float *Udata, KaldiBlasInt *ustride, float *p_work,
+                    KaldiBlasInt *l_work, KaldiBlasInt *result) {
+  sgesvd_(v, u,
+          num_cols, num_rows, Mdata, stride,
+          sv, Vdata, vstride, Udata, ustride, 
+          p_work, l_work, result); 
+}
+inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
+                    KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
+                    double *sv, double *Vdata, KaldiBlasInt *vstride,
+                    double *Udata, KaldiBlasInt *ustride, double *p_work,
+                    KaldiBlasInt *l_work, KaldiBlasInt *result) {
+  dgesvd_(v, u,
+          num_cols, num_rows, Mdata, stride,
+          sv, Vdata, vstride, Udata, ustride,
+          p_work, l_work,result); 
+}
+//
+void inline clapack_Xsptri(KaldiBlasInt *num_rows, float *Mdata, 
+                           KaldiBlasInt *ipiv, float *work, KaldiBlasInt *result) {
+  ssptri_(const_cast<char *>("U"), num_rows, Mdata, ipiv, work, result);
+}
+void inline clapack_Xsptri(KaldiBlasInt *num_rows, double *Mdata, 
+                           KaldiBlasInt *ipiv, double *work, KaldiBlasInt *result) {
+  dsptri_(const_cast<char *>("U"), num_rows, Mdata, ipiv, work, result);
+}
+//
+void inline clapack_Xsptrf(KaldiBlasInt *num_rows, float *Mdata,
+                           KaldiBlasInt *ipiv, KaldiBlasInt *result) {
+  ssptrf_(const_cast<char *>("U"), num_rows, Mdata, ipiv, result);
+}
+void inline clapack_Xsptrf(KaldiBlasInt *num_rows, double *Mdata,
+                           KaldiBlasInt *ipiv, KaldiBlasInt *result) {
+  dsptrf_(const_cast<char *>("U"), num_rows, Mdata, ipiv, result);
+}
+#else
+inline void clapack_Xgetrf(MatrixIndexT num_rows, MatrixIndexT num_cols,
+                           float *Mdata, MatrixIndexT stride, 
+                           int *pivot, int *result) {
+  *result = clapack_sgetrf(CblasColMajor, num_rows, num_cols,
+                              Mdata, stride, pivot);
+}
+
+inline void clapack_Xgetrf(MatrixIndexT num_rows, MatrixIndexT num_cols,
+                           double *Mdata, MatrixIndexT stride, 
+                           int *pivot, int *result) {
+  *result = clapack_dgetrf(CblasColMajor, num_rows, num_cols,
+                              Mdata, stride, pivot);
+}
+//
+inline int clapack_Xtrtri(int num_rows, float *Mdata, MatrixIndexT stride) {
+  return  clapack_strtri(CblasColMajor, CblasUpper, CblasNonUnit, num_rows,
+                              Mdata, stride);
+}
+
+inline int clapack_Xtrtri(int num_rows, double *Mdata, MatrixIndexT stride) {
+  return  clapack_dtrtri(CblasColMajor, CblasUpper, CblasNonUnit, num_rows,
+                              Mdata, stride);
+}
+//
+inline void clapack_Xgetri(MatrixIndexT num_rows, float *Mdata, MatrixIndexT stride,
+                      int *pivot, int *result) {
+  *result = clapack_sgetri(CblasColMajor, num_rows, Mdata, stride, pivot);
+}
+inline void clapack_Xgetri(MatrixIndexT num_rows, double *Mdata, MatrixIndexT stride,
+                      int *pivot, int *result) {
+  *result = clapack_dgetri(CblasColMajor, num_rows, Mdata, stride, pivot);
+}
+#endif
 
 }
 // namespace kaldi

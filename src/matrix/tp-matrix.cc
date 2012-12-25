@@ -1,7 +1,7 @@
 // matrix/tp-matrix.cc
 
 // Copyright 2009-2011  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation
-//                      Saarland University;  Yanmin Qian
+//                      Saarland University;  Yanmin Qian;   Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,19 +21,20 @@
 #include "matrix/kaldi-matrix.h"
 #include "matrix/cblas-wrappers.h"
 
+
 namespace kaldi {
 
 #ifndef HAVE_ATLAS
-template<>
-void TpMatrix<float>::Invert() {
+template<typename Real>
+void TpMatrix<Real>::Invert() {
   // these are CLAPACK types
   KaldiBlasInt result;
-  KaldiBlasInt rows = static_cast<int>(num_rows_);
+  KaldiBlasInt rows = static_cast<int>(this->num_rows_);
 
   // clapack call
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
   // of the data. We have a row-wise storage, therefore, we need to "invert"
-  stptri_(const_cast<char *>("U"), const_cast<char *>("N"), &rows, data_, &result);
+  clapack_Xtptri(&rows, this->data_, &result);
 
   if (result < 0) {
     KALDI_ERR << "Call to CLAPACK stptri_ function failed";
@@ -41,67 +42,24 @@ void TpMatrix<float>::Invert() {
     KALDI_ERR << "Matrix is singular";
   }
 }
-
-template<>
-void TpMatrix<double>::Invert() {
-  // these are CLAPACK types
-  KaldiBlasInt result;
-  KaldiBlasInt rows = static_cast<int>(num_rows_);
-
-  // clapack call
-  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
-  // of the data. We have a row-wise storage, therefore, we need to "invert"
-  dtptri_(const_cast<char *>("U"), const_cast<char *>("N"), &rows, data_, &result);
-
-  if (result < 0) {
-    KALDI_ERR << "Call to CLAPACK dtptri_ function failed";
-  } else if (result > 0) {
-    KALDI_ERR << "Matrix is singular";
-  }
-}
 #else
-
   
-template<>
-void TpMatrix<float>::Invert() {
+template<typename Real>
+void TpMatrix<Real>::Invert() {
   // ATLAS doesn't implement triangular matrix inversion in packed
   // format, so we temporarily put in non-packed format.
-  Matrix<float> tmp(*this);
-  int rows = static_cast<int>(num_rows_);
+  Matrix<Real> tmp(*this);
+  int rows = static_cast<int>(this->num_rows_);
 
   
   // ATLAS call.  It's really row-major ordering and a lower triangular matrix,
   // but there is some weirdness with Fortran-style indexing that we need to
   // take account of, so everything gets swapped.
-  int result = clapack_strtri(CblasColMajor, CblasUpper, CblasNonUnit, rows,
-                              tmp.Data(), tmp.Stride());
+  int result = clapack_Xtrtri( rows, tmp.Data(), tmp.Stride());
   // Let's hope ATLAS has the same return value conventions as clapack.
   // I couldn't find any documentation online.
   if (result < 0) {
     KALDI_ERR << "Call to ATLAS strtri function failed";
-  } else if (result > 0) {
-    KALDI_ERR << "Matrix is singular";
-  }
-  (*this).CopyFromMat(tmp);
-}
-
-
-template<>
-void TpMatrix<double>::Invert() {
-  // ATLAS doesn't implement triangular matrix inversion in packed
-  // format, so we temporarily put in non-packed format.
-  Matrix<double> tmp(*this);
-  int rows = static_cast<int>(num_rows_);
-
-  // ATLAS call.  It's really row-major ordering and a lower triangular matrix,
-  // but there is some weirdness with Fortran-style indexing that we need to
-  // take account of, so everything gets swapped.
-  int result = clapack_dtrtri(CblasColMajor, CblasUpper, CblasNonUnit, rows,
-                              tmp.Data(), tmp.Stride());
-  // Let's hope ATLAS has the same return value conventions as clapack.
-  // I couldn't find any documentation online.
-  if (result < 0) {
-    KALDI_ERR << "Call to ATLAS dtrtri function failed";
   } else if (result > 0) {
     KALDI_ERR << "Matrix is singular";
   }

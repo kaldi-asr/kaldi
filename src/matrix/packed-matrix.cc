@@ -1,7 +1,8 @@
 // matrix/packed-matrix.cc
 
 // Copyright 2009-2012  Microsoft Corporation  Saarland University
-//        Johns Hopkins University (Author: Daniel Povey)
+//        Johns Hopkins University (Author: Daniel Povey);
+//        Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +21,32 @@
  *
  * Implementation of specialized PackedMatrix template methods
  */
-
+#include "matrix/cblas-wrappers.h"
 #include "matrix/packed-matrix.h"
 #include "matrix/kaldi-vector.h"
 
 namespace kaldi {
+
+template<typename Real>
+void PackedMatrix<Real>::Scale(Real alpha) {
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
+  cblas_Xscal(sz, alpha, data_, 1);
+}
+
+template<typename Real>
+void PackedMatrix<Real>::AddVec2(const Real alpha, const Vector<Real> &rv) {
+  KALDI_ASSERT(rv.Dim() == num_rows_);
+  cblas_Xspr(rv.Dim(), alpha, rv.Data(), 1, data_);
+}
+
+template<typename Real>
+void PackedMatrix<Real>::AddPacked(const Real alpha, const PackedMatrix<Real> &rMa) {
+  KALDI_ASSERT(num_rows_ == rMa.NumRows());
+  size_t nr = num_rows_,
+      sz = (nr * (nr + 1)) / 2;
+  cblas_Xaxpy(sz, alpha, rMa.Data(), 1, data_, 1);
+}
 
 template<class Real>
 void PackedMatrix<Real>::SetRandn() {
@@ -32,25 +54,6 @@ void PackedMatrix<Real>::SetRandn() {
   MatrixIndexT dim = num_rows_, size = ((dim*(dim+1))/2);
   for (MatrixIndexT i = 0; i < size; i++)
     data[i] = RandGauss();  
-}
-
-
-template<>
-void PackedMatrix<float>::AddPacked(const float alpha,
-                                    const PackedMatrix<float> &rMa) {
-  KALDI_ASSERT(num_rows_ == rMa.NumRows());
-  size_t nr = num_rows_,
-      sz = (nr * (nr + 1)) / 2;
-  cblas_saxpy(sz, alpha, rMa.Data(), 1, data_, 1);
-}
-
-template<>
-void PackedMatrix<double>::AddPacked(const double alpha,
-                                     const PackedMatrix<double> &rMa) {
-  KALDI_ASSERT(num_rows_ == rMa.NumRows());
-  size_t nr = num_rows_,
-      sz = (nr * (nr + 1)) / 2;
-  cblas_daxpy(sz, alpha, rMa.Data(), 1, data_, 1);
 }
 
 template<typename Real>
@@ -217,20 +220,6 @@ void PackedMatrix<Real>::Destroy() {
   num_rows_ = 0;
 }
 
-template<>
-void PackedMatrix<float>::Scale(float alpha) {
-  size_t nr = num_rows_,
-      sz = (nr * (nr + 1)) / 2;
-  cblas_sscal(sz, alpha, data_, 1);
-}
-
-template<>
-void PackedMatrix<double>::Scale(double alpha) {
-  size_t nr = num_rows_,
-      sz = (nr * (nr + 1)) / 2;
-  cblas_dscal(sz, alpha, data_, 1);
-}
-
 template<typename Real>
 void PackedMatrix<Real>::Write(std::ostream &os, bool binary) const {
   if (!os.good()) {
@@ -343,20 +332,6 @@ bad:
   KALDI_ERR << "Failed to read packed matrix from stream. " << specific_error
             << " File position at start is "
             << pos_at_start << ", currently " << is.tellg();
-}
-
-
-
-template<>
-void PackedMatrix<float>::AddVec2(const float alpha, const Vector<float> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_);
-  cblas_sspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1, data_);
-}
-
-template<>
-void PackedMatrix<double>::AddVec2(const double alpha, const Vector<double> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_);
-  cblas_dspr(CblasRowMajor, CblasLower, rv.Dim(), alpha, rv.Data(), 1, data_);
 }
 
 

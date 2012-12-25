@@ -1,7 +1,8 @@
 // matrix/sp-matrix.cc
 
 // Copyright 2009-2011  Lukas Burget;  Ondrej Glembek;  Microsoft Corporation
-//                      Saarland University;   Petr Schwarz;   Yanmin Qian
+//                      Saarland University;   Petr Schwarz;   Yanmin Qian;
+//                      Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -226,11 +227,75 @@ template<>
 void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double> &v);
 
 #ifndef HAVE_ATLAS
-template<>
-void SpMatrix<float>::Invert(float *logdet, float *det_sign, bool need_inverse);
+template<typename Real>
+void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
+  // these are CLAPACK types
+  KaldiBlasInt   result;
+  KaldiBlasInt   rows = static_cast<int>(this->num_rows_);
+  KaldiBlasInt*  p_ipiv = new KaldiBlasInt[rows];
+  Real*    p_work = new Real[rows];   // workspace for the lapack function
 
-template<>
-void SpMatrix<double>::Invert(double *logdet, double *det_sign, bool need_inverse);
+
+  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
+  // of the data. We have a row-wise storage, therefore, we need to "invert"
+  clapack_Xsptrf(&rows, this->data_, p_ipiv, &result);
+
+
+  KALDI_ASSERT(result >= 0 && "Call to CLAPACK ssptrf_ called with wrong arguments");
+
+  if (result > 0) {  // Singular...
+    if (det_sign) *det_sign = 0;
+    if (logdet) *logdet = -std::numeric_limits<Real>::infinity();
+    if (need_inverse) KALDI_ERR << "CLAPACK stptrf_ : factorization failed";
+  } else {  // Not singular.. compute log-determinant if needed.
+    if (logdet != NULL || det_sign != NULL) {
+      Real prod = 1.0, log_prod = 0.0;
+      int sign = 1;
+      for (int i = 0; i < (int)this->num_rows_; i++) {
+        if (p_ipiv[i] > 0) {  // not a 2x2 block...
+          // if (p_ipiv[i] != i+1) sign *= -1;  // row swap.
+          Real diag = (*this)(i, i);
+          prod *= diag;
+        } else {  // negative: 2x2 block. [we are in first of the two].
+          i++;  // skip over the first of the pair.
+          // each 2x2 block...
+          Real diag1 = (*this)(i, i), diag2 = (*this)(i-1, i-1),
+              offdiag = (*this)(i, i-1);
+          Real thisdet = diag1*diag2 - offdiag*offdiag;
+          // thisdet == determinant of 2x2 block.
+          // The following line is more complex than it looks: there are 2 offsets of
+          // 1 that cancel.
+          prod *= thisdet;
+        }
+        if (i == (int)(this->num_rows_-1) || fabs(prod) < 1.0e-10 || fabs(prod) > 1.0e+10) {
+          if (prod < 0) { prod = -prod; sign *= -1; }
+          log_prod += log(fabs(prod));
+          prod = 1.0;
+        }
+      }
+      if (logdet != NULL) *logdet = log_prod;
+      if (det_sign != NULL) *det_sign = sign;
+    }
+  }
+  if (!need_inverse) {
+    delete [] p_ipiv;
+    delete [] p_work;
+    return;  // Don't need what is computed next.
+  }
+  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
+  // of the data. We have a row-wise storage, therefore, we need to "invert"
+  clapack_Xsptri(&rows, this->data_, p_ipiv, p_work, &result);
+
+  KALDI_ASSERT(result >=0 &&
+               "Call to CLAPACK ssptri_ called with wrong arguments");
+
+  if (result != 0) {
+    KALDI_ERR << "CLAPACK ssptrf_ : Matrix is singular";
+  }
+
+  delete [] p_ipiv;
+  delete [] p_work;
+}
 #else
 // in the ATLAS case, these are not implemented using a library and we back off to something else.
 template<class Real>
@@ -266,7 +331,7 @@ double TraceSpSp(const SpMatrix<double> &A, const SpMatrix<double> &B) {
   const double *Bptr = B.Data();
   MatrixIndexT R = A.NumRows();
   MatrixIndexT RR = (R * (R + 1)) / 2;
-  double all_twice = 2.0 * cblas_ddot(RR, Aptr, 1, Bptr, 1);
+  double all_twice = 2.0 * cblas_Xdot(RR, Aptr, 1, Bptr, 1);
   // "all_twice" contains twice the vector-wise dot-product... this is
   // what we want except the diagonal elements are represented
   // twice.
@@ -286,7 +351,7 @@ float TraceSpSp(const SpMatrix<float> &A, const SpMatrix<float> &B) {
   const float *Bptr = B.Data();
   MatrixIndexT R = A.NumRows();
   MatrixIndexT RR = (R * (R + 1)) / 2;
-  float all_twice = 2.0 * cblas_sdot(RR, Aptr, 1, Bptr, 1);
+  float all_twice = 2.0 * cblas_Xdot(RR, Aptr, 1, Bptr, 1);
   // "all_twice" contains twice the vector-wise dot-product... this is
   // what we want except the diagonal elements are represented
   // twice.
@@ -644,12 +709,12 @@ template<> float SolveQuadraticProblem(const SpMatrix<float> &H,
 
 // Maximizes the auxiliary function   Q(x) = tr(M^T SigmaInv Y) - 0.5 tr(SigmaInv M Q M^T).
 // Like a numerically stable version of   M := Y Q^{-1}.
-template<>
-double
-SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
-                            const MatrixBase<double> &Y,
-                            const SpMatrix<double> &SigmaInv,
-                            MatrixBase<double> *M, double K, double eps,
+template<typename Real>
+Real
+SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
+                            const MatrixBase<Real> &Y,
+                            const SpMatrix<Real> &SigmaInv,
+                            MatrixBase<Real> *M, Real K, Real eps,
                             const char *debug_str, bool optimizeDelta) {
   KALDI_ASSERT(Q.NumRows() == M->NumCols() && SigmaInv.NumRows() == M->NumRows() && Y.NumRows() == M->NumRows()
       && Y.NumCols() == M->NumCols() && M->NumCols() != 0);
@@ -660,16 +725,16 @@ SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
                << debug_str << ": leaving it unchanged.";
     return 0.0;
   }
-  Matrix<double> Ybar(Y);
+  Matrix<Real> Ybar(Y);
   if (optimizeDelta) {
-    Matrix<double> Qfull(Q);
+    Matrix<Real> Qfull(Q);
     Ybar.AddMatMat(-1.0, *M, kNoTrans, Qfull, kNoTrans, 1.0);
   } // Ybar = Y - M Q.
-  Matrix<double> U(cols, cols);
-  Vector<double> l(cols);
+  Matrix<Real> U(cols, cols);
+  Vector<Real> l(cols);
   Q.SymPosSemiDefEig(&l, &U);  // does svd Q = U L V^T and checks that Q == U L U^T to within a tolerance.
   // floor l.
-  double f = std::max(eps, l.Max() / K);
+  Real f = std::max(eps, l.Max() / K);
   MatrixIndexT nfloored = 0;
   for (MatrixIndexT i = 0;i < cols;i++) {  // floor l.
     if (l(i) < f) { nfloored++; l(i) = f; }
@@ -677,24 +742,24 @@ SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
   if (nfloored != 0)
     KALDI_LOG << "Solving matrix problem for " << debug_str
               << ": floored " << nfloored << " eigenvalues. ";
-  Matrix<double> tmpDelta(rows, cols);
+  Matrix<Real> tmpDelta(rows, cols);
   tmpDelta.AddMatMat(1.0, Ybar, kNoTrans, U, kNoTrans, 0.0);  // tmpDelta = Ybar * U.
   l.InvertElements(); KALDI_ASSERT(1.0/l.Max() != 0);  // check not infinite.  eps should take care of this.
   tmpDelta.MulColsVec(l);  // tmpDelta = Ybar * U * \tilde{L}^{-1}
 
-  Matrix<double> Delta(rows, cols);
+  Matrix<Real> Delta(rows, cols);
   Delta.AddMatMat(1.0, tmpDelta, kNoTrans, U, kTrans, 0.0);  // Delta = Ybar * U * \tilde{L}^{-1} * U^T
 
-  double auxf_before, auxf_after;
-  SpMatrix<double> MQM(rows);
-  Matrix<double> &SigmaInvY(tmpDelta);
-  { Matrix<double> SigmaInvFull(SigmaInv);  SigmaInvY.AddMatMat(1.0, SigmaInvFull, kNoTrans, Y, kNoTrans, 0.0); }
+  Real auxf_before, auxf_after;
+  SpMatrix<Real> MQM(rows);
+  Matrix<Real> &SigmaInvY(tmpDelta);
+  { Matrix<Real> SigmaInvFull(SigmaInv);  SigmaInvY.AddMatMat(1.0, SigmaInvFull, kNoTrans, Y, kNoTrans, 0.0); }
   {  // get auxf_before.      Q(x) = tr(M^T SigmaInv Y) - 0.5 tr(SigmaInv M Q M^T).
     MQM.AddMat2Sp(1.0, *M, kNoTrans, Q, 0.0);
     auxf_before = TraceMatMat(*M, SigmaInvY, kaldi::kTrans) - 0.5*TraceSpSp(SigmaInv, MQM);
   }
 
-  Matrix<double> Mhat(Delta); if (optimizeDelta) Mhat.AddMat(1.0, *M);  // Mhat = Delta + M.
+  Matrix<Real> Mhat(Delta); if (optimizeDelta) Mhat.AddMat(1.0, *M);  // Mhat = Delta + M.
 
   {  // get auxf_after.
     MQM.AddMat2Sp(1.0, Mhat, kNoTrans, Q, 0.0);
@@ -714,37 +779,14 @@ SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
   }
 }
 
-
-
-template<>
-float SolveQuadraticMatrixProblem(const SpMatrix<float> &Q,
-                                  const MatrixBase<float> &Y,
-                                  const SpMatrix<float> &SigmaInv,
-                                  MatrixBase<float> *M, float K, float eps,
-                                  const char *debug_str, bool optimizeDelta) {
-  KALDI_ASSERT(Q.NumRows() == M->NumCols() && SigmaInv.NumRows() == M->NumRows()
-               && Y.NumRows() == M->NumRows() && Y.NumCols() == M->NumCols() &&
-               M->NumCols() != 0);
-
-  SpMatrix<double> Qd(Q), SigmaInvd(SigmaInv);
-  Matrix<double> Yd(Y), Md(*M);
-  float ans = SolveQuadraticMatrixProblem(Qd, Yd, SigmaInvd, &Md,
-                                          static_cast<double>(K),
-                                          static_cast<double>(eps), debug_str,
-                                          optimizeDelta);
-  M->CopyFromMat(Md);
-  return ans;
-}
-
-
-template<>
-double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
-                                         const SpMatrix<double> &P1,
-                                         const SpMatrix<double> &P2,
-                                         const SpMatrix<double> &Q1,
-                                         const SpMatrix<double> &Q2,
-                                         MatrixBase<double> *M, double K,
-                                         double eps, const char *debug_str) {
+template<typename Real>
+Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
+                                         const SpMatrix<Real> &P1,
+                                         const SpMatrix<Real> &P2,
+                                         const SpMatrix<Real> &Q1,
+                                         const SpMatrix<Real> &Q2,
+                                         MatrixBase<Real> *M, Real K,
+                                         Real eps, const char *debug_str) {
   KALDI_ASSERT(Q1.NumRows() == M->NumCols() && P1.NumRows() == M->NumRows() &&
                G.NumRows() == M->NumRows() && G.NumCols() == M->NumCols() &&
                M->NumCols() != 0 && Q2.NumRows() == M->NumCols() &&
@@ -752,16 +794,16 @@ double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
   MatrixIndexT rows = M->NumRows(), cols = M->NumCols();
   // The following check should not fail as we stipulate P1, P2 and one of Q1
   // or Q2 must be +ve def and other Q1 or Q2 must be +ve semidef.
-  TpMatrix<double> LInv(rows);
+  TpMatrix<Real> LInv(rows);
   LInv.Cholesky(P1);
   LInv.Invert();  // Will throw exception if fails.
-  SpMatrix<double> S(rows);
-  Matrix<double> LInvFull(LInv);
+  SpMatrix<Real> S(rows);
+  Matrix<Real> LInvFull(LInv);
   S.AddMat2Sp(1.0, LInvFull, kNoTrans, P2, 0.0);  // S := L^{-1} P_2 L^{-T}
-  Matrix<double> U(rows, rows);
-  Vector<double> d(rows);
+  Matrix<Real> U(rows, rows);
+  Vector<Real> d(rows);
   S.SymPosSemiDefEig(&d, &U);
-  Matrix<double> T(rows, rows);
+  Matrix<Real> T(rows, rows);
   T.AddMatMat(1.0, U, kTrans, LInvFull, kNoTrans, 0.0);  // T := U^T * L^{-1}
 
 #ifdef KALDI_PARANOID  // checking mainly for errors in the code or math.
@@ -771,33 +813,33 @@ double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
     KALDI_ASSERT(P1Trans.IsUnit(0.01));
   }
   {
-    SpMatrix<double> P2Trans(rows);
+    SpMatrix<Real> P2Trans(rows);
     P2Trans.AddMat2Sp(1.0, T, kNoTrans, P2, 0.0);
     KALDI_ASSERT(P2Trans.IsDiagonal(0.01));
   }
 #endif
 
-  Matrix<double> TInv(T);
+  Matrix<Real> TInv(T);
   TInv.Invert();
-  Matrix<double> Gdash(rows, cols);
+  Matrix<Real> Gdash(rows, cols);
   Gdash.AddMatMat(1.0, T, kNoTrans, G, kNoTrans, 0.0);  // G' = T G
-  Matrix<double> MdashOld(rows, cols);
+  Matrix<Real> MdashOld(rows, cols);
   MdashOld.AddMatMat(1.0, TInv, kTrans, *M, kNoTrans, 0.0);  // M' = T^{-T} M
-  Matrix<double> MdashNew(MdashOld);
-  double objf_impr = 0.0;
+  Matrix<Real> MdashNew(MdashOld);
+  Real objf_impr = 0.0;
   for (MatrixIndexT n = 0; n < rows; n++) {
-    SpMatrix<double> Qsum(Q1);
+    SpMatrix<Real> Qsum(Q1);
     Qsum.AddSp(d(n), Q2);
-    SubVector<double> mdash_n = MdashNew.Row(n);
-    SubVector<double> gdash_n = Gdash.Row(n);
+    SubVector<Real> mdash_n = MdashNew.Row(n);
+    SubVector<Real> gdash_n = Gdash.Row(n);
 
-    Matrix<double> QsumInv(Qsum);
+    Matrix<Real> QsumInv(Qsum);
     try {
       QsumInv.Invert();
-      double old_objf = VecVec(mdash_n, gdash_n)
+      Real old_objf = VecVec(mdash_n, gdash_n)
           - 0.5 * VecSpVec(mdash_n, Qsum, mdash_n);
       mdash_n.AddMatVec(1.0, QsumInv, kNoTrans, gdash_n, 0.0); // m'_n := g'_n * (Q_1 + d_n Q_2)^{-1}
-      double new_objf = VecVec(mdash_n, gdash_n)
+      Real new_objf = VecVec(mdash_n, gdash_n)
           - 0.5 * VecSpVec(mdash_n, Qsum, mdash_n);
       if (new_objf < old_objf) {
         if (new_objf < old_objf - 1.0e-05) {
@@ -824,36 +866,12 @@ double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
   return objf_impr;
 }
 
-
-template<>
-float SolveDoubleQuadraticMatrixProblem(const MatrixBase<float> &G,
-                                        const SpMatrix<float> &P1,
-                                        const SpMatrix<float> &P2,
-                                        const SpMatrix<float> &Q1,
-                                        const SpMatrix<float> &Q2,
-                                        MatrixBase<float> *M, float K, float eps,
-                                        const char *debug_str) {
-  KALDI_ASSERT(Q1.NumRows() == M->NumCols() && P1.NumRows() == M->NumRows() &&
-               G.NumRows() == M->NumRows() && G.NumCols() == M->NumCols() &&
-               M->NumCols() != 0 && Q2.NumRows() == M->NumCols() &&
-               P2.NumRows() == M->NumRows());
-
-  SpMatrix<double> P1d(P1), Q1d(Q1), P2d(P2), Q2d(Q2);
-  Matrix<double> Md(*M), Gd(G);
-  float ans = SolveDoubleQuadraticMatrixProblem(Gd, P1d, P2d, Q1d, Q2d, &Md,
-                                                static_cast<double>(K),
-                                                static_cast<double>(eps),
-                                                debug_str);
-  M->CopyFromMat(Md);
-  return ans;
-}
-
 // rank-one update, this <-- this + alpha V V'
 template<>
 template<>
 void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
-  cblas_sspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1,
+  cblas_Xspr(v.Dim(), alpha, v.Data(), 1,
              this->data_);
 }
 
@@ -862,7 +880,7 @@ template<>
 template<>
 void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double> &v) {
   KALDI_ASSERT(v.Dim() == num_rows_);
-  cblas_dspr(CblasRowMajor, CblasLower, v.Dim(), alpha, v.Data(), 1, data_);
+  cblas_Xspr(v.Dim(), alpha, v.Data(), 1, data_);
 }
 
 
@@ -1001,151 +1019,6 @@ void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
   this->CopyFromMat(temp_mat, kTakeLower);
 }
 
-
-#ifndef HAVE_ATLAS
-template<>
-void SpMatrix<float>::Invert(float *logdet, float *det_sign, bool need_inverse) {
-  // these are CLAPACK types
-  KaldiBlasInt   result;
-  KaldiBlasInt   rows = static_cast<int>(num_rows_);
-  KaldiBlasInt*  p_ipiv = new KaldiBlasInt[rows];
-  float*    p_work = new float[rows];   // workspace for the lapack function
-
-
-  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
-  // of the data. We have a row-wise storage, therefore, we need to "invert"
-  ssptrf_(const_cast<char *>("U"), &rows, data_, p_ipiv, &result);
-
-
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK ssptrf_ called with wrong arguments");
-
-  if (result > 0) {  // Singular...
-    if (det_sign) *det_sign = 0;
-    if (logdet) *logdet = -std::numeric_limits<float>::infinity();
-    if (need_inverse) KALDI_ERR << "CLAPACK stptrf_ : factorization failed";
-  } else {  // Not singular.. compute log-determinant if needed.
-    if (logdet != NULL || det_sign != NULL) {
-      float prod = 1.0, log_prod = 0.0;
-      int sign = 1;
-      for (int i = 0; i < (int)num_rows_; i++) {
-        if (p_ipiv[i] > 0) {  // not a 2x2 block...
-          // if (p_ipiv[i] != i+1) sign *= -1;  // row swap.
-          float diag = (*this)(i, i);
-          prod *= diag;
-        } else {  // negative: 2x2 block. [we are in first of the two].
-          i++;  // skip over the first of the pair.
-          // each 2x2 block...
-          float diag1 = (*this)(i, i), diag2 = (*this)(i-1, i-1),
-              offdiag = (*this)(i, i-1);
-          float thisdet = diag1*diag2 - offdiag*offdiag;
-          // thisdet == determinant of 2x2 block.
-          // The following line is more complex than it looks: there are 2 offsets of
-          // 1 that cancel.
-          prod *= thisdet;
-        }
-        if (i == (int)(num_rows_-1) || fabs(prod) < 1.0e-10 || fabs(prod) > 1.0e+10) {
-          if (prod < 0) { prod = -prod; sign *= -1; }
-          log_prod += log(fabs(prod));
-          prod = 1.0;
-        }
-      }
-      if (logdet != NULL) *logdet = log_prod;
-      if (det_sign != NULL) *det_sign = sign;
-    }
-  }
-  if (!need_inverse) {
-    delete [] p_ipiv;
-    delete [] p_work;
-    return;  // Don't need what is computed next.
-  }
-  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
-  // of the data. We have a row-wise storage, therefore, we need to "invert"
-  ssptri_(const_cast<char *>("U"), &rows, data_, p_ipiv, p_work, &result);
-
-  KALDI_ASSERT(result >=0 &&
-               "Call to CLAPACK ssptri_ called with wrong arguments");
-
-  if (result != 0) {
-    KALDI_ERR << "CLAPACK ssptrf_ : Matrix is singular";
-  }
-
-  delete [] p_ipiv;
-  delete [] p_work;
-}
-
-template<>
-void SpMatrix<double>::Invert(double *logdet, double *det_sign, bool need_inverse) {
-  // these are CLAPACK types
-  KaldiBlasInt   result;
-  KaldiBlasInt   rows = static_cast<int>(num_rows_);
-  KaldiBlasInt*  p_ipiv = new KaldiBlasInt[rows];
-  double*   p_work = new double[rows];   // workspace for the lapack function
-
-
-  // see e.g. http://www.netlib.org/lapack/lapack-3.1.1/html/dsptrf.f.html#DSPTRF.1
-  // for documentation of the output of dsptrf.  It's quite complicated.
-
-  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
-  // of the data. We have a row-wise storage, therefore, we need to "invert"
-  dsptrf_(const_cast<char *>("U"), &rows, data_, p_ipiv, &result);
-
-  KALDI_ASSERT(result >= 0 &&
-               "Call to CLAPACK dsptrf_ called with wrong arguments");
-
-  if (result > 0) {  // Singular...
-    if (det_sign) *det_sign = 0;
-    if (logdet) *logdet = -std::numeric_limits<double>::infinity();
-    if (need_inverse) KALDI_ERR << "CLAPACK stptrf_ : factorization failed";
-  } else {  // Not singular.. compute log-determinant if needed.
-    if (logdet != NULL || det_sign != NULL) {
-      float prod = 1.0, log_prod = 0.0;
-      int sign = 1;
-      for (int i = 0; i < (int)num_rows_; i++) {
-        if (p_ipiv[i] > 0) {  // not a 2x2 block...
-          // if (p_ipiv[i] != i+1) sign *= -1;  // row swap.
-          float diag = (*this)(i, i);
-          prod *= diag;
-        } else {  // negative: 2x2 block. [we are in first of the two].
-          i++;  // skip over the first of the pair.
-          // each 2x2 block...
-          float diag1 = (*this)(i, i), diag2 = (*this)(i-1, i-1),
-              offdiag = (*this)(i, i-1);
-          float thisdet = diag1*diag2 - offdiag*offdiag;
-          // thisdet == determinant of 2x2 block.
-          // The following line is more complex than it looks: there are 2 offsets of
-          // 1 that cancel.
-          prod *= thisdet;
-        }
-        if (i == (int)(num_rows_-1) || fabs(prod) < 1.0e-10 || fabs(prod) > 1.0e+10) {
-          if (prod < 0) { prod = -prod; sign *= -1; }
-          log_prod += log(fabs(prod));
-          prod = 1.0;
-        }
-      }
-      if (logdet != NULL) *logdet = log_prod;
-      if (det_sign != NULL) *det_sign = sign;
-    }
-  }
-  if (!need_inverse) {
-    delete [] p_ipiv;
-    delete [] p_work;
-    return;  // Don't need what is computed next.
-  }
-
-  // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
-  // of the data. We have a row-wise storage, therefore, we need to "invert"
-  dsptri_(const_cast<char *>("U"), &rows, data_, p_ipiv, p_work, &result);
-
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dsptri_ called with wrong arguments");
-  if (result > 0) {
-    KALDI_ERR << "CLAPACK dsptrf_ : Matrix is singular";
-  }
-  delete [] p_ipiv;
-  delete [] p_work;
-}
-
-#endif
-
 template<class Real>
 void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
                               MatrixTransposeType transM, const SpMatrix<Real> &A,
@@ -1191,5 +1064,33 @@ double TraceSpSpLower(const SpMatrix<double> &A, const SpMatrix<double> &B);
 template
 float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B);
 
+// Instantiate the template above.
+template float SolveQuadraticMatrixProblem(const SpMatrix<float> &Q,
+                                  const MatrixBase<float> &Y,
+                                  const SpMatrix<float> &SigmaInv,
+                                  MatrixBase<float> *M,
+                                  float K, float eps, const char *debug_str,
+                                  bool optimizeDelta);
+template double SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
+                                  const MatrixBase<double> &Y,
+                                  const SpMatrix<double> &SigmaInv,
+                                  MatrixBase<double> *M,
+                                  double K, double eps, const char *debug_str,
+                                  bool optimizeDelta);
+// Instantiate the template above.
+template float SolveDoubleQuadraticMatrixProblem(const MatrixBase<float> &G,
+                                        const SpMatrix<float> &P1,
+                                        const SpMatrix<float> &P2,
+                                        const SpMatrix<float> &Q1,
+                                        const SpMatrix<float> &Q2,
+                                        MatrixBase<float> *M, float K, float eps,
+                                        const char *debug_str); 
+template double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
+                                        const SpMatrix<double> &P1,
+                                        const SpMatrix<double> &P2,
+                                        const SpMatrix<double> &Q1,
+                                        const SpMatrix<double> &Q2,
+                                        MatrixBase<double> *M, double K, double eps,
+                                        const char *debug_str); 
 
 } // namespace kaldi

@@ -2,7 +2,7 @@
 
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Petr Schwarz;  Yanmin Qian;
-//                      Karel Vesely;  Go Vivace Inc.
+//                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -214,7 +214,6 @@ class MatrixBase {
   /// (only useful if logdet wanted).
   void Invert(Real *log_det = NULL, Real *det_sign = NULL,
               bool inverse_needed = true);
-
   /// matrix inverse [double].
   /// if inverse_needed = false, will fill matrix with garbage
   /// (only useful if logdet wanted).

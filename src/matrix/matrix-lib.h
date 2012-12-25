@@ -1,6 +1,6 @@
 // matrix/matrix-lib.h
 
-// Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation
+// Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #ifndef KALDI_MATRIX_MATRIX_LIB_H_
 #define KALDI_MATRIX_MATRIX_LIB_H_
 
+#include "matrix/cblas-wrappers.h"
 #include "base/kaldi-common.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"

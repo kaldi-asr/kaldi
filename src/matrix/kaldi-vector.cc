@@ -1,8 +1,9 @@
 // matrix/kaldi-vector.cc
 
-// Copyright 2009-2011   Microsoft Corporation;  Lukas Burget;
+// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;   Go Vivace Inc.;  Ariya Rastrow;
-//                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky
+//                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
+//                      Haihua Xu
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,27 +21,20 @@
 
 #include <algorithm>
 #include <string>
-
+#include "matrix/cblas-wrappers.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sp-matrix.h"
 
 namespace kaldi {
 
-template<> float VecVec<>(const VectorBase<float> &ra,
-                          const VectorBase<float> &rb) {
+template<typename Real> 
+Real VecVec(const VectorBase<Real> &ra,
+                          const VectorBase<Real> &rb) {
   MatrixIndexT adim = ra.Dim();
   KALDI_ASSERT(adim == rb.Dim());
-  return cblas_sdot(adim, ra.Data(), 1, rb.Data(), 1);
+  return cblas_Xdot(adim, ra.Data(), 1, rb.Data(), 1);
 }
-
-template<> double VecVec<>(const VectorBase<double> &ra,
-                           const VectorBase<double> &rb) {
-  MatrixIndexT adim = ra.Dim();
-  KALDI_ASSERT(adim == rb.Dim());
-  return cblas_ddot(adim, ra.Data(), 1, rb.Data(), 1);
-}
-
 
 template<class Real, class OtherReal>
 Real VecVec(const VectorBase<Real> &ra,
@@ -70,7 +64,7 @@ void VectorBase<float>::AddVec(const float alpha,
                                const VectorBase<float> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_saxpy(dim_, alpha, v.Data(), 1, data_, 1);
+  cblas_Xaxpy(dim_, alpha, v.Data(), 1, data_, 1);
 }
 
 template<>
@@ -79,75 +73,37 @@ void VectorBase<double>::AddVec(const double alpha,
                                 const VectorBase<double> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_daxpy(dim_, alpha, v.Data(), 1, data_, 1);
+  cblas_Xaxpy(dim_, alpha, v.Data(), 1, data_, 1);
 }
 
-
-template<>
-void VectorBase<float>::AddMatVec(const float alpha,
-                                  const MatrixBase<float> &M,
+template<typename Real>
+void VectorBase<Real>::AddMatVec(const Real alpha,
+                                  const MatrixBase<Real> &M,
                                   MatrixTransposeType trans,
-                                  const VectorBase<float> &v,
-                                  const float beta) {
+                                  const VectorBase<Real> &v,
+                                  const Real beta) {
   KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
                || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
-  cblas_sgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), M.NumRows(),
-              M.NumCols(), alpha, M.Data(), M.Stride(), v.Data(), 1, beta,
-              data_, 1);
+  cblas_Xgemv(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(), 
+              v.Data(), 1, beta, data_, 1); 
 }
 
-template<>
-void VectorBase<double>::AddMatVec(const double alpha,
-                                   const MatrixBase<double> &M,
-                                   MatrixTransposeType trans,
-                                   const VectorBase<double> &v,
-                                   const double beta) {
-  KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
-               || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
-  KALDI_ASSERT(&v != this);
-  cblas_dgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), M.NumRows(),
-              M.NumCols(), alpha, M.Data(), M.Stride(), v.Data(), 1, beta,
-              data_, 1);
-}
-
-
-template<>
-void VectorBase<float>::AddSpVec(const float alpha,
-                                 const SpMatrix<float> &M,
-                                 const VectorBase<float> &v,
-                                 const float beta) {
+template<typename Real>
+void VectorBase<Real>::AddSpVec(const Real alpha,
+                                 const SpMatrix<Real> &M,
+                                 const VectorBase<Real> &v,
+                                 const Real beta) {
   KALDI_ASSERT(M.NumRows() == v.dim_ && dim_ == v.dim_);
   KALDI_ASSERT(&v != this);
-  cblas_sspmv(CblasRowMajor, CblasLower, M.NumRows(), alpha, M.Data(),
-              v.Data(), 1, beta, data_, 1);
+  cblas_Xspmv(alpha, M.NumRows(), M.Data(), v.Data(), 1, beta, data_, 1);
 }
 
-template<>
-void VectorBase<double>::AddSpVec(const double alpha,
-                                  const SpMatrix<double> &M,
-                                  const VectorBase<double> &v,
-                                  const double beta) {
-  KALDI_ASSERT(M.NumRows() == v.dim_ && dim_ == v.dim_);
-  KALDI_ASSERT(&v != this);
-  cblas_dspmv(CblasRowMajor, CblasLower, M.NumRows(), alpha, M.Data(),
-              v.Data(), 1, beta, data_, 1);
-}
-
-template<>
-void VectorBase<float>::MulTp(const TpMatrix<float> &M,
+template<typename Real>
+void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
                               const MatrixTransposeType trans) {
   KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_stpmv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
-              CblasNonUnit, M.NumRows(), M.Data(), data_, 1);
-}
-
-template<>
-void VectorBase<double>::MulTp(const TpMatrix<double> &M,
-                               const MatrixTransposeType trans) {
-  KALDI_ASSERT(M.NumRows() == dim_);
-  cblas_dtpmv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
-              CblasNonUnit, M.NumRows(),  M.Data(), data_, 1);
+  cblas_Xtpmv(trans,M.Data(),M.NumRows(),data_,1);
 }
 
 template<typename Real>
@@ -687,14 +643,9 @@ void VectorBase<Real>::Add(Real c) {
   }
 }
 
-template<>
-void VectorBase<float>::Scale(float alpha) {
-  cblas_sscal(dim_, alpha, data_, 1);
-}
-
-template<>
-void VectorBase<double>::Scale(double alpha) {
-  cblas_dscal(dim_, alpha, data_, 1);
+template<typename Real>
+void VectorBase<Real>::Scale(Real alpha) {
+  cblas_Xscal(dim_,alpha,data_,1);
 }
 
 template<typename Real>
@@ -1031,51 +982,27 @@ void Vector<Real>::Swap(Vector<Real> *other) {
 }
 
 
-template<>
-void VectorBase<float>::AddDiagMat2(
-    float alpha, const MatrixBase<float> &M,
-    MatrixTransposeType trans, float beta) {
+template<typename Real>
+void VectorBase<Real>::AddDiagMat2(
+    Real alpha, const MatrixBase<Real> &M,
+    MatrixTransposeType trans, Real beta) {
   if (trans == kNoTrans) {
     KALDI_ASSERT(this->dim_ == M.NumRows());
     MatrixIndexT rows = this->dim_, cols = M.NumCols(),
            mat_stride = M.Stride();
-    float *data = this->data_;
-    const float *mat_data = M.Data();
+    Real *data = this->data_;
+    const Real *mat_data = M.Data();
     for (MatrixIndexT i = 0; i < rows; i++, mat_data += mat_stride, data++)
-      *data = beta * *data + alpha * cblas_sdot(cols, mat_data, 1, mat_data, 1);
+      *data = beta * *data + alpha * cblas_Xdot(cols,mat_data,1,mat_data,1);
   } else {
     KALDI_ASSERT(this->dim_ == M.NumCols());
     MatrixIndexT rows = M.NumRows(), cols = this->dim_,
            mat_stride = M.Stride();
-    float *data = this->data_;
-    const float *mat_data = M.Data();
+    Real *data = this->data_;
+    const Real *mat_data = M.Data();
     for (MatrixIndexT i = 0; i < cols; i++, mat_data++, data++)
-      *data = beta * *data + alpha * cblas_sdot(rows, mat_data, mat_stride,
-                                                mat_data, mat_stride);
-  }
-}
-
-template<>
-void VectorBase<double>::AddDiagMat2(
-    double alpha, const MatrixBase<double> &M,
-    MatrixTransposeType trans, double beta) {
-  if (trans == kNoTrans) {
-    KALDI_ASSERT(this->dim_ == M.NumRows());
-    MatrixIndexT rows = this->dim_, cols = M.NumCols(),
-           mat_stride = M.Stride();
-    double *data = this->data_;
-    const double *mat_data = M.Data();
-    for (MatrixIndexT i = 0; i < rows; i++, mat_data += mat_stride, data++)
-      *data = beta * *data + alpha * cblas_ddot(cols, mat_data, 1, mat_data, 1);
-  } else {
-    KALDI_ASSERT(this->dim_ == M.NumCols());
-    MatrixIndexT rows = M.NumRows(), cols = this->dim_,
-           mat_stride = M.Stride();
-    double *data = this->data_;
-    const double *mat_data = M.Data();
-    for (MatrixIndexT i = 0; i < cols; i++, mat_data++, data++)
-      *data = beta * *data + alpha * cblas_ddot(rows, mat_data, mat_stride,
-                                                mat_data, mat_stride);
+      *data = beta * *data + alpha * cblas_Xdot(rows, mat_data, mat_stride,
+                                                 mat_data, mat_stride);
   }
 }
 
