@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-nnet.h"
 #include "util/table-types.h"
 #include "thread/kaldi-semaphore.h"
+#include "thread/kaldi-thread.h"
 #include "nnet-cpu/nnet-update.h"
 
 namespace kaldi {

@@ -37,6 +37,8 @@ class AmNnet {
  public:
   AmNnet() { }
 
+  AmNnet(const AmNnet &other): nnet_(other.nnet_), priors_(other.priors_) { }
+  
   /// Initialize the neural network based acoustic model from a config file.
   /// At this point the priors won't be initialized; you'd have to do
   /// SetPriors for that.
@@ -63,6 +65,7 @@ class AmNnet {
   std::string Info() const;
 
  private:
+  const AmNnet &operator = (const AmNnet &other); // Disallow.
   Nnet nnet_;
   Vector<BaseFloat> priors_;
 };

@@ -20,38 +20,31 @@
 namespace kaldi {
 
 
-/// This function replaces any components of type
-/// AffineComponent (or child), with components of type
-/// AffineComponentA.  This type of component can store
-/// the preconditioning information in the neural net.
-void ReplaceAffineComponentsInNnet(Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+Nnet *GetPreconditioner(const Nnet &nnet) {
+  Nnet *ans = new Nnet(nnet);
+  bool is_gradient = true;
+  ans->SetZero(is_gradient);
+  for (int32 c = 0; c < ans->NumComponents(); c++) {
     AffineComponent *ac = dynamic_cast<AffineComponent*>(
-        &(nnet->GetComponent(c)));
+        &(ans->GetComponent(c)));
     if (ac != NULL) {
       AffineComponentA *ac_new = new AffineComponentA(*ac);
-      nnet->SetComponent(c, ac_new);
+      ans->SetComponent(c, ac_new);
       ac_new->InitializeScatter();
     }
   }
+  return ans;
 }
 
 
 void NnetLbfgsTrainer::Initialize(Nnet *nnet_in) {
 
   if (config_.precondition_config.do_precondition) {
-    nnet_precondition_ = new Nnet(*nnet_in); // Create component that can do the
-    // preconditioning.
+    nnet_precondition_ = GetPreconditioner(*nnet_in);
     
-    bool is_gradient = true;
-    nnet_precondition_->SetZero(is_gradient);
-
-    ReplaceAffineComponentsInNnet(nnet_precondition_);
-    // This will store the preconditioning information in nnet_precondition
-    // (if do_precondition == true), as well as computing the
-    // first gradient.
     initial_objf_ = ComputeNnetGradient(*nnet_in, egs_, config_.minibatch_size,
                                         nnet_precondition_);
+    
   } else {
     nnet_precondition_ = NULL;
   }

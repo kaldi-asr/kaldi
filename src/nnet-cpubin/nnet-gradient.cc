@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-train-parallel.cc
+// nnet-cpubin/nnet-gradient.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -30,24 +30,20 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-simple,\n"
-        "but uses multiple threads in a Hogwild type of update.\n"
+        "Compute neural net gradient using backprop.  Can use multiple threads\n"
+        "using --num-threads option.   Note: this is in addition to any BLAS-level\n"
+        "multi-threading.  Note: the model gradient is written in the same format\n"
+        "as the model, with the transition-model included.\n"
         "\n"
-        "Usage:  nnet-train-parallel [options] <model-in> <training-examples-in> <model-out>\n"
+        "Usage:  nnet-gradient [options] <model-in> <training-examples-in> <model-gradient-out>\n"
         "\n"
-        "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
+        "e.g.:  nnet-gradient 1.nnet ark:1.egs 1.gradient\n";
     
     bool binary_write = true;
-    bool zero_occupancy = true;
     int32 minibatch_size = 1024;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
-                "counts stored with the neural net (only affects mixing up).");
     po.Register("num-threads", &g_num_threads, "Number of training threads to use "
                 "in the parallel update. [Note: if you use a parallel "
                 "implementation of BLAS, the actual number of threads may be larger.]");
@@ -63,8 +59,8 @@ int main(int argc, char *argv[]) {
     
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
-        nnet_wxfilename = po.GetArg(3);
-
+        gradient_wxfilename = po.GetArg(3);
+    
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -76,31 +72,31 @@ int main(int argc, char *argv[]) {
 
     KALDI_ASSERT(minibatch_size > 0);
 
-    ExamplesRepository repository;
-    
-    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
-
     int64 num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+
+    AmNnet am_gradient(am_nnet);
+    bool is_gradient = true;
+    am_gradient.GetNnet().SetZero(is_gradient);
     
     // BaseFloat tot_loglike =
     DoBackpropParallel(am_nnet.GetNnet(),
                        minibatch_size,
                        &example_reader,
                        &num_examples,
-                       &(am_nnet.GetNnet()));
+                       &(am_gradient.GetNnet()));
     // This function will have produced logging output, so we have no
     // need for that here.
     
     {
-      Output ko(nnet_wxfilename, binary_write);
+      Output ko(gradient_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
-      am_nnet.Write(ko.Stream(), binary_write);
+      am_gradient.Write(ko.Stream(), binary_write);
     }
     
-    KALDI_LOG << "Finished training, processed " << num_examples
+    KALDI_LOG << "Finished computing gradient, processed " << num_examples
               << " training examples.  Wrote model to "
-              << nnet_wxfilename;
+              << gradient_wxfilename;
     return (num_examples == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

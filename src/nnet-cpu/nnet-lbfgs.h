@@ -79,6 +79,12 @@ class NnetLbfgsTrainer {
 };
 
 
+/** This function takes a neural net, and returns a neural net with the same
+    structure, but with parameters set to zero (to represent a gradient), with
+    all descendants of AffineComponent replaced with one of type
+    AffineComponentA, which we can use (with the training examples) to compute
+    preconditioning information.  */
+Nnet *GetPreconditioner(const Nnet &nnet);
 
 } // namespace
 

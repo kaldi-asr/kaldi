@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-train-parallel.cc
+// nnet-cpubin/nnet-get-preconditioner.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,7 +19,7 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet-cpu/nnet-randomize.h"
-#include "nnet-cpu/nnet-update-parallel.h"
+#include "nnet-cpu/nnet-lbfgs.h"
 #include "nnet-cpu/am-nnet.h"
 
 
@@ -30,29 +30,19 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-simple,\n"
-        "but uses multiple threads in a Hogwild type of update.\n"
+        "Create a \"raw neural-net\" object that can be used as a preconditioner\n"
+        "by programs like nnet-combine (contains a component of type AffineComponentA\n"
+        "corresponding to each descendant of AffineComponent in the original net.)\n"
         "\n"
-        "Usage:  nnet-train-parallel [options] <model-in> <training-examples-in> <model-out>\n"
+        "Usage:  nnet-get-preconditioner [options] <model-in> <training-examples-in> <raw-preconditioner-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
+        "nnet-get-preconditioner 1.nnet ark:1.egs 1.preconditioner\n";
     
     bool binary_write = true;
-    bool zero_occupancy = true;
-    int32 minibatch_size = 1024;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
-                "counts stored with the neural net (only affects mixing up).");
-    po.Register("num-threads", &g_num_threads, "Number of training threads to use "
-                "in the parallel update. [Note: if you use a parallel "
-                "implementation of BLAS, the actual number of threads may be larger.]");
-    po.Register("minibatch-size", &minibatch_size, "Number of examples to use for "
-                "each minibatch during training.");
     
     po.Read(argc, argv);
     
@@ -63,7 +53,8 @@ int main(int argc, char *argv[]) {
     
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
-        nnet_wxfilename = po.GetArg(3);
+        preconditioner_wxfilename = po.GetArg(3);
+
 
     TransitionModel trans_model;
     AmNnet am_nnet;
@@ -74,23 +65,17 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    KALDI_ASSERT(minibatch_size > 0);
-
-    ExamplesRepository repository;
+    Nnet *preconditioner = GetPreconditioner(am_nnet.GetNnet());
     
-    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
-
+    NnetLbfgsTrainer trainer(train_config);
+    
     int64 num_examples = 0;
+      
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    
-    // BaseFloat tot_loglike =
-    DoBackpropParallel(am_nnet.GetNnet(),
-                       minibatch_size,
-                       &example_reader,
-                       &num_examples,
-                       &(am_nnet.GetNnet()));
-    // This function will have produced logging output, so we have no
-    // need for that here.
+    for (; !example_reader.Done(); example_reader.Next(), num_examples++)
+      trainer.AddTrainingExample(example_reader.Value());
+
+    trainer.Train(&(am_nnet.GetNnet()));
     
     {
       Output ko(nnet_wxfilename, binary_write);

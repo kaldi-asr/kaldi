@@ -135,9 +135,6 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
    exp/tri3a/graph data/eval2000 exp/tri3a/decode_eval2000 || exit 1;
 )&
 
-# Some experiments with neural nets:
-#local/run_nnet_cpu.sh &
-
 # From now, we start building a more serious system (with SAT), and we'll
 # do the alignment with fMLLR.
 
@@ -145,7 +142,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri3a exp/tri3a_ali_100k_nodup || exit 1;
 
 steps/train_sat.sh  --cmd "$train_cmd" \
-  2500 20000 data/train_100k_nodup data/lang exp/tri3a_ali_100k_nodup exp/tri4a || exit 1;
+  4000 100000 data/train_100k_nodup data/lang exp/tri3a_ali_100k_nodup exp/tri4a || exit 1;
 
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
@@ -157,6 +154,11 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup
+
+
+# Some experiments with neural nets:
+#local/run_nnet_cpu.sh &
+
 
 local/run_sgmm.sh
 #local/run_sgmm2.sh

@@ -41,9 +41,9 @@ bool ExamplesRepository::ProvideExamples(
   full_semaphore_.Wait();
   if (done_) {
     KALDI_ASSERT(examples_.empty());
-    return false; // no examples to return-- all finished.
     full_semaphore_.Signal(); // Increment the semaphore so
     // the call by the next thread will not block.
+    return false; // no examples to return-- all finished.
   } else {
     KALDI_ASSERT(!examples_.empty() && examples->empty());
     examples->swap(examples_);
@@ -97,7 +97,8 @@ class DoBackpropParallelClass: public MultiThreadable {
   }
   // This does the main function of the class.
   void operator () () {
-    KALDI_ASSERT(nnet_to_update_ != nnet_to_update_orig_);
+    KALDI_ASSERT(nnet_to_update_ != nnet_to_update_orig_ ||
+                 nnet_to_update_ == &nnet_);
     std::vector<NnetTrainingExample> examples;
     while (repository_->ProvideExamples(&examples)) {
       // This is a function call to a function defined in
@@ -170,6 +171,7 @@ BaseFloat DoBackpropParallel(const Nnet &nnet,
     // computation (i.e. &nnet != nnet_to_update).  This gets
     // done in the destructors of the objects of type
     // DoBackpropParallelClass.
+    repository.ExamplesDone();
   }
   KALDI_LOG << "Did backprop on " << *num_frames << " examples, average log-prob "
             << "per frame is " << (tot_log_prob / *num_frames);
