@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Convert RBM to <biasedlinearity> and <sigmoid>\n"
+        "Convert RBM to <affinetransform> and <sigmoid>\n"
         "Usage:  rbm-convert-to-nnet [options] <rbm-in> <nnet-out>\n"
         "e.g.:\n"
         " rbm-convert-to-nnet --binary=false rbm.mdl nnet.mdl\n";
@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;
+    return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;

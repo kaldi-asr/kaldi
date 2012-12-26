@@ -37,6 +37,53 @@ namespace cu {
  * templated functions wrapping the ANSI-C CUDA kernel functions 
  */
 template<typename Real>
+void Softmax(const CuMatrix<Real>& X, CuMatrix<Real>* Y) {
+  #if HAVE_CUDA==1 
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    #if 0 
+    // disable 'tree-reduce' functions, 
+    // slower, but can be used for debugging
+    size_t dimBlock = CUBLOCK;
+    size_t dimGrid  = n_blocks(X.NumRows(), CUBLOCK);
+
+    cuda_softmax(dimGrid, dimBlock, Y.Data(), X.Data(), X.Dim());
+    cuSafeCall(cudaGetLastError());
+    #endif
+
+    #if 1 
+    // enable 'tree-reduce' functions, 
+    //find maximum in each row (tree reduction)
+    CuStlVector<int32> max_id;
+    FindRowMaxId(X, &max_id); 
+    //in each row subtract maximum, apply exp (grid kernel)
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(X.NumCols(), CUBLOCK), n_blocks(X.NumRows(), CUBLOCK));
+    cuda_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim()); 
+    //sum the rows to get normalizers (tree reduction) 
+    CuVector<Real> sum(X.NumRows());
+    sum.AddColSumMat(1.0, *Y, 0.0);
+    //divide by normalizers to get posteriors (grid kernel)
+    Y->DivRowsVec(sum);
+    #endif
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    MatrixBase<Real> &y = Y->Mat();
+    const MatrixBase<Real> &x = X.Mat();
+    y.CopyFromMat(x);
+    for(MatrixIndexT r=0; r<x.NumRows(); r++) {
+      y.Row(r).ApplySoftMax();
+    }
+  }
+}
+
+
+
+template<typename Real>
 void Sigmoid(const CuMatrix<Real>& X, CuMatrix<Real>* Y) {
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
@@ -94,46 +141,61 @@ void DiffSigmoid(const CuMatrix<Real>& Ein, const CuMatrix<Real>& Y, CuMatrix<Re
 
   
 template<typename Real>
-void Softmax(const CuMatrix<Real>& X, CuMatrix<Real>* Y) {
+void Tanh(const CuMatrix<Real>& X, CuMatrix<Real>* Y) {
   #if HAVE_CUDA==1 
-  if (CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    #if 0 
-    // disable 'tree-reduce' functions, 
-    // slower, but can be used for debugging
-    size_t dimBlock = CUBLOCK;
-    size_t dimGrid  = n_blocks(X.NumRows(), CUBLOCK);
-
-    cuda_softmax(dimGrid, dimBlock, Y.Data(), X.Data(), X.Dim());
-    cuSafeCall(cudaGetLastError());
-    #endif
-
-    #if 1 
-    // enable 'tree-reduce' functions, 
-    //find maximum in each row (tree reduction)
-    CuStlVector<int32> max_id;
-    FindRowMaxId(X, &max_id); 
-    //in each row subtract maximum, apply exp (grid kernel)
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(X.NumCols(), CUBLOCK), n_blocks(X.NumRows(), CUBLOCK));
-    cuda_softmax_part(dimGrid, dimBlock, X.Data(), max_id.Data(), Y->Data(), X.Dim()); 
-    //sum the rows to get normalizers (tree reduction) 
-    CuVector<Real> sum(X.NumRows());
-    sum.AddColSumMat(1.0, *Y, 0.0);
-    //divide by normalizers to get posteriors (grid kernel)
-    Y->DivRowsVec(sum);
-    #endif
 
+    cuda_tanh(dimGrid, dimBlock, Y->Data(), X.Data(), X.Dim());
+    cuSafeCall(cudaGetLastError());
+    
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
     MatrixBase<Real> &y = Y->Mat();
     const MatrixBase<Real> &x = X.Mat();
-    y.CopyFromMat(x);
     for(MatrixIndexT r=0; r<x.NumRows(); r++) {
-      y.Row(r).ApplySoftMax();
+      for(MatrixIndexT c=0; c<x.NumCols(); c++) {
+        Real exp_2x = exp(2.0*x(r, c));
+        if(KALDI_ISINF(exp_2x)) {
+          y(r, c) = 1.0;
+        } else {
+          y(r, c) = (exp_2x - 1.0) / (exp_2x + 1.0);
+        }
+      }
+    }
+  }
+}
+
+
+
+template<typename Real>
+void DiffTanh(const CuMatrix<Real>& Ein, const CuMatrix<Real>& Y, CuMatrix<Real>* Eout) {
+  #if HAVE_CUDA==1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(Eout->NumCols(), CUBLOCK), n_blocks(Eout->NumRows(), CUBLOCK));
+
+    cuda_diff_tanh(dimGrid, dimBlock, Eout->Data(), Ein.Data(), Y.Data(), Eout->Dim());
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    MatrixBase<Real> &eout = Eout->Mat();
+    const MatrixBase<Real> &ein = Ein.Mat();
+    const MatrixBase<Real> &y = Y.Mat();
+    for(MatrixIndexT r=0; r<eout.NumRows(); r++) {
+      for(MatrixIndexT c=0; c<eout.NumCols(); c++) {
+        eout(r, c) = ein(r, c) * (1.0 - y(r, c)*y(r, c));
+      }
     }
   }
 }
@@ -306,7 +368,7 @@ void Randomize(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_id
 
 
 template<typename Real>
-void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt) {
+void Splice(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt) {
 
   assert(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
   assert(src.NumRows() == tgt->NumRows());
@@ -318,7 +380,7 @@ void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, 
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
     
-    cuda_expand(dimGrid, dimBlock, tgt->Data(), src.Data(), frame_offsets.Data(), tgt->Dim(), src.Dim());
+    cuda_splice(dimGrid, dimBlock, tgt->Data(), src.Data(), frame_offsets.Data(), tgt->Dim(), src.Dim());
     cuSafeCall(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

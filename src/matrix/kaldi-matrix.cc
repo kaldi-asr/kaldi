@@ -2,7 +2,8 @@
 
 // Copyright 2009-2011   Lukas Burget;  Ondrej Glembek;  Go Vivace Inc.;
 //                       Microsoft Corporation;  Saarland University;
-//                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky
+//                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky;
+//                       Haihua Xu
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +25,9 @@
 #include "matrix/jama-eig.h"
 
 namespace kaldi {
-template<>
-void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
+
+template<typename Real>
+void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
                                bool inverse_needed) {
   KALDI_ASSERT(num_rows_ == num_cols_);
 #ifndef HAVE_ATLAS
@@ -35,14 +37,14 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
   KaldiBlasInt LDA = stride_;
   KaldiBlasInt result;
   KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
-  float *p_work = new float[l_work];
+  Real *p_work = new Real[l_work];
 
-  sgetrf_(&M, &N, data_, &LDA, pivot, &result);
+  clapack_Xgetrf2(&M, &N, data_, &LDA, pivot, &result);
   const int pivot_offset = 1;
 #else
   int *pivot = new int[num_rows_];
-  int result = clapack_sgetrf(CblasColMajor, num_rows_, num_cols_,
-                              data_, stride_, pivot);
+  int result;
+  clapack_Xgetrf(num_rows_, num_cols_, data_, stride_, pivot, &result);
   const int pivot_offset = 0;
 #endif
   KALDI_ASSERT(result >= 0 && "Call to CLAPACK sgetrf_ or ATLAS clapack_sgetrf "
@@ -51,7 +53,7 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
     if (inverse_needed) {
       KALDI_ERR << "Cannot invert: matrix is singular";
     } else {
-      if (LogDet) *LogDet = -std::numeric_limits<float>::infinity();
+      if (LogDet) *LogDet = -std::numeric_limits<Real>::infinity();
       if (DetSign) *DetSign = 0;
       return;
     }
@@ -64,7 +66,7 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
   }
   if (LogDet != NULL || DetSign != NULL) {  // Compute log determinant.
     if (LogDet != NULL) *LogDet = 0.0;
-    float prod = 1.0;
+    Real prod = 1.0;
     for (MatrixIndexT i = 0; i < num_rows_; i++) {
       prod *= (*this)(i, i);
       if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
@@ -76,84 +78,16 @@ void MatrixBase<float>::Invert(float *LogDet, float *DetSign,
     }
   }
 #ifndef HAVE_ATLAS
-  if (inverse_needed) sgetri_(&M, data_, &LDA, pivot, p_work, &l_work,
+  if (inverse_needed) clapack_Xgetri2(&M, data_, &LDA, pivot, p_work, &l_work,
                               &result);
   delete[] pivot;
   delete[] p_work;
 #else
   if (inverse_needed)
-    result = clapack_sgetri(CblasColMajor, num_rows_, data_, stride_, pivot);
+    clapack_Xgetri(num_rows_, data_, stride_, pivot, &result);
   delete [] pivot;
 #endif
   KALDI_ASSERT(result == 0 && "Call to CLAPACK sgetri_ or ATLAS clapack_sgetri "
-               "called with wrong arguments");
-}
-
-
-// ***************************************************************************
-// ***************************************************************************
-template<>
-void MatrixBase<double>::Invert(double *LogDet, double *DetSign,
-                                bool inverse_needed) {
-  KALDI_ASSERT(num_rows_ == num_cols_);
-#ifndef HAVE_ATLAS
-  KaldiBlasInt *pivot = new KaldiBlasInt[num_rows_];
-  KaldiBlasInt M = num_rows_;
-  KaldiBlasInt N = num_cols_;
-  KaldiBlasInt LDA = stride_;
-  KaldiBlasInt result;
-  KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
-  double *p_work = new double[l_work];
-
-  dgetrf_(&M, &N, data_, &LDA, pivot, &result);
-  const int pivot_offset = 1;
-#else
-  int *pivot = new int[num_rows_];
-  int result = clapack_dgetrf(CblasColMajor, num_rows_, num_cols_, data_,
-                              stride_, pivot);
-  const int pivot_offset = 0;
-#endif
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgetrf_ or ATLAS clapack_dgetrf "
-               "called with wrong arguments");
-  if (result > 0) {
-    if (inverse_needed)
-      KALDI_ERR << "Cannot invert: matrix is singular";
-    else {
-      if (LogDet) *LogDet = -std::numeric_limits<float>::infinity();
-      if (DetSign) *DetSign = 0;
-      return;
-    }
-  }
-  if (DetSign != NULL) {
-    int sign = 1;
-    for (MatrixIndexT i = 0; i < num_rows_; i++)
-      if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1;
-    *DetSign = sign;
-  }
-  if (LogDet != NULL || DetSign != NULL) {  // Compute log determinant...
-    if (LogDet != NULL) *LogDet = 0.0;
-    double prod = 1.0;
-    for (MatrixIndexT i = 0; i < num_rows_; i++) {
-      prod *= (*this)(i, i);
-      if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
-          std::fabs(prod) > 1.0e+10) {
-        if (LogDet != NULL) *LogDet += log(fabs(prod));
-        if (DetSign != NULL) *DetSign *= (prod > 0 ? 1.0 : -1.0);
-        prod = 1.0;
-      }
-    }
-  }
-#ifndef HAVE_ATLAS
-  if (inverse_needed)
-    dgetri_(&M, data_, &LDA, pivot, p_work, &l_work, &result);
-  delete[] pivot;
-  delete[] p_work;
-#else
-  if (inverse_needed)
-    result = clapack_dgetri(CblasColMajor, num_rows_, data_, stride_, pivot);
-  delete [] pivot;
-#endif
-  KALDI_ASSERT(result == 0 && "Call to CLAPACK dgetri_ or ATLAS clapack_dgetri "
                "called with wrong arguments");
 }
 
@@ -163,7 +97,7 @@ void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<float> &a,
                                   const VectorBase<float> &rb) {
   KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
-  cblas_sger(CblasRowMajor, a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
+  cblas_Xger(a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
              1, data_, stride_);
 }
 
@@ -180,10 +114,11 @@ void MatrixBase<Real>::AddVecVec(const Real alpha,
     for (MatrixIndexT j = 0; j < num_cols_; j++)
       row_data[j] += alpha_ai * b_data[j];
   }
-}
+} 
 
 // instantiate the template above.
-template
+template<>
+template<>
 void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<double> &a,
                                   const VectorBase<double> &b);
@@ -198,94 +133,55 @@ void MatrixBase<double>::AddVecVec(const double alpha,
                                    const VectorBase<double> &a,
                                    const VectorBase<double> &rb) {
   KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
-  cblas_dger(CblasRowMajor, a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
+  cblas_Xger(a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
              1, data_, stride_);
 }
 
-template<>
-void MatrixBase<float>::AddMatMat(const float alpha,
-                                  const MatrixBase<float>& A,
+template<typename Real>
+void MatrixBase<Real>::AddMatMat(const Real alpha,
+                                  const MatrixBase<Real>& A,
                                   MatrixTransposeType transA,
-                                  const MatrixBase<float>& B,
+                                  const MatrixBase<Real>& B,
                                   MatrixTransposeType transB,
-                                  const float beta) {
+                                  const Real beta) {
   KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && A.num_cols_ == B.num_rows_ && A.num_rows_ == num_rows_ && B.num_cols_ == num_cols_)
                || (transA == kTrans && transB == kNoTrans && A.num_rows_ == B.num_rows_ && A.num_cols_ == num_rows_ && B.num_cols_ == num_cols_)
                || (transA == kNoTrans && transB == kTrans && A.num_cols_ == B.num_cols_ && A.num_rows_ == num_rows_ && B.num_rows_ == num_cols_)
                || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
   KALDI_ASSERT(&A !=  this && &B != this);
+  cblas_Xgemm(alpha, transA, A.data_, A.num_rows_, A.num_cols_, A.stride_,
+              transB, B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
 
-  cblas_sgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), static_cast<CBLAS_TRANSPOSE>(transB),
-              num_rows_, num_cols_, transA == kNoTrans ? A.num_cols_ : A.num_rows_,
-              alpha, A.data_, A.stride_, B.data_, B.stride_,
-              beta, data_, stride_);
 }
 
-template<>
-void MatrixBase<double>::AddMatMat(const double alpha,
-                                   const MatrixBase<double>& A,
-                                   MatrixTransposeType transA,
-                                   const MatrixBase<double>& B,
-                                   MatrixTransposeType transB,
-                                   const double beta) {
-  KALDI_ASSERT((transA == kNoTrans && transB == kNoTrans && A.num_cols_ == B.num_rows_ && A.num_rows_ == num_rows_ && B.num_cols_ == num_cols_)
-               || (transA == kTrans && transB == kNoTrans && A.num_rows_ == B.num_rows_ && A.num_cols_ == num_rows_ && B.num_cols_ == num_cols_)
-               || (transA == kNoTrans && transB == kTrans && A.num_cols_ == B.num_cols_ && A.num_rows_ == num_rows_ && B.num_rows_ == num_cols_)
-               || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
-  KALDI_ASSERT(&A !=  this && &B != this);
-
-  cblas_dgemm(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(transA), static_cast<CBLAS_TRANSPOSE>(transB),
-              num_rows_, num_cols_, transA == kNoTrans ? A.num_cols_ : A.num_rows_,
-              alpha, A.data_, A.stride_, B.data_, B.stride_,
-              beta, data_, stride_);
-}
-
-template<>
-void MatrixBase<float>::AddSpSp(const float alpha, const SpMatrix<float> &A_in,
-                                const SpMatrix<float> &B_in, const float beta) {
+template<typename Real>
+void MatrixBase<Real>::AddSpSp(const Real alpha, const SpMatrix<Real> &A_in,
+                                const SpMatrix<Real> &B_in, const Real beta) {
   MatrixIndexT sz = num_rows_;
   KALDI_ASSERT(sz == num_cols_ && sz == A_in.NumRows() && sz == B_in.NumRows());
 
-  Matrix<float> A(A_in), B(B_in);
+  Matrix<Real> A(A_in), B(B_in);
   // CblasLower or CblasUpper would work below as symmetric matrix is copied
   // fully (to save work, we used the matrix constructor from SpMatrix).
   // CblasLeft means A is on the left: C <-- alpha A B + beta C
-  cblas_ssymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, A.data_,
-              A.stride_, B.data_, B.stride_, beta, data_, stride_);
+  cblas_Xsymm(alpha, sz, A.data_, A.stride_, B.data_, B.stride_, beta, data_, stride_);
 }
 
-template<>
-void MatrixBase<double>::AddSpSp(const double alpha,
-                                 const SpMatrix<double> &A_in,
-                                 const SpMatrix<double> &B_in,
-                                 const double beta) {
-  MatrixIndexT sz = num_rows_;
-  KALDI_ASSERT(sz == num_cols_ && sz == A_in.NumRows() && sz == B_in.NumRows());
-
-  Matrix<double> A(A_in), B(B_in);
-  // CblasLower or CblasUpper would work below as symmetric matrix is copied
-  // fully (to save work, we used the matrix constructor from SpMatrix).
-  // CblasLeft means A is on the left: C <-- alpha A B + beta C
-  cblas_dsymm(CblasRowMajor, CblasLeft, CblasLower, sz, sz, alpha, A.data_,
-              A.stride_, B.data_, B.stride_, beta, data_, stride_);
-}
-
-
-template<>
-void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& A,
+template<typename Real>
+void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
                                MatrixTransposeType transA) {
   if (&A == this) {  // Make it work in this case.
     if (transA == kNoTrans) {
       Scale(alpha + 1.0);
     } else {
       KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self (transposed): not symmetric.");
-      float *data = data_;
+      Real *data = data_;
       if (alpha == 1.0) {  // common case-- handle separately.
         for (MatrixIndexT row = 0; row < num_rows_; row++) {
           for (MatrixIndexT col = 0; col < row; col++) {
-            float *lower = data + (row * stride_) + col, *upper = data + (col
+            Real *lower = data + (row * stride_) + col, *upper = data + (col
                                                                           * stride_) + row;
-            float sum = *lower + *upper;
+            Real sum = *lower + *upper;
             *lower = *upper = sum;
           }
           *(data + (row * stride_) + row) *= 2.0;  // diagonal.
@@ -293,9 +189,9 @@ void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& A,
       } else {
         for (MatrixIndexT row = 0; row < num_rows_; row++) {
           for (MatrixIndexT col = 0; col < row; col++) {
-            float *lower = data + (row * stride_) + col, *upper = data + (col
+            Real *lower = data + (row * stride_) + col, *upper = data + (col
                                                                           * stride_) + row;
-            float lower_tmp = *lower;
+            Real lower_tmp = *lower;
             *lower += alpha * *upper;
             *upper += alpha * lower_tmp;
           }
@@ -305,64 +201,17 @@ void MatrixBase<float>::AddMat(const float alpha, const MatrixBase<float>& A,
     }
   } else {
     int aStride = (int) A.stride_, stride = stride_;
-    float *adata = A.data_, *data = data_;
+    Real *adata = A.data_, *data = data_;
     if (transA == kNoTrans) {
       KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata += aStride,
                data += stride) {
-        cblas_saxpy(num_cols_, alpha, adata, 1, data, 1);
+        cblas_Xaxpy(num_cols_, alpha, adata, 1, data, 1);
       }
     } else {
       KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata++, data += stride)
-        cblas_saxpy(num_cols_, alpha, adata, aStride, data, 1);
-    }
-  }
-}
-
-template<>
-void MatrixBase<double>::AddMat(const double alpha,
-                                const MatrixBase<double>& A, MatrixTransposeType transA) {
-  if (&A == this) {  // Make it work in this case.
-    if (transA == kNoTrans) {
-      Scale(alpha+1.0);
-    } else {
-      KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self(transposed): not symmetric.");
-      double *data = data_;
-      if (alpha == 1.0) {  // common case-- handle separately.
-        for (MatrixIndexT row = 0;row < num_rows_;row++) {
-          for (MatrixIndexT col = 0;col < row;col++) {
-            double *lower = data + (row*stride_) + col,
-                *upper = data + (col*stride_) + row;
-            double sum= *lower+*upper;
-            *lower = *upper = sum;
-          }
-          *(data + (row*stride_) + row) *= 2.0;  // diagonal.
-        }
-      } else {
-        for (MatrixIndexT row = 0;row < num_rows_;row++) {
-          for (MatrixIndexT col = 0;col < row;col++) {
-            double *lower = data + (row*stride_) + col,
-                *upper = data + (col*stride_) + row;
-            double lower_tmp = *lower;
-            *lower += alpha * *upper;
-            *upper += alpha * lower_tmp;
-          }
-          *(data + (row*stride_) + row) *= (1.0+alpha);  // diagonal.
-        }
-      }
-    }
-  } else {
-    int aStride = (int)A.stride_, stride = stride_;
-    double *adata = A.data_, *data = data_;
-    if (transA == kNoTrans) {
-      KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
-      for (MatrixIndexT row = 0;row < num_rows_;row++, adata+=aStride, data+=stride)
-        cblas_daxpy(num_cols_, alpha, adata, 1, data, 1);
-    } else {
-      KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
-      for (MatrixIndexT row = 0;row < num_rows_;row++, adata++, data+=stride)
-        cblas_daxpy(num_cols_, alpha, adata, aStride, data, 1);
+        cblas_Xaxpy(num_cols_, alpha, adata, aStride, data, 1);
     }
   }
 }
@@ -396,81 +245,12 @@ void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 #ifndef HAVE_ATLAS
 // ****************************************************************************
 // ****************************************************************************
-template<>
-void MatrixBase<float>::LapackGesvd(VectorBase<float> *s, MatrixBase<float> *U_in, MatrixBase<float> *V_in) {
+template<typename Real>
+void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in, 
+                                   MatrixBase<Real> *V_in) {
   KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
 
-  Matrix<float> tmpU, tmpV;
-  if (U_in == NULL) tmpU.Resize(this->num_rows_, 1);  // work-space if U_in empty.
-  if (V_in == NULL) tmpV.Resize(1, this->num_cols_);  // work-space if V_in empty.
-
-  /// Impementation notes:
-  /// Lapack works in column-order, therefore the dimensions of *this are
-  /// swapped as well as the U and V matrices.
-
-  KaldiBlasInt M   = num_cols_;
-  KaldiBlasInt N   = num_rows_;
-  KaldiBlasInt LDA = Stride();
-
-  KALDI_ASSERT(N>=M);  // NumRows >= columns.
-
-  if (U_in)
-    KALDI_ASSERT((int)U_in->num_rows_ == N && (int)U_in->num_cols_ == M);
-  if (V_in)
-    KALDI_ASSERT((int)V_in->num_rows_ == M && (int)V_in->num_cols_ == M);
-
-  KALDI_ASSERT((int)s->Dim() == std::min(M, N));
-
-  MatrixBase<float> *U = (U_in ? U_in : &tmpU);
-  MatrixBase<float> *V = (V_in ? V_in : &tmpV);
-
-  KaldiBlasInt V_stride      = V->Stride();
-  KaldiBlasInt U_stride      = U->Stride();
-
-  // Original LAPACK recipe
-  // KaldiBlasInt l_work = std::max(std::max<long int>
-  //   (1, 3*std::min(M, N)+std::max(M, N)), 5*std::min(M, N))*2;
-  KaldiBlasInt l_work = -1;
-  float   work_query;
-  KaldiBlasInt result;
-
-  // query for work space
-  char *u_job = const_cast<char*>(U_in ? "s" : "N");  // "s" == skinny, "N" == "none."
-  char *v_job = const_cast<char*>(V_in ? "s" : "N");  // "s" == skinny, "N" == "none."
-  sgesvd_(v_job, u_job,
-          &M, &N, data_, &LDA,
-          s->Data(),
-          V->Data(), &V_stride,
-          U->Data(), &U_stride,
-          &work_query, &l_work,
-		  &result);
-
-  l_work = static_cast<KaldiBlasInt>(work_query);
-  float *p_work = new float[l_work];
-
-  // perform svd
-  sgesvd_(v_job, u_job,
-          &M, &N, data_, &LDA,
-          s->Data(),
-          V->Data(), &V_stride,
-          U->Data(), &U_stride,
-          p_work, &l_work,
-          &result);
-
-  KALDI_ASSERT(result >= 0 && "Call to CLAPACK sgesvd_ called with wrong arguments");
-
-  if (result != 0) {
-    KALDI_ERR << "CLAPACK sgesvd_ : some weird convergence not satisfied";
-  }
-
-  delete [] p_work;
-}
-
-template<>
-void MatrixBase<double>::LapackGesvd(VectorBase<double> *s, MatrixBase<double> *U_in, MatrixBase<double> *V_in) {
-  KALDI_ASSERT(s != NULL && U_in != this && V_in != this);
-
-  Matrix<double> tmpU, tmpV;
+  Matrix<Real> tmpU, tmpV;
   if (U_in == NULL) tmpU.Resize(this->num_rows_, 1);  // work-space if U_in empty.
   if (V_in == NULL) tmpV.Resize(1, this->num_cols_);  // work-space if V_in empty.
 
@@ -492,8 +272,8 @@ void MatrixBase<double>::LapackGesvd(VectorBase<double> *s, MatrixBase<double> *
   }
   KALDI_ASSERT((int)s->Dim() == std::min(M, N));
 
-  MatrixBase<double> *U = (U_in ? U_in : &tmpU);
-  MatrixBase<double> *V = (V_in ? V_in : &tmpV);
+  MatrixBase<Real> *U = (U_in ? U_in : &tmpU);
+  MatrixBase<Real> *V = (V_in ? V_in : &tmpV);
 
   KaldiBlasInt V_stride      = V->Stride();
   KaldiBlasInt U_stride      = U->Stride();
@@ -502,13 +282,13 @@ void MatrixBase<double>::LapackGesvd(VectorBase<double> *s, MatrixBase<double> *
   // KaldiBlasInt l_work = std::max(std::max<long int>
   //   (1, 3*std::min(M, N)+std::max(M, N)), 5*std::min(M, N))*2;
   KaldiBlasInt l_work = -1;
-  double   work_query;
+  Real   work_query;
   KaldiBlasInt result;
 
   // query for work space
   char *u_job = const_cast<char*>(U_in ? "s" : "N");  // "s" == skinny, "N" == "none."
   char *v_job = const_cast<char*>(V_in ? "s" : "N");  // "s" == skinny, "N" == "none."
-  dgesvd_(v_job, u_job,
+  clapack_Xgesvd(v_job, u_job,
           &M, &N, data_, &LDA,
           s->Data(),
           V->Data(), &V_stride,
@@ -517,10 +297,10 @@ void MatrixBase<double>::LapackGesvd(VectorBase<double> *s, MatrixBase<double> *
 		  &result);
 
   l_work = static_cast<KaldiBlasInt>(work_query);
-  double *p_work = new double[l_work];
+  Real *p_work = new Real[l_work];
 
   // perform svd
-  dgesvd_(v_job, u_job,
+  clapack_Xgesvd(v_job, u_job,
           &M, &N, data_, &LDA,
           s->Data(),
           V->Data(), &V_stride,
@@ -952,28 +732,14 @@ Real MatrixBase<Real>::Sum() const {
   return (Real)sum;
 }
 
-template<>
-void MatrixBase<float>::Scale(float alpha) {
+template<typename Real> void MatrixBase<Real>::Scale(Real alpha) {
   if (num_cols_ == stride_) {
-    cblas_sscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_),
-                alpha, data_, 1);
+    cblas_Xscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_),
+                alpha, data_,1);
   } else {
-    float *data = data_;
+    Real *data = data_;
     for (MatrixIndexT i = 0; i < num_rows_; ++i, data += stride_) {
-      cblas_sscal(num_cols_, alpha, data, 1);
-    }
-  }
-}
-
-template<>
-void MatrixBase<double>::Scale(double alpha) {
-  if (num_cols_ == stride_) {
-    cblas_dscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_), alpha,
-                data_, 1);
-  } else {
-    double *data = data_;
-    for (MatrixIndexT i = 0; i < num_rows_; ++i, data += stride_) {
-      cblas_dscal(num_cols_, alpha, data, 1);
+      cblas_Xscal(num_cols_, alpha, data,1);
     }
   }
 }

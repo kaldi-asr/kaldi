@@ -18,7 +18,7 @@
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-activation.h"
-#include "nnet/nnet-biasedlinearity.h"
+#include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
 
 

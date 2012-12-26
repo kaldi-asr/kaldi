@@ -336,6 +336,36 @@ static void _diff_sigmoid(Real*eout, const Real*e, const Real*y, MatrixDim d) {
 
 template<typename Real>
 __global__
+static void _tanh(Real*y, const Real*x, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  if( i < d.cols  &&  j < d.rows ) {
+    Real exp_2x = exp(2.0*x[index]);
+    Real res;
+    if(isinf(exp_2x)) {
+      res = 1.0;
+    } else {
+      res = (exp_2x - 1.0) / (exp_2x + 1.0);
+    }
+    y[index] = res;
+  }
+}
+
+
+template<typename Real>
+__global__
+static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  if( i < d.cols  && j < d.rows ) 
+    eout[index] = (1.0 - y[index]*y[index]) * e[index];
+}
+
+
+template<typename Real>
+__global__
 static void _softmax(Real*y, const Real*x, MatrixDim d) {
   int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
   if(j >= d.rows) return;
@@ -362,7 +392,7 @@ static void _softmax(Real*y, const Real*x, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _expand(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
+static void _splice(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d_out.stride;
@@ -587,6 +617,14 @@ void cudaF_diff_sigmoid (dim3 Gr, dim3 Bl, float* eout, const float* e, const fl
   _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
 }
 
+void cudaF_tanh (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
+  _tanh<<<Gr,Bl>>>(y, x, d); 
+}
+
+void cudaF_diff_tanh (dim3 Gr, dim3 Bl, float* eout, const float* e, const float* y, MatrixDim d) {
+  _diff_tanh<<<Gr,Bl>>>(eout, e, y, d);
+}
+
 void cudaF_softmax (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d) { 
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
@@ -595,8 +633,8 @@ void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_
   _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
 }
 
-void cudaF_expand(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
-  _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
+void cudaF_splice(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
+  _splice<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
 }
 
 void cudaF_copy(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {
@@ -699,6 +737,15 @@ void cudaD_diff_sigmoid (dim3 Gr, dim3 Bl, double* eout, const double* e, const 
   _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
 }
 
+void cudaD_tanh (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
+  _tanh<<<Gr,Bl>>>(y, x, d); 
+}
+
+void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d) {
+  _diff_tanh<<<Gr,Bl>>>(eout, e, y, d);
+}
+
+
 void cudaD_softmax (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) { 
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
@@ -707,8 +754,8 @@ void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double* X, const int32_cuda* vec
   _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
 }
 
-void cudaD_expand(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
-  _expand<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
+void cudaD_splice(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
+  _splice<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
 }
 
 void cudaD_copy(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* copy_from, MatrixDim d_out, MatrixDim d_in) {

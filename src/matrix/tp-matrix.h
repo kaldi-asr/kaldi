@@ -1,7 +1,7 @@
 // matrix/tp-matrix.h
 
 // Copyright 2009-2011  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
-//                      Saarland University;  Yanmin Qian
+//                      Saarland University;  Yanmin Qian;   Haihua Xu
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,10 +111,6 @@ class TpMatrix : public PackedMatrix<Real> {
 /// @} end of "addtogroup matrix_group".
 
 }  // namespace kaldi
-
-
-// Including the implementation
-#include "matrix/tp-matrix-inl.h"
 
 
 #endif

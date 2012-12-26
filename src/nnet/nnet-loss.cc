@@ -183,8 +183,8 @@ void MseProgress::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFl
 
 std::string MseProgress::Report() {
   std::ostringstream oss;
-  oss << "Mse:" << loss_ << " frames:" << frames_
-      << " err/frm:" << loss_/frames_ 
+  oss << "Mse:" << loss_+loss_progress_ << " frames:" << frames_+frames_progress_
+      << " err/frm:" << (loss_+loss_progress_) / (frames_+frames_progress_)
       << std::endl;
   oss << "progress: [";
   std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));

@@ -34,6 +34,12 @@ namespace kaldi {
  */
 namespace cu {
 
+  /// Softmax nonlinearity
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik)
+  /// for each row, the max value is first subtracted for good numerical stability
+  template<typename Real>
+  void Softmax(const CuMatrix<Real>& X, CuMatrix<Real>* Y);
+
   /// Logistic sigmoid
   /// Y = Sigmoid(X) : y = 1/(1+exp(-x))
   template<typename Real>
@@ -44,12 +50,16 @@ namespace cu {
   template<typename Real>
   void DiffSigmoid(const CuMatrix<Real>& Ein, const CuMatrix<Real>& Y, CuMatrix<Real>* Eout);
 
-  /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik)
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Hyperbolic tangent
+  /// Y = Tanh(X) : y = (exp(x)-exp(-x)) / (exp(x)+exp(-x))
   template<typename Real>
-  void Softmax(const CuMatrix<Real>& X, CuMatrix<Real>* Y);
+  void Tanh(const CuMatrix<Real>& X, CuMatrix<Real>* Y);
 
+  /// Derivative of Hyperbolic tangent
+  /// Eout = (1-Y^2) .* Ein
+  template<typename Real>
+  void DiffTanh(const CuMatrix<Real>& Ein, const CuMatrix<Real>& Y, CuMatrix<Real>* Eout);
+ 
   /// apply the L1 regularization
   template<typename Real>
   void RegularizeL1(CuMatrix<Real> *wei, CuMatrix<Real> *grad, Real l1, Real lr);
@@ -76,7 +86,7 @@ namespace cu {
 
   /// ie. concatenate the frames with offsets from frame_offsets
   template<typename Real>
-  void Expand(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt);
+  void Splice(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, CuMatrix<Real> *tgt);
 
   /// ie. concatenate the frames with offsets from frame_offsets
   template<typename Real>

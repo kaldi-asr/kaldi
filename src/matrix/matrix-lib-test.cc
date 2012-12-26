@@ -3,7 +3,8 @@
 // Copyright 2009-2012   Microsoft Corporation;  Mohit Agarwal;  Lukas Burget;
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
-//                       Johns Hopkins University (Author: Daniel Povey)
+//                       Johns Hopkins University (Author: Daniel Povey);
+//                       Haihua Xu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1234,7 +1235,7 @@ static void UnitTestTridiagonalize() {
   {
     float tmp[5];
     tmp[4] = 1.0;
-    cblas_sspmv(CblasRowMajor, CblasLower, 1, 0.0, tmp+2,
+    cblas_Xspmv(1, 0.0, tmp+2,
                 tmp+1, 1, 0.0, tmp+4, 1);
     KALDI_ASSERT(tmp[4] == 0.0);
   }
@@ -1273,8 +1274,11 @@ static void UnitTestTridiagonalizeAndQr() {
   {
     float tmp[5];
     tmp[4] = 1.0;
-    cblas_sspmv(CblasRowMajor, CblasLower, 1, 0.0, tmp+2,
+   // cblas_sspmv(CblasRowMajor, CblasLower, 1, 0.0, tmp+2,
+   //             tmp+1, 1, 0.0, tmp+4, 1);
+    cblas_Xspmv(1, 0.0, tmp+2,
                 tmp+1, 1, 0.0, tmp+4, 1);
+
     KALDI_ASSERT(tmp[4] == 0.0);
   }
   for (MatrixIndexT i = 0; i < 4; i++) {

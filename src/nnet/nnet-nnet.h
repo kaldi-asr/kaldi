@@ -58,6 +58,16 @@ class Nnet {
   }
   int IndexOfLayer(const Component& comp) const; ///< Get the position of layer in network
 
+  /// Add another layer
+  /// Warning : the MLP takes responsibility for freeing the memory
+  ///           so use dynamically allocated Component only!
+  void AppendLayer(Component* dynamically_allocated_comp) {
+    if(LayerCount() > 0) {
+      KALDI_ASSERT(OutputDim() == dynamically_allocated_comp->InputDim());
+    }
+    nnet_.push_back(dynamically_allocated_comp);
+  }
+
   /// Access to forward pass buffers
   const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const { 
     return propagate_buf_; 

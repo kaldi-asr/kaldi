@@ -63,6 +63,8 @@ template<typename Real> inline void cuda_invert_elements(dim3 Gr, dim3 Bl, Real 
  */
 template<typename Real> inline void cuda_sigmoid(dim3 Gr, dim3 Bl, Real *y, const Real *x, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, Real *eout, const Real *e, const Real *y, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
+template<typename Real> inline void cuda_tanh(dim3 Gr, dim3 Bl, Real *y, const Real *x, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
+template<typename Real> inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, Real *eout, const Real *e, const Real *y, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_softmax(size_t Gr, size_t Bl, Real *y, const Real *x, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_softmax_part(dim3 Gr, dim3 Bl, const Real *X, const int32_cuda *vec_ids, Real* Y, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 
@@ -71,8 +73,7 @@ template<typename Real> inline void cuda_find_row_max_id(dim3 Gr, dim3 Bl, const
 template<typename Real> inline void cuda_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, Real *mat_net_out, Real *vec_log_post, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 
 template<typename Real> inline void cuda_randomize(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
-//CURRENTLY UNUSED...
-template<typename Real> inline void cuda_expand(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
+template<typename Real> inline void cuda_splice(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_copy(dim3 Gr, dim3 Bl, Real *y, const Real *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { KALDI_ERR << __func__ << " Not implemented!"; }
 
 
@@ -106,6 +107,8 @@ template<> inline void cuda_invert_elements<float>(dim3 Gr, dim3 Bl, float *data
  */
 template<> inline void cuda_sigmoid<float>(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d) { cudaF_sigmoid(Gr,Bl,y,x,d); }
 template<> inline void cuda_diff_sigmoid<float>(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d) { cudaF_diff_sigmoid(Gr,Bl,eout,e,y,d); }
+template<> inline void cuda_tanh<float>(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d) { cudaF_tanh(Gr,Bl,y,x,d); }
+template<> inline void cuda_diff_tanh<float>(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d) { cudaF_diff_tanh(Gr,Bl,eout,e,y,d); }
 template<> inline void cuda_softmax<float>(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d) { cudaF_softmax(Gr,Bl,y,x,d); }
 template<> inline void cuda_softmax_part<float>(dim3 Gr, dim3 Bl, const float *X, const int32_cuda *vec_ids, float* Y, MatrixDim d) { cudaF_softmax_part(Gr,Bl,X,vec_ids,Y,d); }
 
@@ -114,8 +117,8 @@ template<> inline void cuda_find_row_max_id<float>(dim3 Gr, dim3 Bl, const float
 template<> inline void cuda_diff_xent<float>(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, float *mat_net_out, float *vec_log_post, MatrixDim d) { cudaF_diff_xent(Gr,Bl,vec_tgt,mat_net_out,vec_log_post,d); }
 
 template<> inline void cuda_randomize<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaF_randomize(Gr,Bl,y,x,copy_from,d_out,d_in); }
-//CURRENTLY UNUSED...
-template<> inline void cuda_expand<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaF_expand(Gr,Bl,y,x,off,d_out,d_in); }
+
+template<> inline void cuda_splice<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaF_splice(Gr,Bl,y,x,off,d_out,d_in); }
 template<> inline void cuda_copy<float>(dim3 Gr, dim3 Bl, float *y, const float *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaF_copy(Gr,Bl,y,x,copy_from,d_out,d_in); }
 
 
@@ -148,6 +151,8 @@ template<> inline void cuda_invert_elements<double>(dim3 Gr, dim3 Bl, double *da
  */
 template<> inline void cuda_sigmoid<double>(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d) { cudaD_sigmoid(Gr,Bl,y,x,d); }
 template<> inline void cuda_diff_sigmoid<double>(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d) { cudaD_diff_sigmoid(Gr,Bl,eout,e,y,d); }
+template<> inline void cuda_tanh<double>(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d) { cudaD_tanh(Gr,Bl,y,x,d); }
+template<> inline void cuda_diff_tanh<double>(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d) { cudaD_diff_tanh(Gr,Bl,eout,e,y,d); }
 template<> inline void cuda_softmax<double>(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d) { cudaD_softmax(Gr,Bl,y,x,d); }
 template<> inline void cuda_softmax_part<double>(dim3 Gr, dim3 Bl, const double *X, const int32_cuda *vec_ids, double* Y, MatrixDim d) { cudaD_softmax_part(Gr,Bl,X,vec_ids,Y,d); }
 
@@ -156,8 +161,7 @@ template<> inline void cuda_find_row_max_id<double>(dim3 Gr, dim3 Bl, const doub
 template<> inline void cuda_diff_xent<double>(dim3 Gr, dim3 Bl, const int32_cuda *vec_tgt, double *mat_net_out, double *vec_log_post, MatrixDim d) { cudaD_diff_xent(Gr,Bl,vec_tgt,mat_net_out,vec_log_post,d); }
 
 template<> inline void cuda_randomize<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaD_randomize(Gr,Bl,y,x,copy_from,d_out,d_in); }
-//CURRENTLY UNUSED...
-template<> inline void cuda_expand<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaD_expand(Gr,Bl,y,x,off,d_out,d_in); }
+template<> inline void cuda_splice<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *off, MatrixDim d_out, MatrixDim d_in) { cudaD_splice(Gr,Bl,y,x,off,d_out,d_in); }
 template<> inline void cuda_copy<double>(dim3 Gr, dim3 Bl, double *y, const double *x, const int32_cuda *copy_from, MatrixDim d_out, MatrixDim d_in) { cudaD_copy(Gr,Bl,y,x,copy_from,d_out,d_in); }
 
 } // namespace

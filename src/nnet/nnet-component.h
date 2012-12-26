@@ -55,22 +55,22 @@ class Component {
     kUnknown = 0x0,
      
     kUpdatableComponent = 0x0100, 
-    kBiasedLinearity,
-    kSharedLinearity, 
-    kKrylovLinearity,
+    kAffineTransform,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 
     kSigmoid,
+    kTanh,
+    kDropout,
 
     kTranform =  0x0400,
     kRbm,
-    kExpand,
+    kSplice,
     kCopy,
     kTranspose,
     kBlockLinearity,
-    kBias,
-    kWindow,
+    kAddShift,
+    kRescale,
     kLog
   } ComponentType;
   /// Pair of type and marker

@@ -39,10 +39,14 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         "nnet-get-preconditioner 1.nnet ark:1.egs 1.preconditioner\n";
     
+
+    int32 minibatch_size = 1024;
     bool binary_write = true;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("minibatch-size", &minibatch_size,
+                "Size of minibatches used in computation");
     
     po.Read(argc, argv);
     
@@ -67,13 +71,19 @@ int main(int argc, char *argv[]) {
 
     Nnet *preconditioner = GetPreconditioner(am_nnet.GetNnet());
     
-    NnetLbfgsTrainer trainer(train_config);
-    
     int64 num_examples = 0;
-      
+
+
+    std::vector<NnetTrainingExample> examples;
+
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    for (; !example_reader.Done(); example_reader.Next(), num_examples++)
-      trainer.AddTrainingExample(example_reader.Value());
+    for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
+      examples.push_back(example_reader.Value());
+      if (static_cast<int32>(examples.size()) == minibatch_size) {
+        ComputeNnetGradient(
+        examples.clear();
+      }
+    }
 
     trainer.Train(&(am_nnet.GetNnet()));
     
