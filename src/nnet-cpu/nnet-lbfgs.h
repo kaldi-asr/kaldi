@@ -86,6 +86,19 @@ class NnetLbfgsTrainer {
     preconditioning information.  */
 Nnet *GetPreconditioner(const Nnet &nnet);
 
+/** This function calls the function Precondition of class AffineComponentA in
+    "preconditioner"; it multiplies the parameters of each descendant of
+    AffineComponent in "nnet" in a way that's appropriate for converting from
+    gradient-space to model-space, in methods like L-BFGS.  (This is like
+    multiplying by an approximate inverse Hessian.)
+    "preconditioner" is not const because of caching issues-- it may have to
+    pre-compute certain quantities.  It is in a sense "really" const.
+ */
+void PreconditionNnet(const PreconditionConfig &config,
+                      Nnet *preconditioner,
+                      Nnet *nnet);
+
+
 } // namespace
 
 #endif

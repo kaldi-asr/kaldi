@@ -74,9 +74,6 @@ void PreconditionDirectionsAlphaRescaled(
     const MatrixBase<BaseFloat> &R,
     double alpha,
     MatrixBase<BaseFloat> *P);
-
-
-
   
                            
 

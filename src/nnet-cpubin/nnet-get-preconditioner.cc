@@ -30,11 +30,11 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Create a \"raw neural-net\" object that can be used as a preconditioner\n"
+        "Create a neural-net model that can be used as a preconditioner\n"
         "by programs like nnet-combine (contains a component of type AffineComponentA\n"
         "corresponding to each descendant of AffineComponent in the original net.)\n"
         "\n"
-        "Usage:  nnet-get-preconditioner [options] <model-in> <training-examples-in> <raw-preconditioner-out>\n"
+        "Usage:  nnet-get-preconditioner [options] <model-in> <training-examples-in> <preconditioner-out>\n"
         "\n"
         "e.g.:\n"
         "nnet-get-preconditioner 1.nnet ark:1.egs 1.preconditioner\n";
@@ -69,33 +69,46 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    Nnet *preconditioner = GetPreconditioner(am_nnet.GetNnet());
+    Nnet *preconditioner = GetPreconditioner(am_nnet.GetNnet());    
+    AmNnet am_preconditioner(*preconditioner);
+    delete preconditioner;
+    preconditioner = NULL;
     
     int64 num_examples = 0;
-
-
+    double tot_logprob = 0;
+    
     std::vector<NnetTrainingExample> examples;
-
+    
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
       examples.push_back(example_reader.Value());
       if (static_cast<int32>(examples.size()) == minibatch_size) {
-        ComputeNnetGradient(
+        tot_logprob += DoBackprop(am_nnet.GetNnet(),
+                                  examples,
+                                  &(am_preconditioner.GetNnet()));
         examples.clear();
       }
+      if (num_examples % 100000 == 0)
+        KALDI_LOG << "Processed " << (num_examples - examples.size())
+                  << " examples, average log-prob per example is "
+                  << (tot_logprob / (num_examples - examples.size()));
     }
-
-    trainer.Train(&(am_nnet.GetNnet()));
+    if (!examples.empty())
+      tot_logprob += DoBackprop(am_nnet.GetNnet(),
+                                examples,
+                                &(am_preconditioner.GetNnet()));
     
-    {
-      Output ko(nnet_wxfilename, binary_write);
+    { // Write the preconditioner.
+      Output ko(preconditioner_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
-      am_nnet.Write(ko.Stream(), binary_write);
+      am_preconditioner.Write(ko.Stream(), binary_write);
     }
     
-    KALDI_LOG << "Finished training, processed " << num_examples
-              << " training examples.  Wrote model to "
-              << nnet_wxfilename;
+    KALDI_LOG << "Overall log-prob per example was "
+              << (tot_logprob / num_examples) << " per example, over "
+              << num_examples << " examples.";
+    KALDI_LOG << "Wrote preconditioner to "
+              << preconditioner_wxfilename;
     return (num_examples == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

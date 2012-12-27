@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-average.cc
+// nnet-cpubin/nnet-am-average.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "This program averages the parameters over a number of neural nets.\n"
+        "This program average (or sums, if --sum=true) the parameters over a number of neural nets.\n"
         "\n"
         "Usage:  nnet-average [options] <model1> <model2> ... <modelN> <model-out>\n"
         "\n"
@@ -38,8 +38,10 @@ int main(int argc, char *argv[]) {
         " nnet-average 1.1.nnet 1.2.nnet 1.3.nnet 2.nnet\n";
     
     bool binary_write = true;
+    bool sum = false;
     
     ParseOptions po(usage);
+    po.Register("sum", &sum, "If true, sums instead of averages.");
     po.Register("binary", &binary_write, "Write output in binary mode");
     
     po.Read(argc, argv);
@@ -63,7 +65,7 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_inputs = po.NumArgs() - 1;
-    BaseFloat scale = 1.0 / num_inputs;
+    BaseFloat scale = (sum ? 1.0 : 1.0 / num_inputs);
     Vector<BaseFloat> scales(am_nnet1.GetNnet().NumUpdatableComponents());
     scales.Set(scale);
 

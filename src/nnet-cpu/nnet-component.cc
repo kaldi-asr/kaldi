@@ -2336,6 +2336,8 @@ void AffineComponentA::Scale(BaseFloat scale) {
   bias_params_.Scale(scale);
   input_scatter_.Scale(scale);
   output_scatter_.Scale(scale);
+  // Remove all precomputed quantities, they'll be invalid.
+  ClearPrecomputedQuantities();
 }
 
 void AffineComponentA::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
@@ -2346,6 +2348,8 @@ void AffineComponentA::Add(BaseFloat alpha, const UpdatableComponent &other_in) 
   bias_params_.AddVec(alpha, other->bias_params_);
   input_scatter_.AddSp(alpha, other->input_scatter_);
   output_scatter_.AddSp(alpha, other->output_scatter_);  
+  // Remove all precomputed quantities, they'll be invalid.
+  ClearPrecomputedQuantities();
 }
 
 Component* AffineComponentA::Copy() const {
@@ -2355,6 +2359,15 @@ Component* AffineComponentA::Copy() const {
   ans->input_scatter_ = input_scatter_;
   ans->output_scatter_ = output_scatter_;
   return ans;
+}
+
+void AffineComponentA::ClearPrecomputedQuantities() {
+  in_C_.Resize(0);
+  in_C_inv_.Resize(0);
+  out_C_.Resize(0);
+  out_C_inv_.Resize(0);
+  inv_fisher_in_.Resize(0);
+  inv_fisher_out_.Resize(0);
 }
 
 void AffineComponentA::UpdateSimple(
@@ -2432,6 +2445,27 @@ void AffineComponentA::ComputeTransforms(const SpMatrix<double> &scatter_in,
 }
 */
 
+// static
+void AffineComponentA::ComputePreconditioner(const SpMatrix<double> &scatter_in,
+                                             const PreconditionConfig &config,
+                                             double tot_count,
+                                             SpMatrix<double> *inv_fisher) {
+  SpMatrix<double> scatter(scatter_in);
+  KALDI_ASSERT(scatter.Trace() > 0);
+
+  scatter.Scale(1.0 / tot_count);
+  // Smooth using "alpha"-- smoothing with the unit matrix.
+  
+  double d = config.alpha * scatter.Trace() / scatter.NumRows();
+  for (int32 i = 0; i < scatter.NumRows(); i++)
+    scatter(i, i) += d;
+  
+  inv_fisher->Resize(scatter.NumRows());
+  inv_fisher->CopyFromSp(scatter);
+  inv_fisher->Invert();
+}
+
+
 void AffineComponentA::Transform(
     const PreconditionConfig &config,
     bool forward,
@@ -2475,6 +2509,45 @@ void AffineComponentA::Transform(
   
   // OK, we've done transforming the parameters or gradients.
   
+  // Copy the "params" back to "component".
+  component->linear_params_.CopyFromMat(
+      params.Range(0, OutputDim(), 0, InputDim()));
+  component->bias_params_.CopyColFromMat(params,
+                                         InputDim());  
+}
+
+
+void AffineComponentA::Precondition(
+    const PreconditionConfig &config,
+    AffineComponent *component) {
+
+  if (!config.do_precondition) return; // There is nothing to do in this case.
+  // (this option will probably only be used for testing.)
+  
+  KALDI_ASSERT(component != NULL);
+
+  if (inv_fisher_in_.NumRows() == 0) { // Need to pre-compute some things.
+    double tot_count = input_scatter_(InputDim(), InputDim());
+    // This equals the total count, because for each frame the last
+    // element of the extended input vector is 1.
+    ComputePreconditioner(input_scatter_, config, tot_count, &inv_fisher_in_);
+    ComputePreconditioner(output_scatter_, config, tot_count, &inv_fisher_out_);
+  }
+
+  // "params" are the parameters of "component" that we'll be changing.
+  // Get them as a single matrix.
+  Matrix<double> params(OutputDim(), InputDim() + 1);
+  params.Range(0, OutputDim(), 0, InputDim()).CopyFromMat(
+      component->linear_params_);
+  params.CopyColFromVec(Vector<double>(component->bias_params_),
+                        InputDim());
+  
+  Matrix<double> params_temp(OutputDim(), InputDim() + 1);
+  params_temp.AddMatSp(1.0, params, kNoTrans, inv_fisher_in_, 0.0);
+
+  params.AddSpMat(1.0, inv_fisher_out_, params_temp, kNoTrans, 0.0);
+  
+  // OK, we've done transforming the parameters or gradients.
   // Copy the "params" back to "component".
   component->linear_params_.CopyFromMat(
       params.Range(0, OutputDim(), 0, InputDim()));

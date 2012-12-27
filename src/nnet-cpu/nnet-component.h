@@ -502,6 +502,18 @@ class AffineComponentA: public AffineComponent {
                  bool forward,
                  AffineComponent *component);
 
+  // This function uses the input_scatter_ and output_scatter_ variables
+  // current class to transform the linear_params_ and bias_params_ variables of
+  // "component".  It is equivalent to multiplying by the inverse Fisher,
+  // or approximate inverse Hessian.  It's the operation that you need
+  // in optimization methods like L-BFGS, to transform from "gradient space"
+  // into "model space".
+  // Note: it's not const in this object, because we may cache stuff with the model.
+  // See also the function "PreconditionNnet" in nnet-lbfgs.h, which
+  // does this at the whole-neural-net level (by calling this function).
+  void Precondition(const PreconditionConfig &config,
+                    AffineComponent *component);
+  
  private:
 
   // The following variables are not used for the actual neural net, but
@@ -519,6 +531,11 @@ class AffineComponentA: public AffineComponent {
   TpMatrix<double> out_C_;
   TpMatrix<double> out_C_inv_;
 
+  // The following two quantities may be cached by the function "Precondition",
+  // to avoid duplicating work.
+  SpMatrix<double> inv_fisher_in_;
+  SpMatrix<double> inv_fisher_out_;
+  
   // This function computes the matrix (and corresponding transpose-ness) that
   // we'd left-multiply a vector by when transforming the parameter/gradient
   // space.
@@ -528,6 +545,15 @@ class AffineComponentA: public AffineComponent {
                                 TpMatrix<double> *C,
                                 TpMatrix<double> *C_inv);
 
+  // This function is called by "Precondition"; it pre-computes
+  // certain quantities we'll need.
+  static void ComputePreconditioner(const SpMatrix<double> &scatter,
+                                    const PreconditionConfig &config,
+                                    double tot_count,
+                                    SpMatrix<double> *inv_fisher);
+
+  void ClearPrecomputedQuantities();
+  
   // The following update function is called when *this is
   // a gradient.  We only override this one.
   virtual void UpdateSimple(

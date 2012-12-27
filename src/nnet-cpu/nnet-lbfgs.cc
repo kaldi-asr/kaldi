@@ -36,6 +36,22 @@ Nnet *GetPreconditioner(const Nnet &nnet) {
   return ans;
 }
 
+void PreconditionNnet(const PreconditionConfig &config,
+                      Nnet *preconditioner,
+                      Nnet *nnet) {
+  KALDI_ASSERT(preconditioner->NumComponents() == nnet->NumComponents());
+  for (int32 c = 0; c < preconditioner->NumComponents(); c++) {
+    AffineComponent *ac =
+        dynamic_cast<AffineComponent*>(&(nnet->GetComponent(c)));
+    if (ac != NULL) {
+      AffineComponentA *pac =
+          dynamic_cast<AffineComponentA*>(&(preconditioner->GetComponent(c)));
+      KALDI_ASSERT(pac != NULL &&
+                   "Incorrect input to PreconditionNnet (not a preconditioner?)");
+      pac->Precondition(config, ac);
+    }
+  }
+}
 
 void NnetLbfgsTrainer::Initialize(Nnet *nnet_in) {
 

@@ -38,6 +38,8 @@ class AmNnet {
   AmNnet() { }
 
   AmNnet(const AmNnet &other): nnet_(other.nnet_), priors_(other.priors_) { }
+
+  explicit AmNnet(const Nnet &nnet): nnet_(nnet) { }
   
   /// Initialize the neural network based acoustic model from a config file.
   /// At this point the priors won't be initialized; you'd have to do
@@ -49,7 +51,7 @@ class AmNnet {
   void Init(const Nnet &nnet);
 
   int32 NumPdfs() const { return nnet_.OutputDim(); }
-
+  
   void Write(std::ostream &os, bool binary) const;
   
   void Read(std::istream &is, bool binary);

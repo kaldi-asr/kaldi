@@ -232,5 +232,3 @@ class Nnet {
 } // namespace kaldi
 
 #endif
-
-
