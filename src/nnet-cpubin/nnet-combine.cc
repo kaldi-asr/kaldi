@@ -97,7 +97,6 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(validation_set.size() > 0);
     }
 
-        
     CombineNnets(combine_config,
                  validation_set,
                  nnets,

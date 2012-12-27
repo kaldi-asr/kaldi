@@ -29,6 +29,8 @@ namespace kaldi {
     combination of the different neural-net parameters.
  */
 struct NnetCombineConfig {
+  int32 initial_model; // If provided, the index of the initial model to start
+  // the optimization from.
   int32 num_bfgs_iters; // The dimension is small (e.g. 3 to 5 times the
   // number of neural nets we were given, e.g. 10) so we do
   // BFGS.  We actually implement this as L-BFGS but setting the number of
@@ -38,10 +40,14 @@ struct NnetCombineConfig {
   BaseFloat initial_step;
   BaseFloat min_objf_change;
   
-  NnetCombineConfig(): num_bfgs_iters(30), initial_step(0.1),
-                       min_objf_change(1.0e-05) { }
+  NnetCombineConfig(): initial_model(-1), num_bfgs_iters(30),
+                       initial_step(0.1), min_objf_change(1.0e-05) { }
   
   void Register(ParseOptions *po) {
+    po->Register("initial-model", &initial_model, "Specifies where to start the "
+                 "optimization from.  If 0 ... #models-1, then specifies the model; "
+                 "if #models, then the average of all inputs; otherwise, chosen "
+                 "automatically from the previous options.");
     po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
                  "evaluations for BFGS to use when optimizing combination weights");
     po->Register("initial-step", &initial_step, "Parameter in the optimization, "

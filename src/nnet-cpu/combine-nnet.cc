@@ -40,20 +40,20 @@ static void CombineNnets(const Vector<BaseFloat> &scale_params,
   }
 }
 
-
-// This function chooses from among the neural nets, the one
-// which has the best validation set objective function.
-static void GetInitialScaleParams(
+/// Returns an integer saying which model to use:
+/// either 0 ... num-models - 1 for the best individual model,
+/// or (#models) for the average of all of them.
+static int32 GetInitialModel(
     const std::vector<NnetTrainingExample> &validation_set,
-    const std::vector<Nnet> &nnets,
-    Vector<double> *scale_params) {
+    const std::vector<Nnet> &nnets) {
   int32 minibatch_size = 1024;
+  int32 num_nnets = static_cast<int32>(nnets.size());
   KALDI_ASSERT(!nnets.empty());
   BaseFloat tot_frames = validation_set.size();
   int32 best_n = -1;
   BaseFloat best_objf;
   Vector<BaseFloat> objfs(nnets.size());
-  for (int32 n = 0; n < static_cast<int32>(nnets.size()); n++) {
+  for (int32 n = 0; n < num_nnets; n++) {
     BaseFloat objf = ComputeNnetObjf(nnets[n], validation_set,
                                      minibatch_size) / tot_frames;
     
@@ -64,34 +64,55 @@ static void GetInitialScaleParams(
     objfs(n) = objf;
   }
   KALDI_LOG << "Objective functions for the source neural nets are " << objfs;
+
   int32 num_uc = nnets[0].NumUpdatableComponents();
 
   { // Now try a version where all the neural nets have the same weight.
-    scale_params->Resize(num_uc * nnets.size());
-    scale_params->Set(1.0 / nnets.size());
+    Vector<BaseFloat> scale_params(num_uc * num_nnets);
+    scale_params.Set(1.0 / num_nnets);
     Nnet average_nnet;
-    Vector<BaseFloat> scale_params_float(*scale_params);
-    CombineNnets(scale_params_float, nnets, &average_nnet);
+    CombineNnets(scale_params, nnets, &average_nnet);
     BaseFloat objf = ComputeNnetObjf(average_nnet, validation_set,
                                      minibatch_size) / tot_frames;
-    KALDI_LOG << "Objf with all neural nets averaged is "
-              << objf;
+    KALDI_LOG << "Objf with all neural nets averaged is " << objf;
     if (objf > best_objf) {
-      KALDI_LOG << "Initializing with all neural nets averaged.";
-      return;
+      return num_nnets;
+    } else {
+      return best_n;
     }
   }
+}
 
-  KALDI_LOG << "Using neural net with index " << best_n
-            << ", objective function was " << best_objf;
-      
-  // At this point we're using the best of the individual neural nets.
-  scale_params->Set(0.0);
+// This function chooses from among the neural nets, the one
+// which has the best validation set objective function.
+static void GetInitialScaleParams(
+    const NnetCombineConfig &combine_config,
+    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<Nnet> &nnets,
+    Vector<double> *scale_params) {
 
-  // Set the block of parameters corresponding to the "best" of the
-  // source neural nets to
-  SubVector<double> best_block(*scale_params, num_uc * best_n, num_uc);
-  best_block.Set(1.0);
+  int32 initial_model = combine_config.initial_model,
+      num_nnets = static_cast<int32>(nnets.size());
+  if (initial_model < 0 || initial_model > num_nnets)
+    initial_model = GetInitialModel(validation_set, nnets);
+  
+  KALDI_ASSERT(initial_model >= 0 && initial_model <= num_nnets);
+  int32 num_uc = nnets[0].NumUpdatableComponents();
+
+  if (initial_model < num_nnets) {
+    KALDI_LOG << "Initializing with neural net with index " << initial_model;
+    // At this point we're using the best of the individual neural nets.
+    scale_params->Set(0.0);
+    
+    // Set the block of parameters corresponding to the "best" of the
+    // source neural nets to
+    SubVector<double> best_block(*scale_params, num_uc * initial_model, num_uc);
+    best_block.Set(1.0);
+  } else { // initial_model == num_nnets
+    KALDI_LOG << "Initializing with all neural nets averaged.";
+    scale_params->Resize(num_uc * num_nnets);
+    scale_params->Set(1.0 / num_nnets);
+  }
 }
     
 static BaseFloat ComputeObjfAndGradient(
@@ -143,7 +164,8 @@ void CombineNnets(const NnetCombineConfig &combine_config,
 
   Vector<double> scale_params;
 
-  GetInitialScaleParams(validation_set,
+  GetInitialScaleParams(combine_config,
+                        validation_set,
                         nnets,
                         &scale_params);
 
