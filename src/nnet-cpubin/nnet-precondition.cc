@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
       trans_model.Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
-
+    
     KALDI_LOG << "Preconditioned neural net, wrote it to "
               << nnet_wxfilename;
 

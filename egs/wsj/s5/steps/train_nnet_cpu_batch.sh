@@ -348,13 +348,13 @@ while [ $x -lt $num_tot_iters ]; do
     for y in `seq $x -1 $[$x - $n]`; do
       if [ $y -ge $num_sgd_iters ]; then
          all_models+=($dir/$y.mdl) # the model (append to array)
-         all_models+=("nnet-precondition $dir/$y.gradient $preconditioner -|") # gradient times preconditioner.
-         all_models+=("nnet-precondition $dir/$y.mdl $preconditioner -|") # model times preconditioner--
+         all_models+=("nnet-precondition $preconditioner $dir/$y.gradient -|") # gradient times preconditioner.
+         all_models+=("nnet-precondition $preconditioner $dir/$y.mdl -|") # model times preconditioner--
          # this is a term that would be there if we had l2 regularization.
       fi
     done
     $cmd $parallel_opts $dir/log/combine.$x.log \
-      nnet-combine --initial-model=0 "${all_models[@]}" ark:valid.egs $dir/$[$x+1].mdl || exit 1;
+      nnet-combine --initial-model=0 "${all_models[@]}" ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
   fi
   x=$[$x+1];
 done
