@@ -36,7 +36,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   for (int32 i = 0; i < feats.NumRows(); i++) {
     // Set up "input_frames".
     for (int32 j = -left_context; j <= right_context; j++) {
-      int32 j2 = j;
+      int32 j2 = j + i;
       if (j2 < 0) j2 = 0;
       if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
       SubVector<BaseFloat> src(feats, j2), dest(eg.input_frames,
