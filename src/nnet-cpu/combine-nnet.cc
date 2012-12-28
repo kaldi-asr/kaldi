@@ -99,6 +99,7 @@ static void GetInitialScaleParams(
   KALDI_ASSERT(initial_model >= 0 && initial_model <= num_nnets);
   int32 num_uc = nnets[0].NumUpdatableComponents();
 
+  scale_params->Resize(num_uc * num_nnets);
   if (initial_model < num_nnets) {
     KALDI_LOG << "Initializing with neural net with index " << initial_model;
     // At this point we're using the best of the individual neural nets.
@@ -110,7 +111,6 @@ static void GetInitialScaleParams(
     best_block.Set(1.0);
   } else { // initial_model == num_nnets
     KALDI_LOG << "Initializing with all neural nets averaged.";
-    scale_params->Resize(num_uc * num_nnets);
     scale_params->Set(1.0 / num_nnets);
   }
 }

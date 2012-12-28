@@ -218,11 +218,10 @@ if [ $stage -le -1 ]; then
      ark:$dir/precon.egs &
 fi
 
-# up till $last_normal_shrink_iter we will shrink the parameters
-# in the normal way using the dev set, but after that we will
-# only re-compute the shrinkage parameters periodically.
-last_normal_shrink_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period + 2]
-mix_up_iter=$last_normal_shrink_iter  # this is pretty arbitrary.
+mix_up_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period + 1]
+if [ $mix_up_iter -ge $num_sgd_iters ]; then
+  echo "--num-sgd-iters is too small $num_sgd_iters, for these settings need more than $mix_up_iter"
+fi
 
 x=-1 # iterations start from 0 but
      # we always start off the "randomization" on the previous iteration.
@@ -279,7 +278,7 @@ while [ $x -lt $num_sgd_iters ]; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
     done
 
-    learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print $i*exp($x*log($f/$i)/$n);' $[$x+1] $num_iters $initial_learning_rate $final_learning_rate`;
+    learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print $i*exp($x*log($f/$i)/$n);' $[$x+1] $num_sgd_iters $initial_learning_rate $final_learning_rate`;
 
     $cmd $parallel_opts $dir/log/average.$x.log \
        nnet-am-average $nnets_list - \| \
@@ -356,21 +355,7 @@ while [ $x -lt $num_tot_iters ]; do
 done
 
 
-
 rm $dir/final.mdl 2>/dev/null
-
-# At the end, final.mdl will be a combination of the last e.g. 10 models.
-nnets_list=
-for x in `seq $[$num_iters-$num_iters_final+1] $num_iters`; do
-  nnets_list="$nnets_list $dir/$x.mdl"
-done
-$cmd $parallel_opts $dir/log/combine.log \
-  nnet-am-combine $nnets_list ark:$dir/valid_combine.egs $dir/final.mdl || exit 1;
-
-# Compute the probability of the final, combined model with
-# the same subset we used for the previous compute_probs, as the
-# different subsets will lead to different probs.
-$cmd $parallel_opts $dir/log/compute_prob.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$dir/valid_shrink.egs || exit 1;
+ln -s $x.mdl $dir/final.mdl
 
 echo Done

@@ -1359,6 +1359,7 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 ( 
   # 4y49 is as 4y48 but using the 10e script which calls nnet-train-parallel,
   # which uses multi-threaded and hogwild.
+  # Had to decrease learning rate, as I found instability.
   steps/train_nnet_cpu_parallel10e.sh --num-iters 10 --add-layers-period 1 \
     --mix-up 4000 \
     --num-iters-final 5 \
@@ -1371,5 +1372,23 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4y49_nnet/decode
+)
+
+( 
+  # 4z is the first experiment with the batch update-- we
+  # first do 3 iters of SGD and then start batch stuff.
+  # which uses multi-threaded and hogwild.
+  # Had to decrease learning rate, as I found instability.
+  steps/train_nnet_cpu_batch.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z_nnet/decode
 )
 
