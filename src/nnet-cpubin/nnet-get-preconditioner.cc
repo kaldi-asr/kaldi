@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
     }
     
     KALDI_LOG << "Overall log-prob per example was "
-              << (tot_logprob / num_examples) << " per example, over "
+              << (tot_logprob / num_examples) << " over "
               << num_examples << " examples.";
     KALDI_LOG << "Wrote preconditioner to "
               << preconditioner_wxfilename;

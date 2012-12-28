@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     AmNnet am_precon;
     {
       bool binary_read;
-      Input ki(nnet_rxfilename, &binary_read);
+      Input ki(precon_rxfilename, &binary_read);
       TransitionModel trans_model;
       trans_model.Read(ki.Stream(), binary_read);
       am_precon.Read(ki.Stream(), binary_read);

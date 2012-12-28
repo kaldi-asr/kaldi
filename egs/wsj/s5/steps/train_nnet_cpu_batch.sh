@@ -212,7 +212,7 @@ if [ $stage -le -1 ]; then
        "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/valid.egs || exit 1;
   echo "Creating subset of frames of training set, for computing preconditioners (in background)"
-  $cmd $dir/log/create_valid_subset.log \
+  $cmd $dir/log/create_precon_subset.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_precon_frames --srand=0 \
        "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/precon.egs &
@@ -316,40 +316,45 @@ while [ $x -lt $num_tot_iters ]; do
 
     # Now accumulate gradient stats.
     $cmd $parallel_opts JOB=1:$nj $dir/log/gradient.$x.JOB.log \
-       nnet-get-egs $nnet_context_opts $dir/$x.mdl "$split_feats" \
-         "ark:gunzip -c $dir/ali.JOB.gz|" \| \
+       nnet-get-egs $nnet_context_opts "$split_feats" \
+         "ark:gunzip -c $dir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
        nnet-gradient --minibatch-size=$minibatch_size --num-threads=$num_threads \
          $dir/$x.mdl ark:- $dir/$x.JOB.gradient || exit 1;
     all_gradients=
-    for x in `seq 1 $nj`; do all_gradients="$all_gradients $dir/$x.JOB.gradient"; done
+    for y in `seq 1 $nj`; do all_gradients="$all_gradients $dir/$x.$y.gradient"; done
     $cmd $dir/log/sum.$x.log \
       nnet-am-average --sum=true $all_gradients $dir/$x.gradient || exit 1;
     rm $dir/$x.*.gradient # Remove partial gradients.
 
     wait; # In case we were waiting on the job creating
           # precon.egs
-    [ -s $dir/precon.egs ] && \
+    [ ! -s $dir/precon.egs ] && \
        echo "File $dir/precon.egs is empty or non-existent" && exit 1;
    
-    # Get the preconditioner.
+    # Get the preconditioner.  Note: instead of writing directly
+    # to $dir/$x.precon, we pipe it into a command using nnet-precondition
+    # that has the effect of pre-computing some stuff that will help
+    # the preconditioner be applied faster.
     $cmd $parallel_opts $dir/log/precon.$x.log \
        nnet-get-preconditioner --minibatch-size=$minibatch_size \
-         $dir/$x.mdl $dir/$x.precon || exit 1;
+         $dir/$x.mdl ark:$dir/precon.egs "|nnet-precondition - $dir/$x.mdl /dev/null $dir/$x.precon" || exit 1;
 
     preconditioner=$dir/$x.precon
     # all models is a set of models and gradients that we'll give
     # to the
     all_models=() # empty array
-    for y in `seq $x $[$x - $n]`; do
-      if [ $y -ge $num_sgd_iters ];
-         all_models+=$dir/$y.mdl # the model (append to array)
-         all_models+="nnet-precondition $dir/$y.gradient $preconditioner -|" # gradient times preconditioner.
-         all_models+="nnet-precondition $dir/$y.mdl $preconditioner -|" # model times preconditioner--
+    # Do these in backwards order and the first model (index 0)
+    # will be specified as the point to start the optimization at.
+    for y in `seq $x -1 $[$x - $n]`; do
+      if [ $y -ge $num_sgd_iters ]; then
+         all_models+=($dir/$y.mdl) # the model (append to array)
+         all_models+=("nnet-precondition $dir/$y.gradient $preconditioner -|") # gradient times preconditioner.
+         all_models+=("nnet-precondition $dir/$y.mdl $preconditioner -|") # model times preconditioner--
          # this is a term that would be there if we had l2 regularization.
       fi
     done
     $cmd $parallel_opts $dir/log/combine.$x.log \
-      nnet-combine "${all_models[@]}" ark:valid.egs $dir/$[$x+1] || exit 1;
+      nnet-combine --initial-model=0 "${all_models[@]}" ark:valid.egs $dir/$[$x+1].mdl || exit 1;
   fi
   x=$[$x+1];
 done

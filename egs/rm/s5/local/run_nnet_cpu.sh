@@ -1360,6 +1360,8 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
   # 4y49 is as 4y48 but using the 10e script which calls nnet-train-parallel,
   # which uses multi-threaded and hogwild.
   # Had to decrease learning rate, as I found instability.
+  # This was worse (1.80 -> 2.00), which was not unexpected due to the
+  # lower learning rates I had to use, and the objf was worse on validation set (-1.17 -> -1.27).
   steps/train_nnet_cpu_parallel10e.sh --num-iters 10 --add-layers-period 1 \
     --mix-up 4000 \
     --num-iters-final 5 \
