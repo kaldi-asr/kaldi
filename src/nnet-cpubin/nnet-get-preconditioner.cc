@@ -80,15 +80,16 @@ int main(int argc, char *argv[]) {
     std::vector<NnetTrainingExample> examples;
     
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
+    for (; !example_reader.Done(); example_reader.Next()) {
       examples.push_back(example_reader.Value());
+      num_examples++;
       if (static_cast<int32>(examples.size()) == minibatch_size) {
         tot_logprob += DoBackprop(am_nnet.GetNnet(),
                                   examples,
                                   &(am_preconditioner.GetNnet()));
         examples.clear();
       }
-      if (num_examples % 100000 == 0)
+      if (num_examples % 100000 == 0 && num_examples > 0)
         KALDI_LOG << "Processed " << (num_examples - examples.size())
                   << " examples, average log-prob per example is "
                   << (tot_logprob / (num_examples - examples.size()));
