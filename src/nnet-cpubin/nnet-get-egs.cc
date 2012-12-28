@@ -78,26 +78,21 @@ int main(int argc, char *argv[]) {
         "  exp/nnet/1.nnet \"$feats\" \\\n"
         "  \"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n"
-        "Note: you must set either --num-samples or --num-epochs, and the\n"
-        "--frequency-power is also a potentially useful option (try 0.5).\n"
         "Note: the --left-context and --right-context would be derived from\n"
         "the output of nnet-info.";
         
     
     int32 left_context = 0, right_context = 0;
-    int32 srand_seed = 0;
     std::string spk_vecs_rspecifier;
     
     ParseOptions po(usage);
     po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors");
-    po.Register("srand", &srand_seed, "Seed for random number generator");
     po.Register("left-context", &left_context, "Number of frames of left context "
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
                 "the neural net requires.");
     
     po.Read(argc, argv);
-    srand(srand_seed);
     
     if (po.NumArgs() != 3) {
       po.PrintUsage();
