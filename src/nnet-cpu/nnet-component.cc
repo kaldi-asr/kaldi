@@ -1418,17 +1418,12 @@ void MixtureProbComponent::Scale(BaseFloat scale) {
 void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
   const MixtureProbComponent *other =
       dynamic_cast<const MixtureProbComponent*>(&other_in);
-  KALDI_ASSERT(other != NULL && other->is_gradient_ == is_gradient_
-               && other->params_.size() == params_.size());
-
+  KALDI_ASSERT(other != NULL && other->params_.size() == params_.size());
+  
   for (size_t i = 0; i < params_.size(); i++) {
-    if (this->is_gradient_) { // just add in the normal way.
+    if (this->is_gradient_ && other->is_gradient_) { // just add in the normal way.
       params_[i].AddMat(alpha, other->params_[i]);
-    } else {
-      KALDI_ASSERT(!other->is_gradient_); // if we need this to work when
-      // "other" is a gradient, we'd do it slightly differently; don't support
-      // this for now.
-      
+    } else if (!this->is_gradient_ && !other->is_gradient_) {      
       // Do the addition in log-space.  From its external interface, this class
       // acts like its parameters are stored in log space, although they are
       // not.
@@ -1448,7 +1443,11 @@ void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_
         params.CopyColFromVec(col, c);
       }
       params_[i].CopyFromMat(params);
-    }
+    } else {
+      // if we need this to work when "other" is a gradient, we'd do it slightly
+      // differently; don't support this for now.  Just do nothing.
+      // WARNING: we need to do this at some point.
+    }      
   }
 }
 

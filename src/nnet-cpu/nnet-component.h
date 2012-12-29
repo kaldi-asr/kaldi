@@ -157,7 +157,7 @@ class UpdatableComponent: public Component {
   /// changes necessary (there's a variable we have to set for the
   /// MixtureProbComponent).
   virtual void SetZero(bool treat_as_gradient) = 0;
-  
+
   /// Note: l2_penalty is per frame.
   UpdatableComponent(): learning_rate_(0.001) { }
   

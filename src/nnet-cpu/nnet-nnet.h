@@ -177,7 +177,6 @@ class Nnet {
   // storing the gradient (this part only affects components of type
   // LinearComponent).
 
-
   /// This is used to separately adjust learning rates of each layer,
   /// after each "phase" of training.  We basically ask (using the validation
   /// gradient), do we wish we had gone further in this direction?  Yes->

@@ -65,7 +65,7 @@ void Nnet::SetZero(bool treat_as_gradient) {
     if (uc != NULL) uc->SetZero(treat_as_gradient);
   }
 }
-  
+
 void Nnet::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Nnet>");
   int32 num_components = components_.size();
