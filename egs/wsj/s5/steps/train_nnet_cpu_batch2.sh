@@ -32,6 +32,7 @@ num_valid_utts=300    # held-out utterances, used only for diagnostics.
 num_valid_frames=4000 # a subset of the frames in "valid_utts", used only
                       # for estimating shrinkage parameters for the
                       # SGD phase, and for objective-function reporting.
+num_train_frames_in_valid=0
 num_precon_frames=20000 # A subset of frames for computing the preconditioner.
 precon_alpha=0.1 # alpha value for nnet-precondition
 
@@ -212,10 +213,24 @@ nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w
 
 if [ $stage -le -1 ]; then
   echo "Creating subset of frames of validation set"
-  $cmd $dir/log/create_valid_subset.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/valid.egs || exit 1;
+  rm $dir/valid.egs 2>/dev/null
+
+  if [ $num_valid_frames -gt 0 ]; then
+    $cmd $dir/log/create_valid_subset1.log \
+      nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames --srand=0 \
+        "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+       ark:- '>>' $dir/valid.egs || exit 1;
+  fi
+  if [ $num_train_frames_in_valid -gt 0 ]; then
+    echo "Adding $num_train_frames_in_valid training frames to $num_valid_frames validation frames"
+    $cmd $dir/log/create_valid_subset2.log \
+      nnet-randomize-frames $nnet_context_opts --num-samples=$num_train_frames_in_valid --srand=0 \
+        "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+      ark:- '>>' $dir/valid.egs || exit 1;
+  fi
+  [ ! -s $dir/valid.egs ] && \
+     echo "File $dir/valid.egs is empty or non-existent" && exit 1;
+
   echo "Creating subset of frames of training set, for computing preconditioners (in background)"
   $cmd $dir/log/create_precon_subset.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_precon_frames --srand=0 \
