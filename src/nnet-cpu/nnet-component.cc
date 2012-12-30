@@ -696,7 +696,7 @@ void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
         to_update->avg_input_.Resize(to_update->InputDim());
       to_update->avg_input_.AddRowSumMat(1.0, in_value, 1.0);
       to_update->avg_input_count_ += in_value.NumRows();
-
+      
       BaseFloat scale_per_minibatch = 0.95; // Should be configurable, but for now
       // this will do.  Average over ~20 minibatches.
       to_update->avg_input_.Scale(scale_per_minibatch);
@@ -1344,17 +1344,11 @@ void MixtureProbComponent::PerturbParams(BaseFloat stddev) {
     Matrix<BaseFloat> params(params_[i]);
     params.ApplyFloor(1.0e-20);
     params.ApplyLog();
-    Vector<BaseFloat> col(params.NumRows()),
-        rand(params.NumRows());
-    for (int32 j = 0; j < params.NumCols(); j++) {
-      col.CopyColFromMat(params, j);
-      rand.SetRandn();
-      col.AddVec(stddev, rand);  // *Perturb the parameters.*
-      col.ApplyExp(); // convert back to non-log form.
-      KALDI_ASSERT(col.Sum() > 0.0);
-      col.Scale(1.0 / col.Sum()); // make it sum to one.
-      params.CopyColFromVec(col, j);
-    }      
+    Matrix<BaseFloat> rand(params.NumRows(), params.NumCols());
+    rand.SetRandn();
+    params.AddMat(stddev, rand);
+    params.ApplyExp();
+    NormalizeMatrix(&params);
     params_[i].CopyFromMat(params);
   }
 }
@@ -1370,48 +1364,57 @@ Component* MixtureProbComponent::Copy() const {
   return ans;
 }
 
-/// dot product is only possible between parameters and gradients.
+/// we interpret any parameters in log space before doing
+/// dot product.
 BaseFloat MixtureProbComponent::DotProduct(
     const UpdatableComponent &other_in) const {
   const MixtureProbComponent *other =
       dynamic_cast<const MixtureProbComponent*>(&other_in);
   BaseFloat ans = 0.0;
   KALDI_ASSERT(params_.size() == other->params_.size());
-  if (this->is_gradient_) {
-    KALDI_ASSERT(!other->is_gradient_);
-    return other_in.DotProduct(*this);
-  }
-  KALDI_ASSERT(other->is_gradient_ && !this->is_gradient_);
+
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> log_params(params_[i]);
-    log_params.ApplyFloor(1.0e-20);
-    log_params.ApplyLog();
-    ans += TraceMatMat(log_params, other->params_[i], kTrans);
+    Matrix<BaseFloat> log_params(params_[i]),
+        other_log_params(other->params_[i]);
+    if (!this->is_gradient_) {
+      log_params.ApplyFloor(1.0e-20);
+      log_params.ApplyLog();
+    }
+    if (!other->is_gradient_) {
+      other_log_params.ApplyFloor(1.0e-20);
+      other_log_params.ApplyLog();
+    }
+    ans += TraceMatMat(log_params, other_log_params, kTrans);
   }
   return ans;
 }
 
+//static
+void MixtureProbComponent::NormalizeMatrix(MatrixBase<BaseFloat> *mat) {
+  // Make it so each column sums to one.
+  Vector<BaseFloat> col(mat->NumRows());
+  for (int32 c = 0; c < mat->NumCols(); c++) {
+    col.CopyColFromMat(*mat, c);
+    KALDI_ASSERT(col.Sum() > 0.0);
+    col.Scale(1.0 / col.Sum()); // make it sum to one.
+    mat->CopyColFromVec(col, c);
+  }
+}
+
 void MixtureProbComponent::Scale(BaseFloat scale) {
   for (size_t i = 0; i < params_.size(); i++) {
-    if (this->is_gradient_) { // just scale.
-      params_[i].Scale(scale);
-    } else {
-      // scale in log-space.  From its external interface, this class acts like
-      // its parameters are stored in log space, although they are not.
-      Matrix<BaseFloat> &params(params_[i]);
-      params.ApplyFloor(1.0e-20);
-      params.ApplyLog();
-      params.Scale(scale);  // **scale in log-space.**
-      params.ApplyExp();
-      // Now re-normalize each column to sum to one.
-      Vector<BaseFloat> col(params.NumRows());
-      for (int32 c = 0; c < params.NumCols(); c++) {
-        col.CopyColFromMat(params, c);
-        KALDI_ASSERT(col.Sum() > 0.0);
-        col.Scale(1.0 / col.Sum()); // make it sum to one.
-        params.CopyColFromVec(col, c);
-      }
+    Matrix<BaseFloat> log_params(params_[i]);
+    if (!this->is_gradient_) {
+      log_params.ApplyFloor(1.0e-20);
+      log_params.ApplyLog();
     }
+    log_params.Scale(scale); // This is the key line.
+    if (!this->is_gradient_) {
+      log_params.ApplyExp();
+      // Now re-normalize each column to sum to one.
+      NormalizeMatrix(&log_params);
+    }
+    params_[i].CopyFromMat(log_params);
   }
 }
 
@@ -1421,33 +1424,22 @@ void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_
   KALDI_ASSERT(other != NULL && other->params_.size() == params_.size());
   
   for (size_t i = 0; i < params_.size(); i++) {
-    if (this->is_gradient_ && other->is_gradient_) { // just add in the normal way.
-      params_[i].AddMat(alpha, other->params_[i]);
-    } else if (!this->is_gradient_ && !other->is_gradient_) {      
-      // Do the addition in log-space.  From its external interface, this class
-      // acts like its parameters are stored in log space, although they are
-      // not.
-      Matrix<BaseFloat> params(params_[i]), other_params(other->params_[i]);
-      params.ApplyFloor(1.0e-20);
-      params.ApplyLog();
-      other_params.ApplyFloor(1.0e-20);
-      other_params.ApplyLog();
-      params.AddMat(alpha, other_params);  // **add in log-space.**
-      params.ApplyExp();
-      // Now re-normalize each column to sum to one.
-      Vector<BaseFloat> col(params.NumRows());
-      for (int32 c = 0; c < params.NumCols(); c++) {
-        col.CopyColFromMat(params, c);
-        KALDI_ASSERT(col.Sum() > 0.0);
-        col.Scale(1.0 / col.Sum()); // make it sum to one.
-        params.CopyColFromVec(col, c);
-      }
-      params_[i].CopyFromMat(params);
-    } else {
-      // if we need this to work when "other" is a gradient, we'd do it slightly
-      // differently; don't support this for now.  Just do nothing.
-      // WARNING: we need to do this at some point.
-    }      
+    Matrix<BaseFloat> log_params(params_[i]),
+        other_log_params(other->params_[i]);
+    if (!this->is_gradient_) {
+      log_params.ApplyFloor(1.0e-20);
+      log_params.ApplyLog();
+    }
+    if (!other->is_gradient_) {
+      other_log_params.ApplyFloor(1.0e-20);
+      other_log_params.ApplyLog();
+    }
+    log_params.AddMat(alpha, other_log_params); // <- This is the key line.
+    if (!this->is_gradient_) {
+      log_params.ApplyExp();
+      NormalizeMatrix(&log_params);
+    }
+    params_[i].CopyFromMat(log_params);
   }
 }
 
@@ -2291,6 +2283,18 @@ void AffineComponentA::Read(std::istream &is, bool binary) {
   input_scatter_.Read(is, binary);
   ExpectToken(is, binary, "<OutputScatter>");
   output_scatter_.Read(is, binary);  
+  ExpectToken(is, binary, "<InC>");
+  in_C_.Read(is, binary);
+  ExpectToken(is, binary, "<InCInv>");
+  in_C_inv_.Read(is, binary);
+  ExpectToken(is, binary, "<OutC>");
+  out_C_.Read(is, binary);
+  ExpectToken(is, binary, "<OutCInv>");
+  out_C_inv_.Read(is, binary);
+  ExpectToken(is, binary, "<InvFisherIn>");
+  inv_fisher_in_.Read(is, binary);
+  ExpectToken(is, binary, "<InvFisherOut>");
+  inv_fisher_out_.Read(is, binary);
   ExpectToken(is, binary, "</AffineComponentA>");
 }
 
@@ -2311,7 +2315,19 @@ void AffineComponentA::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<InputScatter>");
   input_scatter_.Write(os, binary);
   WriteToken(os, binary, "<OutputScatter>");
-  output_scatter_.Write(os, binary);  
+  output_scatter_.Write(os, binary);
+  WriteToken(os, binary, "<InC>");
+  in_C_.Write(os, binary);
+  WriteToken(os, binary, "<InCInv>");
+  in_C_inv_.Write(os, binary);
+  WriteToken(os, binary, "<OutC>");
+  out_C_.Write(os, binary);
+  WriteToken(os, binary, "<OutCInv>");
+  out_C_inv_.Write(os, binary);
+  WriteToken(os, binary, "<InvFisherIn>");
+  inv_fisher_in_.Write(os, binary);
+  WriteToken(os, binary, "<InvFisherOut>");
+  inv_fisher_out_.Write(os, binary);
   WriteToken(os, binary, "</AffineComponentA>");
 }
 
@@ -2462,6 +2478,12 @@ void AffineComponentA::ComputePreconditioner(const SpMatrix<double> &scatter_in,
   inv_fisher->Resize(scatter.NumRows());
   inv_fisher->CopyFromSp(scatter);
   inv_fisher->Invert();
+
+  if (config.renormalize) {
+    // renormalize so trace(inv_fisher . scatter) equals
+    // trace(scatter . unit-matrix).
+    inv_fisher->Scale(scatter.Trace() / TraceSpSp(*inv_fisher, scatter));
+  }
 }
 
 
@@ -2519,7 +2541,7 @@ void AffineComponentA::Transform(
 void AffineComponentA::Precondition(
     const PreconditionConfig &config,
     AffineComponent *component) {
-
+  
   if (!config.do_precondition) return; // There is nothing to do in this case.
   // (this option will probably only be used for testing.)
   
@@ -2543,7 +2565,7 @@ void AffineComponentA::Precondition(
   
   Matrix<double> params_temp(OutputDim(), InputDim() + 1);
   params_temp.AddMatSp(1.0, params, kNoTrans, inv_fisher_in_, 0.0);
-
+  
   params.AddSpMat(1.0, inv_fisher_out_, params_temp, kNoTrans, 0.0);
   
   // OK, we've done transforming the parameters or gradients.

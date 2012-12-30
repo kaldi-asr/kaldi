@@ -66,9 +66,9 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > Random
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.
 /// All these examples will be treated as one minibatch.
-BaseFloat DoBackprop(const Nnet &nnet,
-                     const std::vector<NnetTrainingExample> &examples,
-                     Nnet *nnet_to_update);
+double DoBackprop(const Nnet &nnet,
+                  const std::vector<NnetTrainingExample> &examples,
+                  Nnet *nnet_to_update);
 
 /// Returns the total weight summed over all the examples... just a simple
 /// utility function.
@@ -76,21 +76,21 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs);
 
 /// Computes objective function over a minibatch.  Returns the *total* weighted
 /// objective function over the minibatch.
-BaseFloat ComputeNnetObjf(const Nnet &nnet,
-                          const std::vector<NnetTrainingExample> &examples);
+double ComputeNnetObjf(const Nnet &nnet,
+                       const std::vector<NnetTrainingExample> &examples);
 
 /// This version of ComputeNnetObjf breaks up the examples into
 /// multiple minibatches to do the computation.
 /// Returns the *total* (weighted) objective function.
-BaseFloat ComputeNnetObjf(const Nnet &nnet,                          
-                          const std::vector<NnetTrainingExample> &examples,
-                          int32 minibatch_size);
+double ComputeNnetObjf(const Nnet &nnet,                          
+                       const std::vector<NnetTrainingExample> &examples,
+                       int32 minibatch_size);
 
 
 /// ComputeNnetGradient is mostly used to compute gradients on validation sets;
 /// it divides the example into batches and calls DoBackprop() on each.
 /// It returns the *average* objective function per frame.
-BaseFloat ComputeNnetGradient(
+double ComputeNnetGradient(
     const Nnet &nnet,
     const std::vector<NnetTrainingExample> &examples,
     int32 batch_size,

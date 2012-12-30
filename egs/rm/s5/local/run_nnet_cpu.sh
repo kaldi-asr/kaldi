@@ -1394,3 +1394,70 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      exp/tri3b/graph data/test exp/tri4z_nnet/decode
 )
 
+( 
+  # 4z1 is as 4z after a small script fix (remove --scale for preconditioned model)
+  # (copied the whole dir and starting from --stage 5).
+  steps/train_nnet_cpu_batch.sh --add-layers-period 1 \
+    --stage 5 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z1_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z1_nnet/decode
+)&
+
+( 
+  # 4z2 is as 4z1 but changing --precon-alpha from 0.1 to 1.0.
+  steps/train_nnet_cpu_batch.sh --add-layers-period 1 \
+    --stage 5 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --precon-alpha 1.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z2_nnet/decode
+)&
+
+( 
+  # 4z3 is as 4z2 but changing --precon-alpha from 0.1 to 0.01
+  steps/train_nnet_cpu_batch.sh --add-layers-period 1 \
+    --stage 5 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --precon-alpha 0.01 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z3_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z3_nnet/decode
+)&
+
+
+( 
+  # 4z4 is as 4z1, but using the batch2.sh script which only uses, by default,
+  # half the data on each iteration, but does more iterations (30 vs 20).
+  steps/train_nnet_cpu_batch2.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z4_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z4_nnet/decode
+)&

@@ -2,6 +2,9 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# *batch2.sh is as *batch.sh but every iteration, we only take a fraction
+# of the data (by default 1/2, but changeable with  --data-parts
+
 # this was modified from train_nnet_cpu_parallel10d.sh
 # We start off with SGD training, but after a few iterations of that we switch
 # to a batch method.  On each iteration it computes the gradient, and also a
@@ -17,9 +20,10 @@
 # Begin configuration section.
 cmd=run.pl
 num_sgd_iters=5 # Number of SGD iterations
-num_batch_iters=20 # Number of iterations of the batch update.
+num_batch_iters=30 # Number of iterations of the batch update.
 n=10 # This corresponds roughtly to the value "N" in L-BFGS and the like; it's
      # a number of iterations we keep in the subspace we optimize over on each iter.
+data_parts=2
 
 initial_learning_rate=0.02 # Initial learning rate of SGD phase.
 final_learning_rate=0.005 # Final learning rate of SGD phase-- still quite high.
@@ -332,6 +336,7 @@ while [ $x -lt $num_tot_iters ]; do
     $cmd $parallel_opts JOB=1:$nj $dir/log/gradient.$x.JOB.log \
        nnet-get-egs $nnet_context_opts "$split_feats" \
          "ark:gunzip -c $dir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
+       nnet-select-egs --k=$[$x%$data_parts] --n=$data_parts ark:- ark:- \| \
        nnet-gradient --minibatch-size=$minibatch_size --num-threads=$num_threads \
          $dir/$x.mdl ark:- $dir/$x.JOB.gradient || exit 1;
     all_gradients=

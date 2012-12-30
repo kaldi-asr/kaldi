@@ -1208,3 +1208,46 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
     --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
    exp/tri4a/graph data/train_dev exp/tri5c1d_nnet/decode_train_dev &
 )
+
+
+( 
+ # tri5c2 is the batch update, mixing up again to 8k, as tri5c1d.
+ steps/train_nnet_cpu_batch.sh --minibatch-size 1024 \
+   --stage 0 --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c2_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c2_nnet/decode_train_dev &
+)
+
+
+( 
+ # tri5c3 is as 5c2, but using the batch2.sh script which
+ # splits the data into multiple parts; I'm setting it to use
+ # --data-parts=4 (1/4 the data each time), and 40 batch iters.
+ cp -r exp/tri5c{2,3}_nnet # to get stuff from initial iters.
+ steps/train_nnet_cpu_batch2.sh --stage 6  \
+   --minibatch-size 1024 \
+   --num-batch-iters 40 --data-parts 4 \
+   --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c3_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c3_nnet/decode_train_dev &
+)

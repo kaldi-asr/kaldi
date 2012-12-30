@@ -33,7 +33,7 @@ class NnetUpdater {
   NnetUpdater(const Nnet &nnet,
               Nnet *nnet_to_update);
   
-  BaseFloat ComputeForMinibatch(const std::vector<NnetTrainingExample> &data);
+  double ComputeForMinibatch(const std::vector<NnetTrainingExample> &data);
   // returns average objective function over this minibatch.
   
  private:
@@ -48,8 +48,8 @@ class NnetUpdater {
   void Propagate();
 
   /// Computes objective function and derivative at output layer.
-  BaseFloat ComputeObjfAndDeriv(const std::vector<NnetTrainingExample> &data,
-                                Matrix<BaseFloat> *deriv) const;
+  double ComputeObjfAndDeriv(const std::vector<NnetTrainingExample> &data,
+                             Matrix<BaseFloat> *deriv) const;
   
   /// Returns objf summed (and weighted) over samples.
   /// Note: "deriv" will contain, at input, the derivative w.r.t. the
@@ -77,12 +77,12 @@ NnetUpdater::NnetUpdater(const Nnet &nnet,
 }
  
 
-BaseFloat NnetUpdater::ComputeForMinibatch(
+double NnetUpdater::ComputeForMinibatch(
     const std::vector<NnetTrainingExample> &data) {
   FormatInput(data);
   Propagate();
   Matrix<BaseFloat> tmp_deriv;
-  BaseFloat ans = ComputeObjfAndDeriv(data, &tmp_deriv);
+  double ans = ComputeObjfAndDeriv(data, &tmp_deriv);
   if (nnet_to_update_ != NULL)
     Backprop(data, &tmp_deriv); // this is summed (after weighting), not
                                 // averaged.
@@ -108,7 +108,7 @@ void NnetUpdater::Propagate() {
   }
 }
 
-BaseFloat NnetUpdater::ComputeObjfAndDeriv(
+double NnetUpdater::ComputeObjfAndDeriv(
     const std::vector<NnetTrainingExample> &data,
     Matrix<BaseFloat> *deriv) const {
   const BaseFloat floor = 1.0e-20; // Avoids division by zero.
@@ -199,7 +199,7 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
   return ans;
 }
 
-BaseFloat DoBackprop(const Nnet &nnet,
+double DoBackprop(const Nnet &nnet,
                      const std::vector<NnetTrainingExample> &examples,
                      Nnet *nnet_to_update) {
   KALDI_ASSERT(nnet_to_update != NULL && "Call ComputeNnetObjf() instead.");
@@ -207,14 +207,14 @@ BaseFloat DoBackprop(const Nnet &nnet,
   return updater.ComputeForMinibatch(examples);  
 }
 
-BaseFloat ComputeNnetObjf(const Nnet &nnet,
-                          const std::vector<NnetTrainingExample> &examples) {
+double ComputeNnetObjf(const Nnet &nnet,
+                       const std::vector<NnetTrainingExample> &examples) {
   NnetUpdater updater(nnet, NULL);
   return updater.ComputeForMinibatch(examples);
 }
 
 
-BaseFloat ComputeNnetGradient(
+double ComputeNnetGradient(
     const Nnet &nnet,
     const std::vector<NnetTrainingExample> &validation_set,
     int32 batch_size,
@@ -223,7 +223,7 @@ BaseFloat ComputeNnetGradient(
   gradient->SetZero(treat_as_gradient);
   std::vector<NnetTrainingExample> batch;
   batch.reserve(batch_size);
-  BaseFloat tot_objf = 0.0;
+  double tot_objf = 0.0;
   for (int32 start_pos = 0;
        start_pos < static_cast<int32>(validation_set.size());
        start_pos += batch_size) {
@@ -241,13 +241,13 @@ BaseFloat ComputeNnetGradient(
   return tot_objf / validation_set.size();
 }
 
-BaseFloat ComputeNnetObjf(
+double ComputeNnetObjf(
     const Nnet &nnet,
     const std::vector<NnetTrainingExample> &validation_set,
     int32 batch_size) {
   std::vector<NnetTrainingExample> batch;
   batch.reserve(batch_size);
-  BaseFloat tot_objf = 0.0;
+  double tot_objf = 0.0;
   for (int32 start_pos = 0;
        start_pos < static_cast<int32>(validation_set.size());
        start_pos += batch_size) {

@@ -749,6 +749,7 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(MixtureProbComponent);
+  static void NormalizeMatrix(MatrixBase<BaseFloat> *mat);
   std::vector<Matrix<BaseFloat> > params_;
   int32 input_dim_;
   int32 output_dim_;

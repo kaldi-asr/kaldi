@@ -22,6 +22,28 @@
 #include "nnet-cpu/nnet-lbfgs.h"
 #include "nnet-cpu/am-nnet.h"
 
+namespace kaldi {
+void NormalizeNnet(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    AffineComponent *ac =
+        dynamic_cast<AffineComponent*>(&(nnet->GetComponent(c)));
+    if (ac != NULL) {
+      int32 output_dim = ac->OutputDim();
+      BaseFloat dot_prod = ac->DotProduct(*ac);
+      // Assuming the standard deviation of the elements was 1.0/sqrt(input_dim),
+      // so the variance of the elements was 1.0/input_dim, the dot_prod would
+      // be (input_dim * output_dim) / input_dim, which equals output_dim.
+      // We rescale to make it equal to output_dim;
+      if (dot_prod != 0.0) {
+        BaseFloat scale = std::sqrt(output_dim / dot_prod);
+        ac->Scale(scale);
+      }
+    }
+  }
+}
+
+}
+
 
 int main(int argc, char *argv[]) {
   try {
@@ -39,13 +61,18 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-precondition [options] <preconditioner-in> <model-in> <model-out> [<preconditioner-out>]\n"
         "\n"
         "e.g.:\n"
-        "nnet-precondition 1.preconditioner 1.nnet 1pre.nnet\n";    
+        "nnet-precondition 1.preconditioner 1.nnet 1pre.nnet\n";
     
     bool binary_write = true;
+    BaseFloat scale = 1.0;
+    bool normalize = false;
     PreconditionConfig config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("scale", &scale, "Scaling factor to apply to gradients (if not 1.0)");
+    po.Register("normalize", &normalize, "If true, normalize each AffineComponent (or descendant) "
+                "to have a \"standard\" parameter variance.");
     config.Register(&po);
     
     po.Read(argc, argv);
@@ -83,6 +110,17 @@ int main(int argc, char *argv[]) {
                      &(am_precon.GetNnet()),
                      &(am_nnet.GetNnet()));
 
+    if (scale != 1.0) {
+      KALDI_LOG << "Scaling neural net parameters by " << scale;
+      Vector<BaseFloat> scales(am_nnet.GetNnet().NumUpdatableComponents());
+      scales.Set(scale);
+      am_nnet.GetNnet().ScaleComponents(scales);
+    }
+
+    if (normalize) {
+      NormalizeNnet(&(am_nnet.GetNnet()));
+    }
+    
     {
       Output ko(nnet_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);

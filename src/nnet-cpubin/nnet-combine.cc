@@ -33,12 +33,14 @@ int main(int argc, char *argv[]) {
         "Using a validation set, compute an optimal combination of a number of\n"
         "neural nets (the combination weights are separate for each layer and\n"
         "do not have to sum to one).  The optimization is BFGS, which is initialized\n"
-        "from the best of the individual input neural nets.\n"
+        "from the best of the individual input neural nets (or as specified by\n"
+        "--initial-model)\n"
         "\n"
         "Usage:  nnet-combine [options] <model-in1> <model-in2> ... <model-inN> <valid-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        " nnet-combine 1.1.nnet 1.2.nnet 1.3.nnet ark:valid.egs 2.nnet\n";
+        " nnet-combine 1.1.nnet 1.2.nnet 1.3.nnet ark:valid.egs 2.nnet\n"
+        "Caution: the first input neural net must not be a gradient.\n";
     
     bool binary_write = true;
     NnetCombineConfig combine_config;

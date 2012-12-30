@@ -2478,7 +2478,7 @@ template<class Real> static void UnitTestMaxAbsEig() {
 
 template<class Real> static void UnitTestLbfgs() {
   MatrixIndexT temp = g_kaldi_verbose_level;
-  //   g_kaldi_verbose_level = 4;
+  g_kaldi_verbose_level = 4;
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
     bool minimize = (iter % 2 == 0);
     MatrixIndexT dim = 1 + rand() % 30;

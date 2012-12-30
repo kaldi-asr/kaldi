@@ -313,7 +313,7 @@ void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
   if (d_action == kDecrease)
     d_ = std::sqrt(d_);
   
-  KALDI_VLOG(3) << "d = " << d_ << ", action = "
+  KALDI_VLOG(3) << "d = " << d_ << ", iter = " << k_ << ", action = "
                 << (iteration_action == kAccept ? "accept" :
                     (iteration_action == kDecreaseStep ? "decrease" :
                      (iteration_action == kIncreaseStep ? "increase" :
