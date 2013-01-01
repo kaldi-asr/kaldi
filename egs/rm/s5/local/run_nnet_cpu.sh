@@ -1461,3 +1461,74 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4z4_nnet/decode
 )&
+
+( 
+  # 4z5 is as 4z4, but using half validation frames and half training
+  # frames in the validation set.
+  steps/train_nnet_cpu_batch2.sh --add-layers-period 1 \
+    --num-valid-frames 2000 --num-train-frames-in-valid 2000 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z5_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z5_nnet/decode
+)&
+
+
+( 
+  # 4z6 is as 4z4, but using training subset not real 
+  # validation subset, until close to the end (batch3 script)
+
+  steps/train_nnet_cpu_batch3.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z6_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z6_nnet/decode
+)&
+
+
+( 
+  # 4z7 is as 4z5, but using entirely training-data subset
+  # for a "validation set".
+  steps/train_nnet_cpu_batch2.sh --add-layers-period 1 \
+    --num-valid-frames 0000 --num-train-frames-in-valid 4000 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z7_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z7_nnet/decode
+)&
+
+
+( 
+  # 4z8 is as 4z5, but using 1/4 of training-data subset and 
+  # 3/4 validation.
+  steps/train_nnet_cpu_batch2.sh --add-layers-period 1 \
+    --num-valid-frames 3000 --num-train-frames-in-valid 1000 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z7_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z7_nnet/decode
+)&

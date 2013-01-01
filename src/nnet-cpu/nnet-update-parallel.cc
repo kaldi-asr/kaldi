@@ -178,5 +178,48 @@ BaseFloat DoBackpropParallel(const Nnet &nnet,
   return tot_log_prob;
 }
 
+
+BaseFloat DoBackpropParallel(const Nnet &nnet,
+                             int32 minibatch_size,
+                             int32 num_threads,
+                             const std::vector<NnetTrainingExample> &egs,
+                             int64 *num_frames,
+                             Nnet *nnet_to_update) {
+  ExamplesRepository repository; // handles parallel programming issues regarding
+  // the "examples" of data.
+  double tot_log_prob = 0.0;
+  *num_frames = 0;
+  
+  DoBackpropParallelClass c(nnet, &repository, num_frames,
+                            &tot_log_prob, nnet_to_update);
+
+  {
+    // The initialization of the following class spawns the threads that
+    // process the examples.  They get re-joined in its destructor.
+    MultiThreader<DoBackpropParallelClass> m(num_threads, c);
+
+    int32 num_egs = egs.size();
+    for (int32 offset = 0; offset < num_egs; offset += minibatch_size) {
+      int32 this_minibatch_size = std::min(minibatch_size, num_egs - offset);
+
+      // We waste a little time copying the examples here, but it's very minor.
+      std::vector<NnetTrainingExample> examples(egs.begin() + offset,
+                                                egs.begin() + offset + this_minibatch_size);
+    
+      repository.AcceptExamples(&examples);
+    }
+    
+    // Here, the destructor of "m" re-joins the threads, and
+    // does the summing of the gradients if we're doing gradient
+    // computation (i.e. &nnet != nnet_to_update).  This gets
+    // done in the destructors of the objects of type
+    // DoBackpropParallelClass.
+    repository.ExamplesDone();
+  }
+  KALDI_VLOG(2) << "Did backprop on " << *num_frames << " examples, average log-prob "
+                << "per frame is " << (tot_log_prob / *num_frames);
+  return tot_log_prob;
+}
+
   
 } // namespace

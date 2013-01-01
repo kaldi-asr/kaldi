@@ -1251,3 +1251,50 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
     --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
    exp/tri4a/graph data/train_dev exp/tri5c3_nnet/decode_train_dev &
 )
+
+( 
+ # tri5c4 is as tri5c3, but using the "batch3" script which mostly
+ # optimizes using a subset of the training set, then switches to a
+ # validation set near the end.  Worse;
+ # like tri5c3, it seems to get stuck.
+ steps/train_nnet_cpu_batch3.sh \
+   --minibatch-size 1024 \
+   --num-batch-iters 40 --data-parts 4 \
+   --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c4_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c4_nnet/decode_train_dev &
+)
+
+
+(
+ # tri5c5 is as tri5c3, but using half-and-half training and
+ # validation frames in the "validation set".
+
+ steps/train_nnet_cpu_batch2.sh \
+    --num-valid-frames 2000 --num-train-frames-in-valid 2000 \
+   --minibatch-size 1024 \
+   --num-batch-iters 40 --data-parts 4 \
+   --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c5_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c5_nnet/decode_train_dev &
+)

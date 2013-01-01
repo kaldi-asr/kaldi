@@ -72,6 +72,14 @@ BaseFloat DoBackpropParallel(const Nnet &nnet,
                              int64 *num_frames,
                              Nnet *nnet_to_update);
 
+// This version of DoBackpropParallel takes a vector of examples.
+BaseFloat DoBackpropParallel(const Nnet &nnet,
+                             int32 minibatch_size,
+                             int32 num_threads,
+                             const std::vector<NnetTrainingExample> &examples,
+                             int64 *num_frames,
+                             Nnet *nnet_to_update);
+
 
 
 } // namespace

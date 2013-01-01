@@ -38,12 +38,10 @@ struct NnetCombineConfig {
   // num-iters is in reality the number of function evaluations.
   
   BaseFloat initial_impr;
-  BaseFloat min_objf_change;
-  bool normalize;
   bool test_gradient;
   NnetCombineConfig(): initial_model(-1), num_bfgs_iters(30),
-                       initial_impr(0.01), min_objf_change(1.0e-05),
-                       normalize(false), test_gradient(false) { }
+                       initial_impr(0.01),
+                       test_gradient(false) { }
   
   void Register(ParseOptions *po) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
@@ -54,9 +52,6 @@ struct NnetCombineConfig {
                  "evaluations for BFGS to use when optimizing combination weights");
     po->Register("initial-impr", &initial_impr, "Amount of objective-function change "
                  "we aim for on the first iteration.");
-    po->Register("min-step-length", &min_objf_change, "Objective function "
-                 "change (averaged over several iterations), that controls early "
-                 "termination of BFGS.");
     po->Register("test-gradient", &test_gradient, "If true, activate code that "
                  "tests the gradient is accurate.");
   }  

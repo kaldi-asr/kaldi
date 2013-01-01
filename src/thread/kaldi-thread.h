@@ -119,9 +119,9 @@ class MultiThreader {
       cvec_(num_threads, c_in) {
     pthread_attr_t pthread_attr;
     pthread_attr_init(&pthread_attr);
-    for (int32 thread = 0; thread < g_num_threads; thread++) {
+    for (int32 thread = 0; thread < num_threads; thread++) {
       cvec_[thread].thread_id_ = thread;
-      cvec_[thread].num_threads_ = g_num_threads;
+      cvec_[thread].num_threads_ = num_threads;
       int32 ret;
       if ((ret=pthread_create(&(threads_[thread]),
                               &pthread_attr, C::run, &(cvec_[thread])))) {
@@ -132,7 +132,7 @@ class MultiThreader {
     }
   }
   ~MultiThreader() {
-    for (int32 thread = 0; thread < g_num_threads; thread++)
+    for (size_t thread = 0; thread < cvec_.size(); thread++)
       if (pthread_join(threads_[thread], NULL))
         KALDI_ERR << "Error rejoining thread.";
     delete [] threads_;

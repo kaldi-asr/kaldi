@@ -2,10 +2,10 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# *batch3.sh is as *batch2.sh, but using two separate "validation sets"--
-# one actually derived from the training set, and one a real validation set.
-# We use the training-derived one until close to the end, when we switch to 
-# the real validation set.
+# *batch4.sh is as *batch2.sh, but with a couple of changes: some changes
+# for speed- different ways of getting validation subsets and doing the "combine"
+# thing (nnet-combine-fast), but also using 2 different subsets: a training-data
+# subset and a validation-data subset.
 
 # *batch2.sh is as *batch.sh but every iteration, we only take a fraction
 # of the data (by default 1/2, but changeable with  --data-parts
@@ -26,8 +26,6 @@
 cmd=run.pl
 num_sgd_iters=5 # Number of SGD iterations
 num_batch_iters=30 # Number of iterations of the batch update.
-num_valid_iters=10 # Subset of the "batch_iters" for which we use actual
-  # validation data (not a subset of train).
 n=10 # This corresponds roughtly to the value "N" in L-BFGS and the like; it's
      # a number of iterations we keep in the subspace we optimize over on each iter.
 data_parts=2
@@ -36,9 +34,11 @@ initial_learning_rate=0.02 # Initial learning rate of SGD phase.
 final_learning_rate=0.005 # Final learning rate of SGD phase-- still quite high.
 
 num_valid_utts=300    # held-out utterances, used only for diagnostics.
-num_valid_frames=4000 # a subset of the frames in "valid_utts", used only
+num_valid_frames=2000 # a subset of the frames in "valid_utts", used only
                       # for estimating shrinkage parameters for the
-                      # SGD phase, and for objective-function reporting.
+                      # SGD phase and the batch phase.
+num_train_frames=4000 # for combination weights in batch phase.
+
 num_precon_frames=20000 # A subset of frames for computing the preconditioner.
 precon_alpha=0.1 # alpha value for nnet-precondition
 
@@ -218,28 +218,27 @@ cp $alidir/ali.*.gz $dir
 nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w left-context | awk '{print $2}'` --right-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w right-context | awk '{print $2}'`" || exit 1;
 
 if [ $stage -le -1 ]; then
-  echo "Creating subset of frames of validation set, in background"
-
+  echo "Creating subset of frames of validation set (in background)"
   $cmd $dir/log/create_valid_subset.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames --srand=0 \
+    nnet-get-egs $nnet_context_opts  \
       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/valid.egs &
+     ark:- \| \
+    nnet-subset-egs --srand=0 --n=$num_valid_frames ark:- ark:$dir/valid.egs &
 
-  echo "Creating subset of frames of training set, in background"
-
+  echo "Creating subset of frames of training set (in background)"
   $cmd $dir/log/create_train_subset.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames --srand=0 \
+    nnet-get-egs $nnet_context_opts  \
       "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/train_subset.egs &
+     ark:- \| \
+    nnet-subset-egs --srand=0 --n=$num_train_frames ark:- ark:$dir/train_subset.egs &
 
   echo "Creating subset of frames of training set, for computing preconditioners (in background)"
   $cmd $dir/log/create_precon_subset.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_precon_frames --srand=0 \
+    nnet-get-egs $nnet_context_opts \
        "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/precon.egs &
+     ark:- \| \
+    nnet-subset-egs --srand=0 --n=$num_precon_frames ark:- ark:$dir/precon.egs &
 fi
-echo "Waiting for the previous processes to finish" 
-wait # We could probably do this later on...
 
 mix_up_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period + 1]
 if [ $mix_up_iter -ge $num_sgd_iters ]; then
@@ -384,15 +383,8 @@ while [ $x -lt $num_tot_iters ]; do
          # this is a term that would be there if we had l2 regularization.
       fi
     done
-
-    if [ $[$x + $num_valid_iters] -gt $num_tot_iters ]; then # we're within "num_valid_iters" of the last iter...
-      subset=valid
-    else
-      subset=train_subset
-    fi
-
     $cmd $parallel_opts $dir/log/combine.$x.log \
-      nnet-combine --verbose=3 --initial-model=0 "${all_models[@]}" ark:$dir/$subset.egs $dir/$[$x+1].mdl || exit 1;
+      nnet-combine --verbose=3 --initial-model=0 "${all_models[@]}" ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
   fi
   x=$[$x+1];
 done
