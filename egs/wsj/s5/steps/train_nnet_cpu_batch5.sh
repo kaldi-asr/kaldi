@@ -2,10 +2,8 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# *batch4.sh is as *batch2.sh, but with a couple of changes: some changes
-# for speed- different ways of getting validation subsets and doing the "combine"
-# thing (nnet-combine-fast), but also using 2 different subsets: a training-data
-# subset and a validation-data subset.
+# *batch5.sh is as *batch2.sh but using a different subset of the validation
+# utts each time.  Also by default using half-and-half train and valid frames.
 
 # *batch2.sh is as *batch.sh but every iteration, we only take a fraction
 # of the data (by default 1/2, but changeable with  --data-parts
@@ -34,11 +32,12 @@ initial_learning_rate=0.02 # Initial learning rate of SGD phase.
 final_learning_rate=0.005 # Final learning rate of SGD phase-- still quite high.
 
 num_valid_utts=300    # held-out utterances, used only for diagnostics.
-num_valid_frames=2000 # a subset of the frames in "valid_utts", used only
+num_valid_frames=10000 # a subset of the frames in "valid_utts", used only
                       # for estimating shrinkage parameters for the
-                      # SGD phase and the batch phase.
-num_train_frames=4000 # for combination weights in batch phase.
-
+                      # SGD phase, and for objective-function reporting.
+num_train_frames_in_valid=10000
+valid_frames_subset=4000 # number of (valid + train) frames to use on each
+                         # iter
 num_precon_frames=20000 # A subset of frames for computing the preconditioner.
 precon_alpha=0.1 # alpha value for nnet-precondition
 
@@ -64,7 +63,7 @@ beam=10  # for realignment.
 retry_beam=40
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 parallel_opts=
-num_threads=8  # Number of threads for each process of nnet-gradient and nnet-combine to use.
+num_threads=8  # Number of threads for each process of nnet-gradient to use.
 nnet_config_opts=  # Options to pass to utils/nnet-cpu/make_nnet_config_preconditioned.pl
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 lda_dim=250
@@ -83,8 +82,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 4 ]; then
-  echo "Usage: steps/train_nnet_cpu_batch4.sh <data> <lang> <ali-dir> <exp-dir>"
-  echo " e.g.: steps/train_nnet_cpu_batch4.sh data/train_si84 data/lang \\"
+  echo "Usage: steps/train_nnet_cpu_batch.sh <data> <lang> <ali-dir> <exp-dir>"
+  echo " e.g.: steps/train_nnet_cpu_batch.sh data/train_si84 data/lang \\"
   echo "                      exp/tri3b_ali_si84 exp/ubm4a/final.ubm exp/sgmm4a"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
@@ -218,26 +217,30 @@ cp $alidir/ali.*.gz $dir
 nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w left-context | awk '{print $2}'` --right-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w right-context | awk '{print $2}'`" || exit 1;
 
 if [ $stage -le -1 ]; then
-  echo "Creating subset of frames of validation set (in background)"
-  $cmd $dir/log/create_valid_subset.log \
-    nnet-get-egs $nnet_context_opts  \
-      "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:- \| \
-    nnet-subset-egs --srand=0 --n=$num_valid_frames ark:- ark:$dir/valid.egs &
+  echo "Creating subset of frames of validation set"
+  rm $dir/valid.egs 2>/dev/null
 
-  echo "Creating subset of frames of training set (in background)"
-  $cmd $dir/log/create_train_subset.log \
-    nnet-get-egs $nnet_context_opts  \
-      "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:- \| \
-    nnet-subset-egs --srand=0 --n=$num_train_frames ark:- ark:$dir/train_subset.egs &
+  if [ $num_valid_frames -gt 0 ]; then
+    $cmd $dir/log/create_valid_subset1.log \
+      nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames --srand=0 \
+        "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+       ark:- '>>' $dir/valid.egs || exit 1;
+  fi
+  if [ $num_train_frames_in_valid -gt 0 ]; then
+    echo "Adding $num_train_frames_in_valid training frames to $num_valid_frames validation frames"
+    $cmd $dir/log/create_valid_subset2.log \
+      nnet-randomize-frames $nnet_context_opts --num-samples=$num_train_frames_in_valid --srand=0 \
+        "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+      ark:- '>>' $dir/valid.egs || exit 1;
+  fi
+  [ ! -s $dir/valid.egs ] && \
+     echo "File $dir/valid.egs is empty or non-existent" && exit 1;
 
   echo "Creating subset of frames of training set, for computing preconditioners (in background)"
   $cmd $dir/log/create_precon_subset.log \
-    nnet-get-egs $nnet_context_opts \
+    nnet-randomize-frames $nnet_context_opts --num-samples=$num_precon_frames --srand=0 \
        "$feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:- \| \
-    nnet-subset-egs --srand=0 --n=$num_precon_frames ark:- ark:$dir/precon.egs &
+     ark:$dir/precon.egs &
 fi
 
 mix_up_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period + 1]
@@ -275,7 +278,8 @@ while [ $x -lt $num_sgd_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     # Set off a job that does diagnostics, in the background.
     $cmd $parallel_opts $dir/log/compute_prob.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$dir/valid.egs &
+      nnet-subset-egs --n=$valid_frames_subset ark:$dir/valid.egs ark:- \| \
+      nnet-compute-prob $dir/$x.mdl ark:- &
 
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
@@ -306,11 +310,10 @@ while [ $x -lt $num_sgd_iters ]; do
        nnet-am-average $nnets_list - \| \
        nnet-am-copy --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
 
-    # nnet-combine-fast is the same as nnet-shrink when applied to
-    # one model, but faster.
     if $shrink; then
-      $cmd $parallel_opts --num-threads=$num_threads $dir/log/shrink.$x.log \
-        nnet-combine-fast $dir/$[$x+1].mdl ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
+      $cmd $parallel_opts $dir/log/shrink.$x.log \
+        nnet-subset-egs --n=$valid_frames_subset ark:$dir/valid.egs ark:- \| \
+        nnet-shrink $dir/$[$x+1].mdl ark:- $dir/$[$x+1].mdl || exit 1;
     fi
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       # mix up.
@@ -385,14 +388,9 @@ while [ $x -lt $num_tot_iters ]; do
          # this is a term that would be there if we had l2 regularization.
       fi
     done
-    # What we are doing here is doing the combination using the
-    # training-data subset and then doing the shrinkage (implemented
-    # via nnet-combine-fast with just one input), using the validation
-    # data subset.
     $cmd $parallel_opts $dir/log/combine.$x.log \
-      nnet-combine-fast --verbose=3 --initial-model=0 \
-       "${all_models[@]}" ark:$dir/train_subset.egs - \| \
-      nnet-combine-fast - ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
+      nnet-subset-egs --n=$valid_frames_subset ark:$dir/valid.egs ark:- \| \
+      nnet-combine --verbose=3 --initial-model=0 "${all_models[@]}" ark:- $dir/$[$x+1].mdl || exit 1;
   fi
   x=$[$x+1];
 done
