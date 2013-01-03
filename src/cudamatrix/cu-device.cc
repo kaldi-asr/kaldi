@@ -23,6 +23,7 @@
 #include <cuda.h>
 
 #include <vector>
+#include <dlfcn.h>
 
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
@@ -48,7 +49,7 @@ CuDevice::CuDevice()
         || gpu_prop.computeMode == cudaComputeModeExclusiveProcess) {
       cudaDeviceSynchronize();
       char gpu_name[128];
-      cuDeviceGetName(gpu_name, 128, gpu_id);
+      DeviceGetName(gpu_name, 128, gpu_id);
       std::string mem_stats = GetFreeMemory(NULL, NULL);
       KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.\n"
                 << "  Using device " << gpu_id << ": " << gpu_name << "\t" << mem_stats;
@@ -70,7 +71,7 @@ CuDevice::CuDevice()
           cudaThreadSynchronize(); //deprecated, but for legacy reason...
           //get GPU name
           char name[128];
-          cuDeviceGetName(name,128,n);
+          DeviceGetName(name,128,n);
           //get GPU memory stats
           int64 free, total;
           std::string mem_stats;
@@ -202,13 +203,41 @@ void CuDevice::PrintProfile() {
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) {
 // WARNING! the CUDA API is inconsistent accross versions!
 #if (CUDA_VERSION >= 3020)
+  //define the function signature type
   size_t mem_free, mem_total;
 #else
   unsigned int mem_free, mem_total;
 #endif
-  // get the free memory stats
-  cuMemGetInfo(&mem_free, &mem_total);
-  // post them outside
+  { 
+    //we will load the cuMemGetInfo dynamically from libcuda.so
+    //cuMemGetInfo(&mem_free, &mem_total);
+    //pre-fill ``safe'' values that will not cause problems
+    mem_free = 1; mem_total = 1;
+    //open libcuda.so
+    void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
+    if(NULL == libcuda) { 
+      KALDI_WARN << "cannot open libcuda.so"; 
+    } else {
+      //define the function signature type
+      //and get the symbol
+#if (CUDA_VERSION >= 3020)
+      typedef CUresult (*cu_fun_ptr)(size_t*, size_t*);
+      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo_v2"); 
+#else
+      typedef CUresult (*cu_fun_ptr)(int*, int*);
+      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo"); 
+#endif
+      if(NULL == dl_cuMemGetInfo) {
+        KALDI_WARN << "cannot load cuMemGetInfo from libcuda.so";
+      } else {
+        //call the function
+        dl_cuMemGetInfo(&mem_free, &mem_total);
+      }
+      //close the library
+      dlclose(libcuda);
+    }
+  }
+  // copy the output values outside
   if(NULL != free) *free = mem_free;
   if(NULL != total) *total = mem_total;
   // prepare the text output
@@ -220,6 +249,29 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) {
   return os.str();
 }
 
+
+void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
+  //prefill with something reasonable
+  strncpy(name,"Unknown GPU",len);
+  //open libcuda.so
+  void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
+  if(NULL == libcuda) {
+    KALDI_WARN << "cannot open libcuda.so"; 
+  } else {
+    //define the function signature type
+    typedef CUresult (*cu_fun_ptr)(char*,int,CUdevice);
+    //get the symbol
+    cu_fun_ptr cuDeviceGetName_ptr = (cu_fun_ptr)dlsym(libcuda,"cuDeviceGetName"); 
+    if(NULL == cuDeviceGetName_ptr) {
+      KALDI_WARN << "cannot load cuDeviceGetName from libcuda.so"; 
+    } else {
+      //call the function
+      cuDeviceGetName_ptr(name, len, dev);
+    }
+    //close the library
+    dlclose(libcuda);
+  }
+}
 
 
 ////////////////////////////////////////////////

@@ -79,6 +79,8 @@ class CuDevice {
   
   /// Get the actual GPU memory use stats
   std::string GetFreeMemory(int64* free = NULL, int64* total = NULL);
+  /// Get the name of the GPU
+  void DeviceGetName(char* name, int32 len, int32 dev); 
 
 
  private:

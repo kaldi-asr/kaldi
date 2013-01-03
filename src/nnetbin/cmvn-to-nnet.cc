@@ -1,4 +1,4 @@
-// gmmbin/transf-to-nnet.cc
+// gmmbin/cmvn-to-nnet.cc
 
 // Copyright 2012  Brno University of Technology
 
@@ -33,9 +33,11 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = false;
+    bool tied_normalzation = false;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("tied-normalization", &tied_normalzation, "The normalization is tied accross all the input dimensions");
 
     po.Read(argc, argv);
 
@@ -68,8 +70,19 @@ int main(int argc, char *argv[]) {
     for(int32 d=0; d<cmvn_stats.NumCols()-1; d++) {
       BaseFloat mean = cmvn_stats(0,d)/count;
       BaseFloat var = cmvn_stats(1,d)/count - mean*mean;
+      shift(d) = -mean;
       scale(d) = 1.0 / sqrt(var);
-      shift(d) = -mean * scale(d);
+    }
+
+    if(tied_normalzation) {
+      //just average the variances
+      BaseFloat sum_var = 0.0;
+      for(int32 i=0; i<scale.Dim(); i++) {
+        sum_var += 1.0 / (scale(i)*scale(i));
+      }
+      BaseFloat mean_var = sum_var / scale.Dim();
+      BaseFloat tied_scale = 1.0 / sqrt(mean_var);
+      scale.Set(tied_scale);
     }
 
     //we will put the shift and scale to the nnet
