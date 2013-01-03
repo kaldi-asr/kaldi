@@ -29,12 +29,19 @@
 namespace kaldi {
 
 template<typename Real> 
-Real VecVec(const VectorBase<Real> &ra,
-                          const VectorBase<Real> &rb) {
-  MatrixIndexT adim = ra.Dim();
-  KALDI_ASSERT(adim == rb.Dim());
-  return cblas_Xdot(adim, ra.Data(), 1, rb.Data(), 1);
+Real VecVec(const VectorBase<Real> &a,
+            const VectorBase<Real> &b) {
+  MatrixIndexT adim = a.Dim();
+  KALDI_ASSERT(adim == b.Dim());
+  return cblas_Xdot(adim, a.Data(), 1, b.Data(), 1);
 }
+
+template
+float VecVec<>(const VectorBase<float> &a,
+               const VectorBase<float> &b);
+template
+double VecVec<>(const VectorBase<double> &a,
+                const VectorBase<double> &b);
 
 template<class Real, class OtherReal>
 Real VecVec(const VectorBase<Real> &ra,
