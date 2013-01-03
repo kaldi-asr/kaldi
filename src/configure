@@ -88,7 +88,7 @@ do
   --mathlib=*)
   MATHLIB=`read_dirname $1`; shift ;;
   --cudatk-dir=*)
-  CUDATKDIR=`read_dirname $1`; shift ;;
+  CUDATKDIR=`read_dirname $1`; shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -223,6 +223,11 @@ function linux_configure_omplibdir {
 is_set $MKLLIBDIR && echo "Force-configuring KALDI to use MKL" && export MATHLIB="MKL"
 is_set $MKLROOT && echo "Force-configuring KALDI to use MKL"&& export MATHLIB="MKL"
 
+##
+##CUDA is used in src/cudamatrix and src/nnet{,bin} only.
+##It is used to accelerate the neural network training,
+##the rest of kaldi is running on CPUs.
+##
 function linux_configure_cuda {
   #check for CUDA toolkit in the system
   if [ ! $CUDATKDIR ]; then
