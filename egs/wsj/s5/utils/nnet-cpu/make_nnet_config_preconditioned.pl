@@ -31,6 +31,7 @@ $bias_stddev = 2.0;  # Standard deviation for random initialization of the
                      # bias terms (mean is zero).
 $learning_rate = 0.001;
 $alpha = 4.0;
+$l2_penalty_opt = ""; # Option for AffineComponentPreconditioned layer.
 $tree_map = ""; # If supplied, a text file that maps from l2 to l1 tree nodes (output
    # by build-tree-two-level).  Used for initializing mixture-prob component.
 
@@ -43,6 +44,11 @@ $lda_mat = "";
 for ($x = 1; $x < 10; $x++) {
   if ($ARGV[0] eq "--input-left-context") {
     $input_left_context = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--l2-penalty") {
+    my $l2_penalty = $ARGV[1];
+    $l2_penalty_opt = "l2-penalty=$l2_penalty";
     shift; shift;
   }
   if ($ARGV[0] eq "--dropout-proportion") {
@@ -173,7 +179,7 @@ $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
-  print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha " .
+  print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "TanhComponent dim=$cur_input_dim\n";
@@ -189,7 +195,7 @@ if ($single_layer_config ne "") {
   # Create a config file we'll use to add new hidden layers.
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
-  print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha " .
+  print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "TanhComponent dim=$hidden_layer_size\n";
   if ($dropout_proportion != 0.0) {
@@ -202,7 +208,7 @@ if ($single_layer_config ne "") {
 }
 
 ## Now the output layer.
-print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_leaves alpha=$alpha " .
+print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_leaves alpha=$alpha $l2_penalty_opt " .
   "learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";

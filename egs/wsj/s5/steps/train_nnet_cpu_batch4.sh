@@ -248,6 +248,7 @@ fi
 x=-1 # iterations start from 0 but
      # we always start off the "randomization" on the previous iteration.
 while [ $x -lt $num_sgd_iters ]; do
+  echo "Pass $x (SGD training)  "
   # note: archive for aligments won't be sorted as the shell glob "*" expands
   # them in alphabetic not numeric order, so we can't use ark,s,cs: below, only
   # ark,cs which means the features are in sorted order [hence alignments will
@@ -309,8 +310,8 @@ while [ $x -lt $num_sgd_iters ]; do
     # nnet-combine-fast is the same as nnet-shrink when applied to
     # one model, but faster.
     if $shrink; then
-      $cmd $parallel_opts --num-threads=$num_threads $dir/log/shrink.$x.log \
-        nnet-combine-fast $dir/$[$x+1].mdl ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
+      $cmd $parallel_opts $dir/log/shrink.$x.log \
+        nnet-combine-fast --num-threads=$num_threads $dir/$[$x+1].mdl ark:$dir/valid.egs $dir/$[$x+1].mdl || exit 1;
     fi
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       # mix up.
@@ -326,6 +327,7 @@ done
 
 num_tot_iters=$[$num_sgd_iters + $num_batch_iters];
 while [ $x -lt $num_tot_iters ]; do
+  echo "Pass $x (Batch training)"
   if [ $stage -le $x ]; then
     # Realign, if requested on this iteration.
     if echo $realign_iters | grep -w $x >/dev/null; then
@@ -398,7 +400,23 @@ while [ $x -lt $num_tot_iters ]; do
 done
 
 
+## Do the final combination using the validation subset.
+## Note: don't include the most recent model in the subspace, it wouldn't
+## add anything.
+for y in `seq $[x-1] -1 $[$x-$n-1]`; do
+  if [ $y -ge $num_sgd_iters ]; then
+    all_models+=($dir/$y.mdl) # the model (append to array)
+         # Note: we only give the "alpha" argument for didactic reasons.  It won't
+         # have an effect, what matters is the alpha value we used above.
+    all_models+=("nnet-precondition --alpha=$precon_alpha --normalize=true $preconditioner $dir/$y.gradient -|") # gradient times preconditioner.
+    all_models+=("nnet-precondition --alpha=$precon_alpha --normalize=true $preconditioner $dir/$y.mdl -|") # model times preconditioner.
+         # this is a term that would be there if we had l2 regularization.
+  fi
+done
+
 rm $dir/final.mdl 2>/dev/null
-ln -s $x.mdl $dir/final.mdl
+$cmd $parallel_opts $dir/log/combine.log \
+  nnet-combine-fast --verbose=3 --initial-model=0 \
+  "${all_models[@]}" ark:$dir/valid.egs $dir/final.mdl || exit 1;
 
 echo Done

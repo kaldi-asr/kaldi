@@ -188,7 +188,6 @@ class UpdatableComponent: public Component {
   /// Gets the learning rate of gradient descent
   BaseFloat LearningRate() const { return learning_rate_; }
 
-
   // The next few functions are not implemented everywhere; they are
   // intended for use by L-BFGS code, and we won't implement them
   // for all child classes.
@@ -284,7 +283,6 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }  // Make it lower case
   // because each type of Component needs a different first letter.
-  virtual Component* Copy() const { return new SoftmaxComponent(dim_); }
   virtual bool BackpropNeedsInput() const { return false; }
   virtual bool BackpropNeedsOutput() const { return true; }
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
@@ -312,6 +310,16 @@ class SoftmaxComponent: public NonlinearComponent {
              BaseFloat perturb_stddev,
              AffineComponent *ac,
              MixtureProbComponent *mc);
+  virtual Component* Copy() const;
+
+  // Because the SoftmaxComponent stores counts, we support the
+  // Add and Scale methods just like UpdatableComponent.  The code
+  // that calls this, e.g. nnet-am-average.cc, has to treat this
+  // as a special case.
+  void Scale(BaseFloat scale) { counts_.Scale(scale); }
+  void Add(BaseFloat alpha, const SoftmaxComponent &other) {
+    counts_.AddVec(alpha, other.counts_);
+  }  
  private:
   Vector<BaseFloat> counts_; // Occupation counts per dim.
   
@@ -415,14 +423,16 @@ class AffineComponentPreconditioned: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            bool precondition, BaseFloat alpha);
+            bool precondition, BaseFloat alpha,
+            BaseFloat l2_penalty);
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
   virtual Component* Copy() const;
-  AffineComponentPreconditioned() { }
+  AffineComponentPreconditioned(): l2_penalty_(0.0), alpha_(1.0) { }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
+  BaseFloat l2_penalty_;
   BaseFloat alpha_;
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,

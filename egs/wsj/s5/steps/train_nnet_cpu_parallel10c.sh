@@ -230,12 +230,12 @@ if [ $stage -le -1 ]; then
   echo "Creating subset of frames of validation set for shrinking."
   $cmd $dir/log/create_valid_subset_shrink.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_shrink --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- |" \
+       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/valid_shrink.egs || exit 1;
   echo "Creating subset of frames of validation set for estimating combination weights."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_combine --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- |" \
+       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      ark:$dir/valid_combine.egs || exit 1;
 fi
 
@@ -267,7 +267,7 @@ while [ $x -lt $num_iters ]; do
      nnet-randomize-frames --local-balance=$local_balance \
         $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
       --srand=$y "$feats" \
-       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- |" ark:- \| \
+       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
        nnet-copy-egs ark:- $egs_list &
     last_randomize_process=$! # process-id of the process what we just spawned.
   fi
@@ -348,7 +348,7 @@ done
 
 rm $dir/final.mdl 2>/dev/null
 
-# At the end, final.mdl will be a combination of the last e.g. 10 models.
+# At the end, final.mdl will be a combination of the last (e.g.) 10 models.
 nnets_list=
 for x in `seq $[$num_iters-$num_iters_final+1] $num_iters`; do
   nnets_list="$nnets_list $dir/$x.mdl"

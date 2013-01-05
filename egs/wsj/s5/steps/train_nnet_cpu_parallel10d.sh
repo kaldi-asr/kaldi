@@ -4,7 +4,7 @@
 
 # 10d should be basically the same as 10c, but changed slightly so as to
 # accommodate some reworked code where nnet-randomize takes posteriors, not
-# alignments.
+# alignments.  [Note: I later changed 10c to be as 10d.]
 
 # 10c is as 10b, but adding the ability to mix up, increasing the #neurons in
 # the last layer.
@@ -81,6 +81,7 @@ lda_dim=250
 randprune=4.0 # speeds up LDA.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
+l2_factor=0.0 # only relevant if alpha != 0.0 (i.e. for preconditioned update)
 shrink=true
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
@@ -190,7 +191,13 @@ if [ $stage -le -4 ]; then
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers.
   if [ ! -z "$alpha" ]; then
-    utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
+    if [ "$l2_factor" != "0.0" ]; then
+      num_frames=`feat-to-len "$feats" ark,t:- | awk '{n += $2;} END{print n;}'`
+      l2_penalty=`perl -e "print $l2_factor / $num_frames;"`
+      l2_opt="--l2-penalty $l2_penalty"
+      echo "Setting l2 penalty to $l2_factor / $num_frames = $l2_penalty";
+    fi
+    utils/nnet-cpu/make_nnet_config_preconditioned.pl $l2_opt --alpha $alpha $nnet_config_opts \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
@@ -300,7 +307,7 @@ while [ $x -lt $num_iters ]; do
     m=$minibatches_per_phase
 
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
-      nnet-train-simple \
+      nnet-train-simple "--srand=\$[($x*$num_jobs_nnet)+JOB]" \
         --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
         --verbose=2 "$mdl" ark:$dir/egs.$x.tmp.JOB $dir/$[$x+1].JOB.mdl \
        || exit 1;

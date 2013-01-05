@@ -40,9 +40,12 @@ int main(int argc, char *argv[]) {
         
     bool random = false;
     int32 srand_seed = 0;
+    BaseFloat keep_proportion = 1.0;
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
+    po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
+                "randomly keep this proportion of the input samples.");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true)");
     
@@ -68,9 +71,11 @@ int main(int argc, char *argv[]) {
     
     int64 num_done = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_done++) {
-      int32 index = (random ? rand() : num_done) % num_outputs;
-      example_writers[index]->Write(example_reader.Key(),
-                                    example_reader.Value());
+      if (WithProb(keep_proportion)) {
+        int32 index = (random ? rand() : num_done) % num_outputs;
+        example_writers[index]->Write(example_reader.Key(),
+                                      example_reader.Value());
+      }
     }
     
     for (int32 i = 0; i < num_outputs; i++)

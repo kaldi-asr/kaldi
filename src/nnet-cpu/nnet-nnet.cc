@@ -295,6 +295,17 @@ void Nnet::ScaleComponents(const VectorBase<BaseFloat> &scale_params) {
   KALDI_ASSERT(i == scale_params.Dim());
 }
 
+// Scales all UpdatableComponents and all SoftmaxComponents.
+void Nnet::Scale(BaseFloat scale) {
+  for (int32 i = 0; i < NumComponents(); i++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(i)));
+    if (uc != NULL) uc->Scale(scale);
+    SoftmaxComponent *sc =
+        dynamic_cast<SoftmaxComponent*>(&(GetComponent(i)));
+    if (sc != NULL) sc->Scale(scale);
+  }
+}
 
 void Nnet::SetLearningRates(const VectorBase<BaseFloat> &learning_rates) {
   KALDI_ASSERT(learning_rates.Dim() == this->NumUpdatableComponents());
@@ -352,6 +363,28 @@ void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
     }
   }
   KALDI_ASSERT(i == scale_params.Dim());
+}
+
+void Nnet::AddNnet(BaseFloat alpha,
+                   const Nnet &other) {
+  for (int32 i = 0; i < NumComponents(); i++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(i)));
+    const UpdatableComponent *uc_other =
+        dynamic_cast<const UpdatableComponent*>(&(other.GetComponent(i)));
+    if (uc != NULL) {
+      KALDI_ASSERT(uc_other != NULL);
+      uc->Add(alpha, *uc_other);
+    }
+    SoftmaxComponent *sc =
+        dynamic_cast<SoftmaxComponent*>(&(GetComponent(i)));
+    const SoftmaxComponent *sc_other =
+        dynamic_cast<const SoftmaxComponent*>(&(other.GetComponent(i)));
+    if (sc != NULL) {
+      KALDI_ASSERT(sc_other != NULL);
+      sc->Add(alpha, *sc_other);
+    }
+  }
 }
 
 void Nnet::Append(Component *new_component) {

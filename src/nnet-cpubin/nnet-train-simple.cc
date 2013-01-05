@@ -43,13 +43,16 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     bool zero_occupancy = true;
+    int32 srand_seed = 0;
     NnetSimpleTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
                 "counts stored with the neural net (only affects mixing up).");
-
+    po.Register("srand", &srand_seed, "Seed for random number generator "
+                "(relevant if you have layers of type AffineComponentPreconditioned "
+                "with l2-penalty != 0.0");
     
     train_config.Register(&po);
     

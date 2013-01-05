@@ -66,18 +66,16 @@ int main(int argc, char *argv[]) {
 
     int32 num_inputs = po.NumArgs() - 1;
     BaseFloat scale = (sum ? 1.0 : 1.0 / num_inputs);
-    Vector<BaseFloat> scales(am_nnet1.GetNnet().NumUpdatableComponents());
-    scales.Set(scale);
 
-    am_nnet1.GetNnet().ScaleComponents(scales);
-        
+    am_nnet1.GetNnet().Scale(scale);
+    
     for (int32 i = 2; i <= num_inputs; i++) {
       bool binary_read;
       Input ki(po.GetArg(i), &binary_read);
       trans_model.Read(ki.Stream(), binary_read);
       AmNnet am_nnet;
       am_nnet.Read(ki.Stream(), binary_read);
-      am_nnet1.GetNnet().AddNnet(scales, am_nnet.GetNnet());
+      am_nnet1.GetNnet().AddNnet(scale, am_nnet.GetNnet());
     }
     
     {
@@ -94,5 +92,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
 

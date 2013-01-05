@@ -111,6 +111,18 @@ class Nnet {
   void AddNnet(const VectorBase<BaseFloat> &scales,
                const Nnet &other);
 
+  /// Scales all the Components with the same scale.  This applies to
+  /// UpdatableComponents, and (unlike the ScaleComponents function) to
+  /// SoftmaxComponents.
+  void Scale(BaseFloat scale);
+
+
+  /// Adds to *this, the other neural net times the scale "alpha".  This applies
+  /// to UpdatableComponents, and (unlike the other AddNnet function) to
+  /// SoftmaxComponents.
+  void AddNnet(BaseFloat alpha,
+               const Nnet &other);
+
   /// Removes final components from the neural network (used for
   /// debugging).
   void Resize(int32 num_components);

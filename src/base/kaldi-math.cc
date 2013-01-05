@@ -39,6 +39,7 @@ bool WithProb(BaseFloat prob) {
   // previous calculations.
   KALDI_COMPILE_TIME_ASSERT(RAND_MAX > 128 * 128);
   if (prob == 0) return false;
+  else if (prob == 1.0) return true;
   else if (prob * RAND_MAX < 128.0) {
     // prob is very small but nonzero, and the "main algorithm"
     // wouldn't work that well.  So: with probability 1/128, we
@@ -50,9 +51,8 @@ bool WithProb(BaseFloat prob) {
     } else {
       return false;
     }
-  } else { // "prob" is reasonably large, so just use
-    // a simple approach.
-    return (rand() < (RAND_MAX * prob));
+  } else {
+    return (rand() < ((RAND_MAX + static_cast<BaseFloat>(1.0)) * prob));
   }
 }
 

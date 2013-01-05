@@ -435,6 +435,8 @@ void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
     // each output dimension.
     int32 chunk_size = out_value.NumRows() / num_chunks;
     KALDI_ASSERT(num_chunks > 0 && chunk_size * num_chunks == out_value.NumRows());
+    if (to_update_softmax->counts_.Dim() == 0)
+      to_update_softmax->counts_.Resize(to_update_softmax->InputDim());
     to_update_softmax->counts_.AddRowSumMat(1.0, out_value, 1.0);
   }
 }
@@ -456,6 +458,11 @@ void SoftmaxComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</SoftmaxComponent>");
 }
 
+Component *SoftmaxComponent::Copy() const {
+  SoftmaxComponent *ans = new SoftmaxComponent(dim_);
+  ans->counts_ = counts_;
+  return ans;
+}
 
 void AffineComponent::Scale(BaseFloat scale) {
   linear_params_.Scale(scale);
@@ -795,7 +802,15 @@ void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &avg_input_count_);
   ExpectToken(is, binary, "<Alpha>");
   ReadBasicType(is, binary, &alpha_);
-  ExpectToken(is, binary, ostr_end.str());
+  std::string tok;
+  // TODO: remove backward-compatibility code.
+  ReadToken(is, binary, &tok);
+  if (tok == "<L2Penalty>") {
+    ReadBasicType(is, binary, &l2_penalty_);
+    ExpectToken(is, binary, ostr_end.str());
+  } else {
+    KALDI_ASSERT(tok == ostr_end.str());
+  }
 }
 
 void AffineComponentPreconditioned::InitFromString(std::string args) {
@@ -808,25 +823,27 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-             bias_stddev = 1.0, alpha = 0.1;
+      bias_stddev = 1.0, alpha = 0.1, l2_penalty = 0.0;
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
   ParseFromString("precondition", &args, &precondition);
   ParseFromString("alpha", &args, &alpha);
+  ParseFromString("l2-penalty", &args, &l2_penalty);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
   Init(learning_rate, input_dim, output_dim,
-       param_stddev, bias_stddev, precondition, alpha);
+       param_stddev, bias_stddev, precondition, alpha, l2_penalty);
 }
 
 void AffineComponentPreconditioned::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    bool precondition, BaseFloat alpha) {
+    bool precondition, BaseFloat alpha,
+    BaseFloat l2_penalty) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -839,6 +856,8 @@ void AffineComponentPreconditioned::Init(
   avg_input_count_ = 0.0;
   alpha_ = alpha;
   KALDI_ASSERT(alpha > 0.0);
+  l2_penalty_ = l2_penalty;
+  KALDI_ASSERT(l2_penalty_ >= 0.0);
 }
 
 
@@ -859,6 +878,8 @@ void AffineComponentPreconditioned::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, avg_input_count_);
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha_);
+  WriteToken(os, binary, "<L2Penalty>");
+  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -876,7 +897,8 @@ std::string AffineComponentPreconditioned::Info() const {
          << ", linear-params stddev = " << linear_stddev
          << ", bias-params stddev = " << bias_stddev
          << ", learning rate = " << LearningRate()
-         << ", alpha = " << alpha_;
+         << ", alpha = " << alpha_
+         << ", l2-penalty = " << l2_penalty_;
   return stream.str();
 }
 
@@ -888,6 +910,7 @@ Component* AffineComponentPreconditioned::Copy() const {
   ans->avg_input_ = avg_input_;
   ans->avg_input_count_ = avg_input_count_;
   ans->alpha_ = alpha_;
+  ans->l2_penalty_ = l2_penalty_;
   ans->is_gradient_ = is_gradient_;
   return ans;
 }
@@ -895,21 +918,90 @@ Component* AffineComponentPreconditioned::Copy() const {
 void AffineComponentPreconditioned::Update(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv) {
-  Matrix<BaseFloat> in_value_precon(in_value.NumRows(),
-                                    in_value.NumCols()),
-      out_deriv_precon(out_deriv.NumRows(),
-                       out_deriv.NumCols());
+  Matrix<BaseFloat> in_value_temp, out_deriv_storage;
+  
+  if (l2_penalty_ == 0.0) {
+    in_value_temp.Resize(in_value.NumRows(),
+                         in_value.NumCols() + 1, kUndefined);
+    in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
+        in_value);
+  } else {
+    // Need to take into account the l2 penalty per frame.  Imagine the parameters
+    // were represented as a single matrix (with an extra column for the bias term).
+    // We take the l2 penalty into account by adding an extra row to "in_value" and
+    // "out_deriv".  Since this can only give us a rank-1 matrix, we choose a
+    // random column of linear_params_ (corresponding to a particular input dimension,
+    // treating the extra 1.0 as its own dimension), and let the extra row of in_value
+    // have a 1 in this position and zeroes everywhere
+    // else; the extra row of out_value is determined by the derivative of the l2
+    // penalty term (taking into account the # of frames we are processing and also
+    // the fact that we only do this row on average one every (InputDim() + 1) times.
+    
+    in_value_temp.Resize(in_value.NumRows() + 1,
+                         in_value.NumCols() + 1, kUndefined);
+    in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
+        in_value);
+    SubVector<BaseFloat> extra_in_value_row(in_value_temp, in_value.NumRows());
+    extra_in_value_row.SetZero();
+    
+    int32 ext_input_dim = InputDim() + 1,
+        num_samples = in_value.NumRows(),
+        random_dim = RandInt(0, ext_input_dim - 1);
+    // in a loop below, we'll set in_value_temp(in_value.NumCols()) = 1.0.
+
+    out_deriv_storage.Resize(out_deriv.NumRows() + 1,
+                             out_deriv.NumCols(), kUndefined);
+    out_deriv_storage.Range(0, out_deriv.NumRows(),
+                            0, out_deriv.NumCols()).CopyFromMat(out_deriv);
+    SubVector<BaseFloat> extra_out_deriv_row(out_deriv_storage,
+                                             out_deriv.NumRows());
+
+    if (random_dim < InputDim()) {
+      extra_out_deriv_row.CopyColFromMat(linear_params_, random_dim);
+    } else {
+      extra_out_deriv_row.CopyFromVec(bias_params_);
+    }
+    // Note: this scale factor will also effectively get multiplied by the
+    // learning rate later on; we shouldn't include that factor here.
+    // Note: l2_penalty_ is typically very tiny, e.g. 1.0e-06, so scale_factor
+    // will typically be less than 1.
+    BaseFloat scale_factor = -l2_penalty_ * ext_input_dim * num_samples;
+    extra_out_deriv_row.Scale(scale_factor);
+    extra_in_value_row(random_dim) = 1.0; // Rest is zeroes.
+  }
+  // Add the 1.0 at the end of each row "in_value_temp" (except the "extra" row.)
+  for (int32 i = 0; i < in_value.NumRows(); i++)
+    in_value_temp(i, in_value.NumCols()) = 1.0;
+
+  const MatrixBase<BaseFloat> &out_deriv_temp =
+      (l2_penalty_ == 0.0 ? out_deriv : out_deriv_storage);
+      
+  Matrix<BaseFloat> in_value_precon(in_value_temp.NumRows(),
+                                    in_value_temp.NumCols()),
+      out_deriv_precon(out_deriv_temp.NumRows(),
+                       out_deriv_temp.NumCols());
   // each row of in_value_precon will be that same row of
   // in_value, but multiplied by the inverse of a Fisher
   // matrix that has been estimated from all the other rows,
   // smoothed by some appropriate amount times the identity
   // matrix (this amount is proportional to \alpha).
-  PreconditionDirectionsAlphaRescaled(in_value, alpha_, &in_value_precon);
-  PreconditionDirectionsAlphaRescaled(out_deriv, alpha_, &out_deriv_precon);
+  PreconditionDirectionsAlphaRescaled(in_value_temp, alpha_, &in_value_precon);
+  PreconditionDirectionsAlphaRescaled(out_deriv_temp, alpha_, &out_deriv_precon);
+
+
+  SubMatrix<BaseFloat> in_value_precon_part(in_value_precon,
+                                            0, in_value_precon.NumRows(),
+                                            0, in_value_precon.NumCols() - 1);
+  // this "precon_ones" is what happens to the vector of 1's representing
+  // offsets, after multiplication by the preconditioner.
+  Vector<BaseFloat> precon_ones(in_value_precon.NumRows());
   
-  bias_params_.AddRowSumMat(learning_rate_, out_deriv_precon, 1.0);
+  precon_ones.CopyColFromMat(in_value_precon, in_value_precon.NumCols() - 1);
+  
+  bias_params_.AddMatVec(learning_rate_, out_deriv_precon, kTrans,
+                         precon_ones, 1.0);
   linear_params_.AddMatMat(learning_rate_, out_deriv_precon, kTrans,
-                           in_value_precon, kNoTrans, 1.0);
+                           in_value_precon_part, kNoTrans, 1.0);
 }
 
 
@@ -2523,7 +2615,7 @@ void AffineComponentA::Transform(
   params_temp.AddMatTp(1.0, params, kNoTrans,
                        invert ? in_C_inv_ : in_C_,
                        transpose_in, 0.0);
-
+  
   MatrixTransposeType transpose_out = (is_gradient ? kNoTrans : kTrans);
   params.AddTpMat(1.0, invert ? out_C_inv_ : out_C_, transpose_out,
                   params_temp, kNoTrans, 0.0);
@@ -2578,5 +2670,4 @@ void AffineComponentA::Precondition(
 
 
 } // namespace kaldi
-
 
