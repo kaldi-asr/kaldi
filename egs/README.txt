@@ -34,13 +34,17 @@ Note: the easiest examples to work with are rm/s3 and wsj/s3.
 
 Recipes in progress (these may be less polished than the ones above).
 
- swbd: Switchboard.  A fairly large amount of telephone speech (2-channel, 8kHz
+ swbd: Switchboard (from LDC).  A fairly large amount of telephone speech (2-channel, 8kHz
     sampling rate).
     This directory is a work in progress.
   
- gp: GlobalPhone.  This is a multilingual speech corpus.
+ gp: GlobalPhone (from ELDA).  This is a multilingual speech corpus.
 
- timit: TIMIT, which is an old corpus of carefully read speech.  
+ timit: TIMIT (from LDC), which is an old corpus of carefully read speech.  
     LDC corpous LDC93S1  
 
  voxforge: A recipe for the free speech data available from voxforge.org
+
+ hkust: A recipe for HKUST Mandarin Telephone Speech (available from LDC)
+
+

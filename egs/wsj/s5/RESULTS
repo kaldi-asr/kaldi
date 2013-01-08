@@ -1,3 +1,11 @@
+# Use caution when comparing these results with other published results.
+# We use the "20k open" test condition, also known as the "60k vocabulary"
+# test condition, in which test utterances are not excluded even if they
+# contain words not in the language model.  This is the hardest test condition,
+# and most published results are in the easier 5k and 20k-closed conditions,
+# in which we only test on utterances that are in either a 5k or 20k subset
+# of the vocabulary.
+
 # The following results are updated with LDA+MLLT to use 7, not 9 frames of context,
 # and also increased the learning rate for the "indirect" fMMI.
 
@@ -161,4 +169,9 @@ exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it1/wer_12:%WER 6.45 [ 364 / 5643, 99 i
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it2/wer_10:%WER 6.43 [ 363 / 5643, 108 ins, 11 del, 244 sub ]
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it3/wer_11:%WER 6.40 [ 361 / 5643, 106 ins, 10 del, 245 sub ]
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it4/wer_11:%WER 6.34 [ 358 / 5643, 110 ins, 9 del, 239 sub ]
+
+
+# DNN on fMLLR features
+exp/tri4a_dnn/decode_tgpr_dev93/wer_10:%WER 10.08 [ 830 / 8234, 192 ins, 91 del, 547 sub ]
+exp/tri4a_dnn/decode_tgpr_eval92/wer_10:%WER 6.40 [ 361 / 5643, 98 ins, 13 del, 250 sub ]
 

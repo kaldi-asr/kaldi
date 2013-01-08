@@ -67,7 +67,7 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $srcdir/tree $graphdir/HCLG.fst $graphdir/words.txt; do
+for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst $graphdir/words.txt; do
   [ ! -f $f ] && echo "decode_fwdbwd.sh: no such file $f" && exit 1;
 done
 
@@ -95,9 +95,9 @@ fi
 if [ -f $first_pass/lat.1.gz ]; then
   echo "converting first pass lattice to graph arc acceptor"
   $cmd JOB=1:$nj $dir/log/arc_graph.JOB.log \
-    time lattice-arcgraph --write-graph=HCLG_mapped.fst --write-lattices=ark,t:$dir/lat.det \
-      $srcdir/tree $model $graphdir/HCLG.fst "ark:gunzip -c $first_pass/lat.JOB.gz|" \
-      ark,t:$dir/lat.JOB.arcs || exit 1;
+    time lattice-arcgraph $model $graphdir/HCLG.fst \
+    "ark:gunzip -c $first_pass/lat.JOB.gz|" ark,t:$dir/lat.JOB.arcs || exit 1;
+    #  --write-lattices=ark,t:$dir/lat.det
     #  --acoustic-scale=$acwt --lattice-beam=$latbeam --prune=false \
 
   echo "decode with tracking first pass lattice"

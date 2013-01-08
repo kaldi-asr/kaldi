@@ -15,8 +15,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 2 ]; then
-   echo "Usage: local/reverse/wsj_test_reverse_lm.sh [options] <fwd-lm-dir> <bwd-lm-dir>"
-   echo "example: local/reverse/wsj_test_reverse_lm.sh data/lang_test_tgpr_5k data/lang_test_tgpr_5k.reverse"
+   echo "Usage: utils/reverse_lm_test.sh [options] <fwd-lm-dir> <bwd-lm-dir>"
+   echo "example: utils/reverse_lm_test.sh data/lang_test_tgpr_5k data/lang_test_tgpr_5k.reverse"
    echo "options:"
    echo "  --utterances <int>   number of random test utterances"
    echo "  --maxlen <int>       max number of arcs (words) in utterance"

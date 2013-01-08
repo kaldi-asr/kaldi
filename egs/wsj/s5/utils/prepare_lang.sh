@@ -50,6 +50,8 @@ reverse=false
 share_silence_phones=false  # if true, then share pdfs of different silence 
                             # phones together.
 sil_prob=0.5
+generate_l_align=false      # generate alignment FST with word start/end symbols
+make_individual_sil_models=false # enforce individual models for all silence phones
 # end configuration sections
 
 . utils/parse_options.sh 
@@ -66,6 +68,8 @@ if [ $# -ne 4 ]; then
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all non-silence phones. "
   echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 < silprob < 1]"
+  echo "     --generate-l-align (true|false)                 # default: false; generate alignment FST with word start/end symbols"
+  echo "     --make-individual-sil-models (true|false)       # default: false; make non-{shared,split} states for each silphone"
   exit 1;
 fi
 
@@ -142,9 +146,18 @@ if $share_silence_phones; then
   # but we never split the tree so they remain stumps
   # so all phones in the line correspond to the same model.
 
-  cat $srcdir/silence_phones.txt | awk '{printf("%s ", $0); } END{printf("\n");}' | cat - $srcdir/nonsilence_phones.txt | \
-    utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
-  cat $dir/phones/sets.txt | awk '{if(NR==1) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
+  if $make_individual_sil_models; then
+    nsil=`wc $srcdir/silence_phones.txt | awk '{printf $1}'`
+    cat $srcdir/silence_phones.txt | awk '{printf("%s\n", $0); }' | cat - $srcdir/nonsilence_phones.txt | \
+      utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
+    cat $dir/phones/sets.txt | \
+      awk -v nsil=$nsil '{if(NR<=nsil) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
+  else
+    cat $srcdir/silence_phones.txt | awk '{printf("%s ", $0); } END{printf("\n");}' | cat - $srcdir/nonsilence_phones.txt | \
+      utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
+    cat $dir/phones/sets.txt | \
+      awk '{if(NR==1) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
+  fi
 else
   # different silence phones will have different GMMs.  [note: here, all "shared split" means
   # is that we may have one GMM for all the states, or we can split on states.  because they're
@@ -273,3 +286,15 @@ utils/make_lexicon_fst.pl $tmpdir/lexicon_disambig.txt $sil_prob $silphone '#'$n
    --keep_isymbols=false --keep_osymbols=false |   \
    fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
    fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
+
+
+# If desired, create lexicon FST for alignments (has word-start and end symbols)
+if $generate_l_align; then
+  cat $tmpdir/lexicon.txt | 
+    awk '{printf("%s #1 ", $1); for (n=2; n <= NF; n++) { printf("%s ", $n); } print "#2"; }' | \
+    utils/make_lexicon_fst.pl - $sil_prob $silphone | \
+    fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
+      --keep_isymbols=false --keep_osymbols=false | \
+  fstarcsort --sort_type=olabel > $dir/L_align.fst || exit 1;
+fi
+

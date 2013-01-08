@@ -212,8 +212,19 @@ steps/train_mmi_fmmi_indirect.sh \
      exp/tri5a/graph data/eval2000 exp/tri5a_fmmi_b0.1_indirect/decode_eval2000_it$iter &
  done
 
+
+# Recipe with DNN system on top of fMLLR features
+local/run_hybrid.sh
+
+
+
+
 # Note: we haven't yet run with all the data.
 
+# utils/make_phone_bigram_lang.sh data/lang exp/tri4a_ali_100k_nodup data/lang_phone_bg
+# utils/mkgraph.sh data/lang_phone_bg exp/tri4a exp/tri4a/graph_phone_bg
+# steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+#   exp/tri4a/graph_phone_bg data/train_dev exp/tri4a/decode_train_dev_phone_bg
 
 # getting results (see RESULTS file)
 for x in exp/*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null

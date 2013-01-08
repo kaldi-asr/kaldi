@@ -1,4 +1,4 @@
-// featbin/copy-feats.cc
+// featbin/select-feats.cc
 
 // Copyright 2012 Korbinian Riedhammer
 

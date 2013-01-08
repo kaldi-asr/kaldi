@@ -808,7 +808,7 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
 
 #ifdef KALDI_PARANOID  // checking mainly for errors in the code or math.
   {
-    SpMatrix<double> P1Trans(rows);
+    SpMatrix<Real> P1Trans(rows);
     P1Trans.AddMat2Sp(1.0, T, kNoTrans, P1, 0.0);
     KALDI_ASSERT(P1Trans.IsUnit(0.01));
   }

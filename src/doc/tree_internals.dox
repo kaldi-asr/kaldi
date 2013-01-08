@@ -22,8 +22,8 @@ namespace kaldi {
 
   This page describes the internals of the phonetic decision-tree clustering
   code, which are implemented as quite generic structures and algorithms.  For a
-  higher-level view that explains how these algorithms are used by the toolkit,
-  see \ref tree_externals.
+  higher-level view that explains the overall algorithm being implemented and how it
+  is used by the toolkit, see \ref tree_externals.
 
   \section treei_event_map Event maps
 

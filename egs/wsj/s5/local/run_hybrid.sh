@@ -8,45 +8,76 @@
 
 
 
-# Now make FBANK features.
-# fbankdir should be some place with a largish disk where you
-# want to store FBANK features.
-fbankdir=fbank
-for x in test_eval92 test_eval93 test_dev93 train_si284; do 
-  rm -rf data-fbank/$x; 
-  cp -r data/$x data-fbank/$x
-  steps/make_fbank.sh --cmd "$train_cmd" --nj 20 \
-   data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
-  steps/compute_cmvn_stats.sh data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
-done
-# Make the SI-84 subset of FBANKs
-utils/subset_data_dir.sh --first data-fbank/train_si284 7138 data-fbank/train_si84 || exit 1
-steps/compute_cmvn_stats.sh data-fbank/train_si84 exp/make_fbank/train_si84 $fbankdir || exit 1;
+#false && \
+(
 
-# Align tri2a system with si84 data.
-steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
-  --use-graphs true data/train_si84 data/lang exp/tri2a exp/tri2a_ali_si84  || exit 1;
-steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
-  data/test_dev93 data/lang exp/tri2a exp/tri2a_ali_dev93  || exit 1;
+###
+### First we need to generate the alignments, 
+###
+### these are used as DNN training targets,
+### also the fMLLR transforms are needed 
+###
 
+steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
+  data/train_si284 data/lang exp/tri4a exp/tri4a_ali_si284 || exit 1
 
+steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
+  data/test_dev93 data/lang exp/tri4a exp/tri4a_ali_dev93 || exit 1
 
-model_size=3000000
-hid_layers=2
-learn_rate=0.008
-( # Train the MLP
-  dir=exp/tri2a_nnet4L
-  ali=exp/tri2a_ali
-  $cuda_cmd $dir/_train_nnet.log \
-    steps/train_nnet.sh --model-size $model_size --hid-layers $hid_layers --learn-rate $learn_rate --bunch-size 256 \
-    data-fbank/train_si84 data-fbank/test_dev93 data/lang ${ali}_si84 ${ali}_dev93 $dir || exit 1;
-  # Decode
-  $mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
-  steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.09 \
-    $dir/graph_tgpr data-fbank/test_dev93 $dir/decode_tgpr_dev93 && \
-  steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.09 \
-    $dir/graph_tgpr data-fbank/test_eval92 $dir/decode_tgpr_eval92
+###
+### As next step we store the fMLLR features, so we can train on them easily
+###
+
+gmmdir=exp/tri4a
+
+# eval92
+dir=data-fmllr/test_eval92
+steps/make_fmllr_feats.sh --nj 8 --cmd "$train_cmd" \
+   --transform-dir exp/tri4a/decode_tgpr_eval92 \
+   $dir data/test_eval92 $gmmdir $dir/_log $dir/_data || exit 1
+
+# dev93
+dir=data-fmllr/test_dev93
+# generate the features
+steps/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
+   --transform-dir exp/tri4a_ali_dev93 \
+   $dir data/test_dev93 $gmmdir $dir/_log $dir/_data || exit 1
+
+# train si284
+# generate the features
+dir=data-fmllr/train_si284
+steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
+   --transform-dir exp/tri4a_ali_si284 \
+   $dir data/train_si284 $gmmdir $dir/_log $dir/_data || exit 1
+
 )
+
+###
+### Now we can train the Deep Neural Network in a hybrid setup
+###
+### The fMLLR features are 
+###   -spliced, 
+###   -decorrelated by LDA 
+###   -rescaled by CMVN over dataset
+###
+
+( # Train the MLP
+dir=exp/tri4a_dnn
+ali=exp/tri4a_ali
+$cuda_cmd $dir/_train_nnet.log \
+  steps/train_nnet.sh --hid-layers 4 --hid-dim 1200 \
+  --apply-cmvn false --splice-lr 4 --feat-type lda --lda-dim 300 \
+  --learn-rate 0.008 --bunch-size 256 \
+  data-fmllr/train_si284 data-fmllr/test_dev93 data/lang ${ali}_si284 ${ali}_dev93 $dir || exit 1;
+# build graph
+$mkgraph_cmd $dir/_mkgraph.log utils/mkgraph.sh data/lang_test_tgpr $dir $dir/graph_tgpr || exit 1;
+# decode 
+steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.10 \
+  $dir/graph_tgpr data-fmllr/test_dev93 $dir/decode_tgpr_dev93 &&
+steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.10 \
+  $dir/graph_tgpr data-fmllr/test_eval92 $dir/decode_tgpr_eval92
+)
+
 
 
 # Getting results [see RESULTS file]

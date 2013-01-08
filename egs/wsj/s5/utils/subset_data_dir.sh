@@ -75,6 +75,10 @@ function do_filtering {
      [ -f $srcdir/wav.scp ] && utils/filter_scp.pl $destdir/reco <$srcdir/wav.scp >$destdir/wav.scp
      [ -f $srcdir/reco2file_and_channel ] && \
        utils/filter_scp.pl $destdir/reco <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
+     
+     # Filter the STM file for proper sclite scoring (this will also remove the comments lines)
+     [ -f $srcdir/stm ] && utils/filter_scp.pl $destdir/reco < $srcdir/stm > $destdir/stm
+     
      rm $destdir/reco
   fi
   srcutts=`cat $srcdir/utt2spk | wc -l`
