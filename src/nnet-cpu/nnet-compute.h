@@ -1,4 +1,4 @@
-// nnet-dp/nnet-compute.h
+// nnet-cpu/nnet-compute.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 

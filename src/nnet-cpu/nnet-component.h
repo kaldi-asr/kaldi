@@ -103,10 +103,6 @@ class Component {
   /// Copy component (deep copy).
   virtual Component* Copy() const = 0;
 
-  /// By default this does nothing; it's used in a couple of classes.
-  /// For things like zeroing the stored average occupation count.
-  virtual void ZeroOccupancy() { }
-  
   /// Initialize the Component from one line that will contain
   /// first the type, e.g. SigmoidComponent, and then
   /// a number of tokens (typically integers or floats) that will
@@ -151,14 +147,12 @@ class UpdatableComponent: public Component {
     Init(learning_rate);
   }
 
-  /// Set parameters to zero,
-  /// and if treat_as_gradient is true, we'll be treating this as a gradient
-  /// so set the learning rate to 1 and l2_penalty to zero and make any other
-  /// changes necessary (there's a variable we have to set for the
+  /// Set parameters to zero, and if treat_as_gradient is true, we'll be
+  /// treating this as a gradient so set the learning rate to 1 and make any
+  /// other changes necessary (there's a variable we have to set for the
   /// MixtureProbComponent).
   virtual void SetZero(bool treat_as_gradient) = 0;
 
-  /// Note: l2_penalty is per frame.
   UpdatableComponent(): learning_rate_(0.001) { }
   
   virtual ~UpdatableComponent() { }
@@ -174,8 +168,7 @@ class UpdatableComponent: public Component {
   virtual void PerturbParams(BaseFloat stddev) = 0;
   
   /// This new virtual function scales the parameters
-  /// by this amount.  It's used in "parameter shrinkage",
-  /// which is related to l2 regularization.
+  /// by this amount.  
   virtual void Scale(BaseFloat scale) = 0;
 
   /// This new virtual function adds the parameters of another
@@ -212,9 +205,10 @@ class UpdatableComponent: public Component {
 /// sigmoid and softmax.
 class NonlinearComponent: public Component {
  public:
-  void Init(int32 dim) { dim_ = dim; }
-  NonlinearComponent(int32 dim) { Init(dim); }
+  void Init(int32 dim) { dim_ = dim; count_ = 0.0; }
+  explicit NonlinearComponent(int32 dim) { Init(dim); }
   NonlinearComponent(): dim_(0) { } // e.g. prior to Read().
+  explicit NonlinearComponent(const NonlinearComponent &other);
   
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
@@ -227,19 +221,41 @@ class NonlinearComponent: public Component {
   
   /// Write component to stream.
   virtual void Write(std::ostream &os, bool binary) const;
- 
+
+  void Scale(BaseFloat scale);
+  void Add(BaseFloat alpha, const NonlinearComponent &other);
+
+  const Vector<double> &ValueSum() const { return value_sum_; }
+  const Vector<double> &DerivSum() const { return deriv_sum_; }
+  double Count() const { return count_; }
  protected:
+  friend class SigmoidComponent;
+  friend class TanhComponent;
+  friend class SoftmaxComponent;
+  
+  // This function updates the stats "value_sum_", "deriv_sum_", and
+  // count_. (If deriv == NULL, it won't update "deriv_sum_").
+  // It will be called from the Backprop function of child classes.
+  void UpdateStats(const MatrixBase<BaseFloat> &out_value,
+                   const MatrixBase<BaseFloat> *deriv = NULL);
+  
+  const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
   int32 dim_;
+  Vector<double> value_sum_; // stats at the output.
+  Vector<double> deriv_sum_; // stats of the derivative of the nonlinearity (only
+  // applicable to element-by-element nonlinearities, not Softmax.
+  double count_;
 };
 
 class SigmoidComponent: public NonlinearComponent {
  public:
-  SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }    
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
   virtual bool BackpropNeedsInput() { return false; }
   virtual bool BackpropNeedsOutput() { return true; }
-  virtual Component* Copy() const { return new SigmoidComponent(dim_); }
+  virtual Component* Copy() const { return new SigmoidComponent(*this); }
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          Matrix<BaseFloat> *out) const; 
@@ -250,15 +266,16 @@ class SigmoidComponent: public NonlinearComponent {
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(SigmoidComponent);
+  SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
 
 class TanhComponent: public NonlinearComponent {
  public:
-  TanhComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit TanhComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit TanhComponent(const TanhComponent &other): NonlinearComponent(other) { }
   TanhComponent() { }
   virtual std::string Type() const { return "TanhComponent"; }
-  virtual Component* Copy() const { return new TanhComponent(dim_); }
+  virtual Component* Copy() const { return new TanhComponent(*this); }
   virtual bool BackpropNeedsInput() { return false; }
   virtual bool BackpropNeedsOutput() { return true; }
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
@@ -271,7 +288,7 @@ class TanhComponent: public NonlinearComponent {
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(TanhComponent);
+  TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
 
 class MixtureProbComponent; // Forward declaration.
@@ -279,7 +296,8 @@ class AffineComponent; // Forward declaration.
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
-  SoftmaxComponent(int32 dim) { Init(dim); }
+  explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SoftmaxComponent(const SoftmaxComponent &other): NonlinearComponent(other) { }  
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }  // Make it lower case
   // because each type of Component needs a different first letter.
@@ -294,36 +312,16 @@ class SoftmaxComponent: public NonlinearComponent {
                         int32 num_chunks,
                         Component *to_update, // may be identical to "this".
                         Matrix<BaseFloat> *in_deriv) const;
-
-  const Vector<BaseFloat> &Occupancy(){ return counts_; }
-  virtual void ZeroOccupancy() { counts_.SetZero(); }
   
-  // The functions below are already implemented at the
-  // NonlinearComponent level, but we override them for reasons relating
-  // to the occupation counts.
-  void Init(int32 dim) { dim_ = dim; counts_.Resize(dim); }
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
   void MixUp(int32 num_mixtures, // implemented in mixup-nnet.cc
              BaseFloat power,
              BaseFloat min_count,
              BaseFloat perturb_stddev,
              AffineComponent *ac,
              MixtureProbComponent *mc);
-  virtual Component* Copy() const;
-
-  // Because the SoftmaxComponent stores counts, we support the
-  // Add and Scale methods just like UpdatableComponent.  The code
-  // that calls this, e.g. nnet-am-average.cc, has to treat this
-  // as a special case.
-  void Scale(BaseFloat scale) { counts_.Scale(scale); }
-  void Add(BaseFloat alpha, const SoftmaxComponent &other) {
-    counts_.AddVec(alpha, other.counts_);
-  }  
+  virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
-  Vector<BaseFloat> counts_; // Occupation counts per dim.
-  
-  KALDI_DISALLOW_COPY_AND_ASSIGN(SoftmaxComponent);
+  SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
 };
 
 
@@ -334,7 +332,7 @@ class SoftmaxComponent: public NonlinearComponent {
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-  AffineComponent(const AffineComponent &other);
+  explicit AffineComponent(const AffineComponent &other);
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   void Init(BaseFloat learning_rate,
@@ -365,10 +363,11 @@ class AffineComponent: public UpdatableComponent {
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual Component* Copy() const;
   virtual void PerturbParams(BaseFloat stddev);
-  virtual void ZeroOccupancy();
   // This new function is used when mixing up:
   virtual void SetParams(const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
+  const Vector<BaseFloat> &BiasParams() { return bias_params_; }
+  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
 
   virtual int32 GetParameterDim() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
@@ -391,23 +390,7 @@ class AffineComponent: public UpdatableComponent {
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
 
-  // The following is stored mostly for diagnostics: the
-  // average input value in each dimension.
-  Vector<BaseFloat> avg_input_;
-  double avg_input_count_;
   bool is_gradient_; // If true, treat this as just a gradient.
-};
-
-class AffineComponentNobias: public AffineComponent {
- public:
-  virtual std::string Type() const { return "AffineComponentNobias"; }
-  // The Read and Write functions are shared with AffineComponent,
-  // which calls the virtual Type() function.
-  virtual Component* Copy() const;
- private:
-  virtual void Update(
-      const MatrixBase<BaseFloat> &in_value,
-      const MatrixBase<BaseFloat> &out_deriv);
 };
 
 // This is an idea Dan is trying out, a little bit like
@@ -423,16 +406,14 @@ class AffineComponentPreconditioned: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            bool precondition, BaseFloat alpha,
-            BaseFloat l2_penalty);
+            bool precondition, BaseFloat alpha);
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
   virtual Component* Copy() const;
-  AffineComponentPreconditioned(): l2_penalty_(0.0), alpha_(1.0) { }
+  AffineComponentPreconditioned(): alpha_(1.0) { }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
-  BaseFloat l2_penalty_;
   BaseFloat alpha_;
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,

@@ -2,9 +2,21 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
+# 10g is as 10f, but because the "randomize" process was becoming a bottleneck,
+# doing it in a faster way using a combination of nnet-get-egs, nnet-copy-egs 
+# with the --keep-proportion option and multiple outputs, and nnet-shuffle-egs.
+
+# 10f is as 10e, but using nnet-am-combine (with --num-threads option) instead of
+# nnet-shrink (for speed), and not shrinking on iters outside shrink-interval.
+# Set the default minibatch size smaller (1000 -> 128), to avoid instability
+# in nnet-update-parallel.
+
+# 10e is as 10d, but using the -parallel not -simple code, which is
+# Hogwild.
+
 # 10d should be basically the same as 10c, but changed slightly so as to
 # accommodate some reworked code where nnet-randomize takes posteriors, not
-# alignments.  [Note: I later changed 10c to be as 10d.]
+# alignments.
 
 # 10c is as 10b, but adding the ability to mix up, increasing the #neurons in
 # the last layer.
@@ -55,11 +67,13 @@ num_valid_utts=300    # held-out utterances, used only for diagnostics.
 num_valid_frames_shrink=2000 # a subset of the frames in "valid_utts", used only
                              # for estimating shrinkage parameters and for
                              # objective-function reporting.
-shrink_interval=3 # Re-compute the shrinkage parameters every 3 iters,
+shrink_interval=3 # shrink every $shrink_interval iters,
                 # except at the start of training when we do it every iter.
-apply_shrinking=true
+egs_delay=2 # Start the generation of examples for a given iteration of training 2 iterations
+            # before that iteration of training starts, by default.  This reduces latency, because
+            # the randomization is sequential.
 num_valid_frames_combine=10000 # combination weights at the very end.
-minibatch_size=1000
+minibatch_size=128 # by default use a smallish minibatch size.
 minibatches_per_phase=100 # only affects diagnostic messages.
 samples_per_iteration=200000 # each iteration of training, see this many samples
                              # per job.
@@ -75,17 +89,18 @@ beam=10  # for realignment.
 retry_beam=40
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 parallel_opts=
-num_threads=8
+shuffle_opts="-tc 3" # max 3 jobs running at one time.
 nnet_config_opts=
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 lda_dim=250
 randprune=4.0 # speeds up LDA.
 # If you specify alpha, then we'll do the "preconditioned" update.
 alpha=
-l2_factor=0.0 # only relevant if alpha != 0.0 (i.e. for preconditioned update)
 shrink=true
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
+num_threads=16
+mkl_num_threads=1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -192,13 +207,7 @@ if [ $stage -le -4 ]; then
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers.
   if [ ! -z "$alpha" ]; then
-    if [ "$l2_factor" != "0.0" ]; then
-      num_frames=`feat-to-len "$feats" ark,t:- | awk '{n += $2;} END{print n;}'`
-      l2_penalty=`perl -e "print $l2_factor / $num_frames;"`
-      l2_opt="--l2-penalty $l2_penalty"
-      echo "Setting l2 penalty to $l2_factor / $num_frames = $l2_penalty";
-    fi
-    utils/nnet-cpu/make_nnet_config_preconditioned.pl $l2_opt --alpha $alpha $nnet_config_opts \
+    utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
@@ -238,17 +247,35 @@ cp $alidir/ali.*.gz $dir
 nnet_context_opts="--left-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w left-context | awk '{print $2}'` --right-context=`nnet-am-info $dir/0.mdl 2>/dev/null | grep -w right-context | awk '{print $2}'`" || exit 1;
 
 if [ $stage -le -1 ]; then
-  echo "Creating subset of frames of validation set for shrinking."
+  echo "Getting validation examples."
   $cmd $dir/log/create_valid_subset_shrink.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_shrink --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/valid_shrink.egs || exit 1;
-  echo "Creating subset of frames of validation set for estimating combination weights."
+    nnet-get-egs $nnet_context_opts "$valid_feats" \
+     "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark:$dir/valid_all.egs" || exit 1;
+  echo "Getting subsets of validation examples for shrinking and combination."
+  $cmd $dir/log/create_valid_subset_shrink.log \
+    nnet-subset-egs --n=$num_valid_frames_shrink ark:$dir/valid_all.egs ark:$dir/valid_shrink.egs  &
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet-randomize-frames $nnet_context_opts --num-samples=$num_valid_frames_combine --srand=0 \
-       "$valid_feats" "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $dir/0.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
-     ark:$dir/valid_combine.egs || exit 1;
+    nnet-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs ark:$dir/valid_combine.egs  &
+  wait
+  [ ! -s $dir/valid_shrink.egs ] && echo "No validation examples for shrinking" && exit 1;
+  [ ! -s $dir/valid_combine.egs ] && echo "No validation examples for combination" && exit 1;
+  rm $dir/valid_all.egs
 fi
+
+
+# Next we work out how many iterations we split the entire data-set
+# over.  We make it a whole number of iterations, and this may lead to
+# some deviation from the "samples-per-iteration" that the user requested.
+echo "Working out the number of samples in the entire dataset."
+num_samples=`feat-to-len "$feats" ark,t:- 2>/dev/null | awk '{n += $2} END{print n}'`
+keep_proportion=`perl -e "print $samples_per_iteration * $num_jobs_nnet / $num_samples;"`;
+echo "Using a proportion $keep_proportion of samples on each iteration."
+[ -z $keep_proportion ] && echo "Empty proportion"  exit 1;
+# following two variables relate to avoiding unnecessary copying of examples.
+keep_proportion1=`perl -e "if ($keep_proportion < 1.0) { print $keep_proportion; } else { print 1.0; }"`
+keep_proportion2=`perl -e "if ($keep_proportion >= 1.0) { print $keep_proportion; } else { print 1.0; }"`
+
 
 # up till $last_normal_shrink_iter we will shrink the parameters
 # in the normal way using the dev set, but after that we will
@@ -256,34 +283,46 @@ fi
 last_normal_shrink_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period + 2]
 mix_up_iter=$last_normal_shrink_iter  # this is pretty arbitrary.
 
-x=-1 # iterations start from 0 but
-     # we always start off the "randomization" on the previous iteration.
+! [ $egs_delay -ge 0 ] && echo "Invalid variable egs_delay=$egs_delay" && exit 1;
+x=$[0 - $egs_delay] # iterations start from 0 but we use smaller values of x to
+                    # spawn the examples-generation processes for earlier iterations.
+
+rm $dir/egs_error 2>/dev/null
 while [ $x -lt $num_iters ]; do
   # note: archive for aligments won't be sorted as the shell glob "*" expands
   # them in alphabetic not numeric order, so we can't use ark,s,cs: below, only
   # ark,cs which means the features are in sorted order [hence alignments will
   # be called in sorted order (cs).
 
-  wait $last_randomize_process # wait for any randomization from last time.
-  y=$[$x+1];
-  if [ $stage -le $y ]; then # start off randomization for next time.
+  y=$[$x + $egs_delay];
+  if [ $stage -le $y ]; then # start off randomization for iteration $y.
     egs_list=
     for n in `seq 1 $num_jobs_nnet`; do
        egs_list="$egs_list ark:$dir/egs.$y.tmp.$n"
     done
-    # run the next randomization in the background, so it can run
-    # while we're doing the training and combining.
-    $cmd $parallel_opts $dir/log/randomize.$y.log \
-     nnet-randomize-frames \
-        $nnet_context_opts --num-samples=$[$samples_per_iteration*$num_jobs_nnet] \
-      --srand=$y "$feats" \
-       "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
-       nnet-copy-egs ark:- $egs_list &
-    last_randomize_process=$! # process-id of the process what we just spawned.
+    echo "Spawning the process for generation of examples for iteration $y"
+    (
+      # run the process for getting examples for the next iteration in the background, so it can run
+      # while we're doing the training and combining.  Caution: these "exit 1"'s won't
+      # really have any effect as we're in a subshell.
+      ! $cmd $dir/log/get_egs.$y.log \
+        nnet-get-egs --srand=$y --keep-proportion=$keep_proportion1 $nnet_context_opts "$feats" \
+         "ark,cs:gunzip -c $dir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
+         nnet-copy-egs --srand=$y --keep-proportion=$keep_proportion2 ark:- $egs_list && touch $dir/egs_error && exit 1;
+      
+      ! $cmd $shuffle_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$y.JOB.log \
+        nnet-shuffle-egs "--srand=\$[($y*$num_jobs_nnet)+JOB]" ark:$dir/egs.$y.tmp.JOB ark:$dir/egs.$y.tmp.JOB.shuffled \
+          '&&' mv $dir/egs.$y.tmp.JOB.shuffled $dir/egs.$y.tmp.JOB && \
+          touch $dir/egs_error && exit 1;
+    ) &
+    randomize_process_id[$y]=$!
   fi
 
-
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
+    [ -z "${randomize_process_id[$x]}" ] && echo No process-id found && exit 1;
+    wait ${randomize_process_id[$x]}
+    [ -f $dir/egs_error ] && echo "Error while getting examples" && exit 1;
+
     # Set off a job that does diagnostics, in the background.
     $cmd $parallel_opts $dir/log/compute_prob.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$dir/valid_shrink.egs &
@@ -308,8 +347,7 @@ while [ $x -lt $num_iters ]; do
     m=$minibatches_per_phase
 
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
-      nnet-train-simple "--srand=\$[($x*$num_jobs_nnet)+JOB]" \
-        --minibatch-size=$minibatch_size --minibatches-per-phase=$m \
+      MKL_NUM_THREADS=mkl_num_threads nnet-train-parallel --num-threads=$num_threads --minibatch-size=$minibatch_size \
         --verbose=2 "$mdl" ark:$dir/egs.$x.tmp.JOB $dir/$[$x+1].JOB.mdl \
        || exit 1;
 
@@ -331,20 +369,9 @@ while [ $x -lt $num_iters ]; do
         # For earlier iterations (while we've recently beeen adding layers), or every
         # $shrink_interval=3 iters , just do shrinking normally.
         $cmd $parallel_opts $dir/log/shrink.$x.log \
-          nnet-combine-fast --num-threads=$num_threads --verbose=3 \
+          MKL_NUM_THREADS=mkl_num_threads nnet-combine-fast --num-threads=$num_threads --minibatch-size=512 \
             $dir/$[$x+1].mdl ark:$dir/valid_shrink.egs $dir/$[$x+1].mdl || exit 1;
       fi
-      #else
-        #last_shrink_iter=$[$x - ($x % $shrink_interval)];
-        # Get the shrinking parameters from the last shrinking log.
-        #scales=`grep 'scale factors per layer are' $dir/log/shrink.$last_shrink_iter.log | \
-        #        sed 's/.*\[//' | sed 's/\]//' | perl -ane 'print join(":", split(" ", $_));'`
-        #[ -z "$scales" ] && echo "Error getting scale factors from log for shrinking" && exit 1;
-        #if $apply_shrinking; then
-        #   $cmd $dir/log/apply_shrinking.$x.log \
-        #     nnet-am-copy --scales=$scales $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
-        #fi
-      #fi
     fi
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       # mix up.
@@ -366,7 +393,7 @@ for x in `seq $[$num_iters-$num_iters_final+1] $num_iters`; do
   nnets_list="$nnets_list $dir/$x.mdl"
 done
 $cmd $parallel_opts $dir/log/combine.log \
-  nnet-combine-fast --num-threads=$num_threads --verbose=3 $nnets_list ark:$dir/valid_combine.egs $dir/final.mdl || exit 1;
+  MKL_NUM_THREADS=mkl_num_threads nnet-combine-fast $nnets_list ark:$dir/valid_combine.egs $dir/final.mdl || exit 1;
 
 # Compute the probability of the final, combined model with
 # the same subset we used for the previous compute_probs, as the

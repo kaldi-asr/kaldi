@@ -51,8 +51,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new AffineComponent();
   } else if (component_type == "AffineComponentA") {
     ans = new AffineComponentA();
-  } else if (component_type == "AffineComponentNobias") {
-    ans = new AffineComponentNobias();
   } else if (component_type == "AffineComponentPreconditioned") {
     ans = new AffineComponentPreconditioned();
   } else if (component_type == "AffinePreconInputComponent") {
@@ -265,13 +263,64 @@ std::string Component::Info() const {
   return stream.str();
 }
 
+
+void NonlinearComponent::UpdateStats(const MatrixBase<BaseFloat> &out_value,
+                                     const MatrixBase<BaseFloat> *deriv) {
+  KALDI_ASSERT(out_value.NumCols() == InputDim());
+  if (value_sum_.Dim() != InputDim()) {
+    value_sum_.Resize(InputDim());
+    if (deriv != NULL) deriv_sum_.Resize(InputDim());
+    count_ = 0.0;
+  }
+  count_ += out_value.NumRows();
+  Vector<BaseFloat> temp(InputDim());
+  temp.AddRowSumMat(1.0, out_value, 0.0);
+  value_sum_.AddVec(1.0, temp);
+  if (deriv != NULL) {
+    temp.AddRowSumMat(1.0, *deriv, 0.0);
+    deriv_sum_.AddVec(1.0, temp);
+  }
+}
+
+void NonlinearComponent::Scale(BaseFloat scale) {
+  value_sum_.Scale(scale);
+  deriv_sum_.Scale(scale);
+  count_ *= scale;
+}
+
+void NonlinearComponent::Add(BaseFloat alpha, const NonlinearComponent &other) {
+  if (value_sum_.Dim() == 0 && other.value_sum_.Dim() != 0)
+    value_sum_.Resize(other.value_sum_.Dim());
+  if (deriv_sum_.Dim() == 0 && other.deriv_sum_.Dim() != 0)
+    deriv_sum_.Resize(other.deriv_sum_.Dim());
+  value_sum_.AddVec(alpha, other.value_sum_);
+  deriv_sum_.AddVec(alpha, other.deriv_sum_);
+  count_ += alpha * other.count_;
+}
+
 void NonlinearComponent::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
   ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
-  ExpectToken(is, binary, ostr_end.str());  
+  std::string tok; // TODO: remove back-compatibility code.
+  ReadToken(is, binary, &tok);
+  if (tok == "<ValueSum>") {
+    value_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<DerivSum>");
+    deriv_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    ReadBasicType(is, binary, &count_);
+    ExpectToken(is, binary, ostr_end.str());  
+  } else if (tok == "<Counts>") { // Back-compat code for SoftmaxComponent.
+    value_sum_.Read(is, binary); // Set both value_sum_ and deriv_sum_ to the same value,
+    // and count_ to its sum.
+    count_ = value_sum_.Sum();
+    ExpectToken(is, binary, ostr_end.str());  
+  } else {
+    KALDI_ASSERT(tok == ostr_end.str());
+  }
 }
 
 void NonlinearComponent::Write(std::ostream &os, bool binary) const {
@@ -281,8 +330,18 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<ValueSum>");
+  value_sum_.Write(os, binary);
+  WriteToken(os, binary, "<DerivSum>");
+  deriv_sum_.Write(os, binary);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
   WriteToken(os, binary, ostr_end.str());  
 }
+
+NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
+    dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
+    count_(other.count_) { }
 
 void NonlinearComponent::InitFromString(std::string args) {
   std::string orig_args(args);
@@ -291,9 +350,7 @@ void NonlinearComponent::InitFromString(std::string args) {
   if (!ok || !args.empty() || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << orig_args << "\"";
-  Init(dim); // calls a virtual function that will generally
-  // just set dim, but does more for SoftmaxComponent
-  // (sets up counts).
+  Init(dim);
 }
 
 void SigmoidComponent::Propagate(const MatrixBase<BaseFloat> &in,
@@ -321,7 +378,7 @@ void SigmoidComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                 const MatrixBase<BaseFloat> &out_value,
                                 const MatrixBase<BaseFloat> &out_deriv,
                                 int32, // num_chunks
-                                Component *, // to_update
+                                Component *to_update,
                                 Matrix<BaseFloat> *in_deriv) const {
   // we ignore in_value and to_update.
 
@@ -334,7 +391,11 @@ void SigmoidComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
   in_deriv->AddMat(-1.0, out_value);
   // now in_deriv = 1.0 - out_value [element by element]
   in_deriv->MulElements(out_value);
-  // now in_deriv = out_value * (1.0 - out_value) [element by element]
+  // now in_deriv = out_value * (1.0 - out_value) [element by element], i.e.
+  // it contains the element-by-element derivative of the nonlinearity.
+  if (to_update != NULL)
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              in_deriv);
   in_deriv->MulElements(out_deriv);
   // now in_deriv = out_deriv * out_value * (1.0 - out_value) [element by element]
 }
@@ -366,7 +427,7 @@ void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                              const MatrixBase<BaseFloat> &out_value,
                              const MatrixBase<BaseFloat> &out_deriv,
                              int32, // num_chunks
-                             Component *, // to_update
+                             Component *to_update,
                              Matrix<BaseFloat> *in_deriv) const {
   /*
     Note on the derivative of the tanh function:
@@ -375,11 +436,17 @@ void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
     The element by element equation of what we're doing would be:
     in_deriv = out_deriv * (1.0 - out_value^2).
     We can accomplish this via calls to the matrix library. */
+
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   in_deriv->CopyFromMat(out_value);
   in_deriv->ApplyPow(2.0);
   in_deriv->Scale(-1.0);
-  in_deriv->Add(1.0); // now in_deriv = (1.0 - out_value^2).
+  in_deriv->Add(1.0);
+  // now in_deriv = (1.0 - out_value^2), the element-by-element derivative of
+  // the nonlinearity.
+  if (to_update != NULL)
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              in_deriv);
   in_deriv->MulElements(out_deriv);
 }  
 
@@ -424,44 +491,15 @@ void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
     BaseFloat pT_e = VecVec(p, e); // p^T e.
     d.AddVec(-pT_e, p); // d_i -= (p^T e) p_i
   }
-
+  
   // The SoftmaxComponent does not have any real trainable parameters, but
   // during the backprop we store some statistics on the average counts;
   // these may be used in mixing-up.
   if (to_update != NULL) {
-    SoftmaxComponent *to_update_softmax =
-        dynamic_cast<SoftmaxComponent*>(to_update);
-    // The next loop updates the counts_ variable, which is the soft-count of
-    // each output dimension.
-    int32 chunk_size = out_value.NumRows() / num_chunks;
-    KALDI_ASSERT(num_chunks > 0 && chunk_size * num_chunks == out_value.NumRows());
-    if (to_update_softmax->counts_.Dim() == 0)
-      to_update_softmax->counts_.Resize(to_update_softmax->InputDim());
-    to_update_softmax->counts_.AddRowSumMat(1.0, out_value, 1.0);
+    NonlinearComponent *to_update_nonlinear =
+        dynamic_cast<NonlinearComponent*>(to_update);
+    to_update_nonlinear->UpdateStats(out_value);
   }
-}
-
-void SoftmaxComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<SoftmaxComponent>", "<Dim>");
-  ReadBasicType(is, binary, &dim_); // Read dimension.
-  ExpectToken(is, binary, "<Counts>");
-  counts_.Read(is, binary);
-  ExpectToken(is, binary, "</SoftmaxComponent>");
-}
-
-void SoftmaxComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<SoftmaxComponent>");
-  WriteToken(os, binary, "<Dim>");
-  WriteBasicType(os, binary, dim_);
-  WriteToken(os, binary, "<Counts>");
-  counts_.Write(os, binary);
-  WriteToken(os, binary, "</SoftmaxComponent>");
-}
-
-Component *SoftmaxComponent::Copy() const {
-  SoftmaxComponent *ans = new SoftmaxComponent(dim_);
-  ans->counts_ = counts_;
-  return ans;
 }
 
 void AffineComponent::Scale(BaseFloat scale) {
@@ -481,8 +519,6 @@ AffineComponent::AffineComponent(const AffineComponent &component):
     UpdatableComponent(component),
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_),
-    avg_input_(component.avg_input_),
-    avg_input_count_(component.avg_input_count_),
     is_gradient_(component.is_gradient_) { }
 
 void AffineComponent::SetZero(bool treat_as_gradient) {
@@ -497,18 +533,9 @@ void AffineComponent::SetZero(bool treat_as_gradient) {
 
 void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
                                 const MatrixBase<BaseFloat> &linear) {
-  if (linear.NumRows() != linear_params_.NumRows()) {
-    avg_input_.Resize(linear.NumRows()); // zeroes it.
-    avg_input_count_ = 0.0;
-  }
   bias_params_ = bias;
   linear_params_ = linear;
   KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
-}
-
-void AffineComponent::ZeroOccupancy() {
-  avg_input_count_ = 0.0;
-  avg_input_.Set(0.0);
 }
 
 void AffineComponent::PerturbParams(BaseFloat stddev) {
@@ -543,8 +570,6 @@ Component* AffineComponent::Copy() const {
   ans->learning_rate_ = learning_rate_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
-  ans->avg_input_ = avg_input_;
-  ans->avg_input_count_ = avg_input_count_;
   ans->is_gradient_ = is_gradient_;
   return ans;
 }
@@ -568,8 +593,6 @@ void AffineComponent::Init(BaseFloat learning_rate,
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
-  avg_input_.Resize(input_dim);
-  avg_input_count_ = 0.0;
 }
 
 void AffineComponent::InitFromString(std::string args) {
@@ -606,69 +629,6 @@ void AffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
-// This is an improved, preconditioned update with mean removal
-// for the features.
-void AffineComponentNobias::Update(
-    const MatrixBase<BaseFloat> &in_value,
-    const MatrixBase<BaseFloat> &out_deriv) {
-  
-  // The idea with the linear_params is: take an input dimension
-  // m and and output dimension n.  Let mu be the mean of this
-  // input feature, and f be the feature value.  Let's train as
-  // if (f - mu) were the feature.  So in this case the gradient
-  // descent rule would be not learning_rate . in_value . output_deriv,
-  // but learning_rate . (in_value - mu) . output_deriv.
-  // And we'll represent in this model in the normal way, so we
-  // need to update the bias parameter to take into account this change
-  // in value of our (f - mu) feature.  So the bias term would change as:
-  // bias_n += -mu * (learning_rate . (in_value - mu) . output_deriv).
-  
-  
-  Vector<BaseFloat> out_deriv_sum(OutputDim());
-  out_deriv_sum.AddRowSumMat(1.0, out_deriv, 0.0);
-
-  Vector<BaseFloat> avg_input(InputDim());
-  avg_input.AddRowSumMat(1.0 / in_value.NumRows(), in_value, 0.0);
-  BaseFloat avg_input_count = 1.0;
-  
-  // The following term is already there in the basic update.
-  linear_params_.AddMatMat(learning_rate_, out_deriv, kTrans,
-                           in_value, kNoTrans, 1.0);
-  // The next term is the new term for updating the linear params,
-  // corresponding to (learning_rate . -mu . output_deriv.).  Here,
-  // mu is avg_input_(i) / avg_input_count_.
-  linear_params_.AddVecVec(-learning_rate_/avg_input_count,
-                           out_deriv_sum, avg_input);
-
-  // The next term is the "normal" term for updating the bias parameters.
-  bias_params_.AddVec(learning_rate_, out_deriv_sum);   
-  
-  // Next we handle the expression (from above)
-  // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
-  // Here, we do this for each frame, and for each frame it happens
-  // with "bias_weight" and "output" deriv both indexed by the same value
-  // (the output dim)-- and the parts involving mu and in_value are summed
-  // over the input dimensions.
-  Vector<BaseFloat> sum(in_value.NumRows());  
-  sum.Set(VecVec(avg_input, avg_input) /
-          (avg_input_count * avg_input_count));
-  // note: below, "sum" in sum(frame) just refers to the variable named "sum".
-  // now sum(frame) = \sum_i (-mu(i) *  -mu(i)),
-  // where \mu_i is avg_input_(i)/avg_input_count_.
-  // the next line does: sum(frame) -= \sum_i mu(i) * input(i), giving
-  // sum(frame) = - \sum_i mu(i) * (in_value(i) - mu(i)).
-  sum.AddMatVec(-1.0 / avg_input_count,
-                in_value, kNoTrans, avg_input, 1.0);
-  // The next line updates the bias params with this "correction term":
-  // for a scalar, it's doing:
-  // bias_weight += -mu * (learning_rate . (in_value - mu) . output_deriv).
-  bias_params_.AddMatVec(learning_rate_, out_deriv, kTrans,
-                         sum, 1.0);
-  if (bias_params_.Max() > 100.0 || bias_params_.Min() < -100.0) {
-    KALDI_ERR << "Bias params getting too large.";
-  }
-}
-
 void AffineComponent::UpdateSimple(const MatrixBase<BaseFloat> &in_value,
                                    const MatrixBase<BaseFloat> &out_deriv) {
   bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
@@ -695,31 +655,7 @@ void AffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
       to_update->UpdateSimple(in_value, out_deriv);
     else  // the call below is to a virtual function that may be re-implemented
       to_update->Update(in_value, out_deriv);  // by child classes.
-    
-    if (!to_update->is_gradient_) {
-      // Update the stats on the average input. 
-      // This is only for diagnostics.  We ignore the chunk weights.
-      if (to_update->avg_input_.Dim() != to_update->InputDim())
-        to_update->avg_input_.Resize(to_update->InputDim());
-      to_update->avg_input_.AddRowSumMat(1.0, in_value, 1.0);
-      to_update->avg_input_count_ += in_value.NumRows();
-      
-      BaseFloat scale_per_minibatch = 0.95; // Should be configurable, but for now
-      // this will do.  Average over ~20 minibatches.
-      to_update->avg_input_.Scale(scale_per_minibatch);
-      to_update->avg_input_count_ *= scale_per_minibatch;
-    }
   }
-}
-
-Component* AffineComponentNobias::Copy() const {
-  AffineComponentNobias *ans = new AffineComponentNobias();
-  ans->learning_rate_ = learning_rate_;
-  ans->linear_params_ = linear_params_;
-  ans->bias_params_ = bias_params_;
-  ans->avg_input_ = avg_input_;
-  ans->avg_input_count_ = avg_input_count_;
-  return ans;
 }
 
 void AffineComponent::Read(std::istream &is, bool binary) {
@@ -734,13 +670,17 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInput>");
-  avg_input_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInputCount>");
-  ReadBasicType(is, binary, &avg_input_count_);
   std::string tok;
   // back-compatibility code.  TODO: re-do this later.
   ReadToken(is, binary, &tok);
+  if (tok == "<AvgInput>") { // discard the following.
+    Vector<BaseFloat> avg_input;
+    avg_input.Read(is, binary);
+    BaseFloat avg_input_count;
+    ExpectToken(is, binary, "<AvgInputCount>");
+    ReadBasicType(is, binary, &avg_input_count);
+    ReadToken(is, binary, &tok);
+  }
   if (tok == "<IsGradient>") {
     ReadBasicType(is, binary, &is_gradient_);
     ExpectToken(is, binary, ostr_end.str());
@@ -761,10 +701,6 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInput>");
-  avg_input_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInputCount>");
-  WriteBasicType(os, binary, avg_input_count_);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, ostr_end.str());
@@ -796,17 +732,26 @@ void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInput>");
-  avg_input_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInputCount>");
-  ReadBasicType(is, binary, &avg_input_count_);
-  ExpectToken(is, binary, "<Alpha>");
-  ReadBasicType(is, binary, &alpha_);
+  // todo: remove back-compat code.
   std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<AvgInput>") {
+    Vector<BaseFloat> avg_input;
+    avg_input.Read(is, binary);
+    ExpectToken(is, binary, "<AvgInputCount>");
+    BaseFloat avg_input_count;
+    ReadBasicType(is, binary, &avg_input_count);
+    ExpectToken(is, binary, "<Alpha>");
+  } else {
+    KALDI_ASSERT(tok == "<Alpha>");
+  }
+  ReadBasicType(is, binary, &alpha_);
+
   // TODO: remove backward-compatibility code.
   ReadToken(is, binary, &tok);
   if (tok == "<L2Penalty>") {
-    ReadBasicType(is, binary, &l2_penalty_);
+    BaseFloat l2_penalty;
+    ReadBasicType(is, binary, &l2_penalty);
     ExpectToken(is, binary, ostr_end.str());
   } else {
     KALDI_ASSERT(tok == ostr_end.str());
@@ -823,27 +768,25 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0, alpha = 0.1, l2_penalty = 0.0;
+      bias_stddev = 1.0, alpha = 0.1;
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
   ParseFromString("precondition", &args, &precondition);
   ParseFromString("alpha", &args, &alpha);
-  ParseFromString("l2-penalty", &args, &l2_penalty);
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
   Init(learning_rate, input_dim, output_dim,
-       param_stddev, bias_stddev, precondition, alpha, l2_penalty);
+       param_stddev, bias_stddev, precondition, alpha);
 }
 
 void AffineComponentPreconditioned::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    bool precondition, BaseFloat alpha,
-    BaseFloat l2_penalty) {
+    bool precondition, BaseFloat alpha) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -852,12 +795,8 @@ void AffineComponentPreconditioned::Init(
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
-  avg_input_.Resize(input_dim);
-  avg_input_count_ = 0.0;
   alpha_ = alpha;
   KALDI_ASSERT(alpha > 0.0);
-  l2_penalty_ = l2_penalty;
-  KALDI_ASSERT(l2_penalty_ >= 0.0);
 }
 
 
@@ -872,14 +811,8 @@ void AffineComponentPreconditioned::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInput>");
-  avg_input_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInputCount>");
-  WriteBasicType(os, binary, avg_input_count_);
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha_);
-  WriteToken(os, binary, "<L2Penalty>");
-  WriteBasicType(os, binary, l2_penalty_);
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -897,8 +830,7 @@ std::string AffineComponentPreconditioned::Info() const {
          << ", linear-params stddev = " << linear_stddev
          << ", bias-params stddev = " << bias_stddev
          << ", learning rate = " << LearningRate()
-         << ", alpha = " << alpha_
-         << ", l2-penalty = " << l2_penalty_;
+         << ", alpha = " << alpha_;
   return stream.str();
 }
 
@@ -907,10 +839,7 @@ Component* AffineComponentPreconditioned::Copy() const {
   ans->learning_rate_ = learning_rate_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
-  ans->avg_input_ = avg_input_;
-  ans->avg_input_count_ = avg_input_count_;
   ans->alpha_ = alpha_;
-  ans->l2_penalty_ = l2_penalty_;
   ans->is_gradient_ = is_gradient_;
   return ans;
 }
@@ -918,76 +847,28 @@ Component* AffineComponentPreconditioned::Copy() const {
 void AffineComponentPreconditioned::Update(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &out_deriv) {
-  Matrix<BaseFloat> in_value_temp, out_deriv_storage;
+  Matrix<BaseFloat> in_value_temp;
   
-  if (l2_penalty_ == 0.0) {
-    in_value_temp.Resize(in_value.NumRows(),
-                         in_value.NumCols() + 1, kUndefined);
-    in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
-        in_value);
-  } else {
-    // Need to take into account the l2 penalty per frame.  Imagine the parameters
-    // were represented as a single matrix (with an extra column for the bias term).
-    // We take the l2 penalty into account by adding an extra row to "in_value" and
-    // "out_deriv".  Since this can only give us a rank-1 matrix, we choose a
-    // random column of linear_params_ (corresponding to a particular input dimension,
-    // treating the extra 1.0 as its own dimension), and let the extra row of in_value
-    // have a 1 in this position and zeroes everywhere
-    // else; the extra row of out_value is determined by the derivative of the l2
-    // penalty term (taking into account the # of frames we are processing and also
-    // the fact that we only do this row on average one every (InputDim() + 1) times.
-    
-    in_value_temp.Resize(in_value.NumRows() + 1,
-                         in_value.NumCols() + 1, kUndefined);
-    in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
-        in_value);
-    SubVector<BaseFloat> extra_in_value_row(in_value_temp, in_value.NumRows());
-    extra_in_value_row.SetZero();
-    
-    int32 ext_input_dim = InputDim() + 1,
-        num_samples = in_value.NumRows(),
-        random_dim = RandInt(0, ext_input_dim - 1);
-    // in a loop below, we'll set in_value_temp(in_value.NumCols()) = 1.0.
+  in_value_temp.Resize(in_value.NumRows(),
+                       in_value.NumCols() + 1, kUndefined);
+  in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
+      in_value);
 
-    out_deriv_storage.Resize(out_deriv.NumRows() + 1,
-                             out_deriv.NumCols(), kUndefined);
-    out_deriv_storage.Range(0, out_deriv.NumRows(),
-                            0, out_deriv.NumCols()).CopyFromMat(out_deriv);
-    SubVector<BaseFloat> extra_out_deriv_row(out_deriv_storage,
-                                             out_deriv.NumRows());
-
-    if (random_dim < InputDim()) {
-      extra_out_deriv_row.CopyColFromMat(linear_params_, random_dim);
-    } else {
-      extra_out_deriv_row.CopyFromVec(bias_params_);
-    }
-    // Note: this scale factor will also effectively get multiplied by the
-    // learning rate later on; we shouldn't include that factor here.
-    // Note: l2_penalty_ is typically very tiny, e.g. 1.0e-06, so scale_factor
-    // will typically be less than 1.
-    BaseFloat scale_factor = -l2_penalty_ * ext_input_dim * num_samples;
-    extra_out_deriv_row.Scale(scale_factor);
-    extra_in_value_row(random_dim) = 1.0; // Rest is zeroes.
-  }
-  // Add the 1.0 at the end of each row "in_value_temp" (except the "extra" row.)
+  // Add the 1.0 at the end of each row "in_value_temp"
   for (int32 i = 0; i < in_value.NumRows(); i++)
     in_value_temp(i, in_value.NumCols()) = 1.0;
 
-  const MatrixBase<BaseFloat> &out_deriv_temp =
-      (l2_penalty_ == 0.0 ? out_deriv : out_deriv_storage);
-      
   Matrix<BaseFloat> in_value_precon(in_value_temp.NumRows(),
                                     in_value_temp.NumCols()),
-      out_deriv_precon(out_deriv_temp.NumRows(),
-                       out_deriv_temp.NumCols());
+      out_deriv_precon(out_deriv.NumRows(),
+                       out_deriv.NumCols());
   // each row of in_value_precon will be that same row of
   // in_value, but multiplied by the inverse of a Fisher
   // matrix that has been estimated from all the other rows,
   // smoothed by some appropriate amount times the identity
   // matrix (this amount is proportional to \alpha).
   PreconditionDirectionsAlphaRescaled(in_value_temp, alpha_, &in_value_precon);
-  PreconditionDirectionsAlphaRescaled(out_deriv_temp, alpha_, &out_deriv_precon);
-
+  PreconditionDirectionsAlphaRescaled(out_deriv, alpha_, &out_deriv_precon);
 
   SubMatrix<BaseFloat> in_value_precon_part(in_value_precon,
                                             0, in_value_precon.NumRows(),
@@ -2365,10 +2246,6 @@ void AffineComponentA::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInput>");
-  avg_input_.Read(is, binary);
-  ExpectToken(is, binary, "<AvgInputCount>");
-  ReadBasicType(is, binary, &avg_input_count_);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
   ExpectToken(is, binary, "<InputScatter>");
@@ -2398,10 +2275,6 @@ void AffineComponentA::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInput>");
-  avg_input_.Write(os, binary);
-  WriteToken(os, binary, "<AvgInputCount>");
-  WriteBasicType(os, binary, avg_input_count_);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "<InputScatter>");

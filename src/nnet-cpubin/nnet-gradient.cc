@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     int32 minibatch_size = 1024;
+    bool zero_stats = true;    
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -71,7 +72,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_ASSERT(minibatch_size > 0);
-
+    
     int64 num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 

@@ -120,10 +120,7 @@ class DoBackpropParallelClass: public MultiThreadable {
       // template function, *and* we're doing gradient accumulation, summing
       // up the gradients of the individual processes.
       // In the hogwild case, there is nothing to do.
-      int32 n = nnet_to_update_orig_->NumUpdatableComponents();
-      Vector<BaseFloat> scales(n);
-      scales.Set(1.0);
-      nnet_to_update_orig_->AddNnet(scales, *nnet_to_update_);
+      nnet_to_update_orig_->AddNnet(1.0, *nnet_to_update_);
       delete nnet_to_update_;
     }
     *log_prob_ptr_ += log_prob_;

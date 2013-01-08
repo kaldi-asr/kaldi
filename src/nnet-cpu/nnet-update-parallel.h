@@ -1,4 +1,4 @@
-// nnet-dp/nnet-update-parallel.h
+// nnet-cpu/nnet-update-parallel.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 

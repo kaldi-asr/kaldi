@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
     std::string scales = "";
+    std::string stats_from;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
                 "to this many components by removing the last components.");
     po.Register("remove-dropout", &remove_dropout, "Set this to true to remove "
                 "any dropout components.");
+    po.Register("stats-from", &stats_from, "Before copying neural net, copy the "
+                "statistics in any layer of type NonlinearComponent, from this "
+                "neural network: provide the extended filename.");
     
     po.Read(argc, argv);
     
@@ -128,6 +132,18 @@ int main(int argc, char *argv[]) {
     }
 
     if (remove_dropout) am_nnet.GetNnet().RemoveDropout();
+
+    if (stats_from != "") {
+      // Copy the stats associated with the layers descending from
+      // NonlinearComponent.
+      bool binary;
+      Input ki(stats_from, &binary);
+      TransitionModel trans_model;
+      trans_model.Read(ki.Stream(), binary);
+      AmNnet am_nnet_stats;
+      am_nnet_stats.Read(ki.Stream(), binary);
+      am_nnet.GetNnet().CopyStatsFrom(am_nnet_stats.GetNnet());
+    }
     
     {
       Output ko(nnet_wxfilename, binary_write);

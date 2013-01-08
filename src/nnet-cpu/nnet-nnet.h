@@ -89,9 +89,11 @@ class Nnet {
   /// mechanism, where you provide chunks of features over time.
   int32 InputDim() const; 
   
-  void ZeroOccupancy(); // calls ZeroOccupancy() on the softmax layers.  This
-  // resets the occupancy counters; it makes sense to do this once in
-  // a while, e.g. at the start of an epoch of training.
+  void ZeroStats(); // zeroes the stats on the nonlinear layers.
+
+  /// Copies only the statistics in layers of type NonlinearComponewnt, from
+  /// this neural net, leaving everything else fixed.
+  void CopyStatsFrom(const Nnet &nnet);
 
   int32 NumUpdatableComponents() const;
   
@@ -184,10 +186,10 @@ class Nnet {
   void Read(std::istream &is, bool binary);
 
   void SetZero(bool treat_as_gradient); // Sets all parameters to zero and if
-  // treat_as_gradient == true, also sets the learning rates to 1.0 and shinkage
-  // rates to zero and instructs the components to think of themselves as
-  // storing the gradient (this part only affects components of type
-  // LinearComponent).
+  // treat_as_gradient == true, also tells components to "think of themselves as
+  // gradients" (affects some of the update code).  Also zeroes stats stored
+  // with things of type NonlinearComponent.
+
 
   /// This is used to separately adjust learning rates of each layer,
   /// after each "phase" of training.  We basically ask (using the validation

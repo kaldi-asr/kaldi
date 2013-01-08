@@ -41,13 +41,13 @@ int main(int argc, char *argv[]) {
         "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
-    bool zero_occupancy = true;
+    bool zero_stats = true;
     int32 minibatch_size = 1024;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
-                "counts stored with the neural net (only affects mixing up).");
+    po.Register("zero-stats", &zero_stats, "If true, zero stats "
+                "stored with the neural net (only affects mixing up).");
     po.Register("num-threads", &g_num_threads, "Number of training threads to use "
                 "in the parallel update. [Note: if you use a parallel "
                 "implementation of BLAS, the actual number of threads may be larger.]");
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     ExamplesRepository repository;
     
-    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
+    if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
     int64 num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);

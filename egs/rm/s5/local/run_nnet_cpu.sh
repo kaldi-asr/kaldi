@@ -1358,6 +1358,24 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
 )
 
 ( 
+  # 4y47b2 is just a rerun of 4y47b, after rewriting some code; it should
+  # be the same as before but just checking.
+  # (yes, it's the same essentially, only 0.02% difference.)
+  steps/train_nnet_cpu_parallel10c.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y47b2_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y47b2_nnet/decode
+)
+
+( 
   # 4y47c is as 4y47b but using the 10d script which is otherwise now identical
   # to the 10c script, and adding the option --l2-factor 2.0 which we multiply by the
   # inverse #frames to get the l2 penalty.  This then get applied by the
@@ -1414,6 +1432,25 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      exp/tri3b/graph data/test exp/tri4y47e_nnet/decode
 )
 
+( 
+  # 4y47f is as 4y47e but re-running after fixing the code that was not 
+  # calling srand as it should have been.  (All previous expts were broken.)
+  # [note: not clearly better.]
+  steps/train_nnet_cpu_parallel10d.sh --num-iters 10 --add-layers-period 1 \
+    --l2-factor 50.0 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 1 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 --minibatch-size 1000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y47f_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y47f_nnet/decode
+)
+
 
 ( 
   # 4y48 is as 4y47 but after another code change to use posteriors not
@@ -1452,6 +1489,67 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4y49_nnet/decode
 )
+
+
+( 
+  # 4y50 is as 4y49 (also c.f. 4y48) but using the 10f script which uses nnet-combine-fast
+  # for speed, does not apply shrinkage except every "shrink-interval" iters,
+  # and uses by default a smaller minibatch size of 128.  Going back to the
+  # same learning rates as 4y48.
+
+  steps/train_nnet_cpu_parallel10f.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y50_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y50_nnet/decode
+)
+
+
+(
+  # 4y51 is as 4y50 but using the 10g script where we have streamlined the "randomize"
+  # process.
+
+  steps/train_nnet_cpu_parallel10g.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y51_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y51_nnet/decode
+)
+
+(
+  # 4y52 it as 4y51 but with further streamlining of how the "randomizing" process
+  # is done to avoid latency.
+  # (Even better WER, 1.71->1.68, but surely random.)
+
+  steps/train_nnet_cpu_parallel10h.sh --num-iters 10 --add-layers-period 1 \
+    --mix-up 4000 \
+    --num-iters-final 5 \
+    --shrink-interval 3 --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --samples-per-iteration 400000 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4y52_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4y52_nnet/decode
+)
+
+
 
 ( 
   # 4z is the first experiment with the batch update-- we
@@ -1648,4 +1746,68 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/tri4z10_nnet/decode
+)&
+
+
+( 
+  # 4z11 is as as 4z9, but using the "batch6" script which
+  # is as the batch4 script but adding nnet-am-fix to deal with
+  # sigmoids that are in the flat region by decreasing the corresponding
+  # parameters.  
+  # Note: the WER gets a bit worse (1.58 -> 1.78), and the validation performance
+  # of the last model is worse ( -1.338 -> -1.364), and the validation performance of
+  # the final combined model is slightly worse (-1.2911 -> -1.2968).
+  # It seems that this setup "wanted" fewer parameters, and by fixing the neural net
+  # this way, we actually gave it more parameters, which made the performance a bit
+  # worse.
+
+  steps/train_nnet_cpu_batch6.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z11_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z11_nnet/decode
+) &
+
+( 
+  # 4z11b is as 4z11, but using fewer parameters, 750K instead of 1M.
+  # Slight improvement, 1.78 -> 1.75.
+  steps/train_nnet_cpu_batch6.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 750000  data/train data/lang exp/tri3b_ali exp/tri4z11b_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z11b_nnet/decode
+) &
+
+
+( 
+  # 4z12 is as 4z10, but doing from batch5 to batch7 script, which
+  # adds the fix-nnet stuff.  Also compare with the 9 -> 11 experiments.
+  # this differs from 4z11 only slightly, in that it uses different
+  # subsets of validation data each time.
+  #  (slightly worse than 4z10, probably because of more overtraining, and
+  # slightly but probably non-significantly better than 4z11.)
+
+  steps/train_nnet_cpu_batch7.sh --add-layers-period 1 \
+    --mix-up 4000 \
+    --alpha 4.0 \
+    --initial-learning-rate 0.02 --final-learning-rate 0.01 \
+    --samples-per-iteration 400000 --minibatch-size 1024 \
+    --cmd "$decode_cmd" --parallel-opts "-pe smp 15" --realign-iters "20" \
+    --num-parameters 1000000  data/train data/lang exp/tri3b_ali exp/tri4z12_nnet
+
+   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/tri4z12_nnet/decode
 )&

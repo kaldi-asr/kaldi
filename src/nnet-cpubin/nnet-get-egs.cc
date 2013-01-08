@@ -21,11 +21,29 @@
 #include "nnet-cpu/nnet-randomize.h"
 
 namespace kaldi {
+
+// returns an integer randomly drawn with expected value "expected_count"
+// (will be either floor(expected_count) or ceil(expected_count)).
+// this will go into an infinite loop if expected_count is very huge, but
+// it should never be that huge.
+int32 GetCount(double expected_count) {
+  KALDI_ASSERT(expected_count >= 0.0);
+  int32 ans = 0;
+  while (expected_count > 1.0) {
+    ans++;
+    expected_count--;
+  }
+  if (WithProb(expected_count))
+    ans++;
+  return ans;
+}
+
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
                         const Vector<BaseFloat> &spk_info,
                         int32 left_context,
                         int32 right_context,
+                        BaseFloat keep_proportion,
                         int64 *num_frames_written,
                         NnetTrainingExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
@@ -34,22 +52,28 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                          feats.NumCols());
   eg.spk_info = spk_info;
   for (int32 i = 0; i < feats.NumRows(); i++) {
-    // Set up "input_frames".
-    for (int32 j = -left_context; j <= right_context; j++) {
-      int32 j2 = j + i;
-      if (j2 < 0) j2 = 0;
-      if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
-      SubVector<BaseFloat> src(feats, j2), dest(eg.input_frames,
-                                                j + left_context);
-      dest.CopyFromVec(src);
-    }
-    eg.labels = pdf_post[i];
+    int32 count = GetCount(keep_proportion); // number of times
+    // we'll write this out (1 by default).
+    if (count > 0) {
+      // Set up "input_frames".
+      for (int32 j = -left_context; j <= right_context; j++) {
+        int32 j2 = j + i;
+        if (j2 < 0) j2 = 0;
+        if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
+        SubVector<BaseFloat> src(feats, j2), dest(eg.input_frames,
+                                                  j + left_context);
+        dest.CopyFromVec(src);
+      }
+      eg.labels = pdf_post[i];
 
-    std::ostringstream os;
-    os << ((*num_frames_written)++);
-    std::string key = os.str(); // key in the archive is the number of the
-    // example.
-    example_writer->Write(key, eg);
+      std::ostringstream os;
+      os << ((*num_frames_written)++);
+      std::string key = os.str(); // key in the archive is the number of the
+      // example.
+
+      for (int32 c = 0; c < count; c++)
+        example_writer->Write(key, eg);
+    }
   }
 }
 
@@ -83,6 +107,9 @@ int main(int argc, char *argv[]) {
         
     
     int32 left_context = 0, right_context = 0;
+    int32 srand_seed = 0;
+    BaseFloat keep_proportion = 1.0;
+    
     std::string spk_vecs_rspecifier;
     
     ParseOptions po(usage);
@@ -91,8 +118,16 @@ int main(int argc, char *argv[]) {
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
                 "the neural net requires.");
+    po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
+                "randomly keep this proportion of the input samples.  If >1.0, it will "
+                "in expectation copy a sample this many times.  It will copy it a number "
+                "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
+    po.Register("srand", &srand_seed, "Seed for random number generator "
+                "(only relevant if --random=true or --keep-proportion != 1.0)");
     
     po.Read(argc, argv);
+
+    srand(srand_seed);
     
     if (po.NumArgs() != 3) {
       po.PrintUsage();
@@ -147,7 +182,7 @@ int main(int argc, char *argv[]) {
           }
         }
         ProcessFile(feats, pdf_post, spk_info,
-                    left_context, right_context,
+                    left_context, right_context, keep_proportion,
                     &num_frames_written, &example_writer);
         num_done++;
       }

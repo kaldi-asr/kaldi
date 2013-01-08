@@ -63,6 +63,8 @@ void Nnet::SetZero(bool treat_as_gradient) {
   for (size_t i = 0; i < components_.size(); i++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[i]);
     if (uc != NULL) uc->SetZero(treat_as_gradient);
+    NonlinearComponent *nc = dynamic_cast<NonlinearComponent*>(components_[i]);
+    if (nc != NULL) nc->Scale(0.0);
   }
 }
 
@@ -95,13 +97,12 @@ void Nnet::Read(std::istream &is, bool binary) {
 }
 
 
-void Nnet::ZeroOccupancy() {
+void Nnet::ZeroStats() {
   for (size_t i = 0; i < components_.size(); i++) {
-    SoftmaxComponent *softmax_component =
-        dynamic_cast<SoftmaxComponent*>(components_[i]);
-    if (softmax_component != NULL) { // If it was this type
-      softmax_component->ZeroOccupancy();
-    }
+    NonlinearComponent *nonlinear_component =
+        dynamic_cast<NonlinearComponent*>(components_[i]);
+    if (nonlinear_component != NULL)
+      nonlinear_component->Scale(0.0); // Zero the stats this way.
   }
 }
 void Nnet::Destroy() {
@@ -295,15 +296,29 @@ void Nnet::ScaleComponents(const VectorBase<BaseFloat> &scale_params) {
   KALDI_ASSERT(i == scale_params.Dim());
 }
 
-// Scales all UpdatableComponents and all SoftmaxComponents.
+// Scales all UpdatableComponents and all NonlinearComponents.
 void Nnet::Scale(BaseFloat scale) {
   for (int32 i = 0; i < NumComponents(); i++) {
     UpdatableComponent *uc =
         dynamic_cast<UpdatableComponent*>(&(GetComponent(i)));
     if (uc != NULL) uc->Scale(scale);
-    SoftmaxComponent *sc =
-        dynamic_cast<SoftmaxComponent*>(&(GetComponent(i)));
-    if (sc != NULL) sc->Scale(scale);
+    NonlinearComponent *nc =
+        dynamic_cast<NonlinearComponent*>(&(GetComponent(i)));
+    if (nc != NULL) nc->Scale(scale);
+  }
+}
+
+void Nnet::CopyStatsFrom(const Nnet &other) {
+  KALDI_ASSERT(NumComponents() == other.NumComponents());
+  for (int32 i = 0; i < NumComponents(); i++) {
+    NonlinearComponent *nc =
+        dynamic_cast<NonlinearComponent*>(&(GetComponent(i)));
+    const NonlinearComponent *nc_other =
+        dynamic_cast<const NonlinearComponent*>(&(other.GetComponent(i)));
+    if (nc != NULL) {
+      nc->Scale(0.0);
+      nc->Add(1.0, *nc_other);
+    }
   }
 }
 
@@ -376,13 +391,13 @@ void Nnet::AddNnet(BaseFloat alpha,
       KALDI_ASSERT(uc_other != NULL);
       uc->Add(alpha, *uc_other);
     }
-    SoftmaxComponent *sc =
-        dynamic_cast<SoftmaxComponent*>(&(GetComponent(i)));
-    const SoftmaxComponent *sc_other =
-        dynamic_cast<const SoftmaxComponent*>(&(other.GetComponent(i)));
-    if (sc != NULL) {
-      KALDI_ASSERT(sc_other != NULL);
-      sc->Add(alpha, *sc_other);
+    NonlinearComponent *nc =
+        dynamic_cast<NonlinearComponent*>(&(GetComponent(i)));
+    const NonlinearComponent *nc_other =
+        dynamic_cast<const NonlinearComponent*>(&(other.GetComponent(i)));
+    if (nc != NULL) {
+      KALDI_ASSERT(nc_other != NULL);
+      nc->Add(alpha, *nc_other);
     }
   }
 }

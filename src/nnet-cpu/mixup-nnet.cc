@@ -134,10 +134,10 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
     /// all the output dims of the softmax layer that correspond
     /// to this mixture.  We'll use this total to allocate new quasi-Gaussians.
     for (int32 d = 0; d < this_input_dim; d++, old_dim++)
-      this_tot_count += this->counts_(old_dim);
+      this_tot_count += this->value_sum_(old_dim);
     counts(i) = this_tot_count;
   }
-  KALDI_ASSERT(old_dim == counts_.Dim());
+  KALDI_ASSERT(old_dim == value_sum_.Dim());
   KALDI_ASSERT(counts.Sum() > 0 && "Cannot do mixing up without counts.");
 
   std::vector<int32> targets; // #mixtures for each state.
@@ -165,6 +165,7 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   // input/output of the softmax component, before and after mixing up
   // respectively.  They get incremented in the following loop.
   int32 old_offset = 0, new_offset = 0;
+  Vector<BaseFloat> old_counts(this->value_sum_);
   for (size_t i = 0; i < mc->params_.size(); i++) {
     const Matrix<BaseFloat> &this_old_params(mc->params_[i]);
     int32 this_old_dim = this_old_params.NumCols(),
@@ -180,7 +181,7 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
     SubVector<BaseFloat> this_old_bias_term(old_bias_term,
                                             old_offset, this_old_dim),
         this_new_bias_term(new_bias_term, new_offset, this_new_dim),
-        this_old_counts(this->counts_,
+        this_old_counts(old_counts,
                         old_offset, this_old_dim),
         this_new_counts(new_counts,
                         new_offset, this_new_dim);
@@ -226,7 +227,9 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   }
   KALDI_ASSERT(old_offset == old_dim && new_offset == new_dim);
   ac->SetParams(new_bias_term, new_linear_term);
-  this->counts_ = new_counts;
+  this->value_sum_.Resize(new_counts.Dim());
+  this->value_sum_.CopyFromVec(new_counts);
+  this->count_ = this->value_sum_.Sum();
   this->dim_ = new_dim;
   mc->input_dim_ = new_dim; // keep this up to date.
   // We already updated mc->params_.

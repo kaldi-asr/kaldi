@@ -1,4 +1,4 @@
-// nnet-dp/nnet-update.h
+// nnet-cpu/nnet-update.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 

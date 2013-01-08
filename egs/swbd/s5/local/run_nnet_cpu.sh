@@ -1193,6 +1193,7 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
  # but using the newer code [warning, using temporary Path.sh script],
  # and mixing up.  We have about 3k leaves in this system, so mixnig
  # up to 8k. 
+ # This is the current best.
  steps/train_nnet_cpu_parallel10c.sh --minibatch-size 1000 \
    --mix-up 8000 \
    --apply-shrinking false \
@@ -1323,5 +1324,100 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
 
   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
     --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
-   exp/tri4a/graph data/train_dev exp/tri5c6_nnet/decode_train_dev &
+   exp/tri4a/graph data/train_dev exp/tri5c6_nnet/decode_train_dev
+)
+
+
+( 
+ # tri5c7 is as tri5c6 but using the "batch6" script which uses the newly
+ # written nnet-am-fix tool, designed to reduce parameters and take sigmoids
+ # out of their fully-saturated regions.
+
+ steps/train_nnet_cpu_batch6.sh \
+   --minibatch-size 1024 \
+   --num-batch-iters 40 --data-parts 4 \
+   --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 200000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c7_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c7_nnet/decode_train_dev
+)
+
+
+( 
+ # tri5c8 is as tri5c7 but changing the options to nnet-am-fix, to 
+ # change max-average-deriv from 0.75 to 0.9, as I think too many
+ # parameters were getting changed by this.
+
+ #cp -r exp/tri5c{7,8}_nnet  # the initial iters are the same...
+ steps/train_nnet_cpu_batch6.sh \
+   --stage 6 \
+   --fix-opts "--max-average-deriv=0.9" \
+   --minibatch-size 1024 \
+   --num-batch-iters 40 --data-parts 4 \
+   --add-layers-period 1 --num-sgd-iters 6 \
+   --mix-up 8000 \
+   --samples-per-iteration 200000 \
+   --initial-learning-rate 0.01 --final-learning-rate 0.005 \
+   --num-jobs-sgd 16 --num-hidden-layers 4 \
+   --alpha 4.0 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c8_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c8_nnet/decode_train_dev
+)
+
+
+
+( 
+ # tri5c1e is as tri5c1d, but running with newer code (and newer script).
+ # Slightly changed the 10d script to use nnet-combine-fast instead of
+ # nnet-shrink.
+ steps/train_nnet_cpu_parallel10d.sh --minibatch-size 1000 \
+   --mix-up 8000 \
+   --apply-shrinking false \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 16 --num-hidden-layers 4 \
+   --alpha 4.0 --num-iters 80 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+   data/train_100k_nodup data/lang exp/tri4a exp/tri5c1e_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c1e_nnet/decode_train_dev &
+)
+
+
+( 
+ # tri5c1f is as tri5c1e, but using an even newer script (10h.sh) that
+ # speeds things up by using nnet-train-parallel, calling it with
+ # small minibatches (128) to prevent instability, and using a sped-up
+ # way of randomizing the data.
+
+ steps/train_nnet_cpu_parallel10h.sh \
+   --mix-up 8000 \
+   --samples-per-iteration 400000 \
+   --initial-learning-rate 0.008 --final-learning-rate 0.0008 \
+   --num-jobs-nnet 16 --num-hidden-layers 4 \
+   --alpha 4.0 --num-iters 80 \
+   --num-parameters 8000000 \
+   --cmd "$decode_cmd" --parallel-opts "-pe smp 8" \
+    data/train_100k_nodup data/lang exp/tri4a exp/tri5c1f_nnet
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
+   exp/tri4a/graph data/train_dev exp/tri5c1f_nnet/decode_train_dev &
 )

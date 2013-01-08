@@ -38,12 +38,12 @@ int main(int argc, char *argv[]) {
         "nnet-randomize-frames [args] | nnet-train-lbfgs 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
-    bool zero_occupancy = true;
+    bool zero_stats = true;
     NnetLbfgsTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
+    po.Register("zero-stats", &zero_stats, "If true, zero occupation "
                 "counts stored with the neural net (only affects mixing up).");
 
     train_config.Register(&po);
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
+    if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
     NnetLbfgsTrainer trainer(train_config);
     

@@ -42,13 +42,16 @@ int main(int argc, char *argv[]) {
         "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
-    bool zero_occupancy = true;
+    bool zero_stats = true;
     int32 srand_seed = 0;
     NnetSimpleTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-occupancy", &zero_occupancy, "If true, zero occupation "
+    // TODO: remove next statement (old name).
+    po.Register("zero-occupancy", &zero_stats, "If true, zero occupation "
+                "counts stored with the neural net (only affects mixing up).");
+    po.Register("zero-stats", &zero_stats, "If true, zero occupation "
                 "counts stored with the neural net (only affects mixing up).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(relevant if you have layers of type AffineComponentPreconditioned "
@@ -62,11 +65,11 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    srand(srand_seed);
     
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
-
 
     TransitionModel trans_model;
     AmNnet am_nnet;
@@ -77,7 +80,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    if (zero_occupancy) am_nnet.GetNnet().ZeroOccupancy();
+    if (zero_stats) am_nnet.GetNnet().ZeroStats();
     
     int64 num_examples = 0;
     { // want to make sure this object deinitializes before

@@ -57,11 +57,11 @@ int main(int argc, char *argv[]) {
     // computation and memory demands when we have to resize the vector.
     std::vector<NnetTrainingExample*> egs;
 
-    for (; example_reader.Done(); example_reader.Next())
+    for (; !example_reader.Done(); example_reader.Next())
       egs.push_back(new NnetTrainingExample(example_reader.Value()));
 
     std::random_shuffle(egs.begin(), egs.end());
-
+    
     NnetTrainingExampleWriter example_writer(examples_wspecifier);
     for (size_t i = 0; i < egs.size(); i++) {
       std::ostringstream ostr;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
       delete egs[i];
     }
    
-    KALDI_LOG << "Shuffled orer of " << egs.size() << " neural-network training examples ";
+    KALDI_LOG << "Shuffled order of " << egs.size() << " neural-network training examples ";
     return (egs.size() == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
