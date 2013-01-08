@@ -6,8 +6,12 @@
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
+#wsj0=/ais/gobi2/speech/WSJ/csr_?_senn_d?
+#wsj1=/ais/gobi2/speech/WSJ/csr_senn_d?
+
 #wsj0=/mnt/matylda2/data/WSJ0
 #wsj1=/mnt/matylda2/data/WSJ1
+
 wsj0=/export/corpora5/LDC/LDC93S6B
 wsj1=/export/corpora5/LDC/LDC94S13B
 
@@ -39,21 +43,27 @@ local/wsj_format_data.sh || exit 1;
  # is setup to use qsub.  Else, just remove the --cmd option.
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
  # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
- (
-  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
-  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
-  local/wsj_train_lms.sh && \
-  local/wsj_format_local_lms.sh && 
-   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
-       sleep 20; # wait till tools compiled.
-     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
-      --hidden 100 --nwords 20000 --class 350 --direct 1500 data/local/rnnlm.h100.voc20k &
-     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=14G" \
-      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
-     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
-      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
-   )
- ) &
+
+ # Note: I am commenting out the commands below.  They take up a lot
+ # of CPU time and are not really part of the "main recipe."
+ # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
+ # won't always work, it depends what $decode_cmd is.
+ # (
+ #  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
+ #  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
+ #  local/wsj_train_lms.sh && \
+ #  local/wsj_format_local_lms.sh && 
+ #   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
+ #       sleep 20; # wait till tools compiled.
+ #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
+ #      --hidden 100 --nwords 20000 --class 350 --direct 1500 data/local/rnnlm.h100.voc20k &
+ #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=14G" \
+ #      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
+ #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
+ #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
+ #   )
+ # ) &
+
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -73,6 +83,7 @@ utils/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort
 
 # Now make subset with half of the data from si-84.
 utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
+
 
 # Note: the --boost-silence option should probably be omitted by default
 # for normal setups.  It doesn't always help. [it's to discourage non-silence
@@ -182,7 +193,6 @@ steps/decode_fromlats.sh --cmd "$decode_cmd" \
   exp/tri2a/decode_tgpr_dev93_fromlats || exit 1;
 
 
-
 # Align tri2b system with si84 data.
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
   --use-graphs true data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84  || exit 1;
@@ -226,7 +236,9 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg \
   || exit 1;
 
-local/run_rnnlms_tri3b.sh
+# The command below is commented out as we commented out the steps above
+# that build the RNNLMs, so it would fail.
+# local/run_rnnlms_tri3b.sh
 
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
@@ -240,7 +252,6 @@ local/run_rnnlms_tri3b.sh
 # From 3b system, align all si284 data.
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
-
 
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 
@@ -315,7 +326,6 @@ local/run_hybrid.sh
 #  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
 
 # # forward-backward decoding example [way to speed up decoding by decoding forward
-# # and backward in time]
+# # and backward in time] 
 # local/run_fwdbwd.sh
-
 
