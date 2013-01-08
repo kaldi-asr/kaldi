@@ -45,14 +45,19 @@ CuDevice::CuDevice()
     cudaGetDevice(&gpu_id);
     cudaDeviceProp gpu_prop;
     cudaGetDeviceProperties(&gpu_prop, gpu_id);
+    if (gpu_prop.computeMode == cudaComputeModeExclusive) {
+      KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.";
+    }
+    if (gpu_prop.computeMode == cudaComputeModeExclusiveProcess) {
+      KALDI_LOG << "CUDA setup operating under Compute Exclusive Process Mode.";
+    }
     if (gpu_prop.computeMode == cudaComputeModeExclusive
         || gpu_prop.computeMode == cudaComputeModeExclusiveProcess) {
       cudaDeviceSynchronize();
       char gpu_name[128];
       DeviceGetName(gpu_name, 128, gpu_id);
       std::string mem_stats = GetFreeMemory(NULL, NULL);
-      KALDI_LOG << "CUDA setup operating under Compute Exclusive Mode.\n"
-                << "  Using device " << gpu_id << ": " << gpu_name << "\t" << mem_stats;
+      KALDI_LOG << "  Using device " << gpu_id << ": " << gpu_name << "\t" << mem_stats;
       active_gpu_id_ = gpu_id;
       cuSafeCall(cublasInit());
       return;
