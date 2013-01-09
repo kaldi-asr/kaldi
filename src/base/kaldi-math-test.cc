@@ -87,6 +87,25 @@ void UnitTestRand() {
       }
     }
 
+    { // test WithProb().
+      for (int32 i = 0; i < 10; i++) {
+        KALDI_ASSERT((WithProb(0.0) == false) && (WithProb(1.0) == true));
+      }
+      {
+        int32 tot = 0, n = 10000;
+        BaseFloat p = 0.5;
+        for (int32 i = 0; i < n; i++)
+          tot += WithProb(p);
+        KALDI_ASSERT(tot > (n * p * 0.8) && tot < (n * p * 1.2));
+      }
+      {
+        int32 tot = 0, n = 10000;
+        BaseFloat p = 0.25;
+        for (int32 i = 0; i < n; i++)
+          tot += WithProb(p);
+        KALDI_ASSERT(tot > (n * p * 0.8) && tot < (n * p * 1.2));
+      }
+    }
     {  // test RandInt().
       KALDI_ASSERT(RandInt(0, 3) >= 0 && RandInt(0, 3) <= 3);
 

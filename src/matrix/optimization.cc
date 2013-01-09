@@ -72,6 +72,11 @@ void OptimizeLbfgs<Real>::ComputeHifNeeded(const VectorBase<Real> &gradient) {
         learning_rate = (gradient_length > 0.0 ?
                          opts_.first_step_length / gradient_length :
                          1.0);
+      } else if (opts_.first_step_impr > 0.0) {
+        Real gradient_length = gradient.Norm(2.0);
+        learning_rate = (gradient_length > 0.0 ?
+                  opts_.first_step_impr / (gradient_length * gradient_length) :
+                  1.0);
       } else {
         learning_rate = opts_.first_step_learning_rate;
       }
@@ -247,7 +252,7 @@ void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
   bool wolfe_i_ok;
   if (opts_.minimize) wolfe_i_ok = (function_value <= temp);
   else wolfe_i_ok = (function_value >= temp);
-
+  
   // Wolfe condition ii) can be written as:
   //  p_k^T \nabla f(x_k + \alpha_k p_k) >= c_2 p_k^T \nabla f(x_k)
   // p2f equals \alpha_k p_k^T \nabla f(x_k + \alpha_k p_k), where
@@ -308,7 +313,7 @@ void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
   if (d_action == kDecrease)
     d_ = std::sqrt(d_);
   
-  KALDI_VLOG(3) << "d = " << d_ << ", action = "
+  KALDI_VLOG(3) << "d = " << d_ << ", iter = " << k_ << ", action = "
                 << (iteration_action == kAccept ? "accept" :
                     (iteration_action == kDecreaseStep ? "decrease" :
                      (iteration_action == kIncreaseStep ? "increase" :

@@ -81,8 +81,7 @@ int main(int argc, char *argv[]) {
       posterior_writer.Write(posterior_reader.Key(), phone_posterior);
       num_done++;
     }
-              
-    KALDI_LOG << "Done converting posterior to phone posteriors for "
+    KALDI_LOG << "Done converting posteriors to phone posteriors for "
               << num_done << " utterances.";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

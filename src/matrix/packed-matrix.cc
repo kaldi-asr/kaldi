@@ -130,6 +130,15 @@ void PackedMatrix<Real>::ScaleDiag(Real alpha) {
   }
 }
 
+template<typename Real>
+void PackedMatrix<Real>::SetDiag(Real alpha) {
+  Real *ptr = data_;
+  for (MatrixIndexT i = 2; i <= num_rows_+1; i++) {
+    *ptr = alpha;
+    ptr += i;
+  }
+}
+
 
 template<typename Real>
 template<typename OtherReal>

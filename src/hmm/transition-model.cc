@@ -390,8 +390,10 @@ void TransitionModel::MleUpdate(const Vector<double> &stats,
   }
   KALDI_LOG << "TransitionModel::Update, objf change is "
             << (objf_impr_sum / count_sum) << " per frame over " << count_sum
-            << " frames; " << num_floored << " probabilities floored, "
-            << num_skipped << " states skipped due to insuffient data.";
+            << " frames. ";
+  KALDI_LOG <<  num_floored << " probabilities floored, " << num_skipped
+            << " out of " << NumTransitionStates() << " transition-states "
+      "skipped due to insuffient data (it is normal to have some skipped.)";
   if (objf_impr_out) *objf_impr_out = objf_impr_sum;
   if (count_out) *count_out = count_sum;
   ComputeDerivedOfProbs();

@@ -33,6 +33,29 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
   return n+1;
 }
 
+bool WithProb(BaseFloat prob) {
+  KALDI_ASSERT(prob >= 0 && prob <= 1.1);  // prob should be <= 1.0,
+  // but we allow slightly larger values that could arise from roundoff in
+  // previous calculations.
+  KALDI_COMPILE_TIME_ASSERT(RAND_MAX > 128 * 128);
+  if (prob == 0) return false;
+  else if (prob == 1.0) return true;
+  else if (prob * RAND_MAX < 128.0) {
+    // prob is very small but nonzero, and the "main algorithm"
+    // wouldn't work that well.  So: with probability 1/128, we
+    // return WithProb (prob * 128), else return false.
+    if (rand() < RAND_MAX / 128) { // with probability 128...
+      // Note: we know that prob * 128.0 < 1.0, because
+      // we asserted RAND_MAX > 128 * 128.
+      return WithProb(prob * 128.0);
+    } else {
+      return false;
+    }
+  } else {
+    return (rand() < ((RAND_MAX + static_cast<BaseFloat>(1.0)) * prob));
+  }
+}
+
 int32 RandInt(int32 min_val, int32 max_val) {  // This is not exact.
   assert(max_val >= min_val);
   if (max_val == min_val) return min_val;

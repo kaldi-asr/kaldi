@@ -72,7 +72,8 @@ int main(int argc, char *argv[]) {
     int32 logdet_type = Unknown;
     double tot_t = 0.0, tot_logdet = 0.0;  // to compute average logdet weighted by time...
     int32 num_done = 0, num_error = 0;
-
+    BaseFloat cached_logdet = -1;
+    
     RandomAccessTokenReader utt2spk_reader;
     if (utt2spk_rspecifier != "") {
       if (!utt2spk_reader.Open(utt2spk_rspecifier))
@@ -117,17 +118,14 @@ int main(int argc, char *argv[]) {
 
       if (transform_cols == feat_dim) {
         feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
-      } else if (transform_cols == feat_dim+1) {
+      } else if (transform_cols == feat_dim + 1) {
         // append the implicit 1.0 to the input features.
         SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
         feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
         Vector<BaseFloat> offset(transform_rows);
-        for (int32 i = 0; i < transform_rows; i++) offset(i) = trans(i, feat_dim);
-        int32 N = feat.NumRows();
-        for (int32 i = 0; i < N; i++)
-          feat_out.Row(i).AddVec(1.0, offset);
+        offset.CopyColFromMat(trans, feat_dim);
+        feat_out.AddVecToRows(1.0, offset);
       } else {
-
         KALDI_WARN << "Transform matrix for key " << utt_or_spk << " has bad dimension "
                    << transform_rows << "x" << transform_cols << " versus feat dim "
                    << feat_dim;
@@ -151,14 +149,21 @@ int main(int argc, char *argv[]) {
         // just trying to see if the MLLT is converging.
       }
 
-      if (logdet_type != DimIncrease) {
+      if (logdet_type != DimIncrease) { // Accumulate log-determinant stats.
         SubMatrix<BaseFloat> linear_transform(trans, 0, trans.NumRows(), 0, feat_dim);
         // "linear_transform" is just the linear part of any transform, ignoring
         // any affine (offset) component.
         SpMatrix<BaseFloat> TT(trans.NumRows());
         // TT = linear_transform * linear_transform^T
         TT.AddMat2(1.0, linear_transform, kNoTrans, 0.0);
-        BaseFloat logdet = 0.5 * TT.LogDet(NULL);
+        BaseFloat logdet;
+        if (use_global_transform) {
+          if (cached_logdet != -1)
+            cached_logdet = 0.5 * TT.LogDet(NULL);
+          logdet = cached_logdet;
+        } else {
+          logdet = 0.5 * TT.LogDet(NULL);
+        }
         if (logdet != logdet || logdet-logdet != 0.0) // NaN or info.
           KALDI_WARN << "Matrix has bad logdet " << logdet;
         else {

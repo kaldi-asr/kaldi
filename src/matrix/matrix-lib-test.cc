@@ -2256,6 +2256,17 @@ template<class Real> static void UnitTestScaleDiag() {
 }
 
 
+template<class Real> static void UnitTestSetDiag() {
+  
+  MatrixIndexT N = 1 + rand() % 10;
+  SpMatrix<Real> S(N), T(N);
+  S.SetUnit();
+  S.ScaleDiag(0.5);
+  T.SetDiag(0.5);
+  AssertEqual(S, T);
+
+}
+
 template<class Real> static void UnitTestTraceSpSpLower() {
 
   MatrixIndexT N = 1 + rand() % 10;
@@ -2467,7 +2478,7 @@ template<class Real> static void UnitTestMaxAbsEig() {
 
 template<class Real> static void UnitTestLbfgs() {
   MatrixIndexT temp = g_kaldi_verbose_level;
-  //   g_kaldi_verbose_level = 4;
+  g_kaldi_verbose_level = 4;
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
     bool minimize = (iter % 2 == 0);
     MatrixIndexT dim = 1 + rand() % 30;
@@ -3568,6 +3579,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
   UnitTestScaleDiag<Real>();
+  UnitTestSetDiag<Real>();
   KALDI_LOG << " Point J";
   UnitTestTraceSpSpLower<Real>();
   UnitTestTranspose<Real>();
