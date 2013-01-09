@@ -25,6 +25,7 @@ num_iters=35   # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
+train_tree=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -88,7 +89,7 @@ if [ -f $alidir/trans.1 ]; then
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
 else 
-  if [ $stage -le -4 ]; then
+  if [ $stage -le -5 ]; then
     echo "$0: obtaining initial fMLLR transforms since not present in $alidir"
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
@@ -101,7 +102,7 @@ else
   cur_trans_dir=$dir
 fi
 
-if [ $stage -le -3 ]; then
+if [ $stage -le -4 ] && $train_tree; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
@@ -113,7 +114,7 @@ if [ $stage -le -3 ]; then
   rm $dir/*.treeacc
 fi
 
-if [ $stage -le -2 ]; then
+if [ $stage -le -3 ] && $train_tree; then
   echo "$0: Getting questions for tree clustering."
   # preparing questions, roots file...
   cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
@@ -125,14 +126,22 @@ if [ $stage -le -2 ]; then
     build-tree --verbose=1 --max-leaves=$numleaves \
     --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
-
-  gmm-init-model  --write-occs=$dir/1.occs  \
-    $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
-  grep 'no stats' $dir/log/init_model.log && echo "$0: This is a bad warning.";
-
-  rm $dir/treeacc
 fi
 
+if [ $stage -le -2 ]; then
+  echo "$0: Initializing the model"
+  if $train_tree; then
+    gmm-init-model  --write-occs=$dir/1.occs  \
+      $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
+    grep 'no stats' $dir/log/init_model.log && echo "This is a bad warning.";
+    rm $dir/treeacc
+  else
+    cp $alidir/tree $dir/ || exit 1;
+    $cmd JOB=1 $dir/log/init_model.log \
+      gmm-init-model-flat $dir/tree $lang/topo $dir/1.mdl \
+        "$feats subset-feats ark:- ark:-|" || exit 1;
+  fi
+fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments.
@@ -142,7 +151,7 @@ if [ $stage -le -1 ]; then
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
-if [ $stage -le 0 ]; then
+if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "$0: Compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \

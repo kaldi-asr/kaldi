@@ -6,7 +6,7 @@
 # Begin configuration.
 cmd=run.pl
 config=
-stage=-4
+stage=-5
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 realign_iters="10 20 30";
 mllt_iters="2 4 6 12";
@@ -22,6 +22,7 @@ randprune=4.0 # This is approximately the ratio by which we will speed up the
 splice_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration.
+train_tree=true  # if false, don't actually train the tree.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -71,7 +72,7 @@ feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 
 
 
-if [ $stage -le -4 ]; then
+if [ $stage -le -5 ]; then
   echo "Accumulating LDA statistics."
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
@@ -85,7 +86,7 @@ fi
 
 cur_lda_iter=0
 
-if [ $stage -le -3 ]; then
+if [ $stage -le -4 ] && $train_tree; then
   echo "Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
    acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
@@ -97,7 +98,7 @@ if [ $stage -le -3 ]; then
 fi
 
 
-if [ $stage -le -2 ]; then
+if [ $stage -le -3 ] && $train_tree; then
   echo "Getting questions for tree clustering."
   # preparing questions, roots file...
   cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
@@ -109,14 +110,21 @@ if [ $stage -le -2 ]; then
     build-tree --verbose=1 --max-leaves=$numleaves \
     --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
+fi
 
-  gmm-init-model  --write-occs=$dir/1.occs  \
-    $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
-  grep 'no stats' $dir/log/init_model.log && echo "This is a bad warning.";
-
-  # could mix up if we wanted:
-  # gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl 2>$dir/log/mixup.log || exit 1;
-  rm $dir/treeacc
+if [ $stage -le -2 ]; then
+  echo "$0: Initializing the model"
+  if $train_tree; then
+    gmm-init-model  --write-occs=$dir/1.occs  \
+      $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
+    grep 'no stats' $dir/log/init_model.log && echo "This is a bad warning.";
+    rm $dir/treeacc
+  else
+    cp $alidir/tree $dir/ || exit 1;
+    $cmd JOB=1 $dir/log/init_model.log \
+      gmm-init-model-flat $dir/tree $lang/topo $dir/1.mdl \
+        "$feats subset-feats ark:- ark:-|" || exit 1;
+  fi
 fi
 
 
@@ -128,7 +136,7 @@ if [ $stage -le -1 ]; then
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
-if [ $stage -le 0 ]; then
+if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "Compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
