@@ -47,7 +47,10 @@ analyze_alignments=true # run the alignment analysis script
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f path.sh ] && . ./path.sh;
+[ -f path2.sh ] && . ./path2.sh; # TEMP!
+! [ -f path2.sh ] && [ -f path.sh ] && . ./path.sh; 
+
+
 . parse_options.sh || exit 1;
 
 
@@ -115,7 +118,7 @@ fi
 ###### PREPARE FEATURES ######
 # shuffle the list
 echo "Preparing train/cv lists"
-cat $data/feats.scp | utils/shuffle_list.pl ${seed:-777} > $dir/train.scp
+cat $data/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
 cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
