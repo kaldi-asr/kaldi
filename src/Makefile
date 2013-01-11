@@ -12,8 +12,11 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin
 
-all: test_install $(SUBDIRS) 
+all: test_install kaldi.mk $(SUBDIRS) 
 	echo Done
+
+kaldi.mk:
+	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff 
 ext: test_install check_portaudio $(SUBDIRS) $(EXT_SUBDIRS)

@@ -10,6 +10,7 @@
 
 #  Example command lines:
 # configure
+# configure --mkl-root=/opt/intel/mkl 
 # configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 
 function rel2abs {

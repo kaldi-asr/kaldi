@@ -138,11 +138,9 @@ inline int32 Nnet::InputDim() const {
 
 
 inline int32 Nnet::OutputDim() const { 
-  if (LayerCount() > 0) {
-    return nnet_.back()->OutputDim(); 
-  } else {
+  if (LayerCount() <= 0)
     KALDI_ERR << "No layers in MLP"; 
-  }
+  return nnet_.back()->OutputDim(); 
 }
 
 
