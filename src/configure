@@ -237,6 +237,8 @@ function linux_configure_cuda {
       CUDATKDIR=/usr/local/cuda/
     elif [ -f /pkgs_local/cuda-3.2/bin/nvcc ]; then #CS.TORONTO
       CUDATKDIR=/pkgs_local/cuda-3.2/ 
+    elif [ -f /opt/nvidia_cuda/cuda-5.0/bin/nvcc ]; then # t01 at JHU
+      CUDATKDIR=/opt/nvidia_cuda/cuda-5.0/
     fi
   fi
 
