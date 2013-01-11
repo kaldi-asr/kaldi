@@ -41,7 +41,6 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     int32 minibatch_size = 1024;
-    bool zero_stats = true;    
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");

@@ -6,9 +6,11 @@ for x in "$@"; do orig_args="$orig_args '$x'"; done
 
 # begin configuration section.  we include all the options that score_sclite.sh or
 # score_basic.sh might need, or parse_options.sh will die.
+# CAUTION: these default values do not have any effect because of the
+# way pass things through to the scripts that this script calls.
 cmd=run.pl
 stage=0
-min_lmwt=9
+min_lmwt=5
 max_lmwt=20
 reverse=false
 #end configuration section.

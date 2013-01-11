@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,16 +16,23 @@
 # limitations under the License.
 
 
-# seeding is optional...
-if ($#ARGV==0) {
-  srand($ARGV[0]);
+if ($ARGV[0] eq "--srand") {
+  $n = $ARGV[1];
+  $n =~ m/\d+/ || die "Bad argument to --srand option: \"$n\"";
+  srand($ARGV[1]);
+  shift;
+  shift;
 } else {
-  srand(0); # Seems to give inconsistent behavior if we don't seed.
+  srand(0); # Gives inconsistent behavior if we don't seed.
 }
 
+if (@ARGV > 1 || $ARGV[0] =~ m/-.+/) { # >1 args, or an option we 
+  # don't understand.
+  print "Usage: shuffle_list.pl [--srand N] [input file]  > output\n";
+  print "randomizes the order of lines of input.\n";
+  exit(1);
+}
 
-# This script shuffles lines of a list. 
-# The list is read from stdin and written to stdout. 
-@X = <STDIN>;
-@X = sort { rand() <=> rand() } @X;
-print @X; 
+@lines = <>;
+@lines = sort { rand() <=> rand() } @lines;
+print @lines;

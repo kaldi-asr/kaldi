@@ -68,6 +68,8 @@ esac
 [ -f `dirname $newlm_fst`/words.txt ] && ! cmp `dirname $oldlm_fst`/words.txt $graphdir/words.txt && \
   echo "Warning: new LM words.txt does not match with that in $graphdir .. probably will not work.";
 
+# fstproject replaces the disambiguation symbol #0, which only appears on the
+# input side, with the <eps> that appears in the corresponding arcs on the output side.
 oldlm_cmd="fstproject --project_output=true $oldlm_fst | fstarcsort --sort_type=ilabel |"
 newlm_cmd="fstproject --project_output=true $newlm_fst | fstarcsort --sort_type=ilabel |"
 

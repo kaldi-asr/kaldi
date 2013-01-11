@@ -170,6 +170,12 @@ exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it2/wer_10:%WER 6.43 [ 363 / 5643, 108 
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it3/wer_11:%WER 6.40 [ 361 / 5643, 106 ins, 10 del, 245 sub ]
 exp/sgmm2_5b_mmi_b0.1/decode_tgpr_eval92_it4/wer_11:%WER 6.34 [ 358 / 5643, 110 ins, 9 del, 239 sub ]
 
+# regular SGMM (only ran the basic one, not discriminatively trained, although the
+# scripts are there.)
+exp/sgmm5a/decode_tgpr_dev93/wer_12:%WER 11.99 [ 987 / 8234, 189 ins, 94 del, 704 sub ]
+# Rescored with quinphone.
+exp/sgmm5c/decode_tgpr_dev93/wer_11:%WER 10.47 [ 862 / 8234, 194 ins, 75 del, 593 sub ]
+
 
 # DNN on fMLLR features
 exp/tri4a_dnn/decode_tgpr_dev93/wer_10:%WER 10.08 [ 830 / 8234, 192 ins, 91 del, 547 sub ]

@@ -36,8 +36,11 @@ int main(int argc, char *argv[]) {
         "nnet-shuffle-egs --srand=1 ark:train.egs ark:shuffled.egs\n";
     
     int32 srand_seed = 0;
+    int32 buffer_size = 0;
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
+    po.Register("buffer-size", &buffer_size, "If >0, size of a buffer we use "
+                "to do limited-memory partial randomization.");
     
     po.Read(argc, argv);
 
@@ -51,27 +54,48 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    int64 num_done = 0;
 
-    // Putting in an extra level of indirection here to avoid excessive
-    // computation and memory demands when we have to resize the vector.
     std::vector<NnetTrainingExample*> egs;
-
-    for (; !example_reader.Done(); example_reader.Next())
-      egs.push_back(new NnetTrainingExample(example_reader.Value()));
-
-    std::random_shuffle(egs.begin(), egs.end());
-    
+    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     NnetTrainingExampleWriter example_writer(examples_wspecifier);
+    if (buffer_size == 0) { // Do full randomization
+      // Putting in an extra level of indirection here to avoid excessive
+      // computation and memory demands when we have to resize the vector.
+    
+      for (; !example_reader.Done(); example_reader.Next())
+        egs.push_back(new NnetTrainingExample(example_reader.Value()));
+      
+      std::random_shuffle(egs.begin(), egs.end());
+    } else {
+      KALDI_ASSERT(buffer_size > 0);
+      egs.resize(buffer_size, NULL);
+      for (; !example_reader.Done(); example_reader.Next()) {
+        int32 index = RandInt(0, buffer_size - 1);
+        if (egs[index] == NULL) {
+          egs[index] = new NnetTrainingExample(example_reader.Value());
+        } else {
+          std::ostringstream ostr;
+          ostr << num_done;
+          example_writer.Write(ostr.str(), *(egs[index]));
+          *(egs[index]) = example_reader.Value();
+          num_done++;
+        }
+      }      
+    }
     for (size_t i = 0; i < egs.size(); i++) {
       std::ostringstream ostr;
-      ostr << i;
+      ostr << num_done;
       example_writer.Write(ostr.str(), *(egs[i]));
       delete egs[i];
+      num_done++;
     }
-   
-    KALDI_LOG << "Shuffled order of " << egs.size() << " neural-network training examples ";
-    return (egs.size() == 0 ? 1 : 0);
+
+    KALDI_LOG << "Shuffled order of " << num_done
+              << " neural-network training examples "
+              << (buffer_size ? "using a buffer (partial randomization)" : "");
+                  
+    return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

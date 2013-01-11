@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     }
     
     KALDI_LOG << "Selected a subset of " << egs.size() << " out of " << num_read
-              << "neural-network training examples ";
+              << " neural-network training examples ";
     
     return (static_cast<size_t>(n) == egs.size() ? 0 : 1);
   } catch(const std::exception &e) {

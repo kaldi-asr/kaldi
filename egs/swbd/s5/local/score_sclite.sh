@@ -4,7 +4,7 @@
 # begin configuration section.
 cmd=run.pl
 stage=0
-min_lmwt=9
+min_lmwt=5
 max_lmwt=20
 reverse=false
 #end configuration section.

@@ -97,3 +97,17 @@
      done
   done
 ) &
+
+
+
+# Train quinphone SGMM system. 
+
+steps/train_sgmm.sh  --cmd "$train_cmd" \
+   --context-opts "--context-width=5 --central-position=2" \
+   5500 25000 data/train_si284 data/lang exp/tri4b_ali_si284 \
+   exp/ubm5b/final.ubm exp/sgmm5c || exit 1;
+
+# Decode from lattices in exp/sgmm5a/decode_tgpr_dev93.
+steps/decode_sgmm_fromlats.sh --cmd "$decode_cmd"  --transform-dir exp/tri4b/decode_tgpr_dev93 \
+   data/test_dev93 data/lang_test_tgpr exp/sgmm5a/decode_tgpr_dev93 exp/sgmm5c/decode_tgpr_dev93 
+
