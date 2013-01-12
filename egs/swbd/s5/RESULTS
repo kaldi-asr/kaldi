@@ -39,5 +39,7 @@ exp/tri5a_dnn/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    |
 exp/tri5a_dnn/decode_train_dev/wer_10:%WER 22.85 [ 11075 / 48460, 1261 ins, 2955 del, 6859 sub ]
 
 # Dan's neural net setup (I need to tune this a but-- it was working better before.)
+# Note: I've found the problem, I was using too few leaves in the SAT baseline.
+# I'm fixing it now.  (This should help Karel's setup too.)
 exp/nnet5c/decode_eval2000/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.0   16.8    7.2    2.7   26.7   64.0 |
 exp/nnet5c/decode_train_dev/wer_8:%WER 26.06 [ 12627 / 48460, 1891 ins, 2891 del, 7845 sub ]
