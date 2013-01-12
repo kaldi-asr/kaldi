@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
-# Apache 2.0
-# Decoding of fMMI or fMPE models (feature-space discriminative training).
-# If transform-dir supplied, expects e.g. fMLLR transforms in that dir.
+# Copyright 2012  Karel Vesely
+#                 Johns Hopkins University (Author: Daniel Povey),
+#                 
+# Apache 2.0.
+
+# This script is for use in neural network training and testing; it dumps
+# (LDA+MLLT or splice+delta) + fMLLR features in a similar format to
+# conventional raw MFCC features. 
 
 # Begin configuration section.  
 nj=4
@@ -69,7 +73,7 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
   [ "`cat $transform_dir/num_jobs`" -ne $nj ] && \
-     echo "Mismatch in number of jobs with $transform_dir";
+     echo "Mismatch in number of jobs with $transform_dir" && exit 1;
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 fi
 

@@ -1,3 +1,6 @@
+
+ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
 # Use caution when comparing these results with other published results.
 # We use the "20k open" test condition, also known as the "60k vocabulary"
 # test condition, in which test utterances are not excluded even if they
@@ -8,9 +11,6 @@
 
 # The following results are updated with LDA+MLLT to use 7, not 9 frames of context,
 # and also increased the learning rate for the "indirect" fMMI.
-
-
- for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
 # monophone, deltas, trained on the 2k shortest utterances from the si84 data.
 exp/mono0a/decode_tgpr_dev93/wer_10:%WER 35.62 [ 2933 / 8234, 312 ins, 503 del, 2118 sub ]
@@ -177,7 +177,12 @@ exp/sgmm5a/decode_tgpr_dev93/wer_12:%WER 11.99 [ 987 / 8234, 189 ins, 94 del, 70
 exp/sgmm5c/decode_tgpr_dev93/wer_11:%WER 10.47 [ 862 / 8234, 194 ins, 75 del, 593 sub ]
 
 
-# DNN on fMLLR features
-exp/tri4a_dnn/decode_tgpr_dev93/wer_10:%WER 10.08 [ 830 / 8234, 192 ins, 91 del, 547 sub ]
-exp/tri4a_dnn/decode_tgpr_eval92/wer_10:%WER 6.40 [ 361 / 5643, 98 ins, 13 del, 250 sub ]
+# DNN on fMLLR features (Karel's setup)
+exp/tri4a_dnn/decode_tgpr_dev93/wer_12:%WER 9.61 [ 791 / 8234, 150 ins, 84 del, 557 sub ]
+exp/tri4a_dnn/decode_tgpr_eval92/wer_11:%WER 6.50 [ 367 / 5643, 89 ins, 14 del, 264 sub ]
 
+# Dan's cpu-based neural net recipe.  Note: the best number for dev93 is 7.10, an SGMM+MMI system,
+# and for eval92 is 3.79, the same system.  (On this setup, discriminative training helped a lot,
+# which seems to be the reason we can't beat the SGMM+MMI numbers here.)
+exp/nnet5c1/decode_bd_tgpr_dev93/wer_10:%WER 7.48 [ 616 / 8234, 73 ins, 98 del, 445 sub ]
+exp/nnet5c1/decode_bd_tgpr_eval92/wer_11:%WER 4.41 [ 249 / 5643, 29 ins, 19 del, 201 sub ]

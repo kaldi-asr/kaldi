@@ -1438,4 +1438,8 @@ steps/train_nnet_cpu.sh --measure-gradient-at 0.8 --minibatch-size 1000 \
   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
     --config conf/decode.config --transform-dir exp/tri4a/decode_train_dev \
    exp/tri4a/graph data/train_dev exp/nnet5c/decode_train_dev &
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
+    --config conf/decode.config --transform-dir exp/tri4a/decode_eval2000 \
+   exp/tri4a/graph data/eval2000 exp/nnet5c/decode_eval2000 &
 )

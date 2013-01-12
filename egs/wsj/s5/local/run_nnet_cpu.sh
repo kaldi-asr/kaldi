@@ -13,8 +13,12 @@
    --cmd "$decode_cmd" \
     data/train_si284 data/lang exp/tri4b_ali_si284 exp/nnet5c1 || exit 1
   
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
-    --config conf/decode.config --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
+    --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
+     exp/tri4b/graph_bd_tgpr data/test_dev93 exp/nnet5c1/decode_bd_tgpr_dev93
+
+  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
+    --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
      exp/tri4b/graph_bd_tgpr data/test_dev93 exp/nnet5c1/decode_bd_tgpr_dev93
 )
 
