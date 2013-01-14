@@ -37,7 +37,7 @@ exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_9/eval2000.ctm.filt.sys:     | Sum
 exp/tri5a_dnn/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.6   15.5    7.0    2.8   25.2   62.9 |
 exp/tri5a_dnn/decode_train_dev/wer_10:%WER 22.85 [ 11075 / 48460, 1261 ins, 2955 del, 6859 sub ]
 
-# Dan's neural net setup (the numbers below are not right, I was running
-# starting from a too-small SAT system, they will improve).
-exp/nnet5c/decode_eval2000/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.0   16.8    7.2    2.7   26.7   64.0 |
-exp/nnet5c/decode_train_dev/wer_8:%WER 26.06 [ 12627 / 48460, 1891 ins, 2891 del, 7845 sub ]
+# Dan's neural net setup:
+exp/nnet6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.1   16.0    6.9    2.7   25.6   62.6 |
+exp/nnet6a/decode_train_dev/wer_10:%WER 24.87 [ 12053 / 48460, 1590 ins, 3017 del, 7446 sub ]
+
