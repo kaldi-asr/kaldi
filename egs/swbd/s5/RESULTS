@@ -33,8 +33,10 @@ exp/sgmm5a_mmi_b0.1/decode_eval2000_it3/score_9/eval2000.ctm.filt.sys:     | Sum
 exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.2   16.9    5.9    3.6   26.4   63.4 |
 
 
-
+# Karel's neural net setup:
 exp/tri5a_dnn/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.6   15.5    7.0    2.8   25.2   62.9 |
+# Note: the results on the following line are not really kosher as they
+# used the transcripts to estimate the fMLLR transforms.
 exp/tri5a_dnn/decode_train_dev/wer_10:%WER 22.85 [ 11075 / 48460, 1261 ins, 2955 del, 6859 sub ]
 
 # Dan's neural net setup:
