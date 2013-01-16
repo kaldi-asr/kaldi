@@ -139,3 +139,14 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 sph2pipe_v2.5.tar.gz:
 		wget -T 10 -t 3 http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz
 
+openblas: openblas_compiled
+
+.PHONY: openblas_compiled
+
+fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64"; }')
+
+openblas_compiled:
+	-git clone git://github.com/xianyi/OpenBLAS
+	$(MAKE) FC=gfortran $(fortran_opt) -C OpenBLAS
+	$(MAKE) PREFIX=`pwd`/OpenBlas -C OpenBLAS install
+
