@@ -6,37 +6,68 @@
 
 if [ $# -ne 3 ]; then
    echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>"
-   echo " e.g.: local/kws_data_prep.sh data/lang_test_bd_tgpr/ data/test_eval92/ data/kws/"
+   echo " e.g.: local/kws_data_prep.sh data/lang/ data/eval/ data/kws/"
    exit 1;
 fi
 
 langdir=$1;
 datadir=$2;
 kwsdatadir=$3;
+keywords=$kwsdatadir/kws.xml
+
+case_insensitive=true
 
 mkdir -p $kwsdatadir;
 
-# Create keyword id for each keyword
-cat $kwsdatadir/raw_keywords.txt | perl -e '
-  $idx=1;
-  while(<>) {
-    chomp;
-    printf "WSJ-%04d $_\n", $idx;
-    $idx++;
-  }' > $kwsdatadir/keywords.txt
+# This script is an example for the Babel Cantonese STD task
+
+cat $keywords | perl -e '
+  use XML::Simple;
+  use Data::Dumper;
+
+  my $data = XMLin(\*STDIN);
+
+  #print Dumper($data->{kw});
+  foreach $kwentry (@{$data->{kw}}) {
+    #print Dumper($kwentry);
+    print "$kwentry->{kwid}\t$kwentry->{kwtext}\n";
+  }
+' > $kwsdatadir/keywords.txt
+
 
 # Map the keywords to integers; note that we remove the keywords that
 # are not in our $langdir/words.txt, as we won't find them anyway...
-cat $kwsdatadir/keywords.txt | \
-  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
+#cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
+#  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
+if $case_insensitive ; then
+  cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
+  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
+
+  cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
+    sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
+else
+  cp $langdir/words.txt  $kwsdatadir/words.txt
+  cat $kwsdatadir/keywords.txt | \
+    sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
+fi
+
+cat $kwsdatadir/keywords_all.int | \
   grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int
+
+cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
+  babel/subset_kwslist.pl $keywords > $kwsdatadir/keyword_invocab.xml
+
+cat $kwsdatadir/keywords_all.int | \
+  egrep " 0 | 0$" | cut -f 1 -d ' ' | \
+  babel/subset_kwslist.pl $keywords > $kwsdatadir/keyword_outvocab.xml
+
+
 
 # Compile keywords into FSTs
 transcripts-to-fsts ark:$kwsdatadir/keywords.int ark:$kwsdatadir/keywords.fsts
 
-# Create utterance id for each utterance; Note that by "utterance" here I mean
-# the keys that will appear in the lattice archive. You may have to modify here
-cat $datadir/wav.scp | \
+# Create utterance id for each utterance
+cat $datadir/segments | \
   awk '{print $1}' | \
   sort | uniq | perl -e '
   $idx=1;
@@ -47,14 +78,7 @@ cat $datadir/wav.scp | \
   }' > $kwsdatadir/utter_id
 
 # Map utterance to the names that will appear in the rttm file. You have 
-# to modify the commands below accoring to your rttm file. In the WSJ case
-# since each file is an utterance, we assume that the actual file names will 
-# be the "names" in the rttm, so the utterance names map to themselves.
-cat $datadir/wav.scp | \
-  awk '{print $1}' | \
-  sort | uniq | perl -e '
-  while(<>) {
-    chomp;
-    print "$_ $_\n";
-  }' > $kwsdatadir/utter_map;
+# to modify the commands below accoring to your rttm file
+cat $datadir/segments | awk '{print $1" "$2}' | sort | uniq > $kwsdatadir/utter_map;
+
 echo "Kws data preparation succeeded"
