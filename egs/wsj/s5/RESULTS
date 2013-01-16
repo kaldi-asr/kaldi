@@ -177,12 +177,20 @@ exp/sgmm5a/decode_tgpr_dev93/wer_12:%WER 11.99 [ 987 / 8234, 189 ins, 94 del, 70
 exp/sgmm5c/decode_tgpr_dev93/wer_11:%WER 10.47 [ 862 / 8234, 194 ins, 75 del, 593 sub ]
 
 
-# DNN on fMLLR features (Karel's setup)
+# DNN on fMLLR features (Karel's setup).  Note: the dev93 results are not really valid 
+# because they used the transcripts in getting the fMLLR.
 exp/tri4a_dnn/decode_tgpr_dev93/wer_12:%WER 9.61 [ 791 / 8234, 150 ins, 84 del, 557 sub ]
 exp/tri4a_dnn/decode_tgpr_eval92/wer_11:%WER 6.50 [ 367 / 5643, 89 ins, 14 del, 264 sub ]
+
+# The same with big dictionary.
+exp/tri4a_dnn/decode_bd_tgpr_dev93/wer_13:%WER 7.17 [ 590 / 8234, 58 ins, 106 del, 426 sub ]
+exp/tri4a_dnn/decode_bd_tgpr_eval92/wer_10:%WER 4.00 [ 226 / 5643, 34 ins, 12 del, 180 sub ]
+
 
 # Dan's cpu-based neural net recipe.  Note: the best number for dev93 is 7.10, an SGMM+MMI system,
 # and for eval92 is 3.79, the same system.  (On this setup, discriminative training helped a lot,
 # which seems to be the reason we can't beat the SGMM+MMI numbers here.)
+
 exp/nnet5c1/decode_bd_tgpr_dev93/wer_10:%WER 7.48 [ 616 / 8234, 73 ins, 98 del, 445 sub ]
 exp/nnet5c1/decode_bd_tgpr_eval92/wer_11:%WER 4.41 [ 249 / 5643, 29 ins, 19 del, 201 sub ]
+# Note: my 4.41% result is worse than Karel's 4.00%.

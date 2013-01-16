@@ -77,11 +77,22 @@ $cuda_cmd $dir/_train_nnet.log \
   --learn-rate 0.008 --bunch-size 256 \
   data-fmllr/train_si284 data-fmllr/test_dev93_sup data/lang exp/tri4a exp/tri4a_ali_dev93 $dir || exit 1;
 # we can use the graph from the baseline system, tri4a.
-# decode 
+# decode .  Note: the dev93 results are not valid as testing results because
+# the fMLLR was from the training transcripts.
 steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.10 \
   exp/tri4a/graph_tgpr data-fmllr/test_dev93 exp/tri4a_dnn/decode_tgpr_dev93 &&
 steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.10 \
   exp/tri4a/graph_tgpr data-fmllr/test_eval92 exp/tri4a_dnn/decode_tgpr_eval92
+
+
+# decode with big dictionary.
+ utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri4a_dnn exp/tri4a_dnn/graph_bd_tgpr || exit 1;
+
+steps/decode_nnet.sh --nj 10 --cmd "$decode_cmd" --acwt 0.10 \
+  exp/tri4a_dnn/graph_bd_tgpr data-fmllr/test_dev93 exp/tri4a_dnn/decode_bd_tgpr_dev93 &&
+steps/decode_nnet.sh --nj 8 --cmd "$decode_cmd" --acwt 0.10 \
+  exp/tri4a_dnn/graph_bd_tgpr data-fmllr/test_eval92 exp/tri4a_dnn/decode_bd_tgpr_eval92
+
 )
 
 
