@@ -276,7 +276,7 @@ inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
   dgesvd_(v, u,
           num_cols, num_rows, Mdata, stride,
           sv, Vdata, vstride, Udata, ustride,
-          p_work, l_work,result); 
+          p_work, l_work, result); 
 }
 //
 void inline clapack_Xsptri(KaldiBlasInt *num_rows, float *Mdata, 
