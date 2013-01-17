@@ -134,6 +134,8 @@ inline void RegtreeFmllrDiagGmm::GetLogDets(VectorBase<BaseFloat> *out) const {
 typedef TableWriter< KaldiObjectHolder<RegtreeFmllrDiagGmm> >  RegtreeFmllrDiagGmmWriter;
 typedef RandomAccessTableReader< KaldiObjectHolder<RegtreeFmllrDiagGmm> >
             RandomAccessRegtreeFmllrDiagGmmReader;
+typedef RandomAccessTableReaderMapped< KaldiObjectHolder<RegtreeFmllrDiagGmm> >
+            RandomAccessRegtreeFmllrDiagGmmReaderMapped;
 typedef SequentialTableReader< KaldiObjectHolder<RegtreeFmllrDiagGmm> >  RegtreeFmllrDiagGmmSeqReader;  
 
 /** \class RegtreeFmllrDiagGmmAccs

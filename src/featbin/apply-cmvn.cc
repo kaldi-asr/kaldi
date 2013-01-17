@@ -43,6 +43,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    kaldi::int32 num_done = 0, num_err = 0;
+    
     std::string cmvn_rspecifier_or_rxfilename = po.GetArg(1);
     std::string feat_rspecifier = po.GetArg(2);
     std::string feat_wspecifier = po.GetArg(3);
@@ -54,36 +56,26 @@ int main(int argc, char *argv[]) {
         != kNoRspecifier) { // reading from a Table: per-speaker or per-utt CMN/CVN.
       std::string cmvn_rspecifier = cmvn_rspecifier_or_rxfilename;
 
-      RandomAccessDoubleMatrixReader cmvn_reader(cmvn_rspecifier);
-
-      RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+      RandomAccessDoubleMatrixReaderMapped cmvn_reader(cmvn_rspecifier,
+                                                       utt2spk_rspecifier);
 
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
         Matrix<BaseFloat> feat(feat_reader.Value());
-        std::string utt_or_spk;  // key for cmvn.
-        if (utt2spk_rspecifier == "") utt_or_spk = utt;
-        else {
-          if (utt2spk_reader.HasKey(utt))
-            utt_or_spk = utt2spk_reader.Value(utt);
-          else {  // can't really recover from this error.
-            KALDI_WARN << "Utt2spk map has no value for utterance "
-                       << utt << ", producing no output for this utterance";
-            continue;
-          }
-        }
-        if (!cmvn_reader.HasKey(utt_or_spk)) {
+
+        if (!cmvn_reader.HasKey(utt)) {
           KALDI_WARN << "No normalization statistics available for key "
                      << utt << ", producing no output for this utterance";
+          num_err++;
           continue;
         }
-        const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt_or_spk);
+        const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt);
 
         ApplyCmvn(cmvn_stats, norm_vars, &feat);
 
         feat_writer.Write(utt, feat);
+        num_done++;
       }
-      return 0;
     } else {
       if (utt2spk_rspecifier != "")
         KALDI_ERR << "--utt2spk option not compatible with rxfilename as input "
@@ -99,9 +91,16 @@ int main(int argc, char *argv[]) {
         Matrix<BaseFloat> feat(feat_reader.Value());
         ApplyCmvn(cmvn_stats, norm_vars, &feat);
         feat_writer.Write(utt, feat);
+        num_done++;
       }
-      
     }
+    if (norm_vars) 
+      KALDI_LOG << "Applied cepstral mean and variance normalization to "
+                << num_done << " utterances, errors on " << num_err;
+    else
+      KALDI_LOG << "Applied cepstral mean normalization to "
+                << num_done << " utterances, errors on " << num_err;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
-    std::string spkvecs_rspecifier = "", utt2spk_rspecifier = "";
+    std::string spkvecs_rspecifier, utt2spk_rspecifier;
     
     std::string word_syms_filename;
     config.Register(&po);
@@ -98,11 +98,10 @@ int main(int argc, char *argv[]) {
                    << word_syms_filename;
 
 
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier); // We
-    // support reading in a vector to describe each speaker, if the neural
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
+    // We support reading in a vector to describe each speaker, if the neural
     // net requires this (i.e. it was trained with this).
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier); // this
-    // relates to reading in the vectors; it's optional also.
     
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
@@ -134,20 +133,12 @@ int main(int argc, char *argv[]) {
             num_fail++;
             continue;
           }
-          std::string utt_or_spk;  
-          if (utt2spk_reader.IsOpen()) {
-            if (!utt2spk_reader.HasKey(utt)) {
-              KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                         << "skipping this utterance.";
-              return false;
-            } else { utt_or_spk = utt2spk_reader.Value(utt); }
-          } else { utt_or_spk = utt; }
           Vector<BaseFloat> spk_info;
           if (spkvecs_reader.IsOpen()) {
-            if (spkvecs_reader.HasKey(utt_or_spk)) {
-              spk_info = spkvecs_reader.Value(utt_or_spk);
+            if (spkvecs_reader.HasKey(utt)) {
+              spk_info = spkvecs_reader.Value(utt);
             } else {
-              KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk
+              KALDI_WARN << "Cannot find speaker vector for " << utt
                          << " (skipping this utterance).";
               continue;
             }
@@ -191,20 +182,12 @@ int main(int argc, char *argv[]) {
         
         LatticeFasterDecoder decoder(fst_reader.Value(), config);
 
-        std::string utt_or_spk;  
-        if (utt2spk_reader.IsOpen()) {
-          if (!utt2spk_reader.HasKey(utt)) {
-            KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                       << "skipping this utterance.";
-            return false;
-          } else { utt_or_spk = utt2spk_reader.Value(utt); }
-        } else { utt_or_spk = utt; }
         Vector<BaseFloat> spk_info;
         if (spkvecs_reader.IsOpen()) {
-          if (spkvecs_reader.HasKey(utt_or_spk)) {
-            spk_info = spkvecs_reader.Value(utt_or_spk);
+          if (spkvecs_reader.HasKey(utt)) {
+            spk_info = spkvecs_reader.Value(utt);
           } else {
-            KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk
+            KALDI_WARN << "Cannot find speaker vector for " << utt
                        << " (skipping this utterance).";
             continue;
           }

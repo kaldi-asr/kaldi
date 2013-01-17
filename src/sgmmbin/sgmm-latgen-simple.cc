@@ -174,9 +174,8 @@ int main(int argc, char *argv[]) {
 
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
 
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
     
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
@@ -214,26 +213,15 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      string utt_or_spk;
-      if (utt2spk_rspecifier.empty()) utt_or_spk = utt;
-      else {
-        if (!utt2spk_reader.HasKey(utt)) {
-          KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                     << "skipping this utterance.";
-          num_fail++;
-          continue;
-        } else {
-          utt_or_spk = utt2spk_reader.Value(utt);
-        }
-      }
-
       SgmmPerSpkDerivedVars spk_vars;
       if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt_or_spk)) {
-          spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+        if (spkvecs_reader.HasKey(utt)) {
+          spk_vars.v_s = spkvecs_reader.Value(utt);
           am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
         } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+          KALDI_WARN << "Cannot find speaker vector for " << utt;
+          num_fail++;
+          continue;
         }
       }  // else spk_vars is "empty"
 

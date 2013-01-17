@@ -152,6 +152,8 @@ typedef TableWriter< KaldiObjectHolder<RegtreeMllrDiagGmm> >
             RegtreeMllrDiagGmmWriter;
 typedef RandomAccessTableReader< KaldiObjectHolder<RegtreeMllrDiagGmm> >
             RandomAccessRegtreeMllrDiagGmmReader;
+typedef RandomAccessTableReaderMapped< KaldiObjectHolder<RegtreeMllrDiagGmm> >
+            RandomAccessRegtreeMllrDiagGmmReaderMapped;
 typedef SequentialTableReader< KaldiObjectHolder<RegtreeMllrDiagGmm> >
             RegtreeMllrDiagGmmSeqReader;
 

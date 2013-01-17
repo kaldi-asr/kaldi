@@ -76,6 +76,7 @@ class DecodableAmNnet: public DecodableInterface {
     KALDI_ASSERT(frame < NumFrames());
     return (frame == NumFrames() - 1);
   }
+
  protected:
   const TransitionModel &trans_model_;
   Matrix<BaseFloat> log_probs_; // actually not really probabilities, since we divide

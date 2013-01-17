@@ -1,6 +1,7 @@
 // featbin/compute-plp-feats.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,19 +74,12 @@ int main(int argc, char *argv[]) {
     BaseFloatMatrixWriter kaldi_writer;  // typedef to TableWriter<something>.
     TableWriter<HtkMatrixHolder> htk_writer;
 
-    RandomAccessTokenReader utt2spk_reader;  // relates to VTLN.
-    if (utt2spk_rspecifier != "") {
+    if (utt2spk_rspecifier != "")
       KALDI_ASSERT(vtln_map_rspecifier != "" && "the utt2spk option is only "
                    "needed if the vtln-map option is used.");
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Error opening utt2spk object.";
-    }
-    RandomAccessBaseFloatReader vtln_map_reader;  // relates to VTLN.
-    if (vtln_map_rspecifier != "") {
-      if (!vtln_map_reader.Open(vtln_map_rspecifier))
-        KALDI_ERR << "Error opening vtln-map object.";
-    }
-
+    RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
+                                                      utt2spk_rspecifier);
+    
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "
@@ -128,20 +122,12 @@ int main(int argc, char *argv[]) {
       }
       BaseFloat vtln_warp_local;  // Work out VTLN warp factor.
       if (vtln_map_rspecifier != "") {
-        std::string utt_or_spk;
-        if (utt2spk_rspecifier != "") {
-          if (!utt2spk_reader.HasKey(utt)) {
-            KALDI_WARN << "No utt2spk entry for utterance-id " << utt;
-            continue;
-          }
-          utt_or_spk = utt2spk_reader.Value(utt);
-        } else utt_or_spk = utt;
-        if (!vtln_map_reader.HasKey(utt_or_spk)) {
+        if (!vtln_map_reader.HasKey(utt)) {
           KALDI_WARN << "No vtln-map entry for utterance-id (or speaker-id) "
-                     << utt_or_spk;
+                     << utt;
           continue;
         }
-        vtln_warp_local = vtln_map_reader.Value(utt_or_spk);
+        vtln_warp_local = vtln_map_reader.Value(utt);
       } else {
         vtln_warp_local = vtln_warp;
       }

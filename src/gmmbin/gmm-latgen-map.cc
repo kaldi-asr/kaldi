@@ -183,7 +183,8 @@ int main(int argc, char *argv[]) {
       Input is(model_in_filename, &binary_read);
       trans_model.Read(is.Stream(), binary_read);
     }
-    RandomAccessMapAmDiagGmmReader gmms_reader(gmms_rspecifier);
+    RandomAccessMapAmDiagGmmReaderMapped gmms_reader(gmms_rspecifier,
+                                                     utt2spk_rspecifier);
 
     Int32VectorWriter words_writer(words_wspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
@@ -218,7 +219,6 @@ int main(int argc, char *argv[]) {
     int num_success = 0, num_fail = 0;
     Timer timer;
 
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
     if (ClassifyRspecifier(fst_in_filename, NULL, NULL) == kNoRspecifier) {
       // Input FST is just one FST, not a table of FSTs.
       VectorFst<StdArc> *decode_fst = NULL;
@@ -236,26 +236,14 @@ int main(int argc, char *argv[]) {
       for (; !feature_reader.Done(); feature_reader.Next()) {
         string utt = feature_reader.Key();
 
-        string utt_or_spk;
-        if (utt2spk_rspecifier == "") utt_or_spk = utt;
-        else {
-          if (!utt2spk_reader.HasKey(utt)) {
-            KALDI_WARN << "Utterance " << utt
-                       << " not present in utt2spk map; "
-                       << "skipping this utterance.";
-            num_fail++;
-            continue;
-          } else utt_or_spk = utt2spk_reader.Value(utt);
-        }
-
-        if (!gmms_reader.HasKey(utt_or_spk)) {
-          KALDI_WARN << "Utterance " << utt_or_spk
+        if (!gmms_reader.HasKey(utt)) {
+          KALDI_WARN << "Utterance " << utt
                      << " has no corresponding MAP model skipping this utterance.";
           num_fail++;
           continue;
         }
         AmDiagGmm am_gmm;
-        am_gmm.CopyFromAmDiagGmm(gmms_reader.Value(utt_or_spk));
+        am_gmm.CopyFromAmDiagGmm(gmms_reader.Value(utt));
 
         Matrix<BaseFloat> features(feature_reader.Value());
         feature_reader.FreeCurrent();
@@ -291,26 +279,14 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        string utt_or_spk;
-        if (utt2spk_rspecifier == "") utt_or_spk = utt;
-        else {
-          if (!utt2spk_reader.HasKey(utt)) {
-            KALDI_WARN << "Utterance " << utt
-                       << " not present in utt2spk map; "
-                       << "skipping this utterance.";
-            num_fail++;
-            continue;
-          } else utt_or_spk = utt2spk_reader.Value(utt);
-        }
-
-        if (!gmms_reader.HasKey(utt_or_spk)) {
-          KALDI_WARN << "Utterance " << utt_or_spk
+        if (!gmms_reader.HasKey(utt)) {
+          KALDI_WARN << "Utterance " << utt
                      << " has no corresponding MAP model skipping this utterance.";
           num_fail++;
           continue;
         }
         AmDiagGmm am_gmm;
-        am_gmm.CopyFromAmDiagGmm(gmms_reader.Value(utt_or_spk));
+        am_gmm.CopyFromAmDiagGmm(gmms_reader.Value(utt));
         
         Matrix<BaseFloat> features(feature_reader.Value());
         feature_reader.FreeCurrent();

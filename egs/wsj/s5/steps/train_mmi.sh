@@ -59,11 +59,12 @@ cp $alidir/splice_opts $dir 2>/dev/null
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-cp $alidir/{final.mdl,tree} $dir
+cp $alidir/tree $dir
+cp $alidir/final.mdl $dir/0.mdl
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-# Set up featuresl
+# Set up features
 
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
@@ -85,7 +86,6 @@ if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then
 fi
 
 
-cur_mdl=$alidir/final.mdl
 x=0
 while [ $x -lt $num_iters ]; do
   echo "Iteration $x of MMI training"
@@ -93,11 +93,11 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-      gmm-rescore-lattice $cur_mdl "$lats" "$feats" ark:- \| \
+      gmm-rescore-lattice $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
-      gmm-acc-stats2 $cur_mdl "$feats" ark,s,cs:- \
+      gmm-acc-stats2 $dir/$x.mdl "$feats" ark,s,cs:- \
       $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
 
     n=`echo $dir/{num,den}_acc.$x.*.acc | wc -w`;
@@ -117,11 +117,10 @@ while [ $x -lt $num_iters ]; do
   # them available [here they're not available if cancel=true].
 
     $cmd $dir/log/update.$x.log \
-      gmm-est-gaussians-ebw --tau=$tau $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - \| \
+      gmm-est-gaussians-ebw --tau=$tau $dir/$x.mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc - \| \
       gmm-est-weights-ebw --weight-tau=$weight_tau - $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
     rm $dir/{den,num}_acc.$x.acc
   fi
-  cur_mdl=$dir/$[$x+1].mdl
 
   # Some diagnostics: the objective function progress and auxiliary-function
   # improvement.

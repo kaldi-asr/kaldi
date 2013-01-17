@@ -18,7 +18,8 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         copy-int-vector-vector thresh-post \
         align-mapped align-compiled-mapped latgen-faster-mapped \
         hmm-info pdf-to-counts analyze-counts extract-ctx post-to-phone-post \
-        post-to-pdf-post
+        post-to-pdf-post duplicate-matrix logprob-to-post prob-to-post copy-post \
+        matrix-logprob
 
 OBJFILES = 
 

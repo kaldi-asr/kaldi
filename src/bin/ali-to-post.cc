@@ -1,6 +1,7 @@
 // bin/ali-to-post.cc
 
-// Copyright 2009-2011  Microsoft Corporation, Go-Vivace Inc.
+// Copyright 2009-2012  Microsoft Corporation, Go-Vivace Inc.,
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,12 +47,12 @@ int main(int argc, char *argv[]) {
     std::string alignments_rspecifier = po.GetArg(1);
     std::string posteriors_wspecifier = po.GetArg(2);
 
-    int32 num_alignments = 0;
+    int32 num_done = 0;
     SequentialInt32VectorReader alignment_reader(alignments_rspecifier);
     PosteriorWriter posterior_writer(posteriors_wspecifier);
 
     for (; !alignment_reader.Done(); alignment_reader.Next()) {
-      num_alignments++;
+      num_done++;
       const std::vector<int32> &alignment = alignment_reader.Value();
       // Posterior is vector<vector<pair<int32, BaseFloat> > >
       Posterior post(alignment.size());
@@ -61,7 +62,8 @@ int main(int argc, char *argv[]) {
       }
       posterior_writer.Write(alignment_reader.Key(), post);
     }
-    KALDI_LOG << "ali-to-post: converted " << num_alignments << " alignments.";
+    KALDI_LOG << "Converted " << num_done << " alignments.";
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

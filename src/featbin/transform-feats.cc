@@ -1,6 +1,7 @@
 // featbin/transform-feats.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2012  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
 
-    RandomAccessBaseFloatMatrixReader transform_reader;
+    RandomAccessBaseFloatMatrixReaderMapped transform_reader;
     bool use_global_transform;
     Matrix<BaseFloat> global_transform;
     if (ClassifyRspecifier(transform_rspecifier_or_rxfilename, NULL, NULL)
@@ -62,9 +63,12 @@ int main(int argc, char *argv[]) {
       global_transform.Read(ki.Stream(), binary_in);
     } else {  // an rspecifier -> not a global transform.
       use_global_transform = false;
-      if (!transform_reader.Open(transform_rspecifier_or_rxfilename)) {
+      if (!transform_reader.Open(transform_rspecifier_or_rxfilename,
+                                 utt2spk_rspecifier)) {
         KALDI_ERR << "Problem opening transforms with rspecifier "
-                  << transform_rspecifier_or_rxfilename;
+                  << '"' << transform_rspecifier_or_rxfilename << '"'
+                  << " and utt2spk rspecifier "
+                  << '"' << utt2spk_rspecifier;
       }
     }
 
@@ -74,42 +78,18 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_error = 0;
     BaseFloat cached_logdet = -1;
     
-    RandomAccessTokenReader utt2spk_reader;
-    if (utt2spk_rspecifier != "") {
-      if (!utt2spk_reader.Open(utt2spk_rspecifier))
-        KALDI_ERR << "Error upening utt2spk map from "
-                   << utt2spk_rspecifier;
-    }
-
     for (;!feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
       const Matrix<BaseFloat> &feat(feat_reader.Value());
-      std::string utt_or_spk;  // key for fmllr
-      if (utt2spk_rspecifier == "") utt_or_spk = utt;
-      else {
-        if (utt2spk_reader.HasKey(utt))
-          utt_or_spk = utt2spk_reader.Value(utt);
-        else {  // can't really recover from this error.
-          KALDI_WARN << "Utt2spk map has no value for utterance "
-                     << utt << ", producing no output for this utterance";
-          num_error++;
-          continue;
-        }
-      }
-      if (!use_global_transform && !transform_reader.HasKey(utt_or_spk)) {
-        if (utt_or_spk == utt) 
-          KALDI_WARN << "No fMLLR transform available for utterance "
-                     << utt << ", producing no output for this utterance";
-        else
-          KALDI_WARN << "No fMLLR transform available for utterance "
-                     << utt << " [spk = " << utt_or_spk
-                     << "], producing no output for this utterance";
 
+      if (!use_global_transform && !transform_reader.HasKey(utt)) {
+        KALDI_WARN << "No fMLLR transform available for utterance "
+                   << utt << ", producing no output for this utterance";
         num_error++;
         continue;
       }
       const Matrix<BaseFloat> &trans =
-          (use_global_transform ? global_transform : transform_reader.Value(utt_or_spk));
+          (use_global_transform ? global_transform : transform_reader.Value(utt));
       int32 transform_rows = trans.NumRows(),
           transform_cols = trans.NumCols(),
           feat_dim = feat.NumCols();
@@ -126,7 +106,7 @@ int main(int argc, char *argv[]) {
         offset.CopyColFromMat(trans, feat_dim);
         feat_out.AddVecToRows(1.0, offset);
       } else {
-        KALDI_WARN << "Transform matrix for key " << utt_or_spk << " has bad dimension "
+        KALDI_WARN << "Transform matrix for utterance " << utt << " has bad dimension "
                    << transform_rows << "x" << transform_cols << " versus feat dim "
                    << feat_dim;
         if (transform_cols == feat_dim+2)

@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
     // crashes on systems with low virtual memory.
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessSgmm2GauPostReader gpost_reader(gpost_rspecifier);
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
 
     AmSgmm2 am_sgmm;
     TransitionModel trans_model;
@@ -99,26 +99,13 @@ int main(int argc, char *argv[]) {
       }
       const Sgmm2GauPost &gpost = gpost_reader.Value(utt);
 
-      string utt_or_spk;
-      if (utt2spk_rspecifier.empty())  utt_or_spk = utt;
-      else {
-        if (!utt2spk_reader.HasKey(utt)) {
-          KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                     << "skipping this utterance.";
-          num_err++;
-          continue;
-        } else {
-          utt_or_spk = utt2spk_reader.Value(utt);
-        }
-      }
-
       Sgmm2PerSpkDerivedVars spk_vars;
       if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt_or_spk)) {
-          spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt_or_spk));
+        if (spkvecs_reader.HasKey(utt)) {
+          spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
           am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
         } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+          KALDI_WARN << "Cannot find speaker vector for " << utt;
           num_err++;
           continue;
         }

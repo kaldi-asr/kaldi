@@ -24,10 +24,31 @@
 
 $jobstart=1;
 $jobend=1;
+$qsub_opts=""; # These will be ignored.
 
-# First parse an option like JOB=1:4
+# First parse an option like JOB=1:4, and any
+# options that would normally be given to 
+# queue.pl, which we will just discard.
 
 if (@ARGV > 0) {
+  while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) { # parse any options
+    # that would normally go to qsub, but which will be ignored here.
+    $switch = shift @ARGV;
+    if ($switch eq "-V") {
+      $qsub_opts .= "-V ";
+    } else {
+      $option = shift @ARGV;
+      if ($switch eq "-sync" && $option =~ m/^[yY]/) {
+        $qsub_opts .= "-sync "; # Note: in the
+        # corresponding coce in queue.pl it says instead, just "$sync = 1;".
+      }
+      $qsub_opts .= "$switch $option ";
+      if ($switch eq "-pe") { # e.g. -pe smp 5
+        $option2 = shift @ARGV;
+        $qsub_opts .= "$option2 ";
+      }
+    }
+  }
   if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) {
     $jobname = $1;
     $jobstart = $2;
@@ -44,6 +65,10 @@ if (@ARGV > 0) {
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
     print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
+}
+
+if ($qsub_opts ne "") {
+  print STDERR "Warning: run.pl ignoring options \"$qsub_opts\"\n";
 }
 
 $logfile = shift @ARGV;

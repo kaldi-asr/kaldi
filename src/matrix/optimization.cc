@@ -41,6 +41,8 @@ OptimizeLbfgs<Real>::OptimizeLbfgs(const VectorBase<Real> &x,
   rho_.Resize(opts.m);
   // Just set f_ to some invalid value, as we haven't yet set it.
   f_ = (opts.minimize ? 1 : -1 ) * std::numeric_limits<Real>::infinity();
+  best_f_ = f_;
+  best_x_ = x_;
 }
 
 
@@ -375,6 +377,10 @@ void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
 template<class Real>
 void OptimizeLbfgs<Real>::DoStep(Real function_value,
                                  const VectorBase<Real> &gradient) {
+  if (opts_.minimize ? function_value < best_f_ : function_value > best_f_) {
+    best_f_ = function_value;
+    best_x_.CopyFromVec(new_x_);
+  }
   if (computation_state_ == kBeforeStep)
     ComputeNewDirection(function_value, gradient);
   else // kWithinStep{1,2,3}
@@ -385,6 +391,10 @@ template<class Real>
 void OptimizeLbfgs<Real>::DoStep(Real function_value,
                                  const VectorBase<Real> &gradient,
                                  const VectorBase<Real> &diag_approx_2nd_deriv) {
+  if (opts_.minimize ? function_value < best_f_ : function_value > best_f_) {
+    best_f_ = function_value;
+    best_x_.CopyFromVec(new_x_);
+  }
   if (opts_.minimize) {
     KALDI_ASSERT(diag_approx_2nd_deriv.Min() > 0.0);
   } else {
@@ -399,8 +409,8 @@ void OptimizeLbfgs<Real>::DoStep(Real function_value,
 template<class Real>
 const VectorBase<Real>&
 OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
-  if (objf_value != NULL) *objf_value = f_;
-  return x_;
+  if (objf_value != NULL) *objf_value = best_f_;
+  return best_x_;
 }
 
 

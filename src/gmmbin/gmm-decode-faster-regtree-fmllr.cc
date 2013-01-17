@@ -1,6 +1,7 @@
 // gmmbin/gmm-decode-faster-regtree-fmllr.cc
 
-// Copyright 2009-2011  Microsoft Corporation;  Saarland University
+// Copyright 2009-2012  Microsoft Corporation;  Saarland University;
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -178,7 +179,8 @@ int main(int argc, char *argv[]) {
       regtree.Read(in.Stream(), binary_read, am_gmm);
     }
 
-    RandomAccessRegtreeFmllrDiagGmmReader fmllr_reader(xforms_rspecifier);
+    RandomAccessRegtreeFmllrDiagGmmReaderMapped fmllr_reader(xforms_rspecifier,
+                                                             utt2spk_rspecifier);
 
     Int32VectorWriter words_writer(words_wspecifier);
 
@@ -204,23 +206,10 @@ int main(int argc, char *argv[]) {
                            allow_partial, words_writer, alignment_writer,
                            word_syms);
 
-
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-
-
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     for (; !feature_reader.Done(); feature_reader.Next()) {
       string utt = feature_reader.Key();
-      string utt_or_spk;
-      if (utt2spk_rspecifier == "") utt_or_spk = utt;
-      else {
-        if (!utt2spk_reader.HasKey(utt)) {
-          KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                     << "skipping this utterance.";
-          num_fail++;
-          continue;
-        } else utt_or_spk = utt2spk_reader.Value(utt);
-      }
+
       Matrix<BaseFloat> features(feature_reader.Value());
       feature_reader.FreeCurrent();
       if (features.NumRows() == 0) {
@@ -229,8 +218,8 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      if (!fmllr_reader.HasKey(utt_or_spk)) {  // Decode without FMLLR if none found
-        KALDI_WARN << "No FMLLR transform for key " << utt_or_spk <<
+      if (!fmllr_reader.HasKey(utt)) {  // Decode without FMLLR if none found
+        KALDI_WARN << "No FMLLR transform for key " << utt <<
             ", decoding without fMLLR.";
         kaldi::DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model,
                                                       features,
@@ -246,7 +235,7 @@ int main(int argc, char *argv[]) {
       }
 
       // If found, load the transforms for the current utterance.
-      RegtreeFmllrDiagGmm fmllr(fmllr_reader.Value(utt_or_spk));
+      RegtreeFmllrDiagGmm fmllr(fmllr_reader.Value(utt));
       if (fmllr.NumRegClasses() == 1) {
         Matrix<BaseFloat> xformed_features(features);
         Matrix<BaseFloat> fmllr_matrix;

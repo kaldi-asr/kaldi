@@ -173,9 +173,12 @@ class OptimizeLbfgs {
 
   Vector<Real> x_; // current x.
   Vector<Real> new_x_; // the x proposed in the line search.
+  Vector<Real> best_x_; // the x with the best objective function so far
+                        // (either the same as x_ or something in the current line search.)
   Vector<Real> deriv_; // The most recently evaluated derivative-- at x_k.
   Vector<Real> temp_;
   Real f_; // The function evaluated at x_k.
+  Real best_f_; // the best objective function so far.
   Real d_; // a number d > 1.0, but during an iteration we may decrease this, when
   // we switch between armijo and wolfe failures.
 

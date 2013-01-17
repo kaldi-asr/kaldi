@@ -103,6 +103,12 @@ prefix of the utterance id; this is important for reasons relating to the sortin
 these files.  The rest of the line is the transcription of each sentence.  You don't
 have to make sure that all words in this file are in your vocabulary; out of vocabulary words will
 get mapped to a word specified in the file data/lang/oov.txt.    
+Note: although, in this particular example we have used an underscore to separate the
+"speaker" and "utterance" parts of the utterance-id, in general it is probably safer to
+use a dash ("-").  This is because it has a lower ASCII value; it has been pointed out
+to me that if an underscore is used, and if the speaker-ids vary in length, in certain 
+cases the speaker-ids and their corresponding utterance ids can end up being sorted in 
+different orders when using the standard "C"-style ordering on strings.
 \endverbatim
 Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim

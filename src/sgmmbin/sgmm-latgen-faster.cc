@@ -39,9 +39,8 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
                       double log_prune,
                       double acoustic_scale,
                       const Matrix<BaseFloat> &features,
-                      RandomAccessTokenReader &utt2spk_reader,
                       RandomAccessInt32VectorVectorReader &gselect_reader,
-                      RandomAccessBaseFloatVectorReader &spkvecs_reader,
+                      RandomAccessBaseFloatVectorReaderMapped &spkvecs_reader,
                       const fst::SymbolTable *word_syms,
                       const std::string &utt,
                       bool determinize,
@@ -52,22 +51,14 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
                       LatticeWriter *lattice_writer,
                       double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
-  std::string utt_or_spk;  
-  if (utt2spk_reader.IsOpen()) {
-    if (!utt2spk_reader.HasKey(utt)) {
-      KALDI_WARN << "Utterance " << utt << " not present in utt2spk map; "
-                 << "skipping this utterance.";
-      return false;
-    } else { utt_or_spk = utt2spk_reader.Value(utt); }
-  } else { utt_or_spk = utt; }
 
   SgmmPerSpkDerivedVars spk_vars;
   if (spkvecs_reader.IsOpen()) {
-    if (spkvecs_reader.HasKey(utt_or_spk)) {
-      spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+    if (spkvecs_reader.HasKey(utt)) {
+      spk_vars.v_s = spkvecs_reader.Value(utt);
       am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
     } else {
-      KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk << ", not decoding this utterance";
+      KALDI_WARN << "Cannot find speaker vector for " << utt << ", not decoding this utterance";
       return false; // We could use zero, but probably the user would want to know about this
       // (this would normally be a script error or some kind of failure).
     }
@@ -175,8 +166,9 @@ int main(int argc, char *argv[]) {
                    << word_syms_filename;
 
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
+                                                     
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
@@ -218,7 +210,7 @@ int main(int argc, char *argv[]) {
           }
           double like;
           if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
-                               features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
+                               features, gselect_reader, spkvecs_reader, word_syms,
                                utt, determinize, allow_partial,
                                &alignment_writer, &words_writer, &compact_lattice_writer,
                                &lattice_writer, &like)) {
@@ -252,7 +244,7 @@ int main(int argc, char *argv[]) {
         LatticeFasterDecoder decoder(fst_reader.Value(), decoder_opts);
         double like;
         if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune, acoustic_scale,
-                             features, utt2spk_reader, gselect_reader, spkvecs_reader, word_syms,
+                             features, gselect_reader, spkvecs_reader, word_syms,
                              utt, determinize, allow_partial,
                              &alignment_writer, &words_writer, &compact_lattice_writer,
                              &lattice_writer, &like)) {

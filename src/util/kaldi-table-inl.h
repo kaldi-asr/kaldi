@@ -2132,6 +2132,64 @@ void TableWriter<Holder>::CheckImpl() const {
   }
 }
 
+template<class Holder>
+RandomAccessTableReaderMapped<Holder>::RandomAccessTableReaderMapped(
+    const std::string &table_rxfilename,
+    const std::string &utt2spk_rxfilename):
+    reader_(table_rxfilename), token_reader_(table_rxfilename.empty() ? "" :
+                                             utt2spk_rxfilename),
+    utt2spk_rxfilename_(utt2spk_rxfilename) { }
+
+template<class Holder>
+bool RandomAccessTableReaderMapped<Holder>::Open(
+    const std::string &table_rxfilename,
+    const std::string &utt2spk_rxfilename) {
+  if (reader_.IsOpen()) reader_.Close();
+  if (token_reader_.IsOpen()) token_reader_.Close();
+  KALDI_ASSERT(!table_rxfilename.empty());
+  if (!reader_.Open(table_rxfilename)) return false; // will have printed
+  // warning internally, probably.
+  if (!utt2spk_rxfilename.empty()) {
+    if (!token_reader_.Open(utt2spk_rxfilename)) {
+      reader_.Close();
+      return false;
+    }
+  }
+  return true;
+}
+
+
+template<class Holder>
+bool RandomAccessTableReaderMapped<Holder>::HasKey(const std::string &utt) {
+  // We don't check IsOpen, we let the call go through to the member variable
+  // (reader_), which will crash with a more informative error message than
+  // we can give here, as we don't any longer know the rxfilename.
+  if (token_reader_.IsOpen()) { // We need to map the key from utt to spk.
+    if (!token_reader_.HasKey(utt))
+      KALDI_ERR << "Attempting to read key " << utt << ", which is not present "
+                << "in utt2spk map or similar map being read from "
+                << PrintableRxfilename(utt2spk_rxfilename_);
+    const std::string &spk = token_reader_.Value(utt);
+    return reader_.HasKey(spk);
+  } else {
+    return reader_.HasKey(utt);
+  }
+}
+
+template<class Holder>
+const typename Holder::T& RandomAccessTableReaderMapped<Holder>::Value(
+    const std::string &utt) {
+  if (token_reader_.IsOpen()) { // We need to map the key from utt to spk.
+    if (!token_reader_.HasKey(utt))
+      KALDI_ERR << "Attempting to read key " << utt << ", which is not present "
+                << "in utt2spk map or similar map being read from "
+                << PrintableRxfilename(utt2spk_rxfilename_);
+    const std::string &spk = token_reader_.Value(utt);
+    return reader_.Value(spk);
+  } else {
+    return reader_.Value(utt);
+  }
+}
 
 
 

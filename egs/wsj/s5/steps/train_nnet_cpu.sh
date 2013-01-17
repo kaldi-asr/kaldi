@@ -88,11 +88,13 @@ if [ $# != 4 ]; then
   echo "                                                   # per context-dependent state.  Try a number several times #states."
   echo "  --num-jobs-nnet <num-jobs|8>                     # Number of parallel jobs to use for main neural net"
   echo "                                                   # training (will affect results as well as speed; try 8, 16)"
+  echo "                                                   # Note: if you increase this, you may want to also increase"
+  echo "                                                   # the learning rate."
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
-  echo "                                                   # as well as speed.)"
-  echo "  --parallel-opts <opts|\"\">                      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads. (Recommend \"-pe smp 16\" if --num-threads is 16"
-  echo "                                                   # and using queue.pl with GridEngine"
+  echo "                                                   # as well as speed; may interact with batch size; if you increase"
+  echo "                                                   # this, you may want to decrease the batch size."
+  echo "  --parallel-opts <opts|\"-pe smp 16\">            # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads."
   echo "  --shuffle-opts <opts|\"-tc 5\">                  # Options given to e.g. queue.pl for the job that shuffles the "
   echo "                                                   # data. (prevents stressing the disk). "
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
@@ -390,7 +392,7 @@ while [ $x -lt $num_iters ]; do
          nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
            scp:$dir/temp/egs.$x.JOB.scp ark:- \| \
          nnet-train-parallel --num-threads=$num_threads --minibatch-size=$minibatch_size \
-        --verbose=2 "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
+         "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
        || exit 1;
 
     nnets_list=
@@ -400,7 +402,7 @@ while [ $x -lt $num_iters ]; do
 
     learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
 
-    $cmd $parallel_opts $dir/log/average.$x.log \
+    $cmd $dir/log/average.$x.log \
        nnet-am-average $nnets_list - \| \
        nnet-am-copy --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
 
@@ -409,7 +411,7 @@ while [ $x -lt $num_iters ]; do
         # For earlier iterations (while we've recently beeen adding layers), or every
         # $shrink_interval=3 iters , just do shrinking normally.
         $cmd $parallel_opts $dir/log/shrink.$x.log \
-          MKL_NUM_THREADS=mkl_num_threads nnet-combine-fast --num-threads=$num_threads --verbose=3 \
+          MKL_NUM_THREADS=$mkl_num_threads nnet-combine-fast --num-threads=$num_threads --verbose=3 \
             --minibatch-size=$[($num_valid_frames_shrink+$num_threads-1)/$num_threads] \
             $dir/$[$x+1].mdl ark:$dir/valid_shrink.egs $dir/$[$x+1].mdl || exit 1;
       fi

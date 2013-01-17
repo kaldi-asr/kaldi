@@ -55,11 +55,12 @@ mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null
 echo $nj > $dir/num_jobs
 
-cp $alidir/{final.mdl,tree} $dir
+cp $alidir/tree $dir
+cp $alidir/final.mdl $dir/0.mdl
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-# Set up featuresl
+# Set up features
 
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
@@ -101,8 +102,6 @@ if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then
   lats="$lats lattice-boost-ali --b=$boost --silence-phones=$silphonelist $alidir/final.mdl ark:- 'ark,s,cs:gunzip -c $alidir/ali.JOB.gz|' ark:- |"
 fi
 
-
-cur_mdl=$alidir/final.mdl
 x=0
 while [ $x -lt $num_iters ]; do
   echo "Iteration $x of MMI training"
@@ -110,11 +109,11 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-      sgmm-rescore-lattice "$gselect_opt" $spkvecs_opt $cur_mdl "$lats" "$feats" ark:- \| \
+      sgmm-rescore-lattice "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
-      sgmm-acc-stats2 "$gselect_opt" $spkvecs_opt $cur_mdl "$feats" ark,s,cs:- \
+      sgmm-acc-stats2 "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$feats" ark,s,cs:- \
         $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
 
     n=`echo $dir/{num,den}_acc.$x.*.acc | wc -w`;
@@ -128,10 +127,8 @@ while [ $x -lt $num_iters ]; do
     rm $dir/num_acc.$x.*.acc
 
     $cmd $dir/log/update.$x.log \
-     sgmm-est-ebw $update_opts $cur_mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
+     sgmm-est-ebw $update_opts $dir/$x.mdl $dir/num_acc.$x.acc $dir/den_acc.$x.acc $dir/$[$x+1].mdl || exit 1;
   fi
-  cur_mdl=$dir/$[$x+1].mdl
-
 
   # Some diagnostics: the objective function progress and auxiliary-function
   # improvement.  Note: this code is same as in train_mmi.sh

@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal)
 //                2012  Johns Hopkins University (Author: Daniel Povey);  Chao Weng
+//
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +35,7 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   times->clear();
   times->resize(num_states, -1);
   (*times)[0] = 0;
-  for (int32 state = 0; state < num_states; state++) {
+  for (int32 state = 0; state < num_states; state++) { 
     int32 cur_time = (*times)[state];
     for (fst::ArcIterator<Lattice> aiter(lat, state); !aiter.Done();
         aiter.Next()) {
@@ -122,7 +123,8 @@ bool PruneLattice(BaseFloat beam, LatType *lat) {
   // less than this.
   double best_final_cost = std::numeric_limits<double>::infinity();
   // Update the forward probs.
-  for (int32 state = 1; state < num_states; state++) {
+  // Thanks to Jing Zheng for finding a bug here.
+  for (int32 state = 0; state < num_states; state++) {
     double this_forward_cost = forward_cost[state];
     for (fst::ArcIterator<LatType> aiter(*lat, state);
          !aiter.Done();
@@ -142,7 +144,7 @@ bool PruneLattice(BaseFloat beam, LatType *lat) {
       best_final_cost = this_final_cost;
   }
   int32 bad_state = lat->AddState(); // this state is not final.
-  double cutoff = best_final_cost - beam;
+  double cutoff = best_final_cost + beam;
   
   // Go backwards updating the backward probs (which share memory with the
   // forward probs), and pruning arcs and deleting final-probs.  We prune arcs

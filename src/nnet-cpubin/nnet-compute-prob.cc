@@ -31,18 +31,17 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Computes and prints the average log-prob per frame of the given data with a\n"
-        "neural net.  The input of this is the output of nnet-randomize-frames\n"
-        "(the randomization doesn't matter; what matters is the format)\n"
+        "neural net.  The input of this is the output of e.g. nnet-get-egs\n"
         "Aside from the logging output, which goes to the standard error, this program\n"
         "prints the average log-prob per frame to the standard output.\n"
+        "Also see nnet-logprob, which produces a matrix of log-probs for each utterance.\n"
         "\n"
         "Usage:  nnet-compute-prob [options] <model-in> <training-examples-in>\n"
         "\n"
         "nnet-randomize-frames [args] | nnet-compute-prob 1.nnet ark:-\n";
     
-    
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
     
     if (po.NumArgs() != 2) {

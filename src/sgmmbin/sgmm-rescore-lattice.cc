@@ -139,9 +139,9 @@ int main(int argc, char *argv[]) {
       am_sgmm.Read(ki.Stream(), binary);
     }
 
-    RandomAccessTokenReader utt2spk_reader(utt2spk_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
-    RandomAccessBaseFloatVectorReader spkvecs_reader(spkvecs_rspecifier);
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     // Read as regular lattice
     SequentialLatticeReader lattice_reader(lats_rspecifier);
@@ -150,9 +150,9 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, num_no_feats = 0, num_other_error = 0;
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
-      if (!feature_reader.HasKey(key)) {
-        KALDI_WARN << "No feature found for utterance " << key << ". Skipping";
+      std::string utt = lattice_reader.Key();
+      if (!feature_reader.HasKey(utt)) {
+        KALDI_WARN << "No feature found for utterance " << utt << ". Skipping";
         num_no_feats++;
         continue;
       }
@@ -170,57 +170,44 @@ int main(int argc, char *argv[]) {
 
       vector<int32> state_times;
       int32 max_time = kaldi::LatticeStateTimes(lat, &state_times);
-      const Matrix<BaseFloat> &feats = feature_reader.Value(key);
+      const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
       if (feats.NumRows() != max_time) {
-        KALDI_WARN << "Skipping utterance " << key << " since number of time "
+        KALDI_WARN << "Skipping utterance " << utt << " since number of time "
                    << "frames in lattice ("<< max_time << ") differ from "
                    << "number of feature frames (" << feats.NumRows() << ").";
         num_other_error++;
         continue;
       }
 
-      std::string utt_or_spk; // used to work out speaker vector.
-      if (utt2spk_rspecifier.empty())  utt_or_spk = key;
-      else {
-        if (!utt2spk_reader.HasKey(key)) {
-          KALDI_WARN << "Utterance " << key << " not present in utt2spk map; "
-                     << "skipping this utterance.";
-          num_other_error++;
-          continue;
-        } else {
-          utt_or_spk = utt2spk_reader.Value(key);
-        }
-      }
-
       // Get speaker vectors      
       SgmmPerSpkDerivedVars spk_vars;
       if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt_or_spk)) {
-          spk_vars.v_s = spkvecs_reader.Value(utt_or_spk);
+        if (spkvecs_reader.HasKey(utt)) {
+          spk_vars.v_s = spkvecs_reader.Value(utt);
           am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
         } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt_or_spk;
+          KALDI_WARN << "Cannot find speaker vector for " << utt;
           num_other_error++;
           continue;
         }
       }  // else spk_vars is "empty"
 
       bool have_gselect  = !gselect_rspecifier.empty()
-          && gselect_reader.HasKey(key)
-          && gselect_reader.Value(key).size() == feats.NumRows();
+          && gselect_reader.HasKey(utt)
+          && gselect_reader.Value(utt).size() == feats.NumRows();
       if (!gselect_rspecifier.empty() && !have_gselect)
         KALDI_WARN << "No Gaussian-selection info available for utterance "
-                   << key << " (or wrong size)";
+                   << utt << " (or wrong size)";
       std::vector<std::vector<int32> > empty_gselect;
       const std::vector<std::vector<int32> > *gselect =
-          (have_gselect ? &gselect_reader.Value(key) : &empty_gselect);
+          (have_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
         
       kaldi::LatticeAcousticRescore(am_sgmm, trans_model, feats,
                                     spk_vars, *gselect, sgmm_opts,
                                     log_prune, state_times, &lat);
       CompactLattice clat_out;
       ConvertLattice(lat, &clat_out);
-      compact_lattice_writer.Write(key, clat_out);
+      compact_lattice_writer.Write(utt, clat_out);
       n_done++;
     }
 

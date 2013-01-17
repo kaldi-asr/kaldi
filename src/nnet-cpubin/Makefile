@@ -12,7 +12,7 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup \
    nnet-train-lbfgs nnet-get-egs nnet-train-parallel nnet-gradient \
    nnet-get-preconditioner nnet-precondition nnet-select-egs nnet-combine-fast \
-   nnet-subset-egs nnet-shuffle-egs nnet-am-fix
+   nnet-subset-egs nnet-shuffle-egs nnet-am-fix nnet-logprob  nnet-logprob2
 
 OBJFILES =
 

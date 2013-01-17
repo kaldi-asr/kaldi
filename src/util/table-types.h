@@ -34,14 +34,17 @@ namespace kaldi {
 typedef TableWriter<KaldiObjectHolder<Matrix<BaseFloat> > >  BaseFloatMatrixWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Matrix<BaseFloat> > >  SequentialBaseFloatMatrixReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Matrix<BaseFloat> > >  RandomAccessBaseFloatMatrixReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<Matrix<BaseFloat> > >  RandomAccessBaseFloatMatrixReaderMapped;
 
 typedef TableWriter<KaldiObjectHolder<Matrix<double> > >  DoubleMatrixWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Matrix<double> > >  SequentialDoubleMatrixReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Matrix<double> > >  RandomAccessDoubleMatrixReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<Matrix<double> > >  RandomAccessDoubleMatrixReaderMapped;
 
 typedef TableWriter<KaldiObjectHolder<Vector<BaseFloat> > >  BaseFloatVectorWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Vector<BaseFloat> > >  SequentialBaseFloatVectorReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Vector<BaseFloat> > >  RandomAccessBaseFloatVectorReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<Vector<BaseFloat> > >  RandomAccessBaseFloatVectorReaderMapped;
 
 typedef TableWriter<KaldiObjectHolder<Vector<double> > >  DoubleVectorWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Vector<double> > >  SequentialDoubleVectorReader;
@@ -71,6 +74,7 @@ typedef RandomAccessTableReader<BasicPairVectorHolder<BaseFloat> >  RandomAccess
 typedef TableWriter<BasicHolder<BaseFloat> >  BaseFloatWriter;
 typedef SequentialTableReader<BasicHolder<BaseFloat> >  SequentialBaseFloatReader;
 typedef RandomAccessTableReader<BasicHolder<BaseFloat> >  RandomAccessBaseFloatReader;
+typedef RandomAccessTableReaderMapped<BasicHolder<BaseFloat> >  RandomAccessBaseFloatReaderMapped;
 
 typedef TableWriter<BasicHolder<double> >  DoubleWriter;
 typedef SequentialTableReader<BasicHolder<double> >  SequentialDoubleReader;
@@ -118,6 +122,7 @@ typedef RandomAccessTableReader<GauPostHolder> RandomAccessGauPostReader;
 // [not done yet].
 
 } // end namespace kaldi
+
 
 
 #endif

@@ -18,7 +18,7 @@ l1_penalty=0.0     # L1 regualrization constant (lassoo)
 l2_penalty=0.0     # L2 regualrization constant (weight decay)
 # data processing config
 bunch_size=256     # size of the training block
-cache_size=16384   # size of the randimization cache
+cache_size=16384   # size of the randomization cache
 randomize=true    # do the frame level randomization
 copy_feats=true   # resave the features in the re-shuffled order to tmpdir (faster reading)
 # feature config
@@ -396,6 +396,4 @@ else
 fi
 
 echo "Succeeded training the Neural Network : $dir/final.nnet"
-
-
 
