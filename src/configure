@@ -9,18 +9,21 @@
 
 
 #  Example command lines:
-# configure
-# configure --mkl-root=/opt/intel/mkl 
-# configure --mkl-root=/opt/intel/mkl --threaded-math=yes
+# ./configure
+# ./configure --mkl-root=/opt/intel/mkl 
+# ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure  --openblas-root=../tools/OpenBLAS/install # note: this
-#  # is now working, but is not a very ideal setup; we'd like to
+#  # is now working on a pure 64-bit platform, but is not a very ideal setup; we'd like to
 #  # use OpenBLAS's own headers, but they have issues that need
 #  # to be fixed.  Instead we use netlib's BLAS+CLAPACK headers and a hacked
-#  # f2c.h, in ../tools/CLAPACK.
+#  # f2c.h, in ../tools/CLAPACK.  this didn't work when gcc was configured
+#  # to compile as 32 bit.
 
 function rel2abs {
-  local retval=`cd $1 2>/dev/null && pwd || exit 1`
-  echo $retval
+  if [ ! -z "$1" ]; then
+    local retval=`cd $1 2>/dev/null && pwd || exit 1`
+    echo $retval
+  fi
 }
 
 function read_dirname {
@@ -642,6 +645,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
   elif [ $MATHLIB == "OPENBLAS" ]; then
+    OPENBLASROOT=`rel2abs $OPENBLASROOT`
     if [ -z $OPENBLASROOT ]; then
       failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
     fi
@@ -651,11 +655,11 @@ if [ "`uname`" == "Linux" ]; then
     echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
     cat makefiles/linux_openblas.mk >> kaldi.mk
     if [ $static_math ]; then
-      echo "Configuring static OpenBlas since --static-math=false (the default)"
-      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+      echo "Configuring dynamically loaded OpenBlas since --static-math=yes"
+      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
     else
-      echo "Configuring dynamically loaded OpenBlas since --static-math=true"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran"
+      echo "Configuring static OpenBlas since --static-math=no (the default)"
+      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk

@@ -44,6 +44,14 @@ Now change directory to rm/, glance at the file README.txt to see what the
 overall structure is, and cd to s1/.  This is the basic sequence of experiments
 that corresponds to the main functionality in version 1 of the toolkit.
 
+<em> Caution: this tutorial was written some time ago, when the recommended version
+of the scripts was "s1".  The current recommended version is s5.  The steps of
+the tutorial need to be modified to reflect this.  Help with this would be
+appreciated.  The source for this documentation is in the repository,
+under src/doc/.  Our recommendation at the moment is to run the s5 version
+of the scripts, but bear in mind that parts of the instructions may be out of
+date. </em>
+
 In s1/, list the directory and glance at the RESULTS file so you have some
 idea what is in there (later on, you should verify that the results you get
 are similar to what is in there).  The main file we will be looking at
