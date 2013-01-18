@@ -143,10 +143,9 @@ openblas: openblas_compiled
 
 .PHONY: openblas_compiled
 
-fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64"; }')
+fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64 INTERFACE64=1"; }')
 
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
 	$(MAKE) FC=gfortran $(fortran_opt) -C OpenBLAS
 	$(MAKE) PREFIX=`pwd`/OpenBlas -C OpenBLAS install
-
