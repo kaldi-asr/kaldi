@@ -64,8 +64,8 @@
   #else
     extern "C" {
       // May be in /usr/[local]/include if installed; else this uses the one
-      // from the external/CLAPACK-* directory.
-      #include <cblas.h>    
+      // from the tools/CLAPACK_include directory.
+      #include <cblas.h>
       #include <f2c.h>
       #include <clapack.h>  
 
@@ -85,10 +85,32 @@
   extern "C" {
     #include <mkl.h>
   }
+#elif defined(HAVE_OPENBLAS)
+extern "C" {
+  // then OpenBLAS headers are fixed, I'll change the -I line in the g++ options,
+  // and include cblas.h and f77blas.h from the directory there.  (should probably
+  // include with "" not <>, to search -I first.)
+  #include <cblas.h>
+  #include <f2c.h>
+  #include <clapack.h>
+  // get rid of macros from f2c.h -- these are dangerous.
+  #undef abs
+  #undef dabs
+  #undef min
+  #undef max
+  #undef dmin
+  #undef dmax
+  #undef bit_test
+  #undef bit_clear
+  #undef bit_set
+}
 #else
   #error "You need to define (using the preprocessor) either HAVE_CLAPACK or HAVE_ATLAS or HAVE_MKL (but not more than one)"  
 #endif
 
+#ifdef HAVE_OPENBLAS
+typedef integer KaldiBlasInt; // try int.
+#endif
 #ifdef HAVE_CLAPACK
 typedef integer KaldiBlasInt;
 #endif

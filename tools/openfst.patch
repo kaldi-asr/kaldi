@@ -202,24 +202,25 @@
       Refine(fst);
     }
 ***************
-*** 528,538 ****
+*** 531,543 ****
   void Minimize(MutableFst<A>* fst,
                 MutableFst<A>* sfst = 0,
                 float delta = kDelta) {
 !   uint64 props = fst->Properties(kAcceptor | kIDeterministic|
 !                                  kWeighted | kUnweighted, true);
-!   if (!(props & kIDeterministic))
-!     LOG(FATAL) << "Input Fst is not deterministic";
-! 
+!   if (!(props & kIDeterministic)) {
+!     FSTERROR() << "FST is not deterministic";
+!     fst->SetProperties(kError, kError);
+!     return;
+!   }
+  
     if (!(props & kAcceptor)) {  // weighted transducer
       VectorFst< GallicArc<A, STRING_LEFT> > gfst;
-      Map(*fst, &gfst, ToGallicMapper<A, STRING_LEFT>());
---- 558,565 ----
+--- 544,550 ----
   void Minimize(MutableFst<A>* fst,
                 MutableFst<A>* sfst = 0,
                 float delta = kDelta) {
 !   uint64 props = fst->Properties(kAcceptor | kWeighted | kUnweighted, true);
-!   
+  
     if (!(props & kAcceptor)) {  // weighted transducer
       VectorFst< GallicArc<A, STRING_LEFT> > gfst;
-      Map(*fst, &gfst, ToGallicMapper<A, STRING_LEFT>());

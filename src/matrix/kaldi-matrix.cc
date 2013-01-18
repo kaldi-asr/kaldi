@@ -28,14 +28,14 @@ namespace kaldi {
 
 template<typename Real>
 void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
-                               bool inverse_needed) {
+                              bool inverse_needed) {
   KALDI_ASSERT(num_rows_ == num_cols_);
 #ifndef HAVE_ATLAS
   KaldiBlasInt *pivot = new KaldiBlasInt[num_rows_];
   KaldiBlasInt M = num_rows_;
   KaldiBlasInt N = num_cols_;
   KaldiBlasInt LDA = stride_;
-  KaldiBlasInt result;
+  KaldiBlasInt result = -1;
   KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
   Real *p_work = new Real[l_work];
 
@@ -242,7 +242,7 @@ template
 void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 
 
-#ifndef HAVE_ATLAS
+#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
 // ****************************************************************************
 // ****************************************************************************
 template<typename Real>
@@ -311,7 +311,7 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
   KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgesvd_ called with wrong arguments");
 
   if (result != 0) {
-    KALDI_ERR << "CLAPACK sgesvd_ : some weird convergence not satisfied";
+    KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
   }
 
   delete [] p_work;
@@ -1176,7 +1176,7 @@ void MatrixBase<Real>::DestructiveSvd(VectorBase<Real> *s, MatrixBase<Real> *U, 
     }
   }
 
-#ifndef HAVE_ATLAS
+#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
   // "S" == skinny Svd (only one we support because of compatibility with Jama one which is only skinny),
   // "N"== no eigenvectors wanted.
   LapackGesvd(s, U, Vt);

@@ -58,11 +58,11 @@ inline void cblas_Xaxpy(const int N, const double alpha, const double *X,
                         const int incX, double *Y, const int incY) {
   cblas_daxpy(N, alpha, X, incX, Y, incY);
 }
-inline void cblas_Xscal(const int N,const float alpha,float*data,
+inline void cblas_Xscal(const int N,const float alpha, float *data,
                         const int inc) {
   cblas_sscal(N, alpha, data, inc);
 }
-inline void cblas_Xscal(const int N,const double alpha,double*data, 
+inline void cblas_Xscal(const int N,const double alpha, double *data, 
                         const int inc) {
   cblas_dscal(N, alpha, data, inc);
 }
@@ -259,20 +259,20 @@ inline void clapack_Xgetri2(KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt 
 }
 //
 inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
-                    KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
-                    float *sv, float *Vdata, KaldiBlasInt *vstride,
-                    float *Udata, KaldiBlasInt *ustride, float *p_work,
-                    KaldiBlasInt *l_work, KaldiBlasInt *result) {
+                           KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
+                           float *sv, float *Vdata, KaldiBlasInt *vstride,
+                           float *Udata, KaldiBlasInt *ustride, float *p_work,
+                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
   sgesvd_(v, u,
           num_cols, num_rows, Mdata, stride,
           sv, Vdata, vstride, Udata, ustride, 
           p_work, l_work, result); 
 }
 inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
-                    KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
-                    double *sv, double *Vdata, KaldiBlasInt *vstride,
-                    double *Udata, KaldiBlasInt *ustride, double *p_work,
-                    KaldiBlasInt *l_work, KaldiBlasInt *result) {
+                           KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
+                           double *sv, double *Vdata, KaldiBlasInt *vstride,
+                           double *Udata, KaldiBlasInt *ustride, double *p_work,
+                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
   dgesvd_(v, u,
           num_cols, num_rows, Mdata, stride,
           sv, Vdata, vstride, Udata, ustride,

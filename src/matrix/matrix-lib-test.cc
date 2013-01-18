@@ -920,32 +920,29 @@ template<class Real> static void UnitTestTraceProduct() {
 }
 
 template<class Real> static void UnitTestSvd() {
-#ifndef HAVE_ATLAS
   MatrixIndexT Base = 3, Rand = 2, Iter = 25;
   for (MatrixIndexT iter = 0;iter < Iter;iter++) {
 	MatrixIndexT dimM = Base + rand() % Rand, dimN =  Base + rand() % Rand;
-    if (dimM < dimN) std::swap(dimM, dimN);  // Check that rows() >= cols(), dimM>=dimN, as required by JAMA_SVD, and
-    // which we ensure inside our Lapack routine for portability to systems with no Lapack.
 	Matrix<Real> M(dimM, dimN);
-	Matrix<Real> U(dimM, dimN), Vt(dimN, dimN); Vector<Real> s(dimN);
+	Matrix<Real> U(dimM, std::min(dimM, dimN)), Vt(std::min(dimM, dimN), dimN);
+    Vector<Real> s(std::min(dimM, dimN));
 	InitRand(&M);
 	if (iter < 2) KALDI_LOG << "M " << M;
 	Matrix<Real> M2(dimM, dimN); M2.CopyFromMat(M);
-	M.LapackGesvd(&s, &U, &Vt);
+	M.Svd(&s, &U, &Vt);
 	if (iter < 2) {
 	  KALDI_LOG << " s " << s;
 	  KALDI_LOG << " U " << U;
 	  KALDI_LOG << " Vt " << Vt;
 	}
-
-    Matrix<Real> S(dimN, dimN);
+    MatrixIndexT min_dim = std::min(dimM, dimN);
+    Matrix<Real> S(min_dim, min_dim);
     S.CopyDiagFromVec(s);
 	Matrix<Real> Mtmp(dimM, dimN);
     Mtmp.SetZero();
     Mtmp.AddMatMatMat(1.0, U, kNoTrans, S, kNoTrans, Vt, kNoTrans, 0.0);
     AssertEqual(Mtmp, M2);
   }
-#endif
 }
 
 template<class Real> static void UnitTestSvdBad() {

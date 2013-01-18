@@ -208,7 +208,7 @@ class MatrixBase {
 
   /// Returns logdet of matrix.
   Real LogDet(Real *det_sign = NULL) const;
-
+  
   /// matrix inverse.
   /// if inverse_needed = false, will fill matrix with garbage.
   /// (only useful if logdet wanted).
@@ -464,7 +464,7 @@ class MatrixBase {
   void Write(std::ostream & out, bool binary) const;
 
   // Below is internal methods for Svd, user does not have to know about this.
-#ifndef HAVE_ATLAS
+#if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
   // protected:
   // Should be protected but used directly in testing routine.
   // destroys *this!

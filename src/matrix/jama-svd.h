@@ -33,7 +33,7 @@
 
 namespace kaldi {
 
-#ifdef HAVE_ATLAS
+#if defined(HAVE_ATLAS) || defined(USE_KALDI_SVD)
 // using ATLAS as our math library, which doesn't have SVD -> need
 // to implement it.
 
@@ -522,7 +522,7 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
   return true;
 }
 
-#endif // #ifdef HAVE_ATLAS
+#endif // defined(HAVE_ATLAS) || defined(USE_KALDI_SVD)
 
 } // namespace kaldi
 

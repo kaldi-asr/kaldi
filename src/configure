@@ -12,9 +12,11 @@
 # configure
 # configure --mkl-root=/opt/intel/mkl 
 # configure --mkl-root=/opt/intel/mkl --threaded-math=yes
-# ./configure  --clapack-root=../tools/OpenBLAS ## note, this is not
-#                                               ## working properly yet (SVD issue).
-#                         # anyway you'd have to cd ../tools/; make openblas
+# ./configure  --openblas-root=../tools/OpenBLAS/install # note: this
+#  # is now working, but is not a very ideal setup; we'd like to
+#  # use OpenBLAS's own headers, but they have issues that need
+#  # to be fixed.  Instead we use netlib's BLAS+CLAPACK headers and a hacked
+#  # f2c.h, in ../tools/CLAPACK.
 
 function rel2abs {
   local retval=`cd $1 2>/dev/null && pwd || exit 1`
@@ -53,12 +55,14 @@ FSTROOT=`rel2abs ../tools/openfst`
 # Avoid using any variables that are set in the shell.
 unset MKLROOT
 unset CLAPACKROOT
+unset OPENBLASROOT
 unset MKLLIBDIR
 
 function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
-  [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR] [--omp-libdir=OMPDIR]  [--static-math={yes|no}] 
-  [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK] [--cudatk-dir=CUDATKDIR]';
+  [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
+  [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
+  [--cudatk-dir=CUDATKDIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
@@ -87,6 +91,8 @@ do
   FSTROOT=`read_dirname $1`; shift ;;
   --clapack-root=*)
   CLAPACKROOT=`read_dirname $1`; shift ;;
+  --openblas-root=*)
+  OPENBLASROOT=`read_dirname $1`; shift ;;
   --mkl-root=*)
   MKLROOT=`read_dirname $1`; shift ;;
   --mkl-libdir=*)
@@ -231,6 +237,7 @@ function linux_configure_omplibdir {
 is_set $MKLLIBDIR && echo "Force-configuring KALDI to use MKL" && export MATHLIB="MKL"
 is_set $MKLROOT && echo "Force-configuring KALDI to use MKL"&& export MATHLIB="MKL"
 is_set $CLAPACKROOT && echo "Force-configuring KALDI to use CLAPACK"&& export MATHLIB="CLAPACK"
+is_set $OPENBLASROOT && echo "Force-configuring KALDI to use OPENBLAS"&& export MATHLIB="OPENBLAS"
 
 ##
 ##CUDA is used in src/cudamatrix and src/nnet{,bin} only.
@@ -513,8 +520,8 @@ fi
 
 if [ "`uname -o`" == "Cygwin"  ]; then
     echo "On Cygwin: checking for linear algebra libraries ..."
-    if [ ! -f ../tools/CLAPACK_include/clapack.h ]; then
-        failure "could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7"
+    if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+        failure "could not find file ../tools/CLAPACK/clapack.h"
     fi
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure "please first install package liblapack0"
@@ -618,8 +625,8 @@ if [ "`uname`" == "Linux" ]; then
     if [ -z $CLAPACKROOT ]; then
       failure "Must specify the location of CLAPACK with --clapack-root option (and it must exist)"
     fi
-    if [ ! -f ../tools/CLAPACK_include/clapack.h ]; then
-      failure could not find file ../tools/CLAPACK_include/clapack.h: you may not have performed the install steps in ../tools/INSTALL,  step 7
+    if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+      failure could not find file ../tools/CLAPACK/clapack.h
     fi
     if [ ! -d $CLAPACKROOT ]; then
       failure "The directory $CLAPACKROOT does not exist"
@@ -630,24 +637,29 @@ if [ "`uname`" == "Linux" ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
     cat makefiles/linux_clapack.mk >> kaldi.mk
-    if [ -f $CLAPACKROOT/libopenblas.so ]; then # seems to be OpenBLAS.
-      echo "Your CLAPACK seems to be OpenBLAS.  Configuring appropriately."
-      cat makefiles/linux_clapack.mk >> kaldi.mk
-      if [ $static_math ]; then
-         echo "Configuring static OpenBlas since --static-math=false (the default)"
-         CLAPACKLIBS="$CLAPACKROOT/libopenblas.a -lgfortran"
-      else
-         echo "Configuring dynamically loaded OpenBlas since --static-math=true"
-         CLAPACKLIBS="-L$CLAPACKROOT -lopenblas -lgfortran"
-      fi
-      echo "CLAPACKLIBS = $CLAPACKLIBS" >> kaldi.mk
-    else
-      # TODO: set CLAPACKLIBS appropriately for CLAPACK.
-      echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
-    fi
+    echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     linux_configure_cuda
     echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
+  elif [ $MATHLIB == "OPENBLAS" ]; then
+    if [ -z $OPENBLASROOT ]; then
+      failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
+    fi
+    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then 
+      failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+    fi
+    echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
+    cat makefiles/linux_openblas.mk >> kaldi.mk
+    if [ $static_math ]; then
+      echo "Configuring static OpenBlas since --static-math=false (the default)"
+      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+    else
+      echo "Configuring dynamically loaded OpenBlas since --static-math=true"
+      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran"
+    fi
+    echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
+    echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
+    exit 0;
   else 
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi

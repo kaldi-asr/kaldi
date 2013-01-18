@@ -1,6 +1,6 @@
 # SHELL += -x
 
-all: sph2pipe atlas clapack irstlm_tgt sclite_tgt openfst_tgt
+all: sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
@@ -17,7 +17,6 @@ distclean:
 		rm -rf openfst-1.3.2/
 		rm -rf sctk-2.4.0/
 		rm -rf ATLAS/
-		rm -rf CLAPACK_include/
 		rm -rf irstlm/
 		rm -rf sph2pipe_v2.5/
 		rm -rf sph2pipe_v2.5.tar.gz
@@ -37,6 +36,8 @@ openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
 		./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts
 
+
+.PHONY: openfst-1.3.2/.patched
 openfst-1.3.2/.patched: | openfst-1.3.2_tgt
 		-cd openfst-1.3.2/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
@@ -93,30 +94,6 @@ irstlm/.patched: | irstlm
 irstlm:
 		svn -r 398 co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm
 
-
-clapack: clapack_download cblas_download
-
-clapack_download: | CLAPACK_include/clapack.h CLAPACK_include/f2c.h
-
-cblas_download: CLAPACK_include/cblas.h
-
-CLAPACK_include/cblas.h: CLAPACK_include |  atlas
-		cp ATLAS/include/cblas.h CLAPACK_include/cblas.h
-		#(test -f $@; touch $@)
-
-CLAPACK_include:
-		mkdir CLAPACK_include
-
-CLAPACK_include/clapack.h: CLAPACK_include
-		cd CLAPACK_include;\
-		wget -T 10 -t 3 http://www.netlib.org/clapack/clapack.h
-		touch $@
-
-CLAPACK_include/f2c.h: CLAPACK_include
-		cd CLAPACK_include;\
-		wget -T 10 -t 3 http://www.netlib.org/clapack/f2c.h
-		touch $@
-
 atlas: ATLAS/include/cblas.h
 
 ATLAS/include/cblas.h: | atlas3.8.3.tar.gz
@@ -143,9 +120,10 @@ openblas: openblas_compiled
 
 .PHONY: openblas_compiled
 
-fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64 INTERFACE64=1"; }')
+fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64"; }')
 
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
-	$(MAKE) FC=gfortran $(fortran_opt) -C OpenBLAS
-	$(MAKE) PREFIX=`pwd`/OpenBlas -C OpenBLAS install
+	$(MAKE) FC=gfortran $(fortran_opt) DEBUG=1 -C OpenBLAS
+	mkdir -p OpenBLAS/install
+	$(MAKE) PREFIX=`pwd`/OpenBLAS/install -C OpenBLAS install
