@@ -26,32 +26,6 @@
 
 
 ###
-### This function will import options from a config file.
-### It checks that the option is defined in the top level script.
-###
-function import_config {
-  # Import the config
-  [ -z "$config" ] && echo "import_config: \$config was not set" && exit 1
-  # Check that the file exists
-  [ ! -f $config ] && echo "Cannot read config $config" && exit 1
-  # Import the config options
-  while read line; do
-    #Remove white chars so we can detect empty lines or simple comments
-    line_no_wchar=$(echo $line | sed 's|\s||g') 
-    [ "${line_no_wchar}" == "" ] && continue      #ignore empty lines
-    [ "${line_no_wchar:0:1}" == "#" ] && continue #lines starts by #, ignore comments
-    #Get the name of the option
-    name=$(echo $line | sed -e 's|^\s*\([0-9a-zA-Z_\-]*\)=.*$|\1|')
-    [ -z "$name" ] && echo "$0: cannot locate option name in config line '$line' at $config" && exit 1
-    eval '[ -z "${'$name'+xxx}" ]' && echo "$0: invalid option $name at $config" && exit 1;
-    #run the original line as it is contains an expected option
-    eval "$line"
-  done < $config
-} 
-
-
-
-###
 ### The --config file options have lower priority to command line 
 ### options, so we need to import them first...
 ###
@@ -61,7 +35,7 @@ for ((n=1; n<$#; n++)); do
   if [ "${!n}" == "--config" ]; then
     n_plus1=$((n+1))
     config=${!n_plus1}
-    import_config
+    . $config  # source the config file.
   fi
 done
 
