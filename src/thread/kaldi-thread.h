@@ -141,7 +141,10 @@ class MultiThreader {
   pthread_t *threads_;
   std::vector<C> cvec_;
 };
-  
+
+/// Here, class C should inherit from MultiThreader.
+/// Note: if you want to control the number of threads yourself,
+/// just initialize the MultiThreader<C> object yourself.
 template<class C> void RunMultiThreaded(const C &c_in) {
   MultiThreader<C> m(g_num_threads, c_in);
 }
