@@ -1,336 +1,351 @@
 #!/bin/bash
 
-# THIS IS NOWHERE NEAR FINISHED!
+
+# System and data directories
+SCRIPT=$(readlink -f $0)
+SysDir=`dirname $SCRIPT`
 
 
-. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-           ## This relates to the queue.
-
-# This is a shell script, but it's recommended that you run the commands one by
-# one by copying and pasting into the shell.
-
-#wsj0=/ais/gobi2/speech/WSJ/csr_?_senn_d?
-#wsj1=/ais/gobi2/speech/WSJ/csr_senn_d?
-
-#wsj0=/mnt/matylda2/data/WSJ0
-#wsj1=/mnt/matylda2/data/WSJ1
-
-wsj0=/export/corpora5/LDC/LDC93S6B
-wsj1=/export/corpora5/LDC/LDC94S13B
-
-local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
-
-# Sometimes, we have seen WSJ distributions that do not have subdirectories 
-# like '11-13.1', but instead have 'doc', 'si_et_05', etc. directly under the 
-# wsj0 or wsj1 directories. In such cases, try the following:
-#
-# corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
-# local/cstr_wsj_data_prep.sh $corpus
-#
-# $corpus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
-
-local/wsj_prepare_dict.sh || exit 1;
-
-utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
-
-local/wsj_format_data.sh || exit 1;
+train_data_dir=/export/babel/oguz/10Hsubsets/106B-delivery-v0.2f_10hSubset/conversational/training
+dev_data_dir=/export/babel/oguz/10Hsubsets/106B-delivery-v0.2f_10hSubset/conversational/dev_UnionOfDisjoints
+lexicon_file=/export/a09/jtrmal/babel/egs/Tagalog-10hSystem2a/Lexicon/lexicon.txt
 
 
- # We suggest to run the next three commands in the background,
- # as they are not a precondition for the system building and
- # most of the tests: these commands build a dictionary
- # containing many of the OOVs in the WSJ LM training data,
- # and an LM trained directly on that data (i.e. not just
- # copying the arpa files from the disks from LDC).
- # Caution: the commands below will only work if $decode_cmd 
- # is setup to use qsub.  Else, just remove the --cmd option.
- # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
- # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
+# Lexicon and Language Model parameters
+oovSymbol="<unk>"
+lexiconFlags="--oov <unk>"
 
- # Note: I am commenting out the commands below.  They take up a lot
- # of CPU time and are not really part of the "main recipe."
- # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
- # won't always work, it depends what $decode_cmd is.
- # (
- #  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
- #  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
- #  local/wsj_train_lms.sh && \
- #  local/wsj_format_local_lms.sh && 
- #   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
- #       sleep 20; # wait till tools compiled.
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
- #      --hidden 100 --nwords 20000 --class 350 --direct 1500 data/local/rnnlm.h100.voc20k &
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=14G" \
- #      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
- #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
- #   )
- # ) &
+# Scoring protocols (dummy GLM file to appease the scoring script)
+glmFile=`readlink -f ./conf/glm`
 
+. ./local/CHECKPOINT.sh
 
-# Now make MFCC features.
-# mfccdir should be some place with a largish disk where you
-# want to store MFCC features.
-mfccdir=mfcc
-for x in test_eval92 test_eval93 test_dev93 train_si284; do 
- steps/make_mfcc.sh --cmd "$train_cmd" --nj 20 \
-   data/$x exp/make_mfcc/$x $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+echo "$0 $@"  # Print the command line for logging
+
+[ -f ./path.sh ] && . ./path.sh; # source the path.
+[ -f ./cmd.sh ] && . ./cmd.sh; # source the path.
+. parse_options.sh || exit 1;
+
+configfile=$1
+[ -f $configfile ] && . $configfile
+[ -f ./local.conf ] && . ./local.conf
+
+echo ---------------------------------------------------------------
+echo "Preparing lexicon in data/local on" `date`
+echo ---------------------------------------------------------------
+mkdir -p data/local
+local/prepare_lexicon.pl \
+    $lexiconFlags $lexicon_file data/local || exit 1
+
+echo ---------------------------------------------------------------
+echo "Creating L.fst etc in data/lang on" `date`
+echo ---------------------------------------------------------------
+mkdir -p data/lang
+utils/prepare_lang.sh \
+    --share-silence-phones true \
+    data/local $oovSymbol data/local/tmp.lang data/lang || exit 1
+
+echo -------------------------------------------------------------------------------
+echo "Preparing acoustic training lists in data/train on" `date`
+echo -------------------------------------------------------------------------------
+mkdir -p data/train
+local/prepare_acoustic_training_data.pl \
+    --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
+    $train_data_dir data/train > data/train/skipped_utts.log || exit 1
+
+echo --------------------------------------------------------------------
+echo "Preparing dev data lists in data/dev on" `date`
+echo --------------------------------------------------------------------
+mkdir -p data/dev
+local/prepare_acoustic_training_data.pl \
+    --fragmentMarkers \-\*\~ \
+    $dev_data_dir data/dev > data/dev/skipped_utts.log || exit 1
+
+echo -------------------------------------------------------------------
+echo "Preparing dev stm files in data/dev on" `date`
+echo -------------------------------------------------------------------
+local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev || exit 1
+cp $glmFile data/dev
+
+echo -------------------------------------------------------------------
+echo "Creating a basic G.fst in data/lang on" `date`
+echo -------------------------------------------------------------------
+# Assume that the directory sriLM is already present and contains run.sh
+#cd $SysDir/sriLM
+local/train_lms_srilm.sh data data/srilm 
+local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
+
+cd $SysDir
+echo ----------------------------------------------------------------------
+echo "Starting plp feature extraction in plp on" `date`
+echo ----------------------------------------------------------------------
+steps/make_plp.sh \
+    --cmd "$train_cmd" --nj $nj_train \
+    data/train exp/make_plp/train plp || exit 1
+steps/compute_cmvn_stats.sh \
+    data/train exp/make_plp/train plp || exit 1
+# In case plp extraction failed on some utterance, delist them
+utils/fix_data_dir.sh data/train
+
+steps/make_plp.sh \
+    --cmd "$train_cmd" --nj $nj_decode \
+    data/dev exp/make_plp/dev plp || exit 1
+steps/compute_cmvn_stats.sh \
+    data/dev exp/make_plp/dev plp || exit 1
+# In case plp extraction failed on some utterance, delist them
+utils/fix_data_dir.sh data/dev
+mkdir -p exp
+
+echo -----------------------------------------------------------------------------------------
+echo "Subsetting monophone training data in data/train_sub[123] on" `date`
+echo -----------------------------------------------------------------------------------------
+utils/subset_data_dir.sh data/train  5000 data/train_sub1 || exit 1
+utils/subset_data_dir.sh data/train 10000 data/train_sub2 || exit 1
+utils/subset_data_dir.sh data/train 20000 data/train_sub3 || exit 1
+
+echo ---------------------------------------------------------------------------------
+echo "Starting (small) monophone training in exp/mono on" `date`
+echo ---------------------------------------------------------------------------------
+steps/train_mono.sh \
+    --boost-silence 1.5 --nj 24 --cmd "$train_cmd" \
+    data/train_sub1 data/lang exp/mono || exit 1
+
+echo ------------------------------------------------------------------------------
+echo "Starting (small) triphone training in exp/tri1 on" `date`
+echo ------------------------------------------------------------------------------
+steps/align_si.sh \
+    --boost-silence 1.5 --nj 24 --cmd "$train_cmd" \
+    data/train_sub2 data/lang exp/mono exp/mono_ali_sub2 || exit 1
+steps/train_deltas.sh \
+    --boost-silence 1.5 --cmd "$train_cmd" \
+    $numLeavesTri1 $numGaussTri1 data/train_sub2 data/lang exp/mono_ali_sub2 exp/tri1 || exit 1
+
+echo ----------------------------------------------------------------------------------------
+echo "Spawning decoding with (small) triphone models in exp/tri1 on" `date`
+echo ----------------------------------------------------------------------------------------
+(
+    mkdir -p exp/tri0/graph
+    utils/mkgraph.sh data/lang exp/tri2 exp/tri0/graph &> exp/tri1/mkgraph.log
+    mkdir -p exp/tri1/decode
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri1/graph data/dev exp/tri1/decode &> exp/tri1/decode.log
+) &
+tri1decode=$!; # Grab the PID of the subshell
+sleep 5; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/tri1/mkgraph.log and exp/tri1/decode.log for decoding outcomes"
+
+echo -------------------------------------------------------------------------------
+echo "Starting (medium) triphone training in exp/tri2 on" `date`
+echo -------------------------------------------------------------------------------
+steps/align_si.sh \
+    --boost-silence 1.5 --nj 24 --cmd "$train_cmd" \
+    data/train_sub3 data/lang exp/tri1 exp/tri1_ali_sub3 || exit 1
+steps/train_deltas.sh \
+    --boost-silence 1.5 --cmd "$train_cmd" \
+    $numLeavesTri2 $numGaussTri2 data/train_sub3 data/lang exp/tri1_ali_sub3 exp/tri2 || exit 1
+
+echo -----------------------------------------------------------------------------------------
+echo "Spawning decoding with (medium) triphone models in exp/tri2 on" `date`
+echo -----------------------------------------------------------------------------------------
+(
+    mkdir -p exp/tri2/graph
+    utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph &> exp/tri2/mkgraph.log
+    mkdir -p exp/tri2/decode
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri2/graph data/dev exp/tri2/decode &> exp/tri2/decode.log
+) &
+tri2decode=$!; # Grab the PID of the subshell
+sleep 5; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/tri2/mkgraph.log and exp/tri2/decode.log for decoding outcomes"
+
+echo -----------------------------------------------------------------------------
+echo "Starting (full) triphone training in exp/tri3 on" `date`
+echo -----------------------------------------------------------------------------
+steps/align_si.sh \
+    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    data/train data/lang exp/tri2 exp/tri2_ali || exit 1
+steps/train_deltas.sh \
+    --boost-silence 1.5 --cmd "$train_cmd" \
+    $numLeavesTri3 $numGaussTri3 data/train data/lang exp/tri2_ali exp/tri3 || exit 1
+
+echo ---------------------------------------------------------------------------------------
+echo "Spawning decoding with full triphone models in exp/tri3 on" `date`
+echo ---------------------------------------------------------------------------------------
+(
+    mkdir -p exp/tri3/graph
+    utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph &> exp/tri3/mkgraph.log
+    mkdir -p exp/tri3/decode
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri3/graph data/dev exp/tri3/decode &> exp/tri3/decode.log
+) &
+tri3decode=$!; # Grab the PID of the subshell
+sleep 5; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/tri3/mkgraph.log and exp/tri3/decode.log for decoding outcomes"
+
+echo ---------------------------------------------------------------------------------
+echo "Starting (lda_mllt) triphone training in exp/tri4 on" `date`
+echo ---------------------------------------------------------------------------------
+steps/align_si.sh \
+    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    data/train data/lang exp/tri3 exp/tri3_ali || exit 1
+steps/train_lda_mllt.sh \
+    --boost-silence 1.5 --cmd "$train_cmd" \
+    $numLeavesMLLT $numGaussMLLT data/train data/lang exp/tri3_ali exp/tri4 || exit 1
+
+echo ----------------------------------------------------------------------------------
+echo "Spawning decoding with lda_mllt models in exp/tri4 on" `date`
+echo ----------------------------------------------------------------------------------
+(
+    mkdir -p exp/tri4/graph
+    utils/mkgraph.sh \
+        data/lang exp/tri4 exp/tri4/graph &> exp/tri4/mkgraph.log
+    mkdir -p exp/tri4/decode
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri4/graph data/dev exp/tri4/decode &> exp/tri4/decode.log
+) &
+tri4decode=$!; # Grab the PID of the subshell
+sleep 5; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/tri4/mkgraph.log and exp/tri4/decode.log for decoding outcomes"
+
+echo ----------------------------------------------------------------------------
+echo "Starting (SAT) triphone training in exp/tri5 on" `date`
+echo ----------------------------------------------------------------------------
+
+steps/align_si.sh \
+    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    data/train data/lang exp/tri4 exp/tri4_ali || exit 1
+steps/train_sat.sh \
+    --boost-silence 1.5 --cmd "$train_cmd" \
+    $numLeavesSAT $numGaussSAT data/train data/lang exp/tri4_ali exp/tri5 || exit 1
+
+echo ------------------------------------------------------------------
+echo "Spawning decoding with SAT models  on" `date`
+echo ------------------------------------------------------------------
+(
+    mkdir -p exp/tri5/graph
+    utils/mkgraph.sh \
+        data/lang exp/tri5 exp/tri5/graph &> exp/tri5/mkgraph.log
+    mkdir -p exp/tri5/decode
+    touch exp/tri5/decode.started # A signal to the SGMM2 decoding step
+    steps/decode_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri5/graph data/dev exp/tri5/decode &> exp/tri5/decode.log \
+    && touch exp/tri5/decode.finished # so SGMM2 decoding may proceed
+) &
+tri5decode=$!; # Grab the PID of the subshell; needed for SGMM2 decoding
+sleep 30; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/tri5/mkgraph.log and exp/tri5/decode.log for decoding outcomes"
+
+################################################################################
+# Ready to start SGMM training
+################################################################################
+
+echo -------------------------------------------------
+echo "Starting exp/ubm5 on" `date`
+echo -------------------------------------------------
+steps/align_fmllr.sh \
+    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    data/train data/lang exp/tri5 exp/tri5_ali || exit 1
+steps/train_ubm.sh \
+    --cmd "$train_cmd" \
+    $numGaussUBM data/train data/lang exp/tri5_ali exp/ubm5 || exit 1
+
+echo --------------------------------------------------
+echo "Starting exp/sgmm5 on" `date`
+echo --------------------------------------------------
+steps/train_sgmm2.sh \
+    --cmd "$train_cmd" \
+    $numLeavesSGMM $numGaussSGMM data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5 || exit 1
+
+################################################################################
+# Ready to decode with SGMM2 models
+################################################################################
+
+echo -----------------------------------------------------------------
+echo "Spawning exp/sgmm5/decode[_fmllr] on" `date`
+echo -----------------------------------------------------------------
+(
+    sleep 5; # Let the status message after the subshell get logged
+    while [ ! -f exp/tri5/decode.started -o ! -f exp/tri5/decode.finished ]; do
+        echo "exp/sgmm5/decode is waiting on SAT decoding ..." `date`
+        sleep 5
+    done
+    while [ exp/tri5/decode.finished -ot exp/tri5/decode.started ]; do
+        echo "exp/tri5/decode.finished is older than exp/tri5/decode.started"; \
+        ls -lt exp/tri5/decode.finished exp/tri5/decode.started; \
+        echo "Perhaps SAT decoding was restarted and is still running?"; \
+        echo "exp/sgmm5/decode is still waiting on SAT decoding ..." `date`
+        sleep 5
+    done
+    rm exp/tri5/decode.started exp/tri5/decode.finished
+    mkdir -p exp/sgmm5/graph
+    utils/mkgraph.sh \
+        data/lang exp/sgmm5 exp/sgmm5/graph &> exp/sgmm5/mkgraph.log
+    mkdir -p exp/sgmm5/decode
+    steps/decode_sgmm2.sh \
+        --nj $nj_decode --cmd "$decode_cmd" --transform-dir exp/tri5/decode \
+        exp/sgmm5/graph data/dev/ exp/sgmm5/decode &> exp/sgmm5/decode.log
+    steps/decode_sgmm2.sh --use-fmllr true --nj $nj_decode --cmd "$decode_cmd" \
+        --transform-dir exp/tri5/decode \
+        exp/sgmm5/graph data/dev/ exp/sgmm5/decode_fmllr &> exp/sgmm5/decode_fmllr.log
+) &
+sgmm5decode=$!; # Grab the PID of the subshell; needed for MMI rescoring
+sleep 30; # Let any "start-up error" messages from the subshell get logged
+echo "See exp/sgmm5/mkgraph.log, exp/sgmm5/decode.log and exp/sgmm5/decode_fmllr.log for decoding outcomes"
+
+################################################################################
+# Ready to start discriminative SGMM training
+################################################################################
+
+echo ------------------------------------------------------
+echo "Starting exp/sgmm5_ali on" `date`
+echo ------------------------------------------------------
+steps/align_sgmm2.sh \
+    --nj $nj_train --cmd "$train_cmd" --transform-dir exp/tri5_ali --use-graphs true --use-gselect true \
+    data/train data/lang exp/sgmm5 exp/sgmm5_ali || exit 1
+
+echo ----------------------------------------------------------
+echo "Starting exp/sgmm5_denlats on" `date`
+echo ----------------------------------------------------------
+steps/make_denlats_sgmm2.sh \
+    --nj $nj_train --sub-split $nj_train \
+    --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
+    data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats || exit 1
+
+echo -----------------------------------------------------------
+echo "Starting exp/sgmm5_mmi_b0.1 on" `date`
+echo -----------------------------------------------------------
+steps/train_mmi_sgmm2.sh \
+    --cmd "$decode_cmd" --transform-dir exp/tri5_ali --boost 0.1 \
+    data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
+    exp/sgmm5_mmi_b0.1 || exit 1
+
+################################################################################
+# Ready to decode with discriminative SGMM2 models
+################################################################################
+
+echo "exp/sgmm5_mmi_b0.1/decode will wait on PID $sgmm5decode if necessary"
+wait $sgmm5decode; # Need lattices from the corresponding SGMM decoding passes
+echo --------------------------------------------------------------------------
+echo "Starting exp/sgmm5_mmi_b0.1/decode[_fmllr] on" `date`
+echo --------------------------------------------------------------------------
+for iter in 1 2 3 4; do
+    steps/decode_sgmm2_rescore.sh \
+        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode \
+        data/lang data/dev exp/sgmm5/decode exp/sgmm5_mmi_b0.1/decode_it$iter
+    steps/decode_sgmm2_rescore.sh \
+        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode \
+        data/lang data/dev exp/sgmm5/decode_fmllr exp/sgmm5_mmi_b0.1/decode_fmllr_it$iter
 done
 
+wait $tri1decode
+wait $tri2decode
+wait $tri3decode
+wait $tri4decode
 
-utils/subset_data_dir.sh --first data/train_si284 7138 data/train_si84 || exit 1
+# No need to wait on $tri5decode ---> $sgmm5decode ---> sgmm5_mmi_b0.1decode
 
-# Now make subset with the shortest 2k utterances from si-84.
-utils/subset_data_dir.sh --shortest data/train_si84 2000 data/train_si84_2kshort || exit 1;
+echo -----------------------------------------------------
+echo "Finished successfully on" `date`
+echo -----------------------------------------------------
 
-# Now make subset with half of the data from si-84.
-utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
-
-
-# Note: the --boost-silence option should probably be omitted by default
-# for normal setups.  It doesn't always help. [it's to discourage non-silence
-# models from modeling silence.]
-steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
-  data/train_si84_2kshort data/lang exp/mono0a || exit 1;
-
-
-(
- utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
- steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-      exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 && \
- steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-   exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
-) &
-
-steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
-   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali || exit 1;
-
-steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
-
-while [ ! -f data/lang_test_tgpr/tmp/LG.fst ] || \
-   [ -z data/lang_test_tgpr/tmp/LG.fst ]; do
-  sleep 20;
-done
-sleep 30;
-# or the mono mkgraph.sh might be writing 
-# data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
-
-utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
-
-
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri1/graph_tgpr data/test_eval92 exp/tri1/decode_tgpr_eval92 || exit 1;
-
-
-# test various modes of LM rescoring (4 is the default one).
-# This is just confirming they're equivalent.
-for mode in 1 2 3 4; do
-steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-  data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
-done
-
-# demonstrate how to get lattices that are "word-aligned" (arcs coincide with
-# words, with boundaries in the right place).
-sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print $2}'`
-steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
-  data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
-
-
-# Align tri1 system with si84 data.
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84 || exit 1;
-
-
-# Train tri2a, which is deltas + delta-deltas, on si84 data.
-steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a || exit 1;
-
-utils/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr || exit 1;
-
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2a/graph_tgpr data/test_eval92 exp/tri2a/decode_tgpr_eval92 || exit 1;
-
-utils/mkgraph.sh data/lang_test_bg_5k exp/tri2a exp/tri2a/graph_bg5k
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2a/graph_bg5k data/test_eval92 exp/tri2a/decode_eval92_bg5k || exit 1;
-
-
-steps/train_lda_mllt.sh --cmd "$train_cmd" \
-   --splice-opts "--left-context=3 --right-context=3" \
-   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b || exit 1;
-
-utils/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr || exit 1;
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92 || exit 1;
-
-# Now, with dev93, compare lattice rescoring with biglm decoding,
-# going from tgpr to tg.  Note: results are not the same, even though they should
-# be, and I believe this is due to the beams not being wide enough.  The pruning
-# seems to be a bit too narrow in the current scripts (got at least 0.7% absolute
-# improvement from loosening beams from their current values).
-
-steps/decode_biglm.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/lang_test_{tgpr,tg}/G.fst \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm
-
-# baseline via LM rescoring of lattices.
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/ \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg || exit 1;
-
-# Trying Minimum Bayes Risk decoding (like Confusion Network decoding):
-mkdir exp/tri2b/decode_tgpr_dev93_tg_mbr 
-cp exp/tri2b/decode_tgpr_dev93_tg/lat.*.gz exp/tri2b/decode_tgpr_dev93_tg_mbr 
-local/score_mbr.sh --cmd "$decode_cmd" \
- data/test_dev93/ data/lang_test_tgpr/ exp/tri2b/decode_tgpr_dev93_tg_mbr
-
-steps/decode_fromlats.sh --cmd "$decode_cmd" \
-  data/test_dev93 data/lang_test_tgpr exp/tri2b/decode_tgpr_dev93 \
-  exp/tri2a/decode_tgpr_dev93_fromlats || exit 1;
-
-
-# Align tri2b system with si84 data.
-steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
-  --use-graphs true data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84  || exit 1;
-
-
-local/run_mmi_tri2b.sh
-
-
-# From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_sat.sh --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
-utils/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
-steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
-steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
-
-# At this point you could run the command below; this gets
-# results that demonstrate the basis-fMLLR adaptation (adaptation
-# on small amounts of adaptation data).
-local/run_basis_fmllr.sh
-
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg || exit 1;
-
-
-# Trying the larger dictionary ("big-dict"/bd) + locally produced LM.
-utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
-
-steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 8 \
-  exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
-steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
-  exp/tri3b/graph_bd_tgpr data/test_dev93 exp/tri3b/decode_bd_tgpr_dev93 || exit 1;
-
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
-   || exit 1;
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg \
-  || exit 1;
-
-# The command below is commented out as we commented out the steps above
-# that build the RNNLMs, so it would fail.
-# local/run_rnnlms_tri3b.sh
-
-# The following two steps, which are a kind of side-branch, try mixing up
-( # from the 3b system.  This is to demonstrate that script.
- steps/mixup.sh --cmd "$train_cmd" \
-   20000 data/train_si84 data/lang exp/tri3b exp/tri3b_20k || exit 1;
- steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
-   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93  || exit 1;
-)
-
-
-# From 3b system, align all si284 data.
-steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
-
-# From 3b system, train another SAT system (tri4a) with all the si284 data.
-
-steps/train_sat.sh  --cmd "$train_cmd" \
-  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4a || exit 1;
-(
- utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
- steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
- steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
-) &
-steps/train_quick.sh --cmd "$train_cmd" \
-   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
-
-(
- utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
- steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
- steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
-
- utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri4b exp/tri4b/graph_bd_tgpr || exit 1;
- steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4b/graph_bd_tgpr data/test_dev93 exp/tri4b/decode_bd_tgpr_dev93 || exit 1;
- steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_bd_tgpr data/test_eval92 exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
-) &
-
-
-# Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
-# all the data).  Use 30 jobs.
-steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
-
-local/run_mmi_tri4b.sh
-
-#local/run_nnet_cpu.sh
-
-## Segregated some SGMM builds into a separate file.
-#local/run_sgmm.sh
-
-# You probably want to run the sgmm2 recipe as it's generally a bit better:
-local/run_sgmm2.sh
-
-# You probably wany to run the hybrid recipe as it is complementary:
-local/run_hybrid.sh
-
-
-# Getting results [see RESULTS file]
-# for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
-
-
-# KWS setup. We leave it commented out by default
-# $duration is the length of the search collection, in seconds
-#duration=`feat-to-len scp:data/test_eval92/feats.scp  ark,t:- | awk '{x+=$2} END{print x/100;}'`
-#local/generate_example_kws.sh data/test_eval92/ data/kws/
-#local/kws_data_prep.sh data/lang_test_bd_tgpr/ data/test_eval92/ data/kws/
-#
-#steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
-#  data/kws/ data/lang_test_bd_tgpr/ \
-#  exp/tri4b/decode_bd_tgpr_eval92/ \
-#  exp/tri4b/decode_bd_tgpr_eval92/kws
-#
-#steps/search_index.sh --cmd "$decode_cmd" \
-#  data/kws \
-#  exp/tri4b/decode_bd_tgpr_eval92/kws
-#
-# If you want to provide the start time for each utterance, you can use the --segments
-# option. In WSJ each file is an utterance, so we don't have to set the start time.
-#cat exp/tri4b/decode_bd_tgpr_eval92/kws/result.* | \
-#  utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-#  --normalize=true --map-utter=data/kws/utter_map \
-#  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
-
-# # forward-backward decoding example [way to speed up decoding by decoding forward
-# # and backward in time] 
-# local/run_fwdbwd.sh
-
+exit 0

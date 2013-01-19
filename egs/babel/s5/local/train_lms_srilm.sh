@@ -106,10 +106,11 @@ echo "The perlexity scores report is stored in $tgtdir/perplexities.txt "
 #We look at the two lowest perplexity LMs and use a 3gram LM if one of the two, even if the 4gram is of lower ppl
 nof_trigram_lm=`head -n 2 $tgtdir/perplexities.txt | grep 3gram | wc -l`
 if [[ $nof_trigram_lm -eq 0 ]] ; then
-  ln -sf `head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '` $outlm
+  lmfilename=`head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '`
 elif [[ $nof_trigram_lm -eq 2 ]] ; then
-  ln -sf `head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '` $outlm
+  lmfilename=`head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '` 
 else  #exactly one 3gram LM
-  ln -sf `head -n 2 $tgtdir/perplexities.txt | grep 3gram | cut -f 1 -d ' '` $outlm
+  lmfilename=`head -n 2 $tgtdir/perplexities.txt | grep 3gram | cut -f 1 -d ' '` 
 fi
+(cd $tgtdir; ln -sf `basename $lmfilename` $outlm )
 
