@@ -13,7 +13,9 @@
 # ./configure --mkl-root=/opt/intel/mkl 
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
-#        # this, cd to ../tools and type "make openblas"
+#        # this, cd to ../tools and type "make openblas".  Note:
+#        # this is not working correctly on all platforms, do "make test"
+#        # and look out for segmentation faults.
 
 function rel2abs {
   if [ ! -z "$1" ]; then
