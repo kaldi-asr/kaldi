@@ -654,12 +654,12 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
     cat makefiles/linux_openblas.mk >> kaldi.mk
-    if [ $static_math ]; then
-      echo "Configuring dynamically loaded OpenBlas since --static-math=yes"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
-    else
-      echo "Configuring static OpenBlas since --static-math=no (the default)"
+    if $static_math; then
+      echo "Configuring static OpenBlas since --static-math=yes"
       OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+    else
+      echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
+      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
