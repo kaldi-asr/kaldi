@@ -867,9 +867,8 @@ template<class Real> static void UnitTestSherman() {
 	invA.CopyFromMat(A);
 	invA.Invert();
 
-
 	Matrix<Real> tt(dimK, dimM), I(dimK, dimK);
-	tt.AddMatMat(1.0, V, kTrans, invA, kNoTrans, 0.0);  // tt = trans(V) *inv(A)
+	tt.AddMatMat(1.0, V, kTrans, invA, kNoTrans, 0.0);  // tt0 = trans(V) *inv(A)
 
 	Matrix<Real> tt1(dimM, dimK);
 	tt1.AddMatMat(1.0, invA, kNoTrans, U, kNoTrans, 0.0);  // tt1=INV A *U
@@ -1352,7 +1351,7 @@ template<class Real> static void UnitTestMmulSym() {
 
 	Matrix<Real> A(dimM, dimM), B(dimM, dimM), C(dimM, dimM), tmp(dimM, dimM), tmp2(dimM, dimM);
     SpMatrix<Real> sA(dimM), sB(dimM), sC(dimM), stmp(dimM);
-
+    
 	InitRand(&A); InitRand(&B); InitRand(&C);
     // Make A, B, C symmetric.
     tmp.CopyFromMat(A); A.AddMat(1.0, tmp, kTrans);
@@ -1706,7 +1705,7 @@ static void UnitTestRankNUpdate() {
 
 template<class Real> static void  UnitTestSpInvert() {
   for (MatrixIndexT i = 0;i < 30;i++) {
-	MatrixIndexT dimM = 20 + rand()%10;
+	MatrixIndexT dimM = 6 + rand()%20;
 	SpMatrix<Real> M(dimM);
 	for (MatrixIndexT i = 0;i < M.NumRows();i++)
 	  for (MatrixIndexT j = 0;j<=i;j++) M(i, j) = RandGauss();

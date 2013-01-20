@@ -124,6 +124,4 @@ fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~
 
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
-	$(MAKE) FC=gfortran $(fortran_opt) DEBUG=1 -C OpenBLAS
-	mkdir -p OpenBLAS/install
-	$(MAKE) PREFIX=`pwd`/OpenBLAS/install -C OpenBLAS install
+	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install

@@ -87,12 +87,12 @@
   }
 #elif defined(HAVE_OPENBLAS)
 extern "C" {
-  // then OpenBLAS headers are fixed, I'll change the -I line in the g++ options,
-  // and include cblas.h and f77blas.h from the directory there.  (should probably
-  // include with "" not <>, to search -I first.)
-  #include <cblas.h>
-  #include <f2c.h>
-  #include <clapack.h>
+  // getting cblas.h and lapacke.h from <openblas-install-dir>/.
+  // putting in "" not <> to search -I before system libraries.
+  #include "cblas.h"
+  #include "lapacke.h"
+  #undef I
+  #undef complex
   // get rid of macros from f2c.h -- these are dangerous.
   #undef abs
   #undef dabs
@@ -109,7 +109,7 @@ extern "C" {
 #endif
 
 #ifdef HAVE_OPENBLAS
-typedef integer KaldiBlasInt; // try int.
+typedef int KaldiBlasInt; // try int.
 #endif
 #ifdef HAVE_CLAPACK
 typedef integer KaldiBlasInt;

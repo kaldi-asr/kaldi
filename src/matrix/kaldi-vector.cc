@@ -127,7 +127,6 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
   void *data;
   void *free_data;
 
-  // size = align<16>(dim * sizeof(Real));
   size = dim * sizeof(Real);
 
   if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {

@@ -37,7 +37,11 @@ void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
   KaldiBlasInt LDA = stride_;
   KaldiBlasInt result = -1;
   KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
-  Real *p_work = new Real[l_work];
+  Real *p_work;
+  void *free_data;
+  if ((p_work = static_cast<Real*>(
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &free_data))) == NULL)
+    throw std::bad_alloc();
 
   clapack_Xgetrf2(&M, &N, data_, &LDA, pivot, &result);
   const int pivot_offset = 1;
@@ -81,7 +85,11 @@ void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
   if (inverse_needed) clapack_Xgetri2(&M, data_, &LDA, pivot, p_work, &l_work,
                               &result);
   delete[] pivot;
-  delete[] p_work;
+#ifdef KALDI_MEMALIGN_MANUAL
+  free(free_data);
+#else
+  free(p_work);
+#endif
 #else
   if (inverse_needed)
     clapack_Xgetri(num_rows_, data_, stride_, pivot, &result);
@@ -297,24 +305,31 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
 		  &result);
 
   l_work = static_cast<KaldiBlasInt>(work_query);
-  Real *p_work = new Real[l_work];
-
+  Real *p_work;
+  void *free_data;
+  if ((p_work = static_cast<Real*>(
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &free_data))) == NULL)
+    throw std::bad_alloc();
+  
   // perform svd
   clapack_Xgesvd(v_job, u_job,
-          &M, &N, data_, &LDA,
-          s->Data(),
-          V->Data(), &V_stride,
-          U->Data(), &U_stride,
-          p_work, &l_work,
-          &result);
+                 &M, &N, data_, &LDA,
+                 s->Data(),
+                 V->Data(), &V_stride,
+                 U->Data(), &U_stride,
+                 p_work, &l_work,
+                 &result);
 
   KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgesvd_ called with wrong arguments");
 
   if (result != 0) {
     KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
   }
-
-  delete [] p_work;
+#ifdef KALDI_MEMALIGN_MANUAL
+  free(free_data);
+#else
+  free(p_work);
+#endif
 }
 
 #endif
@@ -1248,13 +1263,26 @@ bool MatrixBase<Real>::IsDiagonal(Real cutoff) const{
   return (!(bad_sum > good_sum * cutoff));
 }
 
+// This does nothing, it's designed to trigger Valgrind errors
+// if any memory is uninitialized.
+template<typename Real>
+void MatrixBase<Real>::TestUninitialized() const {
+  MatrixIndexT R = num_rows_, C = num_cols_, positive = 0;
+  for (MatrixIndexT i = 0; i < R; i++)
+    for (MatrixIndexT j = 0; j < C; j++)
+      if ((*this)(i, j) > 0.0) positive++;
+  if (positive > R * C)
+    KALDI_ERR << "Error....";
+}
+  
+
 template<class Real>
 bool MatrixBase<Real>::IsUnit(Real cutoff) const {
   MatrixIndexT R = num_rows_, C = num_cols_;
   // if (R != C) return false;
   Real bad_max = 0.0;
-  for (MatrixIndexT i = 0;i < R;i++)
-    for (MatrixIndexT j = 0;j < C;j++)
+  for (MatrixIndexT i = 0; i < R;i++)
+    for (MatrixIndexT j = 0; j < C;j++)
       bad_max = std::max(bad_max, static_cast<Real>(std::abs( (*this)(i, j) - (i == j?1.0:0.0))));
   return (bad_max <= cutoff);
 }

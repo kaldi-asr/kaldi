@@ -299,6 +299,9 @@ class MatrixBase {
     return tmp.Min();
   }
 
+  void TestUninitialized() const; // This function is designed so that if any element
+  // if the matrix is uninitialized memory, valgrind will complain.
+  
   /// returns condition number by computing Svd.  Works even if cols > rows.
   Real Cond() const;
 

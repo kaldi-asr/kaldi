@@ -69,7 +69,7 @@ inline void PackedMatrix<Real>::Init(MatrixIndexT r) {
   MatrixIndexT size = r * (r + 1) / 2 * sizeof(Real);
 
   void *data;  // aligned memory block
-  void* free_data;  // memory block to be really freed
+  void *free_data;  // memory block to be really freed
 
   if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {
     this->data_ = static_cast<Real *> (data);

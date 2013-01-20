@@ -12,12 +12,8 @@
 # ./configure
 # ./configure --mkl-root=/opt/intel/mkl 
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
-# ./configure  --openblas-root=../tools/OpenBLAS/install # note: this
-#  # is now working on a pure 64-bit platform, but is not a very ideal setup; we'd like to
-#  # use OpenBLAS's own headers, but they have issues that need
-#  # to be fixed.  Instead we use netlib's BLAS+CLAPACK headers and a hacked
-#  # f2c.h, in ../tools/CLAPACK.  this didn't work when gcc was configured
-#  # to compile as 32 bit.
+# ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
+#        # this, cd to ../tools and type "make openblas"
 
 function rel2abs {
   if [ ! -z "$1" ]; then
