@@ -79,10 +79,10 @@ class TaskSequencer {
       tot_threads_avail_(config.num_threads_total > 0 ? config.num_threads_total :
                          2 * config.num_threads),
       thread_list_(NULL) {
-        KALDI_ASSERT(config.num_threads_total <= 0 ||
-                     config.num_threads_total >= config.num_threads &&
-                     "num-threads-total, if specified, must be >= num-threads");
-      }
+    KALDI_ASSERT((config.num_threads_total <= 0 ||
+                  config.num_threads_total >= config.num_threads) &&
+                 "num-threads-total, if specified, must be >= num-threads");
+  }
 
   /// This function takes ownership of the pointer "c", and will delete it
   /// in the same sequence as Run was called on the jobs.

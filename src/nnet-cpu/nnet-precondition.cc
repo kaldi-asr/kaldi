@@ -27,7 +27,7 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
   int32 N = R.NumRows(), D = R.NumCols();
   KALDI_ASSERT(SameDim(R, *P) && N > 1);
   MatrixBase<BaseFloat> &Q = *P;
-
+  
   if (N >= D) {
     // Compute G = (\lambda I + 1/(N-1) R^T R)^{-1} by direct inversion.
     // G <-- lambda I.

@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
     po.Register("buffer-size", &buffer_size, "If >0, size of a buffer we use "
-                "to do limited-memory partial randomization.");
+                "to do limited-memory partial randomization.  Otherwise, do "
+                "full randomization.");
     
     po.Read(argc, argv);
 

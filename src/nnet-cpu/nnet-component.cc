@@ -867,6 +867,8 @@ void AffineComponentPreconditioned::Update(
   // matrix that has been estimated from all the other rows,
   // smoothed by some appropriate amount times the identity
   // matrix (this amount is proportional to \alpha).
+  in_value_temp.TestUninitialized();
+  out_deriv.TestUninitialized();
   PreconditionDirectionsAlphaRescaled(in_value_temp, alpha_, &in_value_precon);
   PreconditionDirectionsAlphaRescaled(out_deriv, alpha_, &out_deriv_precon);
 
