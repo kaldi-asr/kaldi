@@ -297,13 +297,12 @@ class SpMatrix : public PackedMatrix<Real> {
                  bool verbose = false, bool is_psd = true);
 
   /// Floor: Given a positive semidefinite matrix, floors the eigenvalues
-  /// to the specified quantity.  Positive semidefiniteness is only assumed
-  /// because a function we call checks for it (to within a tolerance), and
-  /// because it tends to be present in situations where doing this would
-  /// make sense.  Set the tolerance to 2 to ensure it won't ever complain
-  /// about non-+ve-semidefinite matrix (it will zero out negative dimensions)
-  /// returns number of floored elements.
-  int ApplyFloor(Real floor, BaseFloat tolerance = 0.001);
+  /// to the specified quantity.  A previous version of this function had
+  /// a tolerance which is now no longer needed since we have code to
+  /// do the symmetric eigenvalue decomposition and no longer use the SVD
+  /// code for that purose.
+  int ApplyFloor(Real floor);
+  
   bool IsDiagonal(Real cutoff = 1.0e-05) const;
   bool IsUnit(Real cutoff = 1.0e-05) const;
   bool IsZero(Real cutoff = 1.0e-05) const;

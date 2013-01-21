@@ -1785,8 +1785,8 @@ template<class Real> static void  UnitTestFloorChol() {
     if (i%2 == 0)
       C.Scale(0.001);  // so it's not too much bigger than B (or it's trivial)
     SpMatrix<Real> BFloored(B); BFloored.ApplyFloor(C, alpha);
-
-
+    
+    
     for (MatrixIndexT j = 0;j < 10;j++) {
       Vector<Real> v(dimM);
       InitRand(&v);
@@ -1813,12 +1813,12 @@ template<class Real> static void  UnitTestFloorUnit() {
     B.AddMat2(1.0, M, kNoTrans, 0.0);  // B = M*M^T -> positive semidefinite.
 
     SpMatrix<Real> BFloored(B); BFloored.ApplyFloor(floor);
-
+    
 
     Vector<Real> s(dimM); Matrix<Real> P(dimM, dimM); B.SymPosSemiDefEig(&s, &P);
     Vector<Real> s2(dimM); Matrix<Real> P2(dimM, dimM); BFloored.SymPosSemiDefEig(&s2, &P2);
 
-    KALDI_ASSERT ( (s.Min() > floor && std::abs(s2.Min()-s.Min())<0.01) || std::abs(s2.Min()-floor)<0.01);
+    KALDI_ASSERT ( (s.Min() >= floor && std::abs(s2.Min()-s.Min())<0.01) || std::abs(s2.Min()-floor)<0.01);
   }
 }
 
@@ -3485,6 +3485,8 @@ static void UnitTestTopEigs() {
 
 
 template<class Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestFloorChol<Real>();
+  UnitTestFloorUnit<Real>();
   UnitTestAddMat2Sp<Real>();
   UnitTestLbfgs<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
@@ -3551,8 +3553,6 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSpVec<Real>();
   UnitTestLimitCondInvert<Real>();
   KALDI_LOG << " Point G";
-  UnitTestFloorChol<Real>();
-  UnitTestFloorUnit<Real>();
   UnitTestLimitCond<Real>();
   UnitTestMat2Vec<Real>();
   UnitTestSpLogExp<Real>();

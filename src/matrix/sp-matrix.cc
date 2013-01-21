@@ -608,23 +608,19 @@ Real SpMatrix<Real>::LogDet(Real *det_sign) const {
 
 
 template<typename Real>
-int SpMatrix<Real>::ApplyFloor(Real floor, BaseFloat tolerance) {
-  if (floor < 0) {
-    KALDI_WARN<< "Cannot have negative floor for a positive semi-definite matrix. "
-        "Making the floor zero.";
-    floor = 0;
-  }
+int SpMatrix<Real>::ApplyFloor(Real floor) {
   MatrixIndexT Dim = this->NumRows();
   int nfloored = 0;
   Vector<Real> s(Dim);
   Matrix<Real> P(Dim, Dim);
-  (*this).SymPosSemiDefEig(&s, &P, tolerance);
+  (*this).Eig(&s, &P);
   for (MatrixIndexT i = 0; i < Dim; i++) {
-    if (s(i) < floor) nfloored++;
-    s(i) = sqrt(std::max(s(i), floor));
+    if (s(i) < floor) {
+      nfloored++;
+      s(i) = floor;
+    }
   }
-  P.MulColsVec(s);
-  (*this).AddMat2(1.0, P, kNoTrans);  // (*this) = P*P^T = P*floor(s)*P^T
+  (*this).AddMat2Vec(1.0, P, kNoTrans, s, 0.0);
   return nfloored;
 }
 

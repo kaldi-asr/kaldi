@@ -346,9 +346,8 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
         // Now flooring etc. of variance's eigenvalues.
         BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
                                    covar.MaxAbsEig() / config.max_condition);
-
-        // 2.0 in the next line implies full tolerance to non-+ve-definiteness..
-        int32 floored = covar.ApplyFloor(floor, 2.0);
+        
+        int32 floored = covar.ApplyFloor(floor);
 
         if (floored) {
           tot_floored += floored;

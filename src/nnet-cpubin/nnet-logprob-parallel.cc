@@ -1,4 +1,4 @@
-// nnet-cpubin/nnet-logprob2-parallel.cc
+// nnet-cpubin/nnet-logprob-parallel.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -31,11 +31,9 @@ struct NnetLogprobTask {
                   const std::string &key,
                   const Matrix<BaseFloat> &feats,
                   const Vector<BaseFloat> &spk_vec,
-                  BaseFloatMatrixWriter *prob_writer_nodiv,
-                  BaseFloatMatrixWriter *logprob_writer_divided):
+                  BaseFloatMatrixWriter *logprob_writer):
       am_nnet_(am_nnet), inv_priors_(inv_priors), key_(key), feats_(feats),
-      spk_vec_(spk_vec), prob_writer_nodiv_(prob_writer_nodiv),
-      logprob_writer_divided_(logprob_writer_divided) { }
+      spk_vec_(spk_vec), logprob_writer_(logprob_writer) { }
   void operator () () {
     log_probs_.Resize(feats_.NumRows(), am_nnet_.NumPdfs());
     bool pad_input = true;
@@ -45,7 +43,6 @@ struct NnetLogprobTask {
 
   ~NnetLogprobTask() { // Produces output.  Run sequentially.
     // at this point they are probabilities, not log-probs, without prior division.
-    prob_writer_nodiv_->Write(key_, log_probs_);
     
     log_probs_.MulColsVec(inv_priors_); // scales each column by the corresponding element
     // of inv_priors.
@@ -60,7 +57,7 @@ struct NnetLogprobTask {
     }
     log_probs_.ApplyFloor(1.0e-20); // To avoid log of zero which leads to NaN.
     log_probs_.ApplyLog();
-    logprob_writer_divided_->Write(key_, log_probs_);
+    logprob_writer_->Write(key_, log_probs_);
   }
 
  private:
@@ -70,8 +67,7 @@ struct NnetLogprobTask {
   Matrix<BaseFloat> feats_;
   Vector<BaseFloat> spk_vec_;
   Matrix<BaseFloat> log_probs_;
-  BaseFloatMatrixWriter *prob_writer_nodiv_;
-  BaseFloatMatrixWriter *logprob_writer_divided_;
+  BaseFloatMatrixWriter *logprob_writer_;
 };
 
 
@@ -86,17 +82,12 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Do the forward computation for a neural net acoustic model, and output\n"
-        "matrix of logprobs.  This version of the program outputs to two tables,\n"
-        "one table of probabilities without prior division and one table of\n"
-        "log-probs with prior division.  It is intended for use in discriminative\n"
-        "training.  This version supports multi-threaded operation (--num-threads\n"
-        "option)\n"
+        "matrix of logprobs (including division by prior).\n"
         "\n"
-        "Usage: nnet-logprob2-parallel [options] <model-in> <features-rspecifier> "
-        "<probs-wspecifier-not-divided> <logprobs-wspecifier-divided>\n"
+        "Usage: nnet-logprob-parallel [options] <model-in> <features-rspecifier> "
+        "<logprobs-wspecifier>\n"
         "\n"
-        "e.g.: nnet-logprob2-parallel 1.nnet \"$feats\" ark:- \"ark:|logprob-to-post ark:- 1.post\" ark:- \\"
-        "        | latgen-faster-mapped [args]\n";
+        "e.g.: nnet-logprob-parallel 1.nnet \"$feats\" ark:- | latgen-faster-mapped [args]\n";
     
     std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     TaskSequencerConfig thread_config;
@@ -113,16 +104,15 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
     
     std::string nnet_rxfilename = po.GetArg(1),
         feats_rspecifier = po.GetArg(2),
-        prob_wspecifier_nodiv = po.GetArg(3),
-        logprob_wspecifier_divided = po.GetArg(4);
-        
+        logprob_wspecifier = po.GetArg(3);
+    
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -143,8 +133,7 @@ int main(int argc, char *argv[]) {
     // note: spk_vecs_rspecifier and utt2spk_rspecifier may be empty.
     RandomAccessBaseFloatVectorReaderMapped vecs_reader(spk_vecs_rspecifier,
                                                         utt2spk_rspecifier);
-    BaseFloatMatrixWriter prob_writer_nodiv(prob_wspecifier_nodiv);
-    BaseFloatMatrixWriter logprob_writer_divided(logprob_wspecifier_divided);
+    BaseFloatMatrixWriter logprob_writer(logprob_wspecifier);
 
     {
       TaskSequencer<NnetLogprobTask> sequencer(thread_config);
@@ -163,8 +152,7 @@ int main(int argc, char *argv[]) {
         }
 
         sequencer.Run(new NnetLogprobTask(am_nnet, inv_priors, key, feats,
-                                          spk_vec, &prob_writer_nodiv,
-                                          &logprob_writer_divided));
+                                          spk_vec, &logprob_writer));
         num_done++;
       }
     }
