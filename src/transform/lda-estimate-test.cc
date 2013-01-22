@@ -67,9 +67,11 @@ test_io(const LdaEstimate &lda_est, bool binary) {
 
   Matrix<BaseFloat> m1;
   Matrix<BaseFloat> m2;
-  bool remove_mean_offset = false;
-  lda_est.Estimate(dim, remove_mean_offset, &m1);
-  lda_est2.Estimate(dim, remove_mean_offset, &m2);
+  
+  LdaEstimateOptions opts;
+  opts.dim = dim;
+  lda_est.Estimate(opts, &m1);
+  lda_est2.Estimate(opts, &m2);
   
   m1.AddMat(-1.0, m2, kNoTrans);
   assert(m1.IsZero(1.0e-02));
@@ -156,10 +158,14 @@ UnitTestEstimateLda() {
   for (size_t i = 0; i < counter; i++) {
     lda_est.Accumulate(feats.Row(i), feats_class[i]);
   }
+  LdaEstimateOptions opts;
+  opts.dim = dim;
+
   Matrix<BaseFloat> lda_mat_bf,
       lda_mat_bf_mean_remove;
-  lda_est.Estimate(dim, false, &lda_mat_bf);
-  lda_est.Estimate(dim, true, &lda_mat_bf_mean_remove);
+  lda_est.Estimate(opts, &lda_mat_bf);
+  opts.remove_offset = true;
+  lda_est.Estimate(opts, &lda_mat_bf_mean_remove);
 
   {
     Vector<BaseFloat> mean_ext(total_mean);
