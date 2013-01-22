@@ -19,9 +19,25 @@
 #define KALDI_TRANSFORM_LDA_ESTIMATE_H_
 
 #include "base/kaldi-common.h"
+#include "util/common-utils.h"
 #include "matrix/matrix-lib.h"
 
 namespace kaldi {
+
+struct LdaEstimateOptions {
+  bool remove_offset;
+  int32 dim;
+  bool allow_large_dim;
+  LdaEstimateOptions(): remove_offset(false), dim(40), allow_large_dim(false) { }
+
+  void Register(ParseOptions *po) {
+    po->Register("remove-offset", &remove_offset, "If true, output an affine "
+                 "transform that makes the projected data mean equal to zero.");
+    po->Register("dim", &dim, "Dimension to project to with LDA");
+    po->Register("allow-large-dim", &allow_large_dim, "If true, allow an LDA "
+                 "dimension larger than the number of classes.");
+  }    
+};
 
 /** Class for computing linear discriminant analysis (LDA) transform.
     C.f. \ref transform_lda.
@@ -52,8 +68,7 @@ class LdaEstimate {
   /// result, as with other Kaldi transforms.)
   /// The "remove_offset" argument is new and should be set to false for back
   /// compatibility.
-  void Estimate(int32 target_dim,
-                bool remove_offset,
+  void Estimate(const LdaEstimateOptions &opts, 
                 Matrix<BaseFloat> *M,
                 Matrix<BaseFloat> *Mfull = NULL) const;
 

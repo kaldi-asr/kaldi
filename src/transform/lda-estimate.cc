@@ -17,7 +17,6 @@
 
 
 #include "transform/lda-estimate.h"
-#include "util/common-utils.h"
 
 namespace kaldi {
 
@@ -52,13 +51,13 @@ void LdaEstimate::Accumulate(const VectorBase<BaseFloat> &data,
   total_second_acc_.AddVec2(weight, data_d);
 }
 
-void LdaEstimate::Estimate(int32 target_dim,
-                           bool remove_offset,
+void LdaEstimate::Estimate(const LdaEstimateOptions &opts,
                            Matrix<BaseFloat> *m,
                            Matrix<BaseFloat> *mfull) const {
+  int32 target_dim = opts.dim;
   KALDI_ASSERT(target_dim > 0);
-  // btwn-class covar is of most rank C-1
-  KALDI_ASSERT(target_dim <= Dim() && target_dim < NumClasses());
+  // between-class covar is of most rank C-1
+  KALDI_ASSERT(target_dim <= Dim() && (target_dim < NumClasses() || opts.allow_large_dim));
   int32 num_class = NumClasses(), dim = Dim();
 
   // total covariance
@@ -74,9 +73,11 @@ void LdaEstimate::Estimate(int32 target_dim,
   SpMatrix<double> bc_covar(dim);
   Vector<double> c_mean(dim);
   for (int32 c = 0; c < static_cast<int32>(num_class); c++) {
-    c_mean.CopyRowFromMat(first_acc_, c);
-    c_mean.Scale(1/zero_acc_(c));
-    bc_covar.AddVec2(zero_acc_(c)/sum, c_mean);
+    if (zero_acc_(c) != 0.0) {
+      c_mean.CopyRowFromMat(first_acc_, c);
+      c_mean.Scale(1/zero_acc_(c));
+      bc_covar.AddVec2(zero_acc_(c)/sum, c_mean);
+    }
   }
   bc_covar.AddVec2(-1.0, total_mean);
   Matrix<double> bc_covar_mat(bc_covar);
@@ -86,7 +87,16 @@ void LdaEstimate::Estimate(int32 target_dim,
   SpMatrix<double> wc_covar(total_covar);
   wc_covar.AddSp(-1.0, bc_covar);
   TpMatrix<double> wc_covar_sqrt(dim);
-  wc_covar_sqrt.Cholesky(wc_covar);
+  try {
+    wc_covar_sqrt.Cholesky(wc_covar);
+  } catch (...) {
+    BaseFloat smooth = 1.0e-03 * wc_covar.Trace() / wc_covar.NumRows();
+    KALDI_LOG << "Cholesky failed (possibly not +ve definite), so adding " << smooth
+              << " to diagonal and trying again.\n";
+    for (int32 i = 0; i < wc_covar.NumRows(); i++)
+      wc_covar(i, i) += smooth;
+    wc_covar_sqrt.Cholesky(wc_covar);    
+  }
   Matrix<double> wc_covar_sqrt_mat(wc_covar_sqrt);
   // copy wc_covar_sqrt to Matrix, because it facilitates further use
   wc_covar_sqrt_mat.Invert();
@@ -112,13 +122,13 @@ void LdaEstimate::Estimate(int32 target_dim,
   // finally, copy first target_dim rows to m
   m->Resize(target_dim, dim);
   m->CopyFromMat(lda_mat.Range(0, target_dim, 0, dim));
-  if (remove_offset)
+  if (opts.remove_offset)
     AddMeanOffset(total_mean, m);
 
   if (mfull) {
     mfull->Resize(dim, dim);
     mfull->CopyFromMat(lda_mat);
-    if (remove_offset)
+    if (opts.remove_offset)
       AddMeanOffset(total_mean, mfull);
   }
 }

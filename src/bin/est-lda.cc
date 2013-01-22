@@ -29,16 +29,13 @@ int main(int argc, char *argv[]) {
         "Usage:  est-lda [options] <lda-matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
 
     bool binary = true;
-    bool remove_offset = false;
-    int32 dim = 40;
     std::string full_matrix_wxfilename;
+    LdaEstimateOptions opts;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
-    po.Register("remove-offset", &remove_offset, "If true, output an affine transform "
-                "that makes the projected data mean equal to zero.");
     po.Register("write-full-matrix", &full_matrix_wxfilename,
                 "Write full LDA matrix to this location.");
-    po.Register("dim", &dim, "Dimension to project to with LDA");
+    opts.Register(&po);
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -57,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     Matrix<BaseFloat> lda_mat;
     Matrix<BaseFloat> full_lda_mat;
-    lda.Estimate(dim, remove_offset, &lda_mat, &full_lda_mat);
+    lda.Estimate(opts, &lda_mat, &full_lda_mat);
     WriteKaldiObject(lda_mat, lda_mat_wxfilename, binary);
     if (full_matrix_wxfilename != "") {
       Output ko(full_matrix_wxfilename, binary);
