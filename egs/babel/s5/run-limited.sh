@@ -26,6 +26,66 @@ configfile=$1
 [ -f $configfile ] && . $configfile 
 [ -f ./local.conf ] && . ./local.conf
 
+#Preparing dev and train directories
+if test -f $train_data_list ; then
+    mkdir -p ./data/raw_train_data/transcription
+    mkdir -p ./data/raw_train_data/audio
+
+    abs_src_dir=`readlink -f $train_data_dir` 
+    abs_tgt_dir=`readlink -f ./data/raw_train_data`
+
+    for file_basename in `cat $train_data_list`; do
+        test -e $abs_src_dir/audio/$file_basename.sph  && \
+            ln -sf $abs_src_dir/audio/$file_basename.sph $abs_tgt_dir/audio
+        test -e $abs_src_dir/transcription/$file_basename.txt  && \
+            ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription
+    done
+
+  train_data_dir=`readlink -f ./data/raw_train_data`
+fi
+
+if test -f $dev_data_list ; then
+    mkdir -p ./data/raw_dev_data/transcription
+    mkdir -p ./data/raw_dev_data/audio
+
+    abs_src_dir=`readlink -m $dev_data_dir` 
+    abs_tgt_dir=`readlink -m ./data/raw_dev_data`
+
+    for file_basename in `cat $dev_data_list`; do
+        test -e $abs_src_dir/audio/$file_basename.sph  && \
+            ln -sf $abs_src_dir/audio/$file_basename.sph $abs_tgt_dir/audio
+        test -e $abs_src_dir/transcription/$file_basename.txt  && \
+            ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription
+    done
+
+  dev_data_dir=`readlink -f ./data/raw_dev_data`
+fi
+
+if [[ $filter_lexicon ]]; then
+    lexicon_dir=./data/raw_lex_data
+    mkdir -p $lexicon_dir
+
+    (
+      find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
+      find $train_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
+    ) | sort -u | awk ' 
+      BEGIN {
+          while(( getline line< ARGV[2] ) > 0 ) {
+              split(line, e, "\t")
+              LEXICON[ e[1] ]=line
+          }
+          FILENAME="-"
+          i=0
+        
+          while(( getline word< ARGV[1] ) > 0 ) {
+            if (word in LEXICON)
+              print LEXICON[word]
+          }
+      }
+    ' -  $lexicon_file | sort -u > $lexicon_dir/lexicon.txt
+    lexicon_file=$lexicon_dir/lexicon.txt
+fi
+
 echo ---------------------------------------------------------------------
 echo "Preparing lexicon in data/local on" `date`
 echo ---------------------------------------------------------------------
