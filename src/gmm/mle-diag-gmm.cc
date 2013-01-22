@@ -315,12 +315,13 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
       Vector<double> old_mean(ngmm.means_.Row(i));
       
       // update mean, then variance, as far as there are accumulators 
-      if (diag_gmm_acc.Flags() & kGmmMeans) {
+      if (diag_gmm_acc.Flags() & (kGmmMeans|kGmmVariances)) {
         Vector<double> mean(diag_gmm_acc.mean_accumulator().Row(i));
         mean.Scale(1.0 / occ);
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }
+
       if (diag_gmm_acc.Flags() & kGmmVariances) {
         KALDI_ASSERT(diag_gmm_acc.Flags() & kGmmMeans);
         Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
