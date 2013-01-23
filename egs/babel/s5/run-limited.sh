@@ -28,6 +28,7 @@ configfile=$1
 
 #Preparing dev and train directories
 if test -f $train_data_list ; then
+    echo "Subsetting the TRAIN set"
     mkdir -p ./data/raw_train_data/transcription
     mkdir -p ./data/raw_train_data/audio
 
@@ -41,10 +42,16 @@ if test -f $train_data_list ; then
             ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription
     done
 
+  nj_max=`cat $train_data_list | wc -l`
+  if [[ "$nj_max" -lt "$train_nj" ]] ; then
+      echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+      train_nj=$nj_max
+  fi
   train_data_dir=`readlink -f ./data/raw_train_data`
 fi
 
 if test -f $dev_data_list ; then
+    echo "Subsetting the DEV set"
     mkdir -p ./data/raw_dev_data/transcription
     mkdir -p ./data/raw_dev_data/audio
 
@@ -58,15 +65,21 @@ if test -f $dev_data_list ; then
             ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription
     done
 
+  nj_max=`cat $dev_data_list | wc -l`
+  if [[ "$nj_max" -lt "$decode_nj" ]] ; then
+      echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
+      decode_nj=$nj_max
+  fi
   dev_data_dir=`readlink -f ./data/raw_dev_data`
 fi
 
 if [[ $filter_lexicon ]]; then
+    echo "Subsetting the LEXICON"
     lexicon_dir=./data/raw_lex_data
     mkdir -p $lexicon_dir
 
     (
-      find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
+      #find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
       find $train_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
     ) | sort -u | awk ' 
       BEGIN {
