@@ -3,6 +3,13 @@
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 # Apache 2.0.
 
+# Begin configuration section.  
+case_insensitive=true
+# End configuration section.
+
+[ -f ./path.sh ] && . ./path.sh; # source the path.
+. parse_options.sh || exit 1;
+
 
 if [ $# -ne 3 ]; then
    echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>"
@@ -13,9 +20,8 @@ fi
 langdir=$1;
 datadir=$2;
 kwsdatadir=$3;
-keywords=$kwsdatadir/kws.xml
+keywords=$kwsdatadir/kwlist.xml
 
-case_insensitive=true
 
 mkdir -p $kwsdatadir;
 
@@ -39,9 +45,10 @@ cat $keywords | perl -e '
 # are not in our $langdir/words.txt, as we won't find them anyway...
 #cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
-if $case_insensitive ; then
+if $case_insensitive  ; then
+  echo "Running case insensitive processing"
   cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
-  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
+  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
 
   cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
@@ -55,11 +62,11 @@ cat $kwsdatadir/keywords_all.int | \
   grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int
 
 cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
-  babel/subset_kwslist.pl $keywords > $kwsdatadir/keyword_invocab.xml
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
 
 cat $kwsdatadir/keywords_all.int | \
   egrep " 0 | 0$" | cut -f 1 -d ' ' | \
-  babel/subset_kwslist.pl $keywords > $kwsdatadir/keyword_outvocab.xml
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
 
 
 

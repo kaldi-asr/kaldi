@@ -101,6 +101,33 @@ function CHECKPOINT {
   eval export $COUNTER_NAME=$COUNTER
 }
 
+function KILLBG_JOBS {
+    jobs \
+        | perl -ne 'print "$1\n" if m/^\[(\d+)\][+-]? +Running/;' \
+        | while read -r ; do kill %"$REPLY" ; done
+}
+
+function ONEXIT_HANDLER {
+  COLOR_GREEN='\e[00;32m'
+  COLOR_RED='\e[00;31m'
+  COLOR_BLUE='\e[00;34m'
+  COLOR_DEFAULT='\e[00m'
+  counters=`set | egrep "^CHECKPOINT_[_A-Z]+_COUNTER=" | sed 's/^CHECKPOINT\(_[_A-Z][_A-Z]*\)_COUNTER=/LAST_GOOD\1=/g' | sed "s/^LAST_GOOD_DEFAULT=/LAST_GOOD=/g"`
+  if [[ ! -z "$counters" ]]; then
+      echo -e ${COLOR_RED}"CHECKPOINT FAILURE: The last command returned non-zero status"${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"look at the counters and try to rerun this script (after figuring the issue)"${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"using the -c COUNTER_NAME=COUNTER_VALUE parameters;"${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"You can use -c \"COUNTER_NAME1=COUNTER_VALUE1;COUNTER_NAME2=COUNTER_VALUE2\" as well"${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"The counters: \n $counters"${COLOR_DEFAULT} >&2
+  else
+      echo -e ${COLOR_RED}"CHECKPOINT FAILURE: The last command returned non-zero status"${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"No checkpoint was found. Try to figure out the problem and "${COLOR_DEFAULT} >&2
+      echo -e ${COLOR_RED}"run the script again"${COLOR_DEFAULT} >&2
+  fi
+}
+
+trap "ONEXIT_HANDLER; exit; " SIGINT SIGKILL SIGTERM ERR
+
 while getopts ":c:i" opt; do
   case $opt in
     c)
