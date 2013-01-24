@@ -134,7 +134,7 @@ echo ---------------------------------------------------------------------
 echo "Preparing dev stm files in data/dev on" `date`
 echo ---------------------------------------------------------------------
 local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev || exit 1
-cp $glmFile data/dev
+cp $glmFile data/dev/glm
 
 echo ---------------------------------------------------------------------
 echo "Creating a basic G.fst in data/lang on" `date`
@@ -174,14 +174,14 @@ echo ---------------------------------------------------------------------
 echo "Starting (small) monophone training in exp/mono on" `date`
 echo ---------------------------------------------------------------------
 steps/train_mono.sh \
-    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj 12 --cmd "$train_cmd" \
     data/train_sub1 data/lang exp/mono || exit 1
 
 echo ---------------------------------------------------------------------
 echo "Starting (first) triphone training in exp/tri1 on" `date`
 echo ---------------------------------------------------------------------
 steps/align_si.sh \
-    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj $(( $train_nj/2 )) --cmd "$train_cmd" \
     data/train data/lang exp/mono exp/mono_ali || exit 1
 steps/train_deltas.sh \
     --boost-silence 1.5 --cmd "$train_cmd" \
