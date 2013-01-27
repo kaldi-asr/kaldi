@@ -25,110 +25,94 @@
 
 \section tutorial_running_start Getting started, and prerequisites.
 
-The next stage of the tutorial is to start running the example scripts for
-Resource Management.  Change directory to the top level (we called it kaldi-1),
-and then to egs/.  Look at the README.txt file in that directory, and
-specifically look at the Resource Management section.  It mentions the LDC
-catalog number corresponding to the corpus.  This may help you in obtaining the
-data from the LDC.  If you cannot get the data for some reason, just continue
-reading this tutorial and doing the steps that you can do without the data, and
-you may still obtain some value from it.  The best case is that there is some
-directory on your system, say /mnt/data4/RM, that contains three subdirectories;
-call them rm1_audio1, rm1_audio2 and rm2_audio.  These would correspond to the
-three original disks in the data distribution from the LDC.
-These instructions assume that your shell is bash.  If you have a different
-shell, these commands will not work or should be modified (just type "bash"
-to get into bash, and everything should work).
+The next stage of the tutorial is to start running the example scripts for Resource Management. Change directory to the top level (we called it kaldi-1), and then to egs/. Look at the README.txt file in that directory, and specifically look at the Resource Management section. It mentions the LDC catalog number corresponding to the corpus. This may help you in obtaining the data from the LDC. If you cannot get the data for some reason, just continue reading this tutorial and doing the steps that you can do without the data, and you may still obtain some value from it. The best case is that there is some directory on your system, say /export/corpora5/LDC/LDC93S3A/rm_comp, that contains three subdirectories; call them rm1_audio1, rm1_audio2 and rm2_audio. These would correspond to the three original disks in the data distribution from the LDC. These instructions assume that your shell is bash. If you have a different shell, these commands will not work or should be modified (just type "bash" to get into bash, and everything should work).
 
-Now change directory to rm/, glance at the file README.txt to see what the
-overall structure is, and cd to s1/.  This is the basic sequence of experiments
-that corresponds to the main functionality in version 1 of the toolkit.
+Now change directory to rm/, glance at the file README.txt to see what the overall structure is, and cd to s5/. This is the basic sequence of experiments that corresponds to the main functionality in version 5 of the toolkit.
 
-<em> Caution: this tutorial was written some time ago, when the recommended version
-of the scripts was "s1".  The current recommended version is s5.  The steps of
-the tutorial need to be modified to reflect this.  Help with this would be
-appreciated.  The source for this documentation is in the repository,
-under src/doc/.  Our recommendation at the moment is to run the s5 version
-of the scripts, but bear in mind that parts of the instructions may be out of
-date. </em>
-
-In s1/, list the directory and glance at the RESULTS file so you have some
-idea what is in there (later on, you should verify that the results you get
-are similar to what is in there).  The main file we will be looking at
-is run.sh.  Note: run.sh is not intended to be run directly from the shell;
-the idea is that you run the commands in it one by one, by hand.
+In s5/, list the directory and glance at the RESULTS file so you have some idea what is in there (later on, you should verify that the results you get are similar to what is in there). The main file we will be looking at is run.sh. Note: run.sh is not intended to be run directly from the shell; the idea is that you run the commands in it one by one, by hand.
 
 \section tutorial_running_data_prep Data preparation
 
-The first three lines you have to run are as follows [assuming your data is
-in /mnt/data4/RM, which is an example]:
+We will first need to configure whether the jobs need to run locally or on the Oracle GridEngine. Instructions on how to do this are in cmd.sh. 
+
+If you do not have GridEngine installed, or if you are running experiments on smaller datasets, execute the following command on your shell. 
+
 \verbatim
-cd data_prep
-./run.sh /mnt/data4/RM
-cd ..
+train_cmd="run.pl"
 \endverbatim
-If this works it should say "Succeeded".  If not, you will have to work out
-where the script failed and what the problem was.
 
-The next couple of steps in s1/run.sh copy some things from data_prep/ into data/.
-Run these.  The general concept behind this directory structure is that
-data_prep/ contains the corpus-specific data preparation stages and data/
-contains the same data in some kind of "normalized" form, so that in theory the
-same set of system-building works could run from the same data/ directory.
-However, it is not perfectly executed and we will improve the organization of the
-scripts at some point.
+If you do have GridEngine installed, you should use the queue.pl file with arguments specifying where the GridEngine resides. In this case, you would execute the following commands (The argument -q is an example and you would want to replace it with your GridEngine details)
 
-At this point let's have a quick look at the things that were prepared
-in data_prep/.  Change directory to data_prep/, and run the following
-commands, looking at the output each time.
 \verbatim
- # G.txt is the word-pair grammar supplied with the RM corpus.
- head G.txt   
- head lexicon.txt
- head train_trans.txt
- head train_wav.scp
+train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
+decode_cmd="queue.pl -q all.q@[ah]*.clsp.jhu.edu"
 \endverbatim
-These will give you some idea of what the outputs of a generic data preparation process would
-look like.  Something you should appreciate is that not all of these files are "native" Kaldi
-formats, i.e. not all of them could be read by Kaldi's C++ programs:
- - The grammar, G.txt, needs to be compiled into an FST before it is used, and even then
-   it is not generally read directly by Kaldi but would be processed further using OpenFst tools.
- - The lexicon, lexicon.txt, needs to be converted by OpenFst into the binary FST format
-   before Kaldi will read it (and we'll turn the words and phones into integer labels;
-   Kaldi will only deal with integers).
- - The transcriptions, train_trans.txt, will also be turned into an integer format--
-   still a text file, but with the words replaced with integers.
- - The file train_wav.scp is actually read directly by Kaldi programs when doing feature 
-   extraction.  Look at the file
-   again.  It is parsed as a set of key-value pairs, where the key is the first string on
-   each line.  The value is a kind of "extended filename", and you can guess how it works.  
-   Since it is for reading we will refer to this type of string as an "rxfilename" (for writing
-   we use the term wxfilename).  See \ref io_sec_xfilename if you are curious.  Note that
-   although we use the extension .scp, this is not a script file in the HTK sense (i.e. it
-   is not viewed as an extension to the command-line arguments). 
 
-Now, from the directory s1/, run the next step in run.sh which is:
+The next step is to create the test and training sets from the RM corpora. To do this, run the following command on your shell (Assuming your data is in /export/corpora5/LDC/LDC93S3A/rm_comp): 
+
 \verbatim
- steps/prepare_graphs.sh
+local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp 
 \endverbatim
-Look at the script.  It transforms some of the files created in data_prep/ to a more
-normalized form that is read by Kaldi.  This script creates its output in the
-data/ directory.  The files we mention below will be in that directory.
+If this works, it should say : “RM_data_prep succeeded”. If not, you will have to work out where the script failed and what the problem was.
 
-The first two files this script creates are called words.txt and phones.txt
-(both in the directory data/).
-These are OpenFst format symbol tables, and represent a mapping from strings to
-integers and back.  Look at these files; since they are important and will be
-frequently used so you need to understand what is in them.  They have the same
-format as the symbol table format we encountered previously in \ref tutorial_looking
-"Overview of the distribution".
+Now list the contents of the current directory and you should see that a new directory called “data” was created. Go into the newly created data directory and list the contents. You should see three main types of folders : 
 
-Look at the files with suffix .csl (in data/).  These are colon-separated lists of
-the integer id's of non-silence, and silence, phones respectively.  They are sometimes
-needed as options on program command lines (e.g. to specify lists of silence phones),
-and for other purposes.
+- local : Contains the dictionary for the current data. 
+- train : The data segmented from the corpora for training purposes. 
+- test_* : The data segmented from the corpora for testing purposes.
 
-Look at phones_disambig.txt.  This file is a phone symbol table that also 
+Let’s spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref io_sec_xfilename)
+
+The Local Directory : 
+Assuming that you are in the data directory, execute the following commands : 
+
+\verbatim
+ls local/dict
+head lexicon.txt
+head nonsilence_phones.txt
+head silence_phones.txt
+\endverbatim
+
+These will give you some idea of what the outputs of a generic data preparation process would look like. Something you should appreciate is that not all of these files are "native" Kaldi formats, i.e. not all of them could be read by Kaldi's C++ programs and need to be processed using OpenFST tools before KALDI can use them.
+
+- lexicon.txt : This is the lexicon.
+- *silence*.txt : These files contain information about which phones are silent and which are not. 
+
+Now go back to the data directory and change directory to /train. Then execute the following commands to look at the output of the files in this directory :
+
+\verbatim
+head text
+head spk2gender.map
+head spk2utt
+head utt2spk
+head wav.scp
+\endverbatim
+
+- text - This file contains mappings between utterances and utterance ids which will be used by KALDI. This file will be turned into an integer format-- still a text file, but with the words replaced with integers.
+- spk2gender.map - This file contains mappings between speakers and their gender. This also acts as a list of unique users involved in training. 
+- spk2utt - This is a mapping between the speaker identifiers and all the utterance identifiers associated with the speaker. 
+- utt2spk - This is a one-to-one mapping between utterance ids and the corresponding speaker identifiers. 
+- wav.scp - This file is actually read directly by Kaldi programs when doing feature extraction. Look at the file again. It is parsed as a set of key-value pairs, where the key is the first string on each line. The value is a kind of "extended filename", and you can guess how it works. Since it is for reading we will refer to this type of string as an "rxfilename" (for writing we use the term wxfilename). See \ref io_sec_xfilename if you are curious. Note that although we use the extension .scp, this is not a script file in the HTK sense (i.e. it is not viewed as an extension to the command-line arguments).
+
+The structure of the train folder and the test_* folders is the same. However the size of the train data is significantly larger than the test data. You can verify this by going back into the data directory and executing the following command which will give word counts for training and test sets:
+
+\verbatim
+wc train/text test_feb89/text
+\endverbatim
+
+The next step is to create the raw language files that KALDI uses. In most cases, these will be text files in integer formats. Make sure that you are back in the s5 directory and execute the following command:
+
+\verbatim
+utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang 
+\endverbatim
+
+This will create a new folder called lang within the local folder which will contain an FST describing the language in question. Look at the script. It transforms some of the files created in data/ to a more normalized form that is read by Kaldi. This script creates its output in the data/lang/ directory. The files we mention below will be in that directory.
+
+The first two files this script creates are called words.txt and phones.txt (both in the directory data/lang/). These are OpenFst format symbol tables, and represent a mapping from strings to integers and back. Look at these files; since they are important and will be frequently used so you need to understand what is in them. They have the same format as the symbol table format we encountered previously in \ref tutorial_looking "Overview of the distribution".
+
+Look at the files with suffix .csl (in data/lang/phones). These are colon-separated lists of the integer id's of non-silence, and silence, phones respectively. They are sometimes needed as options on program command lines (e.g. to specify lists of silence phones), and for other purposes.
+
+Look at phones.txt (in data/lang/).  This file is a phone symbol table that also 
 handles the "disambiguation symbols" used in the standard FST recipe.
 These symbols are conventionally called \#1, \#2 and so on;
  see the paper <a href=www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
@@ -139,15 +123,18 @@ are there?  In some recipes the number of disambiguation symbols is the same
 as the maximum number of words that share the same pronunciation.  In our recipe
 there are a few more; you can find more explanation \ref graph_disambig "here".
 
-The file L.fst is the compiled lexicon in FST format.  To see what kind of information
-is in it, you can (from s1/), do:
+The file L.fst is the compiled lexicon in FST format. To see what kind of information is in it, you can (from s5/), do:
+
 \verbatim
- . path.sh
- fstprint --isymbols=data/phones_disambig.txt --osymbols=data/words.txt data/L.fst | head
+ fstprint --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst | head
 \endverbatim
-Look at the command-line that creates L.fst
-in steps/prepare_graphs.sh.  Try to figure out what the 0.5 on the command line means
-(you will have to look at the Perl script that is invoked).
+
+The next step is to use the files created in the previous step to create an FST describing the grammar for the language. To do this, go back to the directory s5 and execute the following command : 
+
+\verbatim
+ local/rm_prepare_grammar.sh
+\endverbatim
+If successful, this should return with the message “Succeeded preparing grammar for RM.” A new file would be created in /data/lang called G.fst.
 
 \section tutorial_running_feats Feature extraction
 
