@@ -61,7 +61,7 @@ Now list the contents of the current directory and you should see that a new dir
 - train : The data segmented from the corpora for training purposes. 
 - test_* : The data segmented from the corpora for testing purposes.
 
-Let's spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref io_sec_xfilename)
+Let's spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref data_prep "Detailed data preparation guide")
 
 The Local Directory : 
 Assuming that you are in the data directory, execute the following commands : 
