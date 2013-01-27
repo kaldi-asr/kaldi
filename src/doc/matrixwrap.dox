@@ -27,11 +27,15 @@ namespace kaldi {
  
   The matrix code in Kaldi is mostly a wrapper on top of the
   linear-algebra libraries BLAS and LAPACK.  The code has been designed to be as flexible
-  as possible in terms of what libraries it can use.  Thus, it can either use some
-  implementation of BLAS plus CLAPACK, or it can use ATLAS (which is an implementation 
-  of BLAS plus a subset of LAPACK), or it can use Intel's MKL, which has basically
-  the same interface as standard BLAS plus CLAPACK.  The code requires exactly one
-  of the three strings HAVE_ATLAS, HAVE_CLAPACK or HAVE_MKL to be defined 
+  as possible in terms of what libraries it can use.  Currently it supports four options:
+    -  ATLAS, which is an implementation of BLAS plus a subset of LAPACK (with a different interface)
+    -  Some implementation of BLAS plus CLAPACK (note: this has not been tested recently).
+    -  Intel's MKL, which provides both BLAS and LAPACK
+    -  OpenBLAS, which provides BLAS and LAPACK
+  The code has to "know" which of these four options is being used, because although in principle
+  BLAS and LAPACK are standardized, there are some differences in the interfaces.
+  The Kaldi code requires exactly one
+  of the three strings HAVE_ATLAS, HAVE_CLAPACK, HAVE_OPENBLAS or HAVE_MKL to be defined 
   (e.g. using -DHAVE_ATLAS as an option to the compiler).  It must then be 
   linked with the appropriate libraries.  The code that deals most directly
   with including the external libraries and setting up the appropriate
@@ -40,6 +44,11 @@ namespace kaldi {
   and CLAPACK versions of higher-level routines are called differently (so
   we have a lot of "\#ifdef HAVE_ATLAS" directives).  Additionally, some routines
   are not even available in ATLAS so we have had to implement them ourselves.
+
+  The "configure" script in the "src" directory is responsible for setting up Kaldi to use the libraries.
+  It does this by creating the file "kaldi.mk" in the "src" directory, which gives appropriate flags
+  to the compiler.   If called with no arguments it will use any ATLAS installation it can find in "normal" places
+  in your system, but it is quite configurable.  See the script itself for usage.
 
  \section matrixwrap_blas Basic Linear Algebra Subroutines (BLAS)
 
@@ -95,37 +104,26 @@ namespace kaldi {
 
   For instructions on how to install ATLAS on Windows (and note that these
   instructions require Cygwin), see the file windows/INSTALL.atlas
-  in our source distribution.
+  in our source distribution.  Note that our Windows setup is not being
+  actvely maintained at the moment and we don't anticipate that it will work
+  very cleanly.
 
   \subsection matrixwrap_atlas_install_linux Installing ATLAS (on Linux)
 
   If your system does not have ATLAS installed, or there are no pre-built binaries
-  available, you will need to install ATLAS from source. The detailed installation
+  available, you will need to install ATLAS from source.  Even if your system has
+  pre-built binaries available, they may not be the best binaries possible for your
+  architecture so it is probably a better idea to compile from source.
+  The easiest way to do this
+  is to cd from "src" to "../tools" and to run ./install_atlas.sh.  
+  If this does not work, the detailed installation
   instructions can be found at: http://math-atlas.sourceforge.net/atlas_install/. 
-  For our purpose, mostly the default build options will suffice:
-  \verbatim
-	wget http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz
-	tar -zxf atlas3.8.0.tar.gz
-	mv ATLAS ATLAS3.8.0
-	cd ATLAS3.8.0
-	mkdir build
-	cd build       # ATLAS will not let you build in the same directory as the source
-    # The next line may have to be modified...
-	../configure --prefix=/usr/local -b 64 -D c -DPentiumCPS=3000
-	make build
-	make install
-	\endverbatim
-	For 32-bit systems you will need to use "-b 32" option. Also, on x86 machines 
-	using gcc, you need to pass the mahcine's clock rate to the configure script 
-	by using the -D c -DPentiumCPS=\<MHz\> flags. You can find the CPU clock rate 
-	from /proc/cpuinfo on Linux systems. Otherwise, you can use the wall timer 
-	using the -D c -DWALL flags (for example, on Windows systems).
 	
-	One last caveat is that before installing ATLAS you should turn off CPU 
-	throttling using "cpufreq-selector -g performance" (cpufreq-selector may be
-	in sbin), if it is enabled (see the ATLAS install page). However, if you
-	are installing Kaldi on a compute cluster, it is unlikely that CPU throttling
-	will be enabled on the nodes.
+  One useful note is that before installing ATLAS you should turn off CPU
+ throttling using "cpufreq-selector -g performance" (cpufreq-selector may be in
+ sbin), if it is enabled (see the ATLAS install page).  You can first try running the 
+ "install_atlas.sh" script before doing this, to see whether it works-- if CPU
+  throttling is enabled, the ATLAS installation scripts will die with an error.
 	
 	\section matrixwrap_mkl Intel Math Kernel Library (MKL)
 	Intel MKL also provides C-language interface to the BLAS and LAPACK routines,
@@ -134,6 +132,16 @@ namespace kaldi {
 	compiler, etc. used. We have tested Kaldi on 32-bit Windows and x86_64 (or EMT64) Linux.
 	Flags for other platforms can be obtained from:
   http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
+
+  \section matrixwrap_openblas
+
+    Kaldi now supports linking against the OpenBLAS library, which  is an implementation
+  of BLAS and parts of LAPACK, and also provides an easy way to compile Netlib's LAPACK
+  implementation.  OpenBLAS is a fork of the GotoBLAS project which is no longer being
+  maintained.  In order to use this you can cd from "src" to "../tools", type
+  "make openblas", then cd to "../src" and give the correct option to the "configure" script
+  to use OpenBLAS (look at the comments at the top of the configure script to find this option).
+  Thanks to Sola Aina for suggesting this and helping us to get this to work.
   
   \section matrixwrap_jama Java Matrix Package (JAMA)
 
