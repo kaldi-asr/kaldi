@@ -53,15 +53,15 @@ The next step is to create the test and training sets from the RM corpora. To do
 \verbatim
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp 
 \endverbatim
-If this works, it should say : “RM_data_prep succeeded”. If not, you will have to work out where the script failed and what the problem was.
+If this works, it should say : "RM_data_prep succeeded". If not, you will have to work out where the script failed and what the problem was.
 
-Now list the contents of the current directory and you should see that a new directory called “data” was created. Go into the newly created data directory and list the contents. You should see three main types of folders : 
+Now list the contents of the current directory and you should see that a new directory called "data" was created. Go into the newly created data directory and list the contents. You should see three main types of folders : 
 
 - local : Contains the dictionary for the current data. 
 - train : The data segmented from the corpora for training purposes. 
 - test_* : The data segmented from the corpora for testing purposes.
 
-Let’s spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref io_sec_xfilename)
+Let's spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref io_sec_xfilename)
 
 The Local Directory : 
 Assuming that you are in the data directory, execute the following commands : 
@@ -134,67 +134,57 @@ The next step is to use the files created in the previous step to create an FST 
 \verbatim
  local/rm_prepare_grammar.sh
 \endverbatim
-If successful, this should return with the message “Succeeded preparing grammar for RM.” A new file would be created in /data/lang called G.fst.
+If successful, this should return with the message "Succeeded preparing grammar for RM." A new file would be created in /data/lang called G.fst.
 
 \section tutorial_running_feats Feature extraction
 
-The next step is to extract the training features.  Search for "mfcc" in run.sh and
-run the corresponding three lines of script (you have to decide where you want to put the 
-features first and modify the example accordingly).  Suppose we decide to put the
-features on /my/disk/rm_mfccdir, we would do something like:
-\verbatim
-export MFCCDIR=/my/disk/rm_mfccdir
-# make sure MFCCDIR exists and is somewhere you can write.
-# can be local if you want.
-mkdir $MFCCDIR
-steps/make_mfcc_train.sh $MFCCDIR
-steps/make_mfcc_test.sh $MFCCDIR
-\endverbatim
-Run these jobs.  They
-use several CPUs in parallel and should be done in around two minutes on a fast
-machine.  Look at the file exp/make_mfcc/make_mfcc_train.1.log to see the logging
-output of the program that creates the MFCCs.  At the top of it you will see the
-command line (Kaldi programs always echo the command line unless you specify
---print-args=false).  
+The next step is to extract the training features. Search for "mfcc" in run.sh and run the corresponding three lines of script (you have to decide where you want to put the features first and modify the example accordingly). Make sure the that directory you decide to put the features has a lot of space. Suppose we decide to put the features on /my/disk/rm_mfccdir, we would do something like:
 
-In the script steps/make_mfcc_train.sh,
-look at the line that invokes split_scp.pl.  You can probably guess what this does.
+\verbatim
+export featdir=/my/disk/rm_mfccdir
+# make sure featdir exists and is somewhere you can write.
+# can be local if you want.
+mkdir $featdir
+for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do \
+  steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir; \
+  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $featdir; \
+done
+\endverbatim
+
+Run these jobs. They use several CPUs in parallel and should be done in around two minutes on a fast machine. Look at the file exp/make_mfcc/train/make_mfcc.1.log to see the logging output of the program that creates the MFCCs. At the top of it you will see the command line (Kaldi programs will always echo the command line unless you specify --print-args=false). 
+
+In the script steps/make_mfcc_train.sh, look at the line that invokes split_scp.pl. You can probably guess what this does.
 
 By typing
 \verbatim
-wc data_prep/train_wav.scp
-wc exp/make_mfcc/train_wav?.scp
+wc $featdir/raw_mfcc_train.1.scp 
+wc data/train/wav.scp
 \endverbatim
 you can confirm it.
-Next look at the line that invokes compute-mfcc-feats.  The options should be
-fairly self-explanatory.  The option that involves the config file is a
-mechanism that can be used in Kaldi to pass configuration options, like a HTK
-config file, but it is actually quite rarely used.  The positional arguments
-(the ones that begin with "scp" and "ark,scp" require a little more explanation.
+
+Next look at the line that invokes compute-mfcc-feats. The options should be fairly self-explanatory. The option that involves the config file is a mechanism that can be used in Kaldi to pass configuration options, like a HTK config file, but it is actually quite rarely used. The positional arguments (the ones that begin with "scp" and "ark,scp" require a little more explanation.
 
 Before we explain this, have a look at the command line in the script again and examine
 the inputs and outputs using:
 \verbatim
-head exp/make_mfcc/train_wav1.scp
-head $MFCCDIR/train_raw_mfcc1.scp
-less $MFCCDIR/train_raw_mfcc1.ark
+head data/train/wav.scp
+head $featdir/raw_mfcc_train.1.scp
+less $featdir/raw_mfcc_train.1.ark
 \endverbatim
-Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal
-doesn't work right after looking at it).
+Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal doesn't work right after looking at it).
 
-By listing the files you can see that the .ark files are quite big (because they contain
-the actual data).  You can view one of these archive files more conveniently by typing:
+By listing the files you can see that the .ark files are quite big (because they contain the actual data). You can view one of these archive files more conveniently by typing (Assuming you are in the s5 directory):
+
 \verbatim
-. path.sh
-copy-feats ark:/my/disk/rm_mfccdir/train_raw_mfcc1.ark ark,t:- | head
+../../../src/copy-feats ark:/my/disk/rm_mfccdir/train_raw_mfcc1.ark ark,t:- | head
 \endverbatim
-[From now we will omit the ". path.sh" command and assume you have already done it].
-You can remove the ",t" modifier from this command and try it again if you like-- but
-it might be a good to pipe it into "less" because the data will be binary.
-An alternative way to view the same data is to do:
+
+You can remove the ",t" modifier from this command and try it again if you like-- but it might be a good to pipe it into "less" because the data will be binary. An alternative way to view the same data is to do:
+
 \verbatim
-copy-feats scp:data/train.scp ark,t:- | head
+../../../src/copy-feats scp:/my/disk/rm_mfccdir/train_raw_mfcc1.scp ark,t:- | head
 \endverbatim
+
 This is because these archive and script files both represent the same data (well, technically
 the archive only represents one quarter of it because we split it into four pieces).  Notice
 the "scp:" and "ark:" prefixes in these commands.  Kaldi doesn't attempt to work
@@ -205,9 +195,9 @@ pipes (because pipes don't normally have a name).
 
 Now type the following command:
 \verbatim
-head -10 data/train.scp | tail -1 | copy-feats scp:- ark,t:- | head
+head -10 my/disk/rm_mfccdir/raw_mfcc_train.1.scp | tail -1 | ../../../src/featbin/copy-feats scp:- ark,t:- | head
 \endverbatim
-(remember to source path.sh by entering ". path.sh" if it fails).
+
 This prints out some data from the tenth training file.  Notice that in
 "scp:-", the "-" tells it to read from the standard input, while "scp" tells
 it to interpret the input as a script file.
@@ -216,9 +206,11 @@ Next we will describe what script and archive files actually are.
 The first point we want to make is that the code sees both of them
 in the same way.  For a particularly simple example of the user-level
 calling code, type the following command:
+
 \verbatim
 tail -30 ../../../src/featbin/copy-feats.cc
 \endverbatim
+
 You can see that the part of this program that actually does the work is just
 three lines of code (actually there are two branches, each with three lines
 of code).  If you are familiar with the StateIterator type in OpenFst you will 
@@ -279,7 +271,22 @@ A few generic points about scripts and archives:
 To give you some idea how archives and script files can be used within pipes,
 type the following command and try to understand what is going on:
 \verbatim
-head -1 data/train.scp | copy-feats scp:- ark:- | copy-feats ark:- ark,t:- | head
+head -1 my/disk/rm_mfccdir/raw_mfcc_train.1.scp | ../../../src/featbin/copy-feats scp:- ark:- | ../../../src/featbin/copy-feats ark:- ark,t:- | head
+\endverbatim
+
+It might help to run these commands in sequence and observe what happens. With copy-feats, remember to pipe the output to head because you might be listing a lot of content (which could possibly be binary in the case of ark files). 
+
+Finally, let us merge all the test data into one directory for the sake of convenience. We will do all our testing on this averaged step. The following commands will also merge speakers, taking care of duplicating and regenerating stats for these speakers so that our tools don't complain. Do this by running the following commands (From the s5 directory). 
+
+\verbatim
+utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
+steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $featdir
+\endverbatim
+
+Let's also create a subset of the training data (train.1k) which will retain only a 1000 utterances per speaker. We will use use for training. Do this by executing the following command : 
+
+\verbatim
+utils/subset_data_dir.sh data/train 1000 data/train.1k 
 \endverbatim
 
 \section tutorial_running_monophone Monophone training
