@@ -32,6 +32,7 @@ namespace kaldi {
     -  Some implementation of BLAS plus CLAPACK (note: this has not been tested recently).
     -  Intel's MKL, which provides both BLAS and LAPACK
     -  OpenBLAS, which provides BLAS and LAPACK
+
   The code has to "know" which of these four options is being used, because although in principle
   BLAS and LAPACK are standardized, there are some differences in the interfaces.
   The Kaldi code requires exactly one
@@ -42,7 +43,7 @@ namespace kaldi {
   typedef's and defines, is in \ref kaldi-blas.h.   However, the rest of
   the matrix code is not completely insulated from these issues because the ATLAS
   and CLAPACK versions of higher-level routines are called differently (so
-  we have a lot of "\#ifdef HAVE_ATLAS" directives).  Additionally, some routines
+  we have a lot of "#ifdef HAVE_ATLAS" directives and the like).  Additionally, some routines
   are not even available in ATLAS so we have had to implement them ourselves.
 
   The "configure" script in the "src" directory is responsible for setting up Kaldi to use the libraries.
@@ -96,7 +97,7 @@ namespace kaldi {
   
   ATLAS conforms to the BLAS interface, but its interface for the subset of
   LAPACK routines that it provides is not the same as Netlib's (it's more
-  C-like and less FORTRAN-ish).  For this reason, there are quite a number of \#ifdef's in our code
+  C-like and less FORTRAN-ish).  For this reason, there are quite a number of #ifdef's in our code
   to switch between the calling styles, depending whether we are
   linking with ATLAS or CLAPACK.
   
@@ -133,12 +134,13 @@ namespace kaldi {
 	Flags for other platforms can be obtained from:
   http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
 
-  \section matrixwrap_openblas
+  \section matrixwrap_openblas OpenBLAS
 
     Kaldi now supports linking against the OpenBLAS library, which  is an implementation
-  of BLAS and parts of LAPACK, and also provides an easy way to compile Netlib's LAPACK
-  implementation.  OpenBLAS is a fork of the GotoBLAS project which is no longer being
-  maintained.  In order to use this you can cd from "src" to "../tools", type
+  of BLAS and parts of LAPACK.  OpenBLAS also automatically compiles Netlib's implementation of LAPACK,
+  so that it can explort LAPACK in its entirety.
+  OpenBLAS is a fork of the GotoBLAS project (an assembler-heavy implementation of BLAS) which is no longer being
+  maintained.  In order to use GotoBLAS you can cd from "src" to "../tools", type
   "make openblas", then cd to "../src" and give the correct option to the "configure" script
   to use OpenBLAS (look at the comments at the top of the configure script to find this option).
   Thanks to Sola Aina for suggesting this and helping us to get this to work.
