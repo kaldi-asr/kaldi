@@ -1,7 +1,8 @@
 #!/bin/bash
 
+
 # System and data directories
-#SCRIPT=$(readlink $0)
+#SCRIPT=$(readlink -f $0)
 #SysDir=`dirname $SCRIPT`
 SysDir=`pwd`
 echo $SysDir
