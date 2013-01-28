@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
+# Copyright 2012  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0.
 #
 use strict;

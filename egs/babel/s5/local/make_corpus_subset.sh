@@ -1,5 +1,8 @@
 #!/bin/bash 
 
+# Copyright 2012  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0.
+
 echo "$0 $@"  # Print the command line for logging
 
 help_message="$0: create subset of the input directory (specified as the first directory).
