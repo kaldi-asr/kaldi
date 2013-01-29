@@ -35,7 +35,10 @@ mkdir -p $oracledir/log
 for filename in $lang/words.txt $decodedir/num_jobs \
                 $data/text $decodedir/lat.1.gz \
                 $decode/lat.1.tra $decode/$model ; do
-    test -f $filename || echo "FATAL: File $filename does not exist!" && exit 1;
+    if [[ ! -f $filename ]] ; then 
+        echo "FATAL: File $filename does not exist!" 
+        exit 1;
+    fi
 done
 
 nj=`cat $decodedir/num_jobs`
