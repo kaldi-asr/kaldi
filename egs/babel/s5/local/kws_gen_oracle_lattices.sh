@@ -34,7 +34,7 @@ mkdir -p $oracledir/log
 
 for filename in $lang/words.txt $decodedir/num_jobs \
                 $data/text $decodedir/lat.1.gz \
-                $decode/lat.1.tra $decode/$model ; do
+                $decodedir/../$model ; do
     if [[ ! -f $filename ]] ; then 
         echo "FATAL: File $filename does not exist!" 
         exit 1;
@@ -43,10 +43,8 @@ done
 
 nj=`cat $decodedir/num_jobs`
 
-(cd $oracledir; 
-  echo "$nj" > num_jobs
-  ln -s ../../$model ../$model
-)
+(cd $decodedir; ln -s ../$model final.mdl )
+(cd $oracledir; echo "$nj" > num_jobs ) 
 
 $cmd LAT=1:$nj $oracledir/log/lat.LAT.log \
   cat $data/text \| \
