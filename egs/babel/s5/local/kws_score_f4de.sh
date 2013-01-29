@@ -26,7 +26,7 @@ fi
 kwsdatadir=$1/kws
 kwsoutputdir="$2/"
 
-if [[ ! -d "kwsdatadir" ]] ; then
+if [[ ! -d "$kwsdatadir" ]] ; then
     echo "FATAL: the KWS input data directory does not exist!"
     exit 1;
 fi

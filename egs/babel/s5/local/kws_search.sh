@@ -39,19 +39,19 @@ kwsdatadir=$datadir/kws
 if [ ! -d "$datadir"  ] || [ ! -d "$kwsdatadir" ] ; then
     echo "FATAL: the data directory does not exist"
     exit 1;
-if
+fi
 if [[ ! -d "$langdir"  ]] ; then
     echo "FATAL: the lang directory does not exist"
     exit 1;
-if
+fi
 if [[ ! -d "$decodedir"  ]] ; then
     echo "FATAL: the directory with decoded files does not exist"
     exit 1;
-if
+fi
 if [[ ! -f "$kwsdatadir/ecf.xml"  ]] ; then
     echo "FATAL: the $kwsdatadir does not contain the ecf.xml file"
     exit 1;
-if
+fi
 
 
 duration=`head -1 $kwsdatadir/ecf.xml |\
@@ -75,6 +75,11 @@ for lmwt in `seq $min_lmwt $max_lmwt` ; do
         --map-utter=$kwsdatadir/utter_map \
         - - | \
       local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.xml
-
+   
+    if [ ! -x local/kws_score.sh ] ; then
+        echo "Not scoring, because the file local/kws_score.sh is not present"
+    else
+        local/kws_score.sh $datadir $kwsoutdir
+    fi
 done
 
