@@ -8,6 +8,7 @@ use warnings;
 use XML::Simple;
 use Data::Dumper;
 
+binmode STDOUT, ":utf8";
 my @keywords;
 while (my $line = <STDIN>) {
   chomp $line;

@@ -28,6 +28,9 @@ mkdir -p $kwsdatadir;
 # This script is an example for the Babel Cantonese STD task
 
 cat $keywords | perl -e '
+  #binmode STDIN, ":utf8"; 
+  binmode STDOUT, ":utf8"; 
+
   use XML::Simple;
   use Data::Dumper;
 

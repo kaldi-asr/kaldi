@@ -6,6 +6,7 @@
 # Begin configuration section.  
 cmd=run.pl
 case_insensitive=true
+subset_ecf=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -49,7 +50,12 @@ done
 kwsdatadir=$datadir/kws
 mkdir -p $kwsdatadir
 
-cp `readlink -f $ecf_file` $kwsdatadir/ecf.xml || exit 1
+if [ -z $subset_ecf ] ; then
+    cp `readlink -f $ecf_file` $kwsdatadir/ecf.xml || exit 1
+else
+    local/make_ecf_subset.sh $subset_ecf $ecf_file $kwsdatadir
+fi
+
 cp `readlink -f $kwlist_file` $kwsdatadir/kwlist.xml || exit 1
 cp `readlink -f $rttm_file` $kwsdatadir/rttm || exit 1
 

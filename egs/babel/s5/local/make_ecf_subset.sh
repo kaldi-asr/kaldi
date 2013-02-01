@@ -27,19 +27,23 @@ fi
 
 list_file=$1
 src_ecf_file=$2
-tgt_ecf_file=$3/kws/ecf.xml
+tgt_ecf_file=$3/ecf.xml
 
 if [[ ! -f "$list_file" ]]; then
-    echo -n "FATAL: The list file does not exist! \n\n"
+    echo -e "FATAL: The list file does not exist! \n\n"
     printf "$help_message\n"
+    exit 1;
 fi
 if [[ ! -f "$src_ecf_file" ]]; then
-    echo -n "FATAL: The source ecf file does not exist! \n\n"
+    echo -e "FATAL: The source ecf file does not exist! \n\n"
     printf "$help_message\n"
+    exit -1
 fi
+echo `dirname $tgt_ecf_file`
 if [[ ! -d `dirname $tgt_ecf_file` ]]; then
-    echo -n "FATAL: The destination directory does not exist! \n\n"
+    echo -e "FATAL: The destination directory does not exist! \n\n"
     printf "$help_message\n"
+    exit -1
 fi
 
 
