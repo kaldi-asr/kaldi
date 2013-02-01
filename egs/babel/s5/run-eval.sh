@@ -12,6 +12,9 @@ echo $SysDir
 oovSymbol="<unk>"
 lexiconFlags="-oov <unk>"
 
+duptime=0.5
+case_insensitive=false
+
 # Scoring protocols (dummy GLM file to appease the scoring script)
 glmFile=`readlink -f ./conf/glm`
 
@@ -60,6 +63,17 @@ echo -------------------------------------------------------------------
 local/prepare_stm.pl --fragmentMarkers \-\*\~ data/eval.pem || exit 1
 cp $glmFile data/eval.pem/glm
 
+echo -------------------------------------------------------------------
+echo "Preparing keyword spotting system on" `date`
+echo -------------------------------------------------------------------
+if [[ $subset_ecf ]] ; then
+    local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $eval_data_list \
+        $ecf_file $kwlist_file $rttm_file data/lang data/eval.pem || exit 1
+else
+    local/kws_setup.sh --case-insensitive $case_insensitive \
+        $ecf_file $kwlist_file $rttm_file data/lang data/eval.pem || exit 1
+fi
+
 
 echo -------------------------------------------------------------------
 echo "Preparing eval stm files in data/eval.pem on" `date`
@@ -80,11 +94,23 @@ steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
     exp/tri2/graph data/eval.pem exp/tri2/decode_eval.pem &> exp/tri2/decode_eval.pem.log
 
 echo --------------------------------------------------------------------------
+echo "Starting eval.pem keyword spotting using exp/tri2 on" `date`
+echo --------------------------------------------------------------------------
+local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+    data/lang data/eval.pem exp/tri2/decode_eval.pem &> exp/tri2/kws_eval.pem.log
+
+echo --------------------------------------------------------------------------
 echo "Starting eval.pem decoding using exp/tri3 on" `date`
 echo --------------------------------------------------------------------------
 mkdir -p exp/tri3/decode_eval.pem
 steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
     exp/tri3/graph data/eval.pem exp/tri3/decode_eval.pem &> exp/tri3/decode_eval.pem.log
+
+echo --------------------------------------------------------------------------
+echo "Starting eval.pem keyword spotting using exp/tri3 on" `date`
+echo --------------------------------------------------------------------------
+local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+    data/lang data/eval.pem exp/tri3/decode_eval.pem &> exp/tri3/kws_eval.pem.log
 
 if [[ -d exp/tri5 ]] ; then 
 
@@ -96,12 +122,26 @@ if [[ -d exp/tri5 ]] ; then
         exp/tri4/graph data/eval.pem exp/tri4/decode_eval.pem &> exp/tri4/decode_eval.pem.log
 
     echo --------------------------------------------------------------------------
+    echo "Starting eval.pem keyword spotting using exp/tri4 on" `date`
+    echo --------------------------------------------------------------------------
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/tri4/decode_eval.pem &> exp/tri4/kws_eval.pem.log
+
+    echo --------------------------------------------------------------------------
     echo "Starting eval.pem decoding using exp/tri5 on" `date`
     echo --------------------------------------------------------------------------
     mkdir -p exp/tri5/decode_eval.pem
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri5/graph data/eval.pem exp/tri5/decode_eval.pem &> exp/tri5/decode_eval.pem.log 
 
+    echo --------------------------------------------------------------------------
+    echo "Starting eval.pem keyword spotting using exp/tri5 on" `date`
+    echo --------------------------------------------------------------------------
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/tri5/decode_eval.pem &> exp/tri5/kws_eval.pem.log
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/tri5/decode_eval.pem.si &> exp/tri5/kws_eval.si.pem.log
+    
     echo --------------------------------------------------------------------------
     echo "Starting eval.pem decoding using exp/sgmm5 on" `date`
     echo --------------------------------------------------------------------------
@@ -113,7 +153,15 @@ if [[ -d exp/tri5 ]] ; then
         exp/sgmm5/graph data/eval.pem exp/sgmm5/decode_fmllr_eval.pem &> exp/sgmm5/decode_fmllr_eval.pem.log
 
     echo --------------------------------------------------------------------------
-    echo "Starting exp/sgmm5_mmi_b0.1/decode[_fmllr] on" `date`
+    echo "Starting eval.pem keyword spotting using exp/sgmm5 on" `date`
+    echo --------------------------------------------------------------------------
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/sgmm5/decode_eval.pem &> exp/sgmm5/kws_eval.pem.log
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem &> exp/sgmm5/kws_eval.pem.fmllr.log
+    
+    echo --------------------------------------------------------------------------
+    echo "Starting exp/sgmm5_mmi_b0.1/decode[_fmllr] and keyword spotting on" `date`
     echo --------------------------------------------------------------------------
     for iter in 1 2 3 4; do
         steps/decode_sgmm2_rescore.sh \
@@ -122,6 +170,11 @@ if [[ -d exp/tri5 ]] ; then
         steps/decode_sgmm2_rescore.sh \
             --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_eval.pem \
             data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter
+        
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_eval.pem.log
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_fmllr_eval.pem.log
     done
 else
     
@@ -131,6 +184,14 @@ else
     mkdir -p exp/tri4/decode_eval.pem
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri4/graph data/eval.pem exp/tri4/decode_eval.pem &> exp/tri4/decode_eval.pem.log 
+
+    echo --------------------------------------------------------------------------
+    echo "Starting eval.pem keyword spotting using exp/tri5 on" `date`
+    echo --------------------------------------------------------------------------
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/tri4/decode_eval.pem &> exp/tri4/kws_eval.pem.log
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/tri4/decode_eval.pem.si &> exp/tri4/kws_eval.si.pem.log
 
     echo --------------------------------------------------------------------------
     echo "Starting SGMM5 eval.pem decoding using exp/sgmm5 on" `date`
@@ -143,6 +204,14 @@ else
         exp/sgmm5/graph data/eval.pem exp/sgmm5/decode_fmllr_eval.pem &> exp/sgmm5/decode_fmllr_eval.pem.log
     
     echo --------------------------------------------------------------------------
+    echo "Starting eval.pem keyword spotting using exp/sgmm5 on" `date`
+    echo --------------------------------------------------------------------------
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/sgmm5/decode_eval.pem &> exp/sgmm5/kws_eval.pem.log
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem &> exp/sgmm5/kws_eval.pem.fmllr.log
+    
+    echo --------------------------------------------------------------------------
     echo "Starting exp/sgmm5_mmi_b0.1/decode[_fmllr] on" `date`
     echo --------------------------------------------------------------------------
     for iter in 1 2 3 4; do
@@ -152,6 +221,11 @@ else
         steps/decode_sgmm2_rescore.sh \
             --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode_eval.pem \
             data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter
+        
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_eval.pem.log
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_fmllr_eval.pem.log
     done
 fi
 

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # System and data directories
 #SCRIPT=$(readlink -f $0)
 #SysDir=`dirname $SCRIPT`
@@ -10,6 +9,10 @@ echo $SysDir
 # Lexicon and Language Model parameters
 oovSymbol="<unk>"
 lexiconFlags="-oov <unk>"
+
+# Duplication time for keyword spotting
+duptime=0.5
+case_insensitive=false
 
 # Scoring protocols (dummy GLM file to appease the scoring script)
 glmFile=`readlink -f ./conf/glm`
@@ -133,8 +136,11 @@ echo ---------------------------------------------------------------------
 local/train_lms_srilm.sh data data/srilm 
 local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
 
-#local/kws_setup.sh $ecf_file $kwlist_file $rttm_file data/lang data/dev || exit 1
-#local/kws_search.sh data/lang data/dev exp/sgmm5/decode_fmllr
+if [[ $subset_ecf ]] ; then
+    local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev || exit 1
+else
+    local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev || exit 1
+fi
 
 cd $SysDir
 echo ---------------------------------------------------------------------
@@ -212,6 +218,9 @@ echo ---------------------------------------------------------------------------
     mkdir -p exp/tri2/decode
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri2/graph data/dev exp/tri2/decode &> exp/tri2/decode.log
+    
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/tri2/decode
 ) &
 tri2decode=$!; # Grab the PID of the subshell
 sleep 5; # Let any "start-up error" messages from the subshell get logged
@@ -238,6 +247,9 @@ echo ---------------------------------------------------------------------------
     mkdir -p exp/tri3/decode
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri3/graph data/dev exp/tri3/decode &> exp/tri3/decode.log
+    
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/tri3/decode
 ) &
 tri3decode=$!; # Grab the PID of the subshell
 sleep 5; # Let any "start-up error" messages from the subshell get logged
@@ -266,6 +278,11 @@ echo ------------------------------------------------------------------
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri4/graph data/dev exp/tri4/decode &> exp/tri4/decode.log \
     && touch exp/tri4/decode.finished # so SGMM2 decoding may proceed
+    
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/tri4/decode.si
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/tri4/decode
 ) &
 tri4decode=$!; # Grab the PID of the subshell; needed for SGMM2 decoding
 sleep 5; # Let any "start-up error" messages from the subshell get logged
@@ -324,6 +341,11 @@ wait $tri4decode; # Need lattices from the corresponding SGMM decoding passes
     steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj --cmd "$decode_cmd" \
         --transform-dir exp/tri4/decode \
         exp/sgmm5/graph data/dev/ exp/sgmm5/decode_fmllr &> exp/sgmm5/decode_fmllr.log
+    
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/sgmm5/decode_fmllr
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/sgmm5/decode
 ) &
 sgmm5decode=$!; # Grab the PID of the subshell; needed for MMI rescoring
 sleep 5; # Let any "start-up error" messages from the subshell get logged
@@ -372,6 +394,11 @@ for iter in 1 2 3 4; do
     steps/decode_sgmm2_rescore.sh \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode \
         data/lang data/dev exp/sgmm5/decode_fmllr exp/sgmm5_mmi_b0.1/decode_fmllr_it$iter
+    
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/sgmm5_mmi_b0.1/decode_it$iter
+    local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
+        data/lang data/dev exp/sgmm5_mmi_b0.1/decode_fmllr_it$iter
 done
 
 
