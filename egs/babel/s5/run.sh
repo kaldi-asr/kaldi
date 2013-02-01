@@ -2,18 +2,15 @@
 
 
 # System and data directories
-SCRIPT=$(readlink -f $0)
-SysDir=`dirname $SCRIPT`
-
-
-train_data_dir=/export/babel/oguz/10Hsubsets/106B-delivery-v0.2f_10hSubset/conversational/training
-dev_data_dir=/export/babel/oguz/10Hsubsets/106B-delivery-v0.2f_10hSubset/conversational/dev_UnionOfDisjoints
-lexicon_file=/export/a09/jtrmal/babel/egs/Tagalog-10hSystem2a/Lexicon/lexicon.txt
+#SCRIPT=$(readlink -f $0)
+#SysDir=`dirname $SCRIPT`
+SysDir=`pwd`
+echo $SysDir
 
 
 # Lexicon and Language Model parameters
 oovSymbol="<unk>"
-lexiconFlags="--oov <unk>"
+lexiconFlags="-oov <unk>"
 
 # Scoring protocols (dummy GLM file to appease the scoring script)
 glmFile=`readlink -f ./conf/glm`
@@ -27,8 +24,52 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 configfile=$1
-[ -f $configfile ] && . $configfile
+[ -f $configfile ] && . $configfile 
 [ -f ./local.conf ] && . ./local.conf
+
+#Preparing dev and train directories
+if [[ ! -z  "$train_data_list" ]] ; then
+    echo ---------------------------------------------------------------------
+    echo "Subsetting the TRAIN set"
+    echo ---------------------------------------------------------------------
+
+    local/make_corpus_subset.sh $train_data_dir $train_data_list ./data/raw_train_data || exit 1
+    train_data_dir=`readlink -f ./data/raw_eval_data`
+
+    nj_max=`cat $train_data_list | wc -l`
+    if [[ "$nj_max" -lt "$train_nj" ]] ; then
+        echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+        train_nj=$nj_max
+    fi
+fi
+
+if [[ ! -z $dev_data_list ]] ; then
+    echo ---------------------------------------------------------------------
+    echo "Subsetting the DEV set"
+    echo ---------------------------------------------------------------------
+
+    local/make_corpus_subset.sh $dev_data_dir $dev_data_list ./data/raw_dev_data || exit 1
+    dev_data_dir=`readlink -f ./data/raw_dev_data`
+
+    nj_max=`cat $dev_data_list | wc -l`
+    if [[ "$nj_max" -lt "$decode_nj" ]] ; then
+        echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
+        decode_nj=$nj_max
+    fi
+fi
+
+if [[ $filter_lexicon ]]; then
+    echo ---------------------------------------------------------------------
+    echo "Subsetting the LEXICON"
+    echo ---------------------------------------------------------------------
+
+    lexicon_dir=./data/raw_lex_data
+    mkdir -p $lexicon_dir
+    local/make_corpus_subset.sh $train_data_dir/transcriptions \
+        $lexicon_file $lexicon_dir/lexicon.txt || exit 1
+    lexicon_file=$lexicon_dir/lexicon.txt
+fi
+
 
 echo ---------------------------------------------------------------
 echo "Preparing lexicon in data/local on" `date`
@@ -80,7 +121,7 @@ echo ----------------------------------------------------------------------
 echo "Starting plp feature extraction in plp on" `date`
 echo ----------------------------------------------------------------------
 steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $nj_train \
+    --cmd "$train_cmd" --nj $train_nj \
     data/train exp/make_plp/train plp || exit 1
 steps/compute_cmvn_stats.sh \
     data/train exp/make_plp/train plp || exit 1
@@ -88,7 +129,7 @@ steps/compute_cmvn_stats.sh \
 utils/fix_data_dir.sh data/train
 
 steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $nj_decode \
+    --cmd "$train_cmd" --nj $decode_nj \
     data/dev exp/make_plp/dev plp || exit 1
 steps/compute_cmvn_stats.sh \
     data/dev exp/make_plp/dev plp || exit 1
@@ -107,14 +148,14 @@ echo ---------------------------------------------------------------------------
 echo "Starting (small) monophone training in exp/mono on" `date`
 echo ---------------------------------------------------------------------------------
 steps/train_mono.sh \
-    --boost-silence 1.5 --nj 24 --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj 8 --cmd "$train_cmd" \
     data/train_sub1 data/lang exp/mono || exit 1
 
 echo ------------------------------------------------------------------------------
 echo "Starting (small) triphone training in exp/tri1 on" `date`
 echo ------------------------------------------------------------------------------
 steps/align_si.sh \
-    --boost-silence 1.5 --nj 24 --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj 12 --cmd "$train_cmd" \
     data/train_sub2 data/lang exp/mono exp/mono_ali_sub2 || exit 1
 steps/train_deltas.sh \
     --boost-silence 1.5 --cmd "$train_cmd" \
@@ -127,7 +168,7 @@ echo ---------------------------------------------------------------------------
     mkdir -p exp/tri0/graph
     utils/mkgraph.sh data/lang exp/tri2 exp/tri0/graph &> exp/tri1/mkgraph.log
     mkdir -p exp/tri1/decode
-    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri1/graph data/dev exp/tri1/decode &> exp/tri1/decode.log
 ) &
 tri1decode=$!; # Grab the PID of the subshell
@@ -151,7 +192,7 @@ echo ---------------------------------------------------------------------------
     mkdir -p exp/tri2/graph
     utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph &> exp/tri2/mkgraph.log
     mkdir -p exp/tri2/decode
-    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri2/graph data/dev exp/tri2/decode &> exp/tri2/decode.log
 ) &
 tri2decode=$!; # Grab the PID of the subshell
@@ -162,7 +203,7 @@ echo ---------------------------------------------------------------------------
 echo "Starting (full) triphone training in exp/tri3 on" `date`
 echo -----------------------------------------------------------------------------
 steps/align_si.sh \
-    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
     data/train data/lang exp/tri2 exp/tri2_ali || exit 1
 steps/train_deltas.sh \
     --boost-silence 1.5 --cmd "$train_cmd" \
@@ -175,7 +216,7 @@ echo ---------------------------------------------------------------------------
     mkdir -p exp/tri3/graph
     utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph &> exp/tri3/mkgraph.log
     mkdir -p exp/tri3/decode
-    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri3/graph data/dev exp/tri3/decode &> exp/tri3/decode.log
 ) &
 tri3decode=$!; # Grab the PID of the subshell
@@ -186,7 +227,7 @@ echo ---------------------------------------------------------------------------
 echo "Starting (lda_mllt) triphone training in exp/tri4 on" `date`
 echo ---------------------------------------------------------------------------------
 steps/align_si.sh \
-    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
     data/train data/lang exp/tri3 exp/tri3_ali || exit 1
 steps/train_lda_mllt.sh \
     --boost-silence 1.5 --cmd "$train_cmd" \
@@ -200,7 +241,7 @@ echo ---------------------------------------------------------------------------
     utils/mkgraph.sh \
         data/lang exp/tri4 exp/tri4/graph &> exp/tri4/mkgraph.log
     mkdir -p exp/tri4/decode
-    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri4/graph data/dev exp/tri4/decode &> exp/tri4/decode.log
 ) &
 tri4decode=$!; # Grab the PID of the subshell
@@ -212,7 +253,7 @@ echo "Starting (SAT) triphone training in exp/tri5 on" `date`
 echo ----------------------------------------------------------------------------
 
 steps/align_si.sh \
-    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
     data/train data/lang exp/tri4 exp/tri4_ali || exit 1
 steps/train_sat.sh \
     --boost-silence 1.5 --cmd "$train_cmd" \
@@ -227,7 +268,7 @@ echo ------------------------------------------------------------------
         data/lang exp/tri5 exp/tri5/graph &> exp/tri5/mkgraph.log
     mkdir -p exp/tri5/decode
     touch exp/tri5/decode.started # A signal to the SGMM2 decoding step
-    steps/decode_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri5/graph data/dev exp/tri5/decode &> exp/tri5/decode.log \
     && touch exp/tri5/decode.finished # so SGMM2 decoding may proceed
 ) &
@@ -243,8 +284,10 @@ echo -------------------------------------------------
 echo "Starting exp/ubm5 on" `date`
 echo -------------------------------------------------
 steps/align_fmllr.sh \
-    --boost-silence 1.5 --nj $nj_train --cmd "$train_cmd" \
+    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
     data/train data/lang exp/tri5 exp/tri5_ali || exit 1
+
+
 steps/train_ubm.sh \
     --cmd "$train_cmd" \
     $numGaussUBM data/train data/lang exp/tri5_ali exp/ubm5 || exit 1
@@ -282,9 +325,9 @@ echo -----------------------------------------------------------------
         data/lang exp/sgmm5 exp/sgmm5/graph &> exp/sgmm5/mkgraph.log
     mkdir -p exp/sgmm5/decode
     steps/decode_sgmm2.sh \
-        --nj $nj_decode --cmd "$decode_cmd" --transform-dir exp/tri5/decode \
+        --nj $decode_nj --cmd "$decode_cmd" --transform-dir exp/tri5/decode \
         exp/sgmm5/graph data/dev/ exp/sgmm5/decode &> exp/sgmm5/decode.log
-    steps/decode_sgmm2.sh --use-fmllr true --nj $nj_decode --cmd "$decode_cmd" \
+    steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj --cmd "$decode_cmd" \
         --transform-dir exp/tri5/decode \
         exp/sgmm5/graph data/dev/ exp/sgmm5/decode_fmllr &> exp/sgmm5/decode_fmllr.log
 ) &
@@ -300,14 +343,14 @@ echo ------------------------------------------------------
 echo "Starting exp/sgmm5_ali on" `date`
 echo ------------------------------------------------------
 steps/align_sgmm2.sh \
-    --nj $nj_train --cmd "$train_cmd" --transform-dir exp/tri5_ali --use-graphs true --use-gselect true \
+    --nj $train_nj --cmd "$train_cmd" --transform-dir exp/tri5_ali --use-graphs true --use-gselect true \
     data/train data/lang exp/sgmm5 exp/sgmm5_ali || exit 1
 
 echo ----------------------------------------------------------
 echo "Starting exp/sgmm5_denlats on" `date`
 echo ----------------------------------------------------------
 steps/make_denlats_sgmm2.sh \
-    --nj $nj_train --sub-split $nj_train \
+    --nj $train_nj --sub-split $train_nj  \
     --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats || exit 1
 
