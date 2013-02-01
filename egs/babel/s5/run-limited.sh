@@ -75,29 +75,16 @@ if test -f $dev_data_list ; then
 fi
 
 if [[ $filter_lexicon ]]; then
+    echo ---------------------------------------------------------------------
     echo "Subsetting the LEXICON"
+    echo ---------------------------------------------------------------------
+
     lexicon_dir=./data/raw_lex_data
     mkdir -p $lexicon_dir
-
-    (
-      #find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
-      find $train_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g'
-    ) | sort -u | awk ' 
-      BEGIN {
-          while(( getline line< ARGV[2] ) > 0 ) {
-              split(line, e, "\t")
-              LEXICON[ e[1] ]=line
-          }
-          FILENAME="-"
-          i=0
-        
-          while(( getline word< ARGV[1] ) > 0 ) {
-            if (word in LEXICON)
-              print LEXICON[word]
-          }
-      }
-    ' -  $lexicon_file | sort -u > $lexicon_dir/lexicon.txt
+    local/make_lexicon_subset.sh $train_data_dir/transcriptions \
+        $lexicon_file $lexicon_dir/lexicon.txt || exit 1
     lexicon_file=$lexicon_dir/lexicon.txt
+
 fi
 
 
