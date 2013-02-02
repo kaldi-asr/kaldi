@@ -84,7 +84,7 @@ if [[ $filter_lexicon ]]; then
 
     lexicon_dir=./data/raw_lex_data
     mkdir -p $lexicon_dir
-    local/make_lexicon_subset.sh $train_data_dir/transcriptions \
+    local/make_lexicon_subset.sh $train_data_dir/transcription \
         $lexicon_file $lexicon_dir/lexicon.txt || exit 1
     lexicon_file=$lexicon_dir/lexicon.txt
 
