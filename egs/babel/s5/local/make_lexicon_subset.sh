@@ -5,9 +5,9 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-$transcriptions=$1
-$input_lexicon_file=$2
-$output_lexicon_file=$3
+transcriptions=$1
+input_lexicon_file=$2
+output_lexicon_file=$3
 
 (
   #find $dev_data_dir/transcription/ -name "*.txt" | xargs egrep -vx '\[[0-9.]+\]'  |cut -f 2- -d ':' | sed 's/ /\n/g' 
