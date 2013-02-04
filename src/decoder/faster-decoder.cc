@@ -44,7 +44,6 @@ void FasterDecoder::Decode(DecodableInterface *decodable) {
 }
 
 bool FasterDecoder::ReachedFinal() {
-  Weight best_weight = Weight::Zero();
   for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
     Weight this_weight = Times(e->val->weight_, fst_.Final(e->key));
     if (this_weight != Weight::Zero())
