@@ -34,7 +34,7 @@ if [[ ! -z  "$train_data_list" ]] ; then
     echo ---------------------------------------------------------------------
 
     local/make_corpus_subset.sh $train_data_dir $train_data_list ./data/raw_train_data || exit 1
-    train_data_dir=`readlink -f ./data/raw_eval_data`
+    train_data_dir=`readlink -f ./data/raw_train_data`
 
     nj_max=`cat $train_data_list | wc -l`
     if [[ "$nj_max" -lt "$train_nj" ]] ; then
