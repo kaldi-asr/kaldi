@@ -9,6 +9,8 @@ if [ ! $stage ]; then # Set a default value
 fi
 cer=0
 decode_mbr=true
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -43,7 +45,7 @@ name=`basename $data`; # e.g. eval2000
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  $cmd LMWT=7:17 $dir/scoring/log/get_ctm.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
     ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
     lattice-align-words $lang/phones/word_boundary.int $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
