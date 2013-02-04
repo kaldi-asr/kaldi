@@ -1,6 +1,7 @@
 // decoder/nbest-decoder.h
 
 // Copyright 2009-2011 Mirko Hannemann; Microsoft Corporation
+//                     Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,20 +30,6 @@
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
-
-// macros to switch off all debugging messages without runtime cost
-// #define DEBUG_CMD(x) x;
-// #define DEBUG_OUT3(x) KALDI_VLOG(3) << x;
-// #define DEBUG_OUT2(x) KALDI_VLOG(2) << x;
-// #define DEBUG_OUT1(x) KALDI_VLOG(1) << x;
-#define DEBUG_OUT1(x)
-#define DEBUG_OUT2(x)
-#define DEBUG_OUT3(x)
-#define DEBUG_CMD(x)
-DEBUG_CMD(int snumber = 0)
-DEBUG_CMD(int dsnumber = 0)
-DEBUG_CMD(int tnumber = 0)
-DEBUG_CMD(int dtnumber = 0)
 
 namespace kaldi {
 
@@ -104,7 +91,6 @@ class NBestDecoder {
     ClearToks(toks_.Clear());
     token_store_.Init(decodable, &toks_, opts_.n_best);
     StateId start_state = fst_.Start();
-    DEBUG_OUT2("Initial state: " << start_state)
     assert(start_state != fst::kNoStateId);
     Token *tok = token_store_.CreateTok(0, NULL);
     tok->c = Weight::One();
@@ -113,7 +99,6 @@ class NBestDecoder {
     toks_.Insert(start_state, tok);
     PropagateEpsilon(std::numeric_limits<float>::max());
     for (int32 frame = 0; !decodable_->IsLastFrame(frame-1); frame++) {
-      DEBUG_OUT1("==== FRAME " << frame << " =====")
       BaseFloat adaptive_beam = PropagateEmitting(frame);
       PropagateEpsilon(adaptive_beam);
       // Prune();
@@ -122,12 +107,9 @@ class NBestDecoder {
   }
 
   bool ReachedFinal() {
-    DEBUG_OUT1("ReachedFinal")
-    Weight best_weight = Weight::Zero();
     for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       Weight this_weight = Times(e->val->c, fst_.Final(e->key));
       if (this_weight != Weight::Zero()) {
-         DEBUG_OUT1("final state reached: " << e->key << " path weight:" << this_weight)
         return true;
       }
     }
@@ -141,7 +123,6 @@ class NBestDecoder {
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
     // nothing was available.  It returns number of paths if it got output
     // (thus, fst_out will be nonempty), otherwise zero.
-    DEBUG_OUT1("GetNBestPaths")
     int n_paths = 0;
     BaseFloat worst_final = 0.0,
               best_final = std::numeric_limits<BaseFloat>::infinity();
@@ -166,8 +147,6 @@ class NBestDecoder {
         Weight fw = fst_.Final(e->key);
         if (fw != Weight::Zero()) {
           source->c = Times(source->c, fw);
-          DEBUG_OUT1("final state reached: " << e->key << " path weight:" << source->c)
-          DEBUG_OUT3("final token:" << source->unique)
           token_store_.CombineN(best_e, source);
         } else {
           token_store_.DeleteTok(source);
@@ -185,8 +164,6 @@ class NBestDecoder {
     // go through tokens in imaginary super end state
     for (Elem *e = last_toks, *e_tail = NULL; e != NULL; e = e_tail) {
       Token *best_tok = e->val;
-      DEBUG_OUT1("n-best final token: " << best_tok->unique
-                 << " path weight:" << best_tok->c << "," << best_tok->ca)
       BaseFloat amscore = best_tok->ca.Value(),
                 lmscore = best_tok->c.Value() - amscore;
       if (KALDI_ISINF(amscore) || KALDI_ISINF(lmscore)) {
@@ -201,11 +178,9 @@ class NBestDecoder {
       std::vector<CompactLatticeArc*> arcs_reverse; // reverse order output arcs
       // outer loop for word tokens
       for (Token *tok = best_tok; tok != NULL; tok = tok->previous) {
-        DEBUG_OUT1("out:" << tok->o)
         // inner loop for input label tokens
         std::vector<int32> str_rev, str;
         for (SeqToken *stok = tok->I; stok != NULL; stok = stok->previous) {
-          DEBUG_OUT3("in:" << stok->i)
           str_rev.push_back(stok->i);
         }
         // reverse vector
@@ -224,8 +199,6 @@ class NBestDecoder {
         arc->nextstate = fst_out->AddState();
         fst_out->AddArc(cur_state, *arc);
         cur_state = arc->nextstate;
-        DEBUG_OUT3("arc: " << arc->nextstate << " " << arc->ilabel << ":"
-                   << arc->olabel << "/" << arc->weight)
         delete arc;
       }
       fst_out->SetFinal(cur_state, path_weight);
@@ -239,8 +212,6 @@ class NBestDecoder {
     if (nbest_beam) *nbest_beam = worst_final - best_final;
     if (nbest) *nbest = n_paths;
 
-    DEBUG_OUT3("tokens created: " << tnumber << " deleted: " << dtnumber)
-    DEBUG_OUT3("seqtokens created: " << snumber << " deleted: " << dsnumber)
     RemoveEpsLocal(fst_out);
     return true;
   }
@@ -266,7 +237,6 @@ class NBestDecoder {
       Label i;   // input label i
       SeqToken *previous;  // lattice backward pointer (also as linked list)
       int refs;       // reference counter (for memory management)
-      DEBUG_CMD(int unique)
     };
     class Token {
      public:
@@ -278,7 +248,6 @@ class NBestDecoder {
       Token *previous; // t'
       int32 refs; // reference counter (for memory management)
       unsigned hash; // hashing the output symbol sequence
-      DEBUG_CMD(int unique)
       inline bool operator < (const Token &other) {
         return c.Value() > other.c.Value();
         // This makes sense for log + tropical semiring.
@@ -287,14 +256,13 @@ class NBestDecoder {
         if (hash != other->hash) return false;
         Token *t1 = this, *t2 = other;
         while (t1 != NULL && t2 != NULL) {
-          DEBUG_OUT3("comp:" << t1->o << "/" << t2->o)
           if (t1->o != t2->o) return false;
           t1 = t1->previous; t2 = t2->previous;
-          if (t1 == t2) { DEBUG_OUT3("same") return true; }
-          if ((!t1) || (!t2)) { DEBUG_OUT3("different length") return false; }
+          if (t1 == t2) { return true; }
+          if ((!t1) || (!t2)) { return false; }
         }
-        DEBUG_OUT3("strange")
-        return true; // should never reach this point
+	KALDI_ASSERT(false); // should never reach this point
+	return true;
       }
     };
     typedef HashList<StateId, Token*> TokenHash;
@@ -308,15 +276,11 @@ class NBestDecoder {
 
     inline void DeleteSeq(SeqToken *seq) {
       // delete seq token: either decrease reference count or put to linked list
-      DEBUG_OUT3("dec s:" << seq->unique << " (" << seq->refs-1 << "x)")
-      DEBUG_CMD(assert(seq->refs>0))
       seq->refs--;
       if (seq->refs > 0) return;
       // really kill sequence token
-      DEBUG_OUT3( "kill s" )
       // clean up unused sequence tokens recursively backwards
       if (seq->previous != NULL) DeleteSeq(seq->previous);
-      DEBUG_CMD(dsnumber++)
       // save the unused sequence token in linked list (abusing *previous)
       seq->previous = free_st_head_;
       free_st_head_ = seq;
@@ -337,8 +301,6 @@ class NBestDecoder {
         free_st_head_ = tmp->previous;
       }
       // initialize new sequence token (append or start new sequence)
-      DEBUG_OUT3( "create s:" << snumber )
-      DEBUG_CMD(tmp->unique = snumber++)
       tmp->refs = 1;
       return tmp;
     }
@@ -350,14 +312,12 @@ class NBestDecoder {
         tmp->previous = prev;
         if (prev) {
           prev->refs++;
-          DEBUG_OUT3("inc s:" << prev->unique << " (" << prev->refs << "x)")
         }
       } else {
         if (prev) {
           tmp = prev;
           if (prev) { // prev->previous?
             prev->refs++;
-            DEBUG_OUT3("inc s:" << prev->unique << " (" << prev->refs << "x)")
           }
         }
       }
@@ -366,12 +326,9 @@ class NBestDecoder {
 
     inline void DeleteTok(Token *tok) {
       // delete token: either decrease reference count or put to linked list
-      DEBUG_OUT3("dec t:" << tok->unique << " (" << tok->refs-1 << "x)")
-      DEBUG_CMD(assert(tok->refs>0))
       tok->refs--;
       if (tok->refs > 0) return;
       // really kill token
-      DEBUG_OUT3( "kill t" )
       // clean up unused tokens recursively backwards
       if (tok->previous != NULL) {
         DeleteTok(tok->previous);
@@ -379,7 +336,6 @@ class NBestDecoder {
       if (tok->I != NULL) { // delete sequence I
         DeleteSeq(tok->I);
       }
-      DEBUG_CMD(dtnumber++)
       // save the unused token in linked list (abusing *previous)
       tok->previous = free_t_head_;
       free_t_head_ = tok;
@@ -400,8 +356,6 @@ class NBestDecoder {
         free_t_head_ = tmp->previous;
       }
       // initialize data
-      DEBUG_OUT3( "create t:" << tnumber )
-      DEBUG_CMD(tmp->unique = tnumber++)
       tmp->refs = 1;
       tmp->c = Weight::Zero();
       tmp->I = NULL;
@@ -409,9 +363,7 @@ class NBestDecoder {
       tmp->previous = prev;
       if (prev) {
         prev->refs++;
-        DEBUG_OUT3("inc t:" << prev->unique << " (" << prev->refs << "x)")
 	tmp->hash = prev->hash * 97 + static_cast<unsigned>(output);
-        DEBUG_OUT3("hash:" << tmp->hash)
       } else {
         tmp->hash = static_cast<unsigned>(output);
       }
@@ -420,12 +372,8 @@ class NBestDecoder {
 
     inline Token* Combine(Token *tok1, Token *tok2) { // Viterbi version
       assert(tok1);
-      DEBUG_OUT2("combine: " << tok1->unique << "," << tok1->c)
-      if (tok1->I) { DEBUG_OUT2("(" << tok1->I->unique << ")") }
       if (!tok2) return tok1;
-      if (tok1 == tok2) { DEBUG_OUT2("same") return tok1; }
-      DEBUG_OUT2("with: " << tok2->unique << "," << tok2->c)
-      if (tok2->I) { DEBUG_OUT2("(" << tok2->I->unique << ")") }
+      if (tok1 == tok2) return tok1;
       if (tok1->c.Value() < tok2->c.Value()) {
         DeleteTok(tok2);
         return tok1;
@@ -437,9 +385,6 @@ class NBestDecoder {
     
     inline bool CombineN(Elem *head, Token *new_tok) { // n-best version
       if (!new_tok) return false;
-      DEBUG_OUT2("combine: " << new_tok->unique 
-        << " (" << new_tok->hash << ")," << new_tok->c)
-      if (new_tok->I) { DEBUG_OUT2("(" << new_tok->I->unique << ")") }
       Elem *e = head;
       StateId state = e->key;
       BaseFloat new_weight = static_cast<BaseFloat>(new_tok->c.Value());
@@ -449,9 +394,7 @@ class NBestDecoder {
       do {
         count++;
         Token *tok = e->val;
-        if (tok == new_tok) { DEBUG_OUT2("same") return false; }
-        DEBUG_OUT2("with:" << tok->unique << "(" << tok->hash << ")," << tok->c)
-        if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
+        if (tok == new_tok) { return false; }
         BaseFloat w = static_cast<BaseFloat>(tok->c.Value());
         if (w > worst_weight) {
            worst_weight = w;
@@ -459,11 +402,9 @@ class NBestDecoder {
         }
         if (tok->Equal(new_tok)) { // if they have the same output sequence
           if (w < new_weight) {
-            DEBUG_OUT2("old one better")
             DeleteTok(new_tok);
             return false;
           } else {
-            DEBUG_OUT2("new one better")
             DeleteTok(tok);
 	        e->val = new_tok;
             return true;
@@ -473,17 +414,13 @@ class NBestDecoder {
       } while ( (e != NULL) && (e->key == state) );
       // if we are here, no Token with the same output sequence was found
       if (count < n_best_) {
-        DEBUG_OUT2("append: (" << count++ << ")")
         toks_->InsertMore(state, new_tok);
         return true;
       } else {
-        DEBUG_OUT2("nbest full")
         if (worst_weight < new_weight) {
-          DEBUG_OUT2("forget")
           DeleteTok(new_tok);
           return false;
         } else {
-          DEBUG_OUT2("replace: " << worst_elem->val->unique << "," << worst_elem->val->c)
           DeleteTok(worst_elem->val);
           worst_elem->val = new_tok;
           return true;
@@ -492,20 +429,15 @@ class NBestDecoder {
     }
     inline Token* Advance(Token *source, Arc &arc, int32 frame,
         BaseFloat cutoff) {
-      DEBUG_OUT2("advance: " << arc.nextstate << " " << arc.ilabel << ":"
-                 << arc.olabel << "/" << arc.weight)
       // compute new weight	
       Weight w = Times(source->c, arc.weight);
       Weight amscore = Weight::One();
       if (arc.ilabel > 0) { // emitting arc
         amscore = Weight(- decodable_->LogLikelihood(frame, arc.ilabel));
         w = Times(w, amscore);
-        DEBUG_OUT2("acoustic: " << amscore)
       }
       Weight wa = Times(source->ca, amscore);
-      DEBUG_OUT2("new weight: " << w << "," << wa)
       if (w.Value() > cutoff) {  // prune
-          DEBUG_OUT2("prune")
           return NULL;
       }
       // create new token  
@@ -524,14 +456,10 @@ class NBestDecoder {
     }
 
     void Clear() {
-      DEBUG_OUT1("tokens created: " << tnumber << " deleted: " << dtnumber)
-      DEBUG_CMD(assert(tnumber == dtnumber))
       // check that all seq tokens are freed
       for (size_t i = 0; i < allocated_t_.size(); i++) delete[] allocated_t_[i];
       allocated_t_.clear();
       free_t_head_ = NULL;
-      DEBUG_OUT1("seqtokens created: " << snumber << " deleted: " << dsnumber)
-      DEBUG_CMD(assert(snumber == dsnumber))
       // check that all seq tokens are freed
       for (size_t i = 0; i < allocated_s_.size(); i++) delete[] allocated_s_[i];
       allocated_s_.clear();
@@ -566,7 +494,6 @@ class NBestDecoder {
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem) {
-    DEBUG_OUT1("GetCufoff")
     BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
     size_t count = 0;
     // find best token
@@ -584,7 +511,6 @@ class NBestDecoder {
     if ((opts_.max_active == std::numeric_limits<int32>::max()) ||
         (tmp_array_.size() <= static_cast<size_t>(opts_.max_active))) {
       if (adaptive_beam != NULL) *adaptive_beam = opts_.beam;
-      DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << best_weight + opts_.beam << " adaptive:" << *adaptive_beam)
       return best_weight + opts_.beam;
     } else {
       // the lowest elements (lowest costs, highest likes)
@@ -598,7 +524,6 @@ class NBestDecoder {
       if (adaptive_beam)
         *adaptive_beam = std::min(opts_.beam,
                                   ans - best_weight + opts_.beam_delta);
-      DEBUG_OUT1("count:" << *tok_count << " best:" << best_weight << " cutoff:" << ans << " adaptive:" << *adaptive_beam)
       return ans;
     }
   }
@@ -608,13 +533,11 @@ class NBestDecoder {
                                         * opts_.hash_ratio);
     if (new_sz > toks_.Size()) {
       toks_.SetSize(new_sz);
-      DEBUG_OUT1("resize hash:" << new_sz)
     }
   }
 
   // PropagateEmitting returns the likelihood cutoff used.
   BaseFloat PropagateEmitting(int32 frame) {
-    DEBUG_OUT1("PropagateEmitting")
     Elem *last_toks = toks_.Clear(); // P <- C , C = {}
     size_t tok_cnt;
     BaseFloat adaptive_beam;
@@ -652,17 +575,13 @@ class NBestDecoder {
     // the tokens are now owned here, in last_toks, and the hash is empty.
     // 'owned' is a complex thing here; the point is we need to call DeleteElem
     // on each elem 'e' to let toks_ know we're done with them.
-    StateId last = 123456789;
+
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
       // for all (s,t) in P
       // n++;
       // because we delete "e" as we go.
       StateId state = e->key;
-      if (state == last) { DEBUG_OUT2("repeat") }
-      last = state;
       Token *tok = e->val;
-      DEBUG_OUT2("get token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
-      if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
         // assert(state == tok->arc_.nextstate);
@@ -676,16 +595,14 @@ class NBestDecoder {
             if (new_tok) {
               Elem *e_found = toks_.Find(arc.nextstate);
               if (e_found == NULL) {
-                DEBUG_OUT2("insert to: " << arc.nextstate)
                 toks_.Insert(arc.nextstate, new_tok);
               } else {
-                DEBUG_OUT2("combine: " << arc.nextstate)
                 token_store_.CombineN(e_found, new_tok);
               }
             }
           }
         }
-      } else { DEBUG_OUT2("prune") }
+      }
       e_tail = e->tail; // several tokens with the same key can follow
       token_store_.DeleteTok(e->val);
       toks_.Delete(e);
@@ -697,7 +614,6 @@ class NBestDecoder {
   void PropagateEpsilon(BaseFloat adaptive_beam) {
     // Processes nonemitting arcs for one frame.  Propagates within
     // cur_toks_.
-    DEBUG_OUT1("PropagateEpsilon")
     assert(queue_.empty());
     queue_.max_load_factor(1.0);
     float best_weight = 1.0e+10;
@@ -707,14 +623,10 @@ class NBestDecoder {
       best_weight = std::min(best_weight, e->val->c.Value());
     }
     BaseFloat cutoff = best_weight + adaptive_beam;
-    DEBUG_OUT1("queue:" << queue_.size() << " best:" << best_weight << " cutoff:" << cutoff)
 
-    StateId last = 123456789;
     while (!queue_.empty()) {
       // StateId state = queue_.back();
       StateId state = *(queue_.begin());
-      if (state == last) { DEBUG_OUT2("repeat") }
-      last = state;
       // queue_.pop_back();
       queue_.erase(queue_.begin());
       Elem *elem = toks_.Find(state);  // would segfault if state not
@@ -726,11 +638,8 @@ class NBestDecoder {
       while (elem && elem->key == state) {
         Token *tok = elem->val;
         elem = elem->tail;
-        DEBUG_OUT2("pop token: " << tok->unique << " state:" << state << " weight:" << tok->c << "," << tok->ca)
-        if (tok->I) { DEBUG_OUT2("(" << tok->I->unique << ")") }
 
         if (tok->c.Value() > cutoff) {  // Don't bother processing successors.
-          DEBUG_OUT2("prune")
           continue;
         }
         // assert(tok != NULL && state == tok->arc_.nextstate);
@@ -744,12 +653,10 @@ class NBestDecoder {
             if (new_tok) {
               Elem *e_found = toks_.Find(arc.nextstate);
               if (e_found == NULL) {
-                DEBUG_OUT2("insert/queue to: " << arc.nextstate)
                 toks_.Insert(arc.nextstate, new_tok);
                 // queue_.push_back(arc.nextstate);
                 queue_.insert(arc.nextstate); // might be pushed several times
               } else {
-                DEBUG_OUT2("combine: " << arc.nextstate)
                 if (token_store_.CombineN(e_found, new_tok)) { // C was updated
                   // queue_.push_back(arc.nextstate);
                   queue_.insert(arc.nextstate);

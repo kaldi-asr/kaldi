@@ -68,8 +68,12 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Decode features using GMM-based model.\n"
-        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier nbestlattice-wspecifier words-wspecifier [alignments-wspecifier]\n";
+      "Decode features using GMM-based model, producing N-best lattice output.\n"
+      "Note: this program was mainly intended to validate the lattice generation\n"
+      "algorithm and is not very useful; in general, processing the\n"
+      "lattices into n-best lists will be more efficient.\n"
+      "Usage:\n"
+      " gmm-decode-faster [options] model-in fst-in features-rspecifier nbestlattice-wspecifier words-wspecifier [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;

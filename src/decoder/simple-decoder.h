@@ -75,7 +75,6 @@ class SimpleDecoder {
   }
 
   bool ReachedFinal() {
-    Weight best_weight = Weight::Zero();
     for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
          iter != cur_toks_.end();
          ++iter) {
