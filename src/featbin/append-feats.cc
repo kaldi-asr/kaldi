@@ -1,6 +1,7 @@
 // featbin/append-feats.cc
 
-// Copyright 2012   Petr Motlicek;  Pawel Swietojanski
+// Copyright 2012   Petr Motlicek  Pawel Swietojanski
+//                  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,15 +33,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    int32 feats_offset_in1 = 0;
-    int32 feats_offset_in2 = 0;
-    int32 num_feats_in1 = 0;
-    int32 num_feats_in2 = 0;
-
-    po.Register("feats-offset-in1", &feats_offset_in1, "Feats 1 offset");
-    po.Register("num-feats-in1", &num_feats_in1, "Take num-feats from in1-rspeciifier");
-    po.Register("feats-offset-in2", &feats_offset_in2, "Feats 2 offset");
-    po.Register("num-feats-in2", &num_feats_in2, "Take num-feats from in2-rspeciifier");
+    bool truncate_frames = false;
+    
+    po.Register("truncate-frames", &truncate_frames, "If true, do not treat it "
+                "as an error when files differ in number of frames, but truncate "
+                "the longest one.");
 
     po.Read(argc, argv);
 
@@ -53,80 +50,47 @@ int main(int argc, char *argv[]) {
     std::string rspecifier2 = po.GetArg(2);
     std::string wspecifier = po.GetArg(3);
 
-    KALDI_ASSERT(feats_offset_in1 >= 0 && feats_offset_in2 >= 0);
+    BaseFloatMatrixWriter feats_writer(wspecifier);
+    SequentialBaseFloatMatrixReader feats_reader1(rspecifier1);
+    RandomAccessBaseFloatMatrixReader feats_reader2(rspecifier2);
 
-    BaseFloatMatrixWriter kaldi_writer(wspecifier);
-    SequentialBaseFloatMatrixReader kaldi_reader1(rspecifier1);
-    RandomAccessBaseFloatMatrixReader kaldi_reader2(rspecifier2);
+    int32 num_done = 0, num_err = 0;
 
-    // Peeking in the archives to get the feature dimensions
-    if (kaldi_reader1.Done()) {
-      KALDI_ERR << "Could not read any features from " << rspecifier1
-                << ". (empty archive?)";
-    }
-    std::string utt = kaldi_reader1.Key();
-    if (!kaldi_reader2.HasKey(utt)) {
-      KALDI_ERR << "Could not read features for key " << utt << " from "
-                << rspecifier2 << ". (empty archive?)";
-    }
-
-    int32 dim_feats_in1 = kaldi_reader1.Value().NumCols();
-    int32 dim_feats_in2 = kaldi_reader2.Value(utt).NumCols();
-    if (num_feats_in1 == 0)
-      num_feats_in1 = dim_feats_in1 - feats_offset_in1;
-    if (num_feats_in2 == 0)
-      num_feats_in2 = dim_feats_in2 - feats_offset_in2;
-
-    KALDI_LOG << "Reading features from " << rspecifier1 << " and " << rspecifier2;
-    KALDI_LOG << "\tdim1 = " << dim_feats_in1 << "; offset1 = " << feats_offset_in1
-              << "; num1 = " << num_feats_in1 << "; dim2 = " << dim_feats_in2
-              << "; offset2 = " << feats_offset_in2 << "; num2 = " << num_feats_in2;
-
-    KALDI_ASSERT((feats_offset_in1 + num_feats_in1) <= dim_feats_in1);
-    KALDI_ASSERT((feats_offset_in2 + num_feats_in2) <= dim_feats_in2);
-
-    for (; !kaldi_reader1.Done(); kaldi_reader1.Next()) {
-      utt = kaldi_reader1.Key();
-      if (!kaldi_reader2.HasKey(utt)) {
+    for (; !feats_reader1.Done(); feats_reader1.Next()) {
+      std::string utt = feats_reader1.Key();
+      if (!feats_reader2.HasKey(utt)) {
         KALDI_WARN << "Could not find features for " << utt << " in "
                    << rspecifier2 << ": producing no output for the utterance";
+        num_err++;
         continue;
       }
-
-      const Matrix<BaseFloat> &feats1 = kaldi_reader1.Value();
-      const Matrix<BaseFloat> &feats2 = kaldi_reader2.Value(utt);
-      int32 num_frames = feats1.NumRows();
-      KALDI_VLOG(1) << "Utterance : " << utt << ": # of frames = " << num_frames;
-
-      KALDI_ASSERT(feats1.NumCols() == dim_feats_in1 &&
-                   feats2.NumCols() == dim_feats_in2);
-      if (num_frames != feats2.NumRows()) {
-        KALDI_WARN << "Utterance " << utt << ": " << num_frames
-                   << " frames read from " << rspecifier1 << " and "
-                   << feats2.NumRows() << " frames read from " << rspecifier2
-                   << ": producing no output for the utterance";
+      
+      const Matrix<BaseFloat> &feats1 = feats_reader1.Value();
+      const Matrix<BaseFloat> &feats2 = feats_reader2.Value(utt);
+      if (feats1.NumRows() != feats2.NumRows() && !truncate_frames) {
+        KALDI_WARN << "For utterance " << utt << ", features have different "
+                   << "#frames " << feats1.NumRows() << " vs. "
+                   << feats2.NumRows() << ", producing no output (use "
+                   << "--truncate-frames=true if you want output)";
+        num_err++;
         continue;
       }
-
-      SubMatrix<BaseFloat> new_feats1(feats1, 0, num_frames, feats_offset_in1,
-                                      num_feats_in1);
-      SubMatrix<BaseFloat> new_feats2(feats2, 0, num_frames, feats_offset_in2,
-                                      num_feats_in2);
-      Matrix<BaseFloat> output_feats(num_frames, new_feats1.NumCols() +
-                                     new_feats2.NumCols());
-      output_feats.Range(0, num_frames, 0,
-                         new_feats1.NumCols()).CopyFromMat(new_feats1);
-      output_feats.Range(0, num_frames, new_feats1.NumCols(),
-                         new_feats2.NumCols()).CopyFromMat(new_feats2);
-      kaldi_writer.Write(utt, output_feats);
+      int32 num_frames = std::min(feats1.NumRows(), feats2.NumRows()),
+          dim1 = feats1.NumCols(), dim2 = feats2.NumCols();
+      Matrix<BaseFloat> output(num_frames, dim1 + dim2, kUndefined);
+      output.Range(0, num_frames, 0, dim1).CopyFromMat(
+          feats1.Range(0, num_frames, 0, dim1));
+      output.Range(0, num_frames, dim1, dim2).CopyFromMat(
+          feats2.Range(0, num_frames, 0, dim2));
+      
+      feats_writer.Write(utt, output);
+      num_done++;
     }
-
-    return 0;
-  }
-  catch (const std::exception& e) {
+    KALDI_LOG << "Appended " << num_done << " feats; " << num_err
+              << " with errors.";
+    return (num_done != 0 ? 0 : 1);
+  } catch (const std::exception& e) {
     std::cerr << e.what();
     return -1;
   }
 }
-
-

@@ -46,15 +46,41 @@ class CuMatrix {
  public:
 
   /// Default Constructor
-  CuMatrix<Real>()
-   : num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { 
-  }
+  CuMatrix<Real>():
+  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { }
+
   /// Constructor with memory initialisation
-  CuMatrix<Real>(MatrixIndexT rows, MatrixIndexT cols)
-   : num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { 
+  CuMatrix<Real>(MatrixIndexT rows, MatrixIndexT cols):
+  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { 
     Resize(rows, cols); 
   }
 
+  // Note: we had to remove the "explicit" keyword due
+  // to problems with STL vectors of CuMatrix.
+  CuMatrix<Real>(const CuMatrix<Real> &other):
+  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+  }
+
+  explicit CuMatrix<Real>(const Matrix<Real> &other):
+  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+  }
+
+  CuMatrix<Real> &operator = (const CuMatrix<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+    return *this;
+  }  
+
+  CuMatrix<Real> &operator = (const Matrix<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+    return *this;
+  }  
+  
   /// Destructor
   ~CuMatrix() {
     Destroy(); 
@@ -65,14 +91,12 @@ class CuMatrix {
     return num_rows_; 
   }
 
-  MatrixIndexT NumCols() const { 
-    return num_cols_; 
-  }
+  MatrixIndexT NumCols() const { return num_cols_;  }
 
-  MatrixIndexT Stride() const { 
-    return stride_; 
-  }
+  MatrixIndexT Stride() const { return stride_; }
 
+  // MatrixDim is a struct containing "rows", "cols" and "stride",
+  // that is an argument of most CUDA kernels.
   ::MatrixDim Dim() const { 
     ::MatrixDim d = { num_rows_, num_cols_, stride_ }; 
     return d; 
@@ -87,41 +111,34 @@ class CuMatrix {
   Real* RowData(MatrixIndexT r);
 
   /// Get size of matrix in bytes
-  MatrixIndexT SizeInBytes() const { 
-    return num_rows_*stride_*sizeof(Real); 
-  }
-  
+  MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
+
   /// Get size of matrix row in bytes
-  MatrixIndexT RowSizeInBytes() const {
-    return num_cols_*sizeof(Real); 
-  }
+  MatrixIndexT RowSizeInBytes() const { return num_cols_*sizeof(Real); }
   
   /// Get size of matrix stride in bytes
-  MatrixIndexT StrideSizeInBytes() const {
-    return stride_*sizeof(Real); 
-  }
+  MatrixIndexT StrideSizeInBytes() const { return stride_*sizeof(Real); }
 
   /// Allocate the memory
-  ThisType& Resize(MatrixIndexT rows, MatrixIndexT cols);
-
-  /// Deallocate the memory
-  void Destroy();
-
-  /// Copy functions (reallocates when needed)
-  ThisType&        CopyFromMat(const CuMatrix<Real> &src);
-  ThisType&        CopyFromMat(const Matrix<Real> &src);
-  void             CopyToMat(Matrix<Real> *dst) const;
-
+  void Resize(MatrixIndexT rows, MatrixIndexT cols,
+              MatrixResizeType resize_type = kSetZero);
+  
+  /// Copy functions (reallocates when needed, but note from Dan: eventually
+  /// I'll change it to just die if the sizes don't match, like the Matrix class.)
+  void CopyFromMat(const CuMatrix<Real> &src);
+  void CopyFromMat(const Matrix<Real> &src);
+  void CopyToMat(Matrix<Real> *dst) const;
+  
   /// Copy row interval from matrix
   /// @param r      [in] number of rows to copy.
   /// @param src    [in] source matrix.
   /// @param src_ro [in] source matrix row offset.
   /// @param dst_ro [in] destination matrix row offset.
-  void             CopyRowsFromMat(int32 r, const CuMatrix<Real> &src, int32 src_ro, int32 dst_ro);
+  void CopyRowsFromMat(int32 r, const CuMatrix<Real> &src, int32 src_ro, int32 dst_ro);
 
   /// I/O functions
-  void             Read(std::istream &is, bool binary);
-  void             Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
 
   /// Math operations, some calling kernels
   void SetZero();
@@ -154,6 +171,8 @@ class CuMatrix {
   }
 
  private:
+  void Destroy();
+  
   MatrixIndexT num_rows_;
   MatrixIndexT num_cols_;
   MatrixIndexT stride_;

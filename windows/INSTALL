@@ -17,7 +17,7 @@
 # Also we have not been checking that the code compiles in Visual Studio.
 # If anyone would like to maintain the Windows setup, we would like that,
 # but unfortunately, the situation right now is that it is not being
-# maintained.  
+# maintained.
 
 (A) Installing the Windows version of OpenFst.
   This is maintained by Paul Dixon; it has some small code changes versus

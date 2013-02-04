@@ -27,9 +27,24 @@
 
 namespace kaldi {
 
-inline void cblas_Xscal(const int N, float *X, const int incX, float *Y,
-                        const int incY, const float c, const float s) {
-  cblas_srot(N, X, incX, Y, incY, c, s);
+
+inline void cblas_Xcopy(const int N, const float *X, const int incX, float *Y,
+                        const int incY) {
+  cblas_scopy(N, X, incX, Y, incY);
+}
+
+inline void cblas_Xcopy(const int N, const double *X, const int incX, double *Y,
+                        const int incY) {
+  cblas_dcopy(N, X, incX, Y, incY);
+}
+
+
+inline float cblas_Xasum(const int N, const float *X, const int incX) {
+  return cblas_sasum(N, X, incX);
+}
+
+inline double cblas_Xasum(const int N, const double *X, const int incX) {
+  return cblas_dasum(N, X, incX);
 }
 
 inline void cblas_Xrot(const int N, float *X, const int incX, float *Y,
@@ -58,11 +73,11 @@ inline void cblas_Xaxpy(const int N, const double alpha, const double *X,
                         const int incX, double *Y, const int incY) {
   cblas_daxpy(N, alpha, X, incX, Y, incY);
 }
-inline void cblas_Xscal(const int N,const float alpha, float *data,
+inline void cblas_Xscal(const int N, const float alpha, float *data,
                         const int inc) {
   cblas_sscal(N, alpha, data, inc);
 }
-inline void cblas_Xscal(const int N,const double alpha, double *data, 
+inline void cblas_Xscal(const int N, const double alpha, double *data, 
                         const int inc) {
   cblas_dscal(N, alpha, data, inc);
 }
@@ -226,6 +241,78 @@ inline void cblas_Xsyrk(
   cblas_dsyrk(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
               dim_c, other_dim_a, alpha, A, a_stride, beta, C, c_stride);
 }
+
+/// matrix-vector multiply using a banded matrix; we always call this
+/// with b = 1 meaning we're multiplying by a diagonal matrix.  This is used for
+/// elementwise multiplication.  We miss some of the arguments out of this
+/// wrapper.
+inline void cblas_Xsbmv1(
+    const MatrixIndexT dim,
+    const double *A,
+    const double alpha,
+    const double *x,
+    const double beta,
+    double *y) {
+  cblas_dsbmv(CblasRowMajor, CblasLower, dim, 0, alpha, A,
+              1, x, 1, beta, y, 1);
+}
+
+inline void cblas_Xsbmv1(
+    const MatrixIndexT dim,
+    const float *A,
+    const float alpha,
+    const float *x,
+    const float beta,
+    float *y) {
+  cblas_ssbmv(CblasRowMajor, CblasLower, dim, 0, alpha, A,
+              1, x, 1, beta, y, 1);
+}
+
+
+/// This is not really a wrapper for CBLAS as CBLAS does not have this; in future we could
+/// extend this somehow.
+inline void mul_elements(
+    const MatrixIndexT dim,
+    const double *a,
+    double *b) { // does b *= a, elementwise.
+  double c1, c2, c3, c4;
+  MatrixIndexT i;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    c1 = a[i] * b[i];
+    c2 = a[i+1] * b[i+1];
+    c3 = a[i+2] * b[i+2];
+    c4 = a[i+3] * b[i+3];
+    b[i] = c1;
+    b[i+1] = c2;
+    b[i+2] = c3;
+    b[i+3] = c4;
+  }
+  for (; i < dim; i++)
+    b[i] *= a[i];
+}
+
+inline void mul_elements(
+    const MatrixIndexT dim,
+    const float *a,
+    float *b) { // does b *= a, elementwise.
+  float c1, c2, c3, c4;
+  MatrixIndexT i;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    c1 = a[i] * b[i];
+    c2 = a[i+1] * b[i+1];
+    c3 = a[i+2] * b[i+2];
+    c4 = a[i+3] * b[i+3];
+    b[i] = c1;
+    b[i+1] = c2;
+    b[i+2] = c3;
+    b[i+3] = c4;
+  }
+  for (; i < dim; i++)
+    b[i] *= a[i];
+}
+
+
+
 // add clapack here
 #ifndef HAVE_ATLAS
 inline void clapack_Xtptri(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *result) {

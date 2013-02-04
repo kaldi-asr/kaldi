@@ -223,12 +223,13 @@ int main(int argc, char *argv[]) {
         
         //3) propagate the feature to get the log-posteriors (nnet w/o sofrmax)
         // push features to GPU
-        feats.CopyFromMat(mat);
+        feats = mat;
         // possibly apply transform
         nnet_transf.Feedforward(feats, &feats_transf);
         // propagate through the nnet (assuming w/o softmax)
         nnet.Propagate(feats_transf, &nnet_out);
-        // pop it back to the HOST
+        // transfer it back to the host
+        nnet_out_h.Resize(nnet_out.NumRows(), nnet_out.NumCols(), kUndefined);
         nnet_out.CopyToMat(&nnet_out_h);
         // TODO: poccibly divide by priors
 
@@ -277,7 +278,7 @@ int main(int argc, char *argv[]) {
 
         //7) backpropagate through the nnet
         if (!crossvalidate) {
-          nnet_diff.CopyFromMat(nnet_diff_h);
+          nnet_diff = nnet_diff_h;
           nnet.Backpropagate(nnet_diff, NULL);
         }
 

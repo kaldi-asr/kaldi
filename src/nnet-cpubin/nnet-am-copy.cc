@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
     int32 truncate = -1;
     bool binary_write = true;
     bool remove_dropout = false;
+    bool remove_preconditioning = false;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
     std::string scales = "";
@@ -64,6 +65,8 @@ int main(int argc, char *argv[]) {
                 "to this many components by removing the last components.");
     po.Register("remove-dropout", &remove_dropout, "Set this to true to remove "
                 "any dropout components.");
+    po.Register("remove-preconditioning", &remove_preconditioning, "Set this to true to replace "
+                "components of type AffineComponentPreconditioned with AffineComponent.");
     po.Register("stats-from", &stats_from, "Before copying neural net, copy the "
                 "statistics in any layer of type NonlinearComponent, from this "
                 "neural network: provide the extended filename.");
@@ -132,6 +135,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (remove_dropout) am_nnet.GetNnet().RemoveDropout();
+
+    if (remove_preconditioning) am_nnet.GetNnet().RemovePreconditioning();
 
     if (stats_from != "") {
       // Copy the stats associated with the layers descending from

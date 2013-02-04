@@ -183,6 +183,23 @@ void UnitTestSigmoidComponent() {
   }
 }
 
+void UnitTestReduceComponent() {
+  // We're testing that the gradients are computed correctly:
+  // the input gradients and the model gradients.
+  
+  int32 input_dim = 10 + rand() % 50, n = 1 + rand() % 3;
+  {
+    ReduceComponent reduce_component(input_dim, n);
+    UnitTestGenericComponentInternal(reduce_component);
+  }
+  {
+    ReduceComponent reduce_component;
+    reduce_component.InitFromString("dim=15 n=3");
+    UnitTestGenericComponentInternal(reduce_component);
+  }
+}
+
+
 template<class T>
 void UnitTestGenericComponent() { // works if it has an initializer from int,
   // e.g. tanh, sigmoid.
@@ -463,6 +480,8 @@ int main() {
     UnitTestGenericComponent<TanhComponent>();
     UnitTestGenericComponent<PermuteComponent>();
     UnitTestGenericComponent<SoftmaxComponent>();
+    UnitTestSigmoidComponent();
+    UnitTestReduceComponent();
     UnitTestAffineComponent();
     UnitTestAffinePreconInputComponent();
     UnitTestBlockAffineComponent();

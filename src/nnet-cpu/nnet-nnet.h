@@ -104,6 +104,10 @@ class Nnet {
 
   /// Excise any components of type DropoutComponent.
   void RemoveDropout();
+
+  /// Replace any components of type AffineComponentPreconditioned with
+  /// components of type AffineComponent.
+  void RemovePreconditioning();
   
   /// For each updatatable component, adds to it
   /// the corresponding element of "other" times the

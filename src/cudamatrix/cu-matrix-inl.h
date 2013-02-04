@@ -93,10 +93,13 @@ Real* CuMatrix<Real>::RowData(MatrixIndexT r) {
 
 
 template<typename Real>
-CuMatrix<Real>& CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols) {
+void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
+                            MatrixResizeType resize_type) {
+  // This code does not currently support the other resize_type options.
+  KALDI_ASSERT(resize_type == kSetZero || resize_type == kUndefined);
   if (num_rows_ == rows && num_cols_ == cols) {
-    // SetZero();
-    return *this;
+    if (resize_type == kSetZero) SetZero();
+    return;
   }
 
   Destroy();
@@ -108,17 +111,15 @@ CuMatrix<Real>& CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols) {
     cuSafeCall(cudaMallocPitch((void**)&data_, &pitch, row_bytes, rows));
     num_rows_ = rows; num_cols_ = cols; 
     stride_ = pitch/sizeof(Real);
-    SetZero();
+    if (resize_type == kSetZero) SetZero();
   } else
   #endif
   {
-    mat_.Resize(rows, cols);
+    mat_.Resize(rows, cols, resize_type);
     num_rows_=rows;
     num_cols_=cols;
-    stride_=mat_.Stride();
+    stride_= mat_.Stride();
   }
-  
-  return *this;
 }
 
 
@@ -134,7 +135,7 @@ void CuMatrix<Real>::Destroy() {
   } else
   #endif
   {
-    mat_.Destroy();
+    mat_.Resize(0, 0);
   }
   num_rows_ = num_cols_ = stride_ = 0;
 }
@@ -142,9 +143,8 @@ void CuMatrix<Real>::Destroy() {
 
 
 template<typename Real>
-CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const CuMatrix<Real> &src) {
-  Resize(src.NumRows(), src.NumCols());
- 
+void CuMatrix<Real>::CopyFromMat(const CuMatrix<Real> &src) {
+  KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -152,7 +152,8 @@ CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const CuMatrix<Real> &src) {
     MatrixIndexT dst_pitch = stride_*sizeof(Real);
     MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
     MatrixIndexT width = src.NumCols()*sizeof(Real);
-    cuSafeCall(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch, width, src.NumRows(), cudaMemcpyDeviceToDevice));
+    cuSafeCall(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
+                            width, src.NumRows(), cudaMemcpyDeviceToDevice));
 
     CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatD2D",tim.Elapsed());
   } else
@@ -160,16 +161,13 @@ CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const CuMatrix<Real> &src) {
   {
     mat_.CopyFromMat(src.mat_);
   }
-
-  return *this;
 }
 
 
 
 template<typename Real>
-CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const Matrix<Real> &src) {
-  Resize(src.NumRows(), src.NumCols());
-
+void CuMatrix<Real>::CopyFromMat(const Matrix<Real> &src) {
+  KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -177,7 +175,8 @@ CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const Matrix<Real> &src) {
     MatrixIndexT dst_pitch = stride_*sizeof(Real);
     MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
     MatrixIndexT width = src.NumCols()*sizeof(Real);
-    cuSafeCall(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch, width, src.NumRows(), cudaMemcpyHostToDevice));
+    cuSafeCall(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
+                            width, src.NumRows(), cudaMemcpyHostToDevice));
 
     CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatH2D",tim.Elapsed());
   } else
@@ -185,18 +184,13 @@ CuMatrix<Real>& CuMatrix<Real>::CopyFromMat(const Matrix<Real> &src) {
   {
     mat_.CopyFromMat(src);
   }
-
-  return *this;
 }
-
 
 
 template<typename Real>
 void CuMatrix<Real>::CopyToMat(Matrix<Real> *dst) const {
-  if (dst->NumRows() != NumRows()  ||  dst->NumCols() != NumCols()) {
-    dst->Resize(NumRows(), NumCols());
-  }
-
+  KALDI_ASSERT(dst->NumRows() == NumRows() && dst->NumCols() == NumCols());
+  
   #if HAVE_CUDA==1 
   if (CuDevice::Instantiate().Enabled()) { 
 
@@ -257,7 +251,7 @@ void CuMatrix<Real>::Read(std::istream &is, bool binary) {
 
 template<typename Real>
 void CuMatrix<Real>::Write(std::ostream &os, bool binary) const {
-  Matrix<BaseFloat> tmp;
+  Matrix<BaseFloat> tmp(NumRows(), NumCols(), kUndefined);
   CopyToMat(&tmp);
   tmp.Write(os, binary); 
 }

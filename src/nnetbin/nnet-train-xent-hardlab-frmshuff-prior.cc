@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           // push features to GPU
-          feats.CopyFromMat(mat);
+          feats = mat;
           // possibly apply transform
           nnet_transf.Feedforward(feats, &feats_transf);
           // add to cache

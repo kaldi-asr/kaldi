@@ -281,7 +281,6 @@ steps/train_quick.sh --cmd "$train_cmd" \
   exp/tri4b/graph_bd_tgpr data/test_eval92 exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
 ) &
 
-
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
 # all the data).  Use 30 jobs.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \

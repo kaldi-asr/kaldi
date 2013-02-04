@@ -375,7 +375,13 @@ template
 void VectorBase<double>::CopyRowFromSp(const SpMatrix<double> &mat, MatrixIndexT row);
 
 
-// takes elements to a power.  Throws exception if could not (but only for power != 1 ad power != 2).
+#ifdef HAVE_MKL
+template<>
+void VectorBase<float>::ApplyPow(float power) { vsPowx(dim_, data_, power, data_); }
+template<>
+void VectorBase<double>::ApplyPow(double power) { vdPowx(dim_, data_, power, data_); }
+#else
+// takes elements to a power.  Throws exception if could not (but only for power != 1 and power != 2).
 template<typename Real>
 void VectorBase<Real>::ApplyPow(Real power) {
   if (power == 1.0) return;
@@ -399,6 +405,7 @@ void VectorBase<Real>::ApplyPow(Real power) {
     }
   }
 }
+#endif
 
 // Computes the p-th norm. Throws exception if could not.
 template<typename Real>
@@ -534,14 +541,13 @@ template<typename Real>
 void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
   // note the double accumulator
   KALDI_ASSERT(dim_ == M.NumCols());
-  MatrixIndexT num_rows = M.NumRows(), stride = M.Stride();
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    double sum = 0.0;
-    const Real *src = M.Data() + i;
-    for (MatrixIndexT j = 0; j < num_rows; j++)
-      sum += src[j*stride];
-    data_[i] = alpha * sum + beta * data_[i];
-  }
+  MatrixIndexT num_rows = M.NumRows(), stride = M.Stride(), dim = dim_;
+  Real *data = data_;
+  cblas_Xscal(dim, beta, data, 1);
+  const Real *m_data = M.Data();
+
+  for (MatrixIndexT i = 0; i < num_rows; i++, m_data += stride)
+    cblas_Xaxpy(dim, alpha, m_data, 1, data, 1);
 }
 
 template<typename Real>
@@ -651,6 +657,25 @@ Real VectorBase<Real>::ApplySoftMax() {
   return max + log(sum);
 }
 
+#ifdef HAVE_MKL
+template<>
+void VectorBase<float>::ApplyTanh() { vsTanh(dim_, data_, data_); }
+template<>
+void VectorBase<double>::ApplyTanh() { vdTanh(dim_, data_, data_); }
+#else
+template<typename Real>
+void VectorBase<Real>::ApplyTanh() {
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    Real x = data_[i];
+    if (x > 0.0) {
+      x = -1.0 + 2.0 / (1.0 + exp(-2.0 * x));
+    } else {
+      x = 1.0 - 2.0 / (1.0 + exp(2.0 * x));
+    }
+    data_[i] = x;
+  }
+}
+#endif
 
 template<typename Real>
 void VectorBase<Real>::Add(Real c) {

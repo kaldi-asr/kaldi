@@ -132,7 +132,8 @@ int main(int argc, char *argv[]) {
         rbm_transf.Feedforward(feats, &feats_transf);
         // subsample the feats to get faster epochs
         if(drop_data > 0.0) {
-          Matrix<BaseFloat> mat2;
+          Matrix<BaseFloat> mat2(feats_transf.NumRows(), feats_transf.NumCols(),
+                                 kUndefined);
           feats_transf.CopyToMat(&mat2);
           for(int32 r=mat2.NumRows()-1; r >= 0; r--) {
             if(RandUniform() < drop_data) {

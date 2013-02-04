@@ -138,6 +138,7 @@ int main(int argc, char *argv[]) {
             num_other_error++;
           } else { //dimension OK
             // push features to GPU
+            feats.Resize(mat.NumRows(), mat.NumCols(), kUndefined);
             feats.CopyFromMat(mat);
             // possibly apply transform
             nnet_transf.Feedforward(feats, &feats_transf);

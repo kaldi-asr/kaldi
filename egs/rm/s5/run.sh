@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# CAUTION: I changed e.g. 1.trans to trans.1 in the scripts.  If you ran it
-# part-way through prior to this, to convert to the new naming
-# convention, run:
-# for x in `find . -name '*.trans'`; do mv $x `echo $x | perl -ane 's/(\d+)\.trans/trans.$1/;print;'`; done
-# but be careful as this will not follow soft links.
-
 . cmd.sh
 
 # call the next line with the directory where the RM data is

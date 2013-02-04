@@ -62,8 +62,7 @@ int main(int argc, char *argv[]) {
     //the pointer will be given to the nnet, so we don't need to call delete
 
     //convert Matrix to CuMatrix
-    CuMatrix<BaseFloat> cu_transform;
-    cu_transform.CopyFromMat(transform);
+    CuMatrix<BaseFloat> cu_transform(transform);
 
     //set the weights
     layer->SetLinearity(cu_transform);

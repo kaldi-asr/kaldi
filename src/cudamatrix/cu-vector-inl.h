@@ -44,8 +44,6 @@ const Real* CuVector<Real>::Data() const {
   }
 }
 
-
-
 template<typename Real>
 Real* CuVector<Real>::Data() { 
   #if HAVE_CUDA==1
@@ -58,15 +56,12 @@ Real* CuVector<Real>::Data() {
   }
 }
 
-
-
 template<typename Real>
-CuVector<Real>& CuVector<Real>::Resize(MatrixIndexT dim) {
+void CuVector<Real>::Resize(MatrixIndexT dim) {
   if (dim_ == dim) {
-    // SetZero();
-    return *this;
+    SetZero();
+    return;
   }
-
   Destroy();
 
   #if HAVE_CUDA==1
@@ -80,8 +75,6 @@ CuVector<Real>& CuVector<Real>::Resize(MatrixIndexT dim) {
 
   dim_ = dim;
   SetZero();
-
-  return *this;
 }
 
 
@@ -106,10 +99,8 @@ void CuVector<Real>::Destroy() {
 
 
 template<typename Real>
-CuVector<Real>& CuVector<Real>::CopyFromVec(const CuVector<Real> &src) {
-  Resize(src.Dim());
-  
-  #if HAVE_CUDA==1
+void CuVector<Real>::CopyFromVec(const CuVector<Real> &src) {
+#if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     cuSafeCall(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyDeviceToDevice));
@@ -119,16 +110,13 @@ CuVector<Real>& CuVector<Real>::CopyFromVec(const CuVector<Real> &src) {
   {
     vec_.CopyFromVec(src.vec_);
   }
-
-  return *this;
 }
 
 
 
 template<typename Real>
-CuVector<Real>& CuVector<Real>::CopyFromVec(const Vector<Real> &src) {
-  Resize(src.Dim());
-
+void CuVector<Real>::CopyFromVec(const Vector<Real> &src) {
+  KALDI_ASSERT(src.Dim() == dim_);
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -141,16 +129,14 @@ CuVector<Real>& CuVector<Real>::CopyFromVec(const Vector<Real> &src) {
   {
     vec_.CopyFromVec(src);
   }
-  return *this;
 }
 
 
 
 template<typename Real>
 void CuVector<Real>::CopyToVec(Vector<Real> *dst) const {
-  if (dst->Dim() != dim_) {
-    dst->Resize(dim_);
-  }
+  KALDI_ASSERT(dst->Dim() == dim_);
+
 
   #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
@@ -177,7 +163,7 @@ void CuVector<Real>::Read(std::istream &is, bool binary) {
 
 template<typename Real>
 void CuVector<Real>::Write(std::ostream &os, bool binary) const {
-  Vector<BaseFloat> tmp;
+  Vector<BaseFloat> tmp(Dim());
   CopyToVec(&tmp);
   tmp.Write(os, binary); 
 }

@@ -31,16 +31,17 @@ num_jobs_nnet=8 # Number of neural net training jobs to run in parallel.
                 # not the same as the num-jobs (nj) which will be the same as the
                 # alignment and denlat directories.
 stage=0
-sub_stage=-2 # this can be used to start from a particular sub-iteration of an
+sub_stage=-3 # this can be used to start from a particular sub-iteration of an
              # iteration
 acwt=0.1
 boost=0.0  # boosting for BMMI (you can try 0.1).. this is applied per frame.
 transform_dir=  # Note: by default any transforms in $alidir will be used.
 
 parallel_opts="-pe smp 16" # by default we use 16 threads; this lets the queue know.
-shuffle_opts="-tc 5" # max 5 jobs running at one time (a lot of I/O.)
+io_opts="-tc 10" # max 5 jobs running at one time (a lot of I/O.)
 num_threads=16 # number of threads for neural net trainer..
 mkl_num_threads=1
+random_copy=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -71,8 +72,7 @@ if [ $# != 6 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"-pe smp 16\">            # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads."
-  echo "  --shuffle-opts <opts|\"-tc 5\">                  # Options given to e.g. queue.pl for the job that shuffles the "
-  echo "                                                   # data. (prevents stressing the disk). "
+  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for any especially I/O intensive jobs"
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, for each"
@@ -181,34 +181,37 @@ while [ $x -lt $num_epochs ]; do
   echo "Epoch $x of $num_epochs"
 
   if [ $stage -le $x ] && $first_iter_of_epoch; then
-    if [ $stage -lt $x ] || [ $sub_stage -le -2 ]; then
+    if [ $stage -lt $x ] || [ $sub_stage -le -3 ]; then
       # First get the per-frame posteriors, by rescoring the lattices; this
       # process also gives us at the same time the posteriors of each state for
       # each frame (by default, pruned to 0.01 with a randomized algorithm).
       # The matrix-logprob stage produces a diagnostic and passes the pseudo-log-like
-      # matrix through unchanged.
-      $cmd JOB=1:$nj $dir/log/post.$z.JOB.log \
-        nnet-logprob2 $dir/$x.1.mdl "$feats" "ark:|prob-to-post ark:- ark:- | gzip -c >$dir/post/smooth_post.$z.JOB.gz" ark:- \| \
+      # matrix through unchanged.  (Note: nnet-logprob2-parallel can use up to
+      # $num_threads threads, but in practice it may be limited by the speed of
+      # the other elements of the pipe.
+      $cmd $parallel_opts JOB=1:$nj $dir/log/post.$z.JOB.log \
+        nnet-logprob2-parallel --num-threads=$num_threads $dir/$x.1.mdl "$feats" \
+          "ark:|prob-to-post ark:- ark:- | gzip -c >$dir/post/smooth_post.$z.JOB.gz" ark:- \| \
         matrix-logprob ark:- "ark:gunzip -c $alidir/ali.JOB.gz | ali-to-pdf $dir/$x.1.mdl ark:- ark:-|" ark:- \| \
         lattice-rescore-mapped $dir/$x.1.mdl "ark:gunzip -c $denlatdir/lat.JOB.gz|" ark:- ark:- \| \
         lattice-boost-ali --b=$boost --silence-phones=$silphonelist $dir/$x.1.mdl ark:- "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
         lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
         post-to-pdf-post $dir/$x.1.mdl ark:- "ark:|gzip -c >$dir/post/den_post.$z.JOB.gz" || exit 1;
     fi
-    if [ $stage -lt $x ] || [ $sub_stage -le -1 ]; then
+    if [ $stage -lt $x ] || [ $sub_stage -le -2 ]; then
       # run nnet-get-egs for all files, to get the training examples for each frame--
       # combines the feature and label/posterior information.  The posterior information
       # consists of 2 things: the numerator posteriors from the alignments, the denominator
       # posteriors from the lattices (times -1), and the smoothing posteriors from the 
       # neural net log-probs (times E).  
       # We copy the examples for each job round-robin to multiple archives, one for each
-      # of 1...$num_jobs_nnet.  We write these along with .scp files, for more convenient
-      # and memory-efficient randomization.
+      # of 1...$num_jobs_nnet.  
       egs_out=""
       for n in `seq 1 $num_jobs_nnet`; do
-        egs_out="$egs_out ark,scp:$dir/egs/egs.$z.$n.JOB.ark,$dir/egs/egs.$z.$n.JOB.scp"
+        # indexes are egs_orig.$z.$num_jobs_nnet.$nj
+        egs_out="$egs_out ark:$dir/egs/egs_orig.$z.$n.JOB.ark"
       done
-      $cmd JOB=1:$nj $dir/log/egs.$z.JOB.log \
+      $cmd JOB=1:$nj $dir/log/get_egs.$z.JOB.log \
          ali-to-pdf $dir/$x.1.mdl "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
          ali-to-post ark:- ark:- \| \
          sum-post --scale2=$E ark:- "ark:gunzip -c $dir/post/smooth_post.$z.JOB.gz|" ark:- \| \
@@ -223,23 +226,33 @@ while [ $x -lt $num_epochs ]; do
       tail -n 50 $dir/log/post.$z.*.log | perl -e '$acwt=shift @ARGV; $acwt>0.0 || die "bad acwt"; while(<STDIN>) { if (m|lattice-to-post.+Overall average log-like/frame is (\S+) over (\S+) frames.  Average acoustic like/frame is (\S+)|) { $tot_den_lat_like += $1*$2; $tot_frames += $2; } if (m|matrix-logprob.+Average log-prob per frame is (\S+) over (\S+) frames|) { $tot_num_like += $1*$2; $tot_num_frames += $2; } } if (abs($tot_frames - $tot_num_frames) > 0.01*($tot_frames + $tot_num_frames)) { print STDERR "#frames differ $tot_frames vs $tot_num_frames\n"; }  $tot_den_lat_like /= $tot_frames; $tot_num_like /= $tot_num_frames; $objf = $acwt * $tot_num_like - $tot_den_lat_like; print $objf."\n"; ' $acwt > $dir/log/objf.$z.log
       echo "Objf on EBW iter $z is `cat $dir/log/objf.$z.log`"
     fi
-    if [ $stage -lt $x ] || [ $sub_stage -le 0 ]; then
-      echo "Shuffling the order of training examples and splitting them up"
-      echo "(in order to avoid stressing the disk, these won't all run at once)."
-
+    if [ $stage -lt $x ] || [ $sub_stage -le -1 ]; then
+      echo "Merging training examples across original #jobs ($nj), and "
+      echo "splitting across number of nnet jobs $num_jobs_nnet"
       egs_out2=""
       for n in `seq 1 $iters_per_epoch`; do
-        egs_out2="$egs_out2 ark:$dir/egs/egs_split.$z.$n.JOB.ark"
+        # indexes of egs_merged are: egs_merged.$z.$iters_per_epoch.$num_jobs_nnet
+        egs_out2="$egs_out2 ark:$dir/egs/egs_merged.$z.$n.JOB.ark"
       done
       # Note: in the following command, JOB goes from 1 to $num_jobs_nnet, so one
       # job per parallel training job (different from the previous command).
       # We sum up over the index JOB in the previous $cmd, and write to multiple
       # archives, this time one for each "sub-iter".
-      $cmd $shuffle_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.JOB.log \
-        cat $dir/egs/egs.$z.JOB.*.scp \| \
-        utils/shuffle_list.pl --srand "\$[($z*$num_jobs_nnet)+JOB]" \| \
-        nnet-copy-egs scp:- $egs_out2 || exit 1; ##'&&' \
-        ##rm $dir/egs/egs.$z.JOB.*.scp $dir/egs/egs.$z.JOB.*.ark || exit 1;
+      # indexes of egs_orig are: egs_orig.$z.$num_jobs_nnet.$nj
+      $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/merge_and_split.$x.JOB.log \
+        cat $dir/egs/egs_orig.$z.JOB.*.ark \| \
+        nnet-copy-egs --random=$random_copy "--srand=\$[JOB+($x*$num_jobs_nnet)]" \
+          ark:- $egs_out2 '&&' rm $dir/egs/egs_orig.$z.JOB.*.ark || exit 1;
+    fi
+    if [ $stage -lt $x ] || [ $sub_stage -le 0 ]; then
+      echo "Randomizing order of examples in each job"
+      for n in `seq 1 $iters_per_epoch`; do
+        s=$[$num_jobs_nnet*($n+($iters_per_epoch*$z))] # for srand
+        $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$z.$n.JOB.log \
+          nnet-shuffle-egs "--srand=\$[JOB+$s]" \
+          ark:$dir/egs/egs_merged.$z.$n.JOB.ark ark:$dir/egs/egs.$z.$n.JOB.ark '&&' \
+          rm $dir/egs/egs_merged.$z.$n.JOB.ark || exit 1;
+      done
     fi
   fi
   if [ $stage -le $x ]; then
@@ -250,7 +263,7 @@ while [ $x -lt $num_epochs ]; do
       if [ $stage -lt $x ] || [ $sub_stage -le $y ]; then
         $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.$y.JOB.log \
           nnet-train-parallel --num-threads=$num_threads --minibatch-size=$minibatch_size \
-          $dir/$x.$y.mdl ark:$dir/egs/egs_split.$z.$y.JOB.ark $dir/$x.$y.JOB.mdl \
+          $dir/$x.$y.mdl ark:$dir/egs/egs.$z.$y.JOB.ark $dir/$x.$y.JOB.mdl \
           || exit 1;
         nnets_list=
         for n in `seq 1 $num_jobs_nnet`; do

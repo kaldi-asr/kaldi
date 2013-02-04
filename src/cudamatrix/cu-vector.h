@@ -46,6 +46,16 @@ class CuVector {
     Resize(dim); 
   }
 
+  CuVector<Real>(const CuVector<Real> &v): dim_(0), data_(NULL) { 
+    Resize(v.dim_);
+    CopyFromVec(v);
+  }
+
+  CuVector<Real>(const Vector<Real> &v): dim_(0), data_(NULL) { 
+    Resize(v.Dim());
+    CopyFromVec(v);
+  }
+  
   /// Destructor
   ~CuVector() {
     Destroy(); 
@@ -61,19 +71,16 @@ class CuVector {
   Real* Data();
  
   /// Allocate the memory
-  ThisType& Resize(MatrixIndexT dim);
-
-  /// Deallocate the memory
-  void Destroy();
+  void Resize(MatrixIndexT dim);
 
   /// Copy functions (lazy reallocation when needed)
-  ThisType&        CopyFromVec(const CuVector<Real> &src);
-  ThisType&        CopyFromVec(const Vector<Real> &src);
-  void             CopyToVec(Vector<Real> *dst) const;
+  void CopyFromVec(const CuVector<Real> &src);
+  void CopyFromVec(const Vector<Real> &src);
+  void CopyToVec(Vector<Real> *dst) const;
   
   /// I/O 
-  void             Read(std::istream &is, bool binary);
-  void             Write(std::ostream &is, bool binary) const;
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &is, bool binary) const;
   
   /// Math operations
   void SetZero();
@@ -94,6 +101,7 @@ class CuVector {
   }
 
 private:
+  void Destroy();
   MatrixIndexT dim_; ///< dimension of the vector
   Real *data_; ///< GPU data pointer
   Vector<Real> vec_; ///< non-GPU vector as back-up

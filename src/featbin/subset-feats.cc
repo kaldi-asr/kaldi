@@ -25,11 +25,11 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Copy a subset of features\n"
+        "Copy a subset of features (the first n features)\n"
         "Usage: subset-feats [options] in-rspecifier out-wspecifier\n";
 
     ParseOptions po(usage);
-
+    
     int32 n = 10;
     po.Register("n", &n, "If nonnegative, copy the first n feature files.");
 

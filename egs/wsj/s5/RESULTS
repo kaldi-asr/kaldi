@@ -191,6 +191,7 @@ exp/tri4a_dnn/decode_bd_tgpr_eval92/wer_10:%WER 4.00 [ 226 / 5643, 34 ins, 12 de
 # and for eval92 is 3.79, the same system.  (On this setup, discriminative training helped a lot,
 # which seems to be the reason we can't beat the SGMM+MMI numbers here.)
 
-exp/nnet5c1/decode_bd_tgpr_dev93/wer_10:%WER 7.48 [ 616 / 8234, 73 ins, 98 del, 445 sub ]
-exp/nnet5c1/decode_bd_tgpr_eval92/wer_11:%WER 4.41 [ 249 / 5643, 29 ins, 19 del, 201 sub ]
-# Note: my 4.41% result is worse than Karel's 4.00%.
+
+exp/nnet5c1/decode_bd_tgpr_dev93/wer_14:%WER 7.32 [ 603 / 8234, 61 ins, 101 del, 441 sub ]
+exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del, 199 sub ]
+# Note: my 4.39% result is worse than Karel's 4.00%.

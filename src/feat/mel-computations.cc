@@ -213,6 +213,10 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
     int32 offset = bins_[i].first;
     const Vector<BaseFloat> &v (bins_[i].second);
     (*mel_energies_out)(i) = VecVec(v, power_spectrum.Range(offset, v.Dim()));
+    // The following assert was added due to a problem with OpenBlas that
+    // we had at one point (it was a bug in that library).  Just to detect
+    // it early.
+    KALDI_ASSERT(!KALDI_ISNAN((*mel_energies_out)(i)));
   }
 
   if (debug_) {

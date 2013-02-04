@@ -47,7 +47,7 @@ cat links/11-13.1/wsj0/doc/indices/train/tr_s_wv1.ndx | \
  grep -v -i 11-2.1/wsj0/si_tr_s/401 > train_si84.flist
 
 nl=`cat train_si84.flist | wc -l`
-[ "$nl" -eq 7138 ] || echo "Warning: expected 37416 lines in train_si84.flist, got $nl"
+[ "$nl" -eq 7138 ] || echo "Warning: expected 7138 lines in train_si84.flist, got $nl"
 
 # This version for SI-284
 cat links/13-34.1/wsj1/doc/indices/si_tr_s.ndx \

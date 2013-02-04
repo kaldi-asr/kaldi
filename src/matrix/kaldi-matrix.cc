@@ -495,6 +495,41 @@ template
 void MatrixBase<double>::CopyFromMat(const MatrixBase<double> & M,
                                      MatrixTransposeType Trans);
 
+// Specialize the template for CopyFromSp for float, float.
+template<>
+template<>
+void MatrixBase<float>::CopyFromSp(const SpMatrix<float> & M) {
+  KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
+  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  const float *Mdata = M.Data();
+  float *row_data = data_, *col_data = data_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    cblas_scopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
+    cblas_scopy(i, Mdata, 1, col_data, stride); // copy to the column.
+    Mdata += i+1;
+    row_data += stride;
+    col_data += 1;
+  }
+}
+
+// Specialize the template for CopyFromSp for double, double.
+template<>
+template<>
+void MatrixBase<double>::CopyFromSp(const SpMatrix<double> & M) {
+  KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
+  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  const double *Mdata = M.Data();
+  double *row_data = data_, *col_data = data_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    cblas_dcopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
+    cblas_dcopy(i, Mdata, 1, col_data, stride); // copy to the column.
+    Mdata += i+1;
+    row_data += stride;
+    col_data += 1;
+  }
+}
+
+  
 template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::CopyFromSp(const SpMatrix<OtherReal> & M) {
@@ -711,12 +746,16 @@ void Matrix<Real>::Destroy() {
 template<typename Real>
 void MatrixBase<Real>::MulElements(const MatrixBase<Real> &a) {
   KALDI_ASSERT(a.NumRows() == num_rows_ && a.NumCols() == num_cols_);
-  MatrixIndexT i;
-  MatrixIndexT j;
-
-  for (i = 0; i < num_rows_; i++) {
-    for (j = 0; j < num_cols_; j++) {
-      (*this)(i, j) *= a(i, j);
+  
+  if (num_cols_ == stride_ && num_cols_ == a.stride_) {
+    mul_elements(num_rows_ * num_cols_, a.data_, data_);
+  } else {
+    MatrixIndexT a_stride = a.stride_, stride = stride_;
+    Real *data = data_, *a_data = a.data_;
+    for (MatrixIndexT i = 0; i < num_rows_; i++) {
+      mul_elements(num_cols_, a_data, data);
+      a_data += a_stride;
+      data += stride;
     }
   }
 }
@@ -1052,10 +1091,10 @@ bad:
 // would not allow its contents to be changed.
 template<typename Real>
 SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
-                           const MatrixIndexT    ro,
-                           const MatrixIndexT    r,
-                           const MatrixIndexT    co,
-                           const MatrixIndexT    c) {
+                           const MatrixIndexT ro,
+                           const MatrixIndexT r,
+                           const MatrixIndexT co,
+                           const MatrixIndexT c) {
   KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(ro) <
                static_cast<UnsignedMatrixIndexT>(M.num_rows_) &&
                static_cast<UnsignedMatrixIndexT>(co) <
@@ -1985,6 +2024,13 @@ Real MatrixBase<Real>::ApplySoftMax() {
   return max + log(sum);
 }
 
+template<typename Real>
+void MatrixBase<Real>::ApplyTanh() {
+  for (MatrixIndexT r = 0; r < num_rows_; r++) {
+    SubVector<Real> v(*this, r);
+    v.ApplyTanh();
+  }
+}
 
 template<class Real>
 template<class OtherReal>

@@ -91,7 +91,7 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
                 targets_leftover_.begin()+leftover,
                 targets_.begin());
 
-      features_leftover_.Destroy();
+      features_leftover_.Resize(0, 0);
       targets_leftover_.resize(0);
       filling_pos_ += leftover;
     } 

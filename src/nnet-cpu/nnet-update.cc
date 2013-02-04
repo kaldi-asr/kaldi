@@ -44,7 +44,6 @@ class NnetUpdater {
   // Possibly splices input together from forward_data_[component].
   //   MatrixBase<BaseFloat> &GetSplicedInput(int32 component, Matrix<BaseFloat> *temp_matrix);
 
-
   void Propagate();
 
   /// Computes objective function and derivative at output layer.
@@ -153,10 +152,10 @@ void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
                      &output = forward_data_[c+1];
     Matrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const Matrix<BaseFloat> &output_deriv(*deriv);
- 
+
     component.Backprop(input, output, output_deriv, num_chunks,
                        component_to_update, &input_deriv);
-    *deriv = input_deriv;
+    input_deriv.Swap(deriv);
   }
 }
 

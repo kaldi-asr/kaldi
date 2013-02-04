@@ -160,11 +160,9 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Applied transform to " << num_done << " utterances; " << num_error
               << " had errors.";
 
-    return 0;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
 }
-
-

@@ -234,7 +234,7 @@ class SimpleDecoder {
         const Arc &arc = aiter.Value();
         if (arc.ilabel == 0) {  // propagate nonemitting only...
           Token *new_tok = new Token(arc, tok);
-          if (new_tok->arc_.weight.Value() > cutoff) {
+          if (new_tok->weight_.Value() > cutoff) {
             Token::TokenDelete(new_tok);
           } else {
             unordered_map<StateId, Token*>::iterator find_iter

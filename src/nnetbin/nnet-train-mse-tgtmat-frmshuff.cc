@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
             continue;
           }
           // push features/targets to GPU
-          feats.CopyFromMat(fea_mat);
-          targets.CopyFromMat(tgt_mat);
+          feats = fea_mat;
+          targets = tgt_mat;
           // possibly apply feature transform
           nnet_transf.Feedforward(feats, &feats_transf);
           // add to cache

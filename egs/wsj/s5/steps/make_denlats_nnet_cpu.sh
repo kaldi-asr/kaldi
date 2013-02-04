@@ -18,6 +18,10 @@ max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 # End configuration section.
+num_threads=1 # Number of threads used in nnet-logprob computation.  If you set
+              # this to a different value, make sure to also set the appropriate
+              # queue options.  If you set this too high it won't use all the
+              # threads as most of the time will be taken in the decoder.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -104,9 +108,10 @@ fi
 
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   nnet-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+   nnet-logprob-parallel --num-threads=$num_threads $srcdir/final.mdl "$feats" ark:- \| \
+   latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-     $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
+     $dir/dengraph/HCLG.fst ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
   for n in `seq $nj`; do
     if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
@@ -120,9 +125,10 @@ else
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        nnet-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+        nnet-logprob-parallel --num-threads=$num_threads $srcdir/final.mdl "$feats_subset" ark:- \| \
+        latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
+          $dir/dengraph/HCLG.fst ark:- "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
       echo Merging archives for data subset $n
       rm $dir/.error 2>/dev/null;
       for k in `seq $sub_split`; do

@@ -340,6 +340,9 @@ class MatrixBase {
   /// Apply soft-max to the collection of all elements of the
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
+
+  /// Apply the tanh function to each element of the matrix.
+  void ApplyTanh();
   
   /** Uses Svd to compute the eigenvalue decomposition of a symmetric positive
    * semi-definite matrix: (*this) = rP * diag(rS) * rP^T, with rP an
@@ -530,7 +533,7 @@ class Matrix : public MatrixBase<Real> {
 
   /// Basic constructor.  Sets to zero by default.
   /// if set_zero == false, memory contents are undefined.
-  Matrix(const MatrixIndexT r, const MatrixIndexT c, MatrixResizeType resize_type = kSetZero) :
+  Matrix(const MatrixIndexT r, const MatrixIndexT c, MatrixResizeType resize_type = kSetZero):
     MatrixBase<Real>() { Resize(r, c, resize_type); }
 
   /// Swaps the contents of *this and *other.  Shallow swap.
@@ -553,7 +556,7 @@ class Matrix : public MatrixBase<Real> {
   /// It is symmetric, so no option for transpose, and NumRows == Cols
   template<typename OtherReal>
   explicit Matrix(const SpMatrix<OtherReal> & M) : MatrixBase<Real>() {
-    Resize(M.NumRows(), M.NumRows());
+    Resize(M.NumRows(), M.NumRows(), kUndefined);
     this->CopyFromSp(M);
   }
 
@@ -562,10 +565,10 @@ class Matrix : public MatrixBase<Real> {
   explicit Matrix(const TpMatrix<OtherReal> & M,
                     MatrixTransposeType trans = kNoTrans) : MatrixBase<Real>() {
     if (trans == kNoTrans) {
-      Resize(M.NumRows(), M.NumCols());
+      Resize(M.NumRows(), M.NumCols(), kUndefined);
       this->CopyFromTp(M);
     } else {
-      Resize(M.NumCols(), M.NumRows());
+      Resize(M.NumCols(), M.NumRows(), kUndefined);
       this->CopyFromTp(M, kTrans);
     }
   }
@@ -584,9 +587,6 @@ class Matrix : public MatrixBase<Real> {
   /// Distructor to free matrices.
   ~Matrix() { Destroy(); }
 
-  /// Deallocates memory and sets to empty matrix.
-  void Destroy();
-
   /// Sets matrix to a specified size (zero is OK as long as both r and c are
   /// zero).  The value of the new data depends on resize_type:
   ///   -if kSetZero, the new data will be zero
@@ -601,9 +601,8 @@ class Matrix : public MatrixBase<Real> {
   /// Assignment operator that takes MatrixBase.
   Matrix<Real> &operator = (const MatrixBase<Real> &other) {
     if (MatrixBase<Real>::NumRows() != other.NumRows() ||
-        MatrixBase<Real>::NumCols() != other.NumCols()) {
-      Resize(other.NumRows(), other.NumCols());
-    }
+        MatrixBase<Real>::NumCols() != other.NumCols())
+      Resize(other.NumRows(), other.NumCols(), kUndefined);
     MatrixBase<Real>::CopyFromMat(other);
     return *this;
   }
@@ -611,15 +610,17 @@ class Matrix : public MatrixBase<Real> {
   /// Assignment operator. Needed for inclusion in std::vector.
   Matrix<Real> &operator = (const Matrix<Real> &other) {
     if (MatrixBase<Real>::NumRows() != other.NumRows() ||
-        MatrixBase<Real>::NumCols() != other.NumCols()) {
-      Resize(other.NumRows(), other.NumCols());
-    }
+        MatrixBase<Real>::NumCols() != other.NumCols())
+      Resize(other.NumRows(), other.NumCols(), kUndefined);
     MatrixBase<Real>::CopyFromMat(other);
     return *this;
   }
   
 
  private:
+  /// Deallocates memory and sets to empty matrix (dimension 0, 0).
+  void Destroy();
+  
   /// Init assumes the current class contents are invalid (i.e. junk or have
   /// already been freed), and it sets the matrix to newly allocated memory with
   /// the specified number of rows and columns.  r == c == 0 is acceptable.  The data
@@ -677,8 +678,8 @@ class SubMatrix : public MatrixBase<Real> {
             const MatrixIndexT ro,  // row offset, 0 < ro < NumRows()
             const MatrixIndexT r,   // number of rows, r > 0
             const MatrixIndexT co,  // column offset, 0 < co < NumCols()
-            const MatrixIndexT c);  // number of columns, c > 0
-
+            const MatrixIndexT c);   // number of columns, c > 0
+  
   ~SubMatrix<Real>() {}
   
   /// This type of constructor is needed for Range() to work [in Matrix base

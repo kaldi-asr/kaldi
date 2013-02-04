@@ -679,6 +679,28 @@ template<class Real> static void UnitTestAxpy() {
   }
 }
 
+template<class Real> static void UnitTestCopySp() {
+  // Checking that the various versions of copying
+  // matrix to SpMatrix work the same in the symmetric case.
+  for (MatrixIndexT iter = 0;iter < 5;iter++) {
+    int32 dim = 5 + rand() %  10;
+    SpMatrix<Real> S(dim), T(dim);
+    S.SetRandn();
+    Matrix<Real> M(S);
+    T.CopyFromMat(M, kTakeMeanAndCheck);
+    AssertEqual(S, T);
+    T.SetZero();
+    T.CopyFromMat(M, kTakeMean);
+    AssertEqual(S, T);
+    T.SetZero();
+    T.CopyFromMat(M, kTakeLower);
+    AssertEqual(S, T);
+    T.SetZero();
+    T.CopyFromMat(M, kTakeUpper);
+    AssertEqual(S, T);
+  }
+}
+
 
 template<class Real> static void UnitTestPower() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -1415,7 +1437,7 @@ template<class Real> static void UnitTestInverse() {
 
 
 template<class Real> static void UnitTestMulElements() {
-  for (MatrixIndexT iter = 0;iter < 5;iter++) {
+  for (MatrixIndexT iter = 0; iter < 5; iter++) {
 	MatrixIndexT dimM = 20 + rand()%10, dimN = 20 + rand()%10;
 	Matrix<Real> A(dimM, dimN), B(dimM, dimN), C(dimM, dimN);
 	InitRand(&A);
@@ -1429,6 +1451,7 @@ template<class Real> static void UnitTestMulElements() {
 		KALDI_ASSERT(std::abs(C(i, j) - (A(i, j)*B(i, j))) < 0.0001);
   }
 }
+
 
 template<class Real> static void UnitTestSpLogExp() {
   for (MatrixIndexT i = 0; i < 5; i++) {
@@ -1857,6 +1880,27 @@ template<class Real> static void  UnitTestLimitCond() {
     KALDI_ASSERT(B.LimitCond(1000) == (dimM-1));
     KALDI_ASSERT(std::abs(B(2, 2) - 10.0) < 0.01);
     KALDI_ASSERT(std::abs(B(3, 0)) < 0.001);
+  }
+}
+
+template<class Real> static void  UnitTestTanh() {
+  for (MatrixIndexT i = 0; i < 10; i++) {
+    MatrixIndexT dimM = 5 + rand() % 10, dimN = 5 + rand() % 10;
+    Matrix<Real> M(dimM, dimN);
+    Matrix<Real> N(M);
+    for(int32 r = 0; r < dimM; r++) {
+      for (int32 c = 0; c < dimN; c++) {
+        Real x = N(r, c);
+        if (x > 0.0) {
+          x = -1.0 + 2.0 / (1.0 + exp(-2.0 * x));
+        } else {
+          x = 1.0 - 2.0 / (1.0 + exp(2.0 * x));
+        }
+        N(r, c) = x;
+      }
+    }
+    M.ApplyTanh();
+    AssertEqual(M, N);
   }
 }
 
@@ -3541,6 +3585,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestDotprod<Real>();
   // UnitTestSvdVariants<Real>();
   UnitTestPower<Real>();
+  UnitTestCopySp<Real>();
   UnitTestDeterminant<Real>();
   KALDI_LOG << " Point F";
   UnitTestDeterminantSign<Real>();
@@ -3566,6 +3611,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestRange<Real>();
   UnitTestSimpleForVec<Real>();
   UnitTestSimpleForMat<Real>();
+  UnitTestTanh<Real>();
   UnitTestNorm<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";

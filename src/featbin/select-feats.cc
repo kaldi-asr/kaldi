@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
     using namespace std;
     
     const char *usage =
-      "Select certain dimensions of the feature file;  think of it as the unix\n"
-      "command cut -f ...\n"
-      "Usage: select-feats selection in-rspecifier out-wspecifier\n"
-      "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n";
+        "Select certain dimensions of the feature file;  think of it as the unix\n"
+        "command cut -f ...\n"
+        "Usage: select-feats selection in-rspecifier out-wspecifier\n"
+        "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n";
     
     ParseOptions po(usage);
     

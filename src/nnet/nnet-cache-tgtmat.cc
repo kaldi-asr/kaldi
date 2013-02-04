@@ -88,8 +88,8 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
       features_.CopyRowsFromMat(leftover, features_leftover_, 0, 0);
       targets_.CopyRowsFromMat(leftover, targets_leftover_, 0, 0);
       
-      features_leftover_.Destroy();
-      targets_leftover_.Destroy();
+      features_leftover_.Resize(0, 0);
+      targets_leftover_.Resize(0, 0);
       filling_pos_ += leftover;
     } 
   }

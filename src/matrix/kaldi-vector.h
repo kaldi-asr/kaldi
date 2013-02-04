@@ -126,6 +126,10 @@ class VectorBase {
   /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
   Real ApplySoftMax();
 
+  /// Apply the tanh function to each element of a vector.  If using MKL, does
+  /// it using the "less accurate" options.
+  void ApplyTanh();
+
   /// Take all  elements of vector to a power.
   void ApplyPow(Real power);
 
@@ -322,20 +326,20 @@ class Vector: public VectorBase<Real> {
 
   /// Copy constructor.  The need for this is controversial.
   Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
-    Resize(v.Dim());
+    Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
   }
 
   /// Copy-constructor from base-class, needed to copy from SubVector.
   explicit Vector(const VectorBase<Real> &v) : VectorBase<Real>() {
-    Resize(v.Dim());
+    Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
   }
 
   /// Type conversion constructor.
   template<typename OtherReal>
   explicit Vector(const VectorBase<OtherReal> &v): VectorBase<Real>() {
-    Resize(v.Dim());
+    Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
   }
 
@@ -372,14 +376,14 @@ class Vector: public VectorBase<Real> {
 
   /// Assignment operator, protected so it can only be used by std::vector
   Vector<Real> &operator = (const Vector<Real> &other) {
-    Resize(other.Dim());
+    Resize(other.Dim(), kUndefined);
     this->CopyFromVec(other);
     return *this;
   }
 
   /// Assignment operator that takes VectorBase.
   Vector<Real> &operator = (const VectorBase<Real> &other) {
-    Resize(other.Dim());
+    Resize(other.Dim(), kUndefined);
     this->CopyFromVec(other);
     return *this;
   }

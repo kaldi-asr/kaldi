@@ -225,6 +225,8 @@ class NonlinearComponent: public Component {
   void Scale(BaseFloat scale);
   void Add(BaseFloat alpha, const NonlinearComponent &other);
 
+  // The following functions are unique to NonlinearComponent.
+  // They mostly relate to diagnostics.
   const Vector<double> &ValueSum() const { return value_sum_; }
   const Vector<double> &DerivSum() const { return deriv_sum_; }
   double Count() const { return count_; }
@@ -322,6 +324,37 @@ class SoftmaxComponent: public NonlinearComponent {
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
+};
+
+/// This layer just sums up groups of n inputs to produce one output.
+class ReduceComponent: public Component {
+ public:
+  void Init(int32 dim, int32 n) { KALDI_ASSERT(dim > 0 && n > 0);dim_ = dim; n_ = n; }
+  ReduceComponent(int32 dim, int32 n) { Init(dim, n); }
+  ReduceComponent(): dim_(0), n_(0) { } // e.g. prior to Read()
+  explicit ReduceComponent(const ReduceComponent &other):
+      dim_(other.dim_), n_(other.n_) {}
+  virtual Component* Copy() const { return new ReduceComponent(*this); }
+  virtual std::string Type() const { return "ReduceComponent"; }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return (dim_ + n_ - 1) / n_; }
+  virtual void InitFromString(std::string args);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const;
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,                        
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+ private:
+  int32 dim_;
+  int32 n_;
 };
 
 

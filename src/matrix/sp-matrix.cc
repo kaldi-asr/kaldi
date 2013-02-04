@@ -169,9 +169,17 @@ void SpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M,
         break;
       }
     case kTakeLower:
-      for (MatrixIndexT i = 0; i < D; i++)
-        for (MatrixIndexT j = 0; j <= i; j++)
-          (*this)(i, j) = M(i, j);
+      { // making this one a bit more efficient.
+        const Real *src = M.Data();
+        Real *dest = this->data_;
+        MatrixIndexT stride = M.Stride();
+        for (MatrixIndexT i = 0; i < D; i++) {
+          for (MatrixIndexT j = 0; j <= i; j++)
+            dest[j] = src[j];
+          dest += i + 1;
+          src += stride;
+        }
+      }
       break;
     case kTakeUpper:
       for (MatrixIndexT i = 0; i < D; i++)

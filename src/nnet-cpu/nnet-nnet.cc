@@ -361,6 +361,17 @@ void Nnet::RemoveDropout() {
     KALDI_LOG << "Removed " << removed << " dropout components.";
 }
 
+void Nnet::RemovePreconditioning() {
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (dynamic_cast<AffineComponentPreconditioned*>(components_[i]) != NULL) {
+      AffineComponent *ac = new AffineComponent(
+          *(dynamic_cast<AffineComponent*>(components_[i])));
+      delete components_[i];
+      components_[i] = ac;
+    }
+  }
+}
+
 void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
                    const Nnet &other) {
   KALDI_ASSERT(scale_params.Dim() == this->NumUpdatableComponents());

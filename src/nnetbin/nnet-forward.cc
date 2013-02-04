@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
       }
 
       // push priors to GPU
+      priors.Resize(tmp_priors.Dim());
       priors.CopyFromVec(tmp_priors);
     }
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
         }
       }
       // push it to gpu
-      feats.CopyFromMat(mat);
+      feats = mat;
       // fwd-pass
       nnet_transf.Feedforward(feats, &feats_transf);
       nnet.Feedforward(feats_transf, &nnet_out);
@@ -169,7 +170,8 @@ int main(int argc, char *argv[]) {
         }
       }
      
-      //download from GPU 
+      //download from GPU
+      nnet_out_host.Resize(nnet_out.NumRows(), nnet_out.NumCols());
       nnet_out.CopyToMat(&nnet_out_host);
       //check for NaN/inf
       for(int32 r=0; r<nnet_out_host.NumRows(); r++) {

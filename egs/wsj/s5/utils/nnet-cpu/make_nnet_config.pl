@@ -68,7 +68,7 @@ Options:
    --input-left-context <n>        #  #frames of left context for input features; default 0.
    --input-right-context <n>       #  #frames of right context for input features; default 0.
    --param-stdddev-factor <f>      #  Factor which can be used to modify the standard deviation of
-                                   #  randomly nitialized features (default, 1.  Gets multiplied by
+                                   #  randomly initialized features (default, 1.  Gets multiplied by
                                    #  1/sqrt of number of inputs).
    --initial-num-hidden-layers <n> <config-file>   #  If >0, number of hidden layers to initialize the network with.
                                    #  In this case, the positional parameter <num-hidden-layers> is only

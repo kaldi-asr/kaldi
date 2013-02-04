@@ -25,7 +25,13 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
                             MatrixBase<BaseFloat> *P) {
 
   int32 N = R.NumRows(), D = R.NumCols();
-  KALDI_ASSERT(SameDim(R, *P) && N > 1);
+  KALDI_ASSERT(SameDim(R, *P) && N > 0);
+  if (N == 1) {
+    KALDI_WARN << "Trying to precondition set of only one frames: returning "
+               << "unchanged.  Ignore this warning if infrequent.";
+    P->CopyFromMat(R);
+    return;
+  }
   MatrixBase<BaseFloat> &Q = *P;
   
   if (N >= D) {

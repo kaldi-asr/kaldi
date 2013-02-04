@@ -21,7 +21,6 @@
 #include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
 
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;

@@ -47,6 +47,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new TanhComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
+  } else if (component_type == "ReduceComponent") {
+    ans = new ReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
   } else if (component_type == "AffineComponentA") {
@@ -407,20 +409,8 @@ void TanhComponent::Propagate(const MatrixBase<BaseFloat> &in,
   // Apply tanh function to each element of the output...
   // the tanh function may be written as -1 + ( 2 / (1 + e^{-2 x})),
   // which is a scaled and shifted sigmoid.
-  out->Resize(in.NumRows(), in.NumCols());
-  int32 num_rows = in.NumRows(), num_cols = in.NumCols();
-  for(int32 r = 0; r < num_rows; r++) {
-    const BaseFloat *in_data = in.RowData(r),
-        *in_data_end = in_data + num_cols;
-    BaseFloat *out_data = out->RowData(r);
-    for (; in_data != in_data_end; ++in_data, ++out_data) {
-      if (*in_data > 0.0) {
-        *out_data = -1.0 + 2.0 / (1.0 + exp(-2.0 * *in_data));
-      } else {
-        *out_data = 1.0 - 2.0 / (1.0 + exp(2.0 * *in_data));
-      }
-    }
-  }
+  *out = in;
+  out->ApplyTanh();
 }
 
 void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
@@ -500,6 +490,67 @@ void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
         dynamic_cast<NonlinearComponent*>(to_update);
     to_update_nonlinear->UpdateStats(out_value);
   }
+}
+
+void ReduceComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim, n;
+  bool ok = ParseFromString("dim", &args, &dim) &&
+      ParseFromString("n", &args, &n);
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+  Init(dim, n);
+}
+
+void ReduceComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ReduceComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<N>");
+  ReadBasicType(is, binary, &n_);
+  ExpectToken(is, binary, "</ReduceComponent>");
+}
+
+void ReduceComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ReduceComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<N>");
+  WriteBasicType(os, binary, n_);
+  WriteToken(os, binary, "</ReduceComponent>");
+}
+
+void ReduceComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                int32 num_chunks,
+                                Matrix<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() > 0 && in.NumCols() == InputDim());
+  out->Resize(in.NumRows(), OutputDim());
+  int32 num_frames = in.NumRows(), input_dim = in.NumCols(), n = n_;
+  for (int32 r = 0; r < num_frames; r++) {
+    const BaseFloat *src = in.RowData(r);
+    BaseFloat *dest = out->RowData(r);
+    for (int32 c = 0; c < input_dim; c++)
+      dest[c / n] += src[c];
+  }    
+}
+
+void ReduceComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value,
+                               const MatrixBase<BaseFloat> &, // out_value,
+                               const MatrixBase<BaseFloat> &out_deriv,
+                               int32, // num_chunks
+                               Component *, // to_update
+                               Matrix<BaseFloat> *in_deriv) const {
+  int32 num_frames = out_deriv.NumRows(),
+      input_dim = InputDim(), n = n_;
+  in_deriv->Resize(num_frames, input_dim, kUndefined);
+  for (int32 r = 0; r < num_frames; r++) {
+    const BaseFloat *src = out_deriv.RowData(r);
+    BaseFloat *dest = in_deriv->RowData(r);
+    for (int32 c = 0; c < input_dim; c++)
+      dest[c] = src[c / n];
+  }    
 }
 
 void AffineComponent::Scale(BaseFloat scale) {
@@ -857,11 +908,11 @@ void AffineComponentPreconditioned::Update(
   // Add the 1.0 at the end of each row "in_value_temp"
   for (int32 i = 0; i < in_value.NumRows(); i++)
     in_value_temp(i, in_value.NumCols()) = 1.0;
-
+  
   Matrix<BaseFloat> in_value_precon(in_value_temp.NumRows(),
-                                    in_value_temp.NumCols()),
+                                    in_value_temp.NumCols(), kUndefined),
       out_deriv_precon(out_deriv.NumRows(),
-                       out_deriv.NumCols());
+                       out_deriv.NumCols(), kUndefined);
   // each row of in_value_precon will be that same row of
   // in_value, but multiplied by the inverse of a Fisher
   // matrix that has been estimated from all the other rows,
