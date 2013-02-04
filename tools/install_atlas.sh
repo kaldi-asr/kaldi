@@ -46,11 +46,9 @@ if [ "$x" == "i686" -o "$x" == "x86" ]; then
   opt="-b 32"
 fi
 
-../configure $opt --prefix=`pwd` || exit 1;
-make || exit 1;
-make check || exit 1;
-# make time
-mkdir install
-make install DESTDIR=`pwd`/install || exit 1;
+../configure $opt --prefix=`pwd`/install || exit 1;
+make -j 2 || exit 1;
+make check -j 2 || exit 1;
+make install || exit 1;
 
 
