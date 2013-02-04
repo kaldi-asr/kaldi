@@ -125,8 +125,10 @@ void UnitTestEstimateMmieDiagGmm() {
       + ((r/4)%2 == 0 ? kGmmWeights : 0);
   double tau = (r/8)%2 == 0 ? 100 : 0.0;
   
-  if ((flags & kGmmVariances) && !(flags & kGmmMeans))
+  if ((flags & kGmmVariances) && !(flags & kGmmMeans)) {
+    delete gmm;
     return; // Don't do this case: not supported in the update equations.
+  }
   
   AccumDiagGmm num;
   AccumDiagGmm den;
