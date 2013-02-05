@@ -48,7 +48,7 @@ while true; do
   case "$1" in
     # If the enclosing script is called with --help option, print the help 
     # message and exit.  Scripts should put help messages in $help_message
-  --help) if [ -z "$help_message" ]; then echo "No help found.";
+  --help|-h) if [ -z "$help_message" ]; then echo "No help found.";
 	  else printf "$help_message\n"; fi; 
 	  exit 0 ;; 
     # If the first command-line argument begins with "--" (e.g. --foo-bar), 
