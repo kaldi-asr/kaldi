@@ -54,9 +54,10 @@ int main(int argc, char *argv[]) {
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
 
-    int32 bunchsize=512, cachesize=32768;
+    int32 bunchsize=512, cachesize=32768, seed=777;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+    po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
 
 #if HAVE_CUDA==1
     int32 use_gpu_id=-2;
@@ -79,6 +80,8 @@ int main(int argc, char *argv[]) {
       target_model_filename = po.GetArg(4);
     }
 
+    //set the seed to the pre-defined value
+    srand(seed);
      
     using namespace kaldi;
     typedef kaldi::int32 int32;
