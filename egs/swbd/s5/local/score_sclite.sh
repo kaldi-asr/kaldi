@@ -74,10 +74,29 @@ if [ $stage -le 1 ]; then
   done
 fi
 
+# Score the set...
 if [ $stage -le 2 ]; then  
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     cp $data/stm $dir/score_LMWT/ '&&' \
     $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm || exit 1;
+fi
+
+# For eval2000 score the subsets
+if [ "$name" == "eval2000" ]; then
+  # Score only the, swbd part...
+  if [ $stage -le 3 ]; then  
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.log \
+      grep -v '^en_' $data/stm '>' $dir/score_LMWT/stm.swbd '&&' \
+      grep -v '^en_' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.swbd '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.swbd $dir/score_LMWT/${name}.ctm.swbd || exit 1;
+  fi
+  # Score only the, callhome part...
+  if [ $stage -le 3 ]; then  
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.callhm.LMWT.log \
+      grep -v '^sw_' $data/stm '>' $dir/score_LMWT/stm.callhm '&&' \
+      grep -v '^sw_' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.callhm '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.callhm $dir/score_LMWT/${name}.ctm.callhm || exit 1;
+  fi
 fi
 
 exit 0
