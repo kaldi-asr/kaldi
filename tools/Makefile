@@ -55,16 +55,16 @@ openfst-1.3.2.tar.gz:
 sclite_tgt: sclite_compiled
 
 .PHONY: sclite_compiled
-sclite_compiled: sctk-2.4.0/.patched
+sclite_compiled: sctk_patched
 		cd sctk-2.4.0; \
 		$(MAKE) config && $(MAKE) all && $(MAKE) install && $(MAKE) doc
 
-sctk-2.4.0/.patched: | sctk-2.4.0
+.PHONY: sctk_patched
+sctk_patched: | sctk-2.4.0
 		cd sctk-2.4.0/; \
-		for x in src/asclite/core/recording.{h,cpp}; do \
+		for x in src/asclite/core/recording.h src/asclite/core/recording.cpp; do \
 			sed 's/Filter::Filter/::Filter/' $$x > tmpf; mv tmpf $$x; \
 		done;
-		touch $@ 
  
 sctk-2.4.0: sctk-2.4.0-20091110-0958.tar.bz2
 		tar xojf sctk-2.4.0-20091110-0958.tar.bz2
