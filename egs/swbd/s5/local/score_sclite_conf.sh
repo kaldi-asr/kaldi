@@ -58,8 +58,9 @@ if [ $stage -le 1 ]; then
 # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/$name.ctm; do
     cp $x $dir/tmpf;
-    cat $dir/tmpf | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
-      grep -v -E '<UNK>|%HESITATION' > $x;
+    cat $dir/tmpf | grep -i -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
+      grep -i -v -E '<UNK>' > $x;
+#      grep -i -v -E '<UNK>|%HESITATION' > $x;
   done
 fi
 
