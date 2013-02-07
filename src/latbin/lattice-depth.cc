@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
       sum_depth += depth;
       num_done++;
     }
-    KALDI_LOG << "Done " << num_done << "lattices.";
+    KALDI_LOG << "Done " << num_done << " lattices.";
     KALDI_LOG << "The average density is "
               << static_cast<float> ((float)sum_depth / total_t);
     if (num_done != 0) return 0;
