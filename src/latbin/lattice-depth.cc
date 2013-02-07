@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     std::string depth_wspecifier = po.GetOptArg(2);
     BaseFloatWriter lats_depth_writer(depth_wspecifier);
 
-    int64 num_done = 0, sum_depth = 0, total_num_utt = 0;
+    int64 num_done = 0, sum_depth = 0, total_t = 0;
     for (; !clat_reader.Done(); clat_reader.Next()) {
       int64 depth = 0;
       const CompactLattice clat = clat_reader.Value();
@@ -60,24 +60,25 @@ int main(int argc, char *argv[]) {
       ConvertLattice(copy_lat, &lat);
       vector<int32> state_times;
       fst::TopSort(&lat);
-      int32 num_utt = kaldi::LatticeStateTimes(lat, &state_times);
-      total_num_utt += num_utt;
+      int32 t = kaldi::LatticeStateTimes(lat, &state_times);
+      total_t += t;
       for (StateId s = 0; s < clat.NumStates(); s++) {
-	for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
-	     aiter.Next()) {
-	  const CompactLatticeArc &arc = aiter.Value();
-	  depth += arc.weight.String().size();
-	}
+        for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
+             aiter.Next()) {
+          const CompactLatticeArc &arc = aiter.Value();
+          depth += arc.weight.String().size();
+        }
+        depth += clat.Final(s).String().size();
       }
       if (depth_wspecifier != "") {
-	lats_depth_writer.Write(key, static_cast<float> ((float)depth / num_utt));
+        lats_depth_writer.Write(key, static_cast<float> ((float)depth / t));
       }
       sum_depth += depth;
       num_done++;
     }
     KALDI_LOG << "Done " << num_done << "lattices.";
     KALDI_LOG << "The average density is "
-	      << static_cast<float> ((float)sum_depth / total_num_utt);
+              << static_cast<float> ((float)sum_depth / total_t);
     if (num_done != 0) return 0;
     else return 1;
   } catch (const std::exception &e) {
