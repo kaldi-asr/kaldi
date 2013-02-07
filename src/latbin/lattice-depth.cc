@@ -47,11 +47,11 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1);
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
 
-    std::string depth_wspecifier = po.GetArg(2);
+    std::string depth_wspecifier = po.GetOptArg(2);
     BaseFloatWriter lats_depth_writer(depth_wspecifier);
 
     int64 num_done = 0, sum_depth = 0, total_num_utt = 0;
-    for (; clat_reader.Done(); clat_reader.Next()) {
+    for (; !clat_reader.Done(); clat_reader.Next()) {
       int64 depth = 0;
       const CompactLattice clat = clat_reader.Value();
       std::string key = clat_reader.Key();
@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
       Lattice lat;
       ConvertLattice(copy_lat, &lat);
       vector<int32> state_times;
+      fst::TopSort(&lat);
       int32 num_utt = kaldi::LatticeStateTimes(lat, &state_times);
       total_num_utt += num_utt;
       for (StateId s = 0; s < clat.NumStates(); s++) {
