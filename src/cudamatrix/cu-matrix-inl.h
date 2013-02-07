@@ -244,6 +244,7 @@ template<typename Real>
 void CuMatrix<Real>::Read(std::istream &is, bool binary) {
   Matrix<BaseFloat> tmp;
   tmp.Read(is, binary);
+  Resize(tmp.NumRows(),tmp.NumCols());
   CopyFromMat(tmp);    
 }
 
@@ -307,6 +308,49 @@ void CuMatrix<Real>::Set(Real value) {
   #endif
   {
     mat_.Set(value);
+  }
+}
+
+
+
+template<typename Real> 
+void CuMatrix<Real>::Add(Real value) { 
+  #if HAVE_CUDA==1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
+
+    cuda_add(dimGrid, dimBlock, data_, value, Dim());
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    mat_.Add(value);
+  }
+}
+
+
+template<typename Real> 
+void CuMatrix<Real>::Scale(Real value) { 
+  #if HAVE_CUDA==1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CUBLOCK), n_blocks(NumRows(), CUBLOCK));
+
+    cuda_scale(dimGrid, dimBlock, data_, value, Dim());
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    mat_.Scale(value);
   }
 }
 

@@ -85,6 +85,8 @@ class CuVector {
   /// Math operations
   void SetZero();
   void Set(Real value);
+  void Add(Real value);
+  void Scale(Real value);
   void AddVec(Real alpha, const CuVector<Real> &vec, Real beta=1.0); 
   /// Sum the rows of the matrix, add to vector
   void AddRowSumMat(Real alpha, const CuMatrix<Real> &mat, Real beta=1.0);

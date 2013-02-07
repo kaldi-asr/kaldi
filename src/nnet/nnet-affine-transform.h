@@ -106,6 +106,14 @@ class AffineTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
+  const CuVector<BaseFloat>& GetBiasCorr() {
+    return bias_corr_;
+  }
+
+  const CuMatrix<BaseFloat>& GetLinearityCorr() {
+    return linearity_corr_;
+  }
+
 
  private:
   CuMatrix<BaseFloat> linearity_;

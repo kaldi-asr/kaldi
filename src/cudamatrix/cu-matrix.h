@@ -143,6 +143,8 @@ class CuMatrix {
   /// Math operations, some calling kernels
   void SetZero();
   void Set(Real value);
+  void Add(Real value);
+  void Scale(Real value);
   void ApplyLog();
   /// Multiply two matrices elementhwise: C = A .* C
   void MulElements(const CuMatrix<Real>& A);

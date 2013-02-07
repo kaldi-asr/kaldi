@@ -68,6 +68,17 @@ class Nnet {
     nnet_.push_back(dynamically_allocated_comp);
   }
 
+  /// Remove layer
+  void RemoveLayer(int32 index) {
+    //make sure we don't break the dimensionalities in the nnet
+    KALDI_ASSERT(index < LayerCount());
+    KALDI_ASSERT(index == LayerCount()-1 || Layer(index)->InputDim() ==  Layer(index)->OutputDim());
+    //remove element from the vector
+    Component* ptr = nnet_[index];
+    nnet_.erase(nnet_.begin()+index);
+    delete ptr;
+  }
+
   /// Access to forward pass buffers
   const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const { 
     return propagate_buf_; 
@@ -77,6 +88,15 @@ class Nnet {
   const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const { 
     return backpropagate_buf_; 
   }
+
+  /// get the number of parameters in the network
+  int32 NumParams();
+  /// Get the network weights in a supervector
+  void GetWeights(Vector<BaseFloat>* wei_copy);
+  /// Set the network weights from a supervector
+  void SetWeights(const Vector<BaseFloat>& wei_src);
+  /// Get the gradient stored in the network
+  void GetGradient(Vector<BaseFloat>* grad_copy);
   
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
   void Read(const std::string &file);  

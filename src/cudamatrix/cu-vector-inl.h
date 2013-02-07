@@ -156,6 +156,7 @@ template<typename Real>
 void CuVector<Real>::Read(std::istream &is, bool binary) {
   Vector<BaseFloat> tmp;
   tmp.Read(is, binary);
+  Resize(tmp.Dim());
   CopyFromVec(tmp);    
 }
 
@@ -223,6 +224,52 @@ void CuVector<Real>::Set(Real value) {
   #endif
   {
     vec_.Set(value);
+  }
+}
+
+
+
+template<typename Real>
+void CuVector<Real>::Add(Real value) {
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cuda_add(dimGrid, dimBlock, data_, value, d);
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.Add(value);
+  }
+}
+
+
+
+template<typename Real>
+void CuVector<Real>::Scale(Real value) {
+  #if HAVE_CUDA==1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CUBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
+
+    cuda_scale(dimGrid, dimBlock, data_, value, d);
+    cuSafeCall(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    vec_.Scale(value);
   }
 }
 
