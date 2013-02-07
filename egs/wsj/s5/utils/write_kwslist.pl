@@ -36,15 +36,15 @@ my $system_id = "";
 my $normalize = "false";
 my $map_utter = "";
 GetOptions('segments=s'     => \$segment,
-           'flen=f'         => \$flen,
-           'beta=f'         => \$beta,
-           'duration=f'     => \$duration,
-           'language=s'     => \$language,
-           'ecf-filename=s' => \$ecf_filename,
-           'index-size=f'   => \$index_size,
-           'system-id=s'    => \$system_id,
-           'normalize=s'    => \$normalize,
-           'map-utter=s'    => \$map_utter); 
+  'flen=f'         => \$flen,
+  'beta=f'         => \$beta,
+  'duration=f'     => \$duration,
+  'language=s'     => \$language,
+  'ecf-filename=s' => \$ecf_filename,
+  'index-size=f'   => \$index_size,
+  'system-id=s'    => \$system_id,
+  'normalize=s'    => \$normalize,
+  'map-utter=s'    => \$map_utter); 
 
 if ($normalize ne "true" && $normalize ne "false") {
   die "Bad value for option --normalize. \n";
@@ -138,8 +138,16 @@ foreach $key (keys %results) {
   }
 }
 
+sub mysort {
+  if ($a =~ m/[0-9]+$/ and $b =~ m/[0-9]+$/) {
+    ($a =~ /([0-9]*)$/)[0] <=> ($b =~ /([0-9]*)$/)[0];
+  } else {
+    $a cmp $b;
+  }
+}
+
 eval "print $sourceout \'<kwslist kwlist_filename=\"$ecf_filename\" language=\"$language\" system_id=\"$system_id\">\n\'";
-foreach $key (sort {($a =~ /([0-9]*)$/)[0] <=> ($b =~ /([0-9]*)$/)[0]} (keys %results)) {
+foreach $key (sort mysort (keys %results)) {
   my $term_search_time = "1";
   my $oov_term_count = "0";
   eval "print $sourceout \'<detected_kwlist kwid=\"$key\" search_time=\"$term_search_time\" oov_count=\"$oov_term_count\">\n\'";
