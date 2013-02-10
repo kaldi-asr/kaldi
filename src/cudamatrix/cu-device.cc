@@ -53,7 +53,10 @@ CuDevice::CuDevice()
     }
     if (gpu_prop.computeMode == cudaComputeModeExclusive
         || gpu_prop.computeMode == cudaComputeModeExclusiveProcess) {
-      cudaDeviceSynchronize();
+      cudaError_t ret = cudaDeviceSynchronize();
+      if(ret != cudaSuccess) {
+        KALDI_ERR << " No more ununsed CUDA devices under Compute Exclusive Mode! Cannot run!";
+      }
       char gpu_name[128];
       DeviceGetName(gpu_name, 128, gpu_id);
       std::string mem_stats = GetFreeMemory(NULL, NULL);
