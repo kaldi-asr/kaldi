@@ -36,7 +36,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
 
   // evaluate the raw frame-level classification (binary)
   int32 correct=0;
-  cu::FindRowMaxId(net_out, &max_id_);
+  net_out.FindRowMaxId(&max_id_);
   max_id_.CopyToVec(&max_id_host_);
   KALDI_ASSERT(max_id_host_.size() == target.size());
   for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
@@ -48,7 +48,7 @@ void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<in
   if(&net_out != diff) { //<allow no-copy speedup
     diff->CopyFromMat(net_out);
   }
-  cu::DiffXent(target_device_, diff, &log_post_tgt_);
+  diff->DiffXent(target_device_, &log_post_tgt_);
   log_post_tgt_.CopyToVec(&log_post_tgt_host_);
   
   // Now we have derivative of Xentropy in diff,

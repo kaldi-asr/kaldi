@@ -1,6 +1,7 @@
 // cudamatrix/cu-matrix.h
 
 // Copyright 2009-2012  Karel Vesely
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,76 +24,43 @@
 #include <sstream>
 
 #include "cudamatrix/cu-matrixdim.h"
-
+#include "cudamatrix/cu-common.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
-
+#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-math.h"
 
 namespace kaldi {
 
-template<typename Real> class CuVector;
 
 /**
- * Matrix for CUDA computing,
- *
- * It has "polymorphic" behavior. The computation is forwarded to CPU,
- * both when CUDA is not compiled in as well as when missing guitable GPU :
- * (CuDevice::Enabled() != true)
+ * Matrix for CUDA computing.
+ * Does the computation on the CUDA card when CUDA is compiled in and
+ * we have a suitable GPU (CuDevice::Instantiate().Enabled() == true);
+ * otherwise, does it on the CPU.
  */
+
 template<typename Real>
-class CuMatrix {
- typedef CuMatrix<Real> ThisType;
-  
+class CuMatrixBase {
  public:
-
-  /// Default Constructor
-  CuMatrix<Real>():
-  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { }
-
-  /// Constructor with memory initialisation
-  CuMatrix<Real>(MatrixIndexT rows, MatrixIndexT cols):
-  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) { 
-    Resize(rows, cols); 
-  }
-
-  // Note: we had to remove the "explicit" keyword due
-  // to problems with STL vectors of CuMatrix.
-  CuMatrix<Real>(const CuMatrix<Real> &other):
-  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
-  }
-
-  explicit CuMatrix<Real>(const Matrix<Real> &other):
-  num_rows_(0), num_cols_(0), stride_(0), data_(NULL) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
-  }
-
-  CuMatrix<Real> &operator = (const CuMatrix<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
-    return *this;
-  }  
-
-  CuMatrix<Real> &operator = (const Matrix<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
-    return *this;
-  }  
+  friend class CuVectorBase<Real>;
+  friend class CuSubMatrix<Real>;
+  friend class CuRand<Real>;
+  friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
+                                     CuMatrixBase<Real> *grad, Real l1, Real lr);
+  friend void cu::Splice<Real>(const CuMatrix<Real> &src,
+                               const CuStlVector<int32> &frame_offsets,
+                               CuMatrix<Real> *tgt);
+  friend void cu::Copy<Real>(const CuMatrix<Real> &src,
+                             const CuStlVector<int32> &copy_from_indices,
+                             CuMatrix<Real> *tgt);
+  friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
+                                  const CuStlVector<int32> &copy_from_idx,
+                                  CuMatrixBase<Real> *tgt);
   
-  /// Destructor
-  ~CuMatrix() {
-    Destroy(); 
-  }
-
   /// Dimensions
-  MatrixIndexT NumRows() const { 
-    return num_rows_; 
-  }
-
+  MatrixIndexT NumRows() const { return num_rows_;  }
   MatrixIndexT NumCols() const { return num_cols_;  }
-
   MatrixIndexT Stride() const { return stride_; }
 
   // MatrixDim is a struct containing "rows", "cols" and "stride",
@@ -101,14 +69,6 @@ class CuMatrix {
     ::MatrixDim d = { num_rows_, num_cols_, stride_ }; 
     return d; 
   }
-
-  /// Get raw pointer
-  const Real* Data() const;
-  Real* Data();
-  
-  /// Get raw row pointer
-  const Real* RowData(MatrixIndexT r) const;
-  Real* RowData(MatrixIndexT r);
 
   /// Get size of matrix in bytes
   MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
@@ -119,27 +79,60 @@ class CuMatrix {
   /// Get size of matrix stride in bytes
   MatrixIndexT StrideSizeInBytes() const { return stride_*sizeof(Real); }
 
-  /// Allocate the memory
-  void Resize(MatrixIndexT rows, MatrixIndexT cols,
-              MatrixResizeType resize_type = kSetZero);
   
   /// Copy functions (reallocates when needed, but note from Dan: eventually
   /// I'll change it to just die if the sizes don't match, like the Matrix class.)
-  void CopyFromMat(const CuMatrix<Real> &src);
-  void CopyFromMat(const Matrix<Real> &src);
-  void CopyToMat(Matrix<Real> *dst) const;
+  void CopyFromMat(const CuMatrixBase<Real> &src);
+  void CopyFromMat(const MatrixBase<Real> &src);
+  void CopyToMat(MatrixBase<Real> *dst) const;
+
+  /// Set each element to the sigmoid of the corresponding element of "src":
+  /// element by element, *this = 1 / (1 + exp(-src)).
+  void Sigmoid(const CuMatrixBase<Real> &src);
+
+  /// Compute the hyperbolic tangent (tanh) function; element by element,
+  /// *this = tanh(src).
+  void Tanh(const CuMatrixBase<Real> &src);
+
+  /// Differentiate backward through the sigmoid function.  Here, "value" is the
+  /// sigmoid output.  Does, element-by-element, *this = diff * value * (1 - value).
+  void DiffSigmoid(const CuMatrixBase<Real> &value,
+                   const CuMatrixBase<Real> &diff);
+
+  /// Differentiate backward through the tanh function.  Here, "value" is the
+  /// tanh output.  Does, element-by-element, *this = diff * (1 - value^2).
+  void DiffTanh(const CuMatrixBase<Real> &value,
+                const CuMatrixBase<Real> &diff);
+
+  /// Differentiate the block [softmax+cross-entropy] :
+  /// dE/da = posterior_mat - target_mat, 
+  /// 'E' is error function, 'a' is activation on softmax input
+  ///
+  /// Interface:
+  /// tgt ... index vector, encodes the matrix of targets
+  /// net_out_or_diff ... before invocation net output, after diff dE/da
+  /// log_post_tgt ... per-frame statistics for cross-entropy computations :
+  ///                  log(sum_row(posterior_mat .* target_mat))
+  void DiffXent(const CuStlVector<int32> &tgt,
+                CuVector<Real> *log_post_tgt);  
   
-  /// Copy row interval from matrix
-  /// @param r      [in] number of rows to copy.
-  /// @param src    [in] source matrix.
-  /// @param src_ro [in] source matrix row offset.
-  /// @param dst_ro [in] destination matrix row offset.
-  void CopyRowsFromMat(int32 r, const CuMatrix<Real> &src, int32 src_ro, int32 dst_ro);
+  /// Softmax nonlinearity
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik)
+  /// for each row, the max value is first subtracted for good numerical stability
+  void Softmax(const CuMatrixBase<Real> &src);
 
-  /// I/O functions
-  void Read(std::istream &is, bool binary);
-  void Write(std::ostream &os, bool binary) const;
-
+  /// Find the id of the maximal element for each row
+  void FindRowMaxId(CuStlVector<int32> *id) const;
+  
+  /*
+  // Copy row interval from matrix
+  // @param r      [in] number of rows to copy.
+  // @param src    [in] source matrix.
+  // @param src_ro [in] source matrix row offset.
+  // @param dst_ro [in] destination matrix row offset.
+  // void CopyRowsFromMat(int32 r, const CuMatrixBase<Real> &src, int32 src_ro, int32 dst_ro);
+  */
+  
   /// Math operations, some calling kernels
   void SetZero();
   void Set(Real value);
@@ -147,50 +140,184 @@ class CuMatrix {
   void Scale(Real value);
   void ApplyLog();
   /// Multiply two matrices elementhwise: C = A .* C
-  void MulElements(const CuMatrix<Real>& A);
+  void MulElements(const CuMatrixBase<Real>& A);
   /// scale i'th column by scale[i]
-  void MulColsVec(const CuVector<Real> &scale); 
+  void MulColsVec(const CuVectorBase<Real> &scale); 
   /// scale i'th row by scale[i]
-  void MulRowsVec(const CuVector<Real> &scale); 
+  void MulRowsVec(const CuVectorBase<Real> &scale); 
   /// divide i'th row by scale[i]
-  void DivRowsVec(const CuVector<Real> &div);
+  void DivRowsVec(const CuVectorBase<Real> &div);
   /// B = aplha * A + beta * B
-  void AddMat(Real alpha, const CuMatrix<Real>& A, Real beta=1.0);
+  void AddMat(Real alpha, const CuMatrixBase<Real>& A, Real beta=1.0);
   /// B = aplha * row + beta * B
-  void AddVecToCols(Real alpha, const CuVector<Real> &col, Real beta=1.0);
+  void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta=1.0);
   /// B = aplha * row + beta * B
-  void AddVecToRows(Real alpha, const CuVector<Real> &row, Real beta=1.0);
+  void AddVecToRows(Real alpha, const CuVectorBase<Real> &row, Real beta=1.0);
   /// C = alpha * A(^T)*B(^T) + beta * C
-  void AddMatMat(Real alpha, const CuMatrix<Real>& A, MatrixTransposeType transA,
-                 const CuMatrix<Real>& B, MatrixTransposeType transB, Real beta);
+  void AddMatMat(Real alpha, const CuMatrixBase<Real>& A, MatrixTransposeType transA,
+                 const CuMatrixBase<Real>& B, MatrixTransposeType transB, Real beta);
 
-  /// Accessor to the non-CUDA matrix
-  const MatrixBase<Real>& Mat() const {
-    return mat_;
+
+  inline CuSubMatrix<Real> Range(const MatrixIndexT row_offset,
+                                 const MatrixIndexT num_rows,
+                                 const MatrixIndexT col_offset,
+                                 const MatrixIndexT num_cols) const {
+    return CuSubMatrix<Real>(*this, row_offset, num_rows,
+                             col_offset, num_cols);
   }
-  MatrixBase<Real>& Mat() {
-    return mat_;
+  inline CuSubMatrix<Real> RowRange(const MatrixIndexT row_offset,
+                                    const MatrixIndexT num_rows) const {
+    return CuSubMatrix<Real>(*this, row_offset, num_rows,
+                             0, num_cols_);
+  }
+  inline CuSubMatrix<Real> ColRange(const MatrixIndexT col_offset,
+                                    const MatrixIndexT num_cols) const {
+    return CuSubMatrix<Real>(*this, 0, num_rows_, col_offset, num_cols); 
   }
 
+  
+ protected:
+  /// Get raw row pointer
+  inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
+  inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
+
+  
+  // The constructors are protected to prevent the user creating an instance of
+  // this class.
+  
+  /// Default constructor
+  CuMatrixBase<Real>(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
+  
+  /// This constructor takes the #rows, #cols and stride; it's called from
+  /// the constructor of CuSubMatrix.
+  CuMatrixBase<Real>(Real *data,
+                     MatrixIndexT num_rows,
+                     MatrixIndexT num_cols,
+                     MatrixIndexT stride):
+  data_(data), num_cols_(num_cols), num_rows_(num_rows), stride_(stride) { }
+
+  // The following two functions should only be called if we did not compile with CUDA
+  // or could not get a CUDA card; in that case the contents are interpreted the
+  // same as a regular matrix.
+  inline const MatrixBase<Real> &Mat() const {
+    return *(reinterpret_cast<const MatrixBase<Real>* >(this));
+  }
+  inline MatrixBase<Real> &Mat() {
+    return *(reinterpret_cast<MatrixBase<Real>* >(this));
+  }
+  
+  Real *data_;       ///< GPU data pointer (or regular matrix data pointer,
+                     ///< if either CUDA was not compiled in or we could not
+                     ///< acquire the device).
+  // Note: it might seem a bit backwards that we have the number of columns
+  // first here; it's necessary because we need the data to be laid out the same
+  // as for MatrixBase so the Mat() function call will work.  We don't want to
+  // change the layout of MatrixBase at this point, or there will be crashes if
+  // people don't thoroughly recompile.
+  MatrixIndexT num_cols_;
+  MatrixIndexT num_rows_;
+  MatrixIndexT stride_;
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(CuMatrixBase);
+}; // class CuMatrixBase
+
+/// This class represents a matrix that's stored on the GPU if we have one,
+/// and in memory if not.
+template<typename Real>
+class CuMatrix: public CuMatrixBase<Real> {
+ public:
+
+  CuMatrix() { }
+    
+  /// Constructor with memory initialisation
+  CuMatrix(MatrixIndexT rows, MatrixIndexT cols,
+           MatrixResizeType resize_type = kSetZero) {
+    Resize(rows, cols, resize_type); 
+  }
+
+  // Note: we had to remove the "explicit" keyword due
+  // to problems with STL vectors of CuMatrixBase.
+  CuMatrix(const CuMatrix<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+  }
+
+  explicit CuMatrix(const MatrixBase<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+  }
+  
+  CuMatrix<Real> &operator = (const CuMatrixBase<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+    return *this;
+  }
+
+  CuMatrix<Real> &operator = (const CuMatrix<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+    return *this;
+  }  
+
+  CuMatrix<Real> &operator = (const MatrixBase<Real> &other) {
+    Resize(other.NumRows(), other.NumCols(), kUndefined);
+    CopyFromMat(other);
+    return *this;
+  }   
+
+  /// Allocate the memory
+  void Resize(MatrixIndexT rows, MatrixIndexT cols,
+              MatrixResizeType resize_type = kSetZero);
+  
+  
+  void Swap(Matrix<Real> *mat);
+  
+  /// I/O functions
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+
+  /// Destructor
+  ~CuMatrix() { Destroy(); }
  private:
   void Destroy();
-  
-  MatrixIndexT num_rows_;
-  MatrixIndexT num_cols_;
-  MatrixIndexT stride_;
-
-  Real *data_;       ///< GPU data pointer
-  
-  Matrix<Real> mat_; ///< non-GPU matrix as back-up
+};
 
 
-}; // class CuMatrix
+/// This class is used for a piece of a CuMatrix.
+template<typename Real>
+class CuSubMatrix: public CuMatrixBase<Real> {
+ public:
+  inline CuSubMatrix(const CuMatrixBase<Real> &mat,
+                     const MatrixIndexT row_offset,
+                     const MatrixIndexT num_rows,
+                     const MatrixIndexT col_offset,
+                     const MatrixIndexT num_cols);
+                    
+  /// This type of constructor is needed for Range() to work [in CuMatrix base
+  /// class]. Cannot make it explicit or that breaks.
+  inline CuSubMatrix<Real> (const CuSubMatrix &other):
+  CuMatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
+                      other.stride_) {}
+ private:
+  /// Disallow assignment.
+  CuSubMatrix<Real> &operator = (const CuSubMatrix<Real> &other);
+};
 
+template<class Real>
+bool SameDim(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) {
+  return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols());
+}
+
+template<class Real>
+bool SameDimAndStride(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) {
+  return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols()
+          && M.Stride() == N.Stride());
+}
 
 
 /// I/O
 template<typename Real>
-std::ostream &operator << (std::ostream &out, const CuMatrix<Real> &mat);
+std::ostream &operator << (std::ostream &out, const CuMatrixBase<Real> &mat);
 
 
   

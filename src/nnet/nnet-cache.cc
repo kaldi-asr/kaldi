@@ -53,7 +53,7 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
     KALDI_ERR << "Cannot add data, cache already full";
   }
 
-  assert(features.NumRows() == static_cast<int32>(targets.size()));
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(targets.size()));
 
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
@@ -85,30 +85,33 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
     }
     // prefill cache with leftover
     if (leftover > 0) {
-      features_.CopyRowsFromMat(leftover, features_leftover_, 0, 0);
+      features_.Range(0, features_leftover_.NumRows(),
+                      0, features_leftover_.NumCols()).CopyFromMat(
+                          features_leftover_);
       
       std::copy(targets_leftover_.begin(),
-                targets_leftover_.begin()+leftover,
+                targets_leftover_.begin() + leftover,
                 targets_.begin());
-
+      
       features_leftover_.Resize(0, 0);
       targets_leftover_.resize(0);
       filling_pos_ += leftover;
     } 
   }
 
-  assert(state_ == FILLING);
-  assert(features.NumRows() == static_cast<MatrixIndexT>(targets.size()));
+  KALDI_ASSERT(state_ == FILLING);
+  KALDI_ASSERT(features.NumRows() == static_cast<MatrixIndexT>(targets.size()));
 
   int cache_space = cachesize_ - filling_pos_;
   int feature_length = features.NumRows();
   int fill_rows = (cache_space<feature_length)? cache_space : feature_length;
   int leftover = feature_length - fill_rows;
 
-  assert(cache_space > 0);
+  KALDI_ASSERT(cache_space > 0);
 
   // copy the data to cache
-  features_.CopyRowsFromMat(fill_rows, features, 0, filling_pos_);
+  features_.Range(filling_pos_, fill_rows, 0, features_.NumCols()).
+      CopyFromMat(features.Range(0, fill_rows, 0, features.NumCols()));
 
   std::copy(targets.begin(),
             targets.begin()+fill_rows,
@@ -117,9 +120,10 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
   // copy leftovers
   if (leftover > 0) {
     features_leftover_.Resize(leftover, features_.NumCols());
-    features_leftover_.CopyRowsFromMat(leftover, features, fill_rows, 0);
+    features_leftover_.CopyFromMat(
+        features.Range(fill_rows, leftover, 0, features.NumCols()));
     
-    assert(targets.end()-(targets.begin()+fill_rows)==leftover);
+    KALDI_ASSERT(targets.end()-(targets.begin()+fill_rows)==leftover);
     targets_leftover_.resize(leftover);
     std::copy(targets.begin()+fill_rows,
               targets.end(),
@@ -138,7 +142,7 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
 
 
 void Cache::Randomize() {
-  assert(state_ == FULL || state_ == FILLING);
+  KALDI_ASSERT(state_ == FULL || state_ == FILLING);
 
   // lazy initialization of the output buffers
   features_random_.Resize(cachesize_, features_.NumCols());
@@ -179,30 +183,30 @@ void Cache::GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets)
     state_ = EMPTYING; emptying_pos_ = 0; 
   } 
 
-  assert(state_ == EMPTYING);
+  KALDI_ASSERT(state_ == EMPTYING);
 
+  const CuMatrixBase<BaseFloat> &features_ref = (randomized_ ?
+                                                 features_random_ : features_);
+  const std::vector<int32> &targets_ref = (randomized_ ?
+                                           targets_random_ : targets_);
+  
   // init the output
   features->Resize(bunchsize_, features_.NumCols());
   targets->resize(bunchsize_);
 
   // copy the output
-  if (randomized_) {
-    features->CopyRowsFromMat(bunchsize_, features_random_, emptying_pos_, 0);
-    std::copy(targets_random_.begin()+emptying_pos_,
-              targets_random_.begin()+emptying_pos_+bunchsize_,
-              targets->begin());
-  } else {
-    features->CopyRowsFromMat(bunchsize_, features_, emptying_pos_, 0);
-    std::copy(targets_.begin()+emptying_pos_,
-              targets_.begin()+emptying_pos_+bunchsize_,
-              targets->begin());
-  }
-
-  // update cursor
+  features->CopyFromMat(features_ref.Range(emptying_pos_, bunchsize_,
+                                           0, features_ref.NumCols()));
+    
+  std::copy(targets_ref.begin() + emptying_pos_,
+            targets_ref.begin() + emptying_pos_ + bunchsize_,
+            targets->begin());
+  
+  // update position
   emptying_pos_ += bunchsize_;
 
-  // change state to EMPTY
-  if (emptying_pos_ > filling_pos_-bunchsize_) {
+  // If we're done, change state to EMPTY
+  if (emptying_pos_ > filling_pos_ - bunchsize_) {
     // we don't have more complete bunches...
     state_ = EMPTY;
   }

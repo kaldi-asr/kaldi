@@ -60,9 +60,6 @@ template<typename Real> inline void cuda_add_row_sum_mat(dim3 Gr, dim3 Bl, const
 template<typename Real> inline void cuda_add_col_sum_mat(dim3 Gr, dim3 Bl, const Real *mat, Real *vec_sum, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_invert_elements(dim3 Gr, dim3 Bl, Real *data, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 
-/*
- * cu::
- */
 template<typename Real> inline void cuda_sigmoid(dim3 Gr, dim3 Bl, Real *y, const Real *x, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, Real *eout, const Real *e, const Real *y, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
 template<typename Real> inline void cuda_tanh(dim3 Gr, dim3 Bl, Real *y, const Real *x, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }

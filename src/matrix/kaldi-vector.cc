@@ -118,9 +118,6 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
   if (dim == 0) {
     this->dim_ = 0;
     this->data_ = NULL;
-#ifdef KALDI_MEMALIGN_MANUAL
-    free_data_ = NULL;
-#endif
     return;
   }
   MatrixIndexT size;
@@ -131,9 +128,6 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
 
   if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {
     this->data_ = static_cast<Real*> (data);
-#ifdef KALDI_MEMALIGN_MANUAL
-    free_data_ = static_cast<Real*> (free_data);
-#endif
     this->dim_ = dim;
   } else {
     throw std::bad_alloc();
@@ -182,7 +176,9 @@ void Vector<Real>::Resize(const MatrixIndexT dim, MatrixResizeType resize_type) 
 template<typename Real>
 void VectorBase<Real>::CopyFromVec(const VectorBase<Real> &v) {
   KALDI_ASSERT(Dim() == v.Dim());
-  CopyFromPtr(v.data_, v.Dim());
+  if (data_ != v.data_) {
+    std::memcpy(this->data_, v.data_, dim_ * sizeof(Real));
+  }
 }
 
 template<typename Real>
@@ -200,9 +196,9 @@ template void VectorBase<double>::CopyFromPacked(const PackedMatrix<float> &othe
 
 /// Load data into the vector
 template<typename Real>
-void VectorBase<Real>::CopyFromPtr(const Real* Data, MatrixIndexT sz) {
+void VectorBase<Real>::CopyFromPtr(const Real *data, MatrixIndexT sz) {
   KALDI_ASSERT(dim_ == sz);
-  std::memcpy(this->data_, Data, Dim() * sizeof(Real));
+  std::memcpy(this->data_, data, Dim() * sizeof(Real));
 }
 
 template<typename Real>
@@ -230,14 +226,8 @@ void Vector<Real>::RemoveElement(MatrixIndexT i) {
 template<typename Real>
 void Vector<Real>::Destroy() {
   /// we need to free the data block if it was defined
-#ifndef KALDI_MEMALIGN_MANUAL
   if (this->data_ != NULL)
     KALDI_MEMALIGN_FREE(this->data_);
-#else
-  if (this->data_ != NULL)
-    KALDI_MEMALIGN_FREE(free_data_);
-  free_data_ = NULL;
-#endif
   this->data_ = NULL;
   this->dim_ = 0;
 }
@@ -659,14 +649,21 @@ Real VectorBase<Real>::ApplySoftMax() {
 
 #ifdef HAVE_MKL
 template<>
-void VectorBase<float>::ApplyTanh() { vsTanh(dim_, data_, data_); }
+void VectorBase<float>::Tanh(const VectorBase<float> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  vsTanh(dim_, src.data_, data_);
+}
 template<>
-void VectorBase<double>::ApplyTanh() { vdTanh(dim_, data_, data_); }
+void VectorBase<double>::Tanh(const VectorBase<double> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  vdTanh(dim_, src.data_, data_);
+}
 #else
 template<typename Real>
-void VectorBase<Real>::ApplyTanh() {
+void VectorBase<Real>::Tanh(const VectorBase<Real> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    Real x = data_[i];
+    Real x = src.data_[i];
     if (x > 0.0) {
       x = -1.0 + 2.0 / (1.0 + exp(-2.0 * x));
     } else {
@@ -677,6 +674,45 @@ void VectorBase<Real>::ApplyTanh() {
 }
 #endif
 
+#ifdef HAVE_MKL
+// Implementing sigmoid based on tanh.
+template<>
+void VectorBase<float>::Sigmoid(const VectorBase<float> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  this->CopyFromVec(src);
+  this->Scale(0.5);
+  vsTanh(dim_, data_, data_);
+  this->Add(1.0);
+  this->Scale(0.5);
+}
+template<>
+void VectorBase<double>::Sigmoid(const VectorBase<double> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  this->CopyFromVec(src);
+  this->Scale(0.5);
+  vdTanh(dim_, data_, data_);
+  this->Add(1.0);
+  this->Scale(0.5);
+}
+#else
+template<typename Real>
+void VectorBase<Real>::Sigmoid(const VectorBase<Real> &src) {
+  KALDI_ASSERT(dim_ == src.dim_);
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    Real x = src.data_[i];
+    // We aim to avoid floating-point overflow here.
+    if (x > 0.0) {
+      x = 1.0 / (1.0 + exp(-x));
+    } else {
+      Real ex = exp(x);
+      x = ex / (ex + 1.0);
+    }
+    data_[i] = x;
+  }
+}
+#endif
+
+
 template<typename Real>
 void VectorBase<Real>::Add(Real c) {
   for (MatrixIndexT i = 0; i < dim_; i++) {
@@ -686,7 +722,7 @@ void VectorBase<Real>::Add(Real c) {
 
 template<typename Real>
 void VectorBase<Real>::Scale(Real alpha) {
-  cblas_Xscal(dim_,alpha,data_,1);
+  cblas_Xscal(dim_, alpha, data_, 1);
 }
 
 template<typename Real>
@@ -1017,9 +1053,6 @@ template<class Real>
 void Vector<Real>::Swap(Vector<Real> *other) {
   std::swap(this->data_, other->data_);
   std::swap(this->dim_, other->dim_);
-#ifdef KALDI_MEMALIGN_MANUAL
-  std::swap(this->free_data_, other->free_data_);
-#endif
 }
 
 

@@ -21,6 +21,7 @@
 
 #include "base/kaldi-math.h"
 #include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-matrix.h"
 
 namespace kaldi {
 

@@ -39,7 +39,7 @@ class Softmax : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    cu::Softmax(in, out);
+    out->Softmax(in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
@@ -69,13 +69,13 @@ class Sigmoid : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = 1/(1+e^-x)
-    cu::Sigmoid(in, out);
+    out->Sigmoid(in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     // ey = y(1-y)ex
-    cu::DiffSigmoid(out_diff, out, in_diff);
+    in_diff->DiffSigmoid(out, out_diff);
   }
 };
 
@@ -95,13 +95,13 @@ class Tanh : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = (e^x - e^(-x)) / (e^x + e^(-x))
-    cu::Tanh(in, out);
+    out->Tanh(in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     // ey = (1 - y^2)ex
-    cu::DiffTanh(out_diff, out, in_diff);
+    in_diff->DiffTanh(out, out_diff);
   }
 };
 
@@ -109,8 +109,8 @@ class Tanh : public Component {
 
 class Dropout : public Component {
  public:
-  Dropout(int32 dim_in, int32 dim_out, Nnet *nnet) 
-    : Component(dim_in, dim_out, nnet)
+  Dropout(int32 dim_in, int32 dim_out, Nnet *nnet):
+      Component(dim_in, dim_out, nnet)
   { }
   ~Dropout()
   { }

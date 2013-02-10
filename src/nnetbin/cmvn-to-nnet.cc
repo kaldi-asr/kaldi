@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     //create the shift component
     {
-      AddShift* shift_component = new AddShift(shift.Dim(),shift.Dim(),&nnet);
+      AddShift* shift_component = new AddShift(shift.Dim(), shift.Dim(), &nnet);
       //the pointer will be given to the nnet, so we don't need to call delete
       
       //convert Vector to CuVector
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     //create the scale component
     {
-      Rescale* scale_component = new Rescale(scale.Dim(),scale.Dim(),&nnet);
+      Rescale* scale_component = new Rescale(scale.Dim(), scale.Dim(), &nnet);
       //the pointer will be given to the nnet, so we don't need to call delete
       
       //convert Vector to CuVector

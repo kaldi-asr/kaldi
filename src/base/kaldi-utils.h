@@ -22,17 +22,6 @@
 #include <limits>
 #include <string>
 
-/* Alignment of critical dynamic data structure
- *
- * Not all platforms support memalign so we provide a KALDI_MEMALIGN wrapper
- * void *KALDI_MEMALIGN( size_t align, size_t size, void **pp_orig )
- * *pp_orig is the pointer that has to be freed afterwards.
- */
-
-#ifdef KALDI_MEMALIGN_MANUAL
-#  undef KALDI_MEMALIGN_MANUAL
-#endif
-
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4056 4305 4800 4267 4996 4756 4661)
 #define __restrict__
@@ -52,17 +41,8 @@
 #  define KALDI_MEMALIGN(align, size, pp_orig) \
   (*(pp_orig) = _aligned_malloc(size, align))
 #  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
-#else  /* We don't have any choice but to align manually */
-// #define KALDI_MEMALIGN(align, size, pp_orig)     \ ...
-//     (( *(pp_orig) = malloc( size + align - 1 )) ?                    \ ...
-//     (void *)( (((unsigned long)*(pp_orig)) + 15) & ~0xFUL ) : NULL )
-#  define KALDI_MEMALIGN(align, size, pp_orig)     \
-  ((*(pp_orig) = malloc(size + align - 1)) ?                            \
-  reinterpret_cast<void*>( ((reinterpret_cast<size_t>(*(pp_orig))) + \
-           (align-1)) & ~((size_t(align-1)))) : NULL )
-
-#  define KALDI_MEMALIGN_MANUAL
-#  define KALDI_MEMALIGN_FREE(x) free(x)
+#else
+#error Manual memory alignment is no longer supported
 #endif
 
 #ifdef __ICC

@@ -20,6 +20,7 @@
 #define KALDI_NNET_CACHE_H
 
 #include "base/kaldi-math.h"
+#include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {

@@ -24,11 +24,7 @@ namespace kaldi {
 
 /// Empty constructor
 template<typename Real>
-Matrix<Real>::Matrix(): MatrixBase<Real>(NULL, 0, 0, 0)
-#ifdef KALDI_MEMALIGN_MANUAL
-                      , free_data_(NULL)
-#endif
-{}
+Matrix<Real>::Matrix(): MatrixBase<Real>(NULL, 0, 0, 0) { }
 
 
 template<>

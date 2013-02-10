@@ -88,9 +88,9 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
     dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    dim3 dimGrid(n_blocks(tgt->num_cols_, CUBLOCK), n_blocks(tgt->num_rows_, CUBLOCK));
 
-    cuda_rand(dimGrid, dimBlock, tgt->Data(), z1_, z2_, z3_, z4_, tgt->Dim());
+    cuda_rand(dimGrid, dimBlock, tgt->data_, z1_, z2_, z3_, z4_, tgt->Dim());
     cuSafeCall(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -98,7 +98,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
   #endif
   {
     for(int32 r=0; r<tgt->NumRows(); r++) {
-      for(int32 c=0; c<tgt->NumCols(); c++) {
+      for(int32 c=0; c<tgt->num_cols_; c++) {
         tgt->Mat()(r, c) = kaldi::RandUniform();
       }
     }
@@ -116,9 +116,9 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
     dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    dim3 dimGrid(n_blocks(tgt->num_cols_, CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
 
-    cuda_gauss_rand(dimGrid, dimBlock, tgt->Data(), z1_, z2_, z3_, z4_, tgt->Dim());
+    cuda_gauss_rand(dimGrid, dimBlock, tgt->data_, z1_, z2_, z3_, z4_, tgt->Dim());
     cuSafeCall(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -126,7 +126,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
   #endif
   {
     for(int32 r=0; r<tgt->NumRows(); r++) {
-      for(int32 c=0; c<tgt->NumCols(); c++) {
+      for(int32 c=0; c<tgt->num_cols_; c++) {
         tgt->Mat()(r, c) = RandGauss();
       }
     }
@@ -141,26 +141,26 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
     Timer tim;
 
     // possible no-op's...
-    int32 tgt_size = probs.NumRows()*probs.Stride();
+    int32 tgt_size = probs.num_rows_ * probs.stride_;
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
-    states->Resize(probs.NumRows(), probs.NumCols());
-    tmp.Resize(probs.NumRows(), probs.NumCols());
+    states->Resize(probs.num_rows_, probs.num_cols_);
+    tmp_.Resize(probs.num_rows_, probs.num_cols_);
 
-    RandUniform(&tmp);
+    RandUniform(&tmp_);
 
     dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(states->NumCols(), CUBLOCK), n_blocks(states->NumRows(), CUBLOCK));
+    dim3 dimGrid(n_blocks(states->num_cols_, CUBLOCK), n_blocks(states->num_rows_, CUBLOCK));
 
-    cuda_binarize_probs(dimGrid, dimBlock, states->Data(), probs.Data(), tmp.Data(), states->Dim());
+    cuda_binarize_probs(dimGrid, dimBlock, states->data_, probs.data_, tmp_.data_, states->Dim());
     cuSafeCall(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
-    for(int32 r=0; r<states->NumRows(); r++) {
-      for(int32 c=0; c<states->NumCols(); c++) {
+    for(int32 r=0; r<states->num_rows_; r++) {
+      for(int32 c=0; c<states->num_cols_; c++) {
         states->Mat()(r, c) = ((kaldi::RandUniform() < probs.Mat()(r, c))? 1 : 0 );
       }
     }
@@ -170,9 +170,9 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
 
 
 template<typename Real> void CuRand<Real>::AddGaussNoise(CuMatrix<Real> *tgt, Real gscale) {
-  tmp.Resize(tgt->NumRows(), tgt->NumCols());
-  RandGaussian(&tmp);
-  tgt->AddMat(gscale, tmp, 1.0);
+  tmp_.Resize(tgt->num_rows_, tgt->num_cols_);
+  RandGaussian(&tmp_);
+  tgt->AddMat(gscale, tmp_, 1.0);
 }
 
 

@@ -125,7 +125,7 @@ class Rbm : public RbmBase {
     out->AddMatMat(1.0, in, kNoTrans, vis_hid_, kTrans, 1.0);
     // optionally apply sigmoid
     if (hid_type_ == RbmBase::BERNOULLI) {
-      cu::Sigmoid(*out, out);
+      out->Sigmoid(*out);
     }
   }
 
@@ -157,7 +157,7 @@ class Rbm : public RbmBase {
     vis_probs->AddMatMat(1.0, hid_state, kNoTrans, vis_hid_, kNoTrans, 1.0);
     // optionally apply sigmoid
     if (vis_type_ == RbmBase::BERNOULLI) {
-      cu::Sigmoid(*vis_probs, vis_probs);
+      vis_probs->Sigmoid(*vis_probs);
     }
   }
   

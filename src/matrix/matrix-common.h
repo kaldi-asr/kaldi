@@ -47,6 +47,16 @@ template<typename Real> class SpMatrix;
 template<typename Real> class TpMatrix;
 template<typename Real> class PackedMatrix;
 
+// these are classes that won't be defined in this
+// directory; they're mostly needed for friend declarations.
+template<typename Real> class CuMatrixBase;
+template<typename Real> class CuSubMatrix;
+template<typename Real> class CuMatrix;
+template<typename Real> class CuVectorBase;
+template<typename Real> class CuSubVector;
+template<typename Real> class CuVector;
+
+
 /// This class provides a way for switching between double and float types.
 template<typename T> class OtherReal { };  // useful in reading+writing routines
                                            // to switch double and float.

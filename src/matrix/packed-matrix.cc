@@ -61,21 +61,15 @@ inline void PackedMatrix<Real>::Init(MatrixIndexT r) {
   if (r == 0) {
     num_rows_ = 0;
     data_ = 0;
-#ifdef KALDI_MEMALIGN_MANUAL
-    free_data_=NULL;
-#endif
     return;
   }
   MatrixIndexT size = r * (r + 1) / 2 * sizeof(Real);
 
   void *data;  // aligned memory block
-  void *free_data;  // memory block to be really freed
+  void *temp;
 
-  if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {
+  if ((data = KALDI_MEMALIGN(16, size, &temp)) != NULL) {
     this->data_ = static_cast<Real *> (data);
-#ifdef KALDI_MEMALIGN_MANUAL
-    this->free_data_ = static_cast<Real *> (free_data);
-#endif
     this->num_rows_ = r;
   } else {
     throw std::bad_alloc();
@@ -86,9 +80,6 @@ template<typename Real>
 void PackedMatrix<Real>::Swap(PackedMatrix<Real> *other) {
   std::swap(data_, other->data_);
   std::swap(num_rows_, other->num_rows_);
-#ifdef KALDI_MEMALIGN_MANUAL
-  std::swap(free_data_, other->free_data_);
-#endif
 }
 
 
@@ -218,13 +209,7 @@ Real PackedMatrix<Real>::Trace() const {
 template<typename Real>
 void PackedMatrix<Real>::Destroy() {
   // we need to free the data block if it was defined
-#ifndef KALDI_MEMALIGN_MANUAL
   if (data_ != NULL) KALDI_MEMALIGN_FREE(data_);
-#else
-  if (free_data_ != NULL) KALDI_MEMALIGN_FREE(free_data_);
-  free_data_ = NULL;
-#endif
-
   data_ = NULL;
   num_rows_ = 0;
 }

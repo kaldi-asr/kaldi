@@ -12,7 +12,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 
 TESTFILES = cuda-matrix-test 
 
-OBJFILES = cu-device.o 
+OBJFILES = cu-device.o cu-math.o cu-matrix.o
 ifeq ($(CUDA), true)
   OBJFILES += cu-kernels.o cu-randkernels.o
 endif

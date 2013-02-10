@@ -1886,7 +1886,9 @@ template<class Real> static void  UnitTestLimitCond() {
 template<class Real> static void  UnitTestTanh() {
   for (MatrixIndexT i = 0; i < 10; i++) {
     MatrixIndexT dimM = 5 + rand() % 10, dimN = 5 + rand() % 10;
-    Matrix<Real> M(dimM, dimN);
+    Matrix<Real> M(dimM, dimN), P(dimM, dimN), Q(dimM, dimN), R(dimM, dimN);
+    M.SetRandn();
+    P.SetRandn();
     Matrix<Real> N(M);
     for(int32 r = 0; r < dimM; r++) {
       for (int32 c = 0; c < dimN; c++) {
@@ -1897,10 +1899,37 @@ template<class Real> static void  UnitTestTanh() {
           x = 1.0 - 2.0 / (1.0 + exp(2.0 * x));
         }
         N(r, c) = x;
+        Real out_diff = P(r, c), in_diff = out_diff * (1.0 - x * x);
+        Q(r, c) = in_diff;
       }
     }
-    M.ApplyTanh();
+    M.Tanh(M);
+    R.DiffTanh(N, P);
     AssertEqual(M, N);
+    AssertEqual(Q, R);
+  }
+}
+
+template<class Real> static void  UnitTestSigmoid() {
+  for (MatrixIndexT i = 0; i < 10; i++) {
+    MatrixIndexT dimM = 5 + rand() % 10, dimN = 5 + rand() % 10;
+    Matrix<Real> M(dimM, dimN), P(dimM, dimN), Q(dimM, dimN), R(dimM, dimN);
+    M.SetRandn();
+    P.SetRandn();
+    Matrix<Real> N(M);
+    for(int32 r = 0; r < dimM; r++) {
+      for (int32 c = 0; c < dimN; c++) {
+        Real x = N(r, c),
+            y = 1.0 / (1 + exp(-x));
+        N(r, c) = y;
+        Real out_diff = P(r, c), in_diff = out_diff * y * (1.0 - y);
+        Q(r, c) = in_diff;
+      }
+    }
+    M.Sigmoid(M);
+    R.DiffSigmoid(N, P);
+    AssertEqual(M, N);
+    AssertEqual(Q, R);
   }
 }
 
@@ -3612,6 +3641,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSimpleForVec<Real>();
   UnitTestSimpleForMat<Real>();
   UnitTestTanh<Real>();
+  UnitTestSigmoid<Real>();
   UnitTestNorm<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";

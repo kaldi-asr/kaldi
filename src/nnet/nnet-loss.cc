@@ -60,7 +60,7 @@ void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &t
 void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
   // evaluate the frame-level classification
   int32 correct=0;
-  cu::FindRowMaxId(net_out, &max_id_);
+  net_out.FindRowMaxId(&max_id_);
   max_id_.CopyToVec(&max_id_host_);
   KALDI_ASSERT(max_id_host_.size() == target.size());
   for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
@@ -72,7 +72,7 @@ void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> 
   if(&net_out != diff) { //<allow no-copy speedup
     *diff = net_out;
   }
-  cu::DiffXent(target_device_, diff, &log_post_tgt_);
+  diff->DiffXent(target_device_, &log_post_tgt_);
   //
   // Now we have derivative of Xentropy in diff,
   // it's computed as dE/da = net_out - target_mat,

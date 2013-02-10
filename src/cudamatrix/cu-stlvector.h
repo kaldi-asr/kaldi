@@ -31,8 +31,7 @@ template<typename IntType> class CuMatrix;
  */
 template<typename IntType>
 class CuStlVector {
- typedef CuStlVector<IntType> ThisType;
-
+  typedef CuStlVector<IntType> ThisType;
  public:
 
   /// Default Constructor
@@ -81,12 +80,11 @@ class CuStlVector {
     return vec_;
   }
 
-private:
+ private:
   MatrixIndexT dim_;     ///< dimension of the vector
   IntType *data_;  ///< GPU data pointer
   std::vector<IntType> vec_; ///< non-GPU vector as back-up
 };
-
 
 
 /*

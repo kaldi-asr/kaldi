@@ -22,6 +22,7 @@
 
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-math.h"
 
 using namespace kaldi;
@@ -524,7 +525,7 @@ static void UnitTestCuSigmoid() {
   Di.CopyFromMat(Hi);
 
   //gpu
-  cu::Sigmoid(Di,&Do);
+  Do.Sigmoid(Di);
   //cpu
   for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
     for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
@@ -555,7 +556,7 @@ static void UnitTestCuDiffSigmoid() {
   Dy.CopyFromMat(Hy);
 
   //gpu
-  cu::DiffSigmoid(Di,Dy,&Do);
+  Do.DiffSigmoid(Dy, Di);
   //cpu
   for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
     for(MatrixIndexT c=0; c<Ho.NumCols(); c++) {
@@ -576,13 +577,13 @@ static void UnitTestCuSoftmax() {
   Matrix<Real> Hi(100,111);
   Matrix<Real> Ho(100,111);
   RandGaussMatrix(&Hi);
-
+  
   CuMatrix<Real> Di(100,111);
   CuMatrix<Real> Do(100,111);
   Di.CopyFromMat(Hi);
 
   //gpu
-  cu::Softmax(Di,&Do);
+  Do.Softmax(Di);
   //cpu
   Ho.CopyFromMat(Hi);
   for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
@@ -609,7 +610,8 @@ static void UnitTestCuFindRowMaxId() {
   CuStlVector<int32> Dmax(100);
 
   //gpu
-  cu::FindRowMaxId(Di,&Dmax);
+  Di.FindRowMaxId(&Dmax);
+
   //cpu
   for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
     Real max=-1e20; int32 idx=-1;
@@ -647,7 +649,7 @@ static void UnitTestCuDiffXent() {
   CuVector<Real> Dlogpost(X);
   
   //gpu
-  cu::DiffXent(Dtgt,&Di,&Dlogpost);
+  Di.DiffXent(Dtgt, &Dlogpost);
   //cpu
   for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
     int32 col_tgt = Htgt[r];
@@ -666,9 +668,7 @@ static void UnitTestCuDiffXent() {
 
 
 
-
-
-template<class Real> static void CudaMatrixUnitTest() {
+template<class Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixApplyLog<Real>();
   UnitTestCuMatrixMulElements<Real>();
@@ -686,11 +686,11 @@ template<class Real> static void CudaMatrixUnitTest() {
   UnitTestCuVectorAddColSumMat<Real>();
   UnitTestCuVectorAddColSumMatLarge<Real>();
   UnitTestCuVectorInvertElements<Real>();
-  //test cu:: functions
+
   UnitTestCuSigmoid<Real>();
   UnitTestCuDiffSigmoid<Real>();
-  UnitTestCuSoftmax<Real>();
   UnitTestCuFindRowMaxId<Real>();
+  UnitTestCuSoftmax<Real>();
   UnitTestCuDiffXent<Real>();
 }
 

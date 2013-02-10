@@ -388,6 +388,7 @@ void SigmoidComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
   // in_deriv = out_deriv * out_value * (1.0 - out_value);
   // We can accomplish this via calls to the matrix library.
 
+  
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   in_deriv->Set(1.0);
   in_deriv->AddMat(-1.0, out_value);
@@ -410,7 +411,8 @@ void TanhComponent::Propagate(const MatrixBase<BaseFloat> &in,
   // the tanh function may be written as -1 + ( 2 / (1 + e^{-2 x})),
   // which is a scaled and shifted sigmoid.
   *out = in;
-  out->ApplyTanh();
+  out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+  out->Tanh(in);
 }
 
 void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value

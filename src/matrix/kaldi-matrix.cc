@@ -38,9 +38,9 @@ void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
   KaldiBlasInt result = -1;
   KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
   Real *p_work;
-  void *free_data;
+  void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &free_data))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
     throw std::bad_alloc();
 
   clapack_Xgetrf2(&M, &N, data_, &LDA, pivot, &result);
@@ -85,11 +85,7 @@ void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
   if (inverse_needed) clapack_Xgetri2(&M, data_, &LDA, pivot, p_work, &l_work,
                               &result);
   delete[] pivot;
-#ifdef KALDI_MEMALIGN_MANUAL
-  free(free_data);
-#else
   free(p_work);
-#endif
 #else
   if (inverse_needed)
     clapack_Xgetri(num_rows_, data_, stride_, pivot, &result);
@@ -306,9 +302,9 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
 
   l_work = static_cast<KaldiBlasInt>(work_query);
   Real *p_work;
-  void *free_data;
+  void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &free_data))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
     throw std::bad_alloc();
   
   // perform svd
@@ -325,11 +321,7 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
   if (result != 0) {
     KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
   }
-#ifdef KALDI_MEMALIGN_MANUAL
-  free(free_data);
-#else
   free(p_work);
-#endif
 }
 
 #endif
@@ -381,23 +373,20 @@ Matrix<double>::Matrix(const MatrixBase<float> & M,
 template<typename Real>
 inline void Matrix<Real>::Init(const MatrixIndexT rows,
                                const MatrixIndexT cols) {
-  if (rows*cols == 0) {
+  if (rows * cols == 0) {
     KALDI_ASSERT(rows == 0 && cols == 0);
     this->num_rows_ = 0;
     this->num_cols_ = 0;
     this->stride_ = 0;
     this->data_ = NULL;
-#ifdef KALDI_MEMALIGN_MANUAL
-    free_data_=NULL;
-#endif
     return;
   }
   // initialize some helping vars
   MatrixIndexT skip;
   MatrixIndexT real_cols;
   size_t size;
-  void*   data;       // aligned memory block
-  void*   free_data;  // memory block to be really freed
+  void *data;  // aligned memory block
+  void *temp;  // memory block to be really freed
 
   // compute the size of skip and real cols
   skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
@@ -407,11 +396,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
       * sizeof(Real);
   
   // allocate the memory and set the right dimensions and parameters
-  if (NULL != (data = KALDI_MEMALIGN(16, size, &free_data))) {
+  if (NULL != (data = KALDI_MEMALIGN(16, size, &temp))) {
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
-#ifdef KALDI_MEMALIGN_MANUAL
-    free_data_    = static_cast<Real *> (free_data);
-#endif
     MatrixBase<Real>::num_rows_      = rows;
     MatrixBase<Real>::num_cols_      = cols;
     MatrixBase<Real>::stride_  = real_cols;
@@ -728,14 +714,8 @@ void Matrix<Real>::RemoveRow(MatrixIndexT i) {
 template<typename Real>
 void Matrix<Real>::Destroy() {
   // we need to free the data block if it was defined
-#ifndef KALDI_MEMALIGN_MANUAL
   if (NULL != MatrixBase<Real>::data_)
     KALDI_MEMALIGN_FREE( MatrixBase<Real>::data_);
-#else
-  if (NULL != MatrixBase<Real>::data_)
-    KALDI_MEMALIGN_FREE(free_data_);
-  free_data_ = NULL;
-#endif
   MatrixBase<Real>::data_ = NULL;
   MatrixBase<Real>::num_rows_ = MatrixBase<Real>::num_cols_
       = MatrixBase<Real>::stride_ = 0;
@@ -787,6 +767,7 @@ Real MatrixBase<Real>::Sum() const {
 }
 
 template<typename Real> void MatrixBase<Real>::Scale(Real alpha) {
+  if (alpha == 1.0) return;
   if (num_cols_ == stride_) {
     cblas_Xscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_),
                 alpha, data_,1);
@@ -1108,6 +1089,23 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
   MatrixBase<Real>::num_cols_ = c;
   MatrixBase<Real>::stride_ = M.Stride();
   MatrixBase<Real>::data_ = M.Data_workaround() + co + ro * M.Stride();
+}
+
+
+template<typename Real>
+SubMatrix<Real>::SubMatrix(Real *data,
+                           MatrixIndexT num_rows,
+                           MatrixIndexT num_cols,
+                           MatrixIndexT stride):
+    MatrixBase<Real>(data, num_cols, num_rows, stride) { // caution: reversed order!
+  if (data == NULL) {
+    KALDI_ASSERT(num_rows * num_cols == 0);
+    this->num_rows_ = 0;
+    this->num_cols_ = 0;
+    this->stride_ = 0;
+  } else {
+    KALDI_ASSERT(this->stride_ >= this->num_cols_);
+  }  
 }
 
 
@@ -1575,9 +1573,6 @@ void Matrix<Real>::Swap(Matrix<Real> *other) {
   std::swap(this->num_cols_, other->num_cols_);
   std::swap(this->num_rows_, other->num_rows_);
   std::swap(this->stride_, other->stride_);
-#ifdef KALDI_MEMALIGN_MANUAL
-  std::swap(this->free_data_, other->free_data_);
-#endif
 }
 
 // Repeating this comment that appeared in the header:
@@ -2025,12 +2020,71 @@ Real MatrixBase<Real>::ApplySoftMax() {
 }
 
 template<typename Real>
-void MatrixBase<Real>::ApplyTanh() {
-  for (MatrixIndexT r = 0; r < num_rows_; r++) {
-    SubVector<Real> v(*this, r);
-    v.ApplyTanh();
+void MatrixBase<Real>::Tanh(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+
+  if (num_cols_ == stride_ && src.num_cols_ == src.stride_) {
+    SubVector<Real> src_vec(src.data_, num_rows_ * num_cols_),
+        dst_vec(this->data_, num_rows_ * num_cols_);
+    dst_vec.Tanh(src_vec);
+  } else {
+    for (MatrixIndexT r = 0; r < num_rows_; r++) {
+      SubVector<Real> src_vec(src, r), dest_vec(*this, r);
+      dest_vec.Tanh(src_vec);
+    }
   }
 }
+
+template<typename Real>
+void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+
+  if (num_cols_ == stride_ && src.num_cols_ == src.stride_) {
+    SubVector<Real> src_vec(src.data_, num_rows_ * num_cols_),
+        dst_vec(this->data_, num_rows_ * num_cols_);
+    dst_vec.Sigmoid(src_vec);
+  } else {
+    for (MatrixIndexT r = 0; r < num_rows_; r++) {
+      SubVector<Real> src_vec(src, r), dest_vec(*this, r);
+      dest_vec.Sigmoid(src_vec);
+    }
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::DiffSigmoid(const MatrixBase<Real> &value,
+                                   const MatrixBase<Real> &diff) {
+  KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_, value_stride = value.stride_, diff_stride = diff.stride_;
+  Real *data = data_;
+  const Real *value_data = value.data_, *diff_data = diff.data_;
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT c = 0; c < num_cols; c++)
+      data[c] = diff_data[c] * value_data[c] * (1.0 - value_data[c]);
+    data += stride;
+    value_data += value_stride;
+    diff_data += diff_stride;
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::DiffTanh(const MatrixBase<Real> &value,
+                                   const MatrixBase<Real> &diff) {
+  KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      stride = stride_, value_stride = value.stride_, diff_stride = diff.stride_;
+  Real *data = data_;
+  const Real *value_data = value.data_, *diff_data = diff.data_;
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    for (MatrixIndexT c = 0; c < num_cols; c++)
+      data[c] = diff_data[c] * (1.0 - (value_data[c] * value_data[c]));
+    data += stride;
+    value_data += value_stride;
+    diff_data += diff_stride;
+  }
+}
+
 
 template<class Real>
 template<class OtherReal>

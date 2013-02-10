@@ -53,7 +53,7 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
     KALDI_ERR << "Cannot add data, cache already full";
   }
 
-  assert(features.NumRows() == targets.NumRows());
+  KALDI_ASSERT(features.NumRows() == targets.NumRows());
 
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
@@ -85,8 +85,8 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
     }
     // prefill cache with leftover
     if (leftover > 0) {
-      features_.CopyRowsFromMat(leftover, features_leftover_, 0, 0);
-      targets_.CopyRowsFromMat(leftover, targets_leftover_, 0, 0);
+      features_.RowRange(0, leftover).CopyFromMat(features_leftover_);
+      targets_.RowRange(0, leftover).CopyFromMat(targets_leftover_);
       
       features_leftover_.Resize(0, 0);
       targets_leftover_.Resize(0, 0);
@@ -94,27 +94,26 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
     } 
   }
 
-  assert(state_ == FILLING);
-  assert(features.NumRows() == targets.NumRows());
+  KALDI_ASSERT(state_ == FILLING);
+  KALDI_ASSERT(features.NumRows() == targets.NumRows());
 
   int cache_space = cachesize_ - filling_pos_;
   int feature_length = features.NumRows();
-  int fill_rows = (cache_space<feature_length)? cache_space : feature_length;
+  int fill_rows = (cache_space < feature_length) ? cache_space : feature_length;
   int leftover = feature_length - fill_rows;
 
-  assert(cache_space > 0);
+  KALDI_ASSERT(cache_space > 0);
 
-  // copy the data to cache
-  features_.CopyRowsFromMat(fill_rows, features, 0, filling_pos_);
-  targets_.CopyRowsFromMat(fill_rows, targets, 0, filling_pos_);
-
+  // copy the data to the cache
+  features_.RowRange(filling_pos_, fill_rows).CopyFromMat(features.RowRange(0, fill_rows));
+  targets_.RowRange(filling_pos_, fill_rows).CopyFromMat(targets.RowRange(0, fill_rows));
+      
   // copy leftovers
   if (leftover > 0) {
     features_leftover_.Resize(leftover, features_.NumCols());
-    features_leftover_.CopyRowsFromMat(leftover, features, fill_rows, 0);
-    
+    features_leftover_.CopyFromMat(features.RowRange(fill_rows, leftover));
     targets_leftover_.Resize(leftover, targets_.NumCols());
-    targets_leftover_.CopyRowsFromMat(leftover, targets, fill_rows, 0);
+    targets_leftover_.CopyFromMat(targets.RowRange(fill_rows, leftover));
   }
 
   // update cursor
@@ -129,7 +128,7 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
 
 
 void CacheTgtMat::Randomize() {
-  assert(state_ == FULL || state_ == FILLING);
+  KALDI_ASSERT(state_ == FULL || state_ == FILLING);
 
   // lazy initialization of the output buffers
   features_random_.Resize(cachesize_, features_.NumCols());
@@ -168,7 +167,7 @@ void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *t
     state_ = EMPTYING; emptying_pos_ = 0; 
   } 
 
-  assert(state_ == EMPTYING);
+  KALDI_ASSERT(state_ == EMPTYING);
 
   // init the output
   features->Resize(bunchsize_, features_.NumCols());
@@ -176,11 +175,15 @@ void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *t
 
   // copy the output
   if (randomized_) {
-    features->CopyRowsFromMat(bunchsize_, features_random_, emptying_pos_, 0);
-    targets->CopyRowsFromMat(bunchsize_, targets_random_, emptying_pos_, 0);
+    features->RowRange(0, bunchsize_).CopyFromMat(
+        features_random_.RowRange(emptying_pos_, bunchsize_));
+    targets->RowRange(0, bunchsize_).CopyFromMat(
+        targets_random_.RowRange(emptying_pos_, bunchsize_));
   } else {
-    features->CopyRowsFromMat(bunchsize_, features_, emptying_pos_, 0);
-    targets->CopyRowsFromMat(bunchsize_, targets_, emptying_pos_, 0);
+    features->RowRange(0, bunchsize_).CopyFromMat(
+        features_.RowRange(emptying_pos_, bunchsize_));
+    features->RowRange(0, bunchsize_).CopyFromMat(
+        targets_.RowRange(emptying_pos_, bunchsize_));
   }
 
   // update cursor

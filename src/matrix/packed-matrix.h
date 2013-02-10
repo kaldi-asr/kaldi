@@ -36,11 +36,7 @@ std::ostream & operator <<(std::ostream & out, const PackedMatrix<Real>& M);
 /// @brief Packed matrix: base class for triangular and symmetric matrices.
 template<typename Real> class PackedMatrix {
  public:
-  PackedMatrix() : data_(NULL), num_rows_(0)
-#ifdef KALDI_MEMALIGN_MANUAL
-  , free_data_(NULL)
-#endif
-  {}
+  PackedMatrix() : data_(NULL), num_rows_(0) {}
 
   explicit PackedMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero):
       data_(NULL) {  Resize(r, resize_type);  }
@@ -167,10 +163,6 @@ template<typename Real> class PackedMatrix {
   /// with the specified dimension.  dim == 0 is acceptable.  The memory contents
   /// pointed to by data_ will be undefined.
   void Init(MatrixIndexT dim);
-#ifdef KALDI_MEMALIGN_MANUAL
-  Real *free_data_;
-#endif
-
 
 };
 /// @} end "addtogroup matrix_group"

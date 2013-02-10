@@ -44,6 +44,10 @@ class MatrixBase {
  public:
   // so this child can access protected members of other instances.
   friend class Matrix<Real>;
+  // friend declarations for CUDA matrices (see ../cudamatrix/)
+  friend class CuMatrixBase<Real>;
+  friend class CuMatrix<Real>;
+  friend class CuSubMatrix<Real>;
 
   /// Returns number of rows (or zero for emtpy matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
@@ -168,14 +172,21 @@ class MatrixBase {
   }
 
   /// Return a sub-part of matrix.
-  /// @param ro [in] row offset.
-  /// @param r [in] num-rows in result.
-  /// @param co [in] column offset.
-  /// @param c [in] num-columns in result.
-  SubMatrix<Real> Range(const MatrixIndexT ro, const MatrixIndexT r, const MatrixIndexT co,
-                        const MatrixIndexT c) const {
-    return SubMatrix<Real>(*this, ro, r, co, c);
+  inline SubMatrix<Real> Range(const MatrixIndexT row_offset,
+                               const MatrixIndexT num_rows,
+                               const MatrixIndexT col_offset,
+                               const MatrixIndexT num_cols) const {
+    return SubMatrix<Real>(*this, row_offset, num_rows,
+                           col_offset, num_cols);
   }
+  inline SubMatrix<Real> RowRange(const MatrixIndexT row_offset,
+                                  const MatrixIndexT num_rows) const {
+    return SubMatrix<Real>(*this, row_offset, num_rows, 0, num_cols_);
+  }  
+  inline SubMatrix<Real> ColRange(const MatrixIndexT col_offset,
+                                  const MatrixIndexT num_cols) const {
+    return SubMatrix<Real>(*this, 0, num_rows_, col_offset, num_cols);
+  }  
 
   /* Various special functions. */
   /// Returns sum of all elements in matrix.
@@ -341,8 +352,21 @@ class MatrixBase {
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
 
-  /// Apply the tanh function to each element of the matrix.
-  void ApplyTanh();
+  /// Set each element to the sigmoid of the corresponding element of "src".
+  void Sigmoid(const MatrixBase<Real> &src);
+
+  /// Set each element to the tanh of the corresponding element of "src".
+  void Tanh(const MatrixBase<Real> &src);
+
+  // Function used in backpropagating derivatives of the sigmoid function:
+  // element-by-element, set *this = diff * value * (1.0 - value).
+  void DiffSigmoid(const MatrixBase<Real> &value,
+                   const MatrixBase<Real> &diff);
+
+  // Function used in backpropagating derivatives of the tanh function:
+  // element-by-element, set *this = diff * (1.0 - value^2).
+  void DiffTanh(const MatrixBase<Real> &value,
+                const MatrixBase<Real> &diff);
   
   /** Uses Svd to compute the eigenvalue decomposition of a symmetric positive
    * semi-definite matrix: (*this) = rP * diag(rS) * rP^T, with rP an
@@ -628,10 +652,6 @@ class Matrix : public MatrixBase<Real> {
   void Init(const MatrixIndexT r,
             const MatrixIndexT c);
 
-#ifdef KALDI_MEMALIGN_MANUAL
-  /// data to be freed (in case of manual memory alignment).
-  Real*   free_data_;
-#endif
 };
 /// @} end "addtogroup matrix_group"
 
@@ -672,21 +692,31 @@ bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr);
 template<typename Real>
 class SubMatrix : public MatrixBase<Real> {
  public:
+  // Initialize a SubMatrix from part of a matrix; this is
+  // a bit like A(b:c, d:e) in Matlab.
   // This initializer is against the proper semantics of "const", since
-  // SubMatrix can change its contents.
+  // SubMatrix can change its contents.  It would be hard to implement
+  // a "const-safe" version of this class.
   SubMatrix(const MatrixBase<Real>& T,
             const MatrixIndexT ro,  // row offset, 0 < ro < NumRows()
             const MatrixIndexT r,   // number of rows, r > 0
             const MatrixIndexT co,  // column offset, 0 < co < NumCols()
             const MatrixIndexT c);   // number of columns, c > 0
+
+  // This initializer is mostly intended for use in CuMatrix and related
+  // classes.  Be careful!
+  SubMatrix(Real *data,
+            MatrixIndexT num_rows,
+            MatrixIndexT num_cols,
+            MatrixIndexT stride);
   
   ~SubMatrix<Real>() {}
   
   /// This type of constructor is needed for Range() to work [in Matrix base
   /// class]. Cannot make it explicit.
-  SubMatrix<Real> (const SubMatrix &other) :
-      MatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
-          other.stride_) {}
+  SubMatrix<Real> (const SubMatrix &other):
+  MatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
+                    other.stride_) {}
 
  private:
   /// Disallow assignment.

@@ -63,12 +63,13 @@ function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
-  [--cudatk-dir=CUDATKDIR]';
+  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
 threaded_math=${threaded_atlas}
 static_math=false
+use_cuda=true
 
 while [ $# -gt 0 ];
 do
@@ -84,6 +85,10 @@ do
   threaded_atlas=true; threaded_math=true; shift ;;
   --threaded-math=no)
   threaded_atlas=false; threaded_math=false; shift ;;
+  --use-cuda=yes)
+  use_cuda=true; shift ;;
+  --use-cuda=no)
+  use_cuda=false; shift ;;
   --static-math=yes)
   static_math=true; shift ;;
   --static-math=no)
@@ -333,7 +338,7 @@ function linux_configure_debian {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
   echo "Configured for Debian Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
-  linux_configure_cuda
+  $use_cuda && linux_configure_cuda
   exit 0;
 }
 
@@ -383,7 +388,7 @@ function linux_configure_static {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
-  linux_configure_cuda
+  $use_cuda && linux_configure_cuda
   echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -450,7 +455,7 @@ function linux_configure_dynamic {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
-  linux_configure_cuda
+  $use_cuda && linux_configure_cuda
   echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
@@ -618,7 +623,7 @@ if [ "`uname`" == "Linux" ]; then
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk
 
-    linux_configure_cuda
+    $use_cuda && linux_configure_cuda
     echo "Configured for Linux with MKL libs from $MKLROOT"
     exit 0;
 
@@ -639,7 +644,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     cat makefiles/linux_clapack.mk >> kaldi.mk
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
-    linux_configure_cuda
+    $use_cuda && linux_configure_cuda
     echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
   elif [ $MATHLIB == "OPENBLAS" ]; then
