@@ -1,19 +1,10 @@
-To install the prerequisites for Kaldi, you currently have two options:
-either type
- ./install.sh
-or
- make
+To install the prerequisites for Kaldi, type
+  make
+or if you have multiple CPUs and want to use them, type something like:
+  make -j 4
+
 and note that if you have multiple CPUs, you might want to supply 
 an option like "-j 4" to "make"; this will speed things up.
-
-It tries to install various things, and it will tell you at the
-end whether each item succeeded or failed.
-If you get warnings that certain things failed to install but
-it says "optional anyway", this does not matter.  But if it
-just says "Failure" for one of the prerequisites, that is a problem--
-you will have to go to the manual instructions in this file (below),
-and try to install the prerequisite yourself and if you can, fix the
-problem.
 
 [note: ./install_atlas.sh is a backup plan in case you don't have ATLAS
  installed on your system; ignore it unless you get errors from
@@ -23,6 +14,9 @@ problem.
 The rest of this file contains the old, manual instructions, which
 we keep around in case they are useful for someone, but they are
 basically deprecated.
+
+Also there is a script install.sh here too; that is also deprecated,
+but it is less out of date than what is below.
 
 See below install instructions for:
 (1) sph2pipe (needed to run the example scripts but not for compilation)

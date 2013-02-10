@@ -3,6 +3,9 @@
 
 # (1) Install instructions for sph2pipe_v2.5.tar.gz
 
+echo '**Warning, this script is now deprecated, use "make"**'
+sleep 1
+
 if ! which wget >&/dev/null; then
    echo "This script requires you to first install wget";
    exit 1;
