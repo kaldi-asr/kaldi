@@ -23,5 +23,6 @@ scripts at the moment.
 
   s3: This is the "new-style" recipe, now superseded by s5.
 
-  s5: This is the newest-style recipe.  It should run, although the RESULTS
-      file is not finalized.
+  s5: This is the newest-style recipe. 
+
+  s6: this is not finished.
