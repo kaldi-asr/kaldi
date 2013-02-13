@@ -107,14 +107,16 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then 
-  $cmd LMWT=7:17 $dir/scoring/log/score.LMWT.log \
+if [ $stage -le 2 ]; then
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     cp $data/stm $dir/score_LMWT/ '&&' cp $data/glm $dir/score_LMWT/ '&&'\
     $ScoringProgram -s -r $dir/score_LMWT/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl;
-  
-#  $cmd LMWT=7:17 $dir/scoring/log/score.LMWT.char.log \
-#    cp $data/char.stm $dir/score_LMWT/'&&'\
-#    $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
+
+  if [ $cer -eq 1 ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.char.log \
+      cp $data/char.stm $dir/score_LMWT/'&&'\
+      $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
+  fi
   
 #  for x in $dir/score_*/*.ctm; do
 #    mv $x.filt $x;
