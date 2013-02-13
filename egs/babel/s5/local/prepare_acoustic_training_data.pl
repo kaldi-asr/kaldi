@@ -353,7 +353,8 @@ open (SEGMENTS, "> $segmentsFileName") || die "$0 ERROR: Unable to write segment
 
 $scpFileName = "$outDir/wav.scp";
 open (SCP, "| sort -u >  $scpFileName") || die "$0 ERROR: Unable to write wav.scp file $scpFileName\n";
-$SPH2PIPE ="/export/babel/sanjeev/kaldi-trunk/tools/sph2pipe_v2.5/sph2pipe -f wav -p -c 1";
+my $binary=`which sph2pipe`; chomp $binary;
+$SPH2PIPE ="$binary -f wav -p -c 1";
 
 $spk2uttFileName = "$outDir/spk2utt";
 open (SPK2UTT, "> $spk2uttFileName") || die "$0 ERROR: Unable to write spk2utt file $spk2uttFileName\n";
