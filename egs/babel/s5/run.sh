@@ -106,7 +106,7 @@ echo -------------------------------------------------------------------
 echo "Preparing dev stm files in data/dev on" `date`
 echo -------------------------------------------------------------------
 local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev || exit 1
-cp $glmFile data/dev
+cp $glmFile data/dev/glm
 
 echo -------------------------------------------------------------------
 echo "Creating a basic G.fst in data/lang on" `date`
