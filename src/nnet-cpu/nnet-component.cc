@@ -2594,6 +2594,5 @@ void AffineComponentA::Precondition(
                                          InputDim());  
 }
 
-
 } // namespace kaldi
 

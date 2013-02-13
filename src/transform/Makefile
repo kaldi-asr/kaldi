@@ -4,7 +4,7 @@ include ../kaldi.mk
 
 TESTFILES = regtree-fmllr-diag-gmm-test lda-estimate-test \
       regression-tree-test fmllr-diag-gmm-test exponential-transform-test \
-      regtree-mllr-diag-gmm-test fmpe-test
+      regtree-mllr-diag-gmm-test fmpe-test cmvn-test
 
 OBJFILES = regression-tree.o regtree-mllr-diag-gmm.o lda-estimate.o \
     regtree-fmllr-diag-gmm.o cmvn.o transform-common.o fmllr-diag-gmm.o \
