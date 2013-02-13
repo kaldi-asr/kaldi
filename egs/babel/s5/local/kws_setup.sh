@@ -7,6 +7,7 @@
 cmd=run.pl
 case_insensitive=true
 subset_ecf=
+rttm_file=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -18,7 +19,7 @@ Example:
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [[ "$#" -ne "5" ]] ; then
+if [ "$#" -ne "5" ] &&  [ "$#" -ne "4" ] ; then
     printf "FATAL: invalid number of arguments.\n\n"
     printf "$help_message\n"
     exit 1
@@ -26,9 +27,14 @@ fi
 
 ecf_file=$1
 kwlist_file=$2
-rttm_file=$3
-langdir=$4
-datadir=$5
+if [ "$#" -eq "5" ] ; then
+    rttm_file=$3
+    langdir=$4
+    datadir=$5
+else
+    langdir=$3
+    datadir=$4
+fi
 
 for filename in "$ecf_file" "$kwlist_file" "$rttm_file" ; do
     echo $filename
@@ -57,7 +63,10 @@ else
 fi
 
 cp `readlink -f $kwlist_file` $kwsdatadir/kwlist.xml || exit 1
-cp `readlink -f $rttm_file` $kwsdatadir/rttm || exit 1
+
+if [ ! -z $rttm_file ] ; then
+  cp `readlink -f $rttm_file` $kwsdatadir/rttm || exit 1
+fi
 
 local/kws_data_prep.sh --case-insensitive $case_insensitive $langdir $datadir $kwsdatadir || exit 1
 
