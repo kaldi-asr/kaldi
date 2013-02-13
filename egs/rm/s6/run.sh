@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# THIS IS UNFINISHED!  Please do not run.
+
+# This is unfinished!  Please do not try to run it yet.
 
 . cmd.sh
 
@@ -10,7 +11,6 @@
 #    rm1_audio1  rm1_audio2	rm2_audio
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
-
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
@@ -21,18 +21,20 @@ local/rm_prepare_grammar.sh || exit 1;
 # want to store MFCC features.
 featdir=mfcc
 
+# In this recipe, unlike s5, we don't initially dump any stats for cepstral mean
+# and variance normalization.  We'll do this later using a method that requires
+# a speech/nonspeech model, and the first passes of training will be without
+# cepstral mean normalization.
+
 for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
   steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir  || exit 1;
-  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $featdir  || exit 1;
   #steps/make_plp.sh data/$x exp/make_plp/$x $featdir 4
 done
 
 # Make a combined data dir where the data from all the test sets goes-- we do
-# all our testing on this averaged set.  This is just less hassle.  We
-# regenerate the CMVN stats as one of the speakers appears in two of the 
-# test sets; otherwise tools complain as the archive has 2 entries.
+# all our testing on this averaged set.  This is just less hassle.
+
 utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
-steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $featdir  
 
 utils/subset_data_dir.sh data/train 1000 data/train.1k  || exit 1;
 
@@ -40,16 +42,13 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono  
 
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
-
-
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 
-steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/mono/graph data/test exp/mono/decode
 
-
 # Get alignments from monophone system.
-steps/align_si.sh --nj 8 --cmd "$train_cmd" \
+steps/align_deltas.sh --nj 8 --cmd "$train_cmd" \
   data/train data/lang exp/mono exp/mono_ali || exit 1;
 
 # train tri1 [first triphone pass]
@@ -58,22 +57,22 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 # decode tri1
 utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph || exit 1;
-steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri1/graph data/test exp/tri1/decode
 
 #draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
 
 # align tri1
-steps/align_si.sh --nj 8 --cmd "$train_cmd" \
+steps/align_deltas.sh --nj 8 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
-# train tri2a [delta+delta-deltas]
+# train tri2a [another pass of delta+delta-deltas]
 steps/train_deltas.sh --cmd "$train_cmd" 1800 9000 \
- data/train data/lang exp/tri1_ali exp/tri2a || exit 1;
+  data/train data/lang exp/tri1_ali exp/tri2a || exit 1;
 
 # decode tri2a
 utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
-steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
 # train and decode tri2b [LDA+MLLT]
