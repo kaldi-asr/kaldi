@@ -6,6 +6,8 @@
 # the Gaussians from a trained HMM/GMM system and then doing a few
 # iterations of UBM training; and then training each one on either 
 # speech or silence.
+# It then computes some stats that will be used for a special "balanced" CMVN
+# computation, by the script compute_cmvn_stats_balanced.sh
 
 # This recipe is intended for use in a situation where each speech/sil
 # UBM is quite small.
@@ -227,7 +229,6 @@ if [ $stage -le $[$num_iters+2] ]; then
     compute-cmvn-stats --binary=false --weights="$weights" ark:- $dir/silence.cmvn \
     2> $dir/log/cmvn_silence.log && echo "Error computing silence CMVN stats" && exit 1;
 fi
-
 
 $cleanup && rm $dir/gselect.*.gz
 
