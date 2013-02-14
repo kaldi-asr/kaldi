@@ -1,7 +1,8 @@
 # This contains the locations of the tools and data required for running
-# the GlobalPhone experiments.
+# the TIMIT experiments.
 
-KALDIROOT=`cd ../../..; pwd`
+# The KALDIROOT enviromnent variable must be set by the user.
+# KALDIROOT=/absolute/path/to/kaldi/installation
 KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
@@ -29,6 +30,6 @@ export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS:$TOOLS
 export LC_ALL=C
 export IRSTLM=$KALDIROOT/tools/irstlm
 
-# Site-specific configs:
-[ `hostname -y` == ecdf ] && \
-  { . /etc/profile.d/modules.sh; module add intel/mkl; }
+## Site-specific configs for Edinburgh
+# [ `hostname -y` == ecdf ] && \
+#   { . /etc/profile.d/modules.sh; module add intel/mkl; }

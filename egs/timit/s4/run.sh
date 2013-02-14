@@ -26,8 +26,12 @@ exit 1;
 # Set WORKDIR to someplace with enough disk space. That is where MFCCs will 
 # get created, as well as the LM in ARPA & FST formats.
 WORKDIR=/path/with/disk/space
+mkdir -p $WORKDIR
 cp -r conf local utils steps path.sh $WORKDIR
 cd $WORKDIR
+. path.sh
+[ -z "$KALDIROOT" ] && echo "ERROR: Must specify the KALDIROOT env varaible" && exit 1;
+
 local/timit_data_prep.sh --config-dir=$PWD/conf --corpus-dir=/path/to/TIMIT --work-dir=$WORKDIR
 
 local/timit_format_data.sh --hmm-proto=conf/topo.proto --work-dir=$PWD

@@ -28,7 +28,7 @@ function error_exit () {
 
 function readfloat () {
   local retval=${1/#*=/};  # In case --switch=ARG format was used
-  [[ "$retval" =~ ^-?[1-9]*\.*[0-9]*$ ]] \
+  [[ "$retval" =~ ^-?[0-9]*\.*[0-9]*$ ]] \
     || error_exit "Argument \"$retval\" not a real number."
   echo $retval
 }

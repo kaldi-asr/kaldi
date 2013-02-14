@@ -91,6 +91,7 @@ timit_make_questions.pl -i data/lang/phones.txt \
   -m data/lang/phonesets_mono.txt -r data/lang/roots.txt
 grep -v sil data/lang/phonesets_mono.txt \
   > data/lang/phonesets_cluster.txt
+echo "cl epi sil vcl" > data/lang/extra_questions.txt
 
 # (4), Finally, for training, create the HMM topology prototype:
 silphonelist=`cat data/lang/silphones.csl | sed 's/:/ /g'`
