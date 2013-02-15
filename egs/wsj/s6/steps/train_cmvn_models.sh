@@ -15,13 +15,15 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-silence_weight=1.0
+silence_weight=1.0 # applies to LDA and MLLT estimation.  We don't 
+                   # down-weight silence, since we're interested in it.
 stage=-7
 splice_opts="--left-context=6 --right-context=6" # Use a lot of frames,
   # as we'll just be making per-frame judgements; this should be more accurate.
 num_gauss=50
 num_gselect=20 # Gaussian-selection
 intermediate_num_gauss=1000
+real_silence_phones=  # this will default to "optsil" but can be set by the user.
 num_iters=3
 cleanup=true
 use_fmllr=true
@@ -47,6 +49,9 @@ if [ $# != 4 ]; then
   echo "  --num-gselect <#gselect>                         # Number of Gaussians pre-selected per frame, default 20."
   echo "  --cleanup <true|false>                           # Clean up intermediate models etc.; default true"
   echo "  --use-fmllr <true|false>                         # Use any fMLLR transforms in alignment dir; default true"
+  echo "  --real-silence-phones <comma-separated-integers> # List of integer id's of silence phones that you expect"
+  echo "                                                   # will be actually silent.  Defaults to contents of"
+  echo "                                                   # lang/phones/optional_silence.csl"
   exit 1;
 fi
 
@@ -68,6 +73,9 @@ fi
 
 # Set various variables.
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+if [ -z "$real_silence_phones" ]; then
+  real_silence_phones=`cat $lang/phones/optional_silence.csl` || exit 1;
+fi
 nj=`cat $alidir/num_jobs` || exit 1;
 
 mkdir -p $dir/log
@@ -113,8 +121,6 @@ $cleanup && rm $dir/0.mdl $dir/0.*.acc
 
 echo "Estimating MLLT"
 if [ $stage -le -4 ]; then
-  # Since we're interested in silence as well as speech we don't
-  # weight the silence all the way down to zero, but
   $cmd JOB=1:$nj $dir/log/macc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
     weight-silence-post $silence_weight $silphonelist $dir/1.mdl ark:- ark:- \| \
@@ -179,7 +185,11 @@ fi
 $cleanup && rm $dir/nonsilence.*.acc 
 
 echo "Final silence pass"
-weights="$weights reverse-weights ark:- ark:- |"
+
+# weight to one only "$real_silence_phones" which defaults to the silence in 
+# $lang/phones/optional_silence.txt.  This is generally SIL or sil-- the "normal"
+# silence. 
+weights="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- | weight-silence-post 0.0 $real_silence_phones $alidir/final.mdl ark:- ark:- | post-to-weights ark:- ark:- | reverse-weights ark:- ark:- |"
 
 if [ $stage -le $num_iters ]; then
   $cmd JOB=1:$nj $dir/log/acc.silence.JOB.log \

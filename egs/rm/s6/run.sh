@@ -75,6 +75,18 @@ utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
 steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
+# HERE-- at this point we will train the CMN models.  Products of this
+# stage: speech and silence models, global speech and silence stats.
+# We set the config for the CMVN: silence priors, silence proportion for CMN
+# (default 0.15?), policy for what to do when there is too little silence, min-counts.  
+# these info go into files "silence_prior" and "cmn_opts" in this directory.
+# For now we'll just handle the offset-only case.
+
+steps/train_cmvn_models.sh "$train_cmd" data/train_si84_2kshort data/lang \
+   exp/tri2b_ali_si84_2kshort exp/tri2b_speechsil
+
+
+
 # train and decode tri2b [LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
   --splice-opts "--left-context=3 --right-context=3" \
