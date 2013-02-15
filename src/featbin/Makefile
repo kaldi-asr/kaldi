@@ -10,7 +10,7 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     fmpe-est fmpe-copy fmpe-sum-accs append-feats extend-transform-dim \
     get-full-lda-mat compute-spectrogram-feats extract-feature-segments \
     reverse-feats paste-feats select-feats subsample-feats \
-    compute-cmvn-stats-balanced
+    compute-cmn-stats-balanced
 
 OBJFILES = 
 

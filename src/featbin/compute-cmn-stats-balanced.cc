@@ -18,14 +18,14 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
-#include "transform/cmvn.h"
+#include "transform/balanced-cmn.h"
 
 namespace kaldi {
 
-bool AccCmvnStatsWrapper(std::string utt,
-                         const MatrixBase<BaseFloat> &feats,
-                         RandomAccessBaseFloatVectorReader *weights_reader,
-                         BalancedCmvn *stats) {
+bool AccCmnStatsWrapper(std::string utt,
+                        const MatrixBase<BaseFloat> &feats,
+                        RandomAccessBaseFloatVectorReader *weights_reader,
+                        BalancedCmn *stats) {
   if (!weights_reader->HasKey(utt)) {
     KALDI_WARN << "No weights available for utterance " << utt;
     return false;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     std::string spk2utt_rspecifier;
     bool binary = true;
-    BalancedCmvnConfig config;
+    BalancedCmnConfig config;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to utterance-list map");
     po.Register("binary", &binary, "write in binary mode (applies only to global CMN/CVN)");
     config.Register(&po);
@@ -86,8 +86,6 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(sil_cmvn_stats_rxfilename, &sil_cmvn_stats);
     ReadKaldiObject(nonsil_cmvn_stats_rxfilename, &nonsil_cmvn_stats);
 
-    int32 dim = sil_cmvn_stats.NumCols() - 1;
-    
     RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
     DoubleMatrixWriter writer(cmvn_stats_wspecifier);
     
@@ -98,7 +96,7 @@ int main(int argc, char *argv[]) {
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         std::string spk = spk2utt_reader.Key();
         const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-        BalancedCmvn stats(config, dim);
+        BalancedCmn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
         for (size_t i = 0; i < uttlist.size(); i++) {
           std::string utt = uttlist[i];
           if (!feat_reader.HasKey(utt)) {
@@ -107,7 +105,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           const Matrix<BaseFloat> &feats = feat_reader.Value(utt);
-          if (!AccCmvnStatsWrapper(utt, feats, &weights_reader, &stats)) {
+          if (!AccCmnStatsWrapper(utt, feats, &weights_reader, &stats)) {
             num_err++;
           } else {
             num_done++;
@@ -116,7 +114,7 @@ int main(int argc, char *argv[]) {
         if (stats.TotCount() == 0) {
           KALDI_WARN << "No stats accumulated for speaker " << spk;
         } else {
-          writer.Write(spk, stats.GetStats2(sil_cmvn_stats, nonsil_cmvn_stats));
+          writer.Write(spk, stats.GetStats());
         }
       }
     } else {  // per-utterance normalization
@@ -124,14 +122,14 @@ int main(int argc, char *argv[]) {
         
       for (; !feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
-        BalancedCmvn stats(config, dim);
+        BalancedCmn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
         const Matrix<BaseFloat> &feats = feat_reader.Value();
         
-        if (!AccCmvnStatsWrapper(utt, feats, &weights_reader, &stats)) {
+        if (!AccCmnStatsWrapper(utt, feats, &weights_reader, &stats)) {
           num_err++;
           continue;
         }
-        writer.Write(feat_reader.Key(), stats.GetStats2(sil_cmvn_stats, nonsil_cmvn_stats));
+        writer.Write(feat_reader.Key(), stats.GetStats());
         num_done++;
       }
     }
