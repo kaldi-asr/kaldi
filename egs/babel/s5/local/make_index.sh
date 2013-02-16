@@ -49,9 +49,12 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   model=$srcdir/final.mdl; 
 fi
 
+
 for f in $word_boundary $model $decodedir/lat.1.gz; do
   [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
 done
+
+echo "Using model: $model"
 
 
 $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \

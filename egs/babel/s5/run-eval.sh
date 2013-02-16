@@ -216,16 +216,24 @@ else
     echo --------------------------------------------------------------------------
     for iter in 1 2 3 4; do
         steps/decode_sgmm2_rescore.sh \
-            --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode_eval.pem \
-            data/lang data/eval.pem exp/sgmm5/decode_eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter
-        steps/decode_sgmm2_rescore.sh \
-            --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode_eval.pem \
-            data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter
+              --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode_eval.pem \
+              data/lang data/eval.pem exp/sgmm5/decode_eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter
         
-        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_eval.pem.log
-        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter &> exp/sgmm5_mmi_b0.1/kws_fmllr_eval.pem.log
+        local/score.sh --cer $cer --stage 2  --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+                data/eval.pem data/lang exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter;
+
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$mdl.mdl \
+              data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter 
+
+        steps/decode_sgmm2_rescore.sh \
+              --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri4/decode_eval.pem \
+              data/lang data/eval.pem exp/sgmm5/decode_fmllr_eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter
+
+        local/score.sh --cer $cer --stage 2 --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+            data/eval.pem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter;
+
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$mdl.mdl \
+            data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter 
     done
 fi
 

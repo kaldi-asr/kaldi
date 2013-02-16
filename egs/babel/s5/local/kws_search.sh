@@ -16,6 +16,7 @@ min_lmwt=7
 max_lmwt=17
 duptime=0.6
 cmd=run.pl
+model=
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -59,15 +60,19 @@ duration=`head -1 $kwsdatadir/ecf.xml |\
     grep -o -E "[0-9]*[\.]*[0-9]*" |\
     perl -e 'while(<>) {print $_/2;}'`
 
+if [ ! -z "$model" ]; then
+    model_flags="--model $model"
+fi
+
 for lmwt in `seq $min_lmwt $max_lmwt` ; do
     kwsoutdir=$decodedir/kws_$lmwt
     mkdir -p $kwsoutdir
 
     acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-    local/make_index.sh --cmd "$cmd" --acwt $acwt \
+    local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
       $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
 
-    local/search_index.sh $kwsdatadir $kwsoutdir  || exit 1
+    local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
 
     cat $kwsoutdir/result.* | \
       utils/write_kwslist.pl --flen=0.01 --duration=$duration \
@@ -76,6 +81,13 @@ for lmwt in `seq $min_lmwt $max_lmwt` ; do
         - - | \
       local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.xml
    
+    cat $kwsoutdir/result.* | \
+      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+        --segments=$datadir/segments --normalize=false \
+        --map-utter=$kwsdatadir/utter_map \
+        - - | \
+      local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.unnormalized.xml
+
     if [ ! -x local/kws_score.sh ] ; then
         echo "Not scoring, because the file local/kws_score.sh is not present"
     else
