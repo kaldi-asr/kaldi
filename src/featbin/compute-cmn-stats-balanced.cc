@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
         " Note: the cmvn stats we write are not \"real\" statistics, but \"faked\"\n"
         "ones that will give us the normalization we want.\n"
         "\n"
-        "Usage: compute-cmvn-stats-balanced [options] <sil-global-cmvn-stats> <nonsil-global-cmvn-stats> "
+        "Usage: compute-cmn-stats-balanced [options] <sil-global-cmvn-stats> <nonsil-global-cmvn-stats> "
         "<feats-rspecifier> <nonsilence-weight-rspecifier> <cmvn-stats-wspecifier>\n";
     
     ParseOptions po(usage);

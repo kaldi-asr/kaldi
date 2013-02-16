@@ -52,6 +52,9 @@ struct BalancedCmnConfig {
                  "A threshold, expressed as a number of frames, that affects "
                  "the cepstral mean computation; see balanced-cmn.{h,cc} "
                  "for details.");
+    po->Register("silence-proportion", &silence_proportion,
+                 "The proportion of silence stats that we aim for when "
+                 "reweighting the CMN stats.");
   }
 };
     
