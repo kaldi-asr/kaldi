@@ -4,8 +4,7 @@
 
 # SGMM training, with speaker vectors.  This script would normally be called on
 # top of fMLLR features obtained from a conventional system, but it also works
-# on top of any type of speaker-independent features (based on
-# deltas+delta-deltas or LDA+MLLT).  For more info on SGMMs, see the paper "The
+# on top of unadapted LDA+MLLT features.  For more info on SGMMs, see the paper "The
 # subspace Gaussian mixture model--A structured model for speech recognition".
 # (Computer Speech and Language, 2011).
 
@@ -69,7 +68,7 @@ num_groups=$[$num_pdfs/$leaves_per_group]
 first_spkvec_iter=`echo $spkvec_iters | awk '{print $1}'` || exit 1;
 
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $ubm; do
+for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/final.mat $ubm; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -92,6 +91,7 @@ splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/final.mat $dir || exit 1;
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -99,17 +99,8 @@ sdata=$data/split$nj;
 spkvecs_opt=  # Empty option for now, until we estimate the speaker vectors.
 gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 
-## Set up features.
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
 if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"

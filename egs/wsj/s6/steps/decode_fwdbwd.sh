@@ -32,7 +32,7 @@ if [ $# != 3 ]; then
    echo " where the model is."
    echo "e.g.: steps/decode.sh exp/mono/graph_tgpr data/test_dev93 exp/mono/decode_dev93_tgpr"
    echo ""
-   echo "This script works on CMN + (delta+delta-delta | LDA+MLLT) features; it works out"
+   echo "This script works on CMN+LDA+MLLT features; it works out"
    echo "what type of features you used (assuming it's one of these two)"
    echo ""
    echo "main options (for others, see top of script file)"
@@ -67,20 +67,15 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
-for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst $graphdir/words.txt; do
+for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst $graphdir/words.txt $srcdir/final.mat; do
   [ ! -f $f ] && echo "decode_fwdbwd.sh: no such file $f" && exit 1;
 done
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "decode_fwdbwd.sh: feature type is $feat_type";
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."

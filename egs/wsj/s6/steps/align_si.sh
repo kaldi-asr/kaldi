@@ -2,8 +2,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments using a model with delta or
-# LDA+MLLT features.
+# Computes training alignments using a model with LDA+MLLT features.
 
 # If you supply the "--use-graphs true" option, it will use the training
 # graphs from the source directory (where the model is).  In this
@@ -42,6 +41,10 @@ lang=$2
 srcdir=$3
 dir=$4
 
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $srcdir/final.mdl $srcdir/final.mat $srcdir/tree; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+done
+
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
@@ -50,24 +53,19 @@ splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-cp $srcdir/{tree,final.mdl} $dir || exit 1;
+cp $srcdir/{tree,final.mdl,final.mat} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
-   ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
 
-mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/final.mdl - |"
+if [ $boost_silence != 1.0 ]; then
+  mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/final.mdl - |"
+else
+  mdl=$dir/final.mdl
+fi
 
 if $use_graphs; then 
   [ $nj != "`cat $srcdir/num_jobs`" ] && echo "$0: mismatch in num-jobs" && exit 1;

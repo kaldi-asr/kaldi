@@ -31,8 +31,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 4 ]; then
    echo "Usage: steps/make_denlats_nnet_cpu.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
    echo "  e.g.: steps/make_denlats_nnet_cpu.sh data/train data/lang exp/tri1 exp/tri1_denlats"
-   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
-   echo " plus transforms."
+   echo "Works for CMN+LDA+MLLT features, plus (with --transform-dir option) fMLLR"
    echo ""
    echo "Main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
@@ -49,6 +48,10 @@ data=$1
 lang=$2
 srcdir=$3
 dir=$4
+
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $srcdir/final.mdl $srcdir/final.mat $srcdir/tree; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+done
 
 sdata=$data/split$nj
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
@@ -80,16 +83,7 @@ else
   utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
 fi
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "align_si.sh: feature type is $feat_type"
-
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"

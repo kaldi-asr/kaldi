@@ -89,7 +89,7 @@ silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
 # Some checks.  Note: we don't need $srcdir/tree but we expect
 # it should exist, given the current structure of the scripts.
-for f in $graphdir/HCLG.fst $data/feats.scp $srcdir/tree $srcdir/fmllr.basis; do
+for f in $graphdir/HCLG.fst $data/feats.scp $srcdir/tree $srcdir/fmllr.basis $srcdir/final.mat; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -120,14 +120,8 @@ for f in $adapt_model $final_model; do
 done
 ##
 
-## Set up the unadapted features "$sifeats" for testing set
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type";
-case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+
 ##
 
 ## Now get the first-pass fMLLR transforms.

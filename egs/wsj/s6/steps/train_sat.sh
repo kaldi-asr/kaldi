@@ -3,8 +3,7 @@
 
 
 # This does Speaker Adapted Training (SAT), i.e. train on
-# fMLLR-adapted features.  It can be done on top of either LDA+MLLT, or
-# delta and delta-delta features.  If there are no transforms supplied
+# CMN+LDA+MLLT+fMLLR features.  If there are no transforms supplied
 # in the alignment directory, it will estimate transforms itself before
 # building the tree (and in any case, it estimates transforms a number
 # of times during training).
@@ -50,7 +49,7 @@ lang=$4
 alidir=$5
 dir=$6
 
-for f in $data/feats.scp $lang/phones.txt $alidir/final.mdl $alidir/ali.1.gz; do
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $alidir/final.mdl $alidir/final.mat $alidir/ali.1.gz; do
   [ ! -f $f ] && echo "train_sat.sh: no such file $f" && exit 1;
 done
 
@@ -65,23 +64,12 @@ splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/final.mat $dir || exit 1;
 
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-# Set up features.
-
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-## Set up speaker-independent features.
-case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 ## Get initial fMLLR transforms (possibly from alignment dir)
 if [ -f $alidir/trans.1 ]; then

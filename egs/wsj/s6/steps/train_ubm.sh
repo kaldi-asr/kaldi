@@ -42,7 +42,7 @@ lang=$3
 alidir=$4
 dir=$5
 
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl; do
+for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/final.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
@@ -51,7 +51,6 @@ if [ $[$num_gauss*2] -gt $intermediate_num_gauss ]; then
   intermediate_num_gauss=$[$num_gauss*2];
   echo "setting it to $intermediate_num_gauss"
 fi
-
 
 # Set various variables.
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
@@ -63,18 +62,9 @@ sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 
-## Set up features.
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
+cp $alidir/final.mat $dir || exit 1;
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
-
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ -f $alidir/trans.1 ]; then
   if $no_fmllr; then

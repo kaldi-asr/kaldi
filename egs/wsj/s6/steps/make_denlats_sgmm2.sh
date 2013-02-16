@@ -27,8 +27,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 4 ]; then
    echo "Usage: steps/make_denlats_sgmm2.sh [options] <data-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
    echo "  e.g.: steps/make_denlats_sgmm2.sh data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
-   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
-   echo " plus transforms."
+   echo "Works for CMN+LDA+MLLT features, plus (with --transform-dir option) fMLLR"
    echo ""
    echo "Main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
@@ -45,6 +44,10 @@ data=$1
 lang=$2
 alidir=$3 # could also be $srcdir, but only if no vectors supplied.
 dir=$4
+
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $srcdir/final.mdl $srcdir/final.mat $srcdir/tree; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+done
 
 sdata=$data/split$nj
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
@@ -75,16 +78,8 @@ else
   utils/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
 fi
 
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "align_si.sh: feature type is $feat_type"
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"

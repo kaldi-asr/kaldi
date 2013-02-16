@@ -63,11 +63,11 @@ dir=$6
 silphonelist=`cat $lang/phones/silence.csl`
 mkdir -p $dir/log
 
-for f in $data/feats.scp $lang/phones.txt $dubmdir/final.dubm $alidir/final.mdl \
+for f in $data/feats.scp $lang/phones.txt $dubmdir/final.dubm $alidir/final.mdl $alidir/final.mat \
     $alidir/ali.1.gz $denlatdir/lat.1.gz; do
   [ ! -f $f ] && echo "Expected file $f to exist" && exit 1;
 done
-cp $alidir/final.mdl $alidir/tree $dir || exit 1;
+cp $alidir/final.mdl $alidir/tree $alidir/final.mat $dir || exit 1;
 nj=`cat $alidir/num_jobs` || exit 1;
 [ "$nj" -ne "`cat $denlatdir/num_jobs`" ] && \
   echo "$alidir and $denlatdir have different num-jobs" && exit 1;
@@ -78,17 +78,7 @@ cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-# Note: $feats is the features before fMPE.
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-    ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 [ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"

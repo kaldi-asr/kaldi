@@ -2,7 +2,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments; assumes features are (LDA+MLLT or delta+delta-delta)
+# Computes training alignments; assumes features are LDA+MLLT
 # + fMLLR (probably with SAT models).
 # It first computes an alignment with the final.alimdl (or the final.mdl if final.alimdl
 # is not present), then does 2 iterations of fMLLR estimation.
@@ -47,6 +47,10 @@ lang=$2
 srcdir=$3
 dir=$4
 
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $srcdir/final.mdl $srcdir/final.mat $srcdir/tree; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+done
+
 oov=`cat $lang/oov.int` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 sdata=$data/split$nj
@@ -55,22 +59,13 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-cp $srcdir/{tree,final.mdl} $dir || exit 1;
+cp $srcdir/{tree,final.mdl,final.mat} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
 
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 ## Set up model and alignment model.
 mdl=$srcdir/final.mdl

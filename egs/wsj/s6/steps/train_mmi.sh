@@ -60,22 +60,13 @@ cp $alidir/splice_opts $dir 2>/dev/null
 echo $nj > $dir/num_jobs
 
 cp $alidir/tree $dir
-cp $alidir/final.mdl $dir/0.mdl
+cp $alidir/final.mdl $dir/0.mdl || exit 1;
+cp $alidir/final.mat $dir || exit 1;
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
 # Set up features
-
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
-    ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 [ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"

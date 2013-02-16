@@ -53,7 +53,7 @@ data=$2
 dir=$3
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 
-for f in $graphdir/HCLG.fst $data/feats.scp $srcdir/final.mdl; do
+for f in $graphdir/HCLG.fst $data/feats.scp $srcdir/final.mdl $srcdir/final.mat; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -67,16 +67,9 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 
-## Set up features.
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "$0: no such file $transform_dir/trans.1" && exit 1;

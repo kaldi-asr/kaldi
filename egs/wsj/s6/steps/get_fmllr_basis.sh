@@ -4,7 +4,7 @@
 #                  Johns Hopkins University (Author: Daniel Povey)
 
 # Decoding script that computes basis for basis-fMLLR (see decode_fmllr_basis.sh).
-# This can be on top of delta+delta-delta, or LDA+MLLT features.
+# This can be on top of CMN+LDA+MLLT features.
 
 stage=0
 # Parameters in alignment of training data
@@ -45,21 +45,15 @@ splice_opts=`cat $dir/splice_opts 2>/dev/null` # frame-splicing options.
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-for f in $data/feats.scp $dir/final.alimdl $dir/final.mdl $dir/ali.1.gz; do
+for f in $data/feats.scp $dir/final.alimdl $dir/final.mdl $dir/final.mat $dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 
 # Set up the unadapted features "$sifeats".
-if [ -f $dir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type";
-case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |";;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
-  # Set up the adapted features "$feats" for training set.
+# Set up the adapted features "$feats" for training set.
 if [ -f $srcdir/trans.1 ]; then 
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$sdata/trans.JOB ark:- ark:- |";
 else

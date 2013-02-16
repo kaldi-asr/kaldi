@@ -19,7 +19,7 @@ boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.25 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
-splice_opts=
+splice_opts="--left-context=3 --right-context=3"
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration.
 train_tree=true  # if false, don't actually train the tree.
@@ -63,7 +63,7 @@ echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
 
 sdata=$data/split$nj;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+[[ -d $sdata && $data/cmvn.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 
 splicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
@@ -143,8 +143,6 @@ if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
-
-exit 0;
 
 x=1
 while [ $x -lt $num_iters ]; do

@@ -97,7 +97,7 @@ denlatdir=$5
 dir=$6 # experimental directory
 
 # Check that some files exist, mostly to verify correct directory arguments.
-for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl $alidir/ali.1.gz $denlatdir/lat.1.gz; do
+for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl $srcdir/final.mat $alidir/ali.1.gz $denlatdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -121,24 +121,11 @@ sdata=$data/split$nj
 
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/final.mat $dir 2>/dev/null # any LDA matrix...
+cp $alidir/final.mat $dir || exit 1;
 cp $alidir/tree $dir
 
-## Set up features.  Note: these are different from the normal features
-## because we have one rspecifier that has the features for the entire
-## training set, not separate ones for each batch.
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-case $feat_type in
-  delta) all_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | add-deltas ark:- ark:- |"
-     feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
-   ;;
-  lda) all_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-      feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+all_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 if [ -z "$transform_dir" ] && [ -f "$alidir/trans.1" ]; then 
   # --transform-dir option not set and $alidir has transforms in it.

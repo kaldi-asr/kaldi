@@ -18,15 +18,15 @@ cmd=run.pl
 silence_weight=1.0 # applies to LDA and MLLT estimation.  We don't 
                    # down-weight silence, since we're interested in it.
 stage=-7
-splice_opts="--left-context=6 --right-context=6" # Use a lot of frames,
+splice_opts="--left-context=5 --right-context=6" # Use a lot of frames,
   # as we'll just be making per-frame judgements; this should be more accurate.
-num_gauss=50
+num_gauss=80
 num_gselect=20 # Gaussian-selection
 intermediate_num_gauss=1000
-real_silence_phones=  # this will default to "optsil" but can be set by the user.
+real_silence_phones=  # this will default to the contents of $lang/phones/optional_silence.csl
+  # but can be set by the user.
 num_iters=3
 cleanup=true
-use_fmllr=true
 dim=40 # LDA dimension
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
@@ -116,7 +116,7 @@ if [ $stage -le -5 ]; then
   $cmd $dir/log/update_mdl.log \
     gmm-est --write-occs=$dir/1.occs $dir/0.mdl "gmm-sum-accs - $dir/mdl.*.acc |" $dir/1.mdl || exit 1;
 fi
-$cleanup && rm $dir/0.mdl $dir/0.*.acc 
+$cleanup && rm $dir/0.mdl $dir/mdl.*.acc 
 
 
 echo "Estimating MLLT"
@@ -160,21 +160,21 @@ while [ $x -lt $num_iters ]; do
 
     $cmd $dir/log/update.$x.log \
       gmm-global-est --verbose=2 $dir/$x.ubm "gmm-global-sum-accs - $dir/$x.*.acc |" \
-      $dir/$[$x+1].ubm || exit 1;
-    $cleanup && rm $dir/$x.*.acc $dir/$x.ubm
+      $dir/$[$x+1].ubm || exit 1; 
   fi
+  $cleanup && rm $dir/$x.*.acc $dir/$x.ubm
   x=$[$x+1]
 done
 
 # Now one final iteration with speech and silence separately.
 
-weights="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- | weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | post-to-weights ark:- ark:- |"
+nonsilweights="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- | weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- | post-to-weights ark:- ark:- |"
 
 echo "Final non-silence pass"
 
 if [ $stage -le $x ]; then
   $cmd JOB=1:$nj $dir/log/acc.nonsilence.JOB.log \
-    gmm-global-acc-stats "--weights=$weights" "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" $dir/$x.ubm "$feats" \
+    gmm-global-acc-stats "--weights=$nonsilweights" "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" $dir/$x.ubm "$feats" \
     $dir/nonsilence.JOB.acc || exit 1;
 
   $cmd $dir/log/update.nonsilence.log \
@@ -189,11 +189,11 @@ echo "Final silence pass"
 # weight to one only "$real_silence_phones" which defaults to the silence in 
 # $lang/phones/optional_silence.txt.  This is generally SIL or sil-- the "normal"
 # silence. 
-weights="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- | weight-silence-post 0.0 $real_silence_phones $alidir/final.mdl ark:- ark:- | post-to-weights ark:- ark:- | reverse-weights ark:- ark:- |"
+silweights="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- | weight-silence-post 0.0 $real_silence_phones $alidir/final.mdl ark:- ark:- | post-to-weights ark:- ark:- | reverse-weights ark:- ark:- |"
 
 if [ $stage -le $num_iters ]; then
   $cmd JOB=1:$nj $dir/log/acc.silence.JOB.log \
-    gmm-global-acc-stats "--weights=$weights" "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" $dir/$x.ubm "$feats" \
+    gmm-global-acc-stats "--weights=$silweights" "--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" $dir/$x.ubm "$feats" \
     $dir/silence.JOB.acc || exit 1;
 
   $cmd $dir/log/update.silence.log \
@@ -224,22 +224,48 @@ if [ $stage -le $[$num_iters+2] ]; then
   # the specified proportions of speech and silence.. sorry, this is a bit
   # unclear; the code should have some clearer comments in it.
   
-  #weights="ark:ali-to-post 'ark:gunzip -c $alidir/ali.*.gz|' ark:- | weight-silence-post 0.0 $silphonelist $dir/1.mdl ark:- ark:- | post-to-weights ark:- ark:- |"
   weights="ark:gunzip -c $dir/weights.*.gz|"
 
   # Note: nonsilence.cmvn is not a table/archive, it's a file, so the program will
   # compute global stats.
-  ! apply-cmvn --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | \
-    compute-cmvn-stats --binary=false --weights="$weights" ark:- $dir/nonsilence.cmvn \
+  ! compute-cmvn-stats --binary=false --weights="$weights" scp:$data/feats.scp $dir/nonsilence.cmvn \
     2> $dir/log/cmvn_nonsilence.log && echo "Error computing non-silence CMVN stats" && exit 1;
 
   weights="$weights reverse-weights ark:- ark:- |"
 
-  ! apply-cmvn --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | \
-    compute-cmvn-stats --binary=false --weights="$weights" ark:- $dir/silence.cmvn \
+  ! compute-cmvn-stats --binary=false --weights="$weights" scp:$data/feats.scp $dir/silence.cmvn \
     2> $dir/log/cmvn_silence.log && echo "Error computing silence CMVN stats" && exit 1;
 fi
 
-$cleanup && rm $dir/gselect.*.gz
+if [ $stage -le $[$num_iters+3] ]; then
+  echo "Computing accuracy of classifier";
+  
+  $cmd JOB=1:$nj $dir/log/dot_sil_hyp.JOB.log \
+    dot-weights "ark:gunzip -c $dir/weights.JOB.gz | reverse-weights ark:- ark:- |" "$silweights" ark,t:- \| \
+    awk '{x += $2;} END{printf("Dot product is %f\n", x);}' || exit 1;
+
+  $cmd JOB=1:$nj $dir/log/dot_sil_ref.JOB.log \
+    dot-weights "$silweights" "$silweights" ark,t:- \| \
+    awk '{x += $2;} END{printf("Dot product is %f\n", x);}' || exit 1;
+
+  $cmd JOB=1:$nj $dir/log/dot_nonsil_hyp.JOB.log \
+    dot-weights "ark:gunzip -c $dir/weights.JOB.gz |" "$nonsilweights" ark,t:- \| \
+    awk '{x += $2;} END{printf("Dot product is %f\n", x);}' || exit 1;
+
+  $cmd JOB=1:$nj $dir/log/dot_nonsil_ref.JOB.log \
+    dot-weights "$nonsilweights" "$nonsilweights" ark,t:- \| \
+    awk '{x += $2;} END{printf("Dot product is %f\n", x);}' || exit 1;
+fi
+
+sil_hyp=`grep "Dot product is" $dir/log/dot_sil_hyp.*.log  | awk '{x += $NF} END{print x;}'`
+sil_ref=`grep "Dot product is" $dir/log/dot_sil_ref.*.log  | awk '{x += $NF} END{print x;}'`
+nonsil_hyp=`grep "Dot product is" $dir/log/dot_nonsil_hyp.*.log  | awk '{x += $NF} END{print x;}'`
+nonsil_ref=`grep "Dot product is" $dir/log/dot_nonsil_ref.*.log  | awk '{x += $NF} END{print x;}'`
+sil_acc=`perl -e "printf('%.2f', (100.0 * $sil_hyp / $sil_ref));"`
+nonsil_acc=`perl -e "printf('%.2f', (100.0 * $nonsil_hyp / $nonsil_ref));"`
+
+echo "Classification accuracy on training data of silence is $sil_acc%, nonsilence is $nonsil_acc%"
+
+$cleanup && rm $dir/gselect.*.gz $dir/weights.*.gz
 
 exit 0;

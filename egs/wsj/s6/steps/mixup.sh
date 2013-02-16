@@ -38,7 +38,7 @@ srcdir=$4
 dir=$5
 
 for f in $data/feats.scp $srcdir/final.mdl $srcdir/final.mat; do
-  [ ! -f $f ] && echo "mixup_lda_etc.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "mixup.sh: no such file $f" && exit 1;
 done
 
 nj=`cat $srcdir/num_jobs` || exit 1;
@@ -52,18 +52,8 @@ echo $nj > $dir/num_jobs
 
 cp $srcdir/tree $dir
 
+sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-## Set up features.
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
-
-case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
-    ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
 if [ -f $srcdir/trans.1 ]; then
   echo Using transforms from $srcdir;
   rm $dir/trans.* 2>/dev/null
