@@ -75,22 +75,20 @@ utils/mkgraph.sh data/lang exp/tri2a exp/tri2a/graph
 steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri2a/graph data/test exp/tri2a/decode
 
-# HERE-- at this point we will train the CMN models.  Products of this
-# stage: speech and silence models, global speech and silence stats.
-# We set the config for the CMVN: silence priors, silence proportion for CMN
-# (default 0.15?), policy for what to do when there is too little silence, min-counts.  
-# these info go into files "silence_prior" and "cmn_opts" in this directory.
-# For now we'll just handle the offset-only case.
+# we use models for the cepstral mean normalization to help us 
+# normalize the stats to a constant proportion of silence.
+steps/train_cmn_models.sh --cmd "$train_cmd" data/train data/lang \
+   exp/tri2a exp/tri2a_cmn
 
-steps/train_cmvn_models.sh "$train_cmd" data/train_si84_2kshort data/lang \
-   exp/tri2b_ali_si84_2kshort exp/tri2b_speechsil
+steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
+   data/train exp/tri2a_cmn mfcc/ exp/tri2a_cmn_train
+steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
+   data/test exp/tri2a_cmn mfcc/ exp/tri2a_cmn_test
 
 
-
-# train and decode tri2b [LDA+MLLT]
+# train and decode tri2b [CMN+LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  --splice-opts "--left-context=3 --right-context=3" \
- 1800 9000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
+  1800 9000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b/decode
@@ -102,14 +100,15 @@ steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
 #  Do MMI on top of LDA+MLLT.
 steps/make_denlats.sh --nj 8 --cmd "$train_cmd" \
   data/train data/lang exp/tri2b exp/tri2b_denlats || exit 1;
-steps/train_mmi.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mmi || exit 1;
+steps/train_mmi.sh --cmd "$train_cmd" \
+  data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mmi || exit 1;
 steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi/decode_it4
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi/decode_it3
 
 # Do the same with boosting.
-steps/train_mmi.sh --boost 0.05 data/train data/lang \
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.05 data/train data/lang \
    exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mmi_b0.05 || exit 1;
 steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it4 || exit 1;
@@ -117,7 +116,7 @@ steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd"
    exp/tri2b/graph data/test exp/tri2b_mmi_b0.05/decode_it3 || exit 1;
 
 # Do MPE.
-steps/train_mpe.sh data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mpe || exit 1;
+steps/train_mpe.sh --cmd "$train_cmd" data/train data/lang exp/tri2b_ali exp/tri2b_denlats exp/tri2b_mpe || exit 1;
 steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mpe/decode_it4 || exit 1;
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
@@ -125,11 +124,10 @@ steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd"
 
 
 ## Do LDA+MLLT+SAT, and decode.
-steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
+steps/train_sat.sh --cmd "$train_cmd" 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode || exit 1;
-
 
 
 # Align all data with LDA+MLLT+SAT system (tri3b)
@@ -149,7 +147,6 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # Do a decoding that uses the exp/tri3b/decode directory to get transforms from.
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2 || exit 1;
-
 
 #first, train UBM for fMMI experiments.
 steps/train_diag_ubm.sh --silence-weight 0.5 --nj 8 --cmd "$train_cmd" \
