@@ -11,6 +11,7 @@ cer=0
 decode_mbr=true
 min_lmwt=7
 max_lmwt=17
+model=
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -30,7 +31,10 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+if [ -z "$model" ] ; then
+  model=$dir/../final.mdl # assume model one level up from decoding dir.
+fi
+
 
 ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -f $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
