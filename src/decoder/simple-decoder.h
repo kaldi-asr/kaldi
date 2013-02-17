@@ -1,7 +1,8 @@
 // decoder/simple-decoder.h
 
-// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University
+// Copyright 2009-2013  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University (author: Arnab Ghoshal);
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -217,9 +218,9 @@ class SimpleDecoder {
     float best_weight = 1.0e+10;
     for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
         iter != cur_toks_.end();
-        ++iter) {
+         ++iter) {
       queue_.push_back(iter->first);
-      best_weight = std::min(best_weight, iter->second->arc_.weight.Value());
+      best_weight = std::min(best_weight, iter->second->weight_.Value());
     }
     BaseFloat cutoff = best_weight + beam_;
 

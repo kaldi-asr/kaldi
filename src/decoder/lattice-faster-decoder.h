@@ -1,6 +1,7 @@
 // decoder/lattice-faster-decoder.h
 
-// Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
+//                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@ namespace kaldi {
 struct LatticeFasterDecoderConfig {
   BaseFloat beam;
   int32 max_active;
+  int32 min_active;
   BaseFloat lattice_beam;
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
@@ -44,6 +46,7 @@ struct LatticeFasterDecoderConfig {
   BaseFloat hash_ratio;
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),
+                                min_active(200),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
@@ -55,6 +58,7 @@ struct LatticeFasterDecoderConfig {
   void Register(ParseOptions *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
+    po->Register("min-active", &min_active, "Decoder minimum #active states.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
     po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");

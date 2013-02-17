@@ -1,6 +1,8 @@
 // gmmbin/gmm-align-compiled.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2013  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
+
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +92,7 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(alignment_wspecifier);
     BaseFloatWriter scores_writer(scores_wspecifier);
 
-    int num_success = 0, num_no_feat = 0, num_other_error = 0;
+    int num_success = 0, num_no_feat = 0, num_other_error = 0, num_retry = 0;
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
@@ -136,6 +138,7 @@ int main(int argc, char *argv[]) {
         bool ans = decoder.ReachedFinal() // consider only final states.
             && decoder.GetBestPath(&decoded);  
         if (!ans && retry_beam != 0.0) {
+          num_retry++;
           KALDI_WARN << "Retrying utterance " << key << " with beam " << retry_beam;
           decode_opts.beam = retry_beam;
           decoder.SetOptions(decode_opts);
@@ -173,6 +176,8 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
               << " over " << frame_count<< " frames.";
+    KALDI_LOG << "Retried " << num_retry << " out of "
+              << (num_success + num_other_error) << " utterances.";
     KALDI_LOG << "Done " << num_success << ", could not find features for "
               << num_no_feat << ", other errors on " << num_other_error;
     if (num_success != 0) return 0;

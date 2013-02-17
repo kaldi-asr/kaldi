@@ -22,9 +22,10 @@ namespace kaldi {
 
 
 FasterDecoder::FasterDecoder(const fst::Fst<fst::StdArc> &fst,
-                             const FasterDecoderOptions &opts): fst_(fst), opts_(opts) {
-  KALDI_ASSERT(opts_.hash_ratio >= 1.0);  // less doesn't make much sense.
-  KALDI_ASSERT(opts_.max_active > 1);
+                             const FasterDecoderOptions &opts): fst_(fst), config_(opts) {
+  KALDI_ASSERT(config_.hash_ratio >= 1.0);  // less doesn't make much sense.
+  KALDI_ASSERT(config_.max_active > 1);
+  KALDI_ASSERT(config_.min_active >= 0 && config_.min_active < config_.max_active);
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
 
@@ -116,9 +117,10 @@ bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
 // Gets the weight cutoff.  Also counts the active tokens.
 BaseFloat FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
                                    BaseFloat *adaptive_beam, Elem **best_elem) {
-  BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
+  BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
   size_t count = 0;
-  if (opts_.max_active == std::numeric_limits<int32>::max()) {
+  if (config_.max_active == std::numeric_limits<int32>::max() &&
+      config_.min_active == 0) {
     for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
       BaseFloat w = static_cast<BaseFloat>(e->val->weight_.Value());
       if (w < best_weight) {
@@ -127,8 +129,8 @@ BaseFloat FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
       }
     }
     if (tok_count != NULL) *tok_count = count;
-    if (adaptive_beam != NULL) *adaptive_beam = opts_.beam;
-    return best_weight + opts_.beam;
+    if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
+    return best_weight + config_.beam;
   } else {
     tmp_array_.clear();
     for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
@@ -140,29 +142,46 @@ BaseFloat FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
       }
     }
     if (tok_count != NULL) *tok_count = count;
-    if (tmp_array_.size() <= static_cast<size_t>(opts_.max_active)) {
-      if (adaptive_beam) *adaptive_beam = opts_.beam;
-      return best_weight + opts_.beam;
-    } else {
-      // the lowest elements (lowest costs, highest likes)
-      // will be put in the left part of tmp_array.
+    BaseFloat beam_cutoff = best_weight + config_.beam,
+        min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
+        max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
+    
+    if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
       std::nth_element(tmp_array_.begin(),
-                       tmp_array_.begin()+opts_.max_active,
+                       tmp_array_.begin() + config_.max_active,
                        tmp_array_.end());
-      // return the tighter of the two beams.
-      BaseFloat ans = std::min(best_weight + opts_.beam,
-                               *(tmp_array_.begin()+opts_.max_active));
+      max_active_cutoff = tmp_array_[config_.max_active];
+    }
+    if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
+      if (config_.min_active == 0) min_active_cutoff = best_weight;
+      else {
+        std::nth_element(tmp_array_.begin(),
+                         tmp_array_.begin() + config_.min_active,
+                         tmp_array_.size() > static_cast<size_t>(config_.max_active) ?
+                         tmp_array_.begin() + config_.max_active :
+                         tmp_array_.end());
+        min_active_cutoff = tmp_array_[config_.min_active];
+      }
+    }
+
+    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
       if (adaptive_beam)
-        *adaptive_beam = std::min(opts_.beam,
-                                  ans - best_weight + opts_.beam_delta);
-      return ans;
+        *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
+      return max_active_cutoff;
+    } else if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
+      if (adaptive_beam)
+        *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
+      return min_active_cutoff;
+    } else {
+      *adaptive_beam = config_.beam;
+      return beam_cutoff;
     }
   }
 }
 
 void FasterDecoder::PossiblyResizeHash(size_t num_toks) {
   size_t new_sz = static_cast<size_t>(static_cast<BaseFloat>(num_toks)
-                                      * opts_.hash_ratio);
+                                      * config_.hash_ratio);
   if (new_sz > toks_.Size()) {
     toks_.SetSize(new_sz);
   }
@@ -176,13 +195,14 @@ BaseFloat FasterDecoder::ProcessEmitting(DecodableInterface *decodable, int fram
   Elem *best_elem = NULL;
   BaseFloat weight_cutoff = GetCutoff(last_toks, &tok_cnt,
                                       &adaptive_beam, &best_elem);
+  KALDI_VLOG(3) << tok_cnt << " tokens active.";
   PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
     
   // This is the cutoff we use after adding in the log-likes (i.e.
   // for the next frame).  This is a bound on the cutoff we will use
   // on the next frame.
-  BaseFloat next_weight_cutoff = 1.0e+10;
-
+  BaseFloat next_weight_cutoff = std::numeric_limits<BaseFloat>::infinity();
+  
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.
   if (best_elem) {

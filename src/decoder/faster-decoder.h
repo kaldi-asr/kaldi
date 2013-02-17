@@ -37,16 +37,22 @@ namespace kaldi {
 struct FasterDecoderOptions {
   BaseFloat beam;
   int32 max_active;
+  int32 min_active;
   BaseFloat beam_delta;
   BaseFloat hash_ratio;
   FasterDecoderOptions(): beam(16.0),
                           max_active(std::numeric_limits<int32>::max()),
-                          beam_delta(0.5), hash_ratio(2.0) { }
+                          min_active(20), // This decoder mostly used for
+                                          // alignment, use small default.
+                          beam_delta(0.5),
+                          hash_ratio(2.0) { }
   void Register(ParseOptions *po, bool full) {  /// if "full", use obscure
     /// options too.
     /// Depends on program.
     po->Register("beam", &beam, "Decoder beam");
     po->Register("max-active", &max_active, "Decoder max active states.");
+    po->Register("min-active", &min_active,
+                 "Decoder min active states (don't prune if #active less than this).");
     if (full) {
       po->Register("beam-delta", &beam_delta,
                    "Increment used in decoder [obscure setting]");
@@ -64,10 +70,10 @@ class FasterDecoder {
   typedef Arc::Weight Weight;
 
   FasterDecoder(const fst::Fst<fst::StdArc> &fst,
-                const FasterDecoderOptions &opts);
+                const FasterDecoderOptions &config);
 
-  void SetOptions(const FasterDecoderOptions &opts) { opts_ = opts; }
-
+  void SetOptions(const FasterDecoderOptions &config) { config_ = config; }
+  
   ~FasterDecoder() { ClearToks(toks_.Clear()); }
 
   void Decode(DecodableInterface *decodable);
@@ -141,7 +147,7 @@ class FasterDecoder {
   // them at a time can be indexed by StateId.
   HashList<StateId, Token*> toks_;
   const fst::Fst<fst::StdArc> &fst_;
-  FasterDecoderOptions opts_;
+  FasterDecoderOptions config_;
   std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.

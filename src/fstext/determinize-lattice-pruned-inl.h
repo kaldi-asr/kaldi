@@ -315,9 +315,10 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           double total_weight = backward_costs_[ifst_->Start()]; // best weight of FST.
           effective_beam = task->priority_cost - total_weight;
         }
-        KALDI_WARN << "Failure in determinize-lattice: size exceeds maximum "
-                   << opts_.max_mem << " bytes; (repo,arcs,elems) = ("
-                   << repo_size << "," << arcs_size << "," << elems_size
+        KALDI_WARN << "Did not reach requested beam in determinize-lattice: "
+                   << "size exceeds maximum " << opts_.max_mem
+                   << " bytes; (repo,arcs,elems) = (" << repo_size << ","
+                   << arcs_size << "," << elems_size
                    << "), after rebuilding, repo size was " << new_repo_size
                    << ", effective beam was " << effective_beam
                    << " vs. requested beam " << beam_;
