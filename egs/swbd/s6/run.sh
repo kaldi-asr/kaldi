@@ -215,10 +215,14 @@ for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     $train_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/tri4b $graph_dir
+    #steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+    #   $graph_dir data/eval2000 exp/tri4b/decode_eval2000_sw1_${lm_suffix}
     steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/eval2000 exp/tri4b/decode_eval2000_sw1_${lm_suffix}
+       $graph_dir data/train_dev exp/tri4b/decode_train_dev_sw1_${lm_suffix}
   ) &
 done
+
+
 
 # MMI training starting from the LDA+MLLT+SAT systems on both the 
 # train_100k_nodup (110hr) and train_nodup (286hr) sets

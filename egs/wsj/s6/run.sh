@@ -134,7 +134,7 @@ done
 
 # demonstrate how to get lattices that are "word-aligned" (arcs coincide with
 # words, with boundaries in the right place).
-sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print $2}'`
+sil_label=`cat data/lang/phones/optional_silence.int`
 steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
   data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
 
@@ -184,7 +184,6 @@ steps/decode.sh --nj 8 --cmd "$decode_cmd" \
 # seems to be a bit too narrow in the current scripts (got at least 0.7% absolute
 # improvement from loosening beams from their current values).
 
-# Commenting this out as it's not part of the main recipe.
 steps/decode_biglm.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri3/graph_tgpr data/lang_test_{tgpr,tg}/G.fst \
   data/test_dev93 exp/tri3/decode_tgpr_dev93_tg_biglm
@@ -200,8 +199,8 @@ local/score_mbr.sh --cmd "$decode_cmd" \
  data/test_dev93/ data/lang_test_tgpr/ exp/tri3/decode_tgpr_dev93_tg_mbr
 
 steps/decode_fromlats.sh --cmd "$decode_cmd" \
-  data/test_dev93 data/lang_test_tgpr exp/tri3/decode_tgpr_dev93 \
-  exp/tri2a/decode_tgpr_dev93_fromlats || exit 1;
+  data/test_dev93 data/lang_test_tgpr exp/tri2/decode_tgpr_dev93 \
+  exp/tri3/decode_tgpr_dev93_fromlats || exit 1;
 
 
 # Align tri3 system with si84 data.
