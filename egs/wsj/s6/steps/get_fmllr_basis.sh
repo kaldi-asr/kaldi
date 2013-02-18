@@ -39,7 +39,7 @@ dir=$3
 
 nj=`cat $dir/num_jobs` || exit 1;
 sdata=$data/split$nj;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 
 splice_opts=`cat $dir/splice_opts 2>/dev/null` # frame-splicing options.
 

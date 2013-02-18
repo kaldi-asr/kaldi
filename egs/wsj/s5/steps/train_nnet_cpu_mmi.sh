@@ -218,7 +218,7 @@ while [ $x -lt $num_epochs ]; do
          sum-post --scale2=-1.0 ark:- "ark:gunzip -c $dir/post/den_post.$z.JOB.gz|" ark:- \| \
          nnet-get-egs $nnet_context_opts "$feats" ark:- ark:- \| \
          nnet-copy-egs ark:- $egs_out || exit 1;
-      ##rm $dir/post/smooth_post.$z.*.gz $dir/post/den_post.$z.*.gz 
+      rm $dir/post/smooth_post.$z.*.gz $dir/post/den_post.$z.*.gz 
     fi
     if $first_iter_of_epoch; then
       # Diagnostics-- work out an extra term in the objf that we have to add to
@@ -274,6 +274,7 @@ while [ $x -lt $num_epochs ]; do
         # Average the parameters of all the parallel jobs.
         $cmd $dir/log/average.$x.$y.log \
            nnet-am-average $nnets_list $next_mdl || exit 1;
+        rm $nnets_list
       fi
       y=$[$y+1]
     done

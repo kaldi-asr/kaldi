@@ -94,7 +94,7 @@ cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/final.mat $dir || exit 1;
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 
 spkvecs_opt=  # Empty option for now, until we estimate the speaker vectors.
 gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"

@@ -15,12 +15,9 @@ Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
   s3: 
-   This Switchboard recipe is not fully state-of-the-art, mostly because
-   the language model and dictionary do not use any external sources of
-   data, just what is in the LDC corpus.  As a result there is a
-   high-perplexity language model and small dictionary.
+   This an older, now-deprecated recipe.
 
   s5: This is the "new-new-style" recipe.  
     All further work will be on top of this style of recipe.
 
-
+  s6: This is still under construction.

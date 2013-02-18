@@ -62,7 +62,7 @@ mkdir -p $dir/log
 echo $nj >$dir/num_jobs
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir || exit 1;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 
 sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 

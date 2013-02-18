@@ -81,7 +81,7 @@ nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 
 
 splicedfeats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- |"

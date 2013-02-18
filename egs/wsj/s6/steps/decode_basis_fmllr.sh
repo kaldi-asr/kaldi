@@ -81,7 +81,7 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 sdata=$data/split$nj;
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 

@@ -53,7 +53,7 @@ sdata=$srcdata/split$nj;
 splice_opts=`cat $gmmdir/splice_opts 2>/dev/null`
 
 mkdir -p $data $logdir $feadir
-[[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
+split_data.sh $srcdata $nj || exit 1;
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $gmmdir/final.mat; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;

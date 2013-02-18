@@ -54,7 +54,7 @@ srcdir=`dirname $dir`; # The model directory is one level up from decoding direc
 sdata=$data/split$nj;
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/cmvn.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...

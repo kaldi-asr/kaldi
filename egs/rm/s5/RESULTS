@@ -84,7 +84,7 @@ exp/sgmm2x_4a_mmi_b0.2/decode_it3/wer_4:%WER 1.41 [ 177 / 12533, 29 ins, 23 del,
 exp/sgmm2x_4a_mmi_b0.2/decode_it4/wer_8:%WER 1.43 [ 179 / 12533, 13 ins, 45 del, 121 sub ]
 
 # Deep neural net (actually not that deep, it has 2 hidden layers.)-- hybrid system.
-exp/tri4a2_nnet/decode/wer_2:%WER 1.69 [ 212 / 12533, 26 ins, 44 del, 142 sub ]
+exp/tri4a1_nnet/decode/wer_4:%WER 1.88 [ 236 / 12533, 23 ins, 53 del, 160 sub ]
 
 # Some system combination experiments.
 exp/combine_1_2a/decode/wer_5:%WER 3.04 [ 381 / 12533, 47 ins, 76 del, 258 sub ]

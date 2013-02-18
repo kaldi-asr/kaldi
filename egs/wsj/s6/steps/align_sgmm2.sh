@@ -59,7 +59,7 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
 echo $nj > $dir/num_jobs
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 
 cp $srcdir/{tree,final.mdl,final.mat} $dir || exit 1;
 [ -f $srcdir/final.alimdl ] && cp $srcdir/final.alimdl $dir

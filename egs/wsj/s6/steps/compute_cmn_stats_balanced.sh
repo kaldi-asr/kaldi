@@ -58,7 +58,7 @@ mkdir -p $dir/log || exit 1;
 
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 splice_opts=`cat $speechsildir/splice_opts` || exit 1;
 
 required="$data/feats.scp $speechsildir/silence.ubm $speechsildir/nonsilence.ubm $speechsildir/silence.cmvn $speechsildir/nonsilence.cmvn"

@@ -54,7 +54,7 @@ mkdir -p $dir/log
 nj=`cat $olddir/num_jobs` || exit 1;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 sdata=$data/split$nj
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 echo $nj >$dir/num_jobs
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $srcdir/final.mat $olddir/lat.1.gz \
