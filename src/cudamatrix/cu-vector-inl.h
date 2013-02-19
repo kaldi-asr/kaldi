@@ -35,14 +35,14 @@ namespace kaldi {
 
 template<typename Real>
 CuVector<Real>::CuVector(const CuVectorBase<Real> &v) {
-  Resize(v.dim_);
-  CopyFromVec(v);
+  this->Resize(v.dim_);
+  this->CopyFromVec(v);
 }
 
 template<typename Real>
 CuVector<Real>::CuVector(const VectorBase<Real> &v) {
-  Resize(v.dim_);
-  CopyFromVec(v);
+  this->Resize(v.dim_);
+  this->CopyFromVec(v);
 }
 
 template<typename Real>
@@ -54,7 +54,7 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
     return;
   }
   if (this->dim_ != 0)
-    Destroy();
+    this->Destroy();
   if (dim == 0) return;
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) { 
@@ -94,7 +94,7 @@ void CuVector<Real>::Swap(Vector<Real> *vec) {
       } else { // *this is full but *vec is empty.
         vec->Resize(this->dim_, kUndefined);
         this->CopyToVec(vec);
-        Destroy();
+        this->Destroy();
       }
     }
   } else
