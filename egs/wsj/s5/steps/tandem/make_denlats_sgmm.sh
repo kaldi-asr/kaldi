@@ -4,7 +4,7 @@
 
 # Create denominator lattices for MMI/MPE training, with SGMM models.  If the
 # features have fMLLR transforms you have to supply the --transform-dir option.
-# It gets any speaker vectors from the "alignment dir" ($alidir).  Note: this is
+# It gets any speaker vectors from the "alignment dir" ($srcdir).  Note: this is
 # possibly a slight mismatch because the speaker vectors come from supervised
 # adaptation.
 
@@ -26,7 +26,7 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-   echo "Usage: steps/tandem/make_denlats_sgmm.sh [options] <data1-dir> <data2-dir> <lang-dir> <src-dir|alidir> <exp-dir>"
+   echo "Usage: steps/tandem/make_denlats_sgmm.sh [options] <data1-dir> <data2-dir> <lang-dir> <src-dir|srcdir> <exp-dir>"
    echo "  e.g.: steps/tandem/make_denlats_sgmm.sh {mfcc,bottleneck}/data/train data/lang exp/sgmm4a_ali exp/sgmm4a_denlats"
    echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
    echo " plus transforms."
@@ -45,10 +45,11 @@ fi
 data1=$1
 data2=$2
 lang=$3
-alidir=$4 # could also be $srcdir, but only if no vectors supplied.
+srcdir=$4 # could also be $srcdir, but only if no vectors supplied.
 dir=$5
 
-splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+normft2=`cat $srcdir/normft2 2>/dev/null`
 mkdir -p $dir/log
 
 sdata1=$data1/split$nj
@@ -73,12 +74,12 @@ cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
-# final.mdl from $alidir; the output HCLG.fst goes in $dir/graph.
+# final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
 if [ -s $dir/dengraph/HCLG.fst ]; then
    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
-  utils/mkgraph.sh $dir/lang $alidir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
 fi
 
 # Set up features
@@ -130,23 +131,23 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
     && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
-  [ -f $alidir/final.mat ] && ! cmp $transform_dir/final.mat $alidir/final.mat && \
-     echo "$0: LDA transforms differ between $alidir and $transform_dir"
+  [ -f $srcdir/final.mat ] && ! cmp $transform_dir/final.mat $srcdir/final.mat && \
+     echo "$0: LDA transforms differ between $srcdir and $transform_dir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 else
   echo "Assuming you don't have a SAT system, since no --transform-dir option supplied "
 fi
 
-if [ -f $alidir/gselect.1.gz ]; then
-  gselect_opt="--gselect=ark:gunzip -c $alidir/gselect.JOB.gz|"
+if [ -f $srcdir/gselect.1.gz ]; then
+  gselect_opt="--gselect=ark:gunzip -c $srcdir/gselect.JOB.gz|"
 else
-  echo "$0: no such file $alidir/gselect.1.gz" && exit 1;
+  echo "$0: no such file $srcdir/gselect.1.gz" && exit 1;
 fi
 
-if [ -f $alidir/vecs.1 ]; then
-  spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
+if [ -f $srcdir/vecs.1 ]; then
+  spkvecs_opt="--spk-vecs=ark:$srcdir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
 else
-  if [ -f $alidir/final.alimdl ]; then
+  if [ -f $srcdir/final.alimdl ]; then
     echo "You seem to have an SGMM system with speaker vectors,"
     echo "yet we can't find speaker vectors.  Perhaps you supplied"
     echo "the model director instead of the alignment directory?"
@@ -158,16 +159,20 @@ if [ $sub_split -eq 1 ]; then
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
    sgmm-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
-     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
+     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
   for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
+    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else 
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
+      ssdata1=$data1/split$nj/$n/split$sub_split;
+      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata1/$n/feats.scp ]; then
+        split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
+      fi
+      ssdata2=$data2/split$nj/$n/split$sub_split;
+      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata2/$n/feats.scp ]; then
+        split_data.sh --per-utt $sdata2/$n $sub_split || exit 1;
       fi
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
@@ -178,7 +183,7 @@ else
         sgmm-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
           --beam=$beam --lattice-beam=$lattice_beam \
           --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
-          --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
+          --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
       echo Merging archives for data subset $n
       rm $dir/.error 2>/dev/null;

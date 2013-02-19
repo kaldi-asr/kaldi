@@ -31,7 +31,7 @@ power=0.2 # Exponent for number of gaussians according to occurrence counts
 beam=8
 retry_beam=40
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-normft2=false
+normft2=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

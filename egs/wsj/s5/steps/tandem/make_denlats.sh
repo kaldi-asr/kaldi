@@ -82,7 +82,7 @@ fi
 
 ## Set up features.
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
-normft2=`cat $srcir/normft2 2>/dev/null`
+normft2=`cat $srcdir/normft2 2>/dev/null`
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
@@ -153,9 +153,13 @@ else
     if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else 
-      sdata2=$data1/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata1/$n/feats.scp ]; then
+      ssdata1=$data1/split$nj/$n/split$sub_split;
+      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata1/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
+      fi
+      ssdata2=$data2/split$nj/$n/split$sub_split;
+      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata2/$n/feats.scp ]; then
+        split_data.sh --per-utt $sdata2/$n $sub_split || exit 1;
       fi
       mkdir -p $dir/log/$n
       mkdir -p $dir/part

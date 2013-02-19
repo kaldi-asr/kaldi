@@ -20,7 +20,7 @@ realign_iters="1 2 3 4 5 6 7 8 9 10 12 14 16 18 20 23 26 29 32 35 38";
 config= # name of config file.
 stage=-4
 power=0.2 # exponent to determine number of gaussians from occurrence counts
-normft2=false # typically, the tandem features will already be normalized due to pca
+normft2=true # typically, the tandem features will already be normalized due to pca
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

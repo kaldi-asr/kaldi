@@ -98,7 +98,11 @@ feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk 
 if [ "$feat_type" == "delta" ]; then
   feats1="$feats1 add-deltas ark:- ark:- |"
 elif [ "$feat_type" == "lda" ]; then
-  feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/lda.mat ark:- ark:- |"
+  if [ -e $srcdir/lda.mat ]; then
+    feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/lda.mat ark:- ark:- |"
+  else
+    feats1="$feats1 add-deltas ark:- ark:- |"
+  fi
 fi
 
 # set up feature stream 2;  this are usually bottleneck or posterior features, 

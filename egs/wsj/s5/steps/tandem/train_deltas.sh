@@ -17,7 +17,7 @@ retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-normft2=false  # typically, the tandem features will be normalized already b/c of pca
+normft2=true  # typically, the tandem features will be normalized already b/c of pca
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging

@@ -37,7 +37,7 @@ leaves_per_group=5 # Relates to the SCTM (state-clustered tied-mixture) aspect:
 update_m_iter=4
 spk_dep_weights=true # [Symmetric SGMM] set this to false if you don't want "u" (i.e. to turn off
                       # symmetric SGMM.
-normft2=false
+normft2=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

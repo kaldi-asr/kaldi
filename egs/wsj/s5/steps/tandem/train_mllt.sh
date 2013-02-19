@@ -4,6 +4,10 @@
 #                 Korbinian Riedhammer
 # Apache 2.0.
 
+# This is a vanilla tandem system where the first stream is just extended with
+# delta+deltadeltas, in contrast to the train_lda_mllt.sh script, where the
+# temoporal context of the first stream is modeled via HLDA
+
 # Begin configuration.
 cmd=run.pl
 config=
@@ -19,16 +23,13 @@ boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
-splice_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 
-dim1=30  # dimension first stream (spectral features)
-dim2=40  # dimension second stream (pasted features, usually bn/posteriors)
-
-# apply CMVN to the second feature stream
+# apply CMVN to the second feature stream?
 normft2=true
 
-# do an extra LDA after pasting the features?
+# Do additional LDA after pasting the features
+dim2=40
 extra_lda=false
 
 # End configuration.
@@ -39,16 +40,15 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 7 ]; then
-  echo "Usage: steps/tandem/train_lda_mllt.sh [options] <#leaves> <#gauss> <data1> <data2> <lang> <alignments> <dir>"
-  echo " e.g.: steps/tandem/train_lda_mllt.sh 2500 15000 {mfcc,bottleneck}/data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
+  echo "Usage: steps/tandem/train_mllt.sh [options] <#leaves> <#gauss> <data1> <data2> <lang> <alignments> <dir>"
+  echo " e.g.: steps/tandem/train_mllt.sh 2500 15000 {mfcc,bottleneck}/data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
   echo "  --stage <stage>                                  # stage to do partial re-run from."
   echo "  --normft2 (true|false)                           # apply CMVN to second data set (true)"
   echo "  --extra-lda (true|false)                         # apply extra LDA after feature paste (false)"
-  echo "  --dim1 <n>                                       # dimension of the first feature stream by HLDA"
-  echo "  --dim2 <m>                                       # dimension of of the pasted features after 2nd HLDA"
+  echo "  --dim2 <n>                                       # dimension of the pasted features after 2nd HLDA"
   exit 1;
 fi
 
@@ -84,25 +84,7 @@ sdata2=$data2/split$nj;
 
 # set up feature stream 1;  here we assume spectral features which we will 
 # splice instead of deltas
-feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
-
-# Now estimate LDA, which will only be applied to the spectral features
-# (assuming that the tandem features were already discriminatively trained).
-# This is instead of the deltas.
-if [ $stage -le -5 ]; then
-  echo "Accumulating LDA statistics (this only applies to the base feature part)."
-  $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
-    ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
-      weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
-      acc-lda --rand-prune=$randprune $alidir/final.mdl "$feats1" ark,s,cs:- \
-       $dir/lda.JOB.acc || exit 1;
-  est-lda --write-full-matrix=$dir/full.mat --dim=$dim1 $dir/lda.mat $dir/lda.*.acc \
-      2>$dir/log/lda_est.log || exit 1;
-  rm $dir/lda.*.acc
-fi
-
-# add transform to the features
-feats1="$feats1 transform-feats $dir/lda.mat ark:- ark:- |"
+feats1="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata1/JOB/utt2spk scp:$sdata1/JOB/cmvn.scp scp:$sdata1/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
 
 # set up feature stream 2;  this are usually bottleneck or posterior features, 
 # which may be normalized if desired
@@ -118,7 +100,7 @@ tandemfeats="ark,s,cs:paste-feats '$feats1' '$feats2' ark:- |"
 feats="$tandemfeats"
 
 # keep track of splicing/normalization options
-echo $splice_opts > $dir/splice_opts
+echo $feats > $dir/tandem
 echo $normft2 > $dir/normft2
 
 
@@ -138,9 +120,6 @@ if [ $stage -le -4 -a $extra_lda == true ]; then
   
   feats="$tandemfeats transform-feats $dir/0.mat ark:- ark:- |"
 fi
-
-# keep track of the features
-echo $feats > $dir/tandem
 
 if [ $stage -le -3 ]; then
   echo "Accumulating tree stats"
