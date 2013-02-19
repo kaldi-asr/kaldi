@@ -238,30 +238,30 @@ class CuMatrix: public CuMatrixBase<Real> {
   // Note: we had to remove the "explicit" keyword due
   // to problems with STL vectors of CuMatrixBase.
   CuMatrix(const CuMatrix<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->CopyFromMat(other);
   }
 
   explicit CuMatrix(const MatrixBase<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->CopyFromMat(other);
   }
   
   CuMatrix<Real> &operator = (const CuMatrixBase<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->CopyFromMat(other);
     return *this;
   }
 
   CuMatrix<Real> &operator = (const CuMatrix<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->CopyFromMat(other);
     return *this;
   }  
 
   CuMatrix<Real> &operator = (const MatrixBase<Real> &other) {
-    Resize(other.NumRows(), other.NumCols(), kUndefined);
-    CopyFromMat(other);
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+    this->CopyFromMat(other);
     return *this;
   }   
 
