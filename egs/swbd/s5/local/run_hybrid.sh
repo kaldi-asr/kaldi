@@ -7,7 +7,7 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 
-#false && \
+false && \
 (
 
 ###
@@ -58,7 +58,7 @@ dir=exp/tri5a_dnn
 ali=exp/tri5a_ali
 $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --hid-layers 4 --hid-dim 1200 \
-  --apply-cmvn false --splice-lr 4 --feat-type lda --lda-dim 300 \
+  --apply-cmvn false --splice-lr 4 --feat-type lda --lda-dim 350 \
   --learn-rate 0.008 --bunch-size 256 \
   data-fmllr/train_100k_nodup data-fmllr/train_dev data/lang ${ali}_100k_nodup ${ali}_dev $dir || exit 1;
 # build graph
