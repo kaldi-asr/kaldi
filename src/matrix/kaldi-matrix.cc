@@ -121,8 +121,7 @@ void MatrixBase<Real>::AddVecVec(const Real alpha,
 } 
 
 // instantiate the template above.
-template<>
-template<>
+template
 void MatrixBase<float>::AddVecVec(const float alpha,
                                   const VectorBase<double> &a,
                                   const VectorBase<double> &b);
