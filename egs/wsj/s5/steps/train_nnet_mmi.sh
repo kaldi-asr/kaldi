@@ -11,11 +11,11 @@
 # Begin configuration section.
 cmd=run.pl
 num_iters=4
-boost=0.0
+boost=0.0 #ie. disable boosting 
 acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
-halving_factor=1.0
+halving_factor=1.0 #ie. disable halving
 drop_frames=true
 use_gpu_id=
 
