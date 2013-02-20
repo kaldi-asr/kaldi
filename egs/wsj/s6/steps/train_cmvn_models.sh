@@ -18,7 +18,7 @@ cmd=run.pl
 silence_weight=1.0 # applies to LDA and MLLT estimation.  We don't 
                    # down-weight silence, since we're interested in it.
 stage=-7
-splice_opts="--left-context=5 --right-context=6" # Use a lot of frames,
+splice_opts="--left-context=5 --right-context=5" # Use a lot of frames,
   # as we'll just be making per-frame judgements; this should be more accurate.
 num_gauss=80
 num_gselect=20 # Gaussian-selection

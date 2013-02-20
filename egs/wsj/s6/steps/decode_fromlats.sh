@@ -52,7 +52,8 @@ srcdir=`dirname $dir`; # Assume model directory one level up from decoding direc
 mkdir -p $dir/log
 
 nj=`cat $olddir/num_jobs` || exit 1;
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts || exit 1`
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 sdata=$data/split$nj
 split_data.sh $data $nj || exit 1;
 echo $nj >$dir/num_jobs
@@ -62,7 +63,7 @@ for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $srcdir/final.ma
   [ ! -f $f ] && echo "decode_si_fromlats.sh: no such file $f" && exit 1;
 done
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 $cmd JOB=1:$nj $dir/log/decode_lats.JOB.log \
  lattice-to-fst "ark:gunzip -c $olddir/lat.JOB.gz|" ark:- \| \

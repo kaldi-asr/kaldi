@@ -48,9 +48,11 @@ nj=`cat $alidir/num_jobs` || exit 1;
   echo "$alidir and $denlatdir have different num-jobs" && exit 1;
 
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+splice_opts=`cat $alidir/splice_opts || exit 1`
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1`
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
@@ -59,7 +61,7 @@ cp $alidir/final.mdl $dir/0.mdl
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"

@@ -41,7 +41,8 @@ nj=`cat $dir/num_jobs` || exit 1;
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
-splice_opts=`cat $dir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $dir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $dir/cmvn_opts || exit 1` 
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
@@ -51,7 +52,7 @@ done
 
 
 # Set up the unadapted features "$sifeats".
-sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 # Set up the adapted features "$feats" for training set.
 if [ -f $srcdir/trans.1 ]; then 

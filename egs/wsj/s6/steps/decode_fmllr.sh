@@ -76,7 +76,8 @@ sdata=$data/split$nj;
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $srcdir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1` 
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
@@ -113,7 +114,7 @@ for f in $adapt_model $final_model $srcdir/final.mat; do
 done
 
 ## Set up the unadapted features "$sifeats"
-sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 ## Now get the first-pass fMLLR transforms.
 if [ $stage -le 1 ]; then

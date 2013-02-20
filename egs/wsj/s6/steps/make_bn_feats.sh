@@ -35,7 +35,6 @@ bnfeadir=$5
 
 ######## CONFIGURATION
 norm_vars=$(cat $nndir/norm_vars)
-splice_opts=$(cat $nndir/splice_opts)
 feat_type=$(cat $nndir/feat_type)
 cmvn_g=$nndir/cmvn_glob.mat
 

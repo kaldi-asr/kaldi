@@ -72,13 +72,15 @@ nj=`cat $alidir/num_jobs` || exit 1;
 [ "$nj" -ne "`cat $denlatdir/num_jobs`" ] && \
   echo "$alidir and $denlatdir have different num-jobs" && exit 1;
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1` 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/cmvn_opts $dir 2>/dev/null # frame-splicing options.
 split_data.sh $data $nj || exit 1;
 
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 [ -f $alidir/trans.1 ] && echo Using transforms from $alidir && \
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"

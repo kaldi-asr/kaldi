@@ -60,11 +60,12 @@ nj=`cat $alidir/num_jobs` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl`
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 sdata=$data/split$nj;
-splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
+splice_opts=`cat $alidir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1` 
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/cmvn_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir || exit 1;
 

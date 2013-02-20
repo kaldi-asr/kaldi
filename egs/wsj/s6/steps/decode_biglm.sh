@@ -42,7 +42,8 @@ dir=$5
 
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts || exit 1`
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
@@ -53,7 +54,7 @@ for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $srcdir/final.mdl $srcdir/final.ma
   [ ! -f $f ] && echo "decode_si.sh: no such file $f" && exit 1;
 done
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 [ -f `dirname $oldlm_fst`/words.txt ] && ! cmp `dirname $oldlm_fst`/words.txt $graphdir/words.txt && \
   echo "Warning: old LM words.txt does not match with that in $graphdir .. probably will not work.";

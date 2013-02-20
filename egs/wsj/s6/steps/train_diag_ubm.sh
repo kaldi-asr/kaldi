@@ -51,14 +51,15 @@ dir=$5
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+splice_opts=`cat $alidir/splice_opts || exit 1`
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1`
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 cp $alidir/final.mat $dir || exit 1;
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ -f $alidir/trans.1 ]; then
   echo Using transforms from $alidir;

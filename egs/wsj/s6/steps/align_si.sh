@@ -49,15 +49,17 @@ oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $srcdir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1` 
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $srcdir/cmvn_opts $dir 2>/dev/null # frame-splicing options.
 split_data.sh $data $nj || exit 1;
 
 cp $srcdir/{tree,final.mdl,final.mat} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
 

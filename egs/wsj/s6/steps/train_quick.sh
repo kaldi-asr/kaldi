@@ -56,15 +56,17 @@ numgauss=$[totgauss/2] # Start with half the total number of Gaussians.  We won'
 incgauss=$[($totgauss-$numgauss)/$maxiterinc] # per-iter increment for #Gauss
 nj=`cat $alidir/num_jobs` || exit 1;
 sdata=$data/split$nj
-splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1` 
 
 mkdir -p $dir/log
 echo $nj >$dir/num_jobs
 cp $alidir/splice_opts $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir || exit 1;
 split_data.sh $data $nj || exit 1;
 
-sifeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"

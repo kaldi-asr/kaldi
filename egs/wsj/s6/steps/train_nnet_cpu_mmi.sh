@@ -119,13 +119,15 @@ nj2=`cat $denlatdir/num_jobs` || exit 1; # number of jobs in denlat dir
 
 sdata=$data/split$nj
 
-splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+splice_opts=`cat $alidir/splice_opts || exit 1`
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1`
 cp $alidir/splice_opts $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/final.mat $dir || exit 1;
 cp $alidir/tree $dir
 
-all_feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+all_feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
 
 if [ -z "$transform_dir" ] && [ -f "$alidir/trans.1" ]; then 
   # --transform-dir option not set and $alidir has transforms in it.

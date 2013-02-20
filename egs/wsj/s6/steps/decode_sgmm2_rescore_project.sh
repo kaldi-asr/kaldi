@@ -59,7 +59,8 @@ done
 
 nj=`cat $olddir/num_jobs` || exit 1;
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts || exit 1`
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
@@ -108,7 +109,7 @@ cur_lats="ark:gunzip -c $olddir/lat.JOB.gz | lattice-scale --acoustic-scale=$inv
 
 for model_type in left right; do
 
-  feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |" # spliced features.
+  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |" # spliced features.
   if [ ! -z "$transform_dir" ]; then  # using speaker-specific transforms.
      # we want to transform in the sequence: $dir/full.mat, then the result of
      # (extend-transform-dim $transform_dir/trans.JOB), then $dir/full_inv.mat to

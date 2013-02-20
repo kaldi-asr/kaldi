@@ -60,11 +60,12 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
-splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1` 
 
 cp $alidir/final.mat $dir || exit 1;
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ -f $alidir/trans.1 ]; then
   if $no_fmllr; then

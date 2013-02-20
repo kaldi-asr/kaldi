@@ -46,7 +46,8 @@ data=$2
 dir=$3
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+splice_opts=`cat $srcdir/splice_opts || exit 1`
+cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
@@ -58,7 +59,7 @@ for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $srcdir/final.mat $graphdir
   [ ! -f $f ] && echo "decode_fmmi.sh: no such file $f" && exit 1;
 done
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"

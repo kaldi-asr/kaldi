@@ -87,10 +87,12 @@ feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{prin
 [ -z $phn_dim ] && phn_dim=$[$feat_dim+1]
 [ -z $spk_dim ] && spk_dim=$feat_dim
 nj=`cat $alidir/num_jobs` || exit 1;
-splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
+splice_opts=`cat $alidir/splice_opts || exit 1` # frame-splicing options.
+cmvn_opts=`cat $alidir/cmvn_opts || exit 1` 
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/cmvn_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/final.mat $dir || exit 1;
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
@@ -99,7 +101,7 @@ split_data.sh $data $nj || exit 1;
 spkvecs_opt=  # Empty option for now, until we estimate the speaker vectors.
 gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
 
 if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
