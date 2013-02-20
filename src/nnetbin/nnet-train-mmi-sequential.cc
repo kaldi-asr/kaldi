@@ -113,7 +113,17 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for \"graph costs\" (including LM costs)");
     po.Register("old-acoustic-scale", &old_acoustic_scale,
-                "Add the current acoustic scores with some scale.");
+                "Add in the scores in the input lattices with this scale, rather "
+                "than discarding them.");
+
+    bool drop_frames = true;
+    po.Register("drop-frames", &drop_frames, 
+                "Drop frames, where correct path has zero FW-BW probability over den-lat (ie. path not in lattice)");
+
+#if HAVE_CUDA==1
+    kaldi::int32 use_gpu_id=-2;
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#endif
 
     po.Read(argc, argv);
 
@@ -137,6 +147,11 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    //Select the GPU
+#if HAVE_CUDA==1
+    if(use_gpu_id > -2)
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
 
     Nnet nnet_transf;
     if(feature_transform != "") {
@@ -311,19 +326,21 @@ int main(int argc, char *argv[]) {
         //7a) Check there is non-zero FW-BW probability 
         //at the alignment position (ie. the correct path 
         //exist within the lattice, and MMI has a chance to correct it)
-        frm_drop = 0;
-        for(int32 t=0; t<nnet_diff_h.NumRows(); t++) {
-          int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
-          if(nnet_diff_h(t, pdf) < 1e-20) {
-            frm_drop++;
-            nnet_diff_h.Row(t).Set(0.0);
+        if(drop_frames) {
+          frm_drop = 0;
+          for(int32 t=0; t<nnet_diff_h.NumRows(); t++) {
+            int32 pdf = trans_model.TransitionIdToPdf(num_ali[t]);
+            if(nnet_diff_h(t, pdf) < 1e-20) {
+              frm_drop++;
+              nnet_diff_h.Row(t).Set(0.0);
+            }
           }
+          if (frm_drop > 0) {
+            KALDI_WARN << " The lattice is likely to miss part of the correct path..."
+                         << " Dropped: " << frm_drop << "/" << nnet_diff_h.NumRows() << " frames";
+          }
+          num_frm_drop += frm_drop;
         }
-        if (frm_drop > 0) {
-          KALDI_WARN << " The lattice is likely to miss part of the correct path..."
-                       << " Dropped: " << frm_drop << "/" << nnet_diff_h.NumRows() << " frames";
-        }
-        num_frm_drop += frm_drop;
 
         
 
@@ -362,12 +379,12 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Done " << num_done << " files, " 
               << num_no_num_ali << " with no numerator alignments, " 
-              << num_no_den_lat << " with no denumerator lattices, " 
+              << num_no_den_lat << " with no denominator lattices, " 
               << num_other_error << " with other errors.";
 
     KALDI_LOG << "Overall MMI-objective/frame is "
               << (total_mmi_obj/tot_t) << " over " << tot_t << " frames. "
-              << " Dropped " << num_frm_drop << " frames."
+              << " From which dropped " << num_frm_drop << " frames."
               << "\n";
 
 

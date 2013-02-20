@@ -153,6 +153,9 @@ int main(int argc, char *argv[]) {
     po.Register("write-lattices", &lattice_wspecifier,
       "Write intermediate lattices to archive.");
 
+    bool reverse = true;
+    po.Register("reverse", &reverse, "Reverse input lattices in time");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -205,14 +208,19 @@ int main(int argc, char *argv[]) {
       ConvertLattice(lat, &lat_mapped);
       fst::Project(&lat_mapped, fst::PROJECT_INPUT); // keep only transition states
 
-      // reverse lattice in time
-      Lattice lat_reverse;
-      fst::Reverse(lat_mapped, &lat_reverse);
-      RemoveEpsLocal(&lat_reverse);
-
-      KALDI_LOG << "compose with lattice " << key;
       Lattice lat_composed;
-      Compose(lat_reverse, graph, &lat_composed); // composed FST contains HCLG arcs
+      if(reverse) {
+        // reverse lattice in time
+        Lattice lat_reverse;
+        fst::Reverse(lat_mapped, &lat_reverse);
+        RemoveEpsLocal(&lat_reverse);
+        // compose
+        KALDI_LOG << "compose with lattice " << key;
+        Compose(lat_reverse, graph, &lat_composed); // composed FST contains HCLG arcs
+      } else {
+        KALDI_LOG << "compose with lattice " << key;
+        Compose(lat_mapped, graph, &lat_composed); // composed FST contains HCLG arcs
+      }
       if (lattice_wspecifier != "") lat_writer.Write(key, lat_composed);
 
       CompactLattice clat_determinized;

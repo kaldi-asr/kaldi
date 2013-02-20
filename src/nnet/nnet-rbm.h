@@ -171,10 +171,98 @@ class Rbm : public RbmBase {
            pos_vis.NumCols() == input_dim_ &&
            pos_hid.NumCols() == output_dim_);
 
-    //lazy initialization of buffers (possibly reduces to no-op)
-    vis_hid_corr_.Resize(vis_hid_.NumRows(),vis_hid_.NumCols());
-    vis_bias_corr_.Resize(vis_bias_.Dim());
-    hid_bias_corr_.Resize(hid_bias_.Dim());
+    //lazy initialization of buffers
+    if ( vis_hid_corr_.NumRows() != vis_hid_.NumRows() ||
+         vis_hid_corr_.NumCols() != vis_hid_.NumCols() ||
+         vis_bias_corr_.Dim()    != vis_bias_.Dim()    ||
+         hid_bias_corr_.Dim()    != hid_bias_.Dim()     ){
+      vis_hid_corr_.Resize(vis_hid_.NumRows(),vis_hid_.NumCols(),kSetZero);
+      //vis_bias_corr_.Resize(vis_bias_.Dim(),kSetZero);
+      //hid_bias_corr_.Resize(hid_bias_.Dim(),kSetZero);
+      vis_bias_corr_.Resize(vis_bias_.Dim());
+      hid_bias_corr_.Resize(hid_bias_.Dim());
+    }
+
+    //TODO: detect divergence condition of Gaussian-Bernoulli unit! (scale down vis_hid_corr_?)
+    // limit the reconstruction variace by limiting the weight size???!!!
+    //
+    // Or detect the divergence by getting standard deviation of a)input minibatch b)reconstruction
+    // When ratio b)/a) larger than N (2 or 10...):
+    // 1. scale down the weights and biases by b)/a) ratio of stddev 
+    // 2. shrink learning rate by 0.9x
+    // 3. reset the momentum buffer  
+    // display warning! in later stage the training can return back to higher learning rate
+    // 
+    if (vis_type_ == RbmBase::GAUSSIAN) {
+      //get the standard deviations of pos_vis and neg_vis data
+
+      //pos_vis
+      CuMatrix<BaseFloat> pos_vis_pow2(pos_vis);
+      pos_vis_pow2.MulElements(pos_vis);
+      CuVector<BaseFloat> pos_vis_second(pos_vis.NumCols());
+      pos_vis_second.AddRowSumMat(1.0,pos_vis_pow2,0.0);
+      CuVector<BaseFloat> pos_vis_mean(pos_vis.NumCols());
+      pos_vis_mean.AddRowSumMat(1.0/pos_vis.NumRows(),pos_vis,0.0);
+
+      Vector<BaseFloat> pos_vis_second_h(pos_vis_second.Dim());
+      pos_vis_second.CopyToVec(&pos_vis_second_h);
+      Vector<BaseFloat> pos_vis_mean_h(pos_vis_mean.Dim());
+      pos_vis_mean.CopyToVec(&pos_vis_mean_h);
+      
+      Vector<BaseFloat> pos_vis_stddev(pos_vis_mean_h);
+      pos_vis_stddev.MulElements(pos_vis_mean_h);
+      pos_vis_stddev.Scale(-1.0);
+      pos_vis_stddev.AddVec(1.0/pos_vis.NumRows(),pos_vis_second_h);
+      pos_vis_stddev.ApplyPow(0.5);
+
+      //neg_vis
+      CuMatrix<BaseFloat> neg_vis_pow2(neg_vis);
+      neg_vis_pow2.MulElements(neg_vis);
+      CuVector<BaseFloat> neg_vis_second(neg_vis.NumCols());
+      neg_vis_second.AddRowSumMat(1.0,neg_vis_pow2,0.0);
+      CuVector<BaseFloat> neg_vis_mean(neg_vis.NumCols());
+      neg_vis_mean.AddRowSumMat(1.0/neg_vis.NumRows(),neg_vis,0.0);
+
+      Vector<BaseFloat> neg_vis_second_h(neg_vis_second.Dim());
+      neg_vis_second.CopyToVec(&neg_vis_second_h);
+      Vector<BaseFloat> neg_vis_mean_h(neg_vis_mean.Dim());
+      neg_vis_mean.CopyToVec(&neg_vis_mean_h);
+      
+      Vector<BaseFloat> neg_vis_stddev(neg_vis_mean_h);
+      neg_vis_stddev.MulElements(neg_vis_mean_h);
+      neg_vis_stddev.Scale(-1.0);
+      neg_vis_stddev.AddVec(1.0/neg_vis.NumRows(),neg_vis_second_h);
+      /* set negtive values to zero before the square root */
+      for (int32 i=0; i<neg_vis_stddev.Dim(); i++) {
+        if(neg_vis_stddev(i) < 0.0) { 
+          KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" << neg_vis_stddev(i);
+          neg_vis_stddev(i) = 0.0;
+        }
+      }
+      neg_vis_stddev.ApplyPow(0.5);
+
+      //monitor the standard deviation discrepancy between pos_vis and neg_vis
+      if (pos_vis_stddev.Sum() * 2 < neg_vis_stddev.Sum()) {
+        //scale-down the weights and biases
+        BaseFloat scale = pos_vis_stddev.Sum() / neg_vis_stddev.Sum();
+        vis_hid_.Scale(scale);
+        vis_bias_.Scale(scale);
+        hid_bias_.Scale(scale);
+        //reduce the learning rate           
+        learn_rate_ *= 0.9;
+        //reset the momentum buffers
+        vis_hid_corr_.SetZero();
+        vis_bias_corr_.SetZero();
+        hid_bias_corr_.SetZero();
+
+        KALDI_WARN << "Discrepancy between pos_hid and neg_hid varainces, "
+                   << "danger of weight explosion. a) Reducing weights with scale " << scale
+                   << " b) Lowering learning rate to " << learn_rate_
+                   << " [pos_vis_stddev(~1.0):" << pos_vis_stddev.Sum()/pos_vis.NumCols()
+                   << ",neg_vis_stddev:" << neg_vis_stddev.Sum()/neg_vis.NumCols() << "]";
+        return;           
+      }
+    }
     
 
     //  UPDATE vishid matrix
