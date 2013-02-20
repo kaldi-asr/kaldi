@@ -8,8 +8,8 @@
 # the LDA+MLLT to use 7, not 9 frames of context, and also increased
 # the learning rate for the "indirect" fMMI.
 
-for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
-for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm,nnet,tandem}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm,nnet,tandem}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
 
 exit 0
 

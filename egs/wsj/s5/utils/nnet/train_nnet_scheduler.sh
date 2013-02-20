@@ -69,6 +69,7 @@ for iter in $(seq -w $max_iters); do
    --bunchsize=$bunch_size --cachesize=$cache_size --randomize=$randomize \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+   ${seed:+ --seed=$seed} \
    $mlp_best "$feats_tr" "$labels" $mlp_next \
    2> $dir/log/iter$iter.log || exit 1; 
 
