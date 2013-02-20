@@ -56,9 +56,10 @@ steps/train_deltas.sh --cmd "$train_cmd" \
  1800 9000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
 # decode tri1
-utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph || exit 1;
-steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  exp/tri1/graph data/test exp/tri1/decode
+( utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph || exit 1;
+  steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+   exp/tri1/graph data/test exp/tri1/decode
+) &
 
 #draw-tree data/lang/phones.txt exp/tri1/tree | dot -Tps -Gsize=8,10.5 | ps2pdf - tree.pdf
 
@@ -77,16 +78,16 @@ steps/decode_deltas.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 
 # we use models for the cepstral mean normalization to help us 
 # normalize the stats to a constant proportion of silence.
-steps/train_cmn_models.sh --cmd "$train_cmd" data/train data/lang \
-   exp/tri2a exp/tri2a_cmn
+steps/train_cmvn_models.sh --cmd "$train_cmd" data/train data/lang \
+   exp/tri2a exp/tri2a_cmvn
 
-steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
-   data/train exp/tri2a_cmn mfcc/ exp/tri2a_cmn_train
-steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
-   data/test exp/tri2a_cmn mfcc/ exp/tri2a_cmn_test
+steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
+   data/train exp/tri2a_cmvn mfcc/ exp/tri2a_cmvn_train
+steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
+   data/test exp/tri2a_cmvn mfcc/ exp/tri2a_cmvn_test
 
 
-# train and decode tri2b [CMN+LDA+MLLT]
+# train and decode tri2b [CMVN+LDA+MLLT]
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
   1800 9000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
@@ -181,10 +182,7 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
 done
 
-# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2x.sh
-local/run_sgmm.sh
 local/run_sgmm2.sh
-local/run_sgmm2x.sh
 
 # you can do:
 # local/run_nnet_cpu.sh

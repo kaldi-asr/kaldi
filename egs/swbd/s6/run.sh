@@ -151,16 +151,16 @@ steps/align_deltas.sh --nj 30 --cmd "$train_cmd" \
   data/train_30k_nodup data/lang exp/tri2 exp/tri2_ali || exit 1;
 
 # we use models for the cepstral mean normalization to help us                                                                             # normalize the stats to a constant proportion of silence.                                                                                 
-steps/train_cmn_models.sh --cmd "$train_cmd" data/train_30k_nodup data/lang \
-   exp/tri2_ali exp/tri2_cmn
+steps/train_cmvn_models.sh --cmd "$train_cmd" data/train_30k_nodup data/lang \
+   exp/tri2_ali exp/tri2_cmvn
 
-# Compute CMN stats for all the training data subsets and the test data.  In
-# this recipe we do this just once, based on the tri2_cmn models which are
-# trained on a data subset.  I don't think the CMN should be that sensitive to
+# Compute CMVN stats for all the training data subsets and the test data.  In
+# this recipe we do this just once, based on the tri2_cmvn models which are
+# trained on a data subset.  I don't think the CMVN should be that sensitive to
 # these models, so it's not a big deal.
 for data in data/train_* data/eval2000; do
-  steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
-    $data exp/tri2_cmn mfcc/ exp/tri2_cmn_`basename $data`
+  steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
+    $data exp/tri2_cmvn mfcc/ exp/tri2_cmvn_`basename $data`
 done
 
 

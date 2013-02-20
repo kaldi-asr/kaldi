@@ -20,6 +20,7 @@ power=0.25 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
 splice_opts="--left-context=3 --right-context=3"
+cmvn_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 # End configuration.
 train_tree=true  # if false, don't actually train the tree.
@@ -61,12 +62,13 @@ mkdir -p $dir/log
 echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
+echo "$cmvn_opts" >$dir/cmvn_opts # keep track of CMVN options.
 
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
 
-splicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 # Note: $feats gets overwritten later in the script.
 feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 

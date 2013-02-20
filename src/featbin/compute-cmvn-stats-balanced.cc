@@ -18,14 +18,14 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
-#include "transform/balanced-cmn.h"
+#include "transform/balanced-cmvn.h"
 
 namespace kaldi {
 
-bool AccCmnStatsWrapper(std::string utt,
+bool AccCmvnStatsWrapper(std::string utt,
                         const MatrixBase<BaseFloat> &feats,
                         RandomAccessBaseFloatVectorReader *weights_reader,
-                        BalancedCmn *stats) {
+                        BalancedCmvn *stats) {
   if (!weights_reader->HasKey(utt)) {
     KALDI_WARN << "No weights available for utterance " << utt;
     return false;
@@ -56,15 +56,15 @@ int main(int argc, char *argv[]) {
         " Note: the cmvn stats we write are not \"real\" statistics, but \"faked\"\n"
         "ones that will give us the normalization we want.\n"
         "\n"
-        "Usage: compute-cmn-stats-balanced [options] <sil-global-cmvn-stats> <nonsil-global-cmvn-stats> "
+        "Usage: compute-cmvn-stats-balanced [options] <sil-global-cmvn-stats> <nonsil-global-cmvn-stats> "
         "<feats-rspecifier> <nonsilence-weight-rspecifier> <cmvn-stats-wspecifier>\n";
     
     ParseOptions po(usage);
     std::string spk2utt_rspecifier;
     bool binary = true;
-    BalancedCmnConfig config;
+    BalancedCmvnConfig config;
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to utterance-list map");
-    po.Register("binary", &binary, "write in binary mode (applies only to global CMN/CVN)");
+    po.Register("binary", &binary, "write in binary mode (applies only to global CMVN/CVN)");
     config.Register(&po);
     
     po.Read(argc, argv);
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         std::string spk = spk2utt_reader.Key();
         const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-        BalancedCmn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
+        BalancedCmvn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
         for (size_t i = 0; i < uttlist.size(); i++) {
           std::string utt = uttlist[i];
           if (!feat_reader.HasKey(utt)) {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           const Matrix<BaseFloat> &feats = feat_reader.Value(utt);
-          if (!AccCmnStatsWrapper(utt, feats, &weights_reader, &stats)) {
+          if (!AccCmvnStatsWrapper(utt, feats, &weights_reader, &stats)) {
             num_err++;
           } else {
             num_done++;
@@ -122,10 +122,10 @@ int main(int argc, char *argv[]) {
         
       for (; !feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
-        BalancedCmn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
+        BalancedCmvn stats(config, sil_cmvn_stats, nonsil_cmvn_stats);
         const Matrix<BaseFloat> &feats = feat_reader.Value();
         
-        if (!AccCmnStatsWrapper(utt, feats, &weights_reader, &stats)) {
+        if (!AccCmvnStatsWrapper(utt, feats, &weights_reader, &stats)) {
           num_err++;
           continue;
         }

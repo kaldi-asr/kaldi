@@ -32,7 +32,9 @@ namespace kaldi {
 void InitCmvnStats(int32 dim, Matrix<double> *stats);
 
 /// Accumulation from a single frame (weighted).
-void AccCmvnStats(const VectorBase<BaseFloat> &feats, BaseFloat weight, MatrixBase<double> *stats);
+void AccCmvnStats(const VectorBase<BaseFloat> &feat,
+                  BaseFloat weight,
+                  MatrixBase<double> *stats);
 
 /// Accumulation from a feature file (possibly weighted-- useful in excluding silence).
 void AccCmvnStats(const MatrixBase<BaseFloat> &feats,

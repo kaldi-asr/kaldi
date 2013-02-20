@@ -24,9 +24,9 @@ steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd
  steps/align_sgmm2.sh --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b \
     --use-graphs true --use-gselect true data/train data/lang exp/sgmm2_4a exp/sgmm2_4a_ali || exit 1;
  steps/make_denlats_sgmm2.sh --nj 8 --sub-split 20 --cmd "$decode_cmd" --transform-dir exp/tri3b \
-   data/train data/lang exp/sgmm2_4a_ali exp/sgmm2_4a_denlats
+   data/train data/lang exp/sgmm2_4a_ali exp/sgmm2_4a_denlats || exit 1;
  steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 \
-   data/train data/lang exp/sgmm2_4a_ali exp/sgmm2_4a_denlats exp/sgmm2_4a_mmi_b0.2 
+   data/train data/lang exp/sgmm2_4a_ali exp/sgmm2_4a_denlats exp/sgmm2_4a_mmi_b0.2  || exit 1;
 
  for iter in 1 2 3 4; do
   steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \

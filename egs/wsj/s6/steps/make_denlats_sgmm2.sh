@@ -42,10 +42,10 @@ fi
 
 data=$1
 lang=$2
-alidir=$3 # could also be $srcdir, but only if no vectors supplied.
+alidir=$3 # could also be a build directory, but only if no vectors supplied. [why did I write this? --dan]
 dir=$4
 
-for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $srcdir/final.mdl $srcdir/final.mat $srcdir/tree; do
+for f in $data/feats.scp $data/cmvn.scp $lang/phones.txt $alidir/final.mdl $alidir/final.mat $alidir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 

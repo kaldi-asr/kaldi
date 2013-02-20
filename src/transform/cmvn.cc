@@ -28,7 +28,7 @@ void InitCmvnStats(int32 dim, Matrix<double> *stats) {
 void AccCmvnStats(const VectorBase<BaseFloat> &feats, BaseFloat weight, MatrixBase<double> *stats) {
   int32 dim = feats.Dim();
   KALDI_ASSERT(stats != NULL);
-  KALDI_ASSERT(stats->NumRows() == 2 && stats->NumCols() == dim+1);
+  KALDI_ASSERT(stats->NumRows() == 2 && stats->NumCols() == dim + 1);
   // Remove these __restrict__ modifiers if they cause compilation problems.
   // It's just an optimization.
    double *__restrict__ mean_ptr = stats->RowData(0),
