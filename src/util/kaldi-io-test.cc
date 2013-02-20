@@ -17,6 +17,9 @@
 #include "base/io-funcs.h"
 #include "util/kaldi-io.h"
 #include "base/kaldi-math.h"
+#ifndef _MSC_VER
+#include <unistd.h>
+#endif
 
 namespace kaldi {
 
