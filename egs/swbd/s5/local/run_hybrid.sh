@@ -7,7 +7,7 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 
-false && \
+#false && \
 {
 
 ###
