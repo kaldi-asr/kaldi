@@ -71,7 +71,7 @@ fi
 
 # find the feature_transform to use
 if [ -z "$feature_transform" ]; then
-  feature_transform=$srcdir/$(readlink $srcdir/final.feature_transform)
+  feature_transform=$srcdir/final.feature_transform
 fi
 if [ ! -f $feature_transform ]; then
   echo "Missing feature_transform '$feature_transform'"
@@ -93,7 +93,7 @@ else
   echo "Overriding class_frame_counts by $class_frame_counts"
 fi
 
-# We use the pre-computed CMVN as well as pre-defined splicing
+# Create the feature stream:
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # Optionally add cmvn
 if [ -f $srcdir/norm_vars ]; then
