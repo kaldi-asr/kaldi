@@ -92,7 +92,7 @@ utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
  utils/split_scp.pl $utt2spk_opt $data/text $texts
 
 # If lockfile is not installed, just don't lock it.  It's not a big deal.
-`which lockfile 2>/dev/null` && lockfile -l 60 $data/.split_lock 
+which lockfile 2>/dev/null && lockfile -l 60 $data/.split_lock 
 
 for n in `seq $numsplit`; do
    dsn=$data/split$numsplit/$n
