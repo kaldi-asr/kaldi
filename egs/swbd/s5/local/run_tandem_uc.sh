@@ -15,7 +15,7 @@
   dir=data-fbank/eval2000
   srcdir=data/eval2000
   {
-    mkdir $dir; cp $srcdir/* $dir; rm $dir/{feats.scp,cmvn.scp};
+    mkdir -p $dir; cp $srcdir/* $dir; rm $dir/{feats.scp,cmvn.scp};
     steps/make_fbank.sh --cmd "$train_cmd" --nj 20 \
       $dir $dir/_log $dir/_data || exit 1;
     steps/compute_cmvn_stats.sh $dir $dir/_log $dir/_data || exit 1;
@@ -24,7 +24,7 @@
   dir=data-fbank/train
   srcdir=data/train
   {
-    mkdir $dir; cp $srcdir/* $dir; rm $dir/{feats.scp,cmvn.scp};
+    mkdir -p $dir; cp $srcdir/* $dir; rm $dir/{feats.scp,cmvn.scp};
     steps/make_fbank.sh --cmd "$train_cmd" --nj 20 \
       $dir $dir/_log $dir/_data || exit 1;
     steps/compute_cmvn_stats.sh $dir $dir/_log $dir/_data || exit 1;
@@ -32,7 +32,7 @@
 }
 
 # Now we prepare the subsets as in case of the default MFCC features
-# (Some may be unused by this recipe, but handy for experimenting)
+# (Some are be unused by this recipe, but can be handy in future...)
 data=data-fbank
 #false && \
 {
