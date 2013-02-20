@@ -20,6 +20,9 @@
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
 #include "util/table-types.h"
+#ifndef _MSC_VER
+#include <unistd.h> // for sleep.
+#endif
 
 namespace kaldi {
 

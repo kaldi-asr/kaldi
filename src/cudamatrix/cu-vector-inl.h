@@ -77,7 +77,7 @@ void CuVector<Real>::Swap(Vector<Real> *vec) {
       if (vec->dim_ != 0) {
         // *this is empty, but vec is nonempty.
         Resize(vec->dim_, kUndefined);
-        CopyFromVec(*vec);
+        this->CopyFromVec(*vec);
         vec->Resize(0);
       }
       // else both are empty.

@@ -154,8 +154,8 @@ class TrivialFactorWeightFstImpl
       StateId s = fst_->Start();
       if (s == kNoStateId)
         return kNoStateId;
-      StateId start = FindState(Element(fst_->Start(), Weight::One()));
-      SetStart(start);
+      StateId start = this->FindState(Element(fst_->Start(), Weight::One()));
+      this->SetStart(start);
     }
     return CacheImpl<A>::Start();
   }
@@ -181,7 +181,7 @@ class TrivialFactorWeightFstImpl
             w = Weight::Zero();
         }
       }
-      SetFinal(s, w);
+      this->SetFinal(s, w);
       return w;
     } else {
       return CacheImpl<A>::Final(s);
@@ -271,7 +271,7 @@ class TrivialFactorWeightFstImpl
         }
       }
     }
-    SetArcs(s);
+    this->SetArcs(s);
   }
 
  private:

@@ -92,8 +92,8 @@ void CuMatrix<Real>::Swap(Matrix<Real> *mat) {
     if (this->num_rows_ == 0) {
       if (mat->num_rows_ != 0) {
         // *this is empty, but mat is nonempty.
-        Resize(mat->num_rows_, mat->num_cols_, kUndefined);
-        CopyFromMat(*mat);
+        this->Resize(mat->num_rows_, mat->num_cols_, kUndefined);
+        this->CopyFromMat(*mat);
         mat->Resize(0, 0);
       }
       // else both are empty.
