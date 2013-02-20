@@ -154,7 +154,7 @@ else
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else 
       ssdata1=$data1/split$nj/$n/split$sub_split;
-      if [ ! -d $ssdata2 ] || [ $ssdata2 -ot $sdata1/$n/feats.scp ]; then
+      if [ ! -d $ssdata1 ] || [ $ssdata1 -ot $sdata1/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
       fi
       ssdata2=$data2/split$nj/$n/split$sub_split;
