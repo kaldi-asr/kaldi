@@ -6,6 +6,11 @@
 SysDir=`pwd`
 echo $SysDir
 
+#keyword search default
+glmFile=conf/glm
+duptime=0.5
+case_insensitive=false
+
 # Lexicon and Language Model parameters
 oovSymbol="<unk>"
 lexiconFlags="-oov <unk>"
