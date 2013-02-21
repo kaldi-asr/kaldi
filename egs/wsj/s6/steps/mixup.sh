@@ -47,6 +47,7 @@ splice_opts=`cat $srcdir/splice_opts || exit 1`
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 
 mkdir -p $dir/log
+cp $srcdir/final.mat $dir
 cp $srcdir/splice_opts $dir 2>/dev/null
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 echo $nj > $dir/num_jobs
