@@ -139,6 +139,15 @@ data=data-fbank
   }
 }
 
+#false && \
+{
+  #compute CMVN of the BN-features
+  dir=data-bn/tri5a_uc-mlp-part2/train
+  steps/compute_cmvn_stats.sh $dir $dir/_log $dir/_data || exit 1;
+  dir=data-bn/tri5a_uc-mlp-part2/eval2000
+  steps/compute_cmvn_stats.sh $dir $dir/_log $dir/_data || exit 1;
+}
+
 
 
 ###
