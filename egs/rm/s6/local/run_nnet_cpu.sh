@@ -3,17 +3,22 @@
 . cmd.sh
 
 # result: exp/tri4a1_nnet/decode/wer_2:%WER 1.69 [ 212 / 12533, 26 ins, 44 del, 142 sub ]
-(  steps/train_nnet_cpu.sh  --num-epochs 20 \
+ steps/train_nnet_cpu.sh  --num-epochs 20 \
      --num-epochs-extra 10 --add-layers-period 1 \
-     --mix-up 4000 --num-iters-final 5 --shrink-interval 3 
+     --mix-up 4000 --num-iters-final 5 --shrink-interval 3 \
+     --num-threads 8 --parallel-opts "-pe smp 8" \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
      --num-parameters 750000 \
-      data/train data/lang exp/tri3b_ali exp/tri4a1_nnet 
+      data/train data/lang exp/tri3b_ali exp/tri4a1_nnet  || exit 1
 
    steps/decode_nnet_cpu.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
-     exp/tri3b/graph data/test exp/tri4a1_nnet/decode ) 
+     exp/tri3b/graph data/test exp/tri4a1_nnet/decode || exit 1;
+
+# Don't bother running the MMI training below, it doesn't
+# really help.
+exit 0;
 
 # using conf/decode.config as we need much larger beams for RM.
 steps/make_denlats_nnet_cpu.sh --nj 8 \
@@ -21,6 +26,7 @@ steps/make_denlats_nnet_cpu.sh --nj 8 \
    data/train data/lang exp/tri4a1_nnet exp/tri4a1_denlats
 
 steps/train_nnet_cpu_mmi.sh --cmd "$decode_cmd" --transform-dir exp/tri3b_ali \
+   --num-threads 8 \
    data/train data/lang exp/tri4a1_nnet exp/tri4a1_nnet exp/tri4a1_denlats exp/tri4a1_mmi_a
 
    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \

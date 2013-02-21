@@ -13,6 +13,7 @@ exit 1;
 . path.sh
 
 local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
+# local/swbd1_data_prep.sh /data/corpora0/LDC97S62
 # local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 # local/swbd1_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
 
@@ -26,6 +27,7 @@ utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 # If you have the Fisher data, you can set this "fisher_opt" variable.
 fisher_opt="--fisher /export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/"
+#fisher_opt="--fisher /data/corpora0/LDC2004T19/fe_03_p1_tran/"
 # edinburgh:
 # fisher_opt="--fisher /exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts"
 local/swbd1_train_lms.sh $fisher_opt \
@@ -54,6 +56,7 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
 # is not very much preprocessed; for actual WER reporting we'll use
 # sclite.
 
+# local/eval2000_data_prep.sh /data/corpora0/LDC2002S09/hub5e_00 /data/corpora0/LDC2002T43
 # local/eval2000_data_prep.sh /mnt/matylda2/data/HUB5_2000/ /mnt/matylda2/data/HUB5_2000/2000_hub5_eng_eval_tr
 # local/eval2000_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/hub5/2000 /exports/work/inf_hcrc_cstr_general/corpora/switchboard/hub5/2000/transcr
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
@@ -80,7 +83,6 @@ utils/subset_data_dir.sh --first data/train 4000 data/train_dev # 5hr 6min
 n=$[`cat data/train/segments | wc -l` - 4000]
 utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
-## To see the amount of speech in each set:
 # perl -ne 'split; $s+=($_[3]-$_[2]); END{$h=int($s/3600); $r=($s-$h*3600); $m=int($r/60); $r-=$m*60; printf "%.1f sec -- %d:%d:%.1f\n", $s, $h, $m, $r;}' data/local/train/segments
 
 
@@ -162,7 +164,6 @@ for data in data/train_* data/eval2000; do
   steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
     $data exp/tri2_cmvn mfcc/ exp/tri2_cmvn_`basename $data`
 done
-
 
 # From now, we start building a bigger system (on train_100k_nodup, which has 
 # 110hrs of data). We start with the LDA+MLLT system

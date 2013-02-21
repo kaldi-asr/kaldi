@@ -11,6 +11,7 @@
 #    rm1_audio1  rm1_audio2	rm2_audio
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
+#local/rm_data_prep.sh /data/corpora0/LDC93S3A/rm_comp/ || exit 1;
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
@@ -39,8 +40,6 @@ utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
 utils/subset_data_dir.sh data/train 1000 data/train.1k  || exit 1;
 
 steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono  || exit 1;
-
-#show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 
@@ -186,3 +185,4 @@ local/run_sgmm2.sh
 
 # you can do:
 # local/run_nnet_cpu.sh
+

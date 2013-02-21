@@ -85,7 +85,7 @@ if [ ! -z "$fisher" ]; then
     >& $dir/fisher/ppl2
   compute-best-mix $dir/ppl2 $dir/fisher/ppl2 >& $dir/sw1_fsh_mix.log
   grep 'best lambda' $dir/sw1_fsh_mix.log \
-    | perl -e '$_=<>; s/.*\(//; s/\).*//; split; die "Expecting 2 numbers; found: $_" if($#_!=1); print "$_[0]\n$_[1]\n";' > $dir/sw1_fsh_mix.weights
+    | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; die "Expecting 2 numbers; found: $_" if(@A!=2); print "$A[0]\n$A[1]\n";' > $dir/sw1_fsh_mix.weights
   swb1_weight=$(head -1 $dir/sw1_fsh_mix.weights)
   fisher_weight=$(tail -n 1 $dir/sw1_fsh_mix.weights)
   ngram -lm $dir/sw1.o3g.kn.gz -lambda $swb1_weight \

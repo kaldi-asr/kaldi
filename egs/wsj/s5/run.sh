@@ -12,6 +12,9 @@
 #wsj0=/mnt/matylda2/data/WSJ0
 #wsj1=/mnt/matylda2/data/WSJ1
 
+#wsj0=/data/corpora0/LDC93S6B
+#wsj1=/data/corpora0/LDC94S13B
+
 wsj0=/export/corpora5/LDC/LDC93S6B
 wsj1=/export/corpora5/LDC/LDC94S13B
 
@@ -44,15 +47,16 @@ local/wsj_format_data.sh || exit 1;
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
  # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
 
- # Note: I am commenting out the commands below.  They take up a lot
+ # Note: I am commenting out the RNNLM-building commands below.  They take up a lot
  # of CPU time and are not really part of the "main recipe."
  # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
  # won't always work, it depends what $decode_cmd is.
- # (
- #  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
- #  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
- #  local/wsj_train_lms.sh && \
- #  local/wsj_format_local_lms.sh && 
+  (
+   local/wsj_extend_dict.sh $wsj1/13-32.1  && \
+   utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
+   local/wsj_train_lms.sh &&
+   local/wsj_format_local_lms.sh # &&
+ #
  #   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
  #       sleep 20; # wait till tools compiled.
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
@@ -62,7 +66,7 @@ local/wsj_format_data.sh || exit 1;
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
  #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
  #   )
- # ) &
+  ) &
 
 
 # Now make MFCC features.

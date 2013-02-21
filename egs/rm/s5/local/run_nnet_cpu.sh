@@ -5,7 +5,7 @@
 # result: exp/tri4a1_nnet/decode/wer_2:%WER 1.69 [ 212 / 12533, 26 ins, 44 del, 142 sub ]
 (  steps/train_nnet_cpu.sh  --num-epochs 20 \
      --num-epochs-extra 10 --add-layers-period 1 \
-     --mix-up 4000 --num-iters-final 5 --shrink-interval 3 
+     --mix-up 4000 --num-iters-final 5 --shrink-interval 3 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
      --num-parameters 750000 \

@@ -1,17 +1,19 @@
 #!/bin/bash
 
+. cmd.sh
+
 exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. cmd.sh
 
 # Data prep
 
 #local/swbd_p1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
-local/swbd_p1_data_prep.sh /export/corpora3/LDC/LDC97S62 
+local/swbd_p1_data_prep.sh /data/corpora0/LDC97S62/
+#local/swbd_p1_data_prep.sh /export/corpora3/LDC/LDC97S62 
 
 local/swbd_p1_prepare_dict.sh
 
@@ -25,7 +27,8 @@ local/swbd_p1_format_data.sh
 # is not very much preprocessed; for actual WER reporting we'll use
 # sclite.
 #local/eval2000_data_prep.sh /mnt/matylda2/data/HUB5_2000/ /mnt/matylda2/data/HUB5_2000/2000_hub5_eng_eval_tr
-local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
+#local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
+local/eval2000_data_prep.sh  /data/corpora0/LDC2002S09/hub5e_00 /data/corpora0/LDC2002T43 || exit 1;
 
 . cmd.sh
 # mfccdir should be some place with a largish disk where you
