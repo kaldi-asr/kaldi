@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -v
 
 # This is not finished!
 
@@ -14,8 +14,11 @@
 #wsj0=/mnt/matylda2/data/WSJ0
 #wsj1=/mnt/matylda2/data/WSJ1
 
-wsj0=/export/corpora5/LDC/LDC93S6B
-wsj1=/export/corpora5/LDC/LDC94S13B
+wsj0=/data/corpora0/LDC93S6B
+wsj1=/data/corpora0/LDC94S13B
+
+#wsj0=/export/corpora5/LDC/LDC93S6B
+#wsj1=/export/corpora5/LDC/LDC94S13B
 
 local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 
@@ -46,15 +49,17 @@ local/wsj_format_data.sh || exit 1;
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
  # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
 
+  (
+   local/wsj_extend_dict.sh $wsj1/13-32.1  && \
+    utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
+   local/wsj_train_lms.sh && \
+   local/wsj_format_local_lms.sh
+  )&
  # Note: I am commenting out the commands below.  They take up a lot
  # of CPU time and are not really part of the "main recipe."
  # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
  # won't always work, it depends what $decode_cmd is.
- # (
- #  local/wsj_extend_dict.sh $wsj1/13-32.1  && \
- #  utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
- #  local/wsj_train_lms.sh && \
- #  local/wsj_format_local_lms.sh && 
+ # Note: before running this we'd have to wait for the commands above that we ran with "&":
  #   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
  #       sleep 20; # wait till tools compiled.
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
@@ -63,8 +68,7 @@ local/wsj_format_data.sh || exit 1;
  #      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
  #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
- #   )
- # ) &
+ #   ) &
 
 
 # Now make MFCC features.  mfccdir should be some place with a largish disk
@@ -158,12 +162,12 @@ steps/decode_deltas.sh --nj 8 --cmd "$decode_cmd" \
 
 # we use models for the cepstral mean normalization to help us                                                                             
 # normalize the stats to a constant proportion of silence.                                                                                 
-steps/train_cmn_models.sh --cmd "$train_cmd" data/train_si84 data/lang \
-   exp/tri2 exp/tri2_cmn
+steps/train_cmvn_models.sh --cmd "$train_cmd" data/train_si84 data/lang \
+   exp/tri2 exp/tri2_cmvn
 
 for d in data/{train_*,test_*}; do
-  steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
-    $d exp/tri2_cmn mfcc/ exp/tri2_cmn_`basename $d`
+  steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
+    $d exp/tri2_cmn mfcc/ exp/tri2_cmvn_`basename $d`
 done
 
 # tri2 was trained on the same subset (si84) so we can use
@@ -259,44 +263,38 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 )
 
 
-# From 3b system, align all si284 data.
+# From tri4 system, align all si284 data.
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4 exp/tri4_ali_si284 || exit 1;
 
-# From 3b system, train another SAT system (tri4a) with all the si284 data.
+# From the tri4 system, train another SAT system (tri4a) with all the si284 data.
+# We demonstrate the train_quick.sh script here.  It gives about the same
+# results as the full training script (train_sat.sh), but we don't
+# compare them here (there was a comparison in the s5 examples).
 
-steps/train_sat.sh  --cmd "$train_cmd" \
-  4200 40000 data/train_si284 data/lang exp/tri4_ali_si284 exp/tri4a || exit 1;
-(
- utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
- steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
- steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
-) &
 steps/train_quick.sh --cmd "$train_cmd" \
-   4200 40000 data/train_si284 data/lang exp/tri4_ali_si284 exp/tri4b || exit 1;
+   4200 40000 data/train_si284 data/lang exp/tri4_ali_si284 exp/tri5 || exit 1;
 
 (
- utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
+ utils/mkgraph.sh data/lang_test_tgpr exp/tri5 exp/tri5/graph_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b/decode_tgpr_dev93 || exit 1;
+   exp/tri5/graph_tgpr data/test_dev93 exp/tri5/decode_tgpr_dev93 || exit 1;
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
+  exp/tri5/graph_tgpr data/test_eval92 exp/tri5/decode_tgpr_eval92 || exit 1;
 
- utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri4b exp/tri4b/graph_bd_tgpr || exit 1;
+ utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri5 exp/tri5/graph_bd_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4b/graph_bd_tgpr data/test_dev93 exp/tri4b/decode_bd_tgpr_dev93 || exit 1;
+   exp/tri5/graph_bd_tgpr data/test_dev93 exp/tri5/decode_bd_tgpr_dev93 || exit 1;
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_bd_tgpr data/test_eval92 exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
+  exp/tri5/graph_bd_tgpr data/test_eval92 exp/tri5/decode_bd_tgpr_eval92 || exit 1;
 ) &
 
-# Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
+# Train and test MMI, and boosted MMI, on tri5 (LDA+MLLT+SAT on
 # all the data).  Use 30 jobs.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
+  data/train_si284 data/lang exp/tri5 exp/tri5_ali_si284 || exit 1;
 
-local/run_mmi_tri4b.sh
+local/run_mmi_tri5.sh
 
 #local/run_nnet_cpu.sh
 
@@ -322,19 +320,19 @@ local/run_hybrid.sh
 #
 #steps/make_index.sh --cmd "$decode_cmd" --acwt 0.1 \
 #  data/kws/ data/lang_test_bd_tgpr/ \
-#  exp/tri4b/decode_bd_tgpr_eval92/ \
-#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#  exp/tri5/decode_bd_tgpr_eval92/ \
+#  exp/tri5/decode_bd_tgpr_eval92/kws
 #
 #steps/search_index.sh --cmd "$decode_cmd" \
 #  data/kws \
-#  exp/tri4b/decode_bd_tgpr_eval92/kws
+#  exp/tri5/decode_bd_tgpr_eval92/kws
 #
 # If you want to provide the start time for each utterance, you can use the --segments
 # option. In WSJ each file is an utterance, so we don't have to set the start time.
-#cat exp/tri4b/decode_bd_tgpr_eval92/kws/result.* | \
+#cat exp/tri5/decode_bd_tgpr_eval92/kws/result.* | \
 #  utils/write_kwslist.pl --flen=0.01 --duration=$duration \
 #  --normalize=true --map-utter=data/kws/utter_map \
-#  - exp/tri4b/decode_bd_tgpr_eval92/kws/kwslist.xml
+#  - exp/tri5/decode_bd_tgpr_eval92/kws/kwslist.xml
 
 # # forward-backward decoding example [way to speed up decoding by decoding forward
 # # and backward in time] 
