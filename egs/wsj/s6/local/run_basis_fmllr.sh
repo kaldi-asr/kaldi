@@ -13,8 +13,8 @@ for x in test_eval92 test_eval93 test_dev93 ; do
   cp -r data/$x data/$y
   cat data/$x/utt2spk | awk '{print $1, $1;}' > data/$y/utt2spk;
   cp data/$y/utt2spk data/$y/spk2utt;
-  steps/compute_cmn_stats_balanced.sh --cmd "$train_cmd" \
-    data/$y exp/tri2_cmn mfcc/ exp/tri2_cmn_$y || exit 1;
+  steps/compute_cmvn_stats_balanced.sh --cmd "$train_cmd" \
+    data/$y exp/tri2_cmvn mfcc/ exp/tri2_cmvn_$y || exit 1;
 done
 
 
