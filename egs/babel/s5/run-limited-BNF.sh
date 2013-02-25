@@ -103,13 +103,13 @@ echo ---------------------------------------------------------------------
 steps_BNF/align_si.sh \
     --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
     data/train_bnf data/lang exp_BNF/tri5 exp_BNF/tri5_ali || exit 1
-steps/train_ubm.sh --cmd "$train_cmd" \
+steps_BNF/train_ubm.sh --cmd "$train_cmd" \
     $numGaussUBM data/train_bnf data/lang exp_BNF/tri5_ali exp_BNF/ubm6 || exit 1
 
 echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/sgmm6 on" `date`
 echo ---------------------------------------------------------------------
-steps/train_sgmm2.sh --cmd "$train_cmd" \
+steps_BNF/train_sgmm2.sh --cmd "$train_cmd" \
     $numLeavesSGMM $numGaussSGMM data/train_bnf data/lang exp_BNF/tri5_ali exp_BNF/ubm6/final.ubm exp_BNF/sgmm6 || exit 1
 
 ################################################################################
@@ -145,7 +145,7 @@ echo "See exp_BNF/sgmm6/mkgraph.log, exp_BNF/sgmm6/decode.log and exp_BNF/sgmm6/
 echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/sgmm6_ali on" `date`
 echo ---------------------------------------------------------------------
-steps/align_sgmm2.sh \
+steps_BNF/align_sgmm2.sh \
     --nj $train_nj --cmd "$train_cmd" --use-graphs true --use-gselect true \
     data/train_bnf data/lang exp_BNF/sgmm6 exp_BNF/sgmm6_ali || exit 1
 
@@ -153,7 +153,7 @@ echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/sgmm6_denlats on" `date`
 echo ---------------------------------------------------------------------
 # more experiments need to be done on the lat-beam
-steps/make_denlats_sgmm2.sh \
+steps_BNF/make_denlats_sgmm2.sh \
     --nj $train_nj --sub-split $train_nj \
     --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" 
     data/train_bnf data/lang exp_BNF/sgmm6_ali exp_BNF/sgmm6_denlats || exit 1
@@ -161,7 +161,7 @@ steps/make_denlats_sgmm2.sh \
 echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/sgmm6_mmi_b0.1 on" `date`
 echo ---------------------------------------------------------------------
-steps/train_mmi_sgmm2.sh \
+steps_BNF/train_mmi_sgmm2.sh \
     --cmd "$decode_cmd" --boost 0.1 \
     data/train_bnf data/lang exp_BNF/sgmm6_ali exp_BNF/sgmm6_denlats \
     exp_BNF/sgmm6_mmi_b0.1 || exit 1
