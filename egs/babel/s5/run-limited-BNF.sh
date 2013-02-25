@@ -25,7 +25,7 @@ configfile=$1
 
 # On the machines where DNN is trained, check out ptdnn from Sourceforge.
 # These machines should have GPUs and have Theano installed. 
-#svn checkout svn://svn.code.sf.net/p/ptdnn/code-0/trunk
+# ptdnnn is under construction, should be available soon.
 
 # To install Theano and other dependencies, refer to install.sh in ptdnn 
 
