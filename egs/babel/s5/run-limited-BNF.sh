@@ -19,15 +19,13 @@ configfile=$1
 ################################################################################
 # Preparation
 ################################################################################
-# Install pfiles_utils and set the pointer to the commands in the 
+# Install pfiles_utils and set the commands path in the 
 # PATH environment variable or in the path.sh
 # http://www.icsi.berkeley.edu/ftp/pub/real/davidj/pfile_utils-v0_51.tar.gz
 
-# On the machines where DNN is trained, check out ptdnn from Sourceforge.
-# These machines should have GPUs and have Theano installed. 
-# ptdnnn is under construction, should be available soon.
-
-# To install Theano and other dependencies, refer to install.sh in ptdnn 
+# On the machines with GPUs, use ptdnn for DNN training.
+# These machines should have Theano installed. Refer to README in ptdnn 
+# for installation information.
 
 ################################################################################
 # Ready to start DNN training
