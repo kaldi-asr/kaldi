@@ -1,8 +1,9 @@
 // util/parse-options.cc
 
-// Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
-//                      Saarland University;  Johns Hopkins University (Author: Daniel Povey)
-//                      Frantisek Skala
+// Copyright 2009-2011  Karel Vesely;  Microsoft Corporation;
+//                      Saarland University (Author: Arnab Ghoshal);
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey);
+//                      Frantisek Skala;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,13 +38,20 @@ namespace kaldi {
 template<typename T>
 void ParseOptions::Register(const std::string &name, T *ptr,
                             const std::string &doc) {
-  this->RegisterCommon(name, ptr, doc, false);
+  if (other_parser_ == NULL) {
+    this->RegisterCommon(name, ptr, doc, false);
+  } else {
+    KALDI_ASSERT(prefix_ != "" &&
+        "Cannot use empty prefix when registering with prefix.");
+    std::string new_name = prefix_ + '.' + name;  // --name becomes --prefix.name
+    other_parser_->RegisterCommon(new_name, ptr, doc, false);
+  }
 }
 
 // does the common part of the job of registering a parameter
 template<typename T>
 void ParseOptions::RegisterCommon(const std::string &name, T *ptr,
-                            const std::string &doc, bool is_standard) {
+                                  const std::string &doc, bool is_standard) {
   KALDI_ASSERT(ptr != NULL);
   std::string idx = name;
   NormalizeArgName(&idx);
@@ -292,9 +300,8 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       NormalizeArgName(&key);
       Trim(&value);
       if (!SetOption(key, value)) {
-        std::cerr << "*** Invalid option " << argv[i] << " ***\n";
         PrintUsage(true);
-        exit(1);
+        KALDI_ERR << "Invalid option " << argv[i];
       }
     } else {
       // first non-long option finishes the options // was: return i;
@@ -375,7 +382,6 @@ void ParseOptions::PrintConfig(std::ostream &os) {
       os << "'" << *string_map_[key] << "'";
     } else {
       KALDI_ERR << "PrintConfig: unrecognized option " << key << "[code error]";
-      exit(1);
     }
     os << '\n';
   }
@@ -386,8 +392,7 @@ void ParseOptions::PrintConfig(std::ostream &os) {
 void ParseOptions::ReadConfigFile(const std::string &filename) {
   std::ifstream is(filename.c_str(), std::ifstream::in);
   if (!is.good()) {
-    std::cerr << "Cannot open config file " << filename <<'\n';
-    exit(1);
+    KALDI_ERR << "Cannot open config file: " << filename;
   }
 
   std::string line, key, value;
@@ -406,10 +411,8 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
     NormalizeArgName(&key);
     Trim(&value);
     if (!SetOption(key, value)) {
-      std::cerr << "*** Invalid option " << line << " in config file "
-                << filename << " ***\n";
       PrintUsage(true);
-      exit(1);
+      KALDI_ERR << "Invalid option " << line << " in config file " << filename;
     }
   }
 }
@@ -480,11 +483,11 @@ bool ParseOptions::ToBool(std::string str) {
       || (str.compare("0") == 0)) {
     return false;
   }
-  std::cerr << "*** Invalid format for boolean argument [expected true or false]: "
-            << str << " ***\n";
+  // if it is neither true nor false:
   PrintUsage(true);
-  exit(1);
-  return false;
+  KALDI_ERR << "Invalid format for boolean argument [expected true or false]: "
+            << str;
+  return false;  // never reached
 }
 
 
@@ -494,9 +497,8 @@ int32 ParseOptions::ToInt(std::string str) {
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   int32 ret = std::strtol(str.c_str(), &end_pos, 0);
   if (str.c_str() == end_pos) {
-    std::cerr << "*** Invalid integer option \"" << str << "\" ***\n";
     PrintUsage(true);
-    exit(1);
+    KALDI_ERR << "Invalid integer option \"" << str << "\"";
   }
   return ret;
 }
@@ -507,9 +509,8 @@ uint32 ParseOptions::ToUInt(std::string str) {
   // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
   uint32 ret = std::strtoul(str.c_str(), &end_pos, 0);
   if (str.c_str() == end_pos) {
-    std::cerr << "*** Invalid integer option  \"" << str << "\" ***\n";
     PrintUsage(true);
-    exit(1);
+    KALDI_ERR << "Invalid integer option  \"" << str << "\"";
   }
   return ret;
 }
@@ -520,9 +521,8 @@ float ParseOptions::ToFloat(std::string str) {
   // strtod is cheaper than stringstream...
   float ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {
-    std::cerr << "*** Invalid floating-point option \"" << str << "\" ***\n";
     PrintUsage(true);
-    exit(1);
+    KALDI_ERR << "Invalid floating-point option \"" << str << "\"";
   }
   return ret;
 }
@@ -532,9 +532,8 @@ double ParseOptions::ToDouble(std::string str) {
   // strtod is cheaper than stringstream...
   double ret = std::strtod(str.c_str(), &end_pos);
   if (str.c_str() == end_pos) {
-    std::cerr << "*** Invalid floating-point option  \"" << str << "\" ***\n";
     PrintUsage(true);
-    exit(1);
+    KALDI_ERR << "Invalid floating-point option  \"" << str << "\"";
   }
   return ret;
 }

@@ -1,8 +1,8 @@
 // util/parse-options.h
 
-// Copyright 2009-2012  Karel Vesely;  Microsoft Corporation;
-//                      Saarland University
-//                      Frantisek Skala
+// Copyright 2009-2011  Karel Vesely;  Microsoft Corporation;
+//                      Saarland University (Author: Arnab Ghoshal);
+// Copyright 2012-2013  Frantisek Skala;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,11 @@
 #ifndef KALDI_UTIL_PARSE_OPTIONS_H_
 #define KALDI_UTIL_PARSE_OPTIONS_H_
 
-#include "base/kaldi-common.h"
 #include <map>
+#include <string>
+#include <vector>
 
+#include "base/kaldi-common.h"
 
 namespace kaldi {
 
@@ -30,9 +32,10 @@ namespace kaldi {
 /// \ref parse_options for more documentation.
 class ParseOptions {
  public:
-  explicit ParseOptions(const char *usage):
-      print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL) {
-#ifndef _MSC_VER  //This is just a convenient place to set the stderr to line
+  explicit ParseOptions(const char *usage) :
+    print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL),
+    prefix_(""), other_parser_(NULL) {
+#ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
     RegisterStandard("config", &config_, "Configuration file with options");
@@ -42,9 +45,22 @@ class ParseOptions {
     RegisterStandard("verbose", &g_kaldi_verbose_level,
                      "Verbose level (higher->more logging)");
   }
-  
+
+  /**
+   * This is a constructor for the special case where some options are
+   * registered with a prefix to avoid conflicts.  The object thus created will
+   * only be used temporarily to register an options class with the original
+   * options parser (which is passed as the *other pointer) using the given
+   * prefix.  It should not be used for any other purpose, and the prefix must
+   * not be the empty string.  It seems to be the least bad way of implementing
+   * options with prefixes at this point.
+   */
+  ParseOptions(const std::string &prefix, ParseOptions *other) :
+    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL),
+    prefix_(prefix), other_parser_(other) {}
+
   ~ParseOptions() {}
-  
+
   /// Template to register various variable types,
   /// used for program-specific parameters
   template<typename T>
@@ -55,7 +71,7 @@ class ParseOptions {
   template<typename T>
   void RegisterStandard(const std::string &name,
                         T *ptr, const std::string &doc);
-  
+
   /**
    * Parses the command line options and fills the ParseOptions-registered
    * variables. This must be called after all the variables were registered!!!
@@ -90,7 +106,6 @@ class ParseOptions {
   static std::string Escape(const std::string &str);
 
  private:
-
   // Following functions do just the datatype-specific part of the job
   /// Register boolean variable
   void RegisterSpecific(const std::string &name, const std::string &idx,
@@ -119,7 +134,7 @@ class ParseOptions {
   template<typename T>
   void RegisterCommon(const std::string &name,
                       T *ptr, const std::string &doc, bool is_standard);
-  
+
   /// Reads the options values from a config file
   void ReadConfigFile(const std::string &filename);
 
@@ -152,7 +167,7 @@ class ParseOptions {
     DocInfo(const std::string &name, const std::string &usemsg,
             bool is_standard)
       : name_(name), use_msg_(usemsg),  is_standard_(is_standard) {}
-    
+
     std::string name_;
     std::string use_msg_;
     bool is_standard_;
@@ -167,6 +182,11 @@ class ParseOptions {
   const char *usage_;
   int argc_;
   const char*const *argv_;
+
+  /// These members are not normally used. They are only used when the object
+  /// is constructed with a prefix
+  const std::string prefix_;
+  ParseOptions *other_parser_;
 };
 
 }  // namespace kaldi
