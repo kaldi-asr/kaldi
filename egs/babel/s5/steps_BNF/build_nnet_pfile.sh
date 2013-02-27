@@ -79,7 +79,7 @@ if [ -f $alidir/trans.1 ]; then
   sifeats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
 fi
 # Now the spliced features for LDA
-splicedfeats="$sifeats | splice-feats $nnet_splice_opts ark:- ark:- |"
+splicedfeats="$sifeats splice-feats $nnet_splice_opts ark:- ark:- |"
 ##
 
 if [ $stage -le 1 ]; then

@@ -74,7 +74,7 @@ if [ ! -z "$transform_dir" ]; then
   sifeats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
 fi
 # Now apply the LDA 
-feats="$sifeats | splice-feats $nnet_splice_opts ark:- ark:- | transform-feats $nnet_lda ark:- ark:- |"
+feats="$sifeats splice-feats $nnet_splice_opts ark:- ark:- | transform-feats $nnet_lda ark:- ark:- |"
 ##
 
 if [ $stage -le 1 ]; then

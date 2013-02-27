@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright 2013  Carnegie Mellon University (Author: Zaid Md Abdul Wahab Sheikh)
+# Copyright 2013  Karlsruhe Institute of Technology (Author: Jonas Gehring)
 # Apache 2.0.
 #
 # Concatenates random subsets of a list of pfiles
