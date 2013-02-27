@@ -4,6 +4,7 @@
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Ondrej Glembek;   Yanmin Qian;
 //                      Johns Hopkins University (Author: Daniel Povey)
+//                      Liang Lu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -490,8 +491,12 @@ BaseFloat MleAmSgmmUpdater::Update(const MleAmSgmmAccs &accs,
       tot_impr += UpdatePhoneVectors(accs, model, H, H_sm, y_sm);
     }
   }
-  if (flags & kSgmmPhoneProjections)
-    tot_impr += UpdateM(accs, model);
+  if (flags & kSgmmPhoneProjections) {
+    if (update_options_.tau_map_M > 0.0)
+      tot_impr += MapUpdateM(accs, model);  // MAP adaptation of M
+    else
+      tot_impr += UpdateM(accs, model);
+  }
 
   if (flags & kSgmmPhoneWeightProjections) {
     if (update_options_.use_sequential_weight_update) {
@@ -1223,6 +1228,174 @@ double MleAmSgmmUpdater::UpdateM(const MleAmSgmmAccs &accs,
   tot_like_impr /= (tot_count + 1.0e-20);
   KALDI_LOG << "Overall objective function improvement for model projections "
             << "M is " << tot_like_impr << " over " << tot_count << " frames";
+  return tot_like_impr;
+}
+
+// Estimate the parameters of a Gaussian prior over the M matrices. There are
+// as many mean matrices as UBM size and two covariance matrices for the rows
+// of M and columns of M. The prior values M_i are fixed an not updated.
+// This is what was done in Lu, et al. "Maximum a posteriori adaptation of
+// subspace Gaussian mixture models for cross-lingual speech recognition",
+// ICASSP 2012.
+void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
+  KALDI_ASSERT(update_options_.map_M_prior_iters > 0);
+  int32 Ddim = model->FeatureDim();
+  int32 Sdim = model->PhoneSpaceDim();
+  int32 nGaussians = model->NumGauss();
+
+  // inverse variance of the columns of M: dim is # of rows
+  model->col_cov_inv_.Resize(Ddim);
+  // inverse covariance of the rows of M: dim is # of columns
+  model->row_cov_inv_.Resize(Sdim);
+
+  model->col_cov_inv_.SetUnit();
+  model->row_cov_inv_.SetUnit();
+
+  if (model->M_prior_.size() == 0) {
+    model->M_prior_.resize(nGaussians);
+    for (int32 i = 0; i < nGaussians; i++) {
+      model->M_prior_[i].Resize(Ddim, Sdim);
+      model->M_prior_[i].CopyFromMat(model->M_[i]); // We initialize Mpri as this
+    }
+  }
+
+  if (update_options_.full_col_cov || update_options_.full_row_cov) {
+    Matrix<double> mean_M(Ddim, Sdim);  // mean of the Gaussian prior
+    for (int32 i = 0; i < nGaussians; i++)
+      mean_M.AddMat(1.0, Matrix<double>(model->M_prior_[i]));
+    mean_M.Scale(1.0 / nGaussians);
+
+    Matrix<double> MDiff(Ddim, Sdim);
+    for (int32 iter = 0; iter < update_options_.map_M_prior_iters; iter++) {
+      { // diagnostic block.
+        double prior_like = -0.5 * nGaussians * (Ddim * Sdim * log(2 * M_PI)
+                + Sdim * (-model->row_cov_inv_.LogPosDefDet())
+                + Ddim * (-model->col_cov_inv_.LogPosDefDet()));
+        for (int32 i = 0; i < nGaussians; i++) {
+          MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
+          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          SpMatrix<double> tmp(Ddim);
+          // tmp = MDiff.Omega_r^{-1}*MDiff^T.
+          tmp.AddMat2Sp(1.0, MDiff, kNoTrans,
+                        SpMatrix<double>(model->row_cov_inv_), 0.0);
+          prior_like -= 0.5 * TraceSpSp(tmp, SpMatrix<double>(model->col_cov_inv_));
+        }
+        KALDI_LOG << "Before iteration " << iter
+            << " of updating prior over M, log like per dimension modeled is "
+            << prior_like / (nGaussians * Ddim * Sdim);
+      }
+
+      // First estimate the column covariances (\Omega_r in paper)
+      if (update_options_.full_col_cov) {
+        size_t limited;
+        model->col_cov_inv_.SetZero();
+        for (int32 i = 0; i < nGaussians; i++) {
+          MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
+          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          // Omega_r += 1/(D*I) * Mdiff * Omega_c^{-1} * Mdiff^T
+          model->col_cov_inv_.AddMat2Sp(1.0 / (Ddim * nGaussians),
+                                        Matrix<BaseFloat>(MDiff), kNoTrans,
+                                        model->row_cov_inv_, 1.0);
+        }
+        model->col_cov_inv_.PrintEigs("col_cov");
+        limited = model->col_cov_inv_.LimitCond(update_options_.max_cond,
+                                                true /*invert the matrix*/);
+        if (limited != 0) {
+          KALDI_LOG << "Computing column covariances for M: limited " << limited
+                    << " singular values, max condition is "
+                    << update_options_.max_cond;
+        }
+      }
+
+      // Now estimate the row covariances (\Omega_c in paper)
+      if (update_options_.full_row_cov) {
+        size_t limited;
+        model->row_cov_inv_.SetZero();
+        for (int32 i = 0; i < nGaussians; i++) {
+          MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
+          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          // Omega_c += 1/(S*I) * Mdiff^T * Omega_r^{-1} * Mdiff.
+          model->row_cov_inv_.AddMat2Sp(1.0 / (Sdim * nGaussians),
+                                        Matrix<BaseFloat>(MDiff), kTrans,
+                                        model->col_cov_inv_, 1.0);
+        }
+        model->row_cov_inv_.PrintEigs("row_cov");
+        limited = model->row_cov_inv_.LimitCond(update_options_.max_cond,
+                                                true /*invert the matrix*/);
+        if (limited != 0) {
+          KALDI_LOG << "Computing row covariances for M: limited " << limited
+                    << " singular values, max condition is "
+                    << update_options_.max_cond;
+        }
+      }
+    }  // end iterations
+  }
+}
+
+
+// MAP adaptation of M with a matrix-variate Gaussian prior
+double MleAmSgmmUpdater::MapUpdateM(const MleAmSgmmAccs &accs, AmSgmm *model) {
+  int32 Ddim = model->FeatureDim();
+  int32 Sdim = model->PhoneSpaceDim();
+  int32 nGaussians = model->NumGauss();
+
+  KALDI_LOG << "Prior smoothing parameter: Tau = " << update_options_.tau_map_M;
+  if (model->M_prior_.size() == 0 || model->col_cov_inv_.NumRows() == 0
+      || model->row_cov_inv_.NumRows() == 0) {
+    KALDI_LOG << "Computing the prior first";
+    ComputeMPrior(model);
+  }
+
+  Matrix<double> G(Ddim, Sdim);
+  // \tau \Omega_c^{-1} avg(M) \Omega_r^{-1}, depends on Gaussian index
+  Matrix<double> prior_term_i(Ddim, Sdim);
+  SpMatrix<double> P2(model->col_cov_inv_);
+  SpMatrix<double> Q2(model->row_cov_inv_);
+  Q2.Scale(update_options_.tau_map_M);
+
+  double totcount = 0.0, tot_like_impr = 0.0;
+  for (int32 i = 0; i < nGaussians; ++i) {
+    double gamma_i = 0.0;
+    for (int32 j = 0; j < accs.num_states_; ++j)
+      for (int32 m = 0; m < model->NumSubstates(j); ++m)
+        gamma_i += accs.gamma_[j](m, i);
+
+    if (gamma_i < accs.feature_dim_) {
+      KALDI_WARN << "For component " << i << ": not updating M due to very "
+                 << "small count (=" << gamma_i << ").";
+      continue;
+    }
+
+    Matrix<double> tmp(Ddim, Sdim, kSetZero);
+    tmp.AddSpMat(1.0, SpMatrix<double>(model->col_cov_inv_),
+                 Matrix<double>(model->M_prior_[i]), kNoTrans, 0.0);
+    prior_term_i.AddMatSp(update_options_.tau_map_M, tmp, kNoTrans,
+                          SpMatrix<double>(model->row_cov_inv_), 0.0);
+
+    Matrix<double> SigmaY(Ddim, Sdim, kSetZero);
+    SigmaY.AddSpMat(1.0, SpMatrix<double>(model->SigmaInv_[i]), accs.Y_[i],
+                    kNoTrans, 0.0);
+    G.CopyFromMat(SigmaY);  // G = \Sigma_{i}^{-1} Y_{i}
+    G.AddMat(1.0, prior_term_i); // G += \tau \Omega_c^{-1} avg(M) \Omega_r^{-1}
+    SpMatrix<double> P1(model->SigmaInv_[i]);
+    SpMatrix<double> Q1(Q_[i]);
+    Matrix<double> Mi(model->M_[i]);
+
+    double impr = SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &Mi,
+        static_cast<double>(update_options_.max_cond),
+        static_cast<double>(update_options_.epsilon), "M");
+    model->M_[i].CopyFromMat(Mi);
+    if (i < 10) {
+      KALDI_LOG << "Objf impr for projection M for i = " << i << ", is "
+                << (impr / (gamma_i + 1.0e-20)) << " over " << gamma_i
+                << " frames";
+    }
+    totcount += gamma_i;
+    tot_like_impr += impr;
+  }
+  tot_like_impr /= (totcount + 1.0e-20);
+  KALDI_LOG << "Overall objective function improvement for model projections "
+            << "M is " << tot_like_impr << " over " << totcount << " frames";
   return tot_like_impr;
 }
 

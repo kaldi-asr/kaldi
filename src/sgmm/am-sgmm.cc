@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
-//                      Ondrej Glembek;  Yanmin Qian
+//                      Ondrej Glembek;  Yanmin Qian;  Liang Lu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,6 +86,19 @@ void AmSgmm::Read(std::istream &in_stream, bool binary) {
       for (int32 j = 0; j < num_states; j++) {
         n_[j].Read(in_stream, binary);
       }
+      // The following are the Gaussian prior parameters for MAP adaptation of M
+      // They may be moved to somewhere else eventually.
+    } else if (token == "<M_Prior>") {
+      ExpectToken(in_stream, binary, "<NUMGaussians>");
+      ReadBasicType(in_stream, binary, &num_gauss);
+      M_prior_.resize(num_gauss);
+      for (int32 i = 0; i < num_gauss; i++) {
+        M_prior_[i].Read(in_stream, binary);
+      }
+    } else if (token == "<Row_Cov_Inv>") {
+      row_cov_inv_.Read(in_stream, binary);
+    } else if (token == "<Col_Cov_Inv>") {
+      col_cov_inv_.Read(in_stream, binary);
     } else {
       KALDI_ERR << "Unexpected token '" << token << "' in model file ";
     }
@@ -144,6 +157,31 @@ void AmSgmm::Write(std::ostream &out_stream, bool binary,
     }
     WriteToken(out_stream, binary, "<w>");
     w_.Write(out_stream, binary);
+
+    // The following are the Gaussian prior parameters for MAP adaptation of M.
+    // They may be moved to somewhere else eventually.
+    if (M_prior_.size() != 0) {
+      WriteToken(out_stream, binary, "<M_Prior>");
+      WriteToken(out_stream, binary, "<NUMGaussians>");
+      WriteBasicType(out_stream, binary, num_gauss);
+      if (!binary) out_stream << "\n";
+      for (int32 i = 0; i < num_gauss; i++) {
+        M_prior_[i].Write(out_stream, binary);
+      }
+
+      KALDI_ASSERT(row_cov_inv_.NumRows() != 0 &&
+                   "Empty row covariance for MAP prior");
+      WriteToken(out_stream, binary, "<Row_Cov_Inv>");
+      if (!binary) out_stream << "\n";
+      row_cov_inv_.Write(out_stream, binary);
+
+      KALDI_ASSERT(col_cov_inv_.NumRows() != 0 &&
+                   "Empty column covariance for MAP prior");
+      WriteToken(out_stream, binary, "<Col_Cov_Inv>");
+      if (!binary) out_stream << "\n";
+      col_cov_inv_.Write(out_stream, binary);
+    }
+    // end priors for MAP adaptation
   }
 
   if (write_params & kSgmmStateParams) {

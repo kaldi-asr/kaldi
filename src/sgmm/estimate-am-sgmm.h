@@ -4,6 +4,7 @@
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Ondrej Glembek;  Yanmin Qian;
 //                      Johns Hopkins University (Author: Daniel Povey)
+//                      Liang Lu
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +70,11 @@ struct MleAmSgmmOptions {
 
   BaseFloat epsilon;  ///< very small value used to prevent SVD crashing.
 
+  BaseFloat tau_map_M;  ///< For MAP update of the phonetic subspace M
+  int map_M_prior_iters;  ///< num of iterations to update the prior of M
+  bool full_row_cov;  ///< Estimate row covariance instead of using I
+  bool full_col_cov;  ///< Estimate col covariance instead of using I
+
   MleAmSgmmOptions() {
     // tau value used in smoothing vector re-estimation (if no prior used).
     tau_vec = 0.0;
@@ -82,9 +88,14 @@ struct MleAmSgmmOptions {
     check_v = false;  // for back-compat.
     renormalize_V = true;
     renormalize_N = false;  // default to false since will invalidate spk vectors
-    // on disk.
+                            // on disk.
     weight_projections_iters = 3;
     use_sequential_weight_update = false;
+
+    map_M_prior_iters = 5;
+    tau_map_M = 0.0;  // No MAP update by default (~500-1000 depending on prior)
+    full_row_cov = false;
+    full_col_cov = false;
   }
 
   void Register(ParseOptions *po) {
@@ -108,6 +119,15 @@ struct MleAmSgmmOptions {
                  "(not compatible with smoothing v)");
     po->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
                  "the speaker subspace to have meaningful sizes.");
+
+    po->Register("tau-map-M", &tau_map_M, module+"Smoothing for MAP estimate "
+                 "of M (0 means ML update).");
+    po->Register("map-M-prior-iters", &map_M_prior_iters, module+
+                 "Number of iterations to estimate prior covariances for M.");
+    po->Register("full-row-cov", &full_row_cov, module+
+                 "Estimate row covariance instead of using I.");
+    po->Register("full-col-cov", &full_col_cov, module+
+                 "Estimate column covariance instead of using I.");
   }
 };
 
@@ -335,7 +355,10 @@ class MleAmSgmmUpdater {
   double UpdateWSequential(const MleAmSgmmAccs &accs,
                            AmSgmm *model);
   double UpdateSubstateWeights(const MleAmSgmmAccs &accs,
-                                  AmSgmm *model);
+                               AmSgmm *model);
+
+  void ComputeMPrior(AmSgmm *model);  // TODO(arnab): Maybe make this static?
+  double MapUpdateM(const MleAmSgmmAccs &accs, AmSgmm *model);
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(MleAmSgmmUpdater);
   MleAmSgmmUpdater() {}  // Prevent unconfigured updater.

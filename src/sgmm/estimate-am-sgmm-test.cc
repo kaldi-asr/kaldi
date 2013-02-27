@@ -29,8 +29,8 @@ namespace ut = kaldi::unittest;
 
 // Tests the Read() and Write() methods for the accumulators, in both binary
 // and ASCII mode, as well as Check().
-void TestSgmmAccsIO(const AmSgmm &sgmm,
-                    const kaldi::Matrix<BaseFloat> &feats) {
+void TestUpdateAndAccsIO(const AmSgmm &sgmm,
+                         const kaldi::Matrix<BaseFloat> &feats) {
   using namespace kaldi;
   kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
   kaldi::SgmmPerFrameDerivedVars frame_vars;
@@ -96,6 +96,15 @@ void TestSgmmAccsIO(const AmSgmm &sgmm,
   sgmm3->ComputePerFrameVars(feats.Row(0), gselect, empty, 0.0, &frame_vars);
   BaseFloat loglike3 = sgmm3->LogLikelihood(frame_vars, 0);
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
+
+  // Testing the MAP update of M
+  update_opts.tau_map_M = 100;
+  update_opts.full_col_cov = (RandUniform() > 0.5)? true : false;
+  update_opts.full_row_cov = (RandUniform() > 0.5)? true : false;
+  kaldi::MleAmSgmmUpdater updater_map(update_opts);
+  BaseFloat impr = updater_map.Update(*accs2, sgmm3, flags);
+  KALDI_ASSERT(impr >= 0);
+
   delete accs2;
   delete sgmm2;
   delete sgmm3;
@@ -132,7 +141,7 @@ void UnitTestEstimateSgmm() {
       ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
-  TestSgmmAccsIO(sgmm, feats);
+  TestUpdateAndAccsIO(sgmm, feats);
 }
 
 int main() {
