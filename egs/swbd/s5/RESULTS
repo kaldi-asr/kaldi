@@ -54,3 +54,33 @@ exp/tri5a_dnn/decode_train_dev/wer_10:%WER 22.85 [ 11075 / 48460, 1261 ins, 2955
 exp/nnet6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.1   16.0    6.9    2.7   25.6   62.6 |
 exp/nnet6a/decode_train_dev/wer_10:%WER 24.87 [ 12053 / 48460, 1590 ins, 3017 del, 7446 sub ]
 
+
+## Results from the run_edin.sh recipe:
+
+1. With swbd 3-gram LM:
+exp/tri1/decode_eval2000_sw1_tg/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   46.8%   (20140)
+exp/tri2/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   46.4%   (19933)
+exp/tri3a/decode_eval2000_sw1_tg/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   43.0%   (18505)
+exp/tri3b/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   38.1%   (16394)
+exp/tri4a/decode_eval2000_sw1_tg/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   32.6%   (13994)
+exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   30.2%   (12980)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   29.7%   (12733)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   27.1%   (11667)
+
+2. With swbd+fisher pruned 3-gram LM:
+exp/tri1/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   45.9%   (19724)
+exp/tri2/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   45.5%   (19547)
+exp/tri3a/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   42.4%   (18241)
+exp/tri3b/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   37.3%   (16029)
+exp/tri4a/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   31.9%   (13703)
+exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   29.2%   (12573)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tgpr/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   28.8%   (12358)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   26.3%   (11322)
+
+3. Rescoring with full swbd+fisher 3-gram LM:
+exp/tri4a/decode_eval2000_sw1_fsh_tg.3/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   31.2%   (13419)
+exp/tri4b/decode_eval2000_sw1_fsh_tg.3/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   28.8%   (12381)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tg.3/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   28.3%   (12187)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tg.3/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   25.8%   (11104)
+
+

@@ -72,6 +72,10 @@ if [ ! -z "$fisher" ]; then
     && exit 1;
   mkdir -p $dir/fisher
 
+## This is more general: need to test
+#   find $fisher -path '*/trans/*fe*.txt' -exec cat {} \; | grep -v ^# | grep -v ^$ | cut -d' ' -f4- \
+#     | gzip -c > $dir/fisher/text0.gz
+
   cat $fisher/data/trans/*/*.txt | grep -v ^# | grep -v ^$ | cut -d' ' -f4- \
     | gzip -c > $dir/fisher/text0.gz
   gunzip -c $dir/fisher/text0.gz | local/fisher_map_words.pl \
