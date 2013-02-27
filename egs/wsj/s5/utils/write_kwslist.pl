@@ -21,6 +21,7 @@ Allowed options:
   --language                  : Language type                               (string,  default = "cantonese")
   --map-utter                 : Map utterance for evaluation                (string,  default = "")
   --normalize                 : Normalize scores or not                     (boolean, default = false)
+  --Ntrue-scale               : Keyword independent scale factor for Ntrue  (float,   default = 1.0) 
   --segments                  : Segments file from Kaldi                    (string,  default = "")
   --system-id                 : System ID                                   (string,  default = "")
 EOU
@@ -35,6 +36,7 @@ my $index_size = 0;
 my $system_id = "";
 my $normalize = "false";
 my $map_utter = "";
+my $Ntrue_scale = 1.0;
 GetOptions('segments=s'     => \$segment,
   'flen=f'         => \$flen,
   'beta=f'         => \$beta,
@@ -44,7 +46,8 @@ GetOptions('segments=s'     => \$segment,
   'index-size=f'   => \$index_size,
   'system-id=s'    => \$system_id,
   'normalize=s'    => \$normalize,
-  'map-utter=s'    => \$map_utter); 
+  'map-utter=s'    => \$map_utter,
+  'Ntrue-scale=f'  => \$Ntrue_scale); 
 
 if ($normalize ne "true" && $normalize ne "false") {
   die "Bad value for option --normalize. \n";
@@ -138,6 +141,11 @@ foreach $key (keys %results) {
   }
 }
 
+# Scale the Ntrue
+foreach $key (keys %Ntrue) {
+  $Ntrue{$key} = $Ntrue{$key} * $Ntrue_scale;
+}
+
 sub mysort {
   if ($a =~ m/[0-9]+$/ and $b =~ m/[0-9]+$/) {
     ($a =~ /([0-9]*)$/)[0] <=> ($b =~ /([0-9]*)$/)[0];
@@ -162,13 +170,18 @@ foreach $key (sort mysort (keys %results)) {
       $decision = "YES";
     }
     if ($normalize eq "true") {
-      $score = (@{$item}[3]-$score+1)/2;             # Normalize here
+      # $score = (@{$item}[3]-$score+1)/2;             # Normalize here
+      my $numerator = (1-$score)*@{$item}[3];
+      my $denominator = (1-$score)*@{$item}[3]+$score*(1-@{$item}[3]);
+      if ($denominator != 0) {
+        $score = $numerator/$denominator;
+      }
     } else {
       $score = @{$item}[3];
     }
     @{$item}[1] = sprintf("%.2f", @{$item}[1]);
     @{$item}[2] = sprintf("%.2f", @{$item}[2]);
-    $score = sprintf("%.2f", $score);
+    $score = sprintf("%.3f", $score);
     my $utter = @{$item}[0];
     push (@list, "<kw file=\"$utter\" channel=\"1\" tbeg=\"@{$item}[1]\" dur=\"@{$item}[2]\" score=\"$score\" decision=\"$decision\"/>\n");
     $list{$score} = 1;
