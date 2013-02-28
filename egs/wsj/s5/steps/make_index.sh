@@ -9,6 +9,7 @@ cmd=run.pl
 acwt=0.083333
 lmwt=1.0
 max_silence_frames=50
+strict=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -56,7 +57,7 @@ done
 $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
  lattice-align-words $word_boundary $model "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
    lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
-   lattice-to-kws-index ark:$utter_id ark:- ark:- \| \
-   kws-index-union ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz"
+   lattice-to-kws-index --strict=$strict ark:$utter_id ark:- ark:- \| \
+   kws-index-union --strict=$strict ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz"
 
 exit 0;
