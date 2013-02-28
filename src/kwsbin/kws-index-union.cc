@@ -39,6 +39,9 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
+    bool strict = true;
+    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
@@ -64,6 +67,8 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
 
+    KALDI_LOG << "Union done, now optimization.";
+
     // Do the encoded epsilon removal, determinization and minimization
     KwsLexicographicFst ifst = global_index;
     EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
@@ -76,7 +81,10 @@ int main(int argc, char *argv[]) {
     index_writer.Write("global", global_index);
 
     KALDI_LOG << "Done " << n_done << " indices";
-    return (n_done != 0 ? 0 : 1);    
+    if (strict == true)
+      return (n_done != 0 ? 0 : 1);
+    else
+      return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

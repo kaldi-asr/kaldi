@@ -43,7 +43,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 max_silence_frames = 50;
+    bool strict = true;
     po.Register("max-silence-frames", &max_silence_frames, "Maximum #frames for silence arc.");
+    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
 
     po.Read(argc, argv);
 
@@ -144,7 +146,10 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
-    return (n_done != 0 ? 0 : 1);    
+    if (strict == true)
+      return (n_done != 0 ? 0 : 1);
+    else
+      return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

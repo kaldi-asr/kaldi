@@ -94,9 +94,11 @@ int main(int argc, char *argv[]) {
 
     int32 n_best = -1;
     double negative_tolerance = -0.1;
+    bool strict = true;
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
     po.Register("negative-tolerance", &negative_tolerance, 
                 "The program will die if we get negative score smaller than the tolerance.");
+    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
     if (n_best < 0 && n_best != -1) {
       KALDI_ERR << "Bad number for nbest";
       exit (1);
@@ -212,7 +214,10 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Done " << n_done << " keywords";
-    return (n_done != 0 ? 0 : 1);    
+    if (strict == true)
+      return (n_done != 0 ? 0 : 1);
+    else
+      return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
