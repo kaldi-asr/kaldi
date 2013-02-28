@@ -1,10 +1,10 @@
 // sgmm/estimate-am-sgmm.cc
 
-// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
-//                      Ondrej Glembek;   Yanmin Qian;
-//                      Johns Hopkins University (Author: Daniel Povey)
-//                      Liang Lu
+//                      Ondrej Glembek;  Yanmin Qian;
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                      Liang Lu;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1233,7 +1233,7 @@ double MleAmSgmmUpdater::UpdateM(const MleAmSgmmAccs &accs,
 
 // Estimate the parameters of a Gaussian prior over the M matrices. There are
 // as many mean matrices as UBM size and two covariance matrices for the rows
-// of M and columns of M. The prior values M_i are fixed an not updated.
+// of M and columns of M. The prior means M_i are fixed to the unadapted values.
 // This is what was done in Lu, et al. "Maximum a posteriori adaptation of
 // subspace Gaussian mixture models for cross-lingual speech recognition",
 // ICASSP 2012.
@@ -1260,10 +1260,10 @@ void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
   }
 
   if (update_options_.full_col_cov || update_options_.full_row_cov) {
-    Matrix<double> mean_M(Ddim, Sdim);  // mean of the Gaussian prior
+    Matrix<double> avg_M(Ddim, Sdim);  // average of the Gaussian prior means
     for (int32 i = 0; i < nGaussians; i++)
-      mean_M.AddMat(1.0, Matrix<double>(model->M_prior_[i]));
-    mean_M.Scale(1.0 / nGaussians);
+      avg_M.AddMat(1.0, Matrix<double>(model->M_prior_[i]));
+    avg_M.Scale(1.0 / nGaussians);
 
     Matrix<double> MDiff(Ddim, Sdim);
     for (int32 iter = 0; iter < update_options_.map_M_prior_iters; iter++) {
@@ -1273,7 +1273,7 @@ void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
                 + Ddim * (-model->col_cov_inv_.LogPosDefDet()));
         for (int32 i = 0; i < nGaussians; i++) {
           MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
-          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          MDiff.AddMat(-1.0, avg_M);  // MDiff = M_{i} - avg(M)
           SpMatrix<double> tmp(Ddim);
           // tmp = MDiff.Omega_r^{-1}*MDiff^T.
           tmp.AddMat2Sp(1.0, MDiff, kNoTrans,
@@ -1291,7 +1291,7 @@ void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
         model->col_cov_inv_.SetZero();
         for (int32 i = 0; i < nGaussians; i++) {
           MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
-          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          MDiff.AddMat(-1.0, avg_M);  // MDiff = M_{i} - avg(M)
           // Omega_r += 1/(D*I) * Mdiff * Omega_c^{-1} * Mdiff^T
           model->col_cov_inv_.AddMat2Sp(1.0 / (Ddim * nGaussians),
                                         Matrix<BaseFloat>(MDiff), kNoTrans,
@@ -1313,7 +1313,7 @@ void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
         model->row_cov_inv_.SetZero();
         for (int32 i = 0; i < nGaussians; i++) {
           MDiff.CopyFromMat(Matrix<double>(model->M_prior_[i]));
-          MDiff.AddMat(-1.0, mean_M);  // MDiff = M_{i} - avg(M)
+          MDiff.AddMat(-1.0, avg_M);  // MDiff = M_{i} - avg(M)
           // Omega_c += 1/(S*I) * Mdiff^T * Omega_r^{-1} * Mdiff.
           model->row_cov_inv_.AddMat2Sp(1.0 / (Sdim * nGaussians),
                                         Matrix<BaseFloat>(MDiff), kTrans,
@@ -1378,10 +1378,9 @@ double MleAmSgmmUpdater::MapUpdateM(const MleAmSgmmAccs &accs, AmSgmm *model) {
     G.CopyFromMat(SigmaY);  // G = \Sigma_{i}^{-1} Y_{i}
     G.AddMat(1.0, prior_term_i); // G += \tau \Omega_c^{-1} avg(M) \Omega_r^{-1}
     SpMatrix<double> P1(model->SigmaInv_[i]);
-    SpMatrix<double> Q1(Q_[i]);
     Matrix<double> Mi(model->M_[i]);
 
-    double impr = SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &Mi,
+    double impr = SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q_[i], Q2, &Mi,
         static_cast<double>(update_options_.max_cond),
         static_cast<double>(update_options_.epsilon), "M");
     model->M_[i].CopyFromMat(Mi);

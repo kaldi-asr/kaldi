@@ -861,10 +861,10 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
               << (new_objf - old_objf);
           KALDI_ERR << "Auxiliary function decreasing."; // Will be caught.
         } else {  // Reset to old value, didn't improve (very close to optimum).
-          objf_impr += new_objf - old_objf;
           MdashNew.Row(n).CopyFromVec(MdashOld.Row(n));
         }
       }
+      objf_impr += new_objf - old_objf;
     }
     catch (...) {
       KALDI_WARN << "Matrix inversion or optimization failed during double "

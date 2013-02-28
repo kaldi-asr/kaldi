@@ -1,10 +1,10 @@
 // sgmm/am-sgmm.h
 
-// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Ondrej Glembek;  Yanmin Qian;
-//                      Johns Hopkins University (author: Daniel Povey)
-//                      Liang Lu
+// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
+//                      Liang Lu;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -314,7 +314,10 @@ class AmSgmm {
 
   // Priors for MAP adaptation of M -- keeping them here for now but they may
   // be moved somewhere else eventually
-  std::vector< Matrix<BaseFloat> > M_prior_;
+  // These are parameters of a matrix-variate normal distribution. The means are
+  // the unadapted M_i, and we have 2 separate covaraince matrices for the rows
+  // and columns of M.
+  std::vector< Matrix<BaseFloat> > M_prior_;  // Matrix-variate Gaussian mean
   SpMatrix<BaseFloat> row_cov_inv_;
   SpMatrix<BaseFloat> col_cov_inv_;
 

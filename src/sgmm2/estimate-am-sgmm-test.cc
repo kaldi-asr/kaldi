@@ -1,7 +1,8 @@
 // sgmm/estimate-am-sgmm-test.cc
 
 // Copyright 2009-2011  Saarland University (author:  Arnab Ghoshal)
-//           2012  Johns Hopkins University (author: Daniel Povey)
+//           2012-2013  Johns Hopkins University (author: Daniel Povey)
+//                      Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,6 +102,15 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   Sgmm2LikelihoodCache like_cache3(sgmm3->NumGroups(), sgmm3->NumPdfs());
   BaseFloat loglike3 = sgmm3->LogLikelihood(frame_vars, 0, &like_cache3, &empty);
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
+
+  // Testing the MAP update of M
+  update_opts.tau_map_M = 10;
+  update_opts.full_col_cov = (RandUniform() > 0.5)? true : false;
+  update_opts.full_row_cov = (RandUniform() > 0.5)? true : false;
+  kaldi::MleAmSgmm2Updater updater_map(update_opts);
+  sgmm3->CopyFromSgmm2(sgmm, false, false);
+  updater_map.Update(*accs2, sgmm3, flags);
+
   delete accs2;
   delete sgmm2;
   delete sgmm3;

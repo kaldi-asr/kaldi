@@ -1,8 +1,10 @@
 // sgmm/estimate-am-sgmm.h
 
-// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
-//                      Saarland University;  Ondrej Glembek;  Yanmin Qian;
-//                      Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
+//                      Saarland University (Author: Arnab Ghoshal);
+//                      Ondrej Glembek;  Yanmin Qian;
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                      Liang Lu;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,6 +63,11 @@ struct MleAmSgmm2Options {
   BaseFloat epsilon;  ///< very small value used to prevent SVD crashing.
   BaseFloat max_impr_u; ///< max improvement per frame allowed in update of u.
 
+  BaseFloat tau_map_M;  ///< For MAP update of the phonetic subspace M
+  int map_M_prior_iters;  ///< num of iterations to update the prior of M
+  bool full_row_cov;  ///< Estimate row covariance instead of using I
+  bool full_col_cov;  ///< Estimate col covariance instead of using I
+
   MleAmSgmm2Options() {
     cov_floor = 0.025;
     tau_c  = 2.0;
@@ -72,6 +79,11 @@ struct MleAmSgmm2Options {
     // on disk.
     weight_projections_iters = 3;
     max_impr_u = 0.25;
+
+    map_M_prior_iters = 5;
+    tau_map_M = 0.0;  // No MAP update by default (~500-1000 depending on prior)
+    full_row_cov = false;
+    full_col_cov = false;
   }
 
   void Register(ParseOptions *po) {
@@ -94,6 +106,14 @@ struct MleAmSgmm2Options {
                  "improvement per frame allowed in update of u (to "
                  "maintain stability.");
 
+    po->Register("tau-map-M", &tau_map_M, module+"Smoothing for MAP estimate "
+                 "of M (0 means ML update).");
+    po->Register("map-M-prior-iters", &map_M_prior_iters, module+
+                 "Number of iterations to estimate prior covariances for M.");
+    po->Register("full-row-cov", &full_row_cov, module+
+                 "Estimate row covariance instead of using I.");
+    po->Register("full-col-cov", &full_col_cov, module+
+                 "Estimate column covariance instead of using I.");
   }
 };
 
@@ -317,6 +337,11 @@ class MleAmSgmm2Updater {
   static void ComputeLogA(const MleAmSgmm2Accs &accs,
                           std::vector<Matrix<double> > *log_a); // [SSGMM]
   
+  void ComputeMPrior(AmSgmm2 *model);  // TODO(arnab): Maybe make this static?
+  double MapUpdateM(const MleAmSgmm2Accs &accs,
+                    const std::vector< SpMatrix<double> > &Q,
+                    const Vector<double> &gamma_i, AmSgmm2 *model);
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(MleAmSgmm2Updater);
   MleAmSgmm2Updater() {}  // Prevent unconfigured updater.
 };

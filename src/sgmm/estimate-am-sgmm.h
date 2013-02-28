@@ -1,10 +1,10 @@
 // sgmm/estimate-am-sgmm.h
 
-// Copyright 2009-2012  Microsoft Corporation;  Lukas Burget;
+// Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Ondrej Glembek;  Yanmin Qian;
-//                      Johns Hopkins University (Author: Daniel Povey)
-//                      Liang Lu
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                      Liang Lu;  Arnab Ghoshal
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
