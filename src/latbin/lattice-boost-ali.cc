@@ -91,6 +91,12 @@ int main(int argc, char *argv[]) {
       kaldi::Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
 
+      if (lat.Start() == fst::kNoStateId) {
+        KALDI_WARN << "Empty lattice for utterance " << key;
+        n_err++;
+        continue;
+      }
+      
       if (b != 0.0) {
         if (!alignment_reader.HasKey(key)) {
           KALDI_WARN << "No alignment for utterance " << key;
