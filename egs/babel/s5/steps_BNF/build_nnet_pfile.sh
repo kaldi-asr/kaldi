@@ -112,7 +112,7 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "Split data into training and cross-validation"
-  mkdir -p concat
+  mkdir -p $dir/concat
   # Chop the whole pfile into small units
   perl steps_BNF/pfile_burst.pl -i $dir/concat.pfile -o $dir/concat -s $pfile_unit_size \
      2>$dir/log/pfile_burst.log || exit 1;
@@ -120,14 +120,14 @@ if [ $stage -le 3 ]; then
   # Split the units accoring to cv_ratio
   perl steps_BNF/pfile_rconcat.pl -o $dir/valid.pfile,${cv_ratio} -o $dir/train.pfile \ 
      $dir/concat/*.pfile 2>$data/log/pfile_rconcat.log || exit 1;
-  rm -r concat
+  rm -r $dir/concat
   echo "## Info of the training pfile: ##"
   pfile_info $dir/train.pfile
   echo "## Info of the cross-validation pfile: ##"
   pfile_info $dir/valid.pfile
 
   # Compress the two (if everything is correct) pfiles 
-  gzip train.pfile valid.pfile
+  gzip $dir/train.pfile $dir/valid.pfile
 fi
 
 echo "$0: done creating pfiles."
