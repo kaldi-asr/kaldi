@@ -17,6 +17,7 @@ max_lmwt=17
 duptime=0.6
 cmd=run.pl
 model=
+skip_scoring=false
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -88,7 +89,7 @@ for lmwt in `seq $min_lmwt $max_lmwt` ; do
         - - | \
       local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.unnormalized.xml
 
-    if [ ! -x local/kws_score.sh ] ; then
+    if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
         echo "Not scoring, because the file local/kws_score.sh is not present"
     else
         local/kws_score.sh $datadir $kwsoutdir
