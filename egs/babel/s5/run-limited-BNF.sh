@@ -51,9 +51,9 @@ steps_BNF/build_nnet_pfile.sh --cmd "$train_cmd" \
 echo ---------------------------------------------------------------------
 echo "Starting making BNF in exp_BNF/make_bnf on" `date`
 echo ---------------------------------------------------------------------
-steps_BNF/make_bnf_feat.sh --cmd "$train_cmd" --transform_dir exp/tri4_ali \
+steps_BNF/make_bnf_feat.sh --nj $train_nj --cmd "$train_cmd" --transform_dir exp/tri4_ali \
     data/train data/train_bnf exp_BNF/bnf_dnn exp/tri4_ali exp_BNF/make_bnf || exit 1
-steps_BNF/make_bnf_feat.sh --cmd "$train_cmd" --transform_dir exp/tri4/decode \
+steps_BNF/make_bnf_feat.sh --nj $decode_nj --cmd "$train_cmd" --transform_dir exp/tri4/decode \
     data/dev data/dev_bnf exp_BNF/bnf_dnn exp/tri4_ali exp_BNF/make_bnf || exit 1
 
 ################################################################################
