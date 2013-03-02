@@ -56,7 +56,6 @@ if [ $[$num_gauss*2] -gt $intermediate_num_gauss ]; then
   echo "setting it to $intermediate_num_gauss"
 fi
 
-
 # Set various variables.
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 nj=`cat $alidir/num_jobs` || exit 1;

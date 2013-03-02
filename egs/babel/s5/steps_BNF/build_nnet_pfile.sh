@@ -55,6 +55,7 @@ alidir=$3
 dir=$4
 
 oov=`cat $lang/oov.int` || exit 1;
+nj=`cat $alidir/num_jobs` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 sdata=$data/split$nj
 
