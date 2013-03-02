@@ -104,6 +104,7 @@ if [ $stage -le 2 ]; then
     build-pfile-from-ali $alidir/final.mdl "ark:gunzip -c $alidir/ali.JOB.gz|" \
       "$feats" "|pfile_create -i - -o $dir/pfile.JOB -f $nnet_dim -l 1" || exit 1;
   # concatenate the pfiles into one
+  all_pfiles=""
   for n in `seq 1 $nj`; do
     all_pfiles="$all_pfiles $dir/pfile.$n"
   done
