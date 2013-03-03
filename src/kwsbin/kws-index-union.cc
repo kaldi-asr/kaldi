@@ -40,7 +40,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     bool strict = true;
+    bool skip_opt = false;
     po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
+    po.Register("skip-optimization", &skip_opt, "Skip optimization if it's set to true.");
 
     po.Read(argc, argv);
 
@@ -67,15 +69,17 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
 
-    KALDI_LOG << "Union done, now optimization.";
-
-    // Do the encoded epsilon removal, determinization and minimization
-    KwsLexicographicFst ifst = global_index;
-    EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
-    Encode(&ifst, &encoder);
-    DeterminizeStar(ifst, &global_index);
-    Minimize(&global_index);
-    Decode(&global_index, encoder);
+    if (skip_opt == false) {
+      // Do the encoded epsilon removal, determinization and minimization
+      KwsLexicographicFst ifst = global_index;
+      EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
+      Encode(&ifst, &encoder);
+      DeterminizeStar(ifst, &global_index);
+      Minimize(&global_index);
+      Decode(&global_index, encoder);
+    } else {
+      KALDI_LOG << "Skipping index optimization...";
+    }
 
     // Write the result
     index_writer.Write("global", global_index);
