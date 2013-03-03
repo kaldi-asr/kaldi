@@ -337,7 +337,7 @@ function linux_configure_debian {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
-  echo "Configured for Debian Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured for Debian Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit 0;
 }
@@ -389,7 +389,7 @@ function linux_configure_static {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
   $use_cuda && linux_configure_cuda
-  echo "Configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
 
@@ -456,7 +456,7 @@ function linux_configure_dynamic {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
   $use_cuda && linux_configure_cuda
-  echo "Configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
 }
 
@@ -624,7 +624,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk
 
     $use_cuda && linux_configure_cuda
-    echo "Configured for Linux with MKL libs from $MKLROOT"
+    echo "Successfully configured for Linux with MKL libs from $MKLROOT"
     exit 0;
 
   elif [ $MATHLIB == "CLAPACK" ]; then
@@ -645,7 +645,7 @@ if [ "`uname`" == "Linux" ]; then
     cat makefiles/linux_clapack.mk >> kaldi.mk
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
-    echo "Configured for Linux with CLAPACK libs from $CLAPACKROOT"
+    echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit 0
   elif [ $MATHLIB == "OPENBLAS" ]; then
     OPENBLASROOT=`rel2abs $OPENBLASROOT`
@@ -666,6 +666,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
+    echo "Successfully configured."
     exit 0;
   else 
     failure "Unsupported linear algebra library '$MATHLIB'"
