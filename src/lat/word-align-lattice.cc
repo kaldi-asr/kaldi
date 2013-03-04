@@ -28,9 +28,9 @@ class LatticeWordAligner {
   typedef CompactLatticeArc::Label Label;
   
   class ComputationState { /// The state of the computation in which,
-   public:
     /// along a single path in the lattice, we work out the word
     /// boundaries and output aligned arcs.
+   public:
     
     /// Advance the computation state by adding the symbols and weights
     /// from this arc.
@@ -38,7 +38,7 @@ class LatticeWordAligner {
       const std::vector<int32> &string = arc.weight.String();
       transition_ids_.insert(transition_ids_.end(),
                              string.begin(), string.end());
-      if (arc.ilabel != 0) // note: arc.ilabel==arc.oabel (acceptor)
+      if (arc.ilabel != 0) // note: arc.ilabel==arc.olabel (acceptor)
         word_labels_.push_back(arc.ilabel);
       weight_ = Times(weight_, arc.weight.Weight());      
     }

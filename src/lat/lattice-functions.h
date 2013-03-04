@@ -74,6 +74,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// we ensure this in HmmTopology::Check()).  This would be the last
 /// transition-id in the phone if reordering is not done (but typically
 /// we do reorder).
+/// Also see PhoneAlignLattice, in phone-align-lattice.h.
 void ConvertLatticeToPhones(const TransitionModel &trans_model,
                             Lattice *lat);
 
@@ -81,6 +82,7 @@ void ConvertLatticeToPhones(const TransitionModel &trans_model,
 /// there was some kind of failure.
 template<class LatticeType>
 bool PruneLattice(BaseFloat beam, LatticeType *lat);
+
 
 /// Given a lattice, and a transition model to map pdf-ids to phones,
 /// replace the sequences of transition-ids with sequences of phones.

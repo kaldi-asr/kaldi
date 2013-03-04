@@ -30,6 +30,9 @@ namespace kaldi {
 
 
 struct WordBoundaryInfoOpts {
+  // Note: use of this structure
+  // is deprecated, see WordBoundaryInfoNewOpts.
+  
   // Note: this structure (and the code in word-align-lattice.{h,cc}
   // makes stronger assumptions than the rest of the Kaldi toolkit:
   // that is, it assumes you have word-position-dependent phones,

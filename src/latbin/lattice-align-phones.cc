@@ -1,6 +1,6 @@
-// latbin/lattice-align-words.cc
+// latbin/lattice-align-phones.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/word-align-lattice.h"
+#include "lat/phone-align-lattice.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -29,45 +29,39 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert lattices so that the arcs in the CompactLattice format correspond with\n"
-        "words (i.e. aligned with word boundaries).\n"
-        "Usage: lattice-align-words [options] <word-boundary-file> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-align-words  --silence-label=4320 --partial-word-label=4324 \\\n"
-        "   data/lang/phones/word_boundary.int final.mdl ark:1.lats ark:aligned.lats\n"
+        "phones.  The output symbols are still words, just the "
+        "Usage: lattice-align-phones [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-align-phones final.mdl ark:1.lats ark:phone_aligned.lats\n"
         "Note: word-boundary file has format (on each line):\n"
         "<integer-phone-id> [begin|end|singleton|internal|nonword]\n";
     
     ParseOptions po(usage);
     bool output_if_error = true;
-    bool do_test = false;
     
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
-    po.Register("test", &do_test, "Test the algorithm while running it.");
     
-    WordBoundaryInfoNewOpts opts;
+    PhoneAlignLatticeOptions opts;
     opts.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string
-        word_boundary_rxfilename = po.GetArg(1),
-        model_rxfilename = po.GetArg(2),
-        lats_rspecifier = po.GetArg(3),
-        lats_wspecifier = po.GetArg(4);
-
+        model_rxfilename = po.GetArg(1),
+        lats_rspecifier = po.GetArg(2),
+        lats_wspecifier = po.GetArg(3);
+    
     TransitionModel tmodel;
     ReadKaldiObject(model_rxfilename, &tmodel);
     
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     CompactLatticeWriter clat_writer(lats_wspecifier); 
 
-    WordBoundaryInfo info(opts, word_boundary_rxfilename);
-    
     int32 num_done = 0, num_err = 0;
     
     for (; !clat_reader.Done(); clat_reader.Next()) {
@@ -75,11 +69,8 @@ int main(int argc, char *argv[]) {
       const CompactLattice &clat = clat_reader.Value();
 
       CompactLattice aligned_clat;
-      bool ok = WordAlignLattice(clat, tmodel, info, &aligned_clat);
+      bool ok = PhoneAlignLattice(clat, tmodel, opts, &aligned_clat);
       
-      if (do_test && ok)
-        TestWordAlignedLattice(clat, tmodel, info, aligned_clat);
-
       if (!ok) {
         num_err++;
         if (!output_if_error)
