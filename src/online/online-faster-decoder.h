@@ -89,7 +89,7 @@ class OnlineFasterDecoder : public FasterDecoder {
                       const TransitionModel &trans_model)
       : FasterDecoder(fst, opts), opts_(opts),
         silence_set_(sil_phones), trans_model_(trans_model),
-        max_beam_(opts.beam), effective_beam_(FasterDecoder::opts_.beam),
+        max_beam_(opts.beam), effective_beam_(FasterDecoder::config_.beam),
         state_(kEndFeats), frame_(0), utt_frames_(0) {}
 
   DecodeState Decode(DecodableInterface *decodable);
