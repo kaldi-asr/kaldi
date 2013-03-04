@@ -1394,6 +1394,26 @@ template<class Real> static void UnitTestMmulSym() {
 }
 
 
+template<class Real> static void UnitTestAddVecVec() {
+  for (int32 i = 0; i < 20; i++) {
+    int32 dimM = 5 + rand() % 10, dimN = 5 + rand() % 10;
+    
+    Matrix<Real> M(dimM, dimN);
+    M.SetRandn();
+    Matrix<Real> N(M);
+    Vector<float> v(dimM), w(dimN);
+    v.SetRandn();
+    w.SetRandn();
+    float alpha = 0.2 * (rand() % 10);
+    M.AddVecVec(alpha, v, w);
+    for (int32 j = 0; j < 20; j++) {
+      int32 dimX = rand() % dimM, dimY = rand() % dimN;
+      AssertEqual(M(dimX, dimY),
+                  N(dimX, dimY) + alpha * v(dimX) * w(dimY));
+    }
+  }    
+}
+
 
 template<class Real> static void UnitTestVecmul() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -3668,7 +3688,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestMaxAbsEig<Real>();
   UnitTestPca<Real>(full_test);
   UnitTestPca2<Real>(full_test);
-
+  UnitTestAddVecVec<Real>();
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
