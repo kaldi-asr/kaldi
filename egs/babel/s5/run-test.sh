@@ -12,14 +12,20 @@ echo "$0 $@"  # Print the command line for logging
 [ ! -d $test_data_dir ] && echo "The test data directory does not exist... " && exit 1
 
 local/cmu_uem2kaldi_dir.sh --filelist $test_data_list $test_data_cmudb_shadow  $test_data_dir data/test.uem
+local/cmu_uem2kaldi_dir.sh --filelist $dev_data_list $test_data_cmudb_shadow  $dev_data_dir data/dev.uem
 
 steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/test.uem exp/make_plp/test.uem plp
-steps/compute_cmvn_stats.sh data/test.uem exp/make_plp/test.uem plp
-utils/fix_data_dir.sh data/test.uem
+steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/dev.uem exp/make_plp/dev.uem plp
 
+steps/compute_cmvn_stats.sh data/test.uem exp/make_plp/test.uem plp
+steps/compute_cmvn_stats.sh data/dev.uem exp/make_plp/dev.uem plp
+utils/fix_data_dir.sh data/test.uem
+utils/fix_data_dir.sh data/dev.uem
+
+local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev.uem || exit 1
 local/kws_setup.sh --case-insensitive $case_insensitive $test_data_ecf $test_data_kwlist data/lang data/test.uem/
 
-local/create_shadow_dataset.sh data/shadow.uem data/dev data/test.uem
+local/create_shadow_dataset.sh data/shadow.uem data/dev.uem data/test.uem
 local/kws_data_prep.sh --case-insensitive $case_insensitive data/lang data/shadow.uem data/shadow.uem/kws || exit 1
 utils/fix_data_dir.sh data/shadow.uem
 
