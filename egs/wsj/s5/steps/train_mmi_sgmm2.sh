@@ -9,6 +9,7 @@ cmd=run.pl
 num_iters=4
 boost=0.0
 cancel=true # if true, cancel num and den counts on each frame.
+zero_if_disjoint=false
 acwt=0.1
 stage=0
 update_opts=
@@ -110,7 +111,7 @@ while [ $x -lt $num_iters ]; do
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       sgmm2-rescore-lattice "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-      sum-post --merge=$cancel --scale1=-1 \
+      sum-post --zero-if-disjoint=$zero_if_disjoint --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
       sgmm2-acc-stats2 "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$feats" ark,s,cs:- \
         $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
