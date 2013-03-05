@@ -61,84 +61,84 @@ for splitdatadir in $@ ; do
     fi
 done
 
-    kwsdatadir=$datadir/kws
+kwsdatadir=$datadir/kws
 
-    durationA=`head -1 $datasetA/kws/ecf.xml |\
-        grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
-        grep -o -E "[0-9]*[\.]*[0-9]*" |\
-        perl -e 'while(<>) {print $_/2;}'`
+durationA=`head -1 $datasetA/kws/ecf.xml |\
+    grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
+    grep -o -E "[0-9]*[\.]*[0-9]*" |\
+    perl -e 'while(<>) {print $_/2;}'`
 
-    durationB=`head -1 $datasetB/kws/ecf.xml |\
-        grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
-        grep -o -E "[0-9]*[\.]*[0-9]*" |\
-        perl -e 'while(<>) {print $_/2;}'`
+durationB=`head -1 $datasetB/kws/ecf.xml |\
+    grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
+    grep -o -E "[0-9]*[\.]*[0-9]*" |\
+    perl -e 'while(<>) {print $_/2;}'`
 
-    if [ ! -z "$model" ]; then
-        model_flags="--model $model"
+if [ ! -z "$model" ]; then
+    model_flags="--model $model"
+fi
+
+for lmwt in `seq $min_lmwt $max_lmwt` ; do
+    kwsoutdir=$decodedir/kws_$lmwt
+    dirA=$decodedir/`basename $datasetA`/kws_$lmwt
+    dirB=$decodedir/`basename $datasetB`/kws_$lmwt
+    mkdir -p $kwsoutdir
+    mkdir -p $dirA
+    mkdir -p $dirB
+
+    acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+    local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+      $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+
+    local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
+
+    cat $kwsoutdir/result.* | \
+      grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
+      grep "^KW[-a-zA-Z0-9]*-A " | \
+      sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results
+
+    cat $dirA/results | \
+      utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
+        --segments=$datadir/segments --normalize=true \
+        --map-utter=$kwsdatadir/utter_map \
+        - - | \
+      local/filter_kwslist.pl $duptime > $dirA/kwslist.xml
+   
+    cat $dirA/results | \
+      utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
+        --segments=$datadir/segments --normalize=false \
+        --map-utter=$kwsdatadir/utter_map \
+        - - | \
+      local/filter_kwslist.pl $duptime > $dirA/kwslist.unnormalized.xml
+
+    if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
+        echo "Not scoring, because the file local/kws_score.sh is not present"
+    else
+        local/kws_score.sh $datasetA $dirA 
     fi
 
-    for lmwt in `seq $min_lmwt $max_lmwt` ; do
-        kwsoutdir=$decodedir/kws_$lmwt
-        dirA=$kwsoutdir/`basename $datasetA`
-        dirB=$kwsoutdir/`basename $datasetB`
-        mkdir -p $kwsoutdir
-        mkdir -p $dirA
-        mkdir -p $dirB
+    cat $kwsoutdir/result.* | \
+      grep -F -f <(cut -f 1 -d ' ' $datasetB/kws/utter_id ) |\
+      grep "^KW[-a-zA-Z0-9]*-B " | \
+      sed 's/^\(KW.*\)-B /\1 /g' > $dirB/results
 
-        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-        local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
-          $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+    cat $dirB/results | \
+      utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
+        --segments=$datadir/segments --normalize=true \
+        --map-utter=$kwsdatadir/utter_map \
+        - - | \
+      local/filter_kwslist.pl $duptime > $dirB/kwslist.xml
+   
+    cat $dirB/results | \
+      utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
+        --segments=$datadir/segments --normalize=false \
+        --map-utter=$kwsdatadir/utter_map \
+        - - | \
+      local/filter_kwslist.pl $duptime > $dirB/kwslist.unnormalized.xml
 
-        local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
-
-        cat $kwsoutdir/result.* | \
-          grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
-          grep "^KW[-a-zA-Z0-9]*-A " | \
-          sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results
-
-        cat $dirA/results | \
-          utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
-            --segments=$datadir/segments --normalize=true \
-            --map-utter=$kwsdatadir/utter_map \
-            - - | \
-          local/filter_kwslist.pl $duptime > $dirA/kwslist.xml
-       
-        cat $dirA/results | \
-          utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
-            --segments=$datadir/segments --normalize=false \
-            --map-utter=$kwsdatadir/utter_map \
-            - - | \
-          local/filter_kwslist.pl $duptime > $dirA/kwslist.unnormalized.xml
-
-        if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-            echo "Not scoring, because the file local/kws_score.sh is not present"
-        else
-            local/kws_score.sh $datasetA $dirA 
-        fi
-
-        cat $kwsoutdir/result.* | \
-          grep -F -f <(cut -f 1 -d ' ' $datasetB/kws/utter_id ) |\
-          grep "^KW[-a-zA-Z0-9]*-B " | \
-          sed 's/^\(KW.*\)-B /\1 /g' > $dirB/results
-
-        cat $dirB/results | \
-          utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
-            --segments=$datadir/segments --normalize=true \
-            --map-utter=$kwsdatadir/utter_map \
-            - - | \
-          local/filter_kwslist.pl $duptime > $dirB/kwslist.xml
-       
-        cat $dirB/results | \
-          utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
-            --segments=$datadir/segments --normalize=false \
-            --map-utter=$kwsdatadir/utter_map \
-            - - | \
-          local/filter_kwslist.pl $duptime > $dirB/kwslist.unnormalized.xml
-
-        if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-            echo "Not scoring, because the file local/kws_score.sh is not present"
-        else
-            local/kws_score.sh $datasetB $dirB 
-        fi
-    done
+    if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
+        echo "Not scoring, because the file local/kws_score.sh is not present"
+    else
+        local/kws_score.sh $datasetB $dirB 
+    fi
+done
 
