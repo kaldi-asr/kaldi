@@ -62,7 +62,7 @@ perl -ne '{chomp; split; $utt{@_[1]}.=" @_[0]";}
            }' < $datadir/utt2spk | sort > $datadir/spk2utt
 
 # 4. Create the wav.scp file:
-sph2pipe=`which sph2pipe`
+sph2pipe=`which sph2pipe || which $KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe`
 if [ $? -ne 0 ] ; then
   echo "Could not find sph2pipe binary. Add it to PATH"  
   exit 1;
