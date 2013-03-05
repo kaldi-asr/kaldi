@@ -8,7 +8,7 @@ help_message="$0: create subset of the input directory (specified as the first d
                  The subset is specified by the second parameter.
                  The directory in which the subset should be created is the third parameter
              Example:
-                 $0 <source-corpus-dir> <subset-descriptor-list-file> <target-corpus-subset-dir>"
+                 $0 <lang-dir> <data-dir> <decode-dir>"
 
 # Begin configuration section.  
 #acwt=0.0909091
@@ -32,8 +32,8 @@ if [[ "$#" -ne "3" ]] ; then
 fi
 
 
-datadir=$2
 langdir=$1
+datadir=$2
 decodedir=$3
 
 kwsdatadir=$datadir/kws
