@@ -39,7 +39,7 @@ alidir=$4
 dir=$5
 
 # because we [cat trans.*], no need to keep nj consistent with [# of trans]
-#nj=`cat $alidir/num_jobs` || exit 1;
+nj=`cat $transform_dir/num_jobs` || exit 1;
 
 # Assume that final.mat and final.nnet are at nnetdir
 nnet_lda=$nnetdir/final.mat
@@ -74,8 +74,8 @@ esac
 if [ ! -z "$transform_dir" ]; then
   echo "Using transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "No such file $transform_dir/trans.1" && exit 1;
-  cat $transform_dir/trans.* > $dir/trans || exit 1;
-  sifeats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans ark:- ark:- |"
+#  cat $transform_dir/trans.* > $dir/trans || exit 1;
+  sifeats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
 fi
 # Now apply the LDA 
 feats="$sifeats splice-feats $nnet_splice_opts ark:- ark:- | transform-feats $nnet_lda ark:- ark:- |"
