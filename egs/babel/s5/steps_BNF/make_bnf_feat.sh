@@ -85,7 +85,7 @@ if [ $stage -le 1 ]; then
   echo "Making BNF scp and ark."
   $cmd JOB=1:$nj $dir/log/make_bnf.JOB.log \
     nnet-forward --apply-log=false $bnf_nnet "$feats" \
-    ark,scp:$dir/raw_bnfeat_$name.$n.ark,$dir/raw_bnfeat_$name.$n.scp
+    ark,scp:$dir/raw_bnfeat_$name.JOB.ark,$dir/raw_bnfeat_$name.JOB.scp
 fi
 
 N0=$(cat $data/feats.scp | wc -l) 
