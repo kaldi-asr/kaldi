@@ -121,6 +121,11 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
                                     Posterior *arc_post,
                                     const std::vector<int32> &silence_phones);
 
+BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
+                                     const TransitionModel &trans,
+                                     const vector< std::map<int32, char> > &arc_accs,
+                                     const std::vector<int32> &silence_phones,
+                                     Posterior *arc_post);
 
 /// This function takes a CompactLattice that should only contain
 /// a single linear sequence (e.g. derived from lattice-1best), and

@@ -14,6 +14,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
 #include "base/kaldi-common.h"
 #include "util/text-utils.h"
 
@@ -69,6 +70,20 @@ void SplitStringToVector(const std::string &full, const char *delim,
   }
 }
 
+void JoinVectorToString(const std::vector<std::string> &vec_in,
+                        const char *delim, bool omit_empty_strings,
+                        std::string *str_out) {
+  std::string tmp_str;
+  for (size_t i = 0; i < vec_in.size(); i++) {
+    if (!omit_empty_strings || !vec_in[i].empty()) {
+      tmp_str.append(vec_in[i]);
+      if (i < vec_in.size() - 1)
+        if (!omit_empty_strings || !vec_in[i+1].empty())
+          tmp_str.append(delim);
+    }
+  }
+  str_out->swap(tmp_str);
+}
 
 void Trim(std::string *str) {
   const char *white_chars = " \t\n\r\f\v";

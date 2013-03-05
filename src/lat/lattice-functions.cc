@@ -231,7 +231,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
     }
   }
   for (StateId s = num_states-1; s >= 0; s--) {
-    Weight f = lat.Final(s);    
+    Weight f = lat.Final(s);
     double this_beta = -(f.Value1() + f.Value2());
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
@@ -384,9 +384,9 @@ bool LatticeBoost(const TransitionModel &trans,
 
 
 int32 LatticePhoneFrameAccuracy(const Lattice &hyp, const TransitionModel &trans,
-                               const vector< map<int32, int32> > &ref_phones,
-                               vector< map<int32, char> > *arc_accs,
-                               vector<int32> *state_times) {
+                                const vector< map<int32, int32> > &ref_phones,
+                                vector< map<int32, char> > *arc_accs,
+                                vector<int32> *state_times) {
   vector<int32> state_times_hyp;
   int32 max_time_hyp = LatticeStateTimes(hyp, &state_times_hyp),
       max_time_ref = ref_phones.size();
@@ -554,6 +554,146 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   return tot_forward_score;
 }
 
+
+BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
+                                     const TransitionModel &trans,
+                                     const vector< map<int32, char> > &arc_accs,
+                                     const std::vector<int32> &silence_phones,
+                                     Posterior *arc_post) {
+  using namespace fst;
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+
+  if (lat.Properties(fst::kTopSorted, true) == 0)
+    KALDI_ERR << "Input lattice must be topologically sorted.";
+  KALDI_ASSERT(lat.Start() == 0);
+
+  int32 num_states = lat.NumStates();
+  vector<int32> state_times;
+  int32 max_time = LatticeStateTimes(lat, &state_times);
+  std::vector<double> alpha(num_states, kLogZeroDouble),
+      alpha_smbr(num_states, 0), //forward variable for sMBR
+      beta(num_states, kLogZeroDouble),
+      beta_smbr(num_states, 0); //backward variable for sMBR
+
+  double tot_forward_prob = kLogZeroDouble;
+  double tot_forward_score = 0;
+
+  arc_post->clear();
+  arc_post->resize(max_time);
+
+  alpha[0] = 0.0;
+  //First Pass Forward,
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = alpha[s];
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
+    }
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - (f.Value1() + f.Value2());
+      tot_forward_prob = LogAdd(tot_forward_prob, final_like);
+      KALDI_ASSERT(state_times[s] == max_time &&
+                   "Lattice is inconsistent (final-prob not at max_time)");
+    }
+  }
+  //First Pass Backward,
+  for (StateId s = num_states-1; s >= 0; s--) {
+    Weight f = lat.Final(s);
+    double this_beta = -(f.Value1() + f.Value2());
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+          arc_beta = beta[arc.nextstate] + arc_like;
+      this_beta = LogAdd(this_beta, arc_beta);
+    }
+    beta[s] = this_beta;
+  }
+  //First Pass Forward-Backward Check
+  double tot_backward_prob = beta[0];
+  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
+    KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+              << ", while total backward probability = " << tot_backward_prob;
+  }
+
+  alpha_smbr[0] = 0.0;
+  //Second Pass Forward, calculate forward for MPE,
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = alpha[s];
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double frame_acc = 0.0;
+      if (arc.ilabel != 0) {
+      int32 cur_time = state_times[s];
+      int32 phone = trans.TransitionIdToPhone(arc.ilabel),
+          pdf = trans.TransitionIdToPdf(arc.ilabel);
+      frame_acc = (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))?
+          0.0 : ((arc_accs[cur_time].find(pdf) == arc_accs[cur_time].end())?
+          0.0 : 1.0);
+      }
+      double arc_scale = std::exp(alpha[s] + arc_like - alpha[arc.nextstate]);
+      alpha_smbr[arc.nextstate] += arc_scale * (alpha_smbr[s] + frame_acc);
+    }
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - (f.Value1() + f.Value2());
+      double arc_scale = std::exp(final_like - tot_forward_prob);
+      tot_forward_score += arc_scale * alpha_smbr[s];
+      KALDI_ASSERT(state_times[s] == max_time &&
+                   "Lattice is inconsistent (final-prob not at max_time)");
+    }
+  }
+  //Second Pass Backward, collect Mpe style posteriors
+  for (StateId s = num_states-1; s >= 0; s--) {
+    for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+          arc_beta = beta[arc.nextstate] + arc_like;
+      double frame_acc = 0.0;
+      int32 transition_id = arc.ilabel;
+      if (arc.ilabel != 0) {
+      int32 cur_time = state_times[s];
+      int32 phone = trans.TransitionIdToPhone(arc.ilabel),
+          pdf = trans.TransitionIdToPdf(arc.ilabel);
+      frame_acc = (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))?
+          0.0 : ((arc_accs[cur_time].find(pdf) == arc_accs[cur_time].end())?
+          0.0 : 1.0);
+      }
+      double arc_scale = std::exp(beta[arc.nextstate] + arc_like - beta[s]);
+      // check arc_scale NAN,
+      // this is to prevent partial paths in Lattices
+      // i.e., paths dont survive to the final state
+      if (KALDI_ISNAN(arc_scale)) arc_scale = 0;
+      beta_smbr[s] += arc_scale * (beta_smbr[arc.nextstate] + frame_acc);
+
+      if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
+        double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
+        double acc_diff = alpha_smbr[s] + frame_acc + beta_smbr[arc.nextstate]
+                               - tot_forward_score;
+        double posterior_smbr = posterior * acc_diff;
+        (*arc_post)[state_times[s]].push_back(std::make_pair(transition_id,
+                                                             posterior_smbr));
+      }
+    }
+  }
+
+  //Second Pass Forward Backward check
+  double tot_backward_score = beta_smbr[0];  // Initial state id == 0
+  // may loose the condition somehow here 1e-5/1e-4
+  if (!ApproxEqual(tot_forward_score, tot_backward_score, 1e-4)) {
+    KALDI_ERR << "Total forward score over lattice = " << tot_forward_score
+              << ", while total backward score = " << tot_backward_score;
+  }
+
+  // Output the computed posteriors
+  for (int32 t = 0; t < max_time; t++)
+    MergePairVectorSumming(&((*arc_post)[t]));
+  return tot_forward_score;
+}
 
 
 bool CompactLatticeToWordAlignment(const CompactLattice &clat,

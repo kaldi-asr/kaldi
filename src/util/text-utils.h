@@ -40,6 +40,14 @@ void SplitStringToVector(const std::string &full, const char *delim,
                          bool omit_empty_strings,
                          std::vector<std::string> *out);
 
+/// Joins the elements of a vector of strings into a single string using
+/// "delim" as the delimiter. If omit_empty_strings == true, any empty strings
+/// in the vector are skipped. A vector of empty strings results in an empty
+/// string on the output.
+void JoinVectorToString(const std::vector<std::string> &vec_in,
+                        const char *delim, bool omit_empty_strings,
+                        std::string *str_out);
+
 
 /// Split a string (e.g. 1:2:3) into a vector of integers.
 /// The delimiting char may be any character in "delim".
