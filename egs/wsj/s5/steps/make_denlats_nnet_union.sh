@@ -10,8 +10,8 @@ cmd=run.pl
 sub_split=1
 beam=13.0
 lattice_beam=7.0
-beam_ali=20.0
-lattice_beam_ali=10.0
+beam_ali=60.0
+lattice_beam_ali=30.0
 acwt=0.1
 max_active=5000
 transform_dir=
@@ -180,7 +180,7 @@ fi
 
       
 
-#3) Merge the SCPs to create index of lattices (will use random access)
+#3) Merge the SCPs to create full list of lattices (will use random access)
 echo Merging to single list $dir/lat.scp
 for ((n=1; n<=nj; n++)); do
   cat $dir/lat.$n.scp
