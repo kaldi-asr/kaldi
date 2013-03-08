@@ -172,7 +172,7 @@ echo "Spawning decoding with (small) triphone models in exp/tri1 on" `date`
 echo ---------------------------------------------------------------------
 (
     mkdir -p exp/tri1/graph
-    utils/mkgraph.sh data/lang exp/tri2 exp/tri1/graph &> exp/tri1/mkgraph.log
+    utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph &> exp/tri1/mkgraph.log
     mkdir -p exp/tri1/decode
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri1/graph data/dev exp/tri1/decode &> exp/tri1/decode.log
@@ -199,7 +199,7 @@ echo "Spawning decoding with (medium) triphone models in exp/tri2 on" `date`
 echo ---------------------------------------------------------------------
 (
     mkdir -p exp/tri2/graph
-    utils/mkgraph.sh data/lang exp/tri1 exp/tri2/graph &> exp/tri2/mkgraph.log
+    utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph &> exp/tri2/mkgraph.log
     mkdir -p exp/tri2/decode
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
         exp/tri2/graph data/dev exp/tri2/decode &> exp/tri2/decode.log
