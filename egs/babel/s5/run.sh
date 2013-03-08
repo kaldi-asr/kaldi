@@ -390,7 +390,7 @@ echo ---------------------------------------------------------------------
 echo "Starting exp/sgmm5_mmi_b0.1 on" `date`
 echo ---------------------------------------------------------------------
 steps/train_mmi_sgmm2.sh \
-    --cmd "$decode_cmd" --transform-dir exp/tri5_ali --boost 0.1 \
+    --cmd "$decode_cmd" --zero-if-disjoint true --transform-dir exp/tri5_ali --boost 0.1 \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
     exp/sgmm5_mmi_b0.1 || exit 1
 
