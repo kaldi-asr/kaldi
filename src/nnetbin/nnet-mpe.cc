@@ -123,9 +123,7 @@ int main(int argc, char *argv[]) {
                 "Add in the scores in the input lattices with this scale, rather "
                 "than discarding them.");
 
-    bool act_as_llik = true,
-        do_smbr = false;
-    po.Register("act-as-llik", &act_as_llik, "Use activation as log-likelihood.");
+    bool do_smbr = false;
     po.Register("do-smbr", &do_smbr, "Use state-level accuracies instead of "
                 "phone accuracies.");
 
@@ -174,21 +172,11 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
-    if (act_as_llik) {  // using activations directly: remove softmax, if present
-      KALDI_LOG << "Using activations as log-likelihood.";
-      if (nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
-        KALDI_WARN << "Found softmax at output: removing it.";
-        int32 num_layers = nnet.LayerCount();
-        nnet.RemoveLayer(num_layers-1);
-      }
-    } else {  // add a softmax layer, if none present
-      if (nnet.Layer(nnet.LayerCount()-1)->GetType() != Component::kSoftmax) {
-        KALDI_WARN << "No softmax layer found at output when expecting one.";
-        KALDI_LOG << "Adding a softmax layer.";
-        int32 out_dim = nnet.Layer(nnet.LayerCount()-1)->OutputDim();
-        Component *p_comp = new Softmax(out_dim, out_dim, &nnet);
-        nnet.AppendLayer(p_comp);
-      }
+    // using activations directly: remove softmax, if present
+    if (nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
+      KALDI_LOG << "Found softmax at output: removing it.";
+      int32 num_layers = nnet.LayerCount();
+      nnet.RemoveLayer(num_layers-1);
     }
 
     nnet.SetLearnRate(learn_rate, NULL);
@@ -199,49 +187,53 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(transition_model_filename, &trans_model);
 
-    kaldi::int64 tot_t = 0;
-
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessLatticeReader den_lat_reader(den_lat_rspecifier);
     RandomAccessInt32VectorReader ref_ali_reader(ref_ali_rspecifier);
 
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, nnet_diff;
-    Matrix<BaseFloat> nnet_out_h, nnet_loglik_h, nnet_diff_h;
+    Matrix<BaseFloat> nnet_out_h, nnet_diff_h;
 
     // Read the class-counts, compute priors
-    Vector<BaseFloat> log_priors;  // was CuVector - now moved to CPU
+    CuVector<BaseFloat> log_priors;
     if (class_frame_counts != "") {
+      Vector<BaseFloat> tmp_priors;
       Input in;
       in.OpenTextMode(class_frame_counts);
-      log_priors.Read(in.Stream(), false);
+      tmp_priors.Read(in.Stream(), false);
       in.Close();
 
       // create inv. priors, or log inv priors
-      BaseFloat sum = log_priors.Sum();
-      log_priors.Scale(1.0 / sum);
-      log_priors.ApplyLog();
+      BaseFloat sum = tmp_priors.Sum();
+      tmp_priors.Scale(1.0 / sum);
+      tmp_priors.ApplyLog();
+
+      // push priors to GPU
+      log_priors.Resize(tmp_priors.Dim());
+      log_priors.CopyFromVec(tmp_priors);
     }
 
 
     Timer time;
-    double time_next = 0;
+    double time_now = 0;
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_ref_ali = 0, num_no_den_lat = 0,
         num_other_error = 0;
 
-    double total_frame_acc = 0.0, lat_frame_acc;
-    double total_mpe_obj = 0.0,
-        mpe_obj;  // per-utterance objective function
+    kaldi::int64 total_frames = 0;
+    double total_frame_acc = 0.0, utt_frame_acc;
 
     // do per-utterance processing
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       if (!den_lat_reader.HasKey(utt)) {
+        KALDI_WARN << "Utterance " << utt << ": found no lattice.";
         num_no_den_lat++;
         continue;
       }
       if (!ref_ali_reader.HasKey(utt)) {
+        KALDI_WARN << "Utterance " << utt << ": found no reference alignment.";
         num_no_ref_ali++;
         continue;
       }
@@ -287,23 +279,18 @@ int main(int argc, char *argv[]) {
       nnet_transf.Feedforward(feats, &feats_transf);
       // propagate through the nnet (assuming w/o softmax)
       nnet.Propagate(feats_transf, &nnet_out);
+      // subtract the log_priors
+      if (log_priors.Dim() > 0) {
+        nnet_out.AddVecToRows(-1.0, log_priors);
+      }
       // transfer it back to the host
       int32 num_frames = nnet_out.NumRows(),
           num_pdfs = nnet_out.NumCols();
       nnet_out_h.Resize(num_frames, num_pdfs, kUndefined);
       nnet_out.CopyToMat(&nnet_out_h);
-      nnet_loglik_h.Resize(num_frames, num_pdfs, kUndefined);
-      nnet_loglik_h.CopyFromMat(nnet_out_h);
-      if (!act_as_llik) {  // with softmax, convert output to log-posteriors
-        nnet_loglik_h.ApplyLog();
-      }
-      // subtract the log_priors
-      if (log_priors.Dim() > 0) {
-        nnet_loglik_h.AddVecToRows(-1.0, log_priors);
-      }
 
       // 4) rescore the latice
-      LatticeAcousticRescore(nnet_loglik_h, trans_model, state_times, &den_lat);
+      LatticeAcousticRescore(nnet_out_h, trans_model, state_times, &den_lat);
       if (acoustic_scale != 1.0 || lm_scale != 1.0)
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &den_lat);
 
@@ -317,7 +304,7 @@ int main(int argc, char *argv[]) {
           int32 pdf = trans_model.TransitionIdToPdf(ref_ali[i]);
           arc_accs[i][pdf] = 1;
         }
-        lat_frame_acc = LatticeForwardBackwardSmbr(den_lat, trans_model,
+        utt_frame_acc = LatticeForwardBackwardSmbr(den_lat, trans_model,
                                                    arc_accs, silence_phones,
                                                    &post);
       } else {  // use phone-level accuracies, i.e. regular MPE
@@ -325,7 +312,7 @@ int main(int argc, char *argv[]) {
           int32 phone = trans_model.TransitionIdToPhone(ref_ali[i]);
           arc_accs[i][phone] = 1;
         }
-        lat_frame_acc = kaldi::LatticeForwardBackwardMpe(den_lat, trans_model,
+        utt_frame_acc = kaldi::LatticeForwardBackwardMpe(den_lat, trans_model,
                                                          arc_accs, &post,
                                                          silence_phones);
       }
@@ -335,40 +322,17 @@ int main(int argc, char *argv[]) {
       for (int32 t = 0; t < post.size(); t++) {
         for (int32 arc = 0; arc < post[t].size(); arc++) {
           int32 pdf = trans_model.TransitionIdToPdf(post[t][arc].first);
-          nnet_diff_h(t, pdf) += post[t][arc].second;
-          if (!act_as_llik)
-            nnet_diff_h(t, pdf) *= (1 - nnet_out_h(t, pdf));
+          nnet_diff_h(t, pdf) -= post[t][arc].second;
         }
       }
 
-      // 7) Calculate the MPE-objective function
-      mpe_obj = 0.0;
-      for (int32 t = 0; t < nnet_diff_h.NumRows(); t++) {
-        int32 pdf = trans_model.TransitionIdToPdf(ref_ali[t]);
-        double posterior = nnet_diff_h(t, pdf);
-        if (posterior < 1e-20)
-          posterior = 1e-20;
-        mpe_obj += log(posterior);
-      }
+      KALDI_VLOG(1) << "Processed lattice for utterance " << num_done + 1
+                    << " (" << utt << "): found " << den_lat.NumStates()
+                    << " states and " << fst::NumArcs(den_lat) << " arcs.";
 
-      // report
-      std::stringstream ss;
-      ss << "Utt " << num_done + 1 << " : " << utt << " ("
-          << feats_transf.NumRows() << "frm)" << " lat_frame_acc/frm: "
-          << lat_frame_acc / feats_transf.NumRows() << "\t" << " mpe_obj/frm: "
-          << mpe_obj / feats_transf.NumRows();
-      KALDI_LOG << ss.str();
-      // accumulate
-      total_frame_acc += lat_frame_acc;
-      total_mpe_obj += mpe_obj;
-
-      // 8) subtract the pdf-Viterbi-path
-      for (int32 t = 0; t < nnet_diff_h.NumRows(); t++) {
-        int32 pdf = trans_model.TransitionIdToPdf(ref_ali[t]);
-        /// Make sure the sum in vector is as close as possible
-        /// to zero, reduce round-off errors:
-        nnet_diff_h(t, pdf) += -nnet_diff_h.Row(t).Sum();
-      }
+      KALDI_VLOG(1) << "Utterance " << utt << ": Average frame accuracy = "
+                    << (utt_frame_acc/num_frames) << " over " << num_frames
+                    << " frames.";
 
       // 9) backpropagate through the nnet
       if (!crossvalidate) {
@@ -377,27 +341,41 @@ int main(int argc, char *argv[]) {
       }
 
       // increase time counter
-      tot_t += feats_transf.NumRows();
+      total_frame_acc += utt_frame_acc;
+      total_frames += num_frames;
       num_done++;
+
+      if (num_done % 100 == 0) {
+        time_now = time.Elapsed();
+        KALDI_VLOG(1) << "After " << num_done << "utterances: time elapsed = "
+                      << time_now/60 << " min; processed " << total_frames/time_now
+                      << " frames per second.";
+      }
     }
 
     if (!crossvalidate) {
+      // add the softmax layer back before writing
+      if (nnet.Layer(nnet.LayerCount()-1)->GetType() != Component::kSoftmax) {
+        KALDI_LOG << "Adding the softmax layer back.";
+        int32 out_dim = nnet.Layer(nnet.LayerCount()-1)->OutputDim();
+        nnet.AppendLayer(new Softmax(out_dim, out_dim, &nnet));
+      }
       nnet.Write(target_model_filename, binary);
     }
 
-    std::cout << "\n" << std::flush;
-
-    KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED "
-              << time.Elapsed() << "s, fps" << tot_t/time.Elapsed()
-              << ", feature wait " << time_next << "s";
+    time_now = time.Elapsed();
+    KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED; "
+              << "Time taken = " << time_now/60 << " min; processed "
+              << (total_frames/time_now) << " frames per second.";
 
     KALDI_LOG << "Done " << num_done << " files, "
               << num_no_ref_ali << " with no reference alignments, "
               << num_no_den_lat << " with no lattices, "
               << num_other_error << " with other errors.";
 
-    KALDI_LOG << "Overall MPE-objective/frame is "
-              << (total_mpe_obj/tot_t) << " over " << tot_t << " frames. ";
+    KALDI_LOG << "Overall average frame-accuracy is "
+              << (total_frame_acc/total_frames) << " over " << total_frames
+              << " frames.";
 
 #if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
