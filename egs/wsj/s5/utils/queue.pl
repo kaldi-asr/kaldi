@@ -205,7 +205,16 @@ if (! $sync) { # We're not submitting with -sync y, so we
       $wait *= 1.2;
       if ($wait > 1.0) {
         $wait = 1.0; # never wait more than 1 second.
-      }  
+        if (rand() > 0.5) {
+          system("touch $qdir/.kick");
+        } else {
+          system("rm $qdir/.kick 2>/dev/null");
+        }
+        # This seems to kick NFS in the teeth to cause it to refresh the
+        # directory.  I've seen cases where it would indefinitely fail to get
+        # updated, even though the file exists on the server.
+        system("ls $qdir >/dev/null");
+      }
     }
   }
   $all_syncfiles = join(" ", @syncfiles);
