@@ -3,6 +3,9 @@
 # BABEL setup that was done by Yajie Miao.  We don't expect these tools will
 # be used very heavily.
 
+! which pkg-config >/dev/null  && \
+   echo "pkg-config is not installed, this will not work.  Ask your sysadmin to install it" && exit 1;
+
 if [ ! -s quicknet.tar.gz ]; then
   wget ftp://ftp.icsi.berkeley.edu/pub/real/davidj/quicknet.tar.gz || exit 1
 fi
