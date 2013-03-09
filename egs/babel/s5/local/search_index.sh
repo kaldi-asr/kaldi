@@ -37,7 +37,7 @@ for f in $kwsdir/index.1.gz $keywords; do
 done
 
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
-  kws-search --strict=$strict --nbest=-1 --negative-tolerance=-0.1  \
+  kws-search --strict=$strict --nbest=-1 --negative-tolerance=-1  \
   "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
   "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
 
