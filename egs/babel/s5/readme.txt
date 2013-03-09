@@ -32,3 +32,6 @@ What all the files in the s5/ directory are good for?
 * run-eval.sh -- evaluation of the 10h devel set (the training uses only 
     2h subset for tunning purposes)
 
+* make_release.sh -- script for export of the best results to be prepared
+    for official NIST submission
+
