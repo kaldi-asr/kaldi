@@ -13,6 +13,7 @@ help_message="$0: create subset of the input directory (specified as the first d
              Example:
                  $0 <source-corpus-dir> <subset-descriptor-list-file> <target-corpus-subset-dir>"
 
+echo $0 $@
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
@@ -38,7 +39,7 @@ for file in ecf.xml rttm kwlist.xml ; do
     fi
 done
 
-echo WSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \
+echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
 KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \

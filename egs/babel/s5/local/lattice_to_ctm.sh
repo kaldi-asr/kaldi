@@ -14,6 +14,9 @@ max_lmwt=17
 model=
 #end configuration section.
 
+#debugging stuff
+echo $0 $@
+
 [ -f ./path.sh ] && . ./path.sh
 [ -f ./cmd.sh ]  && . ./cmd.sh
 . parse_options.sh || exit 1;

@@ -35,9 +35,16 @@ dir=$3
 ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -f $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
-for f in $data/char.stm $data/stm $data/glm   ; do
+for f in $data/stm $data/glm   ; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
+
+if [ $cer -eq 1 ] ; then
+  for f in $data/char.stm  ; do
+    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
+  done
+fi
+
 
 name=`basename $data`; # e.g. eval2000
 
