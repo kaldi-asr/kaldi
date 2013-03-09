@@ -10,6 +10,7 @@ model= # You can specify the model to use (e.g. if you want to use the .alimdl)
 nj=4
 cmd=run.pl
 max_active=7000
+max_arcs=-1
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
@@ -86,7 +87,7 @@ fi
 
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+ gmm-latgen-faster --max-arcs=$max_arcs --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
