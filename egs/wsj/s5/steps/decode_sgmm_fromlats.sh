@@ -70,7 +70,7 @@ nj=`cat $olddir/num_jobs` || exit 1;
 sdata=$data/split$nj;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-gselect_opt="--gselect=ark:gunzip -c $dir/gselect.JOB.gz|"
+gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark:- |"
 
 mkdir -p $dir/log

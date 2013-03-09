@@ -61,7 +61,7 @@ done
 
 sdata=$data/split$nj;
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1
-gselect_opt="--gselect=ark:gunzip -c $dir/gselect.JOB.gz|"
+gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark:- |"
 
 mkdir -p $dir/log

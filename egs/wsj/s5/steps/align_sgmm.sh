@@ -117,7 +117,7 @@ if $use_gselect; then
     echo "$0: you specified --use-gselect true, but #jobs mismatch." && exit 1;
   [ ! -f $srcdir/gselect.1.gz ] && echo "No gselect info in $srcdir" && exit 1;
   graphdir=$srcdir
-  gselect_opt="--gselect=ark:gunzip -c $srcdir/gselect.JOB.gz|"
+  gselect_opt="--gselect=ark,s,cs:gunzip -c $srcdir/gselect.JOB.gz|"
   ln.pl $srcdir/gselect.*.gz $dir
 else
   graphdir=$dir
@@ -129,7 +129,7 @@ else
       sgmm-gselect --full-gmm-nbest=$gselect $alimdl \
       "$feats" "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
   fi
-  gselect_opt="--gselect=ark:gunzip -c $dir/gselect.JOB.gz|"
+  gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 fi
 
 
