@@ -35,3 +35,16 @@ What all the files in the s5/ directory are good for?
 * make_release.sh -- script for export of the best results to be prepared
     for official NIST submission
 
+
+Official NIST submission preparation
+==================================================
+The make_release.sh script might come handy.
+The scripts evaluates the performance of the sgmm2_mmi_b.0.1 system on 
+the eval.uem dataset and chooses the same set of parameters to 
+determine the path inside the test.uem dataset. 
+
+./make_release.sh --relname defaultJHU --lp FullLP --lr BaseLR --ar NTAR  \
+  conf/languages/106-tagalog-fullLP.official.conf /export/babel/data/releases
+
+
+
