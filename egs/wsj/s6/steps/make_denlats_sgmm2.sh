@@ -95,7 +95,7 @@ else
 fi
 
 if [ -f $alidir/gselect.1.gz ]; then
-  gselect_opt="--gselect=ark:gunzip -c $alidir/gselect.JOB.gz|"
+  gselect_opt="--gselect=ark,s,cs:gunzip -c $alidir/gselect.JOB.gz|"
 else
   echo "$0: no such file $alidir/gselect.1.gz" && exit 1;
 fi

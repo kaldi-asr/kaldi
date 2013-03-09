@@ -49,7 +49,7 @@ done
 
 nj=`cat $olddir/num_jobs` || exit 1;
 sdata=$data/split$nj;
-gselect_opt="--gselect=ark:gunzip -c $olddir/gselect.JOB.gz|"
+gselect_opt="--gselect=ark,s,cs:gunzip -c $olddir/gselect.JOB.gz|"
 splice_opts=`cat $srcdir/splice_opts || exit 1`
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
 

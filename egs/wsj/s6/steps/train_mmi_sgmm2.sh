@@ -82,7 +82,7 @@ fi
 
 if [ -f $alidir/gselect.1.gz ]; then
   echo "$0: using Gaussian-selection info from $alidir"
-  gselect_opt="--gselect=ark:gunzip -c $alidir/gselect.JOB.gz|"
+  gselect_opt="--gselect=ark,s,cs:gunzip -c $alidir/gselect.JOB.gz|"
 else
   echo "$0: error: no Gaussian-selection info found" && exit 1;
 fi
