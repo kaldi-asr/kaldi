@@ -111,7 +111,7 @@ if [ $cer -eq 1 ] ; then
 else
   scores=`find exp/sgmm5_mmi_b0.1 -name "*.ctm.sys" -not -name "*char.ctm.sys" -ipath "*eval.uem*" | xargs grep 'Sum/Avg' | sed 's/:* *| */ /g' | sed 's/  */ /g' | sort  -n -k 9 | column -t | head`
 fi
-[-z $scores ] && echo "Nothing to export, exiting..." && exit 1
+[ -z $scores ] && echo "Nothing to export, exiting..." && exit 1
 
 echo  "$scores"
 ii=`echo "$scores" | head -n 1 | cut -f 1 -d ' '`
