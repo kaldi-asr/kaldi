@@ -105,7 +105,7 @@ fi
 x=0
 while [ $x -lt $num_iters ]; do
   echo "Iteration $x of MMI training"
-  # Note: the num and den states are accumulated at the same time, so we
+  # Note: the num and den states are accumulated at the same time: 
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
@@ -145,6 +145,7 @@ done
 echo "MMI training finished"
 
 rm $dir/final.mdl 2>/dev/null
+rm $dir/*.acc 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 
 exit 0;
