@@ -308,10 +308,10 @@ void AmSgmm2::Check(bool show_properties) {
     for (int32 i = 0; i < num_gauss; i++)
       KALDI_ASSERT(N_[i].NumRows() == feat_dim && N_[i].NumCols() == spk_dim);
     if (u_.NumRows() == 0) {
-      debug_str << "Speaker-weight projections: no.\n";
+      debug_str << "Speaker-weight projections: no.";
     } else {
       KALDI_ASSERT(u_.NumRows() == num_gauss && u_.NumCols() == spk_dim);
-      debug_str << "Speaker-weight projections: yes.\n";
+      debug_str << "Speaker-weight projections: yes.";
     }
   } else {
     KALDI_ASSERT(N_.size() == 0 && u_.NumRows() == 0);

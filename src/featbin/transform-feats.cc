@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
         TT.AddMat2(1.0, linear_transform, kNoTrans, 0.0);
         BaseFloat logdet;
         if (use_global_transform) {
-          if (cached_logdet != -1)
+          if (cached_logdet == -1)
             cached_logdet = 0.5 * TT.LogDet(NULL);
           logdet = cached_logdet;
         } else {

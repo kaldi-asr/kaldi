@@ -952,6 +952,7 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
   void MakeFilename(typename std::ostream::pos_type streampos, std::string *output) const {
     std::ostringstream ss;
     ss << ':' << streampos;
+    KALDI_ASSERT(ss.str() != ":-1");
     *output = archive_wxfilename_ + ss.str();
     // e.g. /some/file:12302.
     // Note that we warned if archive_wxfilename_ is not an actual filename;
