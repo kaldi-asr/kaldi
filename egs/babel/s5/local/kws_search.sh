@@ -63,6 +63,8 @@ duration=`head -1 $kwsdatadir/ecf.xml |\
 
 if [ ! -z "$model" ]; then
     model_flags="--model $model"
+else
+    model_flags=
 fi
 
 for lmwt in `seq $min_lmwt $max_lmwt` ; do
