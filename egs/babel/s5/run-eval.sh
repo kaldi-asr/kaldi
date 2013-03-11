@@ -222,7 +222,7 @@ else
         local/score.sh --cer $cer --stage 2  --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
                 data/eval.pem data/lang exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter;
 
-        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$mdl.mdl \
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$iter.mdl \
               data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_eval.pem_it$iter 
 
         steps/decode_sgmm2_rescore.sh \
@@ -232,7 +232,7 @@ else
         local/score.sh --cer $cer --stage 2 --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
             data/eval.pem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter;
 
-        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$mdl.mdl \
+        local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime --model exp/sgmm5_mmi_b0.1/$iter.mdl \
             data/lang data/eval.pem exp/sgmm5_mmi_b0.1/decode_fmllr_eval.pem_it$iter 
     done
 fi
