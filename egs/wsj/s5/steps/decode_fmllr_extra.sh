@@ -156,7 +156,7 @@ pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 ## Do the first adapted lattice generation pass. 
 if [ $stage -le 2 ]; then
   echo "$0: doing first adapted lattice generation phase"
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd JOB=1:$nj $dir/log/decode1.JOB.log\
     gmm-latgen-faster --max-active=$first_max_active --beam=$first_beam --lattice-beam=$first_latbeam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat1.JOB.gz" \
@@ -192,7 +192,7 @@ pass2feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 ## after another stage of adaptation.)
 if [ $stage -le 4 ]; then
   echo "$0: doing final lattice generation phase"
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd JOB=1:$nj $dir/log/decode2.JOB.log\
     gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass2feats" "ark:|gzip -c > $dir/lat2.JOB.gz" \
