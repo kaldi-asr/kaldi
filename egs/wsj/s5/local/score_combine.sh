@@ -29,7 +29,7 @@ max_lmwt=20
 lat_weights=
 #end configuration section.
 
-help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir> <decode-dir1> <decode-dir2> [decode-dir3 ... ] <out-dir>
+help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1> <decode-dir2> [decode-dir3 ... ] <out-dir>
 Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
   --min-lmwt INT                  # minumum LM-weight for lattice rescoring 

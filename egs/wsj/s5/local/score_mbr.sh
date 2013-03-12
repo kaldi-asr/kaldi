@@ -14,7 +14,7 @@ max_lmwt=20
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/score_sclite_conf.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
+  echo "Usage: local/score_mbr.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "

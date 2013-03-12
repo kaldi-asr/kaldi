@@ -95,6 +95,39 @@
         exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_${test}_it$iter &
      done
   done
+
+  steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si284 --boost 0.1 \
+    --zero-if-disjoint true data/train_si284 data/lang exp/sgmm2_5b_ali_si284 exp/sgmm2_5b_denlats_si284 exp/sgmm2_5b_mmi_b0.1_z
+
+  for iter in 1 2 3 4; do
+    for test in eval92 dev93; do
+      steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
+        --transform-dir exp/tri4b/decode_bd_tgpr_${test} data/lang_test_bd_fg data/test_${test} exp/sgmm2_5b/decode_bd_tgpr_${test} \
+        exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_${test}_it$iter &
+     done
+  done
+
 ) &
 
 wait
+
+# Examples of combining some of the best decodings: SGMM+MMI with
+# MMI+fMMI on a conventional system.
+ 
+local/score_combine.sh data/test_eval92 \
+   data/lang_test_bd_tgpr \
+   exp/tri4b_fmmi_a/decode_tgpr_eval92_it8 \
+   exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3 \
+   exp/combine_tri4b_fmmi_a_sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it8_3
+
+
+# %WER 4.43 [ 250 / 5643, 41 ins, 12 del, 197 sub ] exp/tri4b_fmmi_a/decode_tgpr_eval92_it8/wer_11
+# %WER 3.85 [ 217 / 5643, 35 ins, 11 del, 171 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3/wer_10
+# combined to:
+# %WER 3.76 [ 212 / 5643, 32 ins, 12 del, 168 sub ] exp/combine_tri4b_fmmi_a_sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it8_3/wer_12
+
+# Checking MBR decode of baseline:
+cp -r -T exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3{,.mbr}
+local/score_mbr.sh data/test_eval92 data/lang_test_bd_tgpr exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr
+# MBR decoding did not seem to help (baseline was 3.85).  I think this is normal at such low WERs.
+%WER 3.86 [ 218 / 5643, 35 ins, 11 del, 172 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr/wer_10

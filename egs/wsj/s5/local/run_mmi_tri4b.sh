@@ -26,6 +26,15 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode_tgpr_dev93  exp/tri4b/graph_tgpr data/test_dev93 \
   exp/tri4b_fmmi_a/decode_tgpr_dev93_it$iter &
 done
+# decode the last iter with the bd model.
+for iter in 8; do
+ steps/decode_fmmi.sh --nj 10  --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode_bd_tgpr_dev93  exp/tri4b/graph_bd_tgpr data/test_dev93 \
+  exp/tri4b_fmmi_a/decode_bd_tgpr_dev93_it$iter &
+ steps/decode_fmmi.sh --nj 8  --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3b/decode_bd_tgpr_eval92  exp/tri4b/graph_bd_tgpr data/test_eval92 \
+  exp/tri4b_fmmi_a/decode_tgpr_eval92_it$iter &
+done
 
 
 # fMMI + mmi with indirect differential.
