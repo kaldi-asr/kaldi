@@ -6,6 +6,26 @@ echo "------------------------------------"
 echo "Building an SRILM in \"$targetDir\""
 echo "------------------------------------"
 
+# Set up the path for the SRILM tools, or die with a suitable message.
+loc=`which ngram-count`;
+if [ -z $loc ]; then
+  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+    sdir=`pwd`/../../../tools/srilm/bin/i686-m64 
+  else
+    sdir=`pwd`/../../../tools/srilm/bin/i686
+  fi
+  if [ -f $sdir/ngram-count ]; then
+    echo Using SRILM tools from $sdir
+    export PATH=$PATH:$sdir
+  else
+    echo You appear to not have SRILM tools installed, either on your path,
+    echo or installed in $sdir.  See tools/install_srilm.sh for installation
+    echo instructions.
+    exit 1
+  fi
+fi
+
+
 for f in $targetDir/vocab $targetDir/text.train $targetDir/text.dev; do
   [ ! -f $f ] && echo "$0: requires $f" && exit 1;
 done
