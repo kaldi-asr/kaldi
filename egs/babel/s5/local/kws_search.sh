@@ -18,6 +18,7 @@ duptime=0.6
 cmd=run.pl
 model=
 skip_scoring=false
+stage=0
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -67,34 +68,58 @@ else
     model_flags=
 fi
 
-for lmwt in `seq $min_lmwt $max_lmwt` ; do
-    kwsoutdir=$decodedir/kws_$lmwt
-    mkdir -p $kwsoutdir
+if [ $stage -le 0 ] ; then
+  for lmwt in `seq $min_lmwt $max_lmwt` ; do
+      kwsoutdir=$decodedir/kws_$lmwt
+      mkdir -p $kwsoutdir
 
-    acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-    local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
-      $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+      acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+      local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+        $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+  done
+fi
 
-    local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
+if [ $stage -le 1 ]; then
+  for lmwt in `seq $min_lmwt $max_lmwt` ; do
+      kwsoutdir=$decodedir/kws_$lmwt
+      mkdir -p $kwsoutdir
 
-    cat $kwsoutdir/result.* | \
-      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-        --segments=$datadir/segments --normalize=true \
-        --map-utter=$kwsdatadir/utter_map \
-        - - | \
-      local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.xml
-   
-    cat $kwsoutdir/result.* | \
-      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-        --segments=$datadir/segments --normalize=false \
-        --map-utter=$kwsdatadir/utter_map \
-        - - | \
-      local/filter_kwslist.pl $duptime > $kwsoutdir/kwslist.unnormalized.xml
+      acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+      local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
+  done
+fi
 
-    if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-        echo "Not scoring, because the file local/kws_score.sh is not present"
-    else
-        local/kws_score.sh $datadir $kwsoutdir
-    fi
-done
+if [ $stage -le 2 ]; then
+  mkdir -p $decodedir/kws/
+  echo "Writing normalized results"
+  $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_normalized.LMWT.log \
+        cat $decodedir/kws_LMWT/result.* \| \
+            utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+              --segments=$datadir/segments --normalize=true \
+              --map-utter=$kwsdatadir/utter_map \
+              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml
+fi
 
+if [ $stage -le 3 ]; then
+  echo "Writing unnormalized results"
+  $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_unnormalized.LMWT.log \
+        cat $decodedir/kws_LMWT/result.* \| \
+            utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+              --segments=$datadir/segments --normalize=false \
+              --map-utter=$kwsdatadir/utter_map \
+              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.unnormalized.xml
+fi
+
+if [ $stage -le 4 ]; then
+  if [[ (! -x local/kws_score.sh ) ]] ; then
+    echo "Not scoring, because the file local/kws_score.sh is not present"
+  elif [[ $skip_scoring == true ]] ; then
+    echo "Not scoring, because --skip-scoring true was issued"
+  else
+    echo "Scoring KWS results"
+    $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_scoring.LMWT.log \
+       local/kws_score.sh $datadir $decode_ir/kws_LMWT
+  fi
+fi
+
+exit 0
