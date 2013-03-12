@@ -87,22 +87,22 @@ ii=`echo "$scores" | head -n 1 | cut -f 1 -d ' '`
 
 dev_kwlist=`echo $ii | sed "s/sum.txt/kwslist.xml/"`
 odev_kwlist=${dev_kwlist%.xml}.fixed.xml
-filename="KWS13_RADICAL_${corpora}_BaDev_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.kwlist.xml"
+filename="KWS13_RADICAL_${corpora}_BaDev_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.kwslist.xml"
 export_kws_file $dev_kwlist $odev_kwlist $test_data_kwlist $outputdir/$filename || exit 1
 
 eval_kwlist=`echo $dev_kwlist | sed "s:eval.uem:test.uem:g"`
 oeval_kwlist=${eval_kwlist%.xml}.fixed.xml
-filename="KWS13_RADICAL_${corpora}_BaEval_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.kwlist.xml"
+filename="KWS13_RADICAL_${corpora}_BaEval_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.kwslist.xml"
 export_kws_file $eval_kwlist $oeval_kwlist $test_data_kwlist $outputdir/$filename || exit 1
 
 dev_kwlist=${dev_kwlist%.xml}.unnormalized.xml
-odev_kwlist=${dev_kwlist%.xml}.unnormalized.fixed.xml
-filename="KWS13_RADICAL_${corpora}_BaDev_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.unnormalized.kwlist.xml"
+odev_kwlist=${dev_kwlist%.xml}.fixed.xml
+filename="KWS13_RADICAL_${corpora}_BaDev_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.unnormalized.kwslist.xml"
 export_kws_file $dev_kwlist $odev_kwlist $test_data_kwlist $outputdir/$filename || exit 1
 
 eval_kwlist=${eval_kwlist%.xml}.unnormalized.xml
-oeval_kwlist=${eval_kwlist%.xml}.unnormalized.fixed.xml
-filename="KWS13_RADICAL_${corpora}_BaEval_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.unnormalized.kwlist.xml"
+oeval_kwlist=${eval_kwlist%.xml}.fixed.xml
+filename="KWS13_RADICAL_${corpora}_BaEval_KWS_${lp}_${lr}_${ar}_c-${relname}_${version}.unnormalized.kwslist.xml"
 export_kws_file $eval_kwlist $oeval_kwlist $test_data_kwlist $outputdir/$filename || exit 1
 
 
@@ -111,7 +111,7 @@ if [ $cer -eq 1 ] ; then
 else
   scores=`find exp/sgmm5_mmi_b0.1 -name "*.ctm.sys" -not -name "*char.ctm.sys" -ipath "*eval.uem*" | xargs grep 'Sum/Avg' | sed 's/:* *| */ /g' | sed 's/  */ /g' | sort  -n -k 9 | column -t | head`
 fi
-[ -z $scores ] && echo "Nothing to export, exiting..." && exit 1
+[ -z "$scores" ] && echo "Nothing to export, exiting..." && exit 1
 
 echo  "$scores"
 ii=`echo "$scores" | head -n 1 | cut -f 1 -d ' '`
