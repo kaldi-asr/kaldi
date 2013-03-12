@@ -84,6 +84,11 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
+    //optionally remove softmax
+    if(no_softmax && nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
+      KALDI_LOG << "Removing softmax from the nnet " << model_filename;
+      nnet.RemoveLayer(nnet.LayerCount()-1);
+    }
 
     kaldi::int64 tot_t = 0;
 

@@ -174,9 +174,10 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     // using activations directly: remove softmax, if present
     if (nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
-      KALDI_LOG << "Found softmax at output: removing it.";
-      int32 num_layers = nnet.LayerCount();
-      nnet.RemoveLayer(num_layers-1);
+      KALDI_LOG << "Removing softmax from the nnet " << model_filename;
+      nnet.RemoveLayer(nnet.LayerCount()-1);
+    } else {
+      KALDI_LOG << "The nnet was without softmax " << model_filename;
     }
 
     nnet.SetLearnRate(learn_rate, NULL);
@@ -355,11 +356,9 @@ int main(int argc, char *argv[]) {
 
     if (!crossvalidate) {
       // add the softmax layer back before writing
-      if (nnet.Layer(nnet.LayerCount()-1)->GetType() != Component::kSoftmax) {
-        KALDI_LOG << "Adding the softmax layer back.";
-        int32 out_dim = nnet.Layer(nnet.LayerCount()-1)->OutputDim();
-        nnet.AppendLayer(new Softmax(out_dim, out_dim, &nnet));
-      }
+      KALDI_LOG << "Appending the softmax " << target_model_filename;
+      nnet.AppendLayer(new Softmax(nnet.OutputDim(),nnet.OutputDim(),&nnet));
+      //store the nnet
       nnet.Write(target_model_filename, binary);
     }
 
