@@ -16,7 +16,8 @@ acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
-drop_frames=true
+do_smbr=true
+use_silphones=false #setting this to something will enable giving siphones to nnet-mpe
 use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
@@ -57,8 +58,6 @@ mkdir -p $dir/log
 cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-oov=`cat $lang/oov.int` || exit 1;
-oovphone=$(fstprint $lang/L.fst  | awk '{ print $4" "$3 }' | grep "^$oov " | sort | uniq | awk '{ print $2; exit; }')
 
 
 
@@ -81,6 +80,9 @@ cp $feature_transform $dir/final.feature_transform
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
+#enable/disable silphones from MPE training
+mpe_silphones_arg= #empty
+[ "$use_silphones" == "true" ] && mpe_silphones_arg="--silence-phones=$silphonelist"
 
 
 # Shuffle the feature list to make the GD stochastic!
@@ -147,9 +149,6 @@ fi
 ###
 ###
 
-# Get the MLP output dimension (we will need it later when adding softmax)
-num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
-
 # Run several iterations of the MMI training
 cur_mdl=$nnet
 x=1
@@ -158,22 +157,23 @@ while [ $x -le $num_iters ]; do
   if [ -f $dir/$x.nnet ]; then
     echo "Skipped, file $dir/$x.nnet exists"
   else
-    $cmd $dir/log/mmi.$x.log \
-     nnet-train-mmi-sequential \
+
+    $cmd $dir/log/mpe.$x.log \
+     nnet-mpe \
        --feature-transform=$feature_transform \
        --class-frame-counts=$class_frame_counts \
        --acoustic-scale=$acwt \
        --lm-scale=$lmwt \
        --learn-rate=$learn_rate \
-       --drop-frames=$drop_frames \
-       --oov-phone=$oovphone \
+       --do-smbr=$do_smbr \
+       $mpe_silphones_arg \
        ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
   fi
   cur_mdl=$dir/$x.nnet
 
   #report the progress
-  grep -B 2 MMI-objective $dir/log/mmi.$x.log | sed -e 's|.*)||'
+  grep -B 2 MPE-objective $dir/log/mpe.$x.log | sed -e 's|.*)||'
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
@@ -181,7 +181,7 @@ done
 
 (cd $dir; unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
-echo "MMI training finished"
+echo "MPE training finished"
 
 
 

@@ -150,8 +150,9 @@ if [ $sub_split -eq 1 ]; then
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
     latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
       --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-      $dir/dengraph/HCLG.fst "$feats" ark:- \| \
-    lattice-union ark,s,cs:- ark:$dir/num_lat.ark.JOB "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
+      $dir/dengraph/HCLG.fst "$feats" "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
+#      $dir/dengraph/HCLG.fst "$feats" ark:- \| \
+#    lattice-union ark,s,cs:- ark:$dir/num_lat.ark.JOB 
 else
   for n in `seq $nj`; do
     if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
@@ -167,8 +168,9 @@ else
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
           --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" ark:- \| \
-        lattice-union ark,s,cs:- ark:$dir/num_lat.ark.$n "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;
+          $dir/dengraph/HCLG.fst "$feats_subset" "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;
+#          $dir/dengraph/HCLG.fst "$feats_subset" ark:- \| \
+#        lattice-union ark,s,cs:- ark:$dir/num_lat.ark.$n "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;
       echo Merging lists for data subset $n
       for k in `seq $sub_split`; do
         cat $dir/lat.$n.$k.scp
