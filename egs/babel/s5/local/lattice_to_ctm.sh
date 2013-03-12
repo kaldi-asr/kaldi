@@ -3,15 +3,12 @@
 
 # begin configuration section.
 cmd=run.pl
-stage=`echo $stage` # Check if it is already set in the parent shell
-if [ ! $stage ]; then # Set a default value
-  stage=0
-fi
 cer=0
 decode_mbr=true
 min_lmwt=7
 max_lmwt=17
 model=
+stage=0
 #end configuration section.
 
 #debugging stuff
