@@ -14,6 +14,7 @@ lexiconFlags="-oov <unk>"
 
 duptime=0.5
 case_insensitive=false
+cer=0
 
 # Scoring protocols (dummy GLM file to appease the scoring script)
 glmFile=`readlink -f ./conf/glm`
