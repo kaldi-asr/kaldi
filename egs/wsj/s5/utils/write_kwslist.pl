@@ -47,7 +47,7 @@ GetOptions('segments=s'     => \$segment,
   'system-id=s'    => \$system_id,
   'normalize=s'    => \$normalize,
   'map-utter=s'    => \$map_utter,
-  'Ntrue-scale=f'  => \$Ntrue_scale); 
+  'Ntrue-scale=f'  => \$Ntrue_scale);
 
 if ($normalize ne "true" && $normalize ne "false") {
   die "Bad value for option --normalize. \n";
@@ -181,7 +181,7 @@ foreach $key (sort mysort (keys %results)) {
     }
     @{$item}[1] = sprintf("%.2f", @{$item}[1]);
     @{$item}[2] = sprintf("%.2f", @{$item}[2]);
-    $score = sprintf("%.3f", $score);
+    $score = sprintf("%g", $score);
     my $utter = @{$item}[0];
     push (@list, "<kw file=\"$utter\" channel=\"1\" tbeg=\"@{$item}[1]\" dur=\"@{$item}[2]\" score=\"$score\" decision=\"$decision\"/>\n");
     $list{$score} = 1;
