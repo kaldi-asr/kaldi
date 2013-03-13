@@ -16,7 +16,7 @@ oovSymbol="<unk>"
 lexiconFlags="-oov <unk>"
 
 # Include the checkpointing facility
-. ./local/CHECKPOINT.sh
+#. ./local/CHECKPOINT.sh
 
 echo "$0 $@"  # Print the command line for logging
 
