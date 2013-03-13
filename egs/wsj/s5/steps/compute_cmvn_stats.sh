@@ -20,8 +20,15 @@
 
 echo "$0 $@"  # Print the command line for logging
 
+fake=false
+if [ $1 == "--fake" ]; then
+  fake=true
+  shift
+fi
+
 if [ $# != 3 ]; then
-   echo "usage: compute_cmvn_stats.sh <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "usage: compute_cmvn_stats.sh [--fake] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "(note: --fake gives you fake cmvn stats that do no normalization.)"
    exit 1;
 fi
 
@@ -41,7 +48,7 @@ mkdir -p $cmvndir || exit 1;
 mkdir -p $logdir || exit 1;
 
 
-required="$data/feats.scp"
+required="$data/feats.scp $data/spk2utt"
 
 for f in $required; do
   if [ ! -f $f ]; then
@@ -49,9 +56,17 @@ for f in $required; do
     exit 1;
   fi
 done
- 
-! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
-  2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;
+
+if $fake; then
+  dim=`feat-to-dim scp:$data/feats.scp -`
+  ! cat $data/spk2utt | awk -v dim=$dim '{print $1, "["; for (n=0; n < dim; n++) { printf("0 "); } print "1";
+                                                        for (n=0; n < dim; n++) { printf("1 "); } print "0 ]";}' | \
+    copy-matrix ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
+     echo "Error creating fake CMVN stats" && exit 1;
+else  
+  ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
+    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;
+fi
 
 cp $cmvndir/cmvn_$name.scp $data/cmvn.scp || exit 1;
 

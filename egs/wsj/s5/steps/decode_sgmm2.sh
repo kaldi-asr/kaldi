@@ -12,6 +12,8 @@ stage=1
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
+min_lmwt=9 # for scoring..
+max_lmwt=20
 cmd=run.pl
 beam=13.0
 gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
@@ -188,7 +190,7 @@ if [ $stage -le 7 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-    local/score.sh --cmd "$cmd" $data $graphdir $dir
+    local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
   fi
 fi
 

@@ -269,7 +269,7 @@ while [ $x -lt $num_iters ]; do
        sgmm2-est --update-flags=$flags --split-substates=$numsubstates \
        $increase_dim_opts --power=$power --write-occs=$dir/$[$x+1].occs \
        $dir/$x.mdl "$acc_sum|" $dir/$[$x+1].mdl || exit 1;
-     rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 2>/dev/null
+     rm $dir/$x.mdl $dir/$x.*.acc.gz $dir/$x.occs 2>/dev/null
    fi
    if [ $x -lt $max_iter_inc ]; then
      numsubstates=$[$numsubstates+$incsubstates]
@@ -328,7 +328,7 @@ if [ $spk_dim -gt 0 ]; then
       $cmd $dir/log/update_ali.$x.log \
         sgmm2-est --update-flags=$flags --remove-speaker-space=true --power=$power \
         $cur_alimdl "$acc_sum|" $dir/$[$x+1].alimdl || exit 1;
-      rm $dir/$x.*.acc.gz || exit 1;
+      rm $dir/acc.$x.*.gz || exit 1;
       [ $x -gt $num_iters ]  && rm $dir/$x.alimdl
     fi
     cur_alimdl=$dir/$[$x+1].alimdl
