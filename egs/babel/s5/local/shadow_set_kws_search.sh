@@ -141,7 +141,7 @@ fi
     
 if [ $stage -le 3 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_normalized.LMWT.log \
-    cat $rootdirB/kws_LWMT/results | \
+    cat $rootdirB/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=true \
       --map-utter=$kwsdatadir/utter_map \
@@ -150,7 +150,7 @@ fi
 
 if [ $stage -le 4 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_unnormalized.LMWT.log \
-    cat $rootdirB/kws_LWMT/results | \
+    cat $rootdirB/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=false \
       --map-utter=$kwsdatadir/utter_map \
