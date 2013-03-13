@@ -167,6 +167,8 @@ if (!defined $jobname) { # not an array job
 } else {
   print Q "touch $syncfile.\$SGE_TASK_ID\n"; # touch a bunch of sync-files.
 }
+print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
+  # let the script return with status 100 which will put it to E state; more easily rerunnable.
 print Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
 print Q "## submitted with:\n";       # treats specially.
 print Q "# $qsub_cmd\n";
@@ -240,7 +242,10 @@ $num_failed = 0;
 foreach $l (@logfiles) {
   @wait_times = (0.1, 0.2, 0.2, 0.3, 0.5, 0.5, 1.0, 2.0, 5.0, 5.0, 5.0, 10.0, 25.0);
   for ($iter = 0; $iter <= @wait_times; $iter++) {
-    $line = `tail -1 $l 2>/dev/null`;
+    $line = `tail -10 $l 2>/dev/null`; # Note: although this line should be the last
+    # line of the file, I've seen cases where it was not quite the last line because
+    # of delayed output by the process that was running, or processes it had called.
+    # so tail -10 gives it a little leeway.
     if ($line =~ m/with status (\d+)/) {
       $status = $1;
       last;

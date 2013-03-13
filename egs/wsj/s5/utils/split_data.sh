@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2010-2013 Microsoft Corporation 
+#                     Johns Hopkins University (Author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,8 @@ if [ "$1" == "--per-utt" ]; then
 fi
 
 if [ $# != 2 ]; then
-  echo "Usage: split_data.sh data-dir num-to-split"
+  echo "Usage: split_data.sh <data-dir> <num-to-split>"
+  echo "This script will not split the data-dir if it detects that the output is newer than the input."
   exit 1
 fi
 
@@ -53,7 +55,23 @@ if [ $nt -ne 0 -a $nu -ne $nt ]; then
   echo "use utils/fix_data_dir.sh to fix this."
 fi
 
-# `utils/get_split.pl` returns "0 1 2 3" or "00 01 .. 18 19" or whatever.
+s1=$data/split$numsplit/1
+if [ ! -d $s1 ]; then 
+  need_to_split=true
+else 
+  need_to_split=false
+  for f in utt2spk spk2utt feats.scp text wav.scp cmvn.scp spk2gender \
+    segments reco2file_and_channel; do
+    if [[ -f $data/$f && ( ! -f $s1/$f || $s1/$f -ot $data/$f ) ]]; then
+      need_to_split=true
+    fi
+  done
+fi
+
+if ! $need_to_split; then
+  exit 0;
+fi
+  
 for n in `seq $numsplit`; do
    mkdir -p $data/split$numsplit/$n
    feats="$feats $data/split$numsplit/$n/feats.scp"
@@ -72,6 +90,9 @@ utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
 utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
 [ -f $data/text ] && \
  utils/split_scp.pl $utt2spk_opt $data/text $texts
+
+# If lockfile is not installed, just don't lock it.  It's not a big deal.
+which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock 
 
 for n in `seq $numsplit`; do
    dsn=$data/split$numsplit/$n
@@ -93,5 +114,7 @@ for n in `seq $numsplit`; do
        utils/filter_scp.pl $dsn/utt2spk $data/wav.scp > $dsn/wav.scp
    fi
 done
+
+rm -f $data/.split_lock
 
 exit 0
