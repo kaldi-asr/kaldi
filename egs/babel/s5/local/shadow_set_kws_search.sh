@@ -117,20 +117,22 @@ rootdirB=$decodedir/`basename $datasetB`
 
 if [ $stage -le 1 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_normalized.LMWT.log \
+    set -e; set -o pipefail; \
     cat $rootdirA/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=true \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime > $rootdirA/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 2 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_unnormalized.LMWT.log \
+    set -e; set -o pipefail; \
     cat $rootdirA/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=false \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime > $rootdirA/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.xml || exit 1
 fi
 
 #if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
@@ -141,20 +143,22 @@ fi
     
 if [ $stage -le 3 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_normalized.LMWT.log \
+    set -e; set -o pipefail; \
     cat $rootdirB/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=true \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime > $rootdirB/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 4 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_unnormalized.LMWT.log \
+    set -e; set -o pipefail; \
     cat $rootdirB/kws_LWMT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=false \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime > $rootdirB/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
 fi
 
 #if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
