@@ -5,6 +5,7 @@
 
 # Begin configuration section.
 # case_insensitive=true
+extraid=
 # End configuration section.
 
 help_message="$0: create subset of the input directory (specified as the first directory).
@@ -24,7 +25,11 @@ if [ $# -ne 2 ]; then
     exit 1;
 fi
 
-kwsdatadir=$1/kws
+if [-z $extraid ] ; then
+  kwsdatadir=$1/kws
+else
+  kwsdatadir=$1/kws_${extraid}
+fi
 kwsoutputdir="$2/"
 
 if [[ ! -d "$kwsdatadir" ]] ; then
