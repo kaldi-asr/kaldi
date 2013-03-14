@@ -24,6 +24,7 @@ Allowed options:
   --Ntrue-scale               : Keyword independent scale factor for Ntrue  (float,   default = 1.0) 
   --segments                  : Segments file from Kaldi                    (string,  default = "")
   --system-id                 : System ID                                   (string,  default = "")
+  --digits                    : How many digits should the score use        (int,     default = "infinite")
 EOU
 
 my $segment = "";
@@ -37,6 +38,8 @@ my $system_id = "";
 my $normalize = "false";
 my $map_utter = "";
 my $Ntrue_scale = 1.0;
+my $digits = 0;
+
 GetOptions('segments=s'     => \$segment,
   'flen=f'         => \$flen,
   'beta=f'         => \$beta,
@@ -47,7 +50,9 @@ GetOptions('segments=s'     => \$segment,
   'system-id=s'    => \$system_id,
   'normalize=s'    => \$normalize,
   'map-utter=s'    => \$map_utter,
-  'Ntrue-scale=f'  => \$Ntrue_scale);
+  'Ntrue-scale=f'  => \$Ntrue_scale,
+  'digits=i'       => \$digits);
+
 
 if ($normalize ne "true" && $normalize ne "false") {
   die "Bad value for option --normalize. \n";
@@ -154,6 +159,11 @@ sub mysort {
   }
 }
 
+my $format_string = "%g";
+if ($digits gt 0 ) {
+  $format_string = "%." . $digits ."f";
+}
+
 eval "print $sourceout \'<kwslist kwlist_filename=\"$ecf_filename\" language=\"$language\" system_id=\"$system_id\">\n\'";
 foreach $key (sort mysort (keys %results)) {
   my $term_search_time = "1";
@@ -181,7 +191,8 @@ foreach $key (sort mysort (keys %results)) {
     }
     @{$item}[1] = sprintf("%.2f", @{$item}[1]);
     @{$item}[2] = sprintf("%.2f", @{$item}[2]);
-    $score = sprintf("%g", $score);
+    
+    $score = sprintf($format_string, $score);
     my $utter = @{$item}[0];
     push (@list, "<kw file=\"$utter\" channel=\"1\" tbeg=\"@{$item}[1]\" dur=\"@{$item}[2]\" score=\"$score\" decision=\"$decision\"/>\n");
     $list{$score} = 1;
