@@ -113,8 +113,18 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
                            const Matrix<BaseFloat> &feats,
                            BaseFloat scale)
       : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm),
-        scale_(scale) {}
+        scale_(scale), delete_feats_(NULL) {}
 
+  // This version of the initializer takes ownership of the pointer
+  // "feats" and will delete it when this class is destroyed.
+  DecodableAmDiagGmmScaled(const AmDiagGmm &am,
+                           const TransitionModel &tm,
+                           BaseFloat scale,
+                           Matrix<BaseFloat> *feats)
+      : DecodableAmDiagGmmUnmapped(am, *feats), trans_model_(tm),
+        scale_(scale), delete_feats_(feats) {}
+
+  
   // Note, frames are numbered from zero but transition-ids from one.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
     return scale_*LogLikelihoodZeroBased(frame,
@@ -124,9 +134,15 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
   const TransitionModel *TransModel() { return &trans_model_; }
+
+  virtual ~DecodableAmDiagGmmScaled() {
+    if (delete_feats_) delete delete_feats_;
+  }
+  
  private: // want to access it public to have pdf id information
   const TransitionModel &trans_model_;  // for transition-id to pdf mapping
   BaseFloat scale_;
+  Matrix<BaseFloat> *delete_feats_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmScaled);
 };
 

@@ -25,7 +25,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-scale-accs gmm-get-stats-deriv gmm-est-rescale gmm-boost-silence \
            gmm-diff-accs gmm-basis-fmllr-accs gmm-basis-fmllr-training gmm-est-basis-fmllr \
            gmm-est-map gmm-adapt-map gmm-latgen-map gmm-basis-fmllr-accs-gpost \
-           gmm-est-basis-fmllr-gpost gmm-latgen-tracking
+           gmm-est-basis-fmllr-gpost gmm-latgen-tracking gmm-latgen-faster-parallel
  
 OBJFILES =
 
@@ -35,7 +35,7 @@ all:  $(BINFILES)
 TESTFILES =
 
 
-$(BINFILES): ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
+$(BINFILES): ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../thread/kaldi-thread.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 

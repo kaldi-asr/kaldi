@@ -348,7 +348,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       size_t num_states = output_states_.size();
       if ((opts_.max_states > 0 && num_states > opts_.max_states) || 
           (opts_.max_arcs > 0 && num_arcs_ > opts_.max_arcs) || 
-          (num_states % 100 == 0 && !CheckMemoryUsage())) {
+          (num_states % 10 == 0 && !CheckMemoryUsage())) { // note: at some point
+        // it was num_states % 100, not num_states % 10, but I encountered an example
+        // where memory was exhausted before we reached state #100.
         KALDI_VLOG(1) << "Lattice determinization terminated but not "
                       << " because of lattice-beam.  (#states, #arcs) is ( " 
                       << output_states_.size() << ", " << num_arcs_

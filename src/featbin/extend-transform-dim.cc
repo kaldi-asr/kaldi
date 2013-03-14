@@ -83,11 +83,11 @@ int main(int argc, char *argv[]) {
     bool in_is_rspecifier =
         (ClassifyRspecifier(transform_in_fn, NULL, NULL)
          != kNoRspecifier),
-        out_is_rspecifier =
-        (ClassifyRspecifier(transform_out_fn, NULL, NULL)
-         != kNoRspecifier);
-
-    if (in_is_rspecifier != out_is_rspecifier)
+        out_is_wspecifier =
+        (ClassifyWspecifier(transform_out_fn, NULL, NULL)
+         != kNoWspecifier);
+    
+    if (in_is_rspecifier != out_is_wspecifier)
       KALDI_ERR << "Either none or both of the (input, output) must be a Table.";
     
     if (in_is_rspecifier) {

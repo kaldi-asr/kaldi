@@ -32,14 +32,16 @@ namespace kaldi {
    simultaneously, in parellel, and wait for them all to finish.  This file
    addresses a different problem, typically encountered in Kaldi command-line
    programs that process a sequence of items.  The problem is where
-   different-size items are coming in, all of different sizes (e.g. utterances
+   items to be processed are coming in, all of different sizes (e.g. utterances
    with different numbers of frames) and we would like them to be run in
    parallel somehow, using multiple threads; but they must still make good use
    of the number of threads available; and they must be output in the same order
    as they came in.
 
    Here, we will still accept objects of some class C with an operator () that
-   takes not arguments.  But the way things are run is slightly different.  We now
+   takes no arguments.  C may also have a constructor and a destructor that do
+   something (typically the constructor just sets variables, and the destructor
+   does some kind of output).  We 
    have a templated class TaskSequencer<C> which is responsible for running
    the jobs in parallel.  It has a function Run() that will accept a new object
    of class C; this will block until a thread is free, at which time it will
@@ -63,7 +65,7 @@ struct TaskSequencerConfig {
     po->Register("num-threads-total", &num_threads_total, "Total number of "
                  "threads, including those that are waiting on other threads "
                  "to produce their output.  Controls memory use.  If <= 0, "
-                 "defaults to twice --num-threads option.  Otherwise, must "
+                 "defaults to --num-threads plus 20.  Otherwise, must "
                  "be >= num-threads.");
   }
 };
@@ -77,7 +79,7 @@ class TaskSequencer {
   TaskSequencer(const TaskSequencerConfig &config):
       threads_avail_(config.num_threads),
       tot_threads_avail_(config.num_threads_total > 0 ? config.num_threads_total :
-                         2 * config.num_threads),
+                         config.num_threads + 20),
       thread_list_(NULL) {
     KALDI_ASSERT((config.num_threads_total <= 0 ||
                   config.num_threads_total >= config.num_threads) &&
@@ -104,8 +106,8 @@ class TaskSequencer {
     }
   }
 
-  /// The destructor waits for the last thread to exit.
-  ~TaskSequencer() {    
+  void Wait() { // You call this at the end if it's more convenient
+    // than waiting for the destructor.  It waits for all tasks to finish.
     if (thread_list_ != NULL) {
       int ret = pthread_join(thread_list_->thread, NULL);
       if (ret != 0) {
@@ -115,8 +117,13 @@ class TaskSequencer {
       KALDI_ASSERT(thread_list_->tail == NULL); // thread would not
       // have exited without setting tail to NULL.
       delete thread_list_;
+      thread_list_ = NULL;
     }
-      
+  }
+  
+  /// The destructor waits for the last thread to exit.
+  ~TaskSequencer() {
+    Wait();      
   }
  private:
   struct RunTaskArgsList {

@@ -80,10 +80,12 @@ void MleAmSgmm2Accs::Write(std::ostream &out_stream, bool binary) const {
       y_[j1].Write(out_stream, binary);
     }
   }
-  if (gamma_.size() != 0) {
+  if (gamma_.size() != 0) { // These stats are large
+    // -> write as single precision.
     WriteToken(out_stream, binary, "<gamma>");
     for (int32 j1 = 0; j1 < num_groups_; j1++) {
-      gamma_[j1].Write(out_stream, binary);
+      Matrix<BaseFloat> gamma_j1(gamma_[j1]);
+      gamma_j1.Write(out_stream, binary);
     }
   }
   if (t_.NumRows() != 0) {

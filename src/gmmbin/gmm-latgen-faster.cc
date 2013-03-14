@@ -48,10 +48,12 @@ int main(int argc, char *argv[]) {
     
     std::string word_syms_filename;
     config.Register(&po);
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-
-    po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
-    po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    po.Register("acoustic-scale", &acoustic_scale,
+                "Scaling factor for acoustic likelihoods");
+    po.Register("word-symbol-table", &word_syms_filename,
+                "Symbol table for words [for debug output]");
+    po.Register("allow-partial", &allow_partial,
+                "If true, produce output even if end state was not reached.");
     
     po.Read(argc, argv);
 
@@ -96,7 +98,7 @@ int main(int argc, char *argv[]) {
 
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
-    int num_success = 0, num_fail = 0;
+    int num_done = 0, num_err = 0;
 
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -121,7 +123,7 @@ int main(int argc, char *argv[]) {
           feature_reader.FreeCurrent();
           if (features.NumRows() == 0) {
             KALDI_WARN << "Zero-length utterance: " << utt;
-            num_fail++;
+            num_err++;
             continue;
           }
           
@@ -135,8 +137,8 @@ int main(int argc, char *argv[]) {
                   &compact_lattice_writer, &lattice_writer, &like)) {
             tot_like += like;
             frame_count += features.NumRows();
-            num_success++;
-          } else num_fail++;
+            num_done++;
+          } else num_err++;
         }
       }
       delete decode_fst; // delete this only after decoder goes out of scope.
@@ -148,13 +150,13 @@ int main(int argc, char *argv[]) {
         if (!feature_reader.HasKey(utt)) {
           KALDI_WARN << "Not decoding utterance " << utt
                      << " because no features available.";
-          num_fail++;
+          num_err++;
           continue;
         }
         const Matrix<BaseFloat> &features = feature_reader.Value(utt);
         if (features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << utt;
-          num_fail++;
+          num_err++;
           continue;
         }
 
@@ -168,8 +170,8 @@ int main(int argc, char *argv[]) {
                 &compact_lattice_writer, &lattice_writer, &like)) {
           tot_like += like;
           frame_count += features.NumRows();
-          num_success++;
-        } else num_fail++;
+          num_done++;
+        } else num_err++;
       }
     }
       
@@ -177,13 +179,13 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
               << (elapsed*100.0/frame_count);
-    KALDI_LOG << "Done " << num_success << " utterances, failed for "
-              << num_fail;
+    KALDI_LOG << "Done " << num_done << " utterances, failed for "
+              << num_err;
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              << frame_count<<" frames.";
+              << frame_count << " frames.";
 
     if (word_syms) delete word_syms;
-    if (num_success != 0) return 0;
+    if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {
     std::cerr << e.what();

@@ -201,7 +201,8 @@ enum RspecifierType  {
   kScriptRspecifier
 };
 
-RspecifierType ClassifyRspecifier(const std::string &rspecifier, std::string *rxfilename, RspecifierOptions *opts);
+RspecifierType ClassifyRspecifier(const std::string &rspecifier, std::string *rxfilename,
+                                  RspecifierOptions *opts);
 
 // Class Table<Holder> is useful when you want the entire set of
 // objects in memory.  NOT IMPLEMENTED YET.

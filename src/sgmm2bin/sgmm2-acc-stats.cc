@@ -69,107 +69,114 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
-    // Initialize the readers before the model, as the model can
-    // be large, and we don't want to call fork() after reading it if
-    // virtual memory may be low.
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-    RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
-    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
-                                                           utt2spk_rspecifier);
-    
-    AmSgmm2 am_sgmm;
-    TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_filename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-      am_sgmm.Read(ki.Stream(), binary);
-    }
-
-    Vector<double> transition_accs;
-    trans_model.InitStats(&transition_accs);
-    MleAmSgmm2Accs sgmm_accs(rand_prune);
-    sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags, (spkvecs_rspecifier!=""));
-
-    double tot_like = 0.0;
-    double tot_t = 0;
-
-    kaldi::Sgmm2PerFrameDerivedVars per_frame_vars;
-
     int32 num_done = 0, num_err = 0;
-    for (; !feature_reader.Done(); feature_reader.Next()) {
-      std::string utt = feature_reader.Key();
-      const Matrix<BaseFloat> &features = feature_reader.Value();
-      if (!posteriors_reader.HasKey(utt) ||
-          posteriors_reader.Value(utt).size() != features.NumRows()) {
-        KALDI_WARN << "No posterior info available for utterance "
-                   << utt << " (or wrong size)";
-        num_err++;
-        continue;
-      }
-      const Posterior &posterior = posteriors_reader.Value(utt);
-      
-      if (!gselect_reader.HasKey(utt)
-          && gselect_reader.Value(utt).size() != features.NumRows()) {
-        KALDI_WARN << "No Gaussian-selection info available for utterance "
-                   << utt << " (or wrong size)";
-        num_err++;
-      }
-      const std::vector<std::vector<int32> > &gselect =
-          gselect_reader.Value(utt);
+    Vector<double> transition_accs;
+    MleAmSgmm2Accs sgmm_accs(rand_prune);
 
-      Sgmm2PerSpkDerivedVars spk_vars;
-      if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt)) {
-          spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
-          am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
-        } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt;
+    { // this anonymous scope is to ensure deallocation of unnecessary stuff
+      // while we're writing out the accs, which could be a long time for large
+      // models.
+      
+      // Initialize the readers before the model, as the model can
+      // be large, and we don't want to call fork() after reading it if
+      // virtual memory may be low.
+      SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+      RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
+      RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
+      RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                             utt2spk_rspecifier);
+    
+      AmSgmm2 am_sgmm;
+      TransitionModel trans_model;
+      {
+        bool binary;
+        Input ki(model_filename, &binary);
+        trans_model.Read(ki.Stream(), binary);
+        am_sgmm.Read(ki.Stream(), binary);
+      }
+
+
+      trans_model.InitStats(&transition_accs);
+      sgmm_accs.ResizeAccumulators(am_sgmm, acc_flags, (spkvecs_rspecifier!=""));
+
+      double tot_like = 0.0;
+      double tot_t = 0;
+
+      kaldi::Sgmm2PerFrameDerivedVars per_frame_vars;
+
+      for (; !feature_reader.Done(); feature_reader.Next()) {
+        std::string utt = feature_reader.Key();
+        const Matrix<BaseFloat> &features = feature_reader.Value();
+        if (!posteriors_reader.HasKey(utt) ||
+            posteriors_reader.Value(utt).size() != features.NumRows()) {
+          KALDI_WARN << "No posterior info available for utterance "
+                     << utt << " (or wrong size)";
           num_err++;
           continue;
         }
-      } // else spk_vars is "empty"
-      num_done++;
+        const Posterior &posterior = posteriors_reader.Value(utt);
       
-      BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
-      
-      for (size_t i = 0; i < posterior.size(); i++) {
-        am_sgmm.ComputePerFrameVars(features.Row(i), gselect[i], spk_vars,
-                                    &per_frame_vars);
+        if (!gselect_reader.HasKey(utt)
+            && gselect_reader.Value(utt).size() != features.NumRows()) {
+          KALDI_WARN << "No Gaussian-selection info available for utterance "
+                     << utt << " (or wrong size)";
+          num_err++;
+        }
+        const std::vector<std::vector<int32> > &gselect =
+            gselect_reader.Value(utt);
 
-        for (size_t j = 0; j < posterior[i].size(); j++) {
-          int32 tid = posterior[i][j].first,  // transition identifier.
-              pdf_id = trans_model.TransitionIdToPdf(tid);
-          BaseFloat weight = posterior[i][j].second;
-          trans_model.Accumulate(weight, tid, &transition_accs);
-          tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
-                                                     pdf_id, weight, &spk_vars)
-              * weight;
-          tot_weight += weight;
+        Sgmm2PerSpkDerivedVars spk_vars;
+        if (spkvecs_reader.IsOpen()) {
+          if (spkvecs_reader.HasKey(utt)) {
+            spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
+            am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
+          } else {
+            KALDI_WARN << "Cannot find speaker vector for " << utt;
+            num_err++;
+            continue;
+          }
+        } // else spk_vars is "empty"
+        num_done++;
+      
+        BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
+      
+        for (size_t i = 0; i < posterior.size(); i++) {
+          am_sgmm.ComputePerFrameVars(features.Row(i), gselect[i], spk_vars,
+                                      &per_frame_vars);
+
+          for (size_t j = 0; j < posterior[i].size(); j++) {
+            int32 tid = posterior[i][j].first,  // transition identifier.
+                pdf_id = trans_model.TransitionIdToPdf(tid);
+            BaseFloat weight = posterior[i][j].second;
+            trans_model.Accumulate(weight, tid, &transition_accs);
+            tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
+                                                       pdf_id, weight, &spk_vars)
+                * weight;
+            tot_weight += weight;
+          }
+        }
+
+        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars); // no harm doing it per utterance.
+        
+        KALDI_VLOG(2) << "Average like for this file is "
+                      << (tot_like_this_file/tot_weight) << " over "
+                      << tot_weight <<" frames.";
+        tot_like += tot_like_this_file;
+        tot_t += tot_weight;
+        if (num_done % 50 == 0) {
+          KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
+                    << utt << " avg. like is "
+                    << (tot_like_this_file/tot_weight)
+                    << " over " << tot_weight <<" frames.";
         }
       }
+      KALDI_LOG << "Overall like per frame (Gaussian only) = "
+                << (tot_like/tot_t) << " over " << tot_t << " frames.";
 
-      sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars); // no harm doing it per utterance.
-        
-      KALDI_VLOG(2) << "Average like for this file is "
-                    << (tot_like_this_file/tot_weight) << " over "
-                    << tot_weight <<" frames.";
-      tot_like += tot_like_this_file;
-      tot_t += tot_weight;
-      if (num_done % 50 == 0) {
-        KALDI_LOG << "Processed " << num_done << " utterances; for utterance "
-                  << utt << " avg. like is "
-                  << (tot_like_this_file/tot_weight)
-                  << " over " << tot_weight <<" frames.";
-      }
-    }
-    KALDI_LOG << "Overall like per frame (Gaussian only) = "
-              << (tot_like/tot_t) << " over " << tot_t << " frames.";
+      KALDI_LOG << "Done " << num_done << " files, " << num_err
+                << " with errors.";
+    }    
 
-    KALDI_LOG << "Done " << num_done << " files, " << num_err
-              << " with errors.";
-    
     {
       Output ko(accs_wxfilename, binary);
       transition_accs.Write(ko.Stream(), binary);

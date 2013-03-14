@@ -54,11 +54,11 @@ int main(int argc, char *argv[]) {
     bool in_is_rspecifier =
         (ClassifyRspecifier(vector_in_fn, NULL, NULL)
          != kNoRspecifier),
-        out_is_rspecifier =
-        (ClassifyRspecifier(vector_out_fn, NULL, NULL)
-         != kNoRspecifier);
+        out_is_wspecifier =
+        (ClassifyWspecifier(vector_out_fn, NULL, NULL)
+         != kNoWspecifier);
 
-    if (in_is_rspecifier != out_is_rspecifier)
+    if (in_is_rspecifier != out_is_wspecifier)
       KALDI_ERR << "Cannot mix archives with regular files (copying vectors)\n";
     
     if (!in_is_rspecifier) {

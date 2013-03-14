@@ -1,6 +1,7 @@
 // bin/build-pfile-from-ali.cc
 
 // Copyright 2013  Carnegie Mellon University (Author: Yajie Miao)
+//                 Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +45,11 @@ int main(int argc, char *argv[]) {
         " \"|pfile_create -i - -o pfile.1 -f 143 -l 1\" ";
 
     ParseOptions po(usage);
+
+    int32 every_nth_frame = 1;
+    po.Register("every-nth-frame", &every_nth_frame, "This option will cause it to print "
+                "out only every n'th frame (for subsampling)");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -71,6 +77,8 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_no_ali = 0, num_other_error = 0;
     int32 num_utt = 0;
 
+    KALDI_ASSERT(every_nth_frame >= 1);
+    
     Output ko(pfile_wspecifier, false);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -92,22 +100,24 @@ int main(int argc, char *argv[]) {
       int32 dim = feats.NumCols();
 
       for (size_t i = 0; i < alignment.size(); i++) {
-    	std::stringstream ss;
-    	// Output sentence number and frame number
-    	ss << num_utt;
-    	ss << " ";
-    	ss << i;
-    	// Output feature vector
-    	for (int32 d = 0; d < dim; ++d) {
-    	  ss << " ";
-    	  ss << feats(i, d);
-    	}
-    	// Output the class label
-    	ss << " ";
-    	ss << trans_model.TransitionIdToPdf(alignment[i]);
+        if (i % every_nth_frame == 0) {
+          std::stringstream ss;
+          // Output sentence number and frame number
+          ss << num_utt;
+          ss << " ";
+          ss << (i / every_nth_frame);
+          // Output feature vector
+          for (int32 d = 0; d < dim; ++d) {
+            ss << " ";
+            ss << feats(i, d);
+          }
+          // Output the class label
+          ss << " ";
+          ss << trans_model.TransitionIdToPdf(alignment[i]);
 
-        ko.Stream() << ss.str().c_str();
-        ko.Stream() << "\n";
+          ko.Stream() << ss.str().c_str();
+          ko.Stream() << "\n";
+        }
       }
       num_done ++; num_utt ++;
     }

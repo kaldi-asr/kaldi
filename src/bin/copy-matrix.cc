@@ -53,11 +53,11 @@ int main(int argc, char *argv[]) {
     bool in_is_rspecifier =
         (ClassifyRspecifier(matrix_in_fn, NULL, NULL)
          != kNoRspecifier),
-        out_is_rspecifier =
-        (ClassifyRspecifier(matrix_out_fn, NULL, NULL)
-         != kNoRspecifier);
+        out_is_wspecifier =
+        (ClassifyWspecifier(matrix_out_fn, NULL, NULL, NULL)
+         != kNoWspecifier);
 
-    if (in_is_rspecifier != out_is_rspecifier)
+    if (in_is_rspecifier != out_is_wspecifier)
       KALDI_ERR << "Cannot mix archives with regular files (copying matrices)\n";
     
     if (!in_is_rspecifier) {

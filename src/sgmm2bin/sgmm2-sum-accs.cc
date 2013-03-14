@@ -30,8 +30,12 @@ int main(int argc, char *argv[]) {
         "Usage: sgmm2-sum-accs [options] stats-out stats-in1 stats-in2 ...\n";
 
     bool binary = true;
+    bool parallel = false;
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("parallel", &parallel, "If true, the program makes sure to open all "
+                "filehandles before reading for any (useful when summing accs from "
+                "long processes)");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -43,12 +47,29 @@ int main(int argc, char *argv[]) {
     kaldi::Vector<double> transition_accs;
     kaldi::MleAmSgmm2Accs sgmm_accs;
 
-    for (int i = 2, max = po.NumArgs(); i <= max; i++) {
-      std::string stats_in_filename = po.GetArg(i);
-      bool binary_read;
-      kaldi::Input ki(stats_in_filename, &binary_read);
-      transition_accs.Read(ki.Stream(), binary_read, true /* add values */);
-      sgmm_accs.Read(ki.Stream(), binary_read, true /* add values */);
+    if (parallel) {
+      std::vector<kaldi::Input*> inputs(po.NumArgs() - 1);
+      for (int i = 0; i < po.NumArgs() - 1; i++) {
+        std::string stats_in_filename = po.GetArg(i + 2);
+        inputs[i] = new kaldi::Input(stats_in_filename); // Don't try
+        // to work out binary status yet; this would cause us to wait
+        // for the output of that process.  We delay it till later.
+      }
+      for (size_t i = 0; i < po.NumArgs() - 1; i++) {
+        bool b;
+        kaldi::InitKaldiInputStream(inputs[i]->Stream(), &b);
+        transition_accs.Read(inputs[i]->Stream(), b, true /* add values */);
+        sgmm_accs.Read(inputs[i]->Stream(), b, true /* add values */);
+        delete inputs[i];
+      }      
+    } else {
+      for (int i = 2, max = po.NumArgs(); i <= max; i++) {
+        std::string stats_in_filename = po.GetArg(i);
+        bool binary_read;
+        kaldi::Input ki(stats_in_filename, &binary_read);
+        transition_accs.Read(ki.Stream(), binary_read, true /* add values */);
+        sgmm_accs.Read(ki.Stream(), binary_read, true /* add values */);
+      }
     }
 
     // Write out the accs
