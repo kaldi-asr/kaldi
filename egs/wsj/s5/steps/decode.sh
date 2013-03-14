@@ -18,6 +18,7 @@ num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
 skip_scoring=false
 scoring_opts=
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
