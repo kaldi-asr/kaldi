@@ -8,6 +8,7 @@ cmd=run.pl
 case_insensitive=true
 subset_ecf=
 rttm_file=
+extraid=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -52,8 +53,12 @@ for dirname in "$langdir" "$datadir" ; do
     fi
 done
 
+if [ ! -z $extraid ]; then
+  kwsdatadir=$datadir/kws${extraid}
+else
+  kwsdatadir=$datadir/kws
+fi
 
-kwsdatadir=$datadir/kws
 mkdir -p $kwsdatadir
 
 if [ -z $subset_ecf ] ; then
