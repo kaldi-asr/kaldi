@@ -24,10 +24,9 @@ skip_scoring=false
 stage=0
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
-
-echo "$0 $@"  # Print the command line for logging
 
 if [[ "$#" -le "2" ]] ; then
     echo -e "FATAL: wrong number of script parameters!\n\n"
@@ -115,10 +114,11 @@ fi
 rootdirA=$decodedir/`basename $datasetA`
 rootdirB=$decodedir/`basename $datasetB`
 
+echo "Processing $datasetA"
 if [ $stage -le 1 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_normalized.LMWT.log \
-    set -e; set -o pipefail; \
-    cat $rootdirA/kws_LWMT/results \| \
+    set -e';' set -o pipefail';' \
+    cat $rootdirA/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=true \
       --map-utter=$kwsdatadir/utter_map \
@@ -127,44 +127,58 @@ fi
 
 if [ $stage -le 2 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_unnormalized.LMWT.log \
-    set -e; set -o pipefail; \
-    cat $rootdirA/kws_LWMT/results \| \
+    set -e';' set -o pipefail';' \
+    cat $rootdirA/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=false \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
-#if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-#    echo "Not scoring, because the file local/kws_score.sh is not present"
-#else
-#    local/kws_score.sh $datasetA $dirA 
-#fi
-    
+echo "Scoring $datasetA"
 if [ $stage -le 3 ] ; then
+  if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
+      echo "Not scoring, because the file local/kws_score.sh is not present" 
+      exit 1
+  elif [ ! -f $datasetA/kws/rttm ] ; then
+      echo "Not scoring, because the file $datasetA/kws/rttm is not present"
+  else
+    $decode_cmd LMWT=7:17 $rootdirA/kws/kws_scoring.LMWT.log \
+      local/kws_score.sh $datasetA $rootdirA/kws_LMWT 
+  fi
+fi
+
+echo "Processing $datasetB"
+if [ $stage -le 4 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_normalized.LMWT.log \
-    set -e; set -o pipefail; \
-    cat $rootdirB/kws_LWMT/results \| \
+    set -e';' set -o pipefail';' \
+    cat $rootdirB/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=true \
       --map-utter=$kwsdatadir/utter_map \
       - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
 fi
 
-if [ $stage -le 4 ] ; then
+if [ $stage -le 5 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_unnormalized.LMWT.log \
-    set -e; set -o pipefail; \
-    cat $rootdirB/kws_LWMT/results \| \
+    set -e';' set -o pipefail';' \
+    cat $rootdirB/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=false \
       --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
+      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
-#if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
-#    echo "Not scoring, because the file local/kws_score.sh is not present"
-#else
-#    local/kws_score.sh $datasetB $dirB 
-#fi
+echo "Scoring $datasetB"
+if [ $stage -le 6 ] ; then
+  if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
+      echo "Not scoring, because the file local/kws_score.sh is not present"
+  elif [ ! -f $datasetB/kws/rttm ] ; then
+      echo "Not scoring, because the file $datasetB/kws/rttm is not present"
+  else
+    $decode_cmd LMWT=7:17 $rootdirB/kws/kws_scoring.LMWT.log \
+      local/kws_score.sh $datasetB $rootdirB/kws_LMWT || exit 1
+  fi
+fi
 
 exit 0

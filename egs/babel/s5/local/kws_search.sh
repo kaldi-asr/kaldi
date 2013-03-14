@@ -93,18 +93,18 @@ if [ $stage -le 2 ]; then
   mkdir -p $decodedir/kws/
   echo "Writing normalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_normalized.LMWT.log \
-        set -e; set -o pipefail; \
+        set -e ';' set -o pipefail ';'\
         cat $decodedir/kws_LMWT/result.* \| \
-            utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-              --segments=$datadir/segments --normalize=true \
-              --map-utter=$kwsdatadir/utter_map \
-              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1
+        utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+          --segments=$datadir/segments --normalize=true \
+          --map-utter=$kwsdatadir/utter_map \
+          - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 3 ]; then
   echo "Writing unnormalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_unnormalized.LMWT.log \
-        set -e; set -o pipefail; \
+        set -e ';' set -o pipefail ';'\
         cat $decodedir/kws_LMWT/result.* \| \
             utils/write_kwslist.pl --flen=0.01 --duration=$duration \
               --segments=$datadir/segments --normalize=false \
