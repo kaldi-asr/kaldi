@@ -66,15 +66,18 @@ done
 
 kwsdatadir=$datadir/kws
 
-durationA=`head -1 $datasetA/kws/ecf.xml |\
+! durationA=`head -1 $datasetA/kws/ecf.xml |\
     grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
     grep -o -E "[0-9]*[\.]*[0-9]*" |\
-    perl -e 'while(<>) {print $_/2;}'`
+    perl -e 'while(<>) {print $_/2;}'` && \
+   echo "Error getting duration from $datasetA/kws/ecf.xml" && exit 1;
 
-durationB=`head -1 $datasetB/kws/ecf.xml |\
+
+! durationB=`head -1 $datasetB/kws/ecf.xml |\
     grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
     grep -o -E "[0-9]*[\.]*[0-9]*" |\
-    perl -e 'while(<>) {print $_/2;}'`
+    perl -e 'while(<>) {print $_/2;}'` && \
+   echo "Error getting duration from $datasetA/kws/ecf.xml" && exit 1;
 
 if [ ! -z "$model" ]; then
     model_flags="--model $model"

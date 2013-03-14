@@ -95,10 +95,10 @@ if [ $stage -le 2 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_normalized.LMWT.log \
         set -e ';' set -o pipefail ';'\
         cat $decodedir/kws_LMWT/result.* \| \
-        utils/write_kwslist.pl --flen=0.01 --duration=$duration \
-          --segments=$datadir/segments --normalize=true \
-          --map-utter=$kwsdatadir/utter_map \
-          - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1
+            utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+              --segments=$datadir/segments --normalize=true \
+              --map-utter=$kwsdatadir/utter_map \
+              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
@@ -109,7 +109,7 @@ if [ $stage -le 3 ]; then
             utils/write_kwslist.pl --flen=0.01 --duration=$duration \
               --segments=$datadir/segments --normalize=false \
               --map-utter=$kwsdatadir/utter_map \
-              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.unnormalized.xml || exit 1
+              - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -120,7 +120,7 @@ if [ $stage -le 4 ]; then
   else
     echo "Scoring KWS results"
     $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_scoring.LMWT.log \
-       local/kws_score.sh $datadir $decodedir/kws_LMWT || exit 1
+       local/kws_score.sh $datadir $decode_ir/kws_LMWT || exit 1;
   fi
 fi
 

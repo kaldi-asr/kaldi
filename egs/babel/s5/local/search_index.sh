@@ -33,12 +33,16 @@ nj=`cat $kwsdir/num_jobs` || exit 1;
 keywords=$kwsdatadir/keywords.fsts;
 
 for f in $kwsdir/index.1.gz $keywords; do
-  [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
+  [ ! -s $f ] && echo "make_index.sh: no such file $f (or empty) " && exit 1;
 done
 
+# It's possible for some of these to be empty, so we don't "exit 1" if this fails.
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
   kws-search --strict=$strict --nbest=-1 --negative-tolerance=-1  \
   "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
   "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
+
+! grep 'status 0' $kwsdir/log/search.*.log >/dev/null && \
+  echo "None of the keyword-search jobs succeeded " && exit 1;
 
 exit 0;

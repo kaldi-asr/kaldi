@@ -21,9 +21,9 @@ if [ ! -f exp/tri4/final.mdl ]; then
 fi
 
 if [ -f exp/tri4/trans.1 ]; then # This is LimitedLP.
-  models="exp/tri4/final.alimdl exp/sgmm5/final.mdl exp/sgmm5_mmi_b0.1/final.mdl exp/tri5_nnet/final.mdl"
+  models="exp/tri4/final.alimdl exp/sgmm5/final.alimdl exp/sgmm5_mmi_b0.1/final.mdl exp/tri5_nnet/final.mdl"
 else
-  models="exp/tri4/final.mdl exp/tri5/final.alimdl exp/sgmm5/final.mdl exp/sgmm5_mmi_b0.1/final.mdl exp/tri6_nnet/final.mdl"
+  models="exp/tri4/final.mdl exp/tri5/final.alimdl exp/sgmm5/final.alimdl exp/sgmm5_mmi_b0.1/final.mdl exp/tri6_nnet/final.mdl"
 fi
 
 for model in $models; do

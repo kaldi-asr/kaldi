@@ -48,5 +48,8 @@ echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xm
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
 KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \
-    -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
+    -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir || exit 1;
+
+exit 0;
+
 
