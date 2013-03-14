@@ -17,6 +17,8 @@ acwt=0.1
 max_active=5000
 transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
+num_threads=1
+parallel_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -38,6 +40,8 @@ if [ $# != 4 ]; then
    echo "                           # large databases so your jobs will be smaller and"
    echo "                           # will (individually) finish reasonably soon."
    echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
+   echo "  --num-threads  <n>                # number of threads per decoding job"
+   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
    exit 1;
 fi
 
@@ -48,6 +52,11 @@ dir=$4
 
 sdata=$data/split$nj
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+if [ $num_threads -gt 1 ]; then
+  # the -parallel becomes part of the binary name we decode with.
+  thread_string="-parallel --num-threads=$num_threads"
+fi
+
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
@@ -108,6 +117,8 @@ fi
 
 if [ -f $alidir/vecs.1 ]; then
   spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
+  [ "`cat $alidir/num_jobs`" -ne "$nj" ] \
+    && echo "$0: mismatch in number of jobs with $alidir" && exit 1;
 else
   if [ -f $alidir/final.alimdl ]; then
     echo "$0: You seem to have an SGMM system with speaker vectors,"
@@ -118,8 +129,8 @@ else
 fi
 
 if [ $sub_split -eq 1 ]; then 
-  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   sgmm2-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
+   sgmm2-latgen-faster$thread_string $spkvecs_opt "$gselect_opt" --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
      --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
@@ -137,8 +148,8 @@ else
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
-      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        sgmm2-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
+      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+        sgmm2-latgen-faster$thread_string $spkvecs_opt_subset "$gselect_opt_subset" \
           --beam=$beam --lattice-beam=$lattice_beam \
           --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
           --word-symbol-table=$lang/words.txt $alidir/final.mdl  \

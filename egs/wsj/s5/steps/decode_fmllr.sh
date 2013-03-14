@@ -43,15 +43,18 @@ silence_weight=0.01
 cmd=run.pl
 si_dir=
 fmllr_update_type=full
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
 skip_scoring=false
+scoring_opts=
 # End configuration section
-
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
+   echo "Wrong #arguments ($#, expected 3)"
    echo "Usage: steps/decode_fmllr.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo " e.g.: steps/decode_fmllr.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_dev93_tgpr"
    echo "main options (for others, see top of script file)"
@@ -65,7 +68,9 @@ if [ $# != 3 ]; then
    echo "  --si-dir <speaker-indep-decoding-dir>    # use this to skip 1st pass of decoding"
    echo "                                           # Caution-- must be with same tree"
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
-
+   echo "  --num-threads <n>                        # number of threads to use, default 1."
+   echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
+   echo "  --scoring-opts <opts>                    # options to local/score.sh"
    exit 1;
 fi
 
@@ -76,6 +81,10 @@ dir=`echo $3 | sed 's:/$::g'` # remove any trailing slash.
 
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 sdata=$data/split$nj;
+
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
+
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -102,7 +111,9 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/decode.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
+    steps/decode.sh --parallel-opts "$parallel_opts" --scoring-opts "$scoring_opts" \
+              --num-threads $num_threads --skip-scoring $skip_scoring \
+              --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
               --model $alignment_model --max-arcs $max_arcs --max-active \
               $first_max_active $graphdir $data $si_dir || exit 1;
   fi
@@ -150,8 +161,8 @@ pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/p
 ## model, and it's more correct to store the full state-level lattice for this purpose.
 if [ $stage -le 2 ]; then
   echo "$0: doing main lattice generation phase"
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --max-arcs=$max_arcs \
     --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat.tmp.JOB.gz" \
@@ -196,7 +207,7 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
 fi
 
 rm $dir/{trans_tmp,pre_trans}.*

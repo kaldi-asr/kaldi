@@ -54,6 +54,9 @@ cmd=run.pl
 si_dir=
 fmllr_update_type=full
 skip_scoring=false
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
+
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -75,6 +78,8 @@ if [ $# != 3 ]; then
    echo "  --si-dir <speaker-indep-decoding-dir>    # use this to skip 1st pass of decoding"
    echo "                                           # Caution-- must be with same tree"
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
+   echo "  --num-threads <n>                        # number of threads to use, default 1."
+   echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
 
    exit 1;
 fi
@@ -86,6 +91,9 @@ dir=`echo $3 | sed 's:/$::g'` # remove any trailing slash.
 
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 sdata=$data/split$nj;
+
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -156,8 +164,8 @@ pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 ## Do the first adapted lattice generation pass. 
 if [ $stage -le 2 ]; then
   echo "$0: doing first adapted lattice generation phase"
-  $cmd JOB=1:$nj $dir/log/decode1.JOB.log\
-    gmm-latgen-faster --max-active=$first_max_active --beam=$first_beam --lattice-beam=$first_latbeam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode1.JOB.log\
+    gmm-latgen-faster$thread_string --max-active=$first_max_active --beam=$first_beam --lattice-beam=$first_latbeam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat1.JOB.gz" \
     || exit 1;
@@ -192,8 +200,8 @@ pass2feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 ## after another stage of adaptation.)
 if [ $stage -le 4 ]; then
   echo "$0: doing final lattice generation phase"
-  $cmd JOB=1:$nj $dir/log/decode2.JOB.log\
-    gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode2.JOB.log\
+    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass2feats" "ark:|gzip -c > $dir/lat2.JOB.gz" \
     || exit 1;

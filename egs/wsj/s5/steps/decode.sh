@@ -14,8 +14,10 @@ max_arcs=-1
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
-min_lmwt=9
-max_lmwt=20
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
+skip_scoring=false
+scoring_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -41,9 +43,10 @@ if [ $# != 3 ]; then
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
    echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
-   echo "  --min-lmwt <int>                                 # minumum LM-weight for lattice rescoring "
-   echo "  --max-lmwt <int>                                 # maximum LM-weight for lattice rescoring "
+   echo "  --scoring-opts <string>                          # options to local/score.sh"
    echo "                                                   # speaker-adapted decoding"
+   echo "  --num-threads <n>                                # number of threads to use, default 1."
+   echo "  --parallel-opts <opts>                           # e.g. '-pe smp 4' if you supply --num-threads 4"
    exit 1;
 fi
 
@@ -71,6 +74,11 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "decode.sh: feature type is $feat_type";
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+thread_string=
+if [ $num_threads -gt 1 ]; then
+  # the -parallel becomes part of the binary name we decode with.
+  thread_string="-parallel --num-threads=$num_threads"
+fi
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
@@ -86,13 +94,15 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
 fi
 
 
-$cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster --max-arcs=$max_arcs --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+$cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+ gmm-latgen-faster$thread_string --max-arcs=$max_arcs --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir
+fi
 
 exit 0;

@@ -16,8 +16,7 @@ max_active=7000
 beam=19.0 # GMM:13.0
 latbeam=9.0 # GMM:6.0
 acwt=0.12 # GMM:0.0833, note: only really affects pruning (scoring is on lattices).
-min_lmwt=4
-max_lmwt=15
+scoring_opts="--min_lmwt=4 --max_lmwt=15"
 score_args=
 # End configuration section.
 
@@ -119,6 +118,6 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
 # Run the scoring
 [ ! -x local/score.sh ] && \
   echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh $score_args --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
+local/score.sh $score_args $scoring_opts --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
 
 exit 0;
