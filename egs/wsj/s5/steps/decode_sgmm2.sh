@@ -12,8 +12,6 @@ stage=1
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
-min_lmwt=9 # for scoring..
-max_lmwt=20
 cmd=run.pl
 beam=13.0
 gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
@@ -30,7 +28,12 @@ vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
 use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
 skip_scoring=false
+scoring_opts=
+# note: there are no more min-lmwt and max-lmwt options, instead use
+# e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -70,6 +73,8 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 ## Set up features.
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
@@ -106,8 +111,8 @@ fi
 # Generate state-level lattice which we can rescore.  This is done with the alignment
 # model and no speaker-vectors.
 if [ $stage -le 2 ]; then
-  $cmd JOB=1:$nj $dir/log/decode_pass1.JOB.log \
-    sgmm2-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
+    sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
     --max-arcs=$max_arcs --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
     --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $srcdir/final.alimdl \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
@@ -190,7 +195,7 @@ if [ $stage -le 7 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-    local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data $graphdir $dir
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
   fi
 fi
 

@@ -7,6 +7,7 @@
 transform_dir=
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
+stage=0
 nj=4
 cmd=run.pl
 max_active=7000
@@ -16,8 +17,9 @@ latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
-skip_scoring=false
 scoring_opts=
+# note: there are no more min-lmwt and max-lmwt options, instead use
+# e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
 skip_scoring=false
 # End configuration section.
 
@@ -76,10 +78,7 @@ echo "decode.sh: feature type is $feat_type";
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 thread_string=
-if [ $num_threads -gt 1 ]; then
-  # the -parallel becomes part of the binary name we decode with.
-  thread_string="-parallel --num-threads=$num_threads"
-fi
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
@@ -94,11 +93,12 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 fi
 
-
-$cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster$thread_string --max-arcs=$max_arcs --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+if [ $stage -le 0 ]; then
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    gmm-latgen-faster$thread_string --max-arcs=$max_arcs --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+fi
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \

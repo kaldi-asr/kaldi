@@ -269,7 +269,7 @@ while [ $x -lt $num_iters ]; do
        sgmm2-est --update-flags=$flags --split-substates=$numsubstates \
        $increase_dim_opts --power=$power --write-occs=$dir/$[$x+1].occs \
        $dir/$x.mdl "$acc_sum|" $dir/$[$x+1].mdl || exit 1;
-     rm $dir/$x.mdl $dir/$x.*.acc.gz $dir/$x.occs 2>/dev/null
+     rm $dir/$x.mdl $dir/acc.$x.*.gz $dir/$x.occs 2>/dev/null
    fi
    if [ $x -lt $max_iter_inc ]; then
      numsubstates=$[$numsubstates+$incsubstates]
