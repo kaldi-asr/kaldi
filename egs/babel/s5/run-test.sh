@@ -124,7 +124,7 @@ for iter in 1 2 3 4; do
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter &
     
     #split_ctms exp/sgmm5_mmi_b0.1/decode_shadow.uem_it$iter data/dev data/test.uem
-    split_ctms exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter data/dev data/test.uem
+    loca/split_ctms.sh data/shadow.uem exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter data/dev data/test.uem
 
     #local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_shadow.uem_it$iter data/dev data/test.uem
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter data/dev data/test.uem
