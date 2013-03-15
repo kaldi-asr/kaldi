@@ -120,7 +120,7 @@ if [ $stage -le 4 ]; then
   else
     echo "Scoring KWS results"
     $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_scoring.LMWT.log \
-       local/kws_score.sh $datadir $decode_ir/kws_LMWT || exit 1;
+       local/kws_score.sh $datadir $decodedir/kws_LMWT || exit 1;
   fi
 fi
 
