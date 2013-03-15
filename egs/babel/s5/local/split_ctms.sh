@@ -1,8 +1,9 @@
 #!/bin/bash
 
-data=$1
-name=`basename $data`; shift
+data=$1; shift;
 q=$2; shift
+
+name=`basename $data`;
 
 for i in $@ ; do
     p=$q/`basename $i`
@@ -10,6 +11,7 @@ for i in $@ ; do
     for lmw in $q/score_* ; do
         d=$p/`basename $lmw`
         mkdir -p $d
+        echo " $lmw/$name.char.ctm "
         [ -f $lmw/$name.char.ctm ] && \
           utils/filter_scp.pl <(cut -f 1 -d ' ' $i/reco2file_and_channel) $lmw/$name.char.ctm > $d/`basename $i`.char.ctm
         [ -f $lmw/$name.ctm ] && \
