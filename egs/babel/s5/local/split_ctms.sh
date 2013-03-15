@@ -1,7 +1,8 @@
 #!/bin/bash
 
-data=$1; shift;
-q=$2; shift
+data=$1; 
+q=$2; 
+shift; shift;
 
 name=`basename $data`;
 
