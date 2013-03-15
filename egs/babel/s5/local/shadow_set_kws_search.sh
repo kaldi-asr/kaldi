@@ -84,6 +84,7 @@ if [ ! -z "$model" ]; then
 fi
 
 if [ $stage -le 0 ] ; then
+  echo "Making KWS indices..."
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
       kwsoutdir=$decodedir/kws_$lmwt
       mkdir -p $kwsoutdir
@@ -95,6 +96,7 @@ if [ $stage -le 0 ] ; then
 fi
 
 if [ $stage -le 1 ] ; then
+  echo "Searching KWS indices..."
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
       kwsoutdir=$decodedir/kws_$lmwt
       dirA=$decodedir/`basename $datasetA`/kws_$lmwt
