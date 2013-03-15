@@ -12,7 +12,7 @@ for i in $@ ; do
     for lmw in $q/score_* ; do
         d=$p/`basename $lmw`
         mkdir -p $d
-        echo " $lmw/$name.char.ctm "
+        #echo " $lmw/$name.char.ctm "
         [ -f $lmw/$name.char.ctm ] && \
           utils/filter_scp.pl <(cut -f 1 -d ' ' $i/reco2file_and_channel) $lmw/$name.char.ctm > $d/`basename $i`.char.ctm
         [ -f $lmw/$name.ctm ] && \

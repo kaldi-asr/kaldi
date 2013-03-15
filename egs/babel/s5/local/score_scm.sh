@@ -11,6 +11,8 @@ model=
 stage=0
 #end configuration section.
 
+echo $0 $@
+
 [ -f ./path.sh ] && . ./path.sh
 [ -f ./cmd.sh ]  && . ./cmd.sh
 . parse_options.sh || exit 1;
@@ -32,7 +34,8 @@ dir=$3
 ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
-for f in $data/stm $data/glm   ; do
+
+for f in $data/stm $data/glm ; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
@@ -50,7 +53,7 @@ if [ $stage -le 0 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     cp $data/stm $dir/score_LMWT/ '&&' cp $data/glm $dir/score_LMWT/ '&&'\
     $ScoringProgram -s -r $data/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl || exit 1
-if
+fi
 
 if [ $stage -le 1 ]; then
   if [ $cer -eq 1 ]; then
@@ -63,3 +66,4 @@ fi
 
 echo "Finished scoring on" `date`
 exit 0
+
