@@ -109,19 +109,20 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
+      test -s $dir/den_acc.$x.JOB.gz '||' \
       sgmm2-rescore-lattice "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --zero-if-disjoint=$zero_if_disjoint --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
       sgmm2-acc-stats2 "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$feats" ark,s,cs:- \
-      "|gzip -c >$dir/num_acc.$x.JOB.acc.gz" "|gzip -c >$dir/den_acc.$x.JOB.acc.gz" || exit 1;
+      "|gzip -c >$dir/num_acc.$x.JOB.gz" "|gzip -c >$dir/den_acc.$x.JOB.gz" || exit 1;
 
-    n=`echo $dir/{num,den}_acc.$x.*.acc.gz | wc -w`;
+    n=`echo $dir/{num,den}_acc.$x.*.gz | wc -w`;
     [ "$n" -ne $[$nj*2] ] && \
       echo "Wrong number of MMI accumulators $n versus 2*$nj" && exit 1;
     num_acc_sum="sgmm2-sum-accs - ";
     den_acc_sum="sgmm2-sum-accs - ";
-    for j in `seq 0 $[$g-1]`; do 
+    for j in `seq $nj`; do 
       num_acc_sum="$num_acc_sum 'gunzip -c $dir/num_acc.$x.$j.gz|'"; 
       den_acc_sum="$den_acc_sum 'gunzip -c $dir/den_acc.$x.$j.gz|'"; 
     done
