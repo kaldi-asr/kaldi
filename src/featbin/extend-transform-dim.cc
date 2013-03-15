@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         (ClassifyRspecifier(transform_in_fn, NULL, NULL)
          != kNoRspecifier),
         out_is_wspecifier =
-        (ClassifyWspecifier(transform_out_fn, NULL, NULL)
+        (ClassifyWspecifier(transform_out_fn, NULL, NULL, NULL)
          != kNoWspecifier);
     
     if (in_is_rspecifier != out_is_wspecifier)
