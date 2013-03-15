@@ -86,15 +86,21 @@ fi
 if [ $stage -le 0 ] ; then
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
       kwsoutdir=$decodedir/kws_$lmwt
-      dirA=$decodedir/`basename $datasetA`/kws_$lmwt
-      dirB=$decodedir/`basename $datasetB`/kws_$lmwt
       mkdir -p $kwsoutdir
-      mkdir -p $dirA
-      mkdir -p $dirB
 
       acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
       local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
         $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+  done
+fi
+
+if [ $stage -le 1 ] ; then
+  for lmwt in `seq $min_lmwt $max_lmwt` ; do
+      kwsoutdir=$decodedir/kws_$lmwt
+      dirA=$decodedir/`basename $datasetA`/kws_$lmwt
+      dirB=$decodedir/`basename $datasetB`/kws_$lmwt
+      mkdir -p $dirA
+      mkdir -p $dirB
       
       local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
 
@@ -104,8 +110,7 @@ if [ $stage -le 0 ] ; then
         grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-A " | \
         sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results 
-
-
+      [ ! -f $datasetB/kws/utter_id ] && echo "File $datasetB/kws/utter_id must exist!" && exit 1;
       cat $kwsoutdir/result.* | \
         grep -F -f <(cut -f 1 -d ' ' $datasetB/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-B " | \
@@ -118,7 +123,7 @@ rootdirA=$decodedir/`basename $datasetA`
 rootdirB=$decodedir/`basename $datasetB`
 
 echo "Processing $datasetA"
-if [ $stage -le 1 ] ; then
+if [ $stage -le 2 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_normalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirA/kws_LMWT/results \| \
@@ -128,7 +133,7 @@ if [ $stage -le 1 ] ; then
       - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.xml || exit 1
 fi
 
-if [ $stage -le 2 ] ; then
+if [ $stage -le 3 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_unnormalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirA/kws_LMWT/results \| \
@@ -139,7 +144,7 @@ if [ $stage -le 2 ] ; then
 fi
 
 echo "Scoring $datasetA"
-if [ $stage -le 3 ] ; then
+if [ $stage -le 4 ] ; then
   if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
       echo "Not scoring, because the file local/kws_score.sh is not present" 
       exit 1
@@ -152,7 +157,7 @@ if [ $stage -le 3 ] ; then
 fi
 
 echo "Processing $datasetB"
-if [ $stage -le 4 ] ; then
+if [ $stage -le 5 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_normalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirB/kws_LMWT/results \| \
@@ -162,7 +167,7 @@ if [ $stage -le 4 ] ; then
       - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
 fi
 
-if [ $stage -le 5 ] ; then
+if [ $stage -le 6 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_unnormalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirB/kws_LMWT/results \| \
@@ -173,7 +178,7 @@ if [ $stage -le 5 ] ; then
 fi
 
 echo "Scoring $datasetB"
-if [ $stage -le 6 ] ; then
+if [ $stage -le 7 ] ; then
   if [[ (! -x local/kws_score.sh ) ||  ($skip_scoring == true) ]] ; then
       echo "Not scoring, because the file local/kws_score.sh is not present"
   elif [ ! -f $datasetB/kws/rttm ] ; then
@@ -184,4 +189,5 @@ if [ $stage -le 6 ] ; then
   fi
 fi
 
+echo "Done, everything seems fine"
 exit 0

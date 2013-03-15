@@ -25,7 +25,7 @@ if [ $# -ne 2 ]; then
     exit 1;
 fi
 
-if [-z $extraid ] ; then
+if [ -z $extraid ] ; then
   kwsdatadir=$1/kws
 else
   kwsdatadir=$1/kws_${extraid}

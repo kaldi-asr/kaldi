@@ -40,7 +40,7 @@ done
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
   kws-search --strict=$strict --nbest=-1 --negative-tolerance=-1  \
   "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
-  "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
+  "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB" || exit 1
 
 ! grep 'status 0' $kwsdir/log/search.*.log >/dev/null && \
   echo "None of the keyword-search jobs succeeded " && exit 1;
