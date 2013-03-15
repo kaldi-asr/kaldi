@@ -114,7 +114,8 @@ void MatrixBase<Real>::AddVecVec(const Real alpha,
   if (num_rows_ * num_cols_ > 100) { // It's probably worth it to allocate
     // temporary vectors of the right type and use BLAS.
     Vector<Real> temp_a(a), temp_b(b);
-    this->AddVecVec(alpha, temp_a, temp_b);
+    cblas_Xger(num_rows_, num_cols_, alpha, temp_a.Data(), 1,
+               temp_b.Data(), 1, data_, stride_);
   } else {
     const OtherReal *a_data = a.Data(), *b_data = b.Data();
     Real *row_data = data_;

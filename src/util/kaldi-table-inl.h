@@ -954,6 +954,7 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
     ss << ':' << streampos;
     KALDI_ASSERT(ss.str() != ":-1");
     *output = archive_wxfilename_ + ss.str();
+    
     // e.g. /some/file:12302.
     // Note that we warned if archive_wxfilename_ is not an actual filename;
     // the philosophy is we give the user rope and if they want to hang
@@ -980,7 +981,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
     archive_os << key << ' ';
     typename std::ostream::pos_type archive_os_pos = archive_os.tellp();
     // position at start of Write() to archive.  We will record this in the script file.
-    std::string offset_rxfilename;  // rxfilename with offset into the archive.
+    std::string offset_rxfilename;  // rxfilename with offset into the archive,
+    // e.g. some_archive_name.ark:431541423
     MakeFilename(archive_os_pos, &offset_rxfilename);
 
     // Write to the script file first.
