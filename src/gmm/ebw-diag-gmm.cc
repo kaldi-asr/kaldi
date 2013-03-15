@@ -175,13 +175,18 @@ void UpdateEbwDiagGmm(const AccumDiagGmm &num_stats, // with I-smoothing, if use
                                      diaggmmnormal.vars_.Row(g),
                                      mean_stats, var_stats, num_count-den_count,
                                      &mean, &var, &auxf_impr);
-        KALDI_ASSERT(ans);
-        if (auxf_change_out) *auxf_change_out += auxf_impr;
-        if (count_out) *count_out += den_count; // The idea is that for MMI, this will
-        // reflect the actual #frames trained on (the numerator one would be I-smoothed).
-        // In general (e.g. for MPE), we won't know the #frames.
-        diaggmmnormal.means_.CopyRowFromVec(mean, g);
-        diaggmmnormal.vars_.CopyRowFromVec(var, g);
+        if (!ans) {
+          KALDI_WARN << "Something went wrong in the EBW update. Check that your"
+              "previous update phase looks reasonable, probably your model is "
+              "already ruined.  Reverting to the old values";
+        } else {
+          if (auxf_change_out) *auxf_change_out += auxf_impr;
+          if (count_out) *count_out += den_count; // The idea is that for MMI, this will
+          // reflect the actual #frames trained on (the numerator one would be I-smoothed).
+          // In general (e.g. for MPE), we won't know the #frames.
+          diaggmmnormal.means_.CopyRowFromVec(mean, g);
+          diaggmmnormal.vars_.CopyRowFromVec(var, g);
+        }
         break;
       } else {
         // small step

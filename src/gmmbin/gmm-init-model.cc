@@ -51,7 +51,7 @@ void InitAmGmm(const BuildTreeStatsType &stats,
       for (int32 idx = 0; idx < bad_phones.size(); idx ++)
         ss << bad_phones[idx] << ' ';
       KALDI_WARN << "Tree has pdf-id " << i 
-          << "with no stats; corresponding phone list: " << ss.str();
+          << " with no stats; corresponding phone list: " << ss.str();
       /*
         This probably means you have phones that were unseen in training 
         and were not shared with other phones in the roots file. 
