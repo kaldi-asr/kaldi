@@ -179,10 +179,10 @@ fi
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
 if [ $stage -le 6 ]; then
-  $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/rescore.JOB.log \
     sgmm2-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
     $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+    lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lat_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 rm $dir/pre_lat.*.gz

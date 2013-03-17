@@ -129,7 +129,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/update.$x.log \
      sgmm2-est-ebw $update_opts $dir/$x.mdl "$num_acc_sum |" "$den_acc_sum |" \
       $dir/$[$x+1].mdl || exit 1;
-    rm $dir/*_acc.*.gz 
+    rm $dir/*_acc.$x.*.gz 
   fi
 
   # Some diagnostics: the objective function progress and auxiliary-function

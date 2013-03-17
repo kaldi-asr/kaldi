@@ -47,7 +47,6 @@ if [ $# != 3 ]; then
    echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
    echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
    echo "  --scoring-opts <string>                          # options to local/score.sh"
-   echo "                                                   # speaker-adapted decoding"
    echo "  --num-threads <n>                                # number of threads to use, default 1."
    echo "  --parallel-opts <opts>                           # e.g. '-pe smp 4' if you supply --num-threads 4"
    exit 1;

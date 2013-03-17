@@ -16,6 +16,8 @@ transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
+num_threads=1
+parallel_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -37,6 +39,8 @@ if [ $# != 4 ]; then
    echo "                           # large databases so your jobs will be smaller and"
    echo "                           # will (individually) finish reasonably soon."
    echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
+   echo "  --num-threads  <n>                # number of threads per decoding job"
+   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
    exit 1;
 fi
 
@@ -47,6 +51,9 @@ dir=$4
 
 sdata=$data/split$nj
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
+
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
@@ -103,8 +110,8 @@ else
 fi
 
 if [ $sub_split -eq 1 ]; then 
-  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
+   gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
@@ -119,8 +126,8 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
-      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+        gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
       echo Merging archives for data subset $n
