@@ -162,13 +162,13 @@ print Q ") >$logfile\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
 print Q "ret=\$?\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
+print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
+  # let the script return with status 100 which will put it to E state; more easily rerunnable.
 if (!defined $jobname) { # not an array job
   print Q "touch $syncfile\n"; # so we know it's done.
 } else {
   print Q "touch $syncfile.\$SGE_TASK_ID\n"; # touch a bunch of sync-files.
 }
-print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
-  # let the script return with status 100 which will put it to E state; more easily rerunnable.
 print Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
 print Q "## submitted with:\n";       # treats specially.
 print Q "# $qsub_cmd\n";
