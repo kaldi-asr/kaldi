@@ -75,12 +75,12 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' \
 
 if [ -z "$lat_weights" ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
-    lattice-combine --lm-scale=LMWT ${lats[@]} ark:- \| \
+    lattice-combine --inv-acoustic-scale=LMWT ${lats[@]} ark:- \| \
     lattice-mbr-decode --word-symbol-table=$symtab ark:- \
     ark,t:$odir/scoring/LMWT.tra || exit 1;
 else
   $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
-    lattice-combine --lm-scale=LMWT --lat-weights=$lat_weights \
+    lattice-combine --inv-acoustic-scale=LMWT --lat-weights=$lat_weights \
     ${lats[@]} ark:- \| \
     lattice-mbr-decode --word-symbol-table=$symtab ark:- \
     ark,t:$odir/scoring/LMWT.tra || exit 1;
