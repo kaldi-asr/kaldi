@@ -1,6 +1,6 @@
 // latbin/lattice-determinize-pruned.cc
 
-// Copyright 2012  Daniel Povey
+// Copyright 2013  Daniel Povey (Johns Hopkins University)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,16 +45,7 @@ int main(int argc, char *argv[]) {
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
-    po.Register("delta", &opts.delta, "Tolerance used in determinization");
-    po.Register("max-mem", &opts.max_mem, "Maximum approximate memory usage in "
-                "determinization (real usage might be many times this)");
-    po.Register("max-arcs", &opts.max_arcs, "Maximum number of arcs in output FST (total, "
-                "not per state");
-    po.Register("max-states", &opts.max_states, "Maximum number of arcs in output FST (total, "
-                "not per state");
-    po.Register("max-loop", &opts.max_loop, "Option used to detect a particular type of determinization "
-                "failure, typically due to invalid input (e.g., negative-cost loops)");
-
+    opts.Register(&po);
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {

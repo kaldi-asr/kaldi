@@ -24,6 +24,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
+#include "util/parse-options.h"
 
 namespace fst {
 
@@ -115,6 +116,19 @@ struct DeterminizeLatticePrunedOptions {
                                      max_loop(-1),
                                      max_states(-1),
                                      max_arcs(-1) { }
+  void Register (kaldi::ParseOptions *po) {
+    po->Register("delta", &delta, "Tolerance used in determinization");
+    po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
+                "determinization (real usage might be many times this)");
+    po->Register("max-arcs", &max_arcs, "Maximum number of arcs in "
+                "output FST (total, not per state");
+    po->Register("max-states", &max_states, "Maximum number of arcs in output "
+                "FST (total, not per state");
+    po->Register("max-loop", &max_loop, "Option used to detect a particular "
+                "type of determinization failure, typically due to invalid input "
+                "(e.g., negative-cost loops)");
+
+  }
 };
 
 /**

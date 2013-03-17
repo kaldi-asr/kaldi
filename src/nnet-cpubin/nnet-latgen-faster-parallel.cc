@@ -1,7 +1,7 @@
-// gmmbin/gmm-latgen-faster-parallel.cc
+// nnet-cpubin/nnet-latgen-faster-parallel.cc
 
-// Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
+// Copyright 2009-2013   Microsoft Corporation
+//                       Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,17 +16,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/am-diag-gmm.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/decodable-am-diag-gmm.h"
+#include "nnet-cpu/decodable-am-nnet.h"
 #include "util/timer.h"
-#include "feat/feature-functions.h"  // feature reversal
 #include "thread/kaldi-task-sequence.h"
 
 
@@ -39,29 +36,30 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Decode features using GMM-based model.  Uses multiple decoding threads,\n"
-        "but interface and behavior is otherwise the same as gmm-latgen-faster\n"
-        "Usage: gmm-latgen-faster-parallel [options] model-in (fst-in|fsts-rspecifier) "
-        "features-rspecifier lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
+        "Generate lattices using neural net model.\n"
+        "Usage: nnet-latgen-faster [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
+        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
-    LatticeFasterDecoderConfig latgen_config;
+    LatticeFasterDecoderConfig config;
     TaskSequencerConfig sequencer_config; // has --num-threads option
+    std::string spkvecs_rspecifier, utt2spk_rspecifier;
     
     std::string word_syms_filename;
-    latgen_config.Register(&po);
     sequencer_config.Register(&po);
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
-    po.Register("word-symbol-table", &word_syms_filename,
-                "Symbol table for words [for debug output]");
-    po.Register("allow-partial", &allow_partial,
-                "If true, produce output even if end state was not reached.");
+    config.Register(&po);
+    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
+    po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    po.Register("spk-vecs", &spkvecs_rspecifier, "Rspecifier for a vector that describes each speaker; "
+                "only needed if the neural net was trained this way.");
+    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for map from utterance to speaker; only relevant "
+                "in conjunction with the --spk-vecs option.");
     
     po.Read(argc, argv);
-
+    
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
@@ -75,15 +73,15 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetOptArg(6);
     
     TransitionModel trans_model;
-    AmDiagGmm am_gmm;
+    AmNnet am_nnet;
     {
       bool binary;
       Input ki(model_in_filename, &binary);
       trans_model.Read(ki.Stream(), binary);
-      am_gmm.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
 
-    bool determinize = latgen_config.determinize_lattice;
+    bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
@@ -91,6 +89,8 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Could not open table for writing lattices: "
                  << lattice_wspecifier;
 
+    TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
+    
     Int32VectorWriter words_writer(words_wspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
@@ -101,59 +101,68 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
+    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
+                                                           utt2spk_rspecifier);
+    // We support reading in a vector to describe each speaker, if the neural
+    // net requires this (i.e. it was trained with this).
+    
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_done = 0, num_err = 0;
-    VectorFst<StdArc> *decode_fst = NULL; // only used if there is a single
-                                          // decoding graph.
-    
-    TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
-      
+    VectorFst<StdArc> *decode_fst = NULL;
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-      // Input FST is just one FST, not a table of FSTs.
-
+      
       {
         std::ifstream is(fst_in_str.c_str(), std::ifstream::binary);
         if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
-                                  << fst_in_str;
+                                   << fst_in_str;
         decode_fst =
             VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_str));
         if (decode_fst == NULL) // fst code will warn.
           exit(1);
       }
 
-      {    
+      {
+    
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
-          Matrix<BaseFloat> *features =
-              new Matrix<BaseFloat>(feature_reader.Value());
-          feature_reader.FreeCurrent();
-          if (features->NumRows() == 0) {
+          const Matrix<BaseFloat> &features (feature_reader.Value());
+          if (features.NumRows() == 0) {
             KALDI_WARN << "Zero-length utterance: " << utt;
             num_err++;
-            delete features;
             continue;
           }
-          
+          Vector<BaseFloat> spk_info;
+          if (spkvecs_reader.IsOpen()) {
+            if (spkvecs_reader.HasKey(utt)) {
+              spk_info = spkvecs_reader.Value(utt);
+            } else {
+              KALDI_WARN << "Cannot find speaker vector for " << utt
+                         << " (skipping this utterance).";
+              continue;
+            }
+          }
+          bool pad_input = true;
+          DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
+              trans_model, am_nnet,
+              new Matrix<BaseFloat>(features),
+              new Vector<BaseFloat>(spk_info),
+              pad_input, acoustic_scale);
+
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
-                                                                   latgen_config);
-          // takes ownership of "features"
-          DecodableAmDiagGmmScaled *gmm_decodable =
-              new DecodableAmDiagGmmScaled(am_gmm, trans_model, 
-                                           acoustic_scale,
-                                           features);
+                                                                   config);
 
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
-                  decoder, gmm_decodable, // takes ownership of these two.
+                  decoder, nnet_decodable, // takes ownership of these two.
                   word_syms, utt, acoustic_scale, determinize,
                   allow_partial, &alignment_writer, &words_writer,
                   &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_done, &num_err, NULL);
-            
+              
           sequencer.Run(task); // takes ownership of "task",
-          // and will delete it when done.
+                               // and will delete it when done.
         }
       }
     } else { // We have different FSTs for different utterances.
@@ -167,50 +176,57 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        Matrix<BaseFloat> *features = new Matrix<BaseFloat>(
-            feature_reader.Value(utt));
-        if (features->NumRows() == 0) {
+        const Matrix<BaseFloat> &features = feature_reader.Value(utt);
+        if (features.NumRows() == 0) {
           KALDI_WARN << "Zero-length utterance: " << utt;
           num_err++;
-          delete features;
           continue;
         }
 
-        // the "decoder" object takes ownership of the new FST object. 
-        LatticeFasterDecoder *decoder = new LatticeFasterDecoder(
-            latgen_config,
-            new VectorFst<StdArc>(fst_reader.Value()));
-          
-        // The "decodable" object takes ownership of the features.
-        DecodableAmDiagGmmScaled *gmm_decodable =
-            new DecodableAmDiagGmmScaled(am_gmm, trans_model, acoustic_scale,
-                                         features);
+        // This constructor of LatticeFasterDecoder takes ownership of the FST.
+        LatticeFasterDecoder *decoder =
+            new LatticeFasterDecoder(config, fst_reader.Value().Copy());
+
+        Vector<BaseFloat> spk_info;
+        if (spkvecs_reader.IsOpen()) {
+          if (spkvecs_reader.HasKey(utt)) {
+            spk_info = spkvecs_reader.Value(utt);
+          } else {
+            KALDI_WARN << "Cannot find speaker vector for " << utt
+                       << " (skipping this utterance).";
+            continue;
+          }
+        }
+        bool pad_input = true;
+        DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
+            trans_model, am_nnet,
+            new Matrix<BaseFloat>(features),
+            new Vector<BaseFloat>(spk_info),
+            pad_input, acoustic_scale);
 
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
-                decoder, gmm_decodable, // takes ownership of these two.
+                decoder, nnet_decodable, // takes ownership of these two.
                 word_syms, utt, acoustic_scale, determinize,
                 allow_partial, &alignment_writer, &words_writer,
                 &compact_lattice_writer, &lattice_writer,
-                &tot_like, &frame_count, &num_err, &num_done, NULL);
+                &tot_like, &frame_count, &num_done, &num_err, NULL);
+
         sequencer.Run(task); // takes ownership of "task",
-        // and will delete it when done.
+                             // and will delete it when done.
       }
     }
-    sequencer.Wait();
-
-    if (decode_fst != NULL) delete decode_fst;
+    sequencer.Wait(); // Waits for all tasks to be done.
+    if (decode_fst != NULL) delete decode_fst;   
     
     double elapsed = timer.Elapsed();
-    KALDI_LOG << "Decoded with " << sequencer_config.num_threads << " threads.";
     KALDI_LOG << "Time taken "<< elapsed
-              << "s: real-time factor per thread assuming 100 frames/sec is "
-              << (sequencer_config.num_threads * elapsed * 100.0 / frame_count);
+              << "s: real-time factor assuming 100 frames/sec is "
+              << (elapsed*100.0/frame_count);
     KALDI_LOG << "Done " << num_done << " utterances, failed for "
               << num_err;
-    KALDI_LOG << "Overall log-likelihood per frame is "
-              << (tot_like/frame_count) << " over "
-              << frame_count << " frames.";
+    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
+              << frame_count<<" frames.";
 
     if (word_syms) delete word_syms;
     if (num_done != 0) return 0;

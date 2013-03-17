@@ -15,7 +15,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-copy-backoff nbest-to-ctm lattice-determinize-pruned \
            lattice-to-ctm-conf lattice-arcgraph lattice-combine lattice-reverse \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
-           lattice-to-smbr-post
+           lattice-to-smbr-post lattice-determinize-pruned-parallel
 
 
 OBJFILES =
@@ -27,7 +27,7 @@ TESTFILES =
 
 
 $(BINFILES): ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
-	../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+	../matrix/kaldi-matrix.a ../thread/kaldi-thread.a ../base/kaldi-base.a 
 
 
 
