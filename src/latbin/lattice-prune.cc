@@ -1,6 +1,7 @@
 // latbin/lattice-prune.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2013  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,9 +39,12 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way of setting the "
+                "acoustic scale: you can set its inverse.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]");
     
     po.Read(argc, argv);
@@ -50,6 +54,10 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
+    if (inv_acoustic_scale != 1.0)
+      acoustic_scale = 1.0 / inv_acoustic_scale;
+    
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 

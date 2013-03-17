@@ -1,6 +1,7 @@
 // latbin/lattice-scale.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2013  Microsoft Corporation
+//                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,11 +38,14 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
     BaseFloat acoustic2lm_scale = 0.0;
     BaseFloat lm2acoustic_scale = 0.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
+                "of setting the acoustic scale: you can set its inverse.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for graph/lm costs");
     po.Register("acoustic2lm-scale", &acoustic2lm_scale, "Add this times original acoustic costs to LM costs");
     po.Register("lm2acoustic-scale", &lm2acoustic_scale, "Add this times original LM costs to acoustic costs");
@@ -63,6 +67,10 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0; 
 
+    KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
+    if (inv_acoustic_scale != 1.0)
+      acoustic_scale = 1.0 / inv_acoustic_scale;
+    
     std::vector<std::vector<double> > scale(2);
     scale[0].resize(2);
     scale[1].resize(2);

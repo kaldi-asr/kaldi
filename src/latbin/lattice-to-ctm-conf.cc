@@ -1,6 +1,6 @@
 // latbin/lattice-mbr-decode.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,14 +38,15 @@ int main(int argc, char *argv[]) {
         "ark:/dev/null ark:1.sau\n";
     
     ParseOptions po(usage);
-    BaseFloat acoustic_scale = 1.0;
-    BaseFloat lm_scale = 1.0;
+    BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
     bool decode_mbr = true;
     BaseFloat frame_shift = 0.01;
 
     std::string word_syms_filename;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
                 "acoustic likelihoods");
+    po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
+                "of setting the acoustic scale: you can set its inverse.");
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
                 "probabilities");
     po.Register("decode-mbr", &decode_mbr, "If true, do Minimum Bayes Risk "
@@ -59,6 +60,10 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
+    if (inv_acoustic_scale != 1.0)
+      acoustic_scale = 1.0 / inv_acoustic_scale;
+    
     std::string lats_rspecifier = po.GetArg(1),
         ctm_wxfilename = po.GetArg(2);
     
