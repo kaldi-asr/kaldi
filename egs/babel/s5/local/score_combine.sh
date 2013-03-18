@@ -25,17 +25,19 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=7
-max_lmwt=17
 beam=4 # prune the lattices prior to MBR decoding, for speed.
 stage=0
 cer=0
 decode_mbr=true
 lat_weights=
+min_lmwt=7
+max_lmwt=17
 parallel_opts="-pe smp 3"
 #end configuration section.
 
-help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1> <decode-dir2> [decode-dir3 ... ] <out-dir>
+help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:lmwt-bias] <decode-dir2>[:lmwt-bias] [<decode-dir3>[:lmwt-bias] ... ] <out-dir>
+     E.g. "$(basename $0)" data/test data/lang exp/tri1/decode exp/tri2/decode exp/tri3/decode exp/combine
+     or:  "$(basename $0)" data/test data/lang exp/tri1/decode exp/tri2/decode:18 exp/tri3/decode:13 exp/combine
 Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
   --min-lmwt INT                  # minumum LM-weight for lattice rescoring 
@@ -65,6 +67,8 @@ decode_dirs=( $@ )  # read the remaining arguments into an array
 unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sys=${#decode_dirs[@]}  # number of systems to combine
 
+
+
 for f in $lang/words.txt $lang/phones/word_boundary.int $data/stm; do
   [ ! -f $f ] && echo "$0: file $f does not exist" && exit 1;
 done
@@ -77,8 +81,12 @@ mkdir -p $dir/log
 
 for i in `seq 0 $[num_sys-1]`; do
   decode_dir=${decode_dirs[$i]}
+  offset=`echo $decode_dir | cut -d: -s -f2` # add this to the lm-weight.
+  decode_dir=`echo $decode_dir | cut -d: -f1`
+  [ -z "$offset" ] && offset=0
+  
   model=$decode_dir/../final.mdl  # model one level up from decode dir
-  for f in $model ${decode_dirs[$i]}/lat.1.gz ; do
+  for f in $model $decode_dir/lat.1.gz ; do
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
   done
   if [ $i -eq 0 ]; then
@@ -97,9 +105,10 @@ for i in `seq 0 $[num_sys-1]`; do
   # very long.
   for j in `seq $nj`; do file_list="$file_list $decode_dir/lat.$j.gz"; done
 
-  lats[$i]="ark,s,cs:lattice-prune --beam=$beam --inv-acoustic-scale=LMWT \
-             'ark:gunzip -c $file_list|' ark:- | \
-            lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- |"
+  lats[$i]="ark,s,cs:lattice-prune --beam=$beam --inv-acoustic-scale=\$[$offset+LMWT] \
+ 'ark:gunzip -c $file_list|' ark:- | \
+ lattice-scale --inv-acoustic-scale=\$[$offset+LMWT] ark:- ark:- | \
+ lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- |"
 done
 
 mkdir -p $dir/scoring/log
@@ -115,8 +124,7 @@ fi
 if [ $stage -le 0 ]; then  
   $cmd $parallel_opts LMWT=$min_lmwt:$max_lmwt $dir/log/combine_lats.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
-    lattice-combine --inv-acoustic-scale=LMWT --lat-weights=$lat_weights \
-      "${lats[@]}" ark:- \| \
+    lattice-combine --lat-weights=$lat_weights "${lats[@]}" ark:- \| \
     lattice-to-ctm-conf --decode-mbr=true ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt  \| \
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
