@@ -6,6 +6,7 @@ ar=
 version=1
 relname=
 cer=0
+dryrun=false
 #end of configuration
 
 [ -f ./cmd.sh ] && . ./cmd.sh
@@ -45,7 +46,9 @@ function export_file {
     exit 1
   else
     if [ ! -f $target_file ] ; then
-      ln -s `readlink -f $source_file` $target_file || exit 1
+      if ! $dryrun ; then
+        ln -s `readlink -f $source_file` $target_file || exit 1
+      fi
     else
       echo "The file is already there, not doing anything. Either change the version (using --version), or delete that file manually)"
       exit 1
@@ -63,6 +66,8 @@ function export_kws_file {
   echo "Exporting KWS $source_xml as `basename $export_xml`"
   if [ -f $source_xml ] ; then
     cp $source_xml $fixed_xml.bak
+    fdate=`stat --printf='%y' $source_xml`
+    echo "The source file $source_xml has timestamp of $fdate"
     echo "Authorizing empty terms from `basename $kwlist`..."
     local/fix_kwslist.pl $kwlist $source_xml $fixed_xml || exit 1
     echo "Exporting..."
@@ -75,7 +80,15 @@ function export_kws_file {
   return 0
 }
 
-corpora=`basename $test_data_kwlist .kwlist.xml`
+if [[ "$test_data_kwlist" == *.kwlist.xml ]] ; then
+  corpora=`basename $test_data_kwlist .kwlist.xml`
+elif [[ "$test_data_kwlist" == *.kwlist2.xml ]] ; then
+  corpora=`basename $test_data_kwlist .kwlist2.xml`
+else
+  echo "Unknown naming patter of the kwlist file $test_data_kwlist"
+  exit 1
+fi
+
 
 
 scores=`find exp/sgmm5_mmi_b0.1/  -name "sum.txt"  -path "*eval.uem*"      | xargs grep "|   Occurrence" | cut -f 1,13 -d '|'| sed 's/:|//g' | column -t | sort -k 2 -n -r  | head`
@@ -119,11 +132,15 @@ ii=`echo "$scores" | head -n 1 | cut -f 1 -d ' '`
 dev_sttlist=`echo $ii | sed "s/char.ctm/ctm/" | sed "s/ctm.sys/ctm/"`
 filename="KWS13_RADICAL_${corpora}_BaDev_STT_${lp}_${lr}_${ar}_c-${relname}_${version}.ctm"
 echo  "Exporting STT BaDev $dev_sttlist as $filename "
+fdate=`stat --printf='%y' $dev_sttlist `
+echo "The source file $dev_sttlist has timestamp of $fdate"
 export_file $dev_sttlist $outputdir/$filename || exit 1
 
 eval_sttlist=`echo $dev_sttlist | sed "s:eval.uem:test.uem:g"`
 filename="KWS13_RADICAL_${corpora}_BaEval_STT_${lp}_${lr}_${ar}_c-${relname}_${version}.ctm"
 echo  "Exporting STT BaEval $eval_sttlist as $filename "
+fdate=`stat --printf='%y' $eval_sttlist `
+echo "The source file $eval_sttlist has timestamp of $fdate"
 export_file $eval_sttlist $outputdir/$filename || exit 1
 
 echo "Everything looks fine, good luck!"
