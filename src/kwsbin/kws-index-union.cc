@@ -41,8 +41,10 @@ int main(int argc, char *argv[]) {
 
     bool strict = true;
     bool skip_opt = false;
+    int32 max_states = -1;
     po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
     po.Register("skip-optimization", &skip_opt, "Skip optimization if it's set to true.");
+    po.Register("max-states", &max_states, "Maximum states for DeterminizeStar.");
 
     po.Read(argc, argv);
 
@@ -74,7 +76,12 @@ int main(int argc, char *argv[]) {
       KwsLexicographicFst ifst = global_index;
       EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
       Encode(&ifst, &encoder);
-      DeterminizeStar(ifst, &global_index);
+      try {
+        DeterminizeStar(ifst, &global_index, kDelta, NULL, max_states);
+      } catch(const std::exception &e) {
+        KALDI_WARN << e.what();
+        global_index = ifst;
+      }
       Minimize(&global_index);
       Decode(&global_index, encoder);
     } else {
