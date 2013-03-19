@@ -9,6 +9,8 @@ max_lmwt=20
 reverse=false
 #end configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -99,5 +101,30 @@ if [ "$name" == "eval2000" ]; then
       $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.callhm $dir/score_LMWT/${name}.ctm.callhm || exit 1;
   fi
 fi
+
+# For eval2001 score the subsets
+# TODO finish this!!!
+if [ "$name" == "eval2001" ]; then
+  # Score only the, swbd part1...
+  if [ $stage -le 3 ]; then  
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swb.LMWT.log \
+      grep -e '"^sw4"' -e '"^;"' $data/stm '>' $dir/score_LMWT/stm.swb1 '&&' \
+      grep -e '"^sw4"' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.swb1 '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.swb1 $dir/score_LMWT/${name}.ctm.swb1 || exit 1;
+  fi
+  if [ $stage -le 3 ]; then  
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.log \
+      grep -e '"^971"' -e '"^;"' $data/stm '>' $dir/score_LMWT/stm.swb2p3 '&&' \
+      grep -e '"^971"' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.swb2p3 '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.swb2p3 $dir/score_LMWT/${name}.ctm.swb2p3 || exit 1;
+  fi
+  if [ $stage -le 3 ]; then  
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.log \
+      grep -e '"^sw_4"' -e '"^;"' $data/stm '>' $dir/score_LMWT/stm.swb2p4cell '&&' \
+      grep -e '"^sw_4"' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.swb2p4cell '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.swb2p4cell $dir/score_LMWT/${name}.ctm.swb2p4cell || exit 1;
+  fi
+fi
+
 
 exit 0
