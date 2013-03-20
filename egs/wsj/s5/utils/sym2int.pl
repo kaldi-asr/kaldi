@@ -64,9 +64,6 @@ $max_warning = 20;
 
 while (<>) {
   @A = split(" ", $_);
-  if (@A == 0) {
-    die "Empty line in transcriptions input.";
-  }
   @B = ();
   for ($n = 0; $n < @A; $n++) {
     $a = $A[$n];
