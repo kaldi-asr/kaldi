@@ -15,7 +15,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-copy-backoff nbest-to-ctm lattice-determinize-pruned \
            lattice-to-ctm-conf lattice-arcgraph lattice-combine lattice-reverse \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
-           lattice-to-smbr-post lattice-determinize-pruned-parallel
+           lattice-to-smbr-post lattice-determinize-pruned-parallel \
+           lattice-add-penalty
 
 
 OBJFILES =

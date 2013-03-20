@@ -1,8 +1,8 @@
 // lat/lattice-functions.h
 
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
-//                       Johns Hopkins University (Author: Daniel Povey)
-
+//           2012-2013   Johns Hopkins University (Author: Daniel Povey);
+//                       Bagher BabaAli
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -147,6 +147,11 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 /// CompactLattice.   Requires that clat be acyclic.
 void CompactLatticeShortestPath(const CompactLattice &clat,
                                 CompactLattice *shortest_path);
+
+/// This function add the word insertion penalty to garph score of each word
+/// in the compact lattice
+void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
+                                   CompactLattice *clat);
 
 }  // namespace kaldi
 

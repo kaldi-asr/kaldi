@@ -1,8 +1,8 @@
 // lat/lattice-functions.cc
 
 // Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal)
-//                2012  Johns Hopkins University (Author: Daniel Povey);  Chao Weng
-//
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey);  Chao Weng;
+//                      Bagher BabaAli
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -831,6 +831,29 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
     }
   }
 }
+
+void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty, 
+                                   CompactLattice *clat) {
+  typedef CompactLatticeArc Arc;
+  int32 num_states = clat->NumStates();
+
+  //scan the lattice
+  for (int32 state = 0; state < num_states; state++) {
+    for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+         !aiter.Done(); aiter.Next()) {
+      
+      Arc arc(aiter.Value());
+      
+      if (arc.ilabel != 0) { // if there is a word on this arc
+        LatticeWeight weight = arc.weight.Weight();
+        // add word insertion penalty to lattice
+        weight.SetValue1( weight.Value1() + word_ins_penalty);    
+        arc.weight.SetWeight(weight);
+        aiter.SetValue(arc);
+      } 
+    } // end looping over arcs
+  }  // end looping over states  
+} 
 
 
 }  // namespace kaldi
