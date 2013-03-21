@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Done " << n_done << " lattices.";
-    KALDI_LOG << "Average Bayes Risk per sentence is "
+    KALDI_LOG << "Overall average Bayes Risk per sentence is "
               << (tot_bayes_risk / n_done) << " and per word, "
               << (tot_bayes_risk / n_words);
     

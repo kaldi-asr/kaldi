@@ -247,8 +247,10 @@ class LatticeWordAligner {
   LatticeWordAligner(const CompactLattice &lat,
                      const TransitionModel &tmodel,
                      const WordBoundaryInfo &info,
+                     int32 max_states,
                      CompactLattice *lat_out):
-      lat_(lat), tmodel_(tmodel), info_in_(info), info_(info), lat_out_(lat_out),
+      lat_(lat), tmodel_(tmodel), info_in_(info), info_(info),
+      max_states_(max_states), lat_out_(lat_out),
       error_(false) {
     fst::CreateSuperFinal(&lat_); // Creates a super-final state, so the
     // only final-probs are One().
@@ -297,8 +299,16 @@ class LatticeWordAligner {
     StateId start_state = GetStateForTuple(initial_tuple, true); // True = add this to queue.
     lat_out_->SetStart(start_state);
     
-    while (!queue_.empty())
+    while (!queue_.empty()) {
+      if (max_states_ > 0 && lat_out_->NumStates() > max_states_) {
+        KALDI_WARN << "Number of states in lattice exceeded max-states of "
+                   << max_states_ << ", original lattice had "
+                   << lat_.NumStates() << " states.  Returning empty lattice.";
+        lat_out_->DeleteStates();
+        return false;
+      }
       ProcessQueueElement();
+    }
 
     RemoveEpsilonsFromLattice();
     
@@ -309,6 +319,7 @@ class LatticeWordAligner {
   const TransitionModel &tmodel_;
   const WordBoundaryInfo &info_in_;
   WordBoundaryInfo info_;
+  int32 max_states_;
   CompactLattice *lat_out_;
 
   std::vector<std::pair<Tuple, StateId> > queue_;
@@ -678,8 +689,9 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
 bool WordAlignLattice(const CompactLattice &lat,
                       const TransitionModel &tmodel,
                       const WordBoundaryInfo &info,
+                      int32 max_states,
                       CompactLattice *lat_out) {
-  LatticeWordAligner aligner(lat, tmodel, info, lat_out);
+  LatticeWordAligner aligner(lat, tmodel, info, max_states, lat_out);
   return aligner.AlignLattice();
 }
 

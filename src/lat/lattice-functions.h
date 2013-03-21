@@ -148,7 +148,7 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 void CompactLatticeShortestPath(const CompactLattice &clat,
                                 CompactLattice *shortest_path);
 
-/// This function add the word insertion penalty to garph score of each word
+/// This function add the word insertion penalty to graph score of each word
 /// in the compact lattice
 void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
                                    CompactLattice *clat);

@@ -115,7 +115,9 @@ int main(int argc, char *argv[]) {
           continue;
         }
         VectorFst<StdArc> path;
-        if (EqualAlign(decode_fst, num_frames, rand(), &path) ) {
+        int32 rand_seed = StringHasher()(key); // StringHasher() produces new anonymous
+        // object of type StringHasher; we then call operator () on it, with "key".
+        if (EqualAlign(decode_fst, num_frames, rand_seed, &path) ) {
           std::vector<int32> aligned_seq, words;
           StdArc::Weight w;
           GetLinearSymbolSequence(path, &aligned_seq, &words, &w);

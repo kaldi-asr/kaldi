@@ -37,12 +37,17 @@ int main(int argc, char *argv[]) {
         "<integer-phone-id> [begin|end|singleton|internal|nonword]\n";
     
     ParseOptions po(usage);
+    BaseFloat max_expand = 0.0;
     bool output_if_error = true;
     bool do_test = false;
     
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
     po.Register("test", &do_test, "Test the algorithm while running it.");
+    po.Register("max-expand", &max_expand, "If >0, the maximum amount by which this "
+                "program will expand lattices before refusing to continue.  E.g. 10."
+                "This can be used to prevent this program consuming excessive memory "
+                "if there is a mismatch on the command-line or a 'problem' lattice.");
     
     WordBoundaryInfoNewOpts opts;
     opts.Register(&po);
@@ -75,7 +80,11 @@ int main(int argc, char *argv[]) {
       const CompactLattice &clat = clat_reader.Value();
 
       CompactLattice aligned_clat;
-      bool ok = WordAlignLattice(clat, tmodel, info, &aligned_clat);
+      int32 max_states;
+      if (max_expand > 0) max_states = 1000 + max_expand * clat.NumStates();
+      else max_states = 0;
+      
+      bool ok = WordAlignLattice(clat, tmodel, info, max_states, &aligned_clat);
       
       if (do_test && ok)
         TestWordAlignedLattice(clat, tmodel, info, aligned_clat);
