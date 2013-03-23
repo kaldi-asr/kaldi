@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
       const CompactLattice &lat = compact_lattice_reader.Value();
 
       CompactLattice aligned_lat;
-      bool ans = WordAlignLattice(lat, tmodel, info, &aligned_lat);
+      bool ans = WordAlignLattice(lat, tmodel, info, -1, &aligned_lat);
 
       if (test && ans)
         TestWordAlignedLattice(lat, tmodel, info, aligned_lat);
