@@ -12,6 +12,7 @@ max_silence_frames=50
 max_states=1000000
 strict=true
 skip_optimization=false
+word_ins_penalty=0
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -59,10 +60,12 @@ done
 echo "Using model: $model"
 
 $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
- lattice-align-words $word_boundary $model "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
-   lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
-   lattice-to-kws-index --strict=$strict ark:$utter_id ark:- ark:- \| \
-   kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
-   ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz"
+  lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
+    lattice-align-words $word_boundary $model  ark:- ark:- \| \
+    lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
+    lattice-to-kws-index --strict=$strict ark:$utter_id ark:- ark:- \| \
+    kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
+    ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz"
+    
 
 exit 0;

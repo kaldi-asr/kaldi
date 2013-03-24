@@ -20,6 +20,7 @@ iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
 scoring_opts=
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -100,11 +101,13 @@ fi
 
 
 if [ $stage -le 2 ]; then
-  [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  echo "score best paths"
-  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
-  echo "score confidence and timing with sclite"
+  if ! $skip_scoring ; then
+    [ ! -x local/score.sh ] && \
+      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    echo "score best paths"
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    echo "score confidence and timing with sclite"
+  fi
 fi
 echo "Decoding done."
 exit 0;
