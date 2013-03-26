@@ -14,7 +14,7 @@ beam_ali=60.0
 lattice_beam_ali=30.0
 acwt=0.1
 max_active=5000
-transform_dir=
+nnet=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
@@ -82,8 +82,8 @@ fi
 #Get the files we will need
 cp $srcdir/{tree,final.mdl} $dir
 
-nnet=$srcdir/final.nnet;
-[ -z "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
+[ -z "$nnet" ] && nnet=$srcdir/final.nnet;
+[ ! -f "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
 
 class_frame_counts=$srcdir/ali_train_pdf.counts
 [ -z "$class_frame_counts" ] && echo "Error class_frame_counts '$class_frame_counts' does not exist!" && exit 1;

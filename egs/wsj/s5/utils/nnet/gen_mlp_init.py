@@ -44,7 +44,7 @@ for i in range(len(dimStrL)):
 #print dimL,'linBN',options.linBNdim
 
 for layer in range(len(dimL)-1):
-    print '<affinetransform>', dimL[layer+1], dimL[layer]
+    print '<biasedlinearity>', dimL[layer+1], dimL[layer]
     #precompute...
     nomalized_interval = math.sqrt(6.0) / math.sqrt(dimL[layer+1]+dimL[layer])
     #weight matrix

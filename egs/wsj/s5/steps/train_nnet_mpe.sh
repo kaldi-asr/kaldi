@@ -18,6 +18,7 @@ learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
 use_silphones=false #setting this to something will enable giving siphones to nnet-mpe
+verbose=1
 use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
@@ -157,15 +158,16 @@ while [ $x -le $num_iters ]; do
   if [ -f $dir/$x.nnet ]; then
     echo "Skipped, file $dir/$x.nnet exists"
   else
-
+    #train
     $cmd $dir/log/mpe.$x.log \
-     nnet-mpe \
+     nnet-train-mpe-sequential \
        --feature-transform=$feature_transform \
        --class-frame-counts=$class_frame_counts \
        --acoustic-scale=$acwt \
        --lm-scale=$lmwt \
        --learn-rate=$learn_rate \
        --do-smbr=$do_smbr \
+       --verbose=$verbose \
        $mpe_silphones_arg \
        ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
@@ -173,10 +175,11 @@ while [ $x -le $num_iters ]; do
   cur_mdl=$dir/$x.nnet
 
   #report the progress
-  grep -B 2 MPE-objective $dir/log/mpe.$x.log | sed -e 's|.*)||'
+  grep -B 2 "Overall average frame-accuracy" $dir/log/mpe.$x.log | sed -e 's|.*)||'
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
+  
 done
 
 (cd $dir; unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
