@@ -6,10 +6,12 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 
 BINFILES = nnet-train-xent-hardlab-perutt nnet-train-xent-hardlab-frmshuff \
-	nnet-train-mse-tgtmat-frmshuff nnet-forward nnet-copy rbm-train-cd1-frmshuff \
-	rbm-convert-to-nnet nnet-trim-n-last-transforms nnet-train-mmi-sequential \
-	nnet-train-xent-hardlab-frmshuff-prior transf-to-nnet cmvn-to-nnet \
-	nnet-mpe
+	nnet-train-xent-hardlab-frmshuff-priornnet-train-mse-tgtmat-frmshuff \
+	nnet-train-mmi-sequential nnet-train-mpe-sequential \
+	rbm-train-cd1-frmshuff rbm-convert-to-nnet \
+	nnet-forward nnet-copy nnet-concat \
+	nnet-trim-n-last-transforms \
+	transf-to-nnet cmvn-to-nnet 
 
 OBJFILES =
 

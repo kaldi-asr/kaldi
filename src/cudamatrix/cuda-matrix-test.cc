@@ -699,6 +699,12 @@ template<class Real> void CudaMatrixUnitTest() {
 
 
 int main() {
+    //Select the GPU
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(-2); //-2 .. automatic selection
+#endif
+
+
   kaldi::CudaMatrixUnitTest<float>();
   kaldi::CudaMatrixUnitTest<double>();
   std::cout << "Tests succeeded.\n";

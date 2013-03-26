@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
+    po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
     int32 bunchsize=512, cachesize=32768, seed=777;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
@@ -88,7 +88,6 @@ int main(int argc, char *argv[]) {
 
     //Select the GPU
 #if HAVE_CUDA==1
-    if(use_gpu_id > -2)
     CuDevice::Instantiate().SelectGpuId(use_gpu_id);
 #endif
 

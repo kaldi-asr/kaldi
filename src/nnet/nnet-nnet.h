@@ -64,6 +64,20 @@ class Nnet {
     nnet_.push_back(dynamically_allocated_comp);
   }
 
+  /// Concatenate the network
+  /// Warning : this is destructive, the arg src_nnet_will_be_empty
+  ///           will be empty network after calling this method
+  void Concatenate(Nnet* src_nnet_will_be_empty) {
+    if(LayerCount() > 0) {
+      KALDI_ASSERT(OutputDim() == src_nnet_will_be_empty->InputDim());
+    }
+    nnet_.insert(nnet_.end(),
+                 src_nnet_will_be_empty->nnet_.begin(),
+                 src_nnet_will_be_empty->nnet_.end());
+    src_nnet_will_be_empty->nnet_.clear();
+  }
+
+
   /// Remove layer
   void RemoveLayer(int32 index) {
     //make sure we don't break the dimensionalities in the nnet

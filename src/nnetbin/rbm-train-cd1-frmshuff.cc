@@ -30,32 +30,44 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Perform iteration of RBM training by contrastive divergence alg.\n"
+        "Train an RBM by contrastive divergence alg.\n"
         "Usage:  rbm-train-cd1-frmshuff [options] <model-in> <feature-rspecifier> <model-out>\n"
         "e.g.: \n"
-        " rbm-train-cd1-frmshuff rbm.init scp:train.scp rbm.iter1\n";
+        " rbm-train-cd1-frmshuff 1.rbm.init scp:train.scp 1.rbm\n";
 
     ParseOptions po(usage);
     bool binary = false; 
     po.Register("binary", &binary, "Write output in binary mode");
 
-    BaseFloat learn_rate = 0.008,
-        momentum = 0.0,
-        l2_penalty = 0.0;
-
-    po.Register("learn-rate", &learn_rate, "Learning rate");
+    int32 num_iters = 1; 
+    po.Register("num-iters", &num_iters, "Number of iterations (smaller datasets should be seen more than once, iterating within tool becase of linear momentum scheduling)");
+ 
+    BaseFloat learn_rate = 0.01,
+        momentum = 0.5,
+        momentum_max = 0.9,
+        l2_penalty = 0.0002;
+     po.Register("learn-rate", &learn_rate, "Learning rate");
     po.Register("momentum", &momentum, "Momentum");
+    po.Register("momentum-max", &momentum_max, "Momentum maximal");
     po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
+    
+    /**
+     * adding linear momentum scheduling
+     */
+    int32 momentum_steps = 40,
+        momentum_step_period = 500000; //500000 * 40 = 55h of linear increase of momentum
+    po.Register("momentum-steps", &momentum_steps, "Number of steps of linear momentum scheduling");
+    po.Register("momentum-step-period", &momentum_step_period, "Number of datapoints per single momentum increase step");
 
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, "Feature transform Neural Network");
+    po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
-    int32 bunchsize=512, cachesize=32768;
+    int32 bunchsize=100, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
     
     BaseFloat drop_data = 0.0; 
-    po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (dropping is done before feature_transform, this must not splice accross time!)");
+    po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (0 no-drop, 1 drop-all)");
 
 #if HAVE_CUDA==1
     int32 use_gpu_id=-2 ;
@@ -81,7 +93,6 @@ int main(int argc, char *argv[]) {
 
     //Select the GPU
 #if HAVE_CUDA==1
-    if(use_gpu_id > -2)
     CuDevice::Instantiate().SelectGpuId(use_gpu_id);
 #endif
 
@@ -96,7 +107,7 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
     RbmBase &rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
 
-    rbm.SetLearnRate(learn_rate);
+    rbm.SetLearnRate(learn_rate*(1-momentum));
     rbm.SetMomentum(momentum);
     rbm.SetL2Penalty(l2_penalty);
 
@@ -119,6 +130,9 @@ int main(int argc, char *argv[]) {
     Timer tim;
     double time_next=0;
     KALDI_LOG << "RBM TRAINING STARTED";
+
+    int32 iter = 1;
+    KALDI_LOG << "Iteration " << iter << "/" << num_iters;
 
     int32 num_done = 0, num_cache = 0;
     while (1) {
@@ -170,6 +184,7 @@ int main(int argc, char *argv[]) {
         // TRAIN with CD1
         // forward pass
         rbm.Propagate(pos_vis, &pos_hid);
+
         // alter the hidden values, so we can generate negative example
         if (rbm.HidType() == Rbm::BERNOULLI) {
           neg_hid.Resize(pos_hid.NumRows(),pos_hid.NumCols());
@@ -180,6 +195,7 @@ int main(int argc, char *argv[]) {
           neg_hid.CopyFromMat(pos_hid);
           cu_rand.AddGaussNoise(&neg_hid);
         }
+
         // reconstruct pass
         rbm.Reconstruct(neg_hid, &neg_vis);
         // propagate negative examples
@@ -190,9 +206,38 @@ int main(int argc, char *argv[]) {
         mse.Eval(neg_vis, pos_vis, &dummy_mse_mat);
 
         tot_t += pos_vis.NumRows();
+
+        // change the momentum progressively per 0.5million samples of the data
+        {
+          static int32 n_prev = -1;
+          BaseFloat step = (momentum_max - momentum) / momentum_steps;
+          int32 n = tot_t / momentum_step_period; //change every momentum_step_period data
+          BaseFloat momentum_actual;
+          if(n > momentum_steps) {
+            momentum_actual = momentum_max;
+          } else {
+            momentum_actual = momentum + n*step;
+          }
+          if(n - n_prev > 0) {
+            n_prev = n;
+            BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
+            KALDI_LOG << "Setting momentum : " << momentum_actual 
+                      << " learning rate : " << learning_rate_actual;
+            rbm.SetMomentum(momentum_max);
+            rbm.SetLearnRate(learning_rate_actual);
+          }
+        }
       }
 
-      // stop training when no more data
+      // reopen the feature stream if we will run another iteration
+      if (feature_reader.Done() && (iter < num_iters)) {
+        iter++;
+        KALDI_LOG << "Iteration " << iter << "/" << num_iters;
+        feature_reader.Close();
+        feature_reader.Open(feature_rspecifier);
+      }
+        
+      // otherwise stop the training
       if (feature_reader.Done()) break;
     }
 
@@ -201,10 +246,10 @@ int main(int argc, char *argv[]) {
     std::cout << "\n" << std::flush;
 
     KALDI_LOG << "RBM TRAINING FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
+              << tim.Elapsed()/60 << " min, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 
 
-    KALDI_LOG << "Done " << num_done << " files.";
+    KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files.";
 
     KALDI_LOG << mse.Report();
 

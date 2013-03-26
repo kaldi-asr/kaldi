@@ -56,7 +56,7 @@ Component::ComponentType Component::MarkerToType(const std::string &s) {
     if (0 == strcmp(kMarkerMap[i].value, s.c_str())) 
       return kMarkerMap[i].key;
   }
-  KALDI_ERR << "Unknown marker" << s;
+  KALDI_ERR << "Unknown marker : \'" << s << "\'";
   return kUnknown;
 }
 
