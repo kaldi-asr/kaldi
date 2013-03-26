@@ -118,7 +118,7 @@ if [ $apply_cmvn == "true" ]; then
   # keep track of norm_vars option
   echo "$norm_vars" >$dir/norm_vars 
 else
-  echo "apply_cmvn disabled (1st stage)"
+  echo "apply_cmvn disabled (per speaker norm. on input features)"
 fi
 
 #optionally add deltas
