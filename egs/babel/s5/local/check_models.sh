@@ -25,6 +25,7 @@ if [ -f exp/tri4/trans.1 ]; then # This is LimitedLP.
 else
   models="exp/tri4/final.mdl exp/tri5/final.alimdl exp/sgmm5/final.alimdl exp/sgmm5_mmi_b0.1/final.mdl exp/tri6_nnet/final.mdl"
 fi
+models="$models exp_BNF/tri5/final.mdl exp_BNF/tri6/final.alimdl exp_BNF/sgmm7/final.alimdl"
 
 for model in $models; do
   check_model $model

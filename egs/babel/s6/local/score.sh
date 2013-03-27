@@ -1,1 +1,0 @@
-score_sctk.sh

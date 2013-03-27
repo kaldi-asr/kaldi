@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+set -e
+set -o pipefail
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -53,6 +55,7 @@ utils/fix_data_dir.sh data/shadow.uem
 ##
 ####################################################################
 steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
+ --num-threads 6 --parallel-opts "-pe smp 6" \
   exp/tri5/graph data/shadow.uem exp/tri5/decode_shadow.uem  | tee  exp/tri5/decode_shadow.uem.log
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/tri5/decode_shadow.uem.si
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/tri5/decode_shadow.uem
@@ -66,8 +69,9 @@ steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
 ## FMLLR decoding of test.uem
 ##
 ####################################################################
-steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
-  exp/tri5/graph data/test.uem exp/tri5/decode_test.uem  | tee  exp/tri5/decode_test.uem.log
+#-steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
+#- --num-threads 6 --parallel-opts "-pe smp 6" \
+#-  exp/tri5/graph data/test.uem exp/tri5/decode_test.uem  | tee  exp/tri5/decode_test.uem.log
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/tri5/decode_test.uem.si
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/tri5/decode_test.uem
 #-local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" data/lang data/test.uem/ exp/tri5/decode_test.uem.si
@@ -82,6 +86,7 @@ steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
 #steps/decode_sgmm2.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" --transform-dir exp/tri5/decode_shadow.uem \
 #        exp/sgmm5/graph data/shadow.uem exp/sgmm5/decode_shadow.uem  | tee  exp/sgmm5/decode_shadow.uem.log
 steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj 64 --cmd "$decode_cmd" --transform-dir exp/tri5/decode_shadow.uem \
+	--num-threads 6 --parallel-opts "-pe smp 6" \
         exp/sgmm5/graph data/shadow.uem exp/sgmm5/decode_fmllr_shadow.uem  | tee  exp/sgmm5/decode_fmllr_shadow.uem.log
 
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/sgmm5/decode_shadow.uem 
@@ -98,8 +103,9 @@ steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj 64 --cmd "$decod
 ####################################################################
 #steps/decode_sgmm2.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" --transform-dir exp/tri5/decode_test.uem \
 #        exp/sgmm5/graph data/test.uem exp/sgmm5/decode_test.uem  | tee  exp/sgmm5/decode_test.uem.log
-steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj 64 --cmd "$decode_cmd" --transform-dir exp/tri5/decode_test.uem \
-        exp/sgmm5/graph data/test.uem exp/sgmm5/decode_fmllr_test.uem  | tee  exp/sgmm5/decode_fmllr_test.uem.log
+#-steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj 64 --cmd "$decode_cmd" --transform-dir exp/tri5/decode_test.uem \
+#-	--num-threads 6 --parallel-opts "-pe smp 6" \
+#-        exp/sgmm5/graph data/test.uem exp/sgmm5/decode_fmllr_test.uem  | tee  exp/sgmm5/decode_fmllr_test.uem.log
 
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5/decode_test.uem 
 #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5/decode_fmllr_test.uem 
@@ -136,21 +142,21 @@ done
 ## SGMM_MMI rescoring of the test.uem
 ##
 ####################################################################
-for iter in 1 2 3 4; do
-    #steps/decode_sgmm2_rescore.sh --skip-scoring true\
-    #    --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_test.uem \
-    #    data/lang data/test.uem exp/sgmm5/decode_test.uem exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter
-
-    steps/decode_sgmm2_rescore.sh --skip-scoring true \
-        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_test.uem \
-        data/lang data/test.uem exp/sgmm5/decode_fmllr_test.uem exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter
-    
-    #local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter &
-    local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter &
-
-    #local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter
-    local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter
-done
+#-for iter in 1 2 3 4; do
+#-    #steps/decode_sgmm2_rescore.sh --skip-scoring true\
+#-    #    --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_test.uem \
+#-    #    data/lang data/test.uem exp/sgmm5/decode_test.uem exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter
+#-
+#-    steps/decode_sgmm2_rescore.sh --skip-scoring true \
+#-        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_test.uem \
+#-        data/lang data/test.uem exp/sgmm5/decode_fmllr_test.uem exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter
+#-    
+#-    #local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter &
+#-    local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter &
+#-
+#-    #local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter
+#-    local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter
+#-done
 
 echo "Done, waiting until the background tasks finish"
 wait

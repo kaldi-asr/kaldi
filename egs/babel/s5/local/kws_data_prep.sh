@@ -7,6 +7,8 @@
 case_insensitive=true
 # End configuration section.
 
+echo $0 "$@"
+
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 

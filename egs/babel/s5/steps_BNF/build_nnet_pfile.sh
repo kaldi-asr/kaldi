@@ -18,6 +18,7 @@
 
 # Begin configuration section.  
 stage=1
+every_nth_frame=1 # for subsampling.
 nj=4
 cmd=run.pl
 
@@ -118,7 +119,7 @@ feats="$splicedfeats transform-feats $dir/final.mat ark:- ark:- |"
 if [ $stage -le 2 ]; then
   echo "Generate nnet training pfiles"
   $cmd JOB=1:$nj $dir/log/build_pfile.JOB.log \
-    build-pfile-from-ali $alidir/final.mdl "ark:gunzip -c $alidir/ali.JOB.gz|" \
+    build-pfile-from-ali --every-nth-frame=$every_nth_frame $alidir/final.mdl "ark:gunzip -c $alidir/ali.JOB.gz|" \
       "$feats" "|$PPATH/pfile_create -i - -o $dir/pfile.JOB -f $nnet_dim -l 1" || exit 1;
   # concatenate the pfiles into one
   all_pfiles=""
@@ -134,9 +135,11 @@ if [ $stage -le 3 ]; then
   mkdir -p $dir/concat
   # Chop the whole pfile into small units
   perl steps_BNF/pfile_burst.pl -i $dir/concat.pfile -o $dir/concat -s $pfile_unit_size 2> $dir/log/pfile_burst.log || exit 1;
+fi
 
+if [ $stage -le 4 ]; then
   # Split the units accoring to cv_ratio
-  perl steps_BNF/pfile_rconcat.pl -o $dir/valid.pfile,${cv_ratio} -o $dir/train.pfile $dir/concat/*.pfile 2> $dir/log/pfile_rconcat.log || exit 1;
+  perl steps_BNF/pfile_rconcat.pl -t "$dir" -o $dir/valid.pfile,${cv_ratio} -o $dir/train.pfile $dir/concat/*.pfile 2> $dir/log/pfile_rconcat.log || exit 1;
   rm -r $dir/concat
   echo "## Info of the training pfile: ##"
   $PPATH/pfile_info $dir/train.pfile
@@ -146,6 +149,8 @@ if [ $stage -le 3 ]; then
   # Compress the two (if everything is correct) pfiles 
   gzip $dir/train.pfile $dir/valid.pfile
 fi
+
+ln -s $dir/* $dir
 
 echo "$0: done creating pfiles."
 

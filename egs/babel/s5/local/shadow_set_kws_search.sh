@@ -22,6 +22,10 @@ cmd=run.pl
 model=
 skip_scoring=false
 stage=0
+strict=true
+skip_optimization=false
+max_states=150000
+word_ins_penalty=0
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -90,7 +94,9 @@ if [ $stage -le 0 ] ; then
       mkdir -p $kwsoutdir
 
       acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-      local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+      steps/make_index.sh --strict $strict --cmd "$cmd" --max-states $max_states\
+        --acwt $acwt $model_flags --skip-optimization $skip_optimization \
+        --word_ins_penalty $word_ins_penalty \
         $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
   done
 fi
@@ -153,7 +159,7 @@ if [ $stage -le 4 ] ; then
   elif [ ! -f $datasetA/kws/rttm ] ; then
       echo "Not scoring, because the file $datasetA/kws/rttm is not present"
   else
-    $decode_cmd LMWT=7:17 $rootdirA/kws/kws_scoring.LMWT.log \
+    $decode_cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetA $rootdirA/kws_LMWT 
   fi
 fi
@@ -186,7 +192,7 @@ if [ $stage -le 7 ] ; then
   elif [ ! -f $datasetB/kws/rttm ] ; then
       echo "Not scoring, because the file $datasetB/kws/rttm is not present"
   else
-    $decode_cmd LMWT=7:17 $rootdirB/kws/kws_scoring.LMWT.log \
+    $decode_cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetB $rootdirB/kws_LMWT || exit 1
   fi
 fi

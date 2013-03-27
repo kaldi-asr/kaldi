@@ -15,6 +15,7 @@ sub usage() {
 	print STDERR << "EOF";
 Usage: pfile_rconcat <options> <input-files>
 Where <options> include:
+-t                       tmpdir
 -h                       print this message
 -o <output-file>,<ratio> output pfile with corresponding ratio
 EOF
@@ -22,13 +23,15 @@ EOF
 }
 
 # Main program
-my @outfiles, $help;
-GetOptions("o=s" => \@outfiles, "h!" => \$help);
+my @outfiles, $help, $tmpdir;
+GetOptions("o=s" => \@outfiles, "t=s" => \$tmpdir, "h!" => \$help);
 usage() if $help;
 if (@ARGV == 0) {
 	die("No input files specified!");
 }
 my @infiles = shuffle(@ARGV);
+if ($tmpdir ne "") { $tmpdir = $tmpdir . "/"; }
+
 
 # Produce output files
 my $remain = 1.0;
@@ -57,7 +60,7 @@ foreach (@outfiles) {
 		push(@list, shift(@infiles));
 		$n--;
 		if (@list == 1024) {
-			$cmd_line = sprintf("pfile_concat -o %s_$fno.pfile @list", $outbase);
+			$cmd_line = sprintf("pfile_concat -o ${tmpdir}%s_$fno.pfile @list", $outbase);
 			system($cmd_line) == 0 or die("Error running command $cmd_line");
 			@list = ();
 			$fno++;
@@ -67,11 +70,11 @@ foreach (@outfiles) {
 	# Concatenate partial files?
 	my $cleanup = undef;
 	if ($fno > 0) {
-		$cmd_line = sprintf("pfile_concat -o %s_$fno.pfile @list", $outbase);
+		$cmd_line = sprintf("pfile_concat -o ${tmpdir}%s_$fno.pfile @list", $outbase);
 		system($cmd_line) == 0 or die("Error running command $cmd_line");
 		@list = ();
 		while ($fno >= 0) {
-			push(@list, sprintf("%s_$fno.pfile", $outbase));
+			push(@list, sprintf("${tmpdir}%s_$fno.pfile", $outbase));
 			$fno--;
 		}
 		$cleanup = 1;

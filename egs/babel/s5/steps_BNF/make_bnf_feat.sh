@@ -95,9 +95,14 @@ if [[ "$N0" != "$N1" ]]; then
   exit 1;
 fi
 
+echo -n >$bnf_data/feats.scp
 # Concatenate feats.scp into bnf_data
 for n in `seq 1 $nj`; do
   cat $dir/raw_bnfeat_$name.$n.scp >> $bnf_data/feats.scp
+done
+
+for f in segments spk2utt text utt2spk wav.scp char.stm glm kws reco2file_and_channel stm; do
+  [ -e $data/$f ] && cp -r $data/$f $bnf_data/$f
 done
 
 echo "$0: done making BNF feats.scp."

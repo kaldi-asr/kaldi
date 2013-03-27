@@ -30,9 +30,11 @@ stage=0
 cer=0
 decode_mbr=true
 lat_weights=
+word_ins_penalty=0.0
 min_lmwt=7
 max_lmwt=17
 parallel_opts="-pe smp 3"
+skip_scoring=false
 #end configuration section.
 
 help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:lmwt-bias] <decode-dir2>[:lmwt-bias] [<decode-dir3>[:lmwt-bias] ... ] <out-dir>
@@ -69,11 +71,19 @@ num_sys=${#decode_dirs[@]}  # number of systems to combine
 
 
 
-for f in $lang/words.txt $lang/phones/word_boundary.int $data/stm; do
+for f in $lang/words.txt $lang/phones/word_boundary.int ; do
   [ ! -f $f ] && echo "$0: file $f does not exist" && exit 1;
 done
+if ! $skip_scoring ; then
+  for f in  $data/stm; do
+    [ ! -f $f ] && echo "$0: file $f does not exist" && exit 1;
+  done
+fi
+
 ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -f $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
+SortingProgram=`which hubscr.pl` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
+[ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
 
 
@@ -85,7 +95,7 @@ for i in `seq 0 $[num_sys-1]`; do
   decode_dir=`echo $decode_dir | cut -d: -f1`
   [ -z "$offset" ] && offset=0
   
-  model=$decode_dir/../final.mdl  # model one level up from decode dir
+  model=`dirname $decode_dir`/final.mdl  # model one level up from decode dir
   for f in $model $decode_dir/lat.1.gz ; do
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
   done
@@ -105,9 +115,9 @@ for i in `seq 0 $[num_sys-1]`; do
   # very long.
   for j in `seq $nj`; do file_list="$file_list $decode_dir/lat.$j.gz"; done
 
-  lats[$i]="ark,s,cs:lattice-prune --beam=$beam --inv-acoustic-scale=\$[$offset+LMWT] \
- 'ark:gunzip -c $file_list|' ark:- | \
- lattice-scale --inv-acoustic-scale=\$[$offset+LMWT] ark:- ark:- | \
+  lats[$i]="ark,s,cs:lattice-scale --inv-acoustic-scale=\$[$offset+LMWT] 'ark:gunzip -c $file_list|' ark:- | \
+ lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- | \
+ lattice-prune --beam=$beam ark:- ark:- | \
  lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- |"
 done
 
@@ -184,17 +194,22 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 2 ]; then
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/ '&&' cp $data/glm $dir/score_LMWT/ '&&'\
-    $ScoringProgram -s -r $dir/score_LMWT/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl;
+if ! $skip_scoring ; then
+  if [ $stage -le 2 ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
+      cp $data/stm $dir/score_LMWT/ '&&' cp $data/glm $dir/score_LMWT/ '&&'\
+      cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
+      utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm.unsorted '&&' \
+      $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.unsorted \>$dir/score_LMWT/${name}.ctm '&&' \
+      $ScoringProgram -s -r $dir/score_LMWT/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl;
 
-  if [ $cer -eq 1 ]; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.char.log \
-      cp $data/char.stm $dir/score_LMWT/'&&'\
-      $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
-  fi
-  
+    if [ $cer -eq 1 ]; then
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.char.log \
+        cp $data/char.stm $dir/score_LMWT/'&&'\
+        $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
+    fi
+fi
+
 #  for x in $dir/score_*/*.ctm; do
 #    mv $x.filt $x;
 #    rm -f $x.filt*;

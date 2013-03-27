@@ -18,7 +18,10 @@ duptime=0.6
 cmd=run.pl
 model=
 skip_scoring=false
+skip_optimization=false
+max_states=150000
 stage=0
+word_ins_penalty=0
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -74,7 +77,9 @@ if [ $stage -le 0 ] ; then
       mkdir -p $kwsoutdir
 
       acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-      local/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+      steps/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+        --skip-optimization $skip_optimization --max-states $max_states \
+        --word-ins-penalty $word_ins_penalty \
         $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
   done
 fi

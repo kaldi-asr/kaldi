@@ -3,12 +3,14 @@
 
 # begin configuration section.
 cmd=run.pl
+stage=0
 cer=0
 decode_mbr=true
+beam=7
+word_ins_penalty=0.5
 min_lmwt=7
 max_lmwt=17
 model=
-stage=0
 #end configuration section.
 
 #debugging stuff
@@ -32,7 +34,9 @@ lang=$2 # Note: may be graph directory not lang directory, but has the necessary
 dir=$3
 
 if [ -z "$model" ] ; then
-  model=$dir/../final.mdl # assume model one level up from decoding dir.
+  model=`dirname $dir`/final.mdl # Relative path does not work in some cases
+  #model=$dir/../final.mdl # assume model one level up from decoding dir.
+  #[ ! -f $model ] && model=`(set +P; cd $dir/../; pwd)`/final.mdl
 fi
 
 
@@ -48,9 +52,11 @@ mkdir -p $dir/scoring/log
 if [ $stage -le 0 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
-    ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
-    lattice-align-words $lang/phones/word_boundary.int $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr --acoustic-scale=\$ACWT  ark:- - \| \
+    lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+    lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+    lattice-prune --beam=$beam ark:- ark:- \| \
+    lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+    lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt  \| \
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
     '>' $dir/score_LMWT/$name.ctm || exit 1;

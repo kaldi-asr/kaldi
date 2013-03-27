@@ -73,7 +73,7 @@ echo "Creating the $datadir/wav.scp file"
   set -o pipefail
   for file in `cut -f 2 -d ' ' $datadir/segments` ; do
     if [ -f $audiopath/audio/$file.sph ] ; then
-      echo "$file $sph2pipe -f wav -p -c 1 $audiopath/audio/$file.sph \|"
+      echo "$file $sph2pipe -f wav -p -c 1 $audiopath/audio/$file.sph |"
     else
       echo "Audio file $audiopath/audio/$file.sph does not exist!" >&2 
       exit 1

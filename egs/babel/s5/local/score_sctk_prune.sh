@@ -1,14 +1,13 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
+# Copyright Johns Hopkins University (Authors: Daniel Povey, Sanjeev Khudanpur) 2012-2013.  Apache 2.0.
 
 # begin configuration section.
 cmd=run.pl
-stage=`echo $stage` # Check if it is already set in the parent shell
-if [ ! $stage ]; then # Set a default value
-  stage=0
-fi
+stage=0
 cer=0
 decode_mbr=true
+beam=5
+word_ins_penalty=0
 min_lmwt=7
 max_lmwt=17
 model=
@@ -51,9 +50,11 @@ mkdir -p $dir/scoring/log
 if [ $stage -le 0 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
     mkdir -p $dir/score_LMWT/ '&&' \
-    ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
-    lattice-align-words $lang/phones/word_boundary.int $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr --acoustic-scale=\$ACWT  ark:- - \| \
+    lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+    lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+    lattice-prune --beam=$beam ark:- ark:- \| \
+    lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+    lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt  \| \
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
     '>' $dir/score_LMWT/$name.ctm || exit 1;

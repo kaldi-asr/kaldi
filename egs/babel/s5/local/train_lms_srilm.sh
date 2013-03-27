@@ -1,6 +1,12 @@
 #!/bin/bash
 export LC_ALL=C
 
+words_file=
+train_text=
+dev_text=
+
+. ./utils/parse_options.sh
+
 echo "-------------------------------------"
 echo "Building an SRILM language model     "
 echo "-------------------------------------"
@@ -28,10 +34,14 @@ if [ -z $loc ]; then
   fi
 fi
 
+[ -z $words_file ] && words_file=$datadir/lang/words.txt 
+[ -z $train_text ] && train_text=$datadir/train/text
+[ -z $dev_text ] && dev_text=$datadir/dev/text
 
-words_file=$datadir/lang/words.txt 
-train_text=$datadir/train/text
-dev_text=$datadir/dev/text
+echo "Using words file: $words_file"
+echo "Using train text: $train_text"
+echo "Using dev text  : $dev_text"
+
 # Prepare the destination directory
 mkdir -p $tgtdir
 

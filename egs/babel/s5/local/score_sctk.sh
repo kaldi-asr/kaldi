@@ -1,12 +1,9 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
+# Copyright Johns Hopkins University (Authors: Daniel Povey, Sanjeev Khudanpur) 2012-2013.  Apache 2.0.
 
 # begin configuration section.
 cmd=run.pl
-stage=`echo $stage` # Check if it is already set in the parent shell
-if [ ! $stage ]; then # Set a default value
-  stage=0
-fi
+stage=0
 cer=0
 decode_mbr=true
 min_lmwt=7
@@ -14,6 +11,7 @@ max_lmwt=17
 model=
 #end configuration section.
 
+echo "$0 $@"
 [ -f ./path.sh ] && . ./path.sh
 [ -f ./cmd.sh ]  && . ./cmd.sh
 . parse_options.sh || exit 1;

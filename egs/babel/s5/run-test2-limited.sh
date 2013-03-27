@@ -74,7 +74,7 @@ fi
 ##
 ####################################################################
 if $decode_shadow ; then
-  steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
+  steps/decode_fmllr_extra.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
     --num-threads 6 --parallel-opts "-pe smp 6 -l ram_free=0.5G" \
     exp/tri4/graph data/shadow.uem exp/tri4/decode_shadow.uem  | tee  exp/tri4/decode_shadow.uem.log
   #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/shadow.uem data/lang exp/tri4/decode_shadow.uem.si
@@ -91,7 +91,7 @@ fi
 ##
 ####################################################################
 if $decode_test ; then
-  steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
+  steps/decode_fmllr_extra.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
     --num-threads 6 --parallel-opts "-pe smp 6 -l ram_free=0.5G" \
     exp/tri4/graph data/test.uem exp/tri4/decode_test.uem  | tee  exp/tri4/decode_test.uem.log
   #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/test.uem data/lang exp/tri4/decode_test.uem.si
@@ -106,7 +106,7 @@ fi
 ##
 ####################################################################
 if $decode_eval ; then
-  steps/decode_fmllr.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
+  steps/decode_fmllr_extra.sh --skip-scoring true --nj 64 --cmd "$decode_cmd" \
     --num-threads 6 --parallel-opts "-pe smp 6 -l ram_free=0.5G" \
     exp/tri4/graph data/eval.uem exp/tri4/decode_eval.uem |tee exp/tri4/decode_eval.uem.log
   #-local/lattice_to_ctm.sh --cmd "$decode_cmd" data/eval.uem data/lang exp/tri4/decode_eval.uem.si
@@ -189,7 +189,8 @@ if $decode_shadow ; then
 
       #local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
       #  data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_shadow.uem_it$iter
-      local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+      local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+        --model exp/sgmm5_mmi_b0.1/$iter.mdl --word-ins-penalty 0.5 \
         data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter
       
       #local/split_ctms.sh data/shadow.pem exp/sgmm5_mmi_b0.1/decode_shadow.uem_it$iter \
@@ -201,7 +202,8 @@ if $decode_shadow ; then
     #local/shadow_set_kws_search.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
     #  data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_shadow.uem_it$iter 
     #  data/dev data/test.uem
-    local/shadow_set_kws_search.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl  \
+    local/shadow_set_kws_search.sh --cmd "$decode_cmd" \
+      --model exp/sgmm5_mmi_b0.1/$iter.mdl  --max-states 150000 \
       data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
       data/dev data/test.uem
   done
@@ -225,12 +227,14 @@ if $decode_test ; then
     
     #local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
     #  data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter &
-    local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+    local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+      --model exp/sgmm5_mmi_b0.1/$iter.mdl --word-ins-penalty 0.5 \
       data/test.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter &
 
     #local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
     #  data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_test.uem_it$iter
-    local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+    local/kws_search.sh --skip-scoring true --cmd "$decode_cmd" \
+      --model exp/sgmm5_mmi_b0.1/$iter.mdl --max-states 150000 \
       data/lang data/test.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_test.uem_it$iter
   done
 fi
@@ -253,7 +257,8 @@ if $decode_eval ; then
     (
       #local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
       #  data/eval.uem data/lang exp/sgmm5_mmi_b0.1/decode_eval.uem_it$iter &
-      local/lattice_to_ctm.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl  \
+      local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+        --model exp/sgmm5_mmi_b0.1/$iter.mdl  --word-ins-penalty 0.5 \
         data/eval.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_eval.uem_it$iter 
 
       local/score_scm.sh --cer $cer --cmd "$decode_cmd" data/eval.uem/ \
@@ -262,7 +267,8 @@ if $decode_eval ; then
 
     #local/kws_search.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
     #  data/lang data/eval.uem/ exp/sgmm5_mmi_b0.1/decode_eval.uem_it$iter
-    local/kws_search.sh --cmd "$decode_cmd" --model exp/sgmm5_mmi_b0.1/$iter.mdl \
+    local/kws_search.sh --cmd "$decode_cmd" \
+      --model exp/sgmm5_mmi_b0.1/$iter.mdl --max-states 150000 \
       data/lang data/eval.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_eval.uem_it$iter
   done
 fi
@@ -277,12 +283,14 @@ if $decode_nnet ; then
       exp/tri4/graph data/eval.uem exp/tri5_nnet/decode_eval.uem
     
     local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+      --word-ins-penalty 0.5 \
       data/eval.uem data/lang exp/tri5_nnet/decode_eval.uem 
 
     local/score_scm.sh --cmd "$decode_cmd" \
       data/eval.uem data/lang exp/tri5_nnet/decode_eval.uem
       
     local/kws_search.sh --cmd "$decode_cmd" \
+      --max-states 150000 \
       data/lang data/eval.uem exp/tri5_nnet/decode_eval.uem
   fi
 
@@ -293,9 +301,11 @@ if $decode_nnet ; then
       exp/tri4/graph data/test.uem exp/tri5_nnet/decode_test.uem
     
     local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+      --word-ins-penalty 0.5\
       data/test.uem data/lang exp/tri5_nnet/decode_test.uem 
 
-    local/kws_search.sh --cmd "$decode_cmd" --skip-scoring true \
+    local/kws_search.sh --cmd "$decode_cmd" \
+      --skip-scoring true --max-states 150000 \
       data/lang data/test.uem exp/tri5_nnet/decode_test.uem
   fi
 
@@ -308,12 +318,14 @@ if $decode_nnet ; then
       exp/tri4/graph data/shadow.uem exp/tri5_nnet/decode_shadow.uem
 
     local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+      --word-ins-penalty 0.5 \
       data/shadow.uem data/lang exp/tri5_nnet/decode_shadow.uem 
 
     local/split_ctms.sh data/shadow.uem exp/tri5_nnet/decode_shadow.uem \
       data/dev data/test.uem
 
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" \
+      --max-states 150000 \
       data/shadow.uem data/lang exp/tri5_nnet/decode_shadow.uem data/dev data/test.uem
   fi
 fi

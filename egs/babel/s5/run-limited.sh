@@ -1,32 +1,10 @@
 #!/bin/bash
 
-# System and data directories
-#SCRIPT=$(readlink -f $0)
-#SysDir=`dirname $SCRIPT`
-SysDir=`pwd`
-echo $SysDir
 
-#keyword search default
-glmFile=conf/glm
-duptime=0.5
-case_insensitive=false
+. conf/common_vars.sh
+. conf/languages/106-tagalog-limitedLP.official.conf 
 
-# Lexicon and Language Model parameters
-oovSymbol="<unk>"
-lexiconFlags="-oov <unk>"
-
-# Include the checkpointing facility
-#. ./local/CHECKPOINT.sh
-
-echo "$0 $@"  # Print the command line for logging
-
-[ -f ./path.sh ] && . ./path.sh; # source the path.
-[ -f ./cmd.sh ] && . ./cmd.sh; # source train and decode cmds.
-. parse_options.sh || exit 1;
-
-configfile=$1
-[ -f $configfile ] && . $configfile 
-[ -f ./local.conf ] && . ./local.conf
+if false; then
 
 #Preparing dev and train directories
 if [[ ! -z  "$train_data_list" ]] ; then
@@ -113,8 +91,8 @@ echo ---------------------------------------------------------------------
 echo "Creating a basic G.fst in data/lang on" `date`
 echo ---------------------------------------------------------------------
 # We will simply override the default G.fst by the G.fst generated using SRILM
-local/train_lms_srilm.sh data data/srilm 
-local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
+local/train_lms_srilm.sh data data/srilm  || exit 1;
+local/arpa2G.sh data/srilm/lm.gz data/lang data/lang || exit 1;
 
 if [[ $subset_ecf ]] ; then
     local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev || exit 1
@@ -122,7 +100,8 @@ else
     local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev || exit 1
 fi
 
-cd $SysDir
+fi ##TEMP
+
 echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction in plp on" `date`
 echo ---------------------------------------------------------------------
@@ -141,7 +120,6 @@ steps/compute_cmvn_stats.sh \
     data/dev exp/make_plp/dev plp || exit 1
 # In case plp extraction failed on some utterance, delist them
 utils/fix_data_dir.sh data/dev
-mkdir -p exp
 
 echo ---------------------------------------------------------------------
 echo "Subsetting monophone training data in data/train_sub1 on" `date`
