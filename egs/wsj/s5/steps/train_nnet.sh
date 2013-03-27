@@ -25,15 +25,15 @@ randomize=true    # do the frame level randomization
 copy_feats=true   # resave the features in the re-shuffled order to tmpdir (faster reading)
 # feature config
 delta_order=
-apply_cmvn=true
-apply_glob_cmvn=true
+apply_cmvn=false
 norm_vars=false # normalize the FBANKs (CVN)
-splice_lr=4    # temporal splicing
+apply_glob_cmvn=true
+splice_lr=5    # temporal splicing
 splice_step=1   # stepsize of the splicing (1 is no gap between frames, just like splice_feats does)
 feat_type=plain
 traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
 lda_rand_prune=4.0 # LDA estimation random pruning (applies to `lda` feat_type)
-lda_dim=300        # LDA dimension (applies to `lda` feat_type)
+lda_dim=350        # LDA dimension (applies to `lda` feat_type)
 
 # scheduling config
 min_iters=    # set to enforce minimum number of iterations
