@@ -11,6 +11,7 @@ hid_layers=4      # nr. of hidden layers (prior to sotfmax or bottleneck)
 bn_dim=           # set value to get a bottleneck network
 hid_dim=          # set this to override the $model_size
 mlp_init=         # set this to override MLP initialization
+dbn=              # set the DBN to use for hidden layers
 feature_transform= # set the feature transform in front of the trained MLP
 # training config
 learn_rate=0.008  # initial learning rate
@@ -124,31 +125,20 @@ cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 
-#re-save the shuffled features, so they are stored sequentially on the disk in tmpdir
+#re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
 if [ "$copy_feats" == "true" ]; then
-  tmpdir=$(mktemp -d)
-  echo "Re-saving the features to tmpdir $tmpdir @ $(hostname)"
-  #divide the arks per 10k files
-  nj=$((1 + $(cat $dir/train.scp | wc -l) / 10000))
-  for((n=0; n<nj; n++)); do
-    copy-feats "scp:utils/split_scp.pl -j $nj $n $dir/train.scp - |" ark,scp:$tmpdir/train.$n.ark,$tmpdir/train.$n.scp || exit 1
-  done
-  #assemble the scp file
-  mv $dir/train.scp $dir/train.scp_non_local
-  for((n=0; n<nj; n++)); do
-    cat $tmpdir/train.$n.scp
-  done > $dir/train.scp
-  #test we have all the data
-  l1=$(cat $dir/train.scp_non_local | wc -l)
-  l2=$(cat $dir/train.scp | wc -l)
-  [[ "$l1" != "$l2" ]] && echo "ERROR in data re-saving $l1 != $l2" && exit 1;
-  #notify it was copied ok
-  wc -l $dir/train.scp_non_local $dir/train.scp
-  echo Copied ok!
-  #clean the data on exit
+  tmpdir=$(mktemp -d); mv $dir/train.scp $dir/train.scp_non_local
+  utils/nnet/copy_feats.sh $dir/train.scp_non_local $tmpdir $dir/train.scp
+  #remove data on exit...
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
 fi
 
+#create a 10k utt subset for global cmvn estimates
+head -n 10000 $dir/train.scp > $dir/train.scp.10k
+
+
+
+###### PREPARE FEATURE PIPELINE ######
 
 #read the features
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
@@ -166,7 +156,7 @@ if [ $apply_cmvn == "true" ]; then
   # keep track of norm_vars option
   echo "$norm_vars" >$dir/norm_vars 
 else
-  echo "apply_cmvn disabled (1st stage)"
+  echo "apply_cmvn disabled (per speaker norm. on input features)"
 fi
 
 #optionally add deltas
@@ -277,19 +267,15 @@ else
   echo $feat_type > $dir/feat_type
 
   #renormalize the MLP input to zero mean and unit variance
-  if [ "$apply_glob_cmvn" == "true" ]; then 
-    cmvn_g="$dir/cmvn_glob.mat"
-    echo "Renormalizing MLP input features by : $cmvn_g"
-    compute-cmvn-stats --binary=false "$feats_tr nnet-forward $feature_transform ark:- ark:- |" $cmvn_g 2>${cmvn_g}_log || exit 1
-    #convert the global cmvn stats to nnet format
-    cmvn-to-nnet --binary=false $cmvn_g $cmvn_g.nnet 2>$cmvn_g.nnet_log || exit 1;
-    #append LDA matrix to feature_transform
-    {
-      feature_transform_old=$feature_transform
-      feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
-      cp $feature_transform_old $feature_transform
-      cat $cmvn_g.nnet >> $feature_transform
-    }
+  if [ "$apply_glob_cmvn" == "true" ]; then
+    feature_transform_old=$feature_transform
+    feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
+    echo "Renormalizing MLP input features into $feature_transform"
+    nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+      $feature_transform_old "$(echo $feats | sed 's|train.scp|train.scp.10k|')" \
+      ark:- 2>$dir/log/cmvn_glob_fwd.log |\
+    compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
+    nnet-concat --binary=false $feature_transform_old - $feature_transform
   else
     echo "No global CMVN used on MLP front-end"
   fi
@@ -308,7 +294,10 @@ else
   echo -n "Initializng MLP : "
 
   num_fea=$(feat-to-dim "$feats_tr nnet-forward $feature_transform ark:- ark:- |" - )
+  #optioanlly add DBN
+  [ ! -z $dbn ] && num_fea=$(nnet-forward "nnet-concat $feature_transform $dbn -|" "$feats_tr" ark:- | feat-to-dim ark:- -)
   [ "$num_fea" == "" ] && echo "Getting nnet input dimension failed!!" && exit 1
+
   num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
   # What is the topology?
   if [ "" == "$bn_dim" ]; then #MLP w/o bottleneck
@@ -392,6 +381,13 @@ else
         exit 1;
     esac
   fi
+
+  #optionally add dbn to the initialization
+  if [ ! -z $dbn ]; then
+    mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_$(basename $mlp_init_old)
+    nnet-concat $dbn $mlp_init_old $mlp_init 
+  fi
+
 fi
 
 

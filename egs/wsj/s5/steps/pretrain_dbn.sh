@@ -70,19 +70,13 @@ for f in $data/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-echo "$0 [info]: Pre-training Neural Network"
+echo "$0 [info]: Pre-training Deep Belief Network as a stack of RBMs"
 printf "\t dir       : $dir \n"
 printf "\t Train-set : $data \n"
 
-#TODO
-if [ -e $dir/final.hid$(printf "%02g" $nn_depth)b_nnet.pretrained ]; then
-  echo "SKIPPING PRE-TRAINING... ($0)"
-  echo "nnet already pre-trained :"
-  ls $dir/final.*.pretrained
-  exit 0
-fi
+[ -e $dir/${nn_depth}.dbn ] && echo "$0 Skipping, already have $dir/${nn_depth}.dbn" && exit 0
 
-mkdir -p $dir/{log,nnet}
+mkdir -p $dir/log
 
 ###### PREPARE FEATURES ######
 # shuffle the list
