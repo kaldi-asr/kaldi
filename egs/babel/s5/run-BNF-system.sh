@@ -10,21 +10,17 @@ sopt2="--min-lmwt 15 --max-lmwt 30"
 tmpdir=`pwd | sed s:/home/:/export/tmp7/:`
 mkdir -p $tmpdir/plp_processed
 ln -s $tmpdir/plp_processed .
-if [ -d exp/tri5 ]; then
-  srcdir=exp/tri5 # fullLP
-else
-  srcdir=exp/tri4
-fi
+
 
 if [ ! -f data/train_bnf/.done ]; then
-  steps_BNF/make_bnf_feat.sh --stage 0 --nj $train_nj --cmd "$train_cmd" --transform_dir ${srcdir}_ali \
-    data/train data/train_bnf exp_BNF/bnf_dnn ${srcdir}_ali exp_BNF/make_bnf || exit 1
+  steps_BNF/make_bnf_feat.sh --stage 0 --nj $train_nj --cmd "$train_cmd" --transform_dir exp/tri5_ali \
+    data/train data/train_bnf exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf || exit 1
   touch data/train_bnf/.done
 fi
 
 if [ ! -f data/dev_bnf/.done ]; then
-  steps_BNF/make_bnf_feat.sh --stage 0 --nj $decode_nj --cmd "$train_cmd" --transform_dir ${srcdir}/decode \
-    data/dev data/dev_bnf exp_BNF/bnf_dnn ${srcdir}_ali exp_BNF/make_bnf || exit 1
+  steps_BNF/make_bnf_feat.sh --stage 0 --nj $decode_nj --cmd "$train_cmd" --transform_dir exp/tri5/decode \
+    data/dev data/dev_bnf exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf || exit 1
   touch data/dev_bnf/.done
 fi
 
@@ -79,17 +75,17 @@ decode_lda_mllt() {
 }
 
 
-if [ ! -f ${srcdir}_ali_10/.done ]; then
+if [ ! -f exp/tri5_ali_10/.done ]; then
   steps/align_fmllr.sh --boost-silence 1.5 --nj 10 --cmd "$train_cmd" \
-    data/train data/lang $srcdir ${srcdir}_ali_10  || exit 1
-  touch ${srcdir}_ali_10/.done
+    data/train data/lang $srcdir exp/tri5_ali_10  || exit 1
+  touch exp/tri5_ali_10/.done
 fi
 
 
 if [ ! -f exp_BNF/tri5/.done ]; then
   steps/train_lda_mllt.sh --splice-opts "--left-context=1 --right-context=1" \
     --dim 60 --boost-silence 1.5 --cmd "$train_cmd" \
-    $numLeavesMLLT $numGaussMLLT data/train_app data/lang ${srcdir}_ali_10 exp_BNF/tri5 || exit 1;
+    $numLeavesMLLT $numGaussMLLT data/train_app data/lang exp/tri5_ali_10 exp_BNF/tri5 || exit 1;
   touch exp_BNF/tri5/.done
 fi
 
@@ -239,8 +235,6 @@ for iter in 1 2 3 4; do
 done
 
 
-
-# HERE.
 
 
 echo ---------------------------------------------------------------------
