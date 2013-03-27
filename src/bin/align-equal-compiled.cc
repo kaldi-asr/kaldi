@@ -1,6 +1,7 @@
 // bin/align-equal-compiled.cc
 
-// Copyright 2009-2011  Microsoft Corporation
+// Copyright 2009-2013  Microsoft Corporation
+//                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,7 +85,9 @@ int main(int argc, char *argv[]) {
         }
 
         VectorFst<StdArc> path;
-        if (EqualAlign(decode_fst, features.NumRows(), rand(), &path) ) {
+        int32 rand_seed = StringHasher()(key); // StringHasher() produces new anonymous
+        // object of type StringHasher; we then call operator () on it, with "key".
+        if (EqualAlign(decode_fst, features.NumRows(), rand_seed, &path) ) {
           std::vector<int32> aligned_seq, words;
           StdArc::Weight w;
           GetLinearSymbolSequence(path, &aligned_seq, &words, &w);
