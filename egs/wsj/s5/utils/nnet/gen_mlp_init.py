@@ -1,7 +1,7 @@
 #!/usr/bin/python -u
 
-# ./gen_hamm_dct.py
-# script generateing NN initialization for training with TNet
+# ./gen_mlp_init.py
+# script generateing NN initialization 
 #     
 # author: Karel Vesely
 #
@@ -44,7 +44,7 @@ for i in range(len(dimStrL)):
 #print dimL,'linBN',options.linBNdim
 
 for layer in range(len(dimL)-1):
-    print '<biasedlinearity>', dimL[layer+1], dimL[layer]
+    print '<affinetransform>', dimL[layer+1], dimL[layer]
     #precompute...
     nomalized_interval = math.sqrt(6.0) / math.sqrt(dimL[layer+1]+dimL[layer])
     #weight matrix
