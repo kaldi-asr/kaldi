@@ -7,12 +7,12 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-#sub_split=1
+sub_split=1
 beam=13.0
-lattice_beam=7.0
+lattice_beam=8.0
 acwt=0.1
 max_active=5000
-transform_dir=
+nnet=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
@@ -79,8 +79,10 @@ fi
 
 
 #Get the files we will need
-nnet=$srcdir/final.nnet;
-[ -z "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
+cp $srcdir/{tree,final.mdl} $dir
+
+[ -z "$nnet" ] && nnet=$srcdir/final.nnet;
+[ ! -f "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
 
 class_frame_counts=$srcdir/ali_train_pdf.counts
 [ -z "$class_frame_counts" ] && echo "Error class_frame_counts '$class_frame_counts' does not exist!" && exit 1;
@@ -125,31 +127,51 @@ feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=t
 
 
 ###
-### We will produce lattice guaranteed to contain the correct path
-### using the Mirko's tools from Ping-Pong decoding
+### We will produce lattices, where the correct path is not necessarily present
 ###
 
-# The transcription
-tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
-
-echo "Generating arcgraph tracing of the reference"
-#1) Generate the tracing-fsts based on the lattice with correct paths
-$cmd JOB=1:$nj $dir/log/arcgraph.JOB.log \
-  compile-train-graphs $srcdir/tree $srcdir/final.mdl  $lang/L.fst "$tra" ark:- \| \
-  latgen-faster-mapped --beam=$beam --acoustic-scale=$acwt \
-    --word-symbol-table=$lang/words.txt \
-    $srcdir/final.mdl ark:- "$feats" ark:- \| \
-  lattice-arcgraph --reverse=false $srcdir/final.mdl $dir/dengraph/HCLG.fst \
-    ark:- ark,t:$dir/arcgraph.JOB || exit 1;
+#1) We don't use reference path here...
 
 echo "Generating the denlats"
 #2) Generate the denominator lattices
-$cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-  latgen-tracking-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
-    --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-    $dir/dengraph/HCLG.fst "$feats" ark:$dir/arcgraph.JOB  "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
+if [ $sub_split -eq 1 ]; then 
+  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
+    latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+      --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
+      $dir/dengraph/HCLG.fst "$feats" "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
+else
+  for n in `seq $nj`; do
+    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
+      echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
+    else
+      sdata2=$data/split$nj/$n/split$sub_split;
+      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
+        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
+      fi
+      mkdir -p $dir/log/$n
+      mkdir -p $dir/part
+      feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
+      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+        latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+          --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
+          $dir/dengraph/HCLG.fst "$feats_subset" "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;
+      echo Merging lists for data subset $n
+      for k in `seq $sub_split`; do
+        cat $dir/lat.$n.$k.scp
+      done > $dir/lat.$n.all.scp
+      echo Merge the ark $n
+      lattice-copy scp:$dir/lat.$n.all.scp ark,scp:$dir/lat.$n.ark,$dir/lat.$n.scp || exit 1;
+      #remove the data
+      rm $dir/lat.$n.*.ark $dir/lat.$n.*.scp $dir/lat.$n.all.scp
+      touch $dir/.done.$n
+    fi
+  done
+fi
 
-#3) Merge the SCPs to create index of lattices (will use random access)
+      
+
+#3) Merge the SCPs to create full list of lattices (will use random access)
+echo Merging to single list $dir/lat.scp
 for ((n=1; n<=nj; n++)); do
   cat $dir/lat.$n.scp
 done > $dir/lat.scp

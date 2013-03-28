@@ -14,7 +14,7 @@ beam_ali=60.0
 lattice_beam_ali=30.0
 acwt=0.1
 max_active=5000
-transform_dir=
+nnet=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
@@ -60,21 +60,22 @@ mkdir -p $dir
 cp -r $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
-
+new_lang="$dir/"$(basename "$lang")
+echo "Making unigram grammar FST in $new_lang"
 cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-  utils/make_unigram_grammar.pl | fstcompile > $dir/lang/G.fst \
+  utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
    || exit 1;
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
 # final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
-
+echo "Compiling decoding graph in $dir/dengraph"
 if [ -s $dir/dengraph/HCLG.fst ]; then
    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
-  utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi
 
 

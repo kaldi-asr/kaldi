@@ -73,9 +73,10 @@ esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
-  [ "`cat $transform_dir/num_jobs`" -ne $nj ] && \
-     echo "Mismatch in number of jobs with $transform_dir" && exit 1;
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
+#  [ "`cat $transform_dir/num_jobs`" -ne $nj ] && \
+#     echo "Mismatch in number of jobs with $transform_dir" && exit 1;
+#  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |"
 fi
 
 
