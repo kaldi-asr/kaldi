@@ -24,12 +24,12 @@ steps/make_fmllr_feats.sh --nj 30 --cmd "$train_cmd" \
 
 # train_dev
 dir=data-fmllr/train_dev
-# we need fMLLR transforms, so we run alignment...
-steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
+# we need the alignment
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_dev data/lang exp/tri5a exp/tri5a_ali_dev || exit 1
-#generate the feats
-steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
-   --transform-dir exp/tri5a_ali_dev \
+# generate the feats using fMLLRs from decode
+steps/make_fmllr_feats.sh --nj 30 --cmd "$train_cmd" \
+   --transform-dir exp/tri5a/decode_train_dev \
    $dir data/train_dev $gmmdir $dir/_log $dir/_data || exit 1
 
 # train_100k_nodup
