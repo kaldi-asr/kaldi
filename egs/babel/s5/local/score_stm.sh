@@ -1,5 +1,7 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
+#
+# This is for when you already have the CTMS in <decode-dir>/score_<LMWT>/${name}.ctm
+# and just want to do the scoring part.
 
 # begin configuration section.
 cmd=run.pl

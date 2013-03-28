@@ -7,60 +7,69 @@
 # Yajie Miao to train the DNN.  Eventually the DNN training will be made a part
 # of Kaldi, but this recipe uses these external tools.
 
+# you will probably want to make exp_BNF/bnf_dnn_run a link to somewhere local
+# while you are running this script.  It doesn't have to be accessible globally,
+# the script copies the things you will need.
+
 . conf/common_vars.sh
 . ./lang.conf
 
 # At this point you may want to make sure the directory exp_BNF/bnf_dnn is
 # somewhere with a lot of space, preferably on the local GPU-containing machine.
 
-# This script is not fully automated.
-# The "exit 1" below is to stop you from trying to just run it as a script.
-# you should run it line by line (not forgetting to source the things at the
-# top first).  
-# At some point you have to edit ptdnn/exp_bnf/config.py
-exit 1;
-
 if [ ! -d ptdnn ]; then
   echo "Checking out PTDNN code.  You will have to edit the config file!"
   svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
 fi
 
-echo "Not finished!  Note, you need a GPU for this."
-exit 0;
+if ! nvidia-smi; then
+  echo "The command nvidia-smi was not found: this probably means you don't have a GPU.  Not continuing"
+  echo "(Note: this script might still work, it would just be slower.)"
+  exit 1;
+fi
+
+if ! python -c 'import theano;'; then
+  echo "Theano does not seem to be installed on your machine.  Not continuing."
+  echo "(Note: this script might still work, it would just be slower.)"
+  exit 1;
+fi
+
+! gmm-info exp/tri5_ali/final.mdl >&/dev/null && \
+   echo "Error getting GMM info from exp/tri5_ali/final.mdl" && exit 1;
+
+num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || exit 1;
+
+[ -z "$babel_type" ] && echo "Variable babel_type not set " && exit 1;
+
+# Now we copy conf/bnf/config_limited.py or conf/bnf/config_full.py, as appropriate,
+# to ptdnn/exp_bnf/config.py, replacing a couple of things as we copy it.
+
+config_in=conf/bnf/config_${babel_type}.py
+[ ! -f config_in ] && echo "No such config file $config_in" && exit 1;
+! cat $config_in | sed "s|CWD|$PWD|" | sed "s/N_OUTS/${num_pdfs}/" > ptdnn/exp_bnf/config.py && \
+  echo "Error setting ptdnn/exp_bnf/config.py" && exit 1;
+  
 
 echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/bnf_dnn on" `date`
 echo ---------------------------------------------------------------------
-# Note that align_fmllr.sh may have been implemented in run-limited.sh
-#steps/align_fmllr.sh --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
-#    data/train data/lang exp/tri5 exp/tri5_ali || exit 1
-# made exp_BNF a link to local storage before running this.  It produces a lot of temp files.
-steps_BNF/build_nnet_pfile.sh --cmd "run.pl" --every-nth-frame 2 \
-    data/train data/lang exp/tri5_ali exp_BNF/bnf_dnn || exit 1
+# Note: align_fmllr.sh will have been run in run-1-main.sh
+# make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
 
-# Now you can copy train.pfile.gz and valid.pfile.gz to the GPU machine and run
-# ptdnn.   
-# Dan: I was doing this on a GPU machine. I copied the ptdnn directory to ~/ptdnn
-#
-#Work out #pdfs.
-#gmm-info exp/tri5_ali/final.mdl | grep pdfs
+steps_BNF/build_nnet_pfile.sh --cmd "run.pl" --every-nth-frame "$bnf_every_nth_frame" \
+    data/train data/lang exp/tri5_ali exp_BNF/bnf_dnn_run || exit 1
 
-# edit ptdnn/exp_bnf/config.py to have: self.wdir = "/home/dpovey/kaldi-trunk/egs/babel/s5-tagalog-limited/exp_BNF/bnf_dnn/"
-# and n_outs = #pdfs, which was 4711 in this case.
-# note: instead of just saying "python" you might in general have to use a specific python version
-# that you've set up to work with Theano, and maybe do more messing with the python path.  I (Dan) installed
-# theano as administrator of the machine I was running on.  This is kind of machine specific.
-
-# the following variables were needed on the JHUhines, and possibly also a specially
-# installed version of python, but not in the cloud where I installed theano globally.
 #export LD_LIBRARY_PATH=/opt/nvidia_cuda/cuda-5.0/lib64
 #export PATH=$PATH:/opt/nvidia_cuda/cuda-5.0/lib64/libcublas
-export THEANO_FLAGS=mode=FAST_RUN,device=gpu1,floatX=float32
+export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
 
 export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/
-python ptdnn/main.py
+python ptdnn/main.py | tee exp_BNF/bnf_dnn_run/LOG
+
+mkdir -p exp_BNF/bnf_dnn
+cp -r exp_BNF/bnf_dnn_run/{final.mat,final.nnet,log,LOG} exp_BNF/bnf_dnn/
 
 
 echo ---------------------------------------------------------------------
-echo "Now run run-BNF-system.sh"
+echo "Now run run-3-bnf-system.sh"
 echo ---------------------------------------------------------------------

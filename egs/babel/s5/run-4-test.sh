@@ -5,7 +5,7 @@ set -o pipefail
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
 
-type=shadow # "type" may be "dev10h", "dev2h", or "eval15h", or "shadow" which means eval15h + dev2h. 
+
 
 . conf/parse_options.sh     
 
@@ -200,6 +200,11 @@ if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.kws.done && -f exp/tri6_nnet/final.
   local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
     data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem 
 
+  if [ "$type" != eval15h ]; then
+    local/score_stm.sh --cmd "$decode_cmd" \
+      data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem
+  fi
+
   if [ $type == shadow ]; then
     local/split_ctms.sh data/shadow.uem exp/tri6_nnet/decode_${type}.uem \
       data/dev2h data/eval15h.uem
@@ -213,8 +218,5 @@ if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.kws.done && -f exp/tri6_nnet/final.
   touch exp/tri6_nnet/decode_${type}.uem/.kws.done
 fi
 
-# what was this?
-#    local/score_scm.sh --cmd "$decode_cmd" \
-#      data/dev10h.uem data/lang exp/tri6_nnet/decode_dev10h.uem
 
 echo "Everything looks fine"

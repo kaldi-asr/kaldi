@@ -2,14 +2,18 @@
 
 # This script builds the SGMM system on top of the bottleneck features.
 # It comes after run-BNF.sh.
+# you might want to make the director ./plp_processed somewhere fast with a lot of space before
+# running the script.
 
 . conf/common_vars.sh
 . ./lang.conf
 sopt="--min-lmwt 25 --max-lmwt 40"
 sopt2="--min-lmwt 15 --max-lmwt 30"
-tmpdir=`pwd | sed s:/home/:/export/tmp7/:`
-mkdir -p $tmpdir/plp_processed
-ln -s $tmpdir/plp_processed .
+
+#In the cloud I did this:
+#tmpdir=`pwd | sed s:/home/:/export/tmp7/:`
+#mkdir -p $tmpdir/plp_processed
+#ln -s $tmpdir/plp_processed .
 
 
 if [ ! -f data/train_bnf/.done ]; then
@@ -58,19 +62,19 @@ fi
 
 decode_lda_mllt() { 
   dir=$1
-  if [ ! -f $dir/decode/.done ]; then
+  if [ ! -f $dir/decode_dev2h/.done ]; then
     mkdir -p $dir/graph
     utils/mkgraph.sh \
       data/lang $dir $dir/graph &> $dir/mkgraph.log
-    mkdir -p $dir/decode
+    mkdir -p $dir/decode_dev2h
     
     steps/decode.sh --nj $decode_nj --acwt 0.0333 --scoring-opts "$sopt" --cmd "$decode_cmd" \
-      $dir/graph data/dev_app $dir/decode &> $dir/decode.log || exit 1;
+      $dir/graph data/dev_app $dir/decode_dev2h &> $dir/decode_dev2h.log || exit 1;
   fi
-  if [ ! -f $dir/decode/kws/.done ];then
+  if [ ! -f $dir/decode_dev2h/kws/.done ];then
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app $dir/decode || exit 1;
-    touch $dir/decode/kws/.done
+      data/lang data/dev_app $dir/decode_dev2h || exit 1;
+    touch $dir/decode_dev2h/kws/.done
   fi
 }
 
@@ -110,17 +114,17 @@ fi
   mkdir -p $dir/graph
   utils/mkgraph.sh \
     data/lang $dir $dir/graph &> $dir/mkgraph.log
-  mkdir -p $dir/decode
-  if [ ! -f $dir/decode/.done ]; then
+  mkdir -p $dir/decode_dev2h
+  if [ ! -f $dir/decode_dev2h/.done ]; then
     steps/decode_fmllr.sh --nj $decode_nj --acwt 0.0333 --scoring-opts "$sopt" \
       --cmd "queue.pl -l mem_free=2G,ram_free=0.5G" --num-threads 6 --parallel-opts "-pe smp 6" \
-      $dir/graph data/dev_app $dir/decode &> $dir/decode.log || exit 1;
-    touch $dir/decode/.done
+      $dir/graph data/dev_app $dir/decode_dev2h &> $dir/decode_dev2h.log || exit 1;
+    touch $dir/decode_dev2h/.done
   fi
-  if [ ! -f $dir/decode/kws/.done ];then
+  if [ ! -f $dir/decode_dev2h/kws/.done ];then
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app $dir/decode
-    touch $dir/decode/kws/.done
+      data/lang data/dev_app $dir/decode_dev2h
+    touch $dir/decode_dev2h/kws/.done
   fi
 ) &
 
@@ -160,29 +164,29 @@ fi
 ################################################################################
 
 echo ---------------------------------------------------------------------
-echo "Spawning exp_BNF/sgmm7/decode[_fmllr] on" `date`
+echo "Spawning exp_BNF/sgmm7/decode_dev2h[_fmllr] on" `date`
 echo ---------------------------------------------------------------------
 (
     mkdir -p exp_BNF/sgmm7/graph
     utils/mkgraph.sh \
         data/lang exp_BNF/sgmm7 exp_BNF/sgmm7/graph &> exp_BNF/sgmm7/mkgraph.log
 
-    mkdir -p exp_BNF/sgmm7/decode_fmllr
+    mkdir -p exp_BNF/sgmm7/decode_dev2h_fmllr
     
-    if [ ! -f exp_BNF/sgmm7/decode_fmllr/.done ]; then
+    if [ ! -f exp_BNF/sgmm7/decode_dev2h_fmllr/.done ]; then
       steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj \
-        --transform-dir exp_BNF/tri6/decode \
+        --transform-dir exp_BNF/tri6/decode_dev2h \
         --cmd "queue.pl -l mem_free=3G,ram_free=3G" --num-threads 6 \
         --parallel-opts "-pe smp 6 -l mem_free=3G,ram_free=0.6G" \
         --acwt 0.05 --scoring-opts "$sopt2" \
-        exp_BNF/sgmm7/graph data/dev_app exp_BNF/sgmm7/decode_fmllr || exit 1;
-      touch exp_BNF/sgmm7/decode_fmllr/.done;
+        exp_BNF/sgmm7/graph data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr || exit 1;
+      touch exp_BNF/sgmm7/decode_dev2h_fmllr/.done;
     fi
     
-    if [ ! -f exp_BNF/sgmm7/decode_fmllr/kws/.done ]; then
+    if [ ! -f exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done ]; then
       local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-        data/lang data/dev_app exp_BNF/sgmm7/decode_fmllr
-      touch exp_BNF/sgmm7/decode_fmllr/kws/.done
+        data/lang data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr
+      touch exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done
     fi
 ) 
 
@@ -220,21 +224,19 @@ if [ ! -f exp_BNF/sgmm7_mmi_b0.1/.done ]; then
 fi
 
 for iter in 1 2 3 4; do
-  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter/.done ]; then
+  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done ]; then
     steps/decode_sgmm2_rescore.sh --scoring-opts "$sopt2" \
-        --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode \
-        data/lang data/dev_app exp_BNF/sgmm7/decode_fmllr exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter || exit 1;
-    touch exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter/.done 
+        --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode_dev2h \
+        data/lang data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter || exit 1;
+    touch exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done 
   fi
-  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter/kws/.done ]; then
+  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/kws/.done ]; then
     local/kws_search.sh $sopt2 --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter
-    touch exp_BNF/sgmm7/decode_fmllr/kws/.done
-    touch exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_it$iter/kws/.done 
+      data/lang data/dev_app exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter
+    touch exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done
+    touch exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/kws/.done 
   fi
 done
-
-
 
 
 echo ---------------------------------------------------------------------
