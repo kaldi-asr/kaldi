@@ -1,0 +1,13 @@
+# DNN hybrid system training parameters
+dnn_mixup=5000
+dnn_initial_learning_rate=0.015
+dnn_num_jobs=8
+dnn_final_learning_rate=0.002
+dnn_num_parameters=1500000
+dnn_num_hidden_layers=2
+dnn_extra_opts="--num_epochs 20 --num-epochs-extra 10 --add-layers-period 1 --shrink-interval 3"
+dnn_mem_reqs="mem_free=1.0G,ram_free=0.2G"
+
+
+bnf_every_nth_frame=1 # take all frames.
+babel_type=limited
