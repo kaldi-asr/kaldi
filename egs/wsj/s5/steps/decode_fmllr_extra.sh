@@ -8,7 +8,7 @@
 # script did-- it's for robustness in the case where your original cepstral mean
 # normalization was way off.
 # We also added a new option --distribute=true (by default) to 
-# weigh-silence-post.  This weights the silence frames in a different way,
+# weight-silence-post.  This weights the silence frames in a different way,
 # weighting all posteriors on the frame rather than just the silence ones, which
 # removes a particular kind of bias that the old approach suffered from.
 

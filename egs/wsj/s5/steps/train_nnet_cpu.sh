@@ -37,7 +37,8 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # randomization, but this would both consume memory and cause spikes in
                 # disk I/O.  Smaller is easier on disk and memory but less random.  It's
                 # not a huge deal though, as samples are anyway randomized right at the start.
-num_jobs_nnet=8 # Number of neural net jobs to run in parallel.
+num_jobs_nnet=16 # Number of neural net jobs to run in parallel; you need to
+                 # keep this in sync with parallel_opts.
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=2

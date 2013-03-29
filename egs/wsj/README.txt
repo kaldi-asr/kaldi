@@ -25,4 +25,3 @@ scripts at the moment.
 
   s5: This is the newest-style recipe. 
 
-  s6: this is not finished.

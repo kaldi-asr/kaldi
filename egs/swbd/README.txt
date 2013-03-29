@@ -20,4 +20,5 @@ scripts for a sequence of experiments.
   s5: This is the "new-new-style" recipe.  
     All further work will be on top of this style of recipe.
 
-  s6: This is still under construction.
+  s5b: This is a cleaned-up version of s5, based on Arnab's
+    "edinburgh" recipe, but still somewhat under construction.

@@ -163,8 +163,8 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 #local/run_nnet_cpu.sh &
 
 
-local/run_sgmm.sh
-#local/run_sgmm2.sh
+#local/run_sgmm.sh
+local/run_sgmm2.sh
 
 # Building a larger SAT system.
 

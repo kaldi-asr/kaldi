@@ -28,4 +28,3 @@ scripts at the moment.
       unlike previous recipes, this now uses the same underlying
       scripts as the WSJ recipe.
 
-  s6: this is not finished.

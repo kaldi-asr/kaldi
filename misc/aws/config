@@ -53,7 +53,7 @@ NODE_IMAGE_ID = ami-e37aed8a
 
 # instance type for all cluster nodes
 # (options: cg1.4xlarge, c1.xlarge, m1.small, c1.medium, m2.xlarge, t1.micro, cc1.4xlarge, m1.medium, cc2.8xlarge, m1.large, m1.xlarge, m2.4xlarge, m2.2xlarge)
-NODE_INSTANCE_TYPE = m1.large
+NODE_INSTANCE_TYPE = c1.xlarge
 # Uncomment to disable installing/configuring a queueing system on the
 # cluster (SGE)
 #DISABLE_QUEUE=True
@@ -70,7 +70,7 @@ NODE_INSTANCE_TYPE = m1.large
 # list of volumes to attach to the master node (OPTIONAL)
 # these volumes, if any, will be NFS shared to the worker nodes
 # see "Configuring EBS Volumes" below on how to define volume sections
-VOLUMES = kaldi-install, corpora0
+##VOLUMES = kaldi-install, corpora0
 # list of plugins to load after StarCluster's default setup routines (OPTIONAL)
 # see "Configuring StarCluster Plugins" below on how to define plugin sections
 #PLUGINS = myplugin, myplugin2
