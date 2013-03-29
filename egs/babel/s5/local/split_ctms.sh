@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # begin configuration section.
 min_lmwt=7
@@ -6,6 +6,7 @@ max_lmwt=17
 stage=0
 cer=0
 ctm_name=
+cmd=run.pl
 #end configuration section.
 
 echo "$0 $@"
@@ -41,7 +42,7 @@ for i in $@ ; do
     done
 
     if [ -f $i/stm ] && [ -f $i/glm ]; then
-        local/score_scm.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cer $cer --cmd "$decode_cmd" $i data/lang $p
+        local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt --cer $cer --cmd "$cmd" $i data/lang $p
     else
         echo "Not running scoring, file $i/stm does not exist"
     fi

@@ -28,6 +28,8 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
+set -x
+
 data=$1
 lang=$2 # This parameter is not used -- kept only for backwards compatibility
 dir=$3
