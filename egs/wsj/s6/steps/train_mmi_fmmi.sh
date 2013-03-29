@@ -23,6 +23,8 @@ tau=400 # For model.  Note: we're doing smoothing "to the previous iteration",
 weight_tau=10 # for model weights.
 cancel=true # if true, cancel num and den counts as described in 
      # the boosted MMI paper. 
+zero_if_disjoint=false # if true, ignore stats from frames where num + den
+                       # have no overlap. 
 indirect=true # if true, use indirect derivative.
 acwt=0.1
 stage=-1
@@ -127,7 +129,7 @@ while [ $x -lt $num_iters ]; do
       $cmd JOB=1:$nj $dir/log/acc_fmmi.$x.JOB.log \
         gmm-rescore-lattice $dir/$x.mdl "$lats" "$fmpefeats" ark:- \| \
         lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-        sum-post --scale1=-1 ark:- "$numpost" ark:- \| \
+        sum-post --zero-if-disjoint=$zero_if_disjoint --scale1=-1 ark:- "$numpost" ark:- \| \
         gmm-fmpe-acc-stats $dir/$x.mdl $dir/$x.fmpe "$feats" \
         "ark,s,cs:gunzip -c $dir/gselect.JOB.gz|" ark,s,cs:- \
         $dir/$x.JOB.fmpe_acc || exit 1;
@@ -158,7 +160,7 @@ while [ $x -lt $num_iters ]; do
       $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
         gmm-rescore-lattice $dir/$x.mdl "$lats" "$fmpefeats" ark:- \| \
         lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-        sum-post --merge=$cancel --scale1=-1 \
+        sum-post --zero-if-disjoint=$zero_if_disjoint --merge=$cancel --scale1=-1 \
         ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
         gmm-acc-stats2 $dir/$x.mdl "$fmpefeats" ark,s,cs:- \
         $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;

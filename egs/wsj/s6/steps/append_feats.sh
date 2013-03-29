@@ -6,9 +6,6 @@
 
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
-# This config creates MFCC features with half the window size and window shift,
-# and splices and sub-samples them.  We'll use another script append_feats.sh
-# to combine (append) the data directories.
 
 # Begin configuration section.
 cmd=run.pl
@@ -38,9 +35,8 @@ split_data.sh $data_src2 $nj || exit 1;
 
 mkdir -p $mfccdir $logdir
 
-rm -rf $data
-mkdir -p `basename $data` # Make sure directory one level up exists.
-cp -r $data_src1 $data # so we get the other files, such as utt2spk.
+mkdir -p $data 
+cp $data_src1/* $data/ # so we get the other files, such as utt2spk.
 rm $data/cmvn.scp
 rm -r $data/split* 2>/dev/null
 
@@ -55,7 +51,7 @@ $cmd JOB=1:$nj $logdir/append.JOB.log \
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
   cat $mfccdir/appended_$name.$n.scp >> $data/feats.scp || exit 1;
-done > $data/feats.scp
+done > $data/feats.scp || exit 1;
 
 
 nf=`cat $data/feats.scp | wc -l` 

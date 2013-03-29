@@ -6,6 +6,7 @@
 # If transform-dir supplied, expects e.g. fMLLR transforms in that dir.
 
 # Begin configuration section.  
+stage=1
 iter=final
 nj=4
 cmd=run.pl
@@ -15,6 +16,9 @@ latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 ngselect=2; # Just use the 2 top Gaussians for fMMI/fMPE.  Should match train.
 transform_dir=
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
+scoring_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,7 +40,12 @@ if [ $# != 3 ]; then
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --iter <iter>                                    # Iteration of model to test."
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
    echo "  --transform-dir <transform-dir>                  # where to find fMLLR transforms."
+   echo "  --scoring-opts <string>                          # options to local/score.sh"
+   echo "                                                   # speaker-adapted decoding"
+   echo "  --num-threads <n>                                # number of threads to use, default 1."
+   echo "  --parallel-opts <opts>                           # e.g. '-pe smp 4' if you supply --num-threads 4"
    exit 1;
 fi
 
@@ -48,6 +57,8 @@ srcdir=`dirname $dir`; # The model directory is one level up from decoding direc
 sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts || exit 1`
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
@@ -71,18 +82,23 @@ fi
 
 fmpefeats="$feats fmpe-apply-transform $srcdir/$iter.fmpe ark:- 'ark,s,cs:gunzip -c $dir/gselect.JOB.gz|' ark:- |" 
 
-# Get Gaussian selection info.
-$cmd JOB=1:$nj $dir/log/gselect.JOB.log \
-  gmm-gselect --n=$ngselect $srcdir/$iter.fmpe "$feats" \
-  "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
+if [ $stage -le 1 ]; then
+  # Get Gaussian selection info.
+  $cmd JOB=1:$nj $dir/log/gselect.JOB.log \
+    gmm-gselect --n=$ngselect $srcdir/$iter.fmpe "$feats" \
+    "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
+fi
+  
+if [ $stage -le 2 ]; then
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    gmm-latgen-faster$thread_string--max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+fi
 
-$cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
-   --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
-
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
-
+if [ $stage -le 3 ]; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+fi
 exit 0;

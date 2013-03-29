@@ -19,7 +19,6 @@ done
 
 lang=data/lang_bd
 
-exit
 
 # Be careful: this time we dispense with the grep -v '<s> <s>' so this might
 # not work for LMs generated from all toolkits.

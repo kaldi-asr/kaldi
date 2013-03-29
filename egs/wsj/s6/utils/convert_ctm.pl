@@ -9,6 +9,12 @@
 # ) and a "reco2file_and_channel" file (format:
 # recording-id basename-of-file
 
+$skip_unknown=undef;
+if ( $ARGV[0] eq "--skip-unknown" ) {
+  $skip_unknown=1;
+  shift @ARGV;
+}
+
 if (@ARGV < 2 || @ARGV > 3) {
   print STDERR "Usage: convert_ctm.pl <segments-file> <reco2file_and_channel-file> [<utterance-ctm>] > real-ctm\n";
   exit(1);
@@ -46,7 +52,10 @@ while(<>) {
   # <utterance-id> 1 <begin-time> <length> <word> [ confidence ]
   ($utt, $one, $wbegin, $wlen, $w, $conf) = @A;
   $reco = $utt2reco{$utt};
-  if (!defined $reco) { die "Utterance-id $utt not defined in segments file $segments"; }
+  if (!defined $reco) { 
+      next if defined $skip_unknown;
+      die "Utterance-id $utt not defined in segments file $segments"; 
+  }
   $file = $reco2file{$reco};
   $channel = $reco2channel{$reco};
   if (!defined $file || !defined $channel) { 

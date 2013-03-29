@@ -50,6 +50,7 @@ mkdir -p $dir/log
 cp $srcdir/final.mat $dir
 cp $srcdir/splice_opts $dir 2>/dev/null
 cp $srcdir/cmvn_opts $dir 2>/dev/null
+
 echo $nj > $dir/num_jobs
 split_data.sh $data $nj || exit 1;
 

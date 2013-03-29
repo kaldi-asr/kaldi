@@ -1,7 +1,8 @@
 #!/usr/bin/python -u
 
-# ./gen_hamm_mat.py
-# script generates diagonal matrix with hamming window values
+# ./gen_splice.py
+# script generates splice nnet transfrom
+# 
 #     
 # author: Karel Vesely
 #
@@ -14,8 +15,8 @@ from optparse import OptionParser
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim_in', help='feature dimension')
-parser.add_option('--splice', dest='splice', help='applied splice value')
-parser.add_option('--splice-step', dest='splice_step', help='applied splice value', default='1' )
+parser.add_option('--splice', dest='splice', help='number of frames to concatenate with the central frame')
+parser.add_option('--splice-step', dest='splice_step', help='splicing step (frames dont need to be consecutive, --splice 3 --splice-step 2 will select offsets: -6 -4 -2 0 2 4 6)', default='1' )
 (options, args) = parser.parse_args()
 
 if(options.dim_in == None):

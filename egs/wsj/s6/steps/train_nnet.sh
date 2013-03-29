@@ -11,6 +11,8 @@ hid_layers=4      # nr. of hidden layers (prior to sotfmax or bottleneck)
 bn_dim=           # set value to get a bottleneck network
 hid_dim=          # set this to override the $model_size
 mlp_init=         # set this to override MLP initialization
+dbn=              # set the DBN to use for hidden layers
+feature_transform= # set the feature transform in front of the trained MLP
 # training config
 learn_rate=0.008  # initial learning rate
 momentum=0.0      # momentum
@@ -23,15 +25,15 @@ randomize=true    # do the frame level randomization
 copy_feats=true   # resave the features in the re-shuffled order to tmpdir (faster reading)
 # feature config
 delta_order=
-apply_cmvn=true
-apply_glob_cmvn=true
+apply_cmvn=false
 norm_vars=false # normalize the FBANKs (CVN)
-splice_lr=4    # temporal splicing
+apply_glob_cmvn=true
+splice_lr=5    # temporal splicing
 splice_step=1   # stepsize of the splicing (1 is no gap between frames, just like splice_feats does)
 feat_type=plain
 traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
 lda_rand_prune=4.0 # LDA estimation random pruning (applies to `lda` feat_type)
-lda_dim=300        # LDA dimension (applies to `lda` feat_type)
+lda_dim=350        # LDA dimension (applies to `lda` feat_type)
 
 # scheduling config
 min_iters=    # set to enforce minimum number of iterations
@@ -42,7 +44,8 @@ halving_factor=0.5    # factor to multiply learn_rate
 # tool config
 TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff" # training tool used for training / cross validation
 use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
-analyze_alignments=true # run the alignment analysis script 
+analyze_alignments=true # run the alignment analysis script
+seed=777    # seed value used for training data shuffling and initialization
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -122,35 +125,20 @@ cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 
-#re-save the shuffled features, so they are stored sequentially on the disk in tmpdir
+#re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
 if [ "$copy_feats" == "true" ]; then
-  tmpdir=$(mktemp -d)
-  echo "Re-saving the features to tmpdir $tmpdir @ $(hostname)"
-  #divide the arks per 10k files
-  nj=$((1 + $(cat $dir/train.scp | wc -l) / 10000))
-  for((n=0; n<nj; n++)); do
-    copy-feats "scp:utils/split_scp.pl -j $nj $n $dir/train.scp - |" ark,scp:$tmpdir/train.$n.ark,$tmpdir/train.$n.scp || exit 1
-  done
-  #assemble the scp file
-  mv $dir/train.scp $dir/train.scp_non_local
-  for((n=0; n<nj; n++)); do
-    cat $tmpdir/train.$n.scp
-  done > $dir/train.scp
-  #test we have all the data
-  l1=$(cat $dir/train.scp_non_local | wc -l)
-  l2=$(cat $dir/train.scp | wc -l)
-  [[ "$l1" != "$l2" ]] && echo "ERROR in data re-saving $l1 != $l2" && exit 1;
-  #notify it was copied ok
-  wc -l $dir/train.scp_non_local $dir/train.scp
-  echo Copied ok!
-  #clean the data on exit
+  tmpdir=$(mktemp -d); mv $dir/train.scp $dir/train.scp_non_local
+  utils/nnet/copy_feats.sh $dir/train.scp_non_local $tmpdir $dir/train.scp
+  #remove data on exit...
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
 fi
 
-#get feature dim
-echo -n "Getting feature dim : "
-feat_dim=$(feat-to-dim --print-args=false scp:$dir/train.scp -)
-echo $feat_dim
+#create a 10k utt subset for global cmvn estimates
+head -n 10000 $dir/train.scp > $dir/train.scp.10k
+
+
+
+###### PREPARE FEATURE PIPELINE ######
 
 #read the features
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
@@ -168,7 +156,7 @@ if [ $apply_cmvn == "true" ]; then
   # keep track of norm_vars option
   echo "$norm_vars" >$dir/norm_vars 
 else
-  echo "apply_cmvn disabled (1st stage)"
+  echo "apply_cmvn disabled (per speaker norm. on input features)"
 fi
 
 #optionally add deltas
@@ -176,9 +164,13 @@ if [ "$delta_order" != "" ]; then
   feats_tr="$feats_tr add-deltas --delta-order=$delta_order ark:- ark:- |"
   feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"
   echo "$delta_order" > $dir/delta_order
+  echo "add-deltas (delta_order $delta_order)"
 fi
 
-
+#get feature dim
+echo -n "Getting feature dim : "
+feat_dim=$(feat-to-dim --print-args=false "$feats_tr" -)
+echo $feat_dim
 
 # Now we will start building complex feature_transform which will 
 # be forwarded in CUDA to gain more speed.
@@ -189,102 +181,104 @@ fi
 # and we would like to use single GPU per training instance,
 # so that the grid resources can be used efficiently...
 
-# Generate the splice transform
-echo "Using splice +/- $splice_lr , step $splice_step"
-feature_transform=$dir/tr_splice$splice_lr-$splice_step.nnet
-utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_lr --splice-step=$splice_step > $feature_transform
+if [ "$feature_transform" != "" ]; then
+  echo "Using pre-computed feature-transform $feature_transform"
+  cp $feature_transform $dir/$(basename $feature_transform)
+  feature_transform=$dir/$(basename $feature_transform)
+else
+  # Generate the splice transform
+  echo "Using splice +/- $splice_lr , step $splice_step"
+  feature_transform=$dir/tr_splice$splice_lr-$splice_step.nnet
+  utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_lr --splice-step=$splice_step > $feature_transform
 
-# Choose further processing of spliced features
-echo "Feature type : $feat_type"
-case $feat_type in
-  plain)
-  ;;
-  traps)
-    #generate hamming+dct transform
-    transf=$dir/hamm_dct${traps_dct_basis}.mat
-    echo "Preparing Hamming DCT transform : $transf"
-    utils/nnet/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice_lr > $dir/hamm.mat
-    utils/nnet/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice_lr --dct-basis=$traps_dct_basis > $dir/dct.mat
-    compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>${transf}_log || exit 1
-    #convert transform to nnet format
-    transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
-    #append it to the feature_transform
-    {
-      tag=$(basename $transf .mat)
-      feature_transform_old=$feature_transform
-      feature_transform=${feature_transform%.nnet}_${tag}.nnet
-      cp $feature_transform_old $feature_transform
-      cat $transf.nnet >> $feature_transform
-    }
-  ;;
-  transf)
-    transf=$dir/final.mat
-    [ ! -f $alidir/final.mat ] && echo "Missing transform $alidir/final.mat" && exit 1;
-    cp $alidir/final.mat $transf
-    echo "Copied transform $transf from $alidir/final.mat"
-    #convert transform to nnet format
-    transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
-    #append it to the feature_transform
-    {
-      feature_transform_old=$feature_transform
-      feature_transform=${feature_transform%.nnet}_alidir-transf.nnet
-      cp $feature_transform_old $feature_transform
-      cat $transf.nnet >> $feature_transform
-    }
-  ;;
-  lda)
-    transf=$dir/lda$lda_dim.mat
-    #get the LDA statistics
-    if [ ! -r "$dir/lda.acc" ]; then
-      echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
-      ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
-        weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
-      echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
-      acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
-    else
-      echo "LDA: Using pre-computed stats $dir/lda.acc"
-    fi
-    #estimate the transform  
-    echo "Estimating LDA transform $dir/lda.mat from the statistics $dir/lda.acc"
-    est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>${transf}_log || exit 1;
-    #convert the LDA matrix to nnet format
-    transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1;
-    #append LDA matrix to feature_transform
-    {
-      tag=$(basename $transf .mat)
-      feature_transform_old=$feature_transform
-      feature_transform=${feature_transform%.nnet}_${tag}.nnet
-      cp $feature_transform_old $feature_transform
-      cat $transf.nnet >> $feature_transform
-    }
-    #remove the accu
-    #rm $dir/lda.acc 
-    rm $dir/lda_post.{ark,scp}
-  ;;
-  *)
-    echo "Unknown feature type $feat_type"
-    exit 1;
-  ;;
-esac
-# keep track of feat_type
-echo $feat_type > $dir/feat_type
+  # Choose further processing of spliced features
+  echo "Feature type : $feat_type"
+  case $feat_type in
+    plain)
+    ;;
+    traps)
+      #generate hamming+dct transform
+      transf=$dir/hamm_dct${traps_dct_basis}.mat
+      echo "Preparing Hamming DCT transform : $transf"
+      utils/nnet/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice_lr > $dir/hamm.mat
+      utils/nnet/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice_lr --dct-basis=$traps_dct_basis > $dir/dct.mat
+      compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>${transf}_log || exit 1
+      #convert transform to nnet format
+      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
+      #append it to the feature_transform
+      {
+        tag=$(basename $transf .mat)
+        feature_transform_old=$feature_transform
+        feature_transform=${feature_transform%.nnet}_${tag}.nnet
+        cp $feature_transform_old $feature_transform
+        cat $transf.nnet >> $feature_transform
+      }
+    ;;
+    transf)
+      transf=$dir/final.mat
+      [ ! -f $alidir/final.mat ] && echo "Missing transform $alidir/final.mat" && exit 1;
+      cp $alidir/final.mat $transf
+      echo "Copied transform $transf from $alidir/final.mat"
+      #convert transform to nnet format
+      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
+      #append it to the feature_transform
+      {
+        feature_transform_old=$feature_transform
+        feature_transform=${feature_transform%.nnet}_alidir-transf.nnet
+        cp $feature_transform_old $feature_transform
+        cat $transf.nnet >> $feature_transform
+      }
+    ;;
+    lda)
+      transf=$dir/lda$lda_dim.mat
+      #get the LDA statistics
+      if [ ! -r "$dir/lda.acc" ]; then
+        echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
+        ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
+          weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
+        echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
+        acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
+      else
+        echo "LDA: Using pre-computed stats $dir/lda.acc"
+      fi
+      #estimate the transform  
+      echo "Estimating LDA transform $dir/lda.mat from the statistics $dir/lda.acc"
+      est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>${transf}_log || exit 1;
+      #convert the LDA matrix to nnet format
+      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1;
+      #append LDA matrix to feature_transform
+      {
+        tag=$(basename $transf .mat)
+        feature_transform_old=$feature_transform
+        feature_transform=${feature_transform%.nnet}_${tag}.nnet
+        cp $feature_transform_old $feature_transform
+        cat $transf.nnet >> $feature_transform
+      }
+      #remove the accu
+      #rm $dir/lda.acc 
+      rm $dir/lda_post.{ark,scp}
+    ;;
+    *)
+      echo "Unknown feature type $feat_type"
+      exit 1;
+    ;;
+  esac
+  # keep track of feat_type
+  echo $feat_type > $dir/feat_type
 
-#renormalize the MLP input to zero mean and unit variance
-if [ "$apply_glob_cmvn" == "true" ]; then 
-  cmvn_g="$dir/cmvn_glob.mat"
-  echo "Renormalizing MLP input features by : $cmvn_g"
-  compute-cmvn-stats --binary=false "$feats_tr nnet-forward $feature_transform ark:- ark:- |" $cmvn_g 2>${cmvn_g}_log || exit 1
-  #convert the global cmvn stats to nnet format
-  cmvn-to-nnet --binary=false $cmvn_g $cmvn_g.nnet 2>$cmvn_g.nnet_log || exit 1;
-  #append LDA matrix to feature_transform
-  {
+  #renormalize the MLP input to zero mean and unit variance
+  if [ "$apply_glob_cmvn" == "true" ]; then
     feature_transform_old=$feature_transform
     feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
-    cp $feature_transform_old $feature_transform
-    cat $cmvn_g.nnet >> $feature_transform
-  }
-else
-  echo "No global CMVN used on MLP front-end"
+    echo "Renormalizing MLP input features into $feature_transform"
+    nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+      $feature_transform_old "$(echo $feats | sed 's|train.scp|train.scp.10k|')" \
+      ark:- 2>$dir/log/cmvn_glob_fwd.log |\
+    compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
+    nnet-concat --binary=false $feature_transform_old - $feature_transform
+  else
+    echo "No global CMVN used on MLP front-end"
+  fi
 fi
 
 
@@ -295,16 +289,25 @@ fi
 ###### INITIALIZE THE NNET ######
 
 if [ "" != "$mlp_init" ]; then
-  echo "Using pre-initalized netwk $mlp_init";
+  echo "Using pre-initalized network $mlp_init";
 else
   echo -n "Initializng MLP : "
 
   num_fea=$(feat-to-dim "$feats_tr nnet-forward $feature_transform ark:- ark:- |" - )
+  #optioanlly add DBN
+  [ ! -z $dbn ] && num_fea=$(nnet-forward "nnet-concat $feature_transform $dbn -|" "$feats_tr" ark:- | feat-to-dim ark:- -)
   [ "$num_fea" == "" ] && echo "Getting nnet input dimension failed!!" && exit 1
+
   num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
   # What is the topology?
   if [ "" == "$bn_dim" ]; then #MLP w/o bottleneck
     case "$hid_layers" in
+      0) #just logistic regresion
+        mlp_init=$dir/nnet_${num_fea}_${num_tgt}.init
+        echo " $mlp_init"
+        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_tgt} \
+          --gauss --negbias --seed=$seed > $mlp_init
+        ;;
       1) #3-layer MLP
         if [ "" != "$hid_dim" ]; then
           num_hid=$hid_dim
@@ -314,7 +317,7 @@ else
         mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_tgt}.init
         echo " $mlp_init"
         utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_tgt} \
-          --gauss --negbias --seed=777 > $mlp_init
+          --gauss --negbias --seed=$seed > $mlp_init
         ;;
       2|3|4|5|6|7|8|9|10) #(>3)-layer MLP
         if [ "" != "$hid_dim" ]; then
@@ -334,7 +337,7 @@ else
         mlp_init=${mlp_init}_${num_tgt}.init
         dim_arg=${dim_arg}:${num_tgt}
         echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=777 > $mlp_init
+        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=$seed > $mlp_init
         ;;
       *)
         echo "Unsupported number of hidden layers $hid_layers"
@@ -351,7 +354,7 @@ else
         fi
         mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_bn}_${num_hid}_${num_tgt}.init
         echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_bn}:${num_hid}:${num_tgt} --gauss --negbias --seed=777 --linBNdim=$num_bn > $mlp_init
+        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_bn}:${num_hid}:${num_tgt} --gauss --negbias --seed=$seed --linBNdim=$num_bn > $mlp_init
         ;;
       2|3|4|5|6|7|8|9|10) #(>5)-layer MLP
         if [ "" != "$hid_dim" ]; then
@@ -371,13 +374,20 @@ else
         mlp_init=${mlp_init}_${num_bn}lin_${num_hid}_${num_tgt}.init
         dim_arg=${dim_arg}:${num_bn}:${num_hid}:${num_tgt}
         echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=777 --linBNdim=$num_bn > $mlp_init
+        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=$seed --linBNdim=$num_bn > $mlp_init
         ;;
       *)
         echo "Unsupported number of hidden layers $hid_layers"
         exit 1;
     esac
   fi
+
+  #optionally add dbn to the initialization
+  if [ ! -z $dbn ]; then
+    mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_$(basename $mlp_init_old)
+    nnet-concat $dbn $mlp_init_old $mlp_init 
+  fi
+
 fi
 
 

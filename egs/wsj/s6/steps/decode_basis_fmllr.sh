@@ -3,8 +3,7 @@
 # Copyright 2012   Carnegie Mellon University (Author: Yajie Miao)
 #                  Johns Hopkins University (Author: Daniel Povey)
 
-# Decoding script that does basis fMLLR.  This can be on top of delta+delta-delta,
-# or LDA+MLLT features.
+# Decoding script that does basis fMLLR. 
 
 # There are 3 models involved potentially in this script,
 # and for a standard, speaker-independent system they will all be the same.

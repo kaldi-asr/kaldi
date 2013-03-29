@@ -20,6 +20,7 @@ gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
 first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
             # the 1st pass of decoding (lattice generation).
 max_active=7000
+max_arcs=-1
 lat_beam=6.0 # Beam we use in lattice generation.
 vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
     # speaker-vector computation.  Can be quite tight (actually we could
@@ -27,6 +28,12 @@ vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
 use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
+skip_scoring=false
+scoring_opts=
+# note: there are no more min-lmwt and max-lmwt options, instead use
+# e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -67,6 +74,8 @@ split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts || exit 1` # frame-splicing options.
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1` 
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
@@ -96,9 +105,9 @@ fi
 # Generate state-level lattice which we can rescore.  This is done with the alignment
 # model and no speaker-vectors.
 if [ $stage -le 2 ]; then
-  $cmd JOB=1:$nj $dir/log/decode_pass1.JOB.log \
-    sgmm2-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
-    --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
+    sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
+    --max-arcs=$max_arcs --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
     --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $srcdir/final.alimdl \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
 fi
@@ -164,10 +173,10 @@ fi
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
 if [ $stage -le 6 ]; then
-  $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/rescore.JOB.log \
     sgmm2-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
     $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+    lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lat_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 rm $dir/pre_lat.*.gz
@@ -177,8 +186,11 @@ rm $dir/pre_lat.*.gz
 
 
 if [ $stage -le 7 ]; then
-  [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
+  if ! $skip_scoring ; then
+    [ ! -x local/score.sh ] && \
+      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+  fi
 fi
+
 exit 0;

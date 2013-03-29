@@ -1,7 +1,7 @@
 #!/usr/bin/python -u
 
-# ./gen_hamm_dct.py
-# script generateing NN initialization for training with TNet
+# ./gen_mlp_init.py
+# script generateing NN initialization 
 #     
 # author: Karel Vesely
 #

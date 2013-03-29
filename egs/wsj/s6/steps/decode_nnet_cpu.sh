@@ -17,6 +17,10 @@ beam=15.0
 max_active=7000
 lat_beam=8.0 # Beam we use in lattice generation.
 iter=final
+num_threads=1 # if >1, will use gmm-latgen-faster-parallel
+parallel_opts=  # If you supply num-threads, you should supply this too.
+scoring_opts=
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,6 +40,9 @@ if [ $# -ne 3 ]; then
   echo "  --cmd <cmd>                              # Command to run in parallel with"
   echo "  --beam <beam>                            # Decoding beam; default 15.0"
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
+  echo "  --scoring-opts <string>                  # options to local/score.sh"
+  echo "  --num-threads <n>                        # number of threads to use, default 1."
+  echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
   exit 1;
 fi
 
@@ -52,6 +59,8 @@ done
 sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts || exit 1`
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
@@ -71,10 +80,10 @@ elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
 fi
 ##
 
-# Generate state-level lattice which we can rescore. 
+
 if [ $stage -le 1 ]; then
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    nnet-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt "$model" \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
@@ -84,11 +93,13 @@ fi
 
 
 if [ $stage -le 2 ]; then
-  [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  echo "score best paths"
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
-  echo "score confidence and timing with sclite"
+  if ! $skip_scoring ; then
+    [ ! -x local/score.sh ] && \
+      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    echo "score best paths"
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    echo "score confidence and timing with sclite"
+  fi
 fi
 echo "Decoding done."
 exit 0;

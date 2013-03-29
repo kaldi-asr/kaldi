@@ -22,7 +22,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Usage: $0 [options] <tgt-data-dir> <src-data-dir> <gmm-dir> <log-dir> <fea-dir>"
-   echo "e.g.: $0 data-fmllr/train data/train exp/tri5a data-fmllr/train/_log data-fmllr/train/_data "
+   echo "e.g.: $0 data-fmllr/train data/train exp/tri5a exp/make_fmllr_feats/log plp/processed/"
    echo ""
    echo "This script works on CMN+LDA+MLLT features."
    echo "You can also add fMLLR-- you have to supply the --transform-dir option."
@@ -64,7 +64,7 @@ feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdat
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
+  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
   [ "`cat $transform_dir/num_jobs`" -ne $nj ] && \
      echo "Mismatch in number of jobs with $transform_dir" && exit 1;
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
@@ -77,14 +77,16 @@ cp $srcdata/* $data; rm $data/{feats.scp,cmvn.scp};
 # make $bnfeadir an absolute pathname.
 feadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $feadir ${PWD}`
 
+name=`basename $data`
+
 #forward the feats
 $cmd JOB=1:$nj $logdir/make_fmllr_feats.JOB.log \
   copy-feats "$feats" \
-  ark,scp:$feadir/feats_fmllr.JOB.ark,$feadir/feats_fmllr.JOB.scp || exit 1;
+  ark,scp:$feadir/feats_fmllr_$name.JOB.ark,$feadir/feats_fmllr_$name.JOB.scp || exit 1;
    
 #merge the feats to single SCP
 for n in $(seq 1 $nj); do
-  cat $feadir/feats_fmllr.$n.scp 
+  cat $feadir/feats_fmllr_$name.$n.scp 
 done > $data/feats.scp
 
 echo "$0 finished... $srcdata -> $data ($gmmdir)"

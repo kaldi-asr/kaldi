@@ -297,4 +297,3 @@ if $generate_l_align; then
       --keep_isymbols=false --keep_osymbols=false | \
   fstarcsort --sort_type=olabel > $dir/L_align.fst || exit 1;
 fi
-

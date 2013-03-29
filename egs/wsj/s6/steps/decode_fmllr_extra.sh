@@ -2,7 +2,15 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
-# Decoding script that does fMLLR, on top of CMN+LDA+MLLT features.
+# Decoding script that does fMLLR.  
+
+# This script does an extra pass of lattice generation over and above what the original
+# script did-- it's for robustness in the case where your original cepstral mean
+# normalization was way off.
+# We also added a new option --distribute=true (by default) to 
+# weight-silence-post.  This weights the silence frames in a different way,
+# weighting all posteriors on the frame rather than just the silence ones, which
+# removes a particular kind of bias that the old approach suffered from.
 
 # There are 3 models involved potentially in this script,
 # and for a standard, speaker-independent system they will all be the same.
@@ -25,35 +33,38 @@
 
 # Begin configuration section
 first_beam=10.0 # Beam used in initial, speaker-indep. pass
-first_max_active=2000 # max-active used in initial pass.
-first_max_arcs=-1
+first_max_active=2000 # max-active used in first two passes.
+first_latbeam=4.0 # lattice pruning beam for si decode and first-pass fMLLR decode.
+                # the different spelling from lattice_beam is unfortunate; these scripts
+                # have a history.
 alignment_model=
 adapt_model=
 final_model=
+cleanup=true
 stage=0
 acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in 
               # lattice generation.
 max_active=7000
-max_arcs=-1
 beam=13.0
 lattice_beam=6.0
 nj=4
 silence_weight=0.01
+distribute=true # option to weight-silence-post.
 cmd=run.pl
 si_dir=
 fmllr_update_type=full
+skip_scoring=false
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
-skip_scoring=false
-scoring_opts=
+
 # End configuration section
+
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "Wrong #arguments ($#, expected 3)"
    echo "Usage: steps/decode_fmllr.sh [options] <graph-dir> <data-dir> <decode-dir>"
    echo " e.g.: steps/decode_fmllr.sh exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_dev93_tgpr"
    echo "main options (for others, see top of script file)"
@@ -69,7 +80,7 @@ if [ $# != 3 ]; then
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
    echo "  --num-threads <n>                        # number of threads to use, default 1."
    echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
-   echo "  --scoring-opts <opts>                    # options to local/score.sh"
+
    exit 1;
 fi
 
@@ -84,11 +95,10 @@ sdata=$data/split$nj;
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
-
 mkdir -p $dir/log
-split_data.sh $data $nj || exit 1;
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
-splice_opts=`cat $srcdir/splice_opts || exit 1` # frame-splicing options.
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1` 
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
@@ -111,11 +121,7 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/decode.sh --parallel-opts "$parallel_opts" --scoring-opts "$scoring_opts" \
-              --num-threads $num_threads --skip-scoring $skip_scoring \
-              --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
-              --model $alignment_model --max-arcs $max_arcs --max-active \
-              $first_max_active $graphdir $data $si_dir || exit 1;
+    steps/decode.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active $graphdir $data $si_dir || exit 1;
   fi
 fi
 ##
@@ -128,9 +134,11 @@ fi
 for f in $adapt_model $final_model $srcdir/final.mat; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+##
 
 ## Set up the unadapted features "$sifeats"
 sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+
 
 ## Now get the first-pass fMLLR transforms.
 if [ $stage -le 1 ]; then
@@ -138,71 +146,97 @@ if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/fmllr_pass1.JOB.log \
     gunzip -c $si_dir/lat.JOB.gz \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post $silence_weight $silphonelist $alignment_model ark:- ark:- \| \
+    weight-silence-post --distribute=$distribute $silence_weight $silphonelist $alignment_model ark:- ark:- \| \
     gmm-post-to-gpost $alignment_model "$sifeats" ark:- ark:- \| \
     gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
     --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$sifeats" ark,s,cs:- \
-    ark:$dir/pre_trans.JOB || exit 1;
+    ark:$dir/trans1.JOB || exit 1;
 fi
 ##
 
-pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/pre_trans.JOB ark:- ark:- |"
+pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans1.JOB ark:- ark:- |"
 
-## Do the main lattice generation pass.  Note: we don't determinize the lattices at
-## this stage, as we're going to use them in acoustic rescoring with the larger 
-## model, and it's more correct to store the full state-level lattice for this purpose.
+## Do the first adapted lattice generation pass. 
 if [ $stage -le 2 ]; then
-  echo "$0: doing main lattice generation phase"
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
-    --acoustic-scale=$acwt --max-arcs=$max_arcs \
-    --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-    $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat.tmp.JOB.gz" \
+  echo "$0: doing first adapted lattice generation phase"
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode1.JOB.log\
+    gmm-latgen-faster$thread_string --max-active=$first_max_active --beam=$first_beam --lattice-beam=$first_latbeam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat1.JOB.gz" \
     || exit 1;
 fi
-##
 
-## Do a second pass of estimating the transform-- this time with the lattices
-## generated from the alignment model.  Compose the transforms to get
-## $dir/trans.1, etc.
+
+## Do a second pass of estimating the transform.  Compose the transforms to get
+## $dir/trans2.*.
 if [ $stage -le 3 ]; then
   echo "$0: estimating fMLLR transforms a second time."
   $cmd JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=4.0 \
-    "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
-    lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
+    lattice-to-post --acoustic-scale=$acwt "ark:gunzip -c $dir/lat1.JOB.gz|" ark:- \| \
+    weight-silence-post --distribute=$distribute $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
     gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
     --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$pass1feats" \
-    ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
-    compose-transforms --b-is-affine=true ark:$dir/trans_tmp.JOB ark:$dir/pre_trans.JOB \
+    ark,s,cs:- ark:$dir/trans1b.JOB '&&' \
+    compose-transforms --b-is-affine=true ark:$dir/trans1b.JOB ark:$dir/trans1.JOB \
+    ark:$dir/trans2.JOB  || exit 1;
+  if $cleanup; then
+    rm $dir/trans1b.* $dir/trans1.* $dir/lat1.*.gz
+  fi
+fi
+##
+
+pass2feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans2.JOB ark:- ark:- |"
+
+# Generate a 3rd set of lattices, with the "adaptation model"; we'll use these
+# to adapt a 3rd time, and we'll rescore them.  Since we should be close to the final
+# fMLLR, we don't bother dumping un-determinized lattices to disk.
+
+## Do the final lattice generation pass (but we'll rescore these lattices
+## after another stage of adaptation.)
+if [ $stage -le 4 ]; then
+  echo "$0: doing final lattice generation phase"
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode2.JOB.log\
+    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $adapt_model $graphdir/HCLG.fst "$pass2feats" "ark:|gzip -c > $dir/lat2.JOB.gz" \
+    || exit 1;
+fi
+
+
+## Do a third pass of estimating the transform.  Compose the transforms to get
+## $dir/trans.*.
+if [ $stage -le 5 ]; then
+  echo "$0: estimating fMLLR transforms a third time."
+  $cmd JOB=1:$nj $dir/log/fmllr_pass3.JOB.log \
+    lattice-to-post --acoustic-scale=$acwt "ark:gunzip -c $dir/lat2.JOB.gz|" ark:- \| \
+    weight-silence-post --distribute=$distribute $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
+    gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
+    --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$pass2feats" \
+    ark,s,cs:- ark:$dir/trans2b.JOB '&&' \
+    compose-transforms --b-is-affine=true ark:$dir/trans2b.JOB ark:$dir/trans2.JOB \
     ark:$dir/trans.JOB  || exit 1;
+  if $cleanup; then
+    rm $dir/trans2b.* $dir/trans2.*
+  fi
 fi
 ##
 
 feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
 
-# Rescore the state-level lattices with the final adapted features, and the final model
-# (which by default is $srcdir/final.mdl, but which may be specified on the command line,
-# useful in case of discriminatively trained systems).
-# At this point we prune and determinize the lattices and write them out, ready for 
-# language model rescoring.
-
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: doing a final pass of acoustic rescoring."
   $cmd JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
-    gmm-rescore-lattice $final_model "ark:gunzip -c $dir/lat.tmp.JOB.gz|" "$feats" ark:- \| \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
-    "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;
+    gmm-rescore-lattice $final_model "ark:gunzip -c $dir/lat2.JOB.gz|" "$feats" \
+      "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+  if $cleanup; then
+    rm $dir/lat2.*.gz
+  fi
 fi
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+  local/score.sh --cmd "$cmd" $data $graphdir $dir
 fi
 
-rm $dir/{trans_tmp,pre_trans}.*
-
 exit 0;
-

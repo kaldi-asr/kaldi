@@ -16,6 +16,8 @@ transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
+num_threads=1
+parallel_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,6 +38,8 @@ if [ $# != 4 ]; then
    echo "                           # large databases so your jobs will be smaller and"
    echo "                           # will (individually) finish reasonably soon."
    echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
+   echo "  --num-threads  <n>                # number of threads per decoding job"
+   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
    exit 1;
 fi
 
@@ -51,6 +55,9 @@ done
 sdata=$data/split$nj
 splice_opts=`cat $srcdir/splice_opts || exit 1`
 cmvn_opts=`cat $srcdir/cmvn_opts || exit 1`
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
+
 mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
@@ -62,20 +69,23 @@ mkdir -p $dir
 cp -r $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
-
+new_lang="$dir/"$(basename "$lang")
+echo "Making unigram grammar FST in $new_lang"
 cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-  utils/make_unigram_grammar.pl | fstcompile > $dir/lang/G.fst \
+  utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
    || exit 1;
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
 # final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
+echo "Compiling decoding graph in $dir/dengraph"
+
 if [ -s $dir/dengraph/HCLG.fst ]; then
    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
-  utils/mkgraph.sh $dir/lang $srcdir $dir/dengraph || exit 1;
+  utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
@@ -96,8 +106,8 @@ else
 fi
 
 if [ $sub_split -eq 1 ]; then 
-  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
+   gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
@@ -112,8 +122,8 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
-      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
-        gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+        gmm-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
       echo Merging archives for data subset $n

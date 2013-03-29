@@ -6,6 +6,7 @@
 # Begin configuration section.  
 cmd=run.pl
 nbest=-1
+strict=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -36,7 +37,8 @@ for f in $kwsdir/index.1.gz $keywords; do
 done
 
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
-  kws-search "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
+  kws-search --strict=$strict \
+  "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
   "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
 
 exit 0;
