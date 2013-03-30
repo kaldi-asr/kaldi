@@ -1,9 +1,12 @@
-!/bin/bash
+#!/bin/bash
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 
+
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
+
+. ./local.conf
 
 #Preparing dev2h and train directories
 if [ ! -d data/raw_train_data ]; then
@@ -17,6 +20,7 @@ if [ ! -d data/raw_train_data ]; then
     nj_max=`cat $train_data_list | wc -l`
     if [[ "$nj_max" -lt "$train_nj" ]] ; then
         echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+        exit 1;
         train_nj=$nj_max
     fi
 fi
@@ -32,22 +36,23 @@ if [ ! -d data/raw_dev2h_data ]; then
     nj_max=`cat $dev2h_data_list | wc -l`
     if [[ "$nj_max" -lt "$decode_nj" ]] ; then
         echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
+        exit 1
         decode_nj=$nj_max
     fi
 fi
 
-if [[ $filter_lexicon ]]; then
-    lexicon_dir=./data/raw_lex_data
-    mkdir -p $lexicon_dir
-    if [[ ! -f $lexicon_dir/lexicon.txt ||  $lexicon_dir/lexicon.txt -ot $train_data_dir/transcription ]]; then 
-      echo ---------------------------------------------------------------------
-      echo "Subsetting the LEXICON"
-      echo ---------------------------------------------------------------------
-      local/make_lexicon_subset.sh $train_data_dir/transcription \
-        $lexicon_file $lexicon_dir/lexicon.txt || exit 1
-    fi
-    lexicon_file=$lexicon_dir/lexicon.txt
-fi
+#if [[ $filter_lexicon ]]; then
+#    lexicon_dir=./data/raw_lex_data
+#    mkdir -p $lexicon_dir
+#    if [[ ! -f $lexicon_dir/lexicon.txt ||  $lexicon_dir/lexicon.txt -ot $train_data_dir/transcription ]]; then 
+#      echo ---------------------------------------------------------------------
+#      echo "Subsetting the LEXICON"
+#      echo ---------------------------------------------------------------------
+#      local/make_lexicon_subset.sh $train_data_dir/transcription \
+#        $lexicon_file $lexicon_dir/lexicon.txt || exit 1
+#    fi
+#    lexicon_file=$lexicon_dir/lexicon.txt
+#fi
 
 
 mkdir -p data/local
@@ -104,7 +109,7 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   echo ---------------------------------------------------------------------
   echo "Training SRILM language models on" `date`
   echo ---------------------------------------------------------------------
-  local/train_lms_srilm.sh data data/srilm 
+  local/train_lms_srilm.sh --dev-text data/dev2h/text --train-text data/train/text data data/srilm 
 fi
 if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
@@ -154,9 +159,19 @@ if [ ! -f data/train_sub3/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting monophone training data in data/train_sub[123] on" `date`
   echo ---------------------------------------------------------------------
+  numutt=`cat data/train/feats.scp | wc -l`;
   utils/subset_data_dir.sh data/train  5000 data/train_sub1 || exit 1
-  utils/subset_data_dir.sh data/train 10000 data/train_sub2 || exit 1
-  utils/subset_data_dir.sh data/train 20000 data/train_sub3 || exit 1
+  if [ $numutt -gt 10000 ] ; then
+    utils/subset_data_dir.sh data/train 10000 data/train_sub2 || exit 1
+  else
+    (cd data; ln -s train train_sub2 ) || exit 1
+  fi
+  if [ $numutt -gt 20000 ] ; then
+    utils/subset_data_dir.sh data/train 20000 data/train_sub3 || exit 1
+  else
+    (cd data; ln -s train train_sub3 ) || exit 1
+  fi
+
   touch data/train_sub3/.done
 fi
 
@@ -322,7 +337,7 @@ if [ ! -f exp/sgmm5/.done ]; then
   echo "Starting exp/sgmm5 on" `date`
   echo ---------------------------------------------------------------------
   steps/train_sgmm2_group.sh \
-    --cmd "queue.pl -l mem_free=2G,ram_free=2G" --group 3 --parallel-opts "-l mem_free=6G,ram_free=2G" \
+    --cmd "$train_cmd" --group 3 --parallel-opts "-l mem_free=6G,ram_free=2G" \
     $numLeavesSGMM $numGaussSGMM data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5 || exit 1
   touch exp/sgmm5/.done
 fi

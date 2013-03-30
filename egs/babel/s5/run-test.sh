@@ -3,6 +3,8 @@ set -e
 set -o pipefail
 echo "$0 $@"  # Print the command line for logging
 
+set -e
+set -o pipefail
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 [ -f ./cmd.sh ] && . ./cmd.sh; # source the path.
 . parse_options.sh || exit 1;
@@ -26,28 +28,6 @@ local/create_shadow_dataset.sh data/shadow.uem data/dev data/test.uem
 local/kws_data_prep.sh --case-insensitive $case_insensitive data/lang data/shadow.uem data/shadow.uem/kws || exit 1
 utils/fix_data_dir.sh data/shadow.uem
 
-#-function split_ctms {
-#-  q=$1; shift
-#-  for i in $@ ; do
-#-      p=$q/`basename $i`
-#-      [ ! -f $i/reco2file_and_channel ] && "The file reco2file_and_channel not present in the $i directory!" && exit 1
-#-      for lmw in $q/score_* ; do
-#-          d=$p/`basename $lmw`
-#-          mkdir -p $d
-#-          [ -f $lmw/shadow.uem.char.ctm ] && \
-#-            utils/filter_scp.pl <(cut -f 1 -d ' ' $i/reco2file_and_channel) $lmw/shadow.uem.char.ctm > $d/`basename $i`.char.ctm
-#-          [ -f $lmw/shadow.uem.ctm ] && \
-#-            utils/filter_scp.pl <(cut -f 1 -d ' ' $i/reco2file_and_channel) $lmw/shadow.uem.ctm > $d/`basename $i`.ctm
-#-      done
-#-
-#-      if [ -f $i/stm ] && [ -f $i/glm ]; then
-#-          local/score_scm.sh --cmd "$decode_cmd" $i data/lang $p
-#-      else
-#-          echo "Not running scoring, file $i/stm does not exist"
-#-      fi
-#-
-#-  done
-#-}
 
 ####################################################################
 ##

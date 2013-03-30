@@ -97,7 +97,9 @@ open (INLEX, $inDict)
 open (OUTLEX, "| sort -u > $outLex")
     || die "Unable to open output dictionary $outLex";
 
+
 $numWords = $numProns = 0;
+@substituted_phones = undef;
 while ($line=<INLEX>) {
     chomp;
     ###############################################
@@ -126,13 +128,30 @@ while ($line=<INLEX>) {
                         # It is a tag; save it for later
                         $is_original_tag{$phone} = 1;
                         $sylTag .= $phone;
-		    } elsif ($phone =~ m:^[\"\%]$:) {
+                    } elsif ($phone =~ m:^[\"\%]$:) {
                         # It is a stress marker; save it like a tag
-			$phone = "_$phone";
+                        $phone = "_$phone";
                         $is_original_tag{$phone} = 1;
                         $sylTag .= $phone;
+                    } elsif ( $phone =~ m:_:) {
+                        # It is a phone containing "_" (underscore)
+                        $new_phone=$phone;
+                        $new_phone=~ s/\_//g;
+                        if (( $is_original_phone{$phone} ) and not defined( $substituted_phones{phone}) ) {
+                          die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
+                        } else {
+                          print STDERR "WARNING, phone $phone was substituted for $new_phone\n" unless $substituted_phones{$phone};
+                          
+                        }
+
+                        $is_original_phone{$new_phone} = "$new_phone";
+                        $substituted_phones{$phone} = $new_phone;
+                        $new_phones .= " $new_phone";
                     } else {
                         # It is a phone
+                        if ( $substituted_phones{phone} ) {
+                          die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
+                        }                        
                         $is_original_phone{$phone} = "$phone";
                         $new_phones .= " $phone";
                     }
@@ -215,6 +234,7 @@ foreach $phone (sort keys %is_new_phone) {
     } else {
         print STDERR ("$0 WARNING: Skipping unexpected tagged phone $phone.\n");
         print STDERR ("\tCheck if original lexicon has phones containing \"\_\"\n");
+        die "Cannot continue";
     }
 }
 
