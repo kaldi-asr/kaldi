@@ -6,7 +6,7 @@
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
 
-. ./local.conf
+[ -f local.conf ] &&  ./local.conf
 
 #Preparing dev2h and train directories
 if [ ! -d data/raw_train_data ]; then
@@ -101,7 +101,6 @@ if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
   echo ---------------------------------------------------------------------
   local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
   cp $glmFile data/dev2h/glm
-  touch data/dev2h/.done # I think this is all.
 fi
 
 # We will simply override the default G.fst by the G.fst generated using SRILM
@@ -119,17 +118,17 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
 fi
   
 
-if [ ! -f data/dev2h/.done ]; then
+if [ ! -f data/dev2h/.kws.done ]; then
   if [[ $subset_ecf ]] ; then
     local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev2h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   else
     local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   fi
-  touch data/dev2h/.done
+  touch data/dev2h/.kws.done
 fi
 
 
-if [ ! -f data/train/.done ]; then
+if [ ! -f data/train/.plp.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting plp feature extraction in plp on" `date`
   echo ---------------------------------------------------------------------
@@ -140,10 +139,10 @@ if [ ! -f data/train/.done ]; then
     data/train exp/make_plp/train plp || exit 1
 # In case plp extraction failed on some utterance, delist them
   utils/fix_data_dir.sh data/train
-  touch data/train/.done
+  touch data/train/.plp.done
 fi
 
-if [ ! -f data/dev2h/.done ]; then
+if [ ! -f data/dev2h/.plp.done ]; then
   steps/make_plp.sh \
     --cmd "$train_cmd" --nj $decode_nj \
     data/dev2h exp/make_plp/dev2h plp || exit 1
@@ -151,7 +150,7 @@ if [ ! -f data/dev2h/.done ]; then
     data/dev2h exp/make_plp/dev2h plp || exit 1
   # In case plp extraction failed on some utterance, delist them
   utils/fix_data_dir.sh data/dev2h
-  touch data/dev2h/.done
+  touch data/dev2h/.plp.done
 fi
 mkdir -p exp
 
