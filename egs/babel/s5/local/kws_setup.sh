@@ -15,7 +15,17 @@ echo "$0 $@"  # Print the command line for logging
 
 help_message="$0: Initialize and setup the KWS task directory
 Example:
-              $0 <ecf_file> <kwlist-file> <rttm-file> <lang-dir> <data-dir>"
+       $0  <ecf_file> <kwlist-file> [rttm-file] <lang-dir> <data-dir>
+allowed switches:
+      --subset-ecf /path/to/filelist     # The script will subset the ecf file 
+                                         # to contain only the files from the filelist
+      --rttm-file /path/to/rttm          # the preferred way how to specify the rttm
+                                         # the older way (as an in-line parameter is 
+                                         # obsolete and will be removed in near future
+      --case-sensitive <true|false>      # Shall we be case-sensitive or not?
+                                         # Please not the case-sensitivness depends 
+                                         # on the shell locale!
+              "
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
