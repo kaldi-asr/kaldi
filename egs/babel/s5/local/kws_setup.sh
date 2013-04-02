@@ -14,7 +14,7 @@ extraid=
 echo "$0 $@"  # Print the command line for logging
 
 help_message="$0: Initialize and setup the KWS task directory
-Example:
+Usage:
        $0  <ecf_file> <kwlist-file> [rttm-file] <lang-dir> <data-dir>
 allowed switches:
       --subset-ecf /path/to/filelist     # The script will subset the ecf file 
@@ -47,7 +47,8 @@ else
     datadir=$4
 fi
 
-for filename in "$ecf_file" "$kwlist_file" "$rttm_file" ; do
+# don't quote rttm_file as it's valid for it to be empty.
+for filename in "$ecf_file" "$kwlist_file" $rttm_file; do
     echo $filename
     if [ ! -f $filename ] ; then
         printf "FATAL: filename \'$filename\' does not refer to a valid file\n"
@@ -72,15 +73,15 @@ fi
 mkdir -p $kwsdatadir
 
 if [ -z $subset_ecf ] ; then
-    cp `readlink -f $ecf_file` $kwsdatadir/ecf.xml || exit 1
+  cp "$ecf_file" $kwsdatadir/ecf.xml || exit 1
 else
-    local/make_ecf_subset.sh $subset_ecf $ecf_file $kwsdatadir
+  local/make_ecf_subset.sh $subset_ecf $ecf_file > $kwsdatadir/ecf.xml
 fi
 
-cp `readlink -f $kwlist_file` $kwsdatadir/kwlist.xml || exit 1
+cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
 
 if [ ! -z $rttm_file ] ; then
-  cp `readlink -f $rttm_file` $kwsdatadir/rttm || exit 1
+  cp "$rttm_file" $kwsdatadir/rttm || exit 1
 fi
 
 local/kws_data_prep.sh --case-insensitive $case_insensitive $langdir $datadir $kwsdatadir || exit 1
