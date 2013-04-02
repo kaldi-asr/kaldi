@@ -352,7 +352,7 @@ fi
     echo "Spawning exp/sgmm5/decode_dev2h_fmllr on" `date`
     echo ---------------------------------------------------------------------
     echo "exp/sgmm5/decode_dev2h will wait on tri5 decode if necessary"
-    while [ ! -f exp/tri5/decode_dev2h_fmllr/.done ]; do sleep 30; done
+    while [ ! -f exp/tri5/decode_dev2h/.done ]; do sleep 30; done
     mkdir -p exp/sgmm5/graph
     utils/mkgraph.sh \
         data/lang exp/sgmm5 exp/sgmm5/graph &> exp/sgmm5/mkgraph.log
