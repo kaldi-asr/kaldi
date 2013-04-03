@@ -353,7 +353,7 @@ open (SEGMENTS, "> $segmentsFileName") || die "$0 ERROR: Unable to write segment
 
 $scpFileName = "$outDir/wav.scp";
 open (SCP, "| sort -u >  $scpFileName") || die "$0 ERROR: Unable to write wav.scp file $scpFileName\n";
-my $binary=`which sph2pipe`; chomp $binary;
+my $binary=`which sph2pipe` or die "Could not find the sph2pipe command"; chomp $binary;
 $SPH2PIPE ="$binary -f wav -p -c 1";
 
 $spk2uttFileName = "$outDir/spk2utt";
