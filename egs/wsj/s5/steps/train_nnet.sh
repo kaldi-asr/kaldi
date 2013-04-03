@@ -272,7 +272,7 @@ else
     feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
     echo "Renormalizing MLP input features into $feature_transform"
     nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
-      $feature_transform_old "$(echo $feats | sed 's|train.scp|train.scp.10k|')" \
+      $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
       ark:- 2>$dir/log/cmvn_glob_fwd.log |\
     compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
     nnet-concat --binary=false $feature_transform_old - $feature_transform
