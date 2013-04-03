@@ -434,62 +434,83 @@ if(-s "$lang/phones/word_boundary.txt") {
   }
   $success2 == 0 || print "--> $lang/phones/word_boundary.txt is the union of nonsilence.txt and silence.txt\n";
   $success1 != 1 or $success2 != 1 || print "--> $lang/phones/word_boundary.txt is OK\n";
+  print "\n";
+}
 
-
-  # Check L.fst -------------------------------
-  print "--> checking L.fst and L_disambig.fst...\n";
-  $nonword   =~ s/ $//g;
-  $nonword   =~ s/ / |/g;
-  $begin     =~ s/ $//g;
-  $begin     =~ s/ / |/g;
-  $end       =~ s/ $//g;
-  $end       =~ s/ / |/g;
-  $internal  =~ s/ $//g;
-  $internal  =~ s/ / |/g;
-  $singleton =~ s/ $//g;
-  $singleton =~ s/ / |/g;
-  
-  # Now handle the escape characters
-  foreach $esc(("^", "\$", "(", ")", "/", "@", "[", "]", "{", "}", "?", ".", "+", "*")) {
-    $tmp = "\\" . $esc;
-    $nonword   =~ s/$tmp/\\$esc/g;
-    $begin     =~ s/$tmp/\\$esc/g;
-    $end       =~ s/$tmp/\\$esc/g;
-    $internal  =~ s/$tmp/\\$esc/g;
-    $singleton =~ s/$tmp/\\$esc/g;
+if(-s "$lang/phones/word_boundary.int") {
+  print "Checking word_boundary.int and disambig.int\n";
+  if(!open (W, "<$lang/phones/word_boundary.int")) {$exit = 1; print "--> ERROR: fail to open $lang/phones/word_boundary.int\n";}
+  while (<W>) {
+    @A = split;
+    if (@A != 2) { $exit = 1; print "--> ERROR: bad line $_ in $lang/phones/word_boundary.int\n"; }
+    $wbtype{$A[0]} = $A[1];
+  }
+  close(W);
+  if(!open (D, "<$lang/phones/disambig.int")) {$exit = 1; print "--> ERROR: fail to open $lang/phones/disambig.int\n";}
+  while (<D>) { 
+    @A = split;
+    if (@A != 1) { $exit = 1; print "--> ERROR: bad line $_ in $lang/phones/disambig.int\n"; }
+    $is_disambig{$A[0]} = 1;
   }
 
-  $wlen = int(rand(100)) + 1;
-  print "--> generating a $wlen words sequence\n";
-  $wordseq = "";
-  $sid = 0;
-  foreach(1 .. $wlen) {
-    $id = int(rand(scalar(%wint2sym)));
-    while($wint2sym{$id} =~ m/^#[0-9]*$/ or $id == 0) {$id = int(rand(scalar(%wint2sym)));}
-    $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
-    $sid ++;
-  }
-  $wordseq = $wordseq . "$sid 0";
-  $phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
-  $phoneseq =~ s/\s/ /g;
-  $phoneseq =~ m/^($nonword )*(((($begin )($internal )*($end ))|($singleton ))($nonword )*){$wlen}$/;
-  if(length($2) == 0) {
-    $exit = 1; print "--> ERROR: resulting phone sequence from L.fst doesn't correspond to the word sequence; check L.log.fst\n";
-    open(LOG, ">L.log.fst"); print LOG $wordseq; close(LOG);
-  } else {
-    print "--> resulting phone sequence from L.fst corresponds to the word sequence\n";
-    print "--> L.fst is OK\n";
-  }
+  foreach $fst ("L.fst", "L_disambig.fst") {
+    $wlen = int(rand(100)) + 1;
+    print "--> generating a $wlen words sequence\n";
+    $wordseq = "";
+    $sid = 0;
+    foreach (1 .. $wlen) {
+      $id = int(rand(scalar(%wint2sym)));
+      while ($wint2sym{$id} =~ m/^#[0-9]*$/ or $id == 0) {
+        $id = int(rand(scalar(%wint2sym)));
+      }
+      $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
+      $sid ++;
+    }
+    $wordseq = $wordseq . "$sid 0";
+    $phoneseq = `echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if(NF > 2) {print \$3}}';`;
+    @phoneseq = split(" ", $phoneseq);
+    $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
+    # 0 means transition is allowed.  bos and eos are added as extra symbols here.
+    foreach $x ("bos", "nonword", "end", "singleton") {
+      $transition{$x, "nonword"} = 0;
+      $transition{$x, "begin"} = 1;
+      $transition{$x, "singleton"} = 1;
+      $transition{$x, "eos"} = 0;
+    }
+    $transition{"begin", "end"} = 0;
+    $transition{"begin", "internal"} = 0;
+    $transition{"internal", "internal"} = 0;
+    $transition{"internal", "end"} = 0;
 
-  $phoneseq = `echo \"$wordseq" | fstcompile > tmp.fst; fstcompose $lang/L_disambig.fst tmp.fst | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint --isymbols=$lang/phones.txt --osymbols=$lang/phones.txt | awk '{if(NF > 2) {print \$3}}'; rm tmp.fst`;
-  $phoneseq =~ s/\s/ /g;
-  $phoneseq =~ m/^(($nonword )(#[0-9]* )*)*(((($begin )($internal )*($end ))|($singleton ))(#[0-9]* )*(($nonword )(#[0-9]* )*)*){$wlen}$/;
-  if(length($4) == 0) {
-    $exit = 1; print "--> ERROR: resulting phone sequence from L_disambig.fst doesn't correspond to the word sequence; check L_disambig.log.fst\n";
-    open(LOG, ">L_disambig.log.fst"); print LOG $wordseq; close(LOG);
-  } else {
-    print "--> resulting phone sequence from L_disambig.fst corresponds to the word sequence\n";
-    print "--> L_disambig.fst is OK\n";
+    $cur_state = "bos";
+    $num_words = 0;
+    foreach $phone (split (" ", "$phoneseq eos")) {
+      if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
+        if ($phone == "eos") {
+          $state = "eos";
+        } else {
+          $state = $wbtype{$phone};
+        }
+        if (!defined $state) {
+          $exit = 1; print "--> ERROR: phone $phone is not specified in $lang/phones/word_boundary.int\n";
+          last;
+        } elsif (!defined $transition{$cur_state, $state}) {
+          $exit = 1; print "--> ERROR: transition from state $cur_state to $state indicates error in word_boundary.int or L.fst\n";
+          last;
+        } else {
+          $num_words += $transition{$cur_state, $state};
+          $cur_state = $state;
+        }
+      }
+    }
+    if (!$exit) {
+      if ($num_words != $wlen) {
+        $exit = 1; print "--> ERROR: number of reconstructed words $num_words does not match real number of words $wlen; indicates problem in $fst or word_boundary.int.  phoneseq = $phoneseq\n";
+      } else {
+        print "--> resulting phone sequence from $fst corresponds to the word sequence\n";
+        print "--> $fst is OK\n";
+      }
+    }
   }
   print "\n";
 }
@@ -498,4 +519,6 @@ if(-s "$lang/phones/word_boundary.txt") {
 check_txt_int("$lang/oov", \%wsymtab); print "\n";
 
 
-if ($exit == 1) {exit 1;}
+if ($exit == 1) { print "--> ERROR\n"; exit 1;}
+else { print "--> SUCCESS\n"; exit 0; }
+
