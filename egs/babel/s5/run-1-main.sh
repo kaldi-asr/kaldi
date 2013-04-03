@@ -6,7 +6,7 @@
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
 
-. ./local.conf
+[ -f local.conf ] && . ./local.conf
 
 #Preparing dev2h and train directories
 if [ ! -d data/raw_train_data ]; then
@@ -16,29 +16,29 @@ if [ ! -d data/raw_train_data ]; then
 
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data || exit 1
     train_data_dir=`readlink -f ./data/raw_train_data`
+fi
 
-    nj_max=`cat $train_data_list | wc -l`
-    if [[ "$nj_max" -lt "$train_nj" ]] ; then
-        echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
-        exit 1;
-        train_nj=$nj_max
-    fi
+nj_max=`cat $train_data_list | wc -l`
+if [[ "$nj_max" -lt "$train_nj" ]] ; then
+  echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+  exit 1;
+  train_nj=$nj_max
 fi
 
 if [ ! -d data/raw_dev2h_data ]; then
-    echo ---------------------------------------------------------------------
-    echo "Subsetting the DEV2H set"
-    echo ---------------------------------------------------------------------
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the DEV2H set"
+  echo ---------------------------------------------------------------------
+  
+  local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
+fi
+dev2h_data_dir=`readlink -f ./data/raw_dev2h_data`
 
-    local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
-    dev2h_data_dir=`readlink -f ./data/raw_dev2h_data`
-
-    nj_max=`cat $dev2h_data_list | wc -l`
-    if [[ "$nj_max" -lt "$decode_nj" ]] ; then
-        echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
-        exit 1
-        decode_nj=$nj_max
-    fi
+nj_max=`cat $dev2h_data_list | wc -l`
+if [[ "$nj_max" -lt "$decode_nj" ]] ; then
+  echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
+  exit 1
+  decode_nj=$nj_max
 fi
 
 #if [[ $filter_lexicon ]]; then
