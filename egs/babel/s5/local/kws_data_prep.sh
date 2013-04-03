@@ -16,6 +16,10 @@ echo $0 "$@"
 if [ $# -ne 3 ]; then
    echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>"
    echo " e.g.: local/kws_data_prep.sh data/lang/ data/eval/ data/kws/"
+   echo "Input is in <kws-data-dir>: kwlist.xml, ecf.xml (rttm file not needed)."
+   echo "Output is in <kws-data/dir>: keywords.txt, keywords_all.int, kwlist_invocab.xml,"
+   echo "    kwlist_outvocab.xml, keywords.fsts"
+   echo "Note: most important output is keywords.fsts"
    exit 1;
 fi
 
@@ -72,7 +76,6 @@ cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
 cat $kwsdatadir/keywords_all.int | \
   egrep " 0 | 0$" | cut -f 1 -d ' ' | \
   local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
-
 
 
 # Compile keywords into FSTs

@@ -36,11 +36,15 @@ fi
 
 [ -z $words_file ] && words_file=$datadir/lang/words.txt 
 [ -z $train_text ] && train_text=$datadir/train/text
-[ -z $dev_text ] && dev_text=$datadir/dev/text
+[ -z $dev_text ] && dev_text=$datadir/dev2h/text
 
 echo "Using words file: $words_file"
 echo "Using train text: $train_text"
 echo "Using dev text  : $dev_text"
+
+for f in $words_file $train_text $dev_text; do
+  [ ! -s $f ] && echo "No such file $f" && exit 1;
+done
 
 # Prepare the destination directory
 mkdir -p $tgtdir

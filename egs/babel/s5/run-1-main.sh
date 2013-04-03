@@ -6,7 +6,7 @@
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
 
-[ -f local.conf ] && . ./local.conf
+. ./local.conf
 
 #Preparing dev2h and train directories
 if [ ! -d data/raw_train_data ]; then
@@ -352,7 +352,7 @@ fi
     echo "Spawning exp/sgmm5/decode_dev2h_fmllr on" `date`
     echo ---------------------------------------------------------------------
     echo "exp/sgmm5/decode_dev2h will wait on tri5 decode if necessary"
-    while [ ! -f exp/tri5/decode_dev2h/.done ]; do sleep 30; done
+    while [ ! -f exp/tri5/decode_dev2h_fmllr/.done ]; do sleep 30; done
     mkdir -p exp/sgmm5/graph
     utils/mkgraph.sh \
         data/lang exp/sgmm5 exp/sgmm5/graph &> exp/sgmm5/mkgraph.log
@@ -427,8 +427,8 @@ echo "Starting exp/sgmm5_mmi_b0.1/decode_dev2h[_fmllr] on" `date`
 echo ---------------------------------------------------------------------
 for iter in 1 2 3 4; do
   if [ ! -f exp/sgmm5_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done ]; then
-    echo "Waiting for exp/sgmm5/decode_dev2h_fmllr/.done if necessary"
-    while [ ! -f exp/sgmm5/decode_dev2h_fmllr/.done ]; do sleep 30; done
+    echo "Waiting for exp/sgmm5/decode_dev2h_fmllr_it$iter/.done if necessary"
+    while [ ! -f exp/sgmm5/decode_dev2h_fmllr_it$iter/.done ]; do sleep 30; done
     steps/decode_sgmm2_rescore.sh \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_dev2h \
         data/lang data/dev2h exp/sgmm5/decode_dev2h_fmllr exp/sgmm5_mmi_b0.1/decode_dev2h_fmllr_it$iter

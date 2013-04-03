@@ -99,7 +99,6 @@ open (OUTLEX, "| sort -u > $outLex")
 
 
 $numWords = $numProns = 0;
-@substituted_phones = undef;
 while ($line=<INLEX>) {
     chomp;
     ###############################################
@@ -134,19 +133,18 @@ while ($line=<INLEX>) {
                         $is_original_tag{$phone} = 1;
                         $sylTag .= $phone;
                     } elsif ( $phone =~ m:_:) {
-                        # It is a phone containing "_" (underscore)
-                        $new_phone=$phone;
-                        $new_phone=~ s/\_//g;
-                        if (( $is_original_phone{$phone} ) and not defined( $substituted_phones{phone}) ) {
-                          die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
-                        } else {
-                          print STDERR "WARNING, phone $phone was substituted for $new_phone\n" unless $substituted_phones{$phone};
-                          
-                        }
-
-                        $is_original_phone{$new_phone} = "$new_phone";
-                        $substituted_phones{$phone} = $new_phone;
-                        $new_phones .= " $new_phone";
+                      # It is a phone containing "_" (underscore)
+                      $new_phone=$phone;
+                      $new_phone=~ s/\_//g;
+                      if (( $is_original_phone{$phone} ) and not defined( $substituted_phones{phone}) ) {
+                        die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
+                      } else {
+                        print STDERR "WARNING, phone $phone was substituted for $new_phone\n" unless $substituted_phones{$phone};
+                       
+                      }
+                      $is_original_phone{$new_phone} = "$new_phone";
+                      $substituted_phones{$phone} = $new_phone;
+                      $new_phones .= " $new_phone";
                     } else {
                         # It is a phone
                         if ( $substituted_phones{phone} ) {
@@ -157,7 +155,8 @@ while ($line=<INLEX>) {
                     }
                 }
                 $new_phones =~ s:(\S+):$1${sylTag}:g;
-                $new_pron .= $new_phones;
+                $new_pron .= $new_phones . "\t"; # the tab added by Dan, to keep track of
+                                                 # syllable boundaries.
                 $is_compound_tag{$sylTag} = 1;
                 while ($new_phones =~ s:^\s*(\S+)::) { $is_new_phone{$1} = 1; }
             }

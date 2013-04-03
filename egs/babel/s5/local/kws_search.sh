@@ -4,11 +4,11 @@
 # Apache 2.0.
 
 
-help_message="$0: create subset of the input directory (specified as the first directory).
-                 The subset is specified by the second parameter.
-                 The directory in which the subset should be created is the third parameter
-             Example:
-                 $0 <lang-dir> <data-dir> <decode-dir>"
+help_message="$(basename $0): do keyword indexing and search.  data-dir is assumed to have
+                 kws/ subdirectory that specifies the terms to search for.  Output is in
+                 decode-dir/kws/
+             Usage:
+                 $(basename $0) <lang-dir> <data-dir> <decode-dir>"
 
 # Begin configuration section.  
 #acwt=0.0909091
@@ -18,7 +18,7 @@ duptime=0.6
 cmd=run.pl
 model=
 skip_scoring=false
-skip_optimization=false
+skip_optimization=false # Should never be necessary to specify true here.
 max_states=150000
 stage=0
 word_ins_penalty=0
@@ -88,8 +88,6 @@ if [ $stage -le 1 ]; then
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
       kwsoutdir=$decodedir/kws_$lmwt
       mkdir -p $kwsoutdir
-
-      acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
       local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
   done
 fi
