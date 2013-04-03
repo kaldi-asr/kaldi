@@ -40,12 +40,6 @@ if [[ ! -f "$src_ecf_file" ]]; then
     printf "$help_message\n" 1>&2
     exit -1
 fi
-echo `dirname $tgt_ecf_file`
-if [[ ! -d `dirname $tgt_ecf_file` ]]; then
-    echo -e "FATAL: The destination directory does not exist! \n\n" 1>&2
-    printf "$help_message\n" 1>&2
-    exit -1
-fi
 
 
 duration=`grep -F -f $list_file $src_ecf_file | sed "s/.*dur=\"\([0-9.][0-9.]*\).*/\1  /g" | paste -s  -d "+" | bc -l`
