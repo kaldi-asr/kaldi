@@ -179,7 +179,7 @@ while [ $x -le $num_iters ]; do
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
 done
 
-(cd $dir; unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
+(cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
 echo "MMI training finished"
 

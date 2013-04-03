@@ -182,7 +182,7 @@ while [ $x -le $num_iters ]; do
   
 done
 
-(cd $dir; unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
+(cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
 echo "MPE training finished"
 
