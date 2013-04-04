@@ -52,7 +52,7 @@ steps/make_fmllr_feats.sh --nj 40 --cmd "$train_cmd" \
 { # Pre-train the DBN
 dir=exp/tri5a_pretrain-dbn
 $cuda_cmd $dir/_pretrain_dbn.log \
-  steps/pretrain_dbn.sh data-fmllr/train_100k_nodup $dir
+  steps/pretrain_dbn.sh data-fmllr/train_100k_nodup $dir || exit 1
 }
 
 
@@ -115,7 +115,7 @@ steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr t
 for ITER in 1; do
   steps/decode_nnet.sh --nj 30 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
     --nnet $dir/${ITER}.nnet \
-    exp/tri5a/graph data-fmllr/eval2000 $dir/decode_eval2000_it${ITER} 
+    exp/tri5a/graph data-fmllr/eval2000 $dir/decode_eval2000_it${ITER} || exit 1
 done 
 }
 
@@ -151,7 +151,7 @@ steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr t
 for ITER in 1 2 3 4; do
   steps/decode_nnet.sh --nj 30 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
     --nnet $dir/${ITER}.nnet \
-    exp/tri5a/graph data-fmllr/eval2000 $dir/decode_eval2000_it${ITER} 
+    exp/tri5a/graph data-fmllr/eval2000 $dir/decode_eval2000_it${ITER} || exit 1
 done 
 }
 

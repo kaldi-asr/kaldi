@@ -31,8 +31,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -ne 6 ]; then
-  echo "Usage: steps/train_mmi.sh <data> <lang> <srcdir> <ali> <denlats> <exp>"
-  echo " e.g.: steps/train_mmi.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
+  echo "Usage: steps/$0 <data> <lang> <srcdir> <ali> <denlats> <exp>"
+  echo " e.g.: steps/$0 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
   echo "Main options (for others, see top of script file)"
   echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
