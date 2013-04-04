@@ -111,10 +111,10 @@ class ContextFstImpl : public CacheImpl<Arc> {
 
   Weight Final(StateId s);
 
-  // This expands the state.
+  // Warning!  Not fully tested for correctness.  Does not really matter, the
+  // way this function is being used so far.
   size_t NumArcs(StateId s);
 
-  // This expands the state.
   size_t NumInputEpsilons(StateId s);
 
   size_t NumOutputEpsilons(StateId s) { return 0; }
@@ -469,7 +469,7 @@ void ComposeContextFst(const ContextFst<Arc, LabelT> &ifst1, const Fst<Arc> &ifs
                        MutableFst<Arc> *ofst,
                        const ComposeOptions &opts = ComposeOptions()) {
   ComposeFstOptions<Arc, ContextMatcher<Arc, LabelT> > nopts;
-  nopts.gc_limit = 0;  // Cache only the last state for fastest copy.
+  nopts.gc_limit = 0;  // Cache only the most recent state for fastest copy.
   *ofst = ComposeFst<Arc>(ifst1, ifst2, nopts);
   if (opts.connect)
     Connect(ofst);

@@ -54,6 +54,7 @@ void ConvertLattice(
   // what we get when we generate the lattices in the decoder.
   
   ofst->DeleteStates();
+
   // The states will be numbered exactly the same as the original FST.
   // Add the states to the new FST.
   StateId num_states = ffst.NumStates();
