@@ -1,6 +1,6 @@
 // kwsbin/kws-search.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
+// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 
     // Index has key "global"
     KwsLexicographicFst index = index_reader.Value("global");
-
+    
     // First we have to remove the disambiguation symbols. But rather than
     // removing them totally, we actually move them from input side to output
     // side, making the output symbol a "combined" symbol of the disambiguation
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     // Note that in Dogan and Murat's original paper, they simply remove the
     // disambiguation symbol on the input symbol side, which will not allow us
     // to do epsilon removal after composition with the keyword FST. They have
-    // to traversal the result FST.
+    // to traverse the resulting FST.
     int32 label_count = 1;
     std::tr1::unordered_map<uint64, uint32> label_encoder;
     std::tr1::unordered_map<uint32, uint64> label_decoder;
@@ -156,7 +156,8 @@ int main(int argc, char *argv[]) {
         aiter.SetValue(arc);
       }
     }
-
+    ArcSort(&index, fst::ILabelCompare<KwsLexicographicArc>());
+    
     int32 n_done = 0;
     int32 n_fail = 0;
     for (; !keyword_reader.Done(); keyword_reader.Next()) {
