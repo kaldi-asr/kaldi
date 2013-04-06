@@ -4,7 +4,7 @@ set -o pipefail
 set -x
 
 cer=0
-type=shadow # "type" may be "dev10h", "dev2h", or "eval15h", or "shadow" which means eval15h + dev2h. 
+type=shadow # "type" may be "dev10h", "dev2h", or "eval", or "shadow" which means eval + dev2h. 
 sopt="--min-lmwt 25 --max-lmwt 40"
 sopt2="--min-lmwt 15 --max-lmwt 30"
 

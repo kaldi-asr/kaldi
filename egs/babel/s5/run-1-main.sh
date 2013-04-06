@@ -16,13 +16,13 @@ if [ ! -d data/raw_train_data ]; then
 
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data || exit 1
     train_data_dir=`readlink -f ./data/raw_train_data`
-fi
 
-nj_max=`cat $train_data_list | wc -l`
-if [[ "$nj_max" -lt "$train_nj" ]] ; then
-  echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
-  exit 1;
-  train_nj=$nj_max
+    nj_max=`cat $train_data_list | wc -l`
+    if [[ "$nj_max" -lt "$train_nj" ]] ; then
+        echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+        exit 1;
+        train_nj=$nj_max
+    fi
 fi
 
 if [ ! -d data/raw_dev2h_data ]; then
@@ -120,9 +120,9 @@ fi
 
 if [ ! -f data/dev2h/.kws.done ]; then
   if [[ $subset_ecf ]] ; then
-    local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev2h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
+    local/kws_setup.sh --silence-word "<silence>" --case-insensitive $case_insensitive --subset-ecf $dev2h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   else
-    local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
+    local/kws_setup.sh --silence-word "<silence>" --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   fi
   touch data/dev2h/.kws.done
 fi
@@ -292,7 +292,7 @@ fi
     touch exp/tri5/decode_dev2h.started # A signal to the SGMM2 decoding step
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" --num-threads 6 \
         --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G" \
-      exp/tri5/graph data/dev2h exp/tri5/decode_dev2h &> exp/tri5/decode_dev2h.log 
+      exp/tri5/graph data/dev2h exp/tri5/decode_dev2h &> exp/tri5/decode_dev2h.log || exit 1;
     touch exp/tri5/decode_dev2h/.done
   fi
 
