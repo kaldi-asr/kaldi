@@ -11,10 +11,12 @@ filelist=
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ] ; then
-  echo "Converts the CMU segmentation database file into a kaldi data directory for UEM decoding"
+  echo "$0: Converts the CMU segmentation database file into a kaldi data directory for UEM decoding"
   echo ""
   echo "cmu_ume2kaldi_dir.sh <cmu-utt-database> <path-to-sph-files> <output-data-dir>"
   echo "example: cmu_ume2kaldi_dir.sh db-tag-eval-utt.dat /export/babel/data/106-tagalog/audio data/eval.uem"
+  echo "Was called with: $*"
+  exit 1;
 fi
 
 database=$1

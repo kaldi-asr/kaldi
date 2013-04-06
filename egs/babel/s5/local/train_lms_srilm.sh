@@ -52,11 +52,11 @@ mkdir -p $tgtdir
 # Extract the word list from the training dictionary; exclude special symbols
 sort $words_file | cut -f1 -d' ' | grep -v '\#0' | grep -v '<eps>' > $tgtdir/vocab
 if (($?)); then
-    echo "Failed to create vocab from $words_file"
-    exit 1
+  echo "Failed to create vocab from $words_file"
+  exit 1
 else
-    # wc vocab # doesn't work due to some encoding issues
-    echo vocab contains `cat $tgtdir/vocab | perl -ne 'BEGIN{$l=$w=0;}{split; $w+=$#_; $w++; $l++;}END{print "$l lines, $w words\n";}'`
+  # wc vocab # doesn't work due to some encoding issues
+  echo vocab contains `cat $tgtdir/vocab | perl -ne 'BEGIN{$l=$w=0;}{split; $w+=$#_; $w++; $l++;}END{print "$l lines, $w words\n";}'`
 fi
 
 # Kaldi transcript files contain Utterance_ID as the first word; remove it

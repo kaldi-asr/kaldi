@@ -9,6 +9,7 @@ case_insensitive=true
 subset_ecf=
 rttm_file=
 extraid=
+silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -84,5 +85,6 @@ if [ ! -z $rttm_file ] ; then
   cp "$rttm_file" $kwsdatadir/rttm || exit 1
 fi
 
-local/kws_data_prep.sh --case-insensitive $case_insensitive $langdir $datadir $kwsdatadir || exit 1
+[ ! -z $silence_word ] && sil_opt="--silence-word $silence_word"
+local/kws_data_prep.sh $sil_opt --case-insensitive $case_insensitive $langdir $datadir $kwsdatadir || exit 1
 

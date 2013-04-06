@@ -5,6 +5,7 @@
 
 # Begin configuration section.  
 case_insensitive=true
+silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
 echo $0 "$@"
@@ -31,8 +32,6 @@ keywords=$kwsdatadir/kwlist.xml
 
 mkdir -p $kwsdatadir;
 
-# This script is an example for the Babel Cantonese STD task
-
 cat $keywords | perl -e '
   #binmode STDIN, ":utf8"; 
   binmode STDOUT, ":utf8"; 
@@ -54,7 +53,7 @@ cat $keywords | perl -e '
 # are not in our $langdir/words.txt, as we won't find them anyway...
 #cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
-if $case_insensitive  ; then
+if $case_insensitive; then
   echo "Running case insensitive processing"
   cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
@@ -79,7 +78,16 @@ cat $kwsdatadir/keywords_all.int | \
 
 
 # Compile keywords into FSTs
-transcripts-to-fsts ark:$kwsdatadir/keywords.int ark:$kwsdatadir/keywords.fsts
+if [ -z $silence_word ]; then
+  transcripts-to-fsts ark:$kwsdatadir/keywords.int ark,t:$kwsdatadir/keywords.fsts
+else
+  silence_int=`grep -w $silence_word $langdir/words.txt | awk '{print $2}'`
+  [ -z $silence_int ] && \
+     echo "Error: could not find integer representation of silence word $silence_word" && exit 1;
+  transcripts-to-fsts ark:$kwsdatadir/keywords.int ark,t:- | \
+    awk -v 'OFS=\t' -v silint=$silence_int '{if (NF == 4 && $1 != 0) { print $1, $1, silint, silint; } print; }' \
+     > $kwsdatadir/keywords.fsts
+fi
 
 # Create utterance id for each utterance
 cat $datadir/segments | \

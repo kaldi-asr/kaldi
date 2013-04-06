@@ -18,10 +18,12 @@ duptime=0.6
 cmd=run.pl
 model=
 skip_scoring=false
-skip_optimization=false # Should never be necessary to specify true here.
+skip_optimization=false # true can speed it up if #keywords is small.
 max_states=150000
 stage=0
 word_ins_penalty=0
+silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
+ntrue_scale=1.0
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -77,7 +79,8 @@ if [ $stage -le 0 ] ; then
       mkdir -p $kwsoutdir
 
       acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-      steps/make_index.sh --cmd "$cmd" --acwt $acwt $model_flags\
+      [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
+      steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
         --skip-optimization $skip_optimization --max-states $max_states \
         --word-ins-penalty $word_ins_penalty \
         $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
@@ -98,7 +101,7 @@ if [ $stage -le 2 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_normalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
     cat $decodedir/kws_LMWT/result.* \| \
-      utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+      utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
         --segments=$datadir/segments --normalize=true \
         --map-utter=$kwsdatadir/utter_map --digits=3 \
         - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1
@@ -109,7 +112,7 @@ if [ $stage -le 3 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_unnormalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
     cat $decodedir/kws_LMWT/result.* \| \
-        utils/write_kwslist.pl --flen=0.01 --duration=$duration \
+        utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
           --segments=$datadir/segments --normalize=false \
           --map-utter=$kwsdatadir/utter_map \
           - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.unnormalized.xml || exit 1;
