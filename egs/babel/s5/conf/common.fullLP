@@ -7,5 +7,12 @@ dnn_num_parameters=7000000
 dnn_num_hidden_layers=4
 dnn_mem_reqs="mem_free=2.0G,ram_free=0.5G"
 
+
 bnf_every_nth_frame=2 # take every 2nd frame.
 babel_type=full
+
+decode_extra_opts="--num-threads 6 --parallel-opts \"-pe smp 6 -l mem_free=4G,ram_free=0.7G\" "
+sgmm_train_extra_opts=""
+sgmm_group_extra_opts=" --group 3 --parallel-opts \"-pe smp 3 -l mem_free=6G,ram_free=2G\" "
+sgmm_denlats_extra_opts="--num-threads 4 --parallel-opts \"-pe smp 4\" "
+
