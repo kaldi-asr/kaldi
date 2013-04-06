@@ -217,8 +217,8 @@ decode_si() {
   fi
 }
 
-#decode_si exp/tri1 &
-#sleep 5;  # Let any "start-up error" messages from the subshell get logged
+decode_si exp/tri1 &
+sleep 5;  # Let any "start-up error" messages from the subshell get logged
 
 echo ---------------------------------------------------------------------
 echo "Starting (medium) triphone training in exp/tri2 on" `date`
@@ -233,8 +233,8 @@ if [ ! -f exp/tri2/.done ]; then
   touch exp/tri2/.done
 fi
 
-#decode_si exp/tri2 &
-#sleep 5; 
+decode_si exp/tri2 &
+sleep 5; 
 
 echo ---------------------------------------------------------------------
 echo "Starting (full) triphone training in exp/tri3 on" `date`
@@ -249,8 +249,8 @@ if [ ! -f exp/tri3/.done ]; then
   touch exp/tri3/.done
 fi
 
-#decode_si exp/tri3 &
-#sleep 5
+decode_si exp/tri3 &
+sleep 5
 
 echo ---------------------------------------------------------------------
 echo "Starting (lda_mllt) triphone training in exp/tri4 on" `date`
@@ -264,7 +264,7 @@ if [ ! -f exp/tri4/.done ]; then
     $numLeavesMLLT $numGaussMLLT data/train data/lang exp/tri3_ali exp/tri4 || exit 1
   touch exp/tri4/.done
 fi
-#decode_si exp/tri4 &
+decode_si exp/tri4 &
 
 echo ---------------------------------------------------------------------
 echo "Starting (SAT) triphone training in exp/tri5 on" `date`
@@ -304,7 +304,7 @@ fi
         data/lang data/dev2h exp/tri5/decode_dev2h
     touch exp/tri5/decode_dev2h/kws/.done 
   fi
-) 
+) &
 sleep 5; # Let any "start-up error" messages from the subshell get logged
 
 
@@ -373,7 +373,7 @@ fi
         data/lang data/dev2h exp/sgmm5/decode_dev2h_fmllr
     touch exp/sgmm5/decode_dev2h_fmllr/kws/.done
   fi
-) 
+) &
 
 sleep 10; # Let any "start-up error" messages from the subshell get logged
 echo "See exp/sgmm5/mkgraph.log, exp/sgmm5/decode_dev2h.log and exp/sgmm5/decode_dev2h_fmllr.log for decoding outcomes"
