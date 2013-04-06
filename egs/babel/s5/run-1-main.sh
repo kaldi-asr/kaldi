@@ -120,9 +120,9 @@ fi
 
 if [ ! -f data/dev2h/.kws.done ]; then
   if [[ $subset_ecf ]] ; then
-    local/kws_setup.sh --silence-word "<silence>" --case-insensitive $case_insensitive --subset-ecf $dev2h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
+    local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev2h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   else
-    local/kws_setup.sh --silence-word "<silence>" --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
+    local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev2h || exit 1
   fi
   touch data/dev2h/.kws.done
 fi
