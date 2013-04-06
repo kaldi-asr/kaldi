@@ -13,6 +13,6 @@ gunzip -c $lmfile | \
     fstcompile --isymbols=$langdir/words.txt \
     --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
     fstrmepsilon > $destdir/G.fst || exit 1
-fstisstochastic $destdir/G.fst 
+fstisstochastic $destdir/G.fst || true
 
 exit 0

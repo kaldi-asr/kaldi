@@ -19,7 +19,7 @@
 
 if [ ! -d ptdnn ]; then
   echo "Checking out PTDNN code.  You will have to edit the config file!"
-  svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
+ # svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
 fi
 
 if ! nvidia-smi; then
@@ -45,7 +45,7 @@ num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || ex
 # to ptdnn/exp_bnf/config.py, replacing a couple of things as we copy it.
 
 config_in=conf/bnf/config_${babel_type}.py
-[ ! -f config_in ] && echo "No such config file $config_in" && exit 1;
+[ ! -f $config_in ] && echo "No such config file $config_in" && exit 1;
 ! cat $config_in | sed "s|CWD|$PWD|" | sed "s/N_OUTS/${num_pdfs}/" > ptdnn/exp_bnf/config.py && \
   echo "Error setting ptdnn/exp_bnf/config.py" && exit 1;
   

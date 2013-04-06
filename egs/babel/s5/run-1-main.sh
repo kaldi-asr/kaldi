@@ -204,11 +204,11 @@ decode_si() {
     echo "Spawning decoding with triphone models in $dir on" `date`
     echo ---------------------------------------------------------------
     mkdir -p $dir/graph
-    utils/mkgraph.sh data/lang $dir $dir/graph &> $dir/mkgraph.log || exit 1;
+    utils/mkgraph.sh data/lang $dir $dir/graph |tee $dir/mkgraph.log || exit 1;
     mkdir -p $dir/decode_dev2h
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
        --num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G" \
-       $dir/graph data/dev2h $dir/decode_dev2h &> $dir/decode_dev2h.log || exit 1;
+       $dir/graph data/dev2h $dir/decode_dev2h |tee $dir/decode_dev2h.log || exit 1;
 
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
         data/lang data/dev2h $dir/decode_dev2h
@@ -217,8 +217,8 @@ decode_si() {
   fi
 }
 
-decode_si exp/tri1 &
-sleep 5;  # Let any "start-up error" messages from the subshell get logged
+#decode_si exp/tri1 &
+#sleep 5;  # Let any "start-up error" messages from the subshell get logged
 
 echo ---------------------------------------------------------------------
 echo "Starting (medium) triphone training in exp/tri2 on" `date`
@@ -233,8 +233,8 @@ if [ ! -f exp/tri2/.done ]; then
   touch exp/tri2/.done
 fi
 
-decode_si exp/tri2 &
-sleep 5; 
+#decode_si exp/tri2 &
+#sleep 5; 
 
 echo ---------------------------------------------------------------------
 echo "Starting (full) triphone training in exp/tri3 on" `date`
@@ -249,8 +249,8 @@ if [ ! -f exp/tri3/.done ]; then
   touch exp/tri3/.done
 fi
 
-decode_si exp/tri3 &
-sleep 5
+#decode_si exp/tri3 &
+#sleep 5
 
 echo ---------------------------------------------------------------------
 echo "Starting (lda_mllt) triphone training in exp/tri4 on" `date`
@@ -264,7 +264,7 @@ if [ ! -f exp/tri4/.done ]; then
     $numLeavesMLLT $numGaussMLLT data/train data/lang exp/tri3_ali exp/tri4 || exit 1
   touch exp/tri4/.done
 fi
-decode_si exp/tri4 &
+#decode_si exp/tri4 &
 
 echo ---------------------------------------------------------------------
 echo "Starting (SAT) triphone training in exp/tri5 on" `date`
@@ -287,12 +287,13 @@ fi
     echo ---------------------------------------------------------------------
     mkdir -p exp/tri5/graph
     utils/mkgraph.sh \
-        data/lang exp/tri5 exp/tri5/graph &> exp/tri5/mkgraph.log
+        data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
     mkdir -p exp/tri5/decode_dev2h
     touch exp/tri5/decode_dev2h.started # A signal to the SGMM2 decoding step
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" --num-threads 6 \
         --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G" \
-      exp/tri5/graph data/dev2h exp/tri5/decode_dev2h &> exp/tri5/decode_dev2h.log || exit 1;
+      exp/tri5/graph data/dev2h exp/tri5/decode_dev2h |tee exp/tri5/decode_dev2h.log || exit 1
+
     touch exp/tri5/decode_dev2h/.done
   fi
 
@@ -303,7 +304,7 @@ fi
         data/lang data/dev2h exp/tri5/decode_dev2h
     touch exp/tri5/decode_dev2h/kws/.done 
   fi
-) &
+) 
 sleep 5; # Let any "start-up error" messages from the subshell get logged
 
 
@@ -347,20 +348,20 @@ fi
 
 
 (
-  if [ ! -f exp/sgmm5/decode_dev2h/.done ]; then
+  if [ ! -f exp/sgmm5/decode_dev2h_fmllr/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Spawning exp/sgmm5/decode_dev2h_fmllr on" `date`
     echo ---------------------------------------------------------------------
     echo "exp/sgmm5/decode_dev2h will wait on tri5 decode if necessary"
-    while [ ! -f exp/tri5/decode_dev2h_fmllr/.done ]; do sleep 30; done
+    while [ ! -f exp/tri5/decode_dev2h/.done ]; do sleep 30; done
     mkdir -p exp/sgmm5/graph
     utils/mkgraph.sh \
-        data/lang exp/sgmm5 exp/sgmm5/graph &> exp/sgmm5/mkgraph.log
+        data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
     steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj --cmd "$decode_cmd" \
         --num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=5G,ram_free=0.8G" \
         --transform-dir exp/tri5/decode_dev2h \
-        exp/sgmm5/graph data/dev2h/ exp/sgmm5/decode_dev2h_fmllr &> exp/sgmm5/decode_dev2h_fmllr.log
+        exp/sgmm5/graph data/dev2h/ exp/sgmm5/decode_dev2h_fmllr |tee exp/sgmm5/decode_dev2h_fmllr.log
     touch exp/sgmm5/decode_dev2h_fmllr/.done
   fi
 
@@ -372,7 +373,7 @@ fi
         data/lang data/dev2h exp/sgmm5/decode_dev2h_fmllr
     touch exp/sgmm5/decode_dev2h_fmllr/kws/.done
   fi
-) &
+) 
 
 sleep 10; # Let any "start-up error" messages from the subshell get logged
 echo "See exp/sgmm5/mkgraph.log, exp/sgmm5/decode_dev2h.log and exp/sgmm5/decode_dev2h_fmllr.log for decoding outcomes"
@@ -419,7 +420,7 @@ fi
 # Ready to decode with discriminative SGMM2 models
 ################################################################################
 
-wait $sgmm5decode; # Need lattices from the corresponding SGMM decoding passes
+wait ; # Need lattices from the corresponding SGMM decoding passes
 
 
 echo ---------------------------------------------------------------------
@@ -427,8 +428,8 @@ echo "Starting exp/sgmm5_mmi_b0.1/decode_dev2h[_fmllr] on" `date`
 echo ---------------------------------------------------------------------
 for iter in 1 2 3 4; do
   if [ ! -f exp/sgmm5_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done ]; then
-    echo "Waiting for exp/sgmm5/decode_dev2h_fmllr_it$iter/.done if necessary"
-    while [ ! -f exp/sgmm5/decode_dev2h_fmllr_it$iter/.done ]; do sleep 30; done
+    echo "Waiting for exp/sgmm5/decode_dev2h_fmllr/.done if necessary"
+    while [ ! -f exp/sgmm5/decode_dev2h_fmllr/.done ]; do sleep 30; done
     steps/decode_sgmm2_rescore.sh \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_dev2h \
         data/lang data/dev2h exp/sgmm5/decode_dev2h_fmllr exp/sgmm5_mmi_b0.1/decode_dev2h_fmllr_it$iter
