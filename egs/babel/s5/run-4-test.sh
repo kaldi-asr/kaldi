@@ -90,7 +90,9 @@ if [ $type == dev10h ]; then
     steps/compute_cmvn_stats.sh data/dev10h.uem exp/make_plp/dev10h.uem plp
     utils/fix_data_dir.sh data/dev10h.uem
 
-    local/kws_setup.sh --case-insensitive $case_insensitive $dev10h_ecf_file $dev10h_data_kwlist $dev10h_rttm_file data/lang data/dev10h.uem
+    local/kws_setup.sh --case-insensitive $case_insensitive \
+      --rttm-file $dev10h_rttm_file \
+      $dev10h_ecf_file $dev10h_kwlist_file data/lang data/dev10h.uem
     touch data/dev10h.uem/.done
   fi
 fi
