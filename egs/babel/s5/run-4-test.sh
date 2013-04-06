@@ -9,9 +9,9 @@ type=dev2h
 . ./lang.conf || exit 1;
 
 
+type=dev10h
 . utils/parse_options.sh     
 
-type=dev10h
 
 if [ $# -ne 0 ]; then
   echo "Usage: $(basename $0) [--type (dev10h|dev2h|eval|shadow)]"
@@ -168,6 +168,7 @@ if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.done ]; then
     --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${type}.uem \
     --num-threads 6 --parallel-opts "-pe smp 6 -l ram_free=0.5G" \
     exp/sgmm5/graph data/${type}.uem exp/sgmm5/decode_fmllr_${type}.uem | tee exp/sgmm5/decode_fmllr_${type}.uem.log
+  touch exp/sgmm5/decode_fmllr_${type}.uem/.done
 fi  
 
 if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.kws.done ]; then
