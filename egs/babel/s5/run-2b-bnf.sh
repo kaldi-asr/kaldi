@@ -19,7 +19,7 @@
 
 if [ ! -d ptdnn ]; then
   echo "Checking out PTDNN code.  You will have to edit the config file!"
- # svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
+  svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
 fi
 
 if ! nvidia-smi; then
