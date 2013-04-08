@@ -5,23 +5,38 @@
 
 # Begin configuration section.  
 case_insensitive=true
+use_icu=false
+icu_transform="'Any-Lower()'"
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
+
 # End configuration section.
 
 echo $0 "$@"
+
+help_message="
+   Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>
+    e.g.: local/kws_data_prep.sh data/lang/ data/eval/ data/kws/
+   Input is in <kws-data-dir>: kwlist.xml, ecf.xml (rttm file not needed).
+   Output is in <kws-data/dir>: keywords.txt, keywords_all.int, kwlist_invocab.xml,
+       kwlist_outvocab.xml, keywords.fsts
+   Note: most important output is keywords.fsts
+   allowed switches:
+      --case-sensitive <true|false>      # Shall we be case-sensitive or not?
+                                         # Please not the case-sensitivness depends 
+                                         # on the shell locale!
+      --use-uconv <true|false>           # Use the ICU uconv binary to normalize casing
+      --icu-transform <string>           # When using ICU, use this transliteration
+              
+"
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
 
 if [ $# -ne 3 ]; then
-   echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <kws-data-dir>"
-   echo " e.g.: local/kws_data_prep.sh data/lang/ data/eval/ data/kws/"
-   echo "Input is in <kws-data-dir>: kwlist.xml, ecf.xml (rttm file not needed)."
-   echo "Output is in <kws-data/dir>: keywords.txt, keywords_all.int, kwlist_invocab.xml,"
-   echo "    kwlist_outvocab.xml, keywords.fsts"
-   echo "Note: most important output is keywords.fsts"
-   exit 1;
+  printf "FATAL: invalid number of arguments.\n\n"
+  printf "$help_message\n"
+  exit 1;
 fi
 
 langdir=$1;
@@ -53,12 +68,19 @@ cat $keywords | perl -e '
 # are not in our $langdir/words.txt, as we won't find them anyway...
 #cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
-if $case_insensitive; then
+if [[ $case_insensitive && ! $use_icu ]] ; then
   echo "Running case insensitive processing"
-  cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
+  cat $langdir/words.txt | '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
 
   cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
+    sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
+elif [[ $case_insensitive && $use_icu ]] ; then
+  echo "Running case insensitive processing (using ICU with transform \"$icu_transform\")"
+  cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
+  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
+
+  cat $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 else
   cp $langdir/words.txt  $kwsdatadir/words.txt

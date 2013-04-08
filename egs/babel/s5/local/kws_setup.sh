@@ -9,6 +9,10 @@ case_insensitive=true
 subset_ecf=
 rttm_file=
 extraid=
+use_icu=false
+icu_transform="Any-Lower()"
+kwlist_wordlist=false
+langid=107
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
@@ -26,6 +30,9 @@ allowed switches:
       --case-sensitive <true|false>      # Shall we be case-sensitive or not?
                                          # Please not the case-sensitivness depends 
                                          # on the shell locale!
+      --use-icu <true|false>           # Use the ICU uconv binary to normalize casing
+      --icu-transform <string>           # When using ICU, use this transliteration
+      --kwlist-wordlist                  # The file with the list of words is not an xml
               "
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -66,7 +73,7 @@ for dirname in "$langdir" "$datadir" ; do
 done
 
 if [ ! -z $extraid ]; then
-  kwsdatadir=$datadir/kws${extraid}
+  kwsdatadir=$datadir/${extraid}_kws
 else
   kwsdatadir=$datadir/kws
 fi
@@ -79,12 +86,29 @@ else
   local/make_ecf_subset.sh $subset_ecf $ecf_file > $kwsdatadir/ecf.xml
 fi
 
-cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
+if $kwlist_wordlist ; then 
+  (
+  echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
+  id=1 
+  for line in `cat $kwlist_file` ; do
+    id_str=$( printf "KWS$langid-%04d\n" $id )
+    echo "  <kw kwid=\"$id_str\">"
+    echo "    <kwtext>$line</kwtext>"
+    echo "  </kw>"
+    id=$(( $id + 1 ))
+  done
+  echo ' </kwlist>'
+  ) > $kwsdatadir/kwlist.xml || exit 1
+else
+  cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
+fi
 
 if [ ! -z $rttm_file ] ; then
   cp "$rttm_file" $kwsdatadir/rttm || exit 1
 fi
 
 [ ! -z $silence_word ] && sil_opt="--silence-word $silence_word"
-local/kws_data_prep.sh $sil_opt --case-insensitive $case_insensitive $langdir $datadir $kwsdatadir || exit 1
+local/kws_data_prep.sh --case-insensitive ${case_insensitive} \
+  $sil_opt --use_icu ${use_icu} --icu-transform ${icu_transform} \
+  $langdir $datadir $kwsdatadir || exit 1
 
