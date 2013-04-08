@@ -148,7 +148,7 @@ for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri2/graph_sw1_${lm_suffix}
     $train_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/tri2 $graph_dir
-    steps/decode_deltas.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
       $graph_dir data/eval2000 exp/tri2/decode_eval2000_sw1_${lm_suffix}
   ) &
 done
@@ -242,24 +242,28 @@ steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/train_nodup data/lang exp/tri4b_{ali,denlats}_all \
   exp/tri4b_mmi_b0.1 || exit 1;
 
-for lm_suffix in tg fsh_tgpr; do
-  (
-    graph_dir=exp/tri4a/graph_sw1_${lm_suffix}
-    decode_dir=exp/tri4a_mmi_b0.1/decode_eval2000_${i}.mdl_sw1_${lm_suffix}
+for iter in 1 2 3 4; do
+  for lm_suffix in tg fsh_tgpr; do
+    (
+      graph_dir=exp/tri4a/graph_sw1_${lm_suffix}
+      decode_dir=exp/tri4a_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_${lm_suffix}
     steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
-      $graph_dir data/eval2000 $decode_dir
+    --iter $iter --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
+            $graph_dir data/eval2000 $decode_dir
   ) &
+  done
 done
 
-for lm_suffix in tg fsh_tgpr; do
-  (
-    graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
-    decode_dir=exp/tri4b_mmi_b0.1/decode_eval2000_${i}.mdl_sw1_${lm_suffix}
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
-      $graph_dir data/eval2000 $decode_dir
+for iter in 1 2 3 4; do
+  for lm_suffix in tg fsh_tgpr; do
+    (
+      graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
+      decode_dir=exp/tri4b_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_${lm_suffix}
+      steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+    --iter $iter --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
+    $graph_dir data/eval2000 $decode_dir   
   ) &
+  done
 done
 
 #TODO(arnab): add lmrescore here
