@@ -15,12 +15,16 @@ steps/train_sgmm2.sh --cmd "$train_cmd" \
   9000 30000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup \
   exp/ubm5a/final.ubm exp/sgmm2_5a || exit 1;
 
-
-utils/mkgraph.sh data/lang_test exp/sgmm2_5a exp/sgmm2_5a/graph || exit 1;
-
-steps/decode_sgmm2.sh  --cmd "$decode_cmd" --config conf/decode.config \
-  --nj 30 --transform-dir exp/tri4a/decode_eval2000 \
-  exp/sgmm2_5a/graph data/eval2000 exp/sgmm2_5a/decode_eval2000
+for lm_suffix in tg fsh_tgpr; do
+  (
+    graph_dir=exp/sgmm2_5a/graph_sw1_${lm_suffix}
+    $train_cmd $graph_dir/mkgraph.log \
+      utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/sgmm2_5a $graph_dir
+    steps/decode_sgmm2.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
+      --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} $graph_dir \
+      data/eval2000 exp/sgmm2_5a/decode_eval2000_sw1_${lm_suffix}
+  ) &
+done
 
  # Now discriminatively train the SGMM system on 100k_nodup data.
 steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" --transform-dir exp/tri4a_ali_100k_nodup \
