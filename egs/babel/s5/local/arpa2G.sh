@@ -1,4 +1,4 @@
-#Simple utility script to convert the gziped ARPA lm into a G.fst file
+#Simple utility script to convert the gzipped ARPA lm into a G.fst file
 
 lmfile=$1
 langdir=$2

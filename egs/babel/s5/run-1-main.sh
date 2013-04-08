@@ -28,11 +28,16 @@ fi
 if [ ! -d data/raw_dev2h_data ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the DEV2H set"
-  echo ---------------------------------------------------------------------
-  
+  echo ---------------------------------------------------------------------  
   local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
 fi
-dev2h_data_dir=`readlink -f ./data/raw_dev2h_data`
+
+if [ ! -d data/raw_dev10h_data ]; then
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the DEV10H set"
+  echo ---------------------------------------------------------------------  
+  local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
+fi
 
 nj_max=`cat $dev2h_data_list | wc -l`
 if [[ "$nj_max" -lt "$decode_nj" ]] ; then
@@ -84,24 +89,25 @@ if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; th
     $train_data_dir data/train > data/train/skipped_utts.log || exit 1
 fi
 
-if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot "$dev2h_data_dir" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h data lists in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  mkdir -p data/dev2h
-  local/prepare_acoustic_training_data.pl \
-    --fragmentMarkers \-\*\~ \
-    $dev2h_data_dir data/dev2h > data/dev2h/skipped_utts.log || exit 1
-fi
+for set in dev2h dev10h; do
+  if [[ ! -f data/${set}/wav.scp || data/${set}/wav.scp -ot ./data/raw_${set}_data/audio ]]; then
+    echo ---------------------------------------------------------------------
+    echo "Preparing ${set} data lists in data/${set} on" `date`
+    echo ---------------------------------------------------------------------
+    mkdir -p data/$data
+    local/prepare_acoustic_training_data.pl \
+      --fragmentMarkers \-\*\~ \
+      `pwd`/data/raw_${set}_data data/${set} > data/${set}/skipped_utts.log || exit 1
+  fi
 
-
-if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h stm files in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
-  cp $glmFile data/dev2h/glm
-fi
+  if [[ ! -f data/${set}/glm || data/${set}/glm -ot "$glmFile" ]]; then
+    echo ---------------------------------------------------------------------
+    echo "Preparing ${set} stm files in data/${set} on" `date`
+    echo ---------------------------------------------------------------------
+    local/prepare_stm.pl --fragmentMarkers \-\*\~ data/${set} || exit 1
+    cp $glmFile data/${set}/glm
+  fi
+done
 
 # We will simply override the default G.fst by the G.fst generated using SRILM
 if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
@@ -127,31 +133,31 @@ if [ ! -f data/dev2h/.kws.done ]; then
   touch data/dev2h/.kws.done
 fi
 
-
-if [ ! -f data/train/.plp.done ]; then
-  echo ---------------------------------------------------------------------
-  echo "Starting plp feature extraction in plp on" `date`
-  echo ---------------------------------------------------------------------
-  steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $train_nj \
-    data/train exp/make_plp/train plp || exit 1
-  steps/compute_cmvn_stats.sh \
-    data/train exp/make_plp/train plp || exit 1
-# In case plp extraction failed on some utterance, delist them
-  utils/fix_data_dir.sh data/train
-  touch data/train/.plp.done
+if [ ! -f data/dev10h/.kws.done ]; then
+  if [[ $subset_ecf ]] ; then
+    local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $dev10h_data_list $ecf_file $kwlist_file $rttm_file data/lang data/dev10h || exit 1
+  else
+    local/kws_setup.sh --case-insensitive $case_insensitive $ecf_file $kwlist_file $rttm_file data/lang data/dev10h || exit 1
+  fi
+  touch data/dev10h/.kws.done
 fi
 
-if [ ! -f data/dev2h/.plp.done ]; then
-  steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $decode_nj \
-    data/dev2h exp/make_plp/dev2h plp || exit 1
-  steps/compute_cmvn_stats.sh \
-    data/dev2h exp/make_plp/dev2h plp || exit 1
-  # In case plp extraction failed on some utterance, delist them
-  utils/fix_data_dir.sh data/dev2h
-  touch data/dev2h/.plp.done
-fi
+for set in train dev2h dev10h; do 
+  echo ---------------------------------------------------------------------
+  echo "Starting plp feature extraction for ${set} in plp on" `date`
+  echo ---------------------------------------------------------------------
+  if [ ! -f data/${set}/.plp.done ]; then
+    steps/make_plp.sh \
+      --cmd "$train_cmd" --nj $decode_nj \
+      data/${set} exp/make_plp/${set} plp || exit 1
+    steps/compute_cmvn_stats.sh \
+      data/${set} exp/make_plp/${set} plp || exit 1
+     # In case plp extraction failed on some utterance, delist them
+    utils/fix_data_dir.sh data/${set}
+    touch data/${set}/.plp.done
+  fi
+done
+
 mkdir -p exp
 
 if [ ! -f data/train_sub3/.done ]; then
