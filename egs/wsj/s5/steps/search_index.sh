@@ -7,6 +7,7 @@
 cmd=run.pl
 nbest=-1
 strict=true
+indices_dir=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -28,17 +29,21 @@ fi
 kwsdatadir=$1;
 kwsdir=$2;
 
+if [ -z $indices_dir ] ; then
+  indices_dir=$kwsdatadir
+fi
+
 mkdir -p $kwsdir/log;
-nj=`cat $kwsdir/num_jobs` || exit 1;
+nj=`cat $indices_dir/num_jobs` || exit 1;
 keywords=$kwsdatadir/keywords.fsts;
 
-for f in $kwsdir/index.1.gz $keywords; do
+for f in $indices_dir/index.1.gz $keywords; do
   [ ! -f $f ] && echo "make_index.sh: no such file $f" && exit 1;
 done
 
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
-  kws-search --strict=$strict \
-  "ark:gzip -cdf $kwsdir/index.JOB.gz|" ark:$keywords \
+  kws-search --strict=$strict --negative-tolerance=-1 \
+  "ark:gzip -cdf $indices_dir/index.JOB.gz|" ark:$keywords \
   "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
 
 exit 0;
