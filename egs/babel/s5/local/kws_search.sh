@@ -136,6 +136,12 @@ if [ $stage -le 3 ]; then
           - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
 
+if [ -z $extraid ] ; then
+  extraid_flags=
+else
+  extraid_flags="  --extraid ""$extraid"" "
+fi
+
 if [ $stage -le 4 ]; then
   if [[ (! -x local/kws_score.sh ) ]] ; then
     echo "Not scoring, because the file local/kws_score.sh is not present"
@@ -144,7 +150,7 @@ if [ $stage -le 4 ]; then
   else
     echo "Scoring KWS results"
     $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/scoring.LMWT.log \
-       local/kws_score.sh --extraid ${extraid} $datadir ${kwsoutdir}_LMWT || exit 1;
+       local/kws_score.sh $extraid_flags $datadir ${kwsoutdir}_LMWT || exit 1;
   fi
 fi
 
