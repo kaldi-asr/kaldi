@@ -22,6 +22,8 @@ if [ "$segments_stm_count" -gt "$segments_ctm_count"  ] ; then
   echo "FIXED CTM FILE"
   exit 0
 elif [ "$segments_stm_count" -lt "$segments_ctm_count"  ] ; then
+  echo "Segment STM count: $segments_stm_count"
+  echo "Segment CTM count: $segments_ctm_count"
   echo "FAILURE FIXING CTM FILE"
   exit 1
 else
