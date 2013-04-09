@@ -20,8 +20,10 @@ model=
 skip_scoring=false
 skip_optimization=false # true can speed it up if #keywords is small.
 max_states=150000
+indices_dir=
 stage=0
 word_ins_penalty=0
+extraid=
 silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
 ntrue_scale=1.0
 # End configuration section.
@@ -42,7 +44,21 @@ langdir=$1
 datadir=$2
 decodedir=$3
 
-kwsdatadir=$datadir/kws
+if [ -z $extraid ] ; then
+  kwsdatadir=$datadir/kws
+else
+  kwsdatadir=$datadir/${extraid}_kws
+fi
+
+if [ -z $extraid ] ; then
+  kwsoutdir=$decodedir/kws
+else
+  kwsoutdir=$decodedir/${extraid}_kws
+fi
+
+if [ -z $indices_dir ]; then
+  indices_dir=$kwsoutdir
+fi
 
 if [ ! -d "$datadir"  ] || [ ! -d "$kwsdatadir" ] ; then
     echo "FATAL: the data directory does not exist"
@@ -75,47 +91,49 @@ fi
 
 if [ $stage -le 0 ] ; then
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
-      kwsoutdir=$decodedir/kws_$lmwt
-      mkdir -p $kwsoutdir
+      indices=${indices_dir}_$lmwt
+      mkdir -p $indices
 
       acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
       [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
       steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
         --skip-optimization $skip_optimization --max-states $max_states \
         --word-ins-penalty $word_ins_penalty \
-        $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+        $kwsdatadir $langdir $decodedir $indices  || exit 1
   done
 fi
 
 if [ $stage -le 1 ]; then
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
-      kwsoutdir=$decodedir/kws_$lmwt
+      kwsoutput=${kwsoutdir}_$lmwt
+      indices=${indices_dir}_$lmwt
       mkdir -p $kwsoutdir
-      local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
+      local/search_index.sh --cmd "$cmd" --indices-dir $indices \
+        $kwsdatadir $kwsoutput  || exit 1
   done
 fi
 
 if [ $stage -le 2 ]; then
-  mkdir -p $decodedir/kws/
+  mkdir -p $kwsoutdir
   echo "Writing normalized results"
-  $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_normalized.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
-    cat $decodedir/kws_LMWT/result.* \| \
+    cat ${kwsoutdir}_LMWT/result.* \| \
       utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
         --segments=$datadir/segments --normalize=true \
         --map-utter=$kwsdatadir/utter_map --digits=3 \
-        - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.xml || exit 1
+        - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 3 ]; then
   echo "Writing unnormalized results"
-  $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_write_unnormalized.LMWT.log \
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_unnormalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
-    cat $decodedir/kws_LMWT/result.* \| \
+    cat ${kwsoutdir}_LMWT/result.* \| \
         utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
           --segments=$datadir/segments --normalize=false \
           --map-utter=$kwsdatadir/utter_map \
-          - - \| local/filter_kwslist.pl $duptime '>' $decodedir/kws_LMWT/kwslist.unnormalized.xml || exit 1;
+          - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -125,8 +143,8 @@ if [ $stage -le 4 ]; then
     echo "Not scoring, because --skip-scoring true was issued"
   else
     echo "Scoring KWS results"
-    $cmd LMWT=$min_lmwt:$max_lmwt $decodedir/kws/kws_scoring.LMWT.log \
-       local/kws_score.sh $datadir $decodedir/kws_LMWT || exit 1;
+    $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/scoring.LMWT.log \
+       local/kws_score.sh --extraid ${extraid} $datadir ${kwsoutdir}_LMWT || exit 1;
   fi
 fi
 

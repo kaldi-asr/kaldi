@@ -28,7 +28,7 @@ fi
 if [ -z $extraid ] ; then
   kwsdatadir=$1/kws
 else
-  kwsdatadir=$1/kws_${extraid}
+  kwsdatadir=$1/${extraid}_kws
 fi
 kwsoutputdir="$2/"
 
