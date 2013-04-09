@@ -12,8 +12,10 @@ dnn_extra_opts="--num_epochs 20 --num-epochs-extra 10 --add-layers-period 1 --sh
 bnf_every_nth_frame=1 # take all frames.
 babel_type=limited
 
-decode_extra_opts="--num-threads 6 --parallel-opts \"-pe smp 6 -l mem_free=4G,ram_free=0.7G\" "
+decode_extra_opts="-pe smp 6 -l mem_free=4G,ram_free=0.7G "
+decode_extra_threads=6 
 sgmm_train_extra_opts=""
 sgmm_group_extra_opts=" --group 3 --parallel-opts \"-pe smp 3 -l mem_free=6G,ram_free=2G\" "
 sgmm_denlats_extra_opts="--num-threads 4 --parallel-opts \"-pe smp 4\" "
 
+icu-transform="Any-Lower"
