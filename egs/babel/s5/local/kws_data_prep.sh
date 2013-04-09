@@ -80,7 +80,8 @@ elif [[ $case_insensitive && $use_icu ]] ; then
   cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
 
-  cat $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  | \
+  paste <(cut -f 1  $kwsdatadir/keywords.txt  ) \
+        <(cut -f 2  $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform" ) | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 else
   cp $langdir/words.txt  $kwsdatadir/words.txt

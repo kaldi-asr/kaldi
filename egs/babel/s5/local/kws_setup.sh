@@ -89,15 +89,15 @@ fi
 if $kwlist_wordlist ; then 
   (
   echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
-  id=1 
-  for line in `cat $kwlist_file` ; do
+  id=1
+  while read line; do
     id_str=$( printf "KWS$langid-%04d\n" $id )
     echo "  <kw kwid=\"$id_str\">"
     echo "    <kwtext>$line</kwtext>"
     echo "  </kw>"
     id=$(( $id + 1 ))
-  done
-  echo ' </kwlist>'
+  done < ${kwlist_file}
+  echo '</kwlist>'
   ) > $kwsdatadir/kwlist.xml || exit 1
 else
   cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
