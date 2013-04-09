@@ -142,8 +142,8 @@ if [ ! -f exp/tri5/decode_${type}.uem/.kws.done ]; then
   if [ $type == shadow ]; then
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem.si
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem
-    split_ctms exp/tri5/decode_shadow.uem.si data/dev2h data/eval.uem
-    split_ctms exp/tri5/decode_shadow.uem data/dev2h data/eval.uem
+    local/split_ctms.sh exp/tri5/decode_shadow.uem.si data/dev2h data/eval.uem
+    local/split_ctms.sh exp/tri5/decode_shadow.uem data/dev2h data/eval.uem
     
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
       exp/tri/decode_${type}.uem.si data/dev2h data/eval.uem
@@ -172,7 +172,7 @@ fi
 if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.kws.done ]; then
   local/lattice_to_ctm.sh --cmd "$decode_cmd" data/$type.uem data/lang exp/sgmm5/decode_fmllr_$type.uem 
   if [ $type == shadow ]; then
-    split_ctms exp/sgmm5/decode_fmllr_shadow.uem data/dev2h data/eval.uem
+    local/split_ctms.sh exp/sgmm5/decode_fmllr_shadow.uem data/dev2h data/eval.uem
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/shadow.uem data/lang \
       exp/sgmm5/decode_fmllr_shadow.uem data/dev2h data/eval.uem
   else
