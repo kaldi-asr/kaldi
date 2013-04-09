@@ -12,6 +12,9 @@ max_lmwt=17
 model=
 stage=0
 ctm_name=
+case_insensitive=true
+use_icu=true
+icu_transform='Any-Lower'
 #end configuration section.
 
 echo $0 $@
@@ -27,8 +30,6 @@ if [ $# -ne 3 ]; then
   echo "    --cer (0|1)                     # compute CER in addition to WER"
   exit 1;
 fi
-
-set -x
 
 data=$1
 lang=$2 # This parameter is not used -- kept only for backwards compatibility
@@ -61,18 +62,27 @@ fi
 mkdir -p $dir/scoring/log
 if [ $stage -le 0 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/stm '&&' cp $data/glm $dir/score_LMWT/glm '&&' \
+    cp $data/stm $dir/score_LMWT/stm.unsorted '&&' \
+    cp $data/glm $dir/score_LMWT/glm '&&' \
     cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
-    utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm.unsorted '&&' \
-    $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.unsorted \>$dir/score_LMWT/${name}.ctm '&&' \
-    $ScoringProgram -s -r $data/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl || exit 1
+    $SortingProgram sortSTM \<$dir/score_LMWT/stm.unsorted          \>$dir/score_LMWT/stm.sorted '&&' \
+    utils/fix_ctm.sh $dir/score_LMWT/stm.sorted $dir/score_LMWT/${name}.ctm.unsorted '&&' \
+    $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.unsorted  \>$dir/score_LMWT/${name}.ctm.sorted '&&' \
+    paste -d ' ' \<\(cut -f 1-5 -d ' ' $dir/score_LMWT/stm.sorted \) \
+                 \<\(cut -f 6- -d ' ' $dir/score_LMWT/stm.sorted \| uconv -f utf8 -t utf8 -x "$icu_transform" \) \
+        \> $dir/score_LMWT/stm '&&' \
+    paste -d ' ' \<\(cut -f 1-4 -d ' ' $dir/score_LMWT/${name}.ctm.sorted \) \
+                 \<\(cut -f 5-  -d ' ' $dir/score_LMWT/${name}.ctm.sorted \| uconv -f utf8 -t utf8 -x "$icu_transform" \) \
+        \> $dir/score_LMWT/${name}.ctm '&&' \
+    $ScoringProgram -s -r $dir/score_LMWT/stm  stm -h $dir/score_LMWT/${name}.ctm ctm \
+      -n "$name.ctm" -f 0 -D -F  -o  sum rsum prf dtl sgml -e utf-8 || exit 1
 fi
 
 if [ $stage -le 1 ]; then
   if [ $cer -eq 1 ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.char.log \
-      cp $data/char.stm $dir/score_LMWT/char.stm'&&'\
-      $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl || exit 1
+      $ScoringProgram -s -r $dir/score_LMWT/stm stm -h $dir/score_LMWT/${name}.ctm ctm \
+        -n "$name.char.ctm" -o sum rsum prf dtl sgml -f 0 -D -F -c NOASCII DH -e utf-8 || exit 1
   fi
 fi
 

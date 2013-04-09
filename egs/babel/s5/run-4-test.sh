@@ -138,26 +138,24 @@ if [ ! -f exp/tri5/decode_${type}.uem/.done ]; then
 fi
 
 
-if false; then # Disable the scoring for now...
-  if [ ! -f exp/tri5/decode_${type}.uem/.kws.done ]; then
+if [ ! -f exp/tri5/decode_${type}.uem/.kws.done ]; then
+  if [ $type == shadow ]; then
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem.si
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem
-    if [ $type == shadow ]; then
-      split_ctms exp/tri5/decode_shadow.uem.si data/dev2h data/eval.uem
-      split_ctms exp/tri5/decode_shadow.uem data/dev2h data/eval.uem
-      
-      local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-        exp/tri/decode_${type}.uem.si data/dev2h data/eval.uem
-      local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-        exp/tri5/decode_${type}.uem data/dev2h data/eval.uem
-    else
-      local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-        data/${type}.uem/ exp/tri5/decode_${type}.uem.si
-      local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-        data/${type}.uem/ exp/tri5/decode_${type}.uem
-    fi
-    touch exp/tri5/decode_${type}.uem/.kws.done
+    split_ctms exp/tri5/decode_shadow.uem.si data/dev2h data/eval.uem
+    split_ctms exp/tri5/decode_shadow.uem data/dev2h data/eval.uem
+    
+    local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
+      exp/tri/decode_${type}.uem.si data/dev2h data/eval.uem
+    local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
+      exp/tri5/decode_${type}.uem data/dev2h data/eval.uem
+  else
+    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
+      data/${type}.uem/ exp/tri5/decode_${type}.uem.si
+    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
+      data/${type}.uem/ exp/tri5/decode_${type}.uem
   fi
+  touch exp/tri5/decode_${type}.uem/.kws.done
 fi
 
 ####################################################################
@@ -200,9 +198,9 @@ for iter in 1 2 3 4; do
    
     touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.done
   fi
-  if [ ! exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.kws.done ]; then
-    local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
-      data/${type}.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
+  if [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.kws.done ]; then
+    #local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
+    #  data/${type}.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
 
     if [ $type == shadow ]; then
       local/split_ctms.sh data/shadow.uem exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
@@ -232,8 +230,8 @@ fi
 
 if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.kws.done && -f exp/tri6_nnet/final.mdl ]]; then
 
-  local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
-    data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem 
+  #local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
+  #  data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem 
 
   if [ "$type" != eval ]; then
     local/score_stm.sh --cmd "$decode_cmd" \
