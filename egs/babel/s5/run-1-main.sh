@@ -30,6 +30,27 @@ if [ ! -d data/raw_train_data ]; then
     fi
 fi
 
+if [ ! -d data/raw_dev2h_data ]; then
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the DEV2H set"
+  echo ---------------------------------------------------------------------  
+  local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
+fi
+
+if [ ! -d data/raw_dev10h_data ]; then
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the DEV10H set"
+  echo ---------------------------------------------------------------------  
+  local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
+fi
+
+nj_max=`cat $dev2h_data_list | wc -l`
+if [[ "$nj_max" -lt "$decode_nj" ]] ; then
+  echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
+  exit 1
+  decode_nj=$nj_max
+fi
+
 mkdir -p data/local
 if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" ]]; then
   echo ---------------------------------------------------------------------
@@ -57,6 +78,24 @@ if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; th
   local/prepare_acoustic_training_data.pl \
     --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
     $train_data_dir data/train > data/train/skipped_utts.log
+fi
+
+if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/audio ]]; then
+  echo ---------------------------------------------------------------------
+  echo "Preparing dev2h data lists in data/dev2h on" `date`
+  echo ---------------------------------------------------------------------
+  mkdir -p data/dev2h
+  local/prepare_acoustic_training_data.pl \
+    --fragmentMarkers \-\*\~ \
+    `pwd`/data/raw_dev2h_data data/dev2h > data/dev2h/skipped_utts.log || exit 1
+fi
+
+if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
+  echo ---------------------------------------------------------------------
+  echo "Preparing dev2h stm files in data/dev2h on" `date`
+  echo ---------------------------------------------------------------------
+  local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
+  cp $glmFile data/dev2h/glm
 fi
 
 # We will simply override the default G.fst by the G.fst generated using SRILM

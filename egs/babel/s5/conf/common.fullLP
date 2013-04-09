@@ -17,4 +17,4 @@ sgmm_train_extra_opts=""
 sgmm_group_extra_opts=" --group 3 --parallel-opts \"-pe smp 3 -l mem_free=6G,ram_free=2G\" "
 sgmm_denlats_extra_opts="--num-threads 4 --parallel-opts \"-pe smp 4\" "
 
-icu-transform="Any-Lower"
+icu_transform="Any-Lower"
