@@ -162,15 +162,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary_read);
     }
 
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good())
-        KALDI_ERR << "Could not open decoding-graph FST " << fst_in_filename;
-      decode_fst = VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
-      if (decode_fst == NULL)  // fst code will warn.
-        exit(1);
-    }
+    VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
 
     RegressionTree regtree;
     {

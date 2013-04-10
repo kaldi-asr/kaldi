@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert lattices so that the arcs in the CompactLattice format correspond with\n"
-        "phones.  The output symbols are still words, just the "
+        "phones.  The output symbols are still words, unless you specify --replace-output-symbols=true\n"
         "Usage: lattice-align-phones [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-align-phones final.mdl ark:1.lats ark:phone_aligned.lats\n"
         "Note: word-boundary file has format (on each line):\n"

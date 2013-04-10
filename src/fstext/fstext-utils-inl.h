@@ -1141,6 +1141,36 @@ void PropagateFinal(typename Arc::Label phi_label,
     PropagateFinalInternal(phi_label, s, fst);
 }
 
+template<class Arc>
+void RhoCompose(const Fst<Arc> &fst1,
+                const Fst<Arc> &fst2,
+                typename Arc::Label rho_label,
+                MutableFst<Arc> *ofst) {
+  KALDI_ASSERT(rho_label != kNoLabel); // just use regular compose in this case.
+  typedef Fst<Arc> F;
+  typedef RhoMatcher<SortedMatcher<F> > RM;
+  CacheOptions base_opts;
+  base_opts.gc_limit = 0; // Cache only the last state for fastest copy.
+  // ComposeFstImplOptions templated on matcher for fst1, matcher for fst2.
+  // The matcher for fst1 doesn't matter; we'll use fst2's matcher.
+  ComposeFstImplOptions<SortedMatcher<F>, RM> impl_opts(base_opts);
+
+  // the false below is something called rho_loop which is something I don't
+  // fully understand, but I don't think we want it.
+
+  // These pointers are taken ownership of, by ComposeFst.
+  RM *rho_matcher =
+      new RM(fst2, MATCH_INPUT, rho_label);
+  SortedMatcher<F> *sorted_matcher =
+      new SortedMatcher<F>(fst1, MATCH_NONE); // tell it
+  // not to use this matcher, as this would mean we would
+  // not follow rho transitions.
+  impl_opts.matcher1 = sorted_matcher;
+  impl_opts.matcher2 = rho_matcher;
+  *ofst = ComposeFst<Arc>(fst1, fst2, impl_opts);
+  Connect(ofst);
+}
+
 
 inline VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   if (rxfilename == "") rxfilename = "-"; // interpret "" as stdin,

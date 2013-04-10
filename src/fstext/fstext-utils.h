@@ -1,7 +1,7 @@
 // fstext/fstext-utils.h
 
 // Copyright 2009-2011  Microsoft Corporation
-// Copyright 2012       Johns Hopkins University (Author: Guoguo Chen)
+// Copyright 2012-2013  Johns Hopkins University (Author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -561,6 +561,7 @@ void PhiCompose(const Fst<Arc> &fst1,
                 typename Arc::Label phi_label,
                 MutableFst<Arc> *fst);
 
+
 // PropagateFinal propagates final-probs through
 // "phi" transitions (note that here, phi_label may
 // be epsilon if you want).  If you have a backoff LM
@@ -582,6 +583,18 @@ void PhiCompose(const Fst<Arc> &fst1,
 template<class Arc>
 void PropagateFinal(typename Arc::Label phi_label,
                     MutableFst<Arc> *fst);
+
+// PhiCompose is a version of composition where
+// the right hand FST (fst2) has speciall "rho transitions"
+// which are taken whenever no normal transition matches; these
+// transitions will be rewritten with whatever symbol was on
+// the first FST.
+template<class Arc>
+void RhoCompose(const Fst<Arc> &fst1,
+                const Fst<Arc> &fst2,
+                typename Arc::Label rho_label,
+                MutableFst<Arc> *fst);
+
 
 // Read an FST using Kaldi I/O mechanisms (pipes, etc.)
 // On error, throws using KALDI_ERR.

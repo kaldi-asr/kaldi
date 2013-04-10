@@ -1,6 +1,7 @@
 // bin/convert-ali.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,38 +22,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
-
-namespace kaldi {
-
-void ReadPhoneMap(std::string phone_map_rxfilename,
-                  std::vector<int32> *phone_map) {
-  // phone map file has format e.g.:
-  // 1 1
-  // 2 1
-  // 3 2
-  // 4 2
-  std::vector<std::vector<int32> > vec;  // vector of vectors, each with two elements
-  // (if file has right format). first is old phone, second is new phone
-  if (!ReadIntegerVectorVectorSimple(phone_map_rxfilename, &vec))
-    KALDI_ERR << "Error reading phone map from " <<
-        PrintableRxfilename(phone_map_rxfilename);
-  for (size_t i = 0; i < vec.size(); i++) {
-    if (vec[i].size() != 2 || vec[i][0]<=0 || vec[i][1]<=0 ||
-       (vec[i][0]<static_cast<int32>(phone_map->size()) &&
-        (*phone_map)[vec[i][0]] != -1))
-      KALDI_ERR << "Error reading phone map from "
-                 <<   PrintableRxfilename(phone_map_rxfilename)
-                 << " (bad line " << i << ")";
-    if (vec[i][0]>=static_cast<int32>(phone_map->size()))
-      phone_map->resize(vec[i][0]+1, -1);
-    KALDI_ASSERT((*phone_map)[vec[i][0]] == -1);
-    (*phone_map)[vec[i][0]] = vec[i][1];
-  }
-}
-
-
-} // end namespace kaldi
-
+#include "hmm/tree-accu.h" // for ReadPhoneMap
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -68,7 +38,8 @@ int main(int argc, char *argv[]) {
     std::string phone_map_rxfilename;
     ParseOptions po(usage);
     po.Register("phone-map", &phone_map_rxfilename,
-                "File name containing old->new phone mapping (each line is: old-integer-id new-integer-id)");
+                "File name containing old->new phone mapping (each line is: "
+                "old-integer-id new-integer-id)");
 
     po.Read(argc, argv);
 

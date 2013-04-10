@@ -113,16 +113,8 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
 
-      {
-        std::ifstream is(fst_in_str.c_str(), std::ifstream::binary);
-        if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
-                                  << fst_in_str;
-        decode_fst =
-            VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_str));
-        if (decode_fst == NULL) // fst code will warn.
-          exit(1);
-      }
-
+      decode_fst = fst::ReadFstKaldi(fst_in_str);
+      
       {    
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();

@@ -1,6 +1,7 @@
 // bin/phones-to-prons.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -108,13 +109,8 @@ int main(int argc, char *argv[]) {
                  << word_end_sym_str;
 
     // L should be lexicon with word start and end symbols marked.
-    VectorFst<StdArc> *L = NULL;
+    VectorFst<StdArc> *L = fst::ReadFstKaldi(lex_fst_filename);
     {
-      Input ki(lex_fst_filename);
-      L = VectorFst<StdArc>::Read(ki.Stream(),
-                                  fst::FstReadOptions(lex_fst_filename));
-      if (L == NULL) // fst code will warn.
-        exit(1);
       // Make sure that L is sorted on output symbol (words).
       fst::OLabelCompare<StdArc> olabel_comp;
       ArcSort(L, olabel_comp);

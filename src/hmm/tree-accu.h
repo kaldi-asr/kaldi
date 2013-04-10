@@ -1,6 +1,7 @@
 // hmm/tree-accu.h
 
 // Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,7 +43,22 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
                          const std::vector<int32> &ci_phones,  // sorted
                          const std::vector<int32> &alignment,
                          const Matrix<BaseFloat> &features,
+                         const std::vector<int32> *phone_map, // or NULL
                          std::map<EventType, GaussClusterable*> *stats);
+
+
+
+/*** Read a mapping from one phone set to another.  The phone map file has lines
+ of the form <old-phone> <new-phone>, where both entries are integers, usually
+ nonzero (but this is not enforced).  This program will crash if the input is
+ invalid, e.g. there are multiple inconsistent entries for the same old phone.
+ The output vector "phone_map" will be indexed by old-phone and will contain
+ the corresponding new-phone, or -1 for any entry that was not defined. */
+ 
+void ReadPhoneMap(std::string phone_map_rxfilename,
+                  std::vector<int32> *phone_map);
+
+
 
 /// @}
 

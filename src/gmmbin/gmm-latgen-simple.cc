@@ -1,6 +1,7 @@
 // gmmbin/gmm-latgen-simple.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -142,16 +143,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      std::ifstream is(fst_in_filename.c_str(), std::ifstream::binary);
-      if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
-                                << fst_in_filename;
-      decode_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_filename));
-      if (decode_fst == NULL) // fst code will warn.
-        exit(1);
-    }
+    VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;

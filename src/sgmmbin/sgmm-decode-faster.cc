@@ -110,14 +110,7 @@ int main(int argc, char *argv[]) {
     // It has to do with what happens on UNIX systems if you call fork() on a
     // large process: the page-table entries are duplicated, which requires a
     // lot of virtual memory.
-    VectorFst<StdArc> *decode_fst = NULL;
-    {
-      Input ki(fst_in_filename);
-      decode_fst =
-          VectorFst<StdArc>::Read(ki.Stream(), fst::FstReadOptions(fst_in_filename));
-      if (decode_fst == NULL)  // fst code will warn.
-        exit(1);
-    }
+    VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
 
     BaseFloat tot_like = 0.0;
     kaldi::int64 frame_count = 0;

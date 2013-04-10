@@ -112,16 +112,8 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> *decode_fst = NULL;
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-      
-      {
-        std::ifstream is(fst_in_str.c_str(), std::ifstream::binary);
-        if (!is.good()) KALDI_ERR << "Could not open decoding-graph FST "
-                                   << fst_in_str;
-        decode_fst =
-            VectorFst<StdArc>::Read(is, fst::FstReadOptions(fst_in_str));
-        if (decode_fst == NULL) // fst code will warn.
-          exit(1);
-      }
+
+      decode_fst = fst::ReadFstKaldi(fst_in_str);
 
       {
     

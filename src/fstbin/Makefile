@@ -18,8 +18,8 @@ BINFILES = fstdeterminizestar  \
            fstrmsymbols fstisstochastic fstminimizeencoded fstmakecontextfst \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
-           fstdeterminizelog fstphicompose fstpropfinal fstcopy \
-	       fstpushspecial
+           fstdeterminizelog fstphicompose fstrhocompose fstpropfinal fstcopy \
+	       fstpushspecial fsts-to-transcripts
 
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE = 

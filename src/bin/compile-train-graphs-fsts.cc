@@ -87,15 +87,8 @@ int main(int argc, char *argv[]) {
     }
 
     // need VectorFst because we will change it by adding subseq symbol.
-    VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.
-    {
-      std::ifstream is(lex_rxfilename.c_str(), std::ios_base::in|std::ios_base::binary);
-      if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_rxfilename;
-      lex_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_rxfilename));
-      if (lex_fst == NULL)
-        exit(1);
-    }
+    // ownership will be taken by gc.
+    VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_rxfilename);
 
     std::vector<int32> disambig_syms;
     if (disambig_rxfilename != "")

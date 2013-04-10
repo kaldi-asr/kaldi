@@ -1,6 +1,7 @@
 // fstbin/fsttablecompose.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -145,6 +146,32 @@ int main(int argc, char *argv[]) {
       }
       KALDI_LOG << "Composed " << n_done << " FSTs.";
       return (n_done != 0 ? 0 : 1);
+    } else if (is_table_1 && is_table_2) {
+      SequentialTableReader<VectorFstHolder> fst1_reader(fst1_in_str);
+      RandomAccessTableReader<VectorFstHolder> fst2_reader(fst2_in_str);
+      TableWriter<VectorFstHolder> fst_writer(fst_out_str);
+      int32 n_done = 0, n_err = 0;
+      for (; !fst1_reader.Done(); fst1_reader.Next()) {
+        std::string key = fst1_reader.Key();
+        if (!fst2_reader.HasKey(key)) {
+          KALDI_WARN << "No such key " << key << " in second table.";
+          n_err++;
+        } else {
+          const VectorFst<StdArc> &fst1(fst1_reader.Value()),
+              &fst2(fst2_reader.Value(key));
+          VectorFst<StdArc> result;
+          TableCompose(fst1, fst2, &result, opts);
+          if (result.NumStates() == 0) {
+            KALDI_WARN << "Empty output for key " << key;
+            n_err++;
+          } else {
+            fst_writer.Write(key, result);
+            n_done++;
+          }
+        }
+      }
+      KALDI_LOG << "Successfully composed " << n_done << " FSTs, errors or "
+                << "empty output on " << n_err;
     } else {
       KALDI_ERR << "The combination of tables/non-tables and match-type that you "
                 << "supplied is not currently supported.  Either implement this, "

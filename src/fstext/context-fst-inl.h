@@ -177,12 +177,19 @@ size_t ContextFstImpl<Arc, LabelT>::NumArcs(StateId s) {
     return CacheImpl<Arc>::NumArcs(s);
   }
   KALDI_ASSERT(s >= 0 && s < state_seqs_.size());
-  if (!state_seqs_[s].empty() && state_seqs_[s].back() == subsequential_symbol_) {
+  const vector<LabelT> &seq = state_seqs_[s];
+  KALDI_ASSERT(seq.size() == N_ - 1);
+  if (!seq.empty() && seq.back() == subsequential_symbol_) {
     // State is not a "normal" state because it just saw the subsequential symbol,
-    // hence it cannot accept most arcs.  Expand it so we don't have to work out
-    // whether it has zero or one arcs.  [This is a rare case.]
-    if (!this->HasArcs(s)) Expand(s);
-    return CacheImpl<Arc>::NumArcs(s);
+    // hence it cannot accept phones.
+
+    if (P_ == N_ - 1 || seq[P_] == subsequential_symbol_) { // don't
+      // accept subsequential symbol.. c.f. logic in CreateArc().
+      return disambig_syms_.size();
+    } else {
+      return disambig_syms_.size() + 1; // Accept disambig syms and
+                                        // subsequential symbol.
+    }
   } else {
     // For normal states, in general there is potentially an arc for each phone and an arc
     // for each disambiguation symbol, plus one for the subsequential symbol.
@@ -272,11 +279,13 @@ bool ContextFstImpl<Arc, LabelT>::CreateArc(StateId s,
   } else if (IsPhoneSymbol(olabel) || olabel == subsequential_symbol_) {
     // If all is OK, we shift the old sequence left by 1 and push on the new phone.
 
-    if (olabel != subsequential_symbol_ && N_ > 1 && seq.back() == subsequential_symbol_) {
+    if (olabel != subsequential_symbol_ && !seq.empty() &&
+        seq.back() == subsequential_symbol_) {
       return false;  // Phone not allowed to follow subsequential symbol.
     }
 
-    if (olabel == subsequential_symbol_ && (P_ == N_-1 || seq[P_] == subsequential_symbol_)) {
+    if (olabel == subsequential_symbol_ &&
+        (P_ == N_-1 || seq[P_] == subsequential_symbol_)) {
       // We already had "enough" subsequential symbols in a row and don't want to
       // accept any more, or we'd be making the subsequential symbol the central phone.
       return false;

@@ -1,6 +1,7 @@
 // gmmbin/gmm-decode-faster.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +34,6 @@ fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   Input ki(filename); // use ki.Stream() instead of is.
   if (!ki.Stream().good()) KALDI_ERR << "Could not open decoding-graph FST "
                                       << filename;
-
   fst::FstHeader hdr;
   if (!hdr.Read(ki.Stream(), "<unknown>")) {
     KALDI_ERR << "Reading FST: error reading FST header.";

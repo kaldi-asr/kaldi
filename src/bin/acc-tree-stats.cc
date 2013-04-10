@@ -1,6 +1,7 @@
 // bin/acc-tree-stats.cc
 
 // Copyright 2009-2011  Microsoft Corporation, GoVivace Inc.
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,14 +42,21 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     float var_floor = 0.01;
     string ci_phones_str;
+    std::string phone_map_rxfilename;
     int N = 3;
     int P = 1;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("var-floor", &var_floor, "Variance floor for tree clustering.");
     po.Register("ci-phones", &ci_phones_str, "Colon-separated list of integer "
-                "indices of context-independent phones.");
+                "indices of context-independent phones (after mapping, if "
+                "--phone-map option is used).");
     po.Register("context-width", &N, "Context window size.");
-    po.Register("central-position", &P, "Central context-window position (zero-based)");
+    po.Register("central-position", &P, "Central context-window position "
+                "(zero-based)");
+    po.Register("phone-map", &phone_map_rxfilename,
+                "File name containing old->new phone mapping (each line is: "
+                "old-integer-id new-integer-id)");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() < 3 || po.NumArgs() > 4) {
@@ -61,14 +69,22 @@ int main(int argc, char *argv[]) {
         alignment_rspecifier = po.GetArg(3),
         accs_out_wxfilename = po.GetOptArg(4);
 
+    std::vector<int32> phone_map;
+    if (phone_map_rxfilename != "") {  // read phone map.
+      ReadPhoneMap(phone_map_rxfilename,
+                   &phone_map);
+    }
+    
     std::vector<int32> ci_phones;
     if (ci_phones_str != "") {
       SplitStringToIntegers(ci_phones_str, ":", false, &ci_phones);
       std::sort(ci_phones.begin(), ci_phones.end());
       if (!IsSortedAndUniq(ci_phones) || ci_phones[0] == 0) {
-        KALDI_ERR << "Invalid set of ci_phones: "<<ci_phones_str;
+        KALDI_ERR << "Invalid set of ci_phones: " << ci_phones_str;
       }
     }
+
+    
 
     TransitionModel trans_model;
     {
@@ -107,6 +123,7 @@ int main(int argc, char *argv[]) {
                             ci_phones,
                             alignment,
                             mat,
+                            (phone_map_rxfilename != "" ? &phone_map : NULL),
                             &tree_stats);
         num_done++;
         if (num_done % 1000 == 0)

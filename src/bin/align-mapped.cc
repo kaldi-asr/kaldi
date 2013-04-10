@@ -1,6 +1,7 @@
 // gmmbin/gmm-align.cc
 
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -78,15 +79,8 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
-    VectorFst<StdArc> *lex_fst = NULL;  // ownership will be taken by gc.
-    {
-      std::ifstream is(lex_in_filename.c_str(), std::ios_base::in|std::ios_base::binary);
-      if (!is.good()) KALDI_ERR << "Could not open lexicon FST " << (std::string)lex_in_filename;
-      lex_fst =
-          VectorFst<StdArc>::Read(is, fst::FstReadOptions(lex_in_filename));
-      if (lex_fst == NULL)
-        exit(1);
-    }
+    VectorFst<StdArc> *lex_fst = fst::ReadFstKaldi(lex_in_filename);
+    // ownership will be taken by gc.
 
     std::vector<int32> disambig_syms;    
     if (disambig_rxfilename != "")

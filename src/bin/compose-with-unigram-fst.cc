@@ -1,6 +1,7 @@
 // bin/compose-with-unigram-fst.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,19 +60,9 @@ int main(int argc, char *argv[]) {
     std::string graph_wspecifier = po.GetArg(3);
 
     //Read the unigram fst
-    VectorFst<StdArc> *unigram_fst = NULL;
-    {
-      std::ifstream is(unigramfst_rxfilename.c_str(), 
-                       std::ios_base::in|std::ios_base::binary);
-      if (!is.good()) KALDI_ERR << "Could not open unigram FST " << unigramfst_rxfilename;
-      KALDI_LOG << "Loading unigram FST " << unigramfst_rxfilename;
-      unigram_fst = VectorFst<StdArc>::Read(is, fst::FstReadOptions(unigramfst_rxfilename));
-      if(NULL == unigram_fst) {
-        KALDI_ERR << "Cannot read unigram FST " << unigramfst_rxfilename;
-      }
-      //sort it along the input symbols
-      ArcSort(unigram_fst, StdILabelCompare());
-    }
+    VectorFst<StdArc> *unigram_fst = fst::ReadFstKaldi(unigramfst_rxfilename);
+    //sort it along the input symbols
+    ArcSort(unigram_fst, StdILabelCompare());
 
     //Iterate over the graphs
     SequentialTableReader<fst::VectorFstHolder> graph_reader(graph_rspecifier);
