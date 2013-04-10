@@ -48,8 +48,8 @@ while true; do
   case "$1" in
     # If the enclosing script is called with --help option, print the help 
     # message and exit.  Scripts should put help messages in $help_message
-  --help|-h) if [ -z "$help_message" ]; then echo "No help found.";
-	  else printf "$help_message\n"; fi; 
+  --help|-h) if [ -z "$help_message" ]; then echo "No help found." 1>&2;
+	  else printf "$help_message\n" 1>&2 ; fi; 
 	  exit 0 ;; 
     # If the first command-line argument begins with "--" (e.g. --foo-bar), 
     # then work out the variable name as $name, which will equal "foo_bar".
@@ -60,7 +60,7 @@ while true; do
     # The test [ -z ${foo_bar+xxx} ] will return true if the variable foo_bar
     # is undefined.  We then have to wrap this test inside "eval" because 
     # foo_bar is itself inside a variable ($name).
-      eval '[ -z "${'$name'+xxx}" ]' && echo "$0: invalid option $1" && exit 1;
+      eval '[ -z "${'$name'+xxx}" ]' && echo "$0: invalid option $1" 1>&2 && exit 1;
       
       oldval="`eval echo \\$$name`";
     # Work out whether we seem to be expecting a Boolean argument.
@@ -76,7 +76,7 @@ while true; do
         
     # Check that Boolean-valued arguments are really Boolean.
       if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then
-        echo "$0: expected \"true\" or \"false\": --$name $2"
+        echo "$0: expected \"true\" or \"false\": --$name $2" 1>&2
         exit 1;
       fi
       shift 2;
@@ -88,8 +88,7 @@ done
 
 # Check for an empty argument to the --cmd option, which can easily occur as a 
 # result of scripting errors.
-[ ! -z "${cmd+xxx}" ] && [ -z "$cmd" ] && echo "$0: empty argument to --cmd option" && exit 1;
+[ ! -z "${cmd+xxx}" ] && [ -z "$cmd" ] && echo "$0: empty argument to --cmd option" 1>&2 && exit 1;
 
 
-true; # so this script returns code zero.
-
+true; # so this script returns exit code 0.

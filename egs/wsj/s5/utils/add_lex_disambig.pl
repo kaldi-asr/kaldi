@@ -74,7 +74,7 @@ foreach $l (@L) {
     $word = shift @A;
     $phnseq = join(" ",@A);
     if(!defined $issubseq{$phnseq}
-       && $count{$phnseq}==1) {
+       && $count{$phnseq} == 1) {
         ; # Do nothing.
     } else {
         if($phnseq eq "") { # need disambig symbols for the empty string

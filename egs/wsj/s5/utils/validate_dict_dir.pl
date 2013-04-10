@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 
+# Apache 2.0.
 # Guoguo Chen (guoguo@jhu.edu)
+# Daniel Povey (dpovey@gmail.com)
 #
 # Validation script for data/local/dict
 
@@ -23,8 +25,14 @@ while(<S>) {
   chomp;
   my @col = split(" ", $_);
   foreach(0 .. @col-1) {
-    if($silence{@col[$_]}) {$exit = 1; print "--> ERROR: phone \"@col[$_]\" duplicates in $dict/silence_phones.txt (line $idx)\n"; $success = 0;}
-    else {$silence{@col[$_]} = 1;}
+    my $p = $col[$_];
+    if($silence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n"; $success = 0;}
+    else {$silence{$p} = 1;}
+    if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
+      $exit = 1;
+      print "--> ERROR: phone \"$p\" has disallowed written form";
+      $success = 0;
+    }
   }
   $idx ++;
 }
@@ -65,8 +73,14 @@ while(<NS>) {
   chomp;
   my @col = split(" ", $_);
   foreach(0 .. @col-1) {
-    if($nonsilence{@col[$_]}) {$exit = 1; print "--> ERROR: phone \"@col[$_]\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; $success = 0;}
-    else {$nonsilence{@col[$_]} = 1;}
+    my $p = $col[$_];
+    if($nonsilence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; $success = 0;}
+    else {$nonsilence{$p} = 1;}
+    if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
+      $exit = 1;
+      print "--> ERROR: phone \"$p\" has disallowed written form";
+      $success = 0;
+    }
   }
   $idx ++;
 }

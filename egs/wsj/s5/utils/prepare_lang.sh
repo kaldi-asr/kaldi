@@ -59,6 +59,9 @@ make_individual_sil_models=false # enforce individual models for all silence pho
 if [ $# -ne 4 ]; then 
   echo "usage: utils/prepare_lang.sh <dict-src-dir> <oov-dict-entry> <tmp-dir> <lang-dir>"
   echo "e.g.: utils/prepare_lang.sh data/local/dict <SPOKEN_NOISE> data/local/lang data/lang"
+  echo "<dict-src-dir> should contain the following files:"
+  echo " extra_questions.txt  lexicon.txt nonsilence_phones.txt  optional_silence.txt  silence_phones.txt"
+  echo "See http://kaldi.sourceforge.net/data_prep.html#data_prep_lang_creating for more info."
   echo "options: "
   echo "     --num-sil-states <number of states>             # default: 5, #states in silence models."
   echo "     --num-nonsil-states <number of states>          # default: 3, #states in non-silence models."
@@ -67,7 +70,7 @@ if [ $# -ne 4 ]; then
   echo "     --reverse (true|false)                          # reverse lexicon."
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all non-silence phones. "
-  echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 < silprob < 1]"
+  echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 <= silprob < 1]"
   echo "     --generate-l-align (true|false)                 # default: false; generate alignment FST with word start/end symbols"
   echo "     --make-individual-sil-models (true|false)       # default: false; make non-{shared,split} states for each silphone"
   exit 1;
@@ -233,6 +236,10 @@ cat $tmpdir/lexicon.txt | awk '{print $1}' | sort | uniq  | \
 #...
 
 silphone=`cat $srcdir/optional_silence.txt` || exit 1;
+[ -z "$silphone" ] && \
+  ( echo "You have no optional-silence phone; it is required in the current scripts"
+    echo "but you may use the option --sil-prob 0.0 to stop it being used." ) && \
+   exit 1;
 
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 
@@ -297,3 +304,9 @@ if $generate_l_align; then
       --keep_isymbols=false --keep_osymbols=false | \
   fstarcsort --sort_type=olabel > $dir/L_align.fst || exit 1;
 fi
+
+echo "$(basename $0): validating output directory"
+! utils/validate_lang.pl $dir && echo "$(basename $0): error validating output" &&  exit 1;
+
+exit 0;
+
