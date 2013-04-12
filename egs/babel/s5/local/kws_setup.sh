@@ -9,12 +9,16 @@ case_insensitive=true
 subset_ecf=
 rttm_file=
 extraid=
-use_icu=false
-icu_transform="Any-Lower()"
+use_icu=true
+icu_transform="Any-Lower"
 kwlist_wordlist=false
 langid=107
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
+
+set -e 
+set -u
+set -o pipefail
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -107,6 +111,7 @@ if [ ! -z $rttm_file ] ; then
   cp "$rttm_file" $kwsdatadir/rttm || exit 1
 fi
 
+sil_opt=
 [ ! -z $silence_word ] && sil_opt="--silence-word $silence_word"
 local/kws_data_prep.sh --case-insensitive ${case_insensitive} \
   $sil_opt --use_icu ${use_icu} --icu-transform ${icu_transform} \

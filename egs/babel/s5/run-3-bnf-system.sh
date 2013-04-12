@@ -7,6 +7,12 @@
 
 . conf/common_vars.sh
 . ./lang.conf
+[ -f local.conf ] && . ./local.conf
+
+set -e 
+set -o pipefail
+set -u
+
 sopt="--min-lmwt 25 --max-lmwt 40"
 sopt2="--min-lmwt 15 --max-lmwt 30"
 
@@ -16,47 +22,50 @@ sopt2="--min-lmwt 15 --max-lmwt 30"
 #ln -s $tmpdir/plp_processed .
 
 
-if [ ! -f data/train_bnf/.done ]; then
-  steps_BNF/make_bnf_feat.sh --stage 0 --nj $train_nj --cmd "$train_cmd" --transform_dir exp/tri5_ali \
-    data/train data/train_bnf exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf || exit 1
-  touch data/train_bnf/.done
+if [ ! -f data/bnf_train/.done ]; then
+  steps_BNF/make_bnf_feat.sh --stage 0 --nj $train_nj \
+    --cmd "$train_cmd" --transform_dir exp/tri5_ali \
+    data/train data/bnf_train exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf 
+  touch data/bnf_train/.done
 fi
 
-if [ ! -f data/dev_bnf/.done ]; then
-  steps_BNF/make_bnf_feat.sh --stage 0 --nj $decode_nj --cmd "$train_cmd" --transform_dir exp/tri5/decode \
-    data/dev data/dev_bnf exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf || exit 1
-  touch data/dev_bnf/.done
+if [ ! -f data/bnf_dev2h/.done ]; then
+  steps_BNF/make_bnf_feat.sh --stage 0 --nj $decode_nj \
+    --cmd "$train_cmd" --transform_dir exp/tri5/decode_dev2h/ \
+    data/dev2h/ data/bnf_dev2h exp_BNF/bnf_dnn exp/tri5_ali exp_BNF/make_bnf 
+  touch data/bnf_dev2h/.done
 fi
 
-if [ ! -f data/train_sat/.done ]; then
+if [ ! -f data/sat_train/.done ]; then
   steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
-    --nj $train_nj --transform-dir $srcdir  data/train_sat data/train \
-    $srcdir exp_BNF/make_fmllr_feats/log plp_processed/ || exit 1;
-  touch data/train_sat/.done
+    --nj $train_nj --transform-dir exp/tri5_ali  data/sat_train data/train \
+    exp/tri5_ali exp_BNF/make_fmllr_feats/log plp_processed/ 
+  touch data/sat_train/.done
 fi
 
-if [ ! -f data/dev_sat/.done ]; then
+if [ ! -f data/sat_dev2h/.done ]; then
   steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
-    --nj $decode_nj --transform-dir $srcdir/decode/  data/dev_sat data/dev \
-    $srcdir exp_BNF/make_fmllr_feats/log plp_processed/ || exit 1
-  touch data/dev_sat/.done
+    --nj $decode_nj --transform-dir exp/tri5/decode_dev2h  \
+    data/sat_dev2h data/dev2h \
+    exp/tri5 exp_BNF/make_fmllr_feats/log plp_processed/ 
+  touch data/sat_dev2h/.done
 fi
 
-if [ ! -f data/train_app/.done ]; then
+if [ ! -f data/app_train/.done ]; then
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
-    data/train_bnf data/train_sat data/train_app exp_BNF/append_feats/log plp_processed/ || exit 1
+    data/bnf_train data/sat_train data/app_train exp_BNF/append_feats/log plp_processed/ 
   steps/compute_cmvn_stats.sh --fake \
-    data/train_app exp/make_plp/train_app plp_processed/ || exit 1
-  touch data/train_app/.done
+    data/app_train exp/make_plp/app_train plp_processed/ 
+  touch data/app_train/.done
 fi
 
-if [ ! -f data/dev_app/.done ]; then
+if [ ! -f data/app_dev2h/.done ]; then
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
-    data/dev_bnf data/dev_sat data/dev_app exp_BNF/append_feats/log plp_processed/  || exit 1
+    data/bnf_dev2h data/sat_dev2h data/app_dev2h exp_BNF/append_feats/log plp_processed/  
   steps/compute_cmvn_stats.sh --fake \
-    data/dev_app exp/make_plp/dev_app plp_processed/ || exit 1
-  ln -s `pwd`/data/dev/kws data/dev_app/kws
-  touch data/dev_app/.done
+    data/app_dev2h exp/make_plp/app_dev2h plp_processed/ 
+  ln -s `pwd`/data/dev2h/kws data/app_dev2h/kws
+  touch data/app_dev2h/.done
 fi
 
 
@@ -69,11 +78,11 @@ decode_lda_mllt() {
     mkdir -p $dir/decode_dev2h
     
     steps/decode.sh --nj $decode_nj --acwt 0.0333 --scoring-opts "$sopt" --cmd "$decode_cmd" \
-      $dir/graph data/dev_app $dir/decode_dev2h &> $dir/decode_dev2h.log || exit 1;
+      $dir/graph data/app_dev2h $dir/decode_dev2h &> $dir/decode_dev2h.log 
   fi
   if [ ! -f $dir/decode_dev2h/kws/.done ];then
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app $dir/decode_dev2h || exit 1;
+      data/lang data/app_dev2h $dir/decode_dev2h 
     touch $dir/decode_dev2h/kws/.done
   fi
 }
@@ -81,7 +90,7 @@ decode_lda_mllt() {
 
 if [ ! -f exp/tri5_ali_10/.done ]; then
   steps/align_fmllr.sh --boost-silence 1.5 --nj 10 --cmd "$train_cmd" \
-    data/train data/lang $srcdir exp/tri5_ali_10  || exit 1
+    data/train data/lang exp/tri5_ali exp/tri5_ali_10  
   touch exp/tri5_ali_10/.done
 fi
 
@@ -89,7 +98,7 @@ fi
 if [ ! -f exp_BNF/tri5/.done ]; then
   steps/train_lda_mllt.sh --splice-opts "--left-context=1 --right-context=1" \
     --dim 60 --boost-silence 1.5 --cmd "$train_cmd" \
-    $numLeavesMLLT $numGaussMLLT data/train_app data/lang exp/tri5_ali_10 exp_BNF/tri5 || exit 1;
+    $numLeavesMLLT $numGaussMLLT data/app_train data/lang exp/tri5_ali_10 exp_BNF/tri5 ;
   touch exp_BNF/tri5/.done
 fi
 
@@ -98,13 +107,13 @@ decode_lda_mllt exp_BNF/tri5  &
 
 if [ ! -f exp_BNF/tri5ali_20/.done ]; then
   steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
-    data/train_app data/lang exp_BNF/tri5 exp_BNF/tri5ali_20  || exit 1;
+    data/app_train data/lang exp_BNF/tri5 exp_BNF/tri5ali_20  
   touch exp_BNF/tri5ali_20/.done
 fi
 
 if [ ! -f exp_BNF/tri6/.done ]; then
   steps/train_sat.sh --boost-silence 1.5 --cmd "$train_cmd" \
-    $numLeavesSAT $numGaussSAT data/train_app data/lang exp_BNF/tri5ali_20 exp_BNF/tri6 || exit 1;
+    $numLeavesSAT $numGaussSAT data/app_train data/lang exp_BNF/tri5ali_20 exp_BNF/tri6 
   touch exp_BNF/tri6/.done
 fi
 
@@ -116,17 +125,18 @@ fi
     data/lang $dir $dir/graph &> $dir/mkgraph.log
   mkdir -p $dir/decode_dev2h
   if [ ! -f $dir/decode_dev2h/.done ]; then
+    exit 1
     steps/decode_fmllr.sh --nj $decode_nj --acwt 0.0333 --scoring-opts "$sopt" \
-      --cmd "queue.pl -l mem_free=2G,ram_free=0.5G" --num-threads 6 --parallel-opts "-pe smp 6" \
-      $dir/graph data/dev_app $dir/decode_dev2h &> $dir/decode_dev2h.log || exit 1;
+      --cmd "$train_cmd" "${decode_extra_opts[@]}" \
+      $dir/graph data/app_dev2h $dir/decode_dev2h &> $dir/decode_dev2h.log ;
     touch $dir/decode_dev2h/.done
   fi
   if [ ! -f $dir/decode_dev2h/kws/.done ];then
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app $dir/decode_dev2h
+      data/lang data/app_dev2h $dir/decode_dev2h
     touch $dir/decode_dev2h/kws/.done
   fi
-) &
+) || exit 1
 
 
 echo ---------------------------------------------------------------------
@@ -135,15 +145,15 @@ echo ---------------------------------------------------------------------
 [ -f exp_BNF/tri6_ali/trans.1 ] && touch exp_BNF/tri6_ali/.done ## TEMP, remove this line
 if [ ! -f exp_BNF/tri6_ali/.done ]; then
   steps/align_fmllr.sh \
-    --boost-silence 1.5 --nj 30 --cmd "$train_cmd" \
-    data/train_app data/lang exp_BNF/tri6 exp_BNF/tri6_ali || exit 1
+    --boost-silence 1.5 --nj $train_nj --cmd "$train_cmd" \
+    data/app_train data/lang exp_BNF/tri6 exp_BNF/tri6_ali 
   touch exp_BNF/tri6_ali/.done
 fi
 
 [ -f exp_BNF/ubm7/final.ubm ] && touch exp_BNF/ubm7/.done ## TEMP, remove this line
 if [ ! -f exp_BNF/ubm7/.done ]; then
   steps/train_ubm.sh --cmd "$train_cmd" \
-    $numGaussUBM data/train_app data/lang exp_BNF/tri6_ali exp_BNF/ubm7 || exit 1
+    $numGaussUBM data/app_train data/lang exp_BNF/tri6_ali exp_BNF/ubm7 
   touch exp_BNF/ubm7/.done
 fi
 
@@ -152,17 +162,17 @@ if [ ! -f exp_BNF/sgmm7/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp_BNF/sgmm7 on" `date`
   echo ---------------------------------------------------------------------
-  steps/train_sgmm2_group.sh --cmd "queue.pl -l mem_free=2.0G,ram_free=2.0G" \
-    --parallel-opts "-pe smp 3 -l mem_free=6.0G,ram_free=2.0G" --group 3 \
-    $numLeavesSGMM $numGaussSGMM data/train_app data/lang \
-    exp_BNF/tri6_ali exp_BNF/ubm7/final.ubm exp_BNF/sgmm7 || exit 1
+  steps/train_sgmm2_group.sh \
+    --cmd "$train_cmd" "${sgmm_group_extra_opts[@]}"\
+    $numLeavesSGMM $numGaussSGMM data/app_train data/lang \
+    exp_BNF/tri6_ali exp_BNF/ubm7/final.ubm exp_BNF/sgmm7 
   touch exp_BNF/sgmm7/.done
 fi
 
 ################################################################################
 # Ready to decode with SGMM2 models
 ################################################################################
-
+echo "Waiting for finishing tri6 decode"
 echo ---------------------------------------------------------------------
 echo "Spawning exp_BNF/sgmm7/decode_dev2h[_fmllr] on" `date`
 echo ---------------------------------------------------------------------
@@ -171,22 +181,21 @@ echo ---------------------------------------------------------------------
     utils/mkgraph.sh \
         data/lang exp_BNF/sgmm7 exp_BNF/sgmm7/graph &> exp_BNF/sgmm7/mkgraph.log
 
-    mkdir -p exp_BNF/sgmm7/decode_dev2h_fmllr
+    mkdir -p exp_BNF/sgmm7/decode_fmllr_dev2h
     
-    if [ ! -f exp_BNF/sgmm7/decode_dev2h_fmllr/.done ]; then
+    if [ ! -f exp_BNF/sgmm7/decode_fmllr_dev2h/.done ]; then
       steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj \
         --transform-dir exp_BNF/tri6/decode_dev2h \
-        --cmd "queue.pl -l mem_free=3G,ram_free=3G" --num-threads 6 \
-        --parallel-opts "-pe smp 6 -l mem_free=3G,ram_free=0.6G" \
+        --cmd "$train_cmd" "${decode_extra_opts[@]}"\
         --acwt 0.05 --scoring-opts "$sopt2" \
-        exp_BNF/sgmm7/graph data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr || exit 1;
-      touch exp_BNF/sgmm7/decode_dev2h_fmllr/.done;
+        exp_BNF/sgmm7/graph data/app_dev2h exp_BNF/sgmm7/decode_fmllr_dev2h 
+      touch exp_BNF/sgmm7/decode_fmllr_dev2h/.done;
     fi
     
-    if [ ! -f exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done ]; then
+    if [ ! -f exp_BNF/sgmm7/decode_fmllr_dev2h/kws/.done ]; then
       local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-        data/lang data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr
-      touch exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done
+        data/lang data/app_dev2h exp_BNF/sgmm7/decode_fmllr_dev2h
+      touch exp_BNF/sgmm7/decode_fmllr_dev2h/kws/.done
     fi
 ) 
 
@@ -196,8 +205,8 @@ if [ ! -f exp_BNF/sgmm7_ali/.done ]; then
   echo "Starting exp_BNF/sgmm7_ali on" `date`
   echo ---------------------------------------------------------------------
   steps/align_sgmm2.sh \
-     --nj 30 --cmd "$train_cmd" --transform-dir exp_BNF/tri6_ali --use-graphs true \
-    data/train_app data/lang exp_BNF/sgmm7 exp_BNF/sgmm7_ali || exit 1
+     --nj $train_nj --cmd "$train_cmd" --transform-dir exp_BNF/tri6_ali --use-graphs true \
+    data/app_train data/lang exp_BNF/sgmm7 exp_BNF/sgmm7_ali 
   touch exp_BNF/sgmm7_ali/.done
 fi
 
@@ -206,35 +215,34 @@ if [ ! -f exp_BNF/sgmm7_denlats/.done ]; then
   echo "Starting exp_BNF/sgmm5_denlats on" `date`
   echo ---------------------------------------------------------------------
   steps/make_denlats_sgmm2.sh \
-    --nj 30 --sub-split 30 \
-    --num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l mem_free=2G,ram_free=0.8G" \
+    --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}"
     --transform-dir exp_BNF/tri6_ali --beam 10.0 --acwt 0.06 --lattice-beam 6 \
-     data/train_app data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats || exit 1
+     data/app_train data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats 
   touch exp_BNF/sgmm7_denlats/.done
 fi
 
 
 if [ ! -f exp_BNF/sgmm7_mmi_b0.1/.done ]; then
   steps/train_mmi_sgmm2.sh \
-    --cmd "queue.pl -l mem_free=5G,ram_free=6.5G" --acwt 0.06 \
+    --cmd "$train_cmd" --acwt 0.06 \
     --transform-dir exp_BNF/tri6_ali --boost 0.1 --zero-if-disjoint true \
-    data/train_app data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats \
-    exp_BNF/sgmm7_mmi_b0.1 || exit 1
+    data/app_train data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats \
+    exp_BNF/sgmm7_mmi_b0.1 
   touch exp_BNF/sgmm7_mmi_b0.1/.done;
 fi
 
 for iter in 1 2 3 4; do
-  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done ]; then
+  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter/.done ]; then
     steps/decode_sgmm2_rescore.sh --scoring-opts "$sopt2" \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode_dev2h \
-        data/lang data/dev_app exp_BNF/sgmm7/decode_dev2h_fmllr exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter || exit 1;
-    touch exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done 
+        data/lang data/app_dev2h exp_BNF/sgmm7/decode_fmllr_dev2h exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter 
+    touch exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter/.done 
   fi
-  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/kws/.done ]; then
+  if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter/kws/.done ]; then
     local/kws_search.sh $sopt2 --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/dev_app exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter
-    touch exp_BNF/sgmm7/decode_dev2h_fmllr/kws/.done
-    touch exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/kws/.done 
+      data/lang data/app_dev2h exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter
+    touch exp_BNF/sgmm7/decode_fmllr_dev2h/kws/.done
+    touch exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_dev2h_it$iter/kws/.done 
   fi
 done
 

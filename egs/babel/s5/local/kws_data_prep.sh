@@ -5,7 +5,7 @@
 
 # Begin configuration section.  
 case_insensitive=true
-use_icu=false
+use_icu=true
 icu_transform="'Any-Lower()'"
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
 
@@ -39,6 +39,10 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
+set -u
+set -e 
+set -o pipefail
+
 langdir=$1;
 datadir=$2;
 kwsdatadir=$3;
@@ -71,18 +75,21 @@ cat $keywords | perl -e '
 if [[ $case_insensitive && ! $use_icu ]] ; then
   echo "Running case insensitive processing"
   cat $langdir/words.txt | '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
-  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
+  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
+    echo "Warning, multiple words in dictionary differ only in case: " 
+    
 
   cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 elif [[ $case_insensitive && $use_icu ]] ; then
   echo "Running case insensitive processing (using ICU with transform \"$icu_transform\")"
   cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
-  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && echo "Warning, multiple words in dictionary differ only in case..."
+  [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
+    echo "Warning, multiple words in dictionary differ only in case: " 
 
   paste <(cut -f 1  $kwsdatadir/keywords.txt  ) \
         <(cut -f 2  $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform" ) | \
-    sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
+    local/kwords2indices.pl --map-oov 0  $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 else
   cp $langdir/words.txt  $kwsdatadir/words.txt
   cat $kwsdatadir/keywords.txt | \
@@ -92,12 +99,12 @@ fi
 cat $kwsdatadir/keywords_all.int | \
   grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int
 
-cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
-  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
+#cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
+#  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
 
-cat $kwsdatadir/keywords_all.int | \
-  egrep " 0 | 0$" | cut -f 1 -d ' ' | \
-  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
+#cat $kwsdatadir/keywords_all.int | \
+#  egrep " 0 | 0$" | cut -f 1 -d ' ' | \
+#  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
 
 
 # Compile keywords into FSTs

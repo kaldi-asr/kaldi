@@ -91,10 +91,15 @@ use Getopt::Long;
       $vocalNoise = "<v-noise>";
       $nVoclNoise = "<noise>";
       $silence    = "<silence>";
+      $icu_transform="";
 #
 ########################################################################
 
-GetOptions("fragmentMarkers=s" => \$fragMarkers,"oov=s" => \$OOV_symbol, "vocab=s" => \$vocabFile);
+GetOptions("fragmentMarkers=s" => \$fragMarkers,
+           "oov=s" => \$OOV_symbol, 
+           "vocab=s" => \$vocabFile,
+           "icu-transform=s" => \$icu_transform
+           );
 
 if ($#ARGV == 1) {
     $inDir  = $ARGV[0];
@@ -149,18 +154,23 @@ if (-d $TranscriptionDir) {
             $numUtterancesThisFile = 0;
             $prevTimeMark = -1.0;
             $text = "";
-            open (TRANSCRIPT, $filename) || die "Unable to open $filename";
+            if ( $icu_transform ) {
+              $inputspec="uconv -f utf8 -t utf8 -x \"$icu_transform\" $filename |";
+            } else {
+              $inputspec=$filename;
+            }
+            open (TRANSCRIPT, $inputspec) || die "Unable to open $filename";
             while ($line=<TRANSCRIPT>) {
                 chomp $line;
                 if ($line =~ m:^\[([0-9]+\.*[0-9]*)\]$:) {
                     $thisTimeMark = $1;
-		    if ($thisTimeMark < $prevTimeMark) {
-			print STDERR ("$0 ERROR: Found segment with negative duration in $filename\n");
-			print STDERR ("\tStart time = $prevTimeMark, End time = $thisTimeMark\n");
-			print STDERR ("\tThis could be a sign of something seriously wrong!\n");
-			print STDERR ("\tFix the file by hand or remove it from the directory, and retry.\n");
-			exit(1);
-		    }
+                    if ($thisTimeMark < $prevTimeMark) {
+                      print STDERR ("$0 ERROR: Found segment with negative duration in $filename\n");
+                      print STDERR ("\tStart time = $prevTimeMark, End time = $thisTimeMark\n");
+                      print STDERR ("\tThis could be a sign of something seriously wrong!\n");
+                      print STDERR ("\tFix the file by hand or remove it from the directory, and retry.\n");
+                      exit(1);
+                    }
                     if ($prevTimeMark<0) {
                         # Record the first timemark and continue
                         $prevTimeMark = $thisTimeMark;
@@ -369,8 +379,8 @@ foreach $utteranceID (sort keys %transcription) {
     if (exists $waveformName{$fileID}) {
         # There are matching transcriptions and audio
         $numUtterances++;
-	$totalSpeech += ($endTime{$utteranceID} - $startTime{$utteranceID});
-	$totalSpeechSq += (($endTime{$utteranceID} - $startTime{$utteranceID})
+      	$totalSpeech += ($endTime{$utteranceID} - $startTime{$utteranceID});
+        $totalSpeechSq += (($endTime{$utteranceID} - $startTime{$utteranceID})
 			   *($endTime{$utteranceID} - $startTime{$utteranceID}));
         print TEXT ("$utteranceID $transcription{$utteranceID}\n");
         print UTT2SPK ("$utteranceID $speakerID{$utteranceID}\n");

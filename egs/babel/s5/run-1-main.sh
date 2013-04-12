@@ -29,6 +29,7 @@ if [ ! -d data/raw_train_data ]; then
         train_nj=$nj_max
     fi
 fi
+train_data_dir=`readlink -f ./data/raw_train_data`
 
 if [ ! -d data/raw_dev2h_data ]; then
   echo ---------------------------------------------------------------------
@@ -56,7 +57,7 @@ if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" 
   echo ---------------------------------------------------------------------
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
-  local/prepare_lexicon.pl \
+  local/prepare_lexicon.pl --icu-transform "$icu_transform" --phonemap "$phoneme_mapping" \
     $lexiconFlags $lexicon_file data/local
 fi
 
@@ -75,7 +76,7 @@ if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; th
   echo "Preparing acoustic training lists in data/train on" `date`
   echo ---------------------------------------------------------------------
   mkdir -p data/train
-  local/prepare_acoustic_training_data.pl \
+  local/prepare_acoustic_training_data.pl --icu-transform "$icu_transform"\
     --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
     $train_data_dir data/train > data/train/skipped_utts.log
 fi
@@ -85,7 +86,7 @@ if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/au
   echo "Preparing dev2h data lists in data/dev2h on" `date`
   echo ---------------------------------------------------------------------
   mkdir -p data/dev2h
-  local/prepare_acoustic_training_data.pl \
+  local/prepare_acoustic_training_data.pl --icu-transform "Any-Lower" \
     --fragmentMarkers \-\*\~ \
     `pwd`/data/raw_dev2h_data data/dev2h > data/dev2h/skipped_utts.log || exit 1
 fi
@@ -246,8 +247,8 @@ if [ ! -f exp/ubm5/.done ]; then
   echo "Starting exp/ubm5 on" `date`
   echo ---------------------------------------------------------------------
   steps/train_ubm.sh \
-    --cmd "$train_cmd" \
-    $numGaussUBM data/train data/lang exp/tri5_ali exp/ubm5
+    --cmd "$train_cmd" $numGaussUBM \
+    data/train data/lang exp/tri5_ali exp/ubm5
   touch exp/ubm5/.done
 fi
 
@@ -255,9 +256,10 @@ if [ ! -f exp/sgmm5/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5 on" `date`
   echo ---------------------------------------------------------------------
+  #steps/train_sgmm2.sh 
   steps/train_sgmm2_group.sh \
-    --cmd "$train_cmd" --group 3 --parallel-opts "-l mem_free=6G,ram_free=2G" \
-    $numLeavesSGMM $numGaussSGMM data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
+    --cmd "$train_cmd" "${sgmm_group_extra_opts[@]}" $numLeavesSGMM $numGaussSGMM \
+    data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
   touch exp/sgmm5/.done
 fi
 
@@ -281,8 +283,7 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
   echo "Starting exp/sgmm5_denlats on" `date`
   echo ---------------------------------------------------------------------
   steps/make_denlats_sgmm2.sh \
-    --num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l mem_free=2G,ram_free=0.8G" \
-    --nj $train_nj --sub-split $train_nj  \
+    --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}" \
     --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats
   touch exp/sgmm5_denlats/.done

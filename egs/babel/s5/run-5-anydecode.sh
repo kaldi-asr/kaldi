@@ -111,7 +111,7 @@ decode_si() {
     mkdir -p $dir/graph
     utils/mkgraph.sh data/lang $dir $dir/graph |tee $dir/mkgraph.log || exit 1;
     mkdir -p $dir/decode_${type}
-    steps/decode.sh --nj $my_nj --cmd "$decode_cmd" $decode_extra_opts \
+    steps/decode.sh --nj $my_nj --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
        $dir/graph data/${type} $dir/decode_${type} |tee $dir/decode_${type}.log || exit 1;
 
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
@@ -130,8 +130,8 @@ if [ ! -f exp/tri5/decode_${type}/.done ]; then
       data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
   mkdir -p exp/tri5/decode_${type}
   touch exp/tri5/decode_${type}.started # A signal to the SGMM2 decoding step
-  steps/decode_fmllr.sh --nj $my_nj --cmd "$decode_cmd" \
-    --num-threads $decode_extra_threads --parallel-opts "$decode_extra_opts" \
+  steps/decode_fmllr.sh --nj $my_nj \
+    --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
     exp/tri5/graph data/${type} exp/tri5/decode_${type} |tee exp/tri5/decode_${type}.log 
   touch exp/tri5/decode_${type}/.done
 fi
@@ -153,8 +153,8 @@ if [ ! -f exp/sgmm5/decode_${type}_fmllr/.done ]; then
   utils/mkgraph.sh \
       data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
-  steps/decode_sgmm2.sh --use-fmllr true --nj $my_nj --cmd "$decode_cmd" \
-      --num-threads $decode_extra_threads --parallel-opts "$decode_extra_opts" \
+  steps/decode_sgmm2.sh --use-fmllr true --nj $my_nj \
+      --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${type} \
       exp/sgmm5/graph data/${type}/ exp/sgmm5/decode_${type}_fmllr |tee exp/sgmm5/decode_${type}_fmllr.log
   touch exp/sgmm5/decode_${type}_fmllr/.done
@@ -189,11 +189,11 @@ done
 
 if [ -f exp/tri6_nnet/.done ]; then
   if [ ! -f exp/tri6_nnet/decode_$type/.done ]; then
-    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $my_nj \
-      --num-threads $decode_extra_threads --parallel_opts "$decode_extra_opts" \
+    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" 
+      --nj $my_nj "$decode_extra_opts[@]" \
       --transform-dir exp/tri5/decode_$type \
       exp/tri5/graph data/$type exp/tri6_nnet/decode_$type 
-    touch exp/tri6_nnet/decode_dev2h/.done
+    touch exp/tri6_nnet/decode_${type}/.done
   fi
   if [ ! -f exp/tri6_nnet/decode_$type/kws/.done ]; then
     local/kws_search.sh  --cmd "$decode_cmd" --duptime $duptime \

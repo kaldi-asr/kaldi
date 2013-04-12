@@ -45,7 +45,8 @@ if [ $stage -le 1  ] ; then
 fi
 
 if [ $stage -le 2 ] ; then 
-  local/score_stm.sh --cer $cer  $data $lang $dir
+  local/score_stm.sh --cmd "${cmd}" --cer $cer --min-lmwt ${min_lmwt} \
+    --max-lmwt ${max_lmwt}  $data $lang $dir
 fi
 
 echo "Finished scoring on" `date`
