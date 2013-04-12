@@ -30,13 +30,13 @@ mkdir -p $datadir
 
 echo "Converting `basename $database` to kaldi directory $datadir "
 cat $database | perl -pe 's:.+(BABEL):BABEL:; s:\}\s+\{FROM\s+: :; s:\}\s+\{TO\s+: :; s:\}.+::;' | \
-  perl -ne 'split; 
-            $utteranceID = @_[0]; 
+  perl -ne '@K = split; 
+            $utteranceID = @K[0]; 
             $utteranceID =~ s:[^_]+_[^_]+_[^_]+_::; 
             $utteranceID =~ s:([^_]+)_(.+)_(inLine|scripted):${1}_A_${2}:; 
             $utteranceID =~ s:([^_]+)_(.+)_outLine:${1}_B_${2}:; 
-            $utteranceID .= sprintf ("_%06i", (100*@_[2])); 
-            printf("%s %s %.2f %.2f\n", $utteranceID, @_[0], @_[1], @_[2]);' | sort > $datadir/segments
+            $utteranceID .= sprintf ("_%06i", (100*@K[2])); 
+            printf("%s %s %.2f %.2f\n", $utteranceID, @K[0], @K[1], @K[2]);' | sort > $datadir/segments
 
 if [ ! -z $filelist ] ; then
   mv $datadir/segments $datadir/segments.full
@@ -57,7 +57,7 @@ cut -f1 -d' ' $datadir/segments | \
  # 3. Create the spk2utt file:
 
 echo "Creating the $datadir/spk2utt file"
-perl -ne '{chomp; split; $utt{@_[1]}.=" @_[0]";}
+perl -ne '{chomp; @K=split; $utt{@K[1]}.=" @K[0]";}
            END{foreach $spk (sort keys %utt) {
               printf("%s%s\n", $spk, $utt{$spk});
               }
