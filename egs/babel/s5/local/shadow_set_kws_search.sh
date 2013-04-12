@@ -110,7 +110,7 @@ if [ $stage -le 1 ] ; then
       mkdir -p $dirA
       mkdir -p $dirB
       
-      local/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
+      steps/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
 
       [ ! -f $datasetA/kws/utter_id ] && echo "File $datasetA/kws/utter_id must exist!" && exit 1;
       
