@@ -102,9 +102,9 @@ else
   fi
 
   #get the priors, get pdf-counts from alignments
-  analyze-counts --binary=false "$labels_tr" $dir/ali_train_pdf.counts 2>$dir/ali_train_pdf.counts_log || exit 1
+  analyze-counts --binary=false "$labels_tr" $dir/ali_train_pdf.counts || exit 1
   #copy the old transition model, will be needed by decoder
-  copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl 2>$dir/final.mdl_log || exit 1
+  copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
   #copy the tree
   cp $alidir/tree $dir/tree || exit 1
 
@@ -219,15 +219,15 @@ else
       if [ ! -r "$dir/lda.acc" ]; then
         echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
         ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
-          weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
+          weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2>$dir/log/ali-to-post-lda.log || exit 1;
         echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
-        acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
+        acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2>$dir/log/acc-lda.log || exit 1;
       else
         echo "LDA: Using pre-computed stats $dir/lda.acc"
       fi
       #estimate the transform  
       echo "Estimating LDA transform $dir/lda.mat from the statistics $dir/lda.acc"
-      est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>${transf}_log || exit 1;
+      est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>$dir/log/lda.log || exit 1;
       #append the LDA matrix to feature_transform
       feature_transform_old=$feature_transform
       feature_transform=${feature_transform%.nnet}_lda${lda_dim}.nnet
@@ -250,7 +250,7 @@ else
   echo "Renormalizing MLP input features into $feature_transform"
   nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
     $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
-    ark:- 2>$dir/log/cmvn_glob_fwd.log |\
+    ark:- 2>$dir/log/nnet-forward-cmvn.log |\
   compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
   nnet-concat --binary=false $feature_transform_old - $feature_transform
 fi
@@ -292,6 +292,9 @@ fi
 
 
 ###### TRAIN ######
+echo "
+Running the training scheduler:
+"
 steps/train_nnet_scheduler-v2.sh \
   --feature-transform $feature_transform \
   --learn-rate $learn_rate \

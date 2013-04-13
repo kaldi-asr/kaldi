@@ -26,7 +26,7 @@ halving_factor=0.5
 # gpu
 use_gpu_id=
 # tool
-TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff"
+train_tool="nnet-train-xent-hardlab-frmshuff"
  
 # End configuration.
 
@@ -64,11 +64,11 @@ dir=$5
 mlp_best=$mlp_init
 mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 #optionally resume training from the best epoch
-[ -e $dir/mlp_best ] && mlp_best=$(cat $dir/mlp_best)
-[ -e $dir/learn_rate ] && learn_rate=$(cat $dir/learn_rate)
+[ -e $dir/.mlp_best ] && mlp_best=$(cat $dir/.mlp_best)
+[ -e $dir/.learn_rate ] && learn_rate=$(cat $dir/.learn_rate)
 
 #prerun cross-validation
-$TRAIN_TOOL --cross-validate=true \
+$train_tool --cross-validate=true \
  --bunchsize=$bunch_size --cachesize=$cache_size \
  ${feature_transform:+ --feature-transform=$feature_transform} \
  ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
@@ -80,17 +80,17 @@ echo "CROSSVAL PRERUN ACCURACY $acc"
 
 #resume lr-halving
 halving=0
-[ -e $dir/halving ] && halving=$(cat $dir/halving)
+[ -e $dir/.halving ] && halving=$(cat $dir/.halving)
 #training
 for iter in $(seq -w $max_iters); do
   echo -n "ITERATION $iter: "
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
   
   #skip iteration if already done
-  [ -e $dir/log/iter$iter.log__DONE ] && echo -n "skipping... " && ls $mlp_next* && continue 
+  [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue 
   
   #training
-  $TRAIN_TOOL \
+  $train_tool \
    --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
    --bunchsize=$bunch_size --cachesize=$cache_size --randomize=true \
    ${feature_transform:+ --feature-transform=$feature_transform} \
@@ -103,7 +103,7 @@ for iter in $(seq -w $max_iters); do
   echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) LRATE $(printf "%.6g" $learn_rate), "
   
   #cross-validation
-  $TRAIN_TOOL --cross-validate=true \
+  $train_tool --cross-validate=true \
    --bunchsize=$bunch_size --cachesize=$cache_size \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
@@ -120,15 +120,15 @@ for iter in $(seq -w $max_iters); do
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)
     mv $mlp_next $mlp_best
     echo "nnet accepted ($(basename $mlp_best))"
-    echo $mlp_best > $dir/mlp_best 
+    echo $mlp_best > $dir/.mlp_best 
   else
     mlp_reject=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.2f" $tr_acc)_cv$(printf "%.2f" $acc_new)_rejected
     mv $mlp_next $mlp_reject
     echo "nnet rejected ($(basename $mlp_reject))"
   fi
 
-  #rename the log file, so we know that the epoch is over
-  mv $dir/log/iter$iter.log $dir/log/iter$iter.log__DONE
+  #create .done file as a mark that iteration is over
+  touch $dir/.done_iter$iter
 
   #stopping criterion
   if [[ "1" == "$halving" && "1" == "$(awk "BEGIN{print($acc < $acc_prev+$end_halving_inc)}")" ]]; then
@@ -145,13 +145,13 @@ for iter in $(seq -w $max_iters); do
   #start annealing when improvement is low
   if [ "1" == "$(awk "BEGIN{print($acc < $acc_prev+$start_halving_inc)}")" ]; then
     halving=1
-    echo $halving >$dir/halving
+    echo $halving >$dir/.halving
   fi
   
   #do annealing
   if [ "1" == "$halving" ]; then
     learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
-    echo $learn_rate >$dir/learn_rate
+    echo $learn_rate >$dir/.learn_rate
   fi
 done
 
