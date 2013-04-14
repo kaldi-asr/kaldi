@@ -164,9 +164,9 @@ if [ "$delta_order" != "" ]; then
 fi
 
 #get feature dim
-echo -n "Getting feature dim : "
+echo "Getting feature dim : "
 feat_dim=$(feat-to-dim --print-args=false "$feats_tr" -)
-echo $feat_dim
+echo "Feature dim is : $feat_dim"
 
 # Now we will start building complex feature_transform which will 
 # be forwarded in CUDA to gain more speed.
