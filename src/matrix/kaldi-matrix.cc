@@ -469,7 +469,7 @@ void MatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> & M,
     const OtherReal *other_data = M.Data();
     for (MatrixIndexT i = 0; i < num_rows_; i++)
       for (MatrixIndexT j = 0; j < num_cols_; j++)
-        this_data[i * this_stride + j] += other_data[j * other_stride + i];
+        this_data[i * this_stride + j] = other_data[j * other_stride + i];
   }
 }
 
