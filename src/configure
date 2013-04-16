@@ -320,12 +320,8 @@ function linux_check_static {
   fi
 }
 
-function linux_configure_debian {
-  if [ "`uname -m`" == "x86_64" ]; then
-    m=64
-  else
-    m=
-  fi
+function linux_configure_debian_ubuntu {
+  m=$1
   ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
   for f in $ATLASLIBS; do 
     [ ! -f $f ] && return 1;
@@ -333,7 +329,7 @@ function linux_configure_debian {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
-  echo "Successfully configured for Debian Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured for Debian/Ubuntu Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit 0;
 }
@@ -560,7 +556,8 @@ if [ "`uname`" == "Linux" ]; then
 
     linux_configure_static || \
       linux_configure_dynamic || \
-      linux_configure_debian || \
+      linux_configure_debian_ubuntu 64 || \
+      linux_configure_debian_ubuntu || \
       linux_atlas_failure "Failed to configure ATLAS lbiraries";
 
   elif [ $MATHLIB == "MKL" ]; then
