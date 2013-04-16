@@ -114,7 +114,7 @@ class DiagGmm {
   /// merged (flat list of pairs)
   void Merge(int32 target_components, std::vector<int32> *history = NULL);
 
-  /// Merge the components to a specified target #components: this
+  // Merge the components to a specified target #components: this
   // version uses a different approach based on K-means.
   void MergeKmeans(int32 target_components,
                    ClusterKMeansOptions cfg = ClusterKMeansOptions());

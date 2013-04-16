@@ -28,6 +28,9 @@
 
 /**
   \mainpage Kaldi
+    
+   Please see the \ref install_warning "instructions" on upgrading your repository to the
+   new location, following our upgrade to the "new" Sourceforge.
 
    (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>)
 
@@ -35,13 +38,13 @@
    - \ref about 
    - \ref other
    - \ref install 
+   - \ref dependencies
    - \ref legal
    - \ref progress
    - \ref tutorial
    - \ref data_prep
    - \ref build_setup 
    - \ref style 
-   - \ref dependencies
    - \ref contact 
    - \ref history 
    - \ref matrix 

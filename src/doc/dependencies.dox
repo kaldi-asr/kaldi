@@ -2,6 +2,7 @@
 
 
 // Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,39 +19,63 @@
 
 /**
 
-  \page dependencies Other software you may need to run Kaldi
+  \page dependencies Software required to install and run Kaldi
 
+    \section dependencies_environment Computing environment
+
+    - We expect that you will run Kaldi is a cluster of
+      Linux machines running Sun GridEngine (SGE).  This is open-source software and widely used.
+    - We expect that the cluster will have access to shared directories based on NFS or something
+      similar.
+    - We have started a separate project called <a href=https://sourceforge.net/projects/kluster/> Kluster </a>
+      that shows you how to create such a cluster on Amazon's EC2.  Most of the scripts should be suitable
+      for a locally hosted cluster based on Debian; you can also investigate
+      <a href=http://www.rocksclusters.org/wordpress/>Rocks</a>.
+    - You can run Kaldi on just one machine, without GridEngine or NFS, but of course it will be slower.
+    - You should be able to run Kaldi on most types of Linux machine; it has also been tested
+      on Darwin (Apple's version of BSD) and on Cygwin.
+    - Kaldi's scripts have been written in such a way that if you replace SGE with a similar mechanism 
+      with different syntax (such as Tork), it should be relatively easy to get it to work.
+    - In the past Kaldi has been compiled on Windows; however, the example scripts will not
+      work there, and we are not actively maintaining the Windows compatibility of the code or the
+      Windows build scripts.  Help with this would be appreciated.
+   
+    \section dependencies_packages Software packages required
+
+   This is a non-exhaustive list of some of the packages you need in order to install Kaldi.
 
     - Subversion (svn): this is needed to download Kaldi and other software that it depends on.
     - wget is required for the installation of some non-Kaldi components described below
-    - doxygen: this is the program we use to generate html documentation from 
-      the C++ source (which has been marked up according to doxygen requirements).
-      If you will be changing the source significantly, this might be useful.
     - The example scripts require standard UNIX utilities such as bash, 
-      perl, awk, grep, and make (cygwin can supply these on Windows).  
-      The toolkit itself does not require or directly interact with any of these,
-      and given appropriate scripts would work in any type of shell.
-    - The following tools and libraries come with installation instructions in 
-      the tools/ directory:
-      - OpenFst:  we compile against this so this is needed.
-      - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 
-        it is not tightly integrated with Kaldi; we can convert any Arpa format
-        language model to an FST.
-        - The IRSTLM build process requires automake, aclocal, and libtoolize
-          (the corresponding packages are automake and libtool).
-      - sph2pipe: this is for converting sph format files into other formats such
-        as wav.  It's needed for the example scripts that use LDC data.
-      - sclite: this is for scoring and is not necessary as we have our own, simple
-        scoring program (compute-wer.cc).
-      - dot: this is required by doxygen, to compile html documentation from the
-        C++ source (if you want to do this yourself).  It is also used to
-        interpret the output of fstdraw which can sometimes be useful when debugging FSTs. 
-      - ATLAS, the linear algebra library.  This is only needed for the headers; in 
-        typical setups we expect that ATLAS will be on your system.  However, if it not
-        already on your system you can compile ATLAS as long as your machine does not 
-        have CPU throttling enabled.
-      - CLAPACK, the linear algebra library (we download the headers).
-        This is useful only on systems where you don't have ATLAS and are
-        instead compiling with CLAPACK.
+      perl, awk, grep, and make.
+
+   It can also be helpful if you have an ATLAS linear-algebra package installed on your system.  Most
+   systems already have this; the best approach is to ignore this requirement for now
+   and see if you have problems when you install Kaldi.
+
+    \section dependencies_installed Software packages installed by Kaldi
+
+   The following tools and libraries come with installation scripts in
+   the tools/ directory so you won't have to install them yourself (note: this is a non-exhaustive list).
+
+    - OpenFst:  we compile against this and use it heavily.
+    - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 
+      it is not tightly integrated with Kaldi; we can convert any Arpa format
+      language model to an FST.
+      - The IRSTLM build process requires automake, aclocal, and libtoolize
+        (the corresponding packages are automake and libtool).
+      - Note: some of the example scripts now use SRILM; we make it easy to install
+        that, although you still have to register online to download it.
+    - sph2pipe: this is for converting sph format files into other formats such
+      as wav.  It's needed for the example scripts that use LDC data.
+    - sclite: this is for scoring and is not necessary as we have our own, simple
+      scoring program (compute-wer.cc).
+    - ATLAS, the linear algebra library.  This is only needed for the headers; in 
+      typical setups we expect that ATLAS will be on your system.  However, if it not
+      already on your system you can compile ATLAS as long as your machine does not 
+      have CPU throttling enabled.
+    - CLAPACK, the linear algebra library (we download the headers).
+      This is useful only on systems where you don't have ATLAS and are
+      instead compiling with CLAPACK.
 
 */
