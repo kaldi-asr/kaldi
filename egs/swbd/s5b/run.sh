@@ -312,7 +312,7 @@ done
 
 
 # # Karel's DNN recipe on top of fMLLR features
-# local/run_hybrid.sh
+# local/run_dnn.sh
 
 
 # # Dan's nnet recipe
