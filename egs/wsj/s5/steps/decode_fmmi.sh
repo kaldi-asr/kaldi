@@ -98,7 +98,7 @@ fi
   
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster$thread_string--max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+    gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
