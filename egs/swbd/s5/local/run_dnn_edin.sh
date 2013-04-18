@@ -29,7 +29,7 @@ steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_dev data/lang exp/tri4b exp/tri4b_ali_dev || exit 1
 # we need fMLLR transforms, so we run decoding...
 steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" --config conf/decode.config \
-  $graph_dir data/train_dev exp/tri4b/decode_train_dev_sw1_fsh_tgpr || exit 1
+  exp/tri4b/graph_sw1_fsh_tgpr data/train_dev exp/tri4b/decode_train_dev_sw1_fsh_tgpr || exit 1
 #generate the feats
 steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
    --transform-dir exp/tri4b/decode_train_dev_sw1_fsh_tgpr \
@@ -78,9 +78,9 @@ $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
   data-fmllr-tri4b/train_nodup data-fmllr-tri4b/train_dev data/lang ${ali}_all ${ali}_dev $dir || exit 1;
 # decode (reuse HCLG graph)
-steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --conf conf/decode_dnn.config --acwt 0.0833 \
+steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.0833 \
   exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/train_dev $dir/decode_train_dev_sw1_fsh_tgpr || exit 1;
-steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --conf conf/decode_dnn.config --acwt 0.0833 \
+steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.0833 \
   exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
 # rescore eval2000 with trigram sw1_fsh
 steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
