@@ -22,17 +22,17 @@ if [ ! -f exp/tri6_nnet/.done ]; then
     --final-learning-rate "$dnn_final_learning_rate" \
     --num-hidden-layers "$dnn_num_hidden_layers" \
     --num-parameters "$dnn_num_parameters" \
-     $dnn_extra_opts \
     --num-jobs-nnet $dnn_num_jobs \
-    --num-threads 8 --parallel-opts "-pe smp 7" \
-    --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=0.75G" \
+    --cmd "$train_cmd" \
+    "${dnn_train_extra_opts[@]}" \
     data/train data/lang exp/tri5_ali exp/tri6_nnet  || exit 1;
   touch exp/tri6_nnet/.done
 fi
 
 if [ ! -f exp/tri6_nnet/decode_dev2h/.done ]; then
+  [ ! -f exp/tri5/graph/.done ] && utils/mkgraph.sh data/lang exp/tri5 exp/tri5/graph && touch exp/tri5/graph/.done
   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $decode_nj \
-    --transform-dir exp/tri5/decode_dev2h \
+  "${decode_extra_opts[@]}" --transform-dir exp/tri5/decode_dev2h \
     exp/tri5/graph data/dev2h exp/tri6_nnet/decode_dev2h 
   touch exp/tri6_nnet/decode_dev2h/.done
 fi

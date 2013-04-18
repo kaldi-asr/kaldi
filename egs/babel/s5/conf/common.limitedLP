@@ -8,16 +8,22 @@ dnn_num_hidden_layers=2
 dnn_mem_reqs="mem_free=1.0G,ram_free=0.2G"
 dnn_extra_opts="--num_epochs 20 --num-epochs-extra 10 --add-layers-period 1 --shrink-interval 3"
 
-
 bnf_every_nth_frame=1 # take all frames.
 babel_type=limited
 
-#decode_extra_opts="-pe smp 6 -l mem_free=4G,ram_free=0.7G "
-#decode_extra_threads=6 
-decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
-sgmm_train_extra_opts=()
-sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=6G,ram_free=2G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
-sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
-
+if [[ `hostname` == *.tacc.utexas.edu ]] ; then
+  dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
+  decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
+  sgmm_train_extra_opts=( )
+  sgmm_group_extra_opts=( ) 
+  sgmm_denlats_extra_opts=( --num-threads 1 )
+else
+  dnn_train_extra_opts=(--num-threads 8 --parallel-opts "-pe smp 7" --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=0.75G" )
+  decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
+  sgmm_train_extra_opts=()
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=6G,ram_free=2G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
+  sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
+fi
+ 
 icu_transform="Any-Lower"
 case_insensitive=true

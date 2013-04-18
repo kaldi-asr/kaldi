@@ -256,10 +256,12 @@ if [ ! -f exp/sgmm5/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5 on" `date`
   echo ---------------------------------------------------------------------
-  #steps/train_sgmm2.sh 
-  steps/train_sgmm2_group.sh \
-    --cmd "$train_cmd" "${sgmm_group_extra_opts[@]}" $numLeavesSGMM $numGaussSGMM \
+  steps/train_sgmm2.sh \
+    --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
     data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
+  #steps/train_sgmm2_group.sh \
+  #  --cmd "$train_cmd" "${sgmm_group_extra_opts[@]-}" $numLeavesSGMM $numGaussSGMM \
+  #  data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
   touch exp/sgmm5/.done
 fi
 
@@ -294,7 +296,7 @@ if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   echo "Starting exp/sgmm5_mmi_b0.1 on" `date`
   echo ---------------------------------------------------------------------
   steps/train_mmi_sgmm2.sh \
-    --cmd "queue.pl -l mem_free=4G,ram_free=4.5G" \
+    --cmd "$train_cmd " \
     --zero-if-disjoint true --transform-dir exp/tri5_ali --boost 0.1 \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
     exp/sgmm5_mmi_b0.1

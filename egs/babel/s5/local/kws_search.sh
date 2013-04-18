@@ -31,6 +31,10 @@ ntrue_scale=1.0
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
+set -u
+set -e
+set -o pipefail
+
 echo "$0 $@"  # Print the command line for logging
 
 if [[ "$#" -ne "3" ]] ; then
@@ -39,6 +43,7 @@ if [[ "$#" -ne "3" ]] ; then
     exit 1;
 fi
 
+silence_opt=
 
 langdir=$1
 datadir=$2
@@ -77,30 +82,44 @@ if [[ ! -f "$kwsdatadir/ecf.xml"  ]] ; then
     exit 1;
 fi
 
-
+echo $kwsdatadir
 duration=`head -1 $kwsdatadir/ecf.xml |\
     grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
-    grep -o -E "[0-9]*[\.]*[0-9]*" |\
-    perl -e 'while(<>) {print $_/2;}'`
+    perl -e 'while($m=<>) {$m=~s/.*\"([0-9.]+)\".*/\1/; print $m/2;}'`
+
+#duration=`head -1 $kwsdatadir/ecf.xml |\
+#    grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
+#    grep -o -E "[0-9]*[\.]*[0-9]*" |\
+#    perl -e 'while(<>) {print $_/2;}'`
+
+echo "Duration: $duration"
 
 if [ ! -z "$model" ]; then
     model_flags="--model $model"
 else
     model_flags=
 fi
+  
+mkdir -p $kwsoutdir
 
 if [ $stage -le 0 ] ; then
-  for lmwt in `seq $min_lmwt $max_lmwt` ; do
-      indices=${indices_dir}_$lmwt
-      mkdir -p $indices
-
-      acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-      [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
-      steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
-        --skip-optimization $skip_optimization --max-states $max_states \
-        --word-ins-penalty $word_ins_penalty \
-        $kwsdatadir $langdir $decodedir $indices  || exit 1
-  done
+  if [ ! -f $kwsoutdir/.done.index ] ; then
+    for lmwt in `seq $min_lmwt $max_lmwt` ; do
+        indices=${indices_dir}_$lmwt
+        mkdir -p $indices
+  
+        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+        [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
+        steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
+          --skip-optimization $skip_optimization --max-states $max_states \
+          --word-ins-penalty $word_ins_penalty \
+          $kwsdatadir $langdir $decodedir $indices  || exit 1
+    done
+    touch $kwsoutdir/.done.index
+  else
+    echo "Assuming indexing has been aready done. If you really need to re-run "
+    echo "the indexing again, delete the file $kwsoutdir/.done.index"
+  fi
 fi
 
 if [ $stage -le 1 ]; then
@@ -114,7 +133,6 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  mkdir -p $kwsoutdir
   echo "Writing normalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
     set -e ';' set -o pipefail ';'\

@@ -131,6 +131,8 @@ fi
 
 
 if [ ! -f exp/tri5/decode_${type}.uem/.done ]; then
+  [ ! -d exp/tri5/graph ] && utils/mkgraph.sh data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
+
   steps/decode_fmllr_extra.sh --skip-scoring "$skip_scoring" \
     --nj $decode_nj --cmd "$decode_cmd"  "${decode_extra_opts[@]}"\
     exp/tri5/graph data/${type}.uem exp/tri5/decode_${type}.uem  | tee  exp/tri5/decode_${type}.uem.log
@@ -162,6 +164,7 @@ fi
 ## SGMM2 decoding 
 ####################################################################
 if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.done ]; then
+  [ ! -d exp/sgmm5/graph ] && utils/mkgraph.sh data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
   steps/decode_sgmm2.sh --skip-scoring "$skip_scoring" --use-fmllr true --nj $decode_nj \
     --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${type}.uem "${decode_extra_opts[@]}"\
     exp/sgmm5/graph data/${type}.uem exp/sgmm5/decode_fmllr_${type}.uem | tee exp/sgmm5/decode_fmllr_${type}.uem.log

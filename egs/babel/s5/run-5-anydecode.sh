@@ -1,7 +1,6 @@
 #!/bin/bash 
 set -e
 set -o pipefail
-set -u
 
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
@@ -81,12 +80,18 @@ if [[ ! -f data/${type}/glm || data/${type}/glm -ot "$glmFile" ]]; then
 fi
 
 if [ ! -f data/${type}/.kws.done ]; then
+  icu_opt=()
+  if [ ! -z $icu_transform ] ; then
+    $icu_opt=(--use-icu true --icu-transfrom $icu_transform)
+  fi
   if [[ $my_subset_ecf ]] ; then
     local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $my_data_list \
-      --rttm-file $my_rttm_file $my_ecf_file $my_kwlist_file data/lang data/${type}
+      --rttm-file "$my_rttm_file ${icu_opt[@]}" \
+      $my_ecf_file $my_kwlist_file data/lang data/${type}
   else
     local/kws_setup.sh --case-insensitive $case_insensitive                            \
-      --rttm-file $my_rttm_file $my_ecf_file $my_kwlist_file data/lang data/${type} 
+      --rttm-file $my_rttm_file "${icu_opt[@]}" \
+      $my_ecf_file $my_kwlist_file data/lang data/${type} 
   fi
   touch data/${type}/.kws.done
 fi
@@ -189,8 +194,8 @@ done
 
 if [ -f exp/tri6_nnet/.done ]; then
   if [ ! -f exp/tri6_nnet/decode_$type/.done ]; then
-    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" 
-      --nj $my_nj "$decode_extra_opts[@]" \
+    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" \
+      --nj $my_nj "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_$type \
       exp/tri5/graph data/$type exp/tri6_nnet/decode_$type 
     touch exp/tri6_nnet/decode_${type}/.done
