@@ -72,7 +72,7 @@ cat $keywords | perl -e '
 # are not in our $langdir/words.txt, as we won't find them anyway...
 #cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
-if [[ $case_insensitive && ! $use_icu ]] ; then
+if  $case_insensitive && ! $use_icu  ; then
   echo "Running case insensitive processing"
   cat $langdir/words.txt | '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
@@ -81,7 +81,7 @@ if [[ $case_insensitive && ! $use_icu ]] ; then
 
   cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
-elif [[ $case_insensitive && $use_icu ]] ; then
+elif  $case_insensitive && $use_icu ; then
   echo "Running case insensitive processing (using ICU with transform \"$icu_transform\")"
   cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
