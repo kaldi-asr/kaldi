@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2012  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0.
@@ -7,7 +7,6 @@ use strict;
 use warnings;
 use Getopt::Long;
 use XML::Simple;
-use Data::Dumper;
 
 my $data = XMLin(\*STDIN);
 my $duptime= $ARGV[0];
