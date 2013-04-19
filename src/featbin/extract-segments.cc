@@ -1,24 +1,21 @@
-/**
- * @file featbin/extract-segments.cc
- * @brief extract segments from a wav file
- *
- * @copy Copyright 2009-2011  Microsoft Corporation, Govivace Inc.
- * @par
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- * @par
- * THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
- * WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
- * MERCHANTABLITY OR NON-INFRINGEMENT.
- * @par
- * See the Apache 2 License for the specific language governing permissions and
- * limitations under the License.
+// featbin/extract-segments.cc
 
- */
+// Copyright 2009-2011  Microsoft Corporation;  Govivace Inc.
+//           2013       Arnab Ghoshal
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "feat/feature-mfcc.h"
@@ -38,72 +35,83 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     
     const char *usage =
-        "Create MFCC feature files.\n"
-        "Usage:  extract-segments [options...] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
-        " (segments-file has lines like: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
-        " or: spkabc_seg1 spkabc_recording1 1.10 2.36\n"
-        " or: spkabc_seg1 spkabc_recording1 0 -1\n"
-        " [if channel not provided as last element, expects mono.] ";
-        
+        "Extract segments from a large audio file in WAV format.\n"
+        "Usage:  extract-segments [options] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
+        " segments-file format: segment_id wav_file_name start_time end_time [channel]\n"
+        " e.g.: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
+        " If channel is not provided as last element, expects mono.\n"
+        " end_time of -1 means the segment runs till the end of the WAV file.\n";
 
-    // construct all the global objects
     ParseOptions po(usage);
-
-    BaseFloat min_segment_length = 0.1; // Minimum segment length in seconds.
-    bool accept_anyend = false; // Ignore very long segment issues
-    // Register the options
-    po.Register("min-segment-length", &min_segment_length, "Minimum segment length in seconds (will reject shorter segments)");
-    po.Register("accept-invalid-end-times", &accept_anyend, "accept overshooting end times and use the whole file (default is set to false to reject such segments)");
+    BaseFloat min_segment_length = 0.1, // Minimum segment length in seconds.
+        max_overshoot = 0.0;  // max time by which last segment can overshoot
+    po.Register("min-segment-length", &min_segment_length,
+                "Minimum segment length in seconds (reject shorter segments)");
+    po.Register("max-overshoot", &max_overshoot,
+                "End segmnents overshooting by less (in seconds) are truncated,"
+                " else rejected.");
 
     // OPTION PARSING ...
     // parse options  (+filling the registered variables)
     po.Read(argc, argv);
-    // number of arguments should be 3(scriptfile,segments file and outputwav write mode)
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string wav_rspecifier = po.GetArg(1); // get script file
-    std::string segments_rxfilename = po.GetArg(2);// get segment file
-    std::string wav_wspecifier = po.GetArg(3);// get wav written format
+    std::string wav_rspecifier = po.GetArg(1);
+    std::string segments_rxfilename = po.GetArg(2);
+    std::string wav_wspecifier = po.GetArg(3);
 
-    RandomAccessTableReader<WaveHolder> reader(wav_rspecifier); 
+    RandomAccessTableReader<WaveHolder> reader(wav_rspecifier);
     TableWriter<WaveHolder> writer(wav_wspecifier);
-    Input ki(segments_rxfilename); // no binary argment: never binary.
+    Input ki(segments_rxfilename);  // no binary argment: never binary.
 
     int32 num_lines = 0, num_success = 0;
-    
+
     std::string line;
     /* read each line from segments file */
     while (std::getline(ki.Stream(), line)) {
       num_lines++;
-      std::vector<std::string> split_line;  
-      SplitStringToVector(line, " \t\r", true, &split_line);// split the line by space or tab
-      if (split_line.size() != 4 && split_line.size() != 5) // check the number of elements in each line. each line must have atleast 4 elements . 5th element(channel info) is optional
-        KALDI_ERR << "Invalid line in segments file: " << line;
-      /* each line of segment file should have segment name , reacording wav file name, start time, end time respectively  */
-      std::string segment = split_line[0], recording = split_line[1],
-          start_str = split_line[2], end_str = split_line[3];
+      std::vector<std::string> split_line;
+      // Split the line by space or tab and check the number of fields in each
+      // line. There must be 4 fields--segment name , reacording wav file name,
+      // start time, end time; 5th field (channel info) is optional.
+      SplitStringToVector(line, " \t\r", true, &split_line);
+      if (split_line.size() != 4 && split_line.size() != 5) {
+        KALDI_WARN << "Invalid line in segments file: " << line;
+        continue;
+      }
+      std::string segment = split_line[0],
+          recording = split_line[1],
+          start_str = split_line[2],
+          end_str = split_line[3];
+
+      // Convert the start time and endtime to real from string. Segment is
+      // ignored if start or end time cannot be converted to real.
       double start, end;
-      /* convert the start time and endtime to real from string */
-      if (!ConvertStringToReal(start_str, &start) || !ConvertStringToReal(end_str, &end))
-        KALDI_ERR << "Invalid line in segments file [bad start/end]" << line;
-      /* error occurs when start time or end time is not converted to
-         real. they must be specified like "1234.56" in seg file */
-      /* start time and end time must be greater than 0 secs and start
-         time should be greater than end time */ 
-      if (start < 0 || end < -1.001 || ((start >= end) && (end > 0))) {
-        KALDI_WARN << "Invalid line in segments file [empty or invalid segment] "
+      if (!ConvertStringToReal(start_str, &start)) {
+        KALDI_WARN << "Invalid line in segments file [bad start]: " << line;
+        continue;
+      }
+      if (!ConvertStringToReal(end_str, &end)) {
+        KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
+        continue;
+      }
+      // start time must not be negative; start time must not be greater than
+      // end time, except if end time is -1
+      if (start < 0 || (end != -1.0 && end <= 0) || ((start >= end) && (end > 0))) {
+        KALDI_WARN << "Invalid line in segments file [empty or invalid segment]: "
                    << line;
         continue;
       }
-      int32 channel = -1; // means channel info is unspecified. 
-      if(split_line.size() == 5) { // if each line has 5 elements then
-                                   // 5th element must be channel
-                                   // identifier. it should be 1 or 2
-        if (!ConvertStringToInteger(split_line[4], &channel) || channel < 0)
-          KALDI_ERR << "Invalid line in segments file [bad channel] " << line;
+      int32 channel = -1;  // means channel info is unspecified.
+      // if each line has 5 elements then 5th element must be channel identifier
+      if(split_line.size() == 5) {
+        if (!ConvertStringToInteger(split_line[4], &channel) || channel < 0) {
+          KALDI_WARN << "Invalid line in segments file [bad channel]: " << line;
+          continue;
+        }
       }
       /* check whether a segment start time and end time exists in recording 
        * if fails , skips the segment.
@@ -115,22 +123,19 @@ int main(int argc, char *argv[]) {
       }
       
       const WaveData &wave = reader.Value(recording);
-      const Matrix<BaseFloat> &wave_data = wave.Data();// read wav file data to matrix format
-      BaseFloat samp_freq = wave.SampFreq(); // read sampling fequency
-      int32 start_samp = start * samp_freq,end_samp; // convert starting time
-                                            // of the segment to
-                                            // corresponding sample
-                                            // number
-        if (end > 0) {
-          end_samp = end * samp_freq;// convert ending time of the segment
-        } else {
-          end_samp = -1;              // to corresponding sample number
-        }
-      int32 num_samp = wave_data.NumCols(), // total number of samples present in wav data
-        num_chan = wave_data.NumRows(); // total number of channels present in wav file
-      /* start sample must be less than total number of samples 
-       * otherwise skip the segment
-       */
+      const Matrix<BaseFloat> &wave_data = wave.Data();
+      BaseFloat samp_freq = wave.SampFreq();  // read sampling fequency
+      int32 num_samp = wave_data.NumCols(),  // number of samples in recording
+        num_chan = wave_data.NumRows();  // number of channels in recording
+
+      // Convert starting time of the segment to corresponding sample number.
+      // If end time is -1 then use the whole file starting from start time.
+      int32 start_samp = start * samp_freq,
+          end_samp = (end != -1)? (end * samp_freq) : num_samp;
+      KALDI_ASSERT(start_samp >= 0 && end_samp > 0 && "Invalid start or end.");
+
+      // start sample must be less than total number of samples,
+      // otherwise skip the segment
       if (start_samp < 0 || start_samp >= num_samp) {
         KALDI_WARN << "Start sample out of range " << start_samp << " [length:] "
                    << num_samp << ", skipping segment " << segment;
@@ -139,23 +144,19 @@ int main(int argc, char *argv[]) {
       /* end sample must be less than total number samples 
        * otherwise skip the segment
        */
-      if (end_samp > 0 && end_samp > num_samp) {
-        if ((end_samp > num_samp + static_cast<int32>(0.5 * samp_freq)) && !accept_anyend) {
+      if (end_samp > num_samp) {
+        if ((end_samp >=
+             num_samp + static_cast<int32>(max_overshoot * samp_freq))) {
           KALDI_WARN << "End sample too far out of range " << end_samp
                      << " [length:] " << num_samp << ", skipping segment "
                      << segment;
           continue;
         }
-        end_samp = num_samp; // for small differences, just truncate.
+        end_samp = num_samp;  // for small differences, just truncate.
       }
-      if ( end_samp < 0 ) {
-        end_samp = num_samp; // Convention to use the whole file
-      }
-      /* check whether the segment size is less than minimum segment length(default 0.1 sec)
-       * if yes, skip the segment
-       */
-      if (end_samp <= start_samp +
-         static_cast<int32>(min_segment_length * samp_freq)) {
+      // Skip if segment size is less than minimum segment length (default 0.1s)
+      if (end_samp <=
+          start_samp + static_cast<int32>(min_segment_length * samp_freq)) {
         KALDI_WARN << "Segment " << segment << " too short, skipping it.";
         continue;
       }
