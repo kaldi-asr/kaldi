@@ -32,7 +32,7 @@ mkdir -p $dir
 
 
 # (1) Get the CMU dictionary
-svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict  \
+svn co  https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
   $dir/cmudict || exit 1;
 
 # can add -r 10966 for strict compatibility.
