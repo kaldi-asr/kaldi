@@ -60,7 +60,9 @@ void JoinVectorToString(const std::vector<std::string> &vec_in,
 template<class I>
 bool SplitStringToIntegers(const std::string &full,
                            const char *delim,
-                           bool omit_empty_strings,  // typically false [but true if "delim" is spaces].
+                           bool omit_empty_strings,  // typically false [but
+                                                     // should probably be true
+                                                     // if "delim" is spaces].
                            std::vector<I> *out) {
   assert(out != NULL);
   KALDI_ASSERT_IS_INTEGER_TYPE(I);

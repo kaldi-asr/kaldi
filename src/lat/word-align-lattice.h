@@ -162,8 +162,10 @@ struct WordBoundaryInfo {
   void SetOptions(const std::string int_list, PhoneType phone_type);
 };
 
-
-/// returns true if everything was OK, false if some kind of
+/// Align lattice so that each arc has the transition-ids on it
+/// that correspond to the word that is on that arc.  [May also have
+/// epsilon arcs for optional silences.]
+/// Returns true if everything was OK, false if some kind of
 /// error was detected (e.g. the words didn't have the kinds of
 /// sequences we would expect if the WordBoundaryInfo was
 /// correct).  Note: we don't expect silence inside words,
@@ -189,10 +191,7 @@ bool WordAlignLattice(const CompactLattice &lat,
 
 
 /// This function is designed to crash if something went wrong with the
-/// word-alignment of the lattice.  If was_ok==true (was_ok is the return status
-/// of WordAlignLattice), it tests that, after removing any silence and
-/// partial-word labels that may have been inserted by WordAlignLattice,
-/// the word-aligned lattice is equivalent to the input.  It also verifies
+/// word-alignment of the lattice.  It verifies
 /// that arcs are of 4 types:
 ///   properly-aligned word arcs, with a word label.
 ///   partial-word arcs, with the partial-word label.

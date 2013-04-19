@@ -16,7 +16,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-to-ctm-conf lattice-arcgraph lattice-combine lattice-reverse \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
            lattice-to-smbr-post lattice-determinize-pruned-parallel \
-           lattice-add-penalty
+           lattice-add-penalty lattice-align-words-lexicon
 
 
 OBJFILES =

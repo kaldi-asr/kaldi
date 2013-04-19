@@ -1,6 +1,6 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey);
-#                 Arnab Ghoshal
+# Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey);
+#                      Arnab Ghoshal
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 # This script prepares a directory such as data/lang/, in the standard format,
 # given a source directory containing a dictionary lexicon.txt in a form like:
-# word phone1 phone2 ... phonen
+# word phone1 phone2 ... phoneN
 # per line (alternate prons would be separate lines).
 # and also files silence_phones.txt, nonsilence_phones.txt, optional_silence.txt
 # and extra_questions.txt
@@ -116,7 +116,6 @@ if $position_dependent_phones; then
     > $tmpdir/phone_map.txt
 else
   cp $srcdir/lexicon.txt $tmpdir/lexicon.original
-  # there might be clusters phones
   cat $srcdir/silence_phones.txt $srcdir/nonsilence_phones.txt | \
     sed 's/ /\n/g' | awk '(NF>0){print}' > $tmpdir/phones
   paste -d' ' $tmpdir/phones $tmpdir/phones > $tmpdir/phone_map.txt
@@ -240,6 +239,18 @@ silphone=`cat $srcdir/optional_silence.txt` || exit 1;
   ( echo "You have no optional-silence phone; it is required in the current scripts"
     echo "but you may use the option --sil-prob 0.0 to stop it being used." ) && \
    exit 1;
+
+# create $dir/phones/align_lexicon.{txt,int}
+(  # Note: here, $silphone will have no suffix e.g. _S because it occurs as optional-silence,
+   # and is not part of a word.
+  [ ! -z "$silphone" ] && echo "<eps> $silphone";
+) | cat - $tmpdir/lexicon.txt | \
+  perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | \
+  sort | uniq > $dir/phones/align_lexicon.txt
+
+# create phones/align_lexicon.int
+cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
+   utils/sym2int.pl -f 1-2 $dir/words.txt > $dir/phones/align_lexicon.int
 
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 

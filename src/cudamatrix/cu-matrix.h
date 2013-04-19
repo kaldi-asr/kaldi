@@ -258,7 +258,7 @@ class CuMatrix: public CuMatrixBase<Real> {
     this->CopyFromMat(other);
     return *this;
   }  
-
+  
   CuMatrix<Real> &operator = (const MatrixBase<Real> &other) {
     this->Resize(other.NumRows(), other.NumCols(), kUndefined);
     this->CopyFromMat(other);

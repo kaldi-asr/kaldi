@@ -173,7 +173,7 @@ class LatticePhoneAligner {
       lat_out_->AddArc(output_state, lat_arc);
     }
   }
-
+  
   
   void ProcessQueueElement() {
     KALDI_ASSERT(!queue_.empty());
@@ -240,7 +240,6 @@ class LatticePhoneAligner {
   // This also replaces the temporary symbols for the silence
   // and partial-words, with epsilons, if we wanted epsilons.
   void RemoveEpsilonsFromLattice() {
-    // Remove epsilon arcs from output lattice.
     RmEpsilon(lat_out_, true); // true = connect.
   }
   
@@ -258,7 +257,8 @@ class LatticePhoneAligner {
     while (!queue_.empty())
       ProcessQueueElement();
 
-    RemoveEpsilonsFromLattice();
+    if (opts_.remove_epsilon)
+      RemoveEpsilonsFromLattice();
     
     return !error_;
   }
@@ -270,8 +270,7 @@ class LatticePhoneAligner {
 
   std::vector<std::pair<Tuple, StateId> > queue_;
   MapType map_; // map from tuples to StateId.
-  bool error_;
-  
+  bool error_;  
 };
 
 bool LatticePhoneAligner::ComputationState::OutputArc(
@@ -289,7 +288,8 @@ bool LatticePhoneAligner::ComputationState::OutputArc(
   for (i = 1; i < len; i++) {
     int32 tid = transition_ids_[i];
     int32 this_phone = tmodel.TransitionIdToPhone(tid);
-    if (this_phone != phone && ! *error) { // error condition: should have reached final transition-id first.
+    if (this_phone != phone && ! *error) { // error condition: should have
+                                           // reached final transition-id first.
       *error = true;
       KALDI_WARN << "Phone changed before final transition-id found "
           "[broken lattice or mismatched model or wrong --reorder option?]";
@@ -304,7 +304,8 @@ bool LatticePhoneAligner::ComputationState::OutputArc(
   if (i == len) return false; // we don't know if it ends here... so can't output arc.
 
   // interpret i as the number of transition-ids to consume.
-  std::vector<int32> tids_out(transition_ids_.begin(), transition_ids_.begin()+i);
+  std::vector<int32> tids_out(transition_ids_.begin(),
+                              transition_ids_.begin()+i);
 
   Label output_label = 0;
   if (!word_labels_.empty()) {
@@ -369,7 +370,6 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
   weight_ = LatticeWeight::One(); // we just output the weight.
 }
 
-  
 bool PhoneAlignLattice(const CompactLattice &lat,
                        const TransitionModel &tmodel,
                        const PhoneAlignLatticeOptions &opts,

@@ -31,22 +31,32 @@ namespace kaldi {
 
 struct PhoneAlignLatticeOptions {
   bool reorder;
+  bool remove_epsilon;
   bool replace_output_symbols;
-  PhoneAlignLatticeOptions(): reorder(true), replace_output_symbols(false) { }
+  PhoneAlignLatticeOptions(): reorder(true),
+                              remove_epsilon(true),
+                              replace_output_symbols(false) { }
   void Register(ParseOptions *po) {
     po->Register("reorder", &reorder, "True if lattice was created from HCLG with "
                  "--reorder=true option.");
+    po->Register("remove-epsilon", &remove_epsilon, "If true, removes epsilons from "
+                 "the phone lattice; if replace-output-symbols==false, this will "
+                 "mean that an arc can have multiple phones on it.");
     po->Register("replace-output-symbols", &replace_output_symbols, "If true, "
                  "the output symbols (typically words) will be replaced with "
                  "phones.");
   }
 };
 
-/// Returns a lattice in which the arcs correspond exactly to phones.  (Note:
-/// it's possible in principle at the end of the lattice to have arcs with words
-/// on them but no transition-ids al all, although this is unlikely.)  returns
-/// true if everything was OK, false if some kind of error was detected
-/// (e.g. the "reorder" option was incorrectly specified.)
+/// Returns a lattice in which the arcs correspond exactly to sequences of
+/// phones, so the boundaries between the arcs correspond to the boundaries
+/// between phones If remove-epsilon == false and replace-output-symbols ==
+/// false, but an arc may have >1 phone on it, but the boundaries will still
+/// correspond with the boundaries between phones.  it's possible in principle
+/// at the end of the lattice to have arcs with words on them but no
+/// transition-ids at all, although this is unlikely.)  returns true if
+/// everything was OK, false if some kind of error was detected (e.g. the
+/// "reorder" option was incorrectly specified.)
 bool PhoneAlignLattice(const CompactLattice &lat,
                        const TransitionModel &tmodel,
                        const PhoneAlignLatticeOptions &opts,

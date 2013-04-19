@@ -1,4 +1,4 @@
-// latbin/lattice-align-words.cc
+// latbin/lattice-align-words-lexicon.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
@@ -19,7 +19,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/word-align-lattice.h"
+#include "lat/word-align-lattice-lexicon.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -29,29 +29,24 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert lattices so that the arcs in the CompactLattice format correspond with\n"
-        "words (i.e. aligned with word boundaries).\n"
-        "Usage: lattice-align-words [options] <word-boundary-file> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
-        " e.g.: lattice-align-words  --silence-label=4320 --partial-word-label=4324 \\\n"
-        "   data/lang/phones/word_boundary.int final.mdl ark:1.lats ark:aligned.lats\n"
-        "Note: word-boundary file has format (on each line):\n"
-        "<integer-phone-id> [begin|end|singleton|internal|nonword]\n";
+        "words (i.e. aligned with word boundaries).  This is the newest form, that\n"
+        "reads in a lexicon in integer format, where each line is (integer id of)\n"
+        " word-in word-out phone1 phone2 ... phoneN\n"
+        "(note: word-in is word before alignment, word-out is after, e.g. for replacing\n"
+        "<eps> with SIL or vice versa)\n"
+        "Usage: lattice-align-words-lexicon [options] <lexicon-file> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
+        " e.g.: lattice-align-words-lexicon  --partial-word-label=4324 --max-expand 10.0 --test true \\\n"
+        "   data/lang/phones/align_lexicon.int final.mdl ark:1.lats ark:aligned.lats\n";
     
     ParseOptions po(usage);
-    BaseFloat max_expand = 0.0;
     bool output_if_error = true;
-    bool do_test = false;
     
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
-    po.Register("test", &do_test, "Test the algorithm while running it.");
-    po.Register("max-expand", &max_expand, "If >0, the maximum amount by which this "
-                "program will expand lattices before refusing to continue.  E.g. 10."
-                "This can be used to prevent this program consuming excessive memory "
-                "if there is a mismatch on the command-line or a 'problem' lattice.");
     
-    WordBoundaryInfoNewOpts opts;
+    WordAlignLatticeLexiconOpts opts;
     opts.Register(&po);
-
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -60,10 +55,21 @@ int main(int argc, char *argv[]) {
     }
 
     std::string
-        word_boundary_rxfilename = po.GetArg(1),
+        align_lexicon_rxfilename = po.GetArg(1),
         model_rxfilename = po.GetArg(2),
         lats_rspecifier = po.GetArg(3),
         lats_wspecifier = po.GetArg(4);
+
+    std::vector<std::vector<int32> > lexicon;
+    {
+      bool binary_in;
+      Input ki(align_lexicon_rxfilename, &binary_in);
+      KALDI_ASSERT(!binary_in && "Not expecting binary file for lexicon");
+      if (!ReadLexiconForWordAlign(ki.Stream(), &lexicon)) {
+        KALDI_ERR << "Error reading alignment lexicon from "
+                  << align_lexicon_rxfilename;
+      }
+    }
 
     TransitionModel tmodel;
     ReadKaldiObject(model_rxfilename, &tmodel);
@@ -71,7 +77,9 @@ int main(int argc, char *argv[]) {
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     CompactLatticeWriter clat_writer(lats_wspecifier); 
 
-    WordBoundaryInfo info(opts, word_boundary_rxfilename);
+    WordAlignLatticeLexiconInfo lexicon_info(lexicon);
+    { std::vector<std::vector<int32> > temp; lexicon.swap(temp); }
+    // No longer needed.
     
     int32 num_done = 0, num_err = 0;
     
@@ -80,20 +88,14 @@ int main(int argc, char *argv[]) {
       const CompactLattice &clat = clat_reader.Value();
 
       CompactLattice aligned_clat;
-      int32 max_states;
-      if (max_expand > 0) max_states = 1000 + max_expand * clat.NumStates();
-      else max_states = 0;
       
-      bool ok = WordAlignLattice(clat, tmodel, info, max_states, &aligned_clat);
+      bool ok = WordAlignLatticeLexicon(clat, tmodel, lexicon_info, opts,
+                                        &aligned_clat);
       
-      if (do_test && ok)
-        TestWordAlignedLattice(clat, tmodel, info, aligned_clat);
-
       if (!ok) {
         num_err++;
         if (!output_if_error)
-          KALDI_WARN << "Lattice for " << key
-                     << " did not align correctly, producing no output.";
+          KALDI_WARN << "Lattice for " << key << " did not align correctly";
         else {
           if (aligned_clat.Start() != fst::kNoStateId) {
             KALDI_WARN << "Outputting partial lattice for " << key;
