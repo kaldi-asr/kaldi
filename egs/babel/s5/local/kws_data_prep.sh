@@ -99,12 +99,12 @@ fi
 cat $kwsdatadir/keywords_all.int | \
   grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int
 
-#cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
-#  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
+cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
 
-#cat $kwsdatadir/keywords_all.int | \
-#  egrep " 0 | 0$" | cut -f 1 -d ' ' | \
-#  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
+cat $kwsdatadir/keywords_all.int | \
+  egrep " 0 | 0$" | cut -f 1 -d ' ' | \
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml || true
 
 
 # Compile keywords into FSTs
