@@ -2,12 +2,12 @@
 
 # Copyright 2013  Bagher BabaAli
 
-. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
-           ## This relates to the queue.
+. ./cmd.sh 
 [ -f path.sh ] && . ./path.sh
-
-# This is a shell script, but it's recommended that you run the commands one by
-# one by copying and pasting into the shell.
+if false; then
+echo ============================================================================
+echo "                Data & Lexicon & Language Preparation                     "
+echo ============================================================================
 
 timit=/export/corpora5/LDC/LDC93S1/timit/TIMIT
 
@@ -15,119 +15,196 @@ local/timit_data_prep.sh $timit  || exit 1;
 
 local/timit_prepare_dict.sh || exit 1;
 
+
 utils/prepare_lang.sh --position-dependent-phones false --num-sil-states 3 \
  data/local/dict "sil" data/local/lang_tmp data/lang || exit 1;
 
 local/timit_format_data.sh || exit 1;
 
+echo ============================================================================
+echo "        MFCC Feature Extration & CMVN for Training and Test set           "
+echo ============================================================================
+
 # Now make MFCC features.
-# mfccdir should be some place with a largish disk where you
-# want to store MFCC features.
 mfccdir=mfcc
 for x in test train; do 
  steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 \
-   data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+  data/$x exp/make_mfcc/$x $mfccdir || exit 1;
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
 
-# Note: the --boost-silence option should probably be omitted by default
-# for normal setups.  It doesn't always help. [it's to discourage non-silence
-# models from modeling silence.]
-steps/train_mono.sh --boost-silence 1.25 --nj 30 --cmd "$train_cmd" \
-  data/train data/lang exp/mono0a || exit 1;
+vecho ============================================================================
+echo "                     MonoPhone Training & Decoding                        "
+echo ============================================================================
 
- utils/mkgraph.sh --mono data/lang_test_bg exp/mono0a exp/mono0a/graph_bg && \
- steps/decode.sh --nj 30  --cmd "$decode_cmd" \
-      exp/mono0a/graph_bg data/test exp/mono0a/decode_bg_test 
+steps/train_mono.sh  --nj 30 --cmd "$train_cmd" data/train data/lang exp/mono || exit 1;
+
+utils/mkgraph.sh --mono data/lang_test_bg exp/mono exp/mono/graph_bg || exit 1;
+
+steps/decode.sh --nj 30  --cmd "$decode_cmd" \
+ exp/mono/graph_bg data/test exp/mono/decode_bg_test || exit 1;
+
+echo ============================================================================
+echo "           tri1 : Deltas + Delta-Deltas Training & Decoding               "
+echo ============================================================================
 
 steps/align_si.sh --boost-silence 1.25 --nj 30 --cmd "$train_cmd" \
-   data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;
+ data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;
+# Train tri1, which is deltas + delta-deltas, on train data.
+steps/train_deltas.sh --cmd "$train_cmd" \
+ 2500 15000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
 utils/mkgraph.sh data/lang_test_bg exp/tri1 exp/tri1/graph_bg || exit 1;
 
 steps/decode.sh --nj 30 --cmd "$decode_cmd" \
-  exp/tri1/graph_bg data/test exp/tri1/decode_bg_test || exit 1;
+ exp/tri1/graph_bg data/test exp/tri1/decode_bg_test || exit 1;
 
-# demonstrate how to get lattices that are "word-aligned" (arcs coincide with
-# words, with boundaries in the right place).
-#sil_label=`grep '!SIL' data/lang_test_bg/words.txt | awk '{print $2}'`
-#steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
-#  data/lang_test_bg exp/tri1/decode_bg_test exp/tri1/decode_bg_test_aligned || exit 1;
+echo ============================================================================
+echo "                 tri2 : LDA + MLLT Training & Decoding                    "
+echo ============================================================================
 
-# Align tri1 system with train data.
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali_train || exit 1;
 
-# Train tri2a, which is deltas + delta-deltas, on train data.
-steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 15000 data/train data/lang exp/tri1_ali_train exp/tri2a || exit 1;
-
-utils/mkgraph.sh data/lang_test_bg exp/tri2a exp/tri2a/graph_bg || exit 1;
-
-steps/decode.sh --nj 30 --cmd "$decode_cmd" \
-  exp/tri2a/graph_bg data/test exp/tri2a/decode_bg_test || exit 1;
-
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-   --splice-opts "--left-context=3 --right-context=3" \
-   2500 15000 data/train data/lang exp/tri1_ali_train exp/tri2b || exit 1;
+ --splice-opts "--left-context=3 --right-context=3" \
+ 2500 15000 data/train data/lang exp/tri1_ali_train exp/tri2 || exit 1;
 
-utils/mkgraph.sh data/lang_test_bg exp/tri2b exp/tri2b/graph_bg || exit 1;
+utils/mkgraph.sh data/lang_test_bg exp/tri2 exp/tri2/graph_bg || exit 1;
+
 steps/decode.sh --nj 30 --cmd "$decode_cmd" \
-  exp/tri2b/graph_bg data/test exp/tri2b/decode_bg_test || exit 1;
+ exp/tri2/graph_bg data/test exp/tri2/decode_bg_test || exit 1;
 
-# Trying Minimum Bayes Risk decoding (like Confusion Network decoding):
-mkdir exp/tri2b/decode_bg_test_mbr 
-cp exp/tri2b/decode_bg_test/lat.*.gz exp/tri2b/decode_bg_test_mbr 
-local/score_mbr.sh --cmd "$decode_cmd" \
- data/test/ data/lang_test_bg/ exp/tri2b/decode_bg_test_mbr
+echo ============================================================================
+echo "              tri3 : LDA + MLLT + SAT Training & Decoding                 "
+echo ============================================================================
 
-steps/decode_fromlats.sh --cmd "$decode_cmd" \
-  data/test data/lang_test_bg exp/tri2b/decode_bg_test \
-  exp/tri2a/decode_bg_test_fromlats || exit 1;
-
-# Align tri2b system with train data.
+# Align tri2 system with train data.
 steps/align_si.sh  --nj 30 --cmd "$train_cmd" \
-  --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali_train  || exit 1;
+ --use-graphs true data/train data/lang exp/tri2 exp/tri2_ali_train  || exit 1;
 
-local/run_mmi_tri2b.sh
-
-# From 2b system, train 3b which is LDA + MLLT + SAT.
+# From tri2 system, train tri3 which is LDA + MLLT + SAT.
 steps/train_sat.sh --cmd "$train_cmd" \
-  2500 15000 data/train data/lang exp/tri2b_ali_train exp/tri3b || exit 1;
-utils/mkgraph.sh data/lang_test_bg exp/tri3b exp/tri3b/graph_bg || exit 1;
+ 2500 15000 data/train data/lang exp/tri2_ali_train exp/tri3 || exit 1;
+
+utils/mkgraph.sh data/lang_test_bg exp/tri3 exp/tri3/graph_bg || exit 1;
+
 steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
-  exp/tri3b/graph_bg data/test exp/tri3b/decode_bg_test || exit 1;
+ exp/tri3/graph_bg data/test exp/tri3/decode_bg_test || exit 1;
 
-# At this point you could run the command below; this gets
-# results that demonstrate the basis-fMLLR adaptation (adaptation
-# on small amounts of adaptation data).
-local/run_basis_fmllr.sh
+echo ============================================================================
+echo "            fMMI + MMI Training & Decoding on top of tri3                 "
+echo ============================================================================
 
-
-# Train and test MMI, and boosted MMI, on tri3b (LDA+MLLT+SAT on
-# all the data).  Use 30 jobs.
-# From 3b system, align all train data.
+# Train and test MMI, and boosted MMI, on tri3 (LDA+MLLT+SAT on all the data).
+# From tri3 system, align all train data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train data/lang exp/tri3b exp/tri3b_ali_train || exit 1;
+ data/train data/lang exp/tri3 exp/tri3_ali_train || exit 1;
 
-local/run_mmi_tri3b.sh
+steps/make_denlats.sh --nj 30 --sub-split 30 --cmd "$train_cmd" \
+ --transform-dir exp/tri3_ali_train data/train data/lang \
+ exp/tri3 exp/tri3_denlats_train || exit 1;
 
-# You probably want to run the sgmm2 recipe as it's generally a bit better:
-local/run_sgmm2.sh
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
+ data/train data/lang exp/tri3_ali_train exp/tri3_denlats_train \
+ exp/tri3_mmi_b0.1  || exit 1;
 
-# You probably wany to run the hybrid recipe as it is complementary:
-#local/run_hybrid.sh
+steps/decode.sh --nj 30 --cmd "$decode_cmd" --transform-dir exp/tri3/decode_bg_test \
+ exp/tri3/graph_bg data/test exp/tri3_mmi_b0.1/decode_bg_test
 
 
-# Getting results [see RESULTS file]
- for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#first, train UBM for fMMI experiments.
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 30 --cmd "$train_cmd" \
+ 600 data/train data/lang exp/tri3_ali_train exp/dubm3
 
- exit 1;
+# Next, fMMI+MMI.
+steps/train_mmi_fmmi.sh  --boost 0.1 --cmd "$train_cmd" \
+ data/train data/lang exp/tri3_ali_train exp/dubm3 exp/tri3_denlats_train \
+ exp/tri3_fmmi_a || exit 1;
 
-# end
+for iter in 1 2 3 4; do
+ steps/decode_fmmi.sh --nj 30  --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3/decode_bg_test  exp/tri3/graph_bg data/test \
+  exp/tri3_fmmi_a/decode_bg_test_it$iter 
+done
+
+# fMMI + mmi with indirect differential.
+steps/train_mmi_fmmi_indirect.sh --boost 0.1 --cmd "$train_cmd" \
+ data/train data/lang exp/tri3_ali_train exp/dubm3 exp/tri3_denlats_train \
+ exp/tri3_fmmi_indirect || exit 1;
+
+for iter in 1 2 3 4; do
+ steps/decode_fmmi.sh --nj 30  --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3/decode_bg_test  exp/tri3/graph_bg data/test \
+  exp/tri3_fmmi_indirect/decode_bg_test_it$iter 
+done
+
+echo ============================================================================
+echo "                        SGMM2 Training & Decoding                         "
+echo ============================================================================
+
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
+ data/train data/lang exp/tri3 exp/tri3_ali_train || exit 1;
+
+steps/train_ubm.sh --cmd "$train_cmd" \
+ 400 data/train data/lang exp/tri3_ali_train exp/ubm4 || exit 1;
+
+steps/train_sgmm2.sh --cmd "$train_cmd" 7000 9000 \
+ data/train data/lang exp/tri3_ali_train exp/ubm4/final.ubm exp/sgmm2_4 || exit 1;
+
+utils/mkgraph.sh data/lang_test_bg exp/sgmm2_4 exp/sgmm2_4/graph_bg || exit 1;
+
+steps/decode_sgmm2.sh --nj 30 --cmd "$decode_cmd"\
+ --transform-dir exp/tri3/decode_bg_test exp/sgmm2_4/graph_bg data/test \
+ exp/sgmm2_4/decode_bg_test || exit 1;
+
+echo ============================================================================
+echo "                    MMI + SGMM2 Training & Decoding                       "
+echo ============================================================================
+
+steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" \
+ --transform-dir exp/tri3_ali_train --use-graphs true --use-gselect true data/train \
+ data/lang exp/sgmm2_4 exp/sgmm2_4_ali_train || exit 1;
+
+steps/make_denlats_sgmm2.sh --nj 30 --sub-split 30 --cmd "$decode_cmd"\
+ --transform-dir exp/tri3_ali_train  data/train data/lang exp/sgmm2_4_ali_train \
+ exp/sgmm2_4_denlats_train || exit 1;
+fi # temp
+steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
+ --transform-dir exp/tri3_ali_train --boost 0.1 --zero-if-disjoint true \
+ data/train data/lang exp/sgmm2_4_ali_train exp/sgmm2_4_denlats_train \
+ exp/sgmm2_4_mmi_b0.1_z || exit 1;
+
+for iter in 1 2 3 4; do
+  steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
+   --transform-dir exp/tri3/decode_bg_test data/lang_test_bg data/test \
+   exp/sgmm2_4/decode_bg_test exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it$iter || exit 1;
+done
+
+echo ============================================================================
+echo "                  Combining some of the Best Decodings                    "
+echo ============================================================================
+
+local/score_combine.sh data/test data/lang_test_bg \
+ exp/tri3_fmmi_a/decode_bg_test_it1 exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1 \
+ exp/combine_tri3b_fmmi_a_sgmm2_4_mmi_b0.1_z/decode_bg_test_it1_1 || exit 1;
+
+# Checking MBR decode of baseline:
+cp -r -T exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1{,.mbr}
+local/score_mbr.sh data/test data/lang_test_bg \
+ exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1.mbr || exit 1;
+
+echo ============================================================================
+echo "                    Getting Results [see RESULTS file]                    "
+echo ============================================================================
+
+for x in exp/*/decode*; do
+  [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh
+done
+
+exit 0;
+
 
 
 
