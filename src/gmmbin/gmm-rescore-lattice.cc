@@ -27,34 +27,71 @@
 
 namespace kaldi {
 
+struct Tuple {
+  Tuple(int32 state, int32 arc, int32 offset):
+    state_id(state), arc_id(arc), trans_offset(offset) {}
+  int32 state_id;
+  int32 arc_id;
+  int32 trans_offset;
+};
+
 void LatticeAcousticRescore(const AmDiagGmm &am,
                             const TransitionModel &trans_model,
                             const MatrixBase<BaseFloat> &data,
                             const std::vector<int32> state_times,
-                            Lattice *lat) {
-  kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
+                            CompactLattice *clat) {
+  kaldi::uint64 props = clat->Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted))
     KALDI_ERR << "Input lattice must be topologically sorted.";
 
   KALDI_ASSERT(!state_times.empty());
-  std::vector<std::vector<int32> > time_to_state(data.NumRows());
-  for (size_t i = 0; i < state_times.size(); i++) {
-    KALDI_ASSERT(state_times[i] >= 0);
-    if (state_times[i] < data.NumRows()) // end state may be past this..
-      time_to_state[state_times[i]].push_back(i);
-    else
-      KALDI_ASSERT(state_times[i] == data.NumRows()
-                   && "There appears to be lattice/feature mismatch.");
+
+  std::vector<std::vector<Tuple> > time_to_state(data.NumRows());
+
+  for (size_t state = 0; state < state_times.size(); state++) {
+    KALDI_ASSERT(state_times[state] >= 0);
+
+    int32 t = state_times[state];
+    int32 arc_id = 0;
+    for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+        !aiter.Done(); aiter.Next()) {
+      CompactLatticeArc arc = aiter.Value();
+      std::vector<int32> arc_string = (arc.weight.String());
+
+      for (size_t offset = 0; offset < arc_string.size(); offset++) {
+        if (t < data.NumRows()) // end state may be past this..
+          time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
+        else
+          KALDI_ASSERT(t == data.NumRows()
+                && "There appears to be lattice/feature mismatch.");
+      }
+      arc_id++;
+    }
+    if (clat->Final(state) != CompactLatticeWeight::Zero()) {
+      std::vector<int32> arc_string = clat->Final(state).String();
+      for (size_t offset = 0; offset < arc_string.size(); offset++) {
+        if (t < data.NumRows()) // end state may be past this..
+          time_to_state[t+offset].push_back(Tuple(state, -1, offset));
+        else
+          KALDI_ASSERT(t == data.NumRows()
+                && "There appears to be lattice/feature mismatch.");
+      }
+    }
   }
 
   for (int32 t = 0; t < data.NumRows(); t++) {
     unordered_map<int32, BaseFloat> pdf_id_to_like;
     for (size_t i = 0; i < time_to_state[t].size(); i++) {
-      int32 state = time_to_state[t][i];
-      for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
-           aiter.Next()) {
-        LatticeArc arc = aiter.Value();
-        int32 trans_id = arc.ilabel;
+      int32 state = time_to_state[t][i].state_id;
+      int32 arc_id = time_to_state[t][i].arc_id;
+      int32 offset = time_to_state[t][i].trans_offset;
+
+      if (arc_id == -1) { // Final state
+        // Access the trans_id
+        CompactLatticeWeight curr_clat_weight = clat->Final(state);
+        int32 trans_id = curr_clat_weight.String()[offset];
+
+        // Calculate likelihood
         if (trans_id != 0) {  // Non-epsilon input label on arc
           int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
           BaseFloat ll;
@@ -64,7 +101,39 @@ void LatticeAcousticRescore(const AmDiagGmm &am,
           } else {
             ll = pdf_id_to_like[pdf_id];
           }
-          arc.weight.SetValue2(-ll + arc.weight.Value2());
+
+          // update weight
+          CompactLatticeWeight new_clat_weight = curr_clat_weight;
+          LatticeWeight new_lat_weight = new_clat_weight.Weight();
+          new_lat_weight.SetValue2(-ll + curr_clat_weight.Weight().Value2());
+          new_clat_weight.SetWeight(new_lat_weight);
+
+          clat->SetFinal(state, new_clat_weight);
+        }
+
+      } else {
+        fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+
+        // Access the trans_id
+        aiter.Seek(arc_id);
+        CompactLatticeArc arc = aiter.Value();
+        int32 trans_id = arc.weight.String()[offset];
+
+        // Calculate likelihood
+        if (trans_id != 0) {  // Non-epsilon input label on arc
+          int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
+          BaseFloat ll;
+          if (pdf_id_to_like.count(pdf_id) == 0) {
+            ll = am.LogLikelihood(pdf_id, data.Row(t));
+            pdf_id_to_like[pdf_id] = ll;
+          } else {
+            ll = pdf_id_to_like[pdf_id];
+          }
+
+          // Update weight
+          LatticeWeight new_weight = arc.weight.Weight();
+          new_weight.SetValue2(-ll + arc.weight.Weight().Value2());
+          arc.weight.SetWeight(new_weight);
           aiter.SetValue(arc);
         }
       }
@@ -117,33 +186,33 @@ int main(int argc, char *argv[]) {
 
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     // Read as regular lattice
-    SequentialLatticeReader lattice_reader(lats_rspecifier);
+    SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 num_done = 0, num_err = 0;
     int64 num_frames = 0;
-    for (; !lattice_reader.Done(); lattice_reader.Next()) {
-      std::string key = lattice_reader.Key();
+    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
+      std::string key = compact_lattice_reader.Key();
       if (!feature_reader.HasKey(key)) {
         KALDI_WARN << "No feature found for utterance " << key << ". Skipping";
         num_err++;
         continue;
       }
 
-      Lattice lat = lattice_reader.Value();
-      lattice_reader.FreeCurrent();
+      CompactLattice clat = compact_lattice_reader.Value();
+      compact_lattice_reader.FreeCurrent();
       if (old_acoustic_scale != 1.0)
-        fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &lat);
+        fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &clat);
 
-      kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
+      kaldi::uint64 props = clat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
-        if (fst::TopSort(&lat) == false)
+        if (fst::TopSort(&clat) == false)
           KALDI_ERR << "Cycles detected in lattice.";
       }
 
       vector<int32> state_times;
-      int32 max_time = kaldi::LatticeStateTimes(lat, &state_times);
+      int32 max_time = kaldi::CompactLatticeStateTimes(clat, &state_times);
       const Matrix<BaseFloat> &feats = feature_reader.Value(key);
       if (feats.NumRows() != max_time) {
         KALDI_WARN << "Skipping utterance " << key << " since number of time "
@@ -154,10 +223,9 @@ int main(int argc, char *argv[]) {
       }
 
       kaldi::LatticeAcousticRescore(am_gmm, trans_model, feats, state_times,
-                                    &lat);
-      CompactLattice clat_out;
-      ConvertLattice(lat, &clat_out);
-      compact_lattice_writer.Write(key, clat_out);
+                                    &clat);
+
+      compact_lattice_writer.Write(key, clat);
       num_done++;
       num_frames += feats.NumRows();
     }
