@@ -106,7 +106,7 @@ $exqFile = "$outDir/extra_questions.txt";
 #The phonemap is in the form of "ph1=a b c;ph2=a f g;...."
 %phonemap_hash;
 if ($phonemap) {
-  $phonemap=join(" ", split(' ', $phonemap));
+  $phonemap=join(" ", split(/\s+/, $phonemap));
   print $phonemap . "\n";
   @phone_map_instances=split(/;/, $phonemap);
   foreach $instance (@phone_map_instances) {

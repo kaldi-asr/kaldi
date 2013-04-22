@@ -74,7 +74,7 @@ cat $keywords | perl -e '
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
 if  $case_insensitive && ! $use_icu  ; then
   echo "Running case insensitive processing"
-  cat $langdir/words.txt | '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
+  cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
     echo "Warning, multiple words in dictionary differ only in case: " 
     
