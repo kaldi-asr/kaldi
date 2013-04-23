@@ -80,9 +80,9 @@ class WordAlignLatticeLexiconInfo {
   /// Note: the zero word-label is included here.  This is used in a kind
   /// of co-accessibility test, to see whether it is worth extending this state
   /// by traversing arcs in the input lattice.
-  typedef unordered_map< std::vector<int32>,
-                         std::vector<int32>,
-                         VectorHasher<int32> > ViabilityMap;
+  typedef unordered_map<std::vector<int32>,
+                        std::vector<int32>,
+                        VectorHasher<int32> > ViabilityMap;
 
   /// This is a map from a vector (orig-word-symbol phone1 phone2 ... ) to
   /// the new word-symbol.  [todo: make sure the new word-symbol is always nonzero.]
@@ -136,10 +136,11 @@ struct WordAlignLatticeLexiconOpts {
                  "(the purpose of this is to validate the algorithm).");
     po->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
                  "by which we allow the lattice-alignment code to increase the #states"
-                 "in a lattice before we fail and refuse to align the lattices.  This "
-                 "is helpful in order to prevent 'pathological' lattices from causing "
-                 "the program to exhaust memory.  Actual max-states is "
-                 "1000 + max-expand * orig-num-states.");
+                 "in a lattice (vs. the phone-aligned lattice) before we fail and "
+                 "refuse to align the lattice.  This is helpful in order to "
+                 "prevent 'pathological' lattices from causing the program to "
+                 "exhaust memory.  Actual max-states is 1000 + max-expand * "
+                 "orig-num-states.");
   }
 };
 

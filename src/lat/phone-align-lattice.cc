@@ -35,14 +35,17 @@ class LatticePhoneAligner {
    public:
     
     /// Advance the computation state by adding the symbols and weights
-    /// from this arc.
-    void Advance(const CompactLatticeArc &arc, const PhoneAlignLatticeOptions &opts) {
+    /// from this arc.  Gets rid of the weight and puts it in "weight" which
+    /// will be put on the output arc; this keeps the state-space small.
+    void Advance(const CompactLatticeArc &arc, const PhoneAlignLatticeOptions &opts,
+                 LatticeWeight *weight) {
       const std::vector<int32> &string = arc.weight.String();
       transition_ids_.insert(transition_ids_.end(),
                              string.begin(), string.end());
       if (arc.ilabel != 0 && !opts.replace_output_symbols) // note: arc.ilabel==arc.olabel (acceptor)
         word_labels_.push_back(arc.ilabel);
-      weight_ = Times(weight_, arc.weight.Weight());      
+      *weight = Times(weight_, arc.weight.Weight());
+      weight_ = LatticeWeight::One();
     }
 
     /// If it can output a whole phone, it will do so, will put it in arc_out,
@@ -53,10 +56,19 @@ class LatticePhoneAligner {
     /// wrong so don't trust the output too fully.
     /// Note: the "next_state" of the arc will not be set, you have to do that
     /// yourself.
-    bool OutputArc(const TransitionModel &tmodel,
-                   const PhoneAlignLatticeOptions &opts,
-                   CompactLatticeArc *arc_out,
-                   bool *error);
+    bool OutputPhoneArc(const TransitionModel &tmodel,
+                        const PhoneAlignLatticeOptions &opts,
+                        CompactLatticeArc *arc_out,
+                        bool *error);
+
+    /// This will succeed (and output the arc) if we have >1 word in words_;
+    /// the arc won't have any transition-ids on it.  This is intended to fix
+    /// a particular pathology where too many words were pending and we had
+    /// blowup.
+    bool OutputWordArc(const TransitionModel &tmodel,
+                       const PhoneAlignLatticeOptions &opts,
+                       CompactLatticeArc *arc_out,
+                       bool *error);
       
     bool IsEmpty() { return (transition_ids_.empty() && word_labels_.empty()); }
     
@@ -188,7 +200,8 @@ class LatticePhoneAligner {
     // composition.
     CompactLatticeArc lat_arc;
     Tuple tuple2(tuple); // temp
-    if (tuple.comp_state.OutputArc(tmodel_, opts_, &lat_arc, &error_)) {
+    if (tuple.comp_state.OutputPhoneArc(tmodel_, opts_, &lat_arc, &error_) ||
+        tuple.comp_state.OutputWordArc(tmodel_, opts_, &lat_arc, &error_)) {
       // note: this function changes the tuple (when it returns true).
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,
       // if not already present.
@@ -210,7 +223,8 @@ class LatticePhoneAligner {
           !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
         Tuple next_tuple(tuple);
-        next_tuple.comp_state.Advance(arc, opts_);
+        LatticeWeight weight;
+        next_tuple.comp_state.Advance(arc, opts_, &weight);
         next_tuple.input_state = arc.nextstate;
         StateId next_output_state = GetStateForTuple(next_tuple, true); // true == add to queue,
         // if not already present.
@@ -219,8 +233,8 @@ class LatticePhoneAligner {
         KALDI_ASSERT(next_output_state != output_state);
         lat_out_->AddArc(output_state,
                          CompactLatticeArc(0, 0,
-                                           CompactLatticeWeight::One(),
-                                           next_output_state));
+                            CompactLatticeWeight(weight, std::vector<int32>()),
+                            next_output_state));
       }
     }
   }
@@ -273,7 +287,7 @@ class LatticePhoneAligner {
   bool error_;  
 };
 
-bool LatticePhoneAligner::ComputationState::OutputArc(
+bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
     const TransitionModel &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
@@ -321,7 +335,26 @@ bool LatticePhoneAligner::ComputationState::OutputArc(
   weight_ = LatticeWeight::One(); // we just output the weight.
   return true;
 }
-    
+
+bool LatticePhoneAligner::ComputationState::OutputWordArc(
+    const TransitionModel &tmodel,
+    const PhoneAlignLatticeOptions &opts,
+    CompactLatticeArc *arc_out,
+    bool *error) {
+  // output a word but no phones.
+  if (word_labels_.size() < 2) return false;
+  
+  int32 output_label = word_labels_[0];
+  word_labels_.erase(word_labels_.begin(), word_labels_.begin()+1);
+
+  *arc_out = CompactLatticeArc(output_label, output_label,
+                               CompactLatticeWeight(weight_, std::vector<int32>()),
+                               fst::kNoStateId);
+  weight_ = LatticeWeight::One(); // we just output the weight, so set it to one.
+  return true;
+}
+  
+
 void LatticePhoneAligner::ComputationState::OutputArcForce(
     const TransitionModel &tmodel,
     const PhoneAlignLatticeOptions &opts,

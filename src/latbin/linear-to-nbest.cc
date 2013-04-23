@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
         "structure.  The program is called linear-to-nbest because very often\n"
         "the archives concerned will represent N-best lists\n"
         "Usage:  linear-to-nbest [options] <alignments-rspecifier> "
-        "<transcriptions-rspecifier> [<lm-cost-rspecifier>|''] [<ac-cost-rspecifier>|''] "
+        "<transcriptions-rspecifier> (<lm-cost-rspecifier>|'') (<ac-cost-rspecifier>|'') "
         "<nbest-wspecifier>\n"
         "Note: if the rspecifiers for lm-cost or ac-cost are the empty string,\n"
         "these value will default to zero.\n"

@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
+        "This program is deprecated, please used lattice-determinize-pruned\n"
         "lattice-determinize lattices (and apply a pruning beam)\n"
         " (see http://kaldi.sourceforge.net/lattices.html for more explanation)\n"
         " note: this program is tyically only useful if you generated state-level\n"
@@ -110,7 +111,8 @@ int main(int argc, char *argv[]) {
     bool prune = false;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used to handle determinization failures, set --prune=false to disable routine pruning");
+    po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used "
+                "to handle determinization failures, set --prune=false to disable routine pruning");
     po.Register("delta", &delta, "Tolerance used in determinization");
     po.Register("prune", &prune, "If true, prune determinized lattices with the --beam option.");
     po.Register("max-mem", &max_mem, "Maximum approximate memory usage in determinization (real usage might be many times this)");

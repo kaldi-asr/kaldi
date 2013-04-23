@@ -33,14 +33,16 @@ class LatticeWordAligner {
    public:
     
     /// Advance the computation state by adding the symbols and weights
-    /// from this arc.
-    void Advance(const CompactLatticeArc &arc) {
+    /// from this arc.  We'll put the weight on the output arc; this helps
+    /// keep the state-space smaller.
+    void Advance(const CompactLatticeArc &arc, LatticeWeight *weight) {
       const std::vector<int32> &string = arc.weight.String();
       transition_ids_.insert(transition_ids_.end(),
                              string.begin(), string.end());
       if (arc.ilabel != 0) // note: arc.ilabel==arc.olabel (acceptor)
         word_labels_.push_back(arc.ilabel);
-      weight_ = Times(weight_, arc.weight.Weight());      
+      *weight = Times(weight_, arc.weight.Weight());
+      weight_ = LatticeWeight::One();
     }
 
     /// If it can output a whole word, it will do so, will put it in arc_out,
@@ -229,7 +231,8 @@ class LatticeWordAligner {
           !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
         Tuple next_tuple(tuple);
-        next_tuple.comp_state.Advance(arc);
+        LatticeWeight weight;
+        next_tuple.comp_state.Advance(arc, &weight);
         next_tuple.input_state = arc.nextstate;
         StateId next_output_state = GetStateForTuple(next_tuple, true); // true == add to queue,
         // if not already present.
@@ -238,8 +241,8 @@ class LatticeWordAligner {
         KALDI_ASSERT(next_output_state != output_state);
         lat_out_->AddArc(output_state,
                          CompactLatticeArc(0, 0,
-                                           CompactLatticeWeight::One(),
-                                           next_output_state));
+                             CompactLatticeWeight(weight, std::vector<int32>()),
+                             next_output_state));
       }
     }
   }

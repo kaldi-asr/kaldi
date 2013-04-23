@@ -52,9 +52,8 @@ struct PhoneAlignLatticeOptions {
 /// phones, so the boundaries between the arcs correspond to the boundaries
 /// between phones If remove-epsilon == false and replace-output-symbols ==
 /// false, but an arc may have >1 phone on it, but the boundaries will still
-/// correspond with the boundaries between phones.  it's possible in principle
-/// at the end of the lattice to have arcs with words on them but no
-/// transition-ids at all, although this is unlikely.)  returns true if
+/// correspond with the boundaries between phones.  Note: it's possible
+/// to have arcs with words on them but no transition-ids at all.  Returns true if
 /// everything was OK, false if some kind of error was detected (e.g. the
 /// "reorder" option was incorrectly specified.)
 bool PhoneAlignLattice(const CompactLattice &lat,

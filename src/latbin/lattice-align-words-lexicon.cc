@@ -40,9 +40,12 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     bool output_if_error = true;
+    bool output_if_empty = false;
     
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
+    po.Register("output-if-empty", &output_if_empty, "If true: if algorithm gives "
+                "error and produces empty output, pass the input through.");
     
     WordAlignLatticeLexiconOpts opts;
     opts.Register(&po);
@@ -94,6 +97,13 @@ int main(int argc, char *argv[]) {
       
       if (!ok) {
         num_err++;
+        if (output_if_empty && aligned_clat.NumStates() == 0 &&
+            clat.NumStates() != 0) {
+          KALDI_WARN << "Algorithm produced no output (due to --max-expand?), "
+                     << "so passing input through as output, for key " << key;
+          clat_writer.Write(key, clat);
+          continue;
+        }
         if (!output_if_error)
           KALDI_WARN << "Lattice for " << key << " did not align correctly";
         else {
