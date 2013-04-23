@@ -1,5 +1,6 @@
 #!/usr/bin/perl
-# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2010-2011  Microsoft Corporation
+#                2013  Johns Hopkins University (author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,9 +21,18 @@
 # Disambig syms are numbered #1, #2, #3, etc. (#0 
 # reserved for symbol in grammar).
 # Outputs the number of disambig syms to the standard output.
+# With the --pron-probs option, expects the second field
+# of each lexicon line to be a pron-prob.
+
+$pron_probs = 0;
+
+if ($ARGV[0] eq "--pron-probs") {
+  $pron_probs = 1;
+  shift @ARGV;
+}
 
 if(@ARGV != 2) {
-    die "Usage: add_lex_disambig.pl  lexicon.txt lexicon_disambig.txt "
+    die "Usage: add_lex_disambig.pl [--pron-probs] lexicon.txt lexicon_disambig.txt "
 }
 
 
@@ -44,6 +54,10 @@ while(<L>) {
 foreach $l (@L) {
     @A = split(" ", $l);
     shift @A; # Remove word.
+    if ($pron_probs) {
+      $p = shift @A;
+      if (!($p > 0.0 && $p <= 1.0)) { die "Bad lexicon line $l (expecting pron-prob as second field)"; }
+    }
     $count{join(" ",@A)}++;
 }
 
@@ -53,6 +67,7 @@ foreach $l (@L) {
 foreach $l (@L) {
     @A = split(" ", $l);
     shift @A; # Remove word.
+    if ($pron_probs) { shift @A; } # remove pron-prob.
     while(@A > 0) {
         pop @A;  # Remove last phone
         $issubseq{join(" ",@A)} = 1;
@@ -72,6 +87,7 @@ $max_disambig = 0;
 foreach $l (@L) {
     @A = split(" ", $l);
     $word = shift @A;
+    if ($pron_probs) { $pron_prob = shift @A; }
     $phnseq = join(" ",@A);
     if(!defined $issubseq{$phnseq}
        && $count{$phnseq} == 1) {
@@ -94,7 +110,8 @@ foreach $l (@L) {
             $phnseq = $phnseq . " #" . $curnumber;
          }
     }
-    print O "$word\t$phnseq\n";
+    if ($pron_probs) {  print O "$word\t$pron_prob\t$phnseq\n"; }
+    else {  print O "$word\t$phnseq\n"; }
 }
 
 print $max_disambig . "\n";

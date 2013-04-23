@@ -1,3 +1,5 @@
+#/bin/bash
+
 #Simple utility script to convert the gzipped ARPA lm into a G.fst file
 
 lmfile=$1

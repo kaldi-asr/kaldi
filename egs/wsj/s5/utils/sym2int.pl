@@ -16,7 +16,7 @@
 
 
 $ignore_oov = 0;
-$ignore_first_field = 0;
+
 for($x = 0; $x < 2; $x++) {
   if ($ARGV[0] eq "--map-oov") {
     shift @ARGV; $map_oov = shift @ARGV;
@@ -90,6 +90,9 @@ while (<>) {
   }
   print join(" ", @B);
   print "\n";
+}
+if ($num_warning > 0) {
+  print STDERR "** Replaced $num_warning instances of OOVs with $map_oov\n"; 
 }
 
 exit(0);

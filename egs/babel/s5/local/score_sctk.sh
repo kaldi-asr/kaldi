@@ -39,9 +39,15 @@ dir=$3
 name=`basename $data`; # e.g. eval2000
 
 if [ $stage -le 1  ] ; then
-  local/lattice_to_ctm.sh --decode-mbr $decode_mbr --min-lmwt $min_lmwt \
-    --max-lmwt $max_lmwt --cmd "$cmd" --beam $beam --stage $stage \
-    --word-ins-penalty $word_ins_penalty  $data $lang $dir 
+  if [ -d data/local/w2s_extended ]; then  # this is for the syllable-based system.
+    local/lattice_to_ctm_syllable.sh --decode-mbr $decode_mbr --min-lmwt $min_lmwt \
+      --max-lmwt $max_lmwt --cmd "$cmd" --beam $beam --stage $stage \
+      --word-ins-penalty $word_ins_penalty  $data $lang data/local/w2s_extended $dir 
+  else
+    local/lattice_to_ctm.sh --decode-mbr $decode_mbr --min-lmwt $min_lmwt \
+      --max-lmwt $max_lmwt --cmd "$cmd" --beam $beam --stage $stage \
+      --word-ins-penalty $word_ins_penalty  $data $lang $dir 
+  fi
 fi
 
 if [ $stage -le 2 ] ; then 

@@ -8,7 +8,6 @@ case_insensitive=true
 use_icu=true
 icu_transform="'Any-Lower()'"
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
-
 # End configuration section.
 
 echo $0 "$@"

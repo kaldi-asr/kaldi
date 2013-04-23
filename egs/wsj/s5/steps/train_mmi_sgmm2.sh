@@ -109,7 +109,7 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-      test -s $dir/den_acc.$x.JOB.gz '||' \
+      test -s $dir/den_acc.$x.JOB.gz -a -s $dir/num_acc.$x.JOB.gz '||' \
       sgmm2-rescore-lattice "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --zero-if-disjoint=$zero_if_disjoint --merge=$cancel --scale1=-1 \

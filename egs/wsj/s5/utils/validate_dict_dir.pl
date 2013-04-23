@@ -6,6 +6,7 @@
 #
 # Validation script for data/local/dict
 
+
 if(@ARGV != 1) {
   die "Usage: validate_dict_dir.pl dict_directory\n";
 }
@@ -105,31 +106,92 @@ sub intersect {
 print "Checking disjoint: silence_phones.txt, nonsilence_phones.txt\n";
 @itset = intersect(\%silence, \%nonsilence);
 if(@itset == 0) {print "--> disjoint property is OK.\n";}
-else {$exit = 1; print "--> ERROR: silence_phones.txt and nonsilence_phones.txt has overlop: "; foreach(@itset) {print "$_ ";} print "\n";}
+else {$exit = 1; print "--> ERROR: silence_phones.txt and nonsilence_phones.txt has overlap: "; foreach(@itset) {print "$_ ";} print "\n";}
 print "\n";
 
-# Checking lexicon.txt -------------------------------
-print "Checking $dict/lexicon.txt\n";
-if(-z "$dict/lexicon.txt") {$exit = 1; print "--> ERROR: $dict/lexicon.txt is empty or not exists\n";}
-if(!open(L, "<$dict/lexicon.txt")) {$exit = 1; print "--> ERROR: fail to open $dict/lexicon.txt\n";}
-$idx = 1;
-$success = 1;
-print "--> reading $dict/lexicon.txt\n";
-while(<L>) {
-  chomp;
-  my @col = split(" ", $_);
-  $word = shift @col;
-  foreach(0 .. @col-1) {
-    if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-      $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
+
+sub check_lexicon {
+  my ($lexfn, $pron_probs) = @_;
+  print "Checking $lexfn\n";
+  if(-z "$lexfn") {$exit = 1; print "--> ERROR: $lexfn is empty or not exists\n";}
+  if(!open(L, "<$lexfn")) {$exit = 1; print "--> ERROR: fail to open $lexfn\n";}
+  $idx = 1;
+  $success = 1;
+  print "--> reading $lexfn\n";
+  while (<L>) {
+    chomp;
+    my @col = split(" ", $_);
+    $word = shift @col;
+    if (!defined $word) {
+      $exit = 1; print "--> ERROR: empty lexicon line in $lexfn\n"; 
       $success = 0;
     }
+    if ($pron_probs) {
+      $prob = shift @col;
+      if (!($prob > 0.0 && $prob <= 1.0)) { 
+        $exit = 1; print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lexfn\n";
+        $success = 0;
+      }
+    }
+    foreach (0 .. @col-1) {
+      if (!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
+        $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
+        $success = 0;
+      }
+    }
+    $idx ++;
   }
-  $idx ++;
+  close(L);
+  $success == 0 || print "--> $lexfn is OK\n";
+  print "\n";
 }
-close(L);
-$success == 0 || print "--> $dict/lexicon.txt is OK\n";
-print "\n";
+
+if (-f "$dict/lexicon.txt") { check_lexicon("$dict/lexicon.txt", 0); }
+if (-f "$dict/lexiconp.txt") { check_lexicon("$dict/lexiconp.txt", 1); }
+if (!(-f "$dict/lexicon.txt" || -f "$dict/lexiconp.txt")) {
+  print "--> ERROR: neither lexicon.txt or lexiconp.txt exist in directory $dir\n";
+  $exit = 1;
+}
+# If both lexicon.txt and lexiconp.txt exist, we check that they correspond to
+# each other.  If not, it could be that the user overwrote one and we need to
+# regenerate the other, but we don't know which is which.
+if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
+  print "Checking that lexicon.txt and lexiconp.txt match\n";
+  if (!open(L, "<$dict/lexicon.txt") || !open(P, "<$dict/lexiconp.txt")) {
+    die "Error opening lexicon.txt and/or lexiconp.txt"; # already checked, so would be code error.
+  }
+  while(<L>) {
+    @A = split;
+    $x = <P>;
+    if (!defined $x) {
+      print "--> ERROR: lexicon.txt and lexiconp.txt have different numbers of lines (mismatch); delete one.\n";
+      $exit = 1;
+      last;
+    }
+    @B = split(" ", $x);
+    $w = shift @B;
+    $p = shift @B;
+    unshift @B, $w;
+    # now @A and @B should be the same.
+    if ($#A != $#B) {
+      print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one.\n";
+      $exit = 1;
+      last;
+    }
+    for ($n = 0; $n < @A; $n++) {
+      if ($A[$n] ne $B[$n]) {
+        print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one.\n";
+        $exit = 1;
+        last;
+      }
+    }
+  }
+  $x = <P>;
+  if (defined $x && $exit == 0) {
+    print "--> ERROR: lexicon.txt and lexiconp.txt have different numbers of lines (mismatch); delete one.\n";
+    $exit = 1;
+  }
+}
 
 # Checking extra_questions.txt -------------------------------
 print "Checking $dict/extra_questions.txt ...\n";

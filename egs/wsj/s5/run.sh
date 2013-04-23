@@ -140,11 +140,8 @@ sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print $2}'`
 steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
   data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
 
-
-# Align tri1 system with si84 data.
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
   data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84 || exit 1;
-
 
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
 steps/train_deltas.sh --cmd "$train_cmd" \

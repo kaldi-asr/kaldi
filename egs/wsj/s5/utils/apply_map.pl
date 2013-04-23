@@ -5,7 +5,7 @@
 # This program is a bit like ./sym2int.pl in that it applies a map
 # to things in a file, but it's a bit more general in that it doesn't
 # assume the things being mapped to are single tokens, they could
-# be sequences of tokens.  
+# be sequences of tokens.
 
 # This program takes two arguments, which may be files or "-" for the
 # standard input.  Both files must have lines with one or more fields,
@@ -17,19 +17,43 @@
 # y Q R
 # then the output of this program will be
 # A P Q R
-# 
+#
 # Note that if x or y did not appear as the first field of file b, we would
 # print a warning and omit the whole line rather than map it to the empty
 # string.
 
+
+if (@ARGV > 0 && $ARGV[0] eq "-f") {
+  shift @ARGV; 
+  $field_spec = shift @ARGV; 
+  if ($field_spec =~ m/^\d+$/) {
+    $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
+  }
+  if ($field_spec =~ m/^(\d*)[-:](\d*)/) { # accept e.g. 1:10 as a courtesty (properly, 1-10)
+    if ($1 ne "") {
+      $field_begin = $1 - 1;    # Change to zero-based indexing.
+    }
+    if ($2 ne "") {
+      $field_end = $2 - 1;      # Change to zero-based indexing.
+    }
+  }
+  if (!defined $field_begin && !defined $field_end) {
+    die "Bad argument to -f option: $field_spec"; 
+  }
+}
+
+
 if(@ARGV != 1) {
-  print STDERR "Usage: apply_map.pl map <input >output\n" .
-    "e.g.: echo A B | apply_map.pl <a.txt\n" .
+  print STDERR "Usage: apply_map.pl [options] map <input >output\n" .
+    "options: [-f <field-range> ]\n" .
+    "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n" .
+    "e.g.: echo A B | apply_map.pl a.txt\n" .
     "where a.txt is:\n" .
     "A a1 a2\n" .
     "B b\n" .
     "will produce:\n" .
     "a1 a2 b\n";
+  exit(1);
 }
 
 ($map) = @ARGV;
@@ -46,9 +70,12 @@ while (<M>) {
 while(<STDIN>) {
   @A = split(" ", $_);
   for ($x = 0; $x < @A; $x++) {
-    $a = $A[$x];
-    if (!defined $map{$a}) { die "compose_maps.pl: undefined key $a\n"; }
-    $A[$x] = $map{$a};
+    if ( (!defined $field_begin || $x >= $field_begin)
+         && (!defined $field_end || $x <= $field_end)) {
+      $a = $A[$x];
+      if (!defined $map{$a}) { die "compose_maps.pl: undefined key $a\n"; }
+      $A[$x] = $map{$a};
+    }
   }
   print join(" ", @A) . "\n";
 }

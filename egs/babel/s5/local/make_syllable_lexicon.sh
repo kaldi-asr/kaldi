@@ -11,7 +11,8 @@ help="Usage: $(basename $0) <input-lexicon-with-tabs> <word2syllable-lexicon-out
     w/o  w o"
 
 # config vars:
-
+pron_probs=false # If you set --pron-probs true, will expect pron-prob on input lexicon and produce
+                 # pron-probs on word2syllable lexicon.
 # end configs.
 . utils/parse_options.sh
 
@@ -29,16 +30,26 @@ mkdir -p `dirname $w2s_lex_out`
 mkdir -p `dirname $s2p_lex_out`
 
 cat $lex_in | perl -e  '
-  $w2s = shift @ARGV;
+  ($w2s, $pron_probs) = @ARGV;
   open(W2S, ">$w2s") || die "opening word to syllable lexicon";
   $saw_tabs = 0;
-  while(<>) { 
+  while(<STDIN>) { 
     chop;
-    @A = split("\t", $_);
+    if ($pron_probs eq "true") {
+      m:(\S+)\s+(\S+)\s+(.+): || die "Bad line $_ (note: have pron probs).";
+      $word = $1;
+      $prob = $2;
+      $pron = $3;
+      ($prob > 0.0 && $prob <= 1.0) || die "Bad pron-prob $prob in line $_";
+      print W2S "$word $prob";
+    } else {
+      m:(\S+)\s+(.+): || die "Bad line $_ (note: do not have pron probs).";
+      $word = $1;
+      $pron = $2;
+      print W2S "$word";      
+    }
+    @A = split("\t", $pron);
     @A >= 1 || die "Bad lexicon line $_\n";
-    $word = shift @A;
-    split(" ", $word) > 1 && die "Bad lexicon line $_ (expecting word to be followed by tab)";
-    print W2S $word;
     if (@A > 1) { $saw_tabs = 1; }
     foreach $s (@A) {
       $s =~ s/^\s+//; # Remove leading space.
@@ -56,6 +67,6 @@ cat $lex_in | perl -e  '
     die "You seem to be using as input to this script, a lexicon that does not have " .
        "syllables separated by tabs.";
   }
-  ' $w2s_lex_out | sort | uniq > $s2p_lex_out || exit 1;
+  ' $w2s_lex_out $pron_probs | sort | uniq > $s2p_lex_out || exit 1;
 
 exit 0;

@@ -4,7 +4,7 @@
 # Apache 2.0.
 
 # Begin configuration section.  
-case_insensitive=true
+silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
 echo $0 "$@"
@@ -13,9 +13,9 @@ echo $0 "$@"
 . parse_options.sh || exit 1;
 
 
-if [ $# -ne 5 ]; then
-   echo "Usage: local/kws_data_prep.sh <lang-dir> <data-dir> <syllable-lexicon> <silphone> <kws-data-dir>"
-   echo " e.g.: local/kws_data_prep.sh data/lang/ data/eval/ SIL data/kws/"
+if [ $# -ne 4 ]; then
+   echo "Usage: local/kws_data_prep_syllables.sh [options] <lang-dir> <data-dir> <syllable-lexicon> <kws-data-dir>"
+   echo " e.g.: local/kws_data_prep_syllables.sh data/lang/ data/dev10h/  SIL data/kws/"
    echo "Input is in <kws-data-dir>: kwlist.xml, ecf.xml (rttm file not needed)."
    echo "The lang directory is expected to be syllable-level.  The syllable-lexicon "
    echo "is a text file with lines of the form:"
@@ -27,16 +27,19 @@ if [ $# -ne 5 ]; then
    echo "    kwlist_outvocab.xml, keywords.fsts; note that the only syllable-level"
    echo "  output (and the only one that really matters) is keywords.fsts"
    echo "Note: most important output is keywords.fsts"
+   echo " Options:"
+   echo "  --silence-word   <silence-word>        # Note, this is required.  It is a word, e.g. SIL,"
+   echo "                                         # in the syllable lexicon, that's optional."
    exit 1;
 fi
 
 langdir=$1;
 datadir=$2;
 syllable_lexicon=$3
-silphone=$4
-kwsdatadir=$5
+kwsdatadir=$4
 keywords=$kwsdatadir/kwlist.xml
 
+[ -z $silence_word ] && echo "--silence-word option is required" && exit 1;
 
 mkdir -p $kwsdatadir;
 
@@ -56,7 +59,7 @@ cat $keywords | perl -e '
   }
 ' > $kwsdatadir/keywords.txt
 
-[ ! -s "$syllable_lexicon" ] && echo "No such file '$f' (syllable lexicon), or empty file." && exit 1;
+[ ! -s "$syllable_lexicon" ] && echo "No such file '$syllable_lexicon' (syllable lexicon), or empty file." && exit 1;
 
 # The word symbols on the first entry of $syllable_lexicon will be given a symbol-table
 # file.  We just use this symbol table in this script; the values will never appear
@@ -108,7 +111,7 @@ cat $kwsdatadir/temp/keywords_all.int | \
   egrep " 0 | 0$" | cut -f 1 -d ' ' | \
   local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml
 
-local/make_lexicon_fst_special.pl $kwsdatadir/temp/syllable_lexicon.txt $silphone | \
+local/make_lexicon_fst_special.pl $kwsdatadir/temp/syllable_lexicon.txt $silence_word | \
   sym2int.pl -f 4 $kwsdatadir/temp/words.txt | \
   sym2int.pl -f 3 $langdir/words.txt | \
   fstcompile | \
