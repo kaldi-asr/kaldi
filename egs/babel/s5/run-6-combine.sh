@@ -19,7 +19,7 @@ if [ ! -f exp/combine_2/decode_dev2h/.done ]; then
   done
 fi
 
- This assumes the exp_BNF stuff is done..
+# This assumes the exp_BNF stuff is done..
 if [ ! -f exp/combine_3/decode_dev2h/.done ]; then
   for iter in 1 2 3 4; do
     if [ ! -f exp_BNF/sgmm7_mmi_b0.1/decode_dev2h_fmllr_it$iter/.done ]; then
