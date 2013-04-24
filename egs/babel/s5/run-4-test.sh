@@ -10,6 +10,7 @@ type=dev2h
 
 
 type=dev10h
+dev2shadow=dev10h.uem
 . utils/parse_options.sh     
 
 
@@ -44,7 +45,7 @@ fi
 #####################################################################
 if [[ $type == shadow || $type == eval ]]; then
   if [ ! -f data/eval.uem/.done ]; then
-    local/cmu_uem2kaldi_dir.sh --filelist $eval_data_list $eval_data_cmudb_shadow  $eval_data_dir data/eval.uem 
+    local/cmu_uem2kaldi_dir.sh --filelist $eval_data_list $eval_data_cmudb  $eval_data_dir data/eval.uem 
     steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/eval.uem exp/make_plp/eval.uem plp
 
     steps/compute_cmvn_stats.sh data/eval.uem exp/make_plp/eval.uem plp
@@ -52,19 +53,20 @@ if [[ $type == shadow || $type == eval ]]; then
     touch data/eval.uem/.done
   fi
 
-  # we expect that the dev2h directory will already exist.
+  # we expect that the ${dev2shadow} directory will already exist.
   if [ ! -f data/shadow.uem/.done ]; then
-    if [ ! -f data/dev2h/.done ]; then
-      echo "Error: data/dev2h/.done does not exist."
+    if [ ! -f data/${dev2shadow}/.done ]; then
+      echo "Error: data/${dev2shadow}/.done does not exist."
     fi
 
     local/kws_setup.sh --case-insensitive $case_insensitive $eval_data_ecf $eval_data_kwlist data/lang data/eval.uem/
 
-    local/create_shadow_dataset.sh data/shadow.uem data/dev2h data/eval.uem
+    local/create_shadow_dataset.sh data/shadow.uem data/${dev2shadow} data/eval.uem
     local/kws_data_prep.sh --case-insensitive $case_insensitive data/lang data/shadow.uem data/shadow.uem/kws || exit 1
     utils/fix_data_dir.sh data/shadow.uem
     touch data/shadow.uem/.done 
   fi
+  decode_nj=$eval_nj
 fi
 
 #####################################################################
@@ -89,11 +91,13 @@ if [ $type == dev10h ]; then
     steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/dev10h.uem exp/make_plp/dev10h.uem plp
     steps/compute_cmvn_stats.sh data/dev10h.uem exp/make_plp/dev10h.uem plp
     utils/fix_data_dir.sh data/dev10h.uem
-
+    touch data/dev10h.uem/.done
+  fi
+  if [ ! -f data/dev10h.uem/kws/.done ]; then
     local/kws_setup.sh --case-insensitive $case_insensitive \
       --rttm-file $dev10h_rttm_file \
       $dev10h_ecf_file $dev10h_kwlist_file data/lang data/dev10h.uem
-    touch data/dev10h.uem/.done
+    touch data/dev10h.uem/kws/.done
   fi
 fi
 
@@ -113,11 +117,14 @@ if [ $type == dev2h ]; then
     steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/dev2h.uem exp/make_plp/dev2h.uem plp
     steps/compute_cmvn_stats.sh data/dev2h.uem exp/make_plp/dev2h.uem plp
     utils/fix_data_dir.sh data/dev2h.uem
+    touch data/dev2hh.uem/.done
+  fi
 
+  if [ ! -f data/dev2h.uem/kws/.done ]; then
     local/kws_setup.sh --case-insensitive $case_insensitive \
       --subset-ecf $dev2h_data_list --rttm-file $dev2h_rttm_file \
       $dev2h_ecf_file $dev2h_kwlist_file data/lang data/dev2h.uem
-    touch data/dev2h.uem/.done
+    touch data/dev2h.uem/kws/.done
   fi
   decode_nj=$decode_nj
 fi
@@ -144,13 +151,13 @@ if [ ! -f exp/tri5/decode_${type}.uem/.kws.done ]; then
   if [ $type == shadow ]; then
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem.si
     local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem
-    local/split_ctms.sh exp/tri5/decode_shadow.uem.si data/dev2h data/eval.uem
-    local/split_ctms.sh exp/tri5/decode_shadow.uem data/dev2h data/eval.uem
+    local/split_ctms.sh exp/tri5/decode_shadow.uem.si data/${dev2shadow} data/eval.uem
+    local/split_ctms.sh exp/tri5/decode_shadow.uem data/${dev2shadow} data/eval.uem
     
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-      exp/tri/decode_${type}.uem.si data/dev2h data/eval.uem
+      exp/tri/decode_${type}.uem.si data/${dev2shadow} data/eval.uem
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-      exp/tri5/decode_${type}.uem data/dev2h data/eval.uem
+      exp/tri5/decode_${type}.uem data/${dev2shadow} data/eval.uem
   else
     local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
       data/${type}.uem/ exp/tri5/decode_${type}.uem.si
@@ -174,9 +181,9 @@ fi
 if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.kws.done ]; then
   local/lattice_to_ctm.sh --cmd "$decode_cmd" data/$type.uem data/lang exp/sgmm5/decode_fmllr_$type.uem 
   if [ $type == shadow ]; then
-    local/split_ctms.sh exp/sgmm5/decode_fmllr_shadow.uem data/dev2h data/eval.uem
+    local/split_ctms.sh exp/sgmm5/decode_fmllr_shadow.uem data/${dev2shadow} data/eval.uem
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/shadow.uem data/lang \
-      exp/sgmm5/decode_fmllr_shadow.uem data/dev2h data/eval.uem
+      exp/sgmm5/decode_fmllr_shadow.uem data/${dev2shadow} data/eval.uem
   else
     local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
       data/${type}.uem/ exp/sgmm5/decode_fmllr_${type}.uem
@@ -206,10 +213,10 @@ for iter in 1 2 3 4; do
 
     if [ $type == shadow ]; then
       local/split_ctms.sh data/shadow.uem exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
-        data/dev2h data/eval.uem
+        data/${dev2shadow} data/eval.uem
       local/shadow_set_kws_search.sh --cmd "$decode_cmd" --max-states 150000 \
         data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
-        data/dev2h data/eval.uem
+        data/${dev2shadow} data/eval.uem
     else
       local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
         data/${type}.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
@@ -241,10 +248,10 @@ if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.kws.done && -f exp/tri6_nnet/final.
 
   if [ $type == shadow ]; then
     local/split_ctms.sh data/shadow.uem exp/tri6_nnet/decode_${type}.uem \
-      data/dev2h data/eval.uem
+      data/${dev2shadow} data/eval.uem
     local/shadow_set_kws_search.sh --cmd "$decode_cmd" --max-states 150000 \
       data/shadow.uem data/lang exp/tri6_nnet/decode_${type}.uem \
-      data/dev2h data/eval.uem
+      data/${dev2shadow} data/eval.uem
   else
     local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
       data/${type}.uem/ exp/tri6_nnet/decode_${type}.uem
