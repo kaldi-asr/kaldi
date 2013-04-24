@@ -5,6 +5,9 @@
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
+binmode STDOUT, ":utf8"; 
+binmode STDIN, ":utf8"; 
+
 sub permute {
 
     my $last = pop @_;
@@ -19,6 +22,8 @@ sub permute {
                } 
                permute(@_);
 }
+
+$oov_count=0;
 
 $ignore_oov = 0;
 $ignore_first_field = 0;
@@ -52,7 +57,7 @@ if (!defined $symtab) {
     "options: [--map-oov <oov-symbol> ]  [-f <field-range> ]\n" .
       "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n";
 }
-open(F, "<$symtab") || die "Error opening symbol table file $symtab";
+open(F, "<:encoding(UTF-8)", $symtab) || die "Error opening symbol table file $symtab";
 while(<F>) {
     @A = split(" ", $_);
     @A == 2 || die "bad line in symbol table file: $_";
@@ -69,9 +74,12 @@ if (defined $map_oov && $map_oov !~ m/^\d+$/) { # not numeric-> look it up
   $map_oov = $sym2int{$map_oov};
 }
 
+$lines=0;
 while (<>) {
   @A = split(" ", $_);
   @B = ();
+  $lines = $lines + 1;
+  $undefined_words = 0;
   for ($n = 1; $n < @A; $n++) {
     $a = $A[$n];
     $i = $sym2int{$a};
@@ -88,6 +96,7 @@ while (<>) {
         $pos = $n+1;
         die "sym2int.pl: undefined symbol $a (in position $pos)\n";
       }
+      $undefined_words = $undefined_words + 1;
     }
     $a = $i;
     push @B, $a;
@@ -97,6 +106,9 @@ while (<>) {
     #} else {
     #  push @B, [0];
     #}
+  if ($undefined_words > 0) {
+    $oov_count = $oov_count + 1;
+  }
   @C = permute @B;
   #print Dumper(\@B);
   #print Dumper(\@C);
@@ -106,4 +118,6 @@ while (<>) {
     print "\n";
   }
 }
+
+print STDERR "Remaped/ignored $oov_count phrases...\n";
 
