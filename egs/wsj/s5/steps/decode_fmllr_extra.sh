@@ -120,7 +120,9 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/decode.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active $graphdir $data $si_dir || exit 1;
+    steps/decode.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model\
+      --max-active $first_max_active --parallel-opts "${parallel_opts}" --num-threads $num_threads\
+      --skip-scoring true $graphdir $data $si_dir || exit 1;
   fi
 fi
 ##
