@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012  Saarland University (author: Arnab Ghoshal);
 //                      Yanmin Qian; Johns Hopkins University (author: Daniel Povey)
-//                      Cisco Systems (author: Neha Agarwal)
+//                      Cisco Systems (author: Neha Agrawal)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
