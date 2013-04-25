@@ -30,6 +30,9 @@ splice_step=1    # stepsize of the splicing (1 == no gap between frames)
 feat_type=plain
 # feature config (applies to feat_type traps)
 traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
+# feature config (applies to feat_type transf) (ie. LDA+MLLT, no fMLLR)
+transf=
+splice_after_transf=5
 # feature config (applies to feat_type lda)
 lda_rand_prune=4.0 # LDA estimation random pruning (applies to `lda` feat_type)
 lda_dim=300        # LDA dimension (applies to `lda` feat_type)
@@ -207,11 +210,14 @@ else
     ;;
     transf)
       feature_transform_old=$feature_transform
-      feature_transform=${feature_transform%.nnet}_transf.nnet
-      echo "Appending transform from $alidir/final.mat"
-      [ ! -f $alidir/final.mat ] && echo "Missing transform $alidir/final.mat" && exit 1;
-      transf-to-nnet $alidir/final.mat - | \
-        nnet-concat --binary=false $feature_transform_old - $feature_transform || exit 1
+      feature_transform=${feature_transform%.nnet}_transf_splice${splice_after_transf}.nnet
+      [ -z $transf ] && $alidir/final.mat
+      [ ! -f $transf ] && echo "Missing transf $transf" && exit 1
+      feat_dim=$(feat-to-dim "$feats_tr nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
+      nnet-concat --binary=false $feature_transform_old \
+        "transf-to-nnet $transf - |" \
+        "utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_after_transf |" \
+        $feature_transform || exit 1
     ;;
     lda)
       transf=$dir/lda$lda_dim.mat
