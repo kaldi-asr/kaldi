@@ -1,6 +1,6 @@
-// bin/post-to-pdf-post.cc
+// bin/get-post-on-ali.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2013  Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +29,15 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "This program selects posteriors that are masked by alignment\n"
-        "(ie. posteriors that are under the alignment path)\n"
-        "This can be used as a per-frame confidence measure\n"
-        "It is better to use pdf-posteriors and pdf-alignments\n"
+        "This program extracts a vector of per-frame posteriors that are selected\n"
+        "by an alignment (ie. posteriors that are under the alignment path).\n"
+        "This can be used as a per-frame confidence measure.\n"
+        "\n"
+        "By intuition, it is better to use pdf-posteriors and pdf-alignments,\n"
+        "because the posteriors of competing hypothesis that are in the same frame\n"
+        "at same 'pdf-state' are summed up, which is in some sense similar\n"
+        "to what is done by C-max which sums the posteriors of overlapping words.\n"
+        "The difference here is that the granularity is per-frame.\n"
         "\n"
         "Usage:  get-post-on-ali [options] <posteriors-rspecifier> <ali-rspecifier> <conf-wspecifier>\n"
         "e.g.: get-post-on-ali ark:post.ark ark:ali.ark ark:conf.ark\n";
@@ -88,7 +93,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Done getting the posteriors under the alignment path for "
               << num_done << " utterances. " << num_no_alignment << " with missing alignments.";
-
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
