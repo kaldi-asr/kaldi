@@ -140,7 +140,7 @@ echo "Generating the numerator ali and lattices with LM scores (to be unioned wi
 #1) Generate the tracing-fsts based on the lattice with correct paths
 $cmd JOB=1:$nj $dir/log/num_lat.JOB.log \
   compile-train-graphs $scale_opts $srcdir/tree $srcdir/final.mdl  $lang/L.fst "$tra" ark:- \| \
-  compose-with-unigram-fst $dir/lang/G.fst ark:- ark,t:- \| \
+  fsttablecompose ark:- $dir/lang/G.fst ark,t:- \| \
   latgen-faster-mapped --beam=$beam_ali --lattice-beam=$lattice_beam_ali --acoustic-scale=$acwt \
     --word-symbol-table=$lang/words.txt \
     $srcdir/final.mdl ark:- "$feats" ark,t:$dir/num_lat.ark.JOB ark:/dev/null "ark,t:|gzip -c >$dir/ali.JOB.gz"
