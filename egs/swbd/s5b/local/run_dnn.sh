@@ -28,8 +28,9 @@ dir=data-fmllr-tri4b/train_dev
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_dev data/lang exp/tri4b exp/tri4b_ali_dev || exit 1
 # we need fMLLR transforms, so we run decoding...
-steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" --config conf/decode.config \
-  $graph_dir data/train_dev exp/tri4b/decode_train_dev_sw1_fsh_tgpr || exit 1
+steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+   --config conf/decode.config  exp/tri4b/graph_sw1_fsh_tgpr \
+   data/train_dev exp/tri4b/decode_train_dev_sw1_fsh_tgpr || exit 1
 #generate the feats
 steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
    --transform-dir exp/tri4b/decode_train_dev_sw1_fsh_tgpr \
