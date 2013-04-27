@@ -27,3 +27,5 @@ fi
  
 icu_transform="Any-Lower"
 case_insensitive=true
+
+phoneme_mapping=
