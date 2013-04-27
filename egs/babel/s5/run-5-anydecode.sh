@@ -82,11 +82,11 @@ fi
 if [ ! -f data/${type}/.kws.done ]; then
   icu_opt=()
   if [ ! -z $icu_transform ] ; then
-    icu_opt=(--use-icu true --icu-transfrom $icu_transform)
+    icu_opt=(--use-icu true --icu-transform $icu_transform)
   fi
   if [[ $my_subset_ecf ]] ; then
     local/kws_setup.sh --case-insensitive $case_insensitive --subset-ecf $my_data_list \
-      --rttm-file "$my_rttm_file ${icu_opt[@]}" \
+      --rttm-file $my_rttm_file "${icu_opt[@]}" \
       $my_ecf_file $my_kwlist_file data/lang data/${type}
   else
     local/kws_setup.sh --case-insensitive $case_insensitive                            \
