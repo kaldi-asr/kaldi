@@ -125,7 +125,6 @@ fi
     data/lang $dir $dir/graph &> $dir/mkgraph.log
   mkdir -p $dir/decode_dev2h
   if [ ! -f $dir/decode_dev2h/.done ]; then
-    exit 1
     steps/decode_fmllr.sh --nj $decode_nj --acwt 0.0333 --scoring-opts "$sopt" \
       --cmd "$train_cmd" "${decode_extra_opts[@]}" \
       $dir/graph data/app_dev2h $dir/decode_dev2h &> $dir/decode_dev2h.log ;
