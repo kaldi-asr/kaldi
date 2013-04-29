@@ -1,4 +1,4 @@
-// featbin/copy-feats-to-htkp.cc
+// featbin/copy-feats-to-htk.cc
 
 // Copyright 2013   Petr Motlicek
 
@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
         "Save features as HTK files:\n" 
         "Each utterance will be stored as a unique HTK file in a specified directory.\n"
         "The HTK filename will correspond to the utterance-id (key) in the input table, with the specified extension.\n"
-        "Usage: copy-feats-to-htkp [options] in-rspecifier\n"
-        "Example: copy-feats-to-htkp --output-dir=/tmp/HTK-features --output-ext=fea  scp:feats.scp\n";
+        "Usage: copy-feats-to-htk [options] in-rspecifier\n"
+        "Example: copy-feats-to-htk --output-dir=/tmp/HTK-features --output-ext=fea  scp:feats.scp\n";
 
     ParseOptions po(usage);
     std::string dir_out = "./";
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     po.Register("output-ext", &ext_out, "Output ext of HTK files");
     po.Register("output-dir", &dir_out, "Output directory");
     po.Register("sample-period", &sample_period, "HTK sampPeriod - sample period in 100ns units");
-    po.Register("sample-kind", &sample_kind, "HTK parmKind - a code indicating the sample kind");
+    po.Register("sample-kind", &sample_kind, "HTK parmKind - a code indicating the sample kind (e.g., 6=MFCC, 7=FBANK, 9=USER, 11=PLP)");
 
 
 
