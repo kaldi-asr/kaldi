@@ -1,4 +1,4 @@
-// featbin/feats2htk.cc
+// featbin/copy-feats-to-htkp.cc
 
 // Copyright 2013   Petr Motlicek
 
@@ -32,15 +32,17 @@ int main(int argc, char *argv[]) {
 
 
     const char *usage =
-        "Sve features as HTK files:\n" 
-        "[ Each Utterance will be stored as a unique HTK file ]\n"
-        "Usage: feats2htk [options] in-rspecifier\n";
+        "Save features as HTK files:\n" 
+        "Each utterance will be stored as a unique HTK file in a specified directory.\n"
+        "The HTK filename will correspond to the utterance-id (key) in the input table, with the specified extension.\n"
+        "Usage: copy-feats-to-htkp [options] in-rspecifier\n"
+        "Example: copy-feats-to-htkp --output-dir=/tmp/HTK-features --output-ext=fea  scp:feats.scp\n";
 
     ParseOptions po(usage);
     std::string dir_out = "./";
     std::string ext_out = "fea";
-    int32 SamplePeriod = 10000;
-    int32 SampleKind = 9; //USER  
+    int32 sample_period = 10000;
+    int32 sample_kind = 9; //USER  
     /*
     0 WAVEFORM sampled waveform
     1 LPC linear prediction filter coefficients
@@ -58,8 +60,8 @@ int main(int argc, char *argv[]) {
 
     po.Register("output-ext", &ext_out, "Output ext of HTK files");
     po.Register("output-dir", &dir_out, "Output directory");
-    po.Register("SamplePeriod", &SamplePeriod, "HTK sampPeriod - sample period in 100ns units");
-    po.Register("SampleKind", &SampleKind, "HTK parmKind - a code indicating the sample kind");
+    po.Register("sample-period", &sample_period, "HTK sampPeriod - sample period in 100ns units");
+    po.Register("sample-kind", &sample_kind, "HTK parmKind - a code indicating the sample kind");
 
 
 
@@ -92,12 +94,12 @@ int main(int argc, char *argv[]) {
 
     // HTK parameters
     HtkHeader hdr;
-    hdr.mSamplePeriod = SamplePeriod;
-    hdr.mSampleKind = SampleKind;
+    hdr.mSamplePeriod = sample_period;
+    hdr.mSampleKind = sample_kind;
 
     
     // write to the HTK files
-    int32 num_frames, dim, count=0;
+    int32 num_frames, dim, num_done=0;
     SequentialBaseFloatMatrixReader feats_reader(rspecifier);
     for (; !feats_reader.Done(); feats_reader.Next()) {
       std::string utt = feats_reader.Key();
@@ -114,10 +116,10 @@ int main(int argc, char *argv[]) {
       output.Range(0, num_frames, 0, dim).CopyFromMat(feats.Range(0, num_frames, 0, dim));	
       std::ofstream os(ss.str().c_str(), std::ios::out|std::ios::binary);
       WriteHtk(os, output, hdr);  
-      count++;    
+      num_done++;    
     }
-    std::cout << count << " feature files generated in the firecory: " << dir_out <<"\n";
-    return 0;
+    KALDI_LOG << num_done << " HTK feature files generated in the direcory: " << dir_out;
+    return (num_done != 0 ? 0 : 1);
 
   } catch(const std::exception &e) {
     std::cerr << e.what();
