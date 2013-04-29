@@ -214,7 +214,7 @@ if [ ! -f exp_BNF/sgmm7_denlats/.done ]; then
   echo "Starting exp_BNF/sgmm5_denlats on" `date`
   echo ---------------------------------------------------------------------
   steps/make_denlats_sgmm2.sh \
-    --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}"
+    --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}" \
     --transform-dir exp_BNF/tri6_ali --beam 10.0 --acwt 0.06 --lattice-beam 6 \
      data/app_train data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats 
   touch exp_BNF/sgmm7_denlats/.done
