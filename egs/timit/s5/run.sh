@@ -4,7 +4,7 @@
 
 . ./cmd.sh 
 [ -f path.sh ] && . ./path.sh
-if false; then
+
 echo ============================================================================
 echo "                Data & Lexicon & Language Preparation                     "
 echo ============================================================================
@@ -170,7 +170,7 @@ steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" \
 steps/make_denlats_sgmm2.sh --nj 30 --sub-split 30 --cmd "$decode_cmd"\
  --transform-dir exp/tri3_ali_train  data/train data/lang exp/sgmm2_4_ali_train \
  exp/sgmm2_4_denlats_train || exit 1;
-fi # temp
+
 steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
  --transform-dir exp/tri3_ali_train --boost 0.1 --zero-if-disjoint true \
  data/train data/lang exp/sgmm2_4_ali_train exp/sgmm2_4_denlats_train \
