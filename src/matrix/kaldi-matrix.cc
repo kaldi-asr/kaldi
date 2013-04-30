@@ -1521,11 +1521,12 @@ void Matrix<Real>::Transpose() {
 
 template<class Real>
 void MatrixBase<Real>::ApplyFloor(Real floor_val) {
-  for (MatrixIndexT i = 0; i < num_rows_; i++) {
-    for (MatrixIndexT j = 0; j < num_cols_; j++) {
-      if ((*this)(i, j) < floor_val) {
-        (*this)(i, j) = floor_val;
-      }}}
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    Real *data = this->RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++)
+      data[j] = (data[j] < floor_val ? floor_val : data[j]);
+  }
 }
 
 template<class Real>
@@ -1546,6 +1547,16 @@ template<class Real>
 void MatrixBase<Real>::ApplyPow(Real power) {
   for (MatrixIndexT i = 0; i < num_rows_; i++) {
     Row(i).ApplyPow(power);
+  }
+}
+
+template<class Real>
+void MatrixBase<Real>::ApplyHeaviside() {
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    Real *data = this->RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++)
+      data[j] = (data[j] > 0 ? 1.0 : 0.0);
   }
 }
 

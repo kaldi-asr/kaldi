@@ -78,7 +78,8 @@ void UnitTestGenericComponentInternal(const Component &component) {
       BaseFloat predicted_difference = TraceMatMat(perturbed_input,
                                                    input_deriv, kTrans);
       perturbed_input.AddMat(1.0, input); // now it's the input + a delta.
-      { // Compute objf with perturbed input and make sure it matches prediction.
+      { // Compute objf with perturbed input and make sure it matches
+        // prediction.
         Matrix<BaseFloat> perturbed_output(output.NumRows(), output.NumCols());
         component.Propagate(perturbed_input, 1, &perturbed_output);
         Vector<BaseFloat> perturbed_output_objfs(num_egs);
@@ -480,6 +481,8 @@ int main() {
     UnitTestGenericComponent<TanhComponent>();
     UnitTestGenericComponent<PermuteComponent>();
     UnitTestGenericComponent<SoftmaxComponent>();
+    UnitTestGenericComponent<RectifiedLinearComponent>();
+    UnitTestGenericComponent<SoftHingeComponent>();
     UnitTestSigmoidComponent();
     UnitTestReduceComponent();
     UnitTestAffineComponent();

@@ -47,6 +47,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new TanhComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
+  } else if (component_type == "RectifiedLinearComponent") {
+    ans = new RectifiedLinearComponent();
+  } else if (component_type == "SoftHingeComponent") {
+    ans = new SoftHingeComponent();
   } else if (component_type == "ReduceComponent") {
     ans = new ReduceComponent();
   } else if (component_type == "AffineComponent") {
@@ -410,7 +414,6 @@ void TanhComponent::Propagate(const MatrixBase<BaseFloat> &in,
   // Apply tanh function to each element of the output...
   // the tanh function may be written as -1 + ( 2 / (1 + e^{-2 x})),
   // which is a scaled and shifted sigmoid.
-  *out = in;
   out->Resize(in.NumRows(), in.NumCols(), kUndefined);
   out->Tanh(in);
 }
@@ -441,6 +444,82 @@ void TanhComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                                               in_deriv);
   in_deriv->MulElements(out_deriv);
 }  
+
+void RectifiedLinearComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                              int32, // num_chunks
+                              Matrix<BaseFloat> *out) const {
+  // Apply rectified linear function (x >= 0 ? 1.0 : 0.0) 
+  *out = in;
+  out->ApplyFloor(0.0);
+}
+
+void RectifiedLinearComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                                        const MatrixBase<BaseFloat> &out_value,
+                                        const MatrixBase<BaseFloat> &out_deriv,
+                                        int32, // num_chunks
+                                        Component *to_update,
+                                        Matrix<BaseFloat> *in_deriv) const {
+
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
+                   kUndefined);
+  in_deriv->CopyFromMat(out_value);
+  in_deriv->ApplyHeaviside();
+  // Now in_deriv(i, j) equals (out_value(i, j) > 0.0 ? 1.0 : 0.0),
+  // which is the derivative of the nonlinearity (well, except at zero
+  // where it's undefined).
+  if (to_update != NULL)
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              in_deriv);
+  in_deriv->MulElements(out_deriv);
+}  
+
+void SoftHingeComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                   int32, // num_chunks
+                                   Matrix<BaseFloat> *out) const {
+  // Apply function x = log(1 + exp(x))
+  *out = in;
+  for (int32 i = 0; i < out->NumRows(); i++) {
+    BaseFloat *data = out->RowData(i);
+    int32 cols = out->NumCols();
+    for (int32 j = 0; j < cols; j++)
+      if (data[j] < 10.0) data[j] = log1p(exp(data[j]));
+  }
+}
+
+void SoftHingeComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                                  const MatrixBase<BaseFloat> &out_value,
+                                  const MatrixBase<BaseFloat> &out_deriv,
+                                  int32, // num_chunks
+                                  Component *to_update,
+                                  Matrix<BaseFloat> *in_deriv) const {
+
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
+                   kUndefined);
+  in_deriv->CopyFromMat(out_value);
+  // note: d/dx: log(1 + exp(x)) = (exp(x) / (1 + exp(x))
+  // if the output is y, then dy/dx =  (exp(x) / (1 + exp(x)),
+  // and using y = log(1 + exp(x)) -> exp(x) = exp(y) - 1, we have
+  // dy/dx = (exp(y) - 1) / exp(y)
+  
+  for (int32 i = 0; i < in_deriv->NumRows(); i++) {
+    BaseFloat *data = in_deriv->RowData(i);
+    int32 cols = in_deriv->NumCols();
+    for (int32 j = 0; j < cols; j++) {
+      if (data[j] > 10.0) data[j] = 1.0;
+      else {
+        BaseFloat expy = exp(data[j]);
+        data[j] = (expy - 1) / expy;
+      }
+    }
+  }
+  // now in_deriv is the derivative of the nonlinearity (well, except at zero
+  // where it's undefined).
+  if (to_update != NULL)
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              in_deriv);
+  in_deriv->MulElements(out_deriv);
+}  
+
 
 void SoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                  int32, // num_chunks

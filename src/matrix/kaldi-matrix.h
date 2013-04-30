@@ -252,6 +252,12 @@ class MatrixBase {
   /// Applies power to all matrix elements
   void ApplyPow(Real power);
 
+  /// Applies the Heaviside step function (x > 0 ? 1 : 0) to all matrix elements
+  /// Note: in general you can make different choices for x = 0, but for now
+  /// please leave it as it (i.e. returning zero) because it affects the
+  /// RectifiedLinearComponent in the neural net code.
+  void ApplyHeaviside();
+  
   /// Eigenvalue Decomposition of a square NxN matrix into the form (*this) = P D
   /// P^{-1}.  Be careful: the relationship of D to the eigenvalues we output is
   /// slightly complicated, due to the need for P to be real.  In the symmetric
@@ -351,7 +357,7 @@ class MatrixBase {
   /// Apply soft-max to the collection of all elements of the
   /// matrix and return normalizer (log sum of exponentials).
   Real ApplySoftMax();
-
+  
   /// Set each element to the sigmoid of the corresponding element of "src".
   void Sigmoid(const MatrixBase<Real> &src);
 

@@ -728,6 +728,24 @@ template<class Real> static void UnitTestPower() {
   }
 }
 
+template<class Real> static void UnitTestHeaviside() {
+  for (MatrixIndexT iter = 0;iter < 5;iter++) {
+    MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
+    Matrix<Real> M(dimM, dimN), N(dimM, dimN);
+    InitRand(&M);
+    N = M;
+    N.ApplyHeaviside();
+    for (MatrixIndexT r = 0; r < dimM; r++) {
+      for (MatrixIndexT c = 0; c < dimN; c++) {
+        Real x = M(r, c), y = N(r, c);
+        if (x < 0.0) KALDI_ASSERT(y == 0.0);
+        if (x > 0.0) KALDI_ASSERT(y == 1.0);
+        if (x == 0.0) { KALDI_ASSERT(y >= 0.0 && y <= 1.0); }
+      }
+    }
+  }
+}
+
 
 template<class Real> static void UnitTestAddOuterProductPlusMinus() {
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
@@ -3634,6 +3652,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestDotprod<Real>();
   // UnitTestSvdVariants<Real>();
   UnitTestPower<Real>();
+  UnitTestHeaviside<Real>();
   UnitTestCopySp<Real>();
   UnitTestDeterminant<Real>();
   KALDI_LOG << " Point F";

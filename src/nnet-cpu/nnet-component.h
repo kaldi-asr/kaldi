@@ -1,6 +1,6 @@
 // nnet-cpu/nnet-component.h
 
-// Copyright 2011-2012  Karel Vesely
+// Copyright 2011-2013  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -234,6 +234,8 @@ class NonlinearComponent: public Component {
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
+  friend class RectifiedLinearComponent;
+  friend class SoftHingeComponent;
   
   // This function updates the stats "value_sum_", "deriv_sum_", and
   // count_. (If deriv == NULL, it won't update "deriv_sum_").
@@ -283,7 +285,7 @@ class TanhComponent: public NonlinearComponent {
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          Matrix<BaseFloat> *out) const; 
-  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+  virtual void Backprop(const MatrixBase<BaseFloat> &, // in_value
                         const MatrixBase<BaseFloat> &out_value,
                         const MatrixBase<BaseFloat> &out_deriv,
                         int32 num_chunks,
@@ -292,6 +294,51 @@ class TanhComponent: public NonlinearComponent {
  private:
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
+
+class RectifiedLinearComponent: public NonlinearComponent {
+ public:
+  explicit RectifiedLinearComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other): NonlinearComponent(other) { }
+  RectifiedLinearComponent() { }
+  virtual std::string Type() const { return "RectifiedLinearComponent"; }
+  virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
+  virtual bool BackpropNeedsInput() { return false; }
+  virtual bool BackpropNeedsOutput() { return true; }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+ private:
+  RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
+};
+
+class SoftHingeComponent: public NonlinearComponent {
+ public:
+  explicit SoftHingeComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SoftHingeComponent(const SoftHingeComponent &other): NonlinearComponent(other) { }
+  SoftHingeComponent() { }
+  virtual std::string Type() const { return "SoftHingeComponent"; }
+  virtual Component* Copy() const { return new SoftHingeComponent(*this); }
+  virtual bool BackpropNeedsInput() { return false; }
+  virtual bool BackpropNeedsOutput() { return true; }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+ private:
+  SoftHingeComponent &operator = (const SoftHingeComponent &other); // Disallow.
+};
+
 
 class MixtureProbComponent; // Forward declaration.
 class AffineComponent; // Forward declaration.
