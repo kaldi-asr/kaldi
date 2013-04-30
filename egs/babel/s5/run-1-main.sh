@@ -302,7 +302,7 @@ if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   echo "Starting exp/sgmm5_mmi_b0.1 on" `date`
   echo ---------------------------------------------------------------------
   steps/train_mmi_sgmm2.sh \
-    --cmd "$train_cmd " \
+    --cmd "$train_cmd" "${sgmm_mmi_extra_opts[@]}" \
     --zero-if-disjoint true --transform-dir exp/tri5_ali --boost 0.1 \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
     exp/sgmm5_mmi_b0.1

@@ -25,6 +25,7 @@ else
   sgmm_train_extra_opts=()
   sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=6G,ram_free=2G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
+  sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=1.5G,ram_free=1.5G")
 fi
  
 icu_transform="Any-Lower"
