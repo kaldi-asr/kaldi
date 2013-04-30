@@ -30,6 +30,9 @@ data=$3
 logdir=$4
 mfccdir=$5
 
+# make $mfccdir an absolute pathname.
+mfccdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $mfccdir ${PWD}`
+
 utils/split_data.sh $data_src1 $nj || exit 1;
 utils/split_data.sh $data_src2 $nj || exit 1;
 

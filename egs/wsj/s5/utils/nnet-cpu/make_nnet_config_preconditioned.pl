@@ -30,6 +30,8 @@ $single_layer_config = ""; # a file to which we'll output a config corresponding
 $bias_stddev = 2.0;  # Standard deviation for random initialization of the
                      # bias terms (mean is zero).
 $learning_rate = 0.001;
+$nonlinear_component_type = "Tanh";
+
 $alpha = 4.0;
 $l2_penalty_opt = ""; # Option for AffineComponentPreconditioned layer.
 $tree_map = ""; # If supplied, a text file that maps from l2 to l1 tree nodes (output
@@ -57,6 +59,10 @@ for ($x = 1; $x < 10; $x++) {
   }
   if ($ARGV[0] eq "--additive-noise-stddev") {
     $additive_noise_stddev = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--nonlinear-component-type") {
+    $nonlinear_component_type = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--lda-mat") {
@@ -187,7 +193,7 @@ for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_laye
   print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
-  print "TanhComponent dim=$cur_input_dim\n";
+  print "${nonlinear_component_type}Component dim=$cur_input_dim\n";
   if ($dropout_proportion != 0.0) {
     print "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
   }
@@ -202,7 +208,7 @@ if ($single_layer_config ne "") {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
   print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
-  print F "TanhComponent dim=$hidden_layer_size\n";
+  print F "${nonlinear_component_type}Component dim=$hidden_layer_size\n";
   if ($dropout_proportion != 0.0) {
     print F "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
   }
